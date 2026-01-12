@@ -180,8 +180,8 @@ struct pcell {
   /*! Black hole variables */
   struct {
     
-    /* lily --> has the black hole identified neighbours to be split?*/
-    int perform_hydro_split;
+    /* lily --> relaxation time*/
+    float split_relax_time;
     
     /*! Number of #spart in this cell. */
     int count;

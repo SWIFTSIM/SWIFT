@@ -106,8 +106,6 @@ struct cell_hydro {
     //lily
     /*! Task for splitting the particles */
     struct task *particle_split;
-    struct task *particle_split_in;
-    struct task *particle_split_out;
     struct task *hydro_resort;
     
     /*! Last (integer) time the cell's part were drifted forward in time. */

@@ -378,7 +378,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
-  
+
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -552,7 +552,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
+  /*
+  if ((pi->split_flag == 2) || (pj->split_flag == 2)){
+    if ((pi->time_bin == 23) || (pj->time_bin == 23))
 
+      }
+  */
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
