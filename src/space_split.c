@@ -887,7 +887,8 @@ void space_split_collect_recursive(struct space *s, struct cell *c) {
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
- * @param map_data Pointer towards the cells to split.
+ * @param map_data Pointer to cell(s) to split. From initial call, points into
+ *                 cells_to_split array. From queue, is the cell pointer itself.
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
@@ -895,14 +896,16 @@ void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
-  struct cell **cells = (struct cell **)map_data;
+
+  /* map_data is a struct cell * (either pointing into array or direct from queue). */
+  struct cell *cells = (struct cell *)map_data;
 
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
 
   /* Loop over the cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = cells[ind];
+    struct cell *c = &cells[ind];
 
     /* Allocate the particle buffers. */
     struct cell_buff *buff = NULL, *sbuff = NULL, *bbuff = NULL, *gbuff = NULL,
@@ -999,24 +1002,9 @@ void space_split(struct space *s, int verbose) {
 
   ticks tic = getticks();
 
-  /* Create an array of cell pointers for the threadpool queue. */
-  struct cell **cells_to_split = NULL;
-  if (swift_memalign("cells_to_split", (void **)&cells_to_split,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     sizeof(struct cell *) * s->nr_local_cells_with_particles) !=
-      0)
-    error("Failed to allocate cell pointer array.");
-
-  for (int i = 0; i < s->nr_local_cells_with_particles; i++) {
-    cells_to_split[i] = &s->cells_top[s->local_cells_with_particles_top[i]];
-  }
-
   threadpool_map_with_queue(&s->e->threadpool, space_split_build_mapper,
-                            cells_to_split, s->nr_local_cells_with_particles,
-                            sizeof(struct cell *), threadpool_auto_chunk_size,
-                            s);
-
-  swift_free("cells_to_split", cells_to_split);
+                            s->cells_top, s->nr_cells, sizeof(struct cell),
+                            threadpool_auto_chunk_size, s);
 
   if (verbose)
     message("Building cell tree took %.3f %s.",
