@@ -1892,8 +1892,6 @@ static int cell_check_grav_mesh_pairs_recursive(struct cell *ci,
  */
 void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e) {
 
-  message("Checking gravity mesh pairs...");
-
   struct space *s = e->s;
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
