@@ -50,6 +50,7 @@
 #include "engine.h"
 #include "error.h"
 #include "multipole.h"
+#include "multipole_accept.h"
 #include "space.h"
 #include "tools.h"
 
@@ -1753,4 +1754,219 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
   const int can_use_mesh_now = (min_radius2 > max_distance2);
 
   return (could_use_mesh_at_rebuild && !can_use_mesh_now);
+}
+
+/**
+ * @brief Recursively check if gravity mesh pairs can still be skipped.
+ *
+ * This function recursively checks pairs of cells (or a single cell for
+ * self-interactions) to determine if they could use mesh at rebuild but
+ * can no longer do so due to particle motion. If such a pair is found,
+ * it sets e->forcerebuild and returns early.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell (can be NULL for self-interactions).
+ * @param e The #engine.
+ * @return 1 if forcerebuild was set, 0 otherwise.
+ */
+static int cell_check_grav_mesh_pairs_recursive(struct cell *ci,
+                                                struct cell *cj,
+                                                struct engine *e) {
+
+  struct space *s = e->s;
+
+  /* Self-interaction? */
+  if (cj == NULL) {
+
+    /* Should this self task be split?
+     * Matches scheduler_splittask_gravity logic */
+    if (cell_can_split_self_gravity_task(ci)) {
+
+      /* Check particle count threshold - matches scheduler_splittask_gravity */
+      if (ci->grav.count < space_subsize_self_grav) {
+        return 0;
+      }
+
+      /* Recurse on self interactions for each progeny */
+      for (int k = 0; k < 8; k++) {
+        if (ci->progeny[k] != NULL) {
+          if (cell_check_grav_mesh_pairs_recursive(ci->progeny[k], NULL, e)) {
+            return 1;
+          }
+        }
+      }
+
+      /* Now handle pair interactions between progeny */
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] == NULL) continue;
+        struct cell *cpj = ci->progeny[j];
+        for (int k = j + 1; k < 8; k++) {
+          if (ci->progeny[k] == NULL) continue;
+          struct cell *cpk = ci->progeny[k];
+
+          /* Can we use the mesh for this pair? */
+          if (cell_can_use_mesh(e, cpj, cpk)) {
+            /* Check if we can no longer use the mesh */
+            if (cell_cant_use_mesh_anymore(e, cpj, cpk)) {
+              atomic_inc(&e->forcerebuild);
+              return 1;
+            }
+            /* Mesh still valid, continue */
+            continue;
+          }
+
+          /* Otherwise recurse as a pair interaction */
+          if (cell_check_grav_mesh_pairs_recursive(cpj, cpk, e)) {
+            return 1;
+          }
+        }
+      }
+    }
+    /* else: We have a real task that doesn't split further */
+
+  } else {
+    /* Pair interaction */
+
+    /* Should this pair be split?
+     * Matches scheduler_splittask_gravity logic */
+    if (cell_can_split_pair_gravity_task(ci) &&
+        cell_can_split_pair_gravity_task(cj)) {
+
+      /* Check particle count threshold - matches scheduler_splittask_gravity */
+      const long long gcount_i = ci->grav.count;
+      const long long gcount_j = cj->grav.count;
+      if (gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
+        return 0;
+      }
+
+      /* Recurse on all progeny pairs */
+      for (int i = 0; i < 8; i++) {
+        if (ci->progeny[i] == NULL) continue;
+        struct cell *cpi = ci->progeny[i];
+        for (int j = 0; j < 8; j++) {
+          if (cj->progeny[j] == NULL) continue;
+          struct cell *cpj = cj->progeny[j];
+
+          /* Can we use the mesh for this pair? */
+          if (cell_can_use_mesh(e, cpi, cpj)) {
+            /* Check if we can no longer use the mesh */
+            if (cell_cant_use_mesh_anymore(e, cpi, cpj)) {
+              atomic_inc(&e->forcerebuild);
+              return 1;
+            }
+            /* Mesh still valid, continue */
+            continue;
+          }
+
+          /* Can we use M-M for this pair? */
+          if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                                   /*is_tree_walk=*/1)) {
+            /* This would be handled by a M-M task, skip */
+            continue;
+          }
+
+          /* We would create real tasks, so recurse */
+          if (cell_check_grav_mesh_pairs_recursive(cpi, cpj, e)) {
+            return 1;
+          }
+        }
+      }
+    }
+    /* else: We have a real task that doesn't split further */
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Check if gravity mesh pairs from a top-level cell can still be
+ * skipped.
+ *
+ * This function finds all top-level pairs involving the given cell (using
+ * the same logic as engine_make_self_gravity_tasks_mapper) and recursively
+ * checks if pairs that were skipped due to the mesh at rebuild can still
+ * be skipped. If any pair can no longer use the mesh, a rebuild is triggered.
+ *
+ * @param c The top-level #cell.
+ * @param e The #engine.
+ */
+void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e) {
+
+  struct space *s = e->s;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  struct cell *cells = s->cells_top;
+
+  /* Skip cells without gravity particles */
+  if (c->grav.count == 0) return;
+
+  /* Early exit if not using mesh */
+  if (!s->periodic) {
+    return;
+  }
+
+  /* Early exit if forcerebuild already set */
+  if (e->forcerebuild) {
+    return;
+  }
+
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
+      s->min_a_grav, s->max_mpole_power, /*periodic=*/1);
+
+  /* Convert the maximal search distance to a number of cells */
+  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta >= cdim[0] / 2) {
+    if (cdim[0] % 2 == 0) {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2 - 1;
+    } else {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2;
+    }
+  }
+
+  /* Get the cell index and integer indices in the top-level grid */
+  const int cid = c - cells;
+  const int i = cid / (cdim[1] * cdim[2]);
+  const int j = (cid / cdim[2]) % cdim[1];
+  const int k = cid % cdim[2];
+
+  /* Check self-interaction. If it returns true (forcerebuild set), we don't
+   * need to check any pairs. */
+  if (cell_check_grav_mesh_pairs_recursive(c, NULL, e)) {
+    message("Self interaction triggers a rebuild due to mesh pair failure.");
+    return;
+  }
+
+  /* Loop over every other cell within (Manhattan) range delta */
+  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+        /* Apply periodic BC */
+        const int iii = (ii + cdim[0]) % cdim[0];
+        const int jjj = (jj + cdim[1]) % cdim[1];
+        const int kkk = (kk + cdim[2]) % cdim[2];
+
+        /* Get the second cell */
+        const int cjd = cell_getid(cdim, iii, jjj, kkk);
+        struct cell *cj = &cells[cjd];
+
+        /* Avoid duplicates, empty cells */
+        if (cid >= cjd || cj->grav.count == 0) continue;
+
+        /* Check this pair recursively */
+        if (cell_check_grav_mesh_pairs_recursive(c, cj, e)) {
+          message(
+              "Pair interaction triggers a rebuild due to mesh pair failure");
+          return;
+        }
+      }
+    }
+  }
 }
