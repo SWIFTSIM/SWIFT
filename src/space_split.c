@@ -36,6 +36,19 @@
 #include "threadpool.h"
 
 /**
+ * @brief Structure holding thread-local buffers for cell splitting.
+ */
+struct split_buff_data {
+  struct space *s;
+  struct cell_buff *buff;
+  struct cell_buff *sbuff;
+  struct cell_buff *bbuff;
+  struct cell_buff *gbuff;
+  struct cell_buff *sink_buff;
+  int max_size;
+};
+
+/**
  * @brief Allocate the particle buffers ready for populating during splitting.
  *
  * @param c The #cell to be split.
@@ -890,39 +903,46 @@ void space_split_collect_recursive(struct space *s, struct cell *c) {
  * @param map_data Pointer to cell(s) to split. From initial call, points into
  *                 cells_to_split array. From queue, is the cell pointer itself.
  * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
+ * @param extra_data Pointers to the #split_buff_data with pre-allocated buffers.
  */
 void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Unpack the inputs. */
-  struct space *s = (struct space *)extra_data;
+  struct split_buff_data *thread_buffs = (struct split_buff_data *)extra_data;
+
+  /* Threadpool id of current thread. */
+  short int tpid = threadpool_gettid();
+
+  /* Get the buffer data for this specific thread. */
+  struct split_buff_data *buff_data = &thread_buffs[tpid];
+  struct space *s = buff_data->s;
 
   /* map_data is a struct cell * (either pointing into array or direct from queue). */
   struct cell *cells = (struct cell *)map_data;
 
-  /* Threadpool id of current thread. */
-  short int tpid = threadpool_gettid();
+  /* Get the pre-allocated buffers for this thread. */
+  struct cell_buff *buff = buff_data->buff;
+  struct cell_buff *sbuff = buff_data->sbuff;
+  struct cell_buff *bbuff = buff_data->bbuff;
+  struct cell_buff *gbuff = buff_data->gbuff;
+  struct cell_buff *sink_buff = buff_data->sink_buff;
 
   /* Loop over the cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells[ind];
 
-    /* Allocate the particle buffers. */
-    struct cell_buff *buff = NULL, *sbuff = NULL, *bbuff = NULL, *gbuff = NULL,
-                     *sink_buff = NULL;
+    /* Skip cells with no particles. */
+    if (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
+        c->black_holes.count == 0 && c->sinks.count == 0)
+      continue;
+
+    /* Fill the buffers with particle positions. */
     space_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff,
                                     &sink_buff);
 
     /* Recursively split the cell. */
     space_split_build_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff,
                                 tpid);
-
-    /* Free the particle buffers. */
-    if (buff != NULL) swift_free("tempbuff", buff);
-    if (gbuff != NULL) swift_free("tempgbuff", gbuff);
-    if (sbuff != NULL) swift_free("tempsbuff", sbuff);
-    if (bbuff != NULL) swift_free("tempbbuff", bbuff);
-    if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
   }
 }
 
@@ -1002,9 +1022,62 @@ void space_split(struct space *s, int verbose) {
 
   ticks tic = getticks();
 
+  /* Find the maximum particle count in any top-level cell. */
+  int max_count = 0;
+  for (int i = 0; i < s->nr_cells; i++) {
+    max_count = max(max_count, s->cells_top[i].hydro.count);
+    max_count = max(max_count, s->cells_top[i].grav.count);
+    max_count = max(max_count, s->cells_top[i].stars.count);
+    max_count = max(max_count, s->cells_top[i].black_holes.count);
+    max_count = max(max_count, s->cells_top[i].sinks.count);
+  }
+
+  /* Allocate per-thread buffers. */
+  const int num_threads = s->e->threadpool.num_threads;
+  struct split_buff_data *thread_buffs = (struct split_buff_data *)malloc(
+      sizeof(struct split_buff_data) * num_threads);
+  if (thread_buffs == NULL) error("Failed to allocate thread buffer data.");
+
+  for (int i = 0; i < num_threads; i++) {
+    thread_buffs[i].s = s;
+    thread_buffs[i].max_size = max_count;
+
+    /* Allocate buffers for this thread. */
+    if (swift_memalign("tempbuff", (void **)&thread_buffs[i].buff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * max_count) != 0)
+      error("Failed to allocate temp buffer.");
+    if (swift_memalign("tempgbuff", (void **)&thread_buffs[i].gbuff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * max_count) != 0)
+      error("Failed to allocate temp gbuffer.");
+    if (swift_memalign("tempsbuff", (void **)&thread_buffs[i].sbuff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * max_count) != 0)
+      error("Failed to allocate temp sbuffer.");
+    if (swift_memalign("tempbbuff", (void **)&thread_buffs[i].bbuff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * max_count) != 0)
+      error("Failed to allocate temp bbuffer.");
+    if (swift_memalign("temp_sink_buff", (void **)&thread_buffs[i].sink_buff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * max_count) != 0)
+      error("Failed to allocate temp sink buffer.");
+  }
+
   threadpool_map_with_queue(&s->e->threadpool, space_split_build_mapper,
                             s->cells_top, s->nr_cells, sizeof(struct cell),
-                            threadpool_auto_chunk_size, s);
+                            threadpool_auto_chunk_size, thread_buffs);
+
+  /* Free the per-thread buffers. */
+  for (int i = 0; i < num_threads; i++) {
+    swift_free("tempbuff", thread_buffs[i].buff);
+    swift_free("tempgbuff", thread_buffs[i].gbuff);
+    swift_free("tempsbuff", thread_buffs[i].sbuff);
+    swift_free("tempbbuff", thread_buffs[i].bbuff);
+    swift_free("temp_sink_buff", thread_buffs[i].sink_buff);
+  }
+  free(thread_buffs);
 
   if (verbose)
     message("Building cell tree took %.3f %s.",
