@@ -39,6 +39,8 @@ struct cell_black_holes {
   union {
 #endif
 
+    float split_relax_time;
+    
     /*! Pointer to the #bpart data. */
     struct bpart *parts;
 
@@ -119,9 +121,6 @@ struct cell_black_holes {
 
   /*! Nr of #bpart in this cell. */
   int count;
-
-  /* lily --> has the black hole identified neighbours to be split?*/
-  int perform_hydro_split;
 
 };
 

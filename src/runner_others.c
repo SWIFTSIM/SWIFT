@@ -65,7 +65,7 @@
 #include "black_holes.h"
 
 #include "kernel_hydro.h"
-
+#include "rays.h"
 
 // Linear search for parent in the cell ->inefficient but oh well
 int find_parent_linear(const struct part *parts, int cnt, long long id) {
@@ -76,14 +76,41 @@ int find_parent_linear(const struct part *parts, int cnt, long long id) {
     return -1; // not found
 }
 
+__attribute__((always_inline)) INLINE static void get_random_ray(double n[3], uint64_t seed1, uint64_t seed2)
+{
+  // Generate deterministic random numbers in [0,1] using the rays 
+  
+    const double rand_theta =
+        random_unit_interval_two_IDs(seed1, seed2, 0,
+                                     random_number_isotropic_AGN_feedback_ray_theta);
+
+    const double rand_phi =
+        random_unit_interval_two_IDs(seed2, seed1, 0,
+                                     random_number_isotropic_AGN_feedback_ray_phi);
+
+    // Convert to spherical angles 
+    const double cos_theta = 2.0 * rand_theta - 1.0;
+    const double theta     = acos(cos_theta);
+    const double phi       = 2.0 * M_PI * rand_phi - M_PI;
+
+    // Convert to unit vector (ray direction) 
+    n[0] = sin(theta) * cos(phi);
+    n[1] = sin(theta) * sin(phi);
+    n[2] = cos(theta);
+
+}
+
 /* serialise the splits */
 /**** split gas particles within BH hsml ****/
 void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   struct engine *e = r->e;
-  //leaf data
-  const int count_leaf = c->hydro.count;
+
+  //particle data
+  const int count_top = c->top->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
+  struct bpart *restrict bp = c->top->black_holes.parts;
+  
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -93,7 +120,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 
    /* Anything to do here? */
   /* only enter loop if the black hole has identified particles that need splitting */
-  if (count_leaf == 0 || !cell_is_active_hydro(c, e)) {
+  if (count_top == 0 || !cell_is_active_hydro(c, e)) {
     return;
   }
   
@@ -114,19 +141,21 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
     
     //hardcode splits for now
     
-    const int n_split = 7;
+    //const int n_split = 2;
     
     // Now loop over gas particles at parent cell, this is broked but we get the full
     //set of parent splits in one go, probs best to save the full parent list and then split    
+
     int j = 0;
-    //lock_lock(&c->top->stars.star_formation_lock);
+    
     //loop has to be long, idk why this works but it does...
     while (j < c->top->hydro.count){
       struct part *p  = &parts[j];
       struct xpart *xp = &xparts[j];
 
+      
       //this only really needs to be calculated once
-      const float child_mass = p->mass / n_split;  
+      const float child_mass = p->mass / 2;  
       double new_h = p->h;
       
       if ((p->split_flag == 2) || (p->split_flag == 0)){
@@ -136,21 +165,51 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
       
       // If gas particle is marked for splitting
       if (p->split_flag == 1) {
+	// since we are adding a relaxation time, parts marked to be split may have moved away...
+	//check again whether they are close to the BH again...
+
+	// Compute distance to this BH
+	double dx = p->x[0] - bp->x[0];
+	double dy = p->x[1] - bp->x[1];
+	double dz = p->x[2] - bp->x[2];
+	double dist = sqrt(dx*dx + dy*dy + dz*dz);
+	
+	// Outside 2*BH smoothing length? Unmark and skip
+	if (dist > 2*bp->h) {
+	  j++;
+	  p->split_flag = 0;
+	  continue;
+	}
+	
+	//set relaxation time for the top cell
+	if (c->top->black_holes.split_relax_time <= e->time){
+	  float v_cs = p->force.soundspeed;
+	  if (v_cs <= 0.f || !isfinite(v_cs))
+	    v_cs = 5;
+	  float relax_dt = 2 * p->h / v_cs;
+	  message("next available split: %g", e->time + relax_dt);
+	  relax_dt = fmaxf(relax_dt, e->dt_min);        // at least one smallest timestep
+	  
+	  //relax_dt = fminf(relax_dt, 5.f * e->dt_min); // don’t let it dominate   
+	  c->top->black_holes.split_relax_time = e->time + relax_dt;
+	}
+	
+	
 	//immediately mark as split
 	p->split_flag = 2;                  	
 	// Update the parent before any memmove
         p->mass = child_mass;
-        
+	//sync later on in the timeline
+
 	//split into 3D shape
 	message("------- splitting particles ------");
-	double delta = p->h / 2;
-	/*3D cross*/
-	
+	double delta = p->h / 5;
+	/*3D cross
 	double offsets[6][3] = {
 	  {+delta, 0.0, 0.0}, {-delta, 0.0, 0.0},
 	  {0.0, +delta, 0.0}, {0.0, -delta, 0.0},
 	  {0.0, 0.0, +delta}, {0.0, 0.0, -delta}
-	};
+	  };*/
 		
 	//check particle masses add up
 #ifdef SWIFT_DEBUG_CHECKS
@@ -171,28 +230,36 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	//struct part **child_list = malloc((n_split-1) * sizeof(struct part *));
 	//long long *child_ids = malloc((n_split-1) * sizeof(long long));
 	
-	for (int n = 0; n < (n_split-1); n++) { 
-	  double pos_offsets[3] = {offsets[n][0], offsets[n][1], offsets[n][2]};
-	  
-	  struct part *child = cell_spawn_new_part_from_part(e, c, &parent, &parent_xp, child_mass, pos_offsets, new_h);
-	  
-	  //message("Cell: %p, child id: id=%lld has gpart id: %lld", (void*)c, child->id, child->gpart->id_or_neg_offset);
-	  
-	  //child_list[n] = child;
-	  //child_ids[n] = child->id;
-	  
-	  int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id);
-	  if (parent_index == -1) error("parent not found!");
-	  
-	  if (child == NULL)
-	    error("Failed to spawn child particle in gas splitting.");
+	//for (int n = 0; n < (n_split-1); n++) { 
+	//double pos_offsets[3] = {offsets[n][0], offsets[n][1], offsets[n][2]};
+	double pos_offsets[3] = {0,0,0};
+	get_random_ray(pos_offsets, parent_id, e->ti_current);
+	pos_offsets[0] *= delta;
+	pos_offsets[1] *= delta;
+	pos_offsets[2] *= delta;
+
+	struct part *child = cell_spawn_new_part_from_part(e, c, &parent, &parent_xp, child_mass, pos_offsets, new_h);
+
+	//message("Cell: %p, child id: id=%lld has gpart id: %lld", (void*)c, child->id, child->gpart->id_or_neg_offset);
+	
+	//child_list[n] = child;
+	//child_ids[n] = child->id;
+	
+	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id);
+	if (parent_index == -1) error("parent not found!");
+
+	for (int m = 0; m < 3; m++)
+          c->top->hydro.parts[parent_index].x[m] -=  pos_offsets[m];
+	
+	if (child == NULL)
+	  error("Failed to spawn child particle in gas splitting.");
 	  
 #ifdef SWIFT_DEBUG_CHECKS
 	  child_mass_sum += child->mass;
 #endif
 	  
-	}
-
+	//}
+	
 	//free(child_list);
 	//free(child_ids);
 	
@@ -206,19 +273,19 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 		total_mass, n_split * child_mass);
 #endif
 	
-	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id); 
+	//int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id); 
 	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",                                                                                                                                
                 c,c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);     
 	
       }
       j ++;
-    } 
+    }
+    
   } 
   
   /* If we formed any hydro parts, need to force flag for resort and drift*/
-  if (c->hydro.count!= count_leaf) {
+  if (c->top->hydro.count!= count_top) {
     //message("setting resort flag");
-    //cell_set_hydro_resort_flag(c);
     cell_set_hydro_resort_flag(c->top);
     cell_set_flag(c->top, cell_flag_do_hydro_drift);
     cell_set_flag(c->top, cell_flag_do_grav_drift);

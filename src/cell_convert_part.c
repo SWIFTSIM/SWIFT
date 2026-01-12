@@ -50,6 +50,7 @@ void cell_recursively_shift_parts(struct cell *c,
     c->hydro.count++;
     /* Invalidate sorting */
     c->hydro.sorted = 0;
+    c->hydro.do_sort = 1;
     cell_free_hydro_sorts(c);
   } else {
     c->hydro.parts++;
@@ -246,8 +247,7 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
     //message("in cell %p, gp idx offset:%lld for child id:%lld", (void*)c,  gp->id_or_neg_offset, new_p->id);
     
     /* Synchronize clocks */
-    //reduced timebin
-    //gp->time_bin = p->time_bin + 1;
+    gp->time_bin = p->time_bin;
   } else {
     /* No gpart exists for parent, so child also has none */
     new_p->gpart = NULL;
@@ -271,9 +271,8 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
   /* Set a smoothing length */
   new_p->h = new_h;
   
-  //inherit parents' timebin
+  //v long timebin
   new_p->time_bin = p->time_bin;
-  
   /* Here comes the BABY! */ 
   return new_p;
 }

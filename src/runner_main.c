@@ -453,15 +453,13 @@ void *runner_main(void *data) {
 	  break;
 	  //lily
 	  //this task needs to be performed by a single thread...
-	case task_type_particle_split:
-	  if (ci->top->black_holes.count > 0){
-	    /* Only run on the BH’s timestep */
-	    //if (ci->top->black_holes.time_bin != r->e->time)
-	    //  break;
-	    runner_do_particle_split(r, ci,1);}
+        case task_type_particle_split:
+	  if (ci->top->black_holes.ti_end_min == e->ti_current){
+	      /* Only run on the BH’s timestep */
+	      runner_do_particle_split(r, ci,1);}
 	  break;
         case task_type_hydro_resort:
-	  if (ci->top->black_holes.count > 0){
+	  if (ci->top->black_holes.ti_end_min == e->ti_current){
 	    runner_do_hydro_resort(r,ci,1);
 	  }
 	  break;
