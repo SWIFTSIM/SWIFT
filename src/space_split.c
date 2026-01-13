@@ -933,16 +933,16 @@ void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
 
-  /* map_data is a struct cell ** (either pointing into array or direct from
+  /* map_data is a struct cell * (either pointing into array or direct from
    * queue). */
-  struct cell **cells = (struct cell **)map_data;
+  struct cell *cells = (struct cell *)map_data;
 
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
 
   /* Loop over the cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = cells[ind];
+    struct cell *c = &cells[ind];
 
     /* Skip cells with no particles. */
     if (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
@@ -1040,22 +1040,15 @@ void space_split(struct space *s, int verbose) {
   ticks tic = getticks();
 
   /* Allocate and fill buffers for all top-level cells. */
-  struct cell **cells_top_ptrs;
-  if (swift_memalign("cells_top_ptrs", (void **)&cells_top_ptrs,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     sizeof(struct cell *) * s->nr_cells) != 0)
-    error("Failed to allocate cells_top_ptrs.");
-
   for (int i = 0; i < s->nr_cells; i++) {
     struct cell *c = &s->cells_top[i];
-    cells_top_ptrs[i] = c;
 
     /* Initialize the split buffers to NULL. */
     bzero(&c->split_buffers, sizeof(c->split_buffers));
   }
 
   threadpool_map_with_queue(&s->e->threadpool, space_split_build_mapper,
-                            cells_top_ptrs, s->nr_cells, sizeof(struct cell *),
+                            s->cells_top, s->nr_cells, sizeof(struct cell),
                             threadpool_auto_chunk_size, s);
 
   /* Free the buffers for all top-level cells. */
@@ -1072,7 +1065,6 @@ void space_split(struct space *s, int verbose) {
     if (c->split_buffers.sink_buff != NULL)
       swift_free("temp_sink_buff", c->split_buffers.sink_buff);
   }
-  swift_free("cells_top_ptrs", cells_top_ptrs);
 
   if (verbose)
     message("Building cell tree took %.3f %s.",
