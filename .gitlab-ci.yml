@@ -1,5 +1,7 @@
 #  Only run on merge requests or pushed to the master branch.
-#  Do run for draft MRs.
+#  Do run for draft MRs, but only see CI_MERGE_REQUEST_DRAFT
+#  when in an MR, not during a merge to master, so who knows
+#  how to protect here.
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT == "true"
