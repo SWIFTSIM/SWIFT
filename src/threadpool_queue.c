@@ -177,7 +177,7 @@ static void threadpool_queue_push_locked(struct threadpool_queue *queue,
 }
 
 /**
- * @brief Try to pop a task from the back of the owner's queue (LIFO).
+ * @brief Try to pop tasks from the back of the owner's queue (LIFO).
  *
  * The owner thread pops from the tail (back) of its own queue in LIFO (Last In
  * First Out) order. This provides good cache locality by working on
@@ -186,34 +186,34 @@ static void threadpool_queue_push_locked(struct threadpool_queue *queue,
  * decremented.
  *
  * @param queue The #threadpool_queue to pop from.
- * @param data Pointer to receive the task data.
- * @param count Pointer to receive the task count.
+ * @param tasks Array to receive the tasks.
+ * @param max_tasks Maximum number of tasks to pop.
  *
- * @return 1 if a task was popped, 0 if the queue was empty.
+ * @return Number of tasks popped.
  */
 static int threadpool_queue_owner_pop(struct threadpool_queue *queue,
-                                      void **data, int *count) {
+                                      struct threadpool_queue_task *tasks,
+                                      int max_tasks) {
 
   /* Lock before we try to access the queue. */
-  int success = 0;
+  int popped = 0;
   pthread_mutex_lock(&queue->lock);
 
   /* Check if queue has tasks (tail > head means non-empty). */
-  if (queue->tail - queue->head > 0) {
+  while (popped < max_tasks && queue->tail - queue->head > 0) {
     queue->tail--;
     const int index = queue->tail & (queue->capacity - 1);
-    *data = queue->tasks[index].data;
-    *count = queue->tasks[index].count;
-    success = 1;
+    tasks[popped] = queue->tasks[index];
+    popped++;
   }
 
   /* Release the lock, we're open for theft. */
   pthread_mutex_unlock(&queue->lock);
-  return success;
+  return popped;
 }
 
 /**
- * @brief Try to steal a task from the front of another thread's queue (FIFO).
+ * @brief Try to steal tasks from the front of another thread's queue (FIFO).
  *
  * Stealing threads take from the head (front) of the victim's queue in FIFO
  * (First In First Out) order, opposite from the owner which pops from the tail.
@@ -223,60 +223,62 @@ static int threadpool_queue_owner_pop(struct threadpool_queue *queue,
  * head is incremented.
  *
  * @param queue The #threadpool_queue to steal from.
- * @param data Pointer to receive the task data.
- * @param count Pointer to receive the task count.
+ * @param tasks Array to receive the tasks.
+ * @param max_tasks Maximum number of tasks to steal.
  *
- * @return 1 if a task was stolen, 0 if the queue was empty.
+ * @return Number of tasks stolen.
  */
-static int threadpool_queue_steal(struct threadpool_queue *queue, void **data,
-                                  int *count) {
+static int threadpool_queue_steal(struct threadpool_queue *queue,
+                                  struct threadpool_queue_task *tasks,
+                                  int max_tasks) {
 
   /* Lock before we try to access the queue. */
-  int success = 0;
+  int stolen = 0;
   pthread_mutex_lock(&queue->lock);
 
   /* Check if queue has tasks (tail > head means non-empty). */
-  if (queue->tail - queue->head > 0) {
+  while (stolen < max_tasks && queue->tail - queue->head > 0) {
     const int index = queue->head & (queue->capacity - 1);
-    *data = queue->tasks[index].data;
-    *count = queue->tasks[index].count;
+    tasks[stolen] = queue->tasks[index];
     queue->head++;
-    success = 1;
+    stolen++;
   }
 
   /* Mischief managed, release the lock. */
   pthread_mutex_unlock(&queue->lock);
-  return success;
+  return stolen;
 }
 
 /**
- * @brief Try to get a task for the given thread.
+ * @brief Try to get tasks for the given thread.
  *
  * First tries to pop from the thread's own queue, then attempts to steal
  * from other threads' queues in round-robin order.
  *
  * @param state The #threadpool_queue_state.
  * @param thread_id The ID of the requesting thread.
- * @param data Pointer to receive the task data.
- * @param count Pointer to receive the task count.
+ * @param tasks Array to receive the tasks.
+ * @param max_tasks Maximum number of tasks to get.
  *
- * @return 1 if a task was obtained, 0 if all queues are empty.
+ * @return Number of tasks obtained.
  */
 static int threadpool_queue_get_task(struct threadpool_queue_state *state,
-                                     int thread_id, void **data, int *count) {
+                                     int thread_id,
+                                     struct threadpool_queue_task *tasks,
+                                     int max_tasks) {
 
   /* Try own queue first. */
-  if (threadpool_queue_owner_pop(&state->queues[thread_id], data, count)) {
-    /* No burglary needed. */
-    return 1;
-  }
+  int got = threadpool_queue_owner_pop(&state->queues[thread_id], tasks,
+                                       max_tasks);
+  if (got > 0) return got;
 
   /* Try stealing from other threads. */
   for (int offset = 1; offset < state->tp->num_threads; offset++) {
     const int victim_id = (thread_id + offset) % state->tp->num_threads;
-    if (threadpool_queue_steal(&state->queues[victim_id], data, count))
+    got = threadpool_queue_steal(&state->queues[victim_id], tasks, max_tasks);
+    if (got > 0)
       /* Heist successful! */
-      return 1;
+      return got;
   }
 
   /* No work available. */
@@ -305,26 +307,29 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
   /* Get the queue state for this threadpool. */
   struct threadpool_queue_state *state = tp->queue_state;
 
+  /* Buffer for retrieved tasks. */
+  struct threadpool_queue_task tasks[64];
+
   while (1) {
 
     /* Try to get work. */
-    void *data;
-    int count;
-    if (threadpool_queue_get_task(state, thread_id, &data, &count)) {
+    int count = threadpool_queue_get_task(state, thread_id, tasks, 64);
+    if (count > 0) {
 
+      /* Execute the tasks. */
+      for (int i = 0; i < count; i++) {
 #ifdef SWIFT_DEBUG_THREADPOOL
-      ticks tic = getticks();
+        ticks tic = getticks();
 #endif
-
-      /* Execute the task. */
-      state->map_function(data, count, state->map_extra_data);
-
+        state->map_function(tasks[i].data, tasks[i].count,
+                            state->map_extra_data);
 #ifdef SWIFT_DEBUG_THREADPOOL
-      threadpool_log(tp, thread_id, count, tic, getticks());
+        threadpool_log(tp, thread_id, tasks[i].count, tic, getticks());
 #endif
+      }
 
       /* Decrement the in-flight counter. */
-      atomic_dec(&state->tasks_in_flight);
+      atomic_sub(&state->tasks_in_flight, count);
       continue;
     }
 
