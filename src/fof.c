@@ -3963,7 +3963,9 @@ void fof_compute_group_props(struct fof_props *props,
   bzero(props->group_gas_mass, num_groups * sizeof(float));
   bzero(props->group_stellar_mass, num_groups * sizeof(float));
   bzero(props->group_star_formation_rate, num_groups * sizeof(float));
-  bzero(props->max_part_density, num_groups * sizeof(float));
+  for (size_t i = 0; i < props->max_part_density; ++i) {
+    props->max_part_density[i] = -FLT_MAX;
+  }
 
   const ticks tic_props = getticks();
 
