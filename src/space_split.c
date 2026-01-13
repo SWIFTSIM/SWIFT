@@ -647,27 +647,14 @@ static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
  *
  * This function just constructs the tree recursively, splitting cells
  * based on particle counts. It will also keep track of the maximum depth
- * of the tree.
+ * of the tree. Buffers for particle sorting are extracted from the cell's
+ * split_buffers member.
  *
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
- * @param buff A buffer for particle sorting, should be of size at least
- *        c->hydro.count or @c NULL.
- * @param sbuff A buffer for particle sorting, should be of size at least
- *        c->stars.count or @c NULL.
- * @param bbuff A buffer for particle sorting, should be of size at least
- *        c->black_holes.count or @c NULL.
- * @param gbuff A buffer for particle sorting, should be of size at least
- *        c->grav.count or @c NULL.
- * @param sink_buff A buffer for particle sorting, should be of size at least
- *        c->sinks.count or @c NULL.
+ * @param tpid The thread ID.
  */
 void space_split_build_recursive(struct space *s, struct cell *c,
-                                 struct cell_buff *restrict buff,
-                                 struct cell_buff *restrict sbuff,
-                                 struct cell_buff *restrict bbuff,
-                                 struct cell_buff *restrict gbuff,
-                                 struct cell_buff *restrict sink_buff,
                                  const short int tpid) {
 
   const int count = c->hydro.count;
@@ -679,6 +666,13 @@ void space_split_build_recursive(struct space *s, struct cell *c,
 
   /* Set the tpid for this cell (needed for space_getcells). */
   c->tpid = tpid;
+
+  /* Extract buffers from this cell. */
+  struct cell_buff *restrict buff = c->split_buffers.buff;
+  struct cell_buff *restrict sbuff = c->split_buffers.sbuff;
+  struct cell_buff *restrict bbuff = c->split_buffers.bbuff;
+  struct cell_buff *restrict gbuff = c->split_buffers.gbuff;
+  struct cell_buff *restrict sink_buff = c->split_buffers.sink_buff;
 
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
@@ -713,11 +707,13 @@ void space_split_build_recursive(struct space *s, struct cell *c,
     struct cell_buff *progeny_gbuff = gbuff;
     struct cell_buff *progeny_sink_buff = sink_buff;
 
-    /* Collect non-empty progeny to add to the queue. */
+    /* Collect progeny - either to queue or recurse in-place. */
     struct cell *progeny_to_queue[8];
     int num_progeny_to_queue = 0;
+    struct cell *progeny_to_recurse[8];
+    int num_progeny_to_recurse = 0;
 
-    /* Loop over progeny, cleaning up or queueing for further splitting. */
+    /* Loop over progeny, cleaning up or deciding how to process. */
     for (int k = 0; k < 8; k++) {
 
       /* Get the progenitor */
@@ -737,8 +733,7 @@ void space_split_build_recursive(struct space *s, struct cell *c,
       if (cp->grav.count > 0) progeny_gbuff += cp->grav.count;
       if (cp->sinks.count > 0) progeny_sink_buff += cp->sinks.count;
 
-      /* Remove any progeny with zero particles as long as they aren't the
-       * void cell. */
+      /* Remove any progeny with zero particles. */
       if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
           cp->black_holes.count == 0 && cp->sinks.count == 0) {
 
@@ -747,15 +742,36 @@ void space_split_build_recursive(struct space *s, struct cell *c,
 
       } else {
 
-        /* Add to the queue for processing */
-        progeny_to_queue[num_progeny_to_queue++] = cp;
+        /* Decide whether to queue or recurse in-place based on particle count.
+         * Only use the queue if this progeny is likely to split multiple times
+         * (i.e., has significantly more particles than the split threshold).
+         * This reduces queue overhead for small tasks. */
+        const int cp_max_count =
+            max(max(cp->hydro.count, cp->grav.count),
+                max(cp->stars.count, max(cp->black_holes.count, cp->sinks.count)));
+
+        /* Heuristic: queue if we expect this cell to split at least twice more.
+         * With 8 octants, space_splitsize * 4 means we expect at least half the
+         * octants to have > space_splitsize particles after the next split. */
+        if (cp_max_count > space_splitsize * 4) {
+          /* Add to the queue for parallel processing */
+          progeny_to_queue[num_progeny_to_queue++] = cp;
+        } else {
+          /* Recurse in-place to maintain cache locality for small tasks */
+          progeny_to_recurse[num_progeny_to_recurse++] = cp;
+        }
       }
     }
 
-    /* Add the progeny to the threadpool queue if we have any. */
+    /* Add large progeny to the threadpool queue if we have any. */
     if (num_progeny_to_queue > 0) {
       threadpool_queue_add(&s->e->threadpool, (void **)progeny_to_queue,
                            num_progeny_to_queue);
+    }
+
+    /* Recurse in-place for smaller progeny to maintain cache locality. */
+    for (int i = 0; i < num_progeny_to_recurse; i++) {
+      space_split_build_recursive(s, progeny_to_recurse[i], tpid);
     }
 
     /* For split cells, the maxdepth will be determined by the progeny which
@@ -932,16 +948,8 @@ void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
         c->black_holes.count == 0 && c->sinks.count == 0)
       continue;
 
-    /* Get the buffers from this cell (pointing to the correct offset). */
-    struct cell_buff *buff = c->split_buffers.buff;
-    struct cell_buff *sbuff = c->split_buffers.sbuff;
-    struct cell_buff *bbuff = c->split_buffers.bbuff;
-    struct cell_buff *gbuff = c->split_buffers.gbuff;
-    struct cell_buff *sink_buff = c->split_buffers.sink_buff;
-
     /* Recursively split the cell. */
-    space_split_build_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff,
-                                tpid);
+    space_split_build_recursive(s, c, tpid);
   }
 }
 
