@@ -747,8 +747,8 @@ void space_split_build_recursive(struct space *s, struct cell *c,
          * (i.e., has significantly more particles than the split threshold).
          * This reduces queue overhead for small tasks. */
         const int cp_max_count =
-            max(max(cp->hydro.count, cp->grav.count),
-                max(cp->stars.count, max(cp->black_holes.count, cp->sinks.count)));
+            max5(cp->hydro.count, cp->grav.count, cp->stars.count,
+                 cp->black_holes.count, cp->sinks.count);
 
         /* Heuristic: queue if we expect this cell to split at least twice more.
          * With 8 octants, space_splitsize * 4 means we expect at least half the
