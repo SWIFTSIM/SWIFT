@@ -846,7 +846,7 @@ void space_split_build_recursive(struct space *s, struct cell *c,
         /* Heuristic: queue if we expect this cell to split at least twice more.
          * With 8 octants, space_splitsize * 4 means we expect at least half the
          * octants to have > space_splitsize particles after the next split. */
-        if (cp_max_count > space_splitsize) {
+        if (cp_max_count > space_splitsize * 8) {
           /* Add to the queue for parallel processing */
           progeny_to_queue[num_progeny_to_queue++] = cp;
         } else {
