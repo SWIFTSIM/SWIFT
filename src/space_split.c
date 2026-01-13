@@ -788,9 +788,6 @@ void space_split_build_recursive(struct space *s, struct cell *c,
      * (if doing gravity). */
     space_construct_progeny(s, c, tpid);
 
-    /* Reset the progeny processed counter. */
-    c->progeny_processed = 0;
-
     /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
                c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
@@ -836,12 +833,6 @@ void space_split_build_recursive(struct space *s, struct cell *c,
         space_recycle(s, cp);
         c->progeny[k] = NULL;
 
-        /* This progeny is done (as it doesn't exist), so we can count it as
-         * processed. */
-        if (lock_lock(&c->hydro.lock) != 0) error("Failed to lock parent");
-        c->progeny_processed++;
-        if (lock_unlock(&c->hydro.lock) != 0) error("Failed to unlock parent");
-
       } else {
 
         /* Decide whether to queue or recurse in-place based on particle count.
@@ -884,6 +875,7 @@ void space_split_build_recursive(struct space *s, struct cell *c,
   /* Otherwise we're in a leaf, collect the data from the particles in this
      leaf cell. */
   else {
+
     /* Nothing to see here: clear the progeny. */
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
@@ -906,19 +898,22 @@ void space_split_build_recursive(struct space *s, struct cell *c,
     /* Now propagate the data up the tree. */
     struct cell *curr = c;
     while (curr->parent != NULL) {
+
+      /* Move up to the parent. */
       struct cell *parent = curr->parent;
+
+      /* Ensure no one else is updating this parent at the same time. */
       if (lock_lock(&parent->hydro.lock) != 0) error("Failed to lock parent");
-      parent->progeny_processed++;
-      const int done = (parent->progeny_processed == 8);
+
+      /* Update the parent with data from this child. */
+      space_split_update_parent(parent, s);
+
+      /* Ok, someone else can touch it now. */
       if (lock_unlock(&parent->hydro.lock) != 0)
         error("Failed to unlock parent");
 
-      if (done) {
-        space_split_update_parent(parent, s);
-        curr = parent;
-      } else {
-        break;
-      }
+      /* Next please... */
+      curr = parent;
     }
   }
 
@@ -928,8 +923,6 @@ void space_split_build_recursive(struct space *s, struct cell *c,
   /* No runner owns this cell yet. We assign those during scheduling. */
   c->owner = -1;
 }
-
-
 
 /**
  * @brief #threadpool mapper function to split cells if they contain
@@ -962,19 +955,16 @@ void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
 
     /* If we are at the top level, we need to allocate and fill the buffers. */
     if (c->depth == 0) {
-      space_allocate_and_fill_buffers(c, &c->split_buffers.buff,
-                                      &c->split_buffers.sbuff,
-                                      &c->split_buffers.bbuff,
-                                      &c->split_buffers.gbuff,
-                                      &c->split_buffers.sink_buff);
+      space_allocate_and_fill_buffers(
+          c, &c->split_buffers.buff, &c->split_buffers.sbuff,
+          &c->split_buffers.bbuff, &c->split_buffers.gbuff,
+          &c->split_buffers.sink_buff);
     }
 
     /* Recursively split the cell. */
     space_split_build_recursive(s, c, tpid);
   }
 }
-
-
 
 /**
  * @brief Split particles between cells of a hierarchy.

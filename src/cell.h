@@ -504,9 +504,6 @@ struct cell {
   /*! ID of a threadpool thread that maybe associated with this cell. */
   short int tpid;
 
-  /*! Number of progeny processed */
-  short int progeny_processed;
-
   /*! ID of the node this cell lives on. */
   int nodeID;
 
