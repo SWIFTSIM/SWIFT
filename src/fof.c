@@ -2733,7 +2733,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
     /* Calculate the radius*/
     float r = sqrtf((x[0] * x[0]) + (x[1] * x[1]) + (x[2] * x[2]));
-    radii[index] = fmax(radii[index], r);
+    radii[index] = fmaxf(radii[index], r);
   }
 
 #ifdef WITH_MPI
