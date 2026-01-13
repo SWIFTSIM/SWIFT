@@ -2513,7 +2513,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   float *star_formation_rate = props->group_star_formation_rate;
 
   /* Temporary arrays to help with the CoMs */
-  float *max_positions, *min_positions;
+  double *max_positions, *min_positions;
   if (swift_memalign("fof_group_max_position", (void **)&max_positions, 32,
                      props->num_groups * 3 * sizeof(double)) != 0)
     error("Unable to allocate memory for the max positions");
