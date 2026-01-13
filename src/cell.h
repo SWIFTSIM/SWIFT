@@ -415,6 +415,17 @@ struct cell {
   /*! Radiative transfer variables */
   struct cell_rt rt;
 
+  /*! Buffers for particle splitting. Only allocated/used for top-level cells
+   * during space_split() calls. Allocated at the start of space_split() and
+   * freed at the end. Sub-cells access these via their top pointer. */
+  struct {
+    struct cell_buff *buff;
+    struct cell_buff *sbuff;
+    struct cell_buff *bbuff;
+    struct cell_buff *gbuff;
+    struct cell_buff *sink_buff;
+  } split_buffers;
+
 #ifdef WITH_MPI
   /*! MPI variables */
   struct {

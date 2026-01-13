@@ -911,22 +911,17 @@ void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
         c->black_holes.count == 0 && c->sinks.count == 0)
       continue;
 
-    /* Allocate the particle buffers. */
-    struct cell_buff *buff = NULL, *sbuff = NULL, *bbuff = NULL, *gbuff = NULL,
-                     *sink_buff = NULL;
-    space_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff,
-                                    &sink_buff);
+    /* Get the buffers from the top-level cell. */
+    struct cell *top = c->top;
+    struct cell_buff *buff = top->split_buffers.buff;
+    struct cell_buff *sbuff = top->split_buffers.sbuff;
+    struct cell_buff *bbuff = top->split_buffers.bbuff;
+    struct cell_buff *gbuff = top->split_buffers.gbuff;
+    struct cell_buff *sink_buff = top->split_buffers.sink_buff;
 
     /* Recursively split the cell. */
     space_split_build_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff,
                                 tpid);
-
-    /* Free the particle buffers. */
-    if (buff != NULL) swift_free("tempbuff", buff);
-    if (gbuff != NULL) swift_free("tempgbuff", gbuff);
-    if (sbuff != NULL) swift_free("tempsbuff", sbuff);
-    if (bbuff != NULL) swift_free("tempbbuff", bbuff);
-    if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
   }
 }
 
@@ -1006,9 +1001,47 @@ void space_split(struct space *s, int verbose) {
 
   ticks tic = getticks();
 
+  /* Allocate and fill buffers for all top-level cells. */
+  for (int i = 0; i < s->nr_cells; i++) {
+    struct cell *c = &s->cells_top[i];
+
+    /* Skip cells with no particles. */
+    if (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
+        c->black_holes.count == 0 && c->sinks.count == 0) {
+      c->split_buffers.buff = NULL;
+      c->split_buffers.sbuff = NULL;
+      c->split_buffers.bbuff = NULL;
+      c->split_buffers.gbuff = NULL;
+      c->split_buffers.sink_buff = NULL;
+      continue;
+    }
+
+    /* Allocate and fill buffers for this top-level cell. */
+    space_allocate_and_fill_buffers(c, &c->split_buffers.buff,
+                                    &c->split_buffers.sbuff,
+                                    &c->split_buffers.bbuff,
+                                    &c->split_buffers.gbuff,
+                                    &c->split_buffers.sink_buff);
+  }
+
   threadpool_map_with_queue(&s->e->threadpool, space_split_build_mapper,
                             s->cells_top, s->nr_cells, sizeof(struct cell),
                             threadpool_auto_chunk_size, s);
+
+  /* Free the buffers for all top-level cells. */
+  for (int i = 0; i < s->nr_cells; i++) {
+    struct cell *c = &s->cells_top[i];
+    if (c->split_buffers.buff != NULL)
+      swift_free("tempbuff", c->split_buffers.buff);
+    if (c->split_buffers.gbuff != NULL)
+      swift_free("tempgbuff", c->split_buffers.gbuff);
+    if (c->split_buffers.sbuff != NULL)
+      swift_free("tempsbuff", c->split_buffers.sbuff);
+    if (c->split_buffers.bbuff != NULL)
+      swift_free("tempbbuff", c->split_buffers.bbuff);
+    if (c->split_buffers.sink_buff != NULL)
+      swift_free("temp_sink_buff", c->split_buffers.sink_buff);
+  }
 
   if (verbose)
     message("Building cell tree took %.3f %s.",
