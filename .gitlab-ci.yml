@@ -2,10 +2,10 @@
 #  Do run for draft MRs.
 workflow:
   rules:
-    - if: $CI_MERGE_REQUEST_DRAFT == "true"
+    - if: "$CI_MERGE_REQUEST_DRAFT" == "true"
       when: never
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: "$CI_PIPELINE_SOURCE" == "merge_request_event"
+    - if: "$CI_COMMIT_BRANCH" == $CI_DEFAULT_BRANCH
 
 stages:          # List of stages for jobs, and their order of execution
   - build
