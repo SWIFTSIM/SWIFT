@@ -933,20 +933,30 @@ void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
 
-  /* map_data is a struct cell * (either pointing into array or direct from queue). */
-  struct cell *cells = (struct cell *)map_data;
+  /* map_data is a struct cell ** (either pointing into array or direct from
+   * queue). */
+  struct cell **cells = (struct cell **)map_data;
 
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
 
   /* Loop over the cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells[ind];
+    struct cell *c = cells[ind];
 
     /* Skip cells with no particles. */
     if (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
         c->black_holes.count == 0 && c->sinks.count == 0)
       continue;
+
+    /* If we are at the top level, we need to allocate and fill the buffers. */
+    if (c->depth == 0) {
+      space_allocate_and_fill_buffers(c, &c->split_buffers.buff,
+                                      &c->split_buffers.sbuff,
+                                      &c->split_buffers.bbuff,
+                                      &c->split_buffers.gbuff,
+                                      &c->split_buffers.sink_buff);
+    }
 
     /* Recursively split the cell. */
     space_split_build_recursive(s, c, tpid);
@@ -1030,30 +1040,22 @@ void space_split(struct space *s, int verbose) {
   ticks tic = getticks();
 
   /* Allocate and fill buffers for all top-level cells. */
+  struct cell **cells_top_ptrs;
+  if (swift_memalign("cells_top_ptrs", (void **)&cells_top_ptrs,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(struct cell *) * s->nr_cells) != 0)
+    error("Failed to allocate cells_top_ptrs.");
+
   for (int i = 0; i < s->nr_cells; i++) {
     struct cell *c = &s->cells_top[i];
+    cells_top_ptrs[i] = c;
 
-    /* Skip cells with no particles. */
-    if (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
-        c->black_holes.count == 0 && c->sinks.count == 0) {
-      c->split_buffers.buff = NULL;
-      c->split_buffers.sbuff = NULL;
-      c->split_buffers.bbuff = NULL;
-      c->split_buffers.gbuff = NULL;
-      c->split_buffers.sink_buff = NULL;
-      continue;
-    }
-
-    /* Allocate and fill buffers for this top-level cell. */
-    space_allocate_and_fill_buffers(c, &c->split_buffers.buff,
-                                    &c->split_buffers.sbuff,
-                                    &c->split_buffers.bbuff,
-                                    &c->split_buffers.gbuff,
-                                    &c->split_buffers.sink_buff);
+    /* Initialize the split buffers to NULL. */
+    bzero(&c->split_buffers, sizeof(c->split_buffers));
   }
 
   threadpool_map_with_queue(&s->e->threadpool, space_split_build_mapper,
-                            s->cells_top, s->nr_cells, sizeof(struct cell),
+                            cells_top_ptrs, s->nr_cells, sizeof(struct cell *),
                             threadpool_auto_chunk_size, s);
 
   /* Free the buffers for all top-level cells. */
@@ -1070,6 +1072,7 @@ void space_split(struct space *s, int verbose) {
     if (c->split_buffers.sink_buff != NULL)
       swift_free("temp_sink_buff", c->split_buffers.sink_buff);
   }
+  swift_free("cells_top_ptrs", cells_top_ptrs);
 
   if (verbose)
     message("Building cell tree took %.3f %s.",
