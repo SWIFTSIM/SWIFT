@@ -846,7 +846,7 @@ void space_split_build_recursive(struct space *s, struct cell *c,
         /* Heuristic: queue if we expect this cell to split at least twice more.
          * With 8 octants, space_splitsize * 4 means we expect at least half the
          * octants to have > space_splitsize particles after the next split. */
-        if (cp_max_count > space_splitsize * 4) {
+        if (cp_max_count > space_splitsize) {
           /* Add to the queue for parallel processing */
           progeny_to_queue[num_progeny_to_queue++] = cp;
         } else {
@@ -858,8 +858,19 @@ void space_split_build_recursive(struct space *s, struct cell *c,
 
     /* Add large progeny to the threadpool queue if we have any. */
     if (num_progeny_to_queue > 0) {
-      threadpool_queue_add(&s->e->threadpool, (void **)progeny_to_queue,
-                           num_progeny_to_queue);
+
+      /* Optimization: keep the last one for this thread to avoid queue overhead
+       */
+      struct cell *keep = progeny_to_queue[num_progeny_to_queue - 1];
+      num_progeny_to_queue--;
+
+      if (num_progeny_to_queue > 0) {
+        threadpool_queue_add(&s->e->threadpool, (void **)progeny_to_queue,
+                             num_progeny_to_queue);
+      }
+
+      /* Recurse on the kept one */
+      space_split_build_recursive(s, keep, tpid);
     }
 
     /* Recurse in-place for smaller progeny to maintain cache locality. */
