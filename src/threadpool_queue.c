@@ -312,9 +312,30 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 
   while (1) {
 
+    /* Determine the desired chunk size. */
+    int desired;
+    if (tp->map_data_chunk == threadpool_uniform_chunk_size) {
+      desired = 64; /* Arbitrary chunk size for uniform mode */
+    } else {
+      /* Auto or fixed chunk size: scale with remaining work */
+      /* Note: tasks_in_flight is volatile, so direct read is safe for heuristic
+       */
+      const int remaining = state->tasks_in_flight;
+      desired = remaining / (2 * tp->num_threads);
+
+      /* Cap to the limit set in map_with_queue */
+      if (desired > tp->map_data_chunk) desired = tp->map_data_chunk;
+      if (desired < 1) desired = 1;
+    }
+
+    /* Cap to buffer size */
+    if (desired > 64) desired = 64;
+
     /* Try to get work. */
-    int count = threadpool_queue_get_task(state, thread_id, tasks, 64);
+    int count = threadpool_queue_get_task(state, thread_id, tasks, desired);
     if (count > 0) {
+
+      int total_processed = 0;
 
       /* Execute the tasks. */
       for (int i = 0; i < count; i++) {
@@ -326,10 +347,11 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 #ifdef SWIFT_DEBUG_THREADPOOL
         threadpool_log(tp, thread_id, tasks[i].count, tic, getticks());
 #endif
+        total_processed += tasks[i].count;
       }
 
       /* Decrement the in-flight counter. */
-      atomic_sub(&state->tasks_in_flight, count);
+      atomic_sub(&state->tasks_in_flight, total_processed);
       continue;
     }
 
@@ -432,11 +454,14 @@ void threadpool_map_with_queue(struct threadpool *tp,
   /* Determine the chunk size for initial task distribution. */
   int initial_chunk_size;
   if (chunk_size == threadpool_auto_chunk_size) {
-    initial_chunk_size =
+    tp->map_data_chunk =
         max((count / (tp->num_threads * threadpool_default_chunk_ratio)), 1U);
+    initial_chunk_size = tp->map_data_chunk;
   } else if (chunk_size == threadpool_uniform_chunk_size) {
+    tp->map_data_chunk = threadpool_uniform_chunk_size;
     initial_chunk_size = (count + tp->num_threads - 1) / tp->num_threads;
   } else {
+    tp->map_data_chunk = chunk_size;
     initial_chunk_size = (chunk_size > 0) ? chunk_size : 1;
   }
 
