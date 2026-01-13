@@ -2,7 +2,7 @@
 #  Do run for draft MRs.
 workflow:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TITLE =~ /^(\[Draft\]|\(Draft\)|Draft:)/
+    - if: $CI_MERGE_REQUEST_DRAFT == "true"
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -16,13 +16,14 @@ build-job:       # This job runs in the build stage, which runs first.
   stage: build
   script:
     - echo "Compiling the code..."
+    - printenv | grep CI_
     - echo "Compile complete."
 
 unit-test-job:   # This job runs in the test stage.
   stage: test    # It only starts when the job in the build stage completes successfully.
   script:
-    - echo "Running unit tests... This will take about 60 seconds."
-    - sleep 60
+    - echo "Running unit tests... This will take about 30 seconds."
+    - sleep 30
     - echo "Code coverage is 90%"
 
 lint-test-job:   # This job also runs in the test stage.
