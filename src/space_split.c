@@ -706,6 +706,13 @@ void space_split_build_recursive(struct space *s, struct cell *c,
                c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
                buff, sbuff, bbuff, gbuff, sink_buff);
 
+    /* Set up buffer pointers for progeny at the correct offsets. */
+    struct cell_buff *progeny_buff = buff;
+    struct cell_buff *progeny_sbuff = sbuff;
+    struct cell_buff *progeny_bbuff = bbuff;
+    struct cell_buff *progeny_gbuff = gbuff;
+    struct cell_buff *progeny_sink_buff = sink_buff;
+
     /* Collect non-empty progeny to add to the queue. */
     struct cell *progeny_to_queue[8];
     int num_progeny_to_queue = 0;
@@ -715,6 +722,20 @@ void space_split_build_recursive(struct space *s, struct cell *c,
 
       /* Get the progenitor */
       struct cell *cp = c->progeny[k];
+
+      /* Set this progeny's buffer pointers to the correct offset. */
+      cp->split_buffers.buff = progeny_buff;
+      cp->split_buffers.sbuff = progeny_sbuff;
+      cp->split_buffers.bbuff = progeny_bbuff;
+      cp->split_buffers.gbuff = progeny_gbuff;
+      cp->split_buffers.sink_buff = progeny_sink_buff;
+
+      /* Advance pointers for next progeny. */
+      if (cp->hydro.count > 0) progeny_buff += cp->hydro.count;
+      if (cp->stars.count > 0) progeny_sbuff += cp->stars.count;
+      if (cp->black_holes.count > 0) progeny_bbuff += cp->black_holes.count;
+      if (cp->grav.count > 0) progeny_gbuff += cp->grav.count;
+      if (cp->sinks.count > 0) progeny_sink_buff += cp->sinks.count;
 
       /* Remove any progeny with zero particles as long as they aren't the
        * void cell. */
@@ -911,13 +932,12 @@ void space_split_build_mapper(void *map_data, int num_cells, void *extra_data) {
         c->black_holes.count == 0 && c->sinks.count == 0)
       continue;
 
-    /* Get the buffers from the top-level cell. */
-    struct cell *top = c->top;
-    struct cell_buff *buff = top->split_buffers.buff;
-    struct cell_buff *sbuff = top->split_buffers.sbuff;
-    struct cell_buff *bbuff = top->split_buffers.bbuff;
-    struct cell_buff *gbuff = top->split_buffers.gbuff;
-    struct cell_buff *sink_buff = top->split_buffers.sink_buff;
+    /* Get the buffers from this cell (pointing to the correct offset). */
+    struct cell_buff *buff = c->split_buffers.buff;
+    struct cell_buff *sbuff = c->split_buffers.sbuff;
+    struct cell_buff *bbuff = c->split_buffers.bbuff;
+    struct cell_buff *gbuff = c->split_buffers.gbuff;
+    struct cell_buff *sink_buff = c->split_buffers.sink_buff;
 
     /* Recursively split the cell. */
     space_split_build_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff,
