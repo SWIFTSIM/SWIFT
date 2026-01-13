@@ -355,19 +355,17 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
       continue;
     }
 
-    /* No immediate work available. If there are no tasks in flight, we are
-     * done. */
-    if (state->tasks_in_flight == 0) {
+    /* No immediate work available. Check if we are done or need to sleep. */
+    pthread_mutex_lock(&state->sleep_lock);
 
-      /* Wake all sleeping threads so they can exit and reach the barrier. */
-      pthread_mutex_lock(&state->sleep_lock);
+    /* Re-check termination condition under the lock to prevent lost wakeups. */
+    if (state->tasks_in_flight == 0) {
       if (state->sleeping_count > 0) pthread_cond_broadcast(&state->sleep_cond);
       pthread_mutex_unlock(&state->sleep_lock);
       break;
     }
 
     /* Sleep until new work arrives. */
-    pthread_mutex_lock(&state->sleep_lock);
     state->sleeping_count++;
 
     /* Spurious wake-ups are harmless - we'll just loop again. */
