@@ -43,7 +43,7 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -164,6 +164,11 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+				     t_current, cosmo, with_cosmology,
+				     chem_data);
+#endif
       }
       if (doj) {
 
@@ -193,6 +198,11 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+				     t_current, cosmo, with_cosmology,
+				     chem_data);
+#endif
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -217,7 +227,7 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -334,6 +344,11 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                     t_current, cosmo, with_cosmology,
+                                     chem_data);
+#endif
       }
       if (doj) {
 
@@ -363,6 +378,11 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                     t_current, cosmo, with_cosmology,
+                                     chem_data);
+#endif
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -385,7 +405,7 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -491,6 +511,10 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                               t_current, cosmo, with_cosmology, chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+			      t_current, cosmo, with_cosmology, chem_data);
+#endif
       } else if (doi) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -512,6 +536,11 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                     t_current, cosmo, with_cosmology,
+                                     chem_data);
+#endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
 #endif
@@ -543,6 +572,11 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                     t_current, cosmo, with_cosmology,
+                                     chem_data);
+#endif
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -565,7 +599,7 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -671,6 +705,10 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                               t_current, cosmo, with_cosmology, chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                              t_current, cosmo, with_cosmology, chem_data);
+#endif
       } else if (doi) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -694,6 +732,11 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
+#endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+					 t_current, cosmo, with_cosmology,
+					 chem_data);
 #endif
       } else if (doj) {
 
@@ -720,6 +763,11 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                     t_current, cosmo, with_cosmology,
+                                     chem_data);
+#endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+        runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
 #endif
@@ -751,7 +799,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -829,6 +877,11 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+	runner_iact_nonsym_fct_diffusion(r2, dx, hi, pj->h, pi, pj, a, H, time_base,
+					 t_current, cosmo, with_cosmology,
+					 chem_data);
+#endif
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -857,7 +910,7 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -942,6 +995,11 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+					   t_current, cosmo, with_cosmology,
+					   chem_data);
+#endif
         }
       } /* loop over the parts in cj. */
     } /* loop over the parts in ci. */
@@ -1008,6 +1066,11 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
+#endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
@@ -1109,7 +1172,7 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *c,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -1190,6 +1253,11 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology,
                                      chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+        runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                     t_current, cosmo, with_cosmology,
+                                     chem_data);
+#endif
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -1235,7 +1303,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -1407,6 +1475,11 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
+#endif
         }
       } /* loop over the parts in cj. */
     } /* loop over the parts in ci. */
@@ -1526,6 +1599,11 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
+#endif
         }
       } /* loop over the parts in ci. */
     } /* loop over the parts in cj. */
@@ -1604,7 +1682,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -1844,6 +1922,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
+#endif
         }
       } /* loop over the active parts in cj. */
     }
@@ -1943,6 +2026,10 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                   t_current, cosmo, with_cosmology, chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+            runner_iact_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                  t_current, cosmo, with_cosmology, chem_data);
+#endif
           } else {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1966,6 +2053,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H,
                                          time_base, t_current, cosmo,
                                          with_cosmology, chem_data);
+#endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+            runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H,
+					     time_base, t_current, cosmo,
+					     with_cosmology, chem_data);
 #endif
           }
         }
@@ -2095,6 +2187,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
+#endif
         }
       } /* loop over the active parts in ci. */
     }
@@ -2194,6 +2291,10 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                   t_current, cosmo, with_cosmology, chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+            runner_iact_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                  t_current, cosmo, with_cosmology, chem_data);
+#endif
           } else {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2218,6 +2319,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H,
                                          time_base, t_current, cosmo,
                                          with_cosmology, chem_data);
+#endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+            runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H,
+					     time_base, t_current, cosmo,
+					     with_cosmology, chem_data);
 #endif
           }
         }
@@ -2298,7 +2404,7 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -2415,6 +2521,11 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
+#endif
         }
       } /* loop over all the particles we want to update. */
     }
@@ -2498,6 +2609,10 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                 t_current, cosmo, with_cosmology, chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                t_current, cosmo, with_cosmology, chem_data);
+#endif
         } else if (doi) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2521,6 +2636,11 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
+#endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
@@ -2551,6 +2671,11 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
+#endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
@@ -2622,7 +2747,7 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE || FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -2739,6 +2864,11 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                       t_current, cosmo, with_cosmology,
+                                       chem_data);
+#endif
         }
       } /* loop over all other particles. */
     }
@@ -2823,6 +2953,10 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                 t_current, cosmo, with_cosmology, chem_data);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                t_current, cosmo, with_cosmology, chem_data);
+#endif
         } else if (doi) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2849,6 +2983,11 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chem_data);
+#endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FCT)
+          runner_iact_nonsym_fct_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+					   t_current, cosmo, with_cosmology,
+					   chem_data);
 #endif
         } else if (doj) {
 

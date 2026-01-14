@@ -97,6 +97,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.density = NULL;
     c->hydro.gradient = NULL;
     c->hydro.force = NULL;
+    c->hydro.fct = NULL;
     c->hydro.limiter = NULL;
     c->grav.grav = NULL;
     c->grav.mm = NULL;

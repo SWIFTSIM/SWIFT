@@ -60,6 +60,14 @@
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
 
+/* Import the flux corrected transport (FCT) loop functions. */
+#ifdef HYDRO_FCT_LOOP
+#define FUNCTION fct
+#define FUNCTION_TASK_LOOP TASK_LOOP_FCT
+#include "runner_doiact_hydro.h"
+#include "runner_doiact_undef.h"
+#endif
+
 /* Import the limiter loop functions. */
 #define FUNCTION limiter
 #define FUNCTION_TASK_LOOP TASK_LOOP_LIMITER
@@ -222,6 +230,10 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*below_h_max=*/0, 1);
+#ifdef HYDRO_FCT_LOOP
+          else if (t->subtype == task_subtype_fct)
+            runner_dosub_self2_fct(r, ci, /*below_h_max=*/0, 1);
+#endif
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -276,6 +288,10 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
+#ifdef HYDRO_FCT_LOOP
+	  else if (t->subtype == task_subtype_fct)
+	    runner_dosub_pair2_fct(r, ci, cj, /*below_h_max=*/0, 1);
+#endif
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -392,6 +408,11 @@ void *runner_main(void *data) {
         case task_type_end_hydro_force:
           runner_do_end_hydro_force(r, ci, 1);
           break;
+#ifdef HYDRO_FCT_LOOP
+        case task_type_end_hydro_fct:
+          runner_do_end_hydro_fct(r, ci, 1);
+          break;
+#endif
         case task_type_end_grav_force:
           runner_do_end_grav_force(r, ci, 1);
           break;

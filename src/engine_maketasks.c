@@ -1800,6 +1800,13 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
           s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
 #endif
 
+      /* Generate the FCT ghost */
+#ifdef HYDRO_FCT_LOOP
+      /* Add the task finishing the fct calculation */
+      c->hydro.end_fct = scheduler_addtask(s, task_type_end_hydro_fct,
+					     task_subtype_none, 0, 0, c, NULL);
+#endif
+
       /* Stars */
       if (with_stars) {
         c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
@@ -1866,11 +1873,19 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
         engine_add_cooling(e, c, c->hydro.cooling_in, c->hydro.cooling_out);
 
-        scheduler_addunlock(s, c->hydro.end_force, c->hydro.cooling_in);
-        scheduler_addunlock(s, c->hydro.cooling_out, c->super->kick2);
+#ifdef HYDRO_FCT_LOOP
+	scheduler_addunlock(s, c->hydro.end_fct, c->hydro.cooling_in);
+#else
+	scheduler_addunlock(s, c->hydro.end_force, c->hydro.cooling_in);
+#endif
+	scheduler_addunlock(s, c->hydro.cooling_out, c->super->kick2);
 
       } else {
-        scheduler_addunlock(s, c->hydro.end_force, c->super->kick2);
+#ifdef HYDRO_FCT_LOOP
+	scheduler_addunlock(s, c->hydro.end_fct, c->super->kick2);
+#else
+	scheduler_addunlock(s, c->hydro.end_force, c->super->kick2);
+#endif
       }
 
       /* Subgrid tasks: feedback */
@@ -2609,6 +2624,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
 #endif
+#ifdef HYDRO_FCT_LOOP
+  struct task *t_fct = NULL;
+#endif
 #ifdef EXTRA_STAR_LOOPS
   struct task *t_star_prep1 = NULL;
   struct task *t_star_prep2 = NULL;
@@ -2791,8 +2809,23 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                            with_cooling, with_timestep_limiter);
 #endif
 
+#ifdef HYDRO_FCT_LOOP
+
+      /* Add the fourth hydro loop */
+      t_fct = scheduler_addtask(sched, task_type_self, task_subtype_fct, flags,
+				0, ci, NULL);
+
+      /* Add the link between the new loop and the cell */
+      engine_addlink(e, &ci->hydro.fct, t_fct);
+
+      /* force loop -> end_density -> fct loop */
+      scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.end_force, t_fct);
+      scheduler_addunlock(sched, t_fct, ci->hydro.super->hydro.end_fct);
+#else
       /* Create the task dependencies */
       scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
+#endif
 
       if (with_feedback) {
 
@@ -2954,6 +2987,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                   flags, 0, ci, cj);
 
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+      /* TODO: Shall we update this for the FCT loop? */
       /* The order of operations for an inactive local cell interacting
        * with an active foreign cell is not guaranteed because the density
        * (and gradient) iact loops don't exist in that case. So we need
@@ -3100,7 +3134,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
 #ifdef EXTRA_HYDRO_LOOP
-
       /* Start by constructing the task for the second and third hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_pair,
                                      task_subtype_gradient, flags, 0, ci, cj);
@@ -3137,6 +3170,29 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 #endif
 
+#ifdef HYDRO_FCT_LOOP
+
+      /* Add the fourth hydro loop */
+      t_fct = scheduler_addtask(sched, task_type_pair, task_subtype_fct, flags,
+				0, ci, cj);
+
+      /* Add the link between the new loop and both cells */
+      engine_addlink(e, &ci->hydro.fct, t_fct);
+      engine_addlink(e, &cj->hydro.fct, t_fct);
+
+      /* Now, add the missing dependencies (force loop -> end_force -> fct)
+       * for the cells that are local and are not descendant of the same
+       * super_hydro-cells */
+      if (ci->nodeID == nodeID) {
+	scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
+	scheduler_addunlock(sched, ci->hydro.super->hydro.end_force, t_fct);
+      }
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+	scheduler_addunlock(sched, t_force, cj->hydro.super->hydro.end_force);
+	scheduler_addunlock(sched, cj->hydro.super->hydro.end_force, t_fct);
+      }
+#endif
+
       if (with_feedback) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                             t_star_density);
@@ -3155,7 +3211,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
+#ifdef HYDRO_FCT_LOOP
+	scheduler_addunlock(sched, t_fct, ci->hydro.super->hydro.end_fct);
+#else
+	scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
+#endif
 
         if (with_feedback) {
 
@@ -3313,8 +3373,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (cj->nodeID == nodeID) {
 
         if (ci->hydro.super != cj->hydro.super) {
-
-          scheduler_addunlock(sched, t_force, cj->hydro.super->hydro.end_force);
+#ifdef HYDRO_FCT_LOOP
+	  scheduler_addunlock(sched, t_fct, cj->hydro.super->hydro.end_fct);
+#else
+	  scheduler_addunlock(sched, t_force, cj->hydro.super->hydro.end_force);
+#endif
 
           if (with_feedback) {
 

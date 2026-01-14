@@ -1439,6 +1439,7 @@ void partition_gather_weights(void *map_data, int num_elements,
         t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
         t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
+	t->type == task_type_end_hydro_fct ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
@@ -2389,6 +2390,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
         t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
         t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
+	t->type == task_type_end_hydro_fct ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||

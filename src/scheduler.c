@@ -2078,6 +2078,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_density ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_force ||
+                   t->subtype == task_subtype_fct ||
                    t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
         } else if (t->subtype == task_subtype_rt_gradient) {
@@ -2160,6 +2161,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_density ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_force ||
+                   t->subtype == task_subtype_fct ||
                    t->subtype == task_subtype_limiter) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
@@ -2222,6 +2224,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * (gcount_i + gcount_j);
         break;
       case task_type_end_hydro_force:
+        cost = wscale * count_i;
+        break;
+      case task_type_end_hydro_fct:
         cost = wscale * count_i;
         break;
       case task_type_end_grav_force:

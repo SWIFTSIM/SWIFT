@@ -67,6 +67,10 @@ struct cell_hydro {
     /*! Linked list of the tasks computing this cell's hydro forces. */
     struct link *force;
 
+    /*! Linked list of the tasks computing this cell's hydro flux correct
+      transport. */
+    struct link *fct;
+
     /*! Linked list of the tasks computing this cell's limiter. */
     struct link *limiter;
 
@@ -87,6 +91,9 @@ struct cell_hydro {
 
     /*! The task to end the force calculation */
     struct task *end_force;
+
+    /*! The task to end the flux corrected transport calculation */
+    struct task *end_fct;
 
     /*! Dependency implicit task for cooling (in->cooling->out) */
     struct task *cooling_in;

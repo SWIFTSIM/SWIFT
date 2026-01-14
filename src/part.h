@@ -101,6 +101,12 @@ struct threadpool;
 #error "Invalid choice of SPH variant"
 #endif
 
+/* TODO: Add this in the configure.ac. It's clearer */
+#if defined(CHEMISTRY_GEAR_MF_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#define HYDRO_FCT_LOOP
+#endif
+
 /* Import the right gravity particle definition */
 #if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_part.h"

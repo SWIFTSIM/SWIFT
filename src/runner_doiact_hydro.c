@@ -60,6 +60,14 @@
 #include "runner_doiact_functions_hydro.h"
 #include "runner_doiact_undef.h"
 
+/* Import the force loop functions. */
+#ifdef HYDRO_FCT_LOOP
+#define FUNCTION fct
+#define FUNCTION_TASK_LOOP TASK_LOOP_FCT
+#include "runner_doiact_functions_hydro.h"
+#include "runner_doiact_undef.h"
+#endif
+
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_GRADIENT

@@ -67,6 +67,7 @@ const char *taskID_names[task_type_count] = {
     "drift_gpart",
     "drift_gpart_out",
     "hydro_end_force",
+    "hydro_end_fct",
     "kick1",
     "kick2",
     "timestep",
@@ -134,6 +135,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "density",
     "gradient",
     "force",
+    "fct",
     "limiter",
     "grav",
     "fof",
@@ -233,6 +235,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_extra_ghost:
     case task_type_cooling:
     case task_type_end_hydro_force:
+    case task_type_end_hydro_fct:
       return task_action_part;
       break;
 
@@ -273,6 +276,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_density:
         case task_subtype_gradient:
         case task_subtype_force:
+        case task_subtype_fct:
         case task_subtype_limiter:
           return task_action_part;
           break;
@@ -545,6 +549,7 @@ void task_unlock(struct task *t) {
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
+    case task_type_end_hydro_fct:
     case task_type_timestep_limiter:
     case task_type_timestep_sync:
     case task_type_rt_ghost1:
@@ -767,6 +772,7 @@ int task_lock(struct task *t) {
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
+    case task_type_end_hydro_fct:
     case task_type_timestep_limiter:
     case task_type_timestep_sync:
     case task_type_rt_ghost1:
@@ -1141,6 +1147,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_force:
       strcpy(cluster, "Force");
+      break;
+    case task_subtype_fct:
+      strcpy(cluster, "FCT");
       break;
     case task_subtype_grav:
       strcpy(cluster, "Gravity");
@@ -1714,6 +1723,7 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
+    case task_type_end_hydro_fct:
       return task_category_hydro;
 
     case task_type_stars_ghost:
@@ -1759,6 +1769,7 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_density:
         case task_subtype_gradient:
         case task_subtype_force:
+        case task_subtype_fct:
           return task_category_hydro;
 
         case task_subtype_limiter:

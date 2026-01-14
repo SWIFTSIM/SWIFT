@@ -110,6 +110,7 @@
 #if ((FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY) ||  \
      (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT) || \
      (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE))
+/* TODO: Shall I add FCT here ? */
 
 #define _IACT_NONSYM_MHD(f) PASTE(runner_iact_nonsym_mhd, f)
 #define IACT_NONSYM_MHD _IACT_NONSYM_MHD(FUNCTION)

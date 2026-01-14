@@ -48,6 +48,7 @@ struct task;
 #define TASK_LOOP_STARS_PREP2 10
 #define TASK_LOOP_RT_GRADIENT 11
 #define TASK_LOOP_RT_TRANSPORT 12
+#define TASK_LOOP_FCT 15
 
 /**
  * @brief A struct representing a runner's thread and its data.
@@ -117,6 +118,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer);
 void runner_do_timestep(struct runner *r, struct cell *c, int timer);
 void runner_do_timestep_collect(struct runner *r, struct cell *c, int timer);
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer);
+void runner_do_end_hydro_fct(struct runner *r, struct cell *c, int timer);
 void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, int timer);

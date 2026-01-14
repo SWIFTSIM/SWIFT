@@ -777,6 +777,64 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief End the hydro flux corrected transport calculation of all particles
+ * (active and inactive) in a cell.
+ *
+ * @param r The #runner thread.
+ * @param c The #cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_end_hydro_fct(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_end_hydro_fct(r, c->progeny[k], 0);
+  } else {
+
+    const struct cosmology *cosmo = e->cosmology;
+    const int count = c->hydro.count;
+    struct part *restrict parts = c->hydro.parts;
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+
+      double dt = 0;
+
+      if (part_is_active(p, e)) {
+	if (with_cosmology) {
+	  /* Compute the time step. */
+	  const integertime_t ti_step = get_integer_timestep(p->time_bin);
+	  const integertime_t ti_begin =
+	    get_integer_time_begin(e->ti_current - 1, p->time_bin);
+
+	  dt = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+	} else {
+	  dt = get_timestep(p->time_bin, e->time_base);
+	}
+
+	/* Finish the FCT loop */
+	/* hydro_end_fct(p, cosmo); */
+	chemistry_end_fct(p, cosmo, with_cosmology, e->time, dt, e->chemistry);
+      }
+    }
+  }
+  if (timer) TIMER_TOC(timer_end_hydro_fct);
+}
+
+
+/**
  * @brief End the gravity force calculation of all active particles in a cell
  * by multiplying the acccelerations by the relevant constants
  *

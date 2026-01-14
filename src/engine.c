@@ -1187,6 +1187,13 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 2;
 #endif
 #endif
+
+#ifdef HYDRO_FCT_LOOP
+    n1 += 15;
+#ifdef WITH_MPI
+    n1 += 2;
+#endif
+#endif
   }
   if (e->policy & engine_policy_timestep_limiter) {
     n1 += 18;
@@ -1785,6 +1792,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep_sync || t->type == task_type_collect ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
+        t->type == task_type_end_hydro_fct ||
         t->type == task_type_star_formation ||
         t->type == task_type_star_formation_sink ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
@@ -1804,6 +1812,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
         t->subtype == task_subtype_force ||
+        t->subtype == task_subtype_fct ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_prep1 ||

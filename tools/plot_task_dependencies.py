@@ -325,6 +325,9 @@ def get_function_calls(name):
         txt = """hydro_end_force, gravity_end_force,<br/>
         stars_end_force"""
 
+    elif name == "end_fct":
+        txt = """hydro_end_fct"""
+
     elif name == "drift_gpart":
         txt = """drift_gpart, gravity_init_gpart,<br/>
         drift_spart

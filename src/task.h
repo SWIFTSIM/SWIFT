@@ -60,6 +60,7 @@ enum task_types {
   task_type_drift_gpart,
   task_type_drift_gpart_out, /* Implicit */
   task_type_end_hydro_force,
+  task_type_end_hydro_fct,
   task_type_kick1,
   task_type_kick2,
   task_type_timestep,
@@ -130,6 +131,7 @@ enum task_subtypes {
   task_subtype_density,
   task_subtype_gradient,
   task_subtype_force,
+  task_subtype_fct,
   task_subtype_limiter,
   task_subtype_grav,
   task_subtype_fof,

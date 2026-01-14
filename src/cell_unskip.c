@@ -1868,6 +1868,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
     }
+    for (struct link *l = c->hydro.fct; l != NULL; l = l->next) {
+      scheduler_activate(s, l->t);
+    }
 
     for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
@@ -1881,6 +1884,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->top->timestep_collect != NULL)
       scheduler_activate(s, c->top->timestep_collect);
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
+    if (c->hydro.end_fct != NULL) scheduler_activate(s, c->hydro.end_fct);
     if (c->hydro.cooling_in != NULL) cell_activate_cooling(c, s, e);
 #ifdef WITH_CSDS
     if (c->csds != NULL) scheduler_activate(s, c->csds);
