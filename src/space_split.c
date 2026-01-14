@@ -893,11 +893,10 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
     /* Allocate and fill buffers for this top-level cell */
-    space_allocate_and_fill_buffers(c, &c->split_buffers.buff,
-                                    &c->split_buffers.sbuff,
-                                    &c->split_buffers.bbuff,
-                                    &c->split_buffers.gbuff,
-                                    &c->split_buffers.sink_buff);
+    space_allocate_and_fill_buffers(
+        c, &c->split_buffers.buff, &c->split_buffers.sbuff,
+        &c->split_buffers.bbuff, &c->split_buffers.gbuff,
+        &c->split_buffers.sink_buff);
 
     space_split_recursive(s, c, tpid);
 
