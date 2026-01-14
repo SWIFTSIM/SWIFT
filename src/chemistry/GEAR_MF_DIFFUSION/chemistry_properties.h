@@ -36,9 +36,6 @@
 
 /* Enable the flux limiters. You can turn off the ones you don't want by
    commenting these lines*/
-#define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_EXTREMA_AWARE
-#define GEAR_FVPM_DIFFUSION_EXTREMA_AWARE_FLUX_LIMITER_SAFETY_FACTOR 1.0
-
 #define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGRESSIVE_RESCALING
 
 /* Verbosity for the flux limiters */
