@@ -42,7 +42,8 @@ void runner_do_drift_part(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_part(c, r->e, 0, NULL);
+  cell_drift_part(c, r->e, /* force=*/0, /*init_particles=*/1,
+                  /*replication_list=*/NULL);
 
   if (timer) TIMER_TOC(timer_drift_part);
 }
@@ -58,7 +59,8 @@ void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_gpart(c, r->e, 0, NULL);
+  cell_drift_gpart(c, r->e, /* force=*/0, /*init_particles=*/1,
+                   /*replication_list=*/NULL);
 
   if (timer) TIMER_TOC(timer_drift_gpart);
 }
@@ -74,7 +76,8 @@ void runner_do_drift_spart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_spart(c, r->e, 0, NULL);
+  cell_drift_spart(c, r->e, /* force=*/0, /*init_particles=*/1,
+                   /*replication_list=*/NULL);
 
   if (timer) TIMER_TOC(timer_drift_spart);
 }
@@ -90,7 +93,8 @@ void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_bpart(c, r->e, 0, NULL);
+  cell_drift_bpart(c, r->e, /*force=*/0, /*init_particles=*/1,
+                   /*replication_list=*/NULL);
 
   if (timer) TIMER_TOC(timer_drift_bpart);
 }
@@ -106,7 +110,7 @@ void runner_do_drift_sink(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_sink(c, r->e, 0);
+  cell_drift_sink(c, r->e, /* force=*/0, /*init_particles=*/1);
 
   if (timer) TIMER_TOC(timer_drift_sink);
 }

@@ -614,13 +614,18 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force,
+                     const int init_particles,
                      struct replication_list *replication_list_in);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
 void cell_drift_spart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
-void cell_drift_sink(struct cell *c, const struct engine *e, int force);
+void cell_drift_sink(struct cell *c, const struct engine *e,
+                     const int init_particles, int force);
 void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
