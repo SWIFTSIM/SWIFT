@@ -72,7 +72,8 @@ void engine_do_drift_all_part_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_part(c, e, /* force the drift=*/1, NULL);
+      cell_drift_part(c, e, /*force the drift=*/1, /*init_particles=*/1,
+                      /*replication_list=*/NULL);
     }
   }
 }
@@ -120,7 +121,8 @@ void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_gpart(c, e, /* force the drift=*/1, /*replication_list=*/NULL);
+      cell_drift_gpart(c, e, /*force the drift=*/1, /*init_particles=*/1,
+                       /*replication_list=*/NULL);
     }
   }
 }
@@ -168,7 +170,8 @@ void engine_do_drift_all_spart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_spart(c, e, /* force the drift=*/1, NULL);
+      cell_drift_spart(c, e, /*force the drift=*/1, /*init_particles=*/1,
+                       /*replication_list=*/NULL);
     }
   }
 }
@@ -216,7 +219,8 @@ void engine_do_drift_all_bpart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_bpart(c, e, /* force the drift=*/1, NULL);
+      cell_drift_bpart(c, e, /*force the drift=*/1, /*init_particles=*/1,
+                       /*replication_list=*/NULL);
     }
   }
 }
@@ -264,7 +268,7 @@ void engine_do_drift_all_sink_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_sink(c, e, /* force the drift=*/1);
+      cell_drift_sink(c, e, /*force the drift=*/1, /*init_particles=*/1);
     }
   }
 }
