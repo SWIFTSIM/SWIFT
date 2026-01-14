@@ -54,6 +54,13 @@ void cell_init_part(struct cell *c, const struct engine *e) {
       /* Ignore inhibited particles */
       if (part_is_inhibited(p, e)) continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (p->ti_drift != e->ti_current) {
+        error(
+            "Trying to initialise a particle not drifted to the current time!");
+      }
+#endif
+
       if (part_is_active(p, e)) {
         part_init(p, xp, e);
       }
@@ -86,6 +93,13 @@ void cell_init_gpart(struct cell *c, const struct engine *e) {
 
       /* Ignore inhibited particles */
       if (gpart_is_inhibited(gp, e)) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (gp->ti_drift != e->ti_current) {
+        error(
+            "Trying to initialise a particle not drifted to the current time!");
+      }
+#endif
 
       if (gpart_is_active(gp, e)) {
         gpart_init(gp, e);
@@ -120,6 +134,13 @@ void cell_init_spart(struct cell *c, const struct engine *e) {
       /* Ignore inhibited particles */
       if (spart_is_inhibited(sp, e)) continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sp->ti_drift != e->ti_current) {
+        error(
+            "Trying to initialise a particle not drifted to the current time!");
+      }
+#endif
+
       if (spart_is_active(sp, e)) {
         spart_init(sp, e);
       }
@@ -153,6 +174,13 @@ void cell_init_bpart(struct cell *c, const struct engine *e) {
       /* Ignore inhibited particles */
       if (bpart_is_inhibited(bp, e)) continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (bp->ti_drift != e->ti_current) {
+        error(
+            "Trying to initialise a particle not drifted to the current time!");
+      }
+#endif
+
       if (bpart_is_active(bp, e)) {
         bpart_init(bp, e);
       }
@@ -185,6 +213,13 @@ void cell_init_sink(struct cell *c, const struct engine *e) {
 
       /* Ignore inhibited particles */
       if (sink_is_inhibited(si, e)) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (si->ti_drift != e->ti_current) {
+        error(
+            "Trying to initialise a particle not drifted to the current time!");
+      }
+#endif
 
       if (sink_is_active(si, e)) {
         sink_init(si, e);
