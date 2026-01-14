@@ -450,10 +450,21 @@ void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count) {
   /* Update the in-flight counter. */
   atomic_add(&state->tasks_in_flight, count);
 
-  /* Wake a sleeping thread if any are waiting. */
+  /* Wake any sleeping threads. */
   pthread_mutex_lock(&state->sleep_lock);
-  if (state->sleeping_count > 0) pthread_cond_signal(&state->sleep_cond);
+  if (state->sleeping_count > 0) pthread_cond_broadcast(&state->sleep_cond);
   pthread_mutex_unlock(&state->sleep_lock);
+}
+
+/**
+ * @brief Get the number of threads currently waiting for work.
+ *
+ * @param tp The #threadpool.
+ * @return The number of waiting threads.
+ */
+int threadpool_queue_get_waiting(struct threadpool *tp) {
+  if (tp->queue_state == NULL) return 0;
+  return tp->queue_state->sleeping_count;
 }
 
 /**

@@ -843,10 +843,14 @@ void space_split_build_recursive(struct space *s, struct cell *c,
             max5(cp->hydro.count, cp->grav.count, cp->stars.count,
                  cp->black_holes.count, cp->sinks.count);
 
-        /* Heuristic: queue if we expect this cell to split at least twice more.
-         * With 8 octants, space_splitsize * 4 means we expect at least half the
-         * octants to have > space_splitsize particles after the next split. */
-        if (cp_max_count > space_splitsize * 8) {
+        /* Heuristic: Recurse locally by default to maintain cache locality.
+         * Only donate work to the queue if:
+         * 1. There are idle workers waiting for tasks.
+         * 2. The task is so large that we should allow future stealing. */
+        struct threadpool *tp = &s->e->threadpool;
+        if ((cp_max_count > space_splitsize &&
+             threadpool_queue_get_waiting(tp) > 0) ||
+            (cp_max_count > space_splitsize * 64)) {
           /* Add to the queue for parallel processing */
           progeny_to_queue[num_progeny_to_queue++] = cp;
         } else {

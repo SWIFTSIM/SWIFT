@@ -115,13 +115,13 @@ struct threadpool_queue_state {
   pthread_cond_t sleep_cond;
 
   /* Number of threads currently sleeping. */
-  int sleeping_count;
+  volatile int sleeping_count;
 
   /* Is the queue system currently active for this threadpool? */
   int active;
 
   /* Number of tasks currently in flight (being processed or queued). */
-  int tasks_in_flight;
+  volatile int tasks_in_flight;
 
   /* Cached map function for queue mode. */
   threadpool_map_function map_function;
@@ -180,6 +180,7 @@ void threadpool_map_with_queue(struct threadpool *tp,
                                void *map_data, size_t N, int stride, int chunk,
                                void *extra_data);
 void threadpool_queue_add(struct threadpool *tp, void **ptrs, int n_ptrs);
+int threadpool_queue_get_waiting(struct threadpool *tp);
 
 #ifdef HAVE_SETAFFINITY
 void threadpool_set_affinity_mask(cpu_set_t *entry_affinity);
