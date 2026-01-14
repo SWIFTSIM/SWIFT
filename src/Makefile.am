@@ -83,6 +83,7 @@ include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
 include_HEADERS += swift_lustre_api.h
+include_HEADERS += part_init.h
 
 # source files for EAGLE extra I/O
 EAGLE_EXTRA_IO_SOURCES=
