@@ -63,8 +63,8 @@ static INLINE void gpart_init(struct gpart *gp, const struct engine *e) {
 static INLINE void spart_init(struct spart *sp, const struct engine *e) {
 
   stars_init_spart(sp);
+  feedback_init_spart(sp);
   rt_init_spart(sp);
-  rt_reset_spart(sp);
 }
 
 static INLINE void bpart_init(struct bpart *bp, const struct engine *e) {
