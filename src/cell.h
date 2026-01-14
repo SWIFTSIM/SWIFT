@@ -99,6 +99,15 @@ struct cell_split_pair {
 };
 extern struct cell_split_pair cell_split_pairs[13];
 
+/* Buffers for particle sorting during cell split */
+struct cell_split_buffers {
+  struct cell_buff *buff;
+  struct cell_buff *sbuff;
+  struct cell_buff *bbuff;
+  struct cell_buff *gbuff;
+  struct cell_buff *sink_buff;
+};
+
 /**
  * @brief Packed cell for information correct at rebuild time.
  *
@@ -521,6 +530,9 @@ struct cell {
 #endif
 
   struct ghost_stats ghost_statistics;
+
+  /*! Buffers for particle splitting */
+  struct cell_split_buffers split_buffers;
 
 } SWIFT_STRUCT_ALIGN;
 
