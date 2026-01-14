@@ -90,14 +90,21 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
 
   const double upwind_mass = (mZi_0 > mZj_0) ? mZi_0 : mZj_0;
 
+  if (upwind_mass < 0.0 && metal_mass_interface > 0.0) {
+    fluxes[0] = 0.0;
+    fluxes[1] = 0.0;
+    fluxes[2] = 0.0;
+    fluxes[3] = 0.0;
+  }
+
   /* Choose upwind mass to determine a stability bound on the maximum allowed */
   /* mass exchange, (we do this to prevent negative masses under all */
   /* circumstances) */
   const double max_mass = 0.9 * fabs(upwind_mass);
   if (fabs(metal_mass_interface) > 0.0 &&
       fabs(metal_mass_interface) > max_mass) {
-    const double factor = max_mass / fabs(metal_mass_interface);
     const double flux_init = fluxes[0];
+    const double factor = fabs(max_mass / metal_mass_interface);
     fluxes[0] *= factor;
     fluxes[1] *= factor;
     fluxes[2] *= factor;
