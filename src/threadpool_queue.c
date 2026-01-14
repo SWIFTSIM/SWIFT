@@ -348,10 +348,9 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 
     if (n_tasks > 0) {
       int batch_count = 0;
-      int total_processed = 0;
 
+      /* Execute the tasks. */
       for (int i = 0; i < n_tasks; i++) {
-        total_processed += tasks[i].count;
 
         /* If this is a single item, we can batch it. */
         if (tasks[i].count == 1) {
@@ -393,8 +392,8 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 #endif
       }
 
-      /* Decrement in-flight counter. */
-      atomic_sub(&state->tasks_in_flight, total_processed);
+      /* Decrement in-flight counter by the number of tasks retrieved. */
+      atomic_sub(&state->tasks_in_flight, n_tasks);
       continue;
     }
 
