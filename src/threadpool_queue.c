@@ -197,6 +197,18 @@ static int threadpool_queue_get_task(struct threadpool_queue_state *state,
 }
 
 /**
+ * @brief Get the number of tasks in the shared queue.
+ *
+ * @param state The #threadpool_queue_state.
+ * @return Number of tasks.
+ */
+static int threadpool_queue_get_count(struct threadpool_queue_state *state) {
+  /* We can read these loosely as an optimization hint. 
+   * If we read stale data, the synchronization in Add/Chomp corrects it. */
+  return state->queues[0].tail - state->queues[0].head;
+}
+
+/**
  * @brief Worker thread main loop for queue-based processing.
  *
  * @param tp The #threadpool.
@@ -304,15 +316,6 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 #ifdef SWIFT_DEBUG_THREADPOOL
       threadpool_log(tp, thread_id, chunk_size, tic, getticks());
 #endif
-
-      /* Update in-flight counter to reflect the work we just picked up. 
-       * Note: In threadpool_map, we don't track in-flight tasks this way, 
-       * but for the queue sleep logic to work, we need to know threads are busy. 
-       * However, the loop continues and eventually we hit the sleep check. 
-       * The trick is that `tasks_in_flight` tracks *queue* tasks. 
-       * The `map_data_count` tracks the main array. 
-       * A thread is "done" only when `map_data_count >= size` AND `tasks_in_flight == 0`.
-       */
       continue;
     }
 
@@ -324,6 +327,14 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
       if (state->sleeping_count > 0) pthread_cond_broadcast(&state->sleep_cond);
       pthread_mutex_unlock(&state->sleep_lock);
       break;
+    }
+
+    /* CRITICAL: Check if work appeared while we were acquiring the lock. 
+     * This prevents the "missed signal" race where a task is added 
+     * just before we wait. */
+    if (threadpool_queue_get_count(state) > 0 || tp->map_data_count < tp->map_data_size) {
+        pthread_mutex_unlock(&state->sleep_lock);
+        continue;
     }
 
     /* Sleep until work or termination. */
