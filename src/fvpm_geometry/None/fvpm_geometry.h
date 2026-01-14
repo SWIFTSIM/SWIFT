@@ -88,4 +88,43 @@ fvpm_geometry_part_has_no_neighbours(struct part *restrict p) {}
 __attribute__((always_inline)) INLINE static void
 fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {}
 
+/**
+ * @brief Compute the face area between i and j.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param Bi Matrix B for particle i.
+ * @param Bj Matrix B for particle j.
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param (return) A The face area between i and j.
+ */
+__attribute__((always_inline)) INLINE static void fvpm_compute_face_area_vector(
+    const struct part *pi, const struct part *pj, float Bi[3][3],
+    float Bj[3][3], const float r2, const float dx[3], const float hi,
+    const float hj, float A[3]) {}
+
+/**
+ * @brief Accumulate the face area vector and norm.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param interaction_mode 0 if non-symmetric interaction, 1 if symmetric.
+ * @param (return) A The face area between i and j.
+ */
+__attribute__((always_inline)) INLINE static void
+fvpm_accumulate_total_face_area_vector_and_norm(struct part *pi,
+                                                struct part *pj, const float r2,
+                                                const float dx[3],
+                                                const float hi, const float hj,
+                                                const int interaction_mode) {}
+
 #endif /* SWIFT_FVPM_GEOMETRY_NONE_H */

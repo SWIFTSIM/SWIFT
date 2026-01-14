@@ -28,6 +28,12 @@ struct fvpm_geometry_struct {
 
   /*! Condition number of matrix_E (eq C1) */
   float condition_number;
+
+  /*! Total particle area */
+  float area;
+
+  /*! Sum of the face area vectors */
+  float area_sum[3];
 };
 
 #endif /* SWIFT_FVPM_GEOMETRY_STRUCT_GIZMO_H */

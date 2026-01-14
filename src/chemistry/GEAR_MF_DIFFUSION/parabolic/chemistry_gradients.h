@@ -149,6 +149,14 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     Uj[0] = 0.0;
   }
 
+  /* Something went wrong if we get this one! */
+  if (m_Zi_not_extrapolated > mi) {
+    Ui[0] = 0.0;
+  }
+  if (m_Zj_not_extrapolated > mj) {
+    Uj[0] = 0.0;
+  }
+
   /* Convert Ui[0] and Uj[0] (metal density) to physical units */
   Ui[0] *= cosmo->a3_inv;
   Uj[0] *= cosmo->a3_inv;

@@ -66,9 +66,8 @@ chemistry_get_physical_metal_density(const struct part *restrict p, int metal,
 /**
  * @brief Get metal mass from a specific metal specie.
  *
- * This function sets the metal mass to 0 if metal_mass is within the negative
- * tolerance bound. If the mass is outside the tolerated negative mass bounds,
- * we throw an error.
+ * This function sets the metal mass to 0 if metal_mass negative to prevent
+ * contaminating other modules.
  *
  * @param p Particle.
  * @param metal Index of metal specie
@@ -76,19 +75,16 @@ chemistry_get_physical_metal_density(const struct part *restrict p, int metal,
 __attribute__((always_inline)) INLINE static double
 chemistry_get_part_corrected_metal_mass(const struct part *restrict p,
                                         int metal) {
-  double mZi = p->chemistry_data.metal_mass[metal];
-  double Zi = chemistry_get_metal_mass_fraction(p, metal);
-  if (Zi >= 0.0) {
-    /* We tolerate a small deviation around 0 due to flux exchanges. But
-       other modules need not be aware of this. Ensure metal mass is positive to
-       avoid problems (e.g. for cooling). */
-    mZi = max(0.0, mZi);
-  } else {
-    /* More deviations around 0 are not tolerated. The error is thown in
-       chemistry_check_unphysical_state(). */
-    mZi = 0.0;
+  /* Clamp negative values to 0.0. We tolerate negative values in the diffusion
+     solver, not in the physics module */
+  double mZ = max(p->chemistry_data.metal_mass[metal], 0.0);
+  const double m = hydro_get_mass(p);
+
+  if (mZ >= m) {
+    /* Reduce it */
+    mZ = 0.01*m;
   }
-  return mZi;
+  return mZ;
 }
 
 /**
@@ -401,11 +397,18 @@ chemistry_get_physical_parabolic_flux(
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_fraction(const struct part *restrict p) {
+  const float m = hydro_get_mass(p);
   float m_Z_tot = 0.0;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     m_Z_tot += chemistry_get_part_corrected_metal_mass(p, i);
   }
-  return m_Z_tot / hydro_get_mass(p);
+
+  /* If this really happens, reduce the mass. */
+  if (m_Z_tot > m) {
+    m_Z_tot = 0.9*m;
+  }
+
+  return m_Z_tot / m;
 }
 
 /**
