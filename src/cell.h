@@ -629,6 +629,11 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
                       struct replication_list *replication_list);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
+void cell_init_part(struct cell *c, const struct engine *e);
+void cell_init_gpart(struct cell *c, const struct engine *e);
+void cell_init_spart(struct cell *c, const struct engine *e);
+void cell_init_bpart(struct cell *c, const struct engine *e);
+void cell_init_sink(struct cell *c, const struct engine *e);
 void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
                           const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
