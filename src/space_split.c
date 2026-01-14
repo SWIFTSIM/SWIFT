@@ -168,23 +168,221 @@ void space_allocate_and_fill_buffers(const struct cell *c,
 }
 
 /**
- * @brief Recursively split a cell.
+ * @brief Get the progeny and set the progeny's properties.
  *
- * @param s The #space in which the cell lives.
- * @param c The #cell to split recursively.
+ * @param s The #space.
+ * @param c The #cell to split.
  * @param tpid The thread ID.
  */
-void space_split_recursive(struct space *s, struct cell *c,
-                           const short int tpid) {
+void space_construct_progeny(struct space *s, struct cell *c,
+                             const short int tpid) {
 
+  /* No longer just a leaf. */
+  c->split = 1;
+
+  /* Create the cell's progeny. */
+  space_getcells(s, 8, c->progeny, tpid);
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    cp->hydro.count = 0;
+    cp->grav.count = 0;
+    cp->stars.count = 0;
+    cp->sinks.count = 0;
+    cp->black_holes.count = 0;
+    cp->hydro.count_total = 0;
+    cp->grav.count_total = 0;
+    cp->sinks.count_total = 0;
+    cp->stars.count_total = 0;
+    cp->black_holes.count_total = 0;
+    cp->hydro.ti_old_part = c->hydro.ti_old_part;
+    cp->grav.ti_old_part = c->grav.ti_old_part;
+    cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
+    cp->stars.ti_old_part = c->stars.ti_old_part;
+    cp->sinks.ti_old_part = c->sinks.ti_old_part;
+    cp->black_holes.ti_old_part = c->black_holes.ti_old_part;
+    cp->loc[0] = c->loc[0];
+    cp->loc[1] = c->loc[1];
+    cp->loc[2] = c->loc[2];
+    cp->width[0] = c->width[0] / 2;
+    cp->width[1] = c->width[1] / 2;
+    cp->width[2] = c->width[2] / 2;
+    cp->dmin = c->dmin / 2;
+    cp->h_min_allowed = cp->dmin * 0.5 * (1. / kernel_gamma);
+    cp->h_max_allowed = cp->dmin * (1. / kernel_gamma);
+    if (k & 4) cp->loc[0] += cp->width[0];
+    if (k & 2) cp->loc[1] += cp->width[1];
+    if (k & 1) cp->loc[2] += cp->width[2];
+    cp->depth = c->depth + 1;
+    cp->split = 0;
+    cp->hydro.h_max = 0.f;
+    cp->hydro.h_max_active = 0.f;
+    cp->hydro.dx_max_part = 0.f;
+    cp->hydro.dx_max_sort = 0.f;
+    cp->stars.h_max = 0.f;
+    cp->stars.h_max_active = 0.f;
+    cp->stars.dx_max_part = 0.f;
+    cp->stars.dx_max_sort = 0.f;
+    cp->sinks.h_max = 0.f;
+    cp->sinks.h_max_active = 0.f;
+    cp->sinks.dx_max_part = 0.f;
+    cp->black_holes.h_max = 0.f;
+    cp->black_holes.h_max_active = 0.f;
+    cp->black_holes.dx_max_part = 0.f;
+    cp->nodeID = c->nodeID;
+    cp->parent = c;
+    cp->top = c->top;
+    cp->super = NULL;
+    cp->hydro.super = NULL;
+    cp->grav.super = NULL;
+    cp->flags = 0;
+    star_formation_logger_init(&cp->stars.sfh);
+#ifdef WITH_MPI
+    cp->mpi.tag = -1;
+#endif  // WITH_MPI
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+    cell_assign_cell_index(cp, c);
+
+#endif
+  }
+}
+
+/**
+ * @brief Populate the multipoles of the cell.
+ *
+ * @param c The #cell to populate.
+ */
+void space_populate_multipole(struct cell *c) {
+
+  /* Reset everything */
+  gravity_reset(c->grav.multipole);
+
+  /* Compute CoM and bulk velocity from all progenies */
+  double CoM[3] = {0., 0., 0.};
+  double vel[3] = {0., 0., 0.};
+  float max_delta_vel[3] = {0.f, 0.f, 0.f};
+  float min_delta_vel[3] = {0.f, 0.f, 0.f};
+  double mass = 0.;
+
+  for (int k = 0; k < 8; ++k) {
+    if (c->progeny[k] != NULL) {
+      const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
+
+      mass += m->m_pole.M_000;
+
+      CoM[0] += m->CoM[0] * m->m_pole.M_000;
+      CoM[1] += m->CoM[1] * m->m_pole.M_000;
+      CoM[2] += m->CoM[2] * m->m_pole.M_000;
+
+      vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+      vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+      vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+      max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+      max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+      max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+      min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+      min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+      min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
+    }
+  }
+
+  /* Final operation on the CoM and bulk velocity */
+  const double inv_mass = 1. / mass;
+  c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
+  c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
+  c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
+  c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
+  c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
+  c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
+
+  /* Min max velocity along each axis */
+  c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+  c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+  c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+  c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+  c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+  c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
+
+  /* Now shift progeny multipoles and add them up */
+  struct multipole temp;
+  double r_max = 0.;
+  for (int k = 0; k < 8; ++k) {
+    if (c->progeny[k] != NULL) {
+      const struct cell *cp = c->progeny[k];
+      const struct multipole *m = &cp->grav.multipole->m_pole;
+
+      /* Contribution to multipole */
+      gravity_M2M(&temp, m, c->grav.multipole->CoM, cp->grav.multipole->CoM);
+      gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
+
+      /* Upper limit of max CoM<->gpart distance */
+      const double dx = c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
+      const double dy = c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
+      const double dz = c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
+      const double r2 = dx * dx + dy * dy + dz * dz;
+      r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
+    }
+  }
+
+  /* Alternative upper limit of max CoM<->gpart distance */
+  const double dx = c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                        ? c->grav.multipole->CoM[0] - c->loc[0]
+                        : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
+  const double dy = c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                        ? c->grav.multipole->CoM[1] - c->loc[1]
+                        : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
+  const double dz = c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                        ? c->grav.multipole->CoM[2] - c->loc[2]
+                        : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
+
+  /* Take minimum of both limits */
+  c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+
+  /* Store the value at rebuild time */
+  c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+  c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+  c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+  c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+
+  /* Compute the multipole power */
+  gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Double check we have correctly assigned the multipole */
+  if (c->grav.multipole->m_pole.num_gpart == 0 && c->grav.count > 0)
+    error("We have a multipole with no particles but the cell does!!");
+#endif
+}
+
+/**
+ * @brief Populate the properties of a leaf cell.
+ *
+ * @param c The #cell to populate.
+ * @param s The #space.
+ * @param ti_current The current time.
+ * @param with_rt Are we doing radiative transfer?
+ */
+static void space_populate_leaf_props(struct cell *c, struct space *s,
+                                      const integertime_t ti_current,
+                                      const int with_rt) {
+
+  struct engine *e = s->e;
+
+  /* Unpack the particle counts and pointers. */
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
   const int sink_count = c->sinks.count;
-  const int with_self_gravity = s->with_self_gravity;
-  const int depth = c->depth;
-  int maxdepth = 0;
+  struct part *parts = c->hydro.parts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
+  struct bpart *bparts = c->black_holes.parts;
+  struct xpart *xparts = c->hydro.xparts;
+  struct sink *sinks = c->sinks.parts;
+
+  /* Initialise everything we're about to get. */
   float h_max = 0.0f;
   float h_max_active = 0.0f;
   float stars_h_max = 0.f;
@@ -201,507 +399,161 @@ void space_split_recursive(struct space *s, struct cell *c,
   integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_beg_max = 0;
-  struct part *parts = c->hydro.parts;
-  struct gpart *gparts = c->grav.parts;
-  struct spart *sparts = c->stars.parts;
-  struct bpart *bparts = c->black_holes.parts;
-  struct xpart *xparts = c->hydro.xparts;
-  struct sink *sinks = c->sinks.parts;
-  struct engine *e = s->e;
-  const integertime_t ti_current = e->ti_current;
-  const int with_rt = e->policy & engine_policy_rt;
 
-  /* Set the top level cell tpid. Doing it here ensures top level cells
-   * have the same tpid as their progeny. */
-  if (depth == 0) c->tpid = tpid;
+  /* parts: Get dt_min/dt_max and h_max. */
+  for (int k = 0; k < count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (parts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
+    if (parts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+#endif
 
-  /* Extract buffers from this cell. */
-  struct cell_buff *restrict buff = c->split_buffers.buff;
-  struct cell_buff *restrict sbuff = c->split_buffers.sbuff;
-  struct cell_buff *restrict bbuff = c->split_buffers.bbuff;
-  struct cell_buff *restrict gbuff = c->split_buffers.gbuff;
-  struct cell_buff *restrict sink_buff = c->split_buffers.sink_buff;
+    /* When does this particle's time-step start and end? */
+    const timebin_t time_bin = parts[k].time_bin;
+    const timebin_t time_bin_rt = parts[k].rt_time_data.time_bin;
+    const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+    const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
-  /* If the depth is too large, we have a problem and should stop. */
-  if (depth > space_cell_maxdepth) {
-    error(
-        "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
-        "most likely due to having too many particles at the exact same "
-        "position, making the construction of a tree impossible.",
-        space_cell_maxdepth);
+    ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
+    ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
+
+    if (with_rt) {
+      const integertime_t ti_rt_end =
+          get_integer_time_end(ti_current, time_bin_rt);
+      const integertime_t ti_rt_beg =
+          get_integer_time_begin(ti_current, time_bin_rt);
+      const integertime_t ti_rt_step = get_integer_timestep(time_bin_rt);
+      ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
+      ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
+      ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
+    }
+
+    h_max = max(h_max, parts[k].h);
+
+    if (part_is_active(&parts[k], e))
+      h_max_active = max(h_max_active, parts[k].h);
+
+    cell_set_part_h_depth(&parts[k], c);
+
+    /* Collect SFR from the particles after rebuilt */
+    star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
+                                            &c->stars.sfh);
   }
 
-  /* Split or let it be? */
-  if ((with_self_gravity && gcount > space_splitsize) ||
-      (!with_self_gravity &&
-       (count > space_splitsize || scount > space_splitsize))) {
+  /* xparts: Reset x_diff */
+  for (int k = 0; k < count; k++) {
+    xparts[k].x_diff[0] = 0.f;
+    xparts[k].x_diff[1] = 0.f;
+    xparts[k].x_diff[2] = 0.f;
+  }
 
-    /* No longer just a leaf. */
-    c->split = 1;
-
-    /* Create the cell's progeny. */
-    space_getcells(s, 8, c->progeny, tpid);
-    for (int k = 0; k < 8; k++) {
-      struct cell *cp = c->progeny[k];
-      cp->hydro.count = 0;
-      cp->grav.count = 0;
-      cp->stars.count = 0;
-      cp->sinks.count = 0;
-      cp->black_holes.count = 0;
-      cp->hydro.count_total = 0;
-      cp->grav.count_total = 0;
-      cp->sinks.count_total = 0;
-      cp->stars.count_total = 0;
-      cp->black_holes.count_total = 0;
-      cp->hydro.ti_old_part = c->hydro.ti_old_part;
-      cp->grav.ti_old_part = c->grav.ti_old_part;
-      cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
-      cp->stars.ti_old_part = c->stars.ti_old_part;
-      cp->sinks.ti_old_part = c->sinks.ti_old_part;
-      cp->black_holes.ti_old_part = c->black_holes.ti_old_part;
-      cp->loc[0] = c->loc[0];
-      cp->loc[1] = c->loc[1];
-      cp->loc[2] = c->loc[2];
-      cp->width[0] = c->width[0] / 2;
-      cp->width[1] = c->width[1] / 2;
-      cp->width[2] = c->width[2] / 2;
-      cp->dmin = c->dmin / 2;
-      cp->h_min_allowed = cp->dmin * 0.5 * (1. / kernel_gamma);
-      cp->h_max_allowed = cp->dmin * (1. / kernel_gamma);
-      if (k & 4) cp->loc[0] += cp->width[0];
-      if (k & 2) cp->loc[1] += cp->width[1];
-      if (k & 1) cp->loc[2] += cp->width[2];
-      cp->depth = c->depth + 1;
-      cp->split = 0;
-      cp->hydro.h_max = 0.f;
-      cp->hydro.h_max_active = 0.f;
-      cp->hydro.dx_max_part = 0.f;
-      cp->hydro.dx_max_sort = 0.f;
-      cp->stars.h_max = 0.f;
-      cp->stars.h_max_active = 0.f;
-      cp->stars.dx_max_part = 0.f;
-      cp->stars.dx_max_sort = 0.f;
-      cp->sinks.h_max = 0.f;
-      cp->sinks.h_max_active = 0.f;
-      cp->sinks.dx_max_part = 0.f;
-      cp->black_holes.h_max = 0.f;
-      cp->black_holes.h_max_active = 0.f;
-      cp->black_holes.dx_max_part = 0.f;
-      cp->nodeID = c->nodeID;
-      cp->parent = c;
-      cp->top = c->top;
-      cp->super = NULL;
-      cp->hydro.super = NULL;
-      cp->grav.super = NULL;
-      cp->flags = 0;
-      star_formation_logger_init(&cp->stars.sfh);
-#ifdef WITH_MPI
-      cp->mpi.tag = -1;
-#endif  // WITH_MPI
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-      cell_assign_cell_index(cp, c);
-#endif
-    }
-
-    /* Split the cell's particle data. */
-    cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
-               c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
-               buff, sbuff, bbuff, gbuff, sink_buff);
-
-    /* Buffers for the progenitors */
-    struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
-                     *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
-                     *progeny_sink_buff = sink_buff;
-
-    for (int k = 0; k < 8; k++) {
-
-      /* Get the progenitor */
-      struct cell *cp = c->progeny[k];
-
-      /* Set this progeny's buffer pointers to the correct offset. */
-      cp->split_buffers.buff = progeny_buff;
-      cp->split_buffers.sbuff = progeny_sbuff;
-      cp->split_buffers.bbuff = progeny_bbuff;
-      cp->split_buffers.gbuff = progeny_gbuff;
-      cp->split_buffers.sink_buff = progeny_sink_buff;
-
-      /* Remove any progeny with zero particles. */
-      if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
-          cp->black_holes.count == 0 && cp->sinks.count == 0) {
-
-        space_recycle(s, cp);
-        c->progeny[k] = NULL;
-
-      } else {
-
-        /* Recurse */
-        space_split_recursive(s, cp, tpid);
-
-        /* Update the pointers in the buffers */
-        progeny_buff += cp->hydro.count;
-        progeny_gbuff += cp->grav.count;
-        progeny_sbuff += cp->stars.count;
-        progeny_bbuff += cp->black_holes.count;
-        progeny_sink_buff += cp->sinks.count;
-
-        /* Update the cell-wide properties */
-        h_max = max(h_max, cp->hydro.h_max);
-        h_max_active = max(h_max_active, cp->hydro.h_max_active);
-        stars_h_max = max(stars_h_max, cp->stars.h_max);
-        stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
-        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
-        black_holes_h_max_active =
-            max(black_holes_h_max_active, cp->black_holes.h_max_active);
-        sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
-        sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
-
-        ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-        ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
-        ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
-        ti_rt_min_step_size =
-            min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
-        ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
-        ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-        ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
-        ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-        ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
-        ti_black_holes_end_min =
-            min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-        ti_black_holes_beg_max =
-            max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
-
-        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
-
-        /* Increase the depth */
-        maxdepth = max(maxdepth, cp->maxdepth);
-      }
-    }
-
-    /* Deal with the multipole */
-    if (s->with_self_gravity) {
-
-      /* Reset everything */
-      gravity_reset(c->grav.multipole);
-
-      /* Compute CoM and bulk velocity from all progenies */
-      double CoM[3] = {0., 0., 0.};
-      double vel[3] = {0., 0., 0.};
-      float max_delta_vel[3] = {0.f, 0.f, 0.f};
-      float min_delta_vel[3] = {0.f, 0.f, 0.f};
-      double mass = 0.;
-
-      for (int k = 0; k < 8; ++k) {
-        if (c->progeny[k] != NULL) {
-          const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
-
-          mass += m->m_pole.M_000;
-
-          CoM[0] += m->CoM[0] * m->m_pole.M_000;
-          CoM[1] += m->CoM[1] * m->m_pole.M_000;
-          CoM[2] += m->CoM[2] * m->m_pole.M_000;
-
-          vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
-          vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
-          vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
-
-          max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
-          max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
-          max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
-
-          min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
-          min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
-          min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
-        }
-      }
-
-      /* Final operation on the CoM and bulk velocity */
-      const double inv_mass = 1. / mass;
-      c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
-      c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
-      c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
-      c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
-      c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
-      c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
-
-      /* Min max velocity along each axis */
-      c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
-      c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
-      c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
-      c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
-      c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
-      c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
-
-      /* Now shift progeny multipoles and add them up */
-      struct multipole temp;
-      double r_max = 0.;
-      for (int k = 0; k < 8; ++k) {
-        if (c->progeny[k] != NULL) {
-          const struct cell *cp = c->progeny[k];
-          const struct multipole *m = &cp->grav.multipole->m_pole;
-
-          /* Contribution to multipole */
-          gravity_M2M(&temp, m, c->grav.multipole->CoM,
-                      cp->grav.multipole->CoM);
-          gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
-
-          /* Upper limit of max CoM<->gpart distance */
-          const double dx =
-              c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
-          const double dy =
-              c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
-          const double dz =
-              c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
-          const double r2 = dx * dx + dy * dy + dz * dz;
-          r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
-        }
-      }
-
-      /* Alternative upper limit of max CoM<->gpart distance */
-      const double dx =
-          c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
-              ? c->grav.multipole->CoM[0] - c->loc[0]
-              : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-      const double dy =
-          c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
-              ? c->grav.multipole->CoM[1] - c->loc[1]
-              : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-      const double dz =
-          c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
-              ? c->grav.multipole->CoM[2] - c->loc[2]
-              : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
-
-      /* Take minimum of both limits */
-      c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-
-      /* Store the value at rebuild time */
-      c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
-      c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
-      c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
-      c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-
-      /* Compute the multipole power */
-      gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-
-    } /* Deal with gravity */
-  } /* Split or let it be? */
-
-  /* Otherwise, collect the data from the particles this cell. */
-  else {
-
-    /* Clear the progeny. */
-    bzero(c->progeny, sizeof(struct cell *) * 8);
-    c->split = 0;
-    maxdepth = c->depth;
-
-    ti_hydro_end_min = max_nr_timesteps;
-    ti_hydro_beg_max = 0;
-
-    ti_gravity_end_min = max_nr_timesteps;
-    ti_gravity_beg_max = 0;
-
-    ti_stars_end_min = max_nr_timesteps;
-    ti_stars_beg_max = 0;
-
-    ti_black_holes_end_min = max_nr_timesteps;
-    ti_black_holes_beg_max = 0;
-
-    ti_rt_end_min = max_nr_timesteps;
-    ti_rt_beg_max = 0;
-    ti_rt_min_step_size = max_nr_timesteps;
-
-    /* parts: Get dt_min/dt_max and h_max. */
-    for (int k = 0; k < count; k++) {
+  /* gparts: Get dt_min/dt_max. */
+  for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (parts[k].time_bin == time_bin_not_created)
-        error("Extra particle present in space_split()");
-      if (parts[k].time_bin == time_bin_inhibited)
-        error("Inhibited particle present in space_split()");
+    if (gparts[k].time_bin == time_bin_not_created)
+      error("Extra g-particle present in space_split()");
+    if (gparts[k].time_bin == time_bin_inhibited)
+      error("Inhibited g-particle present in space_split()");
 #endif
 
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = parts[k].time_bin;
-      const timebin_t time_bin_rt = parts[k].rt_time_data.time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+    /* When does this particle's time-step start and end? */
+    const timebin_t time_bin = gparts[k].time_bin;
+    const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+    const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
-      ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
-      ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
+    ti_gravity_end_min = min(ti_gravity_end_min, ti_end);
+    ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
+  }
 
-      if (with_rt) {
-        /* Contrary to other physics, RT doesn't have its own particle type.
-         * So collect time step data from particles only when we're running
-         * with RT. Otherwise, we may find cells which are active or in
-         * impossible timezones. Skipping this check results in cells having
-         * RT times = max_nr_timesteps or zero, respecively. */
-        const integertime_t ti_rt_end =
-            get_integer_time_end(ti_current, time_bin_rt);
-        const integertime_t ti_rt_beg =
-            get_integer_time_begin(ti_current, time_bin_rt);
-        const integertime_t ti_rt_step = get_integer_timestep(time_bin_rt);
-        ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
-        ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
-        ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
-      }
-
-      h_max = max(h_max, parts[k].h);
-
-      if (part_is_active(&parts[k], e))
-        h_max_active = max(h_max_active, parts[k].h);
-
-      cell_set_part_h_depth(&parts[k], c);
-
-      /* Collect SFR from the particles after rebuilt */
-      star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
-                                              &c->stars.sfh);
-    }
-
-    /* xparts: Reset x_diff */
-    for (int k = 0; k < count; k++) {
-      xparts[k].x_diff[0] = 0.f;
-      xparts[k].x_diff[1] = 0.f;
-      xparts[k].x_diff[2] = 0.f;
-    }
-
-    /* gparts: Get dt_min/dt_max. */
-    for (int k = 0; k < gcount; k++) {
+  /* sparts: Get dt_min/dt_max */
+  for (int k = 0; k < scount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (gparts[k].time_bin == time_bin_not_created)
-        error("Extra g-particle present in space_split()");
-      if (gparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited g-particle present in space_split()");
+    if (sparts[k].time_bin == time_bin_not_created)
+      error("Extra s-particle present in space_split()");
+    if (sparts[k].time_bin == time_bin_inhibited)
+      error("Inhibited s-particle present in space_split()");
 #endif
 
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = gparts[k].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+    /* When does this particle's time-step start and end? */
+    const timebin_t time_bin = sparts[k].time_bin;
+    const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+    const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
-      ti_gravity_end_min = min(ti_gravity_end_min, ti_end);
-      ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
-    }
+    ti_stars_end_min = min(ti_stars_end_min, ti_end);
+    ti_stars_beg_max = max(ti_stars_beg_max, ti_beg);
 
-    /* sparts: Get dt_min/dt_max */
-    for (int k = 0; k < scount; k++) {
+    stars_h_max = max(stars_h_max, sparts[k].h);
+
+    if (spart_is_active(&sparts[k], e))
+      stars_h_max_active = max(stars_h_max_active, sparts[k].h);
+
+    cell_set_spart_h_depth(&sparts[k], c);
+
+    /* Reset x_diff */
+    sparts[k].x_diff[0] = 0.f;
+    sparts[k].x_diff[1] = 0.f;
+    sparts[k].x_diff[2] = 0.f;
+  }
+
+  /* sinks: Get dt_min/dt_max */
+  for (int k = 0; k < sink_count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (sparts[k].time_bin == time_bin_not_created)
-        error("Extra s-particle present in space_split()");
-      if (sparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited s-particle present in space_split()");
+    if (sinks[k].time_bin == time_bin_not_created)
+      error("Extra sink-particle present in space_split()");
+    if (sinks[k].time_bin == time_bin_inhibited)
+      error("Inhibited sink-particle present in space_split()");
 #endif
 
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = sparts[k].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+    /* When does this particle's time-step start and end? */
+    const timebin_t time_bin = sinks[k].time_bin;
+    const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+    const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
-      ti_stars_end_min = min(ti_stars_end_min, ti_end);
-      ti_stars_beg_max = max(ti_stars_beg_max, ti_beg);
+    ti_sinks_end_min = min(ti_sinks_end_min, ti_end);
+    ti_sinks_beg_max = max(ti_sinks_beg_max, ti_beg);
 
-      stars_h_max = max(stars_h_max, sparts[k].h);
+    sinks_h_max = max(sinks_h_max, sinks[k].h);
 
-      if (spart_is_active(&sparts[k], e))
-        stars_h_max_active = max(stars_h_max_active, sparts[k].h);
+    if (sink_is_active(&sinks[k], e))
+      sinks_h_max_active = max(sinks_h_max_active, sinks[k].h);
 
-      cell_set_spart_h_depth(&sparts[k], c);
+    cell_set_sink_h_depth(&sinks[k], c);
 
-      /* Reset x_diff */
-      sparts[k].x_diff[0] = 0.f;
-      sparts[k].x_diff[1] = 0.f;
-      sparts[k].x_diff[2] = 0.f;
-    }
+    /* Reset x_diff */
+    sinks[k].x_diff[0] = 0.f;
+    sinks[k].x_diff[1] = 0.f;
+    sinks[k].x_diff[2] = 0.f;
+  }
 
-    /* sinks: Get dt_min/dt_max */
-    for (int k = 0; k < sink_count; k++) {
+  /* bparts: Get dt_min/dt_max */
+  for (int k = 0; k < bcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (sinks[k].time_bin == time_bin_not_created)
-        error("Extra sink-particle present in space_split()");
-      if (sinks[k].time_bin == time_bin_inhibited)
-        error("Inhibited sink-particle present in space_split()");
+    if (bparts[k].time_bin == time_bin_not_created)
+      error("Extra b-particle present in space_split()");
+    if (bparts[k].time_bin == time_bin_inhibited)
+      error("Inhibited b-particle present in space_split()");
 #endif
 
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = sinks[k].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+    /* When does this particle's time-step start and end? */
+    const timebin_t time_bin = bparts[k].time_bin;
+    const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+    const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
-      ti_sinks_end_min = min(ti_sinks_end_min, ti_end);
-      ti_sinks_beg_max = max(ti_sinks_beg_max, ti_beg);
+    ti_black_holes_end_min = min(ti_black_holes_end_min, ti_end);
+    ti_black_holes_beg_max = max(ti_black_holes_beg_max, ti_beg);
 
-      sinks_h_max = max(sinks_h_max, sinks[k].h);
+    black_holes_h_max = max(black_holes_h_max, bparts[k].h);
 
-      if (sink_is_active(&sinks[k], e))
-        sinks_h_max_active = max(sinks_h_max_active, sinks[k].h);
+    if (bpart_is_active(&bparts[k], e))
+      black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
 
-      cell_set_sink_h_depth(&sinks[k], c);
+    cell_set_bpart_h_depth(&bparts[k], c);
 
-      /* Reset x_diff */
-      sinks[k].x_diff[0] = 0.f;
-      sinks[k].x_diff[1] = 0.f;
-      sinks[k].x_diff[2] = 0.f;
-    }
-
-    /* bparts: Get dt_min/dt_max */
-    for (int k = 0; k < bcount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (bparts[k].time_bin == time_bin_not_created)
-        error("Extra b-particle present in space_split()");
-      if (bparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited b-particle present in space_split()");
-#endif
-
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = bparts[k].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
-
-      ti_black_holes_end_min = min(ti_black_holes_end_min, ti_end);
-      ti_black_holes_beg_max = max(ti_black_holes_beg_max, ti_beg);
-
-      black_holes_h_max = max(black_holes_h_max, bparts[k].h);
-
-      if (bpart_is_active(&bparts[k], e))
-        black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
-
-      cell_set_bpart_h_depth(&bparts[k], c);
-
-      /* Reset x_diff */
-      bparts[k].x_diff[0] = 0.f;
-      bparts[k].x_diff[1] = 0.f;
-      bparts[k].x_diff[2] = 0.f;
-    }
-
-    /* Construct the multipole and the centre of mass*/
-    if (s->with_self_gravity) {
-      if (gcount > 0) {
-
-        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
-                    e->gravity_properties);
-
-        /* Compute the multipole power */
-        gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-
-      } else {
-
-        /* No gparts in that leaf cell */
-
-        /* Set the values to something sensible */
-        gravity_multipole_init(&c->grav.multipole->m_pole);
-        if (c->nodeID == engine_rank) {
-          c->grav.multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
-          c->grav.multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
-          c->grav.multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
-          c->grav.multipole->r_max = 0.;
-        }
-      }
-
-      /* Store the value at rebuild time */
-      c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
-      c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
-      c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
-      c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-    }
+    /* Reset x_diff */
+    bparts[k].x_diff[0] = 0.f;
+    bparts[k].x_diff[1] = 0.f;
+    bparts[k].x_diff[2] = 0.f;
   }
 
   /* Set the values for this cell. */
@@ -726,13 +578,291 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
   c->black_holes.h_max_active = black_holes_h_max_active;
+}
+
+/**
+ * @brief Construct the multipoles of a leaf cell.
+ *
+ * @param c The #cell to populate.
+ * @param e The #engine.
+ */
+static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we actually have a leaf cell */
+  if (c->split != 0)
+    error("Trying to construct leaf multipole for non-leaf cell!");
+#endif
+
+  /* Do we have particles? */
+  if (c->grav.count > 0) {
+
+    gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
+                e->gravity_properties);
+
+    /* Compute the multipole power */
+    gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
+  } else {
+
+    /* No gparts in that leaf cell */
+
+    /* Set the values to something sensible */
+    gravity_multipole_init(&c->grav.multipole->m_pole);
+    if (c->nodeID == engine_rank) {
+      c->grav.multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+      c->grav.multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+      c->grav.multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+      c->grav.multipole->r_max = 0.;
+    }
+  }
+
+  /* Store the value at rebuild time */
+  c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+  c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+  c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+  c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+}
+
+/**
+ * @brief Collect the values from the progeny and store them in the parent.
+ *
+ * @param c The #cell to update.
+ * @param s The #space.
+ */
+static void space_split_update_parent(struct cell *c, struct space *s) {
+
+  /* Define properties we'll compute from the progeny. */
+  float h_max = 0.0f;
+  float h_max_active = 0.0f;
+  float stars_h_max = 0.f;
+  float stars_h_max_active = 0.f;
+  float black_holes_h_max = 0.f;
+  float black_holes_h_max_active = 0.f;
+  float sinks_h_max = 0.f;
+  float sinks_h_max_active = 0.f;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+  integertime_t ti_rt_min_step_size = max_nr_timesteps;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_beg_max = 0;
+
+  /* Loop over progeny. */
+  for (int k = 0; k < 8; k++) {
+
+    /* Get the progenitor */
+    struct cell *cp = c->progeny[k];
+
+    /* Skip empty progeny. */
+    if (cp == NULL) continue;
+
+    /* Update the cell-wide properties */
+    h_max = max(h_max, cp->hydro.h_max);
+    h_max_active = max(h_max_active, cp->hydro.h_max_active);
+    stars_h_max = max(stars_h_max, cp->stars.h_max);
+    stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
+    black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
+    black_holes_h_max_active =
+        max(black_holes_h_max_active, cp->black_holes.h_max_active);
+    sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
+    sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
+    ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+    ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+    ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
+    ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
+    ti_rt_min_step_size = min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
+    ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+    ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
+    ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+    ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+    ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
+    ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+    ti_black_holes_end_min =
+        min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+    ti_black_holes_beg_max =
+        max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+
+    star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+  }
+
+  /* Deal with the multipole */
+  if (s->with_self_gravity) {
+    space_populate_multipole(c);
+  }
+
+  /* Set the smoothing length and timestep props for this cell. */
+  c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
+  c->hydro.ti_end_min = ti_hydro_end_min;
+  c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
+  c->grav.ti_end_min = ti_gravity_end_min;
+  c->grav.ti_beg_max = ti_gravity_beg_max;
+  c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_beg_max = ti_stars_beg_max;
+  c->stars.h_max = stars_h_max;
+  c->stars.h_max_active = stars_h_max_active;
+  c->sinks.ti_end_min = ti_sinks_end_min;
+  c->sinks.ti_beg_max = ti_sinks_beg_max;
+  c->sinks.h_max = sinks_h_max;
+  c->sinks.h_max_active = sinks_h_max_active;
+  c->black_holes.ti_end_min = ti_black_holes_end_min;
+  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+  c->black_holes.h_max = black_holes_h_max;
+  c->black_holes.h_max_active = black_holes_h_max_active;
+}
+
+/**
+ * @brief Recursively split a cell.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to split recursively.
+ * @param tpid The thread ID.
+ */
+void space_split_recursive(struct space *s, struct cell *c,
+                           const short int tpid) {
+
+  const int count = c->hydro.count;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
+  const int with_self_gravity = s->with_self_gravity;
+  const int depth = c->depth;
+  int maxdepth = 0;
+
+  /* Set the tpid for this cell (needed for space_getcells). */
+  c->tpid = tpid;
+
+  /* Extract buffers from this cell. */
+  struct cell_buff *restrict buff = c->split_buffers.buff;
+  struct cell_buff *restrict sbuff = c->split_buffers.sbuff;
+  struct cell_buff *restrict bbuff = c->split_buffers.bbuff;
+  struct cell_buff *restrict gbuff = c->split_buffers.gbuff;
+  struct cell_buff *restrict sink_buff = c->split_buffers.sink_buff;
+
+  /* If the depth is too large, we have a problem and should stop. */
+  if (depth > space_cell_maxdepth) {
+    error(
+        "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
+        "most likely due to having too many particles at the exact same "
+        "position, making the construction of a tree impossible.",
+        space_cell_maxdepth);
+  }
+
+  /* Split or let it be? */
+  const int gparts_need_split = with_self_gravity && gcount > space_splitsize;
+  const int parts_need_split = !with_self_gravity && count > space_splitsize;
+  const int sparts_need_split = !with_self_gravity && scount > space_splitsize;
+  if (gparts_need_split || parts_need_split || sparts_need_split) {
+
+    /* Construct the progeny ready to populate with particles and multipoles
+     * (if doing gravity). */
+    space_construct_progeny(s, c, tpid);
+
+    /* Split the cell's particle data. */
+    cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
+               c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
+               buff, sbuff, bbuff, gbuff, sink_buff);
+
+    /* Set up buffer pointers for progeny at the correct offsets. */
+    struct cell_buff *progeny_buff = buff;
+    struct cell_buff *progeny_sbuff = sbuff;
+    struct cell_buff *progeny_bbuff = bbuff;
+    struct cell_buff *progeny_gbuff = gbuff;
+    struct cell_buff *progeny_sink_buff = sink_buff;
+
+    /* Loop over progeny to process them. */
+    for (int k = 0; k < 8; k++) {
+
+      /* Get the progenitor */
+      struct cell *cp = c->progeny[k];
+
+      /* Set this progeny's buffer pointers to the correct offset. */
+      cp->split_buffers.buff = progeny_buff;
+      cp->split_buffers.sbuff = progeny_sbuff;
+      cp->split_buffers.bbuff = progeny_bbuff;
+      cp->split_buffers.gbuff = progeny_gbuff;
+      cp->split_buffers.sink_buff = progeny_sink_buff;
+
+      /* Advance pointers for next progeny. */
+      if (cp->hydro.count > 0) progeny_buff += cp->hydro.count;
+      if (cp->stars.count > 0) progeny_sbuff += cp->stars.count;
+      if (cp->black_holes.count > 0) progeny_bbuff += cp->black_holes.count;
+      if (cp->grav.count > 0) progeny_gbuff += cp->grav.count;
+      if (cp->sinks.count > 0) progeny_sink_buff += cp->sinks.count;
+
+      /* Remove any progeny with zero particles. */
+      if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
+          cp->black_holes.count == 0 && cp->sinks.count == 0) {
+
+        space_recycle(s, cp);
+        c->progeny[k] = NULL;
+
+      } else {
+
+        space_split_recursive(s, cp, tpid);
+      }
+    }
+
+    /* For split cells, the maxdepth will be determined by the progeny which
+     * are processed. For now, set to current depth. */
+    maxdepth = c->depth;
+  } /* Split or let it be? */
+
+  /* Otherwise we're in a leaf, collect the data from the particles in this
+     leaf cell. */
+  else {
+
+    /* Nothing to see here: clear the progeny. */
+    bzero(c->progeny, sizeof(struct cell *) * 8);
+    c->split = 0;
+    maxdepth = c->depth;
+
+    /* Update the global maximum depth from this leaf. */
+    atomic_max(&s->maxdepth, maxdepth);
+
+    /* Get the time-steps and smoothing lengths for particles in this
+     * leaf and attach them to the leaf cell. */
+    const integertime_t ti_current = s->e->ti_current;
+    const int with_rt = s->e->policy & engine_policy_rt;
+    space_populate_leaf_props(c, s, ti_current, with_rt);
+
+    /* Construct the multipole and the centre of mass. */
+    if (s->with_self_gravity) {
+      space_construct_leaf_multipole(c, s->e);
+    }
+
+    /* Now propagate the data up the tree. */
+    struct cell *curr = c;
+    while (curr->parent != NULL) {
+
+      /* Move up to the parent. */
+      struct cell *parent = curr->parent;
+
+      /* Ensure no one else is updating this parent at the same time. */
+      if (lock_lock(&parent->hydro.lock) != 0) error("Failed to lock parent");
+
+      /* Update the parent with data from this child. */
+      space_split_update_parent(parent, s);
+
+      /* Ok, someone else can touch it now. */
+      if (lock_unlock(&parent->hydro.lock) != 0)
+        error("Failed to unlock parent");
+
+      /* Next please... */
+      curr = parent;
+    }
+  }
+
+  /* Set the maximum depth. */
   c->maxdepth = maxdepth;
 
   /* No runner owns this cell yet. We assign those during scheduling. */
   c->owner = -1;
-
-  /* Store the global max depth */
-  if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 }
 
 /**
