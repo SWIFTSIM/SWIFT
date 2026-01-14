@@ -35,6 +35,10 @@
  */
 void cell_init_part(struct cell *c, const struct engine *e) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID) error("Calling function on foreign cell!");
+#endif
+
   if (c->split) {
     /* Loop over the progeny and recurse. */
     for (int k = 0; k < 8; k++) {
@@ -76,6 +80,10 @@ void cell_init_part(struct cell *c, const struct engine *e) {
  */
 void cell_init_gpart(struct cell *c, const struct engine *e) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID) error("Calling function on foreign cell!");
+#endif
+
   if (c->split) {
     /* Loop over the progeny and recurse. */
     for (int k = 0; k < 8; k++) {
@@ -115,6 +123,10 @@ void cell_init_gpart(struct cell *c, const struct engine *e) {
  * @param e The #engine.
  */
 void cell_init_spart(struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID) error("Calling function on foreign cell!");
+#endif
 
   if (c->split) {
     /* Loop over the progeny and recurse. */
@@ -156,6 +168,10 @@ void cell_init_spart(struct cell *c, const struct engine *e) {
  */
 void cell_init_bpart(struct cell *c, const struct engine *e) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID) error("Calling function on foreign cell!");
+#endif
+
   if (c->split) {
     /* Loop over the progeny and recurse. */
     for (int k = 0; k < 8; k++) {
@@ -195,6 +211,10 @@ void cell_init_bpart(struct cell *c, const struct engine *e) {
  * @param e The #engine.
  */
 void cell_init_sink(struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID) error("Calling function on foreign cell!");
+#endif
 
   if (c->split) {
     /* Loop over the progeny and recurse. */
