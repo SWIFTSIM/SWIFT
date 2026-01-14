@@ -298,6 +298,19 @@ static int threadpool_queue_get_task(struct threadpool_queue_state *state,
  * @param tp The #threadpool.
  * @param thread_id The ID of this worker thread.
  */
+/**
+ * @brief Worker thread main loop for queue-based processing.
+ *
+ * This is called from threadpool_runner if the threadpool is configured
+ * to use queues.
+ *
+ * Continuously tries to get tasks from the work-stealing queues, processes
+ * them, and sleeps when no work is available. Terminates when all queues
+ * are empty and no tasks are in flight.
+ *
+ * @param tp The #threadpool.
+ * @param thread_id The ID of this worker thread.
+ */
 void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 
   /* Store thread ID as thread-specific data. */
@@ -307,50 +320,80 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
   /* Get the queue state for this threadpool. */
   struct threadpool_queue_state *state = tp->queue_state;
 
-  /* Buffer for retrieved tasks. */
-  struct threadpool_queue_task tasks[64];
+  /* Buffers for batch processing. */
+  struct threadpool_queue_task tasks[128];
+  void *batch_buffer[128];
 
   while (1) {
 
     /* Determine the desired chunk size. */
     int desired;
     if (tp->map_data_chunk == threadpool_uniform_chunk_size) {
-      desired = 64; /* Arbitrary chunk size for uniform mode */
+      desired = 128; /* High throughput for uniform mode */
     } else {
-      /* Auto or fixed chunk size: scale with remaining work */
-      /* Note: tasks_in_flight is volatile, so direct read is safe for heuristic
-       */
+      /* Dynamic sizing: scale with remaining work (Guided scheduling) */
       const int remaining = state->tasks_in_flight;
       desired = remaining / (2 * tp->num_threads);
 
-      /* Cap to the limit set in map_with_queue */
+      /* Clamp to the limit set in map_with_queue */
       if (desired > tp->map_data_chunk) desired = tp->map_data_chunk;
       if (desired < 1) desired = 1;
     }
 
-    /* Cap to buffer size */
-    if (desired > 64) desired = 64;
+    /* Clamp to local buffer size */
+    if (desired > 128) desired = 128;
 
-    /* Try to get work. */
-    int count = threadpool_queue_get_task(state, thread_id, tasks, desired);
-    if (count > 0) {
+    /* Try to get tasks in bulk. */
+    int n_tasks = threadpool_queue_get_task(state, thread_id, tasks, desired);
 
+    if (n_tasks > 0) {
+      int batch_count = 0;
       int total_processed = 0;
 
-      /* Execute the tasks. */
-      for (int i = 0; i < count; i++) {
+      for (int i = 0; i < n_tasks; i++) {
+        total_processed += tasks[i].count;
+
+        /* If this is a single item, we can batch it. */
+        if (tasks[i].count == 1) {
+          batch_buffer[batch_count++] = tasks[i].data;
+        } else {
+          /* If we have a chunk, flush the batch first. */
+          if (batch_count > 0) {
+#ifdef SWIFT_DEBUG_THREADPOOL
+            ticks tic = getticks();
+#endif
+            state->map_function(batch_buffer, batch_count,
+                                state->map_extra_data);
+#ifdef SWIFT_DEBUG_THREADPOOL
+            threadpool_log(tp, thread_id, batch_count, tic, getticks());
+#endif
+            batch_count = 0;
+          }
+
+          /* Now process the large chunk directly. */
+#ifdef SWIFT_DEBUG_THREADPOOL
+          ticks tic = getticks();
+#endif
+          state->map_function(tasks[i].data, tasks[i].count,
+                              state->map_extra_data);
+#ifdef SWIFT_DEBUG_THREADPOOL
+          threadpool_log(tp, thread_id, tasks[i].count, tic, getticks());
+#endif
+        }
+      }
+
+      /* Flush remaining batched items. */
+      if (batch_count > 0) {
 #ifdef SWIFT_DEBUG_THREADPOOL
         ticks tic = getticks();
 #endif
-        state->map_function(tasks[i].data, tasks[i].count,
-                            state->map_extra_data);
+        state->map_function(batch_buffer, batch_count, state->map_extra_data);
 #ifdef SWIFT_DEBUG_THREADPOOL
-        threadpool_log(tp, thread_id, tasks[i].count, tic, getticks());
+        threadpool_log(tp, thread_id, batch_count, tic, getticks());
 #endif
-        total_processed += tasks[i].count;
       }
 
-      /* Decrement the in-flight counter. */
+      /* Decrement in-flight counter. */
       atomic_sub(&state->tasks_in_flight, total_processed);
       continue;
     }
@@ -358,20 +401,16 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
     /* No immediate work available. Check if we are done or need to sleep. */
     pthread_mutex_lock(&state->sleep_lock);
 
-    /* Re-check termination condition under the lock to prevent lost wakeups. */
+    /* Re-check under lock to avoid lost wakeup race. */
     if (state->tasks_in_flight == 0) {
       if (state->sleeping_count > 0) pthread_cond_broadcast(&state->sleep_cond);
       pthread_mutex_unlock(&state->sleep_lock);
       break;
     }
 
-    /* Sleep until new work arrives. */
+    /* Sleep until work or termination. */
     state->sleeping_count++;
-
-    /* Spurious wake-ups are harmless - we'll just loop again. */
     pthread_cond_wait(&state->sleep_cond, &state->sleep_lock);
-
-    /* Wakey wakey */
     state->sleeping_count--;
     pthread_mutex_unlock(&state->sleep_lock);
   }

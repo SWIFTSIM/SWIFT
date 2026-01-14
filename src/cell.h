@@ -808,6 +808,82 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
   }
 }
 
+/**
+ * @brief Compute the square of the minimal distance between any two points in
+ * two cells including the maximum displacement of any particle.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Are we using periodic BCs?
+ * @param dim The dimensions of the simulation volume
+ */
+__attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const int periodic, const double dim[3]) {
+
+  const double cix_min = ci->loc[0] - ci->hydro.dx_max_part;
+  const double ciy_min = ci->loc[1] - ci->hydro.dx_max_part;
+  const double ciz_min = ci->loc[2] - ci->hydro.dx_max_part;
+  const double cjx_min = cj->loc[0] - cj->hydro.dx_max_part;
+  const double cjy_min = cj->loc[1] - cj->hydro.dx_max_part;
+  const double cjz_min = cj->loc[2] - cj->hydro.dx_max_part;
+
+  const double cix_max = ci->loc[0] + ci->width[0] + ci->hydro.dx_max_part;
+  const double ciy_max = ci->loc[1] + ci->width[1] + ci->hydro.dx_max_part;
+  const double ciz_max = ci->loc[2] + ci->width[2] + ci->hydro.dx_max_part;
+  const double cjx_max = cj->loc[0] + cj->width[0] + cj->hydro.dx_max_part;
+  const double cjy_max = cj->loc[1] + cj->width[1] + cj->hydro.dx_max_part;
+  const double cjz_max = cj->loc[2] + cj->width[2] + cj->hydro.dx_max_part;
+
+  if (periodic) {
+
+    const double dx = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
+                           fabs(nearest(cix_min - cjx_max, dim[0])),
+                           fabs(nearest(cix_max - cjx_min, dim[0])),
+                           fabs(nearest(cix_max - cjx_max, dim[0])));
+
+    const double dy = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
+                           fabs(nearest(ciy_min - cjy_max, dim[1])),
+                           fabs(nearest(ciy_max - cjy_min, dim[1])),
+                           fabs(nearest(ciy_max - cjy_max, dim[1])));
+
+    const double dz = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
+                           fabs(nearest(ciz_min - cjz_max, dim[2])),
+                           fabs(nearest(ciz_max - cjz_min, dim[2])),
+                           fabs(nearest(ciz_max - cjz_max, dim[2])));
+
+    return dx * dx + dy * dy + dz * dz;
+
+  } else {
+
+    const double dx = min4(fabs(cix_min - cjx_min), fabs(cix_min - cjx_max),
+                           fabs(cix_max - cjx_min), fabs(cix_max - cjx_max));
+    const double dy = min4(fabs(ciy_min - cjy_min), fabs(ciy_min - cjy_max),
+                           fabs(ciy_max - cjy_min), fabs(ciy_max - cjy_max));
+    const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
+                           fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
+
+    return dx * dx + dy * dy + dz * dz;
+  }
+}
+
+/**
+ * @brief Does a cell contain another cell as a descendant?
+ *
+ * @param ci The cell that may contain the descendant.
+ * @param descendant The cell that may be a descendant.
+ * @return 1 if ci contains descendant, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_contains_progeny(
+    const struct cell *ci, const struct cell *descendant) {
+  const struct cell *curr = descendant;
+  while (curr != NULL) {
+    if (curr == ci) return 1;
+    curr = curr->parent;
+  }
+  return 0;
+}
+
 /* Inlined functions (for speed). */
 
 /**
