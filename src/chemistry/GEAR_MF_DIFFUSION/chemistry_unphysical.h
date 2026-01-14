@@ -41,15 +41,17 @@
  * 0: after density compuations (chemistry_end_density()),
  * 1: during gradients extrapolation (chemistry_gradients_predict()),
  * 2: after diffusion computations (chemistry_end_force()),
- * 3: during drift (chemistry_predict_extra()).
  *
  * @param element Integer identifier for the metal specie to correct.
  * @param id Particle id.
+ * @param negativity_counter Counts the successive number of time the particle
+ * was negative.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
                                  const double gas_mass, int callloc,
-                                 const int element, const long long id) {
+                                 const int element, const long long id,
+                                 unsigned int *negativity_counter) {
 
   if (isinf(*metal_mass) || isnan(*metal_mass))
     error("[%lld, %d] Got inf/nan metal density/mass diffusion case %d | %.6e ",
@@ -63,21 +65,31 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = (Z_old >= 0.0) ? mZ_old : 0.0;
     } else {
-      /* Note: Correcting metal masses afterwards can artificially create metal
-         mass out of nothing. This mass creation might is never compensated and
-         can lead to huge metal mass creation, bigger than gas mass. */
-      warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e", id,
-            element, callloc, *metal_mass, metal_mass_fraction, mZ_old, Z_old);
-      /* metal_mass = 0.0; */
+      /* TODO: Add a defined constant */
+      if (*negativity_counter >= 2 && callloc == 2) {
+	/* Be verbose */
+	warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %ui", id,
+		element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
+		Z_old, *negativity_counter);
+      }
+      (*negativity_counter)++;
     }
   }
 
   if (*metal_mass > gas_mass) {
-    if (callloc == 1 && mZ_old <= gas_mass) {
+    if (callloc == 1) {
       /* Do not extrapolate, use 0th order reconstruction. */
-      *metal_mass = mZ_old;
+      if (mZ_old <= gas_mass) {
+        *metal_mass = mZ_old;
+      } else {
+        /* Something went very wrong somewhere! Set artificially to 0 to move
+           this mass excess away */
+	*metal_mass = 0.0;
+      }
     } else {
-      *metal_mass /= 1.1 * mZ_old / gas_mass;
+      /* DO NOT do this unless strictly necessary. This breaks metal mass
+	 conservation */
+      /* *metal_mass /= 1.1 * mZ_old / gas_mass; */
       warning(
           "[%lld, %d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
           id, element, callloc, *metal_mass, mZ_old, gas_mass);

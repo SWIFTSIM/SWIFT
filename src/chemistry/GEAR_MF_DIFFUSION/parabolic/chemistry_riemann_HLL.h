@@ -214,6 +214,10 @@ chemistry_riemann_solver_hopkins2017_HLL(
     qi = chemistry_get_metal_mass_fraction(pi, m);
     qj = chemistry_get_metal_mass_fraction(pj, m);
   }
+  /* Ensure positivity */
+  qi = (qi < 0.0) ? 0.0 : qi;
+  qj = (qj < 0.0) ? 0.0 : qj;
+
   const double dq = qj - qi;
   const double grad_q_dir[3] = {dx_p[0] * dq / dx_p_norm_2,
                                 dx_p[1] * dq / dx_p_norm_2,

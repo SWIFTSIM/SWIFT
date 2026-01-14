@@ -124,10 +124,13 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   double m_Zi = Ui[0] * mi / hydro_get_comoving_density(pi);
   double m_Zj = Uj[0] * mj / hydro_get_comoving_density(pj);
 
+  unsigned int dumb;
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-                                   /*callloc=*/1, /*element*/ metal, pi->id);
+                                   /*callloc=*/1, /*element*/ metal, pi->id,
+				   /*neg_counter*/ &dumb);
   chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-                                   /*callloc=*/1, /*element*/ metal, pj->id);
+                                   /*callloc=*/1, /*element*/ metal, pj->id,
+				   &dumb);
 
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */

@@ -47,10 +47,15 @@ struct chemistry_part_data {
     /*! Metal mass flux computed with the Riemann solver */
     double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
-  /*! Particle chemistry time-step. */
+    /*! Particle chemistry time-step. */
     float dt;
 
   } flux;
+
+  struct {
+    /* Counts the successive number of times this particle was negative */
+    unsigned int negativity_counter[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  } check;
 
   /*! Isotropic diffusion coefficient. The matrix K is proportional to kappa.
    Note about units:

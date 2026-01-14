@@ -422,14 +422,14 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     error("Volume is 0!");
   }
 #endif
-  /* Comment this for now */
   /* Check that the metal masses are physical */
-  /* for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) { */
-  /*   const double m_metal_old = p->chemistry_data.metal_mass[g]; */
-  /*   chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g], */
-  /*                                    m_metal_old, hydro_get_mass(p), */
-  /*                                    /\*callloc=*\/0, /\*element*\/ g, p->id); */
-  /* } */
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    const double m_metal_old = p->chemistry_data.metal_mass[m];
+    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[m],
+                                     m_metal_old, hydro_get_mass(p),
+                                     /*callloc=*/0, /*element*/ m, p->id,
+                                     &p->chemistry_data.check.negativity_counter[m]);
+  }
   /* Sanity check on the total metal mass */
   chemistry_check_unphysical_total_metal_mass(p, 0);
 
@@ -510,7 +510,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
     chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
                                      hydro_get_mass(p), /*callloc=*/2,
-                                     /*element*/ i, p->id);
+                                     /*element*/ i, p->id,
+                                     &chd->check.negativity_counter[i]);
   }
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
@@ -578,6 +579,13 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   chd->filtered.rho_v[1] = 0.0;
   chd->filtered.rho_v[2] = 0.0;
 
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    /* Reset the counter */
+    if (p->chemistry_data.metal_mass[m] >= 0.0) {
+      chd->check.negativity_counter[m] = 0;
+    }
+  }
+
   /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
 
@@ -615,6 +623,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
       p->chemistry_data.metal_mass[i] =
           cd->initial_metallicities[i] * hydro_get_mass(p);
     }
+    p->chemistry_data.check.negativity_counter[i] = 0;
   }
 
   /* Init the part chemistry data */
