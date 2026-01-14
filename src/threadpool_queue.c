@@ -535,20 +535,34 @@ void threadpool_map_with_queue(struct threadpool *tp,
      * no other thread should be touching this queue yet, but for safety). */
     pthread_mutex_lock(&state->queues[i].lock);
 
-    /* Break the thread's work into chunks and add to the queue. */
+    /* Calculate the number of tasks required. */
+    const int num_new_tasks =
+        (thread_count + initial_chunk_size - 1) / initial_chunk_size;
+
+    /* Resize the queue if necessary. */
+    const int current_count = state->queues[i].tail - state->queues[i].head;
+    threadpool_queue_reserve(&state->queues[i], current_count + num_new_tasks);
+
+    /* Add the tasks to the queue. */
+    struct threadpool_queue *q = &state->queues[i];
+    const int mask = q->capacity - 1;
     size_t local_offset = 0;
-    while (local_offset < thread_count) {
+
+    for (int k = 0; k < num_new_tasks; k++) {
       const int current_chunk =
           (int)min((size_t)initial_chunk_size, thread_count - local_offset);
       void *chunk_data =
           (char *)map_data + (stride * (thread_offset + local_offset));
 
-      threadpool_queue_push_locked(&state->queues[i], chunk_data,
-                                   current_chunk);
+      const int index = q->tail & mask;
+      q->tasks[index].data = chunk_data;
+      q->tasks[index].count = current_chunk;
+      q->tail++;
 
-      task_count++;
       local_offset += (size_t)current_chunk;
     }
+
+    task_count += num_new_tasks;
 
     /* Done with this queue. */
     pthread_mutex_unlock(&state->queues[i].lock);
