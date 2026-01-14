@@ -68,11 +68,13 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
       /* TODO: Add a defined constant */
       if (*negativity_counter >= 2 && callloc == 2) {
 	/* Be verbose */
-	warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %ui", id,
+	warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %u", id,
 		element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
 		Z_old, *negativity_counter);
       }
-      (*negativity_counter)++;
+      if (callloc == 2) {
+        (*negativity_counter)++;
+      }
     }
   }
 
