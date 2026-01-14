@@ -389,10 +389,10 @@ runner_iact_chemistry_fluxes_common(
     chj->timestepvars.delxbar += Anorm / Xi;
   }
 
-  chi->timestepvars.delxbar += wj * hj_inv_dim * Anorm;
-  if (interaction_mode == 1) {
-    chj->timestepvars.delxbar += wi * hi_inv_dim * Anorm;
-  }
+  /* chi->timestepvars.delxbar += wj * hj_inv_dim * Anorm; */
+  /* if (interaction_mode == 1) { */
+  /*   chj->timestepvars.delxbar += wi * hi_inv_dim * Anorm; */
+  /* } */
 
   /* Compute the normal vector of the interface */
   const float n_unit[3] = {A[0] * Anorm_inv, A[1] * Anorm_inv,
