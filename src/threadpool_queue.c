@@ -21,6 +21,7 @@
 #include <config.h>
 
 /* Some standard headers. */
+#include <limits.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,19 +50,19 @@ void threadpool_queue_init(struct threadpool *tp) {
 
   /* Initialize the state. */
   state->tp = tp;
-  state->queues = (struct threadpool_queue *)calloc(
-      tp->num_threads, sizeof(struct threadpool_queue));
-  if (state->queues == NULL) error("Failed to allocate per-thread queues.");
 
-  /* Initialize each per-thread queue. */
-  for (int i = 0; i < tp->num_threads; i++) {
-    if (pthread_mutex_init(&state->queues[i].lock, NULL) != 0)
-      error("Failed to initialize queue mutex.");
-    state->queues[i].tasks = NULL;
-    state->queues[i].capacity = 0;
-    state->queues[i].head = 0;
-    state->queues[i].tail = 0;
-  }
+  /* Initialize the shared queue. */
+  /* We use the first queue slot in the structure as the shared queue. */
+  state->queues = (struct threadpool_queue *)calloc(
+      1, sizeof(struct threadpool_queue));
+  if (state->queues == NULL) error("Failed to allocate shared queue.");
+
+  if (pthread_mutex_init(&state->queues[0].lock, NULL) != 0)
+    error("Failed to initialize queue mutex.");
+  state->queues[0].tasks = NULL;
+  state->queues[0].capacity = 0;
+  state->queues[0].head = 0;
+  state->queues[0].tail = 0;
 
   /* Initialize synchronization primitives. */
   if (pthread_mutex_init(&state->sleep_lock, NULL) != 0)
@@ -71,8 +72,7 @@ void threadpool_queue_init(struct threadpool *tp) {
 
   /* Initialize counters. */
   state->sleeping_count = 0;
-  state->is_sleeping = (int *)calloc(tp->num_threads, sizeof(int));
-  if (state->is_sleeping == NULL) error("Failed to allocate is_sleeping array.");
+  state->is_sleeping = NULL; /* Not used in single queue mode */
   state->active = 0;
   state->tasks_in_flight = 0;
   state->map_function = NULL;
@@ -93,11 +93,9 @@ void threadpool_queue_clean(struct threadpool *tp) {
   struct threadpool_queue_state *state = tp->queue_state;
   if (state == NULL) return;
 
-  /* Clean up per-thread queues. */
-  for (int i = 0; i < tp->num_threads; i++) {
-    pthread_mutex_destroy(&state->queues[i].lock);
-    free(state->queues[i].tasks);
-  }
+  /* Clean up the shared queue. */
+  pthread_mutex_destroy(&state->queues[0].lock);
+  free(state->queues[0].tasks);
   free(state->queues);
 
   /* Clean up synchronization primitives. */
@@ -105,7 +103,6 @@ void threadpool_queue_clean(struct threadpool *tp) {
   pthread_cond_destroy(&state->sleep_cond);
 
   /* Free the state. */
-  free((void *)state->is_sleeping);
   free(state);
   tp->queue_state = NULL;
 }
@@ -113,16 +110,6 @@ void threadpool_queue_clean(struct threadpool *tp) {
 /**
  * @brief Ensure a queue has capacity for at least the requested number of
  * tasks.
- *
- * Resizes the queue buffer to a power-of-2 size that can hold at least
- * @c need tasks. The buffer size always grows by powers of 2 for efficient
- * indexing with bitwise AND.
- *
- * Note that the queue remains allocated once grown instead of being freed
- * at the end of a call to threadpool_map_with_queue to avoid repeated
- * allocations. This is fine since of the course of the run the maximum queue
- * size will be relatively stable (and likely grow rather than shrink). It will
- * be freed when the threadpool is destroyed and threadpool_clean is called.
  *
  * @param queue The #threadpool_queue to resize.
  * @param need The minimum number of tasks the queue must hold.
@@ -180,136 +167,37 @@ static void threadpool_queue_push_locked(struct threadpool_queue *queue,
 }
 
 /**
- * @brief Try to pop tasks from the back of the owner's queue (LIFO).
- *
- * The owner thread pops from the tail (back) of its own queue in LIFO (Last In
- * First Out) order. This provides good cache locality by working on
- * recently-added tasks first. The queue is logically a circular buffer indexed
- * by head and tail, where head <= tail. When a task is popped, tail is
- * decremented.
- *
- * @param queue The #threadpool_queue to pop from.
- * @param tasks Array to receive the tasks.
- * @param max_tasks Maximum number of tasks to pop.
- *
- * @return Number of tasks popped.
- */
-static int threadpool_queue_owner_pop(struct threadpool_queue *queue,
-                                      struct threadpool_queue_task *tasks,
-                                      int max_tasks) {
-
-  /* Lock before we try to access the queue. */
-  int popped = 0;
-  pthread_mutex_lock(&queue->lock);
-
-  /* Check if queue has tasks (tail > head means non-empty). */
-  while (popped < max_tasks && queue->tail - queue->head > 0) {
-    queue->tail--;
-    const int index = queue->tail & (queue->capacity - 1);
-    tasks[popped] = queue->tasks[index];
-    popped++;
-  }
-
-  /* Release the lock, we're open for theft. */
-  pthread_mutex_unlock(&queue->lock);
-  return popped;
-}
-
-/**
- * @brief Try to steal tasks from the front of another thread's queue (FIFO).
- *
- * Stealing threads take from the head (front) of the victim's queue in FIFO
- * (First In First Out) order, opposite from the owner which pops from the tail.
- * This reduces contention - the owner and thieves work from opposite ends of
- * the queue. Stealing the oldest tasks also promotes better load balancing, as
- * these are often larger chunks that were added first. When a task is stolen,
- * head is incremented.
- *
- * @param queue The #threadpool_queue to steal from.
- * @param tasks Array to receive the tasks.
- * @param max_tasks Maximum number of tasks to steal.
- *
- * @return Number of tasks stolen.
- */
-static int threadpool_queue_steal(struct threadpool_queue *queue,
-                                  struct threadpool_queue_task *tasks,
-                                  int max_tasks) {
-
-  /* Lock before we try to access the queue. */
-  int stolen = 0;
-  pthread_mutex_lock(&queue->lock);
-
-  /* Check if queue has tasks (tail > head means non-empty). */
-  while (stolen < max_tasks && queue->tail - queue->head > 0) {
-    const int index = queue->head & (queue->capacity - 1);
-    tasks[stolen] = queue->tasks[index];
-    queue->head++;
-    stolen++;
-  }
-
-  /* Mischief managed, release the lock. */
-  pthread_mutex_unlock(&queue->lock);
-  return stolen;
-}
-
-/**
- * @brief Try to get tasks for the given thread.
- *
- * First tries to pop from the thread's own queue, then attempts to steal
- * from other threads' queues in round-robin order.
+ * @brief Get tasks from the shared queue.
  *
  * @param state The #threadpool_queue_state.
- * @param thread_id The ID of the requesting thread.
  * @param tasks Array to receive the tasks.
  * @param max_tasks Maximum number of tasks to get.
  *
  * @return Number of tasks obtained.
  */
 static int threadpool_queue_get_task(struct threadpool_queue_state *state,
-                                     int thread_id,
                                      struct threadpool_queue_task *tasks,
                                      int max_tasks) {
 
-  /* Try own queue first. */
-  int got = threadpool_queue_owner_pop(&state->queues[thread_id], tasks,
-                                       max_tasks);
-  if (got > 0) return got;
+  struct threadpool_queue *queue = &state->queues[0];
+  int popped = 0;
 
-  /* Try stealing from other threads. */
-  for (int offset = 1; offset < state->tp->num_threads; offset++) {
-    const int victim_id = (thread_id + offset) % state->tp->num_threads;
-    got = threadpool_queue_steal(&state->queues[victim_id], tasks, max_tasks);
-    if (got > 0)
-      /* Heist successful! */
-      return got;
+  pthread_mutex_lock(&queue->lock);
+
+  /* Check if queue has tasks. */
+  while (popped < max_tasks && queue->tail - queue->head > 0) {
+    const int index = queue->head & (queue->capacity - 1);
+    tasks[popped] = queue->tasks[index];
+    queue->head++;
+    popped++;
   }
 
-  /* No work available. */
-  return 0;
+  pthread_mutex_unlock(&queue->lock);
+  return popped;
 }
 
 /**
  * @brief Worker thread main loop for queue-based processing.
- *
- * This is called from threadpool_runner if the threadpool is configured
- * to use queues.
- *
- * Continuously tries to get tasks from the work-stealing queues, processes
- * them, and sleeps when no work is available. Terminates when all queues
- * are empty and no tasks are in flight.
- *
- * @param tp The #threadpool.
- * @param thread_id The ID of this worker thread.
- */
-/**
- * @brief Worker thread main loop for queue-based processing.
- *
- * This is called from threadpool_runner if the threadpool is configured
- * to use queues.
- *
- * Continuously tries to get tasks from the work-stealing queues, processes
- * them, and sleeps when no work is available. Terminates when all queues
- * are empty and no tasks are in flight.
  *
  * @param tp The #threadpool.
  * @param thread_id The ID of this worker thread.
@@ -330,36 +218,37 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
   while (1) {
 
     /* Determine the desired chunk size. */
-    int desired;
+    ptrdiff_t chunk_size;
     if (tp->map_data_chunk == threadpool_uniform_chunk_size) {
-      desired = 128; /* High throughput for uniform mode */
+      chunk_size = ((thread_id + 1) * tp->map_data_size / tp->num_threads) -
+                   (thread_id * tp->map_data_size / tp->num_threads);
     } else {
-      /* Dynamic sizing: scale with remaining work (Guided scheduling) */
-      const int remaining = state->tasks_in_flight;
-      desired = remaining / (2 * tp->num_threads);
-
-      /* Clamp to the limit set in map_with_queue */
-      if (desired > tp->map_data_chunk) desired = tp->map_data_chunk;
-      if (desired < 1) desired = 1;
+      chunk_size =
+          (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
+      if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
     }
+    if (chunk_size < 1) chunk_size = 1;
+    if (chunk_size > INT_MAX) chunk_size = INT_MAX;
 
-    /* Clamp to local buffer size */
-    if (desired > 128) desired = 128;
+    /* Clamp the number of tasks we fetch from the queue. */
+    int desired_queue_tasks = (int)chunk_size;
+    if (desired_queue_tasks > 128) desired_queue_tasks = 128;
 
-    /* Try to get tasks in bulk. */
-    int n_tasks = threadpool_queue_get_task(state, thread_id, tasks, desired);
+    /* Try to get tasks from the shared queue first (donated work). */
+    int n_tasks =
+        threadpool_queue_get_task(state, tasks, desired_queue_tasks);
 
+    /* If we got queue tasks, process them. */
     if (n_tasks > 0) {
       int batch_count = 0;
 
       /* Execute the tasks. */
       for (int i = 0; i < n_tasks; i++) {
 
-        /* If this is a single item, we can batch it. */
         if (tasks[i].count == 1) {
           batch_buffer[batch_count++] = tasks[i].data;
         } else {
-          /* If we have a chunk, flush the batch first. */
+          /* Flush batch if necessary. */
           if (batch_count > 0) {
 #ifdef SWIFT_DEBUG_THREADPOOL
             ticks tic = getticks();
@@ -372,7 +261,7 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
             batch_count = 0;
           }
 
-          /* Now process the large chunk directly. */
+          /* Process large chunk. */
 #ifdef SWIFT_DEBUG_THREADPOOL
           ticks tic = getticks();
 #endif
@@ -395,16 +284,43 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 #endif
       }
 
-      /* Decrement in-flight counter by the number of tasks retrieved. */
+      /* Decrement in-flight counter. */
       atomic_sub(&state->tasks_in_flight, n_tasks);
+      continue;
+    }
+
+    /* Queue is empty, try to get a chunk from the main range (threadpool_map style). */
+    size_t task_ind = atomic_add(&tp->map_data_count, chunk_size);
+    if (task_ind < tp->map_data_size) {
+      /* We got a valid range! */
+      if (task_ind + chunk_size > tp->map_data_size)
+        chunk_size = tp->map_data_size - task_ind;
+
+#ifdef SWIFT_DEBUG_THREADPOOL
+      ticks tic = getticks();
+#endif
+      state->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
+                          (int)chunk_size, state->map_extra_data);
+#ifdef SWIFT_DEBUG_THREADPOOL
+      threadpool_log(tp, thread_id, chunk_size, tic, getticks());
+#endif
+
+      /* Update in-flight counter to reflect the work we just picked up. 
+       * Note: In threadpool_map, we don't track in-flight tasks this way, 
+       * but for the queue sleep logic to work, we need to know threads are busy. 
+       * However, the loop continues and eventually we hit the sleep check. 
+       * The trick is that `tasks_in_flight` tracks *queue* tasks. 
+       * The `map_data_count` tracks the main array. 
+       * A thread is "done" only when `map_data_count >= size` AND `tasks_in_flight == 0`.
+       */
       continue;
     }
 
     /* No immediate work available. Check if we are done or need to sleep. */
     pthread_mutex_lock(&state->sleep_lock);
 
-    /* Re-check under lock to avoid lost wakeup race. */
-    if (state->tasks_in_flight == 0) {
+    /* Re-check both conditions under lock. */
+    if (state->tasks_in_flight == 0 && tp->map_data_count >= tp->map_data_size) {
       if (state->sleeping_count > 0) pthread_cond_broadcast(&state->sleep_cond);
       pthread_mutex_unlock(&state->sleep_lock);
       break;
@@ -412,44 +328,34 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 
     /* Sleep until work or termination. */
     state->sleeping_count++;
-    state->is_sleeping[thread_id] = 1;
     pthread_cond_wait(&state->sleep_cond, &state->sleep_lock);
-    state->is_sleeping[thread_id] = 0;
     state->sleeping_count--;
     pthread_mutex_unlock(&state->sleep_lock);
   }
 }
 
 /**
- * @brief Add work to a specific thread's queue.
- *
- * This function allows threads to dynamically add new work items during
- * execution. Work is added to the target thread's queue and can be stolen
- * by other idle threads if that thread doesn't pick it up first.
+ * @brief Add work to the shared queue.
  *
  * @param tp The #threadpool.
  * @param data_ptrs Array of pointers to data items to process.
  * @param count Number of pointers in the array.
- * @param tid The target thread ID to add the work to.
  */
-void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count,
-                          int tid) {
+void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* No work to add, what are we doing? */
   if (count <= 0) {
     error("Trying to add no work to threadpool queue.");
   }
 #endif
 
-  /* Get the queue state. */
   struct threadpool_queue_state *state = tp->queue_state;
 
-  /* Add each item to the queue. */
-  pthread_mutex_lock(&state->queues[tid].lock);
+  /* Add items to the shared queue. */
+  pthread_mutex_lock(&state->queues[0].lock);
   for (int i = 0; i < count; i++)
-    threadpool_queue_push_locked(&state->queues[tid], data_ptrs[i], 1);
-  pthread_mutex_unlock(&state->queues[tid].lock);
+    threadpool_queue_push_locked(&state->queues[0], data_ptrs[i], 1);
+  pthread_mutex_unlock(&state->queues[0].lock);
 
   /* Update the in-flight counter. */
   atomic_add(&state->tasks_in_flight, count);
@@ -461,34 +367,25 @@ void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count,
 }
 
 /**
- * @brief Find a thread that is currently waiting for work.
+ * @brief Get the number of currently sleeping threads.
  *
  * @param tp The #threadpool.
- * @return The ID of a waiting thread, or -1 if none are waiting.
+ * @return Number of sleeping threads.
  */
-int threadpool_queue_get_waiting_tid(struct threadpool *tp) {
+int threadpool_queue_get_sleeping_count(struct threadpool *tp) {
   struct threadpool_queue_state *state = tp->queue_state;
-  if (state == NULL || state->sleeping_count == 0) return -1;
-
-  for (int i = 0; i < tp->num_threads; i++) {
-    if (state->is_sleeping[i]) return i;
-  }
-  return -1;
+  return (state == NULL) ? 0 : state->sleeping_count;
 }
 
 /**
- * @brief Map a function over data using work-stealing queues.
- *
- * Similar to threadpool_map(), but uses work-stealing queues to enable
- * dynamic load balancing. Threads can steal work from each other, and
- * new work can be added during execution via threadpool_queue_add().
+ * @brief Map a function over data using a shared queue.
  *
  * @param tp The #threadpool.
  * @param map_function The function to apply to each data chunk.
  * @param map_data Array of data to process.
  * @param count Total number of elements in map_data.
  * @param stride Size in bytes of each element.
- * @param chunk_size Chunk size hint (see threadpool_map() for details).
+ * @param chunk_size Chunk size hint.
  * @param extra_data Additional data passed to the map function.
  */
 void threadpool_map_with_queue(struct threadpool *tp,
@@ -500,91 +397,40 @@ void threadpool_map_with_queue(struct threadpool *tp,
   ticks tic_total = getticks();
 #endif
 
-  /* Get the queue state. */
   struct threadpool_queue_state *state = tp->queue_state;
 
-  /* Attach the map function and extra data to the state. */
-  state->map_function = map_function;
-  state->map_extra_data = extra_data;
-
-  /* Determine the chunk size for initial task distribution. */
-  int initial_chunk_size;
+  /* Set the map data and signal the threads (copied from threadpool_map). */
+  tp->map_data_stride = stride;
+  tp->map_data_size = count;
+  tp->map_data_count = 0;
   if (chunk_size == threadpool_auto_chunk_size) {
     tp->map_data_chunk =
         max((count / (tp->num_threads * threadpool_default_chunk_ratio)), 1U);
-    initial_chunk_size = tp->map_data_chunk;
   } else if (chunk_size == threadpool_uniform_chunk_size) {
     tp->map_data_chunk = threadpool_uniform_chunk_size;
-    initial_chunk_size = (count + tp->num_threads - 1) / tp->num_threads;
   } else {
     tp->map_data_chunk = chunk_size;
-    initial_chunk_size = (chunk_size > 0) ? chunk_size : 1;
   }
-
-  /* Distribute initial tasks using block distribution. */
-  int task_count = 0;
-  for (int i = 0; i < tp->num_threads; i++) {
-    const size_t thread_offset = (i * count) / tp->num_threads;
-    const size_t thread_count =
-        ((i + 1) * count) / tp->num_threads - thread_offset;
-
-    /* No work for this thread. */
-    if (thread_count == 0) continue;
-
-    /* Lock the queue while we add tasks (almost certainly unnecessary here as
-     * no other thread should be touching this queue yet, but for safety). */
-    pthread_mutex_lock(&state->queues[i].lock);
-
-    /* Calculate the number of tasks required. */
-    const int num_new_tasks =
-        (thread_count + initial_chunk_size - 1) / initial_chunk_size;
-
-    /* Resize the queue if necessary. */
-    const int current_count = state->queues[i].tail - state->queues[i].head;
-    threadpool_queue_reserve(&state->queues[i], current_count + num_new_tasks);
-
-    /* Add the tasks to the queue. */
-    struct threadpool_queue *q = &state->queues[i];
-    const int mask = q->capacity - 1;
-    size_t local_offset = 0;
-
-    for (int k = 0; k < num_new_tasks; k++) {
-      const int current_chunk =
-          (int)min((size_t)initial_chunk_size, thread_count - local_offset);
-      void *chunk_data =
-          (char *)map_data + (stride * (thread_offset + local_offset));
-
-      const int index = q->tail & mask;
-      q->tasks[index].data = chunk_data;
-      q->tasks[index].count = current_chunk;
-      q->tail++;
-
-      local_offset += (size_t)current_chunk;
-    }
-
-    task_count += num_new_tasks;
-
-    /* Done with this queue. */
-    pthread_mutex_unlock(&state->queues[i].lock);
-  }
-
-  /* Update the in-flight counter. */
-  atomic_add(&state->tasks_in_flight, task_count);
-
-  /* Activate queue mode and set up the threadpool for execution. */
-  state->active = 1;
-  tp->use_queue = 1;
   tp->map_function = map_function;
   tp->map_data = map_data;
   tp->map_extra_data = extra_data;
   tp->num_threads_running = 0;
 
-  /* Start the worker threads and participate in the work. */
+  /* Attach the map function to the queue state as well. */
+  state->map_function = map_function;
+  state->map_extra_data = extra_data;
+  
+  /* Reset in-flight tasks (queue is initially empty). */
+  state->tasks_in_flight = 0;
+
+  /* Activate and run. */
+  state->active = 1;
+  tp->use_queue = 1;
+
   swift_barrier_wait(&tp->run_barrier);
   threadpool_queue_chomp(tp, tp->num_threads - 1);
   swift_barrier_wait(&tp->wait_barrier);
 
-  /* Deactivate queue mode. */
   state->active = 0;
   tp->use_queue = 0;
 

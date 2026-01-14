@@ -831,9 +831,8 @@ void space_split_build_recursive(struct space *s, struct cell *c,
 
         /* Heuristic: if threads are waiting, donate this work. */
         struct threadpool *tp = &s->e->threadpool;
-        int idle_tid = threadpool_queue_get_waiting_tid(tp);
-        if (idle_tid != -1) {
-          threadpool_queue_add(tp, (void **)&cp, 1, idle_tid);
+        if (threadpool_queue_get_sleeping_count(tp) > 0) {
+          threadpool_queue_add(tp, (void **)&cp, 1);
         } else {
           space_split_build_recursive(s, cp, tpid);
         }
