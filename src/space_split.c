@@ -800,13 +800,7 @@ void space_split_build_recursive(struct space *s, struct cell *c,
     struct cell_buff *progeny_gbuff = gbuff;
     struct cell_buff *progeny_sink_buff = sink_buff;
 
-    /* Collect progeny - either to queue or recurse in-place. */
-    struct cell *progeny_to_queue[8];
-    int num_progeny_to_queue = 0;
-    struct cell *progeny_to_recurse[8];
-    int num_progeny_to_recurse = 0;
-
-    /* Loop over progeny, cleaning up or deciding how to process. */
+    /* Loop over progeny to process them. */
     for (int k = 0; k < 8; k++) {
 
       /* Get the progenitor */
@@ -835,51 +829,15 @@ void space_split_build_recursive(struct space *s, struct cell *c,
 
       } else {
 
-        /* Decide whether to queue or recurse in-place based on particle count.
-         * Only use the queue if this progeny is likely to split multiple times
-         * (i.e., has significantly more particles than the split threshold).
-         * This reduces queue overhead for small tasks. */
-        const int cp_max_count =
-            max5(cp->hydro.count, cp->grav.count, cp->stars.count,
-                 cp->black_holes.count, cp->sinks.count);
-
-        /* Heuristic: Recurse locally by default to maintain cache locality.
-         * Only donate work to the queue if:
-         * 1. There are idle workers waiting for tasks.
-         * 2. The task is so large that we should allow future stealing. */
+        /* Heuristic: if threads are waiting, donate this work. */
         struct threadpool *tp = &s->e->threadpool;
-        if ((cp_max_count > space_splitsize &&
-             threadpool_queue_get_waiting(tp) > 0) ||
-            (cp_max_count > space_splitsize * 64)) {
-          /* Add to the queue for parallel processing */
-          progeny_to_queue[num_progeny_to_queue++] = cp;
+        int idle_tid = threadpool_queue_get_waiting_tid(tp);
+        if (idle_tid != -1) {
+          threadpool_queue_add(tp, (void **)&cp, 1, idle_tid);
         } else {
-          /* Recurse in-place to maintain cache locality for small tasks */
-          progeny_to_recurse[num_progeny_to_recurse++] = cp;
+          space_split_build_recursive(s, cp, tpid);
         }
       }
-    }
-
-    /* Add large progeny to the threadpool queue if we have any. */
-    if (num_progeny_to_queue > 0) {
-
-      /* Optimization: keep the last one for this thread to avoid queue overhead
-       */
-      struct cell *keep = progeny_to_queue[num_progeny_to_queue - 1];
-      num_progeny_to_queue--;
-
-      if (num_progeny_to_queue > 0) {
-        threadpool_queue_add(&s->e->threadpool, (void **)progeny_to_queue,
-                             num_progeny_to_queue);
-      }
-
-      /* Recurse on the kept one */
-      space_split_build_recursive(s, keep, tpid);
-    }
-
-    /* Recurse in-place for smaller progeny to maintain cache locality. */
-    for (int i = 0; i < num_progeny_to_recurse; i++) {
-      space_split_build_recursive(s, progeny_to_recurse[i], tpid);
     }
 
     /* For split cells, the maxdepth will be determined by the progeny which

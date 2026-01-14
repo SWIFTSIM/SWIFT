@@ -71,6 +71,8 @@ void threadpool_queue_init(struct threadpool *tp) {
 
   /* Initialize counters. */
   state->sleeping_count = 0;
+  state->is_sleeping = (int *)calloc(tp->num_threads, sizeof(int));
+  if (state->is_sleeping == NULL) error("Failed to allocate is_sleeping array.");
   state->active = 0;
   state->tasks_in_flight = 0;
   state->map_function = NULL;
@@ -103,6 +105,7 @@ void threadpool_queue_clean(struct threadpool *tp) {
   pthread_cond_destroy(&state->sleep_cond);
 
   /* Free the state. */
+  free((void *)state->is_sleeping);
   free(state);
   tp->queue_state = NULL;
 }
@@ -409,24 +412,28 @@ void threadpool_queue_chomp(struct threadpool *tp, int thread_id) {
 
     /* Sleep until work or termination. */
     state->sleeping_count++;
+    state->is_sleeping[thread_id] = 1;
     pthread_cond_wait(&state->sleep_cond, &state->sleep_lock);
+    state->is_sleeping[thread_id] = 0;
     state->sleeping_count--;
     pthread_mutex_unlock(&state->sleep_lock);
   }
 }
 
 /**
- * @brief Add work to the current thread's queue.
+ * @brief Add work to a specific thread's queue.
  *
  * This function allows threads to dynamically add new work items during
- * execution. Work is added to the calling thread's queue and can be stolen
- * by other idle threads.
+ * execution. Work is added to the target thread's queue and can be stolen
+ * by other idle threads if that thread doesn't pick it up first.
  *
  * @param tp The #threadpool.
  * @param data_ptrs Array of pointers to data items to process.
  * @param count Number of pointers in the array.
+ * @param tid The target thread ID to add the work to.
  */
-void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count) {
+void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count,
+                          int tid) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* No work to add, what are we doing? */
@@ -438,14 +445,11 @@ void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count) {
   /* Get the queue state. */
   struct threadpool_queue_state *state = tp->queue_state;
 
-  /* Get the calling thread's ID. */
-  const int thread_id = threadpool_gettid();
-
   /* Add each item to the queue. */
-  pthread_mutex_lock(&state->queues[thread_id].lock);
+  pthread_mutex_lock(&state->queues[tid].lock);
   for (int i = 0; i < count; i++)
-    threadpool_queue_push_locked(&state->queues[thread_id], data_ptrs[i], 1);
-  pthread_mutex_unlock(&state->queues[thread_id].lock);
+    threadpool_queue_push_locked(&state->queues[tid], data_ptrs[i], 1);
+  pthread_mutex_unlock(&state->queues[tid].lock);
 
   /* Update the in-flight counter. */
   atomic_add(&state->tasks_in_flight, count);
@@ -457,14 +461,19 @@ void threadpool_queue_add(struct threadpool *tp, void **data_ptrs, int count) {
 }
 
 /**
- * @brief Get the number of threads currently waiting for work.
+ * @brief Find a thread that is currently waiting for work.
  *
  * @param tp The #threadpool.
- * @return The number of waiting threads.
+ * @return The ID of a waiting thread, or -1 if none are waiting.
  */
-int threadpool_queue_get_waiting(struct threadpool *tp) {
-  if (tp->queue_state == NULL) return 0;
-  return tp->queue_state->sleeping_count;
+int threadpool_queue_get_waiting_tid(struct threadpool *tp) {
+  struct threadpool_queue_state *state = tp->queue_state;
+  if (state == NULL || state->sleeping_count == 0) return -1;
+
+  for (int i = 0; i < tp->num_threads; i++) {
+    if (state->is_sleeping[i]) return i;
+  }
+  return -1;
 }
 
 /**
