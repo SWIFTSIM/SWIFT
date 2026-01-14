@@ -1601,12 +1601,17 @@ int engine_prepare(struct engine *e) {
   if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
       e->run_fof && e->fof_properties->seed_black_holes_enabled) {
 
-    /* Let's start by drifting everybody to the current time */
+    /* Let's start by drifting everybody to the current time.
+     * Do not initialise the particles as we need their drifted
+     * properties for th FOF (BH seeding in particular) */
     engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/0);
     drifted_all = 1;
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
+
+    /* Now, we can init all the active particles to prepare them for the step */
+    engine_init_all_particles(e);
 
     if (e->dump_catalogue_when_seeding) e->snapshot_output_count++;
   }
@@ -1936,6 +1941,33 @@ void engine_first_init_particles(struct engine *e) {
   space_first_init_sparts(e->s, e->verbose);
   space_first_init_bparts(e->s, e->verbose);
   space_first_init_sinks(e->s, e->verbose);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Call the initialisation on all local particles.
+ *
+ * @param e The #engine.
+ */
+void engine_init_all_particles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  /* Set the particles in a state where they are ready for time-step
+   * Note that a drift *MUST* have been run. */
+  for (int i = 0; i < e->s->nr_local_cells; ++i) {
+    struct cell *c = &e->s->cells_top[e->s->local_cells_top[i]];
+
+    /* Initialise each type */
+    cell_init_part(c, e);
+    cell_init_gpart(c, e);
+    cell_init_spart(c, e);
+    cell_init_bpart(c, e);
+    cell_init_sink(c, e);
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
