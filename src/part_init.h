@@ -38,6 +38,13 @@
 #include "threadpool.h"
 #include "tracers.h"
 
+/**
+ * @brief Call all the initialisation functions of the start of a step for a gas
+ * particle.
+ * @param p The #part.
+ * @param xp The extended particle data.
+ * @param e The #engine.
+ */
 static INLINE void part_init(struct part *p, struct xpart *xp,
                              const struct engine *e) {
 
@@ -56,11 +63,23 @@ static INLINE void part_init(struct part *p, struct xpart *xp,
   rt_init_part(p);
 }
 
+/**
+ * @brief Call all the initialisation functions of the start of a step for a
+ * gravity particle.
+ * @param gp The #gpart.
+ * @param e The #engine.
+ */
 static INLINE void gpart_init(struct gpart *gp, const struct engine *e) {
 
   gravity_init_gpart(gp);
 }
 
+/**
+ * @brief Call all the initialisation functions of the start of a step for a
+ * star particle.
+ * @param sp The #spart.
+ * @param e The #engine.
+ */
 static INLINE void spart_init(struct spart *sp, const struct engine *e) {
 
   stars_init_spart(sp);
@@ -68,11 +87,23 @@ static INLINE void spart_init(struct spart *sp, const struct engine *e) {
   rt_init_spart(sp);
 }
 
+/**
+ * @brief Call all the initialisation functions of the start of a step for a
+ * black hole particle.
+ * @param bp The #bpart.
+ * @param e The #engine.
+ */
 static INLINE void bpart_init(struct bpart *bp, const struct engine *e) {
 
   black_holes_init_bpart(bp);
 }
 
+/**
+ * @brief Call all the initialisation functions of the start of a step for a
+ * sink particle.
+ * @param si The #sint.
+ * @param e The #engine.
+ */
 static INLINE void sink_init(struct sink *si, const struct engine *e) {
   sink_init_sink(si);
 }
