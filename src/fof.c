@@ -38,7 +38,6 @@
 /* Local headers. */
 #include "black_holes.h"
 #include "common_io.h"
-#include "hydro/SPHENIX/hydro_debug.h"
 #include "engine.h"
 #include "fof_catalogue_io.h"
 #include "hashmap.h"
@@ -2581,10 +2580,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].type == swift_type_gas) {
       const size_t gas_index = -gparts[i].id_or_neg_offset;
       const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
+#ifdef SWIFT_DEBUG_CHECKS
       if (rho_com == 0.f) {
-	message("Found a particle with 0-density! gas_index=%zd", gas_index);
-	hydro_debug_particle(&parts[gas_index], &xparts[gas_index]);
+        error("Found a particle with 0-density! id=%lld", parts[gas_index].id);
       }
+#endif
       max_part_density[index] = fmaxf(rho_com, max_part_density[index]);
       star_formation_rate[index] +=
           star_formation_get_SFR(&parts[gas_index], &xparts[gas_index]);
