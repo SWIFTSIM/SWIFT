@@ -772,6 +772,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   p->diffusion.laplace_u *= 2.f * h_inv_dim_plus_one;
 
+  /* Check the FVPM Sum_j A_ij ~= 0 */
+  fvpm_check_total_face_area_vector_sum(p);
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
 #endif

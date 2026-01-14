@@ -263,6 +263,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
   pj->force.alpha_visc_max_ngb = max(pj->force.alpha_visc_max_ngb, alpha_i);
 
+  /* Collect data for FVPM Face are checks */
+  fvpm_accumulate_total_face_area_vector_and_norm(pi, pj, r2, dx, hi, hj, 0);
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_gradient += wi;
   pj->n_gradient += wj;
@@ -336,6 +339,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
    * (this is used to limit the diffusion in hydro_prepare_force) */
   const float alpha_j = pj->viscosity.alpha;
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
+
+  /* Collect data for FVPM Face are checks */
+  fvpm_accumulate_total_face_area_vector_and_norm(pi, pj, r2, dx, hi, hj, 1);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_gradient += wi;
