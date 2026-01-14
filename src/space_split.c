@@ -236,6 +236,7 @@ void space_construct_progeny(struct space *s, struct cell *c,
     cp->grav.super = NULL;
     cp->flags = 0;
     star_formation_logger_init(&cp->stars.sfh);
+    cp->split_buffers.children_completed = 0; /* Reset atomic counter */
 #ifdef WITH_MPI
     cp->mpi.tag = -1;
 #endif  // WITH_MPI
@@ -625,97 +626,59 @@ static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
 }
 
 /**
- * @brief Collect the values from the progeny and store them in the parent.
+ * @brief Merge the properties of a child into the parent.
  *
- * @param c The #cell to update.
- * @param s The #space.
+ * @param c The child #cell.
+ * @param parent The parent #cell.
  */
-static void space_split_update_parent(struct cell *c, struct space *s) {
+static void space_merge_child_to_parent(struct cell *c, struct cell *parent) {
 
-  /* Define properties we'll compute from the progeny. */
-  float h_max = 0.0f;
-  float h_max_active = 0.0f;
-  float stars_h_max = 0.f;
-  float stars_h_max_active = 0.f;
-  float black_holes_h_max = 0.f;
-  float black_holes_h_max_active = 0.f;
-  float sinks_h_max = 0.f;
-  float sinks_h_max_active = 0.f;
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
-  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
-  integertime_t ti_rt_min_step_size = max_nr_timesteps;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_beg_max = 0;
+  /* Update the cell-wide properties */
+  parent->hydro.h_max = max(parent->hydro.h_max, c->hydro.h_max);
+  parent->hydro.h_max_active =
+      max(parent->hydro.h_max_active, c->hydro.h_max_active);
+  parent->stars.h_max = max(parent->stars.h_max, c->stars.h_max);
+  parent->stars.h_max_active =
+      max(parent->stars.h_max_active, c->stars.h_max_active);
+  parent->black_holes.h_max =
+      max(parent->black_holes.h_max, c->black_holes.h_max);
+  parent->black_holes.h_max_active =
+      max(parent->black_holes.h_max_active, c->black_holes.h_max_active);
+  parent->sinks.h_max = max(parent->sinks.h_max, c->sinks.h_max);
+  parent->sinks.h_max_active =
+      max(parent->sinks.h_max_active, c->sinks.h_max_active);
 
-  /* Loop over progeny. */
-  for (int k = 0; k < 8; k++) {
+  parent->hydro.ti_end_min =
+      min(parent->hydro.ti_end_min, c->hydro.ti_end_min);
+  parent->hydro.ti_beg_max =
+      max(parent->hydro.ti_beg_max, c->hydro.ti_beg_max);
+  parent->rt.ti_rt_end_min = min(parent->rt.ti_rt_end_min, c->rt.ti_rt_end_min);
+  parent->rt.ti_rt_beg_max = max(parent->rt.ti_rt_beg_max, c->rt.ti_rt_beg_max);
+  parent->rt.ti_rt_min_step_size =
+      min(parent->rt.ti_rt_min_step_size, c->rt.ti_rt_min_step_size);
+  parent->grav.ti_end_min = min(parent->grav.ti_end_min, c->grav.ti_end_min);
+  parent->grav.ti_beg_max = max(parent->grav.ti_beg_max, c->grav.ti_beg_max);
+  parent->stars.ti_end_min =
+      min(parent->stars.ti_end_min, c->stars.ti_end_min);
+  parent->stars.ti_beg_max =
+      max(parent->stars.ti_beg_max, c->stars.ti_beg_max);
+  parent->sinks.ti_end_min =
+      min(parent->sinks.ti_end_min, c->sinks.ti_end_min);
+  parent->sinks.ti_beg_max =
+      max(parent->sinks.ti_beg_max, c->sinks.ti_beg_max);
+  parent->black_holes.ti_end_min =
+      min(parent->black_holes.ti_end_min, c->black_holes.ti_end_min);
+  parent->black_holes.ti_beg_max =
+      max(parent->black_holes.ti_beg_max, c->black_holes.ti_beg_max);
 
-    /* Get the progenitor */
-    struct cell *cp = c->progeny[k];
+  star_formation_logger_add(&parent->stars.sfh, &c->stars.sfh);
 
-    /* Skip empty progeny. */
-    if (cp == NULL) continue;
-
-    /* Update the cell-wide properties */
-    h_max = max(h_max, cp->hydro.h_max);
-    h_max_active = max(h_max_active, cp->hydro.h_max_active);
-    stars_h_max = max(stars_h_max, cp->stars.h_max);
-    stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
-    black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
-    black_holes_h_max_active =
-        max(black_holes_h_max_active, cp->black_holes.h_max_active);
-    sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
-    sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
-    ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-    ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-    ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
-    ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
-    ti_rt_min_step_size = min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
-    ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-    ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
-    ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-    ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
-    ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-    ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
-    ti_black_holes_end_min =
-        min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-    ti_black_holes_beg_max =
-        max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
-
-    star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
-  }
-
-  /* Deal with the multipole */
-  if (s->with_self_gravity) {
-    space_populate_multipole(c);
-  }
-
-  /* Set the smoothing length and timestep props for this cell. */
-  c->hydro.h_max = h_max;
-  c->hydro.h_max_active = h_max_active;
-  c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->rt.ti_rt_end_min = ti_rt_end_min;
-  c->rt.ti_rt_beg_max = ti_rt_beg_max;
-  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
-  c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_beg_max = ti_gravity_beg_max;
-  c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_beg_max = ti_stars_beg_max;
-  c->stars.h_max = stars_h_max;
-  c->stars.h_max_active = stars_h_max_active;
-  c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->sinks.h_max = sinks_h_max;
-  c->sinks.h_max_active = sinks_h_max_active;
-  c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
-  c->black_holes.h_max = black_holes_h_max;
-  c->black_holes.h_max_active = black_holes_h_max_active;
+  /* Increase the depth */
+  parent->maxdepth = max(parent->maxdepth, c->maxdepth);
 }
+
+/* Forward declaration */
+static void space_split_signal_finished(struct cell *c, struct space *s);
 
 /**
  * @brief Recursively split a cell.
@@ -758,6 +721,31 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int parts_need_split = !with_self_gravity && count > space_splitsize;
   const int sparts_need_split = !with_self_gravity && scount > space_splitsize;
   if (gparts_need_split || parts_need_split || sparts_need_split) {
+
+    /* Reset properties to identity for accumulation */
+    c->hydro.h_max = 0.f;
+    c->hydro.h_max_active = 0.f;
+    c->stars.h_max = 0.f;
+    c->stars.h_max_active = 0.f;
+    c->black_holes.h_max = 0.f;
+    c->black_holes.h_max_active = 0.f;
+    c->sinks.h_max = 0.f;
+    c->sinks.h_max_active = 0.f;
+    c->hydro.ti_end_min = max_nr_timesteps;
+    c->hydro.ti_beg_max = 0;
+    c->rt.ti_rt_end_min = max_nr_timesteps;
+    c->rt.ti_rt_beg_max = 0;
+    c->rt.ti_rt_min_step_size = max_nr_timesteps;
+    c->grav.ti_end_min = max_nr_timesteps;
+    c->grav.ti_beg_max = 0;
+    c->stars.ti_end_min = max_nr_timesteps;
+    c->stars.ti_beg_max = 0;
+    c->sinks.ti_end_min = max_nr_timesteps;
+    c->sinks.ti_beg_max = 0;
+    c->black_holes.ti_end_min = max_nr_timesteps;
+    c->black_holes.ti_beg_max = 0;
+    star_formation_logger_init(&c->stars.sfh);
+    if (with_self_gravity) gravity_reset(c->grav.multipole);
 
     /* Construct the progeny ready to populate with particles and multipoles
      * (if doing gravity). */
@@ -802,6 +790,11 @@ void space_split_recursive(struct space *s, struct cell *c,
         space_recycle(s, cp);
         c->progeny[k] = NULL;
 
+        /* Signal that this (empty) child is done. */
+        if (atomic_inc(&c->split_buffers.children_completed) + 1 == 8) {
+          space_split_signal_finished(c, s);
+        }
+
       } else {
 
         space_split_recursive(s, cp, tpid);
@@ -817,7 +810,7 @@ void space_split_recursive(struct space *s, struct cell *c,
      leaf cell. */
   else {
 
-    /* Nothing to see here: clear the progeny. */
+    /* Clear the progeny. */
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
     maxdepth = c->depth;
@@ -836,26 +829,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       space_construct_leaf_multipole(c, s->e);
     }
 
-    /* Now propagate the data up the tree. */
-    struct cell *curr = c;
-    while (curr->parent != NULL) {
-
-      /* Move up to the parent. */
-      struct cell *parent = curr->parent;
-
-      /* Ensure no one else is updating this parent at the same time. */
-      if (lock_lock(&parent->hydro.lock) != 0) error("Failed to lock parent");
-
-      /* Update the parent with data from this child. */
-      space_split_update_parent(parent, s);
-
-      /* Ok, someone else can touch it now. */
-      if (lock_unlock(&parent->hydro.lock) != 0)
-        error("Failed to unlock parent");
-
-      /* Next please... */
-      curr = parent;
-    }
+    /* We are a leaf. We are done. Signal up. */
+    space_split_signal_finished(c, s);
   }
 
   /* Set the maximum depth. */
@@ -863,6 +838,89 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* No runner owns this cell yet. We assign those during scheduling. */
   c->owner = -1;
+}
+
+/**
+ * @brief Signal that a child has finished and potentially propagate up.
+ *
+ * @param c The #cell that finished (can be a leaf or a split node).
+ * @param s The #space.
+ */
+static void space_split_signal_finished(struct cell *c, struct space *s) {
+
+  if (c->parent == NULL) return; /* Top level */
+
+  struct cell *parent = c->parent;
+
+  /* Merge self to parent */
+  if (lock_lock(&parent->hydro.lock) != 0) error("Failed to lock parent");
+  space_merge_child_to_parent(c, parent);
+
+  /* Deal with the multipole */
+  if (s->with_self_gravity) {
+    const struct gravity_tensors *m = c->grav.multipole;
+    struct multipole temp;
+
+    /* Contribution to multipole */
+    gravity_M2M(&temp, &m->m_pole, parent->grav.multipole->CoM,
+                c->grav.multipole->CoM);
+    gravity_multipole_add(&parent->grav.multipole->m_pole, &temp);
+
+    /* Upper limit of max CoM<->gpart distance */
+    const double dx =
+        parent->grav.multipole->CoM[0] - c->grav.multipole->CoM[0];
+    const double dy =
+        parent->grav.multipole->CoM[1] - c->grav.multipole->CoM[1];
+    const double dz =
+        parent->grav.multipole->CoM[2] - c->grav.multipole->CoM[2];
+    const double r2 = dx * dx + dy * dy + dz * dz;
+    parent->grav.multipole->r_max =
+        max(parent->grav.multipole->r_max, c->grav.multipole->r_max + sqrt(r2));
+  }
+
+  if (lock_unlock(&parent->hydro.lock) != 0) error("Failed to unlock parent");
+
+  /* Check if parent is done */
+  if (atomic_inc(&parent->split_buffers.children_completed) + 1 == 8) {
+
+    /* Finish parent multipole calculation */
+    if (s->with_self_gravity) {
+      /* Alternative upper limit of max CoM<->gpart distance */
+      const double dx =
+          parent->grav.multipole->CoM[0] >
+                  parent->loc[0] + parent->width[0] / 2.
+              ? parent->grav.multipole->CoM[0] - parent->loc[0]
+              : parent->loc[0] + parent->width[0] -
+                    parent->grav.multipole->CoM[0];
+      const double dy =
+          parent->grav.multipole->CoM[1] >
+                  parent->loc[1] + parent->width[1] / 2.
+              ? parent->grav.multipole->CoM[1] - parent->loc[1]
+              : parent->loc[1] + parent->width[1] -
+                    parent->grav.multipole->CoM[1];
+      const double dz =
+          parent->grav.multipole->CoM[2] >
+                  parent->loc[2] + parent->width[2] / 2.
+              ? parent->grav.multipole->CoM[2] - parent->loc[2]
+              : parent->loc[2] + parent->width[2] -
+                    parent->grav.multipole->CoM[2];
+
+      /* Take minimum of both limits */
+      parent->grav.multipole->r_max = min(parent->grav.multipole->r_max,
+                                          sqrt(dx * dx + dy * dy + dz * dz));
+
+      /* Store the value at rebuild time */
+      parent->grav.multipole->r_max_rebuild = parent->grav.multipole->r_max;
+      parent->grav.multipole->CoM_rebuild[0] = parent->grav.multipole->CoM[0];
+      parent->grav.multipole->CoM_rebuild[1] = parent->grav.multipole->CoM[1];
+      parent->grav.multipole->CoM_rebuild[2] = parent->grav.multipole->CoM[2];
+
+      /* Compute the multipole power */
+      gravity_multipole_compute_power(&parent->grav.multipole->m_pole);
+    }
+
+    space_split_signal_finished(parent, s);
+  }
 }
 
 /**

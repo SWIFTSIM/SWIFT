@@ -106,6 +106,7 @@ struct cell_split_buffers {
   struct cell_buff *bbuff;
   struct cell_buff *gbuff;
   struct cell_buff *sink_buff;
+  volatile int children_completed;
 };
 
 /**
