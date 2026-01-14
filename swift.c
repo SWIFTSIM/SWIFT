@@ -1867,7 +1867,7 @@ int main(int argc, char *argv[]) {
     e.step += 1;
     engine_current_step = e.step;
 
-    engine_drift_all(&e, /*drift_mpole=*/0);
+    engine_drift_all(&e, /*drift_mpole=*/0, /*init_particles=*/0);
 
     /* Write final statistics? */
     if (e.output_list_stats) {

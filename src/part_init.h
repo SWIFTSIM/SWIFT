@@ -28,6 +28,7 @@
 #include "black_holes.h"
 #include "chemistry.h"
 #include "engine.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "mhd.h"
 #include "rt.h"

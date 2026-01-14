@@ -1602,7 +1602,7 @@ int engine_prepare(struct engine *e) {
       e->run_fof && e->fof_properties->seed_black_holes_enabled) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/0);
     drifted_all = 1;
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
@@ -1616,7 +1616,8 @@ int engine_prepare(struct engine *e) {
   if (!e->restarting && e->forcerebuild && !e->forcerepart && e->step > 1) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     engine_split_gas_particles(e);
@@ -1626,7 +1627,7 @@ int engine_prepare(struct engine *e) {
   if (e->forcerepart) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     /* Free the PM grid */
@@ -1646,7 +1647,8 @@ int engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!e->restarting && !drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     drifted_all = 1;
 
@@ -2682,7 +2684,8 @@ int engine_step(struct engine *e) {
   e->ti_current_subcycle = e->ti_end_min;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
+  if (e->restarting)
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -2811,7 +2814,7 @@ int engine_step(struct engine *e) {
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
-    engine_drift_all(e, /*drift_mpole=*/1);
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
@@ -2890,7 +2893,8 @@ int engine_step(struct engine *e) {
       e->mesh->ti_end_mesh_next == e->ti_current) {
 
     /* We might need to drift things */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);

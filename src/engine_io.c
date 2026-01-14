@@ -213,7 +213,8 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
       restart_remove_previous(e->restart_file);
 
       /* Drift all particles first (may have just been done). */
-      if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
+      if (!drifted_all)
+        engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
       /* Free the foreign particles to get more breathing space. */
 #ifdef WITH_MPI
@@ -501,7 +502,7 @@ void engine_io(struct engine *e) {
     }
 
     /* Drift everyone */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     /* Write some form of output */
     switch (type) {
