@@ -101,7 +101,7 @@ static INLINE void bpart_init(struct bpart *bp, const struct engine *e) {
 /**
  * @brief Call all the initialisation functions of the start of a step for a
  * sink particle.
- * @param si The #sint.
+ * @param si The #sink.
  * @param e The #engine.
  */
 static INLINE void sink_init(struct sink *si, const struct engine *e) {

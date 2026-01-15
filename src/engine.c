@@ -1661,13 +1661,12 @@ int engine_prepare(struct engine *e) {
     engine_rebuild(e, repartitioned, 0);
   }
 
-  
   if (ran_fof_for_seeding) {
-    
+
     /* Now, we can init all the active particles to prepare them for the step */
     engine_init_all_particles(e);
   }
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->forcerepart || e->forcerebuild) {
     /* Check that all cells have been drifted to the current time.
