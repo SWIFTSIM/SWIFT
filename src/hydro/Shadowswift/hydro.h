@@ -1286,7 +1286,8 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
  *
  * @param p The particle.
  * @param xp The extended particle data.
- * @param displacement (in-out) initial random displacement vector.
+ * @param displacement (in-out) initial random displacement vector on
+ * unit sphere, order unity
  */
 __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
     struct part *p, struct xpart *xp, double *displacement) {
@@ -1299,8 +1300,21 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
     error("Displacement vector cannot be 0!");
   }
 #endif
-  /* Rescale to make displacement smaller */
-  double fac = fmax(1e-6, 1e-8 * p->h / displacement_nrm);
+
+  /* Rescale to make displacement smaller
+   * SPH can handle particles more or less stacked on top of each other
+   * Moving mesh would call this catastrophic cell regularity. It leads
+   * to errors quickly. To remedy this, as in Weinberger 2020, we use a factor
+   * 0.025 * h (h is multipled after this function call) to set displacement.
+   * In Moving Mesh, h corresponds to a safety
+   * radius. This guarantees the displacement is inside the cell and the cells
+   * will be more regular, or at least possible to regularise quickly. */
+  double fac;
+#ifdef MOVING_MESH_HYDRO
+  fac = 0.025 / 0.2; // Undo Factor 0.2 that is applied after function call
+#else
+  fac = fmax(1e-6, 1e-8 * p->h / displacement_nrm);
+#endif
   displacement[0] *= fac;
   displacement[1] *= fac;
   displacement[2] *= fac;
