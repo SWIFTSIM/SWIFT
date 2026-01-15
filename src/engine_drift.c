@@ -301,7 +301,9 @@ void engine_do_drift_all_sink_mapper(void *map_data, int num_elements,
 void engine_do_drift_all_multipole_mapper(void *map_data, int num_elements,
                                           void *extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine_drift_all_data *data =
+      (const struct engine_drift_all_data *)extra_data;
+  const struct engine *e = data->e;
   const int restarting = e->restarting;
   struct space *s = e->s;
   struct cell *cells_top;
