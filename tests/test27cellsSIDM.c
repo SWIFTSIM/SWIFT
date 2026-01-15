@@ -272,6 +272,13 @@ void runner_doself_subset_branch_sidm_density(struct runner *r,
 /* And go... */
 int main(int argc, char *argv[]) {
 
+  /* Do not run test if code is not compiled in SIDM mode  */
+#ifdef SIDM_NONE
+  FILE *f = fopen("SIDM_NONE.dat", "w");
+  fclose(f);
+  return 0;
+#endif
+
 #ifdef HAVE_SETAFFINITY
   engine_pin();
 #endif
