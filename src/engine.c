@@ -1580,6 +1580,7 @@ int engine_prepare(struct engine *e) {
   const ticks tic = getticks();
 
   int drifted_all = 0;
+  int ran_fof_for_seeding = 0;
   int repartitioned = 0;
 
   /* Unskip active tasks and check for rebuild */
@@ -1610,8 +1611,7 @@ int engine_prepare(struct engine *e) {
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
 
-    /* Now, we can init all the active particles to prepare them for the step */
-    engine_init_all_particles(e);
+    ran_fof_for_seeding = 1;
 
     if (e->dump_catalogue_when_seeding) e->snapshot_output_count++;
   }
@@ -1661,6 +1661,13 @@ int engine_prepare(struct engine *e) {
     engine_rebuild(e, repartitioned, 0);
   }
 
+  
+  if (ran_fof_for_seeding) {
+    
+    /* Now, we can init all the active particles to prepare them for the step */
+    engine_init_all_particles(e);
+  }
+  
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->forcerepart || e->forcerebuild) {
     /* Check that all cells have been drifted to the current time.
