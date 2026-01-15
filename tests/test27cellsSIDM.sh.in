@@ -9,11 +9,17 @@ do
   # Test for particles with the same smoothing length
     echo ""
 
-    rm -f sidm_brute_force_27_standard.dat swift_sidm_dopair_27_standard.dat
+    rm -f sidm_brute_force_27_standard.dat swift_sidm_dopair_27_standard.dat SIDM_NONE.dat
 
     echo "Running ./$TEST -n 6 -r 1 -d 0 -f standard"
     ./$TEST -n 6 -r 1 -d 0 -f standard
 
+    # Skip tests if compiled without SIDM and exit early
+    if [ -e SIDM_NONE.dat ]
+    then
+      echo "SIDM disabled: test automatically passed"
+      exit 0
+    fi
 
     if [ -e sidm_brute_force_27_standard.dat ]
     then
