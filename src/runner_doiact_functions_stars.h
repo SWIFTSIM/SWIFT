@@ -143,13 +143,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c, const int offset,
         error("Particle pj not drifted to current time");
 #endif
 
-#ifdef FEEDBACK_GAS_SEE_STARS
-      const float hjg2 = hj * hj * kernel_gamma2;
-      const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
-#else
-      const int should_apply_feedback = (r2 < hig2);
-#endif
-      if (should_apply_feedback && si_active_feedback) {
+      if ((r2 < hig2) && si_active_feedback) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
 #endif
@@ -320,14 +314,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
         error("Particle pj not drifted to current time");
 #endif
 
-#ifdef FEEDBACK_GAS_SEE_STARS
-      const float hjg2 = hj * hj * kernel_gamma2;
-      const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
-#else
-      const int should_apply_feedback = (r2 < hig2);
-#endif
-
-      if (should_apply_feedback && si_active_feedback) {
+      if ((r2 < hig2) && si_active_feedback) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
 #endif
@@ -563,15 +550,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
           error("Particle pj not drifted to current time");
 #endif
 
-#ifdef FEEDBACK_GAS_SEE_STARS
-        const float hjg2 = hj * hj * kernel_gamma2;
-        const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
-#else
-        const int should_apply_feedback = (r2 < hig2);
-#endif
-
         /* Hit or miss? */
-        if (should_apply_feedback && spi_active_feedback) {
+        if ((r2 < hig2) && spi_active_feedback) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (hi < h_min || hi >= h_max)
             error("Inappropriate h for this level!");
@@ -747,14 +727,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
           error("Particle spj not drifted to current time");
 #endif
 
-#ifdef FEEDBACK_GAS_SEE_STARS
-        const float hig2 = hi * hi * kernel_gamma2;
-        const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
-#else
-        const int should_apply_feedback = (r2 < hjg2);
-#endif
         /* Hit or miss? */
-        if (should_apply_feedback && spj_active_feedback) {
+        if ((r2 < hjg2) && spj_active_feedback) {
 
 #ifdef SWIFT_DEBUG_CHECKS
           if (hj < h_min || hj >= h_max)
@@ -929,15 +903,8 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
           error("Particle pj not drifted to current time");
 #endif
 
-#ifdef FEEDBACK_GAS_SEE_STARS
-        const float hjg2 = hj * hj * kernel_gamma2;
-        const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
-#else
-        const int should_apply_feedback = (r2 < hig2);
-#endif
-
         /* Hit or miss? */
-        if (should_apply_feedback) {
+        if (r2 < hig2) {
 
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
@@ -1000,15 +967,8 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
           error("Particle pj not drifted to current time");
 #endif
 
-#ifdef FEEDBACK_GAS_SEE_STARS
-        const float hjg2 = hj * hj * kernel_gamma2;
-        const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
-#else
-        const int should_apply_feedback = (r2 < hig2);
-#endif
-
         /* Hit or miss? */
-        if (should_apply_feedback) {
+        if (r2 < hig2) {
 
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
@@ -1108,14 +1068,8 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
         error("Particle pj not drifted to current time");
 #endif
 
-#ifdef FEEDBACK_GAS_SEE_STARS
-      const float hjg2 = hj * hj * kernel_gamma2;
-      const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
-#else
-      const int should_apply_feedback = (r2 < hig2);
-#endif
       /* Hit or miss? */
-      if (should_apply_feedback) {
+      if (r2 < hig2) {
         IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1202,15 +1156,8 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
         error("Particle pj not drifted to current time");
 #endif
 
-#ifdef FEEDBACK_GAS_SEE_STARS
-      const float hj = pj->h;
-      const float hjg2 = hj * hj * kernel_gamma2;
-      const int should_apply_feedback = (r2 < hig2 || r2 < hjg2);
-#else
-      const int should_apply_feedback = (r2 < hig2);
-#endif
       /* Hit or miss? */
-      if (should_apply_feedback) {
+      if (r2 < hig2) {
 
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
