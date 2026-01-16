@@ -47,25 +47,4 @@ void stars_exact_density_compute(struct space *s, const struct engine *e);
 void stars_exact_density_check(struct space *s, const struct engine *e,
                                const double rel_tol);
 
-/**
- * @brief Accumulate the displacement of a spart since the last tree rebuild
- * and cell sort.
- *
- * We need to update these offsets everytime we spawn a new spart.
- *
- * @param sp The #spart to update.
- * @param displacement The 3D displacement vector to add.
- */
-__attribute__((always_inline)) INLINE static void spart_add_displacement(
-    struct spart *restrict sp, const float displacement[3]) {
-
-  sp->x_diff[0] += displacement[0];
-  sp->x_diff[1] += displacement[1];
-  sp->x_diff[2] += displacement[2];
-
-  sp->x_diff_sort[0] += displacement[0];
-  sp->x_diff_sort[1] += displacement[1];
-  sp->x_diff_sort[2] += displacement[2];
-}
-
 #endif /* SWIFT_STARS_H */

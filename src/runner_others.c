@@ -203,7 +203,8 @@ void runner_do_cooling(struct runner *r, struct cell *c, const int offset,
  * @param timer 1 if the time is to be recorded.
  */
 void runner_do_star_formation_sink(struct runner *r, struct cell *c,
-                                   int timer) {
+                                   const int timer) {
+
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
 #endif
@@ -288,8 +289,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                                        with_cosmology, phys_const, us,
                                        displacement);
 
-          /* Update the offsets since last cell construction */
-          spart_add_displacement(sp, displacement);
+          sp->x_diff[0] += displacement[0];
+          sp->x_diff[1] += displacement[1];
+          sp->x_diff[2] += displacement[2];
 
           /* Verify that we do not have too many stars in the leaf for
            * the sort task to be able to act. */
@@ -358,7 +360,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
+void runner_do_star_formation(struct runner *r, struct cell *c,
+                              const int timer) {
+
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct star_formation *sf_props = e->star_formation;
@@ -526,8 +530,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                     hydro_props, us, cooling, e->chemistry, part_converted,
                     displacement);
 
-                /* Update the offsets since last cell construction */
-                spart_add_displacement(sp, displacement);
+                sp->x_diff[0] += displacement[0];
+                sp->x_diff[1] += displacement[1];
+                sp->x_diff[2] += displacement[2];
 
                 /* Update the Star formation history */
                 star_formation_logger_log_new_spart(sp, &c->stars.sfh);
@@ -538,6 +543,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
                 /* Update the displacement information */
                 if (star_formation_need_update_dx_max) {
+
                   const float dx2_part = xp->x_diff[0] * xp->x_diff[0] +
                                          xp->x_diff[1] * xp->x_diff[1] +
                                          xp->x_diff[2] * xp->x_diff[2];
@@ -557,13 +563,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
                 if (n_spart_spawn >= 1) {
                   /* Update the maximum displacement information of a cell based
-                     on a spart's movement.
-                     Notes:
-                       - We need to update these offsets everytime we spawn a
-                         new spart.
-                       - The information needs to be propagated to the cell
-                         hierarchy.
-                  */
+                   * on a spart's movement. Notes:
+                   * - We need to update these offsets everytime we spawn a
+                   *   new spart.
+                   * - The information needs to be propagated to the cell
+                   *   hierarchy.
+                   */
+
                   /* Compute displacements */
                   const float dx2_part = sp->x_diff[0] * sp->x_diff[0] +
                                          sp->x_diff[1] * sp->x_diff[1] +
