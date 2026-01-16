@@ -30,13 +30,13 @@
 /* Local includes. */
 #include "engine.h"
 #include "error.h"
+#include "hydro.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "space.h"
-#include "units.h"
 #include "timestep_sync_part.h"
-#include "hydro.h"
+#include "units.h"
 
 /**
  * @brief Forcing Term Properties
@@ -126,7 +126,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     }
   } else if (p->id <= terms->boundary_particle_max_id) {
     /* Launch particles into jets */
-      
+
     /* Particle position relative to the box centre */
     const double delta_x =
         (p->x[0] - terms->box_aspect_ratio * terms->box_size / 2.f);
@@ -136,7 +136,8 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
     /* Cylindrical and spherical radius */
     const double r = sqrtf(delta_x * delta_x + delta_y * delta_y);
-    const double R = sqrtf(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
+    const double R =
+        sqrtf(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
 
     /* Angle position in the x-y plane */
     double phi = 0.f;
@@ -173,7 +174,8 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     hydro_diffusive_feedback_reset(p);
 
     /* Recompute the signal velocity of the particle */
-    hydro_set_v_sig_based_on_velocity_kick(p, s->e->cosmology, terms->jet_velocity);
+    hydro_set_v_sig_based_on_velocity_kick(p, s->e->cosmology,
+                                           terms->jet_velocity);
 
     /* Synchronize the particle on the time-line */
     timestep_sync_part(p);
@@ -324,9 +326,8 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  */
 static INLINE void forcing_terms_print(const struct forcing_terms *terms) {
 
-  message(
-      "Forcing terms is 'Idealized AGN jet'. Max boundary particle ID: %i.",
-      terms->boundary_particle_max_id);
+  message("Forcing terms is 'Idealized AGN jet'. Max boundary particle ID: %i.",
+          terms->boundary_particle_max_id);
   message(
       "Run with options: Enable fixed position: %i, Enable hydro acceleration: "
       "%i, Enable grav acceleration: %i",
@@ -394,12 +395,17 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
           "or 1 (true).");
     }
   }
-  
-  terms->box_size = parser_get_param_float(parameter_file, "BoundaryParticles:box_size");
-  terms->box_aspect_ratio = parser_get_param_float(parameter_file, "BoundaryParticles:box_aspect_ratio");
-  terms->jet_power = parser_get_param_float(parameter_file, "BoundaryParticles:jet_power");
-  terms->jet_velocity = parser_get_param_float(parameter_file, "BoundaryParticles:jet_velocity");
-  terms->jet_duration = parser_get_param_float(parameter_file, "BoundaryParticles:jet_duration");
+
+  terms->box_size =
+      parser_get_param_float(parameter_file, "BoundaryParticles:box_size");
+  terms->box_aspect_ratio = parser_get_param_float(
+      parameter_file, "BoundaryParticles:box_aspect_ratio");
+  terms->jet_power =
+      parser_get_param_float(parameter_file, "BoundaryParticles:jet_power");
+  terms->jet_velocity =
+      parser_get_param_float(parameter_file, "BoundaryParticles:jet_velocity");
+  terms->jet_duration =
+      parser_get_param_float(parameter_file, "BoundaryParticles:jet_duration");
 }
 
 #endif /* SWIFT_FORCING_IDEALIZED_AGN_JET_H */
