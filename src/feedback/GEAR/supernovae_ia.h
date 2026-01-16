@@ -52,9 +52,9 @@ void supernovae_ia_init(struct supernovae_ia *snia,
                         struct swift_params *params,
                         const struct stellar_model *sm);
 
+void supernovae_ia_zero_pointers(struct supernovae_ia *snia);
 void supernovae_ia_dump(const struct supernovae_ia *snia, FILE *stream,
                         const struct stellar_model *sm);
-
 void supernovae_ia_restore(struct supernovae_ia *snia, FILE *stream,
                            const struct stellar_model *sm);
 void supernovae_ia_clean(struct supernovae_ia *snia);
