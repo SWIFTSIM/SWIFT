@@ -1,10 +1,10 @@
 .. Adding new schemes
-   Darwin Roduit, 16 Ocotber 2024
+   Darwin Roduit, 16th Ocotber 2024
 
 .. _new_option_sink:
 
 How to add your sink scheme
--------------------------------
+---------------------------
 
 Here, we provide comprehensive information to guide you in adding your sink scheme into Swift. To better understand how to add new schemes within Swift, read the general information provided on :ref:`new_option` page. 
 
@@ -24,7 +24,7 @@ Then, to decide if we can turn a gas particle into a sink particle, the function
 
 
 Gas-sink density interactions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The first interaction task to be run for the sinks is the density task. This task updates the smoothing length for the sink particle, unless a fixed cutoff radius is being used (coming soon). It can also calculate the contributions made by neigbouring gas particles to the density, sound speed, velocity etc. at the location of the sink. Code for these interactions should be added to ``sink_iact.h/runner_iact_nonsym_sinks_gas_density()``.
 
@@ -59,4 +59,8 @@ The ``sink_copy_properties_to_star()`` does what it says. This function is also 
 
 The following three functions allow you to update your sink particles (e.g. their masses) before, during and after the star formation loop: ``sink_update_sink_properties_before_star_formation()``, ``sink_update_sink_properties_during_star_formation()`` and ``sink_update_sink_properties_after_star_formation()``.
 
-These functions are located in ``sink/Default/sink.h``
+These functions are located in ``sink/Default/sink.h``.
+
+.. warning::
+
+   An important subtelty when creating new particles is to update the maximal displacement of these particles by returning a 3D displacement vector in ``sink_copy_properties_to_star()``. The code then uses this information in ``runner_do_star_formation_sink()`` to update the cell's value.
