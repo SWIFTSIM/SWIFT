@@ -268,11 +268,13 @@ void *runner_main(void *data) {
 #endif
 #ifdef EXTRA_STAR_LOOPS_2
           else if (t->subtype == task_subtype_stars_prep3)
-            runner_dosub_self_stars_prep3(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_prep3(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
           else if (t->subtype == task_subtype_stars_prep4)
-            runner_dosub_self_stars_prep4(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_prep4(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, /*offset=*/0, /*ntasks=*/1,
@@ -334,11 +336,13 @@ void *runner_main(void *data) {
 #endif
 #ifdef EXTRA_STAR_LOOPS_2
           else if (t->subtype == task_subtype_stars_prep3)
-            runner_dosub_pair_stars_prep3(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_prep3(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
           else if (t->subtype == task_subtype_stars_prep4)
-            runner_dosub_pair_stars_prep4(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_prep4(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(
