@@ -34,8 +34,6 @@
 #include "./feedback/GEAR/feedback.h"
 #elif defined(FEEDBACK_GEAR_MECHANICAL)
 #include "./feedback/GEAR_mechanical/feedback.h"
-/* Inject feedback if stars are within gas smoothing length */
-#define FEEDBACK_GAS_SEE_STARS 1
 #define EXTRA_STAR_LOOPS /* Define the first two extra loops */
 #define EXTRA_STAR_LOOPS_2 /* Define the third loop */
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
