@@ -119,9 +119,12 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
  *
  * @param r runner task
  * @param c cell
+ * @param offset The offset in the array of cooling tasks running on that cell.
+ * @param ntasks The number of tasks running in parallel on the same cell.
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
+void runner_do_cooling(struct runner *r, struct cell *c, const int offset,
+                       const int ntasks, const int timer) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -148,12 +151,15 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
   /* Recurse? */
   if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_cooling(r, c->progeny[k], 0);
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_cooling(r, c->progeny[k], offset, ntasks, /*timer=*/0);
+      }
+    }
   } else {
 
     /* Loop over the parts in this cell. */
-    for (int i = 0; i < count; i++) {
+    for (int i = offset; i < count; i += ntasks) {
 
       /* Get a direct pointer on the part. */
       struct part *restrict p = &parts[i];
