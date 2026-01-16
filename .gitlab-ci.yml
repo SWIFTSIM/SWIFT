@@ -17,6 +17,11 @@ variables:
 
 swift-gnu-build:
   stage: build
+
+  # Only want to do this on master branch, so after merge.
+  - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+    when: never
+
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests"
