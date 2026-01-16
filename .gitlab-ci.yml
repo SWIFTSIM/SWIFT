@@ -17,8 +17,6 @@ variables:
 
 swift-gnu-build:
   stage: build
-  tags:
-    - gcc
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests"
