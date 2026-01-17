@@ -1196,8 +1196,11 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force,
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
+ * @param init_particles Are we also calling the particle init?
+ * @param replication_list_in List of replications for lightcone
  */
 void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
+                       const int init_particles,
                        struct replication_list *replication_list_in) {
 
   const int periodic = e->s->periodic;
@@ -1252,7 +1255,7 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
         struct cell *cp = c->progeny[k];
 
         /* Recurse */
-        cell_drift_sipart(cp, e, force, replication_list);
+        cell_drift_sipart(cp, e, force, init_particles, replication_list);
 
         /* Update */
         dx_max = max(dx_max, cp->sidm.dx_max_part);
@@ -1345,10 +1348,14 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
       cell_h_max = max(cell_h_max, sip->h);
 
       /* Get ready for a density calculation */
-      sidm_init_sipart(sip);
+      if (init_particles && sipart_is_active(sip, e)) {
+        sidm_init_sipart(sip);
+      }
 
-      /* Update the maximal active smoothing length in the cell */
-      cell_h_max_active = max(cell_h_max_active, sip->h);
+      if (sipart_is_active(sip, e)) {
+        /* Update the maximal active smoothing length in the cell */
+        cell_h_max_active = max(cell_h_max_active, sip->h);
+      }
     }
 
     /* Now, get the maximal particle motion from its square */
@@ -1362,6 +1369,14 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
     /* Update the time of the last drift */
     c->sidm.ti_old_part = ti_current;
   }
+
+#ifdef WITH_LIGHTCONE
+  /* If we're at the top of the recursive hierarchy, clean up the refined
+   * replication lists */
+  if (e->lightcone_array_properties->nr_lightcones > 0 && !replication_list_in)
+    lightcone_array_free_replications(e->lightcone_array_properties,
+                                      replication_list);
+#endif
 
   /* Clear the drift flags. */
   cell_clear_flag(c, cell_flag_do_sidm_drift | cell_flag_do_sidm_sub_drift);

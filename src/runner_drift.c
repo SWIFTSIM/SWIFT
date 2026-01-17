@@ -126,7 +126,8 @@ void runner_do_drift_sipart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_sipart(c, r->e, 0, NULL);
+  cell_drift_sipart(c, r->e, /*force=*/0, /*init_particles=*/1,
+                    /*replication_list=*/NULL);
 
   if (timer) TIMER_TOC(timer_drift_sipart);
 }

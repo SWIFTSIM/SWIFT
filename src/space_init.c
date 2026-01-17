@@ -180,7 +180,7 @@ void space_init_sinks(struct space *s, int verbose) {
   if (s->nr_sinks > 0)
     threadpool_map(&s->e->threadpool, space_init_sinks_mapper, s->sinks,
                    s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
-                   /*extra_data=*/NULL);
+                   s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -190,7 +190,11 @@ void space_init_siparts_mapper(void *restrict map_data, int sicount,
                                void *restrict extra_data) {
 
   struct sipart *restrict siparts = (struct sipart *)map_data;
-  for (int k = 0; k < sicount; k++) sidm_init_sipart(&siparts[k]);
+  const struct engine *restrict e = (struct engine *)extra_data;
+
+  for (int k = 0; k < sicount; k++) {
+    sipart_init(&siparts[k], e);
+  }
 }
 
 /**
@@ -207,7 +211,7 @@ void space_init_siparts(struct space *s, int verbose) {
   if (s->nr_siparts > 0)
     threadpool_map(&s->e->threadpool, space_init_siparts_mapper, s->siparts,
                    s->nr_siparts, sizeof(struct sipart),
-                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
+                   threadpool_auto_chunk_size, s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

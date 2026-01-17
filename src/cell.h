@@ -636,6 +636,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
                       const int init_particles,
                       struct replication_list *replication_list);
 void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
+                       const int init_particles,
                        struct replication_list *replication_list);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
