@@ -1,4 +1,4 @@
-An idealized AGN jet hydro test. A conical reservoir of particles is placed in the centre, and particles are kicked radially outwards depending on a jet power.
+An idealized AGN jet hydro test, based on Husko+ (2023) (2023MNRAS.520.5090H). A conical reservoir of particles is placed in the centre, and particles are kicked radially outwards depending on a jet power.
 
 The particles are treated as fixed boundary particles, until enough time has elapsed that, given a particle's ID, it should be launched. It is kicked, and its ID is increased by 1e7 (arbitary large number), so it is no longer treated as a fixed boundary particle.
 
