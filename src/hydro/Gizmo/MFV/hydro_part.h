@@ -19,6 +19,8 @@
 #ifndef SWIFT_GIZMO_MFV_HYDRO_PART_H
 #define SWIFT_GIZMO_MFV_HYDRO_PART_H
 
+#include "const.h"
+
 /* Data of a single particle. */
 struct part {
 
@@ -132,9 +134,10 @@ struct part {
      * the sound speed of both particles. */
     float vmax;
 
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
     /* Lanson & Vila (2008) mean separation distance. */
     float delxbar;
-
+#endif
   } timestepvars;
 
   /*! Quantities used during the volume (=density) loop. */

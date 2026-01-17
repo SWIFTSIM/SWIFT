@@ -294,8 +294,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  float Xi = 0.0f;
-  float Xj = 0.0f;
   if (fvpm_part_geometry_well_behaved(pi) &&
       fvpm_part_geometry_well_behaved(pj)) {
     /* in principle, we use Vi and Vj as weights for the left and right
@@ -303,8 +301,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
        However, if Vi and Vj are very different (because they have very
        different
        smoothing lengths), then the expressions below are more stable. */
-    Xi = Vi;
-    Xj = Vj;
+    float Xi = Vi;
+    float Xj = Vj;
 #ifdef GIZMO_VOLUME_CORRECTION
     if (fabsf(Vi - Vj) / min(Vi, Vj) > 1.5f * hydro_dimension) {
       Xi = (Vi * hj + Vj * hi) / (hi + hj);
@@ -327,8 +325,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     A[1] = -Anorm * dx[1];
     A[2] = -Anorm * dx[2];
     Anorm2 = Anorm * Anorm * r2;
-    Xi = Vi;
-    Xj = Vj;
   }
 
   /* if the interface has no area, nothing happens and we return */
@@ -359,12 +355,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   /* Lanson & Vila (2008), equation (58) */
-  const float Xi_inv = 1.0 / Xi;
-  const float Xj_inv = 1.0 / Xj;
-
-  pi->timestepvars.delxbar += Xj_inv * Anorm;
+  pi->timestepvars.delxbar += wj * hj_inv_dim * Anorm;
   if (mode == 1) {
-    pj->timestepvars.delxbar += Xi_inv * Anorm;
+    pj->timestepvars.delxbar += wi * hi_inv_dim * Anorm;
   }
 #endif
 
