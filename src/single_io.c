@@ -266,7 +266,7 @@ void write_array_single(const struct engine *e, hid_t grp, const char *fileName,
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = 20;
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
 
   int rank;
   hsize_t shape[2];

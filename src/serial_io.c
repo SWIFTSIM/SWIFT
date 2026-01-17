@@ -264,7 +264,7 @@ void prepare_array_serial(
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = 20;
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
 
   int rank = 0;
   hsize_t shape[2];

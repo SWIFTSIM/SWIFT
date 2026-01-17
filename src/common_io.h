@@ -34,6 +34,12 @@
 #define HDF5_LOWEST_FILE_FORMAT_VERSION H5F_LIBVER_V18
 #define HDF5_HIGHEST_FILE_FORMAT_VERSION H5F_LIBVER_LATEST
 
+/**
+ * Define the chunk size for datasets. Value based on extensive tests in Gitlab
+ * issue 920 (https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/920).
+ */
+#define HDF5_LOG2_CHUNK_SIZE 13
+
 /* Avoid cyclic inclusion problems */
 struct cell;
 struct space;
