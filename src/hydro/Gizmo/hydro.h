@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float vmax =
       sqrtf(v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]) +
       sqrtf(hydro_gamma * W[4] * rhoinv);
-  vmax = max(vmax, p->timestepvars.vmax);
+  vmax = cosmo->a_factor_sound_speed * max(vmax, p->timestepvars.vmax);
 
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   /* Lanson & Vila (2008) particle size */
