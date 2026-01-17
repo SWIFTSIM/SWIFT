@@ -84,6 +84,7 @@ include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
 include_HEADERS += swift_lustre_api.h
+include_HEADERS += part_init.h
 
 # source files for EAGLE extra I/O
 EAGLE_EXTRA_IO_SOURCES=
@@ -182,7 +183,7 @@ AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_inte
 AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c
 AM_SOURCES += runner_sinks.c
 AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c
-AM_SOURCES += cell_unskip.c cell_grid.c
+AM_SOURCES += cell_unskip.c cell_grid.c cell_init.c
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c
 AM_SOURCES += engine_drift.c engine_unskip.c engine_collect_end_of_step.c
 AM_SOURCES += engine_redistribute.c engine_fof.c engine_proxy.c engine_io.c engine_config.c
