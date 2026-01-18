@@ -84,9 +84,9 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
       if (mZ_old <= gas_mass) {
         *metal_mass = mZ_old;
       } else {
-        /* Something went very wrong somewhere! Set artificially to 0 to move
-           this mass excess away */
-	*metal_mass = 0.0;
+        /* Something went very wrong somewhere! Set the metal mass to the
+	 * the particle's mass */
+	*metal_mass = gas_mass;
       }
     } else {
       /* DO NOT do this unless strictly necessary. This breaks metal mass
