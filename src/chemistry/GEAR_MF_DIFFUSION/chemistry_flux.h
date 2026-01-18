@@ -107,7 +107,7 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
     fluxes[1] *= factor;
     fluxes[2] *= factor;
     fluxes[3] *= factor;
-    if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 1) {
+    if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 0) {
     message(
 	    "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
 	    " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e",
