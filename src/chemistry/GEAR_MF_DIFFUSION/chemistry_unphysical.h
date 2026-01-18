@@ -22,6 +22,7 @@
 #include "error.h"
 #include "inline.h"
 #include "part.h"
+#include "chemistry_properties.h"
 
 /**
  * @file src/chemistry/GEAR/chemistry_unphysical.h

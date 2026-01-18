@@ -40,7 +40,7 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
   /* Lanson & Vila (2008) particle size */
   /* Note that we computed 1/delxbar so we need to take the inverse here. And
      we need to convert to physical units. */
-  const float psize = cosmo->a * 0.5f / p->timestepvars.delxbar;
+  const float psize = cosmo->a * 0.5f / p->chemistry_data.timestepvars.delxbar;
 #else
   /* Gizmo's particle size definition */
   const float psize = cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere, hydro_dimension_inv);

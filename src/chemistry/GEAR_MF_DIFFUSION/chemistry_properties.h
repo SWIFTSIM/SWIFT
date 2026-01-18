@@ -19,6 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_PROPERTIES_GEAR_MF_DIFFUSION_H
 #define SWIFT_CHEMISTRY_PROPERTIES_GEAR_MF_DIFFUSION_H
 
+#include "const.h"
+
 #define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
 
 /* Cell slope limiter beta factors. The default values come from Hopkins (2015)

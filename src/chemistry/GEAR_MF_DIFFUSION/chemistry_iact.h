@@ -22,6 +22,7 @@
 #include "chemistry_flux.h"
 #include "chemistry_getters.h"
 #include "chemistry_gradients.h"
+#include "chemistry_properties.h"
 
 #define GIZMO_VOLUME_CORRECTION
 
