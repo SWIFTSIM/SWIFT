@@ -48,6 +48,12 @@
    (~1-10) */
 #define GEAR_FVPM_DIFFUSION_NEGATIVITY_COUNTER_PRINT_LIMIT 200
 
+/* DEBUG ONLY: During the force loop, if both pi and pj are active, enforce
+   only one of them to update both particles.
+   WARNING: This is not MPI compatible. It is only intended for non-MPI mode.
+*/
+#define GEAR_FVPM_DIFFUSION_DEBUG_FORCE_LOOP_ONESIDED_UPDATE 0
+
 /**
  * @brief The diffusion mode
  */
