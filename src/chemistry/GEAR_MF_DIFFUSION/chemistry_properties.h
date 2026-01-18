@@ -39,6 +39,15 @@
 /* Verbosity for the flux limiters */
 #define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY 0
 
+/* Number of subsequent timesteps a particle's metal mass is negative before
+   printing a warning.
+   In most cases, negative metal masses become positive within a few
+   timestep. If not, we prevent them from becoming more negative by preventing
+   outgoing metal mass fluxes.
+   For production runs, use a high value. For debugging, use small values
+   (~1-10) */
+#define GEAR_FVPM_DIFFUSION_NEGATIVITY_COUNTER_PRINT_LIMIT 200
+
 /**
  * @brief The diffusion mode
  */

@@ -66,8 +66,7 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = (Z_old >= 0.0) ? mZ_old : 0.0;
     } else {
-      /* TODO: Add a defined constant */
-      if (*negativity_counter >= 2 && callloc == 2) {
+      if (callloc == 2 && *negativity_counter >= GEAR_FVPM_DIFFUSION_NEGATIVITY_COUNTER_PRINT_LIMIT) {
 	/* Be verbose */
 	warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %u", id,
 		element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
