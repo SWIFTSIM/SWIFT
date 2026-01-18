@@ -54,6 +54,8 @@ c_200 = 7.2  # concentration parameter
 # Set the magnitude of the uniform seed magnetic field
 B0_Gaussian_Units = 1e-9  # 1e-3 micro Gauss
 B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
+IC_B0_type = "rho23Z"  # "constantX" # "rho23Z"
+nHbz0 = 2.6e-4  # baryon number density at redshift 0
 
 # SPH
 eta = 1.595  # kernel smoothing
@@ -441,8 +443,17 @@ for i in range(N):
         j(radius[i], 1, AMPs, f_b, M_200_cgs, r_200_cgs, c_200, AMP) / radius[i] ** 2
     )
     v[i, :] = np.cross(omega[i, :], radius_vect[i, :])
-    B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
     l[i, :] = gas_particle_mass * np.cross(radius_vect[i, :], v[i, :])
+
+    if IC_B0_type == "constantX":
+        B[i, 0] = B0_cgs / const_unit_magnetic_field_in_cgs
+    elif IC_B0_type == "constantZ":
+        B[i, 2] = B0_cgs / const_unit_magnetic_field_in_cgs
+    elif IC_B0_type == "rho23Z":
+        r_i = np.linalg.norm(radius_vect[i, :])
+        nHb = rho_r(r_i, f_b, M_200_cgs, r_200_cgs, c_200) / m_H_cgs
+        B[i, 2] = B0_cgs / const_unit_magnetic_field_in_cgs * (nHb / nHbz0) ** (2 / 3)
+
 
 # select particles inside R_200
 mask_r_200 = radius <= 1
