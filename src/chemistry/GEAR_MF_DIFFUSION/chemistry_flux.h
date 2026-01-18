@@ -65,6 +65,8 @@ chemistry_part_reset_mass_fluxes(struct part *restrict p) {
 /**
  * @brief Limit the metal mass flux to avoid negative metal masses.
  *
+ * The flux limiter MUST be symmetric under pi <--> pj.
+ *
  * @param p Particle.
  * @param metal Index of metal specie.
  * @param F_diff (return) Array to write diffusion flux component into.
@@ -75,32 +77,28 @@ __attribute__((always_inline)) INLINE static void
 chemistry_limit_metal_mass_flux(const struct part *restrict pi,
                                 const struct part *restrict pj, const int metal,
                                 double fluxes[4], const float dt) {
-
-#if defined(GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGRESSIVE_RESCALING)
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   /* Convert the raw riemann mass derivative to mass */
   double metal_mass_interface = fluxes[0] * dt;
 
-  /* Use the updated metal masses to ensure that the final result won't be
-   * negative */
+  /* Get some convenient variables */
   const double mZi_0 = chi->metal_mass[metal];
   const double mZj_0 = chj->metal_mass[metal];
+  const double upwind_mass = (metal_mass_interface >= 0.0) ? mZi_0 : mZj_0;
 
-  const double upwind_mass = (mZi_0 > mZj_0) ? mZi_0 : mZj_0;
-
-  if (upwind_mass < 0.0 && metal_mass_interface > 0.0) {
+  /* Do not allow to remove more mass since you don't have it... */
+  if (upwind_mass < 0.0) {
     fluxes[0] = 0.0;
     fluxes[1] = 0.0;
     fluxes[2] = 0.0;
     fluxes[3] = 0.0;
+    return;
   }
 
-  /* Choose upwind mass to determine a stability bound on the maximum allowed */
-  /* mass exchange, (we do this to prevent negative masses under all */
-  /* circumstances) */
-  const double max_mass = 0.9 * fabs(upwind_mass);
+  /* Limit mass exchange to not overshoot too much */
+  const double max_mass = (upwind_mass < 0.0) ? 0.0 : 0.9 * upwind_mass;
   if (fabs(metal_mass_interface) > 0.0 &&
       fabs(metal_mass_interface) > max_mass) {
     const double flux_init = fluxes[0];
@@ -113,11 +111,11 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
     message(
 	    "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
 	    " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e",
-	    pi->id, pj->id, flux_init, fluxes[0], factor, mZi_0, mZj_0, upwind_mass,
+	    pi->id, pj->id, flux_init*dt, fluxes[0]*dt, factor, mZi_0, mZj_0, upwind_mass,
 	    chi->metal_mass[metal], chj->metal_mass[metal]);
     }
   }
-#endif /* GEAR_FVPM_DIFFUSION_FLUX_LIMITER_AGGRESSIVE_RESCALING */
+  /* ADD other rescaling. Maybe better ones. */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H  */
