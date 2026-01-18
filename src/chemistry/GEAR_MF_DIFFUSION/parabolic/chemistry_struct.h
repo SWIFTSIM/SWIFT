@@ -120,11 +120,13 @@ struct chemistry_part_data {
   } filtered;
 
   /*! Variables used for timestep calculation. */
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   struct {
     /* Mean separation distance from Lanson & Vila (2008) */
     float delxbar;
 
   } timestepvars;
+#endif
 };
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_MF_PARABOLIC_DIFFUSION_H */

@@ -136,8 +136,10 @@ struct chemistry_part_data {
      * the sound speed of both particles. */
     float vmax;
 
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
     /* Mean separation distance from Lanson & Vila (2008) */
     float delxbar;
+#endif
 
   } timestepvars;
 };

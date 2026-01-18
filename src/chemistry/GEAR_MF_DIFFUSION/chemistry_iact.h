@@ -322,8 +322,6 @@ runner_iact_chemistry_fluxes_common(
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  float Xi = Vi;
-  float Xj = Vj;
   if (fvpm_part_geometry_well_behaved(pi) &&
       fvpm_part_geometry_well_behaved(pj)) {
     /* in principle, we use Vi and Vj as weights for the left and right
@@ -331,6 +329,8 @@ runner_iact_chemistry_fluxes_common(
      * However, if Vi and Vj are very different (because they have very
      * different smoothing lengths), then the expressions below are more
      * stable. */
+    float Xi = Vi;
+    float Xj = Vj;
 #ifdef GIZMO_VOLUME_CORRECTION
     if (fabsf(Vi - Vj) / min(Vi, Vj) > 1.5f * hydro_dimension) {
       Xi = (Vi * hj + Vj * hi) / (hi + hj);
@@ -383,16 +383,13 @@ runner_iact_chemistry_fluxes_common(
   }
 #endif
 
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   /* Lanson & Vila (2008), denominator of equation (58) */
-  chi->timestepvars.delxbar += Anorm / Xj;
+  chi->timestepvars.delxbar += wj * hj_inv_dim * Anorm;
   if (interaction_mode == 1) {
-    chj->timestepvars.delxbar += Anorm / Xi;
+    chj->timestepvars.delxbar += wi * hi_inv_dim * Anorm;
   }
-
-  /* chi->timestepvars.delxbar += wj * hj_inv_dim * Anorm; */
-  /* if (interaction_mode == 1) { */
-  /*   chj->timestepvars.delxbar += wi * hi_inv_dim * Anorm; */
-  /* } */
+#endif
 
   /* Compute the normal vector of the interface */
   const float n_unit[3] = {A[0] * Anorm_inv, A[1] * Anorm_inv,

@@ -593,7 +593,9 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   /* Initialize time step criterion variables */
   chd->timestepvars.vmax = 0.0;
 #endif
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   chd->timestepvars.delxbar = 0.0;
+#endif
 }
 
 /**
@@ -643,7 +645,9 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   }
   p->chemistry_data.timestepvars.vmax = 0.0;
 #endif
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   p->chemistry_data.timestepvars.delxbar = 0.0;
+#endif
 }
 
 /**

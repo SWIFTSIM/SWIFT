@@ -36,11 +36,17 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
 
   const float CFL_condition = chem_data->C_CFL_chemistry;
 
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
+  /* Lanson & Vila (2008) particle size */
   /* Note that we computed 1/delxbar so we need to take the inverse here. And
      we need to convert to physical units. */
-  const float psize_lv =
-      0.5 * cosmo->a2_inv / p->chemistry_data.timestepvars.delxbar;
-  const float delta_x = psize_lv;
+  const float psize = cosmo->a * 0.5f / p->timestepvars.delxbar;
+#else
+  /* Gizmo's particle size definition */
+  const float psize = cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere, hydro_dimension_inv);
+#endif
+
+  const float delta_x = psize;
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* CFL condition */
