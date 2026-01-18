@@ -57,6 +57,11 @@ struct chemistry_part_data {
 
   } flux;
 
+  struct {
+    /* Counts the successive number of times this particle was negative */
+    unsigned int negativity_counter[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  } check;
+
   /*! Isotropic diffusion coefficient. The matrix K is proportional to kappa.
    Note about units:
    - For the isotropic constant case, the units are : U_L^2/U_T
