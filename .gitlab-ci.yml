@@ -22,7 +22,10 @@ variables:
 
 swift-gnu-build:
   stage: build
+  #  When MR to master happens, or commit is to master.
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+      when: always 
     - if: $CI_COMMIT_BRANCH != "master"
       when: never
   timeout: 6h
@@ -33,7 +36,10 @@ swift-gnu-build:
 
 swift-intel-build:
   stage: build
+  #  When MR to master happens, or commit is to master.
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+      when: always 
     - if: $CI_COMMIT_BRANCH != "master"
       when: never
   timeout: 6h
@@ -44,6 +50,7 @@ swift-intel-build:
 
 swift-intel-build-mr:
   stage: build
+  #  When this commit is part of an active MR.
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   timeout: 6h
