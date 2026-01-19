@@ -155,6 +155,8 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param cooling The cooling data struct.
  * @param chem_data The global properties of the chemistry scheme.
  * @param convert_part Did we convert a part(or spawned one)?
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void star_formation_copy_properties(
     const struct part *p, const struct xpart *xp, struct spart *sp,
@@ -162,7 +164,8 @@ INLINE static void star_formation_copy_properties(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cooling_function_data *cooling,
-    const struct chemistry_global_data *chem_data, const int convert_part) {
+    const struct chemistry_global_data *chem_data, const int convert_part,
+    float displacement[3]) {
 
   /* Store the current mass */
   sp->mass = hydro_get_mass(p);

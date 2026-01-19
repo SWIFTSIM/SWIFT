@@ -562,7 +562,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
                 sp->density.wcount);
       }
 
-      error("Smoothing length failed to converge on %i particles.", scount);
+      warning("Smoothing length failed to converge on %i particles.", scount);
     }
 
     /* Be clean */

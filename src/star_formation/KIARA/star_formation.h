@@ -719,6 +719,8 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param cooling The cooling data struct.
  * @param chem_data The global properties of the chemistry scheme.
  * @param convert_part Did we convert a part (or spawned one)?
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void star_formation_copy_properties(
     const struct part *p, const struct xpart *xp, struct spart *sp,
@@ -726,7 +728,8 @@ INLINE static void star_formation_copy_properties(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cooling_function_data *cooling,
-    const struct chemistry_global_data *chem_data, const int convert_part) {
+    const struct chemistry_global_data *chem_data, const int convert_part,
+    float displacement[3]) {
 
   /* Store the current mass */
   sp->mass = hydro_get_mass(p);
@@ -770,6 +773,39 @@ INLINE static void star_formation_copy_properties(
   sp->galaxy_data.stellar_mass = p->galaxy_data.stellar_mass;
   sp->galaxy_data.gas_mass = p->galaxy_data.gas_mass;
   sp->galaxy_data.specific_sfr = p->galaxy_data.specific_sfr;
+
+  /* Slightly displace spawned particle to avoid zeros */
+  if (1) {
+
+    const float max_displacement = 0.1;
+    const double delta_x =
+        2.f * random_unit_interval(sp->id, e->ti_current,
+                                   (enum random_number_type)0) -
+        1.f;
+    const double delta_y =
+        2.f * random_unit_interval(sp->id, e->ti_current,
+                                   (enum random_number_type)1) -
+        1.f;
+    const double delta_z =
+        2.f * random_unit_interval(sp->id, e->ti_current,
+                                   (enum random_number_type)2) -
+        1.f;
+
+    /* Update the displacement */
+    displacement[0] = delta_x * max_displacement * p->h;
+    displacement[1] = delta_y * max_displacement * p->h;
+    displacement[2] = delta_z * max_displacement * p->h;
+
+    /* Move the spart */
+    sp->x[0] += displacement[0];
+    sp->x[1] += displacement[1];
+    sp->x[2] += displacement[2];
+
+    /* Copy the position to the gpart */
+    sp->gpart->x[0] = sp->x[0];
+    sp->gpart->x[1] = sp->x[1];
+    sp->gpart->x[2] = sp->x[2];
+  }
 }
 
 /**
