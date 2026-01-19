@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
       (terms->jet_power * time) /
       (0.5 * p->mass * terms->jet_velocity * terms->jet_velocity);
 
-  if (p->id <= terms->boundary_particle_max_id & p->id > max_id) {
+  if ((p->id <= terms->boundary_particle_max_id) && (p->id > max_id)) {
     /* Reset the hydro accelerations of boundary particles. */
     p->a_hydro[0] = 0.0f;
     p->a_hydro[1] = 0.0f;
