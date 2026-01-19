@@ -27,3 +27,15 @@ swift-gnu-build:
     - ci/swift-gcc-check.sh
     - echo "complete."
 
+swift-gnu-build-mr:
+  stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: never
+  timeout: 6h
+  script:
+    - echo "GNU toolchain compilation and unit tests for Merge request: $CI_MERGE_REQUEST_TITLE."
+    - printenv
+    - ci/swift-gcc-check-mr.sh
+    - echo "complete."
+
