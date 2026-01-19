@@ -29,9 +29,9 @@ swift-gnu-build:
 
 swift-gnu-build-mr:
   stage: build
-  rules:
-    - if: $CI_COMMIT_BRANCH == "master"
-      when: never
+  #rules:
+  #  - if: $CI_COMMIT_BRANCH == "master"
+  #    when: never
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests (MRs)"
