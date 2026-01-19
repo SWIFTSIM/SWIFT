@@ -3,13 +3,23 @@
 #  when in an MR, not during a merge to master.
 #
 #  Jobs are different for MRs and merges to master.
+
 workflow:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT == "true"
+    - if: >
+        $CI_PIPELINE_SOURCE == "merge_request_event" &&
+        $CI_MERGE_REQUEST_DRAFT == "true"
       when: never
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - when: never
+
+#  We just build, that is a job is lots of compilations and tests.
+#  Those could be separated but tests would need to keep artifacts
+#  to preserve context with the compilations, and we have a lot
+#  of builds based on configure options, so each would need to be handled. Not
+#  sure that could be efficient.
 stages:
   - build
 
@@ -20,11 +30,24 @@ variables:
 #  JOBS.
 #  -----
 
-swift-gnu-build:
+debug:
   stage: build
   rules:
-    - if: $CI_COMMIT_BRANCH != "master"
-      when: never
+    - when: always
+  script:
+    - printf "%s\n" \
+        "SOURCE=$CI_PIPELINE_SOURCE" \
+        "BRANCH=$CI_COMMIT_BRANCH" \
+        "MR_SOURCE=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" \
+        "MR_TARGET=$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+
+swift-gnu-build:
+  stage: build
+  #  When MR to master happens, or commit is to master.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "push" &&
+        $CI_COMMIT_BRANCH == "main"
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests (full)"
@@ -33,9 +56,11 @@ swift-gnu-build:
 
 swift-intel-build:
   stage: build
+  #  When MR to master happens, or commit is to master.
   rules:
-    - if: $CI_COMMIT_BRANCH != "master"
-      when: never
+    - if: >
+        $CI_PIPELINE_SOURCE == "push" &&
+        $CI_COMMIT_BRANCH == "main"
   timeout: 6h
   script:
     - echo "Intel OneAPI toolchain compilation and unit tests (full)"
@@ -44,8 +69,11 @@ swift-intel-build:
 
 swift-intel-build-mr:
   stage: build
+  #  When this commit is part of an active MR.
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: >
+        $CI_PIPELINE_SOURCE == "merge_request_event" &&
+        $CI_MERGE_REQUEST_DRAFT == "false"
   timeout: 6h
   script:
     - echo "Merge request check using Intel toolchain"
