@@ -22,7 +22,7 @@ swift-gnu-build:
       when: never
   timeout: 6h
   script:
-    - echo "GNU toolchain compilation and unit tests"
+    - echo "GNU toolchain compilation and unit tests (master)"
     - printenv
     - ci/swift-gcc-check.sh
     - echo "complete."
@@ -34,7 +34,7 @@ swift-gnu-build-mr:
       when: never
   timeout: 6h
   script:
-    - echo "GNU toolchain compilation and unit tests for Merge request"
+    - echo "GNU toolchain compilation and unit tests (MRs)"
     - printenv
     - ci/swift-gcc-check-mr.sh
     - echo "complete."
