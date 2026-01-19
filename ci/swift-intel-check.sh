@@ -11,13 +11,17 @@ function ONEXIT {
 }
 trap ONEXIT EXIT
 
-source intel-modules.sh
-
+#  Lots of output.
 set -e
 set -x
 
+#  Build toolchain.
+source ci/intel-modules.sh
+
+#  Clean sources.
 git clean -fdx
 
+#  And off we go.
 ./autogen.sh
 
 echo
@@ -55,7 +59,7 @@ make clean
 echo
 echo "Parallel HDF5 build"
 echo "-------------------"
-source intel-modules-parallel.sh
+source ci/intel-modules-parallel.sh
 ./configure --with-parmetis --disable-optimization
 make -j 2
 make check VERBOSE=1
