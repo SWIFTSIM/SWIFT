@@ -18,11 +18,12 @@ variables:
 swift-gnu-build:
   stage: build
   rules:
-    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != "master"
       when: never
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests"
+    - printenv
     - ci/swift-gcc-check.sh
     - echo "complete."
 
