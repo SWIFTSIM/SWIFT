@@ -1,6 +1,8 @@
 #  Only run on merge requests or pushed to the master branch.
 #  Do run for draft MRs, but only see CI_MERGE_REQUEST_DRAFT
 #  when in an MR, not during a merge to master.
+#
+#  Jobs are different for MRs and merges to master.
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT == "true"
@@ -15,6 +17,9 @@ variables:
   GIT_STRATEGY: clone
   GIT_SUBMODULE_STRATEGY: none
 
+#  JOBS.
+#  -----
+
 swift-gnu-build:
   stage: build
   rules:
@@ -22,8 +27,28 @@ swift-gnu-build:
       when: never
   timeout: 6h
   script:
-    - echo "GNU toolchain compilation and unit tests"
-    - printenv
+    - echo "GNU toolchain compilation and unit tests (full)"
     - ci/swift-gcc-check.sh
+    - echo "complete."
+
+swift-intel-build:
+  stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH != "master"
+      when: never
+  timeout: 6h
+  script:
+    - echo "Intel OneAPI toolchain compilation and unit tests (full)"
+    - ci/swift-intel-check.sh
+    - echo "complete."
+
+swift-intel-build-mr:
+  stage: build
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  timeout: 6h
+  script:
+    - echo "Merge request check using Intel toolchain"
+    - ci/swift-intel-check-mr.sh
     - echo "complete."
 
