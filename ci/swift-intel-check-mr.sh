@@ -10,15 +10,15 @@ function ONEXIT {
 }
 trap ONEXIT EXIT
 
-module purge
-module load intel_comp/2024.2.0 compiler-rt tbb compiler mpi
-module load hdf5/1.14.4
-module load fftw/3.3.10
-module load gsl/2.8
-module load parmetis/4.0.3
-module load python/3.12.4
-module load llvm/20.1.0
-export CLANG_FORMAT_CMD="clang-format"
+source intel-modules.sh
+#module load intel_comp/2024.2.0 compiler-rt tbb compiler mpi
+#module load hdf5/1.14.4
+#module load fftw/3.3.10
+#module load gsl/2.8
+#module load parmetis/4.0.3
+#module load python/3.12.4
+#module load llvm/20.1.0
+#export CLANG_FORMAT_CMD="clang-format"
 
 set -e
 set -x
@@ -77,8 +77,9 @@ make clean
 echo
 echo "Parallel HDF5 build"
 echo "-------------------"
-module unload hdf5
-module load parallel_hdf5/1.14.4
+source intel-modules-parallel.sh
+#module unload hdf5
+#module load parallel_hdf5/1.14.4
 ./configure --with-parmetis --disable-optimization
 make
 make check VERBOSE=1
