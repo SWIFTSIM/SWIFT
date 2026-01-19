@@ -34,7 +34,7 @@ swift-gnu-build-mr:
       when: never
   timeout: 6h
   script:
-    - echo "GNU toolchain compilation and unit tests for Merge request: $CI_MERGE_REQUEST_TITLE."
+    - echo "GNU toolchain compilation and unit tests for Merge request"
     - printenv
     - ci/swift-gcc-check-mr.sh
     - echo "complete."
