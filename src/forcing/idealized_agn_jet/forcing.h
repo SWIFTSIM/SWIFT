@@ -158,10 +158,9 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     const double sin_theta = fmaxf(0.f, sqrtf(1.f - cos_theta * cos_theta));
 
     /* Assign velocity to be given. We do a radial kick from the origin */
-    const double vel_kick_vec[3] = {
-      terms->jet_velocity * sin_theta * cos(phi),
-      terms->jet_velocity * sin_theta * sin(phi),
-      terms->jet_velocity * cos_theta};
+    const double vel_kick_vec[3] = {terms->jet_velocity * sin_theta * cos(phi),
+                                    terms->jet_velocity * sin_theta * sin(phi),
+                                    terms->jet_velocity * cos_theta};
 
     p->v[0] = vel_kick_vec[0];
     p->v[1] = vel_kick_vec[1];
@@ -323,7 +322,8 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   terms->enable_grav_acceleration = parser_get_opt_param_int(
       parameter_file, "BoundaryParticles:enable_grav_acceleration", 0);
 
-  if ((terms->enable_fixed_position != 0) && (terms->enable_fixed_position != 1)) {
+  if ((terms->enable_fixed_position != 0) &&
+      (terms->enable_fixed_position != 1)) {
     error(
         "BoundaryParticles:enable_fixed_position must be either 0 (false) or 1 "
         "(true).");

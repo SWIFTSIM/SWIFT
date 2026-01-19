@@ -278,7 +278,8 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   terms->enable_grav_acceleration = parser_get_opt_param_int(
       parameter_file, "BoundaryParticles:enable_grav_acceleration", 0);
 
-  if ((terms->enable_fixed_position != 0) && (terms->enable_fixed_position != 1)) {
+  if ((terms->enable_fixed_position != 0) &&
+      (terms->enable_fixed_position != 1)) {
     error(
         "BoundaryParticles:enable_fixed_position must be either 0 (false) or 1 "
         "(true).");
