@@ -129,10 +129,10 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
     /* Particle position relative to the box centre */
     const double delta_x =
-        (p->x[0] - terms->box_aspect_ratio * terms->box_size / 2.f);
+        (p->x[0] - terms->box_aspect_ratio * terms->box_size / 2.0);
     const double delta_y =
-        (p->x[1] - terms->box_aspect_ratio * terms->box_size / 2.f);
-    const double delta_z = (p->x[2] - terms->box_size / 2.f);
+        (p->x[1] - terms->box_aspect_ratio * terms->box_size / 2.0);
+    const double delta_z = (p->x[2] - terms->box_size / 2.0);
 
     /* Cylindrical and spherical radius */
     const double r = sqrtf(delta_x * delta_x + delta_y * delta_y);
@@ -140,14 +140,14 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
         sqrtf(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
 
     /* Angle position in the x-y plane */
-    double phi = 0.f;
-    if (delta_y > 0.0001f) {
-      phi = acos(fmax(-1.0f, fmin(1.0f, delta_x / r)));
-    } else if (delta_y < 0.0001f) {
-      phi = -1.f * acos(fmax(-1.0f, fmin(1.0f, delta_x / r)));
+    double phi = 0.0;
+    if (delta_y > 0.0001) {
+      phi = acos(fmax(-1.0, fmin(1.0, delta_x / r)));
+    } else if (delta_y < 0.0001) {
+      phi = -1.0 * acos(fmax(-1.0, fmin(1.0, delta_x / r)));
     } else {
-      if (delta_x > 0.f) {
-        phi = 0.f;
+      if (delta_x > 0.0) {
+        phi = 0.0;
       } else {
         phi = M_PI;
       }
@@ -155,7 +155,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
     /* Cosine and sine of particle position with respect to z axis */
     const double cos_theta = delta_z / R;
-    const double sin_theta = fmaxf(0.f, sqrtf(1.f - cos_theta * cos_theta));
+    const double sin_theta = fmax(0.0, sqrt(1.0 - cos_theta * cos_theta));
 
     /* Assign velocity to be given. We do a radial kick from the origin */
     const double vel_kick_vec[3] = {terms->jet_velocity * sin_theta * cos(phi),
