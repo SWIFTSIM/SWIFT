@@ -142,9 +142,9 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     /* Angle position in the x-y plane */
     double phi = 0.f;
     if (delta_y > 0.0001f) {
-      phi = acos(fmaxf(-1.0f, fminf(1.0f, delta_x / r)));
+      phi = acos(fmax(-1.0f, fmin(1.0f, delta_x / r)));
     } else if (delta_y < 0.0001f) {
-      phi = -1.f * acos(fmaxf(-1.0f, fminf(1.0f, delta_x / r)));
+      phi = -1.f * acos(fmax(-1.0f, fmin(1.0f, delta_x / r)));
     } else {
       if (delta_x > 0.f) {
         phi = 0.f;
@@ -158,10 +158,10 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     const double sin_theta = fmaxf(0.f, sqrtf(1.f - cos_theta * cos_theta));
 
     /* Assign velocity to be given. We do a radial kick from the origin */
-    float vel_kick_vec[3];
-    vel_kick_vec[0] = terms->jet_velocity * sin_theta * cos(phi);
-    vel_kick_vec[1] = terms->jet_velocity * sin_theta * sin(phi);
-    vel_kick_vec[2] = terms->jet_velocity * cos_theta;
+    const double vel_kick_vec[3] = {
+      terms->jet_velocity * sin_theta * cos(phi),
+      terms->jet_velocity * sin_theta * sin(phi),
+      terms->jet_velocity * cos_theta};
 
     p->v[0] = vel_kick_vec[0];
     p->v[1] = vel_kick_vec[1];
@@ -197,25 +197,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
  */
 __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
     const long long id, const struct forcing_terms *terms, struct gpart *gp) {
-
-  if (terms->enable_grav_acceleration) {
-    /* Skip if not resetting grav accelerations. */
-    return;
-  }
-
-  if (id <= terms->boundary_particle_max_id) {
-    /* Reset the grav accelerations of boundary particles. */
-    gp->a_grav[0] = 0.0f;
-    gp->a_grav[1] = 0.0f;
-    gp->a_grav[2] = 0.0f;
-
-    if (terms->enable_fixed_position) {
-      /* Set velocity of fixed boundary particle to zero. */
-      gp->v_full[0] = 0.f;
-      gp->v_full[1] = 0.f;
-      gp->v_full[2] = 0.f;
-    }
-  }
+  /* Nothing to do here */
 }
 
 /**
@@ -229,13 +211,7 @@ __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
  */
 __attribute__((always_inline)) INLINE static void forcing_gpart_drift_apply(
     const long long id, const struct forcing_terms *terms, struct gpart *gp) {
-
-  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
-    /* Set velocity of fixed boundary particle to zero. */
-    gp->v_full[0] = 0.f;
-    gp->v_full[1] = 0.f;
-    gp->v_full[2] = 0.f;
-  }
+  /* Nothing to do here */
 }
 
 /**
@@ -271,13 +247,7 @@ __attribute__((always_inline)) INLINE static void forcing_part_drift_apply(
  */
 __attribute__((always_inline)) INLINE static void forcing_spart_drift_apply(
     const long long id, const struct forcing_terms *terms, struct spart *sp) {
-
-  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
-    /* Set velocity of fixed boundary particle to zero. */
-    sp->v[0] = 0.f;
-    sp->v[1] = 0.f;
-    sp->v[2] = 0.f;
-  }
+  /* Nothing to do here */
 }
 
 /**
@@ -291,13 +261,7 @@ __attribute__((always_inline)) INLINE static void forcing_spart_drift_apply(
  */
 __attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
     const long long id, const struct forcing_terms *terms, struct bpart *bp) {
-
-  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
-    /* Set velocity of fixed boundary particle to zero. */
-    bp->v[0] = 0.f;
-    bp->v[1] = 0.f;
-    bp->v[2] = 0.f;
-  }
+  /* Nothing to do here */
 }
 
 /**
@@ -359,7 +323,7 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   terms->enable_grav_acceleration = parser_get_opt_param_int(
       parameter_file, "BoundaryParticles:enable_grav_acceleration", 0);
 
-  if (terms->enable_fixed_position != 0 && terms->enable_fixed_position != 1) {
+  if ((terms->enable_fixed_position != 0) && (terms->enable_fixed_position != 1)) {
     error(
         "BoundaryParticles:enable_fixed_position must be either 0 (false) or 1 "
         "(true).");
@@ -368,12 +332,12 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   if (terms->enable_fixed_position) {
     /* If using fixed boundary particles, both hydro and grav accelerations must
      * be reset to 0. */
-    if (terms->enable_hydro_acceleration != 0) {
+    if (terms->enable_hydro_acceleration) {
       error(
           "BoundaryParticles:enable_hydro_acceleration must be 0 (false) when "
           "using fixed boundary particles.");
     }
-    if (terms->enable_grav_acceleration != 0) {
+    if (terms->enable_grav_acceleration) {
       error(
           "BoundaryParticles:enable_grav_acceleration must be 0 (false) when "
           "using fixed boundary particles.");
@@ -382,14 +346,14 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   } else {
     /* If not using fixed boundary particles, hydro and grav accelerations can
      * be enabled independently. */
-    if (terms->enable_hydro_acceleration != 0 &&
-        terms->enable_hydro_acceleration != 1) {
+    if ((terms->enable_hydro_acceleration != 0) &&
+        (terms->enable_hydro_acceleration != 1)) {
       error(
           "BoundaryParticles:enable_hydro_acceleration must be either 0 "
           "(false) or 1 (true).");
     }
-    if (terms->enable_grav_acceleration != 0 &&
-        terms->enable_grav_acceleration != 1) {
+    if ((terms->enable_grav_acceleration != 0) &&
+        (terms->enable_grav_acceleration != 1)) {
       error(
           "BoundaryParticles:enable_grav_acceleration must be either 0 (false) "
           "or 1 (true).");
