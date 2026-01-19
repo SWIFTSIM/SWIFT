@@ -47,7 +47,7 @@ swift-gnu-build:
   rules:
     - if: >
         $CI_PIPELINE_SOURCE == "push" &&
-        $CI_COMMIT_BRANCH == "main"
+        $CI_COMMIT_BRANCH == "master"
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests (full)"
@@ -60,7 +60,7 @@ swift-intel-build:
   rules:
     - if: >
         $CI_PIPELINE_SOURCE == "push" &&
-        $CI_COMMIT_BRANCH == "main"
+        $CI_COMMIT_BRANCH == "master"
   timeout: 6h
   script:
     - echo "Intel OneAPI toolchain compilation and unit tests (full)"
