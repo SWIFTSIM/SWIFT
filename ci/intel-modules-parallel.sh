@@ -1,7 +1,9 @@
 #!/bin/bash
 
-#  Intel toolchain modules with parallel HDF5 and parmetis.
+#  Intel toolchain modules with parallel HDF5.
 #  Source this file.
+
+echo "Loading the parallel Intel OneAPI toolchain for SWIFT."
 
 module purge
 module load intel_comp/2024.2.0 compiler-rt tbb compiler mpi
