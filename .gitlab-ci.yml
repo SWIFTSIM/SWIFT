@@ -48,7 +48,7 @@ swift-intel-build-mr:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   timeout: 6h
   script:
-    - echo "GNU toolchain compilation and unit tests (MRs)"
+    - echo "Merge request check using Intel toolchain"
     - ci/swift-intel-check-mr.sh
     - echo "complete."
 

@@ -10,7 +10,7 @@ function ONEXIT {
 }
 trap ONEXIT EXIT
 
-source intel-modules.sh
+source ci/intel-modules.sh
 #module load intel_comp/2024.2.0 compiler-rt tbb compiler mpi
 #module load hdf5/1.14.4
 #module load fftw/3.3.10
@@ -77,7 +77,7 @@ make clean
 echo
 echo "Parallel HDF5 build"
 echo "-------------------"
-source intel-modules-parallel.sh
+source ci/intel-modules-parallel.sh
 #module unload hdf5
 #module load parallel_hdf5/1.14.4
 ./configure --with-parmetis --disable-optimization
