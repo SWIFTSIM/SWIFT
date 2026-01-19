@@ -31,8 +31,6 @@ swift-gnu-build-mr:
   stage: build
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_PIPELINE_SOURCE != "merge_request_event"
-      when: never
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests (MRs)"
