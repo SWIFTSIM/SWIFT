@@ -1065,36 +1065,33 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Mapper function to count tasks by cell type (zoom/buffer/bkg).
+ * @brief Mapper function to count tasks by cell type (zoom/bkg).
  *
  * This function counts tasks in parallel, accumulating them into separate
- * arrays for zoom, buffer, and background cells.
+ * arrays for zoom and background cells.
  *
  * @param map_data Array of tasks to process
  * @param num_elements Number of tasks in this chunk
  * @param extra_data Pointer to structure containing count arrays
  */
 void engine_count_cell_type_tasks_mapper(void *map_data, int num_elements,
-                                          void *extra_data) {
+                                         void *extra_data) {
 
   const struct task *tasks = (struct task *)map_data;
   int *const global_counts = (int *)extra_data;
 
-  /* Extract pointers to the three count arrays from extra_data
-   * Layout: [zoom_counts][buffer_counts][bkg_counts]
+  /* Extract pointers to the two count arrays from extra_data
+   * Layout: [zoom_counts][bkg_counts]
    * Each array has (task_type_count + 1) elements */
   int *const zoom_counts = global_counts;
-  int *const buffer_counts = global_counts + (task_type_count + 1);
-  int *const bkg_counts = global_counts + 2 * (task_type_count + 1);
+  int *const bkg_counts = global_counts + (task_type_count + 1);
 
   /* Local accumulator copies */
   int local_zoom_counts[task_type_count + 1];
-  int local_buffer_counts[task_type_count + 1];
   int local_bkg_counts[task_type_count + 1];
 
   for (int k = 0; k <= task_type_count; k++) {
     local_zoom_counts[k] = 0;
-    local_buffer_counts[k] = 0;
     local_bkg_counts[k] = 0;
   }
 
@@ -1111,14 +1108,12 @@ void engine_count_cell_type_tasks_mapper(void *map_data, int num_elements,
       case cell_type_zoom:
         local_counts = local_zoom_counts;
         break;
-      case cell_type_buffer:
-        local_counts = local_buffer_counts;
-        break;
       case cell_type_bkg:
         local_counts = local_bkg_counts;
         break;
+      case cell_type_buffer:
       case cell_type_regular:
-        /* Regular cells should not exist in zoom simulations, skip */
+        /* Buffer and regular cells are deprecated, skip */
         continue;
       default:
         /* Unknown cell type, skip */
@@ -1134,10 +1129,7 @@ void engine_count_cell_type_tasks_mapper(void *map_data, int num_elements,
 
   /* Update the global counts atomically */
   for (int k = 0; k <= task_type_count; k++) {
-    if (local_zoom_counts[k])
-      atomic_add(zoom_counts + k, local_zoom_counts[k]);
-    if (local_buffer_counts[k])
-      atomic_add(buffer_counts + k, local_buffer_counts[k]);
+    if (local_zoom_counts[k]) atomic_add(zoom_counts + k, local_zoom_counts[k]);
     if (local_bkg_counts[k]) atomic_add(bkg_counts + k, local_bkg_counts[k]);
   }
 }
@@ -1202,32 +1194,25 @@ void engine_print_task_counts(const struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("nr_parts = %zu.", e->s->nr_parts);
-  message("nr_gparts = %zu.", e->s->nr_gparts);
-  message("nr_sink = %zu.", e->s->nr_sinks);
-  message("nr_sparts = %zu.", e->s->nr_sparts);
-  message("nr_bparts = %zu.", e->s->nr_bparts);
 
   /* In zoom land we can also break this down by cell type. */
   if (e->s->with_zoom_region) {
-    /* Allocate count arrays for zoom, buffer, and background cells
-     * Layout: [zoom_counts][buffer_counts][bkg_counts]
+    /* Allocate count arrays for zoom and background cells
+     * Layout: [zoom_counts][bkg_counts]
      * Each array has (task_type_count + 1) elements */
-    int all_counts[3 * (task_type_count + 1)];
-    for (int k = 0; k < 3 * (task_type_count + 1); k++) {
+    int all_counts[2 * (task_type_count + 1)];
+    for (int k = 0; k < 2 * (task_type_count + 1); k++) {
       all_counts[k] = 0;
     }
 
     /* Use mapper to count tasks by cell type in parallel */
     threadpool_map((struct threadpool *)&e->threadpool,
-                   engine_count_cell_type_tasks_mapper, (void *)tasks,
-                   nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
-                   all_counts);
+                   engine_count_cell_type_tasks_mapper, (void *)tasks, nr_tasks,
+                   sizeof(struct task), threadpool_auto_chunk_size, all_counts);
 
     /* Extract individual count arrays */
     int *zoom_counts = all_counts;
-    int *buffer_counts = all_counts + (task_type_count + 1);
-    int *bkg_counts = all_counts + 2 * (task_type_count + 1);
+    int *bkg_counts = all_counts + (task_type_count + 1);
 
     /* Print the counts. */
 #ifdef WITH_MPI
@@ -1243,24 +1228,6 @@ void engine_print_task_counts(const struct engine *e) {
       printf(" %s=%i", taskID_names[k], zoom_counts[k]);
     printf(" skipped=%i ]\n", zoom_counts[task_type_count]);
     fflush(stdout);
-
-    /* Only print buffer cells if we have them. */
-    if (e->s->zoom_props->with_buffer_cells) {
-#ifdef WITH_MPI
-      printf(
-          "[%04i] %s engine_print_task_counts: buffer task counts are [ %s=%i",
-          e->nodeID, clocks_get_timesincestart(), taskID_names[0],
-          buffer_counts[0]);
-#else
-      printf("%s engine_print_task_counts: buffer task counts are [ %s=%i",
-             clocks_get_timesincestart(), taskID_names[0], buffer_counts[0]);
-#endif /* WITH_MPI */
-
-      for (int k = 1; k < task_type_count; k++)
-        printf(" %s=%i", taskID_names[k], buffer_counts[k]);
-      printf(" skipped=%i ]\n", buffer_counts[task_type_count]);
-      fflush(stdout);
-    }
 
 #ifdef WITH_MPI
     printf(
@@ -1526,6 +1493,12 @@ void engine_print_task_counts(const struct engine *e) {
             global_counts[1]);
   }
 #endif
+
+  message("nr_parts = %zu.", e->s->nr_parts);
+  message("nr_gparts = %zu.", e->s->nr_gparts);
+  message("nr_sink = %zu.", e->s->nr_sinks);
+  message("nr_sparts = %zu.", e->s->nr_sparts);
+  message("nr_bparts = %zu.", e->s->nr_bparts);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
