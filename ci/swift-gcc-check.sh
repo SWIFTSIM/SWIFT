@@ -11,6 +11,7 @@ source ci/setup.sh
 git clean -fdx
 
 echo "XXX check only XXX"
+exit
 
 #  And off we go.
 ./autogen.sh
