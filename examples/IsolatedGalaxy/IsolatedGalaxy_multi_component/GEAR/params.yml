@@ -6,13 +6,16 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
+Restarts:
+  enable:        1
+  delta_hours:   6.                  # (Optional) decimal hours between dumps of restart files.
+
 Scheduler:
   max_top_level_cells: 16
   cell_extra_gparts:   1000      # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sinks:    1000      # (Optional) Number of spare sinks per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sparts:   1000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
 
-  
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
@@ -77,9 +80,12 @@ GEARStarFormation:
   n_stars_per_particle: 4
   min_mass_frac: 0.5
 
+GEARPressureFloor:
+  jeans_factor: 10
+
 GEARSink:
-  use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
-  cut_off_radius: 5e-3                        # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0. 
+  use_fixed_cut_off_radius: 1                # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
+  cut_off_radius: 5e-3                       # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0. 
   f_acc: 0.1
   temperature_threshold_K: 1e4               # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
   density_threshold_Hpcm3: 1e0               # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
