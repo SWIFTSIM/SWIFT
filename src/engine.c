@@ -138,6 +138,7 @@ const char *engine_policy_names[] = {"none",
                                      "power spectra",
                                      "moving mesh",
                                      "moving mesh hydro",
+                                     "no_io",
                                      "sidm"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
@@ -2263,7 +2264,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(s, e->verbose);
   space_init_bparts(s, e->verbose);
   space_init_sinks(s, e->verbose);
-  space_init_siparts(s, e->verbose);
 
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||

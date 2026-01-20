@@ -26,7 +26,6 @@
  *
  * All quantities related to gravity are stored in the associate #gpart.
  */
-
 struct sipart {
 
   /*! Particle ID. */

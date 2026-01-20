@@ -47,7 +47,7 @@ struct cell_stars {
     struct spart *parts_rebuild;
 
     /*! The star ghost task itself */
-    struct task *density_ghost;
+    struct task *density_ghost[STARS_GHOST_NTASK];
 
     /*! The first star ghost task related to kinetic feedback */
     struct task *prep1_ghost;
@@ -180,6 +180,9 @@ struct cell_stars {
 
   /*! Is the #spart data of this cell being used in a sub-cell? */
   int hold;
+
+  /*! Is the #spart data of this cell being used by a split task? */
+  int split_task_hold;
 };
 
 #endif /* SWIFT_CELL_STARS_H */

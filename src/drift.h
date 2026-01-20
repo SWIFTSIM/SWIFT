@@ -30,6 +30,7 @@
 #include "dimension.h"
 #include "engine.h"
 #include "entropy_floor.h"
+#include "forcing.h"
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "lightcone/lightcone_crossing.h"
@@ -37,6 +38,7 @@
 #include "mhd.h"
 #include "part.h"
 #include "rt.h"
+#include "sidm.h"
 #include "sink.h"
 #include "stars.h"
 
@@ -71,28 +73,21 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->ti_drift = ti_current;
 #endif
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
+  /* Get the ID of the gpart for forcing */
   long long id = 0;
   if (gp->type == swift_type_gas)
     id = e->s->parts[-gp->id_or_neg_offset].id;
   else if (gp->type == swift_type_stars)
     id = e->s->sparts[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_sink)
+    id = e->s->sinks[-gp->id_or_neg_offset].id;
   else if (gp->type == swift_type_black_hole)
     id = e->s->bparts[-gp->id_or_neg_offset].id;
   else
     id = gp->id_or_neg_offset;
 
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    gp->v_full[0] = 0.f;
-    gp->v_full[1] = 0.f;
-    gp->v_full[2] = 0.f;
-  }
-#endif
+  /* Apply forcing */
+  forcing_gpart_drift_apply(id, e->forcing_terms, gp);
 
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
@@ -162,20 +157,8 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->ti_drift = ti_current;
 #endif
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
-  const long long id = p->id;
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    xp->v_full[0] = 0.f;
-    xp->v_full[1] = 0.f;
-    xp->v_full[2] = 0.f;
-  }
-#endif
+  /* Apply forcing */
+  forcing_part_drift_apply(p->id, e->forcing_terms, p, xp);
 
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
@@ -216,16 +199,6 @@ __attribute__((always_inline)) INLINE static void drift_part(
     xp->x_diff_sort[k] -= dx;
   }
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-    p->v[0] = 0.f;
-    p->v[1] = 0.f;
-    p->v[2] = 0.f;
-  }
-#endif
-
 #ifdef WITH_LIGHTCONE
   /* Check if the particle crossed the lightcone */
   if (p->gpart)
@@ -258,20 +231,8 @@ __attribute__((always_inline)) INLINE static void drift_spart(
   sp->ti_drift = ti_current;
 #endif
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
-  const long long id = sp->id;
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    sp->v[0] = 0.f;
-    sp->v[1] = 0.f;
-    sp->v[2] = 0.f;
-  }
-#endif
+  /* Apply forcing */
+  forcing_spart_drift_apply(sp->id, e->forcing_terms, sp);
 
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
@@ -326,20 +287,8 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
   bp->ti_drift = ti_current;
 #endif
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
-  const long long id = bp->id;
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    bp->v[0] = 0.f;
-    bp->v[1] = 0.f;
-    bp->v[2] = 0.f;
-  }
-#endif
+  /* Apply forcing */
+  forcing_bpart_drift_apply(bp->id, e->forcing_terms, bp);
 
 #ifdef WITH_LIGHTCONE
   /* Store initial position and velocity for lightcone check after the drift */
@@ -393,21 +342,6 @@ __attribute__((always_inline)) INLINE static void drift_sink(
   sink->ti_drift = ti_current;
 #endif
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-
-  /* Get the ID of the gpart */
-  const long long id = sink->id;
-
-  /* Cancel the velocity of the particles */
-  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
-
-    /* Don't move! */
-    sink->v[0] = 0.f;
-    sink->v[1] = 0.f;
-    sink->v[2] = 0.f;
-  }
-#endif
-
 #ifdef WITH_LIGHTCONE
   error("Lightcone treatment of sinks needs implementing");
 #endif
@@ -428,3 +362,61 @@ __attribute__((always_inline)) INLINE static void drift_sink(
 }
 
 #endif /* SWIFT_DRIFT_H */
+
+/**
+ * @brief Perform the 'drift' operation on an #sipart
+ *
+ * @param sip The #sipart to drift.
+ * @param dt_drift The drift time-step.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
+ */
+__attribute__((always_inline)) INLINE static void drift_sipart(
+    struct sipart *restrict sip, double dt_drift, integertime_t ti_old,
+    integertime_t ti_current, const struct engine *e,
+    struct replication_list *replication_list, const double cell_loc[3]) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sip->ti_drift != ti_old)
+    error(
+        "si-particle has not been drifted to the current time "
+        "sip->ti_drift=%lld, "
+        "c->ti_old=%lld, ti_current=%lld",
+        sip->ti_drift, ti_old, ti_current);
+
+  sip->ti_drift = ti_current;
+#endif
+
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+
+  /* Get the ID of the sipart */
+  const long long id = sip->id;
+
+  /* Cancel the velocity of the particles */
+  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
+
+    /* Don't move! */
+    sip->v[0] = 0.f;
+    sip->v[1] = 0.f;
+    sip->v[2] = 0.f;
+  }
+#endif
+
+#ifdef WITH_LIGHTCONE
+  error("Lightcone treatment of SIDM needs implementing");  // TODO:unnecessary?
+#endif
+
+  /* Drift... */
+  sip->x[0] += sip->v[0] * dt_drift;
+  sip->x[1] += sip->v[1] * dt_drift;
+  sip->x[2] += sip->v[2] * dt_drift;
+
+  /* Predict the values of the extra fields */
+  sidm_predict_extra(sip, dt_drift);  // TODO
+
+  /* Compute offsets since last cell construction */
+  for (int k = 0; k < 3; k++) {
+    const float dx = sip->v[k] * dt_drift;
+    sip->x_diff[k] -= dx;
+  }
+}

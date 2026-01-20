@@ -174,8 +174,10 @@ void cell_recursively_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
   if ((c->hydro.count == 0) || !cell_is_active_hydro(c, e)) return;
 
   /* Is the ghost at this level? */
-  if (c->hydro.ghost != NULL) {
-    scheduler_activate(s, c->hydro.ghost);
+  if (c->hydro.ghost[0] != NULL) {
+    for (int i = 0; i < HYDRO_GHOST_NTASK; i++) {
+      scheduler_activate(s, c->hydro.ghost[i]);
+    }
   } else {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -218,8 +220,10 @@ void cell_recursively_activate_cooling(struct cell *c, struct scheduler *s,
   if ((c->hydro.count == 0) || !cell_is_active_hydro(c, e)) return;
 
   /* Is the ghost at this level? */
-  if (c->hydro.cooling != NULL) {
-    scheduler_activate(s, c->hydro.cooling);
+  if (c->hydro.cooling[0] != NULL) {
+    for (int i = 0; i < HYDRO_COOLING_NTASK; i++) {
+      scheduler_activate(s, c->hydro.cooling[i]);
+    }
   } else {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2465,8 +2469,11 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (cell_need_activating_stars(c, e, with_star_formation,
                                    with_star_formation_sink)) {
 
-      if (c->stars.density_ghost != NULL)
-        scheduler_activate(s, c->stars.density_ghost);
+      if (c->stars.density_ghost[0] != NULL) {
+        for (int i = 0; i < STARS_GHOST_NTASK; i++) {
+          scheduler_activate(s, c->stars.density_ghost[i]);
+        }
+      }
       if (c->stars.prep1_ghost != NULL)
         scheduler_activate(s, c->stars.prep1_ghost);
       if (c->hydro.prep1_ghost != NULL)

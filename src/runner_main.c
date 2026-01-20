@@ -146,6 +146,12 @@
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
 
+/* Import the SIDM density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_sidm.h"
+#include "runner_doiact_undef.h"
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -235,19 +241,24 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dosub_self_stars_density(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_density(r, ci, /*offset=*/t->flags,
+                                            /*ntasks=*/STARS_SELF_NTASK,
+                                            /*below_h_max=*/0, 1);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
-            runner_dosub_self_stars_prep1(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_prep1(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
-            runner_dosub_self_stars_prep2(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_prep2(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
 #endif
 #ifdef STARS_SIDM_INTERACTIONS
           else if (t->subtype == task_subtype_stars_sidm_density)
             runner_dosub_self_stars_sidm_density(r, ci, /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_self_stars_feedback(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_feedback(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                             /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -270,6 +281,8 @@ void *runner_main(void *data) {
             runner_do_sinks_gas_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_sidm_density)
+            runner_dosub_self_sidm_density(r, ci, /*below_h_max=*/0, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -293,19 +306,23 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dosub_pair_stars_density(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_density(r, ci, cj, /*offset=*/0,
+                                            /*ntasks=*/1, /*below_h_max=*/0, 1);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
-            runner_dosub_pair_stars_prep1(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_prep1(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
-            runner_dosub_pair_stars_prep2(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_prep2(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
 #endif
 #ifdef STARS_SIDM_INTERACTIONS
           else if (t->subtype == task_subtype_stars_sidm_density)
             runner_dosub_pair_stars_sidm_density(r, ci, cj, /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_pair_stars_feedback(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_feedback(
+                r, ci, cj, /*offset=*/0, /*ntasks=*/1, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -328,6 +345,8 @@ void *runner_main(void *data) {
             runner_do_sinks_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sidm_density)
+            runner_dosub_pair_sidm_density(r, ci, cj, /*below_h_max=*/0, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -367,7 +386,7 @@ void *runner_main(void *data) {
           runner_do_init_grav(r, ci, 1);
           break;
         case task_type_ghost:
-          runner_do_ghost(r, ci, 1);
+          runner_do_ghost(r, ci, t->flags, HYDRO_GHOST_NTASK, 1);
           break;
 #ifdef EXTRA_HYDRO_LOOP
         case task_type_extra_ghost:
@@ -375,7 +394,7 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_stars_ghost:
-          runner_do_stars_ghost(r, ci, 1);
+          runner_do_stars_ghost(r, ci, t->flags, STARS_GHOST_NTASK, 1);
           break;
 #ifdef STARS_SIDM_INTERACTIONS
         case task_type_stars_sidm_ghost:
@@ -390,6 +409,9 @@ void *runner_main(void *data) {
           break;
         case task_type_sink_density_ghost:
           runner_do_sinks_density_ghost(r, ci, 1);
+          break;
+        case task_type_sidm_density_ghost:
+          runner_do_sidm_density_ghost(r, ci, 1);
           break;
         case task_type_drift_part:
           runner_do_drift_part(r, ci, 1);
@@ -538,7 +560,7 @@ void *runner_main(void *data) {
           runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
           break;
         case task_type_cooling:
-          runner_do_cooling(r, t->ci, 1);
+          runner_do_cooling(r, t->ci, t->flags, HYDRO_COOLING_NTASK, 1);
           break;
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
