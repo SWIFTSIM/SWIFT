@@ -896,6 +896,7 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
         tolerance)
       message("Power of order %d different (ma->power=%e vs mb->power=%e)", i,
               ma->power[i], mb->power[i]);
+    return 0;
   }
 
   /* All is good */
