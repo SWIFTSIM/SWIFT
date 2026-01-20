@@ -34,7 +34,7 @@ function do_run {
     if ! "$@" >"$tmp" 2>&1; then
         echo "Command failed: $*" >&2
         echo "Output:" >&2
-        cat "$tmp" >&2
+        tail -1000 "$tmp" >&2
         rm -f "$tmp"
         exit 1
     fi
