@@ -894,8 +894,8 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
     if (fabsf(ma->power[i] - mb->power[i]) /
             fabsf(ma->power[i] + mb->power[i]) >
         tolerance)
-      message("Power of order %d different (%e vs %e)", i, ma->power[i],
-              mb->power[i]);
+      message("Power of order %d different (ma->power=%e vs mb->power=%e)", i,
+              ma->power[i], mb->power[i]);
   }
 
   /* All is good */
