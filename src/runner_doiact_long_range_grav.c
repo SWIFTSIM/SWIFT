@@ -585,7 +585,6 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
   /* else: We have a real task that doesn't split further, no mesh
    * interactions to count */
 }
-#endif
 
 /**
  * @brief Accumulate the number of particle mesh interactions for debugging
@@ -604,8 +603,6 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
 static void runner_count_mesh_interactions_uniform(struct runner *r,
                                                    struct cell *ci,
                                                    struct cell *top) {
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
   struct engine *e = r->e;
   struct space *s = e->s;
@@ -651,31 +648,23 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
      * that arise from task splitting */
     runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
   }
-#else
-  error(
-      "This function should not be called without debugging checks or "
-      "force checks enabled!");
-#endif
 }
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
 /**
  * @brief Recursively accumulate mesh interactions for zoom pair interactions.
  *
- * This function mirrors the logic in zoom_scheduler_splittask_gravity_void_pair,
- * recursing through the void cell hierarchy and then using the normal pair
- * recursive function once we reach non-void cells.
+ * This function mirrors the logic in
+ * zoom_scheduler_splittask_gravity_void_pair, recursing through the void cell
+ * hierarchy and then using the normal pair recursive function once we reach
+ * non-void cells.
  *
  * @param c The #cell of interest (active cell receiving interactions).
  * @param ci The current #cell from c's hierarchy being processed.
  * @param cj The current #cell being paired with.
  * @param s The #space.
  */
-static void runner_count_mesh_interactions_zoom_pair_recursive(struct cell *c,
-                                                               struct cell *ci,
-                                                               struct cell *cj,
-                                                               struct space *s) {
+static void runner_count_mesh_interactions_zoom_pair_recursive(
+    struct cell *c, struct cell *ci, struct cell *cj, struct space *s) {
 
   struct engine *e = s->e;
 
@@ -685,7 +674,8 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(struct cell *c,
     return;
   }
 
-  /* Loop over progeny pairs, mirroring zoom_scheduler_splittask_gravity_void_pair */
+  /* Loop over progeny pairs, mirroring
+   * zoom_scheduler_splittask_gravity_void_pair */
   for (int i = 0; i < 8; i++) {
     struct cell *cpi = ci->progeny[i];
 
@@ -729,17 +719,17 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(struct cell *c,
 /**
  * @brief Recursively accumulate mesh interactions for zoom self interactions.
  *
- * This function mirrors the logic in zoom_scheduler_splittask_gravity_void_self,
- * recursing through the void cell hierarchy and then using the normal self
- * recursive function once we reach non-void cells.
+ * This function mirrors the logic in
+ * zoom_scheduler_splittask_gravity_void_self, recursing through the void cell
+ * hierarchy and then using the normal self recursive function once we reach
+ * non-void cells.
  *
  * @param c The #cell of interest (active cell receiving interactions).
  * @param ci The current #cell from c's hierarchy being processed.
  * @param s The #space.
  */
-static void runner_count_mesh_interactions_zoom_self_recursive(struct cell *c,
-                                                               struct cell *ci,
-                                                               struct space *s) {
+static void runner_count_mesh_interactions_zoom_self_recursive(
+    struct cell *c, struct cell *ci, struct space *s) {
 
   struct engine *e = s->e;
 
