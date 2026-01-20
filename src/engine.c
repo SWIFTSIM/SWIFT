@@ -1077,11 +1077,11 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
 void engine_count_cell_type_tasks_mapper(void *map_data, int num_elements,
                                          void *extra_data) {
 
+  /* Unpack the mapper data */
   const struct task *tasks = (struct task *)map_data;
   int *const global_counts = (int *)extra_data;
 
   /* Extract pointers to the two count arrays from extra_data
-   * Layout: [zoom_counts][bkg_counts]
    * Each array has (task_type_count + 1) elements */
   int *const zoom_counts = global_counts;
   int *const bkg_counts = global_counts + (task_type_count + 1);
@@ -1090,6 +1090,7 @@ void engine_count_cell_type_tasks_mapper(void *map_data, int num_elements,
   int local_zoom_counts[task_type_count + 1];
   int local_bkg_counts[task_type_count + 1];
 
+  /* Initialize local counts to zero */
   for (int k = 0; k <= task_type_count; k++) {
     local_zoom_counts[k] = 0;
     local_bkg_counts[k] = 0;
@@ -1111,12 +1112,7 @@ void engine_count_cell_type_tasks_mapper(void *map_data, int num_elements,
       case cell_type_bkg:
         local_counts = local_bkg_counts;
         break;
-      case cell_type_buffer:
-      case cell_type_regular:
-        /* Buffer and regular cells are deprecated, skip */
-        continue;
       default:
-        /* Unknown cell type, skip */
         continue;
     }
 
@@ -1197,8 +1193,8 @@ void engine_print_task_counts(const struct engine *e) {
 
   /* In zoom land we can also break this down by cell type. */
   if (e->s->with_zoom_region) {
+
     /* Allocate count arrays for zoom and background cells
-     * Layout: [zoom_counts][bkg_counts]
      * Each array has (task_type_count + 1) elements */
     int all_counts[2 * (task_type_count + 1)];
     for (int k = 0; k < 2 * (task_type_count + 1); k++) {
