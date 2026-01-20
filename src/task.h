@@ -89,6 +89,7 @@ enum task_types {
   task_type_stars_ghost_in, /* Implicit */
   task_type_stars_ghost,
   task_type_stars_ghost_out,   /* Implicit */
+  task_type_stars_sidm_ghost,
   task_type_stars_prep_ghost1, /* Implicit */
   task_type_hydro_prep_ghost1, /* Implicit */
   task_type_stars_prep_ghost2, /* Implicit */
@@ -146,6 +147,7 @@ enum task_subtypes {
   task_subtype_part_prep1,
   task_subtype_spart_prep2,
   task_subtype_stars_density,
+  task_subtype_stars_sidm_density,
   task_subtype_stars_prep1,
   task_subtype_stars_prep2,
   task_subtype_stars_feedback,

@@ -127,6 +127,29 @@ struct cell_stars {
     /*! Star formation history struct */
     struct star_formation_history sfh;
 
+#ifdef STARS_SIDM_INTERACTIONS
+
+    struct {
+
+      /*! Linked list of the tasks computing this cell's star density from SIDM. */
+      struct link *density;
+
+      /*! The star-SIDM density ghost task */
+      struct task *density_ghost;
+
+      /*! Max SIDM smoothing length in this cell. */
+      float h_max;
+
+      /*! Max SIDM smoothing length of active particles in this cell. */
+      float h_max_active;
+
+      /*! Values of h_max_sidm before the drifts, used for sub-cell tasks. */
+      float h_max_old;
+
+    } sidm;
+
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;

@@ -88,6 +88,16 @@
 
 #endif /* EXTRA_STAR_LOOPS */
 
+#ifdef STARS_SIDM_INTERACTIONS
+
+/* Import the star-sidm density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_stars_sidm.h"
+#include "runner_doiact_undef.h"
+
+#endif /* STARS_SIDM_INTERACTIONS */
+
 /* Import the stars feedback loop functions. */
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
@@ -242,6 +252,10 @@ void *runner_main(void *data) {
             runner_dosub_self_stars_prep2(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
+#ifdef STARS_SIDM_INTERACTIONS
+          else if (t->subtype == task_subtype_stars_sidm_density)
+            runner_dosub_self_stars_sidm_density(r, ci, /*below_h_max=*/0, 1);
+#endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, /*offset=*/0, /*ntasks=*/1,
                                              /*below_h_max=*/0, 1);
@@ -301,6 +315,10 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_prep2)
             runner_dosub_pair_stars_prep2(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
+#endif
+#ifdef STARS_SIDM_INTERACTIONS
+          else if (t->subtype == task_subtype_stars_sidm_density)
+            runner_dosub_pair_stars_sidm_density(r, ci, cj, /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(
@@ -378,6 +396,11 @@ void *runner_main(void *data) {
         case task_type_stars_ghost:
           runner_do_stars_ghost(r, ci, t->flags, STARS_GHOST_NTASK, 1);
           break;
+#ifdef STARS_SIDM_INTERACTIONS
+        case task_type_stars_sidm_ghost:
+          runner_do_stars_sidm_ghost(r, ci, 1);
+          break;
+#endif
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);
           break;
