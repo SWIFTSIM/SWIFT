@@ -59,7 +59,6 @@ SPH:
   h_min_ratio:           0.1
   minimal_temperature:   1
 
-
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
@@ -85,19 +84,17 @@ GrackleCooling:
   initial_nHDI_to_nH_ratio:   3.356904E-006    # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
   maximal_density_Hpcm3: -1    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
-
 GEARChemistry:
   initial_metallicity: 1e-6
 
 GEARFeedback:
-  supernovae_energy_erg: 1e51           # supernovae energy, used only for SNIa
-  supernovae_efficiency: 0.1           # supernovae energy efficiency, used for both SNIa and SNII
-  yields_table: POPIIsw.h5
-  yields_table_first_stars: POPIIsw.h5
-  discrete_yields: 1
-  imf_transition_metallicity: -5         # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
-  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
-
+  supernovae_Ia_energy_erg: 1e51                           # Energy released by a single supernova.
+  supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
+  yields_table: POPIIsw.h5                                 # Table containing the yields of the first stars.
+  yields_table_first_stars: POPIIsw.h5                     # Table containing the yields of the first stars.
+  discrete_yields: 1                                       # Should we use discrete yields or the IMF integrated one?
+  imf_transition_metallicity: 0                            # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]             # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
 GEARSink:
   use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.

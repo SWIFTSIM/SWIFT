@@ -2,24 +2,24 @@
 InternalUnitSystem:
   UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
   UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
-  UnitVelocity_in_cgs: 1e5   # km/s
-  UnitCurrent_in_cgs:  1   # Amperes
-  UnitTemp_in_cgs:     1   # Kelvin
+  UnitVelocity_in_cgs: 1e5                     # km/s
+  UnitCurrent_in_cgs:  1                       # Amperes
+  UnitTemp_in_cgs:     1                       # Kelvin
 
 # Parameters for the self-gravity scheme
 Gravity:
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
   theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
-  eta:          0.025               # Constant dimensionless multiplier for time integration.
-  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
-  max_physical_baryon_softening: 0.0005  # Physical softening length (in internal units)
+  eta:                           0.025     # Constant dimensionless multiplier for time integration.
+  theta:                         0.7       # Opening angle (Multipole acceptance criterion).
+  max_physical_baryon_softening: 0.0005    # Physical softening length (in internal units)
   mesh_side_length:        32
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.     # The starting time of the simulation (in internal units).
-  time_end:          12e-3 # The end time of the simulation (in internal units).
+  time_end:          12e-3  # The end time of the simulation (in internal units).
   dt_min:            1e-10  # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-3   # The maximal time-step size of the simulation (in internal units).
 
@@ -74,14 +74,12 @@ GEARChemistry:
   initial_metallicity: -5
 
 GEARFeedback:
-  supernovae_energy_erg: 1e51           # supernovae energy, used only for SNIa
-  supernovae_efficiency: 0.1           # supernovae energy efficiency, used for both SNIa and SNII
-  yields_table: POPIIsw.h5
-  yields_table_first_stars: POPIIsw.h5
-  discrete_yields: 1
-  imf_transition_metallicity: -5         # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
-  #metallicity_max_first_stars: 1.766037e-8                 # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate). (10**-5)*0.0017660372  ==  XFe_sol* 10**[Fe/H]
-  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
+  supernovae_Ia_energy_erg: 1e51           # Energy released by a single supernova.
+  supernovae_efficiency: 0.1               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
+  yields_table: POPIIsw.h5                 # Table containing the yields.
+  discrete_yields: 1                       # Should we use discrete yields or the IMF integrated one?
+  imf_transition_metallicity: 0            # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]    # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
 GEARSink:
   use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.

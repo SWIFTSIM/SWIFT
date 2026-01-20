@@ -115,7 +115,6 @@ EAGLEEntropyFloor:
 GEARPressureFloor:
   jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
 
-
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
@@ -147,6 +146,8 @@ GEARStarFormation:
 
 # GEAR feedback model
 GEARFeedback:
-  supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
-  yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
-  discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
+  supernovae_Ia_energy_erg: 1e51                             # Energy released by a single supernova.
+  supernovae_efficiency: 0.1                                 # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
+  yields_table:  chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5   # Table containing the yields of the first stars.
+  discrete_yields: 0                                         # Should we use discrete yields or the IMF integrated one?
+
