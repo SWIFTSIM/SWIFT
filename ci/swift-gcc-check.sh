@@ -10,6 +10,8 @@ source ci/setup.sh
 #  Start from clean sources.
 git clean -fdx
 
+echo "XXX check only XXX"
+
 #  And off we go.
 ./autogen.sh
 

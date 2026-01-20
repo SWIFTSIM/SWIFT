@@ -4,7 +4,7 @@
 #
 #  Peter W. Draper 20-JAN-2026.
 
-# When exiting in error report current configuration options.
+#  When exiting in error report current configuration options.
 function ONEXIT {
    if test "$?" != 0; then
       echo "Current configuration: $(grep "\./configure" config.log)"
@@ -12,16 +12,34 @@ function ONEXIT {
 }
 trap ONEXIT EXIT
 
-# Wrap calls to make so we can use -j <something> easily.
-# Also suppress output from libtool. Those logs are too big for gitlab.
+#  Wrap calls to make so we can use -j <something> easily.
+#  Also suppress output from libtool. Those logs are too big for gitlab.
 function do_make {
     make -j 4 V=0 $*
 }
 
-# Wrap ./configure calls so we can echo that line to the log.
+#  Wrap ./configure calls so we can echo that line to the log.
 function do_configure {
     echo "## CONFIGURE: $*"
     ./configure $*
+}
+
+#  Run a command and only show the output if the command fails, so if a test
+#  fails, otherwise we only really need to see success.
+#  Captures output to a temporary file.
+function do_run {
+    local tmp
+    tmp=$(mktemp) || return 1
+
+    if ! "$@" >"$tmp" 2>&1; then
+        echo "Command failed: $*" >&2
+        echo "Output:" >&2
+        cat "$tmp" >&2
+        rm -f "$tmp"
+        return 1
+    fi
+
+    rm -f "$tmp"
 }
 
 # More chat from the scripts. Re-enable if desperate.

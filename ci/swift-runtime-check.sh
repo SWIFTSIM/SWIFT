@@ -37,12 +37,12 @@ echo "------------------------"
 echo "External point mass test, 1 thread"
 echo "------------------------"
 python makeIC.py 10000
-../../../swift -g -t 1 externalPointMass.yml
+do_run ../../../swift -g -t 1 externalPointMass.yml
 
 echo "---------------------------------------------"
 echo "External point mass test, 1 thread, drift all"
 echo "---------------------------------------------"
-../../../swift -g -D -t 1 externalPointMass.yml
+do_run ../../../swift -g -D -t 1 externalPointMass.yml
 
 #  Test all particle types with the EAGLE-6 model
 cd ../../EAGLE_low_z/EAGLE_6
@@ -53,13 +53,13 @@ echo "-----------------------"
 #  Avoid downloading it is not necessary on COSMA which has direct access.
 #wget http://virgodb/swift-webstorage/ICs/EAGLE_low_z/EAGLE_ICs_6.hdf5
 ln -s /cosma5/data/Swift/web-storage/ICs/EAGLE_low_z/EAGLE_ICs_6.hdf5 EAGLE_ICs_6.hdf5
-../../../swift -c -s -S -G -t 4 eagle_6.yml -n 16
+do_run ../../../swift -c -s -S -G -t 4 eagle_6.yml -n 16
 
 # Check also a dry-run
 echo "--------------------------------"
 echo "EAGLE-6 test, 4 threads, dry-run"
 echo "--------------------------------"
-../../../swift -c -s -S -G -t 4 eagle_6.yml -n 16 -d
+do_run ../../../swift -c -s -S -G -t 4 eagle_6.yml -n 16 -d
 
 # Proper multi-threaded hydro-test.
 cd ../../HydroTests/SodShock_3D
@@ -71,14 +71,14 @@ echo "--------------------------------------------"
 ln -s /cosma5/data/Swift/web-storage/ICs/glassCube_64.hdf5 glassCube_64.hdf5
 ln -s /cosma5/data/Swift/web-storage/ICs/glassCube_32.hdf5 glassCube_32.hdf5
 python makeIC.py
-../../../swift -s -t 4 -n 256 sodShock.yml
+do_run ../../../swift -s -t 4 -n 256 sodShock.yml
 
 #  Bigger test, requires a lot of resources, so don't run as long.
 unset I_MPI_HYDRA_BOOTSTRAP
 echo "------------------------------------------------"
 echo "SodShock MPI test, 16 ranks, 4 threads, 64 steps"
 echo "------------------------------------------------"
-mpirun -np 16 ../../../swift_mpi -s -t 4 -n 64 sodShock.yml -PScheduler:max_top_level_cells:24
+do_run mpirun -np 16 ../../../swift_mpi -s -t 4 -n 64 sodShock.yml -PScheduler:max_top_level_cells:24
 cd ../../../
 
 echo 
@@ -96,13 +96,13 @@ echo "EAGLE_12 MPI test with ext. gravity, 4 ranks, 8 threads, 128 steps"
 echo "------------------------------------------------------------------"
 #wget http://virgodb/swift-webstorage/ICs/EAGLE_low_z/EAGLE_ICs_12.hdf5
 ln -s /cosma5/data/Swift/web-storage/ICs/EAGLE_low_z/EAGLE_ICs_12.hdf5 EAGLE_ICs_12.hdf5
-mpirun -np 4 ../../../swift_mpi -g -s -t 8 -n 1024 -PRestarts:onexit:1 eagle_12.yml
+do_run mpirun -np 4 ../../../swift_mpi -g -s -t 8 -n 1024 -PRestarts:onexit:1 eagle_12.yml
 
 #  Restart this.
 echo "----------"
 echo "Restarting"
 echo "----------"
-mpirun -np 4 ../../../swift_mpi -g -s -t 8 -n 1200 eagle_12.yml -r
+do_run mpirun -np 4 ../../../swift_mpi -g -s -t 8 -n 1200 eagle_12.yml -r
 cd ../../../
 
 echo "---------------------"
@@ -113,7 +113,7 @@ do_configure --with-hydro-dimension=1 --with-parmetis --enable-debugging-checks 
 do_make
 cd examples/HydroTests/SodShock_1D
 python makeIC.py
-../../../swift -s -t 1 sodShock.yml
+do_run ../../../swift -s -t 1 sodShock.yml
 cd ../../../
 
 echo "--------------"
@@ -128,6 +128,6 @@ cd examples/SinkParticles/PlummerSphere
 ln -s /cosma5/data/Swift/web-storage/ICs/test_sink.hdf5
 ln -s /cosma5/data/Swift/web-storage/CoolingTables/CloudyData_UVB=HM2012.h5
 ln -s /cosma5/data/Swift/web-storage/FeedbackTables/POPIIsw.h5
-../../../swift --hydro --sinks --stars --self-gravity --feedback --cooling --threads=4 params.yml
+do_run ../../../swift --hydro --sinks --stars --self-gravity --feedback --cooling --threads=4 params.yml
 
 exit
