@@ -1,6 +1,9 @@
 #!/bin/bash -l
 
 #  SWIFT Intel toolchain complete set of builds and tests.
+#
+#  Peter W. Draper 20-JAN-2026.
+
 source ci/intel-modules.sh
 source ci/setup.sh
 

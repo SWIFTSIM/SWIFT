@@ -1,10 +1,12 @@
-
-#  gitlab pipeline for SWIFT, defines the various jobs that could be ran by a
+#  Gitlab pipeline for SWIFT, defines the various jobs that could be ran by a
 #  suitably registered gitlab-runner instance.
 #
 #  Should only run on non-draft merge requests or pushes to the master branch,
 #  either directly or from a merge request. Some of this logic is repeated in
 #  the jobs.
+#
+#  Peter W. Draper 20-JAN-2026.
+
 workflow:
   rules:
     - if: >

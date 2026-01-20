@@ -1,6 +1,8 @@
 #!/bin/bash -l
 
 #  Tests to be ran when changes are committed to a merge request.
+#
+#  Peter W. Draper 20-JAN-2026.
 
 #  Build toolchain.
 source ci/intel-modules.sh

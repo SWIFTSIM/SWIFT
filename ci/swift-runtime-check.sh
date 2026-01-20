@@ -1,11 +1,20 @@
 #!/bin/bash -l
 
+#  Runtime checks of SWIFT. So we build the binaries and do some small checks
+#  that this works for some of the examples.
+#
+#  Note that we no longer use the -e flag to check floating point operations
+#  as as that is no longer reliable with Intel 2024 onwards.
+#
+#  Peter W. Draper 20-JAN-2026.
+
 #  Build toolchain.
 source ci/intel-modules.sh
 source ci/setup.sh
 
 #  Extra modules for runtime.
 module load grackle-swift/3.3.dev1
+
 #  Need 2.70 for Fortran support.
 module load autoconf
 
@@ -15,43 +24,48 @@ git clean -fdx
 #  And off we go.
 ./autogen.sh
 
-#  Note no -e as that is no longer supported with Intel 2024.
-./configure --with-parmetis --enable-debugging-checks --disable-vec --enable-debug --with-ext-potential=point-mass
+echo 
+echo "------------------------"
+echo "Building SWIFT binaries."
+echo "------------------------"
+do_configure --with-parmetis --enable-debugging-checks --disable-vec --enable-debug --with-ext-potential=point-mass
 do_make
 
 #  Now run some simple checks.
 cd examples/GravityTests/ExternalPointMass
-echo
-echo "# External point mass test, 1 thread"
-echo
+echo "------------------------"
+echo "External point mass test, 1 thread"
+echo "------------------------"
 python makeIC.py 10000
 ../../../swift -g -t 1 externalPointMass.yml
 
-echo
-echo "# External point mass test, 1 thread, drift all"
-echo
+echo "---------------------------------------------"
+echo "External point mass test, 1 thread, drift all"
+echo "---------------------------------------------"
 ../../../swift -g -D -t 1 externalPointMass.yml
 
-# Test all particle types with the EAGLE-6 model
+#  Test all particle types with the EAGLE-6 model
 cd ../../EAGLE_low_z/EAGLE_6
-echo
-echo "# EAGLE-6 test, 4 threads"
-echo
+echo "-----------------------"
+echo "EAGLE-6 test, 4 threads"
+echo "-----------------------"
+
+#  Avoid downloading it is not necessary on COSMA which has direct access.
 #wget http://virgodb/swift-webstorage/ICs/EAGLE_low_z/EAGLE_ICs_6.hdf5
 ln -s /cosma5/data/Swift/web-storage/ICs/EAGLE_low_z/EAGLE_ICs_6.hdf5 EAGLE_ICs_6.hdf5
 ../../../swift -c -s -S -G -t 4 eagle_6.yml -n 16
 
 # Check also a dry-run
-echo
-echo "# EAGLE-6 test, 4 threads, dry-run"
-echo
+echo "--------------------------------"
+echo "EAGLE-6 test, 4 threads, dry-run"
+echo "--------------------------------"
 ../../../swift -c -s -S -G -t 4 eagle_6.yml -n 16 -d
 
 # Proper multi-threaded hydro-test.
 cd ../../HydroTests/SodShock_3D
-echo
-echo "# SodShock threaded test, 4 threads, 256 steps"
-echo
+echo "--------------------------------------------"
+echo "SodShock threaded test, 4 threads, 256 steps"
+echo "--------------------------------------------"
 #wget http://virgodb/swift-webstorage/ICs/glassCube_64.hdf5
 #wget http://virgodb/swift-webstorage/ICs/glassCube_32.hdf5
 ln -s /cosma5/data/Swift/web-storage/ICs/glassCube_64.hdf5 glassCube_64.hdf5
@@ -61,46 +75,59 @@ python makeIC.py
 
 #  Bigger test, requires a lot of resources, so don't run as long.
 unset I_MPI_HYDRA_BOOTSTRAP
-echo
-echo "# SodShock MPI test, 16 ranks, 4 threads, 64 steps"
-echo
+echo "------------------------------------------------"
+echo "SodShock MPI test, 16 ranks, 4 threads, 64 steps"
+echo "------------------------------------------------"
 mpirun -np 16 ../../../swift_mpi -s -t 4 -n 64 sodShock.yml -PScheduler:max_top_level_cells:24
-
 cd ../../../
-./configure --with-parmetis --enable-debugging-checks --enable-debug
+
+echo 
+echo "-----------------------"
+echo "Building SWIFT binaries"
+echo "-----------------------"
+do_make clean
+do_configure --with-parmetis --enable-debugging-checks --enable-debug
 do_make
 
 # Test EAGLE 12 with external gravity over MPI.
 cd examples/EAGLE_low_z/EAGLE_12
-echo
-echo "# EAGLE_12 MPI test with ext. gravity, 4 ranks, 8 threads, 128 steps"
-echo
+echo "------------------------------------------------------------------"
+echo "EAGLE_12 MPI test with ext. gravity, 4 ranks, 8 threads, 128 steps"
+echo "------------------------------------------------------------------"
 #wget http://virgodb/swift-webstorage/ICs/EAGLE_low_z/EAGLE_ICs_12.hdf5
 ln -s /cosma5/data/Swift/web-storage/ICs/EAGLE_low_z/EAGLE_ICs_12.hdf5 EAGLE_ICs_12.hdf5
 mpirun -np 4 ../../../swift_mpi -g -s -t 8 -n 1024 -PRestarts:onexit:1 eagle_12.yml
 
 #  Restart this.
+echo "----------"
+echo "Restarting"
+echo "----------"
 mpirun -np 4 ../../../swift_mpi -g -s -t 8 -n 1200 eagle_12.yml -r
-
-
-# 1D check of SodShock.
 cd ../../../
+
+echo "---------------------"
+echo "1D check of SodShock."
+echo "---------------------"
 do_make clean
-./configure --with-hydro-dimension=1 --with-parmetis --enable-debugging-checks --disable-vec --enable-debug
+do_configure --with-hydro-dimension=1 --with-parmetis --enable-debugging-checks --disable-vec --enable-debug
 do_make
 cd examples/HydroTests/SodShock_1D
 python makeIC.py
 ../../../swift -s -t 1 sodShock.yml
-
-# Sink particles.
 cd ../../../
+
+echo "--------------"
+echo "Sink particles"
 do_make clean
-echo "enable-debugging-checks is disabled"
-#./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --enable-debugging-checks --with-grackle=${GRACKLE_HOME}/lib
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=${GRACKLE_HOME}/lib
+echo "--------------"
+echo "debugging-checks are disabled"
+#do_configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --enable-debugging-checks --with-grackle=${GRACKLE_HOME}/lib
+do_configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=${GRACKLE_HOME}/lib
 do_make
 cd examples/SinkParticles/PlummerSphere
 ln -s /cosma5/data/Swift/web-storage/ICs/test_sink.hdf5
 ln -s /cosma5/data/Swift/web-storage/CoolingTables/CloudyData_UVB=HM2012.h5
 ln -s /cosma5/data/Swift/web-storage/FeedbackTables/POPIIsw.h5
 ../../../swift --hydro --sinks --stars --self-gravity --feedback --cooling --threads=4 params.yml
+
+exit

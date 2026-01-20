@@ -6,6 +6,8 @@
 #  For sourcing from a check script with modules loaded and the setup.sh
 #  script also sourced. Assumes clean sources that have been had ./autogen.sh
 #  ran.
+#
+#  Peter W. Draper 20-JAN-2026.
 
 echo
 echo "------------------------"

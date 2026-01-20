@@ -1,6 +1,8 @@
 #!/bin/bash
 
 #  Common setup and functions for jobs.
+#
+#  Peter W. Draper 20-JAN-2026.
 
 # When exiting in error report current configuration options.
 function ONEXIT {

@@ -2,6 +2,8 @@
 
 #  Intel toolchain modules with parallel HDF5.
 #  Source this file.
+#
+#  Peter W. Draper 20-JAN-2026.
 
 echo "Loading the parallel Intel OneAPI toolchain for SWIFT."
 

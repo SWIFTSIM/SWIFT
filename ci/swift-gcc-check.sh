@@ -1,6 +1,9 @@
 #!/bin/bash -l
 
 #  GCC toolchain compilation and testing.
+#
+#  Peter W. Draper 20-JAN-2026.
+
 source ci/gcc-modules.sh
 source ci/setup.sh
 
