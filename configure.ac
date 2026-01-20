@@ -486,37 +486,6 @@ elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
 fi
 
-# Check if we want to use boundary particles.
-AC_ARG_ENABLE([boundary-particles],
-   [AS_HELP_STRING([--enable-boundary-particles=<N>],
-     [Set all particles with an ID smaller than @<:@N@:>@ as boundary particles (i.e. receive zero gravity + hydro forces).]
-   )],
-   [boundary_particles="$enableval"],
-   [boundary_particles="no"]
-)
-if test "$boundary_particles" = "yes"; then
-   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
-elif test "$boundary_particles" != "no"; then
-   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
-   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
-fi
-
-# Check if we want to use fixed boundary particles.
-AC_ARG_ENABLE([fixed-boundary-particles],
-   [AS_HELP_STRING([--enable-fixed-boundary-particles=<N>],
-     [Set all particles with an ID smaller than @<:@N@:>@ as fixed boundary particles (i.e. receive zero gravity + hydro forces + zero velocity), this mode enables also --enable-boundary-particles and --enable-no-gravity-below-id.]
-   )],
-   [fixed_boundary_particles="$enableval"],
-   [fixed_boundary_particles="no"]
-)
-if test "$fixed_boundary_particles" = "yes"; then
-   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
-elif test "$fixed_boundary_particles" != "no"; then
-   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
-   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
-   AC_DEFINE_UNQUOTED([SWIFT_FIXED_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
-fi
-
 # Check if fixed entropy is on for settling planetary initial conditions
 AC_ARG_ENABLE([planetary-fixed-entropy],
    [AS_HELP_STRING([--enable-planetary-fixed-entropy],
@@ -2933,7 +2902,7 @@ esac
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
-      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration , abc-flowdefault: none@:>@]
+      [Hydrodynamics forcing terms @<:@none, boundary-particles, roberts-flow, roberts-flow-acceleration, abc-flow, default: none@:>@]
    )],
    [with_forcing="$withval"],
    [with_forcing="none"]
@@ -2941,6 +2910,9 @@ AC_ARG_WITH([forcing],
 case "$with_forcing" in
    none)
       AC_DEFINE([FORCING_NONE], [1], [No external forcing terms])
+   ;;
+   boundary-particles)
+      AC_DEFINE([FORCING_BOUNDARY_PARTICLES], [1], [Boundary particles])
    ;;
    roberts-flow)
       AC_DEFINE([FORCING_ROBERTS_FLOW], [1], [Roberts' flow external forcing terms])
@@ -3229,6 +3201,47 @@ case "$with_rt" in
    ;;
 esac
 
+# Task-multiplexing
+
+#  Number of hydro cooling tasks per cell
+AC_ARG_WITH([hydro-cooling-ntask],
+   [AS_HELP_STRING([--with-hydro-cooling-ntask=<ntask>],
+      [number of hydro cooling tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_hydro_cooling_ntask="$withval"],
+   [with_hydro_cooling_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([HYDRO_COOLING_NTASK], [$with_hydro_cooling_ntask], [Number of hydro cooling tasks per cell])
+
+#  Number of stars density ghost tasks per cell
+AC_ARG_WITH([hydro-ghost-ntask],
+   [AS_HELP_STRING([--with-hydro-ghost-ntask=<ntask>],
+      [number of hydro density ghost tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_hydro_ghost_ntask="$withval"],
+   [with_hydro_ghost_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([HYDRO_GHOST_NTASK], [$with_hydro_ghost_ntask], [Number of hydro density ghost tasks per cell])
+
+#  Number of stars density ghost tasks per cell
+AC_ARG_WITH([stars-ghost-ntask],
+   [AS_HELP_STRING([--with-stars-ghost-ntask=<ntask>],
+      [number of stars density ghost tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_stars_ghost_ntask="$withval"],
+   [with_stars_ghost_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([STARS_GHOST_NTASK], [$with_stars_ghost_ntask], [Number of stars density ghost tasks per cell])
+
+#  Number of stars density self tasks per cell
+AC_ARG_WITH([stars-self-ntask],
+   [AS_HELP_STRING([--with-stars-self-ntask=<ntask>],
+      [number of stars density self tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_stars_self_ntask="$withval"],
+   [with_stars_self_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([STARS_SELF_NTASK], [$with_stars_self_ntask], [Number of stars density self tasks per cell])
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
@@ -3418,6 +3431,11 @@ AC_MSG_RESULT([
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
+   Hydro cooling ntask  : $with_hydro_cooling_ntask
+   Hydro ghost ntask    : $with_hydro_ghost_ntask
+   Stars ghost ntask    : $with_stars_ghost_ntask
+   Stars self ntask     : $with_stars_self_ntask
+
 
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
@@ -3430,8 +3448,6 @@ AC_MSG_RESULT([
    Naive stars interactions    : $enable_naive_interactions_stars
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
-   Boundary particles          : $boundary_particles
-   Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
    Ghost statistics            : $ghost_stats
 

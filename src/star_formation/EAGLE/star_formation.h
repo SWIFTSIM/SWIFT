@@ -590,7 +590,10 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
+ * @param chem_data The global properties of the chemistry scheme.
  * @param convert_part Did we convert a part (or spawned one)?
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void star_formation_copy_properties(
     const struct part *p, const struct xpart *xp, struct spart *sp,
@@ -598,7 +601,8 @@ INLINE static void star_formation_copy_properties(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cooling_function_data *cooling,
-    const int convert_part) {
+    const struct chemistry_global_data *chem_data, const int convert_part,
+    float displacement[3]) {
 
   /* Store the current mass */
   sp->mass = hydro_get_mass(p) / starform->num_stars_per_gas_particle;
@@ -654,9 +658,15 @@ INLINE static void star_formation_copy_properties(
                                    (enum random_number_type)2) -
         1.f;
 
-    sp->x[0] += delta_x * max_displacement * p->h;
-    sp->x[1] += delta_y * max_displacement * p->h;
-    sp->x[2] += delta_z * max_displacement * p->h;
+    /* Update the displacement */
+    displacement[0] = delta_x * max_displacement * p->h;
+    displacement[1] = delta_y * max_displacement * p->h;
+    displacement[2] = delta_z * max_displacement * p->h;
+
+    /* Move the spart */
+    sp->x[0] += displacement[0];
+    sp->x[1] += displacement[1];
+    sp->x[2] += displacement[2];
 
     /* Copy the position to the gpart */
     sp->gpart->x[0] = sp->x[0];

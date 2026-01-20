@@ -627,8 +627,8 @@ int cell_glocktree(struct cell *c);
 void cell_gunlocktree(struct cell *c);
 int cell_mlocktree(struct cell *c);
 void cell_munlocktree(struct cell *c);
-int cell_slocktree(struct cell *c);
-void cell_sunlocktree(struct cell *c);
+int cell_slocktree(struct cell *c, const int split_task);
+void cell_sunlocktree(struct cell *c, const int split_task);
 int cell_sink_locktree(struct cell *c);
 void cell_sink_unlocktree(struct cell *c);
 int cell_blocktree(struct cell *c);
@@ -700,16 +700,26 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force,
+                     const int init_particles,
                      struct replication_list *replication_list_in);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
 void cell_drift_spart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
-void cell_drift_sink(struct cell *c, const struct engine *e, int force);
+void cell_drift_sink(struct cell *c, const struct engine *e,
+                     const int init_particles, int force);
 void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
+void cell_init_part(struct cell *c, const struct engine *e);
+void cell_init_gpart(struct cell *c, const struct engine *e);
+void cell_init_spart(struct cell *c, const struct engine *e);
+void cell_init_bpart(struct cell *c, const struct engine *e);
+void cell_init_sink(struct cell *c, const struct engine *e);
 void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
                           const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
@@ -1715,6 +1725,7 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
     swift_free("hydro.sort", c->hydro.sort);
     c->hydro.sort = NULL;
     c->hydro.sort_allocated = 0;
+    c->hydro.sorted = 0;
   }
 #endif
 }
@@ -1832,6 +1843,7 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
     swift_free("stars.sort", c->stars.sort);
     c->stars.sort = NULL;
     c->stars.sort_allocated = 0;
+    c->stars.sorted = 0;
   }
 #endif
 }

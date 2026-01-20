@@ -74,11 +74,6 @@ void stellar_evolution_props_init(struct stellar_model *sm,
                                   struct swift_params *params,
                                   const struct cosmology *cosmo);
 
-void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream);
-void stellar_evolution_restore(struct stellar_model *sm, FILE *stream);
-
-void stellar_evolution_clean(struct stellar_model *sm);
-
 float stellar_evolution_compute_initial_mass(
     const struct spart *restrict sp, const struct stellar_model *sm,
     const struct phys_const *phys_consts);
@@ -107,5 +102,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
     const struct cosmology *cosmo, const struct unit_system *us,
     const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt);
+
+void stellar_evolution_zero_pointers(struct stellar_model sm);
+void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream);
+void stellar_evolution_restore(struct stellar_model *sm, FILE *stream);
+void stellar_evolution_clean(struct stellar_model *sm);
 
 #endif  // SWIFT_STELLAR_EVOLUTION_GEAR_H
