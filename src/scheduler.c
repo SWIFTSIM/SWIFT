@@ -1652,7 +1652,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   for (int i = 0; i < 8; i++) {
     struct cell *cpi = ci->progeny[i];
 
-    /* Skip NULL progeny (can happen is a background cell tree has no
+    /* Skip NULL progeny (can happen if a background cell tree has no
      * particles at the leaves for whatever reason). */
     if (cpi == NULL) continue;
 
@@ -1674,10 +1674,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Skip entirely foreign pairs. */
       if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
 
-      /* Are we at the zoom top level and if so can we get away with using
-       * the mesh here instead of a direct interaction? */
-      if (cell_pair_is_zoom_tl(cpi, cpj, sp) &&
-          cell_can_use_mesh(e, cpi, cpj)) {
+      /* Could we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpi, cpj)) {
         continue;
       }
 
@@ -1822,10 +1820,8 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
             ci->progeny[k]->nodeID != engine_rank)
           continue;
 
-        /* Check if we are at the zoom top level and if so can we get away
-         * with using the mesh here instead of a direct interaction? */
-        if (cell_pair_is_zoom_tl(ci->progeny[j], ci->progeny[k], s->space) &&
-            cell_can_use_mesh(s->space->e, ci->progeny[j], ci->progeny[k])) {
+        /* Could we use the mesh for this pair? */
+        if (cell_can_use_mesh(s->space->e, ci->progeny[j], ci->progeny[k])) {
           continue;
         }
 
