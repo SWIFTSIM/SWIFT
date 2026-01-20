@@ -109,6 +109,8 @@ void io_write_attribute_l(hid_t grp, const char *name, long data);
 void io_write_attribute_ll(hid_t grp, const char *name, long long data);
 void io_write_attribute_s(hid_t grp, const char *name, const char *str);
 
+int io_field_is_named_column(hid_t h_file, const char *name);
+
 void io_write_meta_data(hid_t h_file, const struct engine *e,
                         const struct unit_system *internal_units,
                         const struct unit_system *snapshot_units,

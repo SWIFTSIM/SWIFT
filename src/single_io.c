@@ -235,6 +235,8 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
  * @param N The number of particles to write.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
@@ -244,7 +246,8 @@ void write_array_single(const struct engine *e, hid_t grp, const char *fileName,
                         const struct io_props props, const size_t N,
                         const enum lossy_compression_schemes lossy_compression,
                         const struct unit_system *internal_units,
-                        const struct unit_system *snapshot_units) {
+                        const struct unit_system *snapshot_units,
+                        const int is_named_column) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -273,13 +276,13 @@ void write_array_single(const struct engine *e, hid_t grp, const char *fileName,
   hsize_t chunk_shape[2];
 
   /* Set the chunking:
-   * Datasets > 3D are (likely) "named columns": Use Nx1 chunking
+   * Datasets that are "named columns": Use Nx1 chunking
    * Datasets in 1D are chunked Nx1
    * Datasets in 2D and 3D are chunked NxM as the data is likely accessed as
    * vectors.
    * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
    */
-  if (props.dimension > 3) {
+  if (is_named_column) {
     rank = 2;
     shape[0] = N;
     shape[1] = props.dimension;
@@ -1465,10 +1468,13 @@ void write_output_single(struct engine *e,
               (enum part_type)ptype, compression_level_current_default,
               e->verbose);
 
+      const int is_named_column =
+          io_field_is_named_column(h_file, list[i].name);
+
       if (compression_level != compression_do_not_write) {
         write_array_single(e, h_grp, fileName, xmfFile, partTypeGroupName,
                            list[i], N, compression_level, internal_units,
-                           snapshot_units);
+                           snapshot_units, is_named_column);
         num_fields_written++;
       }
     }
