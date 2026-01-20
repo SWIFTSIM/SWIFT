@@ -23,7 +23,8 @@ workflow:
 #  inefficient as the artefacts are uploaded to the gitlab and then
 #  retrieved.
 
-stages: - build
+stages: 
+   - build
 
 variables:
   GIT_STRATEGY: clone
