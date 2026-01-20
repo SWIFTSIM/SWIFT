@@ -141,6 +141,10 @@ for i in range(order + 1):
                     % (i, j, k, i, j, k, i, j, k, i, j, k)
                 )
                 print('  message("M_%d%d%d term different");' % (i, j, k))
+                print(
+                    '  message("Note: order%d_norm = %%e", order%d_norm);'
+                    % (order, order)
+                )
                 print("  return 0;")
                 print("}")
 
