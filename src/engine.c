@@ -1065,6 +1065,84 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Mapper function to count tasks by cell type (zoom/buffer/bkg).
+ *
+ * This function counts tasks in parallel, accumulating them into separate
+ * arrays for zoom, buffer, and background cells.
+ *
+ * @param map_data Array of tasks to process
+ * @param num_elements Number of tasks in this chunk
+ * @param extra_data Pointer to structure containing count arrays
+ */
+void engine_count_cell_type_tasks_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+
+  const struct task *tasks = (struct task *)map_data;
+  int *const global_counts = (int *)extra_data;
+
+  /* Extract pointers to the three count arrays from extra_data
+   * Layout: [zoom_counts][buffer_counts][bkg_counts]
+   * Each array has (task_type_count + 1) elements */
+  int *const zoom_counts = global_counts;
+  int *const buffer_counts = global_counts + (task_type_count + 1);
+  int *const bkg_counts = global_counts + 2 * (task_type_count + 1);
+
+  /* Local accumulator copies */
+  int local_zoom_counts[task_type_count + 1];
+  int local_buffer_counts[task_type_count + 1];
+  int local_bkg_counts[task_type_count + 1];
+
+  for (int k = 0; k <= task_type_count; k++) {
+    local_zoom_counts[k] = 0;
+    local_buffer_counts[k] = 0;
+    local_bkg_counts[k] = 0;
+  }
+
+  /* Add task counts locally by cell type */
+  for (int k = 0; k < num_elements; k++) {
+    const struct task *t = &tasks[k];
+
+    /* Skip tasks with NULL cells */
+    if (t->ci == NULL) continue;
+
+    /* Determine which array to increment based on cell type */
+    int *local_counts = NULL;
+    switch (t->ci->type) {
+      case cell_type_zoom:
+        local_counts = local_zoom_counts;
+        break;
+      case cell_type_buffer:
+        local_counts = local_buffer_counts;
+        break;
+      case cell_type_bkg:
+        local_counts = local_bkg_counts;
+        break;
+      case cell_type_regular:
+        /* Regular cells should not exist in zoom simulations, skip */
+        continue;
+      default:
+        /* Unknown cell type, skip */
+        continue;
+    }
+
+    /* Increment the appropriate counter */
+    if (t->skip)
+      local_counts[task_type_count] += 1;
+    else
+      local_counts[(int)t->type] += 1;
+  }
+
+  /* Update the global counts atomically */
+  for (int k = 0; k <= task_type_count; k++) {
+    if (local_zoom_counts[k])
+      atomic_add(zoom_counts + k, local_zoom_counts[k]);
+    if (local_buffer_counts[k])
+      atomic_add(buffer_counts + k, local_buffer_counts[k]);
+    if (local_bkg_counts[k]) atomic_add(bkg_counts + k, local_bkg_counts[k]);
+  }
+}
+
+/**
  * @brief Prints the number of tasks in the engine
  *
  * @param e The #engine.
@@ -1130,58 +1208,26 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
 
-#ifdef SWIFT_DEBUG_CHECKS
-
   /* In zoom land we can also break this down by cell type. */
   if (e->s->with_zoom_region) {
-    int zoom_counts[task_type_count + 1];
-    int buffer_counts[task_type_count + 1];
-    int bkg_counts[task_type_count + 1];
-    for (int k = 0; k <= task_type_count; k++) {
-      zoom_counts[k] = 0;
-      buffer_counts[k] = 0;
-      bkg_counts[k] = 0;
+    /* Allocate count arrays for zoom, buffer, and background cells
+     * Layout: [zoom_counts][buffer_counts][bkg_counts]
+     * Each array has (task_type_count + 1) elements */
+    int all_counts[3 * (task_type_count + 1)];
+    for (int k = 0; k < 3 * (task_type_count + 1); k++) {
+      all_counts[k] = 0;
     }
 
-    /* Loop over tasks. */
-    for (int i = 0; i < nr_tasks; i++) {
-      const struct task *t = &tasks[i];
+    /* Use mapper to count tasks by cell type in parallel */
+    threadpool_map((struct threadpool *)&e->threadpool,
+                   engine_count_cell_type_tasks_mapper, (void *)tasks,
+                   nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   all_counts);
 
-      /* Handle NULL pointers. */
-      if (t->ci == NULL) continue;
-
-      /* Count the task type by cell type. */
-      switch (t->ci->type) {
-        case cell_type_zoom:
-          if (t->skip) {
-            zoom_counts[task_type_count]++;
-          } else {
-            zoom_counts[(int)t->type]++;
-          }
-          break;
-        case cell_type_buffer:
-          if (t->skip) {
-            buffer_counts[task_type_count]++;
-          } else {
-            buffer_counts[(int)t->type]++;
-          }
-          break;
-        case cell_type_bkg:
-          if (t->skip) {
-            bkg_counts[task_type_count]++;
-          } else {
-            bkg_counts[(int)t->type]++;
-          }
-          break;
-        case cell_type_regular:
-          error(
-              "Regular cell found in zoom simulation task! There should be no "
-              "regular cells in zoom simulations.");
-          break;
-        default:
-          error("Unknown cell type %d", t->ci->type);
-      }
-    }
+    /* Extract individual count arrays */
+    int *zoom_counts = all_counts;
+    int *buffer_counts = all_counts + (task_type_count + 1);
+    int *bkg_counts = all_counts + 2 * (task_type_count + 1);
 
     /* Print the counts. */
 #ifdef WITH_MPI
@@ -1231,6 +1277,8 @@ void engine_print_task_counts(const struct engine *e) {
     printf(" skipped=%i ]\n", bkg_counts[task_type_count]);
     fflush(stdout);
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
 
   /* In zoom land its helpful to print the pair and mm types. */
   if (e->s->with_zoom_region) {
