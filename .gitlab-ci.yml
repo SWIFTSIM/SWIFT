@@ -1,9 +1,10 @@
-#  Only run on merge requests or pushed to the master branch.
-#  Do run for draft MRs, but only see CI_MERGE_REQUEST_DRAFT
-#  when in an MR, not during a merge to master.
-#
-#  Jobs are different for MRs and merges to master.
 
+#  gitlab pipeline for SWIFT, defines the various jobs that could be ran by a
+#  suitably registered gitlab-runner instance.
+#
+#  Should only run on non-draft merge requests or pushes to the master branch,
+#  either directly or from a merge request. Some of this logic is repeated in
+#  the jobs.
 workflow:
   rules:
     - if: >
@@ -15,13 +16,14 @@ workflow:
     - if: '$CI_PIPELINE_SOURCE == "push"'
     - when: never
 
-#  We just build, that is a job is lots of compilations and tests.
-#  Those could be separated but tests would need to keep artifacts
-#  to preserve context with the compilations, and we have a lot
-#  of builds based on configure options, so each would need to be handled. Not
-#  sure that could be efficient.
-stages:
-  - build
+#  We just build, that is a job is lots of compilations and tests.  Those
+#  could be separated but tests would need to keep artefacts to preserve
+#  context with the compilations, and we have a lot of builds based on
+#  configure options, so each would need to be handled. That would be
+#  inefficient as the artefacts are uploaded to the gitlab and then
+#  retrieved.
+
+stages: - build
 
 variables:
   GIT_STRATEGY: clone
@@ -41,6 +43,7 @@ debug:
         "MR_SOURCE=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" \
         "MR_TARGET=$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
 
+#  Full GCC test.
 swift-gnu-build:
   stage: build
   #  When MR to master happens, or commit is to master.
@@ -54,6 +57,7 @@ swift-gnu-build:
     - ci/swift-gcc-check.sh
     - echo "complete."
 
+#  Full Intel test.
 swift-intel-build:
   stage: build
   #  When MR to master happens, or commit is to master.
@@ -67,6 +71,7 @@ swift-intel-build:
     - ci/swift-intel-check.sh
     - echo "complete."
 
+#  Small test for MRs only. Some like to push a lot...
 swift-intel-build-mr:
   stage: build
   #  When this commit is part of an active MR.
@@ -79,4 +84,3 @@ swift-intel-build-mr:
     - echo "Merge request check using Intel toolchain"
     - ci/swift-intel-check-mr.sh
     - echo "complete."
-

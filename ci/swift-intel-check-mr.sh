@@ -2,20 +2,9 @@
 
 #  Tests to be ran when changes are committed to a merge request.
 
-# When exiting in error report current configuration options.
-function ONEXIT {
-   if test "$?" != 0; then
-      echo "Current configuration: $(grep "\./configure" config.log)"
-   fi
-}
-trap ONEXIT EXIT
-
-#  Lots of output.
-set -e
-set -x
-
 #  Build toolchain.
 source ci/intel-modules.sh
+source ci/setup.sh
 
 #  Clean sources.
 git clean -fdx
@@ -27,15 +16,15 @@ echo
 echo "non-MPI build"
 echo "-------------"
 ./configure --disable-optimization
-make
-make clean
+do_make
+do_make clean
 
 echo
 echo "MPI build"
 echo "---------"
 ./configure --with-parmetis --disable-optimization
-make
-make clean
+do_make
+do_make clean
 
 #  Keep simple, may have a number of these happening.
 exit
