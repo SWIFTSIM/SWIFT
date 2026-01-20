@@ -306,9 +306,12 @@ void print_los_info(const struct line_of_sight *Los, const int i) {
  * @param j Line of sight ID.
  * @param e The engine.
  * @param grp HDF5 group to write to.
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  */
 void write_los_hdf5_dataset(const struct io_props props, const size_t N,
-                            const int j, const struct engine *e, hid_t grp) {
+                            const int j, const struct engine *e, hid_t grp,
+                            const int is_named_column) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -329,7 +332,7 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
    * vectors.
    * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
    */
-  if (props.dimension > 3) {
+  if (is_named_column) {
     rank = 2;
     shape[0] = N;
     shape[1] = props.dimension;
@@ -497,10 +500,13 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
     /* Did the user cancel this field? */
     char field[PARSER_MAX_LINE_SIZE];
     sprintf(field, "SelectOutputLOS:%.*s", FIELD_BUFFER_SIZE, list[i].name);
-    int should_write = parser_get_opt_param_int(params, field, 1);
+    const int should_write = parser_get_opt_param_int(params, field, 1);
 
-    /* Write (if selected) */
-    if (should_write) write_los_hdf5_dataset(list[i], N, j, e, grp);
+    /* Write (if selected)
+     * Note: we don't bother with optimal chunking here
+     * given the dataset sizes */
+    if (should_write)
+      write_los_hdf5_dataset(list[i], N, j, e, grp, /*is_named_column=*/0);
   }
 }
 

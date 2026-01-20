@@ -177,6 +177,10 @@ void write_fof_hdf5_array(
    * Datasets in 1D are chunked Nx1
    * Datasets in 2D and 3D are chunked NxM as the data is likely accessed as
    * vectors.
+   *
+   * Note: No actual named columns are ever written here so we just use
+   * best practice chunking based on the tests and expected access patterns,
+   *
    * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
    */
   if (props.dimension > 3) {

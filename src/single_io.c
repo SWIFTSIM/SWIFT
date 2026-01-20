@@ -276,9 +276,9 @@ void write_array_single(const struct engine *e, hid_t grp, const char *fileName,
   hsize_t chunk_shape[2];
 
   /* Set the chunking:
-   * Datasets that are "named columns": Use Nx1 chunking
-   * Datasets in 1D are chunked Nx1
-   * Datasets in 2D and 3D are chunked NxM as the data is likely accessed as
+   * - Datasets that are "named columns": Use Nx1 chunking
+   * - Datasets in 1D are chunked Nx1
+   * Other datasets are chunked NxM as the data is likely accessed as
    * vectors.
    * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
    */
