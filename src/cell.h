@@ -824,6 +824,7 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
 int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
                                const struct cell *cj);
 void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e);
+void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e);
 
 /***
  * @brief Get the cell ID of a cell including an offset.

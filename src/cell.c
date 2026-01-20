@@ -1728,8 +1728,7 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
   }
 
   /* Minimal distance between any pair of particles */
-  const double min_radius2 =
-      cell_min_dist2(ci, cj, s->periodic, s->dim);
+  const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
 
   /* Are we beyond the distance where the truncated forces are 0 ?*/
   return (min_radius2 > max_distance2);
@@ -1992,6 +1991,232 @@ void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e) {
           return;
         }
       }
+    }
+  }
+}
+
+/**
+ * @brief Recursively check mesh interactions for zoom pair interactions.
+ *
+ * This function mirrors the logic in zoom_scheduler_splittask_gravity_void_pair,
+ * recursing through the void cell hierarchy and then using the normal pair
+ * recursive function once we reach non-void cells.
+ *
+ * @param ci The current #cell from the hierarchy being processed.
+ * @param cj The current #cell being paired with.
+ * @param e The #engine.
+ * @return 1 if a rebuild is needed, 0 otherwise.
+ */
+static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
+                                                           struct cell *cj,
+                                                           struct engine *e) {
+
+  struct space *s = e->s;
+
+  /* If neither cell is a void cell, use the normal pair recursive function */
+  if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
+    return cell_check_grav_mesh_pairs_recursive(ci, cj, e);
+  }
+
+  /* Loop over progeny pairs, mirroring zoom_scheduler_splittask_gravity_void_pair */
+  for (int i = 0; i < 8; i++) {
+    struct cell *cpi = ci->progeny[i];
+
+    /* Skip NULL progeny */
+    if (cpi == NULL) continue;
+
+    /* Skip empty non-void progeny */
+    if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+
+    for (int j = 0; j < 8; j++) {
+      struct cell *cpj = cj->progeny[j];
+
+      /* Skip NULL progeny */
+      if (cpj == NULL) continue;
+
+      /* Skip empty non-void progeny */
+      if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+
+      /* Can we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpi, cpj)) {
+        /* Check if we can no longer use the mesh */
+        if (cell_cant_use_mesh_anymore(e, cpi, cpj)) {
+          atomic_inc(&e->forcerebuild);
+          return 1;
+        }
+        /* Mesh still valid, continue */
+        continue;
+      }
+
+      /* Can we use M-M for this pair? */
+      if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0,
+                               /*periodic boundaries*/ s->periodic,
+                               /*use_mesh*/ s->periodic)) {
+        /* M-M task handles this, skip */
+        continue;
+      }
+
+      /* Recurse to find more mesh interactions */
+      if (cell_check_grav_mesh_pairs_zoom_pair_recursive(cpi, cpj, e)) {
+        return 1;
+      }
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Recursively check mesh interactions for zoom self interactions.
+ *
+ * This function mirrors the logic in zoom_scheduler_splittask_gravity_void_self,
+ * recursing through the void cell hierarchy and then using the normal self
+ * recursive function once we reach non-void cells.
+ *
+ * @param ci The current #cell from the hierarchy being processed.
+ * @param e The #engine.
+ * @return 1 if a rebuild is needed, 0 otherwise.
+ */
+static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
+                                                           struct engine *e) {
+
+  /* If not a void cell, use the normal self recursive function */
+  if (ci->subtype != cell_subtype_void) {
+    return cell_check_grav_mesh_pairs_recursive(ci, NULL, e);
+  }
+
+  /* Loop over progeny for self interactions */
+  for (int k = 0; k < 8; k++) {
+    if (ci->progeny[k] == NULL) continue;
+
+    /* Skip empty non-void progeny */
+    if (ci->progeny[k]->subtype != cell_subtype_void &&
+        ci->progeny[k]->grav.count == 0)
+      continue;
+
+    if (cell_check_grav_mesh_pairs_zoom_self_recursive(ci->progeny[k], e)) {
+      return 1;
+    }
+  }
+
+  /* Now handle pair interactions between progeny */
+  for (int j = 0; j < 8; j++) {
+    if (ci->progeny[j] == NULL) continue;
+
+    /* Skip empty non-void progeny */
+    if (ci->progeny[j]->subtype != cell_subtype_void &&
+        ci->progeny[j]->grav.count == 0)
+      continue;
+
+    struct cell *cpj = ci->progeny[j];
+
+    for (int k = j + 1; k < 8; k++) {
+      if (ci->progeny[k] == NULL) continue;
+
+      /* Skip empty non-void progeny */
+      if (ci->progeny[k]->subtype != cell_subtype_void &&
+          ci->progeny[k]->grav.count == 0)
+        continue;
+
+      struct cell *cpk = ci->progeny[k];
+
+      /* Can we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpj, cpk)) {
+        /* Check if we can no longer use the mesh */
+        if (cell_cant_use_mesh_anymore(e, cpj, cpk)) {
+          atomic_inc(&e->forcerebuild);
+          return 1;
+        }
+        /* Mesh still valid, continue */
+        continue;
+      }
+
+      /* Otherwise recurse as a pair interaction */
+      if (cell_check_grav_mesh_pairs_zoom_pair_recursive(cpj, cpk, e)) {
+        return 1;
+      }
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Check all gravity pairs that would use mesh gravity in zoom simulations.
+ *
+ * This function mirrors the zoom task creation and splitting logic to check
+ * if any mesh gravity interactions can no longer use the mesh due to particle
+ * motion. This version handles void cells and the zoom cell hierarchy.
+ *
+ * @param c The top-level #cell (void or background cell).
+ * @param e The #engine.
+ */
+void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
+
+  struct space *s = e->s;
+  struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+
+  /* Skip cells without gravity particles */
+  if (c->grav.count == 0) return;
+
+  /* Early exit if not using mesh */
+  if (!s->periodic) {
+    return;
+  }
+
+  /* Early exit if forcerebuild already set */
+  if (e->forcerebuild) {
+    return;
+  }
+
+  /* Check self-interaction. If it returns true (forcerebuild set), we don't
+   * need to check any pairs. */
+  if (cell_check_grav_mesh_pairs_zoom_self_recursive(c, e)) {
+    message("Self interaction triggers a rebuild due to mesh pair failure.");
+    return;
+  }
+
+  /* Now loop over all other background/void top-level cells for pair
+   * interactions. This mirrors the pair tasks created between void cells. */
+  for (int n = 0; n < s->zoom_props->nr_bkg_cells; n++) {
+
+    /* Handle on the top-level cell */
+    struct cell *cj = &bkg_cells[n];
+
+    /* Avoid self contributions (already handled above) */
+    if (c == cj) continue;
+
+    /* Skip empty cells */
+    if (cj->grav.count == 0) continue;
+
+    /* Can we use the mesh for this top-level pair? */
+    if (cell_can_use_mesh(e, c, cj)) {
+      /* Check if we can no longer use the mesh */
+      if (cell_cant_use_mesh_anymore(e, c, cj)) {
+        atomic_inc(&e->forcerebuild);
+        message("Top-level pair interaction triggers a rebuild due to mesh "
+                "pair failure");
+        return;
+      }
+      /* Mesh still valid, continue */
+      continue;
+    }
+
+    /* Can we use M-M for this top-level pair? */
+    if (cell_can_use_pair_mm(c, cj, e, s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
+      /* M-M task handles this, nothing to check */
+      continue;
+    }
+
+    /* We would create a pair task here, so recurse to check mesh interactions
+     * that arise from task splitting through the void hierarchy */
+    if (cell_check_grav_mesh_pairs_zoom_pair_recursive(c, cj, e)) {
+      message("Pair interaction triggers a rebuild due to mesh pair failure");
+      return;
     }
   }
 }
