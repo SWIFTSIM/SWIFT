@@ -476,7 +476,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                  */
                 star_formation_copy_properties(
                     p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
-                    hydro_props, us, cooling, part_converted);
+                    hydro_props, us, cooling, e->chemistry, part_converted);
 
                 /* Update the Star formation history */
                 star_formation_logger_log_new_spart(sp, &c->stars.sfh);
@@ -734,34 +734,12 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         hydro_end_force(p, cosmo);
         mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);
-        chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
+        chemistry_end_force(p, cosmo, with_cosmology, e->time, dt,
+                            e->chemistry);
 
         /* Apply the forcing terms (if any) */
-        forcing_terms_apply(e->time, e->forcing_terms, e->s,
-                            e->physical_constants, p, xp);
-
-#ifdef SWIFT_BOUNDARY_PARTICLES
-
-        /* Get the ID of the part */
-        const long long id = p->id;
-
-        /* Cancel hdyro forces of these particles */
-        if (id < SWIFT_BOUNDARY_PARTICLES) {
-
-          /* Don't move ! */
-          hydro_reset_acceleration(p);
-          mhd_reset_acceleration(p);
-
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
-
-          /* Some values need to be reset in the Gizmo case. */
-          hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
-                              e->hydro_properties, e->pressure_floor_props,
-                              /*dt_alpha=*/0, /*dt_therm=*/0);
-          rt_prepare_force(p);
-#endif
-        }
-#endif
+        forcing_hydro_terms_apply(e->time, e->forcing_terms, e->s,
+                                  e->physical_constants, p, xp);
       }
     }
   }
@@ -822,16 +800,6 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
         gravity_end_force(gp, G_newton, potential_normalisation, periodic,
                           with_self_gravity);
 
-#ifdef SWIFT_MAKE_GRAVITY_GLASS
-
-        /* Negate the gravity forces */
-        gp->a_grav[0] *= -1.f;
-        gp->a_grav[1] *= -1.f;
-        gp->a_grav[2] *= -1.f;
-#endif
-
-#ifdef SWIFT_NO_GRAVITY_BELOW_ID
-
         /* Get the ID of the gpart */
         long long id = 0;
         if (gp->type == swift_type_gas)
@@ -844,6 +812,19 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           id = e->s->bparts[-gp->id_or_neg_offset].id;
         else
           id = gp->id_or_neg_offset;
+
+        /* Apply the forcing terms (if any) */
+        forcing_grav_terms_apply(id, e->forcing_terms, gp);
+
+#ifdef SWIFT_MAKE_GRAVITY_GLASS
+
+        /* Negate the gravity forces */
+        gp->a_grav[0] *= -1.f;
+        gp->a_grav[1] *= -1.f;
+        gp->a_grav[2] *= -1.f;
+#endif
+
+#ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
         /* Cancel gravity forces of these particles */
         if (id < SWIFT_NO_GRAVITY_BELOW_ID) {
@@ -869,18 +850,18 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           if (gp->num_interacted !=
               e->total_nr_gparts - e->count_inhibited_gparts) {
 
-            /* Get the ID of the gpart */
-            long long my_id = 0;
-            if (gp->type == swift_type_gas)
-              my_id = e->s->parts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_stars)
-              my_id = e->s->sparts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_sink)
-              my_id = e->s->sinks[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_black_hole)
-              error("Unexisting type");
-            else
-              my_id = gp->id_or_neg_offset;
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+            /* If we have the gravity force checks enabled, we print more
+             * information about the particle */
+            message(
+                "Interaction breakdown for g-particle (id=%lld, type=%s): "
+                "num_interacted=%lld, num_interacted_m2p=%lld, "
+                "num_interacted_m2l=%lld, num_interacted_p2p=%lld, "
+                "num_interacted_pm=%lld",
+                id, part_type_names[gp->type], gp->num_interacted,
+                gp->num_interacted_m2p, gp->num_interacted_m2l,
+                gp->num_interacted_p2p, gp->num_interacted_pm);
+#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
             message(
@@ -896,14 +877,15 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
-                "gp->num_interacted=%lld, total_gparts=%lld (local "
-                "num_gparts=%zd inhibited_gparts=%lld, "
-                "(total - gp->num_interacted)=%lld, c->type=%s,"
-                " c->subtype=%s, c->depth=%d)",
-                my_id, part_type_names[gp->type], gp->num_interacted,
-                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts,
-                e->total_nr_gparts - gp->num_interacted, cellID_names[c->type],
-                subcellID_names[c->subtype], c->depth);
+                "gp->num_interacted=%lld, total_gparts=%lld, missing=%lld "
+                "(local num_gparts=%zd inhibited_gparts=%lld) "
+                "(cell info: c->depth=%d c->grav.super->depth=%d c->type=%s "
+                "c->subtype=%s)",
+                id, part_type_names[gp->type], gp->num_interacted,
+                e->total_nr_gparts, e->total_nr_gparts - gp->num_interacted,
+                e->s->nr_gparts, e->count_inhibited_gparts, c->depth,
+                c->grav.super->depth, cellID_names[c->type],
+                subcellID_names[c->subtype]);
           }
         }
 #endif

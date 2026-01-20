@@ -1735,7 +1735,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_star_formation_sink = (with_sinks && with_stars);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
-  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
 #ifdef WITH_CSDS
   const int with_csds = (e->policy & engine_policy_csds);
 #endif
@@ -1857,8 +1856,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
         scheduler_addunlock(s, c->sinks.sink_out, c->super->timestep);
         scheduler_addunlock(s, c->top->sinks.sink_formation, c->sinks.sink_in);
-        if (with_timestep_sync)
-          scheduler_addunlock(s, c->sinks.sink_out, c->super->timestep_sync);
 
         if (with_stars &&
             (c->top->hydro.count > 0 || c->top->sinks.count > 0)) {
@@ -2093,38 +2090,6 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Test whether two cells can use PM interactions.
- *
- * This will test if particles in the two cells are far enough apart to use
- * the mesh for their interaction. If so we won't need an expensive pair
- * task or multipole-multipole interaction.
- *
- * @param e The #engine.
- * @param ci The first #cell.
- * @param cj The second #cell.
- *
- * @return 1 if the mesh can be used, 0 otherwise.
- */
-int engine_gravity_can_use_mesh(struct engine *e, const struct cell *ci,
-                                const struct cell *cj) {
-
-  struct space *s = e->s;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
-
-  /* If not periodic then we cannot use the mesh */
-  if (!s->periodic) {
-    return 0;
-  }
-
-  /* Minimal distance between any pair of particles */
-  const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
-
-  /* Are we beyond the distance where the truncated forces are 0 ?*/
-  return (min_radius2 > max_distance2);
-}
-
-/**
  * @brief Test whether two cells need a pair gravity task.
  *
  * This function will test if the two cells are far enough apart to let
@@ -2161,7 +2126,7 @@ int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
 #endif
 
   /* Can we use the mesh for the interaction ? */
-  if (use_mesh && engine_gravity_can_use_mesh(e, ci, cj)) {
+  if (cell_can_use_mesh(e, ci, cj)) {
     return 0;
   }
 

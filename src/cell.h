@@ -261,6 +261,9 @@ struct pcell_step {
 
     /*! Minimal integer end-of-timestep in this cell (gravity) */
     integertime_t ti_end_min;
+
+    /*! Maximal distance any #gpart has travelled since last rebuild */
+    float dx_max_part;
   } grav;
 
   struct {
@@ -806,6 +809,11 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk,
                          const int periodic, const int use_mesh);
+int cell_can_use_mesh(struct engine *e, const struct cell *ci,
+                      const struct cell *cj);
+int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
+                               const struct cell *cj);
+void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e);
 
 /***
  * @brief Get the cell ID of a cell including an offset.
@@ -1085,6 +1093,31 @@ __attribute__((always_inline)) INLINE static double cell_mpole_CoM_dist2(
 }
 
 /**
+ * @brief Test if a cell contains a progeny at some level.
+ *
+ * @param c The #cell.
+ * @param progeny The progeny #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_contains_progeny(
+    const struct cell *c, const struct cell *progeny) {
+
+  /* Early exit if progeny is above c. */
+  if (progeny->depth < c->depth) {
+    return 0;
+  }
+
+  /* Check all parents of progeny to see if we reach c */
+  const struct cell *current = progeny;
+  while (current != NULL) {
+    if (current == c) {
+      return 1;
+    }
+    current = current->parent;
+  }
+  return 0;
+}
+
+/**
  * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size
  *
@@ -1145,6 +1178,77 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2(
   }
 }
 
+/**
+ * @brief Compute the square of the minimal distance between any two points in
+ * two cells of the same size including the maximal displacement of a gpart
+ * since the last rebuild (dx_max_part).
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Are we using periodic BCs?
+ * @param dim The dimensions of the simulation volume
+ */
+__attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const int periodic, const double dim[3]) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+#endif
+
+  const double cix_min = ci->loc[0];
+  const double ciy_min = ci->loc[1];
+  const double ciz_min = ci->loc[2];
+  const double cjx_min = cj->loc[0];
+  const double cjy_min = cj->loc[1];
+  const double cjz_min = cj->loc[2];
+
+  const double cix_max = ci->loc[0] + ci->width[0];
+  const double ciy_max = ci->loc[1] + ci->width[1];
+  const double ciz_max = ci->loc[2] + ci->width[2];
+  const double cjx_max = cj->loc[0] + cj->width[0];
+  const double cjy_max = cj->loc[1] + cj->width[1];
+  const double cjz_max = cj->loc[2] + cj->width[2];
+
+  /* Include the maximal displacement of a gpart since the last rebuild in
+   * each cell. */
+  const double dx_maxi = ci->grav.dx_max_part;
+  const double dx_maxj = cj->grav.dx_max_part;
+
+  if (periodic) {
+
+    const double dx = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
+                           fabs(nearest(cix_min - cjx_max, dim[0])),
+                           fabs(nearest(cix_max - cjx_min, dim[0])),
+                           fabs(nearest(cix_max - cjx_max, dim[0])));
+
+    const double dy = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
+                           fabs(nearest(ciy_min - cjy_max, dim[1])),
+                           fabs(nearest(ciy_max - cjy_min, dim[1])),
+                           fabs(nearest(ciy_max - cjy_max, dim[1])));
+
+    const double dz = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
+                           fabs(nearest(ciz_min - cjz_max, dim[2])),
+                           fabs(nearest(ciz_max - cjz_min, dim[2])),
+                           fabs(nearest(ciz_max - cjz_max, dim[2])));
+
+    return dx * dx + dy * dy + dz * dz + dx_maxi * dx_maxi + dx_maxj * dx_maxj;
+
+  } else {
+
+    const double dx = min4(fabs(cix_min - cjx_min), fabs(cix_min - cjx_max),
+                           fabs(cix_max - cjx_min), fabs(cix_max - cjx_max));
+    const double dy = min4(fabs(ciy_min - cjy_min), fabs(ciy_min - cjy_max),
+                           fabs(ciy_max - cjy_min), fabs(ciy_max - cjy_max));
+    const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
+                           fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
+
+    return dx * dx + dy * dy + dz * dz + dx_maxi * dx_maxi + dx_maxj * dx_maxj;
+  }
+}
+
 /* Inlined functions (for speed). */
 
 /**
@@ -1157,9 +1261,11 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 
   /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* If so, is the cut-off radius plus the max distance the parts have moved
+   */
   /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift */
+  /* Note: We use the _old values as these might have been updated by a drift
+   */
   return c->split && ((kernel_gamma * c->hydro.h_max_old +
                        c->hydro.dx_max_part_old) < 0.5f * c->dmin);
 }
@@ -1173,7 +1279,8 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_subpair_hydro_task(const struct cell *c) {
 
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* If so, is the cut-off radius plus the max distance the parts have moved
+   */
   /* smaller than the sub-cell sizes ? */
   return ((kernel_gamma * c->hydro.h_max_active + c->hydro.dx_max_part_old) <
           0.5f * c->dmin);
@@ -1188,7 +1295,8 @@ cell_can_recurse_in_subpair_hydro_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_subpair2_hydro_task(const struct cell *c) {
 
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* If so, is the cut-off radius plus the max distance the parts have moved
+   */
   /* smaller than the sub-cell sizes ? */
   return ((kernel_gamma * c->hydro.h_max + c->hydro.dx_max_part) <
           0.5f * c->dmin);
@@ -1244,9 +1352,11 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 
   /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* If so, is the cut-off radius plus the max distance the parts have moved
+   */
   /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift */
+  /* Note: We use the _old values as these might have been updated by a drift
+   */
   return c->split && ((kernel_gamma * c->stars.h_max_old +
                        c->stars.dx_max_part_old) < 0.5f * c->dmin);
 }
@@ -1260,7 +1370,8 @@ cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_subpair_stars_task(const struct cell *c) {
 
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* If so, is the cut-off radius plus the max distance the parts have moved
+   */
   /* smaller than the sub-cell sizes ? */
   return ((kernel_gamma * c->stars.h_max_active + c->stars.dx_max_part_old) <
           0.5f * c->dmin);
@@ -1305,9 +1416,11 @@ cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
                                     const struct cell *cj) {
 
   /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* If so, is the cut-off radius plus the max distance the parts have moved
+   */
   /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift */
+  /* Note: We use the _old values as these might have been updated by a drift
+   */
   return ci->split && cj->split &&
          ((kernel_gamma * ci->sinks.h_max_old + ci->sinks.dx_max_part_old) <
           0.5f * ci->dmin) &&
@@ -1327,9 +1440,11 @@ cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
                                           const struct cell *cj) {
 
   /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* If so, is the cut-off radius plus the max distance the parts have moved
+   */
   /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift */
+  /* Note: We use the _old values as these might have been updated by a drift
+   */
   return ci->split && cj->split &&
          ((kernel_gamma * ci->black_holes.h_max_old +
            ci->black_holes.dx_max_part_old) < 0.5f * ci->dmin) &&
@@ -1412,15 +1527,17 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  * The task level is defined as space_subdepth_diff_grav above the leaves
  * of the tree.
  *
- * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav for
- * the background cells while the zoom cells will use the regular threshold.
+ * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav
+ * for the background cells while the zoom cells will use the regular
+ * threshold.
  *
  * When running a zoom we split all tasks involving a void cell, this can lead
  * some cells interacting below space_subdepth_diff_grav to ensure we reach
  * the zoom cells on the void side of the interaction. Cells requiring these
  * tasks carry a flag (tasks_below_diff_grav_depth) to signify this
- * special condition. This flag ensures any task related recursion will continue
- * right down to the lowest point tasks are defined on the cell in question.
+ * special condition. This flag ensures any task related recursion will
+ * continue right down to the lowest point tasks are defined on the cell in
+ * question.
  *
  * @param c The #cell.
  */
@@ -1496,7 +1613,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* Is the cut-off radius plus the max distance the parts in both cells have
+   */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
@@ -1508,21 +1626,21 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 }
 
 /**
- * @brief Have gas particles in a pair of cells moved too much, invalidating the
- * completeness criterion for ci?
+ * @brief Have gas particles in a pair of cells moved too much, invalidating
+ * the completeness criterion for ci?
  *
  * This function returns true the grid completeness criterion from the
  * perspective of ci (the #cell for which the grid will be constructed) is no
  * longer valid.
  *
- * NOTE: This function assumes that the self_completeness flags are up to date.
- * NOTE: This whether a cell needs a rebuild for a grid construction pair is an
- * asymmetric property, so it should always be checked both ways!
+ * NOTE: This function assumes that the self_completeness flags are up to
+ * date. NOTE: This whether a cell needs a rebuild for a grid construction
+ * pair is an asymmetric property, so it should always be checked both ways!
  *
  * @param ci The first #cell. This is the cell for which the grid will be
  * constructed.
- * @param cj The second #cell. This is the neighbouring cell whose particles are
- * used as ghost particles.
+ * @param cj The second #cell. This is the neighbouring cell whose particles
+ * are used as ghost particles.
  * @return Whether completeness of ci is invalidated by the pair (ci, cj).
  */
 __attribute__((always_inline, nonnull)) INLINE static int
@@ -1556,7 +1674,8 @@ cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* Is the cut-off radius plus the max distance the parts in both cells have
+   */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
@@ -1577,7 +1696,8 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_sinks_pair(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* Is the cut-off radius plus the max distance the parts in both cells have
+   */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (max(kernel_gamma * ci->sinks.h_max, kernel_gamma * cj->hydro.h_max) +
@@ -1599,7 +1719,8 @@ __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
                                        const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* Is the cut-off radius plus the max distance the parts in both cells have
+   */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->black_holes.h_max, cj->hydro.h_max) +
@@ -1715,6 +1836,7 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
     swift_free("hydro.sort", c->hydro.sort);
     c->hydro.sort = NULL;
     c->hydro.sort_allocated = 0;
+    c->hydro.sorted = 0;
   }
 #endif
 }
@@ -1832,13 +1954,14 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
     swift_free("stars.sort", c->stars.sort);
     c->stars.sort = NULL;
     c->stars.sort_allocated = 0;
+    c->stars.sorted = 0;
   }
 #endif
 }
 
 /**
- * @brief Returns the array of sorted indices for the star particles of a given
- * cell along agiven direction.
+ * @brief Returns the array of sorted indices for the star particles of a
+ * given cell along agiven direction.
  *
  * @param c The #cell.
  * @param sid the direction id.
@@ -2030,8 +2153,8 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
  * We have 15 bits set aside in `cell->cellID` for the top level cells, with
  * 49 remaining. Each progeny cell gets a unique ID by inheriting
  * its parent ID and adding 3 bits on the left side, which are set according
- * to the progeny's location within its parent cell. Finally, a 1 is set as the
- * leading bit such that all recursive children with index (000) are still
+ * to the progeny's location within its parent cell. Finally, a 1 is set as
+ * the leading bit such that all recursive children with index (000) are still
  * recognized as such. This allows us to give IDs to 16 levels of depth
  * uniquely.
  * If the depth exceeds 16, we use the old scheme where we just add up a
@@ -2229,8 +2352,8 @@ __attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
 /**
  * @brief Does this cell overlap the zoom region?
  *
- * This will test if there is any overlap whatsoever between the zoom boundaries
- * and the cell boundaries.
+ * This will test if there is any overlap whatsoever between the zoom
+ * boundaries and the cell boundaries.
  *
  * @param c The #cell.
  * @param s The #space.

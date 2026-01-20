@@ -513,6 +513,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
   const double c_vel = e->physical_constants->const_speed_light_c;
   const int with_neutrinos = e->s->with_neutrinos;
 
+  float dx_max = 0.f, dx2_max = 0.f;
+
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_grav_drift));
 
@@ -556,8 +558,14 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
 
         /* Recurse */
         cell_drift_gpart(cp, e, force, replication_list);
+
+        /* Update */
+        dx_max = max(dx_max, cp->grav.dx_max_part);
       }
     }
+
+    /* Store the values */
+    c->grav.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;
@@ -640,11 +648,23 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
         }
       }
 
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
+                        gp->x_diff[1] * gp->x_diff[1] +
+                        gp->x_diff[2] * gp->x_diff[2];
+      dx2_max = max(dx2_max, dx2);
+
       /* Init gravity force fields. */
       if (gpart_is_active(gp, e)) {
         gravity_init_gpart(gp);
       }
     }
+
+    /* Now, get the maximal particle motion from its square */
+    dx_max = sqrtf(dx2_max);
+
+    /* Store the values */
+    c->grav.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;

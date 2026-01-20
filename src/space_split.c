@@ -230,6 +230,7 @@ void space_construct_progeny(struct space *s, struct cell *c,
     cp->black_holes.h_max = 0.f;
     cp->black_holes.h_max_active = 0.f;
     cp->black_holes.dx_max_part = 0.f;
+    cp->grav.dx_max_part = 0.f;
     cp->nodeID = c->nodeID;
     cp->parent = c;
     cp->top = c->top;
@@ -1051,7 +1052,9 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - bkg_tic), clocks_getunit());
   }
 
-  if (verbose)
+  if (verbose) {
+    message("Max tree depth after split: %d", s->maxdepth);
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+  }
 }
