@@ -658,6 +658,8 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
 #endif
 }
 
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
 /**
  * @brief Recursively accumulate mesh interactions for zoom pair interactions.
  *
@@ -674,8 +676,6 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(struct cell *c,
                                                                struct cell *ci,
                                                                struct cell *cj,
                                                                struct space *s) {
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
   struct engine *e = s->e;
 
@@ -724,11 +724,6 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(struct cell *c,
       runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
     }
   }
-#else
-  error(
-      "This function should not be called without debugging checks or "
-      "force checks enabled!");
-#endif
 }
 
 /**
@@ -745,8 +740,6 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(struct cell *c,
 static void runner_count_mesh_interactions_zoom_self_recursive(struct cell *c,
                                                                struct cell *ci,
                                                                struct space *s) {
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
   struct engine *e = s->e;
 
@@ -800,11 +793,6 @@ static void runner_count_mesh_interactions_zoom_self_recursive(struct cell *c,
       runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s);
     }
   }
-#else
-  error(
-      "This function should not be called without debugging checks or "
-      "force checks enabled!");
-#endif
 }
 
 /**
@@ -825,8 +813,6 @@ static void runner_count_mesh_interactions_zoom_self_recursive(struct cell *c,
 static void runner_count_mesh_interactions_zoom(struct runner *r,
                                                 struct cell *ci,
                                                 struct cell *top) {
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
   struct engine *e = r->e;
   struct space *s = e->s;
@@ -872,12 +858,9 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
      * that arise from task splitting through the void hierarchy */
     runner_count_mesh_interactions_zoom_pair_recursive(ci, top, cj, s);
   }
-#else
-  error(
-      "This function should not be called without debugging checks or "
-      "force checks enabled!");
-#endif
 }
+
+#endif /* SWIFT_DEBUG_CHECKS || SWIFT_GRAVITY_FORCE_CHECKS */
 
 /**
  * @brief Performs all M-M interactions between a given top-level cell and
