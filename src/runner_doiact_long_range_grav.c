@@ -489,8 +489,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
   struct engine *e = s->e;
 
   /* Should this pair be split? */
-  if (cell_can_split_pair_gravity_task(ci) &&
-      cell_can_split_pair_gravity_task(cj)) {
+  if (cell_can_split_pair_gravity_task(ci, cj)) {
 
     /* Check particle count threshold - mirrors scheduler_splittask_gravity */
     const long long gcount_i = ci->grav.count;
@@ -516,7 +515,9 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
 
         /* Can we use M-M for this pair? */
         if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/1)) {
+                                 /*is_tree_walk=*/1,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
           /* This would be handled by a M-M task, nothing to count */
           continue;
         }
@@ -638,7 +639,9 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
 
     /* Can we use M-M for this top-level pair? */
     if (cell_can_use_pair_mm(top, cj, e, s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0)) {
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
 
       /* M-M task handles this, nothing to count */
       continue;
@@ -647,6 +650,227 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
     /* We would create a pair task here, so recurse to count mesh interactions
      * that arise from task splitting */
     runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
+  }
+#else
+  error(
+      "This function should not be called without debugging checks or "
+      "force checks enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively accumulate mesh interactions for zoom pair interactions.
+ *
+ * This function mirrors the logic in zoom_scheduler_splittask_gravity_void_pair,
+ * recursing through the void cell hierarchy and then using the normal pair
+ * recursive function once we reach non-void cells.
+ *
+ * @param c The #cell of interest (active cell receiving interactions).
+ * @param ci The current #cell from c's hierarchy being processed.
+ * @param cj The current #cell being paired with.
+ * @param s The #space.
+ */
+static void runner_count_mesh_interactions_zoom_pair_recursive(struct cell *c,
+                                                               struct cell *ci,
+                                                               struct cell *cj,
+                                                               struct space *s) {
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
+  struct engine *e = s->e;
+
+  /* If neither cell is a void cell, use the normal pair recursive function */
+  if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
+    runner_count_mesh_interactions_pair_recursive(c, ci, cj, s);
+    return;
+  }
+
+  /* Loop over progeny pairs, mirroring zoom_scheduler_splittask_gravity_void_pair */
+  for (int i = 0; i < 8; i++) {
+    struct cell *cpi = ci->progeny[i];
+
+    /* Skip NULL progeny */
+    if (cpi == NULL) continue;
+
+    /* Skip empty non-void progeny */
+    if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+
+    for (int j = 0; j < 8; j++) {
+      struct cell *cpj = cj->progeny[j];
+
+      /* Skip NULL progeny */
+      if (cpj == NULL) continue;
+
+      /* Skip empty non-void progeny */
+      if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+
+      /* Can we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpi, cpj)) {
+        /* Record the mesh interaction */
+        runner_count_mesh_interaction(c, cpi, cpj);
+        continue;
+      }
+
+      /* Can we use M-M for this pair? */
+      if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0,
+                               /*periodic boundaries*/ s->periodic,
+                               /*use_mesh*/ s->periodic)) {
+        /* M-M task handles this, nothing to count */
+        continue;
+      }
+
+      /* Recurse to find more mesh interactions */
+      runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
+    }
+  }
+#else
+  error(
+      "This function should not be called without debugging checks or "
+      "force checks enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively accumulate mesh interactions for zoom self interactions.
+ *
+ * This function mirrors the logic in zoom_scheduler_splittask_gravity_void_self,
+ * recursing through the void cell hierarchy and then using the normal self
+ * recursive function once we reach non-void cells.
+ *
+ * @param c The #cell of interest (active cell receiving interactions).
+ * @param ci The current #cell from c's hierarchy being processed.
+ * @param s The #space.
+ */
+static void runner_count_mesh_interactions_zoom_self_recursive(struct cell *c,
+                                                               struct cell *ci,
+                                                               struct space *s) {
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
+  struct engine *e = s->e;
+
+  /* If not a void cell, use the normal self recursive function */
+  if (ci->subtype != cell_subtype_void) {
+    runner_count_mesh_interactions_self_recursive(c, ci, s);
+    return;
+  }
+
+  /* Loop over progeny for self interactions */
+  for (int k = 0; k < 8; k++) {
+    if (ci->progeny[k] == NULL) continue;
+
+    /* Skip empty non-void progeny */
+    if (ci->progeny[k]->subtype != cell_subtype_void &&
+        ci->progeny[k]->grav.count == 0)
+      continue;
+
+    runner_count_mesh_interactions_zoom_self_recursive(c, ci->progeny[k], s);
+  }
+
+  /* Now handle pair interactions between progeny */
+  for (int j = 0; j < 8; j++) {
+    if (ci->progeny[j] == NULL) continue;
+
+    /* Skip empty non-void progeny */
+    if (ci->progeny[j]->subtype != cell_subtype_void &&
+        ci->progeny[j]->grav.count == 0)
+      continue;
+
+    struct cell *cpj = ci->progeny[j];
+
+    for (int k = j + 1; k < 8; k++) {
+      if (ci->progeny[k] == NULL) continue;
+
+      /* Skip empty non-void progeny */
+      if (ci->progeny[k]->subtype != cell_subtype_void &&
+          ci->progeny[k]->grav.count == 0)
+        continue;
+
+      struct cell *cpk = ci->progeny[k];
+
+      /* Can we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpj, cpk)) {
+        /* Record the mesh interaction */
+        runner_count_mesh_interaction(c, cpj, cpk);
+        continue;
+      }
+
+      /* Otherwise recurse as a pair interaction */
+      runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s);
+    }
+  }
+#else
+  error(
+      "This function should not be called without debugging checks or "
+      "force checks enabled!");
+#endif
+}
+
+/**
+ * @brief Accumulate the number of particle mesh interactions for debugging
+ * purposes in zoom simulations.
+ *
+ * This function mirrors the task creation and splitting logic for zoom
+ * simulations to count mesh interactions that ci would receive from all
+ * top-level cells.
+ *
+ * NOTE: This will recurse over cells that are not directly related to c (the
+ * super cell of ci). It will not add their contribution though so is "safe".
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest (active cell receiving interactions).
+ * @param top The current top-level cell (ci's top-level parent).
+ */
+static void runner_count_mesh_interactions_zoom(struct runner *r,
+                                                struct cell *ci,
+                                                struct cell *top) {
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+  struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+
+  /* First, handle self interactions from the top-level cell.
+   * This mirrors the self task created at the void level. */
+  runner_count_mesh_interactions_zoom_self_recursive(ci, top, s);
+
+  /* Now loop over all other background/void top-level cells for pair
+   * interactions. This mirrors the pair tasks created between void cells. */
+  for (int n = 0; n < s->zoom_props->nr_bkg_cells; n++) {
+
+    /* Handle on the top-level cell and its gravity business */
+    struct cell *cj = &bkg_cells[n];
+    struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+    /* Avoid self contributions (already handled above) */
+    if (top == cj) continue;
+
+    /* Skip empty cells */
+    if (multi_j->m_pole.M_000 == 0.f) continue;
+
+    /* Can we use the mesh for this top-level pair? */
+    if (cell_can_use_mesh(e, top, cj)) {
+
+      /* If so, record the mesh interaction */
+      runner_count_mesh_interaction(ci, top, cj);
+      continue;
+    }
+
+    /* Can we use M-M for this top-level pair? */
+    if (cell_can_use_pair_mm(top, cj, e, s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
+
+      /* M-M task handles this, nothing to count */
+      continue;
+    }
+
+    /* We would create a pair task here, so recurse to count mesh interactions
+     * that arise from task splitting through the void hierarchy */
+    runner_count_mesh_interactions_zoom_pair_recursive(ci, top, cj, s);
   }
 #else
   error(
