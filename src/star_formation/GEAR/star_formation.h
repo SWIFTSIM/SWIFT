@@ -38,6 +38,9 @@
 #include "stars.h"
 #include "units.h"
 
+/* Does the star formation model move the hydro particles?
+   This will update the c->hydro.dx_max_part and
+   c->hydro.dx_max_sort after forming a star. */
 #define star_formation_need_update_dx_max 1
 
 /**
@@ -254,11 +257,14 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param p The #part generating a star.
  * @param xp The #xpart generating a star.
  * @param sp The new #spart.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void star_formation_separate_particles(const struct engine *e,
                                                      struct part *p,
                                                      struct xpart *xp,
-                                                     struct spart *sp) {
+                                                     struct spart *sp,
+                                                     float displacement[3]) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->x[0] != sp->x[0] || p->x[1] != sp->x[1] || p->x[2] != sp->x[2]) {
     error(
@@ -285,9 +291,15 @@ INLINE static void star_formation_separate_particles(const struct engine *e,
                                  (enum random_number_type)2) -
       1.f;
 
-  sp->x[0] += delta_x * max_displacement * p->h;
-  sp->x[1] += delta_y * max_displacement * p->h;
-  sp->x[2] += delta_z * max_displacement * p->h;
+  /* Update the displacement */
+  displacement[0] = delta_x * max_displacement * p->h;
+  displacement[1] = delta_y * max_displacement * p->h;
+  displacement[2] = delta_z * max_displacement * p->h;
+
+  /* Move the spart */
+  sp->x[0] += displacement[0];
+  sp->x[1] += displacement[1];
+  sp->x[2] += displacement[2];
 
   /* Copy the position to the gpart */
   sp->gpart->x[0] = sp->x[0];
@@ -296,9 +308,9 @@ INLINE static void star_formation_separate_particles(const struct engine *e,
 
   /* Do the gas particle. */
   const double mass_ratio = sp->mass / hydro_get_mass(p);
-  const double dx[3] = {mass_ratio * delta_x * max_displacement * p->h,
-                        mass_ratio * delta_y * max_displacement * p->h,
-                        mass_ratio * delta_z * max_displacement * p->h};
+  const double dx[3] = {mass_ratio * displacement[0],
+                        mass_ratio * displacement[1],
+                        mass_ratio * displacement[2]};
 
   p->x[0] -= dx[0];
   p->x[1] -= dx[1];
@@ -335,6 +347,8 @@ INLINE static void star_formation_separate_particles(const struct engine *e,
  * @param cooling The #cooling_function_data.
  * @param chem_data The global properties of the chemistry scheme.
  * @param convert_part Did we convert a part (or spawned one)?
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void star_formation_copy_properties(
     struct part *p, struct xpart *xp, struct spart *sp, const struct engine *e,
@@ -343,7 +357,8 @@ INLINE static void star_formation_copy_properties(
     const struct hydro_props *restrict hydro_props,
     const struct unit_system *restrict us,
     const struct cooling_function_data *restrict cooling,
-    const struct chemistry_global_data *chem_data, const int convert_part) {
+    const struct chemistry_global_data *chem_data, const int convert_part,
+    float displacement[3]) {
 
   /* Initialize the feedback */
   feedback_init_after_star_formation(sp, e->feedback_props, star_population);
@@ -362,7 +377,7 @@ INLINE static void star_formation_copy_properties(
     hydro_set_mass(p, new_mass_gas);
     p->gpart->mass = new_mass_gas;
 
-    star_formation_separate_particles(e, p, xp, sp);
+    star_formation_separate_particles(e, p, xp, sp, displacement);
   } else {
     sp->mass = mass_gas;
   }

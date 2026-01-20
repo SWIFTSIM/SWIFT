@@ -128,13 +128,17 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.extra_ghost = NULL;
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
-    c->hydro.ghost = NULL;
+    for (int i = 0; i < HYDRO_GHOST_NTASK; i++) {
+      c->hydro.ghost[i] = NULL;
+    }
     c->hydro.prep1_ghost = NULL;
     c->hydro.star_formation = NULL;
     c->sinks.sink_formation = NULL;
     c->sinks.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
-    c->stars.density_ghost = NULL;
+    for (int i = 0; i < STARS_GHOST_NTASK; i++) {
+      c->stars.density_ghost[i] = NULL;
+    }
     c->stars.prep1_ghost = NULL;
     c->stars.prep2_ghost = NULL;
     c->stars.density = NULL;
@@ -181,7 +185,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.drift_out = NULL;
     c->hydro.cooling_in = NULL;
     c->hydro.cooling_out = NULL;
-    c->hydro.cooling = NULL;
+    for (int i = 0; i < HYDRO_COOLING_NTASK; i++) {
+      c->hydro.cooling[i] = NULL;
+    }
     c->grav.long_range = NULL;
     c->grav.down_in = NULL;
     c->grav.down = NULL;

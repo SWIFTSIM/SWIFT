@@ -114,28 +114,27 @@ if order > 0:
     print("#if SELF_GRAVITY_MULTIPOLE_ORDER > %d" % (order - 1))
 
 # Create all the terms relevent for this order
-print("/* Manhattan Norm of %s order terms */" % ordinal(order))
-print("const float order%d_norm = " % order, end=" ")
-first = True
-for i in range(order + 1):
-    for j in range(order + 1):
-        for k in range(order + 1):
-            if i + j + k == order:
-                if first:
-                    first = False
-                else:
-                    print("+", end=" ")
-                print("fabsf(ma->M_%d%d%d)" % (i, j, k), end=" ")
-                print("+ fabsf(mb->M_%d%d%d)" % (i, j, k), end=" ")
-print(";\n")
-print("/* Compare %s order terms above 1%% of norm */" % ordinal(order))
+print("/* Order of magnitude of the %s order terms */" % ordinal(order))
+if order > 0:
+    print("const float order%d_norm = order%d_norm * r_max;" % (order, order - 1))
+else:
+    print("const float order0_norm = fabsf(ma->M_000) + fabsf(mb->M_000);")
+print("\n")
+print(
+    "/* Compare %s order terms above 0.1%% of expected order of magnitude */"
+    % ordinal(order)
+)
 for i in range(order + 1):
     for j in range(order + 1):
         for k in range(order + 1):
             if i + j + k == order:
                 print(
-                    "if (fabsf(ma->M_%d%d%d + mb->M_%d%d%d) > 0.01f * order%d_norm &&"
-                    % (i, j, k, i, j, k, order)
+                    "if (((fabsf(ma->M_%d%d%d) > 0.001f * order%d_norm) ||"
+                    % (i, j, k, order)
+                )
+                print(
+                    "     (fabsf(mb->M_%d%d%d) > 0.001f * order%d_norm)) &&"
+                    % (i, j, k, order)
                 )
                 print(
                     "    fabsf(ma->M_%d%d%d - mb->M_%d%d%d) / fabsf(ma->M_%d%d%d + mb->M_%d%d%d) > tolerance) {"
@@ -147,7 +146,6 @@ for i in range(order + 1):
 
 if order > 0:
     print("#endif")
-
 
 print("")
 print("-------------------------------------------------")
