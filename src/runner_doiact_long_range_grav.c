@@ -480,10 +480,10 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
 
   /* No self interactions here */
   if (ci == cj) {
-    error("Self interactions should not be handled in this function!");
+    return;
   }
   if (c == cj) {
-    error("Self interactions should not be handled in this function!");
+    return;
   }
 
   struct engine *e = s->e;
