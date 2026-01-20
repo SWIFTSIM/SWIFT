@@ -36,7 +36,7 @@ function do_run {
         echo "Output:" >&2
         cat "$tmp" >&2
         rm -f "$tmp"
-        return 1
+        exit 1
     fi
 
     rm -f "$tmp"
