@@ -116,11 +116,14 @@ if order > 0:
 # Create all the terms relevent for this order
 print("/* Order of magnitude of the %s order terms */" % ordinal(order))
 if order > 0:
-    print("const float order%d_norm = order%d_norm * r_max;" % (order, order-1))
+    print("const float order%d_norm = order%d_norm * r_max;" % (order, order - 1))
 else:
     print("const float order0_norm = fabsf(ma->M_000) + fabsf(mb->M_000);")
 print("\n")
-print("/* Compare %s order terms above 0.1%% of expected order of magnitude */" % ordinal(order))
+print(
+    "/* Compare %s order terms above 0.1%% of expected order of magnitude */"
+    % ordinal(order)
+)
 for i in range(order + 1):
     for j in range(order + 1):
         for k in range(order + 1):
