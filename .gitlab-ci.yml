@@ -1,10 +1,12 @@
-
-#  gitlab pipeline for SWIFT, defines the various jobs that could be ran by a
+#  Gitlab pipeline for SWIFT, defines the various jobs that could be ran by a
 #  suitably registered gitlab-runner instance.
 #
 #  Should only run on non-draft merge requests or pushes to the master branch,
 #  either directly or from a merge request. Some of this logic is repeated in
 #  the jobs.
+#
+#  Peter W. Draper 20-JAN-2026.
+
 workflow:
   rules:
     - if: >
@@ -25,6 +27,7 @@ workflow:
 
 stages: 
    - build
+   - runtime
 
 variables:
   GIT_STRATEGY: clone
@@ -33,16 +36,16 @@ variables:
 #  JOBS.
 #  -----
 
-debug:
-  stage: build
-  rules:
-    - when: always
-  script:
-    - printf "%s\n" \
-        "SOURCE=$CI_PIPELINE_SOURCE" \
-        "BRANCH=$CI_COMMIT_BRANCH" \
-        "MR_SOURCE=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" \
-        "MR_TARGET=$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+#debug:
+#  stage: build
+#  rules:
+#    - when: always
+#  script:
+#    - printf "%s\n" \
+#        "SOURCE=$CI_PIPELINE_SOURCE" \
+#        "BRANCH=$CI_COMMIT_BRANCH" \
+#        "MR_SOURCE=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" \
+#        "MR_TARGET=$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
 
 #  Full GCC test.
 swift-gnu-build:
@@ -70,6 +73,20 @@ swift-intel-build:
   script:
     - echo "Intel OneAPI toolchain compilation and unit tests (full)"
     - ci/swift-intel-check.sh
+    - echo "complete."
+
+#  Small runtime checks.
+swift-runtime-check:
+  stage: runtime
+  #  When MR to master happens, or commit is to master.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "push" &&
+        $CI_COMMIT_BRANCH == "master"
+  timeout: 6h
+  script:
+    - echo "Runtime checks"
+    - ci/swift-runtime-check.sh
     - echo "complete."
 
 #  Small test for MRs only. Some like to push a lot...

@@ -2,6 +2,9 @@
 
 #  GNU/GCC toolchain modules with parallel HDF5.
 #  Source this file.
+#
+#  Peter W. Draper 20-JAN-2026.
+
 echo "Loading the parallel GNU/GCC toolchain for SWIFT."
 
 module purge
