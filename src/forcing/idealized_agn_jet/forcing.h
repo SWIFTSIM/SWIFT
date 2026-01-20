@@ -135,9 +135,9 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     const double delta_z = (p->x[2] - terms->box_size / 2.0);
 
     /* Cylindrical and spherical radius */
-    const double r = sqrtf(delta_x * delta_x + delta_y * delta_y);
+    const double r = sqrt(delta_x * delta_x + delta_y * delta_y);
     const double R =
-        sqrtf(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
+        sqrt(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
 
     /* Angle position in the x-y plane */
     double phi = 0.0;
