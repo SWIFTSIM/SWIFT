@@ -1998,9 +1998,10 @@ void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e) {
 /**
  * @brief Recursively check mesh interactions for zoom pair interactions.
  *
- * This function mirrors the logic in zoom_scheduler_splittask_gravity_void_pair,
- * recursing through the void cell hierarchy and then using the normal pair
- * recursive function once we reach non-void cells.
+ * This function mirrors the logic in
+ * zoom_scheduler_splittask_gravity_void_pair, recursing through the void cell
+ * hierarchy and then using the normal pair recursive function once we reach
+ * non-void cells.
  *
  * @param ci The current #cell from the hierarchy being processed.
  * @param cj The current #cell being paired with.
@@ -2008,8 +2009,8 @@ void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e) {
  * @return 1 if a rebuild is needed, 0 otherwise.
  */
 static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
-                                                           struct cell *cj,
-                                                           struct engine *e) {
+                                                          struct cell *cj,
+                                                          struct engine *e) {
 
   struct space *s = e->s;
 
@@ -2018,7 +2019,8 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
     return cell_check_grav_mesh_pairs_recursive(ci, cj, e);
   }
 
-  /* Loop over progeny pairs, mirroring zoom_scheduler_splittask_gravity_void_pair */
+  /* Loop over progeny pairs, mirroring
+   * zoom_scheduler_splittask_gravity_void_pair */
   for (int i = 0; i < 8; i++) {
     struct cell *cpi = ci->progeny[i];
 
@@ -2070,16 +2072,17 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
 /**
  * @brief Recursively check mesh interactions for zoom self interactions.
  *
- * This function mirrors the logic in zoom_scheduler_splittask_gravity_void_self,
- * recursing through the void cell hierarchy and then using the normal self
- * recursive function once we reach non-void cells.
+ * This function mirrors the logic in
+ * zoom_scheduler_splittask_gravity_void_self, recursing through the void cell
+ * hierarchy and then using the normal self recursive function once we reach
+ * non-void cells.
  *
  * @param ci The current #cell from the hierarchy being processed.
  * @param e The #engine.
  * @return 1 if a rebuild is needed, 0 otherwise.
  */
 static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
-                                                           struct engine *e) {
+                                                          struct engine *e) {
 
   /* If not a void cell, use the normal self recursive function */
   if (ci->subtype != cell_subtype_void) {
@@ -2143,7 +2146,8 @@ static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
 }
 
 /**
- * @brief Check all gravity pairs that would use mesh gravity in zoom simulations.
+ * @brief Check all gravity pairs that would use mesh gravity in zoom
+ * simulations.
  *
  * This function mirrors the zoom task creation and splitting logic to check
  * if any mesh gravity interactions can no longer use the mesh due to particle
@@ -2195,8 +2199,9 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
       /* Check if we can no longer use the mesh */
       if (cell_cant_use_mesh_anymore(e, c, cj)) {
         atomic_inc(&e->forcerebuild);
-        message("Top-level pair interaction triggers a rebuild due to mesh "
-                "pair failure");
+        message(
+            "Top-level pair interaction triggers a rebuild due to mesh "
+            "pair failure");
         return;
       }
       /* Mesh still valid, continue */

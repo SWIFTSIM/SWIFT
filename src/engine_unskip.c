@@ -232,16 +232,6 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   /* Skip inactive cells. */
   if (!cell_is_active_gravity(c, e)) return;
 
-  /* At the top level we need to recursively check particles haven't moved
-   * too far for the mesh gravity (if using the mesh). */
-  if (c->depth == 0 && e->s->periodic) {
-    if (e->s->with_zoom_region) {
-      cell_check_grav_mesh_pairs_zoom(c, e);
-    } else {
-      cell_check_grav_mesh_pairs(c, e);
-    }
-  }
-
   /* Recurse */
   if ((c->split || c->subtype == cell_subtype_void) &&
       cell_is_above_diff_grav_depth(c)) {
