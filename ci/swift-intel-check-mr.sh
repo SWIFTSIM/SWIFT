@@ -13,16 +13,18 @@ git clean -fdx
 ./autogen.sh
 
 echo
+echo "-------------"
 echo "non-MPI build"
 echo "-------------"
-./configure --disable-optimization
+do_configure --disable-optimization
 do_make
 do_make clean
 
 echo
+echo "---------"
 echo "MPI build"
 echo "---------"
-./configure --with-parmetis --disable-optimization
+do_configure --with-parmetis --disable-optimization
 do_make
 do_make clean
 
