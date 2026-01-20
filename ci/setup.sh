@@ -16,6 +16,12 @@ function do_make {
     make -j 4 V=0 $*
 }
 
+# Wrap ./configure calls so we can echo that line to the log.
+function do_configure {
+    echo "## CONFIGURE: $*"
+    ./configure $*
+}
+
 # More chat from the scripts. Re-enable if desperate.
 #set -e
 #set -x
