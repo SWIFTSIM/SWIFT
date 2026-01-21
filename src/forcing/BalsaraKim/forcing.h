@@ -509,10 +509,10 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
 
   /* Read the injection radius, defaults to 5 pc*/
   double r_inj = parser_get_opt_param_double(parameter_file,
-        "BalsaraKimForcing:r_inj", 5);
+        "BalsaraKimForcing:r_inj", 5.);
 
   /* Calculate & store injection volume, saves calculations */
-  double V_inj = (4/3) * M_PI * pow(r_inj, 3);
+  double V_inj = (4./3.) * M_PI * r_inj * r_inj * r_inj;
 
   /* What energy injection scheme do we use? */
   char injection_model[20];
@@ -536,11 +536,11 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   
   /* Read injection parameters*/
   double E_inj = parser_get_opt_param_double(parameter_file,
-        "BalsaraKimForcing:E_inj", 1e51);
+        "BalsaraKimForcing:E_inj", 1.e51);
   double u_inj = parser_get_opt_param_double(parameter_file,
 	      "BalsaraKimForcing:u_inj", 2.8263e15);
   double vel_inj = parser_get_opt_param_double(parameter_file,
-        "BalsaraKimForcing:v_inj", 200) * 1.e5;
+        "BalsaraKimForcing:v_inj", 200.) * 1.e5;
 
   /* Read min and max timestep to store here as well */
   terms->dt_min = parser_get_param_float(parameter_file,
@@ -554,9 +554,9 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   double v_cgs = us->UnitLength_in_cgs / us->UnitTime_in_cgs;
 
   terms->r_inj = r_inj * parsec_ui;
-  terms->V_inj = V_inj * pow(parsec_ui, 3);
+  terms->V_inj = V_inj * (parsec_ui * parsec_ui * parsec_ui);
   terms->E_inj = E_inj / erg_cgs;
-  terms->u_inj = u_inj / pow(v_cgs, 2);
+  terms->u_inj = u_inj / (v_cgs * v_cgs);
   terms->vel_inj = vel_inj / v_cgs;
 
   /* initialise some indices and counters */
