@@ -438,6 +438,12 @@ static void runner_accumulate_interaction(
 static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
                                           struct cell *cj) {
 
+  /* Get the correct top level cells for self-interaction check */
+  struct cell *top_i = ci->top;
+  if (top_i->void_parent != NULL) top_i = top_i->void_parent;
+  struct cell *top_j = cj->top;
+  if (top_j->void_parent != NULL) top_j = top_j->void_parent;
+
   /* Do we share the same top level cell? i.e. are we self-interacting? */
   int is_self = ci->top == cj->top;
 
