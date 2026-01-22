@@ -508,21 +508,24 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
 
   /* Check bulk velocity (if non-zero and component > 1% of norm)*/
   if (fabsf(ma->vel[0] + mb->vel[0]) > 1e-10 * size &&
-      (ma->vel[0] * ma->vel[0]) > 0.0001 * v2 &&
+      ((ma->vel[0] * ma->vel[0] > 0.0001 * v2) ||
+       (mb->vel[0] * mb->vel[0] > 0.0001 * v2)) &&
       2.f * fabsf(ma->vel[0] - mb->vel[0]) / fabsf(ma->vel[0] + mb->vel[0]) >
           tolerance) {
     message("v[0] different");
     return 0;
   }
   if (fabsf(ma->vel[1] + mb->vel[1]) > 1e-10 * size &&
-      (ma->vel[1] * ma->vel[1]) > 0.0001 * v2 &&
+      ((ma->vel[1] * ma->vel[1] > 0.0001 * v2) ||
+       (mb->vel[1] * mb->vel[1] > 0.0001 * v2)) &&
       2.f * fabsf(ma->vel[1] - mb->vel[1]) / fabsf(ma->vel[1] + mb->vel[1]) >
           tolerance) {
     message("v[1] different");
     return 0;
   }
   if (fabsf(ma->vel[2] + mb->vel[2]) > 1e-10 * size &&
-      (ma->vel[2] * ma->vel[2]) > 0.0001 * v2 &&
+      ((ma->vel[2] * ma->vel[2] > 0.0001 * v2) ||
+       (mb->vel[2] * mb->vel[2] > 0.0001 * v2)) &&
       2.f * fabsf(ma->vel[2] - mb->vel[2]) / fabsf(ma->vel[2] + mb->vel[2]) >
           tolerance) {
     message("v[2] different");
