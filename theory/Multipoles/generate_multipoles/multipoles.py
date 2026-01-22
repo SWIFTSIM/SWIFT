@@ -137,7 +137,7 @@ for i in range(order + 1):
                     % (i, j, k, order)
                 )
                 print(
-                    "    fabsf(ma->M_%d%d%d - mb->M_%d%d%d) / fabsf(ma->M_%d%d%d + mb->M_%d%d%d) > tolerance) {"
+                    "    2.f * fabsf(ma->M_%d%d%d - mb->M_%d%d%d) / fabsf(ma->M_%d%d%d + mb->M_%d%d%d) > tolerance) {"
                     % (i, j, k, i, j, k, i, j, k, i, j, k)
                 )
                 print('  message("M_%d%d%d term different");' % (i, j, k))
