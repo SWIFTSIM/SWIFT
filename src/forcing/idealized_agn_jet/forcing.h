@@ -59,9 +59,6 @@ struct forcing_terms {
    * (0 (false, default) or 1 (true))  */
   int enable_grav_acceleration;
 
-  /*! The size of the box in the z direction */
-  float box_size;
-
   /* The aspect ratio of the box (x-y) directions */
   float box_aspect_ratio;
 
@@ -340,8 +337,6 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
     }
   }
 
-  terms->box_size =
-      parser_get_param_float(parameter_file, "BoundaryParticles:box_size");
   terms->box_aspect_ratio = parser_get_param_float(
       parameter_file, "BoundaryParticles:box_aspect_ratio");
   terms->jet_power =
