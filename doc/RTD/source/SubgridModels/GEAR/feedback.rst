@@ -126,9 +126,9 @@ In GEAR, we consider three types of star particles:
 
 The stellar evolution is treated as follows for each star type:
 
-- *Individual stars*: There is no IMF sampling or averaging needed. We know the star's mass and metallicity. Therefore, its stellar evolution properties are known, e.g. it will explode into exactly one SN II. There is no SNIa.
+- **Individual stars**: There is no IMF sampling or averaging needed. We know the star's mass and metallicity. Therefore, its stellar evolution properties are known, e.g. it will explode into exactly one SN II. There is no SNIa.
 
-- *SSP and continuous stars*: They are treated in the same manner, with the only difference being the IMF upper limit. For the SSP stars, this is ``Mmax`` defined in the stellar evolution tables; for the continuous stars, this is defined by ``GEARSink:minimal_discrete_mass_Msun`` for population II stars and ``GEARSink:minimal_discrete_mass_first_stars_Msun`` for population III stars. For these particles, we need to sample the IMF. This is explained in the next section.
+- **Singe star population (SSP) and Continuous stars**: They are treated in the same manner, with the only difference being the IMF upper limit. For the SSP stars, this is ``Mmax`` defined in the stellar evolution tables; for the continuous stars, this is defined by ``GEARSink:minimal_discrete_mass_Msun`` for population II stars and ``GEARSink:minimal_discrete_mass_first_stars_Msun`` for population III stars. For these particles, we need to sample the IMF. This is explained in the next section.
 
 IMF sampling
 ^^^^^^^^^^^^
@@ -161,7 +161,7 @@ The first two parameters relate to the quantity of energy injected and are avail
   
 * ``yields_table``: Table containing the stellar evolution parameters for population II stars, including the yields.
   
-* ``yields_table_first_stars``: Similar to ``yields_table`` but for the first stars.
+* ``yields_table_first_stars``: Similar to ``yields_table`` but for the first stars (population III).
   
 * ``imf_transition_metallicity`` specifies which table to use based on [Fe/H]. If the gas metallicity is below ``imf_transition_metallicity``, we use the population III table; if it is above, we use the population table II.
   
@@ -181,7 +181,7 @@ Here is the whole feedback section:
 	    supernovae_Ia_energy_erg: 1e51                           # Energy released by a single supernova.
 	    supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
 	    yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
-	    yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars.
+	    yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars (population III).
 	    imf_transition_metallicity: -5                           # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
 	    discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
 	    elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of elements should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
