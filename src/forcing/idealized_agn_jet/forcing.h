@@ -129,10 +129,10 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
     /* Particle position relative to the box centre */
     const double delta_x =
-        (p->x[0] - terms->box_aspect_ratio * terms->box_size / 2.0);
+        (p->x[0] - terms->box_aspect_ratio * s->dim[0] / 2.0);
     const double delta_y =
-        (p->x[1] - terms->box_aspect_ratio * terms->box_size / 2.0);
-    const double delta_z = (p->x[2] - terms->box_size / 2.0);
+        (p->x[1] - terms->box_aspect_ratio * s->dim[1] / 2.0);
+    const double delta_z = (p->x[2] - s->dim[2] / 2.0);
 
     const double R =
         sqrt(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
