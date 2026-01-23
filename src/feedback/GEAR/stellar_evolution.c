@@ -1317,8 +1317,7 @@ void stellar_evolution_zero_pointers(struct stellar_model sm) {
   lifetime_zero_pointers(&sm.lifetime);
   supernovae_ii_zero_pointers(&sm.snii);
   supernovae_ia_zero_pointers(&sm.snia);
-
-  /* TODO: Add the stellar winds */  
+  stellar_wind_zero_pointers(&sm.sw);
 }
 
 /**
