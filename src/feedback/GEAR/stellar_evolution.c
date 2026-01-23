@@ -1345,7 +1345,8 @@ void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
   /* Dump the supernovae II model */
   supernovae_ii_dump(&sm->snii, stream, sm);
 
-  /* TODO: Check the stellar winds */
+  /* Dump the stellar wind model */
+  stellar_wind_dump(&sm->sw, stream, sm);
 }
 
 /**

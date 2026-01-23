@@ -23,25 +23,20 @@
 #include "interpolation.h"
 #include "stellar_evolution_struct.h"
 
-void stellar_wind_read_yields(struct stellar_wind *sw,
-                              struct swift_params *params,
-                              const struct stellar_model *sm,
-                              const int restart);
-
 void stellar_wind_init(struct stellar_wind *sw, struct swift_params *params,
                        const struct stellar_model *sm,
                        const struct unit_system *us);
 
-void stellar_wind_restore(struct stellar_wind *sw, FILE *stream,
-                          const struct stellar_model *sm);
+void stellar_wind_read_yields(struct stellar_wind *sw,
+                              struct swift_params *params,
+                              const struct stellar_model *sm,
+                              const int restart);
 
 void stellar_wind_read_yields_array(
     struct stellar_wind *sw, struct interpolation_2d *interp,
     const struct stellar_model *sm, hid_t group_id,
     const char *hdf5_dataset_name, hsize_t *previous_count,
     int interpolation_size_m, int interpolation_size_z);
-
-void stellar_wind_clean(struct stellar_wind *sw);
 
 double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
                                        float log_m, float log_z);
@@ -54,5 +49,12 @@ double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
 
 double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
                                          float log_m, float log_z);
+
+void supernovae_ia_zero_pointers(struct stellar_wind *sw);
+void stellar_wind_dump(const struct stellar_wind *sw, FILE *stream,
+                        const struct stellar_model *sm);
+void stellar_wind_restore(struct stellar_wind *sw, FILE *stream,
+                          const struct stellar_model *sm);
+void stellar_wind_clean(struct stellar_wind *sw);
 
 #endif
