@@ -393,33 +393,52 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
  * @param props The #io_props of the field to write.
  * @param N_total The total number of particles to write in this array.
  * @param snapshot_units The units used for the data in this snapshot.
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  */
 void prepare_array_parallel(
     struct engine *e, hid_t grp, const char *fileName, FILE *xmfFile,
     const char *partTypeGroupName, const struct io_props props,
     const long long N_total,
     const enum lossy_compression_schemes lossy_compression,
-    const struct unit_system *snapshot_units) {
+    const struct unit_system *snapshot_units, const int is_named_column) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0)
     error("Error while creating data space for field '%s'.", props.name);
 
+  /* Decide what chunk size to use based on compression */
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
+
   int rank = 0;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
-  if (props.dimension > 1) {
+
+  /* Set the chunking:
+   * - Datasets that are "named columns": Use Nx1 chunking
+   * - Datasets in 1D are chunked Nx1
+   * Other datasets are chunked NxM as the data is likely accessed as
+   * vectors.
+   * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
+   */
+  if (is_named_column) {
     rank = 2;
     shape[0] = N_total;
     shape[1] = props.dimension;
-    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[0] = 1 << log2_chunk_size;
+    chunk_shape[1] = 1;
+  } else if (props.dimension > 1) {
+    rank = 2;
+    shape[0] = N_total;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
-  } else {
+  } else { /* props.dimension == 1 */
     rank = 1;
     shape[0] = N_total;
     shape[1] = 0;
-    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = 0;
   }
 
@@ -1413,10 +1432,13 @@ void prepare_file(struct engine *e, const char *fileName,
               (enum part_type)ptype, compression_level_current_default,
               e->verbose);
 
+      const int is_named_column =
+          io_field_is_named_column(h_file, list[i].name);
+
       if (compression_level != compression_do_not_write) {
         prepare_array_parallel(e, h_grp, fileName, xmfFile, partTypeGroupName,
                                list[i], N_total[ptype], compression_level,
-                               snapshot_units);
+                               snapshot_units, is_named_column);
         num_fields_written++;
       }
     }
