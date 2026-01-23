@@ -1594,6 +1594,7 @@ int engine_prepare(struct engine *e) {
   const ticks tic = getticks();
 
   int drifted_all = 0;
+  int ran_fof_for_seeding = 0;
   int repartitioned = 0;
 
   /* Unskip active tasks and check for rebuild */
@@ -1615,12 +1616,16 @@ int engine_prepare(struct engine *e) {
   if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
       e->run_fof && e->fof_properties->seed_black_holes_enabled) {
 
-    /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    /* Let's start by drifting everybody to the current time.
+     * Do not initialise the particles as we need their drifted
+     * properties for th FOF (BH seeding in particular) */
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/0);
     drifted_all = 1;
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
+
+    ran_fof_for_seeding = 1;
 
     if (e->dump_catalogue_when_seeding) e->snapshot_output_count++;
   }
@@ -1630,7 +1635,8 @@ int engine_prepare(struct engine *e) {
   if (!e->restarting && e->forcerebuild && !e->forcerepart && e->step > 1) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     engine_split_gas_particles(e);
@@ -1640,7 +1646,7 @@ int engine_prepare(struct engine *e) {
   if (e->forcerepart) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     /* Free the PM grid */
@@ -1660,12 +1666,19 @@ int engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!e->restarting && !drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     drifted_all = 1;
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
+  }
+
+  if (ran_fof_for_seeding) {
+
+    /* Now, we can init all the active particles to prepare them for the step */
+    engine_init_all_particles(e);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1954,6 +1967,33 @@ void engine_first_init_particles(struct engine *e) {
   space_first_init_sparts(e->s, e->verbose);
   space_first_init_bparts(e->s, e->verbose);
   space_first_init_sinks(e->s, e->verbose);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Call the initialisation on all local particles.
+ *
+ * @param e The #engine.
+ */
+void engine_init_all_particles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  /* Set the particles in a state where they are ready for time-step
+   * Note that a drift *MUST* have been run. */
+  for (int i = 0; i < e->s->nr_local_cells; ++i) {
+    struct cell *c = &e->s->cells_top[e->s->local_cells_top[i]];
+
+    /* Initialise each type */
+    cell_init_part(c, e);
+    cell_init_gpart(c, e);
+    cell_init_spart(c, e);
+    cell_init_bpart(c, e);
+    cell_init_sink(c, e);
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2702,7 +2742,8 @@ int engine_step(struct engine *e) {
   e->ti_current_subcycle = e->ti_end_min;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
+  if (e->restarting)
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -2831,7 +2872,7 @@ int engine_step(struct engine *e) {
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
-    engine_drift_all(e, /*drift_mpole=*/1);
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
@@ -2910,7 +2951,8 @@ int engine_step(struct engine *e) {
       e->mesh->ti_end_mesh_next == e->ti_current) {
 
     /* We might need to drift things */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
@@ -4043,6 +4085,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
     free((void *)e->neutrino_properties);
+    free((void *)e->neutrino_response);
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);
@@ -4126,7 +4169,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_dump(e->lightcone_array_properties, stream);
+#endif
   ic_info_struct_dump(e->ics_metadata, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
@@ -4303,9 +4348,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->los_properties = los_properties;
 
   struct lightcone_array_props *lightcone_array_properties =
-      (struct lightcone_array_props *)malloc(
-          sizeof(struct lightcone_array_props));
+      (struct lightcone_array_props *)calloc(
+          1, sizeof(struct lightcone_array_props));
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_restore(lightcone_array_properties, stream);
+#endif
   e->lightcone_array_properties = lightcone_array_properties;
 
   struct ic_info *ics_metadata =
