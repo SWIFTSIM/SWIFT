@@ -1016,7 +1016,7 @@ int main(int argc, char *argv[]) {
       if (myrank == 0)
         message("The restart files don't all contain the same ti_current!");
 
-      for (int i = 0; i < myrank; ++i) {
+      for (int i = 0; i < nr_nodes; ++i) {
         if (myrank == i)
           message("MPI rank %d reading file '%s' found an integer time= %lld",
                   myrank, restart_file, e.ti_current);
@@ -1867,7 +1867,7 @@ int main(int argc, char *argv[]) {
     e.step += 1;
     engine_current_step = e.step;
 
-    engine_drift_all(&e, /*drift_mpole=*/0);
+    engine_drift_all(&e, /*drift_mpole=*/0, /*init_particles=*/0);
 
     /* Write final statistics? */
     if (e.output_list_stats) {
@@ -1953,17 +1953,18 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (e.neutrino_properties->use_linear_response)
     neutrino_response_clean(e.neutrino_response);
-  if (with_self_gravity && s.periodic) pm_mesh_clean(e.mesh);
+  if (e.mesh->periodic) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   if (with_rt) rt_clean(e.rt_props, restart);
   if (with_power) power_clean(e.power_data);
+  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   if (restart) free(refparams);
+  if (restart) output_options_clean(output_options);
   free(output_options);
 
 #ifdef WITH_MPI
