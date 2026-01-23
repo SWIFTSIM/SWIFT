@@ -104,7 +104,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
 void stellar_evolution_compute_preSN_properties(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct phys_const *phys_const, const float m_beg_step,
+    const struct unit_system *us, const struct phys_const *phys_const, 
+    const double dt_myr, const float m_beg_step,
     const float m_end_step, const float m_init);
 void stellar_evolution_zero_pointers(struct stellar_model sm);
 void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream);

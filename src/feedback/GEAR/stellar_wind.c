@@ -24,7 +24,6 @@
 
 #include <math.h>
 #include <stdio.h>
-// #include "unit.h"
 
 // TODO: Do we want to print properties of the stellar wind?
 
@@ -131,8 +130,7 @@ void stellar_wind_read_yields_array(
 /**
  * @brief Read the SW yields from the table.
  *
- * The tables are in [erg/yr] units at the end of this function. TODO: convert
- * into internal units
+ * The tables are in log10 of [erg/yr] units at the end of this function.
  *
  * @param sw The #stellar_wind model.
  * @param params The simulation parameters.
@@ -196,7 +194,7 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
  */
 double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
                                        float log_m, float log_z) {
-  return pow(10, interpolate_2d(&sw->raw.ejected_energy, log_z, log_m));
+  return exp10(interpolate_2d(&sw->raw.ejected_energy, log_z, log_m));
 };
 
 /**
@@ -210,8 +208,7 @@ double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
  */
 double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
                                            float log_m, float log_z) {
-  return pow(10,
-             interpolate_2d(&sw->integrated.ejected_energy_per_progenitor_mass,
+  return exp10(interpolate_2d(&sw->integrated.ejected_energy_per_progenitor_mass,
                             log_z, log_m));
 };
 
@@ -226,7 +223,7 @@ double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
  */
 double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
                                      float log_z) {
-  return pow(10, interpolate_2d(&sw->raw.mass_loss, log_z, log_m));
+  return exp10(interpolate_2d(&sw->raw.mass_loss, log_z, log_m));
 };
 
 /**
@@ -240,7 +237,7 @@ double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
  */
 double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
                                          float log_m, float log_z) {
-  return pow(10, interpolate_2d(&sw->integrated.mass_loss_per_progenitor_mass,
+  return exp10(interpolate_2d(&sw->integrated.mass_loss_per_progenitor_mass,
                                 log_z, log_m));
 };
 
