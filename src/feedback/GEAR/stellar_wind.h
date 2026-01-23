@@ -52,7 +52,7 @@ double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
 
 void stellar_wind_zero_pointers(struct stellar_wind *sw);
 void stellar_wind_dump(const struct stellar_wind *sw, FILE *stream,
-                        const struct stellar_model *sm);
+                       const struct stellar_model *sm);
 void stellar_wind_restore(struct stellar_wind *sw, FILE *stream,
                           const struct stellar_model *sm);
 void stellar_wind_clean(struct stellar_wind *sw);

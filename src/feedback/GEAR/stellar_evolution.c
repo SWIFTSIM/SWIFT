@@ -76,7 +76,7 @@ void stellar_evolution_props_init(struct stellar_model *sm,
   supernovae_ii_init(&sm->snii, params, sm, us);
 
   /* Initialize the stellar wind model */
-  stellar_wind_init(&sm->sw, params, sm, us);  
+  stellar_wind_init(&sm->sw, params, sm, us);
 
   /* Initialize the minimal gravity mass for the stars */
   /* const float default_star_minimal_gravity_mass_Msun = 1e-1; */
@@ -1373,7 +1373,7 @@ void stellar_evolution_restore(struct stellar_model *sm, FILE *stream) {
   supernovae_ii_restore(&sm->snii, stream, sm);
 
   /* Restore the stellar wind model */
-  stellar_wind_restore(&sm->sw, stream, sm);  
+  stellar_wind_restore(&sm->sw, stream, sm);
 }
 
 /**
@@ -1387,5 +1387,5 @@ void stellar_evolution_clean(struct stellar_model *sm) {
   lifetime_clean(&sm->lifetime);
   supernovae_ia_clean(&sm->snia);
   supernovae_ii_clean(&sm->snii);
-  stellar_wind_clean(&sm->sw);  
+  stellar_wind_clean(&sm->sw);
 }

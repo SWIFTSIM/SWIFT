@@ -264,7 +264,7 @@ void stellar_wind_zero_pointers(struct stellar_wind *sw) {
  * @param sm The #stellar_model.
  */
 void stellar_wind_dump(const struct stellar_wind *sw, FILE *stream,
-                        const struct stellar_model *sm) {
+                       const struct stellar_model *sm) {
   /* Nothing to do here */
 }
 
