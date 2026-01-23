@@ -67,7 +67,7 @@ The yields for SNII cannot be written in an analytical form; they depend on a fe
 Supernovae Ia
 ^^^^^^^^^^^^^
 
-The supernovae Ia are a bit more complicated as they involve two different stars. The SNIa rate is:
+The supernovae Ia are more complicated as they involve two different stars. The SNIa rate is:
 
 .. math::
   \dot{N}_\textrm{SNIa}(t) = \left( \int_{M_{p,l}}^{M_{p,u}} \frac{\phi(m)}{m} \mathrm{d}m \right) \sum_i b_i \int_{M_{d,l,i}}^{M_{d,u,i}} \, ,
