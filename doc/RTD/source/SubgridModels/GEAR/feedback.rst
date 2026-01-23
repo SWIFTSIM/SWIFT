@@ -78,7 +78,7 @@ The supernovae Ia are more complicated as they involve two different stars. The 
 
 where :math:`M_{p,l}` and :math:`M_{p,u}` are the mass limits for a progenitor of a white dwarf, :math:`b_i` is the probability to have a companion and
 :math:`M_{d,l,i}` and :math:`M_{d,u,i}` are the mass limits for each type of companion.
-The first integral represents the number of white dwarfs progenitor, while the second part accounts the probability of forming a binary. The parameters used for the SNIa rate are given in the following table:
+The first integral represents the number of white dwarfs progenitor, while the second part accounts the probability of forming a binary. The default parameters used for the SNIa rate are given in the following table. They can be set to different values via PyChem:
 
 +------------------+--------------------+-------------------+------------------+
 | Companion        |  :math:`M_{d,l,i}` | :math:`M_{d,u,i}` | :math:`b_i`      |
