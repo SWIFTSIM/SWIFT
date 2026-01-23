@@ -19,6 +19,7 @@
 #include <config.h>
 
 /* Some standard headers. */
+#include <fenv.h>
 #include <stdlib.h>
 #include <string.h>
 
