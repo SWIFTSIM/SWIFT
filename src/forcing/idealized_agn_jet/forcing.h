@@ -134,33 +134,13 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
         (p->x[1] - terms->box_aspect_ratio * terms->box_size / 2.0);
     const double delta_z = (p->x[2] - terms->box_size / 2.0);
 
-    /* Cylindrical and spherical radius */
-    const double r = sqrt(delta_x * delta_x + delta_y * delta_y);
     const double R =
         sqrt(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
 
-    /* Angle position in the x-y plane */
-    double phi = 0.0;
-    if (delta_y > 0.0001) {
-      phi = acos(fmax(-1.0, fmin(1.0, delta_x / r)));
-    } else if (delta_y < 0.0001) {
-      phi = -1.0 * acos(fmax(-1.0, fmin(1.0, delta_x / r)));
-    } else {
-      if (delta_x > 0.0) {
-        phi = 0.0;
-      } else {
-        phi = M_PI;
-      }
-    }
-
-    /* Cosine and sine of particle position with respect to z axis */
-    const double cos_theta = delta_z / R;
-    const double sin_theta = fmax(0.0, sqrt(1.0 - cos_theta * cos_theta));
-
-    /* Assign velocity to be given. We do a radial kick from the origin */
-    const double vel_kick_vec[3] = {terms->jet_velocity * sin_theta * cos(phi),
-                                    terms->jet_velocity * sin_theta * sin(phi),
-                                    terms->jet_velocity * cos_theta};
+    /* Assign velocity to be given. We do a kick radially from the origin */
+    const double vel_kick_vec[3] = {terms->jet_velocity * delta_x / R,
+                                    terms->jet_velocity * delta_y / R,
+                                    terms->jet_velocity * delta_z / R};
 
     p->v[0] = vel_kick_vec[0];
     p->v[1] = vel_kick_vec[1];
