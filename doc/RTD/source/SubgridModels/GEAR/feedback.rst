@@ -93,7 +93,7 @@ The yields are based on the same papers as the SNII.
 Stellar evolution table
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-To generate the table, we use `pychem <https://www.astro.unige.ch/~revazy/PyChem/>`_ python module. In summary, the feedback table is an HDF5 file with the following structure:
+To generate the table, we use `pychem <https://www.astro.unige.ch/~revazy/PyChem/>`_ python module. Below, we provide an overview of the structure of the table. Please refer to the pychem documentation for more information.
 
 .. graphviz:: feedback_table.dot
 
@@ -118,11 +118,11 @@ Star particles types
 
 In GEAR, we consider three types of star particles:
 
-* **Single star population (SSP)** star particles: These particles represent a population of stars defined by the provided IMF. These particles are created by the star formation scheme.
+* **Single stellar population (SSP)** star particles: These particles represent a population of stars defined by the provided IMF. These particles are created by the star formation scheme.
 
 * **Individual stars**: These particles represent individual stars. These particles are created by the sink particles scheme (see :ref:`sink_GEAR_model_summary`).
 
-* **Continuous stars**: These particles represent the integrated portion of the IMF (e.g. stars with :math:`M_\star < 8 \, M_\odot`), while the remaining mass is sampled as individual stars (e.g. stars with :math:`M_\star \geq 8 \, M_\odot`). These particles are created by the sink particles scheme (see :ref:`sink_GEAR_model_summary`). Note that by a careful choice of parameters, these stars may represent the full IMF and thus be treated like SSP stars, with the difference being that they are spawned by sink particles and not gas.
+* **Continuous stars**: These particles represent the integrated low mass portion of the IMF (e.g. stars with :math:`M_\star < 8 \, M_\odot`), while the remaining mass is sampled as individual stars (e.g. stars with :math:`M_\star \geq 8 \, M_\odot`). These particles are created by the sink particles scheme (see :ref:`sink_GEAR_model_summary`). Note that by a careful choice of parameters, these stars may represent the full IMF and thus be treated like SSP stars, with the difference being that they are spawned by sink particles and not gas.
 
 The stellar evolution is treated as follows for each star type:
 
@@ -138,7 +138,7 @@ To properly determine the number of supernovae and the mass of the ejected yield
 - Continuous IMF sampling (CIMFS) (``GEARFeedback:discrete_yields: 0``): We integrate the quantities over the IMF and then explode a floating-point number of stars, which can be below 1 in some cases. This method works well for large stellar particle mass and supernovae rates, but not for low stellar particle mass or low supernovae rates. Note that SNIa often occur in the second regime, hence the method. The overall effect is similar to diluting the SN explosions over time. 
 
 
-- Random discrete IMF sampling (RIMFS) (``GEARFeedback:discrete_yields: 1``): We avoid the issue of non-integer event numbers by taking the floor of the calculated SN count and stochastically adding an additional supernova based on the fractional part. We then compute the properties for a single star at a time.
+- Random discrete IMF sampling (RIMFS) (``GEARFeedback:discrete_yields: 1``): We avoid the issue of non-integer event numbers by taking the floor of the calculated SN count and stochastically adding an additional supernova based on the fractional part. We then compute the properties for a single stellar at a time.
 
 Feedback energy, metals and momentum injection
 ----------------------------------------------
