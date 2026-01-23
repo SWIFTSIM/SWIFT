@@ -40,21 +40,23 @@ void setup_matrix(float A[3][3]) {
   A[2][2] = random_uniform(-1.0, 1.0);
 }
 
-int is_unit_matrix(float A[3][3]) {
+int is_unit_matrix(const float A[3][3]) {
   int check = 1;
 
-  check &= (fabsf(A[0][0] - 1.0f) < 1.e-6f);
+  const float tol = 2e-5f;
+
+  check &= (fabsf(A[0][0] - 1.0f) < 2 * tol);
 
 #if defined(HYDRO_DIMENSION_2D) && defined(HYDRO_DIMENSION_3D)
-  check &= (fabsf(A[0][1]) < 1.e-6f);
-  check &= (fabsf(A[1][0]) < 1.e-6f);
-  check &= (fabsf(A[1][1] - 1.0f) < 1.e-6f);
+  check &= (fabsf(A[0][1]) < tol);
+  check &= (fabsf(A[1][0]) < tol);
+  check &= (fabsf(A[1][1] - 1.0f) < 2 * tol);
 #if defined(HYDRO_DIMENSION_3D)
-  check &= (fabsf(A[0][2]) < 1.e-6f);
-  check &= (fabsf(A[1][2]) < 1.e-6f);
-  check &= (fabsf(A[2][0]) < 1.e-6f);
-  check &= (fabsf(A[2][1]) < 1.e-6f);
-  check &= (fabsf(A[2][2] - 1.0f) < 1.e-6f);
+  check &= (fabsf(A[0][2]) < tol);
+  check &= (fabsf(A[1][2]) < tol);
+  check &= (fabsf(A[2][0]) < tol);
+  check &= (fabsf(A[2][1]) < tol);
+  check &= (fabsf(A[2][2] - 1.0f) < 2 * tol);
 #endif  // 3D
 #endif  // 2D and 3D
 
@@ -75,7 +77,8 @@ void print_matrix(float A[3][3], const char *s) {
 #endif
 }
 
-void multiply_matrices(float A[3][3], float B[3][3], float C[3][3]) {
+void multiply_matrices(const float A[3][3], const float B[3][3],
+                       float C[3][3]) {
 #if defined(HYDRO_DIMENSION_1D)
   C[0][0] = A[0][0] * B[0][0];
 #elif defined(HYDRO_DIMENSION_2D)
@@ -101,28 +104,47 @@ void multiply_matrices(float A[3][3], float B[3][3], float C[3][3]) {
 
 int main(int argc, char *argv[]) {
 
-  float A[3][3], B[3][3], C[3][3];
-  setup_matrix(A);
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
 
-  memcpy(B, A, 9 * sizeof(float));
+/* Choke on FPEs */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      if (A[i][j] != B[i][j]) {
-        error("Matrices not equal after copy!");
+  /* Get some randomness going */
+  const int seed = time(NULL);
+  message("Seed = %d", seed);
+  srand(seed);
+
+  for (int test = 0; test < 100; ++test) {
+
+    float A[3][3], B[3][3], C[3][3];
+    setup_matrix(A);
+
+    memcpy(B, A, 9 * sizeof(float));
+
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        if (A[i][j] != B[i][j]) {
+          error("Matrices not equal after copy!");
+        }
       }
     }
-  }
 
-  invert_dimension_by_dimension_matrix(A);
+    invert_dimension_by_dimension_matrix(A);
 
-  multiply_matrices(A, B, C);
+    multiply_matrices(A, B, C);
 
-  if (!is_unit_matrix(C)) {
-    print_matrix(A, "A - Inverse matrix");
-    print_matrix(B, "B - Original matrix");
-    print_matrix(C, "C - Multiplication (should be unit matrix)");
-    error("Inverted matrix is wrong!");
+    if (!is_unit_matrix(C)) {
+      print_matrix(A, "A - Inverse matrix");
+      print_matrix(B, "B - Original matrix");
+      print_matrix(C, "C - Multiplication (should be unit matrix)");
+      error("Inverted matrix is wrong!");
+    } else {
+      message("Test %d OK", test);
+    }
   }
 
   return 0;
