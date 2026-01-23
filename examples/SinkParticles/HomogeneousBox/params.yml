@@ -19,13 +19,13 @@ Gravity:
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          0.02   # 500 Myr # The end time of the simulation (in internal units).
+  time_end:          0.5   # 500 Myr # The end time of the simulation (in internal units).
   dt_min:            1e-10 # The minimal time-step size of the simulation (in internal units).
-  dt_max:            1e-3  # The maximal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
 Restarts:
   enable: 1
-  delta_hours:        0.005
+  delta_hours:        0.1
   
 # Parameters governing the snapshots
 Snapshots:

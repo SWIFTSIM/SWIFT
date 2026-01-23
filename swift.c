@@ -1016,7 +1016,7 @@ int main(int argc, char *argv[]) {
       if (myrank == 0)
         message("The restart files don't all contain the same ti_current!");
 
-      for (int i = 0; i < myrank; ++i) {
+      for (int i = 0; i < nr_nodes; ++i) {
         if (myrank == i)
           message("MPI rank %d reading file '%s' found an integer time= %lld",
                   myrank, restart_file, e.ti_current);

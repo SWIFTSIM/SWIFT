@@ -82,7 +82,7 @@ void feedback_will_do_feedback(
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
-  /* quit if the birth_scale_factor or birth_time is negative */
+  /* Quit if the birth_scale_factor or birth_time is negative */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
@@ -102,6 +102,16 @@ void feedback_will_do_feedback(
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time);
+
+  /* There is no feedback to do for newborn stars */
+  const double star_age_end_step = star_age_beg_step + dt_enrichment;
+  if (star_age_end_step == 0.0) {
+    /* See the comment in feedback_init_after_star_formation(). But you will
+       need to go through the feedback loops in the next timestep to compute
+       all required quantitied for the stellar evolution. */
+    sp->feedback_data.will_do_feedback = 1;
+    return;
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
@@ -238,8 +248,18 @@ void feedback_init_after_star_formation(
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
 
-  /* Activate the feedback loop for the first step */
-  sp->feedback_data.will_do_feedback = 1;
+  /* The star has nothing useful to do in this loop. Note that in GEAR, the
+  order of operations are:
+  1. Star formation: Form a star with age_beg_step < 0 and age_end_step = 0.
+  2. Stars density, prep1-4, feedback apply: Nothing to do or distribute.
+  sp->feedback_data.will_do_feedback = 0;
+  3. Timestep: Call to feedback_will_do_feedback(), which calls the stellar
+  evolution to be distributed in the next step. Since we have age_beg_step < 0
+  and age_end_step = 0 now, there is nothing to compute or distribute for the
+  next timestep. So we do not need to compute any feedback or stellar evolution
+  now.
+  */
+  sp->feedback_data.will_do_feedback = 0;
 
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
