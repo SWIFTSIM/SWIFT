@@ -55,6 +55,19 @@ __attribute__((always_inline)) INLINE static void zero_sym_matrix(
 }
 
 /**
+ * @brief Construc the identity matrix
+ */
+__attribute__((always_inline)) INLINE static void sym_matrix_identity(
+    struct sym_matrix *M) {
+  M->xx = 1.f;
+  M->yy = 1.f;
+  M->zz = 1.f;
+  M->xy = 0.f;
+  M->xz = 0.f;
+  M->xz = 0.f;
+}
+
+/**
  * @brief Construct a 3x3 array from a symmetric matrix.
  */
 __attribute__((always_inline)) INLINE static void get_matrix_from_sym_matrix(
@@ -75,6 +88,7 @@ __attribute__((always_inline)) INLINE static void get_matrix_from_sym_matrix(
  * @brief Construct a symmetric matrix from a 3x3 array.
  *
  * No check is performed to verify the input 3x3 array is indeed symmetric.
+ * The upper half of the matrix is simply take as-is.
  */
 __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
     struct sym_matrix *out, const float in[3][3]) {
@@ -88,6 +102,8 @@ __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
 
 /**
  * @brief Compute the product of a symmetric matrix and a vector.
+ *
+ * Performs out = M * v.
  */
 __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
     float out[3], const struct sym_matrix *M, const float v[3]) {
@@ -141,16 +157,16 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
 }
 
 /**
- * @brief Compute the inverse of a symmetric matrix and a vector.
+ * @brief Compute the inverse of a symmetric matrix.
  *
- * Returned as a symmetric matrix
+ * Returns as a symmetric matrix
  */
 __attribute__((always_inline)) INLINE static void sym_matrix_invert(
     struct sym_matrix *M_inv, const struct sym_matrix *M) {
 
   float M_inv_matrix[3][3];
   get_matrix_from_sym_matrix(M_inv_matrix, M);
-  int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
+  const int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
   if (res) {
     sym_matrix_print(M);
     error("Error inverting matrix");

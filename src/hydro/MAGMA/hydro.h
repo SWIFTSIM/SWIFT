@@ -678,74 +678,23 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Invert the c-matrix */
-  float c_matrix_temp[3][3];
-  get_matrix_from_sym_matrix(c_matrix_temp, &p->gradient.c_matrix_inv);
-  const int res = invert_dimension_by_dimension_matrix(c_matrix_temp);
-  if (res) {
-    sym_matrix_print(&p->gradient.c_matrix_inv);
-    error("Error inverting matrix");
-  }
+  sym_matrix_invert(&p->force.c_matrix, &p->gradient.c_matrix_inv);
 
   /* Finish computation of velocity gradient (eq. 18) */
-  const float gradient_vx[3] = {p->gradient.gradient_vx[0],
-                                p->gradient.gradient_vx[1],
-                                p->gradient.gradient_vx[2]};
-  const float gradient_vy[3] = {p->gradient.gradient_vy[0],
-                                p->gradient.gradient_vy[1],
-                                p->gradient.gradient_vy[2]};
-  const float gradient_vz[3] = {p->gradient.gradient_vz[0],
-                                p->gradient.gradient_vz[1],
-                                p->gradient.gradient_vz[2]};
-
-  p->force.gradient_vx[0] = c_matrix_temp[0][0] * gradient_vx[0] +
-                            c_matrix_temp[0][1] * gradient_vx[1] +
-                            c_matrix_temp[0][2] * gradient_vx[2];
-  p->force.gradient_vx[1] = c_matrix_temp[1][0] * gradient_vx[0] +
-                            c_matrix_temp[1][1] * gradient_vx[1] +
-                            c_matrix_temp[1][2] * gradient_vx[2];
-  p->force.gradient_vx[2] = c_matrix_temp[2][0] * gradient_vx[0] +
-                            c_matrix_temp[2][1] * gradient_vx[1] +
-                            c_matrix_temp[2][2] * gradient_vx[2];
-
-  p->force.gradient_vy[0] = c_matrix_temp[0][0] * gradient_vy[0] +
-                            c_matrix_temp[0][1] * gradient_vy[1] +
-                            c_matrix_temp[0][2] * gradient_vy[2];
-  p->force.gradient_vy[1] = c_matrix_temp[1][0] * gradient_vy[0] +
-                            c_matrix_temp[1][1] * gradient_vy[1] +
-                            c_matrix_temp[1][2] * gradient_vy[2];
-  p->force.gradient_vy[2] = c_matrix_temp[2][0] * gradient_vy[0] +
-                            c_matrix_temp[2][1] * gradient_vy[1] +
-                            c_matrix_temp[2][2] * gradient_vy[2];
-
-  p->force.gradient_vz[0] = c_matrix_temp[0][0] * gradient_vz[0] +
-                            c_matrix_temp[0][1] * gradient_vz[1] +
-                            c_matrix_temp[0][2] * gradient_vz[2];
-  p->force.gradient_vz[1] = c_matrix_temp[1][0] * gradient_vz[0] +
-                            c_matrix_temp[1][1] * gradient_vz[1] +
-                            c_matrix_temp[1][2] * gradient_vz[2];
-  p->force.gradient_vz[2] = c_matrix_temp[2][0] * gradient_vz[0] +
-                            c_matrix_temp[2][1] * gradient_vz[1] +
-                            c_matrix_temp[2][2] * gradient_vz[2];
+  sym_matrix_multiply_by_vector(p->force.gradient_vx, &p->force.c_matrix,
+                                p->gradient.gradient_vx);
+  sym_matrix_multiply_by_vector(p->force.gradient_vy, &p->force.c_matrix,
+                                p->gradient.gradient_vy);
+  sym_matrix_multiply_by_vector(p->force.gradient_vz, &p->force.c_matrix,
+                                p->gradient.gradient_vz);
 
   /* Finish computation of u gradient (same as eq. 18) */
-  const float gradient_u[3] = {p->gradient.gradient_u[0],
-                               p->gradient.gradient_u[1],
-                               p->gradient.gradient_u[2]};
-
-  p->force.gradient_u[0] = c_matrix_temp[0][0] * gradient_u[0] +
-                           c_matrix_temp[0][1] * gradient_u[1] +
-                           c_matrix_temp[0][2] * gradient_u[2];
-  p->force.gradient_u[1] = c_matrix_temp[1][0] * gradient_u[0] +
-                           c_matrix_temp[1][1] * gradient_u[1] +
-                           c_matrix_temp[1][2] * gradient_u[2];
-  p->force.gradient_u[2] = c_matrix_temp[2][0] * gradient_u[0] +
-                           c_matrix_temp[2][1] * gradient_u[1] +
-                           c_matrix_temp[2][2] * gradient_u[2];
+  sym_matrix_multiply_by_vector(p->force.gradient_u, &p->force.c_matrix,
+                                p->gradient.gradient_u);
 
   /* Update other variables. */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-  get_sym_matrix_from_matrix(&p->force.c_matrix, c_matrix_temp);
 }
 
 /**
