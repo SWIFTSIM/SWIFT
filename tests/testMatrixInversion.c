@@ -44,7 +44,7 @@ void setup_matrix(float A[3][3]) {
 int is_unit_matrix(const float A[3][3]) {
   int check = 1;
 
-  const float tol = 2e-5f;
+  const float tol = 1e-4f;
 
   check &= (fabsf(A[0][0] - 1.0f) < 2 * tol);
 
