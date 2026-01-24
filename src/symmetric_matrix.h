@@ -182,7 +182,7 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiplication_ABA(
   float A_array[3][3], B_array[3][3];
   get_matrix_from_sym_matrix(A_array, A);
   get_matrix_from_sym_matrix(B_array, B);
-  for (int i = 0; i < ; i++) {
+  for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       for (int k = 0; k < 3; k++) {
         BA_array[i][j] += B_array[i][k] * A_array[k][j];
