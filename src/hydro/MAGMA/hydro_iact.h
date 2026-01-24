@@ -139,11 +139,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   /* The inverse of the C-matrix. eq. 6
    * It's symmetric so recall we only store the 6 useful terms. */
   pi->gradient.c_matrix_inv.xx += common_term * dx[0] * dx[0];
+#if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
   pi->gradient.c_matrix_inv.yy += common_term * dx[1] * dx[1];
-  pi->gradient.c_matrix_inv.zz += common_term * dx[2] * dx[2];
   pi->gradient.c_matrix_inv.xy += common_term * dx[0] * dx[1];
+#endif
+#if defined(HYDRO_DIMENSION_3D)
+  pi->gradient.c_matrix_inv.zz += common_term * dx[2] * dx[2];
   pi->gradient.c_matrix_inv.xz += common_term * dx[0] * dx[2];
   pi->gradient.c_matrix_inv.yz += common_term * dx[1] * dx[2];
+#endif
 
   /* Gradient of v (recall dx is pi - pj), eq. 18 */
   pi->gradient.gradient_vx[0] -= common_term * vij[0] * dx[0];
@@ -363,7 +367,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                            const_viscosity_beta * mu_j * mu_j);
 
   /* Construct the gradient functions (eq. 4 and 5) */
-  float G_i[3], G_j[3];
+  float G_i[3] = {0.f}, G_j[3] = {0.f};
   sym_matrix_multiply_by_vector(G_i, &pi->force.c_matrix, dx);
   sym_matrix_multiply_by_vector(G_j, &pj->force.c_matrix, dx);
 

@@ -598,9 +598,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* Finish the construction of the inverse of the c-matrix by
    * multiplying in the factors of h coming from W */
-  for (int i = 0; i < 6; ++i) {
-    p->gradient.c_matrix_inv.elements[i] *= h_inv_dim;
-  }
+  sym_matrix_multiply_by_scalar(&p->gradient.c_matrix_inv, h_inv_dim);
 
   /* Finish the construction of the inverse of the velocity gradient
    * multiplying in the factors of h coming from W */
