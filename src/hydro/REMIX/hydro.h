@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+
 #ifndef SWIFT_REMIX_HYDRO_H
 #define SWIFT_REMIX_HYDRO_H
 
@@ -41,6 +42,7 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
+#include "strength.h"
 
 /**
  * @brief Returns the comoving internal energy of a particle at the last
@@ -365,6 +367,23 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
 }
 
 /**
+ * @brief Computes the max wave speed in the material for time-stepping.
+ *
+ * @param wave_speed The wave speed to be updated.
+ * @param p The particle of interest.
+ * @param soundspeed The sound speed.
+ * @param density The sound density.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_compute_max_wave_speed(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {
+
+  /* Wave speed is initialised as sound speed. */
+  *wave_speed = soundspeed;
+
+  hydro_compute_max_wave_speed_strength(wave_speed, p, soundspeed, density);
+}
+
+/**
  * @brief Sets the drifted physical internal energy of a particle
  *
  * @param p The particle of interest.
@@ -389,7 +408,10 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  /* Set signal velocity based on max wave speed. */
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho);
+  p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 }
 
 /**
@@ -433,8 +455,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
+  float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
+
+  hydro_compute_timestep_strength(&dt_cfl, p, hydro_properties);
 
   return dt_cfl;
 }
@@ -479,6 +503,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rho_dh = 0.f;
 
   hydro_init_part_extra_kernel(p);
+  hydro_init_part_strength(p);
 }
 
 /**
@@ -516,6 +541,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
   hydro_end_density_extra_kernel(p);
+  hydro_end_density_strength(p);
 }
 
 /**
@@ -577,6 +603,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_visc_difn(p);
+  hydro_prepare_gradient_strength(p);
 }
 
 /**
@@ -606,6 +633,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   hydro_end_gradient_extra_kernel(p);
   hydro_end_gradient_extra_visc_difn(p);
+  hydro_end_gradient_strength(p);
 
   /* Set the density to be used in the force loop to be the evolved density */
   p->rho = p->rho_evol;
@@ -635,13 +663,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
 
-  hydro_prepare_force_extra_kernel(p);
-
 #ifdef PLANETARY_FIXED_ENTROPY
   /* Override the internal energy to satisfy the fixed entropy */
   p->u = gas_internal_energy_from_entropy(p->rho_evol, p->s_fixed, p->mat_id);
   xp->u_full = p->u;
 #endif
+
+  hydro_prepare_force_extra_kernel(p);
+  hydro_prepare_force_strength(p, p->rho_evol, p->u);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -672,6 +701,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+
   /* Set eta_crit for arificial viscosity and diffusion slope limiters */
   p->force.eta_crit = 1.f / hydro_props->eta_neighbours;
 }
@@ -696,7 +726,13 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->drho_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = p->force.soundspeed;
+
+  /* Set signal velocity based on max wave speed. */
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(&max_wave_speed, p, p->force.soundspeed, p->rho);
+  p->force.v_sig = 2.f * max_wave_speed;
+
+  hydro_reset_acceleration_strength(p);
 }
 
 /**
@@ -723,6 +759,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Re-set the density */
   p->rho = xp->rho_evol_full;
   p->rho_evol = xp->rho_evol_full;
+  p->phase = xp->phase_full;
 
   /* Compute the pressure */
   const float pressure =
@@ -735,7 +772,12 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  /* Set signal velocity based on max wave speed. */
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho_evol);
+  p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
+
+  hydro_reset_predicted_values_strength(p, xp);
 }
 
 /**
@@ -762,6 +804,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
     const struct pressure_floor_props *pressure_floor) {
+
+  hydro_predict_strength_beginning(p, dt_therm);
 
   /* Predict the internal energy and density */
   p->u += p->u_dt * dt_therm;
@@ -802,7 +846,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  /* Set signal velocity based on max wave speed. */
+  float max_wave_speed;
+  hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho_evol);
+  p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
+
+  p->phase =
+    (enum mat_phase)material_phase_from_internal_energy(
+     p->rho_evol, p->u, p->mat_id);
+
+  hydro_predict_strength_end(p, dt_therm);
 }
 
 /**
@@ -821,6 +874,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
+
+  hydro_end_force_strength(p);
 }
 
 /**
@@ -845,6 +900,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
+
+  hydro_kick_strength_beginning(p, xp, dt_therm);
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
@@ -881,6 +938,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->rho_evol_full = floor_rho;
     p->drho_dt = 0.f;
   }
+
+  xp->phase_full =
+    (enum mat_phase)material_phase_from_internal_energy(
+     xp->rho_evol_full, xp->u_full, p->mat_id);
+
+
+  hydro_kick_strength_end(p, xp, dt_therm);
 }
 
 /**
@@ -933,6 +997,13 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   p->rho_evol = p->rho;
   xp->rho_evol_full = p->rho_evol;
+
+  p->phase =
+    (enum mat_phase)material_phase_from_internal_energy(
+     p->rho_evol, p->u, p->mat_id);
+  xp->phase_full = p->phase;
+
+  hydro_first_init_part_strength(p, xp);
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

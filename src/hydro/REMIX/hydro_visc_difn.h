@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+
 #ifndef SWIFT_REMIX_HYDRO_VISC_DIFN_H
 #define SWIFT_REMIX_HYDRO_VISC_DIFN_H
 
@@ -42,6 +43,7 @@ hydro_prepare_gradient_extra_visc_difn(struct part *restrict p) {
   memset(p->drho_norm_kernel, 0.f, 3 * sizeof(float));
   memset(p->dh_norm_kernel, 0.f, 3 * sizeof(float));
   memset(p->dv_norm_kernel, 0.f, 3 * 3 * sizeof(float));
+  memset(p->dv_norm_kernel_same_phase, 0.f, 3 * 3 * sizeof(float));
 }
 
 /**
@@ -117,6 +119,16 @@ hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
       pj->dv_norm_kernel[i][j] +=
           (pi->v[j] - pj->v[j]) * wj_dx_term[i] * volume_i;
     }
+
+    // Don't reconstruct quantities for visc at phase interfaces
+    if (pi->phase == pj->phase) {
+      for (int j = 0; j < 3; j++) {
+        pi->dv_norm_kernel_same_phase[i][j] +=
+            (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
+        pj->dv_norm_kernel_same_phase[i][j] +=
+            (pi->v[j] - pj->v[j]) * wj_dx_term[i] * volume_i;
+      }
+    }
   }
 }
 
@@ -171,6 +183,14 @@ hydro_runner_iact_nonsym_gradient_extra_visc_difn(
       pi->dv_norm_kernel[i][j] +=
           (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
     }
+
+    // Don't reconstruct quantities for visc at phase interfaces
+    if (pi->phase == pj->phase) {
+      for (int j = 0; j < 3; j++) {
+        pi->dv_norm_kernel_same_phase[i][j] +=
+            (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
+      }
+    }
   }
 }
 
@@ -195,7 +215,7 @@ hydro_end_gradient_extra_visc_difn(struct part *restrict p) {}
  * @param dx Comoving vector separating both particles (pi - pj).
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
-    float *Qi, float *Qj, float *visc_signal_velocity,
+    float *Qi, float *Qj, float *beta_mu_ij,
     float *difn_signal_velocity, const struct part *restrict pi,
     const struct part *restrict pj, const float dx[3]) {
 
@@ -213,10 +233,11 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float alpha = const_remix_visc_alpha;
   const float beta = const_remix_visc_beta;
   const float epsilon = const_remix_visc_epsilon;
-  const float a_visc = const_remix_visc_a;
-  const float b_visc = const_remix_visc_b;
   const float eta_crit = 0.5f * (pi->force.eta_crit + pj->force.eta_crit);
   const float slope_limiter_exp_denom = const_remix_slope_limiter_exp_denom;
+  /* Slip condition between solid and inviscid fluid */
+  const float a_visc = (pi->phase != pj->phase) ? 0.f : const_remix_visc_a;
+  const float b_visc = (pi->phase != pj->phase) ? 1.f : const_remix_visc_b;
 
   if ((pi->is_h_max) || (pj->is_h_max)) {
     /* Don't reconstruct velocity if either particle has h=h_max */
@@ -241,11 +262,11 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
       for (int j = 0; j < 3; j++) {
         /* Get the A numerators and denominators (Sandnes+2025 Eqn. 38).
          * dv_norm_kernel is from Eqn. 35 */
-        A_i_v += pi->dv_norm_kernel[i][j] * dx[i] * dx[j];
-        A_j_v += pj->dv_norm_kernel[i][j] * dx[i] * dx[j];
+        A_i_v += pi->dv_norm_kernel_same_phase[i][j] * dx[i] * dx[j];
+        A_j_v += pj->dv_norm_kernel_same_phase[i][j] * dx[i] * dx[j];
 
-        v_reconst_i[j] -= 0.5 * pi->dv_norm_kernel[i][j] * dx[i];
-        v_reconst_j[j] += 0.5 * pj->dv_norm_kernel[i][j] * dx[i];
+        v_reconst_i[j] -= 0.5 * pi->dv_norm_kernel_same_phase[i][j] * dx[i];
+        v_reconst_j[j] += 0.5 * pj->dv_norm_kernel_same_phase[i][j] * dx[i];
       }
     }
 
@@ -309,10 +330,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   *Qj = (a_visc + b_visc * pj->force.balsara) * 0.5f * pj->rho *
         (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
-  /* Account for alpha being outside brackets in timestep code */
-  const float viscosity_parameter_factor = (alpha == 0.f) ? 0.f : beta / alpha;
-  *visc_signal_velocity =
-      ci + cj - 2.f * viscosity_parameter_factor * min(mu_i, mu_j);
+  // ### CHECK THIS: This is now different from REMIX (REMIX has 2.f * (beta / alpha)), but more similar to other schemes
+  *beta_mu_ij = beta * fminf(mu_i, mu_j);
 
   /* Signal velocity used for the artificial diffusion (Sandnes+2025 Eqns. 42
    * and 43) */
