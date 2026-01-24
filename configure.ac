@@ -564,11 +564,11 @@ AC_ARG_ENABLE([vec],
 #  Disable hand written vectorisation. Slightly odd implementation as want
 # to describe as --disable-hand-vec, but macro is enable (there is no enable action).
 AC_ARG_ENABLE([hand-vec],
-   [AS_HELP_STRING([--disable-hand-vec],
-     [Disable intrinsic vectorization]
+   [AS_HELP_STRING([--enable-hand-vec],
+     [Enable hand-written intrinsic vectorization]
    )],
    [enable_hand_vec="$enableval"],
-   [enable_hand_vec="yes"]
+   [enable_hand_vec="no"]
 )
 
 HAVEVECTORIZATION=0
