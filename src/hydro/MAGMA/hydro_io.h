@@ -20,17 +20,8 @@
 #define SWIFT_MAGMA_HYDRO_IO_H
 
 /**
- * @file Minimal/hydro_io.h
- * @brief Minimal conservative implementation of SPH (i/o routines)
- *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch. No thermal conduction
- * term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
- * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
- * pp. 759-794.
+ * @file MAGMA/hydro_part.h
+ * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (i/o routines)
  */
 
 #include "adiabatic_index.h"
@@ -166,6 +157,16 @@ INLINE static void convert_part_potential(const struct engine *e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_part_softening(const struct engine *e,
+                                          const struct part *p,
+                                          const struct xpart *xp, float *ret) {
+  if (p->gpart != NULL)
+    ret[0] = kernel_gravity_softening_plummer_equivalent_inv *
+             gravity_get_softening(p->gpart, e->gravity_properties);
+  else
+    ret[0] = 0.f;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -179,7 +180,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 13;
+  *num_fields = 14;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -234,6 +235,11 @@ INLINE static void hydro_write_particles(const struct part *parts,
   list[12] = io_make_output_field(
       "Gradient vz", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, force.gradient_vz,
       "Gradient of z-Coordinates of velocity field");
+
+  list[13] = io_make_output_field_convert_part(
+      "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
+      convert_part_softening,
+      "Co-moving gravitational Plummer-equivalent softenings of the particles");
 }
 
 /**
@@ -243,11 +249,8 @@ INLINE static void hydro_write_particles(const struct part *parts,
 INLINE static void hydro_write_flavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
-  /* Nothing in this minimal model... */
-  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
-  io_write_attribute_s(
-      h_grpsph, "Viscosity Model",
-      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
+  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "MAGMA-2");
+  io_write_attribute_s(h_grpsph, "Viscosity Model", "MAGMA-2");
 }
 
 /**

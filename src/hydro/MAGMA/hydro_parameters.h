@@ -34,9 +34,12 @@
 #include "error.h"
 #include "inline.h"
 
+#define TRADITIONAL_SPH_ACCELERATION_TERM
+#define GRAVITY_DIFF_VELOCITY
+
 /**
- * @file Minimal/hydro_parameters.h
- * @brief Minimal conservative implementation of SPH . (default parameters)
+ * @file MAGMA/hydro_parameters.h
+ * @brief MAGMA-2 implementation of SPH (Rosswog. 2020)
  *
  *        This file defines a number of things that are used in
  *        hydro_properties.c as defaults for run-time parameters

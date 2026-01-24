@@ -20,8 +20,9 @@
 #define SWIFT_MAGMA_HYDRO_IACT_H
 
 /**
- * @file Minimal/hydro_iact.h
- * @brief Minimal conservative implementation of SPH (Neighbour loop equations)
+ * @file MAGMA/hydro_part.h
+ * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (Particle
+ * interactions)
  *
  */
 

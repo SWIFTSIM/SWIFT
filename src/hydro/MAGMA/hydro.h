@@ -21,10 +21,7 @@
 
 /**
  * @file MAGMA/hydro.h
- * @brief MAGMA2 implementation of SPH (Non-neighbour loop
- * equations)
- *
- * The thermal variable is the internal energy (u).
+ * @brief MAGMA2 implementation of SPH (Non-neighbour loop equations)
  */
 
 #include "adiabatic_index.h"
