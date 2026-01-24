@@ -236,6 +236,9 @@ struct part {
   /*! RT sub-cycling time stepping data */
   struct rt_timestepping_data rt_time_data;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   /*! Time-step length */
   timebin_t time_bin;
 
