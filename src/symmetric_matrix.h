@@ -162,7 +162,7 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
  * Returns as a symmetric matrix
  */
 __attribute__((always_inline)) INLINE static void sym_matrix_invert(
-    struct sym_matrix *M_inv, const struct sym_matrix *M) {
+    struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M) {
 
   float M_inv_matrix[3][3];
   get_matrix_from_sym_matrix(M_inv_matrix, M);
