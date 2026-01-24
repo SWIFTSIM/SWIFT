@@ -99,7 +99,7 @@ __attribute__((always_inline)) INLINE static void sym_matrix_identity(
  * @brief Construct a 3x3 array from a symmetric matrix.
  */
 __attribute__((always_inline)) INLINE static void get_matrix_from_sym_matrix(
-    float out[sym_matrix_dimension][sym_matrix_dimension],
+    float out[hydro_dimension_integer][hydro_dimension_integer],
     const struct sym_matrix *in) {
 
   out[0][0] = in->xx;
@@ -125,7 +125,7 @@ __attribute__((always_inline)) INLINE static void get_matrix_from_sym_matrix(
  */
 __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
     struct sym_matrix *out,
-    const float in[sym_matrix_dimension][sym_matrix_dimension]) {
+    const float in[hydro_dimension_integer][hydro_dimension_integer]) {
 
   out->xx = in[0][0];
 #if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
@@ -145,8 +145,8 @@ __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
  * Performs out = M * v.
  */
 __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
-    float out[sym_matrix_dimension], const struct sym_matrix *M,
-    const float v[sym_matrix_dimension]) {
+    float out[hydro_dimension_integer], const struct sym_matrix *M,
+    const float v[hydro_dimension_integer]) {
 #if defined(HYDRO_DIMENSION_3D)
   out[0] = M->xx * v[0] + M->xy * v[1] + M->xz * v[2];
   out[1] = M->xy * v[0] + M->yy * v[1] + M->yz * v[2];
@@ -234,7 +234,7 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
 __attribute__((always_inline)) INLINE static void sym_matrix_invert(
     struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M) {
 
-  float M_inv_matrix[sym_matrix_dimension][sym_matrix_dimension];
+  float M_inv_matrix[hydro_dimension_integer][hydro_dimension_integer];
   get_matrix_from_sym_matrix(M_inv_matrix, M);
   const int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
   if (res) {
