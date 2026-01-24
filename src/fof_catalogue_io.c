@@ -166,19 +166,36 @@ void write_fof_hdf5_array(
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = 20;
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
 
   int rank;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
 
-  if (props.dimension > 1) {
+  /* Set the chunking:
+   * Datasets > 3D are (likely) "named columns": Use Nx1 chunking
+   * Datasets in 1D are chunked Nx1
+   * Datasets in 2D and 3D are chunked NxM as the data is likely accessed as
+   * vectors.
+   *
+   * Note: No actual named columns are ever written here so we just use
+   * best practice chunking based on the tests and expected access patterns,
+   *
+   * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
+   */
+  if (props.dimension > 3) {
+    rank = 2;
+    shape[0] = N;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << log2_chunk_size;
+    chunk_shape[1] = 1;
+  } else if (props.dimension > 1) {
     rank = 2;
     shape[0] = N;
     shape[1] = props.dimension;
     chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
-  } else {
+  } else { /* props.dimension == 1 */
     rank = 1;
     shape[0] = N;
     shape[1] = 0;
