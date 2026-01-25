@@ -36,7 +36,7 @@ struct unit_system;
 /**
  * @brief Properties of the pressure floor in the NONE model.
  */
-struct pressure_floor_props {};
+struct pressure_floor_props { int a; };
 
 /**
  * @brief Compute the comoving pressure floor of a given #part.
