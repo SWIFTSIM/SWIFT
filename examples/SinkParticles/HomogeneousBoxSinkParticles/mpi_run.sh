@@ -7,7 +7,7 @@ n_ranks=${n_ranks:=2}  #Number of MPI ranks
 n_threads=${n_threads:=1}  #Number of threads to use
 level=${level:=5}  #Number of particles = 2^(3*level)
 jeans_length=${jeans_length:=0.250}  #Jeans wavelenght in unit of the boxsize
-n_sinks=${n_sinks:=10}  #Number of sinks
+n_sinks=${n_sinks:=1}  #Number of sinks
 
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
@@ -19,7 +19,7 @@ fi
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length --n_sink $n_sinks --sink_pos 0 0 0 --sinks_vel 10 10 0
+    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length --n_sink $n_sinks --sink_pos 0 0 0 --sinks_vel 0 0 0
 fi
 
 # Get the Grackle cooling table

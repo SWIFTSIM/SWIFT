@@ -55,8 +55,6 @@ InitialConditions:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 57Ngbs with the Wendland C2 kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  h_max:                 5
-  h_min_ratio:           0.1
   minimal_temperature:   1
 
 
@@ -131,3 +129,15 @@ Stars:
   timestep_age_threshold_Myr:           10.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
   max_timestep_young_Myr:               1       # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 5         # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
+
+# Use GEAR SF if needed
+GEARStarFormation:
+  star_formation_efficiency: 0.01     # star formation efficiency (c_*)
+  maximal_temperature_K:     3e4      # Upper limit to the temperature of a star forming particle
+  density_threshold_Hpcm3:   1e1      # Density threshold in Hydrogen atoms/cm3
+  n_stars_per_particle:      2
+  min_mass_frac: 0.5
+
+# GEAR SF requires this to be set
+GEARPressureFloor:
+  jeans_factor: 10
