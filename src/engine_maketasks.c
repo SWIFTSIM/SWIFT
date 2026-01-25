@@ -4117,6 +4117,35 @@ void engine_maketasks(struct engine *e) {
     message("Splitting tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
+#ifdef WITH_MPI
+
+  tic2 = getticks();
+
+  if (e->policy & engine_policy_self_gravity) {
+
+    /* Make list of gravity pair tasks going over the network */
+    e->s->count_boundary_grav_pairs = 0;
+    if (e->s->list_boundary_grav_pairs != NULL)
+      free(e->s->list_boundary_grav_pairs);
+    e->s->list_boundary_grav_pairs =
+        malloc(e->sched.nr_tasks * sizeof(struct task *));
+
+    for (int i = 0; i < e->sched.nr_tasks; ++i) {
+      struct task *t = &e->sched.tasks[i];
+      if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
+        if (t->ci->nodeID != t->cj->nodeID) {
+          e->s->list_boundary_grav_pairs[e->s->count_boundary_grav_pairs] = t;
+          ++e->s->count_boundary_grav_pairs;
+        }
+      }
+    }
+  }
+
+  if (e->verbose)
+    message("Listing boundary gravity pair tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that we are not left with invalid tasks */
   for (int i = 0; i < e->sched.nr_tasks; ++i) {
