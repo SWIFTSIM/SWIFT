@@ -207,18 +207,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
               sp->density.wcount_dh * h_old_dim +
               hydro_dimension * sp->density.wcount * h_old_dim_minus_one;
 
-          /* Improve the bisection bounds */
-          if (n_sum < n_target)
-            left[i] = max(left[i], h_old);
-          else if (n_sum > n_target)
-            right[i] = min(right[i], h_old);
-
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Check the validity of the left and right bounds */
-          if (left[i] > right[i])
-            error("Invalid left (%e) and right (%e)", left[i], right[i]);
-#endif
-
           /* Skip if h is already h_max and we don't have enough neighbours
            */
           /* Same if we are below h_min */
@@ -312,6 +300,18 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
           }
 
           /* Normal case: Use Newton-Raphson to get a better value of h */
+
+          /* Improve the bisection bounds */
+          if (n_sum < n_target)
+            left[i] = max(left[i], h_old);
+          else if (n_sum > n_target)
+            right[i] = min(right[i], h_old);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Check the validity of the left and right bounds */
+          if (left[i] > right[i])
+            error("Invalid left (%e) and right (%e)", left[i], right[i]);
+#endif
 
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
@@ -718,18 +718,6 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               bp->density.wcount_dh * h_old_dim +
               hydro_dimension * bp->density.wcount * h_old_dim_minus_one;
 
-          /* Improve the bisection bounds */
-          if (n_sum < n_target)
-            left[i] = max(left[i], h_old);
-          else if (n_sum > n_target)
-            right[i] = min(right[i], h_old);
-
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Check the validity of the left and right bounds */
-          if (left[i] > right[i])
-            error("Invalid left (%e) and right (%e)", left[i], right[i]);
-#endif
-
           /* Skip if h is already h_max and we don't have enough neighbours
            */
           /* Same if we are below h_min */
@@ -747,6 +735,18 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           }
 
           /* Normal case: Use Newton-Raphson to get a better value of h */
+
+          /* Improve the bisection bounds */
+          if (n_sum < n_target)
+            left[i] = max(left[i], h_old);
+          else if (n_sum > n_target)
+            right[i] = min(right[i], h_old);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Check the validity of the left and right bounds */
+          if (left[i] > right[i])
+            error("Invalid left (%e) and right (%e)", left[i], right[i]);
+#endif
 
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
@@ -1254,18 +1254,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
               p->density.wcount_dh * h_old_dim +
               hydro_dimension * p->density.wcount * h_old_dim_minus_one;
 
-          /* Improve the bisection bounds */
-          if (n_sum < n_target)
-            left[i] = max(left[i], h_old);
-          else if (n_sum > n_target)
-            right[i] = min(right[i], h_old);
-
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Check the validity of the left and right bounds */
-          if (left[i] > right[i])
-            error("Invalid left (%e) and right (%e)", left[i], right[i]);
-#endif
-
           /* Skip if h is already h_max and we don't have enough neighbours */
           /* Same if we are below h_min */
           if (((p->h >= hydro_h_max) && (f < 0.f)) ||
@@ -1352,6 +1340,18 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
           }
 
           /* Normal case: Use Newton-Raphson to get a better value of h */
+
+          /* Improve the bisection bounds */
+          if (n_sum < n_target)
+            left[i] = max(left[i], h_old);
+          else if (n_sum > n_target)
+            right[i] = min(right[i], h_old);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Check the validity of the left and right bounds */
+          if (left[i] > right[i])
+            error("Invalid left (%e) and right (%e)", left[i], right[i]);
+#endif
 
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
@@ -1885,18 +1885,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
                 sp->density.wcount_dh * h_old_dim +
                 hydro_dimension * sp->density.wcount * h_old_dim_minus_one;
 
-            /* Improve the bisection bounds */
-            if (n_sum < n_target)
-              left[i] = max(left[i], h_old);
-            else if (n_sum > n_target)
-              right[i] = min(right[i], h_old);
-
-#ifdef SWIFT_DEBUG_CHECKS
-            /* Check the validity of the left and right bounds */
-            if (left[i] > right[i])
-              error("Invalid left (%e) and right (%e)", left[i], right[i]);
-#endif
-
             /* Skip if h is already h_max and we don't have enough neighbours
              */
             /* Same if we are below h_min */
@@ -1912,6 +1900,18 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
             }
 
             /* Normal case: Use Newton-Raphson to get a better value of h */
+
+            /* Improve the bisection bounds */
+            if (n_sum < n_target)
+              left[i] = max(left[i], h_old);
+            else if (n_sum > n_target)
+              right[i] = min(right[i], h_old);
+
+#ifdef SWIFT_DEBUG_CHECKS
+            /* Check the validity of the left and right bounds */
+            if (left[i] > right[i])
+              error("Invalid left (%e) and right (%e)", left[i], right[i]);
+#endif
 
             /* Avoid floating point exception from f_prime = 0 */
             h_new = h_old - f / (f_prime + FLT_MIN);
