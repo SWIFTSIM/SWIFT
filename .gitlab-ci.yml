@@ -59,7 +59,7 @@ swift-gnu-build:
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests (full)"
-    - ci/swift-gcc-check.sh
+    - ci/COSMA/swift-gcc-check.sh
     - echo "complete."
 
 #  Full Intel test.
