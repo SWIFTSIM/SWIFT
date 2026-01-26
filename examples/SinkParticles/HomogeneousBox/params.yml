@@ -21,14 +21,18 @@ TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
   time_end:          0.5   # 500 Myr # The end time of the simulation (in internal units).
   dt_min:            1e-10 # The minimal time-step size of the simulation (in internal units).
-  dt_max:            1e-1  # The maximal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
+Restarts:
+  enable: 1
+  delta_hours:        0.1
+  
 # Parameters governing the snapshots
 Snapshots:
   subdir: snap
   basename:   snapshot      # Common part of the name of output files
   time_first: 0.            # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 1e-3        # Time difference between consecutive outputs (in internal units)
+  delta_time: 1e-4        # Time difference between consecutive outputs (in internal units)
 
 Scheduler:
   cell_extra_gparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.

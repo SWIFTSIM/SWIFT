@@ -91,9 +91,11 @@ struct runner {
 };
 
 /* Function prototypes. */
-void runner_do_ghost(struct runner *r, struct cell *c, int timer);
+void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
+                     const int ntasks, const int timer);
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
-void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer);
+void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
+                           const int ntasks, const int timer);
 void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
                                          int timer);
 void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
@@ -119,7 +121,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c, int timer);
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer);
 void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
-void runner_do_cooling(struct runner *r, struct cell *c, int timer);
+void runner_do_cooling(struct runner *r, struct cell *c, const int offset,
+                       const int ntasks, const int timer);
 void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer);
 void runner_do_sync(struct runner *r, struct cell *c, int force, int timer);
 void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer);
