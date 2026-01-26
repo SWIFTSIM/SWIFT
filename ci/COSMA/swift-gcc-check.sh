@@ -24,6 +24,12 @@
 source ci/COSMA/gcc-modules.sh
 source ci/setup.sh
 
+#  Start from clean sources.
+git clean -fdx
+
+#  And off we go.
+./autogen.sh
+
 #  Checks without parallel HDF5.
 source ci/swift-checks.sh
 
