@@ -324,8 +324,6 @@ struct pcell_sf_stars {
  *
  * Note: This struct is used for sink_formation, star_formation and
  * star_formation_sink.
- *
- * TODO: Maybe rename it. This struct is common to sink/star formation.
  */
 struct pcell_sf_grav {
 

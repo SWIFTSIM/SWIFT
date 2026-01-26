@@ -186,6 +186,7 @@ int cell_pack_grid_extra(const struct cell *c,
 #endif
 }
 
+/* TODO: Add doxygen documentation to the functions below */
 void cell_pack_part_swallow(const struct cell *c,
                             struct black_holes_part_data *data) {
 
@@ -814,8 +815,8 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 }
 
 /**
- * @brief Pack the counts for star and sink formation of the given cell and all
- * it's sub-cells.
+ * @brief Pack the counts for star formation of the given cell and all it's
+ * sub-cells.
  *
  * @param c The #cell.
  * @param pcells (output) The multipole information we pack into
@@ -859,7 +860,7 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 }
 
 /**
- * @brief Unpack the counts for star and sink formation of a given cell and its
+ * @brief Unpack the counts for star formation of a given cell and its
  * sub-cells.
  *
  * @param c The #cell
