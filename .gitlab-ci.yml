@@ -47,8 +47,23 @@ variables:
 #        "MR_SOURCE=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" \
 #        "MR_TARGET=$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
 
-#  Full GCC test.
-swift-gnu-build:
+#  Whatever toolchain is provided in the runner environment.
+gnu-build:
+  stage: build
+  tags: ["genericlinux"]
+  #  When MR to master happens, or commit is to master.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "push" &&
+        $CI_COMMIT_BRANCH == "master"
+  timeout: 6h
+  script:
+    - echo "Full compilation and unit tests"
+    - ci/swift-gnu-check.sh
+    - echo "complete."
+
+#  Full GCC toolchain on COSMA:
+gnu-build-cosma:
   stage: build
   tags: ["cosma"]
   #  When MR to master happens, or commit is to master.
@@ -59,11 +74,11 @@ swift-gnu-build:
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests (full)"
-    - ci/COSMA/swift-gcc-check.sh
+    - ci/COSMA/swift-gnu-check.sh
     - echo "complete."
 
-#  Full Intel test.
-swift-intel-build:
+#  Full Intel toolchain on COSMA:
+intel-build-cosma:
   stage: build
   tags: ["cosma"]
   #  When MR to master happens, or commit is to master.
@@ -78,7 +93,7 @@ swift-intel-build:
     - echo "complete."
 
 #  Small runtime checks.
-swift-runtime-check:
+runtime-check-cosma:
   stage: runtime
   tags: ["cosma"]
   #  When MR to master happens, or commit is to master.

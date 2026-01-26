@@ -17,11 +17,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #+
-#  GCC toolchain compilation and testing.
+#  Locally provided toolchain compilation and testing.
 #
 #  Peter W. Draper 20-JAN-2026.
 #-
-source ci/gcc-modules.sh
 source ci/setup.sh
 
 #  Start from clean sources.
@@ -30,11 +29,10 @@ git clean -fdx
 #  And off we go.
 ./autogen.sh
 
-#  Checks without parallel HDF5.
+#  Basic checks.
 source ci/swift-checks.sh
 
-#  Checks with parallel HDF5.
-source ci/gcc-modules-parallel.sh
+#  More extensive tests that will use parallel if HDF5 available.
 source ci/swift-checks-parallel.sh
 
 #  Checks that distribution still works.
