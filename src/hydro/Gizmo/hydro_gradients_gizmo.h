@@ -163,6 +163,9 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   hydro_part_update_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j, dP_j);
 
   hydro_slope_limit_cell_collect(pj, pi, r);
+
+  /* Collect data for FVPM Face are checks */
+  fvpm_accumulate_total_face_area_vector_and_norm(pi, pj, r2, dx, hi, hj, 0);
 }
 
 /**
@@ -244,6 +247,9 @@ hydro_gradients_nonsym_collect(const float r2, const float dx[3],
   hydro_part_update_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
 
   hydro_slope_limit_cell_collect(pi, pj, r);
+
+  /* Collect data for FVPM Face are checks */
+  fvpm_accumulate_total_face_area_vector_and_norm(pi, pj, r2, dx, hi, hj, 1);
 }
 
 /**

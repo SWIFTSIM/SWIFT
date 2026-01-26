@@ -375,6 +375,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* reset the gradients if we are using Lloyd's algorith; we don't use them */
   hydro_gizmo_lloyd_reset_gradients(p);
+
+  /* Check the FVPM Sum_j A_ij ~= 0 */
+  fvpm_check_total_face_area_vector_sum(p);
 }
 
 /**
