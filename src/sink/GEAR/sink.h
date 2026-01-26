@@ -819,10 +819,12 @@ INLINE static int sink_spawn_star(struct sink *sink, const struct engine *e,
  * @param e The #engine.
  * @param si The #sink generating a star.
  * @param sp The #spart generated.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
-INLINE static void sink_star_formation_give_new_position(const struct engine *e,
-                                                         struct sink *si,
-                                                         struct spart *sp) {
+INLINE static void sink_star_formation_give_new_position(
+    const struct engine *e, struct sink *si, struct spart *sp,
+    float displacement[3]) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->x[0] != sp->x[0] || si->x[1] != sp->x[1] || si->x[2] != sp->x[2]) {
     error(
@@ -832,25 +834,27 @@ INLINE static void sink_star_formation_give_new_position(const struct engine *e,
   }
 #endif
 
-  /* Put the star randomly within the accretion radius of the sink */
+  /* Put the star randomly within the sink's smoothing length */
+  const float max_displacement = 1.0;
+  const float rmax = si->h * max_displacement;
+  const double r = rmax * random_unit_interval(sp->id, e->ti_current,
+                                               (enum random_number_type)4);
   const double phi =
       2 * M_PI *
       random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
-  const float rmax = si->h * kernel_gamma;
-  const double r = rmax * random_unit_interval(sp->id, e->ti_current,
-                                               (enum random_number_type)4);
   const double cos_theta =
       1.0 - 2.0 * random_unit_interval(sp->id, e->ti_current,
                                        (enum random_number_type)5);
   const double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-  double new_pos[3] = {r * sin_theta * cos(phi), r * sin_theta * sin(phi),
-                       r * cos_theta};
+  displacement[0] = r * sin_theta * cos(phi);
+  displacement[1] = r * sin_theta * sin(phi);
+  displacement[2] = r * cos_theta;
 
   /* Assign this new position to the star and its gpart */
-  sp->x[0] += new_pos[0];
-  sp->x[1] += new_pos[1];
-  sp->x[2] += new_pos[2];
+  sp->x[0] += displacement[0];
+  sp->x[1] += displacement[1];
+  sp->x[2] += displacement[2];
   sp->gpart->x[0] = sp->x[0];
   sp->gpart->x[1] = sp->x[1];
   sp->gpart->x[2] = sp->x[2];
@@ -921,15 +925,17 @@ INLINE static void sink_star_formation_give_new_velocity(
  * @param with_cosmology If we run with cosmology.
  * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void sink_copy_properties_to_star(
     struct sink *sink, struct spart *sp, const struct engine *e,
     const struct sink_props *sink_props, const struct cosmology *cosmo,
     const int with_cosmology, const struct phys_const *phys_const,
-    const struct unit_system *restrict us) {
+    const struct unit_system *restrict us, float displacement[3]) {
 
   /* Give the stars a new position */
-  sink_star_formation_give_new_position(e, sink, sp);
+  sink_star_formation_give_new_position(e, sink, sp, displacement);
 
   /* Set the mass (do not forget the sink's gpart friend!) */
   sp->mass = sink->target_mass_Msun * phys_const->const_solar_mass;
