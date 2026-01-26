@@ -354,7 +354,21 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  * @param terms The #forcing_terms properties of the run
  * @param time_old The previous system time
  */
-void forcing_update(struct forcing_terms *terms, const double time_old);
+static INLINE void forcing_update(struct forcing_terms *terms, const double time_old) {
+  /* if the current time is later than the latest SN event */
+  if (time_old >= terms->times[terms->size - 1]) {
+    /* we do not want any more energy injections */
+    terms->final_injection = 1;
+  }
+
+  /* else, if the next SN has happened, update the index to the next SN event */
+  else if (time_old >= terms->times[terms->t_index]) {
+    message("%d particles passed time condition", terms->counter);
+    message("updating forcing term index at time: %f", time_old);
+    terms->t_index += 1;
+    terms->counter = 0;
+  }
+}
 
 /**
  * @brief Prints the properties of the forcing terms to stdout.

@@ -3290,9 +3290,6 @@ AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
 # Check if using Moving mesh
 AM_CONDITIONAL([HAVE_MOVING_MESH], [test "$enable_moving_mesh" = "yes"])
 
-# Check if using Balsara-Kim forcing
-AM_CONDITIONAL([HAVE_BALSARAKIM_FORCING], [test "$with_forcing" = "balsarakim"])
-
 
 
 

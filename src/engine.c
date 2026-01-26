@@ -2268,10 +2268,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
                    e->cooling_func, e->s, e->time);
 
-  #ifdef FORCING_BALSARAKIM
-    /* Update the forcing terms */
-    forcing_update(e->forcing_terms, e->time_old);
-  #endif
+  /* Update the forcing terms */
+  forcing_update(e->forcing_terms, e->time_old);
 
   if (e->policy & engine_policy_rt)
     rt_props_update(e->rt_props, e->internal_units, e->cosmology);

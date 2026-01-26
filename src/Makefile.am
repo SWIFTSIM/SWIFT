@@ -170,12 +170,6 @@ SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_rate_equations.c
 SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
 endif
 
-# source files for Balsara-Kim forcing
-BALSARAKIM_FORCING_SOURCES = 
-if HAVE_BALSARAKIM_FORCING 
-BALSARAKIM_FORCING_SOURCES += forcing/BalsaraKim/forcing.c
-endif
-
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c
@@ -214,7 +208,7 @@ AM_SOURCES += lightcone/lightcone.c lightcone/lightcone_particle_io.c lightcone/
 AM_SOURCES += lightcone/healpix_util.c lightcone/lightcone_array.c lightcone/lightcone_map.c
 AM_SOURCES += lightcone/lightcone_map_types.c lightcone/projected_kernel.c lightcone/lightcone_shell.c
 AM_SOURCES += power_spectrum.c
-AM_SOURCES += forcing.c $(BALSARAKIM_FORCING_SOURCES)
+AM_SOURCES += forcing.c 
 AM_SOURCES += ghost_stats.c
 AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES)

@@ -221,6 +221,16 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
   return FLT_MAX;
 }
 
+/**  
+ * @brief updates the forcing terms
+ *
+ * Nothing to do here 
+ * 
+ * @param terms The #forcing_terms properties of the run
+ * @param time_old The previous system time
+ */
+INLINE static void forcing_update(struct forcing_terms *terms, const double time_old) {};
+
 /**
  * @brief Prints the properties of the forcing terms to stdout.
  *
