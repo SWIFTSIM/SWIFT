@@ -696,6 +696,10 @@ int main(int argc, char *argv[]) {
   engine_split(&e, &initial_partition);
 #endif
 
+  /* Start by setting the particles in a good state */
+  if (myrank == 0) message("Setting particles to a valid state...");
+  engine_first_init_particles(&e);
+
 #ifdef SWIFT_DEBUG_TASKS
   e.tic_step = getticks();
 #endif

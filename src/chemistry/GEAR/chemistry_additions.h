@@ -44,6 +44,7 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
  * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
+ * @param chem_data #chemistry_global_data containing chemistry properties.
  */
 __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     struct part *p, float dt_therm, float dt_grav, float dt_hydro,

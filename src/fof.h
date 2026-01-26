@@ -133,8 +133,8 @@ struct fof_props {
    * the group a given gpart belongs to. */
   float *group_radii;
 
-  /*! Maximal density of all parts of each group. */
-  float *max_part_density;
+  /*! ID of the gas particle in a group to convert to BH */
+  long long *id_gas_particle_to_convert;
 
   /* Number of groups on each node */
   size_t *num_on_node;

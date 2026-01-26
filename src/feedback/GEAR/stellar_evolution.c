@@ -36,6 +36,59 @@
 #define DEFAULT_STAR_MINIMAL_GRAVITY_MASS_MSUN 1e-1
 
 /**
+ * @brief Initialize the global properties of the stellar evolution scheme.
+ *
+ * @param sm The #stellar_model.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
+ * @param params The parsed parameters.
+ * @param cosmo The cosmological model.
+ */
+void stellar_evolution_props_init(struct stellar_model *sm,
+                                  const struct phys_const *phys_const,
+                                  const struct unit_system *us,
+                                  struct swift_params *params,
+                                  const struct cosmology *cosmo) {
+
+  /* Read the list of elements */
+  stellar_evolution_read_elements(sm, params);
+
+  /* Read the solar abundances */
+  stellar_evolution_read_solar_abundances(sm, params);
+
+  /* Use the discrete yields approach? */
+  sm->discrete_yields =
+      parser_get_param_int(params, "GEARFeedback:discrete_yields");
+
+  /* Initialize the initial mass function */
+  initial_mass_function_init(&sm->imf, phys_const, us, params,
+                             sm->yields_table);
+
+  /* Initialize the lifetime model */
+  lifetime_init(&sm->lifetime, phys_const, us, params, sm->yields_table);
+
+  /* Initialize the supernovae Ia model */
+  supernovae_ia_init(&sm->snia, phys_const, us, params, sm);
+
+  /* Initialize the supernovae II model */
+  supernovae_ii_init(&sm->snii, params, sm, us);
+
+  /* Initialize the minimal gravity mass for the stars */
+  /* const float default_star_minimal_gravity_mass_Msun = 1e-1; */
+  sm->discrete_star_minimal_gravity_mass = parser_get_opt_param_float(
+      params, "GEARFeedback:discrete_star_minimal_gravity_mass_Msun",
+      DEFAULT_STAR_MINIMAL_GRAVITY_MASS_MSUN);
+
+  /* Convert from M_sun to internal units */
+  sm->discrete_star_minimal_gravity_mass *= phys_const->const_solar_mass;
+
+  if (engine_rank == 0) {
+    message("discrete_star_minimal_gravity_mass: (internal units)          %e",
+            sm->discrete_star_minimal_gravity_mass);
+  }
+}
+
+/**
  * @brief Print the stellar model.
  *
  * @param sm The #stellar_model.
@@ -55,6 +108,143 @@ void stellar_model_print(const struct stellar_model *sm) {
   lifetime_print(&sm->lifetime);
   supernovae_ia_print(&sm->snia);
   supernovae_ii_print(&sm->snii);
+}
+
+/**
+ * @brief Get the name of the element i.
+ *
+ * @param sm The #stellar_model.
+ * @param i The element indice.
+ */
+const char *stellar_evolution_get_element_name(const struct stellar_model *sm,
+                                               int i) {
+
+  return sm->elements_name + i * GEAR_LABELS_SIZE;
+}
+
+/**
+ * @brief Get the index of the element .
+ *
+ * @param sm The #stellar_model.
+ * @param element_name The element name.
+ */
+int stellar_evolution_get_element_index(const struct stellar_model *sm,
+                                        const char *element_name) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    if (strcmp(stellar_evolution_get_element_name(sm, i), element_name) == 0)
+      return i;
+  }
+  error("Chemical element %s not found !", element_name);
+
+  return -1;
+}
+
+/**
+ * @brief Get the solar abundance of the element .
+ *
+ * @param sm The #stellar_model.
+ * @param element_name The element name.
+ */
+float stellar_evolution_get_solar_abundance(const struct stellar_model *sm,
+                                            const char *element_name) {
+
+  int element_index = stellar_evolution_get_element_index(sm, element_name);
+  float solar_abundance = sm->solar_abundances[element_index];
+
+  return solar_abundance;
+}
+
+/**
+ * @brief Read the name of all the elements present in the tables.
+ *
+ * @param sm The #stellar_model.
+ * @param params The #swift_params.
+ */
+void stellar_evolution_read_elements(struct stellar_model *sm,
+                                     struct swift_params *params) {
+
+  /* Read the elements from the parameter file. */
+  int nval = -1;
+  char **elements;
+  parser_get_param_string_array(params, "GEARFeedback:elements", &nval,
+                                &elements);
+
+  /* Check that we have the correct number of elements. */
+  if (nval != GEAR_CHEMISTRY_ELEMENT_COUNT - 1) {
+    error(
+        "You need to provide %i elements but found %i. "
+        "If you wish to provide a different number of elements, "
+        "you need to compile with --with-chemistry=GEAR_N where N "
+        "is the number of elements + 1.",
+        GEAR_CHEMISTRY_ELEMENT_COUNT, nval);
+  }
+
+  /* Copy the elements into the stellar model. */
+  for (int i = 0; i < nval; i++) {
+    if (strlen(elements[i]) >= GEAR_LABELS_SIZE) {
+      error("Element name '%s' too long", elements[i]);
+    }
+    strcpy(sm->elements_name + i * GEAR_LABELS_SIZE, elements[i]);
+  }
+
+  /* Cleanup. */
+  parser_free_param_string_array(nval, elements);
+
+  /* Add the metals to the end. */
+  strcpy(
+      sm->elements_name + (GEAR_CHEMISTRY_ELEMENT_COUNT - 1) * GEAR_LABELS_SIZE,
+      "Metals");
+
+  /* Check the elements */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    for (int j = i + 1; j < GEAR_CHEMISTRY_ELEMENT_COUNT; j++) {
+      const char *el_i = stellar_evolution_get_element_name(sm, i);
+      const char *el_j = stellar_evolution_get_element_name(sm, j);
+      if (strcmp(el_i, el_j) == 0) {
+        error("You need to provide each element only once (%s).", el_i);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Read the solar abundances.
+ *
+ * @param parameter_file The parsed parameter file.
+ * @param data The properties to initialise.
+ */
+void stellar_evolution_read_solar_abundances(struct stellar_model *sm,
+                                             struct swift_params *params) {
+
+#if defined(HAVE_HDF5)
+
+  /* Get the yields table */
+  char filename[DESCRIPTION_BUFFER_SIZE];
+  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+
+  /* Open file. */
+  hid_t file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (file_id < 0) error("unable to open file %s.\n", filename);
+
+  /* Open group. */
+  hid_t group_id = H5Gopen(file_id, "Data", H5P_DEFAULT);
+  if (group_id < 0) error("unable to open group Data.\n");
+
+  /* Read the data */
+  io_read_array_attribute(group_id, "SolarMassAbundances", FLOAT,
+                          sm->solar_abundances, GEAR_CHEMISTRY_ELEMENT_COUNT);
+
+  /* Close group */
+  hid_t status = H5Gclose(group_id);
+  if (status < 0) error("error closing group.");
+
+  /* Close file */
+  status = H5Fclose(file_id);
+  if (status < 0) error("error closing file.");
+
+#else
+  message("Cannot read the solar abundances without HDF5");
+#endif
 }
 
 /**
@@ -400,259 +590,6 @@ void stellar_evolution_evolve_spart(
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const,
                                               ti_begin, star_age_beg_step, dt);
-}
-
-/**
- * @brief Get the name of the element i.
- *
- * @param sm The #stellar_model.
- * @param i The element indice.
- */
-const char *stellar_evolution_get_element_name(const struct stellar_model *sm,
-                                               int i) {
-
-  return sm->elements_name + i * GEAR_LABELS_SIZE;
-}
-
-/**
- * @brief Get the index of the element .
- *
- * @param sm The #stellar_model.
- * @param element_name The element name.
- */
-int stellar_evolution_get_element_index(const struct stellar_model *sm,
-                                        const char *element_name) {
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    if (strcmp(stellar_evolution_get_element_name(sm, i), element_name) == 0)
-      return i;
-  }
-  error("Chemical element %s not found !", element_name);
-
-  return -1;
-}
-
-/**
- * @brief Get the solar abundance of the element .
- *
- * @param sm The #stellar_model.
- * @param element_name The element name.
- */
-float stellar_evolution_get_solar_abundance(const struct stellar_model *sm,
-                                            const char *element_name) {
-
-  int element_index = stellar_evolution_get_element_index(sm, element_name);
-  float solar_abundance = sm->solar_abundances[element_index];
-
-  return solar_abundance;
-}
-
-/**
- * @brief Read the name of all the elements present in the tables.
- *
- * @param sm The #stellar_model.
- * @param params The #swift_params.
- */
-void stellar_evolution_read_elements(struct stellar_model *sm,
-                                     struct swift_params *params) {
-
-  /* Read the elements from the parameter file. */
-  int nval = -1;
-  char **elements;
-  parser_get_param_string_array(params, "GEARFeedback:elements", &nval,
-                                &elements);
-
-  /* Check that we have the correct number of elements. */
-  if (nval != GEAR_CHEMISTRY_ELEMENT_COUNT - 1) {
-    error(
-        "You need to provide %i elements but found %i. "
-        "If you wish to provide a different number of elements, "
-        "you need to compile with --with-chemistry=GEAR_N where N "
-        "is the number of elements + 1.",
-        GEAR_CHEMISTRY_ELEMENT_COUNT, nval);
-  }
-
-  /* Copy the elements into the stellar model. */
-  for (int i = 0; i < nval; i++) {
-    if (strlen(elements[i]) >= GEAR_LABELS_SIZE) {
-      error("Element name '%s' too long", elements[i]);
-    }
-    strcpy(sm->elements_name + i * GEAR_LABELS_SIZE, elements[i]);
-  }
-
-  /* Cleanup. */
-  parser_free_param_string_array(nval, elements);
-
-  /* Add the metals to the end. */
-  strcpy(
-      sm->elements_name + (GEAR_CHEMISTRY_ELEMENT_COUNT - 1) * GEAR_LABELS_SIZE,
-      "Metals");
-
-  /* Check the elements */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    for (int j = i + 1; j < GEAR_CHEMISTRY_ELEMENT_COUNT; j++) {
-      const char *el_i = stellar_evolution_get_element_name(sm, i);
-      const char *el_j = stellar_evolution_get_element_name(sm, j);
-      if (strcmp(el_i, el_j) == 0) {
-        error("You need to provide each element only once (%s).", el_i);
-      }
-    }
-  }
-}
-
-/**
- * @brief Read the solar abundances.
- *
- * @param parameter_file The parsed parameter file.
- * @param data The properties to initialise.
- */
-void stellar_evolution_read_solar_abundances(struct stellar_model *sm,
-                                             struct swift_params *params) {
-
-#if defined(HAVE_HDF5)
-
-  /* Get the yields table */
-  char filename[DESCRIPTION_BUFFER_SIZE];
-  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
-
-  /* Open file. */
-  hid_t file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
-  if (file_id < 0) error("unable to open file %s.\n", filename);
-
-  /* Open group. */
-  hid_t group_id = H5Gopen(file_id, "Data", H5P_DEFAULT);
-  if (group_id < 0) error("unable to open group Data.\n");
-
-  /* Read the data */
-  io_read_array_attribute(group_id, "SolarMassAbundances", FLOAT,
-                          sm->solar_abundances, GEAR_CHEMISTRY_ELEMENT_COUNT);
-
-  /* Close group */
-  hid_t status = H5Gclose(group_id);
-  if (status < 0) error("error closing group.");
-
-  /* Close file */
-  status = H5Fclose(file_id);
-  if (status < 0) error("error closing file.");
-
-#else
-  message("Cannot read the solar abundances without HDF5");
-#endif
-}
-
-/**
- * @brief Initialize the global properties of the stellar evolution scheme.
- *
- * @param sm The #stellar_model.
- * @param phys_const The physical constants in the internal unit system.
- * @param us The internal unit system.
- * @param params The parsed parameters.
- * @param cosmo The cosmological model.
- */
-void stellar_evolution_props_init(struct stellar_model *sm,
-                                  const struct phys_const *phys_const,
-                                  const struct unit_system *us,
-                                  struct swift_params *params,
-                                  const struct cosmology *cosmo) {
-
-  /* Read the list of elements */
-  stellar_evolution_read_elements(sm, params);
-
-  /* Read the solar abundances */
-  stellar_evolution_read_solar_abundances(sm, params);
-
-  /* Use the discrete yields approach? */
-  sm->discrete_yields =
-      parser_get_param_int(params, "GEARFeedback:discrete_yields");
-
-  /* Initialize the initial mass function */
-  initial_mass_function_init(&sm->imf, phys_const, us, params,
-                             sm->yields_table);
-
-  /* Initialize the lifetime model */
-  lifetime_init(&sm->lifetime, phys_const, us, params, sm->yields_table);
-
-  /* Initialize the supernovae Ia model */
-  supernovae_ia_init(&sm->snia, phys_const, us, params, sm);
-
-  /* Initialize the supernovae II model */
-  supernovae_ii_init(&sm->snii, params, sm, us);
-
-  /* Initialize the minimal gravity mass for the stars */
-  /* const float default_star_minimal_gravity_mass_Msun = 1e-1; */
-  sm->discrete_star_minimal_gravity_mass = parser_get_opt_param_float(
-      params, "GEARFeedback:discrete_star_minimal_gravity_mass_Msun",
-      DEFAULT_STAR_MINIMAL_GRAVITY_MASS_MSUN);
-
-  /* Convert from M_sun to internal units */
-  sm->discrete_star_minimal_gravity_mass *= phys_const->const_solar_mass;
-
-  if (engine_rank == 0) {
-    message("discrete_star_minimal_gravity_mass: (internal units)          %e",
-            sm->discrete_star_minimal_gravity_mass);
-  }
-}
-
-/**
- * @brief Write a stellar_evolution struct to the given FILE as a stream of
- * bytes.
- *
- * Here we are only writing the arrays, everything has been copied in the
- * feedback.
- *
- * @param sm the struct
- * @param stream the file stream
- */
-void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
-
-  /* Dump the initial mass function */
-  initial_mass_function_dump(&sm->imf, stream, sm);
-
-  /* Dump the lifetime model */
-  lifetime_dump(&sm->lifetime, stream, sm);
-
-  /* Dump the supernovae Ia model */
-  supernovae_ia_dump(&sm->snia, stream, sm);
-
-  /* Dump the supernovae II model */
-  supernovae_ii_dump(&sm->snii, stream, sm);
-}
-
-/**
- * @brief Restore a stellar_evolution struct from the given FILE as a stream of
- * bytes.
- *
- * Here we are only writing the arrays, everything has been copied in the
- * feedback.
- *
- * @param sm the struct
- * @param stream the file stream
- */
-void stellar_evolution_restore(struct stellar_model *sm, FILE *stream) {
-
-  /* Restore the initial mass function */
-  initial_mass_function_restore(&sm->imf, stream, sm);
-
-  /* Restore the lifetime model */
-  lifetime_restore(&sm->lifetime, stream, sm);
-
-  /* Restore the supernovae Ia model */
-  supernovae_ia_restore(&sm->snia, stream, sm);
-
-  /* Restore the supernovae II model */
-  supernovae_ii_restore(&sm->snii, stream, sm);
-}
-
-/**
- * @brief Clean the allocated memory.
- *
- * @param sm the #stellar_model.
- */
-void stellar_evolution_clean(struct stellar_model *sm) {
-
-  initial_mass_function_clean(&sm->imf);
-  lifetime_clean(&sm->lifetime);
-  supernovae_ia_clean(&sm->snia);
-  supernovae_ii_clean(&sm->snii);
 }
 
 /**
@@ -1019,3 +956,81 @@ void stellar_evolution_compute_preSN_feedback_spart(
     const struct cosmology *cosmo, const struct unit_system *us,
     const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {}
+
+/**
+ * @brief Zero pointers in stellar_model structs
+ *
+ * @param sm stellar_model struct in which pointers to tables
+ * set to NULL
+ */
+void stellar_evolution_zero_pointers(struct stellar_model sm) {
+
+  /* Delegate zeroing to the sub-modules */
+  initial_mass_function_zero_pointers(&sm.imf);
+  lifetime_zero_pointers(&sm.lifetime);
+  supernovae_ii_zero_pointers(&sm.snii);
+  supernovae_ia_zero_pointers(&sm.snia);
+}
+
+/**
+ * @brief Write a stellar_evolution struct to the given FILE as a stream of
+ * bytes.
+ *
+ * Here we are only writing the arrays, everything has been copied in the
+ * feedback.
+ *
+ * @param sm the struct
+ * @param stream the file stream
+ */
+void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
+
+  /* Dump the initial mass function */
+  initial_mass_function_dump(&sm->imf, stream, sm);
+
+  /* Dump the lifetime model */
+  lifetime_dump(&sm->lifetime, stream, sm);
+
+  /* Dump the supernovae Ia model */
+  supernovae_ia_dump(&sm->snia, stream, sm);
+
+  /* Dump the supernovae II model */
+  supernovae_ii_dump(&sm->snii, stream, sm);
+}
+
+/**
+ * @brief Restore a stellar_evolution struct from the given FILE as a stream of
+ * bytes.
+ *
+ * Here we are only writing the arrays, everything has been copied in the
+ * feedback.
+ *
+ * @param sm the struct
+ * @param stream the file stream
+ */
+void stellar_evolution_restore(struct stellar_model *sm, FILE *stream) {
+
+  /* Restore the initial mass function */
+  initial_mass_function_restore(&sm->imf, stream, sm);
+
+  /* Restore the lifetime model */
+  lifetime_restore(&sm->lifetime, stream, sm);
+
+  /* Restore the supernovae Ia model */
+  supernovae_ia_restore(&sm->snia, stream, sm);
+
+  /* Restore the supernovae II model */
+  supernovae_ii_restore(&sm->snii, stream, sm);
+}
+
+/**
+ * @brief Clean the allocated memory.
+ *
+ * @param sm the #stellar_model.
+ */
+void stellar_evolution_clean(struct stellar_model *sm) {
+
+  initial_mass_function_clean(&sm->imf);
+  lifetime_clean(&sm->lifetime);
+  supernovae_ia_clean(&sm->snia);
+  supernovae_ii_clean(&sm->snii);
+}
