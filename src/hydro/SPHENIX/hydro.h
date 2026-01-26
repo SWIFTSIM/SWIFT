@@ -772,6 +772,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   p->diffusion.laplace_u *= 2.f * h_inv_dim_plus_one;
 
+  /* Check the FVPM Sum_j A_ij ~= 0 */
+  fvpm_check_total_face_area_vector_sum(p);
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
 #endif
@@ -816,6 +819,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   /* Probably not shocking, so this is safe to do */
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
+
+  /* Re-set geometry problematic values */
+  fvpm_geometry_part_has_no_neighbours(p);
 }
 
 /**
