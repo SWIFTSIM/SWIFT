@@ -22,6 +22,7 @@
 #  Peter W. Draper 20-JAN-2026.
 #-
 source ci/COSMA/gcc-modules.sh
+source ci/setup.sh
 
 #  Checks without parallel HDF5.
 source ci/swift-checks.sh
