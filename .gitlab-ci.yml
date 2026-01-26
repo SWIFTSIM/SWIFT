@@ -50,6 +50,7 @@ variables:
 #  Full GCC test.
 swift-gnu-build:
   stage: build
+  tags: ["cosma"]
   #  When MR to master happens, or commit is to master.
   rules:
     - if: >
@@ -64,6 +65,7 @@ swift-gnu-build:
 #  Full Intel test.
 swift-intel-build:
   stage: build
+  tags: ["cosma"]
   #  When MR to master happens, or commit is to master.
   rules:
     - if: >
@@ -78,6 +80,7 @@ swift-intel-build:
 #  Small runtime checks.
 swift-runtime-check:
   stage: runtime
+  tags: ["cosma"]
   #  When MR to master happens, or commit is to master.
   rules:
     - if: >
@@ -92,6 +95,7 @@ swift-runtime-check:
 #  Small test for MRs only. Some like to push a lot...
 swift-intel-build-mr:
   stage: build
+  tags: ["cosma"]
   #  When this commit is part of an active MR.
   rules:
     - if: >
