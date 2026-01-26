@@ -69,10 +69,11 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
       convert_part_T, "Temperatures of the gas particles");
 
-  list[1] = io_make_output_field(
+  list[1] = io_make_physical_output_field(
     "RadiatedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 
     -3.f * hydro_gamma_minus_one, xparts, cooling_data.radiated_energy,
-    "Co-moving thermal energies radiated by the cooling mechanism");
+    /*convertable_to_comoving=*/0,
+    "Physical thermal energies radiated by the cooling mechanism");
 
   return 2;
 }
