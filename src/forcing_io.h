@@ -13,13 +13,15 @@
 #if defined(FORCING_NONE)
 #include "./forcing/none/forcing_io.h"
 #elif defined(FORCING_ROBERTS_FLOW)
-#include "./forcing/none/forcing_io.h"
+#include "./forcing/roberts_flow/forcing_io.h"
 #elif defined(FORCING_ROBERTS_FLOW_ACCELERATION)
-#include "./forcing/none/forcing_io.h"
+#include "./forcing/roberts_flow_acceleration/forcing_io.h"
 #elif defined(FORCING_ABC_FLOW)
-#include "./forcing/none/forcing_io.h"
+#include "./forcing/ABC_flow/forcing_io.h"
 #elif defined(FORCING_BALSARAKIM)
 #include "./forcing/BalsaraKim/forcing_io.h"
+#elif defined(FORCING_BOUNDARY_PARTICLES)
+#include "./forcing/boundary_particles/forcing_io.h"
 #else
 #error "Invalid choice of forcing terms"
 #endif
