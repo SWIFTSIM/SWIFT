@@ -51,7 +51,6 @@ SPH:
 BoundaryParticles:
     boundary_particle_max_id:        10000000  # Particles with ID <= boundary_particle_max_id are treated as boundary particles.
     enable_fixed_position:           1         # Whether or not boundary particles are fixed in place.
-    jet_power:                       1.56e8    # 1e45 erg/s. Make sure it is consistent with the ICs script
-    jet_duration:                    0.10228   # 100 Myr. Make sure it is consistent with the ICs script
-    jet_velocity:                    7.5e3     # km/s. Make sure it is consistent with the ICs script
-    box_aspect_ratio:                0.5       # side-lengths of the x and y directions of the box (perpendicular to jet direction) in unit of box_size
+    jet_power:                       1.56e8    # 1e45 erg/s (in internal units). Make sure it is consistent with the ICs script
+    jet_duration:                    0.10228   # 100 Myr (in internal units). Make sure it is consistent with the ICs script
+    jet_velocity:                    7.5e3     # 7.5e3 km/s (in internal units). Make sure it is consistent with the ICs script
