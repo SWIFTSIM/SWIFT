@@ -2903,7 +2903,7 @@ esac
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
-      [Hydrodynamics forcing terms @<:@none, boundary-particles, roberts-flow, roberts-flow-acceleration, abc-flow, default: none@:>@]
+      [Hydrodynamics forcing terms @<:@none, boundary-particles, roberts-flow, roberts-flow-acceleration, abc-flow, idealized-agn-jet, default: none@:>@]
    )],
    [with_forcing="$withval"],
    [with_forcing="none"]
@@ -2923,6 +2923,9 @@ case "$with_forcing" in
    ;;
    abc-flow)
       AC_DEFINE([FORCING_ABC_FLOW], [1], [ABC flow external forcing terms])
+   ;;
+   idealized-agn-jet)
+      AC_DEFINE([FORCING_IDEALIZED_AGN_JET], [1], [Launch AGN jets and treats particles in jet reservoir as fixed boundary particles])
    ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
