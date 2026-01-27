@@ -78,44 +78,5 @@ EAGLEChemistry:
   init_abundance_Silicon:      1.5e-5  #1.5e-5   6.825874e-4  # Mass fraction in Silicon
   init_abundance_Iron:         0. #0.       1.1032152e-3 # Mass fraction in Iron
 
-EoS:
-  isothermal_internal_energy: 1240419161676.6465
-
-LambdaTTableCooling:
-  file_name: cooling.dat
-
-ConstCooling:
-  cooling_rate: 1.e6
-  min_energy: 0.01
-  cooling_tstep_mult: 2
-
-LambdaCooling:
-  lambda_nH2_cgs: 2.e-23
-  cooling_tstep_mult: 0.1
-  rapid_cooling: 1
-
 Scheduler:
-  max_top_level_cells: 12
-  cell_max_size: 8000000
-  cell_sub_size_pair_hydro: 256000000
-  cell_sub_size_self_hydro: 32000
-  cell_sub_size_pair_stars: 256000000
-  cell_sub_size_self_stars: 32000
-  cell_sub_size_pair_grav: 256000000
-  cell_sub_size_self_grav: 32000
-  cell_split_size: 400
-  cell_subdepth_diff_grav: 4
-  cell_extra_parts: 0
-  cell_extra_sparts: 100
-  cell_extra_gparts: 0
-  cell_extra_bparts: 0
-  cell_extra_sinks: 0
-  engine_max_parts_per_ghost: 1000
-  engine_max_sparts_per_ghost: 1000
-  engine_max_parts_per_cooling: 10000
-  nr_queues: 4
-  dependency_graph_frequency: 0
-  task_level_output_frequency: 0
   tasks_per_cell: 100
-  links_per_tasks: 25
-  mpi_message_limit: 4
