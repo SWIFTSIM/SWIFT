@@ -289,27 +289,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float eta_crit = 1.0f;
 
   /* Van Leer limiter fraction (eq. 22) */
-  const float A_ij_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
-                         pi->force.gradient_vx[1] * dx[0] * dx[1] +
-                         pi->force.gradient_vx[2] * dx[0] * dx[2] +
-                         pi->force.gradient_vy[0] * dx[1] * dx[0] +
-                         pi->force.gradient_vy[1] * dx[1] * dx[1] +
-                         pi->force.gradient_vy[2] * dx[1] * dx[2] +
-                         pi->force.gradient_vz[0] * dx[2] * dx[0] +
-                         pi->force.gradient_vz[1] * dx[2] * dx[1] +
-                         pi->force.gradient_vz[2] * dx[2] * dx[2];
+  const float A_ij_vel_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
+                             pi->force.gradient_vx[1] * dx[0] * dx[1] +
+                             pi->force.gradient_vx[2] * dx[0] * dx[2] +
+                             pi->force.gradient_vy[0] * dx[1] * dx[0] +
+                             pi->force.gradient_vy[1] * dx[1] * dx[1] +
+                             pi->force.gradient_vy[2] * dx[1] * dx[2] +
+                             pi->force.gradient_vz[0] * dx[2] * dx[0] +
+                             pi->force.gradient_vz[1] * dx[2] * dx[1] +
+                             pi->force.gradient_vz[2] * dx[2] * dx[2];
 
-  const float A_ij_den = pj->force.gradient_vx[0] * dx[0] * dx[0] +
-                         pj->force.gradient_vx[1] * dx[0] * dx[1] +
-                         pj->force.gradient_vx[2] * dx[0] * dx[2] +
-                         pj->force.gradient_vy[0] * dx[1] * dx[0] +
-                         pj->force.gradient_vy[1] * dx[1] * dx[1] +
-                         pj->force.gradient_vy[2] * dx[1] * dx[2] +
-                         pj->force.gradient_vz[0] * dx[2] * dx[0] +
-                         pj->force.gradient_vz[1] * dx[2] * dx[1] +
-                         pj->force.gradient_vz[2] * dx[2] * dx[2];
+  const float A_ij_vel_den = pj->force.gradient_vx[0] * dx[0] * dx[0] +
+                             pj->force.gradient_vx[1] * dx[0] * dx[1] +
+                             pj->force.gradient_vx[2] * dx[0] * dx[2] +
+                             pj->force.gradient_vy[0] * dx[1] * dx[0] +
+                             pj->force.gradient_vy[1] * dx[1] * dx[1] +
+                             pj->force.gradient_vy[2] * dx[1] * dx[2] +
+                             pj->force.gradient_vz[0] * dx[2] * dx[0] +
+                             pj->force.gradient_vz[1] * dx[2] * dx[1] +
+                             pj->force.gradient_vz[2] * dx[2] * dx[2];
 
-  const float A_ij = A_ij_den != 0.f ? A_ij_num / A_ij_den : 0.f;
+  const float A_ij_vel =
+      A_ij_vel_den != 0.f ? A_ij_vel_num / A_ij_vel_den : 0.f;
 
   /* Slope limiter exponential term (eq. 21, right term) */
   const float exp_term =
@@ -318,30 +319,33 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
           : 1.f;
 
   /* Van Leer limiter (eq. 21) */
-  const float fraction =
-      (A_ij != -1.f) ? 4.f * A_ij / ((1.f + A_ij) * (1.f + A_ij)) : 1.f;
-  const float Phi_ij = fmaxf(0.f, fminf(1.f, fraction)) * exp_term;
+  const float fraction_vel =
+      (A_ij_vel != -1.f)
+          ? 4.f * A_ij_vel / ((1.f + A_ij_vel) * (1.f + A_ij_vel))
+          : 1.f;
+
+  const float Phi_ij_vel = fmaxf(0.f, fminf(1.f, fraction_vel)) * exp_term;
 
   /* Mid-point reconstruction, first order (eq. 17) */
-  v_rec_i[0] += Phi_ij * pi->force.gradient_vx[0] * delta_i[0];
-  v_rec_i[0] += Phi_ij * pi->force.gradient_vx[1] * delta_i[1];
-  v_rec_i[0] += Phi_ij * pi->force.gradient_vx[2] * delta_i[2];
-  v_rec_i[1] += Phi_ij * pi->force.gradient_vy[0] * delta_i[0];
-  v_rec_i[1] += Phi_ij * pi->force.gradient_vy[1] * delta_i[1];
-  v_rec_i[1] += Phi_ij * pi->force.gradient_vy[2] * delta_i[2];
-  v_rec_i[2] += Phi_ij * pi->force.gradient_vz[0] * delta_i[0];
-  v_rec_i[2] += Phi_ij * pi->force.gradient_vz[1] * delta_i[1];
-  v_rec_i[2] += Phi_ij * pi->force.gradient_vz[2] * delta_i[2];
+  v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[0] * delta_i[0];
+  v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[1] * delta_i[1];
+  v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[2] * delta_i[2];
+  v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[0] * delta_i[0];
+  v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[1] * delta_i[1];
+  v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[2] * delta_i[2];
+  v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[0] * delta_i[0];
+  v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[1] * delta_i[1];
+  v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[2] * delta_i[2];
 
-  v_rec_j[0] += Phi_ij * pj->force.gradient_vx[0] * delta_j[0];
-  v_rec_j[0] += Phi_ij * pj->force.gradient_vx[1] * delta_j[1];
-  v_rec_j[0] += Phi_ij * pj->force.gradient_vx[2] * delta_j[2];
-  v_rec_j[1] += Phi_ij * pj->force.gradient_vy[0] * delta_j[0];
-  v_rec_j[1] += Phi_ij * pj->force.gradient_vy[1] * delta_j[1];
-  v_rec_j[1] += Phi_ij * pj->force.gradient_vy[2] * delta_j[2];
-  v_rec_j[2] += Phi_ij * pj->force.gradient_vz[0] * delta_j[0];
-  v_rec_j[2] += Phi_ij * pj->force.gradient_vz[1] * delta_j[1];
-  v_rec_j[2] += Phi_ij * pj->force.gradient_vz[2] * delta_j[2];
+  v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[0] * delta_j[0];
+  v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[1] * delta_j[1];
+  v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[2] * delta_j[2];
+  v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[0] * delta_j[0];
+  v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[1] * delta_j[1];
+  v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[2] * delta_j[2];
+  v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[0] * delta_j[0];
+  v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[1] * delta_j[1];
+  v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[2] * delta_j[2];
 
 #endif
 
@@ -408,7 +412,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Raw change in internal energy (eq. 3) */
   pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
 
-#else
+#else /* Gasoline-like mixing */
 
   const float G_ij[3] = {0.5f * (G_i[0] + G_j[0]), 0.5f * (G_i[1] + G_j[1]),
                          0.5f * (G_i[2] + G_j[2])};
