@@ -290,7 +290,7 @@ internal_energies_gas = internal_energy * np.ones(N_total)
 
 # Assign particle IDs
 IDs_gas = np.concatenate(
-    (np.arange(N_jet_final), 10 ** 7 * 2 + np.arange(N_ambient_medium)), axis=None
+    (np.arange(1,N_jet_final+1), 10 ** 7 * 2 + np.arange(N_ambient_medium)), axis=None
 )
 
 # Assign masses
