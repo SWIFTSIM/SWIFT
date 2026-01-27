@@ -155,7 +155,7 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
   out[0] = M->xx * v[0] + M->xy * v[1];
   out[1] = M->xy * v[0] + M->yy * v[1];
 #elif defined(HYDRO_DIMENSION_1D)
-  ut[0] = M->xx * v[0];
+  out[0] = M->xx * v[0];
 #else
 #error "A problem dimensionality must be chosen in config.h !"
 #endif
