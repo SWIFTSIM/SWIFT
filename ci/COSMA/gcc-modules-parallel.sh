@@ -28,7 +28,7 @@ module purge
 module load gnu_comp/14.1.0
 module load openmpi/5.0.3
 module load gsl/2.8
-module load hdf5/1.14.4
+module load parallel_hdf5/1.14.4
 module load parmetis/4.0.3
 module load fftw/3.3.10
 module load utils
