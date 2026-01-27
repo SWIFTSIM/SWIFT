@@ -59,9 +59,6 @@ struct forcing_terms {
    * (0 (false, default) or 1 (true))  */
   int enable_grav_acceleration;
 
-  /* The aspect ratio of the box (x-y) directions */
-  float box_aspect_ratio;
-
   /* The jet power */
   float jet_power;
 
@@ -125,10 +122,8 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     /* Launch particles into jets */
 
     /* Particle position relative to the box centre */
-    const double delta_x =
-        (p->x[0] - terms->box_aspect_ratio * s->dim[0] / 2.0);
-    const double delta_y =
-        (p->x[1] - terms->box_aspect_ratio * s->dim[1] / 2.0);
+    const double delta_x = (p->x[0] - s->dim[0] / 2.0);
+    const double delta_y = (p->x[1] - s->dim[1] / 2.0);
     const double delta_z = (p->x[2] - s->dim[2] / 2.0);
 
     const double R =
@@ -337,8 +332,6 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
     }
   }
 
-  terms->box_aspect_ratio = parser_get_param_float(
-      parameter_file, "BoundaryParticles:box_aspect_ratio");
   terms->jet_power =
       parser_get_param_float(parameter_file, "BoundaryParticles:jet_power");
   terms->jet_velocity =
