@@ -64,10 +64,10 @@ for i in snapshots:
         data = sw.load(path_to_file + snapshot_base + "" + str(snapshots[i]) + ".hdf5")
 
     # Properties we need
-    gas_velocities = data.gas.velocities.value
-    gas_temperatures = data.gas.temperatures.value
-    gas_masses = data.gas.masses.value
-    gas_ids = data.gas.particle_ids.value
+    gas_velocities = np.array(data.gas.velocities.value, dtype=np.float64)
+    gas_temperatures = np.array(data.gas.temperatures.value, dtype=np.float64)
+    gas_masses = np.array(data.gas.masses.value, dtype=np.float64)
+    gas_ids = np.array(data.gas.particle_ids.value, dtype=np.float64)
 
     # Compute the (added) internal energy using the initial value
     if snapshots[i] == 0:
