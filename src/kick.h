@@ -29,6 +29,7 @@
 #include "debug.h"
 #include "mhd.h"
 #include "rt.h"
+#include "sidm.h"
 #include "sink.h"
 #include "stars.h"
 #include "timeline.h"
@@ -456,6 +457,64 @@ __attribute__((always_inline)) INLINE static void kick_sink(
 
   /* Kick extra variables */
   sink_kick_extra(sink, dt_kick_grav);
+}
+
+/**
+ * @brief Perform the 'kick' operation on a #sipart
+ *
+ * @param sip The #sipart to kick.
+ * @param dt_kick_grav The kick time-step for gravity accelerations.
+ * @param ti_start The starting (integer) time of the kick (for debugging
+ * checks).
+ * @param ti_end The ending (integer) time of the kick (for debugging checks).
+ * @param dt_kick_mesh_grav The kick time-step for mesh gravity accelerations.
+ * @param ti_start_mesh The starting (integer) time of the mesh kick (for
+ * debugging checks).
+ * @param ti_end_mesh The ending (integer) time of the mesh kick (for debugging
+ * checks).
+ */
+__attribute__((always_inline)) INLINE static void kick_sipart(
+    struct sipart *restrict sip, const double dt_kick_grav,
+    const integertime_t ti_start, const integertime_t ti_end,
+    const double dt_kick_mesh_grav, const integertime_t ti_start_mesh,
+    const integertime_t ti_end_mesh) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sip->ti_kick != ti_start)
+    error(
+        "si-particle has not been kicked to the current time "
+        "sip->ti_kick=%lld, "
+        "ti_start=%lld, ti_end=%lld id=%lld",
+        sip->ti_kick, ti_start, ti_end, sip->id);
+
+  sip->ti_kick = ti_end;
+
+  if (ti_start_mesh == -1 && dt_kick_mesh_grav != 0.)
+    error("Incorrect dt_kick for the mesh! %e (should be 0)",
+          dt_kick_mesh_grav);
+
+  if (ti_start_mesh != -1 && dt_kick_mesh_grav == 0.)
+    error("Incorrect dt_kick for the mesh! %e (should not be 0)",
+          dt_kick_mesh_grav);
+#endif
+
+  /* Kick particles in momentum space */
+  sip->v[0] += sip->gpart->a_grav[0] * dt_kick_grav;
+  sip->v[1] += sip->gpart->a_grav[1] * dt_kick_grav;
+  sip->v[2] += sip->gpart->a_grav[2] * dt_kick_grav;
+
+  /* Kick particles in momentum space (mesh forces) */
+  sip->v[0] += sip->gpart->a_grav_mesh[0] * dt_kick_mesh_grav;
+  sip->v[1] += sip->gpart->a_grav_mesh[1] * dt_kick_mesh_grav;
+  sip->v[2] += sip->gpart->a_grav_mesh[2] * dt_kick_mesh_grav;
+
+  /* Give the gpart friend the same velocity */
+  sip->gpart->v_full[0] = sip->v[0];
+  sip->gpart->v_full[1] = sip->v[1];
+  sip->gpart->v_full[2] = sip->v[2];
+
+  /* Kick extra variables */
+  sidm_kick_extra(sip, dt_kick_grav);
 }
 
 #endif /* SWIFT_KICK_H */

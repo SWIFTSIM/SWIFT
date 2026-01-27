@@ -98,11 +98,13 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
   struct spart *restrict sparts = c->stars.parts;
   struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
+  struct sipart *restrict siparts = c->sidm.parts;
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int sink_count = c->sinks.count;
   const int bcount = c->black_holes.count;
+  const int sicount = c->sidm.count;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -111,7 +113,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
   /* Anything to do here? */
   if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e) &&
       !cell_is_starting_stars(c, e) && !cell_is_starting_sinks(c, e) &&
-      !cell_is_starting_black_holes(c, e))
+      !cell_is_starting_black_holes(c, e) && !cell_is_starting_sidm(c, e))
     return;
 
   /* Recurse? */
@@ -343,6 +345,41 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
                    ti_begin_mesh, ti_end_mesh);
       }
     }
+
+    /* Loop over the SIDM particles in this cell. */
+    for (int k = 0; k < sicount; k++) {
+
+      /* Get a handle on the si-part. */
+      struct sipart *restrict sip = &siparts[k];
+
+      /* If particle needs to be kicked */
+      if (sipart_is_starting(sip, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(sip->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current + 1, sip->time_bin);
+        const integertime_t ti_end = ti_begin + ti_step / 2;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        const integertime_t ti_end_check =
+            get_integer_time_end(ti_current + 1, sip->time_bin);
+
+        if (ti_begin != ti_current)
+          error(
+              "si-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end_check, ti_begin, ti_step, sip->time_bin, ti_current);
+#endif
+
+        /* Time interval for this gravity half-kick */
+        const double dt_kick_grav = kick_get_grav_kick_dt(
+            ti_begin, ti_end, time_base, with_cosmology, cosmo);
+
+        /* Do the kick */
+        kick_sipart(sip, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                    ti_begin_mesh, ti_end_mesh);
+      }
+    }
   }
 
   if (timer) TIMER_TOC(timer_kick1);
@@ -371,12 +408,14 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   const int scount = c->stars.count;
   const int sink_count = c->sinks.count;
   const int bcount = c->black_holes.count;
+  const int sicount = c->sidm.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
+  struct sipart *restrict siparts = c->sidm.parts;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -385,7 +424,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
-      !cell_is_active_black_holes(c, e))
+      !cell_is_active_black_holes(c, e) && !cell_is_active_sidm(c, e))
     return;
 
   /* Recurse? */
@@ -624,6 +663,43 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         black_holes_reset_predicted_values(bp);
       }
     }
+
+    /* Loop over the particles in this cell. */
+    for (int k = 0; k < sicount; k++) {
+
+      /* Get a handle on the part. */
+      struct sipart *restrict sip = &siparts[k];
+
+      /* If particle needs to be kicked */
+      if (sipart_is_active(sip, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(sip->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, sip->time_bin) + ti_step / 2;
+        const integertime_t ti_end = ti_begin + ti_step / 2;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ti_end != ti_current) error("Particle in wrong time-bin");
+#endif
+
+        /* Time interval for this gravity half-kick */
+        const double dt_kick_grav = kick_get_grav_kick_dt(
+            ti_begin, ti_end, time_base, with_cosmology, cosmo);
+
+        /* Finish the time-step with a second half-kick */
+        kick_sipart(sip, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                    ti_begin_mesh, ti_end_mesh);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that kick and the drift are synchronized */
+        if (sip->ti_drift != sip->ti_kick)
+          error("Error integrating si-part in time.");
+#endif
+
+        /* Prepare the values to be drifted */
+        sidm_reset_predicted_values(sip);
+      }
+    }
   }
   if (timer) TIMER_TOC(timer_kick2);
 }
@@ -652,19 +728,21 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   const int scount = c->stars.count;
   const int sink_count = c->sinks.count;
   const int bcount = c->black_holes.count;
+  const int sicount = c->sidm.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
+  struct sipart *restrict siparts = c->sidm.parts;
 
   TIMER_TIC;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
-      !cell_is_active_black_holes(c, e)) {
+      !cell_is_active_black_holes(c, e) && !cell_is_active_sidm(c, e)) {
     /* Note: cell_is_rt_active is deliberately skipped. We only change
      * the RT subcycling time steps when particles are hydro active. */
     c->hydro.updated = 0;
@@ -673,11 +751,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
     c->sinks.updated = 0;
     c->black_holes.updated = 0;
     c->rt.updated = 0;
+    c->sidm.updated = 0;
     return;
   }
 
   int updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
-      b_updated = 0;
+      b_updated = 0, si_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_rt_min_step_size = max_nr_timesteps;
@@ -686,6 +765,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_beg_max = 0;
+  integertime_t ti_sidm_end_min = max_nr_timesteps, ti_sidm_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -1102,6 +1182,62 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       }
     }
 
+    /* Loop over the SIDM particles in this cell. */
+    for (int k = 0; k < sicount; k++) {
+
+      /* Get a handle on the part. */
+      struct sipart *restrict sip = &siparts[k];
+
+      /* need to be updated ? */
+      if (sipart_is_active(sip, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Current end of time-step */
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, sip->time_bin);
+
+        if (ti_end != ti_current)
+          error("Computing time-step of rogue particle.");
+#endif
+        /* Get new time-step */
+        const integertime_t ti_new_step = get_sipart_timestep(sip, e);
+
+        /* Update particle */
+        sip->time_bin = get_time_bin(ti_new_step);
+        sip->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Number of updated si-particles */
+        si_updated++;
+        g_updated++;
+
+        ti_sidm_end_min = min(ti_current + ti_new_step, ti_sidm_end_min);
+        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+
+        /* What is the next starting point for this cell ? */
+        ti_sidm_beg_max = max(ti_current, ti_sidm_beg_max);
+        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+
+        /* si particle is inactive but not inhibited */
+      } else {
+
+        if (!sipart_is_inhibited(sip, e)) {
+
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, sip->time_bin);
+
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, sip->time_bin);
+
+          ti_sidm_end_min = min(ti_end, ti_sidm_end_min);
+          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+
+          /* What is the next starting point for this cell ? */
+          ti_sidm_beg_max = max(ti_beg, ti_sidm_beg_max);
+          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+        }
+      }
+    }
+
   } else {
 
     /* Loop over the progeny. */
@@ -1118,6 +1254,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         sink_updated += cp->sinks.updated;
         s_updated += cp->stars.updated;
         b_updated += cp->black_holes.updated;
+        si_updated += cp->sidm.updated;
 
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
@@ -1140,6 +1277,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
             min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
         ti_black_holes_beg_max =
             max(cp->grav.ti_beg_max, ti_black_holes_beg_max);
+
+        ti_sidm_end_min = min(cp->sidm.ti_end_min, ti_sidm_end_min);
+        ti_sidm_beg_max = max(cp->sidm.ti_beg_max, ti_sidm_beg_max);
       }
     }
   }
@@ -1153,6 +1293,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   c->stars.updated = s_updated;
   c->sinks.updated = sink_updated;
   c->black_holes.updated = b_updated;
+  c->sidm.updated = si_updated;
   /* We don't count the RT updates here because the
    * timestep tasks aren't active during sub-cycles.
    * We do that in rt_advanced_cell_time instead. */
@@ -1174,6 +1315,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   c->sinks.ti_beg_max = ti_sinks_beg_max;
   c->black_holes.ti_end_min = ti_black_holes_end_min;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+  c->sidm.ti_end_min = ti_sidm_end_min;
+  c->sidm.ti_beg_max = ti_sidm_beg_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_end_min == e->ti_current &&
@@ -1191,6 +1334,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   if (c->black_holes.ti_end_min == e->ti_current &&
       c->black_holes.ti_end_min < max_nr_timesteps)
     error("End of next black holes step is current time!");
+  if (c->sidm.ti_end_min == e->ti_current &&
+      c->sidm.ti_end_min < max_nr_timesteps)
+    error("End of next SIDM step is current time!");
   /* Contrary to sinks, stars, bhs etc, we may have "rt particles"
    * without running with RT. So additional if (with_rt) check is
    * needed here. */
@@ -1224,6 +1370,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   size_t b_updated = 0;
   size_t si_updated = 0;
   size_t rt_updated = 0;
+  size_t sidm_updated = 0;
 
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
@@ -1232,6 +1379,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_beg_max = 0;
   integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
+  integertime_t ti_sidm_end_min = max_nr_timesteps, ti_sidm_beg_max = 0;
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
@@ -1256,6 +1404,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
           max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
       ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
       ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+      ti_sidm_end_min = min(ti_sidm_end_min, cp->sidm.ti_end_min);
+      ti_sidm_beg_max = max(ti_sidm_beg_max, cp->sidm.ti_beg_max);
 
       h_updated += cp->hydro.updated;
       g_updated += cp->grav.updated;
@@ -1263,6 +1413,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
       b_updated += cp->black_holes.updated;
       si_updated += cp->sinks.updated;
       rt_updated += cp->rt.updated;
+      sidm_updated += cp->sidm.updated;
 
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
@@ -1271,6 +1422,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
       cp->black_holes.updated = 0;
       cp->sinks.updated = 0;
       cp->rt.updated = 0;
+      cp->sidm.updated = 0;
     }
   }
 
@@ -1290,6 +1442,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->sinks.ti_end_min = ti_sinks_end_min;
   c->sinks.ti_beg_max = ti_sinks_beg_max;
+  c->sidm.ti_end_min = ti_sidm_end_min;
+  c->sidm.ti_beg_max = ti_sidm_beg_max;
 
   c->hydro.updated = h_updated;
   c->grav.updated = g_updated;
@@ -1297,6 +1451,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   c->black_holes.updated = b_updated;
   c->sinks.updated = si_updated;
   c->rt.updated = rt_updated;
+  c->sidm.updated = sidm_updated;
 }
 
 /**
@@ -1630,6 +1785,313 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
 
   if (timer) TIMER_TOC(timer_do_sync);
+}
+
+/**
+ * @brief Apply the time-step limiter to all awaken SIDM particles in a cell
+ * hierarchy.
+ *
+ * @param r The task #runner.
+ * @param c The #cell.
+ * @param force Limit the particles irrespective of the #cell flags.
+ * @param timer Are we timing this ?
+ */
+void runner_do_sidm_limiter(struct runner *r, struct cell *c, int force,
+                            const int timer) {
+
+  const struct engine *e = r->e;
+  const int sicount = c->sidm.count;
+  struct sipart *restrict siparts = c->sidm.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only limit local cells. */
+  if (c->nodeID != engine_rank) error("Limiting dt of a foreign cell is nope.");
+#endif
+
+  integertime_t ti_sidm_end_min = max_nr_timesteps, ti_sidm_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+
+  /* Limit irrespective of cell flags? */
+  force = (force || cell_get_flag(c, cell_flag_do_sidm_limiter));
+
+  /* Early abort? */
+  if (c->sidm.count == 0) {
+
+    /* Clear the limiter flags. */
+    cell_clear_flag(c,
+                    cell_flag_do_sidm_limiter | cell_flag_do_sidm_sub_limiter);
+    return;
+  }
+
+  /* Loop over the progeny ? */
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_sidm_sub_limiter))) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Recurse */
+        runner_do_sidm_limiter(r, cp, force, /*timer=*/0);
+
+        /* And aggregate */
+        ti_sidm_end_min = min(cp->sidm.ti_end_min, ti_sidm_end_min);
+        ti_sidm_beg_max = max(cp->sidm.ti_beg_max, ti_sidm_beg_max);
+        ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
+        ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
+      }
+    }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
+
+    /* Store the updated values */
+    c->sidm.ti_end_min = min(c->sidm.ti_end_min, ti_sidm_end_min);
+    c->sidm.ti_beg_max = max(c->sidm.ti_beg_max, ti_sidm_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+
+  } else if (!c->split && force) {
+
+    ti_sidm_end_min = c->sidm.ti_end_min;
+    ti_sidm_beg_max = c->sidm.ti_beg_max;
+    ti_gravity_end_min = c->grav.ti_end_min;
+    ti_gravity_beg_max = c->grav.ti_beg_max;
+
+    /* Loop over the sidm particles in this cell. */
+    for (int k = 0; k < sicount; k++) {
+
+      /* Get a handle on the part. */
+      struct sipart *restrict sip = &siparts[k];
+
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+
+      /* Finish the limiter loop by adding a (fake) self-contribution */
+      sip->limiter_data.N_limiter++;
+
+      const float h_inv_dim = pow_dimension(1. / p->h); /* 1/h^d */
+      sip->limiter_data.n_limiter += kernel_root;
+      sip->limiter_data.n_limiter *= h_inv_dim;
+#endif
+
+      /* Avoid inhibited particles */
+      if (sipart_is_inhibited(sip, e)) continue;
+
+      /* Bip, bip, bip... wake-up time */
+      if (sip->limiter_data.wakeup != time_bin_not_awake) {
+
+        if (!sipart_is_active(sip, e) && sip->limiter_data.to_be_synchronized) {
+          warning(
+              "Not limiting si-particle with id %lld because it needs to be "
+              "synced.",
+              sip->id);
+          continue;
+        }
+
+        // message("Limiting particle %lld in cell %lld", p->id, c->cellID);
+
+        /* Apply the limiter and get the new end of time-step */
+        const integertime_t ti_end_new = timestep_limit_sipart(sip, e);
+        const timebin_t new_bin = sip->time_bin;
+        const integertime_t ti_beg_new =
+            ti_end_new - get_integer_timestep(new_bin);
+
+        /* Mark this particle has not needing synchronization */
+        sip->limiter_data.to_be_synchronized = 0;
+
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+        sip->limited_part = 1;
+#endif
+
+        /* What is the next sync-point ? */
+        ti_sidm_end_min = min(ti_end_new, ti_sidm_end_min);
+
+        /* What is the next starting point for this cell ? */
+        ti_sidm_beg_max = max(ti_beg_new, ti_sidm_beg_max);
+
+        /* Also limit the gpart counter-part */
+        if (sip->gpart != NULL) {
+
+          /* Register the time-bin */
+          sip->gpart->time_bin = sip->time_bin;
+
+          /* What is the next sync-point ? */
+          ti_gravity_end_min = min(ti_end_new, ti_gravity_end_min);
+
+          /* What is the next starting point for this cell ? */
+          ti_gravity_beg_max = max(ti_beg_new, ti_gravity_beg_max);
+        }
+      }
+    }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
+
+    /* Store the updated values */
+    c->sidm.ti_end_min = min(c->sidm.ti_end_min, ti_sidm_end_min);
+    c->sidm.ti_beg_max = max(c->sidm.ti_beg_max, ti_sidm_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+  }
+
+  /* Clear the limiter flags. */
+  cell_clear_flag(c, cell_flag_do_sidm_limiter | cell_flag_do_sidm_sub_limiter);
+}
+
+/**
+ * @brief Apply the time-step synchronization proceduere to all flagged
+ * SIDM particles in a cell hierarchy.
+ *
+ * @param r The task #runner.
+ * @param c The #cell.
+ * @param force Limit the particles irrespective of the #cell flags.
+ * @param timer Are we timing this ?
+ */
+void runner_do_siparts_sync(struct runner *r, struct cell *c, int force,
+                            const int timer) {
+
+  const struct engine *e = r->e;
+  const integertime_t ti_current = e->ti_current;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int sicount = c->sidm.count;
+  struct sipart *restrict siparts = c->sidm.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only sync local cells. */
+  if (c->nodeID != engine_rank) error("Syncing of a foreign cell is nope.");
+#endif
+
+  integertime_t ti_sidm_end_min = max_nr_timesteps, ti_sidm_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+
+  /* Limit irrespective of cell flags? */
+  force = (force || cell_get_flag(c, cell_flag_do_sidm_sync));
+
+  /* Early abort? */
+  if (c->sidm.count == 0) {
+
+    /* Clear the sync flags. */
+    cell_clear_flag(c, cell_flag_do_sidm_sync | cell_flag_do_sidm_sub_sync);
+    return;
+  }
+
+  /* Loop over the progeny ? */
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_sidm_sub_sync))) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Recurse */
+        runner_do_siparts_sync(r, cp, force, /*timer=*/0);
+
+        /* And aggregate */
+        ti_sidm_end_min = min(cp->sidm.ti_end_min, ti_sidm_end_min);
+        ti_sidm_beg_max = max(cp->sidm.ti_beg_max, ti_sidm_beg_max);
+        ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
+        ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
+      }
+    }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
+
+    /* Store the updated values */
+    c->sidm.ti_end_min = min(c->sidm.ti_end_min, ti_sidm_end_min);
+    c->sidm.ti_beg_max = max(c->sidm.ti_beg_max, ti_sidm_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+
+  } else if (!c->split && force) {
+
+    ti_sidm_end_min = c->sidm.ti_end_min;
+    ti_sidm_beg_max = c->sidm.ti_beg_max;
+    ti_gravity_end_min = c->grav.ti_end_min;
+    ti_gravity_beg_max = c->grav.ti_beg_max;
+
+    /* Loop over the si-particles in this cell. */
+    for (int k = 0; k < sicount; k++) {
+
+      /* Get a handle on the part. */
+      struct sipart *restrict sip = &siparts[k];
+
+      /* Avoid inhibited particles */
+      if (sipart_is_inhibited(sip, e)) continue;
+
+      /* If the particle is active no need to sync it */
+      if (sipart_is_active(sip, e) && sip->limiter_data.to_be_synchronized) {
+        sip->limiter_data.to_be_synchronized = 0;
+      }
+
+      if (sip->limiter_data.to_be_synchronized) {
+
+        /* Finish this particle's time-step */
+        timestep_process_sync_sipart(sip, e, cosmo);
+
+        /* Get new time-step */
+        integertime_t ti_new_step = get_sipart_timestep(sip, e);
+        timebin_t new_time_bin = get_time_bin(ti_new_step);
+
+        /* Apply the limiter if necessary */
+        if (sip->limiter_data.wakeup != time_bin_not_awake) {
+          new_time_bin = min(new_time_bin, -sip->limiter_data.wakeup + 2);
+          sip->limiter_data.wakeup = time_bin_not_awake;
+        }
+
+        /* Limit the time-bin to what is allowed in this step */
+        new_time_bin = min(new_time_bin, e->max_active_bin);
+        ti_new_step = get_integer_timestep(new_time_bin);
+
+        /* Time-step length in physical units */
+        // MATTHIEU: TODO: think about this one!
+        double time_step_length;
+        if (with_cosmology) {
+          time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current, e->ti_current + ti_new_step);
+        } else {
+          time_step_length = get_timestep(new_time_bin, e->time_base);
+        }
+
+        /* Update particle */
+        sip->time_bin = new_time_bin;
+        if (sip->gpart != NULL) sip->gpart->time_bin = new_time_bin;
+
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+        sip->limited_part = 1;
+#endif
+
+        /* What is the next sync-point ? */
+        ti_sidm_end_min = min(ti_current + ti_new_step, ti_sidm_end_min);
+
+        /* What is the next starting point for this cell ? */
+        ti_sidm_beg_max = max(ti_current, ti_sidm_beg_max);
+
+        /* Also limit the gpart counter-part */
+        if (sip->gpart != NULL) {
+
+          /* Register the time-bin */
+          sip->gpart->time_bin = sip->time_bin;
+
+          /* What is the next sync-point ? */
+          ti_gravity_end_min =
+              min(ti_current + ti_new_step, ti_gravity_end_min);
+
+          /* What is the next starting point for this cell ? */
+          ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+        }
+      }
+    }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
+
+    /* Store the updated values */
+    c->sidm.ti_end_min = min(c->sidm.ti_end_min, ti_sidm_end_min);
+    c->sidm.ti_beg_max = max(c->sidm.ti_beg_max, ti_sidm_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+  }
+
+  /* Clear the sync flags. */
+  cell_clear_flag(c, cell_flag_do_sidm_sync | cell_flag_do_sidm_sub_sync);
 }
 
 /**
