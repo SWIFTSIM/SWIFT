@@ -74,6 +74,9 @@ struct sipart {
   /*! Tree-depth at which size / 2 <= h * gamma < size */
   char depth_h;
 
+  /*! Time-step limiter information */
+  struct timestep_limiter_data limiter_data;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */
