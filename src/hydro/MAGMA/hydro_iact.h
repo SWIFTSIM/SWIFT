@@ -440,20 +440,36 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
 #ifndef USE_ZEROTH_ORDER_VELOCITIES
 
-  /* Mid-point reconstruction, first order (eq. 17) */
-  u_rec_i += pi->force.gradient_u[0] * delta_i[0];
-  u_rec_i += pi->force.gradient_u[1] * delta_i[1];
-  u_rec_i += pi->force.gradient_u[2] * delta_i[2];
+  const float A_ij_u_num = pi->force.gradient_u[0] * dx[0] +
+                           pi->force.gradient_u[1] * dx[1] +
+                           pi->force.gradient_u[2] * dx[2];
 
-  u_rec_j += pj->force.gradient_u[0] * delta_j[0];
-  u_rec_j += pj->force.gradient_u[1] * delta_j[1];
-  u_rec_j += pj->force.gradient_u[2] * delta_j[2];
+  const float A_ij_u_den = pj->force.gradient_u[0] * dx[0] +
+                           pj->force.gradient_u[1] * dx[1] +
+                           pj->force.gradient_u[2] * dx[2];
+
+  const float A_ij_u = A_ij_u_den != 0.f ? A_ij_u_num / A_ij_u_den : 0.f;
+
+  /* Van Leer limiter (eq. 21) */
+  const float fraction_u =
+      (A_ij_u != -1.f) ? 4.f * A_ij_u / ((1.f + A_ij_u) * (1.f + A_ij_u)) : 1.f;
+
+  const float Phi_ij_u = fmaxf(0.f, fminf(1.f, fraction_u)) * exp_term;
+
+  /* Mid-point reconstruction, first order (eq. 17) */
+  u_rec_i += Phi_ij_u * pi->force.gradient_u[0] * delta_i[0];
+  u_rec_i += Phi_ij_u * pi->force.gradient_u[1] * delta_i[1];
+  u_rec_i += Phi_ij_u * pi->force.gradient_u[2] * delta_i[2];
+
+  u_rec_j += Phi_ij_u * pj->force.gradient_u[0] * delta_j[0];
+  u_rec_j += Phi_ij_u * pj->force.gradient_u[1] * delta_j[1];
+  u_rec_j += Phi_ij_u * pj->force.gradient_u[2] * delta_j[2];
 
   /* Simple limiter preventing problem inversion */
-  if ((pi->u > pj->u && u_rec_i < u_rec_j) ||
-      (pi->u < pj->u && u_rec_i > u_rec_j)) {
-    u_rec_i = u_rec_j = 0.5f * (pi->u + pj->u);
-  }
+  // if ((pi->u > pj->u && u_rec_i < u_rec_j) ||
+  //     (pi->u < pj->u && u_rec_i > u_rec_j)) {
+  // u_rec_i = u_rec_j = 0.5f * (pi->u + pj->u);
+  //}
 
 #endif
 
