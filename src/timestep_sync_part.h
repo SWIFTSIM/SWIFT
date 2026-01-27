@@ -33,4 +33,15 @@ __attribute__((always_inline)) INLINE static void timestep_sync_part(
   p->limiter_data.to_be_synchronized = 1;
 }
 
+/**
+ * @brief Flag an SIDM particle for synchronization on the time-line.
+ *
+ * @param sip The #sipart.
+ */
+__attribute__((always_inline)) INLINE static void timestep_sync_sipart(
+    struct sipart *sip) {
+
+  sip->limiter_data.to_be_synchronized = 1;
+}
+
 #endif /* SWIFT_TIMESTEP_SYNC_PART_H */

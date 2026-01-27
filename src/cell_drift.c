@@ -1245,6 +1245,9 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
      replication lists if we allocated them.
   */
   struct replication_list *replication_list = NULL;
+#ifdef WITH_LIGHTCONE
+  replication_list = refine_replications(e, c, replication_list_in);
+#endif
 
   /* Are we not in a leaf ? */
   if (c->split && (force || cell_get_flag(c, cell_flag_do_sidm_sub_drift))) {
@@ -1275,12 +1278,15 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
   } else if (!c->split && force && ti_current > ti_old_sipart) {
 
     /* Drift from the last time the cell was drifted to the current time */
-    double dt_drift;
+    double dt_drift, dt_kick_grav;
     if (with_cosmology) {
       dt_drift =
           cosmology_get_drift_factor(e->cosmology, ti_old_sipart, ti_current);
+      dt_kick_grav = cosmology_get_grav_kick_factor(e->cosmology, ti_old_sipart,
+                                                    ti_current);
     } else {
       dt_drift = (ti_current - ti_old_sipart) * e->time_base;
+      dt_kick_grav = (ti_current - ti_old_sipart) * e->time_base;
     }
 
     /* Loop over all the SIDM particles in the cell */
@@ -1289,6 +1295,9 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
 
       /* Get a handle on the sipart. */
       struct sipart *const sip = &siparts[k];
+
+      /* Ignore inhibited particles */
+      if (sipart_is_inhibited(sip, e)) continue;
 
       /* Drift... */
       drift_sipart(sip, dt_drift, ti_old_sipart, ti_current, e,
@@ -1315,14 +1324,18 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
 
           /* Re-check that the particle has not been removed
            * by another thread before we do the deed. */
+          if (!sipart_is_inhibited(sip, e)) {
 #ifdef WITH_CSDS
-          if (e->policy & engine_policy_csds) {
-            error("Logging of SIDM particles is not yet implemented.");
-          }
+            if (e->policy & engine_policy_csds) {
+              error("Logging of SIDM particles is not yet implemented.");
+            }
 #endif
+            /* One last action before death? */
+            sidm_remove_sipart(sip, e->time);  // TODO
 
-          /* Remove the particle entirely */
-          cell_remove_sipart(e, c, sip);
+            /* Remove the particle entirely */
+            cell_remove_sipart(e, c, sip);
+          }
 
           if (lock_unlock(&e->s->lock) != 0)
             error("Failed to unlock the space!");
@@ -1356,6 +1369,11 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
         /* Update the maximal active smoothing length in the cell */
         cell_h_max_active = max(cell_h_max_active, sip->h);
       }
+
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+      sip->limiter_data.n_limiter = 0.f;
+      sip->limiter_data.N_limiter = 0;
+#endif
     }
 
     /* Now, get the maximal particle motion from its square */

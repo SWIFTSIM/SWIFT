@@ -360,7 +360,11 @@ enum cell_flags {
   cell_flag_do_rt_sub_sort = (1UL << 22),   /* same as hydro_sub_sort for RT */
   cell_flag_rt_requests_sort = (1UL << 23), /* was this sort requested by RT? */
   cell_flag_do_sidm_drift = (1UL << 24),
-  cell_flag_do_sidm_sub_drift = (1UL << 25)
+  cell_flag_do_sidm_sub_drift = (1UL << 25),
+  cell_flag_do_sidm_limiter = (1UL << 26),
+  cell_flag_do_sidm_sub_limiter = (1UL << 27),
+  cell_flag_do_sidm_sync = (1UL << 28),
+  cell_flag_do_sidm_sub_sync = (1UL << 29),
 };
 
 /**
@@ -683,6 +687,7 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_sink(struct cell *c, struct scheduler *s);
 void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
+void cell_activate_drift_sipart(struct cell *c, struct scheduler *s);
 void cell_activate_sync_part(struct cell *c, struct scheduler *s);
 void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
