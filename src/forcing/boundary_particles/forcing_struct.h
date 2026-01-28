@@ -2,7 +2,7 @@
 #define SWIFT_FORCING_BOUNDARY_PARTICLES_STRUCT_H
 
 /**
- * @brief Properties of the cooling stored in the extended particle data.
+ * @brief Properties of the forcing stored in the extended particle data.
  */
 struct forcing_xpart_data {};
 
