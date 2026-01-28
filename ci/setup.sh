@@ -33,13 +33,13 @@ trap ONEXIT EXIT
 #  Wrap calls to make so we can use -j <something> easily.
 #  Also suppress output from libtool. Those logs are too big for gitlab.
 function do_make {
-    make -j 4 V=0 $*
+    make -j 4 V=0 $* || exit 1
 }
 
 #  Wrap ./configure calls so we can echo that line to the log.
 function do_configure {
     echo "## CONFIGURE: $*"
-    ./configure $*
+    ./configure $* || exit 1
 }
 
 #  Run a command and only show the output if the command fails, so if a test
@@ -60,6 +60,8 @@ function do_run {
     rm -f "$tmp"
 }
 
-# More chat from the scripts. Re-enable if desperate.
+#  Exit scripts as soon as there is an error. If you want.
 #set -e
+
+# More chat from the scripts. Re-enable if desperate.
 #set -x
