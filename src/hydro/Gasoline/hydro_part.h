@@ -40,6 +40,7 @@
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
+#include "forcing_struct.h"
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -81,6 +82,9 @@ struct xpart {
 
   /*! Additional data used by the MHD scheme */
   struct mhd_xpart_data mhd_data;
+
+  /* Additional data used by the forcing scheme */
+  struct forcing_xpart_data forcing_data;
 
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */
