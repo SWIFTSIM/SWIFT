@@ -50,7 +50,8 @@ variables:
 #  Whatever toolchain is provided in the runner environment.
 gnu-build:
   stage: build
-  tags: ["genericlinux"]
+  tags: 
+    - genericlinux
   #  When MR to master happens, or commit is to master.
   rules:
     - if: >
@@ -65,7 +66,8 @@ gnu-build:
 #  Full GCC toolchain on COSMA:
 gnu-build-cosma:
   stage: build
-  tags: ["cosma"]
+  tags: 
+    - cosma
   #  When MR to master happens, or commit is to master.
   rules:
     - if: >
@@ -80,7 +82,8 @@ gnu-build-cosma:
 #  Full Intel toolchain on COSMA:
 intel-build-cosma:
   stage: build
-  tags: ["cosma"]
+  tags: 
+    - cosma
   #  When MR to master happens, or commit is to master.
   rules:
     - if: >
@@ -95,7 +98,8 @@ intel-build-cosma:
 #  Small runtime checks.
 runtime-check-cosma:
   stage: runtime
-  tags: ["cosma"]
+  tags: 
+    - cosma
   #  When MR to master happens, or commit is to master.
   rules:
     - if: >
@@ -110,7 +114,8 @@ runtime-check-cosma:
 #  Small test for MRs only. Some like to push a lot...
 swift-intel-build-mr:
   stage: build
-  tags: ["cosma"]
+  tags: 
+    - cosma
   #  When this commit is part of an active MR.
   rules:
     - if: >
@@ -121,3 +126,4 @@ swift-intel-build-mr:
     - echo "Merge request check using Intel toolchain"
     - ci/swift-intel-check-mr.sh
     - echo "complete."
+
