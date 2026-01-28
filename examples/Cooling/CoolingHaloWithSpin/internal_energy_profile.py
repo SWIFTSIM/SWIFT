@@ -45,7 +45,6 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 filename = "CoolingHalo_0000.hdf5"
 f = h5.File(filename, "r")
 params = f["Parameters"]
-unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
 unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"])
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs

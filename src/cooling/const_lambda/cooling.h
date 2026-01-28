@@ -156,7 +156,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float A_floor_com = entropy_floor(p, cosmo, floor_props);
   const float rho_com = hydro_get_comoving_density(p);
   const float u_floor_com =
-      gas_internal_energy_from_entropy(rho_com, A_floor_com);
+      gas_internal_energy_from_entropy(rho_com, A_floor_com, 0); /* Add 0 for REMIX */
 
   /* Absolute minimum */
   const float u_minimal_com =

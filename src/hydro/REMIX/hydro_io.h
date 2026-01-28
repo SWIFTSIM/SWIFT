@@ -204,7 +204,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
       io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, id, "Unique IDs of the particles");
   list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
-                                 parts, rho, "Densities of the particles");
+                                 parts, rho_evol, "Densities of the particles");
   list[7] = io_make_output_field_convert_part(
       "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f, parts,
       xparts, convert_S, "Entropies per unit mass of the particles");
