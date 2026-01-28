@@ -28,10 +28,10 @@ MHD:
 BalsaraKimForcing:
   coords:        ./injection_coords.txt  # File containing times and locations of energy injections
   inj_model:     set_u            # what injection model to use options: set_u, set_const_u, set_v, set_const_v
-  r_inj:         5.               # (opt) Injection radius in parsec, default: 5 pc
-  E_inj:         1.e53            # (opt) Injection energy in erg, default: 1.e51 erg
-  u_inj:         3.0298e15        # (opt) if set_const_u=1, what specific energy to inject in the particles, default: 2.8263e15 (cm/s)**2
-  v_inj:         500              # (opt) if set_const_v=1, the injection velocity in km/s, default: 200 km/s
+  r_inj:         5.               # (opt) Injection radius in parsec (comoving), default: 5 pc
+  E_inj:         1.e53            # (opt) Injection energy in erg (physical), default: 1.e51 erg
+  u_inj:         3.0298e15        # (opt) if inj_model=set_const_u, what specific energy to inject in the particles (physical), default: 2.8263e15 (cm/s)**2
+  v_inj:         500              # (opt) if inj_model=set_const_v, the injection velocity in km/s (physical), default: 200 km/s
 
 # Parameters governing the snapshots
 Snapshots:
