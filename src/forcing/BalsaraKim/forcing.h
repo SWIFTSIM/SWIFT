@@ -556,11 +556,11 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   }
   
   /* Read injection parameters */
-  double E_inj_erg = parser_get_opt_param_double(parameter_file,
+  double E_inj_cgs = parser_get_opt_param_double(parameter_file,
         "BalsaraKimForcing:E_inj", 1.e51);
-  double u_inj_cm2s2 = parser_get_opt_param_double(parameter_file,
+  double u_inj_cgs = parser_get_opt_param_double(parameter_file,
 	      "BalsaraKimForcing:u_inj", 2.8263e15);
-  double vel_inj_cms = parser_get_opt_param_double(parameter_file,
+  double vel_inj_cgs = parser_get_opt_param_double(parameter_file,
         "BalsaraKimForcing:v_inj", 200.) * 1.e5;
 
   /* Read min and max timestep to store here as well */
@@ -576,9 +576,9 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
 
   terms->r_inj = r_inj_pc * parsec_ui;
   terms->V_inj = V_inj_pc3 * (parsec_ui * parsec_ui * parsec_ui);
-  terms->E_inj = E_inj_erg / erg_cgs;
-  terms->u_inj = u_inj_cm2s2 / (v_cgs * v_cgs);
-  terms->vel_inj = vel_inj_cms / v_cgs;
+  terms->E_inj = E_inj_cgs / erg_cgs;
+  terms->u_inj = u_inj_cgs / (v_cgs * v_cgs);
+  terms->vel_inj = vel_inj_cgs / v_cgs;
 
   /* initialise some indices and counters */
   terms->t_index = 0;
