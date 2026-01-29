@@ -7,6 +7,8 @@
 #
 #  Peter W. Draper 20-JAN-2026.
 
+#  Keep to the smaller job on MR branches and activate for all pushes to the
+#  master branch. Don't do anything on draft MRs.
 workflow:
   rules:
     - if: >
@@ -35,33 +37,6 @@ variables:
 
 #  JOBS.
 #  -----
-
-#debug:
-#  stage: build
-#  rules:
-#    - when: always
-#  script:
-#    - printf "%s\n" \
-#        "SOURCE=$CI_PIPELINE_SOURCE" \
-#        "BRANCH=$CI_COMMIT_BRANCH" \
-#        "MR_SOURCE=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" \
-#        "MR_TARGET=$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
-
-#  Whatever toolchain is provided in the runner environment.
-gnu-build:
-  stage: build
-  tags: 
-    - genericlinux
-  #  When MR to master happens, or commit is to master.
-  rules:
-    - if: >
-        $CI_PIPELINE_SOURCE == "push" &&
-        $CI_COMMIT_BRANCH == "master"
-  timeout: 6h
-  script:
-    - echo "Full compilation and unit tests"
-    - ci/swift-gnu-check.sh
-    - echo "complete."
 
 #  Full GCC toolchain on COSMA:
 gnu-build-cosma:
@@ -127,3 +102,21 @@ swift-intel-build-mr:
     - ci/swift-intel-check-mr.sh
     - echo "complete."
 
+#  Whatever toolchain is provided in the runner environment.
+#  Note this is not enabled by on the main repository, those
+#  jobs will only run on COSMA. Comment those out or change things
+#  to match your fork environment as needed.
+#gnu-build:
+#  stage: build
+#  tags: 
+#    - genericlinux
+#  #  When MR to master happens, or commit is to master.
+#  rules:
+#    - if: >
+#        $CI_PIPELINE_SOURCE == "push" &&
+#        $CI_COMMIT_BRANCH == "master"
+#  timeout: 6h
+#  script:
+#    - echo "Full compilation and unit tests"
+#    - ci/swift-gnu-check.sh
+#    - echo "complete."
