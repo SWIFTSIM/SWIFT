@@ -2,6 +2,7 @@
  * This file is part of SWIFT.
  * Copyright (c) 2023 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2026 Filip Husko (husko@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,8 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FORCING_BOUNDARY_PARTICLES_H
-#define SWIFT_FORCING_BOUNDARY_PARTICLES_H
+#ifndef SWIFT_FORCING_IDEALIZED_AGN_JET_H
+#define SWIFT_FORCING_IDEALIZED_AGN_JET_H
 
 /* Config parameters. */
 #include <config.h>
@@ -29,10 +30,12 @@
 /* Local includes. */
 #include "engine.h"
 #include "error.h"
+#include "hydro.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "space.h"
+#include "timestep_sync_part.h"
 #include "units.h"
 
 /**
@@ -55,6 +58,15 @@ struct forcing_terms {
   /*! Whether or not boundary particles have gravitational accelerations enabled
    * (0 (false, default) or 1 (true))  */
   int enable_grav_acceleration;
+
+  /* The jet power */
+  float jet_power;
+
+  /* The jet kick velocity */
+  float jet_velocity;
+
+  /* How long the jet should be on */
+  float jet_duration;
 };
 
 /**
@@ -79,7 +91,13 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     return;
   }
 
-  if (p->id <= terms->boundary_particle_max_id) {
+  /* Only kick particles if they haven't yet been kicked, and if it is time to
+     kick them; define max_id of particle that should be kicked up to now */
+  const float max_id =
+      (terms->jet_power * time) /
+      (0.5 * p->mass * terms->jet_velocity * terms->jet_velocity);
+
+  if ((p->id <= terms->boundary_particle_max_id) && (p->id > max_id)) {
     /* Reset the hydro accelerations of boundary particles. */
     p->a_hydro[0] = 0.0f;
     p->a_hydro[1] = 0.0f;
@@ -100,6 +118,41 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
       xp->v_full[1] = 0.f;
       xp->v_full[2] = 0.f;
     }
+  } else if (p->id <= terms->boundary_particle_max_id) {
+    /* Launch particles into jets */
+
+    /* Particle position relative to the box centre */
+    const double delta_x = (p->x[0] - s->dim[0] / 2.0);
+    const double delta_y = (p->x[1] - s->dim[1] / 2.0);
+    const double delta_z = (p->x[2] - s->dim[2] / 2.0);
+
+    const double R =
+        sqrt(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
+
+    /* Assign velocity to be given. We do a kick radially from the origin */
+    const double vel_kick_vec[3] = {terms->jet_velocity * delta_x / R,
+                                    terms->jet_velocity * delta_y / R,
+                                    terms->jet_velocity * delta_z / R};
+
+    p->v[0] = vel_kick_vec[0];
+    p->v[1] = vel_kick_vec[1];
+    p->v[2] = vel_kick_vec[2];
+    xp->v_full[0] = vel_kick_vec[0];
+    xp->v_full[1] = vel_kick_vec[1];
+    xp->v_full[2] = vel_kick_vec[2];
+
+    /* Reset some hydro quantities */
+    hydro_diffusive_feedback_reset(p);
+
+    /* Recompute the signal velocity of the particle */
+    hydro_set_v_sig_based_on_velocity_kick(p, s->e->cosmology,
+                                           terms->jet_velocity);
+
+    /* Synchronize the particle on the time-line */
+    timestep_sync_part(p);
+
+    /* Increase the particle's id so it's no longer ever kicked */
+    p->id += terms->boundary_particle_max_id;
   }
 }
 
@@ -115,25 +168,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
  */
 __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
     const long long id, const struct forcing_terms *terms, struct gpart *gp) {
-
-  if (terms->enable_grav_acceleration) {
-    /* Skip if not resetting grav accelerations. */
-    return;
-  }
-
-  if (id <= terms->boundary_particle_max_id) {
-    /* Reset the grav accelerations of boundary particles. */
-    gp->a_grav[0] = 0.0f;
-    gp->a_grav[1] = 0.0f;
-    gp->a_grav[2] = 0.0f;
-
-    if (terms->enable_fixed_position) {
-      /* Set velocity of fixed boundary particle to zero. */
-      gp->v_full[0] = 0.f;
-      gp->v_full[1] = 0.f;
-      gp->v_full[2] = 0.f;
-    }
-  }
+  /* Nothing to do here */
 }
 
 /**
@@ -147,13 +182,7 @@ __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
  */
 __attribute__((always_inline)) INLINE static void forcing_gpart_drift_apply(
     const long long id, const struct forcing_terms *terms, struct gpart *gp) {
-
-  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
-    /* Set velocity of fixed boundary particle to zero. */
-    gp->v_full[0] = 0.f;
-    gp->v_full[1] = 0.f;
-    gp->v_full[2] = 0.f;
-  }
+  /* Nothing to do here */
 }
 
 /**
@@ -189,13 +218,7 @@ __attribute__((always_inline)) INLINE static void forcing_part_drift_apply(
  */
 __attribute__((always_inline)) INLINE static void forcing_spart_drift_apply(
     const long long id, const struct forcing_terms *terms, struct spart *sp) {
-
-  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
-    /* Set velocity of fixed boundary particle to zero. */
-    sp->v[0] = 0.f;
-    sp->v[1] = 0.f;
-    sp->v[2] = 0.f;
-  }
+  /* Nothing to do here */
 }
 
 /**
@@ -209,13 +232,7 @@ __attribute__((always_inline)) INLINE static void forcing_spart_drift_apply(
  */
 __attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
     const long long id, const struct forcing_terms *terms, struct bpart *bp) {
-
-  if (id <= terms->boundary_particle_max_id && terms->enable_fixed_position) {
-    /* Set velocity of fixed boundary particle to zero. */
-    bp->v[0] = 0.f;
-    bp->v[1] = 0.f;
-    bp->v[2] = 0.f;
-  }
+  /* Nothing to do here */
 }
 
 /**
@@ -244,9 +261,8 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  */
 static INLINE void forcing_terms_print(const struct forcing_terms *terms) {
 
-  message(
-      "Forcing terms is 'Boundary particles'. Max boundary particle ID: %i.",
-      terms->boundary_particle_max_id);
+  message("Forcing terms is 'Idealized AGN jet'. Max boundary particle ID: %i.",
+          terms->boundary_particle_max_id);
   message(
       "Run with options: Enable fixed position: %i, Enable hydro acceleration: "
       "%i, Enable grav acceleration: %i",
@@ -315,6 +331,13 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
           "or 1 (true).");
     }
   }
+
+  terms->jet_power =
+      parser_get_param_float(parameter_file, "BoundaryParticles:jet_power");
+  terms->jet_velocity =
+      parser_get_param_float(parameter_file, "BoundaryParticles:jet_velocity");
+  terms->jet_duration =
+      parser_get_param_float(parameter_file, "BoundaryParticles:jet_duration");
 }
 
-#endif /* SWIFT_FORCING_BOUNDARY_PARTICLES_H */
+#endif /* SWIFT_FORCING_IDEALIZED_AGN_JET_H */
