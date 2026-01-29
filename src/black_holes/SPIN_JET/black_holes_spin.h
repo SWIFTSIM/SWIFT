@@ -38,7 +38,7 @@
  */
 __attribute__((always_inline)) INLINE static float
 black_hole_gravitational_radius(float mass,
-                                const struct phys_const* constants) {
+                                const struct phys_const *constants) {
 
   const float r_G =
       mass * constants->const_newton_G /
@@ -121,8 +121,8 @@ __attribute__((always_inline)) INLINE static float black_hole_isco_radius(
  * @param constants Physical constants (in internal units).
  */
 __attribute__((always_inline)) INLINE static float
-black_hole_angular_momentum_magnitude(struct bpart* bp,
-                                      const struct phys_const* constants) {
+black_hole_angular_momentum_magnitude(struct bpart *bp,
+                                      const struct phys_const *constants) {
 
   const float J_BH =
       fabs(bp->subgrid_mass * bp->subgrid_mass * bp->spin *
@@ -164,8 +164,8 @@ black_hole_angular_momentum_magnitude(struct bpart* bp,
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static float black_hole_warp_radius(
-    struct bpart* bp, const struct phys_const* constants,
-    const struct black_holes_props* props) {
+    struct bpart *bp, const struct phys_const *constants,
+    const struct black_holes_props *props) {
 
   /* Define placeholder value for the result. We will assign the final result
      to this variable. */
@@ -279,8 +279,8 @@ __attribute__((always_inline)) INLINE static float black_hole_warp_radius(
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static double black_hole_warp_mass(
-    struct bpart* bp, const struct phys_const* constants,
-    const struct black_holes_props* props) {
+    struct bpart *bp, const struct phys_const *constants,
+    const struct black_holes_props *props) {
 
   /* Define placeholder value for the result. We will assign the final result
      to this variable. */
@@ -373,9 +373,9 @@ __attribute__((always_inline)) INLINE static double black_hole_warp_mass(
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static double
-black_hole_warp_angular_momentum(struct bpart* bp,
-                                 const struct phys_const* constants,
-                                 const struct black_holes_props* props) {
+black_hole_warp_angular_momentum(struct bpart *bp,
+                                 const struct phys_const *constants,
+                                 const struct black_holes_props *props) {
 
   /* Define placeholder value for the result. We will assign the final result
      to this variable. */
@@ -520,8 +520,8 @@ __attribute__((always_inline)) INLINE static float eps_slim_disc(float a,
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static void
-black_hole_select_accretion_mode(struct bpart* bp,
-                                 const struct black_holes_props* props) {
+black_hole_select_accretion_mode(struct bpart *bp,
+                                 const struct black_holes_props *props) {
 
   /* For deciding the accretion mode, we want to use the Eddington fraction
    * calculated using the raw, unsuppressed accretion rate. This means that
@@ -571,10 +571,10 @@ black_hole_select_accretion_mode(struct bpart* bp,
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static float
-black_hole_accretion_efficiency(struct bpart* bp,
-                                const struct black_holes_props* props,
-                                const struct phys_const* constants,
-                                const struct cosmology* cosmo) {
+black_hole_accretion_efficiency(struct bpart *bp,
+                                const struct black_holes_props *props,
+                                const struct phys_const *constants,
+                                const struct cosmology *cosmo) {
 
   if (bp->accretion_mode == BH_thick_disc ||
       bp->accretion_mode == BH_slim_disc) {
@@ -670,7 +670,7 @@ black_hole_accretion_efficiency(struct bpart* bp,
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static float black_hole_jet_efficiency(
-    struct bpart* bp, const struct black_holes_props* props) {
+    struct bpart *bp, const struct black_holes_props *props) {
 
   /* Define placeholder value for the result. We will assign the final result
      to this variable. */
@@ -749,8 +749,8 @@ __attribute__((always_inline)) INLINE static float black_hole_jet_efficiency(
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static float
-black_hole_radiative_efficiency(struct bpart* bp,
-                                const struct black_holes_props* props) {
+black_hole_radiative_efficiency(struct bpart *bp,
+                                const struct black_holes_props *props) {
 
   /* Calculate Novikov-Thorne efficiency, which will be needed twice. */
   const float eps_TD = eps_Novikov_Thorne(bp->spin);
@@ -844,7 +844,7 @@ black_hole_radiative_efficiency(struct bpart* bp,
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static float black_hole_wind_efficiency(
-    struct bpart* bp, const struct black_holes_props* props) {
+    struct bpart *bp, const struct black_holes_props *props) {
 
   /* (Dimensionless) magnetic flux on the BH horizon, as given by the
      Narayan et al. (2022) fitting function for MAD discs. */
@@ -902,8 +902,8 @@ __attribute__((always_inline)) INLINE static float black_hole_wind_efficiency(
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static float l_acc(
-    struct bpart* bp, const struct phys_const* constants,
-    const struct black_holes_props* props) {
+    struct bpart *bp, const struct phys_const *constants,
+    const struct black_holes_props *props) {
 
   /* Define placeholder value for the result. We will assign the final result
      to this variable. */
@@ -963,8 +963,8 @@ __attribute__((always_inline)) INLINE static float l_acc(
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static float black_hole_spinup_rate(
-    struct bpart* bp, const struct phys_const* constants,
-    const struct black_holes_props* props) {
+    struct bpart *bp, const struct phys_const *constants,
+    const struct black_holes_props *props) {
   const float a = bp->spin;
 
   if ((a == 0.f) || (a < -0.9981f) || (a > 0.9981f)) {
@@ -1034,8 +1034,8 @@ __attribute__((always_inline)) INLINE static float black_hole_spinup_rate(
  * @param constants The physical constants (in internal units).
  */
 __attribute__((always_inline)) INLINE static float black_hole_feedback_delta_T(
-    const struct bpart* bp, const struct black_holes_props* props,
-    const struct cosmology* cosmo, const struct phys_const* constants) {
+    const struct bpart *bp, const struct black_holes_props *props,
+    const struct cosmology *cosmo, const struct phys_const *constants) {
 
   float delta_T = -1.f;
   if (props->AGN_heating_temperature_model ==
@@ -1117,8 +1117,8 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_delta_T(
  * @param constants The physical constants (in internal units).
  */
 __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
-    const struct bpart* bp, const struct black_holes_props* props,
-    const struct cosmology* cosmo, const struct phys_const* constants) {
+    const struct bpart *bp, const struct black_holes_props *props,
+    const struct cosmology *cosmo, const struct phys_const *constants) {
 
   float v_jet = -1.;
   if (props->AGN_jet_velocity_model == AGN_jet_velocity_BH_mass) {
@@ -1284,8 +1284,8 @@ __attribute__((always_inline)) INLINE static float mass_fraction_lost_to_GWs(
  * @param props Properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static float
-black_hole_merger_spin_evolve(struct bpart* bpi, const struct bpart* bpj,
-                              const struct phys_const* constants) {
+black_hole_merger_spin_evolve(struct bpart *bpi, const struct bpart *bpj,
+                              const struct phys_const *constants) {
 
   /* Check if something is wrong with the masses. This is important and could
      possibly happen as a result of jet spindown and mass loss at any time,

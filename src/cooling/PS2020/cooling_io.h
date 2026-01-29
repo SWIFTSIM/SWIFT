@@ -38,7 +38,7 @@
  */
 __attribute__((always_inline)) INLINE static void cooling_write_flavour(
     hid_t h_grp, hid_t h_grp_columns,
-    const struct cooling_function_data* cooling) {
+    const struct cooling_function_data *cooling) {
 
   io_write_attribute_s(h_grp, "Cooling Model", "PS2020");
 
@@ -64,36 +64,36 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 }
 #endif
 
-INLINE static void convert_part_T(const struct engine* e, const struct part* p,
-                                  const struct xpart* xp, float* ret) {
+INLINE static void convert_part_T(const struct engine *e, const struct part *p,
+                                  const struct xpart *xp, float *ret) {
 
   ret[0] = cooling_get_temperature(e->physical_constants, e->hydro_properties,
                                    e->internal_units, e->cosmology,
                                    e->cooling_func, p, xp);
 }
 
-INLINE static void convert_part_sub_T(const struct engine* e,
-                                      const struct part* p,
-                                      const struct xpart* xp, float* ret) {
+INLINE static void convert_part_sub_T(const struct engine *e,
+                                      const struct part *p,
+                                      const struct xpart *xp, float *ret) {
 
   ret[0] = cooling_get_particle_subgrid_temperature(
       e->internal_units, e->physical_constants, e->cosmology,
       e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
 }
 
-INLINE static void convert_part_sub_rho(const struct engine* e,
-                                        const struct part* p,
-                                        const struct xpart* xp, float* ret) {
+INLINE static void convert_part_sub_rho(const struct engine *e,
+                                        const struct part *p,
+                                        const struct xpart *xp, float *ret) {
 
   ret[0] = cooling_get_particle_subgrid_density(
       e->internal_units, e->physical_constants, e->cosmology,
       e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
 }
 
-INLINE static void convert_part_sub_species_frac(const struct engine* e,
-                                                 const struct part* p,
-                                                 const struct xpart* xp,
-                                                 float* ret) {
+INLINE static void convert_part_sub_species_frac(const struct engine *e,
+                                                 const struct part *p,
+                                                 const struct xpart *xp,
+                                                 float *ret) {
 
   ret[0] = cooling_get_particle_subgrid_HI_fraction(
       e->internal_units, e->physical_constants, e->cosmology,
@@ -114,9 +114,9 @@ INLINE static void convert_part_sub_species_frac(const struct engine* e,
   ret[2] /= sum;
 }
 
-INLINE static void convert_part_HI_mass(const struct engine* e,
-                                        const struct part* p,
-                                        const struct xpart* xp, float* ret) {
+INLINE static void convert_part_HI_mass(const struct engine *e,
+                                        const struct part *p,
+                                        const struct xpart *xp, float *ret) {
 
   const float X_H =
       chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
@@ -128,9 +128,9 @@ INLINE static void convert_part_HI_mass(const struct engine* e,
   *ret = hydro_get_mass(p) * X_H * HI_frac;
 }
 
-INLINE static void convert_part_H2_mass(const struct engine* e,
-                                        const struct part* p,
-                                        const struct xpart* xp, float* ret) {
+INLINE static void convert_part_H2_mass(const struct engine *e,
+                                        const struct part *p,
+                                        const struct xpart *xp, float *ret) {
 
   const float X_H =
       chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
@@ -142,18 +142,18 @@ INLINE static void convert_part_H2_mass(const struct engine* e,
   *ret = hydro_get_mass(p) * X_H * H2_frac * 2.f;
 }
 
-INLINE static void convert_part_e_density(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, double* ret) {
+INLINE static void convert_part_e_density(const struct engine *e,
+                                          const struct part *p,
+                                          const struct xpart *xp, double *ret) {
 
   *ret = cooling_get_electron_density(e->physical_constants,
                                       e->hydro_properties, e->internal_units,
                                       e->cosmology, e->cooling_func, p, xp);
 }
 
-INLINE static void convert_part_y_compton(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, double* ret) {
+INLINE static void convert_part_y_compton(const struct engine *e,
+                                          const struct part *p,
+                                          const struct xpart *xp, double *ret) {
 
   *ret = cooling_get_ycompton(e->physical_constants, e->hydro_properties,
                               e->internal_units, e->cosmology, e->cooling_func,
@@ -170,8 +170,8 @@ INLINE static void convert_part_y_compton(const struct engine* e,
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
-    const struct part* parts, const struct xpart* xparts,
-    struct io_props* list) {
+    const struct part *parts, const struct xpart *xparts,
+    struct io_props *list) {
 
   list[0] = io_make_output_field_convert_part(
       "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,

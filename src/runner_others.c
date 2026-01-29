@@ -119,9 +119,12 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
  *
  * @param r runner task
  * @param c cell
+ * @param offset The offset in the array of cooling tasks running on that cell.
+ * @param ntasks The number of tasks running in parallel on the same cell.
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
+void runner_do_cooling(struct runner *r, struct cell *c, const int offset,
+                       const int ntasks, const int timer) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -148,12 +151,15 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
   /* Recurse? */
   if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_cooling(r, c->progeny[k], 0);
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_cooling(r, c->progeny[k], offset, ntasks, /*timer=*/0);
+      }
+    }
   } else {
 
     /* Loop over the parts in this cell. */
-    for (int i = 0; i < count; i++) {
+    for (int i = offset; i < count; i += ntasks) {
 
       /* Get a direct pointer on the part. */
       struct part *restrict p = &parts[i];
@@ -197,7 +203,8 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
  * @param timer 1 if the time is to be recorded.
  */
 void runner_do_star_formation_sink(struct runner *r, struct cell *c,
-                                   int timer) {
+                                   const int timer) {
+
 #ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
   return;
 #endif
@@ -239,6 +246,10 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         c->stars.h_max = max(c->stars.h_max, cp->stars.h_max);
         c->stars.h_max_active =
             max(c->stars.h_max_active, cp->stars.h_max_active);
+
+        /* Update the dx_max */
+        c->stars.dx_max_part = max(c->stars.dx_max_part, cp->stars.dx_max_part);
+        c->stars.dx_max_sort = max(c->stars.dx_max_sort, cp->stars.dx_max_sort);
       }
   } else {
 
@@ -271,9 +282,16 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           if (sp == NULL)
             error("Run out of available star particles or gparts");
 
+          float displacement[3] = {0.0, 0.0, 0.0};
+
           /* Copy the properties to the star particle */
           sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
-                                       with_cosmology, phys_const, us);
+                                       with_cosmology, phys_const, us,
+                                       displacement);
+
+          sp->x_diff[0] += displacement[0];
+          sp->x_diff[1] += displacement[1];
+          sp->x_diff[2] += displacement[2];
 
           /* Verify that we do not have too many stars in the leaf for
            * the sort task to be able to act. */
@@ -289,6 +307,28 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           /* Update the h_max */
           c->stars.h_max = max(c->stars.h_max, sp->h);
           c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
+
+          /* Update the maximum displacement information of a cell based on a
+             spart's movement.
+             Notes:
+              - We need to update these offsets everytime we spawn a new spart.
+              - The information needs to be propagated to the cell hierarchy.
+           */
+          /* Compute displacements */
+          const float dx2_part = sp->x_diff[0] * sp->x_diff[0] +
+                                 sp->x_diff[1] * sp->x_diff[1] +
+                                 sp->x_diff[2] * sp->x_diff[2];
+
+          const float dx2_sort = sp->x_diff_sort[0] * sp->x_diff_sort[0] +
+                                 sp->x_diff_sort[1] * sp->x_diff_sort[1] +
+                                 sp->x_diff_sort[2] * sp->x_diff_sort[2];
+
+          const float dx_part = sqrtf(dx2_part);
+          const float dx_sort = sqrtf(dx2_sort);
+
+          /* Update the cell's running maximum displacement */
+          c->stars.dx_max_part = max(c->stars.dx_max_part, dx_part);
+          c->stars.dx_max_sort = max(c->stars.dx_max_sort, dx_sort);
 
           /* Update sink properties */
           sink_update_sink_properties_during_star_formation(
@@ -320,7 +360,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
+void runner_do_star_formation(struct runner *r, struct cell *c,
+                              const int timer) {
+
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct star_formation *sf_props = e->star_formation;
@@ -378,6 +420,14 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               max(cp->hydro.dx_max_part, c->hydro.dx_max_part);
           c->hydro.dx_max_sort =
               max(cp->hydro.dx_max_sort, c->hydro.dx_max_sort);
+        }
+
+        /* Update the dx_max */
+        if (swift_star_formation_model_creates_stars) {
+          c->stars.dx_max_part =
+              max(c->stars.dx_max_part, cp->stars.dx_max_part);
+          c->stars.dx_max_sort =
+              max(c->stars.dx_max_sort, cp->stars.dx_max_sort);
         }
       }
   } else {
@@ -471,12 +521,18 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* Did we get a star? (Or did we run out of spare ones?) */
               if (sp != NULL) {
+                float displacement[3] = {0.0, 0.0, 0.0};
 
                 /* Copy the properties of the gas particle to the star particle
                  */
                 star_formation_copy_properties(
                     p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
-                    hydro_props, us, cooling, part_converted);
+                    hydro_props, us, cooling, e->chemistry, part_converted,
+                    displacement);
+
+                sp->x_diff[0] += displacement[0];
+                sp->x_diff[1] += displacement[1];
+                sp->x_diff[2] += displacement[2];
 
                 /* Update the Star formation history */
                 star_formation_logger_log_new_spart(sp, &c->stars.sfh);
@@ -487,6 +543,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
                 /* Update the displacement information */
                 if (star_formation_need_update_dx_max) {
+
                   const float dx2_part = xp->x_diff[0] * xp->x_diff[0] +
                                          xp->x_diff[1] * xp->x_diff[1] +
                                          xp->x_diff[2] * xp->x_diff[2];
@@ -502,6 +559,34 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                      this task is always called at the top-level */
                   c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
                   c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
+                }
+
+                if (n_spart_spawn >= 1) {
+                  /* Update the maximum displacement information of a cell based
+                   * on a spart's movement. Notes:
+                   * - We need to update these offsets everytime we spawn a
+                   *   new spart.
+                   * - The information needs to be propagated to the cell
+                   *   hierarchy.
+                   */
+
+                  /* Compute displacements */
+                  const float dx2_part = sp->x_diff[0] * sp->x_diff[0] +
+                                         sp->x_diff[1] * sp->x_diff[1] +
+                                         sp->x_diff[2] * sp->x_diff[2];
+
+                  const float dx2_sort =
+                      sp->x_diff_sort[0] * sp->x_diff_sort[0] +
+                      sp->x_diff_sort[1] * sp->x_diff_sort[1] +
+                      sp->x_diff_sort[2] * sp->x_diff_sort[2];
+
+                  const float dx_part = sqrtf(dx2_part);
+                  const float dx_sort = sqrtf(dx2_sort);
+
+                  /* Note: no need to update quantities further up the tree as
+                     this task is always called at the top-level */
+                  c->stars.dx_max_part = max(c->stars.dx_max_part, dx_part);
+                  c->stars.dx_max_sort = max(c->stars.dx_max_sort, dx_sort);
                 }
 
 #ifdef WITH_CSDS
@@ -733,34 +818,12 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         hydro_end_force(p, cosmo);
         mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);
-        chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
+        chemistry_end_force(p, cosmo, with_cosmology, e->time, dt,
+                            e->chemistry);
 
         /* Apply the forcing terms (if any) */
-        forcing_terms_apply(e->time, e->forcing_terms, e->s,
-                            e->physical_constants, p, xp);
-
-#ifdef SWIFT_BOUNDARY_PARTICLES
-
-        /* Get the ID of the part */
-        const long long id = p->id;
-
-        /* Cancel hdyro forces of these particles */
-        if (id < SWIFT_BOUNDARY_PARTICLES) {
-
-          /* Don't move ! */
-          hydro_reset_acceleration(p);
-          mhd_reset_acceleration(p);
-
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
-
-          /* Some values need to be reset in the Gizmo case. */
-          hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
-                              e->hydro_properties, e->pressure_floor_props,
-                              /*dt_alpha=*/0, /*dt_therm=*/0);
-          rt_prepare_force(p);
-#endif
-        }
-#endif
+        forcing_hydro_terms_apply(e->time, e->forcing_terms, e->s,
+                                  e->physical_constants, p, xp);
       }
     }
   }
@@ -821,16 +884,6 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
         gravity_end_force(gp, G_newton, potential_normalisation, periodic,
                           with_self_gravity);
 
-#ifdef SWIFT_MAKE_GRAVITY_GLASS
-
-        /* Negate the gravity forces */
-        gp->a_grav[0] *= -1.f;
-        gp->a_grav[1] *= -1.f;
-        gp->a_grav[2] *= -1.f;
-#endif
-
-#ifdef SWIFT_NO_GRAVITY_BELOW_ID
-
         /* Get the ID of the gpart */
         long long id = 0;
         if (gp->type == swift_type_gas)
@@ -843,6 +896,19 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           id = e->s->bparts[-gp->id_or_neg_offset].id;
         else
           id = gp->id_or_neg_offset;
+
+        /* Apply the forcing terms (if any) */
+        forcing_grav_terms_apply(id, e->forcing_terms, gp);
+
+#ifdef SWIFT_MAKE_GRAVITY_GLASS
+
+        /* Negate the gravity forces */
+        gp->a_grav[0] *= -1.f;
+        gp->a_grav[1] *= -1.f;
+        gp->a_grav[2] *= -1.f;
+#endif
+
+#ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
         /* Cancel gravity forces of these particles */
         if (id < SWIFT_NO_GRAVITY_BELOW_ID) {
@@ -868,25 +934,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           if (gp->num_interacted !=
               e->total_nr_gparts - e->count_inhibited_gparts) {
 
-            /* Get the ID of the gpart */
-            long long my_id = 0;
-            if (gp->type == swift_type_gas)
-              my_id = e->s->parts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_stars)
-              my_id = e->s->sparts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_sink)
-              my_id = e->s->sinks[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_black_hole)
-              error("Unexisting type");
-            else
-              my_id = gp->id_or_neg_offset;
-
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld (local "
                 "num_gparts=%zd inhibited_gparts=%lld)",
-                my_id, part_type_names[gp->type], gp->num_interacted,
+                id, part_type_names[gp->type], gp->num_interacted,
                 e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts);
           }
         }

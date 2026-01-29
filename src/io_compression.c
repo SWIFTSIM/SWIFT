@@ -34,7 +34,7 @@
  * @brief Names of the compression levels, used in the select_output.yml
  *        parameter file.
  **/
-const char* lossy_compression_schemes_names[compression_level_count] = {
+const char *lossy_compression_schemes_names[compression_level_count] = {
     "off",         "on",         "DScale1",     "DScale2",    "DScale3",
     "DScale4",     "DScale5",    "DScale6",     "DMantissa9", "DMantissa13",
     "DMantissa21", "FMantissa9", "FMantissa13", "HalfFloat",  "BFloat16",
@@ -49,7 +49,7 @@ const char* lossy_compression_schemes_names[compression_level_count] = {
  * @param name The name of the filter
  * @return The #lossy_compression_schemes
  */
-enum lossy_compression_schemes compression_scheme_from_name(const char* name) {
+enum lossy_compression_schemes compression_scheme_from_name(const char *name) {
 
   for (int i = 0; i < compression_level_count; ++i) {
     if (strcmp(name, lossy_compression_schemes_names[i]) == 0)
@@ -75,9 +75,9 @@ enum lossy_compression_schemes compression_scheme_from_name(const char* name) {
  * @param field_name The name of the field to write in the dataspace.
  * @param filter_name (return) The name of the filter (if one is applied).
  */
-void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
+void set_hdf5_lossy_compression(hid_t *h_prop, hid_t *h_type,
                                 const enum lossy_compression_schemes comp,
-                                const char* field_name, char filter_name[32]) {
+                                const char *field_name, char filter_name[32]) {
 
   if (comp == compression_do_not_write) {
     error(

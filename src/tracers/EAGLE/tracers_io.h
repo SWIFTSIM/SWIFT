@@ -42,10 +42,10 @@ __attribute__((always_inline)) INLINE static void tracers_write_flavour(
 }
 #endif
 
-INLINE static void convert_part_averaged_SFR(const struct engine* e,
-                                             const struct part* p,
-                                             const struct xpart* xp,
-                                             float* ret) {
+INLINE static void convert_part_averaged_SFR(const struct engine *e,
+                                             const struct part *p,
+                                             const struct xpart *xp,
+                                             float *ret) {
 
   for (int i = 0; i < num_snapshot_triggers_part; ++i) {
     if (e->snapshot_recording_triggers_started_part[i])
@@ -56,9 +56,9 @@ INLINE static void convert_part_averaged_SFR(const struct engine* e,
   }
 }
 
-INLINE static void convert_spart_averaged_SFR(const struct engine* e,
-                                              const struct spart* sp,
-                                              float* ret) {
+INLINE static void convert_spart_averaged_SFR(const struct engine *e,
+                                              const struct spart *sp,
+                                              float *ret) {
 
   /* Note: We use the 'part' trigger here as the SF would have started when the
    * particle was still in gas form */
@@ -71,9 +71,9 @@ INLINE static void convert_spart_averaged_SFR(const struct engine* e,
   }
 }
 
-INLINE static void convert_bpart_averaged_accretion_rate(const struct engine* e,
-                                                         const struct bpart* bp,
-                                                         float* ret) {
+INLINE static void convert_bpart_averaged_accretion_rate(const struct engine *e,
+                                                         const struct bpart *bp,
+                                                         float *ret) {
 
   for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
     if (e->snapshot_recording_triggers_started_bpart[i])
@@ -95,7 +95,7 @@ INLINE static void convert_bpart_averaged_accretion_rate(const struct engine* e,
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int tracers_write_particles(
-    const struct part* parts, const struct xpart* xparts, struct io_props* list,
+    const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
   list[0] = io_make_output_field(
@@ -256,7 +256,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
-    const struct spart* sparts, struct io_props* list,
+    const struct spart *sparts, struct io_props *list,
     const int with_cosmology) {
 
   list[0] = io_make_output_field(
@@ -425,7 +425,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_bparticles(
-    const struct bpart* bparts, struct io_props* list,
+    const struct bpart *bparts, struct io_props *list,
     const int with_cosmology) {
 
   list[0] = io_make_output_field_convert_bpart(

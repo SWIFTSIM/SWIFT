@@ -8,7 +8,7 @@
  * correction.
  */
 __attribute__((always_inline)) INLINE static void fvpm_reset_centroids(
-    struct part* restrict p) {
+    struct part *restrict p) {
 
   p->geometry.centroid[0] = 0.0f;
   p->geometry.centroid[1] = 0.0f;
@@ -24,7 +24,7 @@ __attribute__((always_inline)) INLINE static void fvpm_reset_centroids(
  * is used here.
  */
 __attribute__((always_inline)) INLINE static void fvpm_normalise_centroid(
-    struct part* restrict p, const float wcount) {
+    struct part *restrict p, const float wcount) {
 
   const float norm = kernel_norm / wcount;
   p->geometry.centroid[0] *= norm;
@@ -42,7 +42,7 @@ __attribute__((always_inline)) INLINE static void fvpm_normalise_centroid(
  * @param w Kernel value at position pj->x.
  */
 __attribute__((always_inline)) INLINE static void fvpm_update_centroid_left(
-    struct part* restrict p, const float* dx, const float w) {
+    struct part *restrict p, const float *dx, const float w) {
 
   p->geometry.centroid[0] -= dx[0] * w;
   p->geometry.centroid[1] -= dx[1] * w;
@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void fvpm_update_centroid_left(
  * @param w Kernel value at position pi->x.
  */
 __attribute__((always_inline)) INLINE static void fvpm_update_centroid_right(
-    struct part* restrict p, const float* dx, const float w) {
+    struct part *restrict p, const float *dx, const float w) {
 
   p->geometry.centroid[0] += dx[0] * w;
   p->geometry.centroid[1] += dx[1] * w;

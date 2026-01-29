@@ -30,6 +30,8 @@
 /* Import the right external potential definition */
 #if defined(FORCING_NONE)
 #include "./forcing/none/forcing.h"
+#elif defined(FORCING_BOUNDARY_PARTICLES)
+#include "./forcing/boundary_particles/forcing.h"
 #elif defined(FORCING_ROBERTS_FLOW)
 #include "./forcing/roberts_flow/forcing.h"
 #elif defined(FORCING_ROBERTS_FLOW_ACCELERATION)
@@ -40,8 +42,8 @@
 #error "Invalid choice of forcing terms"
 #endif
 
-void forcing_terms_struct_dump(const struct forcing_terms* terms, FILE* stream);
-void forcing_terms_struct_restore(const struct forcing_terms* terms,
-                                  FILE* stream);
+void forcing_terms_struct_dump(const struct forcing_terms *terms, FILE *stream);
+void forcing_terms_struct_restore(const struct forcing_terms *terms,
+                                  FILE *stream);
 
 #endif /* SWIFT_FORCING_H */

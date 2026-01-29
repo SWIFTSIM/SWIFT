@@ -135,15 +135,15 @@ struct statistics {
   swift_lock_type lock;
 };
 
-void stats_collect(const struct space* s, struct statistics* stats);
-void stats_add(struct statistics* a, const struct statistics* b);
-void stats_write_file_header(FILE* file, const struct unit_system* us,
-                             const struct phys_const* phys_const);
-void stats_write_to_file(FILE* file, const struct statistics* stats,
+void stats_collect(const struct space *s, struct statistics *stats);
+void stats_add(struct statistics *a, const struct statistics *b);
+void stats_write_file_header(FILE *file, const struct unit_system *us,
+                             const struct phys_const *phys_const);
+void stats_write_to_file(FILE *file, const struct statistics *stats,
                          const double time, const double a, const double z,
                          const int step);
-void stats_init(struct statistics* s);
-void stats_finalize(struct statistics* s);
+void stats_init(struct statistics *s);
+void stats_finalize(struct statistics *s);
 
 #ifdef WITH_MPI
 extern MPI_Datatype statistics_mpi_type;

@@ -194,11 +194,6 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
   c = fscanf(f, "%d %d", &mat->num_rho, &mat->num_T);
   if (c != 2) error("Failed to read the SESAME EoS table %s", table_file);
 
-  // Ignore the first elements of rho = 0, T = 0
-  mat->num_rho--;
-  mat->num_T--;
-  float ignore;
-
   // Allocate table memory
   mat->table_log_rho = (float *)malloc(mat->num_rho * sizeof(float));
   mat->table_log_T = (float *)malloc(mat->num_T * sizeof(float));
@@ -212,45 +207,35 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
       (float *)malloc(mat->num_rho * mat->num_T * sizeof(float));
 
   // Densities (not log yet)
-  for (int i_rho = -1; i_rho < mat->num_rho; i_rho++) {
-    // Ignore the first elements of rho = 0, T = 0
-    if (i_rho == -1) {
-      c = fscanf(f, "%f", &ignore);
-      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-    } else {
-      c = fscanf(f, "%f", &mat->table_log_rho[i_rho]);
-      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-    }
+  for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
+    c = fscanf(f, "%f", &mat->table_log_rho[i_rho]);
+    if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
   }
 
   // Temperatures (not log yet)
-  for (int i_T = -1; i_T < mat->num_T; i_T++) {
-    // Ignore the first elements of rho = 0, T = 0
-    if (i_T == -1) {
-      c = fscanf(f, "%f", &ignore);
-      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-    } else {
-      c = fscanf(f, "%f", &mat->table_log_T[i_T]);
-      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-    }
+  for (int i_T = 0; i_T < mat->num_T; i_T++) {
+    c = fscanf(f, "%f", &mat->table_log_T[i_T]);
+    if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
+  }
+
+  // Ensure first density and temperature aren't zero before taking logs
+  if (mat->table_log_rho[0] == 0) {
+    mat->table_log_rho[0] = mat->table_log_rho[1] * 1e-5;
+  }
+  if (mat->table_log_T[0] == 0) {
+    mat->table_log_T[0] = mat->table_log_T[1] * 1e-5;
   }
 
   // Sp. int. energies (not log yet), pressures, sound speeds, and sp.
   // entropies (not log yet)
-  for (int i_T = -1; i_T < mat->num_T; i_T++) {
-    for (int i_rho = -1; i_rho < mat->num_rho; i_rho++) {
-      // Ignore the first elements of rho = 0, T = 0
-      if ((i_T == -1) || (i_rho == -1)) {
-        c = fscanf(f, "%f %f %f %f", &ignore, &ignore, &ignore, &ignore);
-        if (c != 4) error("Failed to read the SESAME EoS table %s", table_file);
-      } else {
-        c = fscanf(f, "%f %f %f %f",
-                   &mat->table_log_u_rho_T[i_rho * mat->num_T + i_T],
-                   &mat->table_P_rho_T[i_rho * mat->num_T + i_T],
-                   &mat->table_c_rho_T[i_rho * mat->num_T + i_T],
-                   &mat->table_log_s_rho_T[i_rho * mat->num_T + i_T]);
-        if (c != 4) error("Failed to read the SESAME EoS table %s", table_file);
-      }
+  for (int i_T = 0; i_T < mat->num_T; i_T++) {
+    for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
+      c = fscanf(f, "%f %f %f %f",
+                 &mat->table_log_u_rho_T[i_rho * mat->num_T + i_T],
+                 &mat->table_P_rho_T[i_rho * mat->num_T + i_T],
+                 &mat->table_c_rho_T[i_rho * mat->num_T + i_T],
+                 &mat->table_log_s_rho_T[i_rho * mat->num_T + i_T]);
+      if (c != 4) error("Failed to read the SESAME EoS table %s", table_file);
     }
   }
 
@@ -416,6 +401,13 @@ INLINE static float SESAME_internal_energy_from_entropy(
   int idx_rho =
       find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
 
+  // If outside the table then extrapolate from the edge and edge-but-one values
+  if (idx_rho <= -1) {
+    idx_rho = 0;
+  } else if (idx_rho >= mat->num_rho) {
+    idx_rho = mat->num_rho - 2;
+  }
+
   // Sp. entropy at this and the next density (in relevant slice of s array)
   int idx_s_1 = find_value_in_monot_incr_array(
       log_s, mat->table_log_s_rho_T + idx_rho * mat->num_T, mat->num_T);
@@ -423,11 +415,6 @@ INLINE static float SESAME_internal_energy_from_entropy(
       log_s, mat->table_log_s_rho_T + (idx_rho + 1) * mat->num_T, mat->num_T);
 
   // If outside the table then extrapolate from the edge and edge-but-one values
-  if (idx_rho <= -1) {
-    idx_rho = 0;
-  } else if (idx_rho >= mat->num_rho) {
-    idx_rho = mat->num_rho - 2;
-  }
   if (idx_s_1 <= -1) {
     idx_s_1 = 0;
   } else if (idx_s_1 >= mat->num_T) {
@@ -543,6 +530,13 @@ INLINE static float SESAME_pressure_from_internal_energy(
   int idx_rho =
       find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
 
+  // If outside the table then extrapolate from the edge and edge-but-one values
+  if (idx_rho <= -1) {
+    idx_rho = 0;
+  } else if (idx_rho >= mat->num_rho) {
+    idx_rho = mat->num_rho - 2;
+  }
+
   // Sp. int. energy at this and the next density (in relevant slice of u array)
   int idx_u_1 = find_value_in_monot_incr_array(
       log_u, mat->table_log_u_rho_T + idx_rho * mat->num_T, mat->num_T);
@@ -550,11 +544,6 @@ INLINE static float SESAME_pressure_from_internal_energy(
       log_u, mat->table_log_u_rho_T + (idx_rho + 1) * mat->num_T, mat->num_T);
 
   // If outside the table then extrapolate from the edge and edge-but-one values
-  if (idx_rho <= -1) {
-    idx_rho = 0;
-  } else if (idx_rho >= mat->num_rho) {
-    idx_rho = mat->num_rho - 2;
-  }
   if (idx_u_1 <= -1) {
     idx_u_1 = 0;
   } else if (idx_u_1 >= mat->num_T) {
@@ -666,6 +655,13 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
   int idx_rho =
       find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
 
+  // If outside the table then extrapolate from the edge and edge-but-one values
+  if (idx_rho <= -1) {
+    idx_rho = 0;
+  } else if (idx_rho >= mat->num_rho) {
+    idx_rho = mat->num_rho - 2;
+  }
+
   // Sp. int. energy at this and the next density (in relevant slice of u array)
   int idx_u_1 = find_value_in_monot_incr_array(
       log_u, mat->table_log_u_rho_T + idx_rho * mat->num_T, mat->num_T);
@@ -673,11 +669,6 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
       log_u, mat->table_log_u_rho_T + (idx_rho + 1) * mat->num_T, mat->num_T);
 
   // If outside the table then extrapolate from the edge and edge-but-one values
-  if (idx_rho <= -1) {
-    idx_rho = 0;
-  } else if (idx_rho >= mat->num_rho) {
-    idx_rho = mat->num_rho - 2;
-  }
   if (idx_u_1 <= -1) {
     idx_u_1 = 0;
   } else if (idx_u_1 >= mat->num_T) {
@@ -790,6 +781,13 @@ INLINE static float SESAME_temperature_from_internal_energy(
   int idx_rho =
       find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
 
+  // If outside the table then extrapolate from the edge and edge-but-one values
+  if (idx_rho <= -1) {
+    idx_rho = 0;
+  } else if (idx_rho >= mat->num_rho) {
+    idx_rho = mat->num_rho - 2;
+  }
+
   // Sp. int. energy at this and the next density (in relevant slice of u array)
   int idx_u_1 = find_value_in_monot_incr_array(
       log_u, mat->table_log_u_rho_T + idx_rho * mat->num_T, mat->num_T);
@@ -797,11 +795,6 @@ INLINE static float SESAME_temperature_from_internal_energy(
       log_u, mat->table_log_u_rho_T + (idx_rho + 1) * mat->num_T, mat->num_T);
 
   // If outside the table then extrapolate from the edge and edge-but-one values
-  if (idx_rho <= -1) {
-    idx_rho = 0;
-  } else if (idx_rho >= mat->num_rho) {
-    idx_rho = mat->num_rho - 2;
-  }
   if (idx_u_1 <= -1) {
     idx_u_1 = 0;
   } else if (idx_u_1 >= mat->num_T) {
@@ -1001,6 +994,14 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
   idx_rho_below_min = find_value_in_monot_incr_array(
       log_rho_min, mat->table_log_rho, mat->num_rho);
 
+  // Ensure not outside the table
+  if (idx_rho_above_max >= mat->num_rho) {
+    idx_rho_above_max = mat->num_rho - 1;
+  }
+  if (idx_rho_below_min <= -1) {
+    idx_rho_below_min = 0;
+  }
+
   // When searching above/below, we are looking for where the pressure P(rho, u)
   // of the table densities changes from being less than to more than, or vice
   // versa, the desired pressure. If this is the case, there is a root between
@@ -1023,11 +1024,6 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
 
     // If outside the table then extrapolate from the edge and edge-but-one
     // values
-    if (idx_rho <= -1) {
-      idx_rho = 0;
-    } else if (idx_rho >= mat->num_rho) {
-      idx_rho = mat->num_rho - 2;
-    }
     if (idx_u_1 <= -1) {
       idx_u_1 = 0;
     } else if (idx_u_1 >= mat->num_T) {
@@ -1161,11 +1157,6 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
 
     // If outside the table then extrapolate from the edge and edge-but-one
     // values
-    if (idx_rho <= -1) {
-      idx_rho = 0;
-    } else if (idx_rho >= mat->num_rho) {
-      idx_rho = mat->num_rho - 2;
-    }
     if (idx_u_1 <= -1) {
       idx_u_1 = 0;
     } else if (idx_u_1 >= mat->num_T) {

@@ -28,7 +28,7 @@
 
 const int N = 1000000;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

@@ -127,7 +127,6 @@ void lightcone_array_struct_dump(const struct lightcone_array_props *props,
 
 void lightcone_array_struct_restore(struct lightcone_array_props *props,
                                     FILE *stream) {
-
   restart_read_blocks((void *)props, sizeof(struct lightcone_array_props), 1,
                       stream, NULL, "lightcone_array_props");
 

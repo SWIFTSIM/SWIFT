@@ -165,7 +165,7 @@ if __name__ == "__main__":
 
     # generate grid of particles
     y_prev = 0
-    uni_id = 1
+    uni_id = 0
 
     # loop over y
     eps = 1e-3 * box_size[1] / N[1]
@@ -187,13 +187,15 @@ if __name__ == "__main__":
             coords[index, 0] = x
             coords[index, 1] = y_j
             if y_j < fixed[0] or y_j > fixed[1]:
-                ids[index] = uni_id
                 uni_id += 1
+                ids[index] = uni_id
 
-    print(
-        "You need to compile the code with " "--enable-boundary-particles=%i" % uni_id
-    )
-    ids[ids == 0] = np.linspace(uni_id, numPart, numPart - uni_id + 1)
+    print(f"Set 'boundary_particle_max_id: {uni_id}' in rayleigh_taylor.yml")
+
+    ids[ids == 0] = np.linspace(uni_id + 1, numPart, numPart - uni_id)
+
+    if not np.array_equal(np.sort(ids), np.arange(1, numPart + 1)):
+        raise ValueError("ids does not contain all unique integers from 1 to numPart")
 
     # density
     rho = density(coords[:, 1])
