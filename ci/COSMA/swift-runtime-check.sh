@@ -26,7 +26,7 @@
 #  Peter W. Draper 20-JAN-2026.
 #-
 #  Build toolchain.
-source ci/intel-modules.sh
+source ci/COSMA/intel-modules.sh
 source ci/setup.sh
 
 #  Extra modules for runtime.

@@ -33,7 +33,7 @@ echo "------------------------"
 do_make dist
 do_make distclean
 
-echo "Building from distribution tarball"
+echo "## Building from distribution tarball"
 mkdir build
 cd build
 tar zxvf ../*.tar.gz
@@ -42,7 +42,7 @@ do_configure --with-parmetis --disable-optimization
 do_make
 do_make check  VERBOSE=1
 do_make clean
-cd ../
+cd ../../
 git clean -fdx
 
 echo "-----------------"
@@ -58,4 +58,3 @@ do_make clean
 cd ../
 git clean -fdx
 ./autogen.sh
-

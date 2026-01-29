@@ -17,28 +17,35 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #+
-#  SWIFT Intel toolchain complete set of builds and tests.
+#  Tests to be ran when changes are committed to a merge request.
 #
 #  Peter W. Draper 20-JAN-2026.
 #-
-
-source ci/intel-modules.sh
+#  Build toolchain.
+source ci/COSMA/intel-modules.sh
 source ci/setup.sh
 
-#  Start from clean sources.
+#  Clean sources.
 git clean -fdx
 
 #  And off we go.
 ./autogen.sh
 
-#  Checks without parallel HDF5.
-source ci/swift-checks.sh
+echo
+echo "-------------"
+echo "non-MPI build"
+echo "-------------"
+do_configure --disable-optimization
+do_make
+do_make clean
 
-#  Checks with parallel HDF5.
-source ci/intel-modules-parallel.sh
-source ci/swift-checks-parallel.sh
+echo
+echo "---------"
+echo "MPI build"
+echo "---------"
+do_configure --with-parmetis --disable-optimization
+do_make
+do_make clean
 
-#  Checks that distribution still works.
-source ci/swift-checks-distribution.sh
-
+#  Keep simple, may have a number of these happening.
 exit

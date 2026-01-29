@@ -67,7 +67,7 @@ intel-build-cosma:
   timeout: 6h
   script:
     - echo "Intel OneAPI toolchain compilation and unit tests (full)"
-    - ci/swift-intel-check.sh
+    - ci/COSMA/swift-intel-check.sh
     - echo "complete."
 
 #  Small runtime checks.
@@ -83,7 +83,7 @@ runtime-check-cosma:
   timeout: 6h
   script:
     - echo "Runtime checks"
-    - ci/swift-runtime-check.sh
+    - ci/COSMA/swift-runtime-check.sh
     - echo "complete."
 
 #  Small test for MRs only. Some like to push a lot...
@@ -99,7 +99,7 @@ swift-intel-build-mr:
   timeout: 6h
   script:
     - echo "Merge request check using Intel toolchain"
-    - ci/swift-intel-check-mr.sh
+    - ci/COSMA/swift-intel-check-mr.sh
     - echo "complete."
 
 #  Whatever toolchain is provided in the runner environment.
