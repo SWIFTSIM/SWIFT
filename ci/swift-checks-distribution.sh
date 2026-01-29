@@ -30,6 +30,7 @@ echo
 echo "------------------------"
 echo "Testing make dist target"
 echo "------------------------"
+do_configure --with-parmetis --disable-optimization
 do_make dist
 do_make distclean
 
