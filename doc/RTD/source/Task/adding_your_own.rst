@@ -98,7 +98,7 @@ For example::
   enum {
     timer_none = 0,
     timer_prepare,
-    timer_init_swift,
+    timer_init,
     timer_drift_part,
     timer_drift_gpart,
     timer_kick1,
