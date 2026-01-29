@@ -520,6 +520,7 @@ nobase_noinst_HEADERS += fvpm_geometry.h fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/None/fvpm_geometry.h fvpm_geometry/None/fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/Gizmo/fvpm_geometry.h fvpm_geometry/Gizmo/fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/Gizmo/MFM/fvpm_geometry.h fvpm_geometry/Gizmo/MFV/fvpm_geometry.h
+nobase_noinst_HEADERS += likwid_wrapper.h
 
 # Sources and special flags for the gravity library
 libgrav_la_SOURCES = runner_doiact_grav.c

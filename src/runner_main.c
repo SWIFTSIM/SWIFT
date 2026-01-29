@@ -138,7 +138,7 @@
 
 /* likwid markers. */
 #ifdef WITH_LIKWID
-#include "../likwid_wrapper.h"
+#include "likwid_wrapper.h"
 #endif
 
 /**
