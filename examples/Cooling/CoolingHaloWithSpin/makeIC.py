@@ -29,8 +29,8 @@ import random
 # Some constants
 
 OMEGA = 0.3  # Cosmological matter fraction at z = 0
-PARSEC_IN_CGS = 3.0856776e18
-KM_PER_SEC_IN_CGS = 1.0e5
+PARSEC_IN_CGS = 3.0856776e18 # cm
+KM_PER_SEC_IN_CGS = 1.0e5 # km s^-1
 CONST_G_CGS = 6.672e-8
 h = 0.67777  # hubble parameter
 gamma = 5.0 / 3.0
@@ -85,20 +85,6 @@ periodic = 1  # 1 For periodic box
 boxSize = 4.0
 G = const_G
 N = int(sys.argv[1])  # Number of particles
-
-# Create the file
-filename = "CoolingHalo.hdf5"
-file = h5py.File(filename, "w")
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = const_unit_length_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = const_unit_mass_in_cgs
-grp.attrs["Unit time in cgs (U_t)"] = (
-    const_unit_length_in_cgs / const_unit_velocity_in_cgs
-)
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
 # set seed for random number
 np.random.seed(1234)
@@ -200,6 +186,29 @@ for i in range(N):
     omega[i, 2] = 3.0 * J / radius[i]
     v[i, :] = np.cross(omega[i, :], (coords[i, :] - boxSize / 2.0))
 
+# All particles of equal mass
+m = np.full((N,), gas_particle_mass)
+
+# Internal energies
+u = v_c ** 2 / (2.0 * (gamma - 1.0))
+u = np.full((N,), u)
+
+# Smoothing lengths
+l = (4.0 * np.pi * radius ** 2 / N) ** (
+    1.0 / 3.0
+)  # local mean inter-particle separation
+h = np.full((N,), eta * l)
+
+# Define initial densities based on 'm', 'radius' and the volume at a radius r
+rho = m / (4.0*np.pi * radius ** 2)
+
+# Particle IDs
+ids = 1 + np.linspace(0, N, N, endpoint=False)
+
+# Create the file
+filename = "CoolingHalo.hdf5"
+file = h5py.File(filename, "w")
+
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
@@ -212,42 +221,63 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["Dimension"] = 3
 
+
+# Units
+grp = file.create_group("/Units")
+grp.attrs["Unit length in cgs (U_L)"] = const_unit_length_in_cgs
+grp.attrs["Unit mass in cgs (U_M)"] = const_unit_mass_in_cgs
+grp.attrs["Unit time in cgs (U_t)"] = (
+    const_unit_length_in_cgs / const_unit_velocity_in_cgs
+)
+grp.attrs["Unit current in cgs (U_I)"] = 1.0
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+
 # Particle group
 grp = file.create_group("/PartType0")
 
-ds = grp.create_dataset("Coordinates", (N, 3), "d")
-ds[()] = coords
-coords = np.zeros(1)
+# NOTE: extract density from 0th snapshot of different simulation folder if sys.argv != None
+if str(sys.argv[2]) != "None":
+    initial_density_folder = sys.argv[2] # the argument is the name of the folder in which a different simulation was run, e.g. 'SPHENIX' 
+    filename = "CoolingHalo_0000.hdf5"
 
-ds = grp.create_dataset("Velocities", (N, 3), "f")
-ds[()] = v
-v = np.zeros(1)
+    # Load the snapshot and transfer the densities
+    snapshot_path_initial_density = os.path.join(initial_density_folder, filename)
+    with h5py.File(snapshot_path_initial_density, "r") as f:
+        ids = f["/PartType0/ParticleIDs"][:]
+        rho_init = f["/PartType0/Densities"][:]
 
-# All particles of equal mass
-m = np.full((N,), gas_particle_mass)
-ds = grp.create_dataset("Masses", (N,), "f")
-ds[()] = m
-m = np.zeros(1)
+        # swift indexing starts at 1, but python needs 0
+        ids = ids - 1
 
-# Smoothing lengths
-l = (4.0 * np.pi * radius ** 2 / N) ** (
-    1.0 / 3.0
-)  # local mean inter-particle separation
-h = np.full((N,), eta * l)
-ds = grp.create_dataset("SmoothingLength", (N,), "f")
-ds[()] = h
-h = np.zeros(1)
+    grp.create_dataset("Density", data=rho_init, dtype="f")
 
-# Internal energies
-u = v_c ** 2 / (2.0 * (gamma - 1.0))
-u = np.full((N,), u)
-ds = grp.create_dataset("InternalEnergy", (N,), "f")
-ds[()] = u
-u = np.zeros(1)
+    # Sort all arrays based on the ids of the different run
+    grp.create_dataset("Coordinates", data=coords[ids, :], dtype="d")
+    grp.create_dataset("Velocities", data=v[ids, :], dtype="f")
+    grp.create_dataset("Masses", data=m[ids], dtype="f")
+    grp.create_dataset("SmoothingLength", data=h[ids], dtype="f")
+    grp.create_dataset("InternalEnergy", data=u[ids], dtype="f")
 
-# Particle IDs
-ids = 1 + np.linspace(0, N, N, endpoint=False)
-ds = grp.create_dataset("ParticleIDs", (N,), "L")
-ds[()] = ids
+    # Set ids back to swift format
+    ids += 1
+    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+    grp.create_dataset("MaterialIDs", data=np.zeros(N), dtype="L")
+
+else:
+
+    # Define initial densities based on 'm', 'radius' and the volume at a radius r
+    rho = m / (4.0 * np.pi * radius ** 2)
+
+    grp.create_dataset("Density", data=rho, dtype="f")
+    grp.create_dataset("Coordinates", data=coords, dtype="d")
+    grp.create_dataset("Velocities", data=v, dtype="f")
+    grp.create_dataset("Masses", data=m, dtype="f")
+    grp.create_dataset("SmoothingLength", data=h, dtype="f")
+    grp.create_dataset("InternalEnergy", data=u, dtype="f")
+
+    # Particle IDs
+    ids = 1 + np.linspace(0, N, N, endpoint=False)
+    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+    grp.create_dataset("MaterialIDs", data=np.zeros(N), dtype="L")
 
 file.close()

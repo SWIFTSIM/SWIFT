@@ -34,7 +34,7 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  CoolingHalo.hdf5       # The file to read
+  file_name:  ./CoolingHalo.hdf5       # The file to read
   periodic:   1
   
 # External potential parameters
@@ -49,3 +49,30 @@ IsothermalPotential:
 LambdaCooling:
   lambda_nH2_cgs:              1e-23  # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
   cooling_tstep_mult:          0.1    # Dimensionless pre-factor for the time-step condition
+
+
+# Standard EAGLE cooling options
+EAGLECooling:
+  dir_name:                ./coolingtables/  # Location of the Wiersma+09 cooling tables
+  H_reion_z:               11.5              # Redshift of Hydrogen re-ionization
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+
+# Solar abundances
+EAGLEChemistry:
+  init_abundance_metal:     0.0129       # Inital fraction of particle mass in *all* metals
+  init_abundance_Hydrogen:  0.7065       # Inital fraction of particle mass in Hydrogen
+  init_abundance_Helium:    0.2806       # Inital fraction of particle mass in Helium
+  init_abundance_Carbon:    0.00207      # Inital fraction of particle mass in Carbon
+  init_abundance_Nitrogen:  0.000836     # Inital fraction of particle mass in Nitrogen
+  init_abundance_Oxygen:    0.00549      # Inital fraction of particle mass in Oxygen
+  init_abundance_Neon:      0.00141      # Inital fraction of particle mass in Neon
+  init_abundance_Magnesium: 0.000591     # Inital fraction of particle mass in Magnesium
+  init_abundance_Silicon:   0.000683     # Inital fraction of particle mass in Silicon
+  init_abundance_Iron:      0.0011       # Inital fraction of particle mass in Iron
+
+# Parameters related to the EOS (REMIX)
+EoS:
+  planetary_use_idg_def:  1 # default ideal gas, material ID 0

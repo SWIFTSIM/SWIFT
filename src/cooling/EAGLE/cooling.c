@@ -512,7 +512,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
   const double A_floor = entropy_floor(p, cosmo, floor_props);
   const double rho_physical = hydro_get_physical_density(p, cosmo);
   const double u_floor =
-      gas_internal_energy_from_entropy(rho_physical, A_floor);
+      gas_internal_energy_from_entropy(rho_physical, A_floor, 0); /* Add 0 for REMIX*/
   u_final = max(u_final, u_floor);
 
   /* Expected change in energy over the next kick step

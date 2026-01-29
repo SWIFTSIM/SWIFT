@@ -99,7 +99,7 @@ float entropy_floor(const struct part *p, const struct cosmology *cosmo,
 
   /* Convert to an entropy.
    * (Recall that the entropy is the same in co-moving and physical frames) */
-  return gas_entropy_from_pressure(rho_phys, pressure);
+  return gas_entropy_from_pressure(rho_phys, pressure, 0); /* Add 0 for REMIX */
 }
 
 /**
