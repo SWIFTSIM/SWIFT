@@ -31,11 +31,11 @@ git clean -fdx
 ./autogen.sh
 
 #  Checks without parallel HDF5.
-##source ci/swift-checks.sh
+source ci/swift-checks.sh
 
 #  Checks with parallel HDF5.
 source ci/COSMA/gnu-modules-parallel.sh
-##source ci/swift-checks-parallel.sh
+source ci/swift-checks-parallel.sh
 
 #  Checks that distribution still works.
 source ci/swift-checks-distribution.sh
