@@ -804,8 +804,8 @@ void pow_from_grid_mapper(void *map_data, const int num, void *extra) {
                          (powgridft[index][0] * powgridft2[index][0] +
                           powgridft[index][1] * powgridft2[index][1]));
       } /* Loop over z */
-    } /* Loop over y */
-  } /* Loop over z */
+    }   /* Loop over y */
+  }     /* Loop over z */
 }
 
 /**
@@ -1287,8 +1287,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
  *
  * @param nr_threads The number of threads used.
  */
-void power_spectrum_init(struct power_spectrum_data* p, struct swift_params* params,
-                int nr_threads) {
+void power_spectrum_init(struct power_spectrum_data *p,
+                         struct swift_params *params, int nr_threads) {
 
 #ifdef HAVE_FFTW
 
