@@ -38,11 +38,11 @@ mkdir build
 cd build
 tar zxvf ../*.tar.gz
 cd swift-*
-../configure --with-parmetis --disable-optimization
+do_configure --with-parmetis --disable-optimization
 do_make
 do_make check  VERBOSE=1
 do_make clean
-cd ../../
+cd ../
 git clean -fdx
 
 echo "-----------------"

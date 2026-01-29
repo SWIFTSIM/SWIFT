@@ -25,7 +25,7 @@
 #  When exiting in error report current configuration options.
 function ONEXIT {
    if test "$?" != 0; then
-      echo "Current configuration: $(grep "\./configure" config.log)"
+      echo "## CURRENT CONFIGURATION: $(grep "\./configure" config.log)"
    fi
 }
 trap ONEXIT EXIT
