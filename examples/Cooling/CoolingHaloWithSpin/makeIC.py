@@ -234,13 +234,50 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
 # Particle group
 grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=coords, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("Density", data=rho, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("MaterialIDs", data=np.zeros(N), dtype="L")
+
+# NOTE: extract density from 0th snapshot of different simulation folder if sys.argv != None
+if str(sys.argv[2]) != "None":
+    initial_density_folder = sys.argv[2] # the argument is the name of the folder in which a different simulation was run, e.g. 'SPHENIX' 
+    filename = "CoolingHalo_0000.hdf5"
+
+    # Load the snapshot and transfer the densities
+    snapshot_path_initial_density = os.path.join(initial_density_folder, filename)
+    with h5py.File(snapshot_path_initial_density, "r") as f:
+        ids = f["/PartType0/ParticleIDs"][:]
+        rho_init = f["/PartType0/Densities"][:]
+
+        # swift indexing starts at 1, but python needs 0
+        ids = ids - 1
+
+    grp.create_dataset("Density", data=rho_init, dtype="f")
+
+    # Sort all arrays based on the ids of the different run
+    grp.create_dataset("Coordinates", data=coords[ids, :], dtype="d")
+    grp.create_dataset("Velocities", data=v[ids, :], dtype="f")
+    grp.create_dataset("Masses", data=m[ids], dtype="f")
+    grp.create_dataset("SmoothingLength", data=h[ids], dtype="f")
+    grp.create_dataset("InternalEnergy", data=u[ids], dtype="f")
+
+    # Set ids back to swift format
+    ids += 1
+    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+    grp.create_dataset("MaterialIDs", data=np.zeros(N), dtype="L")
+
+else:
+
+    # Define initial densities based on 'm', 'radius' and the volume at a radius r
+    rho = m / (4.0 * np.pi * radius ** 2)
+
+    grp.create_dataset("Density", data=rho, dtype="f")
+    grp.create_dataset("Coordinates", data=coords, dtype="d")
+    grp.create_dataset("Velocities", data=v, dtype="f")
+    grp.create_dataset("Masses", data=m, dtype="f")
+    grp.create_dataset("SmoothingLength", data=h, dtype="f")
+    grp.create_dataset("InternalEnergy", data=u, dtype="f")
+
+    # Particle IDs
+    ids = 1 + np.linspace(0, N, N, endpoint=False)
+    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+    grp.create_dataset("MaterialIDs", data=np.zeros(N), dtype="L")
 
 file.close()
