@@ -1223,6 +1223,20 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef WITH_MPI
     n1 += 6;
 #endif
+#ifdef EXTRA_STAR_LOOPS
+    /* Prep1: 1 self + 26/2 pairs + 2 ghosts
+       Prep2 1 self + 26/2 pairs + 1 ghost
+    */
+    n1 += 31;
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+    /* Prep3: 1 self + 26/2 + 1 ghost */
+    n1 += 15;
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+    /* Prep3: 1 self + 26/2 pairs + 1 ghost */
+    n1 += 15;
+#endif
   }
   if (e->policy & engine_policy_sinks) {
     /* 1 drift, 2 kicks, 1 time-step, 1 sink formation     | 5
@@ -1810,6 +1824,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_prep_ghost1 ||
         t->type == task_type_hydro_prep_ghost1 ||
         t->type == task_type_stars_prep_ghost2 ||
+        t->type == task_type_stars_prep_ghost3 ||
+        t->type == task_type_stars_prep_ghost4 ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
@@ -1822,6 +1838,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_prep1 ||
         t->subtype == task_subtype_stars_prep2 ||
+        t->subtype == task_subtype_stars_prep3 ||
+        t->subtype == task_subtype_stars_prep4 ||
         t->subtype == task_subtype_stars_feedback ||
         t->subtype == task_subtype_bh_feedback ||
         t->subtype == task_subtype_bh_swallow ||
@@ -1838,6 +1856,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
         t->subtype == task_subtype_spart_prep2 ||
+	t->subtype == task_subtype_spart_prep3 ||
+	t->subtype == task_subtype_spart_prep4 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_grav_counts ||
         t->subtype == task_subtype_rt_gradient ||

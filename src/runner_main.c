@@ -88,6 +88,36 @@
 
 #endif /* EXTRA_STAR_LOOPS */
 
+#ifdef EXTRA_STAR_LOOPS_2
+
+/* Check that we have enabled the first two loops */
+#if !defined(EXTRA_STAR_LOOPS)
+#error "Third-star neighbour loops require first and second-star neighbour loops. Enable EXTRA_STAR_LOOPS in src/feedback.h."
+#endif
+
+/* Import the stars prepare3 loop functions. */
+#define FUNCTION prep3
+#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP3
+#include "runner_doiact_stars.h"
+#include "runner_doiact_undef.h"
+
+#endif /* EXTRA_STAR_LOOPS_2 */
+
+#ifdef EXTRA_STAR_LOOPS_3
+
+/* Check that we have enabled the first three loops */
+#if !defined(EXTRA_STAR_LOOPS) || !defined(EXTRA_STAR_LOOPS_2)
+#error "Fourth-star neighbour loops require the first three neighbour loops. Enable EXTRA_STAR_LOOPS and EXTRA_STAR_LOOPS_2 in src/feedback.h."
+#endif
+
+/* Import the stars prepare4 loop functions. */
+#define FUNCTION prep4
+#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP4
+#include "runner_doiact_stars.h"
+#include "runner_doiact_undef.h"
+
+#endif /* EXTRA_STAR_LOOPS_3 */
+
 /* Import the stars feedback loop functions. */
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
@@ -244,6 +274,16 @@ void *runner_main(void *data) {
             runner_dosub_self_stars_prep2(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+          else if (t->subtype == task_subtype_stars_prep3)
+            runner_dosub_self_stars_prep3(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+          else if (t->subtype == task_subtype_stars_prep4)
+            runner_dosub_self_stars_prep4(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
+#endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, /*offset=*/0, /*ntasks=*/1,
                                              /*below_h_max=*/0, 1);
@@ -300,6 +340,16 @@ void *runner_main(void *data) {
                                           /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
             runner_dosub_pair_stars_prep2(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+          else if (t->subtype == task_subtype_stars_prep3)
+            runner_dosub_pair_stars_prep3(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
+#endif
+#ifdef EXTRA_STAR_LOOPS_3
+          else if (t->subtype == task_subtype_stars_prep4)
+            runner_dosub_pair_stars_prep4(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
@@ -490,6 +540,10 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_part_prep1) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_spart_prep2) {
+            runner_do_recv_spart(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_spart_prep3) {
+            runner_do_recv_spart(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_spart_prep4) {
             runner_do_recv_spart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);

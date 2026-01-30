@@ -53,7 +53,45 @@ As the hydrodynamics are described in :ref:`hydro`, we are only showing the grav
     This figure shows the task dependencies for the stellar feedback.
     The first rectangle groups the tasks that compute the smoothing length of the stars and
     the second one the tasks that deposit the energy into the surrounding gas.
-    This was done with SWIFT v0.9.0.
+    The diamond shapes show the MPI communication that send or receive the data from other ranks.
+    They are only activated when running with ``swift_mpi``.
+    This was done with SWIFT v2025.10.
+
+.. figure:: stars_loop_1_and_2.png
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Task dependencies for the stellar feedback with the loops ``prep1`` and ``prep2``.
+
+    This figure shows the task dependencies for the stellar feedback when activating the  ``prep1`` and ``prep2`` loops.
+    The ``prep1`` acts on the gas only and ``prep2`` acts on the stars only.
+    The diamond shapes show the MPI communication that send or receive the data from other ranks.
+    They are only activated when running with ``swift_mpi``.
+    This was done with SWIFT v2025.10.
+
+.. figure:: stars_loop_1_to_3.png
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Task dependencies for the stellar feedback with the loops ``prep1``, ``prep2`` and  ``prep3``.
+
+    This figure shows the task dependencies for the stellar feedback when activating the ``prep1``, ``prep2`` and  ``prep3`` loops.
+    The ``prep1`` acts on the gas only, ``prep2`` and ``prep3`` act on the stars only.
+    The diamond shapes show the MPI communication that send or receive the data from other ranks.
+    They are only activated when running with ``swift_mpi``.
+    This was done with SWIFT v2025.10.
+
+.. figure:: stars_loop_1_to_4.png
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Task dependencies for the stellar feedback with the loops ``prep1``, ``prep2``, ``prep3`` and  ``prep4``.
+
+    This figure shows the task dependencies for the stellar feedback when activating the ``prep1``, ``prep2``, ``prep3`` and  ``prep4`` loops.
+    The ``prep1`` acts on the gas only, ``prep2`` to ``prep4`` act on the stars only.
+    The diamond shapes show the MPI communication that send or receive the data from other ranks.
+    They are only activated when running with ``swift_mpi``.
+    This was done with SWIFT v2025.10.
 
 
 .. figure:: sink.png

@@ -2059,6 +2059,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||
+                   t->subtype == task_subtype_stars_prep3 ||
+                   t->subtype == task_subtype_stars_prep4 ||
                    t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
         } else if (t->subtype == task_subtype_sink_density ||
@@ -2102,6 +2104,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||
+                   t->subtype == task_subtype_stars_prep3 ||
+                   t->subtype == task_subtype_stars_prep4 ||
                    t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
@@ -2536,7 +2540,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->ci->grav.parts_fof_foreign;
 
         } else if (t->subtype == task_subtype_spart_density ||
-                   t->subtype == task_subtype_spart_prep2) {
+                   t->subtype == task_subtype_spart_prep2 ||
+                   t->subtype == task_subtype_spart_prep3 ||
+		   t->subtype == task_subtype_spart_prep4) {
 
           count = t->ci->stars.count;
           size = count * sizeof(struct spart);
@@ -2644,7 +2650,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->buff;
 
         } else if (t->subtype == task_subtype_spart_density ||
-                   t->subtype == task_subtype_spart_prep2) {
+                   t->subtype == task_subtype_spart_prep2 ||
+                   t->subtype == task_subtype_spart_prep3 ||
+		   t->subtype == task_subtype_spart_prep4) {
 
           count = t->ci->stars.count;
           size = count * sizeof(struct spart);

@@ -143,8 +143,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c, const int offset,
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2 && si_active_feedback) {
-
+      if ((r2 < hig2) && si_active_feedback) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
 #endif
@@ -155,14 +154,21 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c, const int offset,
                                             e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
         runner_iact_nonsym_feedback_prep1(r2, dx, hi, hj, si, pj, NULL, cosmo,
-                                          ti_current);
+                                          e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
         runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, si, pj, NULL, cosmo,
-                                          ti_current);
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
-                                          e->hydro_properties,
                                           e->feedback_props, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
+        runner_iact_nonsym_feedback_prep3(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          e->feedback_props, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+        runner_iact_nonsym_feedback_prep4(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          e->feedback_props, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+        runner_iact_nonsym_feedback_apply(
+            r2, dx, hi, hj, si, pj, xpj, cosmo, e->hydro_properties,
+            e->feedback_props, e->physical_constants, e->internal_units,
+            ti_current);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -308,8 +314,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2 && si_active_feedback) {
-
+      if ((r2 < hig2) && si_active_feedback) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
 #endif
@@ -321,14 +326,21 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
                                             e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
         runner_iact_nonsym_feedback_prep1(r2, dx, hi, hj, si, pj, NULL, cosmo,
-                                          ti_current);
+                                          e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
         runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, si, pj, NULL, cosmo,
-                                          ti_current);
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
-                                          e->hydro_properties,
                                           e->feedback_props, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
+        runner_iact_nonsym_feedback_prep3(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          e->feedback_props, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+        runner_iact_nonsym_feedback_prep4(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          e->feedback_props, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+        runner_iact_nonsym_feedback_apply(
+            r2, dx, hi, hj, si, pj, xpj, cosmo, e->hydro_properties,
+            e->feedback_props, e->physical_constants, e->internal_units,
+            ti_current);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -379,7 +391,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
   const int do_ci_stars = (ci->nodeID == e->nodeID) && (ci->stars.count != 0) &&
                           (cj->hydro.count != 0) && cell_is_active_stars(ci, e);
   const int do_cj_stars = (cj->nodeID == e->nodeID) && (cj->stars.count != 0) &&
@@ -537,8 +551,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2 && spi_active_feedback) {
-
+        if ((r2 < hig2) && spi_active_feedback) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (hi < h_min || hi >= h_max)
             error("Inappropriate h for this level!");
@@ -552,14 +565,25 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
                                               ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
           runner_iact_nonsym_feedback_prep1(r2, dx, hi, hj, spi, pj, NULL,
-                                            cosmo, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
           runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, spi, pj, NULL,
-                                            cosmo, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
+          runner_iact_nonsym_feedback_prep3(r2, dx, hi, hj, spi, pj, NULL,
+                                            cosmo, e->feedback_props,
+                                            ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+          runner_iact_nonsym_feedback_prep4(r2, dx, hi, hj, spi, pj, NULL,
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
-                                            e->hydro_properties,
-                                            e->feedback_props, ti_current);
+          runner_iact_nonsym_feedback_apply(
+              r2, dx, hi, hj, spi, pj, xpj, cosmo, e->hydro_properties,
+              e->feedback_props, e->physical_constants, e->internal_units,
+              ti_current);
 #endif
         }
         if (r2 < hig2 && with_rt) {
@@ -704,7 +728,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
-        if (r2 < hjg2 && spj_active_feedback) {
+        if ((r2 < hjg2) && spj_active_feedback) {
 
 #ifdef SWIFT_DEBUG_CHECKS
           if (hj < h_min || hj >= h_max)
@@ -719,14 +743,25 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
                                               ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
           runner_iact_nonsym_feedback_prep1(r2, dx, hj, hi, spj, pi, NULL,
-                                            cosmo, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
           runner_iact_nonsym_feedback_prep2(r2, dx, hj, hi, spj, pi, NULL,
-                                            cosmo, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
+          runner_iact_nonsym_feedback_prep3(r2, dx, hj, hi, spj, pi, NULL,
+                                            cosmo, e->feedback_props,
+                                            ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+          runner_iact_nonsym_feedback_prep4(r2, dx, hj, hi, spj, pi, NULL,
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
-                                            e->hydro_properties,
-                                            e->feedback_props, ti_current);
+          runner_iact_nonsym_feedback_apply(
+              r2, dx, hj, hi, spj, pi, xpi, cosmo, e->hydro_properties,
+              e->feedback_props, e->physical_constants, e->internal_units,
+              ti_current);
 #endif
         }
         if (r2 < hjg2 && with_rt) {
@@ -766,7 +801,9 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, const struct cell *restrict ci,
   TIMER_TIC;
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
   const int do_ci_stars = ci->nodeID == r->e->nodeID;
   const int do_cj_stars = cj->nodeID == r->e->nodeID;
 #else
@@ -868,6 +905,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
+
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -931,6 +969,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
+
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1028,6 +1067,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
+
       /* Hit or miss? */
       if (r2 < hig2) {
         IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
@@ -1118,6 +1158,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, const struct cell *ci,
 
       /* Hit or miss? */
       if (r2 < hig2) {
+
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, pj->h, spi, pj, NULL,
@@ -1292,8 +1333,11 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY ||     \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+  /* MPI note: We need to update prep1 to update the stars */
   /* Here we update the stars --> the star cell must be local */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
@@ -1376,8 +1420,11 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
-     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY ||     \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3 || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+  /* MPI note: We need to update prep1 to update the stars */
   /* Here we update the stars --> the star cell must be local */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
