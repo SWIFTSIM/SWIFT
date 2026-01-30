@@ -746,6 +746,14 @@ int main(int argc, char *argv[]) {
   message("Running on: %s", hostname());
 #endif
 
+  if (with_zoom_region) {
+#ifdef WITH_MPI
+    if (talking) message("Running with a zoom region");
+#else
+    message("Running with a zoom region");
+#endif
+  }
+
 /* Do we have debugging checks ? */
 #ifdef SWIFT_DEBUG_CHECKS
   if (myrank == 0)
