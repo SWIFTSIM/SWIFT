@@ -319,6 +319,18 @@ if test "$enable_timers" = "yes"; then
    AC_DEFINE([SWIFT_USE_TIMERS],1,[Enable individual timers])
 fi
 
+AC_ARG_ENABLE([likwid],
+   [AS_HELP_STRING([--enable-likwid],
+      [Enable LIKWID performance monitoring])],
+   [enable_likwid="$enableval"],
+   [enable_likwid="no"]
+)
+
+if test "$enable_likwid" = "yes"; then
+   AC_DEFINE([WITH_LIKWID], 1, [Enable LIKWID performance monitoring])
+   LIBS="$LIBS -llikwid"
+fi
+
 # Check if expensive debugging is on.
 AC_ARG_ENABLE([debugging-checks],
    [AS_HELP_STRING([--enable-debugging-checks],
