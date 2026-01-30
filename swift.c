@@ -1013,6 +1013,11 @@ int main(int argc, char *argv[]) {
     /* Now read it. */
     restart_read(&e, restart_file);
 
+    if (with_zoom_region && !e.s->with_zoom_region)
+      error(
+          "Restart file was created without a zoom region but --zoom was "
+          "requested.");
+
 #ifdef WITH_MPI
     integertime_t min_ti_current = e.ti_current;
     integertime_t max_ti_current = e.ti_current;
