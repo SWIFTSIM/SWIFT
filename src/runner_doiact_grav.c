@@ -130,18 +130,19 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     /* We can abort early if no interactions via multipole happened */
     if (!c->grav.multipole->pot.interacted) return;
 
-    if (!cell_are_gpart_drifted(c, e))
+    if (!cell_are_gpart_drifted(c, e)) {
       if (c->top->void_parent != NULL)
         message(
             "Void cell info: depth=%d, gcount=%d, contains_zoom_cells=%d, "
             "super=%p",
             c->depth, c->grav.count,
             c->top->void_parent->top->contains_zoom_cells, c->grav.super);
-    error(
-        "Un-drifted gparts (cell info: type=%s/%s, depth=%d, gcount=%d, "
-        "ti_old_part=%lld, e->ti_current=%lld)",
-        cellID_names[c->type], subcellID_names[c->subtype], c->depth,
-        c->grav.count, c->grav.ti_old_part, e->ti_current);
+      error(
+          "Un-drifted gparts (cell info: type=%s/%s, depth=%d, gcount=%d, "
+          "ti_old_part=%lld, e->ti_current=%lld)",
+          cellID_names[c->type], subcellID_names[c->subtype], c->depth,
+          c->grav.count, c->grav.ti_old_part, e->ti_current);
+    }
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     /* Lock the cell for the particle updates */
