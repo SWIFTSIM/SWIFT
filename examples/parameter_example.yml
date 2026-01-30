@@ -752,7 +752,7 @@ EAGLEFeedback:
 
 # GEAR feedback model
 GEARFeedback:
-  supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+  supernovae_Ia_energy_erg: 1e51                         # Energy released by a single supernovae of type Ia.
   supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
   yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars.
@@ -761,6 +761,9 @@ GEARFeedback:
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
   discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
+
+GEARSupernovaeII:
+    interpolation_size:  200                               # Number of elements to keep in the interpolation of the data. (Default: 200)
 
 # AGORA feedback model
 AGORAFeedback:
