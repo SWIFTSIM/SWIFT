@@ -25,6 +25,7 @@
 
 /* Local includes */
 #include "active.h"
+#include "cell.h"
 #include "inline.h"
 #include "multipole.h"
 #include "timers.h"
@@ -151,7 +152,12 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
   /* Anything to do here? */
   if ((!cell_is_active_gravity_mm(ci, e) || ci->nodeID != engine_rank) ||
       (!cell_is_active_gravity_mm(cj, e) || cj->nodeID != engine_rank))
-    error("Invalid state in symmetric M-M calculation!");
+    error(
+        "Invalid state in symmetric M-M calculation! (cell_info:) ci=%s/%s "
+        "cj=%s/%s ci->depth=%d cj->depth=%d",
+        cellID_names[ci->type], subcellID_names[ci->subtype],
+        cellID_names[cj->type], subcellID_names[cj->subtype], ci->depth,
+        cj->depth);
 
   /* Short-cut to the multipole */
   const struct multipole *multi_i = &ci->grav.multipole->m_pole;
