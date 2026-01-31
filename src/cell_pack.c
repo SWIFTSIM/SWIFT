@@ -242,7 +242,9 @@ void cell_unpack_bpart_swallow(struct cell *c,
  * @return The number of cells created.
  */
 int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
-                struct space *restrict s, const int with_gravity) {
+                struct space *restrict s, const int with_gravity,
+                const short int tpid) {
+
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
@@ -302,7 +304,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
       struct cell *temp;
-      space_getcells(s, 1, &temp, 0);
+      space_getcells(s, 1, &temp, tpid);
       temp->hydro.count = 0;
       temp->grav.count = 0;
       temp->stars.count = 0;
@@ -332,7 +334,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->top = c->top;
       c->progeny[k] = temp;
       c->split = 1;
-      count += cell_unpack(&pc[pc->progeny[k]], temp, s, with_gravity);
+      count += cell_unpack(&pc[pc->progeny[k]], temp, s, with_gravity, tpid);
     }
 
   /* Return the total number of unpacked cells. */
