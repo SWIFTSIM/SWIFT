@@ -221,19 +221,18 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->hydro.do_sort;
-  if (cleanup) {
-    c->hydro.sorted = 0;
-  } else {
-    flags &= ~c->hydro.sorted;
-  }
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) &&
+  if (flags == c->hydro.sorted &&
+      !cell_get_flag(c, cell_flag_do_hydro_sub_sort) &&
       !cell_get_flag(c, cell_flag_do_rt_sub_sort)) {
-
     /* Unlock before returning */
     if (lock && lock_unlock(&c->hydro.extra_sort_lock) != 0)
       error("Impossible to unlock the cell!");
 
     return;
+  }
+
+  if (cleanup) {
+    c->hydro.sorted = 0;
   }
 
   /* Check that the particles have been moved to the current time */
@@ -367,7 +366,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   else {
 
     /* Reset the sort distance */
-    if (c->hydro.sorted == 0) {
+    if (c->hydro.sorted != flags) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (xparts != NULL && c->nodeID != engine_rank)
         error("Have non-NULL xparts in foreign cell");
