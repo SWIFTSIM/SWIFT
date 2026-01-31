@@ -153,6 +153,22 @@ struct part {
 
   } timestepvars;
 
+  /* Variables used for timestep calculation. */
+  struct {
+
+    /* Maximum signal velocity among all the neighbours of the particle. The
+     * signal velocity encodes information about the relative fluid
+     * velocities
+     * AND particle velocities of the neighbour and this particle, as well
+     * as
+     * the sound speed of both particles. */
+    float vmax;
+
+    /* Lanson & Vila (2008) mean separation distance. */
+    float delxbar;
+
+  } timestepvars;
+
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
 
