@@ -847,6 +847,15 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
             "gparts_foreign", (void **)&s->gparts_foreign, gpart_align,
             sizeof(struct gpart_foreign) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign gpart data.");
+
+#ifdef SWIFT_DEBUG_CHECKS
+    bzero(s->gparts_foreign,
+          s->size_gparts_foreign * sizeof(struct gpart_foreign));
+
+    for (size_t i = 0; i < s->size_gparts_foreign; ++i) {
+      s->gparts_foreign[i].time_bin = time_bin_not_created;
+    }
+#endif
   }
 
   /* Allocate space for the foreign FOF particles we will receive */
@@ -1424,6 +1433,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       (long long)(e->s->nr_sparts - e->s->nr_extra_sparts),
       (long long)(e->s->nr_sinks - e->s->nr_extra_sinks),
       (long long)(e->s->nr_bparts - e->s->nr_extra_bparts)};
+
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, num_particles, 5, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -1582,6 +1592,11 @@ int engine_prepare(struct engine *e) {
   int drifted_all = 0;
   int ran_fof_for_seeding = 0;
   int repartitioned = 0;
+
+  if (!e->forcerebuild && !e->forcerepart && !e->restarting &&
+      (e->policy & engine_policy_self_gravity)) {
+    engine_drift_boundary_multipoles(e);
+  }
 
   /* Unskip active tasks and check for rebuild */
   if (!e->forcerebuild && !e->forcerepart && !e->restarting) engine_unskip(e);
