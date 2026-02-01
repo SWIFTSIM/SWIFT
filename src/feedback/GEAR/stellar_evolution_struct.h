@@ -178,9 +178,6 @@ struct supernovae_ii {
 
   /*! Energy released as a function of progenitor mass */
   struct interpolation_1d energy_per_progenitor_mass;
-
-  /*! Energy released per supernovae */
-  float energy_per_supernovae;
 };
 
 /**
