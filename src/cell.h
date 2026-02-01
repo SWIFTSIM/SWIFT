@@ -638,32 +638,6 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
                           const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
 void cell_set_star_resort_flag(struct cell *c);
-void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s,
-                                        const int with_feedback);
-void cell_activate_star_formation_sink_tasks(struct cell *c,
-                                             struct scheduler *s,
-                                             const int with_feedback);
-void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s);
-void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s,
-                                       const int with_timestep_limiter);
-int cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
-                                     struct scheduler *s);
-void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s,
-                                       const int with_star_formation,
-                                       const int with_star_formation_sink,
-                                       const int with_timestep_sync);
-void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s,
-                                       const int with_timestep_sync);
-void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
-                                             struct scheduler *s,
-                                             const int with_timestep_sync);
-void cell_activate_subcell_external_grav_tasks(struct cell *ci,
-                                               struct scheduler *s);
-void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
-                                    struct scheduler *s, const int sub_cycle);
 void cell_set_no_rt_sort_flag_up(struct cell *c);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_super_sink_drifts(struct cell *c, struct scheduler *s);
