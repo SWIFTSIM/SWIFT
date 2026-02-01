@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2022 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -453,4 +454,64 @@ static void threadpool_apply_affinity_mask(void) {
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &thread_affinity);
   }
 #endif
+}
+
+/* Basic struct to pass data into memcpy mapper. */
+struct memcpy_data {
+  char *src;
+  char *dest;
+};
+
+/**
+ * @brief copy a chunk of memory.
+ *
+ * @param src pointer to the memory to copy.
+ * @param n the size of the memory to copy in bytes.
+ * @param extra_data contains the original memory pointers.
+ */
+static void threadpool_memcpy_mapper(void *src, int n, void *extra_data) {
+  struct memcpy_data *data = (struct memcpy_data *)extra_data;
+
+  /* Offset into the data arrays. */
+  const ptrdiff_t offset = (char *)src - data->src;
+  char *dest = data->dest + offset;
+
+  /* And copy. */
+  memcpy(dest, src, n);
+}
+
+/**
+ * @brief threadpool memcpy()
+ *
+ * Can be faster when copying larger quantities of data, but slower
+ * for small quantities (anti-scaling), so we try to avoid that.
+ *
+ * @param tp the threadpool.
+ * @param dest the destination for the memory.
+ * @param src the source of the memory.
+ * @param n the size of the memory to copy in bytes.
+ *
+ * @result a pointer to dest.
+ */
+void *threadpool_memcpy(struct threadpool *tp, void *dest, void *src,
+                        size_t n) {
+
+  /* Need a number of pages per thread to be worth while. See:
+   *   https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/merge_requests/1661
+   */
+  if ((n < (size_t)(8 * 4096 * tp->num_threads)) || (tp->num_threads < 8)) {
+    memcpy(dest, src, n);
+  } else {
+    /* Also we see most of the gains (80%) using less than the total number of
+     * cores and can also see slow downs at higher counts, so we pick a
+     * heuristic of 25% of the threads. (assuming this is for a node, not some
+     * sub-division). */
+    static struct memcpy_data data;
+    data.src = src;
+    data.dest = dest;
+    size_t chunk = n / tp->num_threads / 4;
+    threadpool_map(tp, threadpool_memcpy_mapper, src, n, sizeof(char), chunk,
+                   &data);
+  }
+  return dest;
 }

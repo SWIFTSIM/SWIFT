@@ -1130,7 +1130,7 @@ void space_init(struct space *s, struct swift_params *params,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int self_gravity, int star_formation, int with_sink,
                 int with_DM, int with_DM_background, int neutrinos, int verbose,
-                int dry_run, int nr_nodes) {
+                int dry_run, int nr_nodes, int nr_threads) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1228,7 +1228,7 @@ void space_init(struct space *s, struct swift_params *params,
     if (with_DM_background)
       error("Can't replicate the space if background DM particles are in use.");
 
-    space_replicate(s, replicate, verbose);
+    space_replicate(s, replicate, verbose, nr_threads);
     parts = s->parts;
     gparts = s->gparts;
     sparts = s->sparts;
@@ -1553,7 +1553,8 @@ void space_init(struct space *s, struct swift_params *params,
  * @param replicate The number of copies along each axis.
  * @param verbose Are we talkative ?
  */
-void space_replicate(struct space *s, int replicate, int verbose) {
+void space_replicate(struct space *s, int replicate, int verbose,
+                     int nr_threads) {
 
   if (replicate < 1) error("Invalid replicate value: %d", replicate);
 
@@ -1605,6 +1606,9 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                      s->nr_bparts * sizeof(struct bpart)) != 0)
     error("Failed to allocate new bpart array.");
 
+  struct threadpool tp;
+  threadpool_init(&tp, nr_threads);
+
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
     for (int j = 0; j < replicate; ++j) {
@@ -1612,16 +1616,16 @@ void space_replicate(struct space *s, int replicate, int verbose) {
         const size_t offset = i * replicate * replicate + j * replicate + k;
 
         /* First copy the data */
-        memcpy(parts + offset * nr_parts, s->parts,
-               nr_parts * sizeof(struct part));
-        memcpy(sparts + offset * nr_sparts, s->sparts,
-               nr_sparts * sizeof(struct spart));
-        memcpy(bparts + offset * nr_bparts, s->bparts,
-               nr_bparts * sizeof(struct bpart));
-        memcpy(gparts + offset * nr_gparts, s->gparts,
-               nr_gparts * sizeof(struct gpart));
-        memcpy(sinks + offset * nr_sinks, s->sinks,
-               nr_sinks * sizeof(struct sink));
+        threadpool_memcpy(&tp, parts + offset * nr_parts, s->parts,
+                          nr_parts * sizeof(struct part));
+        threadpool_memcpy(&tp, sparts + offset * nr_sparts, s->sparts,
+                          nr_sparts * sizeof(struct spart));
+        threadpool_memcpy(&tp, bparts + offset * nr_bparts, s->bparts,
+                          nr_bparts * sizeof(struct bpart));
+        threadpool_memcpy(&tp, gparts + offset * nr_gparts, s->gparts,
+                          nr_gparts * sizeof(struct gpart));
+        threadpool_memcpy(&tp, sinks + offset * nr_sinks, s->sinks,
+                          nr_sinks * sizeof(struct sink));
 
         /* Shift the positions */
         const double shift[3] = {i * s->dim[0], j * s->dim[1], k * s->dim[2]};
@@ -1695,6 +1699,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
       }
     }
   }
+  threadpool_clean(&tp);
 
   /* Replace the content of the space */
   swift_free("parts", s->parts);
