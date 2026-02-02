@@ -261,10 +261,10 @@ struct pcell_step {
     /*! Minimal integer end-of-timestep in this cell (gravity) */
     integertime_t ti_end_min;
 
-    /*! Maximal distance any #gpart has travelled since last rebuild. Note
+    /*! Maximal displacement per axis of any #gpart since last rebuild. Note
      * that this is derived from the multipole rather than the particles at
      * drift time. */
-    float dx_max_part_mpole;
+    float dx_max_part_mpole[3];
   } grav;
 
   struct {
@@ -833,7 +833,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
 /**
  * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size including the maximal displacement of a gpart
- * since the last rebuild (dx_max_part_mpole).
+ * since the last rebuild (dx_max_part_mpole per axis).
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -866,8 +866,12 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
 
   /* Include the maximal displacement of a gpart since the last rebuild in
    * each cell. */
-  const double dx_maxi = ci->grav.dx_max_part_mpole;
-  const double dx_maxj = cj->grav.dx_max_part_mpole;
+  const double dx_maxi = ci->grav.dx_max_part_mpole[0];
+  const double dx_maxj = cj->grav.dx_max_part_mpole[0];
+  const double dy_maxi = ci->grav.dx_max_part_mpole[1];
+  const double dy_maxj = cj->grav.dx_max_part_mpole[1];
+  const double dz_maxi = ci->grav.dx_max_part_mpole[2];
+  const double dz_maxj = cj->grav.dx_max_part_mpole[2];
 
   if (periodic) {
 
@@ -886,7 +890,10 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
                            fabs(nearest(ciz_max - cjz_min, dim[2])),
                            fabs(nearest(ciz_max - cjz_max, dim[2])));
 
-    return dx * dx + dy * dy + dz * dz + dx_maxi * dx_maxi + dx_maxj * dx_maxj;
+    const double dx_eff = dx + dx_maxi + dx_maxj;
+    const double dy_eff = dy + dy_maxi + dy_maxj;
+    const double dz_eff = dz + dz_maxi + dz_maxj;
+    return dx_eff * dx_eff + dy_eff * dy_eff + dz_eff * dz_eff;
 
   } else {
 
@@ -897,7 +904,10 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
     const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
                            fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
 
-    return dx * dx + dy * dy + dz * dz + dx_maxi * dx_maxi + dx_maxj * dx_maxj;
+    const double dx_eff = dx + dx_maxi + dx_maxj;
+    const double dy_eff = dy + dy_maxi + dy_maxj;
+    const double dz_eff = dz + dz_maxi + dz_maxj;
+    return dx_eff * dx_eff + dy_eff * dy_eff + dz_eff * dz_eff;
   }
 }
 

@@ -112,10 +112,10 @@ struct cell_grav {
   /*! Last (integer) time the cell's multipole was drifted forward in time. */
   integertime_t ti_old_multipole;
 
-  /*! Maximal distance any #gpart has traveled since last rebuild. Note
+  /*! Maximal displacement per axis of any #gpart since last rebuild. Note
    * that this is derived from the multipole rather than the particles at
    * drift time. */
-  float dx_max_part_mpole;
+  float dx_max_part_mpole[3];
 
   /*! Spin lock for various uses (#gpart case). */
   swift_lock_type plock;
