@@ -514,6 +514,27 @@ void io_write_attribute_s(hid_t grp, const char *name, const char *str) {
 }
 
 /**
+ * @brief Verifies whether a given particle field name is listed
+ * as a 'NamedColumn' in the meta-data.
+ *
+ * @param h_file the (opened) HDF5 file.
+ * @param name The particle field name.
+ */
+int io_field_is_named_column(hid_t h_file, const char *name) {
+
+  char full_name[256] = {0};
+  sprintf(full_name, "/SubgridScheme/NamedColumns/%s", name);
+
+  const htri_t exists = H5Lexists(h_file, full_name, H5P_DEFAULT);
+
+  if (exists < 0) {
+    warning("H5Lexists() reported a failure when looking for a NamedColumn");
+  }
+
+  return (exists > 0);
+}
+
+/**
  * @brief Writes the meta-data of the run to an open hdf5 snapshot file.
  *
  * @param h_file The opened hdf5 file.

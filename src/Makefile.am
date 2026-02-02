@@ -83,6 +83,7 @@ include_HEADERS += forcing.h forcing_io.h forcing_struct.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
 include_HEADERS += swift_lustre_api.h
+include_HEADERS += part_init.h
 
 # source files for EAGLE extra I/O
 EAGLE_EXTRA_IO_SOURCES=
@@ -181,7 +182,7 @@ AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_inte
 AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c
 AM_SOURCES += runner_sinks.c
 AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c
-AM_SOURCES += cell_unskip.c cell_grid.c
+AM_SOURCES += cell_unskip.c cell_grid.c cell_init.c
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c
 AM_SOURCES += engine_drift.c engine_unskip.c engine_collect_end_of_step.c
 AM_SOURCES += engine_redistribute.c engine_fof.c engine_proxy.c engine_io.c engine_config.c
@@ -382,7 +383,7 @@ nobase_noinst_HEADERS += stars/GEAR/stars_stellar_type.h
 nobase_noinst_HEADERS += forcing/none/forcing.h forcing/none/forcing_io.h forcing/none/forcing_struct.h
 nobase_noinst_HEADERS += forcing/roberts_flow/forcing.h forcing/roberts_flow_acceleration/forcing.h
 nobase_noinst_HEADERS += forcing/ABC_flow/forcing.h forcing/BalsaraKim/forcing.h forcing/BalsaraKim/forcing_io.h 
-nobase_noinst_HEADERS += forcing/BalsaraKim/forcing_struct.h
+nobase_noinst_HEADERS += forcing/BalsaraKim/forcing_struct.h forcing/idealized_agn_jet/forcing.h
 nobase_noinst_HEADERS += potential/none/potential.h potential/point_mass/potential.h
 nobase_noinst_HEADERS += potential/isothermal/potential.h potential/disc_patch/potential.h
 nobase_noinst_HEADERS += potential/sine_wave/potential.h potential/constant/potential.h
@@ -521,6 +522,7 @@ nobase_noinst_HEADERS += fvpm_geometry.h fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/None/fvpm_geometry.h fvpm_geometry/None/fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/Gizmo/fvpm_geometry.h fvpm_geometry/Gizmo/fvpm_geometry_struct.h
 nobase_noinst_HEADERS += fvpm_geometry/Gizmo/MFM/fvpm_geometry.h fvpm_geometry/Gizmo/MFV/fvpm_geometry.h
+nobase_noinst_HEADERS += likwid_wrapper.h
 
 # Sources and special flags for the gravity library
 libgrav_la_SOURCES = runner_doiact_grav.c

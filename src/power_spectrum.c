@@ -1287,8 +1287,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
  *
  * @param nr_threads The number of threads used.
  */
-void power_init(struct power_spectrum_data *p, struct swift_params *params,
-                int nr_threads) {
+void power_spectrum_init(struct power_spectrum_data *p,
+                         struct swift_params *params, int nr_threads) {
 
 #ifdef HAVE_FFTW
 
@@ -1300,6 +1300,8 @@ void power_init(struct power_spectrum_data *p, struct swift_params *params,
                                         power_data_default_fold_factor);
   p->windoworder = parser_get_opt_param_int(
       params, "PowerSpectrum:window_order", power_data_default_window_order);
+
+  if (p->Ngrid <= 0) error("Invalid power spectrum grid size. Needs to be >0");
 
   if (p->windoworder > 3 || p->windoworder < 1)
     error("Power spectrum calculation is not implemented for %dth order!",
@@ -1463,10 +1465,12 @@ void power_spectrum_struct_dump(const struct power_spectrum_data *p,
 #ifdef HAVE_FFTW
   restart_write_blocks((void *)p, sizeof(struct power_spectrum_data), 1, stream,
                        "power spectrum data", "power spectrum data");
-  restart_write_blocks(p->types1, p->spectrumcount, sizeof(enum power_type),
-                       stream, "power types 1", "power types 1");
-  restart_write_blocks(p->types2, p->spectrumcount, sizeof(enum power_type),
-                       stream, "power types 2", "power types 2");
+  if (p->Ngrid > 0) {
+    restart_write_blocks(p->types1, p->spectrumcount, sizeof(enum power_type),
+                         stream, "power types 1", "power types 1");
+    restart_write_blocks(p->types2, p->spectrumcount, sizeof(enum power_type),
+                         stream, "power types 2", "power types 2");
+  }
 #endif
 }
 
@@ -1482,14 +1486,17 @@ void power_spectrum_struct_restore(struct power_spectrum_data *p,
 #ifdef HAVE_FFTW
   restart_read_blocks((void *)p, sizeof(struct power_spectrum_data), 1, stream,
                       NULL, "power spectrum data");
-  p->types1 =
-      (enum power_type *)malloc(p->spectrumcount * sizeof(enum power_type));
-  restart_read_blocks(p->types1, p->spectrumcount, sizeof(enum power_type),
-                      stream, NULL, "power types 1");
-  p->types2 =
-      (enum power_type *)malloc(p->spectrumcount * sizeof(enum power_type));
-  restart_read_blocks(p->types2, p->spectrumcount, sizeof(enum power_type),
-                      stream, NULL, "power types 2");
+
+  if (p->Ngrid > 0) {
+    p->types1 =
+        (enum power_type *)malloc(p->spectrumcount * sizeof(enum power_type));
+    restart_read_blocks(p->types1, p->spectrumcount, sizeof(enum power_type),
+                        stream, NULL, "power types 1");
+    p->types2 =
+        (enum power_type *)malloc(p->spectrumcount * sizeof(enum power_type));
+    restart_read_blocks(p->types2, p->spectrumcount, sizeof(enum power_type),
+                        stream, NULL, "power types 2");
+  }
 
 #ifdef HAVE_THREADED_FFTW
   /* Initialise the thread-parallel FFTW version

@@ -1,0 +1,7 @@
+These are the various scripts used by the ../.gitlab-ci.yml pipeline
+definitions. They need a suitably registered gitlab-runner instance.
+
+The assumption here is that the runner will run on the Durham DiRAC COSMA
+machine and will need a lot of changes if that changes.
+
+

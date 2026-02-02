@@ -288,7 +288,8 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   terms->enable_grav_acceleration = parser_get_opt_param_int(
       parameter_file, "BoundaryParticles:enable_grav_acceleration", 0);
 
-  if (terms->enable_fixed_position != 0 && terms->enable_fixed_position != 1) {
+  if ((terms->enable_fixed_position != 0) &&
+      (terms->enable_fixed_position != 1)) {
     error(
         "BoundaryParticles:enable_fixed_position must be either 0 (false) or 1 "
         "(true).");
@@ -297,12 +298,12 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   if (terms->enable_fixed_position) {
     /* If using fixed boundary particles, both hydro and grav accelerations must
      * be reset to 0. */
-    if (terms->enable_hydro_acceleration != 0) {
+    if (terms->enable_hydro_acceleration) {
       error(
           "BoundaryParticles:enable_hydro_acceleration must be 0 (false) when "
           "using fixed boundary particles.");
     }
-    if (terms->enable_grav_acceleration != 0) {
+    if (terms->enable_grav_acceleration) {
       error(
           "BoundaryParticles:enable_grav_acceleration must be 0 (false) when "
           "using fixed boundary particles.");
@@ -311,14 +312,14 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   } else {
     /* If not using fixed boundary particles, hydro and grav accelerations can
      * be enabled independently. */
-    if (terms->enable_hydro_acceleration != 0 &&
-        terms->enable_hydro_acceleration != 1) {
+    if ((terms->enable_hydro_acceleration != 0) &&
+        (terms->enable_hydro_acceleration != 1)) {
       error(
           "BoundaryParticles:enable_hydro_acceleration must be either 0 "
           "(false) or 1 (true).");
     }
-    if (terms->enable_grav_acceleration != 0 &&
-        terms->enable_grav_acceleration != 1) {
+    if ((terms->enable_grav_acceleration != 0) &&
+        (terms->enable_grav_acceleration != 1)) {
       error(
           "BoundaryParticles:enable_grav_acceleration must be either 0 (false) "
           "or 1 (true).");

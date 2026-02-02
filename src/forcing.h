@@ -40,6 +40,8 @@
 #include "./forcing/ABC_flow/forcing.h"
 #elif defined(FORCING_BALSARAKIM)
 #include "./forcing/BalsaraKim/forcing.h"
+#elif defined(FORCING_IDEALIZED_AGN_JET)
+#include "./forcing/idealized_agn_jet/forcing.h"
 #else
 #error "Invalid choice of forcing terms"
 #endif
