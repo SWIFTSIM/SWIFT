@@ -199,8 +199,10 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
       ti_gravity_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
-        "e->ti_current=%lld.",
-        ti_gravity_end_min, ti_current);
+        "e->ti_current=%lld. hydro super = %lld, grav super = %lld, top cell = "
+        "%lld, cell = %lld",
+        ti_gravity_end_min, ti_current, c->hydro.super->cellID,
+        c->grav.super->cellID, c->top->cellID, c->cellID);
 #endif
 
   /* ... and store. */
@@ -284,8 +286,12 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  const int with_sinks = (r->e->policy & engine_policy_sinks);
+  const int with_stars = (r->e->policy & engine_policy_stars);
+  const int with_star_formation_sink = with_sinks && with_stars;
   if (ti_stars_end_min < ti_current &&
-      !(r->e->policy & engine_policy_star_formation))
+      (!(r->e->policy & engine_policy_star_formation) ||
+       !with_star_formation_sink))
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
@@ -389,6 +395,95 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
   c->black_holes.h_max_active = h_max_active;
 
   if (timer) TIMER_TOC(timer_dorecv_bpart);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Construct the cell properties from the received #sink.
+ *
+ * Note that we do not need to clear the sorts since we do not sort
+ * the sinks.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
+ * @param timer Are we timing this ?
+ */
+void runner_do_recv_sink(struct runner *r, struct cell *c, int clear_sorts,
+                         int timer) {
+
+#ifdef WITH_MPI
+
+  struct sink *restrict sinks = c->sinks.parts;
+  const size_t nr_sinks = c->sinks.count;
+  const integertime_t ti_current = r->e->ti_current;
+  const timebin_t max_active_bin = r->e->max_active_bin;
+
+  TIMER_TIC;
+
+  integertime_t ti_sinks_end_min = max_nr_timesteps;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
+  float h_max = 0.f;
+  float h_max_active = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank) error("Updating a local cell!");
+#endif
+
+  /* If this cell is a leaf, collect the particle data. */
+  if (!c->split) {
+
+    /* Collect everything... */
+    for (size_t k = 0; k < nr_sinks; k++) {
+#ifdef DEBUG_INTERACTIONS_SINKS
+      sinks[k].num_ngb_force = 0;
+#endif
+
+      if (sinks[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, sinks[k].time_bin);
+      time_bin_max = max(time_bin_max, sinks[k].time_bin);
+      h_max = max(h_max, sinks[k].h);
+      sinks[k].gpart = NULL;
+      if (sinks[k].time_bin <= max_active_bin)
+        h_max_active = max(h_max_active, sinks[k].h);
+    }
+
+    /* Convert into a time */
+    ti_sinks_end_min = get_integer_time_end(ti_current, time_bin_min);
+  }
+
+  /* Otherwise, recurse and collect. */
+  else {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL && c->progeny[k]->sinks.count > 0) {
+        runner_do_recv_sink(r, c->progeny[k], clear_sorts, 0);
+        ti_sinks_end_min =
+            min(ti_sinks_end_min, c->progeny[k]->sinks.ti_end_min);
+        h_max = max(h_max, c->progeny[k]->sinks.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->sinks.h_max_active);
+      }
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_sinks_end_min < ti_current)
+    error(
+        "Received a cell at an incorrect time c->ti_end_min=%lld, "
+        "e->ti_current=%lld.",
+        ti_sinks_end_min, ti_current);
+#endif
+
+  /* ... and store. */
+  // c->grav.ti_end_min = ti_gravity_end_min;
+  c->sinks.ti_old_part = ti_current;
+  c->sinks.h_max = h_max;
+  c->sinks.h_max_active = h_max_active;
+
+  if (timer) TIMER_TOC(timer_dorecv_sink);
 
 #else
   error("SWIFT was not compiled with MPI support.");

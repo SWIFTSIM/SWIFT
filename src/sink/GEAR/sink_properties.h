@@ -33,6 +33,9 @@
 /* Sink formation is activated */
 #define sink_gear_disable_sink_formation_default 0
 
+/* Star formation is activated */
+#define sink_gear_disable_sf_default 0
+
 /* By default all current implemented criteria are active */
 #define sink_gear_sink_formation_criterion_all_default 1
 
@@ -106,6 +109,9 @@ struct sink_props {
   /*! Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
   char disable_sink_formation;
+
+  /* Disable star formation? Default: 0 (i.e. enable star formation) */
+  char disable_star_formation;
 
   /*! Factor to rescale the velocity dispersion of the stars when they are
      spawned */
@@ -389,6 +395,10 @@ INLINE static void sink_props_init(
       parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep",
                                  sink_gear_tolerance_sf_timestep_default);
 
+  /* Should we disable star formation ? */
+  sp->disable_star_formation = parser_get_opt_param_int(
+      params, "GEARSink:disable_star_formation", sink_gear_disable_sf_default);
+
   /* Apply unit change */
   sp->temperature_threshold /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -445,6 +455,8 @@ INLINE static void sink_props_init(
     /* Print information about the functionalities */
     message("disable_sink_formation                       = %d",
             sp->disable_sink_formation);
+    message("disable_star_formation                       = %d",
+            sp->disable_star_formation);
     message("sink_formation_contracting_gas_criterion     = %d",
             sp->sink_formation_contracting_gas_criterion);
     message("sink_formation_smoothing_length_criterion    = %d",

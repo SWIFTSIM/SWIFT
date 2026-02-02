@@ -843,13 +843,12 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
  * @param step The current step number.
  */
 void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
-                                       int step) {
+                                       int step, const long long cellID) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
 
   const ticks tic = getticks();
 
-  const long long cellID = s->dependency_graph_cellID;
   if (cellID == 0LL) return;
 
   /* Number of possible relations between tasks */
@@ -1145,6 +1144,23 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #endif /* defined SWIFT_DEBUG_CHECKS || defined CELL_GRAPH */
+}
+
+void scheduler_write_cell_dependencies_debug(struct scheduler *s, int verbose,
+                                             int step, const struct cell *c) {
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+  /* Write the current cell */
+  scheduler_write_cell_dependencies(s, verbose, step, c->cellID);
+
+  /* Write the hydro super */
+  scheduler_write_cell_dependencies(s, verbose, step, c->hydro.super->cellID);
+
+  /* Write the grav super */
+  scheduler_write_cell_dependencies(s, verbose, step, c->grav.super->cellID);
+
+  /* Write the top cell */
+  scheduler_write_cell_dependencies(s, verbose, step, c->top->cellID);
+#endif
 }
 
 /**
@@ -2500,6 +2516,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(count);
 
+        } else if (t->subtype == task_subtype_sink_gas_swallow) {
+          count = size = t->ci->hydro.count * sizeof(struct sink_part_data);
+          buff = t->buff = malloc(count);
+
+        } else if (t->subtype == task_subtype_sink_merger) {
+          count = size = sizeof(struct sink_sink_data) * t->ci->sinks.count;
+          buff = t->buff = malloc(count);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
@@ -2551,14 +2574,30 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
+        } else if (t->subtype == task_subtype_sink_rho) {
+
+          count = t->ci->sinks.count;
+          size = count * sizeof(struct sink);
+          type = sink_mpi_type;
+          buff = t->ci->sinks.parts;
+
+          /* TODO: sf_sinks and sf will use the same function and
+             structs. Hence, add  || (t->subtype ==
+             task_subtype_sf_sinks_counts) */
         } else if (t->subtype == task_subtype_sf_counts) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_grav_counts) {
-
+          /* Note: This is used for star and sink formation */
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
+          buff = t->buff = malloc(count);
+
+        } else if (t->subtype == task_subtype_sink_formation_counts) {
+
+          count = size =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_sink_formation_sinks);
           buff = t->buff = malloc(count);
 
         } else {
@@ -2611,6 +2650,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
+        } else if (t->subtype == task_subtype_sink_gas_swallow) {
+
+          size = count = t->ci->hydro.count * sizeof(struct sink_part_data);
+          buff = t->buff = malloc(size);
+          cell_pack_sink_gas_swallow(t->ci, (struct sink_part_data *)buff);
+
+        } else if (t->subtype == task_subtype_sink_merger) {
+
+          size = count = sizeof(struct sink_sink_data) * t->ci->sinks.count;
+          buff = t->buff = malloc(size);
+          cell_pack_sink_swallow(t->ci, (struct sink_sink_data *)t->buff);
+
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
@@ -2659,6 +2710,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
+        } else if (t->subtype == task_subtype_sink_rho) {
+
+          count = t->ci->sinks.count;
+          size = count * sizeof(struct sink);
+          type = sink_mpi_type;
+          buff = t->ci->sinks.parts;
+
+          /* TODO: sf_sinks and sf will use the same function and
+             structs. Hence, add  || (t->subtype ==
+             task_subtype_sf_sinks_counts) */
         } else if (t->subtype == task_subtype_sf_counts) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
@@ -2666,10 +2727,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
 
         } else if (t->subtype == task_subtype_grav_counts) {
-
+          /* Note: This is used for star and sink formation */
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(size);
           cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
+
+        } else if (t->subtype == task_subtype_sink_formation_counts) {
+
+          size = count =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_sink_formation_sinks);
+          buff = t->buff = malloc(size);
+          cell_pack_sink_formation_counts(
+              t->ci, (struct pcell_sink_formation_sinks *)t->buff);
 
         } else {
           error("Unknown communication sub-type");

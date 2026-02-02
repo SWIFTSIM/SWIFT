@@ -32,9 +32,13 @@ Snapshots:
 
 Scheduler:
   cell_extra_gparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:  100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 3        #
+  dependency_graph_frequency: 1  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
+  mpi_message_limit:          4 #Default: 4
+  dependency_graph_cell:      0
+  links_per_tasks:           30
 
 # Parameters governing the conserved quantities statistics
 Statistics:
