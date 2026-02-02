@@ -40,6 +40,21 @@ struct partition {
   enum partition_type type;
   int grid[3];
   int usemetis;
+
+  /*
+   * Weights that should reflect the computation imbalance expected when
+   * running on a heterogenous cluster. Could be used with clusters with
+   * different memory sizes as well, but the balance estimates would also need
+   * biasing for that. Obviously have one per MPI rank, which can be greater
+   * than the number of hosts, but only hosts have a weight. All weights
+   * should sum to 1, equal weights use 1/nregions for each value.
+   */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  float *host_weights;
+  int nr_host_weights;
+  int use_host_weights;
+  double host_weights_sum;
+#endif
 };
 
 /* Repartition type to use. */
@@ -59,6 +74,7 @@ struct repartition {
   float itr;
   int usemetis;
   int adaptive;
+  int permute;
 
   int use_fixed_costs;
   int use_ticks;
@@ -66,6 +82,14 @@ struct repartition {
   /* The partition as a cell-list. */
   int ncelllist;
   int *celllist;
+
+  /* See partition struct. */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  float *host_weights;
+  int nr_host_weights;
+  int use_host_weights;
+  double host_weights_sum;
+#endif
 };
 
 /* Simple descriptions of types for reports. */
