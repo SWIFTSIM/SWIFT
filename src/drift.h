@@ -101,12 +101,6 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 
   gravity_predict_extra(gp, grav_props);
 
-  /* Compute offsets since last cell construction */
-  for (int k = 0; k < 3; k++) {
-    const float dx = gp->v_full[k] * dt_drift;
-    gp->x_diff[k] -= dx;
-  }
-
 #ifdef WITH_LIGHTCONE
   /* Check for lightcone crossing */
   switch (gp->type) {
