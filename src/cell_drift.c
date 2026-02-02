@@ -1166,6 +1166,38 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 }
 
 /**
+ * @brief Update the multipole-based displacement upper bound for gparts.
+ *
+ * Any gpart position can be written as:
+ *     x = CoM + delta
+ * with |delta| <= r_max, and at rebuild time:
+ *     x_rebuild = CoM_rebuild + delta_rebuild
+ * with |delta_rebuild| <= r_max_rebuild. Therefore,
+ *     |x - x_rebuild| <= |CoM - CoM_rebuild| + r_max + r_max_rebuild.
+ *
+ * This will yield a safe upper bound on the displacement of any gpart based
+ * purely on cheap multipole information.
+ *
+ * @param c The #cell.
+ */
+static INLINE void cell_update_dx_max_part_mpole(struct cell *c) {
+
+  /* Compute the CoM shift since the last rebuild */
+  const double dx =
+      c->grav.multipole->CoM[0] - c->grav.multipole->CoM_rebuild[0];
+  const double dy =
+      c->grav.multipole->CoM[1] - c->grav.multipole->CoM_rebuild[1];
+  const double dz =
+      c->grav.multipole->CoM[2] - c->grav.multipole->CoM_rebuild[2];
+  const double com_shift = sqrt(dx * dx + dy * dy + dz * dz);
+
+  /* Assign the maximal displacement as described in the
+   * function description. */
+  c->grav.dx_max_part_mpole =
+      com_shift + c->grav.multipole->r_max + c->grav.multipole->r_max_rebuild;
+}
+
+/**
  * @brief Recursively drifts all multipoles in a cell hierarchy.
  *
  * @param c The #cell.
@@ -1190,6 +1222,9 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
 
   /* Drift the multipole */
   if (ti_current > ti_old_multipole) gravity_drift(c->grav.multipole, dt_drift);
+
+  /* Update the maximal gpart displacement based on multipole info */
+  cell_grav_update_dx_max_part_mpole(c);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -1229,6 +1264,9 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
     dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
   if (ti_current > ti_old_multipole) gravity_drift(c->grav.multipole, dt_drift);
+
+  /* Update the maximal gpart displacement based on multipole info */
+  cell_grav_update_dx_max_part_mpole(c);
 
   /* Update the time of the last drift */
   c->grav.ti_old_multipole = ti_current;
