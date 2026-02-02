@@ -73,6 +73,9 @@ struct cell_rt {
      * Needed to be able to skip sorting undrifted cells. */
     uint16_t do_sort;
 
+    /*! Max smoothing length of active particles in this cell. */
+    float h_max_active;
+
 #ifdef RT_NONE
   };
 #endif

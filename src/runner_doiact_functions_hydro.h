@@ -781,7 +781,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!part_is_active(pi, e))
+    if (!PART_IS_ACTIVE(pi, e))
       error("Trying to correct smoothing length of inactive particle !");
 #endif
 
@@ -1100,7 +1100,7 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
  *      given indices in c.
  *
  * @param r The #runner.
- * @param i The #cell.
+ * @param c The #cell.
  * @param parts The #part to interact.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
@@ -1139,7 +1139,7 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *c,
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!part_is_active(pi, e)) error("Inactive particle in subset function!");
+    if (!PART_IS_ACTIVE(pi, e)) error("Inactive particle in subset function!");
 #endif
 
     /* Loop over the parts in cj. */
@@ -1256,7 +1256,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
-  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
+  /* Factor 2.02: Add 1% tolerance. */
   const float shift_threshold_x =
       2.02 * ci->width[0] +
       2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
@@ -1280,8 +1280,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
   /* Get some other useful values. */
   const double hi_max =
-      min(h_max, ci->hydro.h_max_active) * kernel_gamma - rshift;
-  const double hj_max = min(h_max, cj->hydro.h_max_active) * kernel_gamma;
+      min(h_max, CELL_GET_H_MAX_ACTIVE(ci)) * kernel_gamma - rshift;
+  const double hj_max = min(h_max, CELL_GET_H_MAX_ACTIVE(cj)) * kernel_gamma;
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
@@ -1311,7 +1311,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       if (!PART_IS_ACTIVE(pi, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (hi > ci->hydro.h_max_active)
+      if (hi > CELL_GET_H_MAX_ACTIVE(ci))
         error("Particle has h larger than h_max_active");
 #endif
 
@@ -1430,7 +1430,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       if (!PART_IS_ACTIVE(pj, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (hj > cj->hydro.h_max_active)
+      if (hj > CELL_GET_H_MAX_ACTIVE(cj))
         error("Particle has h larger than h_max_active");
 #endif
 
@@ -2593,7 +2593,7 @@ void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
 
   /* Did we mess up the recursion? */
   if (c->hydro.h_max_old * kernel_gamma > c->dmin)
-    if (!limit_max_h && c->hydro.h_max_active * kernel_gamma > c->dmin)
+    if (!limit_max_h && CELL_GET_H_MAX_ACTIVE(c) * kernel_gamma > c->dmin)
       error("Cell smaller than smoothing length");
 
   /* Did we mess up the recursion? */
@@ -2899,7 +2899,7 @@ void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
 
   /* Did we mess up the recursion? */
   if (c->hydro.h_max_old * kernel_gamma > c->dmin)
-    if (!limit_max_h && c->hydro.h_max_active * kernel_gamma > c->dmin)
+    if (!limit_max_h && CELL_GET_H_MAX_ACTIVE(c) * kernel_gamma > c->dmin)
       error("Cell smaller than smoothing length");
 
   /* Did we mess up the recursion? */
@@ -3231,8 +3231,6 @@ void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
        process them at this level before going deeper */
     if (recurse_below_h_max) {
 
-      /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
-
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
       DOSELF2_BRANCH(r, c, /*limit_h_min=*/1, /*limit_h_max=*/1);
@@ -3299,7 +3297,7 @@ void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   /* Should we even bother? */
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
-  if (!cell_is_active_hydro(ci, e)) return;
+  if (!CELL_IS_ACTIVE(ci, e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_pair_hydro_task(ci) &&
@@ -3328,10 +3326,10 @@ void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   }
   /* Otherwise, compute the pair directly. */
-  else if (cell_is_active_hydro(ci, e)) {
+  else if (CELL_IS_ACTIVE(ci, e)) {
 
     /* Do any of the cells need to be drifted first? */
-    if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+    if (!CELL_ARE_PART_DRIFTED(cj, e)) error("Cell should be drifted!");
 
     DOPAIR_SUBSET_BRANCH(r, ci, parts, ind, count, cj);
   }
@@ -3346,7 +3344,7 @@ void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   /* Should we even bother? */
   if (ci->hydro.count == 0) return;
-  if (!cell_is_active_hydro(ci, e)) return;
+  if (!CELL_IS_ACTIVE(ci, e)) return;
 
   /* Recurse? */
   if (ci->split && cell_can_recurse_in_self_hydro_task(ci)) {

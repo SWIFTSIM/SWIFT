@@ -52,6 +52,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   const size_t nr_parts = c->hydro.count;
   const integertime_t ti_current = r->e->ti_current;
   const timebin_t max_active_bin = r->e->max_active_bin;
+  const timebin_t max_active_bin_rt = r->e->max_active_bin_subcycle;
 
   TIMER_TIC;
 
@@ -60,6 +61,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   timebin_t time_bin_max = 0;
   float h_max = 0.f;
   float h_max_active = 0.f;
+  float h_max_active_rt = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank) error("Updating a local cell!");
@@ -101,6 +103,10 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
       parts[k].gpart = NULL;
       if (parts[k].time_bin <= max_active_bin)
         h_max_active = max(h_max_active, parts[k].h);
+#ifndef RT_NONE
+      if (parts[k].rt_time_data.time_bin <= max_active_bin_rt)
+        h_max_active_rt = max(h_max_active_rt, parts[k].h);
+#endif
     }
 
     /* Convert into a time */
@@ -116,6 +122,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
             min(ti_hydro_end_min, c->progeny[k]->hydro.ti_end_min);
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
         h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
+        h_max_active_rt = max(h_max_active_rt, c->progeny[k]->rt.h_max_active);
       }
     }
   }
@@ -135,6 +142,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   c->hydro.ti_old_part = ti_current;
   c->hydro.h_max = h_max;
   c->hydro.h_max_active = h_max_active;
+  c->rt.h_max_active = h_max_active_rt;
 
   if (timer) TIMER_TOC(timer_dorecv_part);
 
