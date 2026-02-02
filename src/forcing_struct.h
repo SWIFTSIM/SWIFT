@@ -22,6 +22,8 @@
 #include "./forcing/BalsaraKim/forcing_struct.h"
 #elif defined(FORCING_BOUNDARY_PARTICLES)
 #include "./forcing/boundary_particles/forcing_struct.h"
+#elif defined(FORCING_IDEALIZED_AGN_JET)
+#include "./forcing/idealized_agn_jet/forcing_struct.h"
 #else
 #error "Invalid choice of forcing terms"
 #endif
