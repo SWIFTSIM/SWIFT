@@ -261,8 +261,10 @@ struct pcell_step {
     /*! Minimal integer end-of-timestep in this cell (gravity) */
     integertime_t ti_end_min;
 
-    /*! Maximal distance any #gpart has travelled since last rebuild */
-    float dx_max_part;
+    /*! Maximal distance any #gpart has travelled since last rebuild. Note
+     * that this is derived from the multipole rather than the particles at
+     * drift time. */
+    float dx_max_part_mpole;
   } grav;
 
   struct {
@@ -723,7 +725,7 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
 int cell_can_use_mesh(struct engine *e, const struct cell *ci,
                       const struct cell *cj);
 int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
-                                const struct cell *cj);
+                               const struct cell *cj);
 void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e);
 
 /**
@@ -831,7 +833,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
 /**
  * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size including the maximal displacement of a gpart
- * since the last rebuild (dx_max_part).
+ * since the last rebuild (dx_max_part_mpole).
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -864,8 +866,8 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
 
   /* Include the maximal displacement of a gpart since the last rebuild in
    * each cell. */
-  const double dx_maxi = ci->grav.dx_max_part;
-  const double dx_maxj = cj->grav.dx_max_part;
+  const double dx_maxi = ci->grav.dx_max_part_mpole;
+  const double dx_maxj = cj->grav.dx_max_part_mpole;
 
   if (periodic) {
 
