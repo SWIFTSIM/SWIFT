@@ -52,7 +52,7 @@
    only one of them to update both particles.
    WARNING: This is not MPI compatible. It is only intended for non-MPI mode.
 */
-#define GEAR_FVPM_DIFFUSION_DEBUG_FORCE_LOOP_ONESIDED_UPDATE 0
+/* #define GEAR_FVPM_DIFFUSION_DEBUG_FORCE_LOOP_ONESIDED_UPDATE */
 
 /**
  * @brief The diffusion mode
