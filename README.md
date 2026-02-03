@@ -106,7 +106,7 @@ Runtime parameters
  /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
- Version : 2025.10
+ Version : 2026.01
  Website: www.swiftsim.com
  Twitter: @SwiftSimulation
 
