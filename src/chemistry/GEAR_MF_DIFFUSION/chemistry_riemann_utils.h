@@ -131,7 +131,7 @@ chemistry_riemann_compute_alpha(const double c_s_L, const double c_s_R,
     matrix_product = 0.0;
     for (int j = 0; j < 3; ++j) {
       /* Compute (K_star * grad_q_star)_i = Sum_j (K_star)_ij (grad_q_star)_j */
-      matrix_product = K_star[i][j] * grad_q_star[j];
+      matrix_product += K_star[i][j] * grad_q_star[j];
     }
     /* Add the product to the norm squared */
     norm_K_star_times_grad_q_star += matrix_product * matrix_product;
