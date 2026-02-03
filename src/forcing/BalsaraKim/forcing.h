@@ -301,56 +301,19 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  
   const int t_index = terms->t_index;
 
+  const double dt_min = s->e->dt_min;
+  const double dt_max = s->e->dt_max;
+
   /* Don't do anything if there is no injection happening in the near future */
-  if (((terms->times[t_index] - time) > terms->dt_max) ||
+  if (((terms->times[t_index] - time) > dt_max) ||
       (terms->final_injection == 1)) {
     return FLT_MAX;
   }
-  
-  /* Get injection coordinates of the next injection */
-  float SN_loc[3];
-  SN_loc[0] = terms->x_SN[t_index];
-  SN_loc[1] = terms->y_SN[t_index];
-  SN_loc[2] = terms->z_SN[t_index];
-  
-  /* Compute distance to center injection volume */
-  const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  
-  double dx = SN_loc[0] - p->x[0];
-  double dy = SN_loc[1] - p->x[1];
-  double dz = SN_loc[2] - p->x[2];
 
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-
-  /* Distance to the injection volume, is allowed to be negative */
-  double distance = sqrtf( dx * dx + dy * dy + dz * dz ) - terms->r_inj;
-
-  /* Compute an upper limit estimate of the signal velocity */
-  float v_abs2 = xp->v_full[0] * xp->v_full[0] +
-		             xp->v_full[1] * xp->v_full[1] +
-		             xp->v_full[2] * xp->v_full[2];
-
-  float v_sound = hydro_get_comoving_soundspeed(p);
-
-  float v_sig = sqrtf( v_sound * v_sound + v_abs2 );
-		   
-  /* Could the particle be in the injection volume in dt_max time*/
-  if (distance / v_sig < terms->dt_max) {
-
-    /* Compute timestep such that particle would be active */
-    float new_dt_forcing;
-    new_dt_forcing = fmaxf(terms->times[t_index] - time, terms->dt_min);
-
-    return new_dt_forcing;
-  }
-  else {
-    return FLT_MAX;
-  }  
+  /* End timestap at (or just after) next injection time */
+  float new_dt_forcing = fmaxf(terms->times[t_index] - time, dt_min);
+   
+  return new_dt_forcing;
 }
 
 /**  
@@ -562,12 +525,6 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
 	      "BalsaraKimForcing:u_inj", 2.8263e15);
   double vel_inj_cgs = parser_get_opt_param_double(parameter_file,
         "BalsaraKimForcing:v_inj", 200.) * 1.e5;
-
-  /* Read min and max timestep to store here as well */
-  terms->dt_min = parser_get_param_float(parameter_file,
-          "TimeIntegration:dt_min");
-  terms->dt_max = parser_get_param_float(parameter_file,
-          "TimeIntegration:dt_max");
 
   /* convert everything to internal units */
   double parsec_ui = phys_const->const_parsec;
