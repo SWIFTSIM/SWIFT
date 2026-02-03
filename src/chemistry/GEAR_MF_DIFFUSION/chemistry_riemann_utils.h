@@ -72,17 +72,10 @@ chemistry_riemann_compute_K_star(const struct part *restrict pi,
   chemistry_get_physical_matrix_K(pi, chem_data, cosmo, KL);
   chemistry_get_physical_matrix_K(pj, chem_data, cosmo, KR);
 
-  /* Init K_star to 0.0. */
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      K_star[i][j] = 0.0;
-    }
-  }
-
   /* Compute K_star = 0.5 * (KR + KL) */
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
-      K_star[i][j] += 0.5 * (KR[i][j] + KL[i][j]);
+      K_star[i][j] = 0.5 * (KR[i][j] + KL[i][j]);
     }
   }
 }
