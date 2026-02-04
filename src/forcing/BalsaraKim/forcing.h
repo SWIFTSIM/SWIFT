@@ -142,7 +142,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           /* compute new (physical) specific energy
            * note rho & V are comoving but
            * rho * V is scale factor free */
-           
+
           u_new = terms->E_inj / (p->rho * terms->V_inj);
 
           /* set the specific energy */
@@ -386,10 +386,8 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   parser_get_param_string(parameter_file,"BalsaraKimForcing:coords", 
                           coords_filename);
 
-  /* 
-   * Read the file containing the SN times & coordinates
-   * Store the read values in terms
-   */
+  /* Read the file containing the SN times & coordinates
+   * Store the read values in terms */
   
   /* Open file */
   FILE *file = fopen(coords_filename, "r");
@@ -440,7 +438,7 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
 
     if (!read_successfully) {
       error(
-          "Tried parsing output_list but found '%s' with illegal "
+          "Tried parsing injection coordinate list but found '%s' with illegal "
           "characters in file '%s'.",
           line, coords_filename);
     }
@@ -458,13 +456,13 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   free(line);
 
   if (ind != terms->size)
-    error("Did not read the correct number of output times.");
+    error("Did not read the correct number of injections.");
 
   /* Check that the list is in monotonic order */
   for (size_t i = 1; i < terms->size; ++i) {
 
     if (terms->times[i] <= terms->times[i - 1])
-      error("Output list not having monotonically increasing ages.");
+      error("injection coordinate list not having monotonically increasing times.");
   }
 
   fclose(file);
