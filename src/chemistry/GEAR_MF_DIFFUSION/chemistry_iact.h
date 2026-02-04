@@ -475,7 +475,7 @@ runner_iact_chemistry_fluxes_common(
        that will ensure masses are not negative and if so, it we set them to be
        positive. Then, we have metal mass creation. If this correction happen
        a lot, we will create a lot of metal mass. */
-    chemistry_limit_metal_mass_flux(pi, pj, m, totflux, mindt);
+    chemistry_limit_metal_mass_flux(pi, pj, m, totflux, mindt, interaction_mode);
 
     /* Update V*U ****************************************/
     /* When solving the Riemann problem, we assume pi is left state, and

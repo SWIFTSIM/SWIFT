@@ -76,20 +76,23 @@ chemistry_part_reset_mass_fluxes(struct part *restrict p) {
 __attribute__((always_inline)) INLINE static void
 chemistry_limit_metal_mass_flux(const struct part *restrict pi,
                                 const struct part *restrict pj, const int metal,
-                                double fluxes[4], const float dt) {
-  const struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
+                                double fluxes[4], const float dt,
+                                const int interaction_mode) {
 
   /* Convert the raw riemann mass derivative to mass */
   double metal_mass_interface = fluxes[0] * dt;
+  if (metal_mass_interface == 0.0) return;
+
+  const struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   /* Get some convenient variables */
   const double mZi_0 = chi->metal_mass[metal];
   const double mZj_0 = chj->metal_mass[metal];
-  const double upwind_mass = (metal_mass_interface >= 0.0) ? mZi_0 : mZj_0;
+  const double upwind_mass = (metal_mass_interface > 0.0) ? mZi_0 : mZj_0;
 
-  /* Do not allow to remove more mass since you don't have it... */
-  if (upwind_mass < 0.0) {
+  /* Do not allow to remove more mass, since you don't have it... */
+  if (upwind_mass <= 0.0) {
     fluxes[0] = 0.0;
     fluxes[1] = 0.0;
     fluxes[2] = 0.0;
@@ -97,25 +100,41 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
     return;
   }
 
-  /* Limit mass exchange to not overshoot too much */
-  const double max_mass = (upwind_mass < 0.0) ? 0.0 : 0.9 * upwind_mass;
-  if (fabs(metal_mass_interface) > 0.0 &&
-      fabs(metal_mass_interface) > max_mass) {
-    const double flux_init = fluxes[0];
-    const double factor = fabs(max_mass / metal_mass_interface);
-    fluxes[0] *= factor;
-    fluxes[1] *= factor;
-    fluxes[2] *= factor;
-    fluxes[3] *= factor;
-    if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 0) {
+  const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
+  const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
+
+  /* The Noise Gate: If the flux is smaller than machine epsilon relative to the
+   * mass, it's just noise. Clipping it here can prevent the 'ratchet' effect.
+   */
+  const double eps = 1e-15;
+  if (fabs(metal_mass_interface) < upwind_mass * eps) {
+    /* Set to 0 to kill noise */
+    fluxes[0] = 0.0;
+    fluxes[1] = 0.0;
+    fluxes[2] = 0.0;
+    fluxes[3] = 0.0;
+    return;
+  }
+
+  /* Limit mass exchange to not overshoot too much. Smooth Rational Limiter :
+     It behaves like a hard cut at 0.5 * mass, but follows a curve:
+		     factor = 1 / (1 + |flux_mass| / source_mass) */
+  const double safety_scale = 0.5;
+  const double x = fabs(metal_mass_interface) / (upwind_mass * safety_scale);
+  const double factor = 1.0 / (1.0 + x);
+  const double flux_init = fluxes[0];
+  fluxes[0] *= factor;
+  fluxes[1] *= factor;
+  fluxes[2] *= factor;
+  fluxes[3] *= factor;
+
+  if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 0 && factor < 1e-1) {
     message(
 	    "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
-	    " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e",
+	    " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e | mode = %d, i_active = %d, j_active = %d",
 	    pi->id, pj->id, flux_init*dt, fluxes[0]*dt, factor, mZi_0, mZj_0, upwind_mass,
-	    chi->metal_mass[metal], chj->metal_mass[metal]);
-    }
+	    chi->metal_mass[metal], chj->metal_mass[metal], interaction_mode, pi_is_active, pj_is_active);
   }
-  /* ADD other rescaling. Maybe better ones. */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H  */
