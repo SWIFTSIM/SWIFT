@@ -1622,6 +1622,10 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
           /* void.down -> nested.down */
           scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
                               c->grav.down);
+
+          /* nested.drift -> void.down_in */
+          scheduler_addunlock(s, c->grav.drift_out,
+                              c->top->void_parent->grav.down_in);
         }
       }
     }
