@@ -557,36 +557,37 @@ INLINE static float SESAME_pressure_from_internal_energy(
 
   // Check for duplicates in SESAME tables before interpolation
   float intp_rho, intp_u_1, intp_u_2;
-  const int idx_u_rho_T = idx_rho * mat->num_T + idx_u_1;
+  const int idx_u_1_rho_T = idx_rho * mat->num_T + idx_u_1;
+  const int idx_u_2_rho_T = (idx_rho + 1) * mat->num_T + idx_u_2;
   if (mat->table_log_rho[idx_rho + 1] != mat->table_log_rho[idx_rho]) {
     intp_rho = (log_rho - mat->table_log_rho[idx_rho]) /
                (mat->table_log_rho[idx_rho + 1] - mat->table_log_rho[idx_rho]);
   } else {
     intp_rho = 1.f;
   }
-  if (mat->table_log_u_rho_T[idx_u_rho_T + 1] !=
-      mat->table_log_u_rho_T[idx_u_rho_T]) {
-    intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_rho_T]) /
-               (mat->table_log_u_rho_T[idx_u_rho_T + 1] -
-                mat->table_log_u_rho_T[idx_u_rho_T]);
+  if (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] !=
+      mat->table_log_u_rho_T[idx_u_1_rho_T]) {
+    intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_1_rho_T]) /
+               (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] -
+                mat->table_log_u_rho_T[idx_u_1_rho_T]);
   } else {
     intp_u_1 = 1.f;
   }
-  if (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] !=
-      mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) {
+  if (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] !=
+      mat->table_log_u_rho_T[idx_u_2_rho_T]) {
     intp_u_2 =
-        (log_u - mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) /
-        (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] -
-         mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]);
+        (log_u - mat->table_log_u_rho_T[idx_u_2_rho_T]) /
+        (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] -
+         mat->table_log_u_rho_T[idx_u_2_rho_T]);
   } else {
     intp_u_2 = 1.f;
   }
 
   // Table values
-  float P_1 = mat->table_P_rho_T[idx_u_rho_T];
-  float P_2 = mat->table_P_rho_T[idx_u_rho_T + 1];
-  float P_3 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2];
-  float P_4 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2 + 1];
+  float P_1 = mat->table_P_rho_T[idx_u_1_rho_T];
+  float P_2 = mat->table_P_rho_T[idx_u_1_rho_T + 1];
+  float P_3 = mat->table_P_rho_T[idx_u_2_rho_T];
+  float P_4 = mat->table_P_rho_T[idx_u_2_rho_T + 1];
 
   // If below the minimum u at this rho then just use the lowest table values
   if ((idx_rho > 0.f) &&
@@ -688,30 +689,31 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
   } else {
     intp_rho = 1.f;
   }
-  const int idx_u_rho_T = idx_rho * mat->num_T + idx_u_1;
-  if (mat->table_log_u_rho_T[idx_u_rho_T + 1] !=
-      mat->table_log_u_rho_T[idx_u_rho_T]) {
-    intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_rho_T]) /
-               (mat->table_log_u_rho_T[idx_u_rho_T + 1] -
-                mat->table_log_u_rho_T[idx_u_rho_T]);
+  const int idx_u_1_rho_T = idx_rho * mat->num_T + idx_u_1;
+  const int idx_u_2_rho_T = (idx_rho + 1) * mat->num_T + idx_u_2;
+  if (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] !=
+      mat->table_log_u_rho_T[idx_u_1_rho_T]) {
+    intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_1_rho_T]) /
+               (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] -
+                mat->table_log_u_rho_T[idx_u_1_rho_T]);
   } else {
     intp_u_1 = 1.f;
   }
-  if (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] !=
-      mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) {
+  if (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] !=
+      mat->table_log_u_rho_T[idx_u_2_rho_T]) {
     intp_u_2 =
-        (log_u - mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) /
-        (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] -
-         mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]);
+        (log_u - mat->table_log_u_rho_T[idx_u_2_rho_T]) /
+        (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] -
+         mat->table_log_u_rho_T[idx_u_2_rho_T]);
   } else {
     intp_u_2 = 1.f;
   }
 
   // Table values
-  float c_1 = mat->table_c_rho_T[idx_u_rho_T];
-  float c_2 = mat->table_c_rho_T[idx_u_rho_T + 1];
-  float c_3 = mat->table_c_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2];
-  float c_4 = mat->table_c_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2 + 1];
+  float c_1 = mat->table_c_rho_T[idx_u_1_rho_T];
+  float c_2 = mat->table_c_rho_T[idx_u_1_rho_T + 1];
+  float c_3 = mat->table_c_rho_T[idx_u_2_rho_T];
+  float c_4 = mat->table_c_rho_T[idx_u_2_rho_T + 1];
 
   // If more than two table values are non-positive then return zero
   int num_non_pos = 0;
@@ -808,21 +810,22 @@ INLINE static float SESAME_temperature_from_internal_energy(
 
   // Check for duplicates in SESAME tables before interpolation
   float intp_u_1, intp_u_2;
-  const int idx_u_rho_T = idx_rho * mat->num_T + idx_u_1;
-  if (mat->table_log_u_rho_T[idx_u_rho_T + 1] !=
-      mat->table_log_u_rho_T[idx_u_rho_T]) {
-    intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_rho_T]) /
-               (mat->table_log_u_rho_T[idx_u_rho_T + 1] -
-                mat->table_log_u_rho_T[idx_u_rho_T]);
+  const int idx_u_1_rho_T = idx_rho * mat->num_T + idx_u_1;
+  const int idx_u_2_rho_T = (idx_rho + 1) * mat->num_T + idx_u_2;
+  if (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] !=
+      mat->table_log_u_rho_T[idx_u_1_rho_T]) {
+    intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_1_rho_T]) /
+               (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] -
+                mat->table_log_u_rho_T[idx_u_1_rho_T]);
   } else {
     intp_u_1 = 1.f;
   }
-  if (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] !=
-      mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) {
+  if (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] !=
+      mat->table_log_u_rho_T[idx_u_2_rho_T]) {
     intp_u_2 =
-        (log_u - mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) /
-        (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] -
-         mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]);
+        (log_u - mat->table_log_u_rho_T[idx_u_2_rho_T]) /
+        (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] -
+         mat->table_log_u_rho_T[idx_u_2_rho_T]);
   } else {
     intp_u_2 = 1.f;
   }
@@ -1008,7 +1011,7 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
   // these table values of rho.
 
   // First look for roots above rho_ref
-  int idx_u_rho_T;
+  int idx_u_1_rho_T, idx_u_2_rho_T;
   float intp_rho;
   for (int idx_rho = idx_rho_ref; idx_rho <= idx_rho_above_max; idx_rho++) {
 
@@ -1036,31 +1039,32 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
     }
 
     float intp_u_1, intp_u_2;
-    idx_u_rho_T = idx_rho * mat->num_T + idx_u_1;
-    if (mat->table_log_u_rho_T[idx_u_rho_T + 1] !=
-        mat->table_log_u_rho_T[idx_u_rho_T]) {
-      intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_rho_T]) /
-                 (mat->table_log_u_rho_T[idx_u_rho_T + 1] -
-                  mat->table_log_u_rho_T[idx_u_rho_T]);
+    idx_u_1_rho_T = idx_rho * mat->num_T + idx_u_1;
+    idx_u_2_rho_T = (idx_rho + 1) * mat->num_T + idx_u_2;
+    if (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] !=
+        mat->table_log_u_rho_T[idx_u_1_rho_T]) {
+      intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_1_rho_T]) /
+                 (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] -
+                  mat->table_log_u_rho_T[idx_u_1_rho_T]);
     } else {
       intp_u_1 = 1.f;
     }
-    if (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] !=
-        mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) {
+    if (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] !=
+        mat->table_log_u_rho_T[idx_u_2_rho_T]) {
       intp_u_2 =
           (log_u -
-           mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) /
-          (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] -
-           mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]);
+           mat->table_log_u_rho_T[idx_u_2_rho_T]) /
+          (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] -
+           mat->table_log_u_rho_T[idx_u_2_rho_T]);
     } else {
       intp_u_2 = 1.f;
     }
 
     // Table values
-    float P_1 = mat->table_P_rho_T[idx_u_rho_T];
-    float P_2 = mat->table_P_rho_T[idx_u_rho_T + 1];
-    float P_3 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2];
-    float P_4 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2 + 1];
+    float P_1 = mat->table_P_rho_T[idx_u_1_rho_T];
+    float P_2 = mat->table_P_rho_T[idx_u_1_rho_T + 1];
+    float P_3 = mat->table_P_rho_T[idx_u_2_rho_T];
+    float P_4 = mat->table_P_rho_T[idx_u_2_rho_T + 1];
 
     // If below the minimum u at this rho then just use the lowest table values
     if ((idx_rho > 0.f) &&
@@ -1168,32 +1172,33 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
       idx_u_2 = mat->num_T - 2;
     }
 
-    idx_u_rho_T = idx_rho * mat->num_T + idx_u_1;
+    idx_u_1_rho_T = idx_rho * mat->num_T + idx_u_1;
+    idx_u_2_rho_T = (idx_rho + 1) * mat->num_T + idx_u_2;
     float intp_u_1, intp_u_2;
-    if (mat->table_log_u_rho_T[idx_u_rho_T + 1] !=
-        mat->table_log_u_rho_T[idx_u_rho_T]) {
-      intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_rho_T]) /
-                 (mat->table_log_u_rho_T[idx_u_rho_T + 1] -
-                  mat->table_log_u_rho_T[idx_u_rho_T]);
+    if (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] !=
+        mat->table_log_u_rho_T[idx_u_1_rho_T]) {
+      intp_u_1 = (log_u - mat->table_log_u_rho_T[idx_u_1_rho_T]) /
+                 (mat->table_log_u_rho_T[idx_u_1_rho_T + 1] -
+                  mat->table_log_u_rho_T[idx_u_1_rho_T]);
     } else {
       intp_u_1 = 1.f;
     }
-    if (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] !=
-        mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) {
+    if (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] !=
+        mat->table_log_u_rho_T[idx_u_2_rho_T]) {
       intp_u_2 =
           (log_u -
-           mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) /
-          (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] -
-           mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]);
+           mat->table_log_u_rho_T[idx_u_2_rho_T]) /
+          (mat->table_log_u_rho_T[idx_u_2_rho_T + 1] -
+           mat->table_log_u_rho_T[idx_u_2_rho_T]);
     } else {
       intp_u_2 = 1.f;
     }
 
     // Table values
-    float P_1 = mat->table_P_rho_T[idx_u_rho_T];
-    float P_2 = mat->table_P_rho_T[idx_u_rho_T + 1];
-    float P_3 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2];
-    float P_4 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2 + 1];
+    float P_1 = mat->table_P_rho_T[idx_u_1_rho_T];
+    float P_2 = mat->table_P_rho_T[idx_u_1_rho_T + 1];
+    float P_3 = mat->table_P_rho_T[idx_u_2_rho_T];
+    float P_4 = mat->table_P_rho_T[idx_u_2_rho_T + 1];
 
     // If below the minimum u at this rho then just use the lowest table values
     if ((idx_rho > 0.f) &&
