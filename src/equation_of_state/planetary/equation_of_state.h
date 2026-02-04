@@ -67,6 +67,9 @@ enum eos_planetary_type_id {
   /*! ANEOS */
   eos_planetary_type_ANEOS = 4,
 
+  /*! Mixed HHe--heavy elements */
+  eos_planetary_type_mixedHHeHeavy = 5,
+
   /*! Custom */
   eos_planetary_type_custom = 9,
 };
@@ -168,6 +171,24 @@ enum eos_planetary_material_id {
   /*! ANEOS Fe85Si15 (Stewart 2020) -- in SESAME-style tables */
   eos_planetary_id_ANEOS_Fe85Si15 =
       eos_planetary_type_ANEOS * eos_planetary_type_factor + 2,
+
+  /* Mixed HHe--heavy elements */
+  
+  /*! Mixed HHe with one or multiple heavy elements */
+  eos_planetary_id_mixed_HHe_heavy =
+      eos_planetary_type_mixedHHeHeavy * eos_planetary_type_factor,
+      
+  /*! Mixed HHe with rock */
+  eos_planetary_id_mixed_HHe_rock =
+      eos_planetary_type_mixedHHeHeavy * eos_planetary_type_factor + 1,
+      
+  /*! Mixed HHe with water */
+  eos_planetary_id_mixed_HHe_water =
+      eos_planetary_type_mixedHHeHeavy * eos_planetary_type_factor + 2,
+  
+  /*! Mixed HHe with iron */
+  eos_planetary_id_mixed_HHe_iron =
+      eos_planetary_type_mixedHHeHeavy * eos_planetary_type_factor + 3,
 };
 
 /* Base material ID for custom Tillotson EoS */
@@ -179,6 +200,7 @@ enum eos_planetary_material_id {
 #include "ideal_gas.h"
 #include "sesame.h"
 #include "tillotson.h"
+#include "mixed_HHe_heavy.h"
 
 /**
  * @brief The parameters of the equation of state.
@@ -192,6 +214,8 @@ struct eos_parameters {
       AQUA, CMS19_H, CMS19_He, CD21_HHe;
   struct SESAME_params ANEOS_forsterite, ANEOS_iron, ANEOS_Fe85Si15;
   struct SESAME_params custom[10];
+  struct mixedHHeHeavy_params mixed_HHe_heavy;
+  struct single_mixedHHeHeavy_params mixed_HHe_rock, mixed_HHe_water, mixed_HHe_iron;
 };
 
 /**
@@ -2676,6 +2700,38 @@ __attribute__((always_inline)) INLINE static void eos_init(
     load_table_SESAME(&e->ANEOS_Fe85Si15, ANEOS_Fe85Si15_table_file);
     prepare_table_SESAME(&e->ANEOS_Fe85Si15);
     convert_units_SESAME(&e->ANEOS_Fe85Si15, us);
+  }
+  
+  // Mixed HHe--heavy elements
+  if (parser_get_opt_param_int(params, "EoS:planetary_use_mixed_HHe_heavy",
+                               0)) {
+    // Top-level material
+    set_mixedHHeHeavy(&e->mixed_HHe_heavy, eos_planetary_id_mixed_HHe_heavy, 3);
+
+    // Constituent single-heavy-elements mixed materials
+    char mixed_HHe_rock_table_file[PARSER_MAX_LINE_SIZE];
+    set_mixedHHe_rock(&e->mixed_HHe_heavy.single_params[0],
+                         eos_planetary_id_mixed_HHe_rock);
+    parser_get_param_string(params, "EoS:planetary_mixed_HHe_rock_table_file",
+                            mixed_HHe_rock_table_file);
+    load_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[0], mixed_HHe_rock_table_file);
+    convert_units_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[0], us);
+    
+    char mixed_HHe_water_table_file[PARSER_MAX_LINE_SIZE];
+    set_mixedHHe_water(&e->mixed_HHe_heavy.single_params[1],
+                         eos_planetary_id_mixed_HHe_water);
+    parser_get_param_string(params, "EoS:planetary_mixed_HHe_water_table_file",
+                            mixed_HHe_water_table_file);
+    load_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[1], mixed_HHe_water_table_file);
+    convert_units_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[1], us);
+    
+    char mixed_HHe_iron_table_file[PARSER_MAX_LINE_SIZE];
+    set_mixedHHe_iron(&e->mixed_HHe_heavy.single_params[2],
+                         eos_planetary_id_mixed_HHe_iron);
+    parser_get_param_string(params, "EoS:planetary_mixed_HHe_iron_table_file",
+                            mixed_HHe_iron_table_file);
+    load_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[2], mixed_HHe_iron_table_file);
+    convert_units_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[2], us);
   }
 
   // Custom generic tables -- using SESAME-style tables
