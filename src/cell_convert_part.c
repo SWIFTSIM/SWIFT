@@ -40,9 +40,9 @@ void cell_recursively_shift_parts(struct cell *c,
     const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
 
     for (int k = first_progeny; k < 8; ++k) {
-      if (c->progeny[k] != NULL)
-        cell_recursively_shift_parts(c->progeny[k], progeny_list,
-                                     main_branch && (k == first_progeny));
+      if (c->progeny[k] != NULL){
+	cell_recursively_shift_parts(c->progeny[k], progeny_list,
+				     main_branch && (k == first_progeny));}
     }
   }
 
@@ -207,11 +207,11 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
   *new_p = parent_copy;
   *new_xp = xparent_copy;
 
-  /* Copy over the distance since rebuild */
-  new_xp->x_diff[0] = xparent_copy.x_diff[0];
-  new_xp->x_diff[1] = xparent_copy.x_diff[1];
-  new_xp->x_diff[2] = xparent_copy.x_diff[2];
-
+  /* New distance since rebuild */
+  new_xp->x_diff[0] = xparent_copy.x_diff[0] + pos_offset[0];
+  new_xp->x_diff[1] = xparent_copy.x_diff[1] + pos_offset[1];
+  new_xp->x_diff[2] = xparent_copy.x_diff[2] + pos_offset[2];
+  
   /* give the child a new name */
   new_p->id = space_get_new_unique_id(e->s);
   //message("Inside cell_convert_part.c, c:%p is given child of id:%lld", (void*)c, new_p->id);
@@ -258,19 +258,19 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
   new_p->x[0] = parent_copy.x[0] + pos_offset[0];
   new_p->x[1] = parent_copy.x[1] + pos_offset[1];
   new_p->x[2] = parent_copy.x[2] + pos_offset[2];
-
+  
   new_xp->v_full[0] = xparent_copy.v_full[0];
   new_xp->v_full[1] = xparent_copy.v_full[1];
   new_xp->v_full[2] = xparent_copy.v_full[2];
-
+  new_xp->ti_created = e->ti_current;
+    
 #ifdef SWIFT_DEBUG_CHECKS
   new_p->ti_kick = parent_copy.ti_kick;
   new_p->ti_drift = parent_copy.ti_drift;
 #endif
 
   /* Set a smoothing length */
-  new_p->h = new_h;
-  
+  new_p->h = new_h;  
   //v long timebin
   new_p->time_bin = p->time_bin;
   /* Here comes the BABY! */ 

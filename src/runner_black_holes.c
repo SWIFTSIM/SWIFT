@@ -99,6 +99,12 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
       struct part *const p = &parts[k];
       struct xpart *const xp = &xparts[k];
 
+      /*lily->count particles to be split*/
+      //if (p->split_flag == 1){
+      //c->top->black_holes.split_marked_count ++;
+      //}
+      
+      
       /* Ignore inhibited particles (they have already been removed!) */
       if (part_is_inhibited(p, e)) continue;
 
@@ -113,23 +119,6 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
       const long long swallow_id =
           black_holes_get_part_swallow_id(&p->black_holes_data);
 
-      //lily
-      /* --- if any of the particles have been marked to be split, need to drift the cell --- 
-      if (p->split_flag == 1) {
-	struct cell *super = c->hydro.super;
-	
-	// Only mark if it hasn't been marked yet
-	if (!(cell_get_flag(super, cell_flag_do_hydro_drift)) ||
-	    !(cell_get_flag(super, cell_flag_do_grav_drift))) {
-	  
-	  message("marked for drifting");
-	  
-	  // Mark the super cell for drifting
-	  cell_set_flag(super, cell_flag_do_hydro_drift);
-	  cell_set_flag(super, cell_flag_do_grav_drift);
-	}
-	}*/
-      
       /*Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
 

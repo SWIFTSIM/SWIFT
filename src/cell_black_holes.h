@@ -38,8 +38,9 @@ struct cell_black_holes {
 #ifdef BLACK_HOLES_NONE
   union {
 #endif
-
+    //lily
     float split_relax_time;
+    int split_marked_count;
     
     /*! Pointer to the #bpart data. */
     struct bpart *parts;

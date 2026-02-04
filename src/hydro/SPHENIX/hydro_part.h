@@ -84,6 +84,9 @@ struct xpart {
   /*! Additional data used by the MHD scheme */
   struct mhd_xpart_data mhd_data;
 
+  /*lily->particle creation timestep for splitting*/
+  integertime_t ti_created;
+  
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */
   struct csds_part_data csds_data;

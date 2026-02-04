@@ -64,6 +64,7 @@
 #include "tracers.h"
 #include "black_holes.h"
 
+#include "timestep_sync_part.h"
 #include "kernel_hydro.h"
 #include "rays.h"
 
@@ -104,7 +105,7 @@ __attribute__((always_inline)) INLINE static void get_random_ray(double n[3], ui
 /**** split gas particles within BH hsml ****/
 void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   struct engine *e = r->e;
-
+  
   //particle data
   const int count_top = c->top->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -136,13 +137,13 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
         c->hydro.h_max = max(c->hydro.h_max, cp->hydro.h_max);
         c->hydro.h_max_active =
             max(c->hydro.h_max_active, cp->hydro.h_max_active);
+
+	/* Update the dx_max */
+        c->hydro.dx_max_part = max(c->hydro.dx_max_part, cp->hydro.dx_max_part);
+        c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, cp->hydro.dx_max_sort);
       }
   } else {
-    
-    //hardcode splits for now
-    
-    //const int n_split = 2;
-    
+        
     // Now loop over gas particles at parent cell, this is broked but we get the full
     //set of parent splits in one go, probs best to save the full parent list and then split    
 
@@ -157,60 +158,85 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
       //this only really needs to be calculated once
       const float child_mass = p->mass / 2;  
       double new_h = p->h;
+      float v_mag = sqrt(p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2]);
       
-      if ((p->split_flag == 2) || (p->split_flag == 0)){
-	j ++;
+      //we are splitting 3 times max
+      // 0 = unsplit, 1 = perform split
+      //2 = max split reached
+      
+      // skip if we have already split this time around, or have reached max. number of splits
+      // if particle has been recently launched, ignore
+      if ((xp->ti_created == e->ti_current) || (v_mag >= 0.8f * bp->v_jet)){
+	j ++;  
 	continue;
       }
+
+      if (p->mass < 9e-5) {
+	p->split_flag = 2;
+	j++;
+	continue;
+      }
+
       
-      // If gas particle is marked for splitting
+      // If gas particle is marked for splitting or hasnt reached max splits yet
       if (p->split_flag == 1) {
 	// since we are adding a relaxation time, parts marked to be split may have moved away...
 	//check again whether they are close to the BH again...
 
-	// Compute distance to this BH
+	/* Compute distance to this BH */
 	double dx = p->x[0] - bp->x[0];
 	double dy = p->x[1] - bp->x[1];
 	double dz = p->x[2] - bp->x[2];
 	double dist = sqrt(dx*dx + dy*dy + dz*dz);
 	
-	// Outside 2*BH smoothing length? Unmark and skip
-	if (dist > 2*bp->h) {
+	//moved outside 2*BH smoothing length? skip for now
+	if (dist > 4*bp->t0_h) {
 	  j++;
-	  p->split_flag = 0;
 	  continue;
 	}
 	
-	//set relaxation time for the top cell
+	/* set relaxation time for the top cell to be 10-25 steps */
 	if (c->top->black_holes.split_relax_time <= e->time){
-	  float v_cs = p->force.soundspeed;
-	  if (v_cs <= 0.f || !isfinite(v_cs))
-	    v_cs = 5;
-	  float relax_dt = 2 * p->h / v_cs;
-	  message("next available split: %g", e->time + relax_dt);
-	  relax_dt = fmaxf(relax_dt, e->dt_min);        // at least one smallest timestep
+	  float relax_dt = 0.0;
+	  float v_cs = bp->sound_speed_gas;
+	  if (v_cs <= 0.f || !isfinite(v_cs)){
+	    //derive from the internal u of particles
+	    v_cs = sqrt(1.11 * p->u);
+	    relax_dt = p->h / v_cs;
+	    
+	    //float t_dyn = sqrt(p->h*p->h*p->h / (G * p->rho + 1e-10));
+	    //relax_dt = fmax(p->h/p->viscosity.v_sig, t_dyn);	    
+	  }
+	  else {
+	    relax_dt = bp->h / v_cs;
+	  }
 	  
-	  //relax_dt = fminf(relax_dt, 5.f * e->dt_min); // don’t let it dominate   
+	  float avg_dt =  2.6e-4;
+	  relax_dt = fmaxf(relax_dt, 10.f*avg_dt);        // at least ten smallest timesteps (~2.5 Myrs)	  
+	  //relax_dt = fminf(relax_dt, 25.f * avg_dt); // don’t let it dominate   
+	  message("next available split: %g", e->time + relax_dt);
 	  c->top->black_holes.split_relax_time = e->time + relax_dt;
 	}
 	
-	
-	//immediately mark as split
-	p->split_flag = 2;                  	
 	// Update the parent before any memmove
         p->mass = child_mass;
 	//sync later on in the timeline
+	
+        //if particle reached target mass, never split again after this split
+        //else reset to 0                                                    
+        //hardcoded final mass for now...                                                                                                                                                                                                  
+        //if (p->mass < 9e-5){
+	if (p->mass < 6.4e-4){
+          p->split_flag = 2;}
+        else{p->split_flag = 0;}
 
+	xp->ti_created = e->ti_current;
+	
 	//split into 3D shape
 	message("------- splitting particles ------");
-	double delta = p->h / 5;
-	/*3D cross
-	double offsets[6][3] = {
-	  {+delta, 0.0, 0.0}, {-delta, 0.0, 0.0},
-	  {0.0, +delta, 0.0}, {0.0, -delta, 0.0},
-	  {0.0, 0.0, +delta}, {0.0, 0.0, -delta}
-	  };*/
-		
+	
+	double delta = p->h / 8;
+
 	//check particle masses add up
 #ifdef SWIFT_DEBUG_CHECKS
 	double child_mass_sum = 0.0;
@@ -227,42 +253,59 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 		(void*)c, parent.id, parent.mass, parent.x[0], parent.x[1], parent.x[2],
 		parent.v[0], parent.v[1], parent.v[2], parent.a_hydro[0], parent.a_hydro[1], parent.a_hydro[2]);
 	
-	//struct part **child_list = malloc((n_split-1) * sizeof(struct part *));
-	//long long *child_ids = malloc((n_split-1) * sizeof(long long));
-	
-	//for (int n = 0; n < (n_split-1); n++) { 
-	//double pos_offsets[3] = {offsets[n][0], offsets[n][1], offsets[n][2]};
+
 	double pos_offsets[3] = {0,0,0};
 	get_random_ray(pos_offsets, parent_id, e->ti_current);
 	pos_offsets[0] *= delta;
 	pos_offsets[1] *= delta;
 	pos_offsets[2] *= delta;
-
+	
 	struct part *child = cell_spawn_new_part_from_part(e, c, &parent, &parent_xp, child_mass, pos_offsets, new_h);
 
-	//message("Cell: %p, child id: id=%lld has gpart id: %lld", (void*)c, child->id, child->gpart->id_or_neg_offset);
-	
-	//child_list[n] = child;
-	//child_ids[n] = child->id;
 	
 	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id);
 	if (parent_index == -1) error("parent not found!");
 
-	for (int m = 0; m < 3; m++)
-          c->top->hydro.parts[parent_index].x[m] -=  pos_offsets[m];
+	/* shift parent back */
+	c->top->hydro.parts[parent_index].x[0] -= pos_offsets[0];
+	c->top->hydro.parts[parent_index].x[1] -= pos_offsets[1];
+	c->top->hydro.parts[parent_index].x[2] -= pos_offsets[2];
+
+	/* Update the maximum displacement information of a cell based on a
+	   part's movement.
+	   Notes:
+	   - We need to update these offsets everytime we spawn a new spart.
+	   - The information needs to be propagated to the cell hierarchy.
+	*/
+	/* Compute displacements */
+	
+	c->top->hydro.xparts[parent_index].x_diff[0] -= pos_offsets[0];
+	c->top->hydro.xparts[parent_index].x_diff[1] -= pos_offsets[1];
+	c->top->hydro.xparts[parent_index].x_diff[2] -= pos_offsets[2];
+	
+	const float dx2_part = c->top->hydro.xparts[parent_index].x_diff[0] * c->top->hydro.xparts[parent_index].x_diff[0] +
+	  c->top->hydro.xparts[parent_index].x_diff[1] * c->top->hydro.xparts[parent_index].x_diff[1] +
+	  c->top->hydro.xparts[parent_index].x_diff[2] * c->top->hydro.xparts[parent_index].x_diff[2];
+
+	const float dx2_sort = c->top->hydro.xparts[parent_index].x_diff_sort[0] * c->top->hydro.xparts[parent_index].x_diff_sort[0] +
+	  c->top->hydro.xparts[parent_index].x_diff_sort[1] * c->top->hydro.xparts[parent_index].x_diff_sort[1] +
+	  c->top->hydro.xparts[parent_index].x_diff_sort[2] * c->top->hydro.xparts[parent_index].x_diff_sort[2];
+	
+	const float dx_part = sqrtf(dx2_part);
+	const float dx_sort = sqrtf(dx2_sort);
+	
+	/* Update the cell's running maximum displacement */
+	c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
+	c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
 	
 	if (child == NULL)
 	  error("Failed to spawn child particle in gas splitting.");
-	  
+	
 #ifdef SWIFT_DEBUG_CHECKS
-	  child_mass_sum += child->mass;
+	child_mass_sum += child->mass;
 #endif
-	  
-	//}
 	
-	//free(child_list);
-	//free(child_ids);
-	
+
 	//check mass conservation
 #ifdef SWIFT_DEBUG_CHECKS
 	double total_mass = child_mass + child_mass_sum;
@@ -272,8 +315,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	  error("Mass conservation broken in splitting: parent+children = %e, expected %e",
 		total_mass, n_split * child_mass);
 #endif
-	
-	//int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id); 
+
 	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",                                                                                                                                
                 c,c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);     
 	
@@ -289,6 +331,8 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
     cell_set_hydro_resort_flag(c->top);
     cell_set_flag(c->top, cell_flag_do_hydro_drift);
     cell_set_flag(c->top, cell_flag_do_grav_drift);
+    //reset the counter
+    //c->top->black_holes.split_marked_count = 0;
   }
 }
 
@@ -945,8 +989,6 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 	
 
         /* Finish the force loop */
-	//lily change hydro_end_force added xp,e and c
-	//hydro_end_force((struct engine *)e, c, xp, p, cosmo, e->time);
 	hydro_end_force(p, cosmo);
         mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);

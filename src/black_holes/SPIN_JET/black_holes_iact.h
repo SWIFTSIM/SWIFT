@@ -308,6 +308,15 @@ runner_iact_nonsym_bh_gas_density(
         ray_jet_correction = 1e11 * bi->h;
       }
 
+      /*lily -> push recently created gas particles to the end of the list so they are 
+	not likely to be chosen after creation */
+
+      /* Do not jet-kick newly split particles */
+      if (xpj->ti_created == ti_current) {
+	/* Put this particle at the very end of all rays */
+	ray_jet_correction = 1e20f * bi->h;
+      }
+      
       /* In this case we minimize using particle separations from the BH, with
          the order closest --> farthest.  */
       if (cosine_theta < 0) {
@@ -540,23 +549,26 @@ runner_iact_nonsym_bh_gas_swallow(
     const struct entropy_floor_properties *floor_props,
     const integertime_t ti_current, const double time) {
 
-  //lily                                                                                                                                                                    
+  //lily
+  // set t-_h
+  
+  if ((time == 0) && (bi->t0_h == 0)){
+      bi->t0_h = bi->h;
+      message("bh_t0,h set to %g", bi->t0_h); 
+  }
+
+  
   /* --- Mark particle for splitting --- */
-  if (pj->split_flag < 1){
+  if (pj->split_flag == 0){
     // Compute distance to this BH                                                                                                                                           
     double pdx = pj->x[0] - bi->x[0];
     double pdy = pj->x[1] - bi->x[1];
     double pdz = pj->x[2] - bi->x[2];
     double dist = sqrt(pdx*pdx + pdy*pdy + pdz*pdz);
 
-    // Within 2*BH smoothing length? Mark for splitting                                                                                                                      
-    if (dist <= 2*bi->h) {
-      pj->split_flag = 1;
-      // if we identified particles to split -> mark bh for later use
-      //pass the pointer to this flag to make things faster if needed... c->bh.perform_split here ?
-      //if (!perform_hydro_split) bi->perform_hydro_split = 1;
-
-    }
+    // Within 2*BH smoothing length? Mark for splitting
+    if (dist <= 4*bi->t0_h){
+	  pj->split_flag = 1;}
   }
   
   
@@ -986,19 +998,17 @@ runner_iact_nonsym_bh_gas_feedback(
 
   /* Are we doing some jet feedback? */
   if (num_jet_injections_per_BH > 0) {
-
     /* Number of jet injections that have reached this gas particle */
     int num_of_jet_inj_received_by_gas = 0;
 
     /* Define a variable to assign a velocity kick direction depending
        on which side of the BH smoothing kernel the particle is */
     float direction = 0.;
-
+    
     /* Find out if this gas particle has received any jet injections (rays).
     Loop through num_jet_injections divided by 2 because of two sets of rays */
     for (int i = 0; i < num_jet_injections_per_BH / 2; i++) {
       if (pj->id == bi->rays_jet[i].id_min_length) {
-
         num_of_jet_inj_received_by_gas++;
 
         /*This particle is in the 'negative' hemisphere (pointing away from the
@@ -1009,7 +1019,16 @@ runner_iact_nonsym_bh_gas_feedback(
 
     for (int i = 0; i < num_jet_injections_per_BH / 2; i++) {
       if (pj->id == bi->rays_jet_pos[i].id_min_length) {
-
+	/*lily -> we can't kick a particle thats just been created
+	  but if the list is full of newly created particles, just skip feedback
+	  for this timestep
+	*/
+	
+	if (xpj->ti_created == ti_current){
+	  message("We are trying to kick a new child! STOP!");
+	  continue;
+	}
+	
         num_of_jet_inj_received_by_gas++;
 
         /* This particle is in the 'positive' hemisphere (pointing in the
