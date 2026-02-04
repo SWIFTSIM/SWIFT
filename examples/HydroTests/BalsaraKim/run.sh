@@ -21,4 +21,4 @@ then
 fi
 
 # Run SWIFT
-../../../swift --hydro --cooling --threads=8 balsarakim.yml |& tee output.log
+../../../swift --hydro --cooling --limiter --sync --threads=8 balsarakim.yml |& tee output.log
