@@ -230,7 +230,6 @@ void space_construct_progeny(struct space *s, struct cell *c,
     cp->black_holes.h_max = 0.f;
     cp->black_holes.h_max_active = 0.f;
     cp->black_holes.dx_max_part = 0.f;
-    cp->grav.dx_max_part = 0.f;
     cp->nodeID = c->nodeID;
     cp->parent = c;
     cp->top = c->top;

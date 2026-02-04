@@ -550,7 +550,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
         struct cell *cp = c->progeny[k];
 
         /* Recurse */
-        cell_drift_gpart(cp, e, force, replication_list);
+        cell_drift_gpart(cp, e, force, init_particles, replication_list);
       }
     }
 
