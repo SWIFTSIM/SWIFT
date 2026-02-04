@@ -112,9 +112,6 @@ struct cell_grav {
   /*! Last (integer) time the cell's multipole was drifted forward in time. */
   integertime_t ti_old_multipole;
 
-  /*! Maximum gpart movement in this cell since last construction. */
-  float dx_max_part;
-
   /*! Spin lock for various uses (#gpart case). */
   swift_lock_type plock;
 

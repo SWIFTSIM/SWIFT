@@ -35,9 +35,6 @@ struct gpart {
   /*! Particle velocity. */
   float v_full[3];
 
-  /*! Offset between current position and position at last tree rebuild. */
-  float x_diff[3];
-
   /*! Particle acceleration from the tree. */
   float a_grav[3];
 
