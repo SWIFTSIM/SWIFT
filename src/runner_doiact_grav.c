@@ -134,9 +134,10 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
       if (c->top->void_parent != NULL)
         message(
             "Void cell info: depth=%d, gcount=%d, contains_zoom_cells=%d, "
-            "super=%p",
+            "super=%p, void_super=%p",
             c->depth, c->grav.count,
-            c->top->void_parent->top->contains_zoom_cells, c->grav.super);
+            c->top->void_parent->top->contains_zoom_cells, c->grav.super,
+            c->top->void_parent->grav.super);
       error(
           "Un-drifted gparts (cell info: type=%s/%s, depth=%d, gcount=%d, "
           "ti_old_part=%lld, e->ti_current=%lld, c->top=%p, c->grav.super=%p)",
