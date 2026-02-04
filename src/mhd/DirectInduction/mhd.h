@@ -135,22 +135,25 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   /* Retrieve and compute relevant cosmological factors */ 
   const float a = cosmo->a;
-  const float H = cosmo->H;
-
   const float a2 = a * a;
-  const float a2_inv = 1.0f / a2;
-
+  
   /* Retrieve relevant particle attributes */
   const float rho = p->rho;
+
+  float B_over_rho[3];
+  float B_over_rho_dt[3];
+  for (int k = 0; k < 3; k++) {
+    B_over_rho[k] = p->mhd_data.B_over_rho[k];
+    B_over_rho_dt[k] = p->mhd_data.B_over_rho_dt[k];
+  }
+
   const float psi_over_ch = p->mhd_data.psi_over_ch;
   const float psi_over_ch_dt = p->mhd_data.psi_over_ch_dt;
 
   /* Compute the norm squared of vectors of interest */
   float B_over_rho2 = 0.0f;
-  float B_over_rho_dt2 = 0.0f;
   for (int k = 0; k < 3; k++) {
-    B_over_rho2 += p->mhd_data.B_over_rho[k] * p->mhd_data.B_over_rho[k];
-    B_over_rho_dt2 += p->mhd_data.B_over_rho_dt[k] * p->mhd_data.B_over_rho_dt[k];
+    B_over_rho2 += B_over_rho[k] * B_over_rho[k];
   }
   
   /* Compute metric to evaluate dynamical significance of Dedner scalar field */
@@ -158,16 +161,22 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   /* Condition to limit the per time-step change in the magnitude of the magnetic field */
   const float CB = 0.5f;
-  const float hydro_gamma_factor = 3.0f - 1.5f * hydro_gamma;
-  const float denum_dt_deltaB = a2_inv * sqrtf(B_over_rho_dt2) + hydro_gamma_factor * H * sqrtf(B_over_rho2);
-  const float dt_deltaB = denum_dt_deltaB ? CB * sqrtf(B_over_rho2) / denum_dt_deltaB : FLT_MAX;
+
+  float denum_dt_deltaB2 = 0.f;
+  for (int k = 0; k < 3; k++) {
+    denum_dt_deltaB2 += B_over_rho_dt[k] * B_over_rho_dt[k];
+  }
+  
+  const float dt_deltaB = denum_dt_deltaB2 ? CB * a2 * sqrtf(B_over_rho2 / denum_dt_deltaB2) : FLT_MAX;
 
   /* Condition to limit the per time-step change in the magnitude of the Dedner scalar field */
   const float Cpsi = 0.5f;
   const float R_ePsi_to_eB = 0.0078125f;
-  const float denum_dt_deltaPsi = a2_inv * fabsf(psi_over_ch_dt) + 2.5f * H * fabsf(psi_over_ch);
-  const float dt_deltaPsi = (vpsi_tp_vB > R_ePsi_to_eB) && (denum_dt_deltaPsi != 0.0f) ? Cpsi * fabsf(psi_over_ch) / denum_dt_deltaPsi : FLT_MAX;
 
+  const float denum_dt_deltaPsi = fabsf(psi_over_ch_dt);
+  
+  const float dt_deltaPsi = (vpsi_tp_vB > R_ePsi_to_eB) && (denum_dt_deltaPsi != 0.0f) ? Cpsi * a2 * fabsf(psi_over_ch) / denum_dt_deltaPsi : FLT_MAX;
+  
   /* Keep the minimum of two preious conditions */
   const float dt_deltaField = fminf(dt_deltaB, dt_deltaPsi);
   
