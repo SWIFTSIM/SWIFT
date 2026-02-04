@@ -107,7 +107,7 @@ struct cell_hydro {
     /*! Task for splitting the particles */
     struct task *particle_split;
     struct task *hydro_resort;
-    
+
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
 

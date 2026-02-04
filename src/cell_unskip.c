@@ -1951,7 +1951,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 	(c->top->black_holes.split_relax_time <= e->time)){
       scheduler_activate(s, c->hydro.hydro_resort);}
     if ((c->top->hydro.particle_split != NULL) && (c->top->black_holes.count > 0) &&
-	(c->top->black_holes.split_relax_time <= e->time)){
+      (c->top->black_holes.split_relax_time <= e->time)){
       scheduler_activate(s, c->top->hydro.particle_split);}
     if (c->top->hydro.star_formation != NULL) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);

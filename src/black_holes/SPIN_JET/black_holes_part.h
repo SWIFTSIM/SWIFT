@@ -342,6 +342,9 @@ struct bpart {
 
   } reposition;
 
+  //lily: store original h for splitting reasons
+  float t0_h;
+  
   /*! Splitting structure */
   struct particle_splitting_data split_data;
 

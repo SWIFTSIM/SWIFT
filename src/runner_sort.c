@@ -32,7 +32,7 @@
 #include "timers.h"
 
 /*! The size of the sorting stack used at the leaf level */
-const int sort_stack_size = 10;
+const int sort_stack_size = 10; //lily-was 10
 
 //lily
 void runner_do_hydro_resort(struct runner *r, struct cell *c, const int timer) {

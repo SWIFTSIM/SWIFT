@@ -180,8 +180,10 @@ struct pcell {
   /*! Black hole variables */
   struct {
     
-    /* lily --> relaxation time*/
+    /* lily --> relaxation time + final mass wanted from splits*/
     float split_relax_time;
+    float target_mass;
+    //
     
     /*! Number of #spart in this cell. */
     int count;

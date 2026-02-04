@@ -451,9 +451,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[0] += mi * acc * dx[0];
   pj->a_hydro[1] += mi * acc * dx[1];
   pj->a_hydro[2] += mi * acc * dx[2];
-  
+
+  /*
   if ((pi->split_flag == 2) || (pj->split_flag == 2)){
-    if ((pi->v[0] > 1e4) || (pj->v[0] > 1e4)){
+    if ((pi->v[0] > 1e5) || (pj->v[0] > 1e5)){
           message(
       "SPLIT INTERACTION:\n"
       "  pi: id=%lld  m=%g  h=%g  P=%g  flag=%d\n"
@@ -475,7 +476,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       
 		  );}    
   }
-  
+  */
   /* Get the time derivative for u. */
   const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
   const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;

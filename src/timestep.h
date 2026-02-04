@@ -204,11 +204,48 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
-
-  if (new_dt < e->dt_min)
+  //lily
+  if (dt_h_change < new_dt_hydro && dt_h_change < 1e-8){
+    message("H_LIMIT pid=%lld h=%g h_dt=%g rho=%g",
+	    p->id, p->h, p->force.h_dt, p->rho);
+  }
+  if (new_dt < 5e-9){
+    message("dt getting very small for part pid = %lld and mass=%g\n", p->id, p->mass);
+      }
+  if (new_dt < e->dt_min){
+    //lily
+    message(
+        "DT_MIN triggered for part id=%lld\n"
+        "  new_dt_hydro      = %g\n"
+        "  new_dt_cooling    = %g\n"
+        "  new_dt_grav       = %g\n"
+        "  new_dt_mhd        = %g\n"
+        "  new_dt_chemistry  = %g\n"
+        "  new_dt_forcing    = %g\n"
+        "  dt_h_change       = %g\n"
+        "  h                 = %g\n"
+        "  mass              = %g\n"
+        "  pos               = (%g,%g,%g)\n"
+        "  vel               = (%g,%g,%g)\n"
+        "  dt_min            = %g, dt_max = %g",
+        p->id,
+        new_dt_hydro,
+        new_dt_cooling,
+        new_dt_grav,
+        new_dt_mhd,
+        new_dt_chemistry,
+        new_dt_forcing,
+        dt_h_change,
+        p->h,
+        p->mass,
+        p->x[0], p->x[1], p->x[2],
+        p->v[0], p->v[1], p->v[2],
+        e->dt_min,
+        e->dt_max
+    );
     error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
           new_dt, e->dt_min);
-
+  }
   /* Convert to integer time */
   integertime_t new_dti = make_integer_timestep(
       new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
