@@ -248,9 +248,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->black_holes.h_max = 0.f;
       cp->black_holes.h_max_active = 0.f;
       cp->black_holes.dx_max_part = 0.f;
-      cp->grav.dx_max_part_mpole[0] = 0.f;
-      cp->grav.dx_max_part_mpole[1] = 0.f;
-      cp->grav.dx_max_part_mpole[2] = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->top = c->top;

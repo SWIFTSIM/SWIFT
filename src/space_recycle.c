@@ -106,9 +106,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.dx_max_part = 0.f;
     c->stars.dx_max_sort = 0.f;
     c->black_holes.dx_max_part = 0.f;
-    c->grav.dx_max_part_mpole[0] = 0.f;
-    c->grav.dx_max_part_mpole[1] = 0.f;
-    c->grav.dx_max_part_mpole[2] = 0.f;
     c->hydro.sorted = 0;
     c->hydro.sort_allocated = 0;
     c->stars.sorted = 0;

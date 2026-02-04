@@ -327,9 +327,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->stars.dx_max_sort = 0.f;
       temp->sinks.dx_max_part = 0.f;
       temp->black_holes.dx_max_part = 0.f;
-      temp->grav.dx_max_part_mpole[0] = 0.f;
-      temp->grav.dx_max_part_mpole[1] = 0.f;
-      temp->grav.dx_max_part_mpole[2] = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       temp->top = c->top;
@@ -460,9 +457,6 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
   pcells[0].rt.ti_rt_min_step_size = c->rt.ti_rt_min_step_size;
 
   pcells[0].grav.ti_end_min = c->grav.ti_end_min;
-  pcells[0].grav.dx_max_part_mpole[0] = c->grav.dx_max_part_mpole[0];
-  pcells[0].grav.dx_max_part_mpole[1] = c->grav.dx_max_part_mpole[1];
-  pcells[0].grav.dx_max_part_mpole[2] = c->grav.dx_max_part_mpole[2];
 
   pcells[0].stars.ti_end_min = c->stars.ti_end_min;
   pcells[0].stars.dx_max_part = c->stars.dx_max_part;
@@ -510,9 +504,6 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
   c->rt.ti_rt_min_step_size = pcells[0].rt.ti_rt_min_step_size;
 
   c->grav.ti_end_min = pcells[0].grav.ti_end_min;
-  c->grav.dx_max_part_mpole[0] = pcells[0].grav.dx_max_part_mpole[0];
-  c->grav.dx_max_part_mpole[1] = pcells[0].grav.dx_max_part_mpole[1];
-  c->grav.dx_max_part_mpole[2] = pcells[0].grav.dx_max_part_mpole[2];
 
   c->stars.ti_end_min = pcells[0].stars.ti_end_min;
   c->stars.dx_max_part = pcells[0].stars.dx_max_part;

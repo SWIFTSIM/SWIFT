@@ -1166,40 +1166,6 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 }
 
 /**
- * @brief Accumulate maximal particle displacement from the multipole info.
- *
- * Like r_max but accumulated along each axis separately to derive the
- * maximal displacement of a particle in this cell. Uses the maximal absolute
- * velocity along each axis based on bulk velocity and extrema.
- *
- * @param c The #cell.
- * @param dt The drift time-step.
- */
-static INLINE void cell_accumulate_dx_max_part_mpole(struct cell *c,
-                                                     const double dt) {
-
-  /* Get the maximal velocity along each axis based on current bulk and
-   * rebuild time maximum delta vel. */
-  const float vmax_x = max(fabsf(c->grav.multipole->m_pole.vel[0] +
-                                 c->grav.multipole->m_pole.max_delta_vel[0]),
-                           fabsf(c->grav.multipole->m_pole.vel[0] -
-                                 c->grav.multipole->m_pole.min_delta_vel[0]));
-  const float vmax_y = max(fabsf(c->grav.multipole->m_pole.vel[1] +
-                                 c->grav.multipole->m_pole.max_delta_vel[1]),
-                           fabsf(c->grav.multipole->m_pole.vel[1] -
-                                 c->grav.multipole->m_pole.min_delta_vel[1]));
-  const float vmax_z = max(fabsf(c->grav.multipole->m_pole.vel[2] +
-                                 c->grav.multipole->m_pole.max_delta_vel[2]),
-                           fabsf(c->grav.multipole->m_pole.vel[2] -
-                                 c->grav.multipole->m_pole.min_delta_vel[2]));
-
-  /* Accumulate the maximal displacements based on the drift time-step. */
-  c->grav.dx_max_part_mpole[0] += vmax_x * dt;
-  c->grav.dx_max_part_mpole[1] += vmax_y * dt;
-  c->grav.dx_max_part_mpole[2] += vmax_z * dt;
-}
-
-/**
  * @brief Recursively drifts all multipoles in a cell hierarchy.
  *
  * @param c The #cell.
@@ -1224,10 +1190,6 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
 
   /* Drift the multipole */
   if (ti_current > ti_old_multipole) gravity_drift(c->grav.multipole, dt_drift);
-
-  /* Update the maximal gpart displacement based on multipole info */
-  if (ti_current > ti_old_multipole)
-    cell_accumulate_dx_max_part_mpole(c, dt_drift);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -1267,10 +1229,6 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
     dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
   if (ti_current > ti_old_multipole) gravity_drift(c->grav.multipole, dt_drift);
-
-  /* Update the maximal gpart displacement based on multipole info */
-  if (ti_current > ti_old_multipole)
-    cell_accumulate_dx_max_part_mpole(c, dt_drift);
 
   /* Update the time of the last drift */
   c->grav.ti_old_multipole = ti_current;
