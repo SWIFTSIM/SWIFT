@@ -535,11 +535,6 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       ti_gravity_end_min = min(ti_gravity_end_min, ti_end);
       ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
-
-      /* Reset x_diff */
-      gparts[k].x_diff[0] = 0.f;
-      gparts[k].x_diff[1] = 0.f;
-      gparts[k].x_diff[2] = 0.f;
     }
 
     /* sparts: Get dt_min/dt_max */
