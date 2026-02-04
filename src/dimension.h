@@ -41,6 +41,7 @@
 #define hydro_dimension_inv 0.3333333333f
 #define hydro_dimension_unit_sphere ((float)(4. * M_PI / 3.))
 #define hydro_dimension_unit_sphere_inv ((float)(3. * M_1_PI / 4.))
+#define hydro_dimension_integer 3
 
 #elif defined(HYDRO_DIMENSION_2D)
 
@@ -48,6 +49,7 @@
 #define hydro_dimension_inv 0.5f
 #define hydro_dimension_unit_sphere ((float)M_PI)
 #define hydro_dimension_unit_sphere_inv ((float)M_1_PI)
+#define hydro_dimension_integer 2
 
 #elif defined(HYDRO_DIMENSION_1D)
 
@@ -55,6 +57,7 @@
 #define hydro_dimension_inv 1.f
 #define hydro_dimension_unit_sphere 2.f
 #define hydro_dimension_unit_sphere_inv 0.5f
+#define hydro_dimension_integer 1
 
 #else
 
@@ -181,7 +184,8 @@ __attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
  * @return Exit code: 0 for success, 1 if a singular matrix was detected.
  */
 __attribute__((always_inline)) INLINE static int
-invert_dimension_by_dimension_matrix(float A[3][3]) {
+invert_dimension_by_dimension_matrix(
+    float A[hydro_dimension_integer][hydro_dimension_integer]) {
 
 #if defined(HYDRO_DIMENSION_3D)
 

@@ -576,11 +576,11 @@ AC_ARG_ENABLE([vec],
 #  Disable hand written vectorisation. Slightly odd implementation as want
 # to describe as --disable-hand-vec, but macro is enable (there is no enable action).
 AC_ARG_ENABLE([hand-vec],
-   [AS_HELP_STRING([--disable-hand-vec],
-     [Disable intrinsic vectorization]
+   [AS_HELP_STRING([--enable-hand-vec],
+     [Enable hand-written intrinsic vectorization]
    )],
    [enable_hand_vec="$enableval"],
-   [enable_hand_vec="yes"]
+   [enable_hand_vec="no"]
 )
 
 HAVEVECTORIZATION=0
@@ -2204,7 +2204,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu, magma2 default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2256,6 +2256,9 @@ case "$with_hydro" in
    ;;
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
+   ;;
+   magma2)
+      AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
    ;;
    gasoline)
       AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])
