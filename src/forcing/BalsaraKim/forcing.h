@@ -131,11 +131,6 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
       /* initialise new internal energy and velocity */
       double u_new;
       double v_new;
-      
-      /* initialise new entropy if needed */
-      #if defined(HOPKINS_PE_SPH) 
-        double A_new;
-      #endif
 
       /* inject energy according to specified model */
       enum mechanism injection_model = terms->injection_model;
@@ -144,23 +139,14 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
         case SET_U:
         
-          /* 
-           * compute new (physical) specific energy
+          /* compute new (physical) specific energy
            * note rho & V are comoving but
-           * rho * V is scale factor free 
-           */
+           * rho * V is scale factor free */
+           
           u_new = terms->E_inj / (p->rho * terms->V_inj);
 
-          #if defined(HOPKINS_PE_SPH) 
-            /* need to convert to entropy for entropy schemes */
-            A_new = gas_entropy_from_internal_energy(p->rho, u_new);
-            
-            /* set the entropy instead of internal energy */
-            xp->entropy_full = A_new;
-	        #else
-            /* set the specific energy */
-            hydro_set_physical_internal_energy(p, xp, s->e->cosmology, u_new);
-          #endif
+          /* set the specific energy */
+          hydro_set_physical_internal_energy(p, xp, s->e->cosmology, u_new);
 
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += (u_new - u_old) * mass;
@@ -171,16 +157,8 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           /* get new (physical) specific energy */
           u_new = terms->u_inj;
 
-          #if defined(HOPKINS_PE_SPH) 
-            /* need to convert to entropy for entropy schemes */
-            A_new = gas_entropy_from_internal_energy(p->rho, u_new);
-            
-            /* set the entropy instead of internal energy */
-            xp->entropy_full = A_new;
-          #else
-            /* set the specific energy */
-            hydro_set_physical_internal_energy(p, xp, s->e->cosmology, u_new);
-          #endif
+          /* set the specific energy */
+          hydro_set_physical_internal_energy(p, xp, s->e->cosmology, u_new);
 
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += (u_new - u_old) * mass;
