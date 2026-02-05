@@ -3,6 +3,7 @@
 n_threads=${n_threads:=2}  # Number of threads to use
 level=${level:=5}  # Number of particles = 2^(dimension*level)
 uniform_mode=${uniform:=0}
+dimension=${dim:=1}
 
 if [ "$uniform_mode" -eq 1 ]; then
     echo "Mode: Pure Cartesian"
@@ -22,7 +23,7 @@ fi
 if [ ! -e advection.hdf5 ]
 then
     echo "Generating initial conditions for the NonUniformrCarthesian_1D example..."
-    python3 makeIC.py --dimension 1 --level $level $carthesian_flag
+    python3 makeIC.py --dimension $dimension --level $level $carthesian_flag
 fi
 
 # Create output directory
