@@ -657,7 +657,7 @@ GEARChemistry:
   # GEAR MFVP diffusion only
   diffusion_mode: Isotropic_constant  # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
   hll_riemann_solver_psi:  0.1        # (Optional) Tolerance parameter (> 0) for artificial diffusion in HLL_hyperbolic_H17. See eq (7) in Hopkins 2017. (Default: 0.1)
-  hll_riemann_solver_epsilon: 0.1     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.1
+  hll_riemann_solver_epsilon: 0.1     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.0
   C_CFL_chemistry: 0.9                # Courant-Friedrich-Levy parameter for the CFL time integration of the diffusion equations.
 
   # MFVP hyperbolic diffusion only
