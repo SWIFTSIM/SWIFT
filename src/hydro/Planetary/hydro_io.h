@@ -82,7 +82,7 @@ INLINE static void hydro_read_particles(struct part *parts,
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, mat_id);
+                                UNIT_CONV_NO_UNITS, parts, mat_data.mat_id);
 #ifdef PLANETARY_FIXED_ENTROPY
   list[9] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
@@ -225,7 +225,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
       xparts, convert_S, "Entropies per unit mass of the particles");
   list[8] =
       io_make_output_field("MaterialIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, mat_id, "Material IDs of the particles");
+                           parts, mat_data.mat_id, "Material IDs of the particles");
   list[9] = io_make_output_field_convert_part(
       "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
       xparts, convert_P, "Pressures of the particles");

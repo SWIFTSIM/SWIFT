@@ -206,9 +206,9 @@ struct part {
 
   /*! Sink information (e.g. swallowing ID) */
   struct sink_part_data sink_data;
-
-  /*! Material identifier flag */
-  enum eos_planetary_material_id mat_id;
+  
+  /*! Equation of state material information */
+  struct material_data mat_data;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;

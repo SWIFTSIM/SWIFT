@@ -39,7 +39,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->mass, p->u, p->u_dt,
       hydro_get_comoving_pressure(p), p->force.soundspeed, p->force.v_sig, p->h,
       p->force.h_dt, p->density.wcount, p->rho, p->density.rho_dh, p->time_bin,
-      p->limiter_data.wakeup, p->mat_id);
+      p->limiter_data.wakeup, p->mat_data.mat_id);
   if (xp != NULL) {
     warning("[PID%lld] xpart:", p->id);
     warning(

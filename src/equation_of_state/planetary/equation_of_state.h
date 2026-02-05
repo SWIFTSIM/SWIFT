@@ -178,15 +178,15 @@ enum eos_planetary_material_id {
   eos_planetary_id_mixed_HHe_heavy =
       eos_planetary_type_mixedHHeHeavy * eos_planetary_type_factor,
       
-  /*! Mixed HHe with rock */
+  /*! Mixed HHe with rock (only used as a component of mixed_HHe_heavy) */
   eos_planetary_id_mixed_HHe_rock =
       eos_planetary_type_mixedHHeHeavy * eos_planetary_type_factor + 1,
       
-  /*! Mixed HHe with water */
+  /*! Mixed HHe with water (only used as a component of mixed_HHe_heavy) */
   eos_planetary_id_mixed_HHe_water =
       eos_planetary_type_mixedHHeHeavy * eos_planetary_type_factor + 2,
   
-  /*! Mixed HHe with iron */
+  /*! Mixed HHe with iron (only used as a component of mixed_HHe_heavy) */
   eos_planetary_id_mixed_HHe_iron =
       eos_planetary_type_mixedHHeHeavy * eos_planetary_type_factor + 3,
 };
@@ -194,6 +194,23 @@ enum eos_planetary_material_id {
 /* Base material ID for custom Tillotson EoS */
 #define eos_planetary_Til_custom_base_id \
   (eos_planetary_type_Til * eos_planetary_type_factor + 90)
+  
+/**
+ * @brief Particle property, equation of state material information
+ *
+ * For typical materials, the only relevant variable is the material ID,
+ * but some may require more information from each particle to be passed
+ * to EoS functions.
+ */
+struct material_data {
+
+  /*! Material identifier flag */
+  enum eos_planetary_material_id mat_id;
+
+  /*! Mixing mass fraction of EoS components */
+  float mixes[3];
+  
+};
 
 /* Individual EOS function headers. */
 #include "hm80.h"
@@ -226,8 +243,9 @@ struct eos_parameters {
  */
 __attribute__((always_inline)) INLINE static float
 gas_internal_energy_from_entropy(float density, float entropy,
-                                 enum eos_planetary_material_id mat_id) {
+                                 const struct material_data *mat_data) {
 
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -407,6 +425,21 @@ gas_internal_energy_from_entropy(float density, float entropy,
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_internal_energy_from_entropy(density, entropy,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -428,8 +461,9 @@ gas_internal_energy_from_entropy(float density, float entropy,
  * @param entropy The entropy \f$S\f$.
  */
 __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
-    float density, float entropy, enum eos_planetary_material_id mat_id) {
+    float density, float entropy, const struct material_data *mat_data) {
 
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -580,6 +614,21 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_pressure_from_entropy(density, entropy,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -602,8 +651,9 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
  * @return The entropy \f$A\f$.
  */
 __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
-    float density, float P, enum eos_planetary_material_id mat_id) {
+    float density, float P, const struct material_data *mat_data) {
 
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -748,6 +798,21 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_entropy_from_pressure(density, P,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -768,8 +833,9 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
  * @param entropy The entropy \f$S\f$.
  */
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
-    float density, float entropy, enum eos_planetary_material_id mat_id) {
+    float density, float entropy, const struct material_data *mat_data) {
 
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -923,6 +989,21 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_soundspeed_from_entropy(density, entropy,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -945,7 +1026,9 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
  */
 __attribute__((always_inline)) INLINE static float
 gas_entropy_from_internal_energy(float density, float u,
-                                 enum eos_planetary_material_id mat_id) {
+                                 const struct material_data *mat_data) {
+
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -1096,6 +1179,21 @@ gas_entropy_from_internal_energy(float density, float u,
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_entropy_from_internal_energy(density, u,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -1118,8 +1216,9 @@ gas_entropy_from_internal_energy(float density, float u,
  */
 __attribute__((always_inline)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u,
-                                  enum eos_planetary_material_id mat_id) {
+                                  const struct material_data *mat_data) {
 
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -1381,6 +1480,30 @@ gas_pressure_from_internal_energy(float density, float u,
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.mixed_HHe_heavy.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set "
+                "EoS:planetary_use_mixed_HHe_heavy: 1");
+#endif
+          return mixedHHeHeavy_pressure_from_internal_energy(
+                    density, u, mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+        default:
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown material ID! mat_id = %d", mat_id);
+#endif
+          return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -1394,7 +1517,7 @@ gas_pressure_from_internal_energy(float density, float u,
                                                   &eos.custom[i_custom]);
       break;
     }
-
+    
     default:
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unknown material type! mat_id = %d", mat_id);
@@ -1414,8 +1537,9 @@ gas_pressure_from_internal_energy(float density, float u,
  */
 __attribute__((always_inline)) INLINE static float
 gas_internal_energy_from_pressure(float density, float P,
-                                  enum eos_planetary_material_id mat_id) {
+                                  const struct material_data *mat_data) {
 
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -1569,6 +1693,21 @@ gas_internal_energy_from_pressure(float density, float P,
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_internal_energy_from_pressure(density, P,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -1591,8 +1730,9 @@ gas_internal_energy_from_pressure(float density, float P,
  */
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u,
-                                    enum eos_planetary_material_id mat_id) {
+                                    const struct material_data *mat_data) {
 
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -1752,6 +1892,21 @@ gas_soundspeed_from_internal_energy(float density, float u,
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_soundspeed_from_internal_energy(density, u,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -1773,8 +1928,9 @@ gas_soundspeed_from_internal_energy(float density, float u,
  * @param P The pressure \f$P\f$
  */
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
-    float density, float P, enum eos_planetary_material_id mat_id) {
+    float density, float P, const struct material_data *mat_data) {
 
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -1921,6 +2077,21 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_soundspeed_from_pressure(density, P,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -1942,7 +2113,9 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
  */
 __attribute__((always_inline)) INLINE static float
 gas_temperature_from_internal_energy(float density, float u,
-                                     enum eos_planetary_material_id mat_id) {
+                                     const struct material_data *mat_data) {
+
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -2109,6 +2282,21 @@ gas_temperature_from_internal_energy(float density, float u,
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_temperature_from_internal_energy(density, u,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -2131,7 +2319,9 @@ gas_temperature_from_internal_energy(float density, float u,
  */
 __attribute__((always_inline)) INLINE static float
 gas_density_from_pressure_and_temperature(
-    float P, float T, enum eos_planetary_material_id mat_id) {
+    float P, float T, const struct material_data *mat_data) {
+
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -2297,6 +2487,21 @@ gas_density_from_pressure_and_temperature(
       };
       break;
 
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_density_from_pressure_and_temperature(P, T,
+                    mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
+      };
+      break;
+
     /*! Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -2320,7 +2525,9 @@ gas_density_from_pressure_and_temperature(
 __attribute__((always_inline)) INLINE static float
 gas_density_from_pressure_and_internal_energy(
     float P, float u, float rho_ref, float rho_sph,
-    enum eos_planetary_material_id mat_id) {
+    const struct material_data *mat_data) {
+
+  const enum eos_planetary_material_id mat_id = mat_data->mat_id;
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
@@ -2487,6 +2694,21 @@ gas_density_from_pressure_and_internal_energy(
 
         default:
           return -1.f;
+      };
+      break;
+
+    /* Mixed HHe--heavy elements EoS  */
+    case eos_planetary_type_mixedHHeHeavy:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_mixed_HHe_heavy:
+          return mixedHHeHeavy_density_from_pressure_and_internal_energy(
+              P, u, rho_ref, rho_sph, mat_data->mixes, &eos.mixed_HHe_heavy);
+          break;
+
+          default:
+            return -1.f;
       };
       break;
 
