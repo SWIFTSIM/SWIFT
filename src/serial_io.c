@@ -256,7 +256,7 @@ void prepare_array_serial(
     const unsigned long long N_total,
     const enum lossy_compression_schemes lossy_compression,
     const struct unit_system *internal_units,
-    const struct unit_system *snapshot_units) {
+    const struct unit_system *snapshot_units, const int is_named_column) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -264,18 +264,32 @@ void prepare_array_serial(
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = 20;
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
 
   int rank = 0;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
-  if (props.dimension > 1) {
+
+  /* Set the chunking:
+   * - Datasets that are "named columns": Use Nx1 chunking
+   * - Datasets in 1D are chunked Nx1
+   * Other datasets are chunked NxM as the data is likely accessed as
+   * vectors.
+   * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
+   */
+  if (is_named_column) {
+    rank = 2;
+    shape[0] = N_total;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << log2_chunk_size;
+    chunk_shape[1] = 1;
+  } else if (props.dimension > 1) {
     rank = 2;
     shape[0] = N_total;
     shape[1] = props.dimension;
     chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
-  } else {
+  } else { /* props.dimension == 1 */
     rank = 1;
     shape[0] = N_total;
     shape[1] = 0;
@@ -297,36 +311,36 @@ void prepare_array_serial(
   /* Dataset properties */
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
-  /* Set chunk size if have some particles */
+  /* Create filters and set compression level if we have something to write */
+  char comp_buffer[32] = "None";
   if (N_total > 0) {
+
+    /* Set chunk size if have some particles */
     h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
       error("Error while setting chunk size (%llu, %llu) for field '%s'.",
             (unsigned long long)chunk_shape[0],
             (unsigned long long)chunk_shape[1], props.name);
-  }
 
-  /* Are we imposing some form of lossy compression filter? */
-  char comp_buffer[32] = "None";
-  if (lossy_compression != compression_write_lossless)
-    set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression, props.name,
-                               comp_buffer);
+    /* Are we imposing some form of lossy compression filter? */
+    if (lossy_compression != compression_write_lossless)
+      set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression,
+                                 props.name, comp_buffer);
 
-  /* Impose GZIP and shuffle data compression */
-  if (e->snapshot_compression > 0 && N_total > 0) {
-    h_err = H5Pset_shuffle(h_prop);
-    if (h_err < 0)
-      error("Error while setting shuffling options for field '%s'.",
-            props.name);
+    /* Impose GZIP and shuffle data compression */
+    if (e->snapshot_compression > 0 && N_total > 0) {
+      h_err = H5Pset_shuffle(h_prop);
+      if (h_err < 0)
+        error("Error while setting shuffling options for field '%s'.",
+              props.name);
 
-    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
-    if (h_err < 0)
-      error("Error while setting compression options for field '%s'.",
-            props.name);
-  }
+      h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
+      if (h_err < 0)
+        error("Error while setting compression options for field '%s'.",
+              props.name);
+    }
 
-  /* Impose check-sum to verify data corruption */
-  if (N_total > 0) {
+    /* Impose check-sum to verify data corruption */
     h_err = H5Pset_fletcher32(h_prop);
     if (h_err < 0)
       error("Error while setting checksum options for field '%s'.", props.name);
@@ -405,6 +419,8 @@ void prepare_array_serial(
  * @param mpi_rank The MPI rank of this node
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
@@ -416,7 +432,8 @@ void write_array_serial(const struct engine *e, hid_t grp, char *fileName,
                         const long long offset,
                         const enum lossy_compression_schemes lossy_compression,
                         const struct unit_system *internal_units,
-                        const struct unit_system *snapshot_units) {
+                        const struct unit_system *snapshot_units,
+                        const int is_named_column) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -427,7 +444,7 @@ void write_array_serial(const struct engine *e, hid_t grp, char *fileName,
   if (mpi_rank == 0)
     prepare_array_serial(e, grp, fileName, xmfFile, partTypeGroupName, props,
                          N_total, lossy_compression, internal_units,
-                         snapshot_units);
+                         snapshot_units, is_named_column);
 
   /* Allocate temporary buffer */
   void *temp = NULL;
@@ -442,6 +459,7 @@ void write_array_serial(const struct engine *e, hid_t grp, char *fileName,
   int rank;
   hsize_t shape[2];
   hsize_t offsets[2];
+
   if (props.dimension > 1) {
     rank = 2;
     shape[0] = N;
@@ -1701,11 +1719,14 @@ void write_output_serial(struct engine *e,
                   (enum part_type)ptype, compression_level_current_default,
                   e->verbose);
 
+          const int is_named_column =
+              io_field_is_named_column(h_file, list[i].name);
+
           if (compression_level != compression_do_not_write) {
             write_array_serial(e, h_grp, fileName, xmfFile, partTypeGroupName,
                                list[i], Nparticles, N_total[ptype], mpi_rank,
                                offset[ptype], compression_level, internal_units,
-                               snapshot_units);
+                               snapshot_units, is_named_column);
             num_fields_written++;
           }
         }
