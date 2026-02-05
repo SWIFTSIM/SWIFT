@@ -312,7 +312,7 @@ fvpm_accumulate_total_face_area_vector_and_norm(struct part *pi,
   pi->geometry.area_sum[2] += A[2];
   if (interaction_mode == 1) {
     /* We add a minus sign since the faces are antisymmetric */
-    pj->geometry.area_sum[0] -= A[1];
+    pj->geometry.area_sum[0] -= A[0];
     pj->geometry.area_sum[1] -= A[1];
     pj->geometry.area_sum[2] -= A[2];
   }
