@@ -273,7 +273,9 @@ __attribute__((always_inline)) INLINE static void compute_eigenvector_1(
         eigenvector1[i] = m01U[i] - m00V[i];
       }
     } else {
-      eigenvector1 = U;
+      for (int i = 0; i < 3; i++) {
+        eigenvector1[i] = U[i];
+      }
     }
   } else {
     maxAbsComp = max(absM11, absM01);
@@ -302,7 +304,9 @@ __attribute__((always_inline)) INLINE static void compute_eigenvector_1(
         eigenvector1[i] = m11U[i] - m01V[i];
       }
     } else {
-      eigenvector1 = U;
+      for (int i = 0; i < 3; i++) {
+        eigenvector1[i] = U[i];
+      }
     }
   }
 }
