@@ -9,37 +9,37 @@ InternalUnitSystem:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:   ICs_homogeneous_box.hdf5
-  periodic:    1                            # Are we running with periodic ICs?
+  periodic:    1                        # Are we running with periodic ICs?
   shift:       [0.0,0.0,0.0]
 
 # Parameters governing the snapshots
 Snapshots:
   subdir:     snap
-  basename:   snapshot      # Common part of the name of output files
-  time_first: 0.0           # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 1e-3          # Time difference between consecutive outputs (in internal units)
+  basename:   snapshot         # Common part of the name of output files
+  time_first: 0.0              # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 1e-3             # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:           1e-3     # Time between statistics output
-  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+  delta_time:        1e-3      # Time between statistics output
+  time_first:          0.      # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
 
 Scheduler:
-  cell_extra_gparts:   10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks:    10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts:   10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts:   0       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:    0       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts:   0       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 3       # (Optional) Maximal number of top-level cells in any dimension.
 
 Restarts:
-  enable:             1          # Do we want restart files?
-  delta_hours:        0.1        # (Optional) decimal hours between dumps of restart files.
+  enable:             1        # Do we want restart files?
+  delta_hours:        0.1      # (Optional) decimal hours between dumps of restart files.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
-  time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          0.4   # The end time of the simulation (in internal units).
-  dt_min:            1e-10 # The minimal time-step size of the simulation (in internal units).
-  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+  time_begin:        0.        # The starting time of the simulation (in internal units).
+  time_end:          0.4       # The end time of the simulation (in internal units).
+  dt_min:            1e-10     # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2      # The maximal time-step size of the simulation (in internal units).
 
 # Parameters for the self-gravity scheme
 Gravity:

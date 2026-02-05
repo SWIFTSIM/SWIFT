@@ -25,27 +25,27 @@ Statistics:
   time_first:             0.    # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
 
 Scheduler:
-  cell_extra_gparts:   10       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks:    10       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts:   10       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts:   0       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:    0       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts:   0       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 3        # (Optional) Maximal number of top-level cells in any dimension.
-
-# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
-TimeIntegration:
-  dt_min:            1e-12 # The minimal time-step size of the simulation (in internal units).
-  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Cosmological parameters
 Cosmology:
   h:              0.673        # Reduced Hubble constant
   a_begin:        0.1          # Initial scale-factor of the simulation
-  a_end:          0.8          # Final scale factor of the simulation
+  a_end:          0.1011319    # Final scale factor of the simulation
   Omega_cdm:      0.2664       # Matter density parameter
   Omega_lambda:   0.685        # Dark-energy density parameter
   Omega_b:        0.0486       # Baryon density parameter
   Omega_r:        0.           # (Optional) Radiation density parameter
   w_0:            -1.0         # (Optional) Dark-energy equation-of-state parameter at z=0.
   w_a:            0.           # (Optional) Dark-energy equation-of-state time evolution parameter.
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  dt_min:            1e-12 # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters for the self-gravity scheme
 Gravity:
