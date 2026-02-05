@@ -202,7 +202,7 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
  * @param (return) A The face area between i and j.
  */
 __attribute__((always_inline)) INLINE static void
-fvpm_compute_face_area_vector(const struct part *pi, const struct part *pj,
+fvpm_compute_face_area_vector(const struct part *restrict pi, const struct part *restrict pj,
 				 float Bi[3][3], float Bj[3][3], const float r2,
 				 const float dx[3], const float hi,
 				 const float hj, float A[3]) {
@@ -276,8 +276,8 @@ fvpm_compute_face_area_vector(const struct part *pi, const struct part *pj,
  * @param interaction_mode 0 if non-symmetric interaction, 1 if symmetric.
  */
 __attribute__((always_inline)) INLINE static void
-fvpm_accumulate_total_face_area_vector_and_norm(struct part *pi,
-						struct part *pj, const float r2,
+fvpm_accumulate_total_face_area_vector_and_norm(struct part *restrict pi,
+						struct part *restrict pj, const float r2,
 						const float dx[3],
 						const float hi, const float hj,
 						const int interaction_mode) {
