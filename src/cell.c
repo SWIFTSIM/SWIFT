@@ -1753,6 +1753,21 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
   /* Are we beyond the distance where the truncated forces are 0 ?*/
   const int can_use_mesh_now = (min_radius2 > max_distance2);
 
+  /* Report related information if we could use the mesh at rebuild but can no
+   * longer do so */
+  if (could_use_mesh_at_rebuild && !can_use_mesh_now) {
+    message(
+        "Forcing rebuild due to particle motion. Cell pair: "
+        "min_radius2=%e ci->grav.multipole->r_max=%e "
+        "ci->grav.multipole->r_max_rebuild=%e ci->grav.multipole->dx_max=%e "
+        "cj->grav.multipole->r_max=%e cj->grav.multipole->r_max_rebuild=%e "
+        "cj->grav.multipole->dx_max=%e",
+        min_radius2, ci->grav.multipole->r_max,
+        ci->grav.multipole->r_max_rebuild, ci->grav.multipole->dx_max,
+        cj->grav.multipole->r_max, cj->grav.multipole->r_max_rebuild,
+        cj->grav.multipole->dx_max);
+  }
+
   return (could_use_mesh_at_rebuild && !can_use_mesh_now);
 }
 
