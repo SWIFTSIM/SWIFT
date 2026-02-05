@@ -643,16 +643,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
 
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;
-  } else {
-    message(
-        "Not drifting gparts in cell (%s/%s) at depth %d at time %lld because "
-        "force is %d, split is %d, "
-        "cell_flag_do_grav_sub_drift is %d, and ti_current (%lld) <= "
-        "ti_old_gpart (%lld)",
-        cellID_names[c->type], subcellID_names[c->subtype], c->depth,
-        ti_current, force, c->split,
-        cell_get_flag(c, cell_flag_do_grav_sub_drift), ti_current,
-        ti_old_gpart);
   }
 
 #ifdef WITH_LIGHTCONE
