@@ -3,8 +3,8 @@
 # make run.sh fail if a subcommand fails
 set -e
 
-n_threads=8 #Number of threads to use
-level=5 #Number of particles = 2^(3*level)
+n_threads=${n_threads:=8}  #Number of threads to use
+level=${level:=5}  #Number of particles = 2^(3*level)
 jeans_length=${jeans_length:=0.250}  #Jeans wavelenght in unit of the boxsize
 rho=${rho:=0.1} # Gas density
 run_name=${run_name:=""}
