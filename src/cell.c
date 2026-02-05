@@ -1232,6 +1232,14 @@ void cell_check_multipole(struct cell *c,
       error("r_max=%e larger than cell diagonal %e.", c->grav.multipole->r_max,
             sqrt(3. * c->width[0] * c->width[0]));
     }
+
+    if (fabsf(c->grav.multipole->dx_max[0]) > 0.f ||
+        fabsf(c->grav.multipole->dx_max[1]) > 0.f ||
+        fabsf(c->grav.multipole->dx_max[2]) > 0.f) {
+      error("dx_max should be zero at rebuild: %e %e %e",
+            c->grav.multipole->dx_max[0], c->grav.multipole->dx_max[1],
+            c->grav.multipole->dx_max[2]);
+    }
   }
 #else
   error("Calling debugging code without debugging flag activated.");
