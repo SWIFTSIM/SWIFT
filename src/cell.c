@@ -1773,13 +1773,14 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
         "ci->grav.multipole->r_max_rebuild=%e ci->grav.multipole->dx_max=%e %e "
         "%e "
         "cj->grav.multipole->r_max=%e cj->grav.multipole->r_max_rebuild=%e "
-        "cj->grav.multipole->dx_max=%e %e %e",
+        "cj->grav.multipole->dx_max=%e %e %e, ci->grav.count=%lld "
+        "cj->grav.count=%lld",
         min_radius2, ci->grav.multipole->r_max,
         ci->grav.multipole->r_max_rebuild, ci->grav.multipole->dx_max[0],
         ci->grav.multipole->dx_max[1], ci->grav.multipole->dx_max[2],
         cj->grav.multipole->r_max, cj->grav.multipole->r_max_rebuild,
         cj->grav.multipole->dx_max[0], cj->grav.multipole->dx_max[1],
-        cj->grav.multipole->dx_max[2]);
+        cj->grav.multipole->dx_max[2], ci->grav.count, cj->grav.count);
   }
 
   return (could_use_mesh_at_rebuild && !can_use_mesh_now);
