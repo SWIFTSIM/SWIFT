@@ -133,49 +133,51 @@ chemistry_get_physical_shear_tensor(const struct part *restrict p,
  * the sign of the flux and thus the diffusion *sharpens* metals instead of
  * smoothing them. The flux must always points down the gradient to smooth.
  *
- * TODO: Check this function. Add a unit test for the diagonalisation.
- *
  * @param S (return) Pointer to a 3x3 matrix shear tensor.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_regularize_shear_tensor(double S[3][3]) {
   double eigenvalues[3] = {0.0};
-  double eigenvector0[3] = {0.0};
-  double eigenvector1[3] = {0.0};
-  double eigenvector2[3] = {0.0};
+  double ev0[3], ev1[3], ev2[3];
 
-  /* Compute the eigenvalues and eigenvectors. S is symmetric by construction.
-   */
-  chemistry_utils_diagonalize_3x3(S, eigenvalues, eigenvector0, eigenvector1,
-                                  eigenvector2);
+  /* Compute the eigenvalues and eigenvectors. S is symmetric by construction. */
+  chemistry_utils_diagonalize_3x3(S, eigenvalues, ev0, ev1, ev2);
 
-  const double eigenvectors[3][3] = {
-      {eigenvector0[0], eigenvector1[0], eigenvector2[0]},
-      {eigenvector0[1], eigenvector1[1], eigenvector2[1]},
-      {eigenvector0[2], eigenvector1[2], eigenvector2[2]}};
-  double S_plus[3][3] = {{0.0}};
+  /* Mapping to a 2D array for easier k-looping */
+  const double ev[3][3] = {
+      {ev0[0], ev1[0], ev2[0]},
+      {ev0[1], ev1[1], ev2[1]},
+      {ev0[2], ev1[2], ev2[2]}};
+
+  /* Reset S to act as accumulator */
+  S[0][0] = 0.0; S[0][1] = 0.0; S[0][2] = 0.0;
+  S[1][1] = 0.0; S[1][2] = 0.0;
+  S[2][2] = 0.0;
 
   /* Compute S_plus as the sum of max(0, lambda^(k)) * e_i^(k) * e_j^(k) */
   for (int k = 0; k < 3; k++) {
-    const double lambda_k = eigenvalues[k];  // Get the k-th eigenvalue
-    const double lambda_k_plus =
-        fmax(0.0, lambda_k);  // Take max(0, lambda^(k))
+    const double lambda_k_plus = fmax(0.0, eigenvalues[k]);
 
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-        const double e_ik = eigenvectors[i][k];
-        const double e_jk = eigenvectors[j][k];
-        S_plus[i][j] += lambda_k_plus * e_ik * e_jk;
-      }
-    }
+    /* Skip eigenvalues that don't contribute to diffusion. In a traceless
+     * tensor, at least one lambda is usually <= 0. */
+    if (lambda_k_plus <= 0.0) continue;
+    const double e0 = ev[0][k];
+    const double e1 = ev[1][k];
+    const double e2 = ev[2][k];
+
+    /* Manually unrolled upper-triangle reconstruction */
+    S[0][0] += lambda_k_plus * e0 * e0;
+    S[0][1] += lambda_k_plus * e0 * e1;
+    S[0][2] += lambda_k_plus * e0 * e2;
+    S[1][1] += lambda_k_plus * e1 * e1;
+    S[1][2] += lambda_k_plus * e1 * e2;
+    S[2][2] += lambda_k_plus * e2 * e2;
   }
 
-  /* Copy S_plus back into S (overwriting it) */
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      S[i][j] = S_plus[i][j];
-    }
-  }
+  /* Symmetric copy */
+  S[1][0] = S[0][1];
+  S[2][0] = S[0][2];
+  S[2][1] = S[1][2];
 }
 
 /**
