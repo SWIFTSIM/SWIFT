@@ -9,3 +9,15 @@ E.g. for gizmo-mvf: uncomment `#define GIZMO_FIX_PARTICLES` in src/const.h.
 
 Expected output when running in Eulerian mode is that the profiles should maintain their shape,
 but edges will be blurred due to numerical diffusion.
+
+# Examples
+
+n_threads=2 uniform=1 dim=1 level=5 ./run.sh
+n_threads=2 uniform=1 dim=2 level=5 ./run.sh
+n_threads=2 uniform=1 dim=3 level=5 ./run.sh
+
+
+n_threads=2 uniform=0 dim=2 level=5 ./run.sh
+
+
+
