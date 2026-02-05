@@ -435,6 +435,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
       c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
       c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+      c->grav.multipole->dx_max[0] = 0.f;
+      c->grav.multipole->dx_max[1] = 0.f;
+      c->grav.multipole->dx_max[2] = 0.f;
 
       /* Compute the multipole power */
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);

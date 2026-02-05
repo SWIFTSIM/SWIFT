@@ -1138,6 +1138,9 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
   c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
   c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
   c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+  c->grav.multipole->dx_max[0] = 0.f;
+  c->grav.multipole->dx_max[1] = 0.f;
+  c->grav.multipole->dx_max[2] = 0.f;
 
   c->grav.ti_old_multipole = ti_current;
 }
@@ -1759,13 +1762,16 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
     message(
         "Forcing rebuild due to particle motion. Cell pair: "
         "min_radius2=%e ci->grav.multipole->r_max=%e "
-        "ci->grav.multipole->r_max_rebuild=%e ci->grav.multipole->dx_max=%e "
+        "ci->grav.multipole->r_max_rebuild=%e ci->grav.multipole->dx_max=%e %e "
+        "%e "
         "cj->grav.multipole->r_max=%e cj->grav.multipole->r_max_rebuild=%e "
-        "cj->grav.multipole->dx_max=%e",
+        "cj->grav.multipole->dx_max=%e %e %e",
         min_radius2, ci->grav.multipole->r_max,
-        ci->grav.multipole->r_max_rebuild, ci->grav.multipole->dx_max,
+        ci->grav.multipole->r_max_rebuild, ci->grav.multipole->dx_max[0],
+        ci->grav.multipole->dx_max[1], ci->grav.multipole->dx_max[2],
         cj->grav.multipole->r_max, cj->grav.multipole->r_max_rebuild,
-        cj->grav.multipole->dx_max);
+        cj->grav.multipole->dx_max[0], cj->grav.multipole->dx_max[1],
+        cj->grav.multipole->dx_max[2]);
   }
 
   return (could_use_mesh_at_rebuild && !can_use_mesh_now);
