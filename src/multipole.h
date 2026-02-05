@@ -112,19 +112,9 @@ __attribute__((nonnull)) INLINE static void gravity_drift(
   m->r_max += x_diff;
 
   /* Conservative change in maximal displacement along each axis */
-  const float vmax_x =
-      max(fabsf(m->m_pole.vel[0] + m->m_pole.max_delta_vel[0]),
-          fabsf(m->m_pole.vel[0] - m->m_pole.min_delta_vel[0]));
-  const float vmax_y =
-      max(fabsf(m->m_pole.vel[1] + m->m_pole.max_delta_vel[1]),
-          fabsf(m->m_pole.vel[1] - m->m_pole.min_delta_vel[1]));
-  const float vmax_z =
-      max(fabsf(m->m_pole.vel[2] + m->m_pole.max_delta_vel[2]),
-          fabsf(m->m_pole.vel[2] - m->m_pole.min_delta_vel[2]));
-  const float dt_f = (float)dt;
-  m->dx_max[0] += vmax_x * dt_f;
-  m->dx_max[1] += vmax_y * dt_f;
-  m->dx_max[2] += vmax_z * dt_f;
+  m->dx_max[0] += dv[0] * dt;
+  m->dx_max[1] += dv[1] * dt;
+  m->dx_max[2] += dv[2] * dt;
 }
 
 /**
