@@ -76,7 +76,7 @@ __attribute__((always_inline)) INLINE static double
 chemistry_get_part_corrected_metal_mass(const struct part *restrict p,
                                         int metal) {
   /* Clamp negative values to 0.0. We tolerate negative values in the diffusion
-     solver, not in the physics module */
+     solver, not in the physics modules */
   double mZ = max(p->chemistry_data.metal_mass[metal], 0.0);
   const double m = hydro_get_mass(p);
 
@@ -110,17 +110,17 @@ chemistry_get_physical_shear_tensor(const struct part *restrict p,
   }
 
   /* Now add the Hubble flow term to the diagonal elements. Note that because
-     the shear tensore is symmetric, the Hubble flow adds only once. */
+     the shear tensor is symmetric, the Hubble flow adds only once. */
   S[0][0] += cosmo->H;
   S[1][1] += cosmo->H;
   S[2][2] += cosmo->H;
 
-  /* The trace encode volume changes (compression and expansion). We do not
-     consider these are turbulences so we remove them. */
-  const double trace = S[0][0] + S[1][1] + S[2][2];
-  S[0][0] -= trace / 3.0;
-  S[1][1] -= trace / 3.0;
-  S[2][2] -= trace / 3.0;
+  /* The trace encodes volume changes (compression and expansion). We do not
+     consider these as turbulences. So we remove them. */
+  const double trace_3 = (S[0][0] + S[1][1] + S[2][2])/3.0;
+  S[0][0] -= trace_3;
+  S[1][1] -= trace_3;
+  S[2][2] -= trace_3;
 }
 
 /**
