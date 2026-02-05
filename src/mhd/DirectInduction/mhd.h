@@ -160,7 +160,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   const float vpsi_tp_vB = B_over_rho2 ? fabsf(psi_over_ch) / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
 
   /* Condition to limit the per time-step change in the magnitude of the magnetic field */
-  const float CB = 0.5f;
+  const float CB = hydro_properties->mhd.CB;
 
   float denum_dt_deltaB2 = 0.f;
   for (int k = 0; k < 3; k++) {
@@ -170,8 +170,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   const float dt_deltaB = denum_dt_deltaB2 ? CB * a2 * sqrtf(B_over_rho2 / denum_dt_deltaB2) : FLT_MAX;
 
   /* Condition to limit the per time-step change in the magnitude of the Dedner scalar field */
-  const float Cpsi = 0.5f;
-  const float R_ePsi_to_eB = 0.0078125f;
+  const float Cpsi = hydro_properties->mhd.Cpsi;
+  const float R_ePsi_to_eB = hydro_properties->mhd.R_ePsi_to_eB;
 
   const float denum_dt_deltaPsi = fabsf(psi_over_ch_dt);
   

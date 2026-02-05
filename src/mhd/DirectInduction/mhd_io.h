@@ -404,7 +404,7 @@ INLINE static void compute_dt_deltaB(const struct engine* e, const struct part* 
   }
 
   /* Condition to limit the per time-step change in the magnitude of the magnetic field */
-  const float CB = 0.5f;
+  const float CB = e->hydro_properties->mhd.CB;
 
   float denum_dt_deltaB2 = 0.f;
   for (int k = 0; k < 3; k++) {
@@ -444,8 +444,8 @@ INLINE static void compute_dt_deltaPsi(const struct engine* e, const struct part
   const float vpsi_tp_vB = B_over_rho2 ? fabsf(psi_over_ch) / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
 
   /* Condition to limit the per time-step change in the magnitude of the Dedner scalar field */
-  const float Cpsi = 0.5f;
-  const float R_ePsi_to_eB = 0.0078125f;
+  const float Cpsi = e->hydro_properties->mhd.Cpsi;
+  const float R_ePsi_to_eB = e->hydro_properties->mhd.R_ePsi_to_eB;
 
   const float denum_dt_deltaPsi = fabsf(psi_over_ch_dt);
 
