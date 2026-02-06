@@ -367,14 +367,14 @@ INLINE static void calculate_Rm_local(const struct engine *e,
   ret[0] = Rm_local;
 }
 
-INLINE static void compute_dt_cfl(const struct engine* e, const struct part* p,
-				  const struct xpart* xp, float* ret) {
+INLINE static void compute_dt_cfl(const struct engine *e, const struct part *p,
+                                  const struct xpart *xp, float *ret) {
 
   /* Retrieve some information */
   const float CFL_constant = e->hydro_properties->CFL_condition;
   const float a = e->cosmology->a;
   const float a_factor_sound_speed = e->cosmology->a_factor_sound_speed;
-  
+
   /* CFL condition */
   const float dt_cfl = 2.f * kernel_gamma * CFL_constant * a * p->h /
                        (a_factor_sound_speed * p->viscosity.v_sig);
@@ -382,8 +382,9 @@ INLINE static void compute_dt_cfl(const struct engine* e, const struct part* p,
   ret[0] = dt_cfl;
 }
 
-INLINE static void compute_dt_deltaB(const struct engine* e, const struct part* p,
-				     const struct xpart* xp, float* ret) {
+INLINE static void compute_dt_deltaB(const struct engine *e,
+                                     const struct part *p,
+                                     const struct xpart *xp, float *ret) {
 
   /* Retrieve and compute relevant cosmological factors */
   const float a = e->cosmology->a;
@@ -403,7 +404,8 @@ INLINE static void compute_dt_deltaB(const struct engine* e, const struct part* 
     B_over_rho2 += B_over_rho[k] * B_over_rho[k];
   }
 
-  /* Condition to limit the per time-step change in the magnitude of the magnetic field */
+  /* Condition to limit the per time-step change in the magnitude of the
+   * magnetic field */
   const float CB = e->hydro_properties->mhd.CB;
 
   float denum_dt_deltaB2 = 0.f;
@@ -411,18 +413,21 @@ INLINE static void compute_dt_deltaB(const struct engine* e, const struct part* 
     denum_dt_deltaB2 += B_over_rho_dt[k] * B_over_rho_dt[k];
   }
 
-  const float dt_deltaB = denum_dt_deltaB2 ? CB * a2 * sqrtf(B_over_rho2 / denum_dt_deltaB2) : FLT_MAX;
+  const float dt_deltaB = denum_dt_deltaB2
+                              ? CB * a2 * sqrtf(B_over_rho2 / denum_dt_deltaB2)
+                              : FLT_MAX;
 
   ret[0] = dt_deltaB;
 }
 
-INLINE static void compute_dt_deltaPsi(const struct engine* e, const struct part* p,
-				       const struct xpart* xp, float* ret) {
+INLINE static void compute_dt_deltaPsi(const struct engine *e,
+                                       const struct part *p,
+                                       const struct xpart *xp, float *ret) {
 
   /* Retrieve and compute relevant cosmological factors */
   const float a = e->cosmology->a;
   const float a2 = a * a;
-  
+
   /* Retrieve relevant particle attributes */
   const float rho = p->rho;
 
@@ -441,15 +446,20 @@ INLINE static void compute_dt_deltaPsi(const struct engine* e, const struct part
   }
 
   /* Compute metric to evaluate dynamical significance of Dedner scalar field */
-  const float vpsi_tp_vB = B_over_rho2 ? fabsf(psi_over_ch) / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
+  const float vpsi_tp_vB =
+      B_over_rho2 ? fabsf(psi_over_ch) / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
 
-  /* Condition to limit the per time-step change in the magnitude of the Dedner scalar field */
+  /* Condition to limit the per time-step change in the magnitude of the Dedner
+   * scalar field */
   const float Cpsi = e->hydro_properties->mhd.Cpsi;
   const float R_ePsi_to_eB = e->hydro_properties->mhd.R_ePsi_to_eB;
 
   const float denum_dt_deltaPsi = fabsf(psi_over_ch_dt);
 
-  const float dt_deltaPsi = (vpsi_tp_vB > R_ePsi_to_eB) && (denum_dt_deltaPsi != 0.0f) ? Cpsi * a2 * fabsf(psi_over_ch) / denum_dt_deltaPsi : FLT_MAX;
+  const float dt_deltaPsi =
+      (vpsi_tp_vB > R_ePsi_to_eB) && (denum_dt_deltaPsi != 0.0f)
+          ? Cpsi * a2 * fabsf(psi_over_ch) / denum_dt_deltaPsi
+          : FLT_MAX;
 
   ret[0] = dt_deltaPsi;
 }
@@ -565,8 +575,9 @@ INLINE static int mhd_write_particles(const struct part *parts,
 
   list[18] = io_make_output_field_convert_part(
       "Timestep_DeltaPsi", FLOAT, 1, UNIT_CONV_TIME, 0.f, parts, xparts,
-      compute_dt_deltaPsi, "Change in divergence cleaning scalar time-step size");
-  
+      compute_dt_deltaPsi,
+      "Change in divergence cleaning scalar time-step size");
+
   return 19;
 }
 

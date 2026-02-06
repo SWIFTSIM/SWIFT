@@ -70,13 +70,14 @@
 #define mhd_props_artificial_diffusion_beta 1.0f
 
 /* Prefactor for per time-step change in B constraint */
-#define mhd_props_default_dt_deltaB_prefactor FLT_MAX 
+#define mhd_props_default_dt_deltaB_prefactor FLT_MAX
 
 /* Prefactor for per time-step change in psi constraint */
-#define mhd_props_default_dt_deltaPsi_prefactor FLT_MAX 
+#define mhd_props_default_dt_deltaPsi_prefactor FLT_MAX
 
-/* Ratio of spcific energy in psi to specific energy in B beyind which per time-step change in psi constraint is applied */ 
-#define mhd_props_default_R_ePsi_to_eB FLT_MAX 
+/* Ratio of spcific energy in psi to specific energy in B beyind which per
+ * time-step change in psi constraint is applied */
+#define mhd_props_default_R_ePsi_to_eB FLT_MAX
 
 /* Structs that store the relevant variables */
 
@@ -129,12 +130,12 @@ static INLINE void mhd_init(struct swift_params *params,
       parser_get_param_float(params, "MHD:artificial_diffusion");
   mhd->hyp_dedner_divv =
       parser_get_param_float(params, "MHD:hyperbolic_dedner_divv");
-  mhd->CB =
-    parser_get_opt_param_float(params, "MHD:CB", mhd_props_default_dt_deltaB_prefactor);
-  mhd->Cpsi =
-    parser_get_opt_param_float(params, "MHD:Cpsi", mhd_props_default_dt_deltaPsi_prefactor);
-  mhd->R_ePsi_to_eB =
-    parser_get_opt_param_float(params, "MHD:R_ePsi_to_eB", mhd_props_default_R_ePsi_to_eB);
+  mhd->CB = parser_get_opt_param_float(params, "MHD:CB",
+                                       mhd_props_default_dt_deltaB_prefactor);
+  mhd->Cpsi = parser_get_opt_param_float(
+      params, "MHD:Cpsi", mhd_props_default_dt_deltaPsi_prefactor);
+  mhd->R_ePsi_to_eB = parser_get_opt_param_float(
+      params, "MHD:R_ePsi_to_eB", mhd_props_default_R_ePsi_to_eB);
 }
 
 /**
@@ -164,7 +165,10 @@ static INLINE void mhd_print(const struct mhd_global_data *mhd) {
   message("MHD global Resistive Eta: %.3f", mhd->mhd_eta);
   message("Maximal per time-step relative change in B: %.3f", mhd->CB);
   message("Maximal per time-step relative change in psi: %.3f", mhd->Cpsi);
-  message("Threshold in energy content in psi beyond which relative change in psi constraint in applied: %.8f", mhd->R_ePsi_to_eB);
+  message(
+      "Threshold in energy content in psi beyond which relative change in psi "
+      "constraint in applied: %.8f",
+      mhd->R_ePsi_to_eB);
 }
 
 #if defined(HAVE_HDF5)
@@ -187,10 +191,14 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
   io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
                        mhd_data->par_dedner);
   io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
-  io_write_attribute_f(h_grpsph, "Maximal per time-step relative change in B", mhd_data->CB);
-  io_write_attribute_f(h_grpsph, "Maximal per time-step relative change in psi", mhd_data->Cpsi);
-  io_write_attribute_f(h_grpsph, "Threshold of application of relative change in psi constraint", mhd_data->R_ePsi_to_eB);
-  
+  io_write_attribute_f(h_grpsph, "Maximal per time-step relative change in B",
+                       mhd_data->CB);
+  io_write_attribute_f(h_grpsph, "Maximal per time-step relative change in psi",
+                       mhd_data->Cpsi);
+  io_write_attribute_f(
+      h_grpsph, "Threshold of application of relative change in psi constraint",
+      mhd_data->R_ePsi_to_eB);
+
   // io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif
