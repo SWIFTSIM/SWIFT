@@ -74,7 +74,6 @@ INLINE static int vertical_find_value_in_monot_incr_array(const float x,
                                                           const int n_row,
                                                           const int n_col,
                                                           const int j) {
-
   int i_low = 0;
   int i_high = n_row - 1;
   int i_mid;
@@ -97,6 +96,31 @@ INLINE static int vertical_find_value_in_monot_incr_array(const float x,
     return n_row;
   else
     return i_low;
+}
+
+/**
+ * @brief Skip a line while reading a file.
+ */
+INLINE static int skip_line(FILE *f) {
+  int c;
+
+  // Read each character until reaching the end of the line or file
+  do {
+    c = fgetc(f);
+  } while ((c != '\n') && (c != EOF));
+
+  return c;
+}
+
+/**
+ * @brief Skip n lines while reading a file.
+ */
+INLINE static int skip_lines(FILE *f, int n) {
+  int c;
+
+  for (int i = 0; i < n; i++) c = skip_line(f);
+
+  return c;
 }
 
 #endif /* SWIFT_UTILITIES_H */

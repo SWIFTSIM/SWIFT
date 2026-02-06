@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+
 #ifndef SWIFT_REMIX_HYDRO_KERNELS_H
 #define SWIFT_REMIX_HYDRO_KERNELS_H
 
@@ -39,6 +40,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part_extra_kernel(
     struct part *restrict p) {
 
   p->m0 = 0.f;
+  
   p->grad_m0[0] = 0.f;
   p->grad_m0[1] = 0.f;
   p->grad_m0[2] = 0.f;

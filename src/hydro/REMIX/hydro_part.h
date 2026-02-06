@@ -36,6 +36,7 @@
 #include "rt_struct.h"
 #include "sink_struct.h"
 #include "star_formation_struct.h"
+#include "hydro_part_strength.h"
 #include "symmetric_matrix.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -66,6 +67,12 @@ struct xpart {
 
   /*! Evolved density at the last full step. */
   float rho_evol_full;
+
+  /*! Phase state flag at the last full step. */
+  enum mat_phase phase_full;
+ 
+  /*! Additional data used by the strength scheme */
+  struct strength_xpart_data strength_data;
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -134,6 +141,9 @@ struct part {
 
   /*! Gradient of velocity, calculated using normalised kernel. */
   float dv_norm_kernel[3][3];
+
+  /*! Gradient of velocity of same-phase particles, calculated using normalised kernel. */
+  float dv_norm_kernel_same_phase[3][3];
 
   /*! Gradient of internal energy, calculated using normalised kernel. */
   float du_norm_kernel[3];
@@ -257,6 +267,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used by the strength scheme */
+  struct strength_part_data strength_data;
+
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
 
@@ -274,6 +287,9 @@ struct part {
 
   /*! Material identifier flag */
   enum eos_planetary_material_id mat_id;
+
+  /*! Phase state flag */
+  enum mat_phase phase;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;

@@ -44,6 +44,8 @@
 #include "rt_struct.h"
 #include "sink_struct.h"
 #include "star_formation_struct.h"
+#include "hydro_part_strength.h"
+#include "symmetric_matrix.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 
@@ -70,6 +72,12 @@ struct xpart {
 
   /*! Internal energy at the last full step. */
   float u_full;
+
+  /*! Phase flag at the last full step. */
+  enum mat_phase phase_full;
+
+  /*! Additional data used by the strength scheme */
+  struct strength_xpart_data strength_data;
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -189,6 +197,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used by the strength scheme */
+  struct strength_part_data strength_data;
+
   /*! Additional data used for adaptive softening */
   struct adaptive_softening_part_data adaptive_softening_data;
 
@@ -209,6 +220,9 @@ struct part {
 
   /*! Material identifier flag */
   enum eos_planetary_material_id mat_id;
+
+  /*! Phase flag */
+  enum mat_phase phase;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
