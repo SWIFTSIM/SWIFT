@@ -104,7 +104,7 @@ struct part {
   long long id;
 
   /*! Pointer to corresponding gravity part. */
-  struct gpart *gpart;
+  struct gpart* gpart;
 
   /*! Particle position. */
   double x[3];
@@ -139,6 +139,9 @@ struct part {
     /*! Time differential of velocity divergence */
     float div_v_dt;
 
+    /*! Particle velocity curl. */
+    float rot_v[3];
+
     /*! Particle velocity divergence from previous step */
     float div_v_previous_step;
 
@@ -163,59 +166,52 @@ struct part {
 
   /* Store density/force specific stuff. */
 
-  union {
-    /**
-     * @brief Structure for the variables only used in the density loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the density
-     * loop over neighbours and the ghost task.
-     */
-    struct {
+  //  union {
+  /**
+   * @brief Structure for the variables only used in the density loop over
+   * neighbours.
+   *
+   * Quantities in this sub-structure should only be accessed in the density
+   * loop over neighbours and the ghost task.
+   */
+  struct {
 
-      /*! Neighbour number count. */
-      float wcount;
+    /*! Neighbour number count. */
+    float wcount;
 
-      /*! Derivative of the neighbour number with respect to h. */
-      float wcount_dh;
+    /*! Derivative of the neighbour number with respect to h. */
+    float wcount_dh;
 
-      /*! Derivative of density with respect to h */
-      float rho_dh;
+    /*! Derivative of density with respect to h */
+    float rho_dh;
 
-      /*! Particle velocity curl. */
-      float rot_v[3];
+  } density;
 
-    } density;
+  /**
+   * @brief Structure for the variables only used in the force loop over
+   * neighbours.
+   *
+   * Quantities in this sub-structure should only be accessed in the force
+   * loop over neighbours and the ghost, drift and kick tasks.
+   */
+  struct {
 
-    /**
-     * @brief Structure for the variables only used in the force loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the force
-     * loop over neighbours and the ghost, drift and kick tasks.
-     */
-    struct {
+    /*! "Grad h" term -- only partial in P-U */
+    float f;
 
-      /*! "Grad h" term -- only partial in P-U */
-      float f;
+    /*! Particle pressure. */
+    float pressure;
 
-      /*! Particle pressure. */
-      float pressure;
+    /*! Particle soundspeed. */
+    float soundspeed;
 
-      /*! Particle soundspeed. */
-      float soundspeed;
+    /*! Time derivative of smoothing length  */
+    float h_dt;
 
-      /*! Time derivative of smoothing length  */
-      float h_dt;
+    /*! Maximal alpha (viscosity) over neighbours */
+    float alpha_visc_max_ngb;
 
-      /*! Balsara switch */
-      float balsara;
-
-      /*! Maximal alpha (viscosity) over neighbours */
-      float alpha_visc_max_ngb;
-
-    } force;
-  };
+  } force;
 
   /*! Additional data used for adaptive softening */
   struct adaptive_softening_part_data adaptive_softening_data;
