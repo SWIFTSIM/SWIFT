@@ -75,8 +75,8 @@ GrackleCooling:
 GEARChemistry:
   initial_metallicity: -1
   diffusion_coefficient : 0.0045      # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
-  diffusion_mode:  Smagorinsky # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
-  hll_riemann_solver_epsilon: 0.0     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
+  diffusion_mode:  Smagorinsky        # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
+  hll_riemann_solver_epsilon: 0.0     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.0
   hll_riemann_solver_psi:  0.1        # (Optional, parabolic diffusion only) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hi2017. (Default: 0.1)
   C_CFL_chemistry: 0.4                # Courant-Friedrich-Levy condition for time integration.
   relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
