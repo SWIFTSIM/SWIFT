@@ -102,7 +102,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 
   const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
   const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
-  
+
   float dB[3];
   for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
 
@@ -127,16 +127,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /* Compute local plasma beta mean square */
   const float Pmagi_inv = B2i ? 2.0f * mu_0 / B2i : FLT_MAX;
   const float Pmagj_inv = B2j ? 2.0f * mu_0 / B2j : FLT_MAX;
- 
-  const float plasma_beta_i = Pi * Pmagi_inv; 
-  const float plasma_beta_j = Pj * Pmagj_inv; 
+
+  const float plasma_beta_i = Pi * Pmagi_inv;
+  const float plasma_beta_j = Pj * Pmagj_inv;
 
   pi->mhd_data.neighbour_number += 1.0f;
   pj->mhd_data.neighbour_number += 1.0f;
-  
+
   pi->mhd_data.plasma_beta_rms += plasma_beta_j * plasma_beta_j;
   pj->mhd_data.plasma_beta_rms += plasma_beta_i * plasma_beta_i;
-  
+
   /* dB cross r */
   float dB_cross_dx[3];
   dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
@@ -213,7 +213,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
   const float Pj = pj->force.pressure;
-  
+
   float Bi[3], Bj[3];
   for (int k = 0; k < 3; k++) {
     Bi[k] = pi->mhd_data.B_over_rho[k] * rhoi;
@@ -221,7 +221,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   }
 
   const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
-  
+
   float dB[3];
   for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
 
@@ -243,7 +243,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   pi->mhd_data.neighbour_number += 1.0f;
 
   pi->mhd_data.plasma_beta_rms += plasma_beta_j * plasma_beta_j;
-  
+
   /* dB cross r */
   float dB_cross_dx[3];
   dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];

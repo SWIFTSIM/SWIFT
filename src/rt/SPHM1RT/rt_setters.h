@@ -34,7 +34,7 @@
  *
  */
 __attribute__((always_inline)) INLINE static void
-rt_set_comoving_urad_multifrequency(struct part* p,
+rt_set_comoving_urad_multifrequency(struct part *p,
                                     const float urad[RT_NGROUPS]) {
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.conserved[g].urad = urad[g];
@@ -51,8 +51,8 @@ rt_set_comoving_urad_multifrequency(struct part* p,
  * @param urad The physical radiation energy per mass
  */
 __attribute__((always_inline)) INLINE static void
-rt_set_physical_urad_multifrequency(struct part* p,
-                                    const struct cosmology* cosmo,
+rt_set_physical_urad_multifrequency(struct part *p,
+                                    const struct cosmology *cosmo,
                                     const float urad[RT_NGROUPS]) {
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.conserved[g].urad = urad[g];
@@ -68,7 +68,7 @@ rt_set_physical_urad_multifrequency(struct part* p,
  * @param frad The comoving radiation flux
  */
 __attribute__((always_inline)) INLINE static void
-rt_set_comoving_frad_multifrequency(struct part* p, float frad[RT_NGROUPS][3]) {
+rt_set_comoving_frad_multifrequency(struct part *p, float frad[RT_NGROUPS][3]) {
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.conserved[g].frad[0] = frad[g][0];
     p->rt_data.conserved[g].frad[1] = frad[g][1];
@@ -85,8 +85,8 @@ rt_set_comoving_frad_multifrequency(struct part* p, float frad[RT_NGROUPS][3]) {
  * @param frad The comoving radiation flux
  */
 __attribute__((always_inline)) INLINE static void
-rt_set_physical_radiation_flux_multifrequency(struct part* p,
-                                              const struct cosmology* cosmo,
+rt_set_physical_radiation_flux_multifrequency(struct part *p,
+                                              const struct cosmology *cosmo,
                                               float frad[RT_NGROUPS][3]) {
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.conserved[g].frad[0] = frad[g][0] * cosmo->a_inv;
@@ -103,7 +103,7 @@ rt_set_physical_radiation_flux_multifrequency(struct part* p,
  * @param chi The physical opacity
  */
 __attribute__((always_inline)) INLINE static void
-rt_set_physical_radiation_opacity(struct part* p, const struct cosmology* cosmo,
+rt_set_physical_radiation_opacity(struct part *p, const struct cosmology *cosmo,
                                   const float chi[RT_NGROUPS]) {
 
   /* avoid getting negative opacity */

@@ -384,7 +384,7 @@ runner_iact_nonsym_feedback_apply(
   hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
                                              u_new_enrich);
   mhd_set_drifted_physical_internal_energy(pj);
-  
+
   /* Finally, SNII stochastic feedback */
 
   /* Get the total number of SNII thermal energy injections per stellar
@@ -417,7 +417,7 @@ runner_iact_nonsym_feedback_apply(
       hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
                                                  u_new);
       mhd_set_drifted_physical_internal_energy(pj);
-      
+
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
 

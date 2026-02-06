@@ -91,7 +91,7 @@ A1_ids = np.zeros(numPart)
 
 # Set up boundary particle counter
 # Boundary particles are set by the N lowest ids of particles, where N is set when configuring swift
-boundary_particles = 1
+boundary_particles = 0
 
 # Particles in the upper region
 for i in range(N1_depth):
@@ -114,8 +114,8 @@ for i in range(N1_depth):
                 A2_coords1[index, 1] < fixed_region[0]
                 or A2_coords1[index, 1] > fixed_region[1]
             ):
-                A1_ids[index] = boundary_particles
                 boundary_particles += 1
+                A1_ids[index] = boundary_particles
 
 
 # Particles in the lower region
@@ -139,18 +139,18 @@ for i in range(N2_depth):
                 A2_coords2[index, 1] < fixed_region[0]
                 or A2_coords2[index, 1] > fixed_region[1]
             ):
-                A1_ids[index + numPart1] = boundary_particles
                 boundary_particles += 1
+                A1_ids[index + numPart1] = boundary_particles
 
-print(
-    "You need to compile the code with "
-    "--enable-boundary-particles=%i" % boundary_particles
-)
+print(f"Set 'boundary_particle_max_id: {boundary_particles}' in rayleigh_taylor.yml")
 
 # Set IDs of non-boundary particles
 A1_ids[A1_ids == 0] = np.linspace(
-    boundary_particles, numPart, numPart - boundary_particles + 1
+    boundary_particles + 1, numPart, numPart - boundary_particles
 )
+
+if not np.array_equal(np.sort(A1_ids), np.arange(1, numPart + 1)):
+    raise ValueError("A1_ids does not contain all unique integers from 1 to numPart")
 
 # The placement of the lattices are now adjusted to give appropriate interfaces
 # Calculate the separation of particles across the density discontinuity

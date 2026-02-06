@@ -33,10 +33,10 @@
  * @param phys_const The physical constants in internal units.
  * @param data The properties to initialise.
  */
-void chemistry_init(struct swift_params* parameter_file,
-                    const struct unit_system* us,
-                    const struct phys_const* phys_const,
-                    struct chemistry_global_data* data) {
+void chemistry_init(struct swift_params *parameter_file,
+                    const struct unit_system *us,
+                    const struct phys_const *phys_const,
+                    struct chemistry_global_data *data) {
 
   chemistry_init_backend(parameter_file, us, phys_const, data);
 }
@@ -49,7 +49,7 @@ void chemistry_init(struct swift_params* parameter_file,
  * @brief The #chemistry_global_data containing information about the current
  * model.
  */
-void chemistry_print(const struct chemistry_global_data* data) {
+void chemistry_print(const struct chemistry_global_data *data) {
   chemistry_print_backend(data);
 }
 
@@ -59,9 +59,9 @@ void chemistry_print(const struct chemistry_global_data* data) {
  * @param chemistry the struct
  * @param stream the file stream
  */
-void chemistry_struct_dump(const struct chemistry_global_data* chemistry,
-                           FILE* stream) {
-  restart_write_blocks((void*)chemistry, sizeof(struct chemistry_global_data),
+void chemistry_struct_dump(const struct chemistry_global_data *chemistry,
+                           FILE *stream) {
+  restart_write_blocks((void *)chemistry, sizeof(struct chemistry_global_data),
                        1, stream, "chemistry", "chemistry function");
 }
 
@@ -72,8 +72,8 @@ void chemistry_struct_dump(const struct chemistry_global_data* chemistry,
  * @param chemistry the struct
  * @param stream the file stream
  */
-void chemistry_struct_restore(const struct chemistry_global_data* chemistry,
-                              FILE* stream) {
-  restart_read_blocks((void*)chemistry, sizeof(struct chemistry_global_data), 1,
-                      stream, NULL, "chemistry function");
+void chemistry_struct_restore(const struct chemistry_global_data *chemistry,
+                              FILE *stream) {
+  restart_read_blocks((void *)chemistry, sizeof(struct chemistry_global_data),
+                      1, stream, NULL, "chemistry function");
 }

@@ -46,7 +46,7 @@ struct mhd_part_data {
   /* Local plasma beta mean square and its normalising factor */
   float plasma_beta_rms;
   float neighbour_number;
-  
+
   /* Artifical resistivity multiplicative prefactor */
   float art_diff_beta;
 
