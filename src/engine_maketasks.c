@@ -1610,7 +1610,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         /* In zoom land we also need to link the void cell tasks and zoom/buffer
          * cell tasks if there are tasks at the void level. */
         if (c->top->void_parent != NULL &&
-            c->top->void_parent->grav.super != NULL) {
+            c->top->void_parent->grav.super != NULL &&
+            c->void_parent->contains_zoom_cells) {
 
           /* nested.init -> void.init */
           /* This dependency is needed to ensure no MM tasks at the void
