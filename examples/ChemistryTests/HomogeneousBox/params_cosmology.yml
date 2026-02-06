@@ -1,7 +1,7 @@
 # Define the system of units to use internally.
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses 
-  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc 
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
   UnitVelocity_in_cgs: 1e5                     # km/s
   UnitCurrent_in_cgs:  1                       # Amperes
   UnitTemp_in_cgs:     1                       # Kelvin
@@ -9,12 +9,12 @@ InternalUnitSystem:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:    ICs_homogeneous_box.hdf5
-  periodic:     1              # Are we running with periodic ICs?
+  periodic:              1     # Are we running with periodic ICs?
   shift:        [0.0,0.0,0.0]
 
 # Parameters governing the snapshots
 Snapshots:
-  subdir: snap
+  subdir:     snap
   basename:   snapshot         # Common part of the name of output files
   time_first: 0.0              # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 1.001            # Time difference between consecutive outputs (in internal units)
@@ -26,7 +26,7 @@ Statistics:
 
 Scheduler:
   cell_extra_gparts: 1000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks:  0         # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:   0        # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sparts: 1000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 3       # (Optional) Maximal number of top-level cells in any dimension.
 
@@ -34,7 +34,7 @@ Scheduler:
 Cosmology:
   h:              0.673        # Reduced Hubble constant
   a_begin:        0.1          # Initial scale-factor of the simulation
-  a_end:          0.8          # Final scale factor of the simulation
+  a_end:          0.1027336    # Final scale factor of the simulation
   Omega_cdm:      0.2664       # Matter density parameter
   Omega_lambda:   0.685        # Dark-energy density parameter
   Omega_b:        0.0486       # Baryon density parameter
@@ -83,9 +83,9 @@ GrackleCooling:
 
 GEARChemistry:
   initial_metallicity: -1
-  diffusion_coefficient : 0.0045       # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
+  diffusion_coefficient : 0.0045      # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
   diffusion_mode:  Smagorinsky        # Isotropic_constant  # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
-  hll_riemann_solver_epsilon: 0.1     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
+  hll_riemann_solver_epsilon: 0.0     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
   hll_riemann_solver_psi:  0.1        # (Optional, parabolic diffusion only) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hi2017. (Default: 0.1)
   C_CFL_chemistry: 0.4                # Courant-Friedrich-Levy condition for time integration of the supertimestep/hyperbolic diffusion.
   relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
@@ -100,12 +100,11 @@ GEARFeedback:
   imf_transition_metallicity: -5                    # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]      # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
-
 GEARStarFormation:
   star_formation_efficiency: 1e-1     # star formation efficiency (c_*)
   maximal_temperature_K:     1e3      # Upper limit to the temperature of a star forming particle
   density_threshold_Hpcm3:   10       # Density threshold in Hydrogen atoms/cm3
-  n_stars_per_particle: 4             # Number of star particles created per gas particle
+  n_stars_per_particle:      1        # Number of star particles created per gas particle
   min_mass_frac: 0.5                  # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
 
 GEARPressureFloor:
