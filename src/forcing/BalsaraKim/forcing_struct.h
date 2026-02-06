@@ -1,0 +1,13 @@
+#ifndef SWIFT_FORCING_BALSARAKIM_STRUCT_H
+#define SWIFT_FORCING_BALSARAKIM_STRUCT_H
+
+/**
+ * @brief Properties of the forcing stored in the extended particle data.
+ */
+struct forcing_xpart_data {
+
+  /*! Cumulative energy injected by forcing */
+  float forcing_injected_energy;
+};
+
+#endif /* SWIFT_FORCING_BALSARAKIM_STRUCT_H */

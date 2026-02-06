@@ -233,11 +233,21 @@ __attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
     double time, const struct forcing_terms *terms,
-    const struct phys_const *phys_const, const struct part *p,
-    const struct xpart *xp) {
+    const struct space *s, const struct phys_const *phys_const, 
+    const struct part *p, const struct xpart *xp) {
 
   return FLT_MAX;
 }
+
+/**  
+ * @brief updates the forcing terms
+ *
+ * Nothing to do here 
+ * 
+ * @param terms The #forcing_terms properties of the run
+ * @param time_old The previous system time
+ */
+INLINE static void forcing_update(struct forcing_terms *terms, const double time_old) {};
 
 /**
  * @brief Prints the properties of the forcing terms to stdout.
