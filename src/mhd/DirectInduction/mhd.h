@@ -248,7 +248,8 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 }
 
 /**
- * @brief Adapts signal velocity to change in drifted physical internal energy of a particle at feedback events
+ * @brief Adapts signal velocity to change in drifted physical internal energy
+ * of a particle at feedback events
  *
  * @param p The particle of interest.
  */
@@ -271,20 +272,19 @@ mhd_set_drifted_physical_internal_energy(struct part *p) {
  */
 __attribute__((always_inline)) INLINE static void
 mhd_set_v_sig_based_on_velocity_kick(struct part *p,
-                                       const struct cosmology *cosmo,
-                                       const float dv_phys) {
+                                     const struct cosmology *cosmo,
+                                     const float dv_phys) {
 
   /* Compute the velocity kick in comoving coordinates */
   const float dv = dv_phys / cosmo->a_factor_sound_speed;
 
   /* Fast magnetosonic speed */
   const float cms = mhd_get_comoving_magnetosonic_speed(p);
-  
+
   /* Update the signal velocity */
   p->viscosity.v_sig =
       fmaxf(2.f * cms, p->viscosity.v_sig + const_viscosity_beta * dv);
 }
-
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -389,16 +389,19 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   }
 
   const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
-    
+
   /* Finalise local plasma beta mean square calculation */
   const float Pmag_inv = B2 ? 2.0f * mu_0 / B2 : FLT_MAX;
   const float plasma_beta = P * Pmag_inv;
 
   p->mhd_data.neighbour_number += 1.0f;
-  p->mhd_data.plasma_beta_rms += plasma_beta * plasma_beta; 
+  p->mhd_data.plasma_beta_rms += plasma_beta * plasma_beta;
 
-  p->mhd_data.plasma_beta_rms = sqrtf(p->mhd_data.plasma_beta_rms / p->mhd_data.neighbour_number); /* Divisor guaranteed to be strictly positive */ 
-  
+  p->mhd_data.plasma_beta_rms = sqrtf(
+      p->mhd_data.plasma_beta_rms /
+      p->mhd_data
+          .neighbour_number); /* Divisor guaranteed to be strictly positive */
+
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
 

@@ -120,9 +120,11 @@
 #else
 
 #define IACT_NONSYM_MHD(x1, x2, x3, x4, x5, x6, x7, x8, x9) \
-  {}
+  {                                                         \
+  }
 #define IACT_MHD(x1, x2, x3, x4, x5, x6, x7, x8, x9) \
-  {}
+  {                                                  \
+  }
 #endif
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT) || \
