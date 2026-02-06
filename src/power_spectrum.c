@@ -38,6 +38,7 @@
 /* Local includes. */
 #include "cooling.h"
 #include "engine.h"
+#include "mhd.h"
 #include "minmax.h"
 #include "neutrino.h"
 #include "random.h"

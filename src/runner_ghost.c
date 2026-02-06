@@ -1027,6 +1027,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
 
   TIMER_TIC;
 
@@ -1049,7 +1050,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Finish the gradient calculation */
-        hydro_end_gradient(p);
+        hydro_end_gradient(p, cosmo, pressure_floor);
         chemistry_end_gradient(p, e->chemistry);
         mhd_end_gradient(p, mu_0);
 
