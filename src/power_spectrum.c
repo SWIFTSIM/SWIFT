@@ -288,8 +288,8 @@ void shotnoiseterms(const struct cell *c, double *tot12,
       /* Skip non-gas particles */
       if (gparts[i].type != swift_type_gas) continue;
 
-      const struct part* p = &parts[-gparts[i].id_or_neg_offset];
-      const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+      const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity1 = mhd_get_magnetic_energy(
           p, xp, phys_const->const_vacuum_permeability, cosmo->a);
 
@@ -337,8 +337,8 @@ void shotnoiseterms(const struct cell *c, double *tot12,
         /* Skip non-gas particles */
         if (gparts[i].type != swift_type_gas) continue;
 
-        const struct part* p = &parts[-gparts[i].id_or_neg_offset];
-        const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
         quantity2 = mhd_get_magnetic_energy(
             p, xp, phys_const->const_vacuum_permeability, cosmo->a);
 
@@ -659,8 +659,8 @@ void cell_to_powgrid(const struct cell *c, double *rho, const int N,
       /* Skip non-gas particles */
       if (gparts[i].type != swift_type_gas) continue;
 
-      const struct part* p = &parts[-gparts[i].id_or_neg_offset];
-      const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+      const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity = mhd_get_magnetic_energy(
           p, xp, phys_const->const_vacuum_permeability, cosmo->a);
 
@@ -1220,7 +1220,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       const double volfac = (volume / Ngrid3) / Ngrid3;
       sprintf(outputfileName, "%s/%s_%04d_%d.txt", "power_spectra/foldings",
               outputfileBase, snapnum, i);
-      FILE* outputfile = fopen(outputfileName, "w");
+      FILE *outputfile = fopen(outputfileName, "w");
 
       // TODO MATTHIEU: Work units for magnetic energy
 

@@ -73,7 +73,7 @@ static INLINE void mhd_print(const struct mhd_global_data *mhd) {}
  * @param mhd_data: pointer to the mhd_global_data struct.
  **/
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
-                                      const struct mhd_global_data* mhd_data) {}
+                                      const struct mhd_global_data *mhd_data) {}
 #endif
 
 #endif /* SWIFT_NONE_MHD_PARAMETERS_H */

@@ -168,9 +168,9 @@ INLINE static void convert_part_softening(const struct engine *e,
     ret[0] = 0.f;
 }
 
-INLINE static void convert_viscosity(const struct engine* e,
-                                     const struct part* p,
-                                     const struct xpart* xp, float* ret) {
+INLINE static void convert_viscosity(const struct engine *e,
+                                     const struct part *p,
+                                     const struct xpart *xp, float *ret) {
   ret[0] = p->viscosity.alpha;
 }
 
