@@ -238,8 +238,14 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e) {
     }
 #endif
 
-    zoom_engine_make_hierarchical_void_tasks_recursive(e,
-                                                       &cells[void_cells[i]]);
+    /* Get the void cell. */
+    struct cell *c = &cells[void_cells[i]];
+
+    /* Skip "non-useful" void cells that do not contain any zoom cells.
+     * We don't want, nor need, tasks for these. */
+    if (c->contains_zoom_cells == 0) continue;
+
+    zoom_engine_make_hierarchical_void_tasks_recursive(e, c);
   }
 
   if (e->verbose)
