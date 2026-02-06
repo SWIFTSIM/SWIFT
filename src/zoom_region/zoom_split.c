@@ -98,6 +98,13 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
 
     /* Flag this void cell "progeny" as the cell's void cell parent. */
     zoom_cell->void_parent = c;
+
+    /* Flag all void cell parents as containing zoom cells. */
+    struct cell *parent = c;
+    while (parent != NULL) {
+      parent->contains_zoom_cells = 1;
+      parent = parent->void_parent;
+    }
   }
 }
 
@@ -323,34 +330,17 @@ void zoom_void_space_split(struct space *s, int verbose) {
    * a handful of cells so no threadpool. */
 
   /* Loop over the void cells */
+  int nr_useful_voids = 0;
   for (int ind = 0; ind < nr_void_cells; ind++) {
     struct cell *c = &cells_top[void_cell_indices[ind]];
-    zoom_void_split_recursive(s, c, /*tpid*/ 0);
 
     /* Reset the contains zoom cells flag, we're about to recompute it. */
     c->contains_zoom_cells = 0;
-  }
 
-  /* Flag which void cells are useful (i.e. contain zoom cells) by looping
-   * over zoom cells. */
-  int nr_useful_voids = 0;
-  for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
-    struct cell *zoom_cell = &cells_top[cid];
+    zoom_void_split_recursive(s, c, /*tpid*/ 0);
 
-    /* Get the void parent. */
-    struct cell *void_parent = zoom_cell->void_parent;
-
-    /* Skip if we don't have a void parent (empty zoom cell). */
-    if (void_parent == NULL) continue;
-
-    /* Get the top level void cell. */
-    struct cell *top = void_parent->top;
-
-    /* Flag that this void cell contains zoom cells. */
-    if (!top->contains_zoom_cells) {
-      nr_useful_voids++;
-      top->contains_zoom_cells = 1;
-    }
+    /* Count useful void cells. */
+    if (c->contains_zoom_cells) nr_useful_voids++;
   }
 
   if (verbose) {
