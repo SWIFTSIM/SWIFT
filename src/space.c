@@ -558,6 +558,21 @@ void space_free_buff_sort_indices(struct space *s) {
 }
 
 /**
+ * @brief Free the sort arrays and grid arrays for all local
+ * and foreign cells.
+ *
+ * @brief s The #space.
+ */
+void space_free_sort_indices(struct space *s) {
+
+  for (int i = 0; i < s->nr_local_cells_with_tasks; ++i) {
+
+    struct cell *c = &s->cells_top[s->local_cells_with_tasks_top[i]];
+    cell_clean(c);
+  }
+}
+
+/**
  * @brief Construct the list of top-level cells that have any tasks in
  * their hierarchy on this MPI rank. Also construct the list of top-level
  * cells on any rank that have > 0 particles (of any kind).
@@ -1237,7 +1252,11 @@ void space_init(struct space *s, struct swift_params *params,
   int maxtcells =
       parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                space_max_top_level_cells_default);
-  s->cell_min = 0.99 * dmax / maxtcells;
+  /* We're at risk of rounding errors if tol ~ 1 - 1/maxtcells. */
+  /* Make sure it's (much) closer to 1.0 than this. */
+  /* But also ensure it's not so small that we round in the other direction */
+  const float tol = max(1.0 - 1.0 / (maxtcells * maxtcells), 0.99);
+  s->cell_min = tol * dmax / maxtcells;
 
   /* Check that it is big enough. */
   const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);

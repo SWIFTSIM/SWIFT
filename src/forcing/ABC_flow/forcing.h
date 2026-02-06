@@ -52,7 +52,7 @@ struct forcing_terms {
 };
 
 /**
- * @brief Computes the forcing terms.
+ * @brief Computes the hydrodynamic forcing terms.
  *
  * Based on David Galloway (2012) ABC flows then and now, Geophysical &
  * Astrophysical Fluid Dynamics, 106:4-5, 450-467 This version differs from the
@@ -65,9 +65,9 @@ struct forcing_terms {
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-__attribute__((always_inline)) INLINE static void forcing_terms_apply(
-    const double time, const struct forcing_terms* terms, const struct space* s,
-    const struct phys_const* phys_const, struct part* p, struct xpart* xp) {
+__attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
+    const double time, const struct forcing_terms *terms, const struct space *s,
+    const struct phys_const *phys_const, struct part *p, struct xpart *xp) {
 
   const double L = s->dim[0];
   const float u0 = terms->u0;
@@ -93,6 +93,62 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
 }
 
 /**
+ * @brief Computes the gravitational forcing terms.
+ *
+ * We do nothing in this 'none' scheme.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param gp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
+    const long long id, const struct forcing_terms *terms, struct gpart *gp) {
+  /* Nothing to do here */
+}
+
+/**
+ * @brief Sets the forcing of gparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param gp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_gpart_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct gpart *gp) {}
+
+/**
+ * @brief Sets the forcing of parts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_part_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct part *p,
+    struct xpart *xp) {}
+
+/**
+ * @brief Sets the forcing of sparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_spart_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct spart *sp) {}
+
+/**
+ * @brief Sets the forcing of bparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param bp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct bpart *bp) {}
+
+/**
  * @brief Computes the time-step condition due to the forcing terms.
  *
  * Nothing to do here. --> Return FLT_MAX.
@@ -104,9 +160,9 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
-    double time, const struct forcing_terms* terms,
-    const struct phys_const* phys_const, const struct part* p,
-    const struct xpart* xp) {
+    double time, const struct forcing_terms *terms,
+    const struct phys_const *phys_const, const struct part *p,
+    const struct xpart *xp) {
 
   return FLT_MAX;
 }
@@ -116,7 +172,7 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  *
  * @param terms The #forcing_terms properties of the run.
  */
-static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
+static INLINE void forcing_terms_print(const struct forcing_terms *terms) {
 
   message("Forcing terms is 'ABC flow'. U0: %.5f / Vz factor: %.5f.", terms->u0,
           terms->Vz_factor);
@@ -133,11 +189,11 @@ static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
  * @param s The #space object.
  * @param terms The forcing term properties to initialize
  */
-static INLINE void forcing_terms_init(struct swift_params* parameter_file,
-                                      const struct phys_const* phys_const,
-                                      const struct unit_system* us,
-                                      const struct space* s,
-                                      struct forcing_terms* terms) {
+static INLINE void forcing_terms_init(struct swift_params *parameter_file,
+                                      const struct phys_const *phys_const,
+                                      const struct unit_system *us,
+                                      const struct space *s,
+                                      struct forcing_terms *terms) {
 
   terms->u0 = parser_get_param_double(parameter_file, "ABC_Flow_Forcing:u0");
   terms->Vz_factor = parser_get_opt_param_float(

@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "SWIFT Onboarding Guide"
-copyright = "2023, SWIFT Collaboration"
+copyright = "2026, SWIFT Collaboration"
 author = "SWIFT Collaboration"
 
 # The full version, including alpha/beta/rc tags

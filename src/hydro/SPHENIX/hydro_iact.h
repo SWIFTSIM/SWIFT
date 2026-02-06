@@ -53,6 +53,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float a, const float H) {
 
   float wi, wj, wi_dx, wj_dx;
+  float dv[3], curlvr[3];
 
   const float r = sqrtf(r2);
 

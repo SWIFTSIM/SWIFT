@@ -39,11 +39,11 @@
  * @param hydro_props The properties of the hydro scheme.
  * @param cooling The cooling properties to initialize
  */
-void cooling_init(struct swift_params* parameter_file,
-                  const struct unit_system* us,
-                  const struct phys_const* phys_const,
-                  const struct hydro_props* hydro_props,
-                  struct cooling_function_data* cooling) {
+void cooling_init(struct swift_params *parameter_file,
+                  const struct unit_system *us,
+                  const struct phys_const *phys_const,
+                  const struct hydro_props *hydro_props,
+                  struct cooling_function_data *cooling) {
 
   /* Verify that we are not doing something stupid here */
   if (hydro_props->minimal_temperature <= 0.)
@@ -61,7 +61,7 @@ void cooling_init(struct swift_params* parameter_file,
  *
  * @param cooling The properties of the cooling function.
  */
-void cooling_print(const struct cooling_function_data* cooling) {
+void cooling_print(const struct cooling_function_data *cooling) {
 
   cooling_print_backend(cooling);
 }

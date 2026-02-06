@@ -38,14 +38,14 @@
  */
 __attribute__((always_inline)) INLINE static void cooling_write_flavour(
     hid_t h_grp, hid_t h_grp_columns,
-    const struct cooling_function_data* cooling) {
+    const struct cooling_function_data *cooling) {
 
   io_write_attribute_s(h_grp, "Cooling Model", "EAGLE");
 }
 #endif
 
-INLINE static void convert_part_T(const struct engine* e, const struct part* p,
-                                  const struct xpart* xp, float* ret) {
+INLINE static void convert_part_T(const struct engine *e, const struct part *p,
+                                  const struct xpart *xp, float *ret) {
 
   ret[0] = cooling_get_temperature(e->physical_constants, e->hydro_properties,
                                    e->internal_units, e->cosmology,
@@ -62,8 +62,8 @@ INLINE static void convert_part_T(const struct engine* e, const struct part* p,
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
-    const struct part* parts, const struct xpart* xparts,
-    struct io_props* list) {
+    const struct part *parts, const struct xpart *xparts,
+    struct io_props *list) {
 
   list[0] = io_make_output_field_convert_part(
       "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,

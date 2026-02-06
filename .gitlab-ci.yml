@@ -1,0 +1,122 @@
+#  Gitlab pipeline for SWIFT, defines the various jobs that could be ran by a
+#  suitably registered gitlab-runner instance.
+#
+#  Should only run on non-draft merge requests or pushes to the master branch,
+#  either directly or from a merge request. Some of this logic is repeated in
+#  the jobs.
+#
+#  Peter W. Draper 20-JAN-2026.
+
+#  Keep to the smaller job on MR branches and activate for all pushes to the
+#  master branch. Don't do anything on draft MRs.
+workflow:
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "merge_request_event" &&
+        $CI_MERGE_REQUEST_DRAFT == "true"
+      when: never
+
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - when: never
+
+#  We just build, that is a job is lots of compilations and tests.  Those
+#  could be separated but tests would need to keep artefacts to preserve
+#  context with the compilations, and we have a lot of builds based on
+#  configure options, so each would need to be handled. That would be
+#  inefficient as the artefacts are uploaded to the gitlab and then
+#  retrieved.
+
+stages: 
+   - build
+   - runtime
+
+variables:
+  GIT_STRATEGY: clone
+  GIT_SUBMODULE_STRATEGY: none
+
+#  JOBS.
+#  -----
+
+#  Full GCC toolchain on COSMA:
+gnu-build-cosma:
+  stage: build
+  tags: 
+    - cosma
+  #  When MR to master happens, or commit is to master.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "push" &&
+        $CI_COMMIT_BRANCH == "master"
+  timeout: 6h
+  script:
+    - echo "GNU toolchain compilation and unit tests (full)"
+    - ci/COSMA/swift-gnu-check.sh
+    - echo "complete."
+
+#  Full Intel toolchain on COSMA:
+intel-build-cosma:
+  stage: build
+  tags: 
+    - cosma
+  #  When MR to master happens, or commit is to master.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "push" &&
+        $CI_COMMIT_BRANCH == "master"
+  timeout: 6h
+  script:
+    - echo "Intel OneAPI toolchain compilation and unit tests (full)"
+    - ci/COSMA/swift-intel-check.sh
+    - echo "complete."
+
+#  Small runtime checks.
+runtime-check-cosma:
+  stage: runtime
+  tags: 
+    - cosma
+  #  When MR to master happens, or commit is to master.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "push" &&
+        $CI_COMMIT_BRANCH == "master"
+  timeout: 6h
+  script:
+    - echo "Runtime checks"
+    - ci/COSMA/swift-runtime-check.sh
+    - echo "complete."
+
+#  Small test for MRs only. Some like to push a lot...
+swift-intel-build-mr:
+  stage: build
+  tags: 
+    - cosma
+  #  When this commit is part of an active MR.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "merge_request_event" &&
+        $CI_MERGE_REQUEST_DRAFT == "false"
+  timeout: 6h
+  script:
+    - echo "Merge request check using Intel toolchain"
+    - ci/COSMA/swift-intel-check-mr.sh
+    - echo "complete."
+
+#  Whatever toolchain is provided in the runner environment.
+#  Note this is not enabled by on the main repository, those
+#  jobs will only run on COSMA. Comment those out or change things
+#  to match your fork environment as needed.
+#gnu-build:
+#  stage: build
+#  tags: 
+#    - genericlinux
+#  #  When MR to master happens, or commit is to master.
+#  rules:
+#    - if: >
+#        $CI_PIPELINE_SOURCE == "push" &&
+#        $CI_COMMIT_BRANCH == "master"
+#  timeout: 6h
+#  script:
+#    - echo "Full compilation and unit tests"
+#    - ci/swift-gnu-check.sh
+#    - echo "complete."
