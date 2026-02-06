@@ -139,9 +139,6 @@ struct part {
     /*! Time differential of velocity divergence */
     float div_v_dt;
 
-    /*! Particle velocity curl. */
-    float rot_v[3];
-
     /*! Particle velocity divergence from previous step */
     float div_v_previous_step;
 
@@ -166,52 +163,59 @@ struct part {
 
   /* Store density/force specific stuff. */
 
-  //  union {
-  /**
-   * @brief Structure for the variables only used in the density loop over
-   * neighbours.
-   *
-   * Quantities in this sub-structure should only be accessed in the density
-   * loop over neighbours and the ghost task.
-   */
-  struct {
+  union {
+    /**
+     * @brief Structure for the variables only used in the density loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the density
+     * loop over neighbours and the ghost task.
+     */
+    struct {
 
-    /*! Neighbour number count. */
-    float wcount;
+      /*! Neighbour number count. */
+      float wcount;
 
-    /*! Derivative of the neighbour number with respect to h. */
-    float wcount_dh;
+      /*! Derivative of the neighbour number with respect to h. */
+      float wcount_dh;
 
-    /*! Derivative of density with respect to h */
-    float rho_dh;
+      /*! Derivative of density with respect to h */
+      float rho_dh;
 
-  } density;
+      /*! Particle velocity curl. */
+      float rot_v[3];
 
-  /**
-   * @brief Structure for the variables only used in the force loop over
-   * neighbours.
-   *
-   * Quantities in this sub-structure should only be accessed in the force
-   * loop over neighbours and the ghost, drift and kick tasks.
-   */
-  struct {
+    } density;
 
-    /*! "Grad h" term -- only partial in P-U */
-    float f;
+    /**
+     * @brief Structure for the variables only used in the force loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the force
+     * loop over neighbours and the ghost, drift and kick tasks.
+     */
+    struct {
 
-    /*! Particle pressure. */
-    float pressure;
+      /*! "Grad h" term -- only partial in P-U */
+      float f;
 
-    /*! Particle soundspeed. */
-    float soundspeed;
+      /*! Particle pressure. */
+      float pressure;
 
-    /*! Time derivative of smoothing length  */
-    float h_dt;
+      /*! Particle soundspeed. */
+      float soundspeed;
 
-    /*! Maximal alpha (viscosity) over neighbours */
-    float alpha_visc_max_ngb;
+      /*! Time derivative of smoothing length  */
+      float h_dt;
 
-  } force;
+      /*! Balsara switch */
+      float balsara;
+
+      /*! Maximal alpha (viscosity) over neighbours */
+      float alpha_visc_max_ngb;
+
+    } force;
+  };
 
   /*! Additional data used for adaptive softening */
   struct adaptive_softening_part_data adaptive_softening_data;
