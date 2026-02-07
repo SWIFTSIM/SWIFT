@@ -141,12 +141,15 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   double m_Zi = Ui[0] * mi / hydro_get_comoving_density(pi);
   double m_Zj = Uj[0] * mj / hydro_get_comoving_density(pj);
 
+  unsigned int dumb;
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-                                   /*callloc=*/1, /*element*/ metal, pi->id);
+                                   /*callloc=*/1, /*element*/ metal, pi->id,
+				   /*neg_counter*/ &dumb);
   chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-                                   /*callloc=*/1, /*element*/ metal, pj->id);
+                                   /*callloc=*/1, /*element*/ metal, pj->id,
+                                   &dumb);
 
-  /* Check that we have physical fluxes */
+  /* Check that we have meaningful fluxes */
   double flux_i[3] = {Ui[1], Ui[2], Ui[3]};
   double flux_j[3] = {Uj[1], Uj[2], Uj[3]};
   chemistry_check_unphysical_diffusion_flux(flux_i);
@@ -156,10 +159,46 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
      reconstruction and update the state vectors */
   if (m_Zi == m_Zi_not_extrapolated) {
     Ui[0] = m_Zi_not_extrapolated * hydro_get_comoving_density(pi) / mi;
+    flux_i[0] = chi->diffusion_flux[metal][0];
+    flux_i[1] = chi->diffusion_flux[metal][1];
+    flux_i[2] = chi->diffusion_flux[metal][2];
   }
   if (m_Zj == m_Zj_not_extrapolated) {
     Uj[0] = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
+    flux_j[0] = chj->diffusion_flux[metal][0];
+    flux_j[1] = chj->diffusion_flux[metal][1];
+    flux_j[2] = chj->diffusion_flux[metal][2];
   }
+
+  if (m_Zi_not_extrapolated < 0.0) {
+    Ui[0] = 0.0;
+    flux_i[0] = 0.0;
+    flux_i[1] = 0.0;
+    flux_i[2] = 0.0;
+  }
+
+  if (m_Zj_not_extrapolated < 0.0) {
+    Uj[0] = 0.0;
+    flux_j[0] = 0.0;
+    flux_j[1] = 0.0;
+    flux_j[2] = 0.0;
+  }
+
+  /* Something went wrong if we get this one! */
+  if (m_Zi_not_extrapolated > mi) {
+    Ui[0] = hydro_get_comoving_density(pi);
+    flux_i[0] = 0.0;
+    flux_i[1] = 0.0;
+    flux_i[2] = 0.0;
+  }
+  if (m_Zj_not_extrapolated > mj) {
+    Uj[0] = hydro_get_comoving_density(pj);
+    flux_j[0] = 0.0;
+    flux_j[1] = 0.0;
+    flux_j[2] = 0.0;
+  }
+
+  /* Now assign the fluxes */
   Ui[1] = flux_i[0];
   Ui[2] = flux_i[1];
   Ui[3] = flux_i[2];
