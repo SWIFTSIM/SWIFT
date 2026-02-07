@@ -767,7 +767,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Update other variables. */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-  get_sym_matrix_from_matrix(&p->force.c_matrix, c_matrix_temp);
+  get_sym_matrix_from_matrix(&p->force.c_matrix, (const float (*)[3]) c_matrix_temp);
 }
 
 /**

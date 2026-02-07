@@ -400,7 +400,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   p->mhd_data.divA = p->mhd_data.dens.Mat_b[0][0] + p->mhd_data.dens.Mat_b[1][1] +
                      p->mhd_data.dens.Mat_b[2][2];
 
-  get_sym_matrix_from_matrix(&p->mhd_data.grad.d_mat, d_mat_temp);
+  get_sym_matrix_from_matrix(&p->mhd_data.grad.d_mat, (const float (*)[3]) d_mat_temp);
 
 }
 
@@ -527,7 +527,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   p->mhd_data.divB = p->mhd_data.grad.Mat_b[0][0] + p->mhd_data.grad.Mat_b[1][1] +
                      p->mhd_data.grad.Mat_b[2][2];
 
-  get_sym_matrix_from_matrix(&p->mhd_data.force.c_mat, c_mat_temp);
+  get_sym_matrix_from_matrix(&p->mhd_data.force.c_mat, (const float (*)[3]) c_mat_temp);
 }
 
 /**
