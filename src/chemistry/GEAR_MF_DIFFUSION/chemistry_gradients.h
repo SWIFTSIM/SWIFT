@@ -175,9 +175,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     /**** Flux gradients ****/
-    const double dflux[3] = {chi->diffusion_flux[g][0] - chj->diffusion_flux[g][0],
-                             chi->diffusion_flux[g][1] - chj->diffusion_flux[g][1],
-                             chi->diffusion_flux[g][2] - chj->diffusion_flux[g][2]};
+    const double dflux[3] = {
+        chi->diffusion_flux[g][0] - chj->diffusion_flux[g][0],
+        chi->diffusion_flux[g][1] - chj->diffusion_flux[g][1],
+        chi->diffusion_flux[g][2] - chj->diffusion_flux[g][2]};
 
     /* Do the gradients of pi */
     double dFx_i[3], dFy_i[3], dFz_i[3];
@@ -372,9 +373,10 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     /**** Flux gradients ****/
-    const double dflux[3] = {chi->diffusion_flux[g][0] - chj->diffusion_flux[g][0],
-                             chi->diffusion_flux[g][1] - chj->diffusion_flux[g][1],
-                             chi->diffusion_flux[g][2] - chj->diffusion_flux[g][2]};
+    const double dflux[3] = {
+        chi->diffusion_flux[g][0] - chj->diffusion_flux[g][0],
+        chi->diffusion_flux[g][1] - chj->diffusion_flux[g][1],
+        chi->diffusion_flux[g][2] - chj->diffusion_flux[g][2]};
 
     /* Do the gradients of pi */
     double dFx_i[3], dFy_i[3], dFz_i[3];

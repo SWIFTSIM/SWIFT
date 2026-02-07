@@ -19,10 +19,10 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UNPHYSICAL_H
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UNPHYSICAL_H
 
+#include "chemistry_properties.h"
 #include "error.h"
 #include "inline.h"
 #include "part.h"
-#include "chemistry_properties.h"
 
 /**
  * @file src/chemistry/GEAR/chemistry_unphysical.h
@@ -66,11 +66,13 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = (Z_old >= 0.0) ? mZ_old : 0.0;
     } else {
-      if (callloc == 2 && *negativity_counter >= GEAR_FVPM_DIFFUSION_NEGATIVITY_COUNTER_PRINT_LIMIT) {
-	/* Be verbose */
-	warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %u", id,
-		element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
-		Z_old, *negativity_counter);
+      if (callloc == 2 &&
+          *negativity_counter >=
+              GEAR_FVPM_DIFFUSION_NEGATIVITY_COUNTER_PRINT_LIMIT) {
+        /* Be verbose */
+        warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %u",
+                id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
+                Z_old, *negativity_counter);
       }
       if (callloc == 2) {
         (*negativity_counter)++;
@@ -85,12 +87,12 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
         *metal_mass = mZ_old;
       } else {
         /* Something went very wrong somewhere! Set the metal mass to the
-	 * the particle's mass */
-	*metal_mass = gas_mass;
+         * the particle's mass */
+        *metal_mass = gas_mass;
       }
     } else {
       /* DO NOT do this unless strictly necessary. This breaks metal mass
-	 conservation */
+         conservation */
       /* *metal_mass /= 1.1 * mZ_old / gas_mass; */
       warning(
           "[%lld, %d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",

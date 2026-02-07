@@ -1861,7 +1861,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
- 
+
         const float hj = pj->h;
 
         /* Get the position of pj in the right frame */

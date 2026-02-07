@@ -475,7 +475,8 @@ runner_iact_chemistry_fluxes_common(
        that will ensure masses are not negative and if so, it we set them to be
        positive. Then, we have metal mass creation. If this correction happen
        a lot, we will create a lot of metal mass. */
-    chemistry_limit_metal_mass_flux(pi, pj, m, totflux, mindt, interaction_mode);
+    chemistry_limit_metal_mass_flux(pi, pj, m, totflux, mindt,
+                                    interaction_mode);
 
     /* Update V*U ****************************************/
     /* When solving the Riemann problem, we assume pi is left state, and
@@ -551,7 +552,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data) {
 
-#if !defined (GEAR_FVPM_DIFFUSION_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
+#if !defined(GEAR_FVPM_DIFFUSION_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
   runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
                                       0);
 #else

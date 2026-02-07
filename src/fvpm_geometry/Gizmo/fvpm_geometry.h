@@ -203,11 +203,10 @@ fvpm_compute_volume_and_matrix(struct part *restrict p, const float ihdim) {
  * @param hj Comoving smoothing-length of particle j.
  * @param (return) A The face area between i and j.
  */
-__attribute__((always_inline)) INLINE static void
-fvpm_compute_face_area_vector(const struct part *pi, const struct part *pj,
-				 float Bi[3][3], float Bj[3][3], const float r2,
-				 const float dx[3], const float hi,
-				 const float hj, float A[3]) {
+__attribute__((always_inline)) INLINE static void fvpm_compute_face_area_vector(
+    const struct part *pi, const struct part *pj, float Bi[3][3],
+    float Bj[3][3], const float r2, const float dx[3], const float hi,
+    const float hj, float A[3]) {
 
   /* Get some useful quantities */
   const float r = sqrtf(r2);
@@ -249,16 +248,16 @@ fvpm_compute_face_area_vector(const struct part *pi, const struct part *pj,
     for (int k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
       A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
-		 wi * hi_inv_dim -
-	     Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
-		 wj * hj_inv_dim;
+                 wi * hi_inv_dim -
+             Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
+                 wj * hj_inv_dim;
     }
   } else {
     /* ill condition gradient matrix: revert to SPH face area */
     const float hidp1 = pow_dimension_plus_one(hi_inv);
     const float hjdp1 = pow_dimension_plus_one(hj_inv);
     const float Anorm =
-	-(hidp1 * Vi * Vi * wi_dx + hjdp1 * Vj * Vj * wj_dx) * r_inv;
+        -(hidp1 * Vi * Vi * wi_dx + hjdp1 * Vj * Vj * wj_dx) * r_inv;
     A[0] = -Anorm * dx[0];
     A[1] = -Anorm * dx[1];
     A[2] = -Anorm * dx[2];
@@ -279,10 +278,10 @@ fvpm_compute_face_area_vector(const struct part *pi, const struct part *pj,
  */
 __attribute__((always_inline)) INLINE static void
 fvpm_accumulate_total_face_area_vector_and_norm(struct part *pi,
-						struct part *pj, const float r2,
-						const float dx[3],
-						const float hi, const float hj,
-						const int interaction_mode) {
+                                                struct part *pj, const float r2,
+                                                const float dx[3],
+                                                const float hi, const float hj,
+                                                const int interaction_mode) {
 
   /* Initialize local variables */
   float Bi[3][3];
@@ -331,9 +330,11 @@ fvpm_check_total_face_area_vector_sum(const struct part *p) {
   if (p->geometry.area_sum[0] > threshold ||
       p->geometry.area_sum[1] > threshold ||
       p->geometry.area_sum[2] > threshold) {
-    warning("[%lld] Sum A_ij strongly deviating from 0! A_tot = %e, Sum_j A_ij = ( %e %e %e ).", p->id,
-	    p->geometry.area, p->geometry.area_sum[0], p->geometry.area_sum[1],
-	    p->geometry.area_sum[2]);
+    warning(
+        "[%lld] Sum A_ij strongly deviating from 0! A_tot = %e, Sum_j A_ij = ( "
+        "%e %e %e ).",
+        p->id, p->geometry.area, p->geometry.area_sum[0],
+        p->geometry.area_sum[1], p->geometry.area_sum[2]);
   }
 }
 

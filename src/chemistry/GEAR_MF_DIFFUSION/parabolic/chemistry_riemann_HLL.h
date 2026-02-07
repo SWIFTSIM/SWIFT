@@ -226,12 +226,12 @@ chemistry_riemann_solver_hopkins2017_HLL(
   if (chem_data->diffusion_mode == anisotropic_gradient) {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-	F_dir_left_side[i] -= K_star[i][j] * grad_q_dir[j];
+        F_dir_left_side[i] -= K_star[i][j] * grad_q_dir[j];
       }
     }
   } else {
     const double kappa_mean =
-	0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+        0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
     F_dir_left_side[0] = -kappa_mean * grad_q_dir[0];
     F_dir_left_side[1] = -kappa_mean * grad_q_dir[1];
     F_dir_left_side[2] = -kappa_mean * grad_q_dir[2];

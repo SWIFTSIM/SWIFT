@@ -118,7 +118,7 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
 
   /* Limit mass exchange to not overshoot too much. Smooth Rational Limiter :
      It behaves like a hard cut at 0.5 * mass, but follows a curve:
-		     factor = 1 / (1 + |flux_mass| / source_mass) */
+                     factor = 1 / (1 + |flux_mass| / source_mass) */
   const double safety_scale = 0.5;
   const double x = fabs(metal_mass_interface) / (upwind_mass * safety_scale);
   const double factor = 1.0 / (1.0 + x);
@@ -130,10 +130,12 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
 
   if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 0 && factor < 1e-1) {
     message(
-	    "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
-	    " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e | mode = %d, i_active = %d, j_active = %d",
-	    pi->id, pj->id, flux_init*dt, fluxes[0]*dt, factor, mZi_0, mZj_0, upwind_mass,
-	    chi->metal_mass[metal], chj->metal_mass[metal], interaction_mode, pi_is_active, pj_is_active);
+        "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
+        " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e | mode "
+        "= %d, i_active = %d, j_active = %d",
+        pi->id, pj->id, flux_init * dt, fluxes[0] * dt, factor, mZi_0, mZj_0,
+        upwind_mass, chi->metal_mass[metal], chj->metal_mass[metal],
+        interaction_mode, pi_is_active, pj_is_active);
   }
 }
 

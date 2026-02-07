@@ -26,17 +26,17 @@
 #include <time.h>
 
 /* Local headers */
-#include "src/chemistry/GEAR_MF_DIFFUSION/chemistry_utils.h"
 #include "clocks.h"
 #include "error.h"
+#include "src/chemistry/GEAR_MF_DIFFUSION/chemistry_utils.h"
 
 /**
  * @brief Verification logic for a diagonalized matrix.
  * Checks Orthonormality (V^T V = I) and Eigenpair validity (Av = lambda v).
  */
 void verify_diagonalization(const double A[3][3], const double eigenvalues[3],
-			    const double ev0[3], const double ev1[3],
-			    const double ev2[3], const char* test_name) {
+                            const double ev0[3], const double ev1[3],
+                            const double ev2[3], const char *test_name) {
 
   const double tolerance = 1e-9;
   const double *vecs[3] = {ev0, ev1, ev2};
@@ -47,14 +47,16 @@ void verify_diagonalization(const double A[3][3], const double eigenvalues[3],
       double dot = chemistry_utils_dot_product(vecs[i], vecs[j]);
       double target = (i == j) ? 1.0 : 0.0;
       if (fabs(dot - target) > tolerance) {
-	error("[%s] Orthonormality failed: dot(ev%d, ev%d) = %.10e", test_name, i, j, dot);
+        error("[%s] Orthonormality failed: dot(ev%d, ev%d) = %.10e", test_name,
+              i, j, dot);
       }
     }
 
     /* 2. Check Reconstruction: A * v_i = lambda_i * v_i */
     double Avi[3];
     for (int row = 0; row < 3; row++) {
-      Avi[row] = A[row][0] * vecs[i][0] + A[row][1] * vecs[i][1] + A[row][2] * vecs[i][2];
+      Avi[row] = A[row][0] * vecs[i][0] + A[row][1] * vecs[i][1] +
+                 A[row][2] * vecs[i][2];
     }
 
     for (int row = 0; row < 3; row++) {
@@ -62,8 +64,8 @@ void verify_diagonalization(const double A[3][3], const double eigenvalues[3],
 
       /* Get the maximum scale of the matrix/eigenvalues */
       double max_val = 0.0;
-      for(int k=0; k<3; k++) {
-	for(int l=0; l<3; l++) max_val = max(max_val, fabs(A[k][l]));
+      for (int k = 0; k < 3; k++) {
+        for (int l = 0; l < 3; l++) max_val = max(max_val, fabs(A[k][l]));
       }
 
       /* Use a relative tolerance based on the matrix scale. This allows for
@@ -71,8 +73,8 @@ void verify_diagonalization(const double A[3][3], const double eigenvalues[3],
       double allowed_diff = tolerance * max(1.0, max_val) * 100.0;
 
       if (fabs(Avi[row] - lambda_vi) > allowed_diff) {
-	error("[%s] Eigenpair failed: i=%d, row=%d, diff=%e (allowed=%e)",
-	      test_name, i, row, Avi[row] - lambda_vi, allowed_diff);
+        error("[%s] Eigenpair failed: i=%d, row=%d, diff=%e (allowed=%e)",
+              test_name, i, row, Avi[row] - lambda_vi, allowed_diff);
       }
     }
   }
@@ -94,7 +96,8 @@ void setup_symmetric_matrix(double A[3][3]) {
 /**
  * @brief Print the solutions.
  */
-void print_solutions(const double evals[3], const double ev0[3], const double ev1[3], const double ev2[3]) {
+void print_solutions(const double evals[3], const double ev0[3],
+                     const double ev1[3], const double ev2[3]) {
   message(
       "Eignevalues: %e %e %e | Eigenvectors: ( %e %e %e ), ( %e %e %e ), ( %e "
       "%e %e )",
@@ -133,17 +136,22 @@ int main(int argc, char *argv[]) {
 
   /* Preconditioning Test (Large Numbers) */
   double large = 1e12;
-  double M_large[3][3] = {{large, 0.0, 0.0}, {0.0, large, 0.0}, {0.0, 0.0, large}};
+  double M_large[3][3] = {
+      {large, 0.0, 0.0}, {0.0, large, 0.0}, {0.0, 0.0, large}};
   chemistry_utils_diagonalize_3x3(M_large, evals, ev0, ev1, ev2);
   verify_diagonalization(M_large, evals, ev0, ev1, ev2, "Large Numbers 1");
   print_solutions(evals, ev0, ev1, ev2);
 
-  double M_large2[3][3] = {{3.0*large, -1.0*large, 0.0}, {-1.0*large, 3.0*large, 0.0}, {0.0, 0.0, 5.0*large}};
+  double M_large2[3][3] = {{3.0 * large, -1.0 * large, 0.0},
+                           {-1.0 * large, 3.0 * large, 0.0},
+                           {0.0, 0.0, 5.0 * large}};
   chemistry_utils_diagonalize_3x3(M_large2, evals, ev0, ev1, ev2);
   verify_diagonalization(M_large2, evals, ev0, ev1, ev2, "Large Numbers 2");
   print_solutions(evals, ev0, ev1, ev2);
 
-  double M_large3[3][3] = {{large, large*0.2, 0.0}, {large*0.2, large*0.8, 0.0}, {0.0, 0.0, large*0.5}};
+  double M_large3[3][3] = {{large, large * 0.2, 0.0},
+                           {large * 0.2, large * 0.8, 0.0},
+                           {0.0, 0.0, large * 0.5}};
   chemistry_utils_diagonalize_3x3(M_large3, evals, ev0, ev1, ev2);
   verify_diagonalization(M_large3, evals, ev0, ev1, ev2, "Large Numbers 3");
   print_solutions(evals, ev0, ev1, ev2);
@@ -157,7 +165,8 @@ int main(int argc, char *argv[]) {
   /* --- Part 2: Advanced Edge Cases --- */
 
   /* Nearly Diagonal (tests the threshold of the 'norm > 0' check) */
-  double M_near_diag[3][3] = {{1.0, 1e-15, 0.0}, {1e-15, 2.0, 0.0}, {0.0, 0.0, 3.0}};
+  double M_near_diag[3][3] = {
+      {1.0, 1e-15, 0.0}, {1e-15, 2.0, 0.0}, {0.0, 0.0, 3.0}};
   chemistry_utils_diagonalize_3x3(M_near_diag, evals, ev0, ev1, ev2);
   verify_diagonalization(M_near_diag, evals, ev0, ev1, ev2, "Nearly Diagonal");
   print_solutions(evals, ev0, ev1, ev2);
@@ -167,14 +176,12 @@ int main(int argc, char *argv[]) {
      its high dynamic range, floating points errors are expected to slithly
      alter the solution. However, the verification takes this into account. */
   double L = 1e12;
-  double M_rotated[3][3] = {
-      { (L+1.0)*0.5, (L-1.0)*0.5, 0.0 },
-      { (L-1.0)*0.5, (L+1.0)*0.5, 0.0 },
-      { 0.0,         0.0,         L   }
-  };
+  double M_rotated[3][3] = {{(L + 1.0) * 0.5, (L - 1.0) * 0.5, 0.0},
+                            {(L - 1.0) * 0.5, (L + 1.0) * 0.5, 0.0},
+                            {0.0, 0.0, L}};
   chemistry_utils_diagonalize_3x3(M_rotated, evals, ev0, ev1, ev2);
   verify_diagonalization(M_rotated, evals, ev0, ev1, ev2,
-			 "Rotated High-Contrast");
+                         "Rotated High-Contrast");
   print_solutions(evals, ev0, ev1, ev2);
 
   /* The "Negative Eigenvalue" case */
@@ -187,14 +194,16 @@ int main(int argc, char *argv[]) {
   /* Filamentary Case: Eigenvalues (1e10, 1e10, 1e-5) */
   /* This tests if the solver can find a very small eigenvalue in the presence
    * of very large ones without losing the eigenvector direction. */
-  double M_planar[3][3] = {{1e10, 0.0, 0.0}, {0.0, 1e10, 0.0}, {0.0, 0.0, 1e-5}};
+  double M_planar[3][3] = {
+      {1e10, 0.0, 0.0}, {0.0, 1e10, 0.0}, {0.0, 0.0, 1e-5}};
   chemistry_utils_diagonalize_3x3(M_planar, evals, ev0, ev1, ev2);
   verify_diagonalization(M_planar, evals, ev0, ev1, ev2, "Planar/Filament");
   print_solutions(evals, ev0, ev1, ev2);
 
   /* Test with a matrix that is *almost symmetric but has 1 epsilon
    * difference. */
-  double M_nosym[3][3] = {{1.0, 0.2, 0.3}, {0.200000000000001, 1.0, 0.1}, {0.3, 0.1, 1.0}};
+  double M_nosym[3][3] = {
+      {1.0, 0.2, 0.3}, {0.200000000000001, 1.0, 0.1}, {0.3, 0.1, 1.0}};
   chemistry_utils_diagonalize_3x3(M_nosym, evals, ev0, ev1, ev2);
   verify_diagonalization(M_nosym, evals, ev0, ev1, ev2, "Near-Symmetry");
   print_solutions(evals, ev0, ev1, ev2);
@@ -214,9 +223,9 @@ int main(int argc, char *argv[]) {
     double scale = pow(10.0, ((double)rand() / (double)RAND_MAX) * 20.0 - 10.0);
     for (int i = 0; i < 3; i++) {
       for (int j = i; j < 3; j++) {
-	double val = (((double)rand() / (double)RAND_MAX) * 2.0 - 1.0) * scale;
-	A[i][j] = val;
-	A[j][i] = val;
+        double val = (((double)rand() / (double)RAND_MAX) * 2.0 - 1.0) * scale;
+        A[i][j] = val;
+        A[j][i] = val;
       }
     }
     chemistry_utils_diagonalize_3x3(A, evals, ev0, ev1, ev2);
@@ -232,7 +241,7 @@ int main(int argc, char *argv[]) {
   }
   ticks toc = getticks();
   message("Performance: 100k diagonalizations in %.3f ms",
-	  clocks_from_ticks(toc - tic) * 1000.0);
+          clocks_from_ticks(toc - tic) * 1000.0);
 
   message("All 101,000 random tests and specialized cases passed!");
   return 0;

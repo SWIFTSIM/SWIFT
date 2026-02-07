@@ -425,10 +425,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /* Check that the metal masses are physical */
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     const double m_metal_old = p->chemistry_data.metal_mass[m];
-    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[m],
-                                     m_metal_old, hydro_get_mass(p),
-                                     /*callloc=*/0, /*element*/ m, p->id,
-                                     &p->chemistry_data.check.negativity_counter[m]);
+    chemistry_check_unphysical_state(
+        &p->chemistry_data.metal_mass[m], m_metal_old, hydro_get_mass(p),
+        /*callloc=*/0, /*element*/ m, p->id,
+        &p->chemistry_data.check.negativity_counter[m]);
   }
   /* Sanity check on the total metal mass */
   chemistry_check_unphysical_total_metal_mass(p, 0);
@@ -508,10 +508,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     chd->diffused_metal_mass[i] += chemistry_get_metal_mass_fluxes(p, i);
 #endif
 
-    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-                                     hydro_get_mass(p), /*callloc=*/2,
-                                     /*element*/ i, p->id,
-                                     &chd->check.negativity_counter[i]);
+    chemistry_check_unphysical_state(
+        &chd->metal_mass[i], m_metal_old, hydro_get_mass(p), /*callloc=*/2,
+        /*element*/ i, p->id, &chd->check.negativity_counter[i]);
   }
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)

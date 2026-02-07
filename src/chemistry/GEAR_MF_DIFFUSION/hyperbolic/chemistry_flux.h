@@ -111,7 +111,8 @@ chemistry_part_integrate_flux_source_term(
   const double tau = chd->tau;
   const double exp_decay = exp(-dt / tau);
   const double one_minus_exp_decay = -expm1(-dt / tau);
-  const double flux_current[3] = {chd->diffusion_flux[metal][0], chd->diffusion_flux[metal][1],
+  const double flux_current[3] = {chd->diffusion_flux[metal][0],
+                                  chd->diffusion_flux[metal][1],
                                   chd->diffusion_flux[metal][2]};
   double flux_parabolic[3];
   chemistry_get_physical_parabolic_flux(p, metal, flux_parabolic, chem_data,

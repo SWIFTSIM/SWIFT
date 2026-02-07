@@ -82,7 +82,7 @@ chemistry_get_part_corrected_metal_mass(const struct part *restrict p,
 
   if (mZ >= m) {
     /* Reduce it */
-    mZ = 0.01*m;
+    mZ = 0.01 * m;
   }
   return mZ;
 }
@@ -117,7 +117,7 @@ chemistry_get_physical_shear_tensor(const struct part *restrict p,
 
   /* The trace encodes volume changes (compression and expansion). We do not
      consider these as turbulences. So we remove them. */
-  const double trace_3 = (S[0][0] + S[1][1] + S[2][2])/3.0;
+  const double trace_3 = (S[0][0] + S[1][1] + S[2][2]) / 3.0;
   S[0][0] -= trace_3;
   S[1][1] -= trace_3;
   S[2][2] -= trace_3;
@@ -140,18 +140,21 @@ chemistry_regularize_shear_tensor(double S[3][3]) {
   double eigenvalues[3] = {0.0};
   double ev0[3], ev1[3], ev2[3];
 
-  /* Compute the eigenvalues and eigenvectors. S is symmetric by construction. */
+  /* Compute the eigenvalues and eigenvectors. S is symmetric by construction.
+   */
   chemistry_utils_diagonalize_3x3(S, eigenvalues, ev0, ev1, ev2);
 
   /* Mapping to a 2D array for easier k-looping */
-  const double ev[3][3] = {
-      {ev0[0], ev1[0], ev2[0]},
-      {ev0[1], ev1[1], ev2[1]},
-      {ev0[2], ev1[2], ev2[2]}};
+  const double ev[3][3] = {{ev0[0], ev1[0], ev2[0]},
+                           {ev0[1], ev1[1], ev2[1]},
+                           {ev0[2], ev1[2], ev2[2]}};
 
   /* Reset S to act as accumulator */
-  S[0][0] = 0.0; S[0][1] = 0.0; S[0][2] = 0.0;
-  S[1][1] = 0.0; S[1][2] = 0.0;
+  S[0][0] = 0.0;
+  S[0][1] = 0.0;
+  S[0][2] = 0.0;
+  S[1][1] = 0.0;
+  S[1][2] = 0.0;
   S[2][2] = 0.0;
 
   /* Compute S_plus as the sum of max(0, lambda^(k)) * e_i^(k) * e_j^(k) */
@@ -409,7 +412,7 @@ chemistry_get_total_metal_mass_fraction(const struct part *restrict p) {
 
   /* If this really happens, reduce the mass. */
   if (m_Z_tot > m) {
-    m_Z_tot = 0.9*m;
+    m_Z_tot = 0.9 * m;
   }
 
   return m_Z_tot / m;

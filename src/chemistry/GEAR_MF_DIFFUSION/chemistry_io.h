@@ -59,8 +59,8 @@ INLINE static void convert_gas_metals(const struct engine *e,
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Add the mass exchanged in the Riemann solver to write updated metal
        masses */
-    double mZi = p->chemistry_data.metal_mass[i] +
-                 p->chemistry_data.flux.metal_mass[i];
+    double mZi =
+        p->chemistry_data.metal_mass[i] + p->chemistry_data.flux.metal_mass[i];
     double Zi = mZi / hydro_get_mass(p);
     ret[i] = Zi;
     m_Z += mZi;

@@ -43,7 +43,9 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
   const float psize = cosmo->a * 0.5f / p->chemistry_data.timestepvars.delxbar;
 #else
   /* Gizmo's particle size definition */
-  const float psize = cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere, hydro_dimension_inv);
+  const float psize =
+      cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                      hydro_dimension_inv);
 #endif
 
   const float delta_x = psize;
