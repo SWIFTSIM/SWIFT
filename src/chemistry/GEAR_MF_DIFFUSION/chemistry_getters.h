@@ -20,12 +20,12 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H
 
 #include "chemistry_struct.h"
-#include "chemistry_utils.h"
 #include "const.h"
 #include "cosmology.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "symmetric_matrix_diagonalisation.h"
 
 /**
  * @brief Get metal mass fraction from a specific metal specie.
@@ -142,7 +142,7 @@ chemistry_regularize_shear_tensor(double S[3][3]) {
 
   /* Compute the eigenvalues and eigenvectors. S is symmetric by construction.
    */
-  chemistry_utils_diagonalize_3x3(S, eigenvalues, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(S, eigenvalues, ev0, ev1, ev2);
 
   /* Mapping to a 2D array for easier k-looping */
   const double ev[3][3] = {{ev0[0], ev1[0], ev2[0]},

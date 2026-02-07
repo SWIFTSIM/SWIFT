@@ -19,7 +19,6 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_GETTERS_H
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_GETTERS_H
 
-#include "../chemistry_utils.h"
 #include "chemistry_struct.h"
 #include "const.h"
 #include "cosmology.h"

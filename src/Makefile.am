@@ -224,6 +224,7 @@ AM_SOURCES += swift_lustre_api.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h
+nobase_noinst_HEADERS += symmetric_matrix.h symmetric_matrix_diagonalisation.h
 nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h
 nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h
@@ -456,8 +457,6 @@ nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_setters.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_face.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_cell.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_unphysical.h
-nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_utils.h
-
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_gradients_extrapolate.h
 
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/parabolic/chemistry_struct.h
