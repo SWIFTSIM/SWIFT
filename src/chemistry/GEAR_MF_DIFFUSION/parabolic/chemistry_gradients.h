@@ -151,10 +151,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* Something went wrong if we get this one! */
   if (m_Zi_not_extrapolated > mi) {
-    Ui[0] = mi;
+    Ui[0] = hydro_get_comoving_density(pi);
   }
   if (m_Zj_not_extrapolated > mj) {
-    Uj[0] = mj;
+    Uj[0] = hydro_get_comoving_density(pj);
   }
 
   /* Convert Ui[0] and Uj[0] (metal density) to physical units */
