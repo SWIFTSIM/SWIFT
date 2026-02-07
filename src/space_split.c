@@ -435,6 +435,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
       c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
       c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+      c->grav.multipole->dx_max[0] = 0.f;
+      c->grav.multipole->dx_max[1] = 0.f;
+      c->grav.multipole->dx_max[2] = 0.f;
 
       /* Compute the multipole power */
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
@@ -776,7 +779,9 @@ void space_split(struct space *s, int verbose) {
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
 
-  if (verbose)
+  if (verbose) {
+    message("Max tree depth after split: %d", s->maxdepth);
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+  }
 }
