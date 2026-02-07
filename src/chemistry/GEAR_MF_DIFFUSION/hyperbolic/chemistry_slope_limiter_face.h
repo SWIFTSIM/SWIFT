@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
 __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_face_scalar(double *Ui, double *Uj, double *dUi,
                                   double *dUj, const float xij_i[3],
-                                  const float *xij_j, float r) {
+                                  const float xij_j[3], float r) {
 
   const float xij_i_norm =
       sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);

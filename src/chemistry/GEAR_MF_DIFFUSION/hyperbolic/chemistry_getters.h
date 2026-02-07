@@ -95,7 +95,7 @@ chemistry_compute_physical_tau(const struct part *restrict p,
 /**
  * @brief Get the comoving gradients of diffusion flux for a given metal specie.
  *
- * Note: Gradients are comoving;
+ * Note: Gradients are comoving.
  *
  * @param p Particle.
  * @param metal Index of metal specie.

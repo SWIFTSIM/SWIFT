@@ -27,18 +27,20 @@
  */
 struct chemistry_part_data {
 
-  /*! Total mass of element in a particle. This is the primitive variable *
-   * volume. */
+  /*! Total mass of element in a particle. This is the primitive variable
+   * multiplied by the  volume. */
   double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
 #ifdef HYDRO_DOES_MASS_FLUX
-  /* Note: This is only used by the MFV hydro scheme. */
-  /*! Mass fluxes of the metals in a given element */
+  /*! Mass fluxes of the metals in a given element
+   *  Note: This is only used by the MFV hydro scheme. */
   double metal_mass_fluxes[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
-  /*! Total metal mass diffused during the simulation for this particle */
+  /*! Total metal mass diffused during the simulation for this particle. This
+      is used for debugging to disantagle diffusion effects from feedback
+      enrichement. */
   double diffused_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
@@ -53,24 +55,23 @@ struct chemistry_part_data {
   } flux;
 
   struct {
-    /* Counts the successive number of times this particle was negative */
+    /*! Counts the successive number of times this particle was negative */
     unsigned int negativity_counter[GEAR_CHEMISTRY_ELEMENT_COUNT];
   } check;
 
   /*! Isotropic diffusion coefficient. The matrix K is proportional to kappa.
-   Note about units:
-   - For the isotropic constant case, the units are : U_L^2/U_T
-   - Smagorinsky/Gradient, units are : U_M/(U_L*U_T) */
+   * Note about units:
+   *    - For the isotropic constant case, the units are : U_L^2/U_T
+   *    - Smagorinsky/Gradient, units are : U_M/(U_L*U_T) */
   double kappa;
 
   /*! Density of the previous timestep. This is used to compute quantities in
      the density loop while hydro loops are updating rho. */
   float rho_prev;
 
-  /* Gradients. */
+  /*! Gradients. */
   struct {
-    /*! Metal mass fraction gradient. It is used to compute the diffusion flux.
-     */
+    /*! Metal mass fraction gradient. */
     double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
 
     /*! Metal density gradient. */
@@ -81,7 +82,7 @@ struct chemistry_part_data {
 
   } gradients;
 
-  /* Cell-wise limiter to avoid creating new min or max */
+  /*! Cell-wise limiter to avoid creating new min or max */
   struct {
     /*! Extreme values of the fluid metal mass fraction among the neighbours.
      */
@@ -98,8 +99,8 @@ struct chemistry_part_data {
 
   } limiter;
 
-  /* Here are the filtered quantities, i.e. "smoothed" over the resolution
-     scale h_bar = \gamma_k h */
+  /*! Filtered quantities, i.e. "smoothed" over the resolution scale
+   * h_bar = \gamma_k h */
   struct {
 
     /*! Filtered density (rho_bar) */
@@ -122,7 +123,7 @@ struct chemistry_part_data {
   /*! Variables used for timestep calculation. */
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   struct {
-    /* Mean separation distance from Lanson & Vila (2008) */
+    /*! Mean separation distance from Lanson & Vila (2008) */
     float delxbar;
 
   } timestepvars;

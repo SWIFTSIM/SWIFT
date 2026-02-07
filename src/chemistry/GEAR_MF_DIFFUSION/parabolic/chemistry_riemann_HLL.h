@@ -32,8 +32,7 @@
  * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_riemann_HLL.h
  * @brief File containing functions concerning HLL riemann solver for the
  * anisotropic parabolic diffusion equation.
- *
- * */
+ */
 
 /**
  * @brief Hokpins (2017) HLL Riemann solver. It works well for parabolic

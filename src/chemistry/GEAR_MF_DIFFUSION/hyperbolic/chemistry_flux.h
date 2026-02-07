@@ -88,7 +88,7 @@ chemistry_part_update_fluxes_right(struct part *restrict p, const int metal,
 }
 
 /**
- * @brief Time integrate the source term in the flux relaxation equation
+ * @brief Time integrate the source term in the flux relaxation equation.
  *
  * The flux relaxation equation is :
  *       dflux/dt + K/tau * grad Z = - flux/tau.

@@ -92,7 +92,7 @@ chemistry_get_part_corrected_metal_mass(const struct part *restrict p,
  *
  * @param p Particle.
  * @param cosmo The current cosmological model.
- * @param S (return) Pointer to a 3x3 matrix.
+ * @param S (return) Pointer to a 3x3 symmetric matrix.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_get_physical_shear_tensor(const struct part *restrict p,
@@ -133,7 +133,7 @@ chemistry_get_physical_shear_tensor(const struct part *restrict p,
  * the sign of the flux and thus the diffusion *sharpens* metals instead of
  * smoothing them. The flux must always points down the gradient to smooth.
  *
- * @param S (return) Pointer to a 3x3 matrix shear tensor.
+ * @param S (return) Pointer to a 3x3 symmetric matrix shear tensor.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_regularize_shear_tensor(double S[3][3]) {
@@ -182,6 +182,8 @@ chemistry_regularize_shear_tensor(double S[3][3]) {
 
 /**
  * @brief Get the physical diffusion matrix K.
+ *
+ * Note: This matrix is symmetric (see Onsager reciprocal relations).
  *
  * @param p Particle.
  * @param chem_data The global properties of the chemistry scheme.
