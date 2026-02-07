@@ -48,7 +48,7 @@ struct single_mixedHHeHeavy_params {
   float *table_log_T;
   float *table_log_u_mix_rho_T;
   float *table_P_mix_rho_T;
-  float *table_c_mix_rho_T;
+  float *table_log_c_mix_rho_T;
   float *table_log_s_mix_rho_T;
   int version_date, num_mix, num_rho, num_T, num_rho_T;
   enum eos_planetary_material_id mat_id;
@@ -70,12 +70,12 @@ INLINE static void set_mixedHHeHeavy(struct mixedHHeHeavy_params *mat,
 INLINE static void set_mixedHHe_rock(struct single_mixedHHeHeavy_params *mat,
                                           enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
-  mat->version_date = 20260203;
+  mat->version_date = 20250128;
 }
 INLINE static void set_mixedHHe_water(struct single_mixedHHeHeavy_params *mat,
                                            enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
-  mat->version_date = 20260203;
+  mat->version_date = 20250128;
 }
 INLINE static void set_mixedHHe_iron(struct single_mixedHHeHeavy_params *mat,
                                           enum eos_planetary_material_id mat_id) {
@@ -97,12 +97,19 @@ INLINE static void load_table_mixedHHeHeavy(struct single_mixedHHeHeavy_params *
   hid_t h_file = H5Fopen(table_file, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (h_file < 0) error("Failed to open mixedHHeHeavy EoS file %s\n", table_file);
 
-  // Load properties
-  hid_t grp_header = H5Gopen(h_file, "Header", H5P_DEFAULT);
-  io_read_attribute(grp_header, "version_date", INT, &mat->version_date);
-  io_read_attribute(grp_header, "num_mix", INT, &mat->num_mix);
-  io_read_attribute(grp_header, "num_rho", INT, &mat->num_rho);
-  io_read_attribute(grp_header, "num_T", INT, &mat->num_T);
+  // Load header data
+  hid_t grp_header = H5Gopen(h_file, "/Header", H5P_DEFAULT);
+  int version_date;
+  io_read_attribute(grp_header, "VersionDate", INT, &version_date);
+  if ((version_date != mat->version_date) && (mat->version_date != 0))
+    error(
+        "EoS file %s version_date %d does not match expected %d (YYYYMMDD)."
+        "\nPlease download the file using "
+        "examples/Planetary/EoSTables/get_eos_tables.sh",
+        table_file, version_date, mat->version_date);
+  io_read_attribute(grp_header, "MixMassFractionCount", INT, &mat->num_mix);
+  io_read_attribute(grp_header, "DensityCount", INT, &mat->num_rho);
+  io_read_attribute(grp_header, "TemperatureCount", INT, &mat->num_T);
   mat->num_rho_T = mat->num_rho * mat->num_T;
   const int num_mix_rho_T = mat->num_mix * mat->num_rho_T;
 
@@ -112,47 +119,41 @@ INLINE static void load_table_mixedHHeHeavy(struct single_mixedHHeHeavy_params *
   mat->table_log_T = (float *)malloc(mat->num_T * sizeof(float));
   mat->table_log_u_mix_rho_T = (float *)malloc(num_mix_rho_T * sizeof(float));
   mat->table_P_mix_rho_T = (float *)malloc(num_mix_rho_T * sizeof(float));
-  mat->table_c_mix_rho_T = (float *)malloc(num_mix_rho_T * sizeof(float));
+  mat->table_log_c_mix_rho_T = (float *)malloc(num_mix_rho_T * sizeof(float));
   mat->table_log_s_mix_rho_T = (float *)malloc(num_mix_rho_T * sizeof(float));
 
-  // Load table data
-  hid_t grp_table = H5Gopen(h_file, "/table", H5P_DEFAULT);
-  io_read_array_dataset(grp_table, "table_mix", FLOAT, 
-                        &mat->table_mix, mat->num_mix);
-  io_read_array_dataset(grp_table, "table_log_rho", FLOAT, 
-                        &mat->table_log_rho, mat->num_rho);
-  io_read_array_dataset(grp_table, "table_log_T", FLOAT, 
-                        &mat->table_log_T, mat->num_T);
-  io_read_array_dataset(grp_table, "table_log_u_mix_rho_T", FLOAT, 
-                        &mat->table_log_u_mix_rho_T, num_mix_rho_T);
-  io_read_array_dataset(grp_table, "table_P_mix_rho_T", FLOAT, 
-                        &mat->table_P_mix_rho_T, num_mix_rho_T);
-  io_read_array_dataset(grp_table, "table_c_mix_rho_T", FLOAT, 
-                        &mat->table_c_mix_rho_T, num_mix_rho_T);
-  io_read_array_dataset(grp_table, "table_log_s_mix_rho_T", FLOAT, 
-                        &mat->table_log_s_mix_rho_T, num_mix_rho_T);
+  // Load table data (not log yet)
+  hid_t grp_table = H5Gopen(h_file, "/Table", H5P_DEFAULT);
+  io_read_array_dataset(grp_table, "MixMassFraction", FLOAT, mat->table_mix, mat->num_mix);
+  io_read_array_dataset(grp_table, "Density", FLOAT, mat->table_log_rho, mat->num_rho);
+  io_read_array_dataset(grp_table, "Temperature", FLOAT, mat->table_log_T, mat->num_T);
+  io_read_array_dataset(grp_table, "SpecificInternalEnergy", FLOAT, mat->table_log_u_mix_rho_T, num_mix_rho_T);
+  io_read_array_dataset(grp_table, "Pressure", FLOAT, mat->table_P_mix_rho_T, num_mix_rho_T);
+  io_read_array_dataset(grp_table, "SoundSpeed", FLOAT, mat->table_log_c_mix_rho_T, num_mix_rho_T);
+  io_read_array_dataset(grp_table, "SpecificEntropy", FLOAT, mat->table_log_s_mix_rho_T, num_mix_rho_T);
 }
 
 // Misc. modifications
 INLINE static void prepare_table_mixedHHeHeavy(struct single_mixedHHeHeavy_params *mat) {
 
   // Convert to log
-  // Density and temperature
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
     mat->table_log_rho[i_rho] = logf(mat->table_log_rho[i_rho]);
   }  
   for (int i_T = 0; i_T < mat->num_T; i_T++) {
     mat->table_log_T[i_T] = logf(mat->table_log_T[i_T]);
   }
-  // Sp. int. energy and entropy
   for (int i_mix = 0; i_mix < mat->num_mix; i_mix++) {
     for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
       for (int i_T = 0; i_T < mat->num_T; i_T++) {
         mat->table_log_u_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] =
             logf(mat->table_log_u_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T]);
 
-        mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] =
-            logf(mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T]);
+            mat->table_log_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] =
+                logf(mat->table_log_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T]);
+
+            mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] =
+                logf(mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T]);
       }
     }
   }
@@ -190,7 +191,7 @@ INLINE static void convert_units_mixedHHeHeavy(struct single_mixedHHeHeavy_param
         mat->table_P_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] *=
             units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE) /
             units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-        mat->table_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] *=
+        mat->table_log_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] *=
             units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
             units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
         mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] +=
@@ -243,8 +244,6 @@ INLINE static float mixedHHeHeavy_soundspeed_from_entropy(
 // gas_entropy_from_internal_energy
 INLINE static float mixedHHeHeavy_entropy_from_internal_energy(
     const float density, const float u, const float *mixes, const struct mixedHHeHeavy_params *mat) {
-
-  error("This EOS function is not yet implemented!");
 
   return 0.f;
 }
@@ -514,27 +513,23 @@ INLINE static float single_mixedHHeHeavy_soundspeed_from_internal_energy(
               mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]);
 
   // Table values
-  float c_1 = mat->table_c_mix_rho_T[idx_u_1_mix_rho_T];
-  float c_2 = mat->table_c_mix_rho_T[idx_u_1_mix_rho_T + 1];
-  float c_3 = mat->table_c_mix_rho_T[idx_u_2_mix_rho_T];
-  float c_4 = mat->table_c_mix_rho_T[idx_u_2_mix_rho_T + 1];
+  float log_c_1 = mat->table_log_c_mix_rho_T[idx_u_1_mix_rho_T];
+  float log_c_2 = mat->table_log_c_mix_rho_T[idx_u_1_mix_rho_T + 1];
+  float log_c_3 = mat->table_log_c_mix_rho_T[idx_u_2_mix_rho_T];
+  float log_c_4 = mat->table_log_c_mix_rho_T[idx_u_2_mix_rho_T + 1];
 
   // If below the minimum u at this rho then just use the lowest table values
   if ((idx_rho > 0.f) &&
-      ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (c_1 > c_2) || (c_3 > c_4))) {
+      ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (log_c_1 > log_c_2) || (log_c_3 > log_c_4))) {
     intp_u_1 = 0;
     intp_u_2 = 0;
   }
 
   // Interpolate with the log values
-  c_1 = logf(c_1);
-  c_2 = logf(c_2);
-  c_3 = logf(c_3);
-  c_4 = logf(c_4);
-  float c_1_2 = (1.f - intp_u_1) * c_1 + intp_u_1 * c_2;
-  float c_3_4 = (1.f - intp_u_2) * c_3 + intp_u_2 * c_4;
+  float log_c_1_2 = (1.f - intp_u_1) * log_c_1 + intp_u_1 * log_c_2;
+  float log_c_3_4 = (1.f - intp_u_2) * log_c_3 + intp_u_2 * log_c_4;
 
-  float c = (1.f - intp_rho) * c_1_2 + intp_rho * c_3_4;
+  float log_c = (1.f - intp_rho) * log_c_1_2 + intp_rho * log_c_3_4;
 
   // 2D interpolate within second single-mix table, then combine
   // (todo: tidy into a generalised function!)
@@ -572,34 +567,30 @@ INLINE static float single_mixedHHeHeavy_soundspeed_from_internal_energy(
                 mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]);
 
     // Table values
-    c_1 = mat->table_c_mix_rho_T[idx_u_1_mix_rho_T];
-    c_2 = mat->table_c_mix_rho_T[idx_u_1_mix_rho_T + 1];
-    c_3 = mat->table_c_mix_rho_T[idx_u_2_mix_rho_T];
-    c_4 = mat->table_c_mix_rho_T[idx_u_2_mix_rho_T + 1];
+    log_c_1 = mat->table_log_c_mix_rho_T[idx_u_1_mix_rho_T];
+    log_c_2 = mat->table_log_c_mix_rho_T[idx_u_1_mix_rho_T + 1];
+    log_c_3 = mat->table_log_c_mix_rho_T[idx_u_2_mix_rho_T];
+    log_c_4 = mat->table_log_c_mix_rho_T[idx_u_2_mix_rho_T + 1];
 
     // If below the minimum u at this rho then just use the lowest table values
     if ((idx_rho > 0.f) &&
-        ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (c_1 > c_2) || (c_3 > c_4))) {
+        ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (log_c_1 > log_c_2) || (log_c_3 > log_c_4))) {
       intp_u_1 = 0;
       intp_u_2 = 0;
     }
 
     // Interpolate with the log values
-    c_1 = logf(c_1);
-    c_2 = logf(c_2);
-    c_3 = logf(c_3);
-    c_4 = logf(c_4);
-    c_1_2 = (1.f - intp_u_1) * c_1 + intp_u_1 * c_2;
-    c_3_4 = (1.f - intp_u_2) * c_3 + intp_u_2 * c_4;
+    log_c_1_2 = (1.f - intp_u_1) * log_c_1 + intp_u_1 * log_c_2;
+    log_c_3_4 = (1.f - intp_u_2) * log_c_3 + intp_u_2 * log_c_4;
 
-    const float c_mix2 = (1.f - intp_rho) * c_1_2 + intp_rho * c_3_4;
+    const float log_c_mix2 = (1.f - intp_rho) * log_c_1_2 + intp_rho * log_c_3_4;
 
     // Interpolate between mix values
-    c = (1 - intp_mix) * c + intp_mix * c_mix2;
+    log_c = (1 - intp_mix) * log_c + intp_mix * log_c_mix2;
   }
 
   // Convert back from log
-  return expf(c);
+  return expf(log_c);
 }
   
 INLINE static float mixedHHeHeavy_soundspeed_from_internal_energy(
