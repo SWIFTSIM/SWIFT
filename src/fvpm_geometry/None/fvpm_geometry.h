@@ -127,4 +127,12 @@ fvpm_accumulate_total_face_area_vector_and_norm(struct part *pi,
                                                 const float hi, const float hj,
                                                 const int interaction_mode) {}
 
+/**
+ * @brief Check that the total face area is close to 0.0.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void
+fvpm_check_total_face_area_vector_sum(const struct part *p) {}
+
 #endif /* SWIFT_FVPM_GEOMETRY_NONE_H */
