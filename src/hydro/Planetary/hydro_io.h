@@ -39,6 +39,7 @@
 #include "hydro_parameters.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
+#include "equation_of_state.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -51,11 +52,7 @@ INLINE static void hydro_read_particles(struct part *parts,
                                         struct io_props *list,
                                         int *num_fields) {
 
-#ifdef PLANETARY_FIXED_ENTROPY
   *num_fields = 10;
-#else
-  *num_fields = 9;
-#endif
 
   /* Temporary warning to be printed for a few months after the change */
   message(
@@ -83,10 +80,13 @@ INLINE static void hydro_read_particles(struct part *parts,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_data.mat_id);
+  list[9] = io_make_input_field("MaterialMixes", FLOAT, eos_planetary_mixed_num_mat, 
+                                OPTIONAL, UNIT_CONV_NO_UNITS, parts, mat_data.mixes);
 #ifdef PLANETARY_FIXED_ENTROPY
-  list[9] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
+  list[10] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
                                 s_fixed);
+  *num_fields += 1; 
 #endif
 }
 

@@ -195,6 +195,9 @@ enum eos_planetary_material_id {
 #define eos_planetary_Til_custom_base_id \
   (eos_planetary_type_Til * eos_planetary_type_factor + 90)
   
+/*! Number of possible mixed EoS component materials */
+#define eos_planetary_mixed_num_mat 3
+
 /**
  * @brief Particle property, equation of state material information
  *
@@ -208,7 +211,7 @@ struct material_data {
   enum eos_planetary_material_id mat_id;
 
   /*! Mixing mass fraction of EoS components */
-  float mixes[3];
+  float mixes[eos_planetary_mixed_num_mat];
   
 };
 
@@ -2928,7 +2931,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
   if (parser_get_opt_param_int(params, "EoS:planetary_use_mixed_HHe_heavy",
                                0)) {
     // Top-level material
-    set_mixedHHeHeavy(&e->mixed_HHe_heavy, eos_planetary_id_mixed_HHe_heavy, 3);
+    set_mixedHHeHeavy(&e->mixed_HHe_heavy, eos_planetary_id_mixed_HHe_heavy, 
+                      eos_planetary_mixed_num_mat);
 
     // Constituent single-heavy-elements mixed materials
     char mixed_HHe_rock_table_file[PARSER_MAX_LINE_SIZE];

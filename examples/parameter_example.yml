@@ -340,6 +340,7 @@ EoS:
   planetary_use_ANEOS_forsterite:   0       # ANEOS forsterite (Stewart et al. 2019), material ID 400
   planetary_use_ANEOS_iron:         0       # ANEOS iron (Stewart 2020), material ID 401
   planetary_use_ANEOS_Fe85Si15:     0       # ANEOS Fe85Si15 (Stewart 2020), material ID 402
+  planetary_use_mixed_HHe_heavy:    0       # Mixed HHe--heavy elements, material ID 500
   planetary_use_custom_0:   0               # Generic user-provided custom tables, material IDs 90[0-9]
   planetary_use_custom_1:   0
   planetary_use_custom_2:   0
@@ -371,6 +372,9 @@ EoS:
   planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
   planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
   planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
+  planetary_mixed_HHe_rock_table_file:  ./EoSTables/mixed_HHe_rock.hdf5
+  planetary_mixed_HHe_water_table_file: ./EoSTables/mixed_HHe_water.hdf5
+  planetary_mixed_HHe_iron_table_file:  ./EoSTables/mixed_HHe_iron.hdf5
   planetary_custom_0_table_file:    ./EoSTables/custom_0.txt
   planetary_custom_1_table_file:    ./EoSTables/custom_1.txt
   planetary_custom_2_table_file:    ./EoSTables/custom_2.txt
