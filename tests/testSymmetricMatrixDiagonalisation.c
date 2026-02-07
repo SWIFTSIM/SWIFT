@@ -28,10 +28,10 @@
 /* Local headers */
 #include "clocks.h"
 #include "error.h"
-#include "src/chemistry/GEAR_MF_DIFFUSION/chemistry_utils.h"
+#include "symmetric_matrix_diagonalisation.h"
 
 /**
- * @brief Verification logic for a diagonalized matrix.
+ * @brief Verification logic for a diagonalised matrix.
  * Checks Orthonormality (V^T V = I) and Eigenpair validity (Av = lambda v).
  */
 void verify_diagonalization(const double A[3][3], const double eigenvalues[3],
@@ -44,7 +44,7 @@ void verify_diagonalization(const double A[3][3], const double eigenvalues[3],
   for (int i = 0; i < 3; i++) {
     /* 1. Check Orthonormality */
     for (int j = 0; j < 3; j++) {
-      double dot = chemistry_utils_dot_product(vecs[i], vecs[j]);
+      double dot = vector_dot_product_d(vecs[i], vecs[j]);
       double target = (i == j) ? 1.0 : 0.0;
       if (fabs(dot - target) > tolerance) {
         error("[%s] Orthonormality failed: dot(ev%d, ev%d) = %.10e", test_name,
@@ -97,11 +97,11 @@ void setup_symmetric_matrix(double A[3][3]) {
  * @brief Print the solutions.
  */
 void print_solutions(const double evals[3], const double ev0[3],
-                     const double ev1[3], const double ev2[3]) {
+                     const double ev1[3], const double ev2[3], const char *test_name) {
   message(
-      "Eignevalues: %e %e %e | Eigenvectors: ( %e %e %e ), ( %e %e %e ), ( %e "
+      "[%s] Eignevalues: %e %e %e | Eigenvectors: ( %e %e %e ), ( %e %e %e ), ( %e "
       "%e %e )",
-      evals[0], evals[1], evals[2], ev0[0], ev0[1], ev0[2], ev1[0], ev1[1],
+      test_name, evals[0], evals[1], evals[2], ev0[0], ev0[1], ev0[2], ev1[0], ev1[1],
       ev1[2], ev2[0], ev2[1], ev2[2]);
 }
 
@@ -124,52 +124,52 @@ int main(int argc, char *argv[]) {
 
   /* Identity Matrix (Triple Multiplicity) */
   double I[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
-  chemistry_utils_diagonalize_3x3(I, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(I, evals, ev0, ev1, ev2);
   verify_diagonalization(I, evals, ev0, ev1, ev2, "Identity");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Identity (1.0, 1.0, 1.0)");
 
   /* Double Multiplicity (Eigenvalues 2, 4, 5) */
   double M_mult[3][3] = {{3.0, -1.0, 0.0}, {-1.0, 3.0, 0.0}, {0.0, 0.0, 5.0}};
-  chemistry_utils_diagonalize_3x3(M_mult, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(M_mult, evals, ev0, ev1, ev2);
   verify_diagonalization(M_mult, evals, ev0, ev1, ev2, "Multiplicity");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Multiplicity (2, 4, 5)");
 
   /* Preconditioning Test (Large Numbers) */
   double large = 1e12;
   double M_large[3][3] = {
       {large, 0.0, 0.0}, {0.0, large, 0.0}, {0.0, 0.0, large}};
-  chemistry_utils_diagonalize_3x3(M_large, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(M_large, evals, ev0, ev1, ev2);
   verify_diagonalization(M_large, evals, ev0, ev1, ev2, "Large Numbers 1");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Large Numbers 1 (1e12, 1e12, 1e12)");
 
   double M_large2[3][3] = {{3.0 * large, -1.0 * large, 0.0},
                            {-1.0 * large, 3.0 * large, 0.0},
                            {0.0, 0.0, 5.0 * large}};
-  chemistry_utils_diagonalize_3x3(M_large2, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(M_large2, evals, ev0, ev1, ev2);
   verify_diagonalization(M_large2, evals, ev0, ev1, ev2, "Large Numbers 2");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Large Numbers 2 (2e12, 4e12, 5e12)");
 
   double M_large3[3][3] = {{large, large * 0.2, 0.0},
                            {large * 0.2, large * 0.8, 0.0},
                            {0.0, 0.0, large * 0.5}};
-  chemistry_utils_diagonalize_3x3(M_large3, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(M_large3, evals, ev0, ev1, ev2);
   verify_diagonalization(M_large3, evals, ev0, ev1, ev2, "Large Numbers 3");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Large Numbers 3 (5e11 6.763932e11 1.123607e12)");
 
   /* Zero Matrix */
   double Z[3][3] = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
-  chemistry_utils_diagonalize_3x3(Z, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(Z, evals, ev0, ev1, ev2);
   verify_diagonalization(Z, evals, ev0, ev1, ev2, "Zero Matrix");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Zero Matrix (0.0, 0.0, 0.0)");
 
   /* --- Part 2: Advanced Edge Cases --- */
 
   /* Nearly Diagonal (tests the threshold of the 'norm > 0' check) */
   double M_near_diag[3][3] = {
       {1.0, 1e-15, 0.0}, {1e-15, 2.0, 0.0}, {0.0, 0.0, 3.0}};
-  chemistry_utils_diagonalize_3x3(M_near_diag, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(M_near_diag, evals, ev0, ev1, ev2);
   verify_diagonalization(M_near_diag, evals, ev0, ev1, ev2, "Nearly Diagonal");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Nearly Diagonal (1, 2, 3)");
 
   /* Rotated High-Contrast Matrix */
   /* This matrix has eigenvalues 1, 1e12, 1e12 but is not axis-aligned. Given
@@ -179,40 +179,40 @@ int main(int argc, char *argv[]) {
   double M_rotated[3][3] = {{(L + 1.0) * 0.5, (L - 1.0) * 0.5, 0.0},
                             {(L - 1.0) * 0.5, (L + 1.0) * 0.5, 0.0},
                             {0.0, 0.0, L}};
-  chemistry_utils_diagonalize_3x3(M_rotated, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(M_rotated, evals, ev0, ev1, ev2);
   verify_diagonalization(M_rotated, evals, ev0, ev1, ev2,
                          "Rotated High-Contrast");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Rotated High-Contrast (1 1e12 1e12)");
 
   /* The "Negative Eigenvalue" case */
   /* Ensure the acos logic handles cases where trace/3 is negative */
   double M_neg[3][3] = {{-2.0, 1.0, 0.0}, {1.0, -2.0, 1.0}, {0.0, 1.0, -2.0}};
-  chemistry_utils_diagonalize_3x3(M_neg, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(M_neg, evals, ev0, ev1, ev2);
   verify_diagonalization(M_neg, evals, ev0, ev1, ev2, "Negative Eigenvalues");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Negative Eigenvalues (-3.414214 -2 -5.857864e-01)");
 
   /* Filamentary Case: Eigenvalues (1e10, 1e10, 1e-5) */
   /* This tests if the solver can find a very small eigenvalue in the presence
    * of very large ones without losing the eigenvector direction. */
   double M_planar[3][3] = {
       {1e10, 0.0, 0.0}, {0.0, 1e10, 0.0}, {0.0, 0.0, 1e-5}};
-  chemistry_utils_diagonalize_3x3(M_planar, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(M_planar, evals, ev0, ev1, ev2);
   verify_diagonalization(M_planar, evals, ev0, ev1, ev2, "Planar/Filament");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Planar/Filament (1e10 1e10 1e-5)");
 
   /* Test with a matrix that is *almost symmetric but has 1 epsilon
    * difference. */
   double M_nosym[3][3] = {
       {1.0, 0.2, 0.3}, {0.200000000000001, 1.0, 0.1}, {0.3, 0.1, 1.0}};
-  chemistry_utils_diagonalize_3x3(M_nosym, evals, ev0, ev1, ev2);
+  sym_matrix_diagonalise_3x3_d(M_nosym, evals, ev0, ev1, ev2);
   verify_diagonalization(M_nosym, evals, ev0, ev1, ev2, "Near-Symmetry");
-  print_solutions(evals, ev0, ev1, ev2);
+  print_solutions(evals, ev0, ev1, ev2, "Near-Symmetry (6.798088e-01 9.088821e-01 1.411309)");
 
   /* --- Part 3: Randomized Monte Carlo Tests --- */
 
   for (int test = 0; test < 10000; ++test) {
     setup_symmetric_matrix(A);
-    chemistry_utils_diagonalize_3x3(A, evals, ev0, ev1, ev2);
+    sym_matrix_diagonalise_3x3_d(A, evals, ev0, ev1, ev2);
     verify_diagonalization(A, evals, ev0, ev1, ev2, "Random Matrix");
   }
 
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
         A[j][i] = val;
       }
     }
-    chemistry_utils_diagonalize_3x3(A, evals, ev0, ev1, ev2);
+    sym_matrix_diagonalise_3x3_d(A, evals, ev0, ev1, ev2);
     verify_diagonalization(A, evals, ev0, ev1, ev2, "Extreme Random Matrix");
   }
 
@@ -237,7 +237,7 @@ int main(int argc, char *argv[]) {
    * instruction-level cache issues (mostly for profiling). */
   ticks tic = getticks();
   for (int i = 0; i < 100000; i++) {
-    chemistry_utils_diagonalize_3x3(M_rotated, evals, ev0, ev1, ev2);
+    sym_matrix_diagonalise_3x3_d(M_rotated, evals, ev0, ev1, ev2);
   }
   ticks toc = getticks();
   message("Performance: 100k diagonalizations in %.3f ms",
