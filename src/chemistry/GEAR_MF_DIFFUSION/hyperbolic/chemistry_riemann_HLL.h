@@ -28,9 +28,6 @@
 /**
  * @brief HLL riemann solver.
  *
- * TODO: Test again with the hyperbolic soundspeed. Maybe take the max of c_s
- * and c_hyp. See if we need to take u+c_hyp or not.
- *
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
  * @param pi Left particle
@@ -138,8 +135,8 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
 
     /* The pure hyperbolic HLL flux is unstable when tau -> 0, i.e. in the
        parabolic diffusion regime. To make the solution stable, we use the
-       parabolic diffusion solver and we blend the two together.
-       The blending uses the ratio of the physical relaxtion time and the
+       parabolic diffusion solver and we blend the two solutions together.
+       The blending uses the ratio of the physical relaxation time and the
        numerical one. */
     const double alpha = chemistry_riemann_compute_hyperbolic_blending_factor(
         dx, pi, pj, UL, UR, m, chem_data, cosmo);
