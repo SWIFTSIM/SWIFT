@@ -129,8 +129,8 @@ black_hole_gas_hot_or_cold(const struct bpart *bi, const struct part *pj,
   if (Tj > bh_props->environment_temperature_cut && pj->sf_data.SFR <= 0.f) {
     gas_state = 1;
   }
-  /* Cold gas must be cold, SF'ing, and in same galaxy as BH */
-  if (Tj < bh_props->cold_gas_temperature_cut && pj->sf_data.SFR > 0. && bi->galaxy_data.stellar_mass == pj->galaxy_data.stellar_mass) {
+  /* Cold gas must be cool and SF'ing */
+  if (Tj < bh_props->cold_gas_temperature_cut && pj->sf_data.SFR > 0.) {
     gas_state = -1;
   }
 
@@ -221,8 +221,8 @@ runner_iact_nonsym_bh_gas_density(
   } 
   else if (gas_temperature_state == -1) {
 #if COOLING_GRACKLE_MODE >= 2
-    /* With subgrid ISM model, only allow cold component to be accreted */
-    bi->cold_gas_mass += mj * pj->cooling_data.subgrid_fcold;
+    /* With subgrid ISM model, only allow H2 component to be accreted */
+    bi->cold_gas_mass += mj * pj->cooling_data.subgrid_fcold * pj->sf_data.H2_fraction;
 #else
     bi->cold_gas_mass += mj;
 #endif
@@ -421,6 +421,9 @@ runner_iact_nonsym_bh_gas_swallow(
 
   /* If there is no gas, skip */
   if (bi->ngb_mass <= 0.f) return;
+
+  /* Black hole should only accrete gas within the same galaxy */
+  if (galaxy_mstar != pj->galaxy_data.stellar_mass) return;
 
   /* Gas particle must be bound to BH kernel mass to be swallowed */
   const float r = sqrtf(r2);
@@ -850,9 +853,9 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
           (bj->merger_data.swallow_mass == bi->subgrid_mass &&
            bj->merger_data.swallow_id < bi->id)) {
 
-//#ifdef SWIFT_DEBUG_CHECKS
-        if (bi->mass * bh_props->mass_to_solar_mass > 1.e9) message("BH_MERGE bid=%lld to swallow bid=%lld: MBHi=%g MBHj=%g Mgali=%g Mgalj=%g", bi->id, bj->id, bi->subgrid_mass * bh_props->mass_to_solar_mass, bj->subgrid_mass * bh_props->mass_to_solar_mass, bi->galaxy_data.stellar_mass * bh_props->mass_to_solar_mass, bj->galaxy_data.stellar_mass * bh_props->mass_to_solar_mass);
-//#endif
+#ifdef OBSIDIAN_DEBUG_CHECKS
+        //if (bi->mass * bh_props->mass_to_solar_mass > 1.e9) message("BH_MERGER: z=%g bid=%lld to swallow bid=%lld: MBHi=%g MBHj=%g Mgali=%g Mgalj=%g", cosmo->z, bi->id, bj->id, bi->subgrid_mass * bh_props->mass_to_solar_mass, bj->subgrid_mass * bh_props->mass_to_solar_mass, bi->galaxy_data.stellar_mass * bh_props->mass_to_solar_mass, bj->galaxy_data.stellar_mass * bh_props->mass_to_solar_mass);
+#endif
 
         bj->merger_data.swallow_id = bi->id;
         bj->merger_data.swallow_mass = bi->subgrid_mass;

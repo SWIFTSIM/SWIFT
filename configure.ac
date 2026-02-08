@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[2025.10],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[2026.01],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -365,6 +365,17 @@ AC_ARG_ENABLE([obsidian-debugging-checks],
 )
 if test "$enable_obsidian_debugging_checks" = "yes"; then
    AC_DEFINE([OBSIDIAN_DEBUG_CHECKS],1,[Enable Obsidian expensive debugging])
+
+AC_ARG_ENABLE([likwid],
+   [AS_HELP_STRING([--enable-likwid],
+      [Enable LIKWID performance monitoring])],
+   [enable_likwid="$enableval"],
+   [enable_likwid="no"]
+)
+
+if test "$enable_likwid" = "yes"; then
+   AC_DEFINE([WITH_LIKWID], 1, [Enable LIKWID performance monitoring])
+   LIBS="$LIBS -llikwid"
 fi
 
 # Check if expensive debugging is on.

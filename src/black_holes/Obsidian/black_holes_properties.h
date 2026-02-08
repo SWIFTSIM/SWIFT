@@ -183,9 +183,6 @@ struct black_holes_props {
   /*! The temperature of the jet. Set < 0.f for halo virial temperature */
   float jet_temperature;
 
-  /*! The fraction of energy loading that should go into mixed loading */
-  float jet_energy_frac;
-
   /*! What lower Mdot,BH/Mdot,Edd boundary does the jet activate? */
   float eddington_fraction_lower_boundary;
 
@@ -710,9 +707,6 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
       powf(big_J, 2.f) + 1.38f * powf(big_J, 4.f) - 9.2f * powf(big_J, 6.f);
 
   bp->jet_efficiency = (1.f / (24.f * M_PI * M_PI)) * powf(phi_bh, 2.f) * f_j;
-
-  /* Default to zero contribution from energy loading */
-  bp->jet_energy_frac = 0.f;
 
   /* Useful when computing the mass loadings below */
   const double c_over_v = phys_const->const_speed_light_c / jet_velocity;

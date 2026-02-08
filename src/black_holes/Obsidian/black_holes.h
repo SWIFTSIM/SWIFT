@@ -71,10 +71,6 @@ __attribute__((always_inline)) INLINE static double get_black_hole_coupling(
           bp->subgrid_mass * props->mass_to_solar_mass > mass_limit) {
         quasar_coupling = fmin(
             quasar_coupling * luminosity / props->quasar_luminosity_thresh, 1.);
-        // message("BOOST: z=%g id=%lld MBH=%g LBH=%g boost=%g qcoupling=%g",
-        // cosmo->z, bp->id, bp->subgrid_mass * props->mass_to_solar_mass,
-        // luminosity * props->conv_factor_energy_rate_to_cgs, luminosity /
-        // props->quasar_luminosity_thresh, quasar_coupling);
       }
       return quasar_coupling;
       break;
@@ -462,6 +458,8 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->jet_mass_kicked_this_step = 0.f;
   bp->adaf_energy_to_dump = 0.f;
   bp->adaf_energy_used_this_step = 0.f;
+  /* Large value signifies its not in a galaxy */
+  bp->galactocentric_radius = FLT_MAX;
 }
 
 /**
@@ -910,6 +908,26 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
 
   /* We had another merger */
   bpi->number_of_mergers++;
+//#ifdef OBSIDIAN_DEBUG_CHECKS
+  const float galaxy_mstar_i = bpi->galaxy_data.stellar_mass;
+  const float galaxy_sfr_i = bpi->galaxy_data.stellar_mass * bpi->galaxy_data.specific_sfr;
+  const float galaxy_mstar_j = bpj->galaxy_data.stellar_mass;
+  const float galaxy_sfr_j = bpj->galaxy_data.stellar_mass * bpj->galaxy_data.specific_sfr;
+  printf(
+      "BH_MERGER:"
+      " z=%g bid_i=%lld bid_j=%lld mdyni=%g mdynj=%g mbhi=%g mbhj=%g nmerge=%d"
+      " galM*_i=%g galSFR_i=%g galM*_j=%g galSFR_j=%g\n",
+      cosmo->z, bpi->id, bpj->id, 
+      bpi->mass * props->mass_to_solar_mass, 
+      bpj->mass * props->mass_to_solar_mass, 
+      bpi->subgrid_mass * props->mass_to_solar_mass, 
+      bpj->subgrid_mass * props->mass_to_solar_mass, 
+      bpi->number_of_mergers,
+      galaxy_mstar_i * props->mass_to_solar_mass,
+      galaxy_sfr_i * props->mass_to_solar_mass / props->time_to_yr,
+      galaxy_mstar_j * props->mass_to_solar_mass,
+      galaxy_sfr_j * props->mass_to_solar_mass / props->time_to_yr);
+//#endif
 }
 
 /**
@@ -1112,7 +1130,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     /* Assume dynamical time from the kernel mass */
     case 2: {
       /* do not have gravity_props here */
-      const float hsml = kernel_gamma * bh_h;
+      const float hsml = bh_h;
       const float volume = (4. * M_PI / 3.) * hsml * hsml * hsml;
       const float rho = bp->mass / volume;
       tdyn_inv = sqrt(32. * G * rho * cosmo->a3_inv / (3. * M_PI));
@@ -1282,6 +1300,14 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   /* Apply suppression factor to torque accretion */
   torque_accr_rate *= f_suppress;
+
+  /* If not near galaxy center, torque accr is suppressed */
+  //const float suppression_distance = kernel_gravity_softening_plummer_equivalent_inv *
+  //                props->max_reposition_distance_ratio * bp->h;
+  //if (bp->galactocentric_radius > suppression_distance) {
+    //torque_accr_rate *= exp(-(bp->galactocentric_radius - suppression_distance) / suppression_distance);
+    //torque_accr_rate = 0.f;
+  //}
 
 #ifdef OBSIDIAN_DEBUG_CHECKS
   if (isnan(bondi_accr_rate)) error("bondi_accr_rate nan");
@@ -1574,13 +1600,14 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   printf(
       "BH_DETAILS "
       "z=%2.12f bid=%lld galM*=%g galSFR=%g"
-      " Mdyn=%g MBH=%g h=%g Mres=%g BHAR=%g Bondi=%g torque=%g dt=%g dM=%g"
+      " Mdyn=%g MBH=%g h=%g R/h=%g Mres=%g BHAR=%g"
+      " Bondi=%g torque=%g dt=%g dM=%g"
       " nH=%g Thot=%g SFR=%g mngb=%g "
       " mhot=%g mcold=%g m*=%g mdisk=%g mcorot=%g "
-      " x=%2.10f y=%2.10f z=%2.10f "
+      " rx=%2.10f ry=%2.10f rz=%2.10f "
       " vx=%2.7f vy=%2.7f vz=%2.7f "
       " Lgasx=%g Lgasy=%g Lgasz=%g  Lbhx=%g Lbhy=%g Lbhz=%g"
-      " Lrad=%g state=%d facc=%g eff=%g"
+      " Lrad=%g state=%d facc=%g radeff=%g"
       " fedd=%g madaf=%g mngb=%g tdyn=%g fsupp=%g\n",
       cosmo->z, bp->id, 
       galaxy_mstar * props->mass_to_solar_mass,
@@ -1588,6 +1615,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       bp->mass * props->mass_to_solar_mass,
       bp->subgrid_mass * props->mass_to_solar_mass,
       bp->h * cosmo->a * props->length_to_parsec / 1.0e3f,
+      bp->galactocentric_radius / bp->h, 
       bp->jet_mass_reservoir * props->mass_to_solar_mass,
       bp->accretion_rate * props->mass_to_solar_mass / props->time_to_yr,
       bp->bondi_accretion_rate * props->mass_to_solar_mass / props->time_to_yr,

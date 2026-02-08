@@ -2797,6 +2797,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
       bp->galaxy_data.gas_mass = gas_mass[index];
       bp->galaxy_data.specific_sfr =
           star_formation_rate[index] / stellar_mass[index];
+      bp->galactocentric_radius = r;
     }
 #endif
   }
