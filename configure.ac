@@ -2263,6 +2263,9 @@ case "$with_hydro" in
    anarchy-pu)
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
+   uldm)
+      AC_DEFINE([ULDM_SPH], [1], [ULDM SPH])
+   ;;
 
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
