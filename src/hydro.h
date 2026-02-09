@@ -85,6 +85,9 @@
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro.h"
 #include "./hydro/AnarchyPU/hydro_iact.h"
+#elif defined(ULDM_SPH)
+#include "./hydro/ULDM/hydro.h"
+#include "./hydro/ULDM/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
   "ANARCHY (Pressure-Energy) SPH (Dalla Vecchia+ in prep)"
 #else

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -51,6 +51,8 @@
 #include "./hydro/Gasoline/hydro_io.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_io.h"
+#elif defined(ULDM_SPH)
+#include "./hydro/ULDM/hydro_io.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif
