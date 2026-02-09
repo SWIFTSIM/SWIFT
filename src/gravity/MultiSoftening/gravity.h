@@ -150,7 +150,7 @@ gravity_get_comoving_potential(const struct gpart *gp) {
 }
 
 /**
- * @brief Returns the comoving potential of a particle.
+ * @brief Returns the mesh-contribution to the comoving potential of a particle.
  *
  * @param gp The particle of interest
  */
@@ -178,6 +178,86 @@ gravity_get_physical_potential(const struct gpart *gp,
   return gp->potential * cosmo->a_inv;
 #else
   return 0.f;
+#endif
+}
+
+/**
+ * @brief Add a contribution to this particle's tidal tensor from the tree.
+ *
+ * @param gp The particle.
+ * @param T_xx the xx-component of the tensor
+ * @param T_yy the yy-component of the tensor
+ * @param T_zz the zz-component of the tensor
+ * @param T_xy the xy-component of the tensor
+ * @param T_xz the xz-component of the tensor
+ * @param T_yz the yz-component of the tensor
+ */
+__attribute__((always_inline)) INLINE static void gravity_add_comoving_tensor(
+    struct gpart *restrict gp, const float T_xx, const float T_yy,
+    const float T_zz, const float T_xy, const float T_xz, const float T_yz) {
+
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+  gp->T_xx += T_xx;
+  gp->T_yy += T_yy;
+  gp->T_zz += T_zz;
+  gp->T_xy += T_xy;
+  gp->T_xz += T_xz;
+  gp->T_yz += T_yz;
+#endif
+}
+
+/**
+ * @brief Add a contribution to this particle's tidal tensor from the tree.
+ *
+ * @param gp The particle.
+ * @param T_xx the xx-component of the tensor
+ * @param T_yy the yy-component of the tensor
+ * @param T_zz the zz-component of the tensor
+ * @param T_xy the xy-component of the tensor
+ * @param T_xz the xz-component of the tensor
+ * @param T_yz the yz-component of the tensor
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_add_comoving_mesh_tensor(struct gpart *restrict gp, const float T_xx,
+                                 const float T_yy, const float T_zz,
+                                 const float T_xy, const float T_xz,
+                                 const float T_yz) {
+
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+  gp->T_xx_mesh += T_xx;
+  gp->T_yy_mesh += T_yy;
+  gp->T_zz_mesh += T_zz;
+  gp->T_xy_mesh += T_xy;
+  gp->T_xz_mesh += T_xz;
+  gp->T_yz_mesh += T_yz;
+#endif
+}
+
+/**
+ * @brief Returns the comoving tidal tensor of a particle.
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_get_comoving_tidal_tensor(const struct gpart *restrict gp,
+                                  float *restrict T_xx, float *restrict T_yy,
+                                  float *restrict T_zz, float *restrict T_xy,
+                                  float *restrict T_xz, float *restrict T_yz) {
+
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+  *T_xx = gp->T_xx;
+  *T_yy = gp->T_yy;
+  *T_zz = gp->T_zz;
+  *T_xy = gp->T_xy;
+  *T_xz = gp->T_xz;
+  *T_yz = gp->T_yz;
+#else
+  *T_xx = 0.f;
+  *T_yy = 0.f;
+  *T_zz = 0.f;
+  *T_xy = 0.f;
+  *T_xz = 0.f;
+  *T_yz = 0.f;
 #endif
 }
 
@@ -244,6 +324,16 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   /* Zero the potential */
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential = 0.f;
+#endif
+
+  /* Zero the tensors */
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+  gp->T_xx = 0.f;
+  gp->T_yy = 0.f;
+  gp->T_zz = 0.f;
+  gp->T_xy = 0.f;
+  gp->T_xz = 0.f;
+  gp->T_yz = 0.f;
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -318,10 +408,26 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential *= const_G;
 #endif
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+  gp->T_xx *= const_G;
+  gp->T_yy *= const_G;
+  gp->T_zz *= const_G;
+  gp->T_xy *= const_G;
+  gp->T_xz *= const_G;
+  gp->T_yz *= const_G;
+#endif
 
-  /* Add the mesh contribution to the potential */
+  /* Add the mesh contribution to the potential and tidal tensor */
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential += gp->potential_mesh;
+#endif
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+  gp->T_xx += gp->T_xx_mesh;
+  gp->T_yy += gp->T_yy_mesh;
+  gp->T_zz += gp->T_zz_mesh;
+  gp->T_xy += gp->T_xy_mesh;
+  gp->T_xz += gp->T_xz_mesh;
+  gp->T_yz += gp->T_yz_mesh;
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

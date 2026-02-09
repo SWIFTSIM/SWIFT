@@ -51,6 +51,16 @@ struct gpart {
 
 #endif
 
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+
+  /*! Tidal tensor components from the tree */
+  float T_xx, T_yy, T_zz, T_xy, T_xz, T_yz;
+
+  /*! Tidal tensor components from the mesh*/
+  float T_xx_mesh, T_yy_mesh, T_zz_mesh, T_xy_mesh, T_xz_mesh, T_yz_mesh;
+
+#endif
+
   /*! Particle mass. */
   float mass;
 

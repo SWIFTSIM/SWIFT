@@ -190,6 +190,62 @@ gravity_get_physical_potential(const struct gpart *restrict gp,
 }
 
 /**
+ * @brief Add a contribution to this particle's tidal tensor from the tree.
+ *
+ * No tidal tensors in this model.
+ *
+ * @param gp The particle.
+ * @param T_xx the xx-component of the tensor
+ * @param T_yy the yy-component of the tensor
+ * @param T_zz the zz-component of the tensor
+ * @param T_xy the xy-component of the tensor
+ * @param T_xz the xz-component of the tensor
+ * @param T_yz the yz-component of the tensor
+ */
+__attribute__((always_inline)) INLINE static void gravity_add_comoving_tensor(
+    struct gpart *restrict gp, const float T_xx, const float T_yy,
+    const float T_zz, const float T_xy, const float T_xz, const float T_yz) {}
+
+/**
+ * @brief Add a contribution to this particle's tidal tensor from the tree.
+ *
+ * No tidal tensors in this model.
+ *
+ * @param gp The particle.
+ * @param T_xx the xx-component of the tensor
+ * @param T_yy the yy-component of the tensor
+ * @param T_zz the zz-component of the tensor
+ * @param T_xy the xy-component of the tensor
+ * @param T_xz the xz-component of the tensor
+ * @param T_yz the yz-component of the tensor
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_add_comoving_mesh_tensor(struct gpart *restrict gp, const float T_xx,
+                                 const float T_yy, const float T_zz,
+                                 const float T_xy, const float T_xz,
+                                 const float T_yz) {}
+
+/**
+ * @brief Returns the comoving tidal tensor of a particle.
+ *
+ * No tidal tensor in this model.
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_get_comoving_tidal_tensor(const struct gpart *restrict gp,
+                                  float *restrict T_xx, float *restrict T_yy,
+                                  float *restrict T_zz, float *restrict T_xy,
+                                  float *restrict T_xz, float *restrict T_yz) {
+  *T_xx = 0.f;
+  *T_yy = 0.f;
+  *T_zz = 0.f;
+  *T_xy = 0.f;
+  *T_xz = 0.f;
+  *T_yz = 0.f;
+}
+
+/**
  * @brief Computes the gravity time-step of a given particle due to self-gravity
  *
  * We use Gadget-2's type 0 time-step criterion.

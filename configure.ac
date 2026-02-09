@@ -2184,11 +2184,23 @@ case "$with_gravity" in
    ;;
    basic)
       AC_DEFINE([DEFAULT_GRAVITY], [1], [Basic gravity scheme])
+      AC_DEFINE([SWIFT_GRAVITY_NO_TIDAL_TENSORS],1,[Disable calculation of the gravitational tidal tensors])
    ;;
    *)
       AC_MSG_ERROR([Unknown gravity scheme: $with_gravity])
    ;;
 esac
+
+AC_ARG_ENABLE([gravitational-tidal-tensors],
+   [AS_HELP_STRING([--enable-gravitational-tidal-tensors],
+     [Enable calculation of the gravitational tidal tensors.]
+   )],
+   [enable_gravitational_tidal_tensors="$enableval"],
+   [enable_gravitational_tidal_tensors="no"]
+)
+if test "$enable_gravitational_tidal_tensors" = "no"; then
+   AC_DEFINE([SWIFT_GRAVITY_NO_TIDAL_TENSORS],1,[Disable calculation of the gravitational tidal tensors])
+fi
 
 AC_ARG_ENABLE([gravitational-potential],
    [AS_HELP_STRING([--disable-gravitational-potential],
@@ -3423,13 +3435,14 @@ AC_MSG_RESULT([
    SPMHD scheme       : $with_spmhd
    Adaptive softening : $with_adaptive_softening
 
-   Gravity scheme      : $with_gravity
-   Multipole order     : $with_multipole_order
-   Compute potential   : $enable_gravitational_potential
-   No gravity below ID : $no_gravity_below_id
-   Make gravity glass  : $gravity_glass_making
-   External potential  : $with_potential
-   Forcing terms       : $with_forcing
+   Gravity scheme        : $with_gravity
+   Multipole order       : $with_multipole_order
+   Compute potential     : $enable_gravitational_potential
+   Compute tidal tensors : $enable_gravitational_tidal_tensors
+   No gravity below ID   : $no_gravity_below_id
+   Make gravity glass    : $gravity_glass_making
+   External potential    : $with_potential
+   Forcing terms         : $with_forcing
 
    Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor

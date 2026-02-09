@@ -233,6 +233,20 @@ struct reduced_grav_tensor {
   float F_001;
 };
 
+/**
+ * @brief Values returned by the M2P_tidaltensors kernel.
+ */
+struct reduced_grav_tidaltensor {
+
+  /* 2nd order terms */
+  float F_200;
+  float F_110;
+  float F_101;
+  float F_020;
+  float F_011;
+  float F_002;
+};
+
 #ifdef WITH_MPI
 /* MPI datatypes for transfers */
 extern MPI_Datatype multipole_mpi_type;
