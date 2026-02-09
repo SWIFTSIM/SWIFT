@@ -1,0 +1,25 @@
+We show here how to run such initial conditions with the GEAR model.
+
+To generate the initial conditions locally, if pNbody is installed, run:
+
+../makeDisk.py
+
+If you don't have access to pNbody, you can simply skip this step. The initial conditions will automatically 
+be downloaded when launching the run script (see below).
+
+
+To run this example with the GEAR model, SWIFT must be configured with the following options:
+
+./configure --with-subgrid=GEAR --with-grackle=${GRACKLE_ROOT}
+
+To start the simulation with the GEAR model:
+
+./run.sh
+
+# Sink particles
+
+Sink particles are already included in the option `--with-subgrid=GEAR`.
+
+To start the simulation with the sink particles, type:
+
+./run_sink.sh
