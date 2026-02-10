@@ -1,4 +1,4 @@
-./configure --with-hydro-dimension=1 --with-hydro=gizmo-mfv --with-riemann-solver=hllc
+./configure --with-hydro-dimension=1 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-chemistry=GEAR_1
 
 
 

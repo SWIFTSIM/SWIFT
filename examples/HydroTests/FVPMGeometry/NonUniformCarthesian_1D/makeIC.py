@@ -70,9 +70,14 @@ nx = 2**level
 dx = 1.0 / nx
 
 # Set the physical parameters
-rho_high = 2.0  # Density of the square wave
 rho_low = 1.0  # Density of the background
 velocity_x = 1.0  # Constant advection
+
+
+GAMMA = 5 / 3
+RHO = rho_low
+P = 1
+ELEMENT_COUNT = 1
 
 ###################
 # We want a box that is L=1 in Y and Z, but we split X into two zones
@@ -101,14 +106,18 @@ N = len(pos)
 # Identify the "Blob" - let's put it between x = 0.1 and x = 0.4
 blob_mask = (pos[:, 0] > 0.1) & (pos[:, 0] < 0.4)
 
-# Mass calculation: m = rho(x) * dV(x)
-mass = np.zeros(N)
+# Add a passive scalar to advect
+metal_mass_fraction = np.zeros([N, ELEMENT_COUNT])
+metal_mass_fraction[blob_mask] = 0.1
+
+# Mass
+mass = np.ones(N)
+
 rho_field = np.ones(N) * rho_low
-rho_field[blob_mask] = rho_high
+# rho_field[blob_mask] = rho_high
 
 if args.cartesian:
     # Uniform volume dV = dx^dim
-    mass = rho_field * (dx**dim)
     h = np.ones(N) * 1.2348 * dx
 else:
     # Dual-resolution volume dV
@@ -116,8 +125,6 @@ else:
     dv = np.zeros(N)
     dv[left_mask] = dx**dim
     dv[~left_mask] = 2.0 * dx * (dx ** (dim - 1))
-
-    mass = rho_field * dv
 
     # Smoothing length must follow the grid spacing (dV^(1/dim))
     h = np.zeros(N)
@@ -127,11 +134,11 @@ else:
 rho = rho_field
 
 # Create the other arrays
-vel = np.zeros((N, 3))
+vel = np.zeros_like(pos)
 vel[:, 0] = velocity_x
-ids = np.arange(N, dtype="L")
-u = np.ones(N) * 1.0  # Internal energy
-rho = np.ones(N) * rho
+u = np.ones(N) * P / (rho * (GAMMA - 1))
+
+ids = np.arange(N, dtype="L") + 1
 
 ########################################
 # Write HDF5
@@ -163,6 +170,7 @@ with h5py.File(args.output, "w") as f:
     p_grp.create_dataset("SmoothingLength", data=h, dtype="f")
     p_grp.create_dataset("InternalEnergy", data=u, dtype="f")
     p_grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-    p_grp.create_dataset("Densities", data=rho, dtype="f")
+    # p_grp.create_dataset("Density", data=rho, dtype="f")
+    p_grp.create_dataset("MetalMassFraction", data=metal_mass_fraction, dtype="d")
 
 print(f"File {args.output} generated with {N} particles.")

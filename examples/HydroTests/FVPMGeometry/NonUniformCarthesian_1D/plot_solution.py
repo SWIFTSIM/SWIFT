@@ -15,6 +15,13 @@ def plot_mass_profile():
     parser.add_argument(
         "-o", "--output", type=str, default="mass_profile.png", help="Output filename."
     )
+    parser.add_argument(
+        "--var",
+        type=str,
+        default="metal_mass",
+        choices=["metal_mass_fraction", "metal_mass", "gas_mass"],
+        help="Variable to plot."
+    )
     args = parser.parse_args()
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -28,6 +35,8 @@ def plot_mass_profile():
 
         x = data.gas.coordinates[:, 0].v
         m = data.gas.masses.v
+        Z = data.gas.metal_mass_fractions.v
+        m_Z = m*Z
         t = data.metadata.time.v
 
         # Sort by x to ensure the line plot connects neighbors correctly
@@ -35,7 +44,7 @@ def plot_mass_profile():
 
         ax.plot(
             x[idx],
-            m[idx],
+            m_Z[idx],
             marker="o",
             markersize=3,
             linestyle="-",
@@ -44,9 +53,9 @@ def plot_mass_profile():
         )
 
     ax.axvline(x=0.5, color="k", linestyle="--", alpha=0.5)
-    ax.set_xlabel("Position $x$")
-    ax.set_ylabel("Particle Mass $m$")
-    ax.set_title("Mass Advection Profile")
+    ax.set_xlabel("$x$")
+    ax.set_ylabel("Metal mass fraction")
+    ax.set_title("Advected Metal Mass Profile")
     ax.legend()
     ax.grid(True, alpha=0.2)
 

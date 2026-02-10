@@ -33,3 +33,6 @@ SPH:
 InitialConditions:
   file_name:  ./advection.hdf5          # The file to read
   periodic:   1
+
+GEARChemistry:
+  initial_metallicity: -1         # Negative values mean that the metallicity will be read from the ICs

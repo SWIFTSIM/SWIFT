@@ -38,8 +38,15 @@ mkdir "$DIR"
 # Run SWIFT
 ../../../../swift --hydro --threads=$n_threads params.yml 2>&1 | tee output.log
 
-# TODO: Add a python script
-python3 plot_solution.py snap/snapshot_0000.hdf5 snap/snapshot_0050.hdf5
+# Plot some mass profiles
+python3 plot_solution.py snap/snapshot_0000.hdf5 snap/snapshot_0050.hdf5 --var "gas_mass" -o "gas_mass_if.png"
+python3 plot_solution.py snap/snapshot_00*0.hdf5 --var "gas_mass" -o "gas_mass_evolution.png"
+
+python3 plot_solution.py snap/snapshot_0000.hdf5 snap/snapshot_0050.hdf5 --var "metal_mass" -o "metal_mass_if.png"
+python3 plot_solution.py snap/snapshot_00*0.hdf5 --var "metal_mass" -o "metal_mass_evolution.png"
+
+python3 plot_solution.py snap/snapshot_0000.hdf5 snap/snapshot_0050.hdf5 --var "metal_mass_fraction" -o "metal_mass_fraction_if.png"
+python3 plot_solution.py snap/snapshot_00*0.hdf5 --var "metal_mass" -o "metal_mass_fraction_evolution.png"
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
