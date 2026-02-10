@@ -171,14 +171,14 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       if (with_star_formation && ci->top->hydro.count > 0)
         scheduler_addunlock(s, t_grav, ci->top->hydro.star_formation);
 
+      /* Sink formation */
+      if (with_sinks && ci->top->hydro.count > 0)
+        scheduler_addunlock(s, t_grav, ci->top->sinks.sink_formation);
+
       /* Star formation from sinks */
       if (with_star_formation_sink &&
           (ci->top->hydro.count > 0 || ci->top->sinks.count > 0))
         scheduler_addunlock(s, t_grav, ci->top->sinks.star_formation_sink);
-
-      /* Sink formation */
-      if (with_sinks && ci->top->hydro.count > 0)
-        scheduler_addunlock(s, t_grav, ci->top->sinks.sink_formation);
 
       /* Drift before you pack + send */
       scheduler_addunlock(s, ci->grav.super->grav.drift, t_pack_grav);
