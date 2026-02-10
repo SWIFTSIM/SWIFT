@@ -1035,7 +1035,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
 
       if (foreign_j && pjd < gcount_j &&
           gparts_foreign_j[pjd].ti_drift != e->ti_current &&
-          !gpart_is_inhibited(&gparts_j[pjd], e))
+          !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e))
         error("gpj not drifted to current time");
 
       /* Check that we are not updated an inhibited particle */
