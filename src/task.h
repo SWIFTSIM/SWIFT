@@ -147,8 +147,8 @@ enum task_subtypes {
   task_subtype_stars_prep1,
   task_subtype_stars_prep2,
   task_subtype_stars_feedback,
-  task_subtype_sf_counts,
-  task_subtype_grav_counts,
+  task_subtype_sf_counts,             /* MPI */
+  task_subtype_grav_counts,           /* MPI */
   task_subtype_bpart_rho,
   task_subtype_bpart_feedback,
   task_subtype_bh_density,
@@ -163,7 +163,7 @@ enum task_subtypes {
   task_subtype_sink_formation_counts, /* MPI */
   task_subtype_sink_rho,              /* MPI */
   task_subtype_sink_gas_swallow,      /* MPI */
-  task_subtype_sink_merger,           // TODO: Add SF_sink
+  task_subtype_sink_merger,           /* MPI */
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
   task_subtype_count

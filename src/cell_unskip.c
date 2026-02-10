@@ -2009,16 +2009,16 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_gpart(cj, s);
         }
 
-        /* Propagating new sink counts? */
-        if (with_sinks) {
-          if (ci_active && ci->hydro.count > 0) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
-          }
-          if (cj_active && cj->hydro.count > 0) {
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_grav_counts,
-                                    ci_nodeID);
-          }
-        }
+        /* /\* Propagating new sink counts? *\/ */
+        /* if (with_sinks) { */
+        /*   if (ci_active && ci->hydro.count > 0) { */
+        /*     scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts); */
+        /*   } */
+        /*   if (cj_active && cj->hydro.count > 0) { */
+        /*     scheduler_activate_send(s, cj->mpi.send, task_subtype_grav_counts, */
+        /*                             ci_nodeID); */
+        /*   } */
+        /* } */
 
         /* Propagating new star counts (star formation)? */
         if (with_star_formation) {
@@ -2062,16 +2062,16 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_gpart(ci, s);
         }
 
-        /* Propagating new sink counts? */
-        if (with_sinks) {
-          if (cj_active && cj->hydro.count > 0) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
-          }
-          if (ci_active && ci->hydro.count > 0) {
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
-                                    cj_nodeID);
-          }
-        }
+        /* /\* Propagating new sink counts? *\/ */
+        /* if (with_sinks) { */
+        /*   if (cj_active && cj->hydro.count > 0) { */
+        /*     scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts); */
+        /*   } */
+        /*   if (ci_active && ci->hydro.count > 0) { */
+        /*     scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts, */
+        /*                             cj_nodeID); */
+        /*   } */
+        /* } */
 
         /* Propagating new star counts (star formation)? */
         if (with_star_formation) {
@@ -2961,7 +2961,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
               s, cj->mpi.send, task_subtype_sink_formation_counts, ci_nodeID);
         }
 
-        /* TODO: implement sf_sink_counts + same for gravity */
         /* Propagating new star counts? */
         if (with_star_formation_sink) {
           if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
@@ -3022,7 +3021,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
               s, ci->mpi.send, task_subtype_sink_formation_counts, cj_nodeID);
         }
 
-        /* TODO: implement sf_sink_counts + same for gravity */
         /* Propagating new star counts? */
         if (with_star_formation_sink) {
           if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
