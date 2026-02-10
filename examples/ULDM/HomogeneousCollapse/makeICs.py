@@ -32,17 +32,12 @@ nb.mass = np.ones(n)*M/n
 
 hydro=True
 if hydro:
-  nb.u_init   = np.zeros(nb.nbody)
-  # set all particles to dm  particles
+  # set particles to gas
   nb.set_tpe(0)
-
-  #eps = 1
-  #nb.pos[:,0] = nb.pos[:,0] + np.random.uniform(-0.5,0.5,nb.nbody)*eps
-  #nb.pos[:,1] = nb.pos[:,1] + np.random.uniform(-0.5,0.5,nb.nbody)*eps
-  #nb.pos[:,2] = nb.pos[:,2] + np.random.uniform(-0.5,0.5,nb.nbody)*eps
-
+  nb.u_init   = np.ones(nb.nbody)*0.05  
   nb.rsp_init = nb.get_rsp_approximation()
 else:
+  # set particles to dm
   nb.set_tpe(1)
   
 
@@ -56,7 +51,7 @@ nb.hubblefactorcorrection      = False
 nb.comovingtoproperconversion  = False
 nb.atime                       = 1
 
-nb.boxsize = L
+nb.boxsize = np.array([L,L,L])
 
 nb.rename(outputfile)
 nb.write()

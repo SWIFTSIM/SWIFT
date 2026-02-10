@@ -13,8 +13,8 @@ TimeIntegration:
   dt_min:              1e-11   # The minimal time-step size of the simulation (in internal units).
   dt_max:              1e-3    # The maximal time-step size of the simulation (in internal units).
 
-Scheduler:
-  max_top_level_cells: 9
+#Scheduler:
+#  max_top_level_cells: 9
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -30,7 +30,7 @@ Gravity:
 SPH:  
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+  #h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
 
 
 
