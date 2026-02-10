@@ -6,19 +6,32 @@ The first derivatives of the kernel function have relatively simple
 expressions:
 
 \begin{align}
- \vec\nabla_x W(\vec{x},h) &= \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|}, \\
- \frac{\partial W(\vec{x},h)}{\partial h} &=- \frac{1}{h^4}\left[3f\left(\frac{|\vec{x}|}{h}\right) + 
-\frac{|\vec{x}|}{h}f'\left(\frac{|\vec{x}|}{h}\right)\right].
+ \vec\nabla_x W(\vec{x},h) &= \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|}.
 \end{align}
 Note that for all the kernels listed above, $f'(0) = 0$. 
 
-
-The second derivatives of the kernel write:
+\noindent
+In order to compute the quantum pressure, the Laplacian of the kernel is needed. It first derivative writes:
 
 \begin{align}
- \vec\nabla_x W(\vec{x},h) &= \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|}, \\
- \frac{\partial W(\vec{x},h)}{\partial h} &=- \frac{1}{h^4}\left[3f\left(\frac{|\vec{x}|}{h}\right) + 
-\frac{|\vec{x}|}{h}f'\left(\frac{|\vec{x}|}{h}\right)\right].
+\frac{\partial^2 W(\vec{x},h)}{\partial x_i^2}
+= \frac{1}{h^4} \left[
+\frac{x_i^2}{h |\vec{x}|^2}\, f''\!\left(\frac{|\vec{x}|}{h}\right) +
+\frac{|\vec{x}|^2 - x_i^2}{|\vec{x}|^3}\,f'\!\left(\frac{|\vec{x}|}{h}\right)\right]
+\end{align}
+
+\noindent
+The Laplacian writes:
+
+
+\begin{align}
+\nabla^2 W(\vec{x},h)
+= \frac{1}{h^5}
+\left[
+f''\!\left(\frac{|\vec{x}|}{h}\right)
++ \frac{2h}{|\vec{x}|}\,
+f'\!\left(\frac{|\vec{x}|}{h}\right)
+\right],
 \end{align}
 
 
