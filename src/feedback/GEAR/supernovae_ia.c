@@ -335,7 +335,7 @@ void supernovae_ia_init(struct supernovae_ia *snia,
 
   /* Supernovae energy */
   double e_feedback =
-      parser_get_param_double(params, "GEARFeedback:supernovae_energy_erg");
+      parser_get_param_double(params, "GEARFeedback:supernovae_Ia_energy_erg");
   e_feedback /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   snia->energy_per_supernovae = e_feedback;
 }
