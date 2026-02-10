@@ -1,1 +1,34 @@
-TBD
+
+For a set of particles $i$ with positions $\vec{x}_i$, masses $m_i$,
+and smoothing length $h_i$, we compute the density for each particle as:
+
+\begin{equation}
+  \rho_i \equiv \rho(\vec{x}_i) = \sum_j m_j W(\vec{x}_{ij}, h_i).
+  \label{eq:uldm:rho}
+\end{equation}
+and the derivative of its density with respect to $h$:
+
+The density gradient is:
+
+\begin{equation}
+  \label{eq:uldm:grad_rho}
+  \vec{\nabla} \rho_i =  \sum_j m_j \vec{\nabla} W(\vec{x}_{ij}, h_i) \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}}.
+\end{equation}
+
+The Laplacian of the density write:
+
+\begin{equation}
+  \label{eq:uldm:laplacian_rho}
+  \nabla^2 \rho_i =  \sum_j m_j \vec{\nabla}^2 W(\vec{x}_{ij}, h_i) \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}} - \frac{|\vec{\nabla}\rho_i|^2}{\rho_i}.
+\end{equation}
+
+The acceleration of the particle $i$ is equal to the gradient of the quantum pressure:
+
+\begin{equation}
+  \label{eq:uldm:grad_Q}
+  \vec{\nabla{Q_i}} =  \frac{\hbar}{2 m^2_\chi }  \sum_j \frac{m_j}{\rho_j}\vec{\nabla} W(\vec{x}_{ij}, h_i)
+  \left( \frac{\nabla^2\rho_j}{2\rho_j} -\frac{|\vec{\nabla}\rho_j|^2}{4\rho^2_j} \right)
+\end{equation}
+
+
+
