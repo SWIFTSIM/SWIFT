@@ -12,3 +12,8 @@ To start the simulation:
 
 ./run.sh
 
+To show the evolution of the model mass profile:
+
+plotSphericalProfile -y density  --xmin 0  --xmax 0.3 --rmax 0.3 --nr 128 --remove_ic_shift snap/snapshot*.hdf5 --log y 
+
+
