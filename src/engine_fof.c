@@ -157,6 +157,9 @@ void engine_fof(struct engine *e, const int dump_results,
 #endif
   }
 
+  /* Free all the memory related to gas and stars sort arrays. */
+  space_free_sort_indices(e->s);
+
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, e->fof_properties);
 

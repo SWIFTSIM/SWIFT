@@ -30,12 +30,16 @@
 /* Import the right external potential definition */
 #if defined(FORCING_NONE)
 #include "./forcing/none/forcing.h"
+#elif defined(FORCING_BOUNDARY_PARTICLES)
+#include "./forcing/boundary_particles/forcing.h"
 #elif defined(FORCING_ROBERTS_FLOW)
 #include "./forcing/roberts_flow/forcing.h"
 #elif defined(FORCING_ROBERTS_FLOW_ACCELERATION)
 #include "./forcing/roberts_flow_acceleration/forcing.h"
 #elif defined(FORCING_ABC_FLOW)
 #include "./forcing/ABC_flow/forcing.h"
+#elif defined(FORCING_IDEALIZED_AGN_JET)
+#include "./forcing/idealized_agn_jet/forcing.h"
 #else
 #error "Invalid choice of forcing terms"
 #endif
