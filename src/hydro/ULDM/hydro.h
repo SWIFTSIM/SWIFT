@@ -523,7 +523,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rho_dh = 0.f;
   p->density.grad_rho[0] = 0.f;
   p->density.grad_rho[1] = 0.f;
-  p->density.grad_rho[2] = 0.f;  
+  p->density.grad_rho[2] = 0.f;
+  p->density.norm_grad_rho2 = 0.f;
   p->density.laplacian_rho = 0.f;  
   p->density.div_v = 0.f;
   p->density.rot_v[0] = 0.f;
@@ -628,15 +629,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->density.grad_rho[1] *= h_inv_dim_plus_one;
   p->density.grad_rho[2] *= h_inv_dim_plus_one;
 
-  const float grad_rho2 = p->density.grad_rho[0]*p->density.grad_rho[0] +
+  const float norm_grad_rho2 = p->density.grad_rho[0]*p->density.grad_rho[0] +
                           p->density.grad_rho[1]*p->density.grad_rho[1] +
                           p->density.grad_rho[2]*p->density.grad_rho[2];
 
-  p->density.laplacian_rho -= grad_rho2/rho;
-  p->density.laplacian_rho *= h_inv_dim_plus_two;
+  p->density.norm_grad_rho2 = norm_grad_rho2;
 
-
-  
+  p->density.laplacian_rho -= norm_grad_rho2/rho;
+  p->density.laplacian_rho *= h_inv_dim_plus_two; 
 }
 
 /**
@@ -905,7 +905,19 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */  
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+  
   p->force.h_dt *= p->h * hydro_dimension_inv;
+
+  const float uldm_Cte = 1e-40;
+  
+  p->a_hydro[0] *= h_inv_dim_plus_one*uldm_Cte;
+  p->a_hydro[1] *= h_inv_dim_plus_one*uldm_Cte;
+  p->a_hydro[2] *= h_inv_dim_plus_one*uldm_Cte;
 }
 
 /**

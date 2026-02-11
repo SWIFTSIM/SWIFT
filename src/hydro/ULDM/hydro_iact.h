@@ -114,12 +114,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
   pi->density.rot_v[0] += faci * curlvr[0];
-  pi->density.rot_v[1] += faci * curlvr[1];
+  pi->density.rot_v[1] += faci * curlvr[1];      // Check the sign
   pi->density.rot_v[2] += faci * curlvr[2];
 
-  pj->density.rot_v[0] += facj * curlvr[0];
-  pj->density.rot_v[1] += facj * curlvr[1];
-  pj->density.rot_v[2] += facj * curlvr[2];
+  pj->density.rot_v[0] -= facj * curlvr[0];
+  pj->density.rot_v[1] -= facj * curlvr[1];
+  pj->density.rot_v[2] -= facj * curlvr[2];
 }
 
 /**
@@ -337,10 +337,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     error("Inhibited pj in interaction function!");
 #endif
 
-  /* Cosmological factors entering the EoMs */
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
-
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -350,102 +346,40 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  const float pressurei = pi->force.pressure;
-  const float pressurej = pj->force.pressure;
+  const float rhoi2 = rhoi*rhoi;
+  const float rhoj2 = rhoi*rhoj;
+  const float lapacian_rhoi = pi->density.laplacian_rho;
+  const float lapacian_rhoj = pj->density.laplacian_rho;
+  const float norm_grad_rhoi2 = pi->density.norm_grad_rho2;
+  const float norm_grad_rhoj2 = pj->density.norm_grad_rho2;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
-
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
-
-  /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
-
-  /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
-
-  /* Add Hubble flow */
-  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
-
-  /* Are the particles moving towards each others ? */
-  const float omega_ij = min(dvdr_Hubble, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
-
-  /* Compute signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
-
-  /* Grab balsara switches */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
-
-  /* Construct the full viscosity term */
-  const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
-
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
-
-  /* SPH acceleration term */
-  const float sph_acc_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
-
-  /* Adaptive softening acceleration term */
-  const float adapt_soft_acc_term =
-      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
 
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
+  const float QPi = lapacian_rhoj/2.0f/rhoj - norm_grad_rhoj2/4.0f/rhoj2; 
+  const float QPj = lapacian_rhoi/2.0f/rhoi - norm_grad_rhoi2/4.0f/rhoi2; 
+  
+  const float fi = wi_dx/mj/rhoj*QPi*r_inv;
+  const float fj = wj_dx/mi/rhoi*QPj*r_inv;
 
-  /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0] *0;
-  pi->a_hydro[1] -= mj * acc * dx[1] *0;
-  pi->a_hydro[2] -= mj * acc * dx[2] *0;
-
-  pj->a_hydro[0] += mi * acc * dx[0] *0;
-  pj->a_hydro[1] += mi * acc * dx[1] *0;
-  pj->a_hydro[2] += mi * acc * dx[2] *0;
-
-  /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
-  const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;
-
-  /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
-
-  /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term;
-  const float du_dt_j = sph_du_term_j + visc_du_term;
-
-  /* Internal energy time derivatibe */
-  pi->u_dt += du_dt_i * mj;
-  pj->u_dt += du_dt_j * mi;
-
-  /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr * f_ij;
-  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr * f_ji;
-
-  /* Update the signal velocity. */
-  pi->force.v_sig = max(pi->force.v_sig, v_sig);
-  pj->force.v_sig = max(pj->force.v_sig, v_sig);
+  /* Use the force Luke ! Last part of the acceleration is not included */
+  pi->a_hydro[0] -= fi * dx[0];
+  pi->a_hydro[1] -= fi * dx[1];   // check sign !!!
+  pi->a_hydro[2] -= fi * dx[2];
+                    
+  pj->a_hydro[0] += fj * dx[0];
+  pj->a_hydro[1] += fj * dx[1];
+  pj->a_hydro[2] += fj * dx[2];
 }
 
 /**
@@ -472,106 +406,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     error("Inhibited pj in interaction function!");
 #endif
 
-  /* Cosmological factors entering the EoMs */
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
-
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  const float mi = pi->mass;
   const float mj = pj->mass;
-  const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  const float pressurei = pi->force.pressure;
-  const float pressurej = pj->force.pressure;
+  const float rhoj2 = rhoj*rhoj;
+  const float lapacian_rhoj = pj->density.laplacian_rho;
+  const float norm_grad_rhoj2 = pj->density.norm_grad_rho2;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
-
-  /* Get the kernel for hj. */
-  const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
-  const float xj = r * hj_inv;
-  float wj, wj_dx;
-  kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
-
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
-
-  /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
-
-  /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
-
-  /* Add Hubble flow */
-  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
-
-  /* Are the particles moving towards each others ? */
-  const float omega_ij = min(dvdr_Hubble, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
-
-  /* Compute signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
-
-  /* Grab balsara switches */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
-
-  /* Construct the full viscosity term */
-  const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
-
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
-
-  /* SPH acceleration term */
-  const float sph_acc_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
-
-  /* Adaptive softening acceleration term */
-  const float adapt_soft_acc_term =
-      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
 
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
+  const float QPi = lapacian_rhoj/2.0f/rhoj - norm_grad_rhoj2/4.0f/rhoj2; 
+  
+  const float fi = wi_dx/mj/rhoj*QPi*r_inv;
 
-  /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0] *0;
-  pi->a_hydro[1] -= mj * acc * dx[1] *0;
-  pi->a_hydro[2] -= mj * acc * dx[2] *0;
-
-  /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
-
-  /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
-
-  /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term;
-
-  /* Internal energy time derivatibe */
-  pi->u_dt += du_dt_i * mj;
-
-  /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr * f_ij;
-
-  /* Update the signal velocity. */
-  pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  /* Use the force Luke ! Last part of the acceleration is not included */
+  pi->a_hydro[0] -= fi * dx[0];
+  pi->a_hydro[1] -= fi * dx[1];   // check sign !!!
+  pi->a_hydro[2] -= fi * dx[2];
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */

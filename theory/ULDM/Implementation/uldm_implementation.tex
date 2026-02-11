@@ -24,7 +24,7 @@ The gradient of the density is computed in the second loop as:
 Note that the $\frac{1}{h_i^4}$ factor is computed at the end of the loop.
 
 
-The Laplacian of the density is computed in the second loop as:
+The Laplacian of the density is computed in the second loop, as:
 
 \begin{eqnarray}
   \label{eq:uldm:implementation:laplacian_rho}
@@ -35,6 +35,24 @@ The Laplacian of the density is computed in the second loop as:
 \end{eqnarray}
 
 Note that the  $\frac{1}{h_i^5}$ factor as well as the last ratio that involve only $\rho_i$ are computed at the end of the loop.
+
+
+The gradient of the quantum pressure is computed in the third loop, as:
+
+\begin{eqnarray}
+  \label{eq:uldm:implementation:grad_Q}
+  \vec{\nabla{Q_i}}
+  & = &  \frac{\hbar}{2 m^2_\chi }  \sum_j \frac{m_j}{\rho_j}\vec{\nabla} W(\vec{x}_{ij}, h_i)
+  \left( \frac{\nabla^2\rho_j}{2\rho_j} -\frac{|\vec{\nabla}\rho_j|^2}{4\rho^2_j} \right)\\
+  & = &  \frac{\hbar}{2 m^2_\chi } \frac{1}{h_i^4}
+         \sum_j \frac{m_j}{\rho_j} f'(u_i) \frac{\vec{x}}{|\vec{x}|}
+         \left( \frac{\nabla^2\rho_j}{2\rho_j} -\frac{|\vec{\nabla}\rho_j|^2}{4\rho^2_j} \right)
+\end{eqnarray}
+
+Note that the  $\frac{1}{h_i^4}$ factor as well as the constant are computed at the end of the loop.
+
+
+
 
 
 

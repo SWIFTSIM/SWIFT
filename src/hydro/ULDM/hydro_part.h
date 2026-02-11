@@ -151,6 +151,9 @@ struct part {
 
       /*! Density gradient */
       float grad_rho[3];
+
+      /*! Square of the norm of the density gradient */
+      float norm_grad_rho2;
       
       /*! Laplacian of the density */
       float laplacian_rho;
