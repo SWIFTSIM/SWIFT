@@ -383,6 +383,7 @@ runner_iact_nonsym_feedback_apply(
   hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
   hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
                                              u_new_enrich);
+  mhd_set_drifted_physical_internal_energy(pj);
 
   /* Finally, SNII stochastic feedback */
 
@@ -415,6 +416,7 @@ runner_iact_nonsym_feedback_apply(
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
                                                  u_new);
+      mhd_set_drifted_physical_internal_energy(pj);
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);

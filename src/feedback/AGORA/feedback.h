@@ -24,8 +24,28 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "stars.h"
 #include "units.h"
+
+/**
+ * @brief Computes the time-step length of a given star particle from feedback
+ * physics
+ *
+ * @param sp Pointer to the s-particle data.
+ * @param feedback_props Properties of the feedback model.
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param ti_current The current time (in integer)
+ * @param time The current time (in double)
+ * @param time_base The time base.
+ */
+float feedback_compute_spart_timestep(
+    const struct spart *const sp, const struct feedback_props *feedback_props,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const integertime_t ti_current, const double time, const double time_base);
 
 /**
  * @brief Update the properties of a particle fue to feedback effects after
@@ -37,8 +57,8 @@
  * @param xp The #xpart to consider.
  * @param cosmo The #cosmology.
  */
-void feedback_update_part(struct part* p, struct xpart* xp,
-                          const struct engine* e);
+void feedback_update_part(struct part *p, struct xpart *xp,
+                          const struct engine *e);
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the
@@ -50,17 +70,17 @@ void feedback_update_part(struct part* p, struct xpart* xp,
  * @param xp The extended data of the particle.
  */
 __attribute__((always_inline)) INLINE static void feedback_reset_part(
-    struct part* p, struct xpart* xp) {}
+    struct part *p, struct xpart *xp) {}
 
 /**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon
  */
-void feedback_init_spart(struct spart* sp);
+void feedback_init_spart(struct spart *sp);
 
 void feedback_init_after_star_formation(
-    struct spart* sp, const struct feedback_props* feedback_props,
+    struct spart *sp, const struct feedback_props *feedback_props,
     enum stellar_type star_type);
 
 /**
@@ -69,7 +89,7 @@ void feedback_init_after_star_formation(
  * @param sp The star to consider.
  */
 __attribute__((always_inline)) INLINE static int feedback_do_feedback(
-    const struct spart* sp) {
+    const struct spart *sp) {
 
   return 0;
 }
@@ -84,7 +104,7 @@ __attribute__((always_inline)) INLINE static int feedback_do_feedback(
  * @param sp The #spart.
  * @param e The #engine.
  */
-int feedback_is_active(const struct spart* sp, const struct engine* e);
+int feedback_is_active(const struct spart *sp, const struct engine *e);
 
 /**
  * @brief Returns the length of time since the particle last did
@@ -102,8 +122,8 @@ int feedback_is_active(const struct spart* sp, const struct engine* e);
  * @return The length of the enrichment step in internal units.
  */
 INLINE static double feedback_get_enrichment_timestep(
-    const struct spart* sp, const int with_cosmology,
-    const struct cosmology* cosmo, const double time, const double dt_star) {
+    const struct spart *sp, const int with_cosmology,
+    const struct cosmology *cosmo, const double time, const double dt_star) {
 
   /* Just return the regular step length */
   return dt_star;
@@ -116,7 +136,7 @@ INLINE static double feedback_get_enrichment_timestep(
  * This is called in the stars ghost.
  */
 __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
-    struct spart* sp, const struct feedback_props* feedback_props) {}
+    struct spart *sp, const struct feedback_props *feedback_props) {}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
@@ -127,8 +147,8 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
  * @param sp The particle to act upon.
  * @param feedback_props The properties of the feedback model.
  */
-void feedback_first_init_spart(struct spart* sp,
-                               const struct feedback_props* feedback_props);
+void feedback_first_init_spart(struct spart *sp,
+                               const struct feedback_props *feedback_props);
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
@@ -139,8 +159,8 @@ void feedback_first_init_spart(struct spart* sp,
  * @param sp The particle to act upon.
  * @param feedback_props The properties of the feedback model.
  */
-void feedback_prepare_spart(struct spart* sp,
-                            const struct feedback_props* feedback_props);
+void feedback_prepare_spart(struct spart *sp,
+                            const struct feedback_props *feedback_props);
 
 /**
  * @brief Prepare a #spart for the feedback task.
@@ -161,11 +181,11 @@ void feedback_prepare_spart(struct spart* sp,
  * @param ti_begin The integer time at the beginning of the step.
  * @param with_cosmology Are we running with cosmology on?
  */
-void feedback_prepare_feedback(struct spart* restrict sp,
-                               const struct feedback_props* feedback_props,
-                               const struct cosmology* cosmo,
-                               const struct unit_system* us,
-                               const struct phys_const* phys_const,
+void feedback_prepare_feedback(struct spart *restrict sp,
+                               const struct feedback_props *feedback_props,
+                               const struct cosmology *cosmo,
+                               const struct unit_system *us,
+                               const struct phys_const *phys_const,
                                const double star_age_beg_step, const double dt,
                                const double time, const integertime_t ti_begin,
                                const int with_cosmology);
@@ -186,9 +206,9 @@ void feedback_prepare_feedback(struct spart* restrict sp,
  * @param time_base The time base.
  */
 void feedback_will_do_feedback(
-    struct spart* sp, const struct feedback_props* feedback_props,
-    const int with_cosmology, const struct cosmology* cosmo, const double time,
-    const struct unit_system* us, const struct phys_const* phys_const,
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
     const integertime_t ti_current, const double time_base);
 
 /**
@@ -198,7 +218,7 @@ void feedback_will_do_feedback(
  *
  * @param fp the feedback data structure.
  */
-void feedback_clean(struct feedback_props* feedback);
+void feedback_clean(struct feedback_props *feedback);
 
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.
@@ -206,7 +226,7 @@ void feedback_clean(struct feedback_props* feedback);
  * @param feedback the struct
  * @param stream the file stream
  */
-void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
+void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
 
 /**
  * @brief Restore a hydro_props struct from the given FILE as a stream of
@@ -216,14 +236,14 @@ void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
  * @param stream the file stream
  * @param cosmo #cosmology structure
  */
-void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
+void feedback_struct_restore(struct feedback_props *feedback, FILE *stream);
 
 #ifdef HAVE_HDF5
 /**
  * @brief Writes the current model of feedback to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-INLINE static void feedback_write_flavour(struct feedback_props* feedback,
+INLINE static void feedback_write_flavour(struct feedback_props *feedback,
                                           hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Feedback Model", "AGORA");

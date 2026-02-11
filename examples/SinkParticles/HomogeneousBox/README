@@ -3,7 +3,7 @@ This example is a non cosmological homogeneous box with gas only. The cooling an
 
 The default level is 5 (N_particle = 2^(3*level)). It is quick. If you want to try the example with higher levels, we recommend using HPC facilities.
 
-This example tests the impact of different parameters on the sink formation (e.g. cut_off_radius, density_threshold, ...), accretion and star spawning. It also test the effects of feedback (e.g. supernovae_efficiency) and cooling (equilibrium cooling with grackle_0 mode versu non equilibrium cooling with grackle_X, X = 1, 2 or 3) on the sink particles and star formation.
+This example tests the impact of different parameters on the sink formation (e.g. cut_off_radius, density_threshold, ...), accretion and star spawning. It also test the effects of feedback (e.g. supernovae_efficiency) and cooling (equilibrium cooling with grackle_0 mode versus non equilibrium cooling with grackle_X, X = 1, 2 or 3) on the sink particles and star formation.
 
 This example allows you to play with the sink parameters to see how they impact the simulation. You can also change parameters in the feedback, the cooling, etc.
 
@@ -28,11 +28,11 @@ The run.sh script calls `makeIC.py' script with default values. You can experime
 Type run.sh, and let's go!
 
 # Changing the cooling
-You can change grackle mode to 1,2, or 3 if you want. You may also want to change the simulation end time.
+You can experiment different cooling modes by changing grackle mode to 1,2, or 3.
 
-For grackle_0 (equilibrium mode), the first sink form roughly at 0.260 (internal units). The end time is 0.282 Myr. The simulation runs in ~ 2 minutes.
+For grackle_0 (equilibrium mode), the first sink form roughly at 0.260 Gyr (= internal units). The end time is 0.282 Myr. The simulation runs in ~ 2 minutes.
 
-Notice that, for grackle_X with X from 1 to 3, the level 5 simulation does not have enough particles to run for long times. At 0.5 Gyr, swift ends because there are not enough particles per top-level cell. However, note how different the collapse from grackle_0 is!
+For grackle_X with X from 1 to 3, the first sinks form rouglhy at 0.465 Gyr.
 
 # For sink debugging
 This example was used to debug the sink's tasks and other sink-related bugs. The level (N_part = 2^(3*level)) was 8 during this debugging phase.

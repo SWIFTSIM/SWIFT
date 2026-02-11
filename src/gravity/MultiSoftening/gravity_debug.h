@@ -20,7 +20,7 @@
 #define SWIFT_MULTI_SOFTENING_GRAVITY_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void gravity_debug_particle(
-    const struct gpart* p) {
+    const struct gpart *p) {
   printf(
       "mass=%.3e time_bin=%d\n"
       "x=[%.5e,%.5e,%.5e], v_full=[%.5e,%.5e,%.5e], type=%d, "

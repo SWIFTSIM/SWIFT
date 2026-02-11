@@ -1,13 +1,14 @@
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+from matplotlib import pyplot as plt
+import numpy as np
 
 # tex stuff
 # rc('font',**{'family':'serif','serif':['Palatino']})
 params = {
     "axes.labelsize": 14,
-    "text.fontsize": 14,
+    "font.size": 14,
     "legend.fontsize": 14,
     "xtick.labelsize": 14,
     "ytick.labelsize": 14,
@@ -22,8 +23,8 @@ params = {
     "lines.markersize": 4,
     #'axes.formatter.limits' : (, 0),
 }
-rcParams.update(params)
-rc("font", family="serif")
+matplotlib.rcParams.update(params)
+matplotlib.rc("font", family="serif")
 import sys
 import math
 import os
@@ -34,15 +35,15 @@ h = 2.8 * epsilon
 r_s = 20.0
 r_c = 4.5 * r_s
 
-r = arange(0.1, 2500, 1 / 1000.0)
+r = np.arange(0.1, 2500, 1 / 1000.0)
 
-numElem = size(r)
-f = zeros(numElem)
-f_wanted = zeros(numElem)
-fac = zeros(numElem)
-f2 = zeros(numElem)
-fac2 = zeros(numElem)
-kernel = zeros(numElem)
+numElem = r.size
+f = np.zeros(numElem)
+f_wanted = np.zeros(numElem)
+fac = np.zeros(numElem)
+f2 = np.zeros(numElem)
+fac2 = np.zeros(numElem)
+kernel = np.zeros(numElem)
 
 for i in range(numElem):
     if r[i] >= r_c:
@@ -72,10 +73,10 @@ for i in range(numElem):
                 - 0.066666666667 / (u * u * u)
             ) / h ** 3
 
-    fac[i] = math.erfc(r[i] / (2.0 * r_s)) + (r[i] / (r_s * sqrt(math.pi))) * exp(
+    fac[i] = math.erfc(r[i] / (2.0 * r_s)) + (r[i] / (r_s * np.sqrt(np.pi))) * np.exp(
         -r[i] * r[i] / (4 * r_s * r_s)
     )
-    fac2[i] = math.erf(r[i] / (2.0 * r_s)) - (r[i] / (r_s * sqrt(math.pi))) * exp(
+    fac2[i] = math.erf(r[i] / (2.0 * r_s)) - (r[i] / (r_s * np.sqrt(np.pi))) * np.exp(
         -r[i] * r[i] / (4 * r_s * r_s)
     )
     f[i] = f[i] * fac[i]
@@ -94,62 +95,64 @@ for i in range(numElem):
             - 0.066666666667 / (u * u * u)
         ) / h ** 3
 
-figure()
-loglog(r / h, 1 / r ** 3, "b-", label="Newton's law")
-loglog(r / h, kernel, "r-", label="Softening kernel")
-loglog(r / h, fac / r ** 3, "g-", label="Unsoftend tree force")
-loglog(r / h, f2, "m-", label="Mesh force")
-loglog(r / h, f, "c--", label="Total tree force", linewidth=3)
-loglog(r / h, f + f2, "k--", label="Total force", linewidth=3)
+plt.figure()
+plt.loglog(r / h, 1 / r ** 3, "b-", label="Newton's law")
+plt.loglog(r / h, kernel, "r-", label="Softening kernel")
+plt.loglog(r / h, fac / r ** 3, "g-", label="Unsoftend tree force")
+plt.loglog(r / h, f2, "m-", label="Mesh force")
+plt.loglog(r / h, f, "c--", label="Total tree force", linewidth=3)
+plt.loglog(r / h, f + f2, "k--", label="Total force", linewidth=3)
 
 
-plot([1, 1], [1e-10, 1e10], "k--")
-text(0.85, 5e-9, "$h_c=2.8\epsilon$", rotation="vertical", fontsize=14, va="bottom")
+plt.plot([1, 1], [1e-10, 1e10], "k--")
+plt.text(
+    0.85, 5e-9, r"$h_c=2.8\epsilon$", rotation="vertical", fontsize=14, va="bottom"
+)
 
-plot([epsilon / h, epsilon / h], [1e-10, 1e10], "k--")
-text(
+plt.plot([epsilon / h, epsilon / h], [1e-10, 1e10], "k--")
+plt.text(
     0.85 * epsilon / h,
     5e-9,
-    "$\epsilon$",
+    r"$\epsilon$",
     rotation="vertical",
     fontsize=14,
     va="bottom",
 )
 
-plot([r_s / h, r_s / h], [1e-10, 1e10], "k--")
-text(0.85 * r_s / h, 5e-4, "$r_s$", rotation="vertical", fontsize=14, va="bottom")
+plt.plot([r_s / h, r_s / h], [1e-10, 1e10], "k--")
+plt.text(0.85 * r_s / h, 5e-4, "$r_s$", rotation="vertical", fontsize=14, va="bottom")
 
-plot([r_c / h, r_c / h], [1e-10, 1e10], "k--")
-text(
+plt.plot([r_c / h, r_c / h], [1e-10, 1e10], "k--")
+plt.text(
     0.85 * r_c / h, 5e-4, "$r_c=4.5r_s$", rotation="vertical", fontsize=14, va="bottom"
 )
 
 
-legend(loc="upper right", ncol=2)
+plt.legend(loc="upper right", ncol=2)
 
 
-grid()
+plt.grid()
 
-xlim(1e-1, 200)
-xlabel("$r/h_c$")
-xticks([0.1, 1, 10, 100], ["$0.1$", "$1$", "$10$", "$100$"])
+plt.xlim(1e-1, 200)
+plt.xlabel("$r/h_c$")
+plt.xticks([0.1, 1, 10, 100], ["$0.1$", "$1$", "$10$", "$100$"])
 
-ylim(4e-10, 1e2)
-ylabel("Acceleration")
-
-
-savefig("force.png")
+plt.ylim(4e-10, 1e2)
+plt.ylabel("Acceleration")
 
 
-figure()
+plt.savefig("force.png")
 
-semilogx(r / r_s, (f + f2) / f_wanted - 1, "r-", label="$error$", linewidth=2)
 
-plot([1, 1], [-1e10, 1e10], "k--")
-text(0.85 * 1, 0.011, "$r_s$", rotation="vertical", fontsize=14, va="bottom")
+plt.figure()
 
-plot([r_c / r_s, r_c / r_s], [-1e10, 1e10], "k--")
-text(
+plt.semilogx(r / r_s, (f + f2) / f_wanted - 1, "r-", label="$error$", linewidth=2)
+
+plt.plot([1, 1], [-1e10, 1e10], "k--")
+plt.text(0.85 * 1, 0.011, "$r_s$", rotation="vertical", fontsize=14, va="bottom")
+
+plt.plot([r_c / r_s, r_c / r_s], [-1e10, 1e10], "k--")
+plt.text(
     0.85 * r_c / r_s,
     0.011,
     "$r_c=4.5r_s$",
@@ -158,38 +161,41 @@ text(
     va="bottom",
 )
 
-grid()
+plt.grid()
 
-xlim(1e-1, 200)
-xlabel("$r/r_s$")
-xticks([0.1, 1, 10, 100], ["$0.1$", "$1$", "$10$", "$100$"])
+plt.xlim(1e-1, 200)
+plt.xlabel("$r/r_s$")
+plt.xticks([0.1, 1, 10, 100], ["$0.1$", "$1$", "$10$", "$100$"])
 
-ylim(-0.025, 0.025)
-yticks([-0.02, -0.01, 0.0, 0.01, 0.02], ["$-2\%$", "$-1\%$", "$0\%$", "$1\%$", "$2\%$"])
+plt.ylim(-0.025, 0.025)
+plt.yticks(
+    [-0.02, -0.01, 0.0, 0.01, 0.02],
+    [r"$-2\%$", r"$-1\%$", r"$0\%$", r"$1\%$", r"$2\%$"],
+)
 
-savefig("error.png")
+plt.savefig("error.png")
 
 
-figure()
-loglog(r / r_s, fac, "b-", label="$f_{LR}$", linewidth=2)
-loglog(r / r_s, 1 - fac, "r-", label="$1-f_{LR}$", linewidth=2)
+plt.figure()
+plt.loglog(r / r_s, fac, "b-", label="$f_{LR}$", linewidth=2)
+plt.loglog(r / r_s, 1 - fac, "r-", label="$1-f_{LR}$", linewidth=2)
 
-grid()
-xlim(0.05, 30)
-ylim(1e-3, 2)
+plt.grid()
+plt.xlim(0.05, 30)
+plt.ylim(1e-3, 2)
 
-xlabel("$r/r_s$")
-xticks([0.1, 1, 10], ["$0.1$", "$1$", "$10$"])
+plt.xlabel("$r/r_s$")
+plt.xticks([0.1, 1, 10], ["$0.1$", "$1$", "$10$"])
 
-yticks([0.001, 0.01, 0.1, 1], ["$10^{-3}$", "$10^{-2}$", "$10^{-1}$", "$1$"])
+plt.yticks([0.001, 0.01, 0.1, 1], ["$10^{-3}$", "$10^{-2}$", "$10^{-1}$", "$1$"])
 
-legend(loc="lower left")
+plt.legend(loc="lower left")
 
-plot([1, 1], [1e-10, 1e10], "k--")
-text(0.85 * 1, 2e-3, "$r_s$", rotation="vertical", fontsize=14, va="bottom")
+plt.plot([1, 1], [1e-10, 1e10], "k--")
+plt.text(0.85 * 1, 2e-3, "$r_s$", rotation="vertical", fontsize=14, va="bottom")
 
-plot([r_c / r_s, r_c / r_s], [1e-10, 1e10], "k--")
-text(
+plt.plot([r_c / r_s, r_c / r_s], [1e-10, 1e10], "k--")
+plt.text(
     0.85 * r_c / r_s,
     2e-3,
     "$r_c=4.5r_s$",
@@ -199,4 +205,4 @@ text(
 )
 
 
-savefig("correction.png")
+plt.savefig("correction.png")

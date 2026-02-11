@@ -47,7 +47,7 @@
  * @param distributed Are we playing with a distributed snapshot?
  * @return the basename part of hdfFileName.
  */
-static const char* xmf_basename(const char* hdfFileName,
+static const char *xmf_basename(const char *hdfFileName,
                                 const int distributed) {
 
   int pos_last_slash = strlen(hdfFileName) - 1;
@@ -73,13 +73,13 @@ static const char* xmf_basename(const char* hdfFileName,
  *
  * @param fileName The name of the file.
  */
-FILE* xmf_prepare_file(const char* fileName) {
+FILE *xmf_prepare_file(const char *fileName) {
   char buffer[1024];
 
   char tempFileName[FILENAME_BUFFER_SIZE];
   snprintf(tempFileName, FILENAME_BUFFER_SIZE, "%s.temp", fileName);
-  FILE* xmfFile = fopen(fileName, "r");
-  FILE* tempFile = fopen(tempFileName, "w");
+  FILE *xmfFile = fopen(fileName, "r");
+  FILE *tempFile = fopen(tempFileName, "w");
 
   if (xmfFile == NULL) error("Unable to open current XMF file.");
 
@@ -122,9 +122,9 @@ FILE* xmf_prepare_file(const char* fileName) {
  *
  * @param fileName The name of the file.
  */
-void xmf_create_file(const char* fileName) {
+void xmf_create_file(const char *fileName) {
 
-  FILE* xmfFile = fopen(fileName, "w");
+  FILE *xmfFile = fopen(fileName, "w");
   if (xmfFile == NULL) error("Unable to create XMF file.");
 
   fprintf(xmfFile, "<?xml version=\"1.0\" ?> \n");
@@ -152,7 +152,7 @@ void xmf_create_file(const char* fileName) {
  * @param hdfFileName The name of the HDF5 file corresponding to this output.
  * @param time The current simulation time.
  */
-void xmf_write_outputheader(FILE* xmfFile, const char* hdfFileName,
+void xmf_write_outputheader(FILE *xmfFile, const char *hdfFileName,
                             float time) {
   /* Write end of file */
 
@@ -169,7 +169,7 @@ void xmf_write_outputheader(FILE* xmfFile, const char* hdfFileName,
  * @param output The number of this output.
  * @param time The current simulation time.
  */
-void xmf_write_outputfooter(FILE* xmfFile, int output, float time) {
+void xmf_write_outputfooter(FILE *xmfFile, int output, float time) {
   /* Write end of the section of this time step */
 
   fprintf(xmfFile,
@@ -190,7 +190,7 @@ void xmf_write_outputfooter(FILE* xmfFile, int output, float time) {
  * @param N The number of particles to write.
  * @param ptype The particle type we are writing.
  */
-void xmf_write_groupheader(FILE* xmfFile, const char* hdfFileName,
+void xmf_write_groupheader(FILE *xmfFile, const char *hdfFileName,
                            const int distributed, size_t N,
                            enum part_type ptype) {
 
@@ -216,7 +216,7 @@ void xmf_write_groupheader(FILE* xmfFile, const char* hdfFileName,
  * @param xmfFile The file to write to.
  * @param ptype The particle type we are writing.
  */
-void xmf_write_groupfooter(FILE* xmfFile, enum part_type ptype) {
+void xmf_write_groupfooter(FILE *xmfFile, enum part_type ptype) {
   fprintf(xmfFile, "</Grid> <!-- End of meta-data for parttype=%s -->\n",
           part_type_names[ptype]);
 }
@@ -250,7 +250,7 @@ int xmf_precision(enum IO_DATA_TYPE type) {
 /**
  * @brief Returns the Xdmf type name of a given dataset type
  */
-const char* xmf_type(enum IO_DATA_TYPE type) {
+const char *xmf_type(enum IO_DATA_TYPE type) {
   switch (type) {
     case FLOAT:
     case DOUBLE:
@@ -285,8 +285,8 @@ const char* xmf_type(enum IO_DATA_TYPE type) {
  *
  * @todo Treat the types in a better way.
  */
-void xmf_write_line(FILE* xmfFile, const char* fileName, const int distributed,
-                    const char* partTypeGroupName, const char* name, size_t N,
+void xmf_write_line(FILE *xmfFile, const char *fileName, const int distributed,
+                    const char *partTypeGroupName, const char *name, size_t N,
                     int dim, enum IO_DATA_TYPE type) {
   fprintf(xmfFile,
           "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n",

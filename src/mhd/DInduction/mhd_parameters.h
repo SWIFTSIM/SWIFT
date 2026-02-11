@@ -94,10 +94,10 @@ struct mhd_global_data {
  * @param phys_const: pointer to the physical constants system
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
-static INLINE void mhd_init(struct swift_params* params,
-                            const struct unit_system* us,
-                            const struct phys_const* phys_const,
-                            struct mhd_global_data* mhd) {
+static INLINE void mhd_init(struct swift_params *params,
+                            const struct unit_system *us,
+                            const struct phys_const *phys_const,
+                            struct mhd_global_data *mhd) {
 
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
@@ -124,7 +124,7 @@ static INLINE void mhd_init(struct swift_params* params,
  * @param viscosity: pointer to the viscosity_global_data struct found in
  *                   hydro_properties
  **/
-static INLINE void mhd_print(const struct mhd_global_data* mhd) {
+static INLINE void mhd_print(const struct mhd_global_data *mhd) {
 
   message("Dedner Hyperbolic/Parabolic: %.3f, %.3f ", mhd->hyp_dedner,
           mhd->par_dedner);
@@ -139,7 +139,7 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
  * @param mhd_data: pointer to the mhd_global_data struct.
  **/
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
-                                      const struct mhd_global_data* mhd_data) {
+                                      const struct mhd_global_data *mhd_data) {
 
   io_write_attribute_f(h_grpsph, "Dedner Hyperbolic Constant",
                        mhd_data->hyp_dedner);

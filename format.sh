@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # The clang-format command can be overridden using CLANG_FORMAT_CMD.
-# We currrently use version 18.0 so any overrides should use that version
+# We currrently use version 20.0 so any overrides should use that version
 # or one known to be compatible with it for instance if your standard
-# command is version 18 use:
+# command is version 20 use:
 #    CLANG_FORMAT_CMD=clang-format ./format.sh
-clang=${CLANG_FORMAT_CMD:="clang-format-18"}
+clang=${CLANG_FORMAT_CMD:="clang-format-20"}
 
 # Only works in a git checkout. Eat error and just make a report
 # so we don't break CI.
@@ -18,7 +18,7 @@ fi
 # Formatting command
 cmd="$clang -style=file $(git ls-files | grep '\.[ch]$' | grep -v csds_io\.h | grep -v argparse\.h | grep -v vector\.h)"
 
-# Test if `clang-format-18` works
+# Test if `clang-format-20` works
 command -v $clang > /dev/null
 if [[ $? -ne 0 ]]
 then

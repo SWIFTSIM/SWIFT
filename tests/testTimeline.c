@@ -511,7 +511,7 @@ void test_get_min_active_bin(timebin_t bin_min, timebin_t bin_max,
 /**
  * @brief Check the timeline functions.
  */
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

@@ -1056,7 +1056,7 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->policy & engine_policy_structure_finding) velociraptor_init(e);
 #endif
 
-    /* Free the affinity stuff */
+  /* Free the affinity stuff */
 #if defined(HAVE_SETAFFINITY)
   if (with_aff) {
     free(cpuid);

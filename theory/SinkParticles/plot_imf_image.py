@@ -31,7 +31,7 @@ ax.set_ylim([1, 5e4])
 ax.set_xticks([1, 2, 4, 8, 20, 50, 100, 300])
 ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 
-ax.set_xlabel("$M_{\star}$ $[M_\odot]$")
+ax.set_xlabel(r"$M_{\star}$ $[M_\odot]$")
 ax.set_ylabel("d$N/$d$M$ [arbitrary units]")
 ax.set_xscale("log")
 ax.set_yscale("log")

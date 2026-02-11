@@ -78,9 +78,9 @@ struct external_potential {
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float external_gravity_timestep(
-    double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const,
-    const struct gpart* restrict g) {
+    double time, const struct external_potential *restrict potential,
+    const struct phys_const *restrict phys_const,
+    const struct gpart *restrict g) {
 
   /* Calculate the relative potential with respect to the centre of the
    * potential */
@@ -117,8 +117,8 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
-    double time, const struct external_potential* potential,
-    const struct phys_const* const phys_const, struct gpart* g) {
+    double time, const struct external_potential *potential,
+    const struct phys_const *const phys_const, struct gpart *g) {
 
   /* Determine the position relative to the centre of the potential */
   const float dx = g->x[0] - potential->x[0];
@@ -151,8 +151,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    double time, const struct external_potential* potential,
-    const struct phys_const* const phys_const, const struct gpart* g) {
+    double time, const struct external_potential *potential,
+    const struct phys_const *const phys_const, const struct gpart *g) {
 
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
@@ -172,9 +172,9 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    struct swift_params* parameter_file, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct space* s,
-    struct external_potential* potential) {
+    struct swift_params *parameter_file, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct space *s,
+    struct external_potential *potential) {
 
   /* Define the default value */
   static const int idealized_disk_default = 0;
@@ -303,7 +303,7 @@ static INLINE void potential_init_backend(
  * @param  potential the external potential properties.
  */
 static inline void potential_print_backend(
-    const struct external_potential* potential) {
+    const struct external_potential *potential) {
 
   message(
       "external potential is 'hernquist Springel, Di Matteo & Hernquist 2005' "

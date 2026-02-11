@@ -54,17 +54,17 @@
 #endif
 
 /* Common functions */
-void chemistry_init(struct swift_params* parameter_file,
-                    const struct unit_system* us,
-                    const struct phys_const* phys_const,
-                    struct chemistry_global_data* data);
+void chemistry_init(struct swift_params *parameter_file,
+                    const struct unit_system *us,
+                    const struct phys_const *phys_const,
+                    struct chemistry_global_data *data);
 
-void chemistry_print(const struct chemistry_global_data* data);
+void chemistry_print(const struct chemistry_global_data *data);
 
 /* Dump/restore. */
-void chemistry_struct_dump(const struct chemistry_global_data* chemistry,
-                           FILE* stream);
-void chemistry_struct_restore(const struct chemistry_global_data* chemistry,
-                              FILE* stream);
+void chemistry_struct_dump(const struct chemistry_global_data *chemistry,
+                           FILE *stream);
+void chemistry_struct_restore(const struct chemistry_global_data *chemistry,
+                              FILE *stream);
 
 #endif /* SWIFT_CHEMISTRY_H */

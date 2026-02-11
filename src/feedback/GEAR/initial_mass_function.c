@@ -530,6 +530,20 @@ void initial_mass_function_init(struct initial_mass_function *imf,
 }
 
 /**
+ * @brief Zero pointers in initial_mass_function structs
+ *
+ * @param imf initial_mass_function struct in which pointers to tables
+ * set to NULL
+ */
+void initial_mass_function_zero_pointers(struct initial_mass_function *imf) {
+
+  imf->mass_limits = NULL;
+  imf->mass_fraction = NULL;
+  imf->exp = NULL;
+  imf->coef = NULL;
+}
+
+/**
  * @brief Write a initial_mass_function struct to the given FILE as a stream of
  * bytes.
  *
@@ -561,6 +575,13 @@ void initial_mass_function_dump(const struct initial_mass_function *imf,
     restart_write_blocks((void *)imf->coef, sizeof(float), imf->n_parts, stream,
                          "imf_coef", "imf_coef");
   }
+
+  /* Dump the mass fraction */
+  if (imf->mass_fraction != NULL) {
+    restart_write_blocks((void *)imf->mass_fraction, sizeof(float),
+                         imf->n_parts + 1, stream, "imf_mass_fraction",
+                         "imf_mass_fraction");
+  }
 }
 
 /**
@@ -578,25 +599,45 @@ void initial_mass_function_restore(struct initial_mass_function *imf,
                                    FILE *stream,
                                    const struct stellar_model *sm) {
 
-  /* Restore the mass limits */
-  if (imf->mass_limits != NULL) {
-    imf->mass_limits = (float *)malloc(sizeof(float) * imf->n_parts + 1);
+  if (imf->n_parts > 0) {
+
+    /* Restore the mass limits */
+    imf->mass_limits = NULL;
+    imf->mass_limits = (float *)malloc(sizeof(float) * (imf->n_parts + 1));
+    if (imf->mass_limits == NULL) {
+      error("Restart: Failed to allocate the IMF mass limits.");
+    }
     restart_read_blocks((void *)imf->mass_limits, sizeof(float),
                         imf->n_parts + 1, stream, NULL, "imf_mass_limits");
-  }
 
-  /* Restore the exponents */
-  if (imf->exp != NULL) {
+    /* Restore the exponents */
+    imf->exp = NULL;
     imf->exp = (float *)malloc(sizeof(float) * imf->n_parts);
+    if (imf->exp == NULL) {
+      error("Restart: Failed to allocate the IMF exponents.");
+    }
     restart_read_blocks((void *)imf->exp, sizeof(float), imf->n_parts, stream,
                         NULL, "imf_exponents");
-  }
 
-  /* Restore the coefficients */
-  if (imf->coef != NULL) {
+    /* Restore the coefficients */
+    imf->coef = NULL;
     imf->coef = (float *)malloc(sizeof(float) * imf->n_parts);
+    if (imf->coef == NULL) {
+      error("Restart: Failed to allocate the IMF coefficients.");
+    }
     restart_read_blocks((void *)imf->coef, sizeof(float), imf->n_parts, stream,
                         NULL, "imf_coef");
+
+    /* Restore the mass fraction */
+    imf->mass_fraction = NULL;
+    imf->mass_fraction = (float *)malloc(sizeof(float) * (imf->n_parts + 1));
+    if (imf->mass_fraction == NULL) {
+      error("Restart: Failed to allocate the IMF mass fractions.");
+    }
+    restart_read_blocks((void *)imf->mass_fraction, sizeof(float),
+                        imf->n_parts + 1, stream, NULL, "imf_mass_fraction");
+  } else {
+    error("Cannot allocate memory if imf->n_parts <= 0 (%d)!", imf->n_parts);
   }
 }
 

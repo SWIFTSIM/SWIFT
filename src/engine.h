@@ -91,8 +91,9 @@ enum engine_policy {
   engine_policy_power_spectra = (1 << 27),
   engine_policy_grid = (1 << 28),
   engine_policy_grid_hydro = (1 << 29),
+  engine_policy_no_io = (1 << 30),
 };
-#define engine_maxpolicy 30
+#define engine_maxpolicy 31
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -703,7 +704,9 @@ void engine_compute_next_ps_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_unskip_rt_sub_cycle(struct engine *e);
-void engine_drift_all(struct engine *e, const int drift_mpoles);
+void engine_drift_all(struct engine *e, const int drift_mpoles,
+                      const int init_particles);
+void engine_init_all_particles(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_allocate_foreign_particles(struct engine *e, const int fof);
@@ -749,6 +752,7 @@ void engine_config(int restart, int fof, struct engine *e,
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
 void engine_run_rt_sub_cycles(struct engine *e);
+void engine_first_init_particles(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
 int engine_step(struct engine *e);
