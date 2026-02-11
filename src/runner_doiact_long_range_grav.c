@@ -219,6 +219,177 @@ static void runner_accumulate_interaction(
   /* Record that this multipole received a contribution */
   multi_i->pot.interacted = 1;
 }
+
+/**
+ * @brief Count a mesh interaction between two related cells.
+ *
+ * Since the counts are accumulated downwards from the super level in the
+ * grav/down task we need to update different cells based on the cells we have
+ * been passed. This function will select what cell should be updated based on
+ * the nesting:
+ *   - If the super cell is nested within ci, then the super cell is updated.
+ *   - If the super cell is ci, then they are both the same and it does not
+ *     matter which is updated.
+ *   - If ci is nested within the super cell, then ci is updated.
+ *   - If we have a self interaction (pair nested within the same top cell):
+ *     - If the super cell is nested within cj, then the super cell is updated.
+ *     - If the super cell is cj, then they are both the same and it does not
+ *       matter which is updated.
+ *     - If cj is nested within the super cell, then cj is updated.
+ *
+ * @param super The super-cell being updated.
+ * @param ci The first #cell in the pair.
+ * @param cj The second #cell in the pair.
+ */
+static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
+                                          struct cell *cj) {
+
+  /* Do we share the same top level cell? i.e. are we self-interacting? */
+  int is_self = ci->top == cj->top;
+
+  /* Decide which cell we are updating. */
+  if (super == ci) {
+    runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
+  } else if (cell_contains_progeny(ci, super)) {
+    runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
+  } else if (cell_contains_progeny(super, ci)) {
+    runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
+  }
+
+  /* Handle the symmetric case for self interactions */
+  if (is_self) {
+    if (super == cj) {
+      runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
+    } else if (cell_contains_progeny(cj, super)) {
+      runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
+    } else if (cell_contains_progeny(super, cj)) {
+      runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
+    }
+  }
+}
+
+/**
+ * @brief Recursively accumulate mesh interactions for pair interactions.
+ *
+ * This function mirrors the logic in scheduler_splittask_gravity for pair
+ * tasks, recursing down the cell hierarchy and counting mesh interactions.
+ *
+ * @param ci The #cell of interest (active cell receiving interactions).
+ * @param cpi The current #cell from ci's hierarchy being processed.
+ * @param cpj The current #cell from cj's hierarchy being processed.
+ * @param s The #space.
+ */
+static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
+                                                          struct cell *ci,
+                                                          struct cell *cj,
+                                                          struct space *s) {
+
+  /* No self interactions here */
+  if (ci == cj) {
+    error("Self interactions should not be handled in this function!");
+  }
+  if (c == cj) {
+    error("Self interactions should not be handled in this function!");
+  }
+
+  struct engine *e = s->e;
+
+  /* Should this pair be split? */
+  if (cell_can_split_pair_gravity_task(ci) &&
+      cell_can_split_pair_gravity_task(cj)) {
+
+    /* Check particle count threshold - mirrors scheduler_splittask_gravity */
+    const long long gcount_i = ci->grav.count;
+    const long long gcount_j = cj->grav.count;
+    if (gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
+      return;
+    }
+
+    /* Recurse on all progeny pairs */
+    for (int i = 0; i < 8; i++) {
+      if (ci->progeny[i] == NULL) continue;
+      struct cell *cpi = ci->progeny[i];
+      for (int j = 0; j < 8; j++) {
+        if (cj->progeny[j] == NULL) continue;
+        struct cell *cpj = cj->progeny[j];
+
+        /* Can we use the mesh for this pair? */
+        if (cell_can_use_mesh(e, cpi, cpj)) {
+          /* Record the mesh interaction */
+          runner_count_mesh_interaction(c, cpi, cpj);
+          continue;
+        }
+
+        /* Can we use M-M for this pair? */
+        if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/1)) {
+          /* This would be handled by a M-M task, nothing to count */
+          continue;
+        }
+
+        /* We would create real tasks, so recurse to find mesh interactions */
+        runner_count_mesh_interactions_pair_recursive(c, cpi, cpj, s);
+      }
+    }
+  }
+  /* else: We have a real task that doesn't split further, no mesh
+   * interactions to count */
+}
+
+/**
+ * @brief Recursively accumulate mesh interactions for self interactions.
+ *
+ * This function mirrors the logic in scheduler_splittask_gravity for self
+ * tasks, recursing down the cell hierarchy and counting mesh interactions.
+ *
+ * @param c The #cell of interest (active cell receiving interactions).
+ * @param ci The current #cell from c's hierarchy being processed.
+ * @param s The #space.
+ */
+static void runner_count_mesh_interactions_self_recursive(struct cell *c,
+                                                          struct cell *ci,
+                                                          struct space *s) {
+
+  struct engine *e = s->e;
+
+  /* Should this self task be split? */
+  if (cell_can_split_self_gravity_task(ci)) {
+
+    /* Check particle count threshold - mirrors scheduler_splittask_gravity
+     */
+    if (ci->grav.count < space_subsize_self_grav) {
+      return;
+    }
+
+    /* Recurse on self interactions for each progeny */
+    for (int k = 0; k < 8; k++) {
+      if (ci->progeny[k] == NULL) continue;
+      runner_count_mesh_interactions_self_recursive(c, ci->progeny[k], s);
+    }
+
+    /* Now handle pair interactions between progeny */
+    for (int j = 0; j < 8; j++) {
+      if (ci->progeny[j] == NULL) continue;
+      struct cell *cpj = ci->progeny[j];
+      for (int k = j + 1; k < 8; k++) {
+        if (ci->progeny[k] == NULL) continue;
+        struct cell *cpk = ci->progeny[k];
+
+        /* Can we use the mesh for this pair? */
+        if (cell_can_use_mesh(e, cpj, cpk)) {
+          /* Record the mesh interaction */
+          runner_count_mesh_interaction(c, cpj, cpk);
+          continue;
+        }
+
+        /* Otherwise recurse as a pair interaction */
+        runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s);
+      }
+    }
+  }
+  /* else: We have a real task that doesn't split further, no mesh
+   * interactions to count */
+}
 #endif
 
 /**
@@ -244,6 +415,10 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
 
+  /* First, handle self interactions from the top-level cell.
+   * This mirrors the self task created at the top level. */
+  runner_count_mesh_interactions_self_recursive(ci, top, s);
+
   /* Now loop over all other top-level cells for pair interactions.
    * This mirrors the pair tasks created between top-level cells. */
   for (int n = 0; n < s->nr_cells; n++) {
@@ -262,7 +437,7 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_accumulate_interaction(ci->grav.multipole, multi_j);
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
@@ -273,6 +448,10 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
       /* M-M task handles this, nothing to count */
       continue;
     }
+
+    /* We would create a pair task here, so recurse to count mesh interactions
+     * that arise from task splitting */
+    runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
   }
 #else
   error(
