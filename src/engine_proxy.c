@@ -96,13 +96,20 @@ void engine_makeproxies(struct engine *e) {
   int delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
-  if (delta_cells >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
+  if (periodic) {
+    if (delta_cells >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta_cells > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
     }
   }
 

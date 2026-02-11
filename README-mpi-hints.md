@@ -1,5 +1,7 @@
 Various hints on settings needed to get various MPIs running with SWIFT.
 
+Getting bit old. Needs a review.
+
 Last update 5th May 2020.
 
 
