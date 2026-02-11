@@ -521,6 +521,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
+  p->density.rho_laplacian = 0.f;  
   p->density.div_v = 0.f;
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
@@ -548,7 +549,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
-
+  const float h_inv_dim_plus_two = h_inv_dim * h_inv * h_inv; /* 1/h^(d+2) */
+  
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
   p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
@@ -558,6 +560,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
   p->density.rho_dh *= h_inv_dim_plus_one;
+  p->density.rho_laplacian *= h_inv_dim_plus_two;
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
 

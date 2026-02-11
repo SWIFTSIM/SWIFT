@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
-  float wi, wj, wi_dx, wj_dx;
+  float wi, wj, wi_dx, wj_dx, wi_d2x, wj_d2x;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -76,9 +76,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float hi_inv = 1.f / hi;
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
+  kernel_d2eval(ui, &wi_d2x);
 
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.rho_laplacian += wi_d2x + 2/ui * wi_dx;  
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
   adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
@@ -87,9 +89,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
+  kernel_d2eval(uj, &wj_d2x);
 
   pj->rho += mi * wj;
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
+  pj->density.rho_laplacian += wj_d2x + 2/uj * wj_dx;    
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
   adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);

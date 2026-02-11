@@ -214,6 +214,8 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
   ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma)))
 #define kernel_gamma_inv_dim_plus_one \
   ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma * kernel_gamma)))
+#define kernel_gamma_inv_dim_plus_two \
+  ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma * kernel_gamma * kernel_gamma)))
 #elif defined(HYDRO_DIMENSION_2D)
 #define kernel_gamma_dim ((float)(kernel_gamma * kernel_gamma))
 #define kernel_gamma_dim_plus_one \
@@ -221,12 +223,16 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_gamma_inv_dim ((float)(1. / (kernel_gamma * kernel_gamma)))
 #define kernel_gamma_inv_dim_plus_one \
   ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma)))
+#define kernel_gamma_inv_dim_plus_two
+  ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma * kernel_gamma))
 #elif defined(HYDRO_DIMENSION_1D)
 #define kernel_gamma_dim ((float)(kernel_gamma))
 #define kernel_gamma_dim_plus_one ((float)(kernel_gamma * kernel_gamma))
 #define kernel_gamma_inv_dim ((float)(1. / (kernel_gamma)))
 #define kernel_gamma_inv_dim_plus_one \
   ((float)(1. / (kernel_gamma * kernel_gamma)))
+#define kernel_gamma_inv_dim_plus_two \
+  ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma)))
 #endif
 
 /* The number of branches (floating point conversion) */
@@ -282,6 +288,47 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
   *W = w * kernel_constant * kernel_gamma_inv_dim;
   *dW_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;
 }
+
+/**
+ * @brief Computes the kernel second derivative.
+ *
+ * The second derivative of the kernel needs to be multiplied
+ * by \f$h^{-(d+2)}\f$, where \f$d\f$ is the dimensionality of the problem.
+ *
+ * Returns 0 if \f$u > \gamma = H/h\f$.
+ *
+ * @param u The ratio of the distance to the smoothing length \f$u = x/h\f$.
+ * @param dW_d2x (return) the Laplacian \f$\nabla^2 W(x,h)\f$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_d2eval(
+    float u, float *restrict dW_d2x) {
+
+  /* Go to the range [0,1[ from [0,H[ */
+  const float x = u * kernel_gamma_inv;
+
+  /* Pick the correct branch of the kernel */
+  const int temp = (int)(x * kernel_ivals_f);
+  const int ind = temp > kernel_ivals ? kernel_ivals : temp;
+  const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
+
+  /* First three terms of the polynomial ... */
+  float w = coeffs[0] * x * x + coeffs[1] * x + coeffs[2];
+  float dw_dx = 2*coeffs[0] * x + coeffs[1];
+  float dw_d2x = 2*coeffs[0];
+
+  /* ... and the rest of them */
+  for (int k = 3; k <= kernel_degree; k++) {
+    dw_d2x = dw_d2x * x + 2*dw_dx;
+    dw_dx = dw_dx * x + w;
+    w = x * w + coeffs[k];
+  }
+
+  /* Return everything */
+  *dW_d2x = dw_d2x * kernel_constant * kernel_gamma_inv_dim_plus_two;
+
+}
+
+
 
 /**
  * @brief Computes the kernel function.
