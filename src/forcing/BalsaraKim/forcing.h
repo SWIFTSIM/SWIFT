@@ -289,7 +289,7 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
   }
 
   /* End timestap at (or just after) next injection time */
-  float new_dt_forcing = fmaxf(terms->times[t_index] - time, dt_min);
+  float new_dt_forcing = fmaxf(terms->times[t_index] - time, 2.*dt_min);
    
   return new_dt_forcing;
 }
