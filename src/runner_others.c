@@ -957,7 +957,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 id, part_type_names[gp->type], gp->num_interacted,
                 e->total_nr_gparts, e->total_nr_gparts - gp->num_interacted,
                 e->s->nr_gparts, e->count_inhibited_gparts,
-                cellID_names[c->types], subcellID_names[c->subtype], c->depth,
+                cellID_names[c->type], subcellID_names[c->subtype], c->depth,
                 c->grav.super->depth);
           }
         }

@@ -1882,8 +1882,7 @@ static int cell_check_grav_mesh_pairs_recursive(struct cell *ci,
 
     /* Should this pair be split?
      * Matches scheduler_splittask_gravity logic */
-    if (cell_can_split_pair_gravity_task(ci) &&
-        cell_can_split_pair_gravity_task(cj)) {
+    if (cell_can_split_pair_gravity_task(ci, cj)) {
 
       /* Check particle count threshold - matches scheduler_splittask_gravity */
       const long long gcount_i = ci->grav.count;
@@ -1913,7 +1912,8 @@ static int cell_check_grav_mesh_pairs_recursive(struct cell *ci,
 
           /* Can we use M-M for this pair? */
           if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                                   /*is_tree_walk=*/1)) {
+                                   /*is_tree_walk=*/1, s->periodic,
+                                   /*use_mesh=*/s->periodic)) {
             /* This would be handled by a M-M task, skip */
             continue;
           }
