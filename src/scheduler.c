@@ -1445,16 +1445,25 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
           /* Make a task for each pair of progeny */
           if (t->subtype != task_subtype_external_grav) {
-            for (int j = 0; j < 8; j++)
-              if (ci->progeny[j] != NULL)
-                for (int k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL)
-                    scheduler_splittask_gravity(
-                        scheduler_addtask(s, task_type_pair, t->subtype,
-                                          sub_sid_flag[j][k], 0, ci->progeny[j],
-                                          ci->progeny[k]),
-                        s);
+            for (int j = 0; j < 8; j++) {
+              if (ci->progeny[j] == NULL) continue;
+              struct cell *cpi = ci->progeny[j];
+              for (int k = j + 1; k < 8; k++) {
+                if (ci->progeny[k] == NULL) continue;
+                struct cell *cpj = ci->progeny[k];
 
+                /* If running with the mesh this pair may be beyond the mesh
+                 * criterion meaning we won't need a task here. */
+                if (cell_can_use_mesh(e, cpi, cpj)) {
+                  continue;
+                }
+
+                scheduler_splittask_gravity(
+                    scheduler_addtask(s, task_type_pair, t->subtype,
+                                      sub_sid_flag[j][k], 0, cpi, cpj),
+                    s);
+              } /* cpj loop */
+            } /* cpi loop */
           } /* Self-gravity only */
         } /* Make tasks explicitly */
       } /* Cell is split */
@@ -1491,8 +1500,17 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Make a task for every other pair of progeny */
           for (int i = 0; i < 8; i++) {
             if (ci->progeny[i] != NULL) {
+              struct cell *cpi = ci->progeny[i];
               for (int j = 0; j < 8; j++) {
                 if (cj->progeny[j] != NULL) {
+                  struct cell *cpj = cj->progeny[j];
+
+                  /* If running with the mesh this pair may be beyond the mesh
+                   * criterion meaning we won't need a task here. */
+                  if (cell_can_use_mesh(e, cpi, cpj)) {
+                    continue;
+                  }
+
                   /* Can we use a M-M interaction here? */
                   if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e,
                                            sp, /*use_rebuild_data=*/1,
@@ -1512,7 +1530,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     /* Ok, we actually have to create a task */
                     scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair, task_subtype_grav,
-                                          0, 0, ci->progeny[i], cj->progeny[j]),
+                                          0, 0, cpi, cpj),
                         s);
                   }
                 }
