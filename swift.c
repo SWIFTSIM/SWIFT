@@ -25,6 +25,10 @@
 /* Config parameters. */
 #include <config.h>
 
+#ifdef WITH_LIKWID
+#include "likwid_wrapper.h"
+#endif
+
 /* Some standard headers. */
 #include <errno.h>
 #include <fenv.h>
@@ -152,6 +156,11 @@ int main(int argc, char *argv[]) {
     pretime_message(
         "WARNING: you should use the non-MPI version of this program.");
   }
+#endif
+
+#ifdef WITH_LIKWID
+  swift_likwid_marker_init();
+  swift_likwid_marker_register("runner_main");
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
@@ -1027,7 +1036,7 @@ int main(int argc, char *argv[]) {
       if (myrank == 0)
         message("The restart files don't all contain the same ti_current!");
 
-      for (int i = 0; i < myrank; ++i) {
+      for (int i = 0; i < nr_nodes; ++i) {
         if (myrank == i)
           message("MPI rank %d reading file '%s' found an integer time= %lld",
                   myrank, restart_file, e.ti_current);
@@ -1256,7 +1265,7 @@ int main(int argc, char *argv[]) {
     /* Initialize power spectra calculation */
     if (with_power) {
 #ifdef HAVE_FFTW
-      power_init(&pow_data, params, nr_threads);
+      power_spectrum_init(&pow_data, params, nr_threads);
 #else
       error("No FFTW library found. Cannot compute power spectra.");
 #endif
@@ -2002,6 +2011,10 @@ int main(int argc, char *argv[]) {
   if (restart) free(refparams);
   if (restart) output_options_clean(output_options);
   free(output_options);
+
+#ifdef WITH_LIKWID
+  swift_likwid_marker_close();
+#endif
 
 #ifdef WITH_MPI
   partition_clean(&initial_partition, &reparttype);

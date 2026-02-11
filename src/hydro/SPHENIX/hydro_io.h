@@ -249,16 +249,17 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "Laplacian (del squared) of the Internal Energy per "
       "unit mass of the particles");
 
-  list[12] = io_make_output_field(
+  list[12] = io_make_physical_output_field(
       "VelocityDivergences", FLOAT, 1, UNIT_CONV_FREQUENCY, 0.f, parts,
-      viscosity.div_v,
+      viscosity.div_v, /*can convert to comoving=*/0,
       "Local velocity divergence field around the particles. Provided without "
       "cosmology, as this includes the Hubble flow. To return to a peculiar "
       "velocity divergence, div . v_pec = a^2 (div . v - n_D H)");
 
-  list[13] = io_make_output_field(
+  list[13] = io_make_physical_output_field(
       "VelocityDivergenceTimeDifferentials", FLOAT, 1,
       UNIT_CONV_FREQUENCY_SQUARED, 0.f, parts, viscosity.div_v_dt,
+      /*can convert to comoving=*/0,
       "Time differential (over the previous step) of the "
       "velocity divergence field around the particles. Again, provided without "
       "cosmology as this includes a Hubble flow term. To get back to a "

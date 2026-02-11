@@ -260,7 +260,8 @@ conditions).
 All the individual arrays created by SWIFT have had the Fletcher 32 check-sum
 filter applied by the HDF5 library when writing them. This means that any
 eventual data corruption on the disks will be detected and reported by the
-library when attempting to read the data.
+library when attempting to read the data. A chunk size of :math:`2^{13}
+= 8192` elements is applied. 
 
 Additionally, some compression filter may have been applied to the fields. See
 the :ref:`Parameters_snapshots` section of the parameter file description for
@@ -272,34 +273,43 @@ Unit information for individual fields
 Each particle field contains meta-data about the units and how to
 convert it to CGS in physical or co-moving frames. The meta-data is in
 part designed for users to directly read and in part for machine
-reading of the information. Each field contains the exponent of the
-scale-factor, reduced Hubble constant [#f2]_ and each of the 5 base units
-that is required to convert the field values to physical CGS
-units. The base assumption is that all fields are written in the
-co-moving frame (see below for exceptions).
-These fields are:
+reading of the information.
 
-+----------------------+---------------------------------------+
-| Meta-data field name | Description                           |
-+======================+=======================================+
-| ``U_L exponent``     | Power of the length unit              |
-+----------------------+---------------------------------------+
-| ``U_M exponent``     | Power of the mass unit                |
-+----------------------+---------------------------------------+
-| ``U_t exponent``     | Power of the time unit                |
-+----------------------+---------------------------------------+
-| ``U_I exponent``     | Power of the current unit             |
-+----------------------+---------------------------------------+
-| ``U_T exponent``     | Power of the temperature unit         |
-+----------------------+---------------------------------------+
-| ``a-scale exponent`` | Power of the scale-factor             |
-+----------------------+---------------------------------------+
-| ``h-scale exponent`` | Power of the reduced Hubble constant  |
-+----------------------+---------------------------------------+
+**Unless specified otherwise in the meta-data, every field is written
+in the co-moving frame.**
 
-These are used by the ``swiftsimio`` python library to read units and
-we encourage users to use this meta-data directly in their automated
-tools.
+Each field contains the exponent of the scale-factor, reduced Hubble
+constant [#f2]_ and each of the 5 base units that is required to
+convert the field values to physical CGS units. The base assumption is
+that all fields are written in the co-moving frame (see below for
+exceptions).  These fields are:
+
++-------------------------------------------+-----------------------------------------------------------------+
+| Meta-data field name                      | Description                                                     |
++===========================================+=================================================================+
+| ``U_L exponent``                          | Power of the length unit                                        |
++-------------------------------------------+-----------------------------------------------------------------+
+| ``U_M exponent``                          | Power of the mass unit                                          |
++-------------------------------------------+-----------------------------------------------------------------+
+| ``U_t exponent``                          | Power of the time unit                                          |
++-------------------------------------------+-----------------------------------------------------------------+
+| ``U_I exponent``                          | Power of the current unit                                       |
++-------------------------------------------+-----------------------------------------------------------------+
+| ``U_T exponent``                          | Power of the temperature unit                                   |
++-------------------------------------------+-----------------------------------------------------------------+
+| ``a-scale exponent``                      | Power of the scale-factor                                       |
++-------------------------------------------+-----------------------------------------------------------------+
+| ``h-scale exponent``                      | Power of the reduced Hubble constant                            |
++-------------------------------------------+-----------------------------------------------------------------+
+| ``Value stored as physical``              | Is the field stored in the physical frame instead of co-moving? |
++-------------------------------------------+-----------------------------------------------------------------+
+| ``Property can be converted to comoving`` | If stored in physical can it be converted back to co-moving?    |
++-------------------------------------------+-----------------------------------------------------------------+
+
+These are used by the ``swiftsimio`` python library to read units and we
+encourage users to use this meta-data directly in their automated tools. Note
+that the ``swiftsimio`` library will not allow users to combine physical and
+comoving quantities in expressions. Explicit conversions must be possible.
 
 As an example, the fluid densities (which are written in the co-moving
 frame) have the following (non-zero) conversion factors:
@@ -307,6 +317,9 @@ frame) have the following (non-zero) conversion factors:
  * ``U_L exponent``: -3
  * ``U_M exponent``: 1
  * ``a-scale exponent``: -3
+ * ``h-scale exponent``: 0
+ * ``Value stored as physical``: 0
+ * ``Property can be converted to comoving``: 1
 
 This condensed information is stored in the string ``Expression for
 physical CGS units``, which in the case of the densities would read
@@ -320,7 +333,7 @@ from the field to co-moving CGS and physical CGS assuming the units in
 the ``Unit System`` group. These are:
 
  * ``Conversion factor to CGS (not including cosmological corrections``
- * ``Conversion factor to phyical CGS (including cosmological corrections)``
+ * ``Conversion factor to physical CGS (including cosmological corrections)``
 
 These are designed for the users to directly use if they don't want to
 compute the individual exponents themselves. As an example, in the
@@ -334,11 +347,15 @@ case of the densities and assuming the usual system of units
 In the case of a non-cosmological simulation, these two expressions
 are identical since :math:`a=1`.
 
-In some special cases, the fields cannot be meaningfully expressed as
-co-moving quantities. In these exceptional circumstances, we set the
-value of the attribute ``Value stored as physical`` to ``1``. And we
-additionally set the attribute ``Property can be converted to
-comoving`` to ``0``.
+In some special cases, the fields cannot be meaningfully expressed as co-moving
+quantities. In these exceptional circumstances, we set the value of the
+attribute ``Value stored as physical`` to ``1``. And we additionally set the
+attribute ``Property can be converted to comoving`` to ``0``. An example of such
+a quantity are the divergences of the velocity fields as they contain the Hubble
+flow and are thus not a simple multiple of a co-moving quantity. Other
+quantities such as event counters (e.g. num. of AGN events) are labelled as
+stored in physical but can be converted to co-moving. This allows downstream
+tools to combine such a field with either co-moving or physical quantities.
 
 Particle splitting metadata
 ---------------------------
