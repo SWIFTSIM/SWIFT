@@ -67,6 +67,9 @@ struct xpart {
   /*! Internal energy at the last full step. */
   float u_full;
 
+  /* Energy dissipated through du limiter */
+  float limited_energies;
+
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
