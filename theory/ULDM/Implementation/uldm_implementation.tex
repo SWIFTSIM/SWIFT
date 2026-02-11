@@ -1,0 +1,40 @@
+In the following, the function $f(u)$, $f'(u)$ and $f''(u)$ are respectively
+the kernel and its first and second derivative (excluding $h$).
+They are provided by the the \texttt{kernel\_deval} and \texttt{kernel\_d2eval} functions.
+
+The density is computed in the first loop, as:
+
+\begin{equation}
+  \rho_i = \sum_j m_j W(\vec{x}_{ij}, h_i) = \frac{1}{h_i^3} \sum_j  m_j f(u_i), 
+  \label{eq:uldm:implementation:rho}
+\end{equation}
+
+with $u_i = r/h_i $ and $r=|\vec{x}_i-\vec{x}_j|$.
+Note that the $\frac{1}{h_i^3}$ factor is computed at the end of the loop.
+
+
+The gradient of the density is computed in the second loop as:
+
+\begin{eqnarray}
+  \label{eq:uldm:implementation:grad_rho}
+  \vec{\nabla} \rho_i & = &  \sum_j m_j \vec{\nabla} W(\vec{x}_{ij}, h_i) \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}} \\
+                      & = & \frac{1}{h_i^4}  \sum_j m_j f'(u_i) \frac{\vec{x}}{|\vec{x}|} \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}}
+\end{eqnarray}
+
+Note that the $\frac{1}{h_i^4}$ factor is computed at the end of the loop.
+
+
+The Laplacian of the density is computed in the second loop as:
+
+\begin{eqnarray}
+  \label{eq:uldm:implementation:laplacian_rho}
+  \nabla^2 \rho_i
+  & = &  \sum_j m_j \vec{\nabla}^2 W(\vec{x}_{ij}, h_i) \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}} - \frac{|\vec{\nabla}\rho_i|^2}{\rho_i}\\
+  & = & \frac{1}{h_i^5}  \sum_j m_j \left[ f''(u_i) + \frac{2}{u_i} f'(u_j) \right]  \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}} \\
+  && - \frac{|\vec{\nabla}\rho_i|^2}{\rho_i}
+\end{eqnarray}
+
+Note that the  $\frac{1}{h_i^5}$ factor as well as the last ratio that involve only $\rho_i$ are computed at the end of the loop.
+
+
+

@@ -521,7 +521,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
-  p->density.rho_laplacian = 0.f;  
+  p->density.grad_rho[0] = 0.f;
+  p->density.grad_rho[1] = 0.f;
+  p->density.grad_rho[2] = 0.f;  
+  p->density.laplacian_rho = 0.f;  
   p->density.div_v = 0.f;
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
@@ -549,7 +552,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
-  const float h_inv_dim_plus_two = h_inv_dim * h_inv * h_inv; /* 1/h^(d+2) */
   
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
@@ -560,7 +562,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
   p->density.rho_dh *= h_inv_dim_plus_one;
-  p->density.rho_laplacian *= h_inv_dim_plus_two;
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
@@ -613,7 +614,30 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-    struct part *p) {}
+    struct part *p) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+  const float h_inv_dim_plus_two = h_inv_dim * h_inv * h_inv; /* 1/h^(d+2) */
+  const float rho = p->rho;
+  
+  p->density.grad_rho[0] *= h_inv_dim_plus_one;
+  p->density.grad_rho[1] *= h_inv_dim_plus_one;
+  p->density.grad_rho[2] *= h_inv_dim_plus_one;
+
+  const float grad_rho2 = p->density.grad_rho[0]*p->density.grad_rho[0] +
+                          p->density.grad_rho[1]*p->density.grad_rho[1] +
+                          p->density.grad_rho[2]*p->density.grad_rho[2];
+
+  p->density.laplacian_rho -= grad_rho2/rho;
+  p->density.laplacian_rho *= h_inv_dim_plus_two;
+
+
+  
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.

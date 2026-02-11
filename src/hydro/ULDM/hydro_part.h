@@ -149,15 +149,18 @@ struct part {
       /*! Derivative of density with respect to h */
       float rho_dh;
 
+      /*! Density gradient */
+      float grad_rho[3];
+      
       /*! Laplacian of the density */
-      float rho_laplacian;
+      float laplacian_rho;
       
       /*! Velocity divergence */
       float div_v;
 
       /*! Velocity curl */
       float rot_v[3];
-
+      
     } density;
 
     /**

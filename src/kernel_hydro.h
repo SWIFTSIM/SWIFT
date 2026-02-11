@@ -325,7 +325,6 @@ __attribute__((always_inline)) INLINE static void kernel_d2eval(
 
   /* Return everything */
   *dW_d2x = dw_d2x * kernel_constant * kernel_gamma_inv_dim_plus_two;
-
 }
 
 

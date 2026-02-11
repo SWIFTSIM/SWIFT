@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
-  float wi, wj, wi_dx, wj_dx, wi_d2x, wj_d2x;
+  float wi, wj, wi_dx, wj_dx;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -76,11 +76,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float hi_inv = 1.f / hi;
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
-  kernel_d2eval(ui, &wi_d2x);
 
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
-  pi->density.rho_laplacian += wi_d2x + 2/ui * wi_dx;  
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
   adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
@@ -89,11 +87,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
-  kernel_d2eval(uj, &wj_d2x);
 
   pj->rho += mi * wj;
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
-  pj->density.rho_laplacian += wj_d2x + 2/uj * wj_dx;    
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
   adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);
@@ -209,7 +205,57 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H) {
+
+  float wi, wj, wi_dx, wj_dx, wi_d2x, wj_d2x;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
+
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  /* Get the masses and densities */
+  const float mi = pi->mass;
+  const float mj = pj->mass;
+  const float rhoi = pi->rho;
+  const float rhoj = pj->rho;
+  const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
+  const float sqrtrhoij_inv_r_inv = sqrtrhoij_inv*r_inv;
+  
+  /* Compute quantities for pi. */
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+  kernel_d2eval(ui, &wi_d2x);
+
+  /* Density gradient */  
+  pi->density.grad_rho[0] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv * dx[0];
+  pi->density.grad_rho[1] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv * dx[1];
+  pi->density.grad_rho[2] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv * dx[2];
+
+  /* Lapacien of the gradient */
+  pi->density.laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
+    
+  /* Compute quantities for pj. */
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
+  kernel_deval(uj, &wj, &wj_dx);
+  kernel_d2eval(uj, &wj_d2x);
+
+  /* Density gradient */
+  pj->density.grad_rho[0] += mi * (rhoi-rhoj)*sqrtrhoij_inv_r_inv * dx[0];
+  pj->density.grad_rho[1] += mi * (rhoi-rhoj)*sqrtrhoij_inv_r_inv * dx[1];
+  pj->density.grad_rho[2] += mi * (rhoi-rhoj)*sqrtrhoij_inv_r_inv * dx[2];
+
+  /* Lapacien of the gradient */
+  pj->density.laplacian_rho += mi * (wj_d2x + 2/uj * wj_dx) * (rhoi-rhoj) *sqrtrhoij_inv;
+}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j:
@@ -230,7 +276,42 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H) {
+
+  float wi, wi_dx, wi_d2x;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
+
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  /* Get the masses and densities */
+  const float mj = pj->mass;
+  const float rhoi = pi->rho;
+  const float rhoj = pj->rho;
+  const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
+  const float sqrtrhoij_inv_r_inv = sqrtrhoij_inv*r_inv;
+  
+  /* Compute quantities for pi. */
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+  kernel_d2eval(ui, &wi_d2x);
+
+  /* Density gradient */  
+  pi->density.grad_rho[0] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv * dx[0];
+  pi->density.grad_rho[1] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv * dx[1];
+  pi->density.grad_rho[2] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv * dx[2];
+
+  /* Lapacien of the gradient */
+  pi->density.laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
+}
 
 /**
  * @brief Force interaction between two particles.
