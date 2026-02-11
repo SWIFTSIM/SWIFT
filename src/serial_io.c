@@ -87,8 +87,8 @@ static const int io_max_size_output_list = 100;
  */
 void read_array_serial(hid_t grp, const struct io_props props, size_t N,
                        long long N_total, long long offset,
-                       const struct unit_system* internal_units,
-                       const struct unit_system* ic_units, int cleanup_h,
+                       const struct unit_system *internal_units,
+                       const struct unit_system *ic_units, int cleanup_h,
                        int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
@@ -105,7 +105,7 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
     } else {
 
       /* Create a single instance of the default value */
-      float* temp = (float*)malloc(copySize);
+      float *temp = (float *)malloc(copySize);
       for (int i = 0; i < props.dimension; ++i) temp[i] = props.default_value;
 
       /* Copy it everywhere in the particle array */
@@ -126,7 +126,7 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
   if (h_data < 0) error("Error while opening data space '%s'.", props.name);
 
   /* Allocate temporary buffer */
-  void* temp = malloc(num_elements * typeSize);
+  void *temp = malloc(num_elements * typeSize);
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Prepare information for hyper-slab */
@@ -168,10 +168,10 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
+      double *temp_d = (double *)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      float* temp_f = (float*)temp;
+      float *temp_f = (float *)temp;
 
 #ifdef SWIFT_DEBUG_CHECKS
       float maximum = 0.f;
@@ -214,11 +214,11 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
      * h_factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
+      double *temp_d = (double *)temp;
       const double h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
     } else {
-      float* temp_f = (float*)temp;
+      float *temp_f = (float *)temp;
       const float h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
     }
@@ -228,18 +228,18 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
   if (cleanup_sqrt_a && a != 1. && (strcmp(props.name, "Velocities") == 0)) {
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
+      double *temp_d = (double *)temp;
       const double vel_factor = sqrt(a);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= vel_factor;
     } else {
-      float* temp_f = (float*)temp;
+      float *temp_f = (float *)temp;
       const float vel_factor = sqrt(a);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= vel_factor;
     }
   }
 
   /* Copy temporary buffer to particle data */
-  char* temp_c = (char*)temp;
+  char *temp_c = (char *)temp;
   for (size_t i = 0; i < N; ++i)
     memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
 
@@ -251,12 +251,12 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
 }
 
 void prepare_array_serial(
-    const struct engine* e, hid_t grp, const char* fileName, FILE* xmfFile,
-    const char* partTypeGroupName, const struct io_props props,
+    const struct engine *e, hid_t grp, const char *fileName, FILE *xmfFile,
+    const char *partTypeGroupName, const struct io_props props,
     const unsigned long long N_total,
     const enum lossy_compression_schemes lossy_compression,
-    const struct unit_system* internal_units,
-    const struct unit_system* snapshot_units) {
+    const struct unit_system *internal_units,
+    const struct unit_system *snapshot_units, const int is_named_column) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -264,18 +264,32 @@ void prepare_array_serial(
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = 20;
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
 
   int rank = 0;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
-  if (props.dimension > 1) {
+
+  /* Set the chunking:
+   * - Datasets that are "named columns": Use Nx1 chunking
+   * - Datasets in 1D are chunked Nx1
+   * Other datasets are chunked NxM as the data is likely accessed as
+   * vectors.
+   * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
+   */
+  if (is_named_column) {
+    rank = 2;
+    shape[0] = N_total;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << log2_chunk_size;
+    chunk_shape[1] = 1;
+  } else if (props.dimension > 1) {
     rank = 2;
     shape[0] = N_total;
     shape[1] = props.dimension;
     chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
-  } else {
+  } else { /* props.dimension == 1 */
     rank = 1;
     shape[0] = N_total;
     shape[1] = 0;
@@ -297,36 +311,36 @@ void prepare_array_serial(
   /* Dataset properties */
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
-  /* Set chunk size if have some particles */
+  /* Create filters and set compression level if we have something to write */
+  char comp_buffer[32] = "None";
   if (N_total > 0) {
+
+    /* Set chunk size if have some particles */
     h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
       error("Error while setting chunk size (%llu, %llu) for field '%s'.",
             (unsigned long long)chunk_shape[0],
             (unsigned long long)chunk_shape[1], props.name);
-  }
 
-  /* Are we imposing some form of lossy compression filter? */
-  char comp_buffer[32] = "None";
-  if (lossy_compression != compression_write_lossless)
-    set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression, props.name,
-                               comp_buffer);
+    /* Are we imposing some form of lossy compression filter? */
+    if (lossy_compression != compression_write_lossless)
+      set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression,
+                                 props.name, comp_buffer);
 
-  /* Impose GZIP and shuffle data compression */
-  if (e->snapshot_compression > 0 && N_total > 0) {
-    h_err = H5Pset_shuffle(h_prop);
-    if (h_err < 0)
-      error("Error while setting shuffling options for field '%s'.",
-            props.name);
+    /* Impose GZIP and shuffle data compression */
+    if (e->snapshot_compression > 0 && N_total > 0) {
+      h_err = H5Pset_shuffle(h_prop);
+      if (h_err < 0)
+        error("Error while setting shuffling options for field '%s'.",
+              props.name);
 
-    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
-    if (h_err < 0)
-      error("Error while setting compression options for field '%s'.",
-            props.name);
-  }
+      h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
+      if (h_err < 0)
+        error("Error while setting compression options for field '%s'.",
+              props.name);
+    }
 
-  /* Impose check-sum to verify data corruption */
-  if (N_total > 0) {
+    /* Impose check-sum to verify data corruption */
     h_err = H5Pset_fletcher32(h_prop);
     if (h_err < 0)
       error("Error while setting checksum options for field '%s'.", props.name);
@@ -405,18 +419,21 @@ void prepare_array_serial(
  * @param mpi_rank The MPI rank of this node
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
-void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
-                        FILE* xmfFile, const char* partTypeGroupName,
+void write_array_serial(const struct engine *e, hid_t grp, char *fileName,
+                        FILE *xmfFile, const char *partTypeGroupName,
                         const struct io_props props, const size_t N,
                         const long long N_total, const int mpi_rank,
                         const long long offset,
                         const enum lossy_compression_schemes lossy_compression,
-                        const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units) {
+                        const struct unit_system *internal_units,
+                        const struct unit_system *snapshot_units,
+                        const int is_named_column) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -427,11 +444,11 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
   if (mpi_rank == 0)
     prepare_array_serial(e, grp, fileName, xmfFile, partTypeGroupName, props,
                          N_total, lossy_compression, internal_units,
-                         snapshot_units);
+                         snapshot_units, is_named_column);
 
   /* Allocate temporary buffer */
-  void* temp = NULL;
-  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
+  void *temp = NULL;
+  if (swift_memalign("writebuff", (void **)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -442,6 +459,7 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
   int rank;
   hsize_t shape[2];
   hsize_t offsets[2];
+
   if (props.dimension > 1) {
     rank = 2;
     shape[0] = N;
@@ -538,20 +556,20 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
  * @todo Read snapshots distributed in more than one file.
  *
  */
-void read_ic_serial(char* fileName, const struct unit_system* internal_units,
-                    double dim[3], struct part** parts, struct gpart** gparts,
-                    struct sink** sinks, struct spart** sparts,
-                    struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
-                    size_t* Ngparts_background, size_t* Nnuparts,
-                    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes,
-                    int* flag_entropy, const int with_hydro,
+void read_ic_serial(char *fileName, const struct unit_system *internal_units,
+                    double dim[3], struct part **parts, struct gpart **gparts,
+                    struct sink **sinks, struct spart **sparts,
+                    struct bpart **bparts, size_t *Ngas, size_t *Ngparts,
+                    size_t *Ngparts_background, size_t *Nnuparts,
+                    size_t *Nsinks, size_t *Nstars, size_t *Nblackholes,
+                    int *flag_entropy, const int with_hydro,
                     const int with_gravity, const int with_sink,
                     const int with_stars, const int with_black_holes,
                     const int with_cosmology, const int cleanup_h,
                     const int cleanup_sqrt_a, double h, double a,
                     const int mpi_rank, int mpi_size, MPI_Comm comm,
                     MPI_Info info, const int n_threads, const int dry_run,
-                    const int remap_ids, struct ic_info* ics_metadata) {
+                    const int remap_ids, struct ic_info *ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -565,8 +583,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   size_t Ndm = 0;
   size_t Ndm_background = 0;
   size_t Ndm_neutrino = 0;
-  struct unit_system* ic_units =
-      (struct unit_system*)malloc(sizeof(struct unit_system));
+  struct unit_system *ic_units =
+      (struct unit_system *)malloc(sizeof(struct unit_system));
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
@@ -716,7 +734,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (swift_memalign("parts", (void**)parts, part_align,
+    if (swift_memalign("parts", (void **)parts, part_align,
                        *Ngas * sizeof(struct part)) != 0)
       error("Error while allocating memory for SPH particles");
     bzero(*parts, *Ngas * sizeof(struct part));
@@ -725,7 +743,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store sinks particles */
   if (with_sink) {
     *Nsinks = N[swift_type_sink];
-    if (swift_memalign("sinks", (void**)sinks, sink_align,
+    if (swift_memalign("sinks", (void **)sinks, sink_align,
                        *Nsinks * sizeof(struct sink)) != 0)
       error("Error while allocating memory for sink particles");
     bzero(*sinks, *Nsinks * sizeof(struct sink));
@@ -734,7 +752,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store stars particles */
   if (with_stars) {
     *Nstars = N[swift_type_stars];
-    if (swift_memalign("sparts", (void**)sparts, spart_align,
+    if (swift_memalign("sparts", (void **)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
       error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
@@ -743,7 +761,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store stars particles */
   if (with_black_holes) {
     *Nblackholes = N[swift_type_black_hole];
-    if (swift_memalign("bparts", (void**)bparts, bpart_align,
+    if (swift_memalign("bparts", (void **)bparts, bpart_align,
                        *Nblackholes * sizeof(struct bpart)) != 0)
       error("Error while allocating memory for black hole particles");
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
@@ -762,7 +780,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                (with_black_holes ? N[swift_type_black_hole] : 0);
     *Ngparts_background = Ndm_background;
     *Nnuparts = Ndm_neutrino;
-    if (swift_memalign("gparts", (void**)gparts, gpart_align,
+    if (swift_memalign("gparts", (void **)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
@@ -974,22 +992,22 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
  * Calls #error() if an error occurs.
  *
  */
-void write_output_serial(struct engine* e,
-                         const struct unit_system* internal_units,
-                         const struct unit_system* snapshot_units,
+void write_output_serial(struct engine *e,
+                         const struct unit_system *internal_units,
+                         const struct unit_system *snapshot_units,
                          const int fof, const int mpi_rank, const int mpi_size,
                          MPI_Comm comm, MPI_Info info) {
 
   hid_t h_file = 0, h_grp = 0, h_props = 0;
   int numFiles = 1;
-  const struct part* parts = e->s->parts;
-  const struct xpart* xparts = e->s->xparts;
-  const struct gpart* gparts = e->s->gparts;
-  const struct spart* sparts = e->s->sparts;
-  const struct bpart* bparts = e->s->bparts;
-  const struct sink* sinks = e->s->sinks;
-  struct output_options* output_options = e->output_options;
-  struct output_list* output_list = e->output_list_snapshots;
+  const struct part *parts = e->s->parts;
+  const struct xpart *xparts = e->s->xparts;
+  const struct gpart *gparts = e->s->gparts;
+  const struct spart *sparts = e->s->sparts;
+  const struct bpart *bparts = e->s->bparts;
+  const struct sink *sinks = e->s->sinks;
+  struct output_options *output_options = e->output_options;
+  struct output_list *output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -1009,7 +1027,7 @@ void write_output_serial(struct engine* e,
 #endif
   const int with_rt = e->policy & engine_policy_rt;
 
-  FILE* xmfFile = 0;
+  FILE *xmfFile = 0;
 
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
@@ -1227,7 +1245,7 @@ void write_output_serial(struct engine* e,
 
     /* Store the time at which the snapshot was written */
     time_t tm = time(NULL);
-    struct tm* timeinfo = localtime(&tm);
+    struct tm *timeinfo = localtime(&tm);
     char snapshot_date[64];
     strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
     io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
@@ -1404,13 +1422,13 @@ void write_output_serial(struct engine* e,
         bzero(list, io_max_size_output_list * sizeof(struct io_props));
         size_t Nparticles = 0;
 
-        struct part* parts_written = NULL;
-        struct xpart* xparts_written = NULL;
-        struct gpart* gparts_written = NULL;
-        struct velociraptor_gpart_data* gpart_group_data_written = NULL;
-        struct spart* sparts_written = NULL;
-        struct bpart* bparts_written = NULL;
-        struct sink* sinks_written = NULL;
+        struct part *parts_written = NULL;
+        struct xpart *xparts_written = NULL;
+        struct gpart *gparts_written = NULL;
+        struct velociraptor_gpart_data *gpart_group_data_written = NULL;
+        struct spart *sparts_written = NULL;
+        struct bpart *bparts_written = NULL;
+        struct sink *sinks_written = NULL;
 
         /* Write particle fields from the particle structure */
         switch (ptype) {
@@ -1432,11 +1450,11 @@ void write_output_serial(struct engine* e,
               Nparticles = Ngas_written;
 
               /* Allocate temporary arrays */
-              if (swift_memalign("parts_written", (void**)&parts_written,
+              if (swift_memalign("parts_written", (void **)&parts_written,
                                  part_align,
                                  Ngas_written * sizeof(struct part)) != 0)
                 error("Error while allocating temporary memory for parts");
-              if (swift_memalign("xparts_written", (void**)&xparts_written,
+              if (swift_memalign("xparts_written", (void **)&xparts_written,
                                  xpart_align,
                                  Ngas_written * sizeof(struct xpart)) != 0)
                 error("Error while allocating temporary memory for xparts");
@@ -1472,7 +1490,7 @@ void write_output_serial(struct engine* e,
               Nparticles = Ndm_written;
 
               /* Allocate temporary array */
-              if (swift_memalign("gparts_written", (void**)&gparts_written,
+              if (swift_memalign("gparts_written", (void **)&gparts_written,
                                  gpart_align,
                                  Ndm_written * sizeof(struct gpart)) != 0)
                 error("Error while allocating temporary memory for gparts");
@@ -1480,7 +1498,7 @@ void write_output_serial(struct engine* e,
               if (with_stf) {
                 if (swift_memalign(
                         "gpart_group_written",
-                        (void**)&gpart_group_data_written, gpart_align,
+                        (void **)&gpart_group_data_written, gpart_align,
                         Ndm_written * sizeof(struct velociraptor_gpart_data)) !=
                     0)
                   error(
@@ -1507,17 +1525,17 @@ void write_output_serial(struct engine* e,
             Nparticles = Ndm_background;
 
             /* Allocate temporary array */
-            if (swift_memalign("gparts_written", (void**)&gparts_written,
+            if (swift_memalign("gparts_written", (void **)&gparts_written,
                                gpart_align,
                                Ndm_background * sizeof(struct gpart)) != 0)
               error("Error while allocating temporart memory for gparts");
 
             if (with_stf) {
-              if (swift_memalign("gpart_group_written",
-                                 (void**)&gpart_group_data_written, gpart_align,
-                                 Ndm_background *
-                                     sizeof(struct velociraptor_gpart_data)) !=
-                  0)
+              if (swift_memalign(
+                      "gpart_group_written", (void **)&gpart_group_data_written,
+                      gpart_align,
+                      Ndm_background *
+                          sizeof(struct velociraptor_gpart_data)) != 0)
                 error(
                     "Error while allocating temporart memory for gparts STF "
                     "data");
@@ -1543,14 +1561,14 @@ void write_output_serial(struct engine* e,
             Nparticles = Ndm_neutrino;
 
             /* Allocate temporary array */
-            if (swift_memalign("gparts_written", (void**)&gparts_written,
+            if (swift_memalign("gparts_written", (void **)&gparts_written,
                                gpart_align,
                                Ndm_neutrino * sizeof(struct gpart)) != 0)
               error("Error while allocating temporart memory for gparts");
 
             if (with_stf) {
               if (swift_memalign(
-                      "gpart_group_written", (void**)&gpart_group_data_written,
+                      "gpart_group_written", (void **)&gpart_group_data_written,
                       gpart_align,
                       Ndm_neutrino * sizeof(struct velociraptor_gpart_data)) !=
                   0)
@@ -1587,7 +1605,7 @@ void write_output_serial(struct engine* e,
               Nparticles = Nsinks_written;
 
               /* Allocate temporary arrays */
-              if (swift_memalign("sinks_written", (void**)&sinks_written,
+              if (swift_memalign("sinks_written", (void **)&sinks_written,
                                  sink_align,
                                  Nsinks_written * sizeof(struct sink)) != 0)
                 error("Error while allocating temporary memory for sinks");
@@ -1620,7 +1638,7 @@ void write_output_serial(struct engine* e,
               Nparticles = Nstars_written;
 
               /* Allocate temporary arrays */
-              if (swift_memalign("sparts_written", (void**)&sparts_written,
+              if (swift_memalign("sparts_written", (void **)&sparts_written,
                                  spart_align,
                                  Nstars_written * sizeof(struct spart)) != 0)
                 error("Error while allocating temporary memory for sparts");
@@ -1654,7 +1672,7 @@ void write_output_serial(struct engine* e,
 
               /* Allocate temporary arrays */
               if (swift_memalign(
-                      "bparts_written", (void**)&bparts_written, bpart_align,
+                      "bparts_written", (void **)&bparts_written, bpart_align,
                       Nblackholes_written * sizeof(struct bpart)) != 0)
                 error("Error while allocating temporary memory for bparts");
 
@@ -1701,11 +1719,14 @@ void write_output_serial(struct engine* e,
                   (enum part_type)ptype, compression_level_current_default,
                   e->verbose);
 
+          const int is_named_column =
+              io_field_is_named_column(h_file, list[i].name);
+
           if (compression_level != compression_do_not_write) {
             write_array_serial(e, h_grp, fileName, xmfFile, partTypeGroupName,
                                list[i], Nparticles, N_total[ptype], mpi_rank,
                                offset[ptype], compression_level, internal_units,
-                               snapshot_units);
+                               snapshot_units, is_named_column);
             num_fields_written++;
           }
         }

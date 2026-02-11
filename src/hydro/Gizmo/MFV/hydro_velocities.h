@@ -27,7 +27,7 @@
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_init(
-    struct part* restrict p, struct xpart* restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp) {
 
 #ifdef GIZMO_FIX_PARTICLES
   p->v[0] = 0.0f;
@@ -52,8 +52,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_velocities_prepare_force(struct part* restrict p,
-                               const struct xpart* restrict xp) {}
+hydro_velocities_prepare_force(struct part *restrict p,
+                               const struct xpart *restrict xp) {}
 
 /**
  * @brief Set the variables that will be used to update the smoothing length
@@ -62,7 +62,7 @@ hydro_velocities_prepare_force(struct part* restrict p,
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
-    struct part* restrict p) {
+    struct part *restrict p) {
 
 #ifdef GIZMO_FIX_PARTICLES
   /* disable the smoothing length update, since the smoothing lengths should
@@ -82,7 +82,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_set(
-    struct part* restrict p, struct xpart* restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp) {
 
 /* We first set the particle velocity. */
 #ifdef GIZMO_FIX_PARTICLES

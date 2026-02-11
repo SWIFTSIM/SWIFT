@@ -22,10 +22,10 @@
 #include "io_properties.h"
 #include "kick.h"
 
-INLINE static void convert_gpart_pos(const struct engine* e,
-                                     const struct gpart* gp, double ret[3]) {
+INLINE static void convert_gpart_pos(const struct engine *e,
+                                     const struct gpart *gp, double ret[3]) {
 
-  const struct space* s = e->s;
+  const struct space *s = e->s;
   if (s->periodic) {
     ret[0] = box_wrap(gp->x[0], 0.0, s->dim[0]);
     ret[1] = box_wrap(gp->x[1], 0.0, s->dim[1]);
@@ -42,11 +42,11 @@ INLINE static void convert_gpart_pos(const struct engine* e,
   }
 }
 
-INLINE static void convert_gpart_vel(const struct engine* e,
-                                     const struct gpart* gp, float ret[3]) {
+INLINE static void convert_gpart_vel(const struct engine *e,
+                                     const struct gpart *gp, float ret[3]) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
   const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
@@ -77,15 +77,15 @@ INLINE static void convert_gpart_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
-INLINE static void convert_gpart_soft(const struct engine* e,
-                                      const struct gpart* gp, float* ret) {
+INLINE static void convert_gpart_soft(const struct engine *e,
+                                      const struct gpart *gp, float *ret) {
 
   ret[0] = kernel_gravity_softening_plummer_equivalent_inv *
            gravity_get_softening(gp, e->gravity_properties);
 }
 
-INLINE static void convert_gpart_potential(const struct engine* e,
-                                           const struct gpart* gp, float* ret) {
+INLINE static void convert_gpart_potential(const struct engine *e,
+                                           const struct gpart *gp, float *ret) {
 
   ret[0] = gravity_get_comoving_potential(gp);
 }
@@ -97,9 +97,9 @@ INLINE static void convert_gpart_potential(const struct engine* e,
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void darkmatter_read_particles(struct gpart* gparts,
-                                             struct io_props* list,
-                                             int* num_fields) {
+INLINE static void darkmatter_read_particles(struct gpart *gparts,
+                                             struct io_props *list,
+                                             int *num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 4;
@@ -122,9 +122,9 @@ INLINE static void darkmatter_read_particles(struct gpart* gparts,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-INLINE static void darkmatter_write_particles(const struct gpart* gparts,
-                                              struct io_props* list,
-                                              int* num_fields) {
+INLINE static void darkmatter_write_particles(const struct gpart *gparts,
+                                              struct io_props *list,
+                                              int *num_fields) {
 
   /* Say how much we want to write */
   *num_fields = 6;

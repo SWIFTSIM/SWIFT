@@ -453,6 +453,15 @@ void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
 }
 
 /**
+ * @brief Zero pointers in supernovae_ii structs
+ *
+ * @param snii supernovae_ii struct in which pointers to tables set to NULL.
+ */
+void supernovae_ii_zero_pointers(struct supernovae_ii *snii) {
+  /* Nothing to do here */
+}
+
+/**
  * @brief Write a supernovae_ii struct to the given FILE as a stream of bytes.
  *
  * Here we are only writing the arrays, everything else has been copied in the
@@ -509,4 +518,5 @@ void supernovae_ii_clean(struct supernovae_ii *snii) {
   interpolate_1d_free(&snii->raw.ejected_mass_processed);
   interpolate_1d_free(&snii->integrated.ejected_mass_non_processed);
   interpolate_1d_free(&snii->raw.ejected_mass_non_processed);
+  interpolate_1d_free(&snii->energy_per_progenitor_mass);
 }

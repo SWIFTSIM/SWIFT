@@ -45,6 +45,9 @@ struct feedback_xpart_data {
  */
 struct feedback_spart_data {
 
+  /*! Is the star dead? */
+  int is_dead;
+
   /*! Inverse of normalisation factor used for the enrichment. */
   float enrichment_weight;
 

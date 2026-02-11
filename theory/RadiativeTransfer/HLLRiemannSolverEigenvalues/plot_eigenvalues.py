@@ -26,10 +26,10 @@ thetapihalfind = np.argmin(np.abs(theta - 0.5))
 
 def plot_eigenvals(ax, abscissa, eigenvals):
 
-    ax.plot(abscissa, eigenvals[:, 0], "-", label="$\lambda_1$")
-    ax.plot(abscissa, eigenvals[:, 1], "-.", label="$\lambda_2$")
-    ax.plot(abscissa, eigenvals[:, 2], "--", label="$\lambda_3$")
-    ax.plot(abscissa, eigenvals[:, 3], ":", label="$\lambda_4$")
+    ax.plot(abscissa, eigenvals[:, 0], "-", label=r"$\lambda_1$")
+    ax.plot(abscissa, eigenvals[:, 1], "-.", label=r"$\lambda_2$")
+    ax.plot(abscissa, eigenvals[:, 2], "--", label=r"$\lambda_3$")
+    ax.plot(abscissa, eigenvals[:, 3], ":", label=r"$\lambda_4$")
     return
 
 
@@ -37,17 +37,17 @@ fig = plt.figure(figsize=(7, 4))
 ax1 = fig.add_subplot(1, 3, 1)
 plot_eigenvals(ax1, f, evals[:, theta0ind, :])
 ax1.set_xlabel("$f$", usetex=True)
-ax1.set_title("$\\theta = 0$", usetex=True)
+ax1.set_title(r"$\theta = 0$", usetex=True)
 ax1.set_ylabel("Eigenvalues", usetex=True)
 
 ax2 = fig.add_subplot(1, 3, 2)
 plot_eigenvals(ax2, f, evals[:, thetapihalfind, :])
 ax2.set_xlabel("$f$", usetex=True)
-ax2.set_title("$\\theta = \pi/2$", usetex=True)
+ax2.set_title(r"$\theta = \pi/2$", usetex=True)
 
 ax3 = fig.add_subplot(1, 3, 3)
 plot_eigenvals(ax3, theta, evals[f1ind, :, :])
-ax3.set_xlabel("$\\theta / \pi$", usetex=True)
+ax3.set_xlabel(r"$\theta / \pi$", usetex=True)
 ax3.set_title("$f = 1$", usetex=True)
 
 for ax in fig.axes:
