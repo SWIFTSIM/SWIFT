@@ -1952,6 +1952,11 @@ void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e) {
   /* Skip cells without gravity particles */
   if (c->grav.count == 0) return;
 
+  /* Early exit if not doing self-gravity */
+  if (!(e->policy & engine_policy_self_gravity)) {
+    return;
+  }
+
   /* Early exit if not using mesh */
   if (!s->periodic) {
     return;
