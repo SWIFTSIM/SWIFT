@@ -128,6 +128,15 @@ struct part {
   /*! Particle density. */
   float rho;
 
+  /*! Density gradient */
+  float grad_rho[3];
+
+  /*! Square of the norm of the density gradient */
+  float norm_grad_rho2;
+      
+  /*! Laplacian of the density */
+  float laplacian_rho;
+  
   /* Store density/force specific stuff. */
   union {
 
@@ -148,15 +157,6 @@ struct part {
 
       /*! Derivative of density with respect to h */
       float rho_dh;
-
-      /*! Density gradient */
-      float grad_rho[3];
-
-      /*! Square of the norm of the density gradient */
-      float norm_grad_rho2;
-      
-      /*! Laplacian of the density */
-      float laplacian_rho;
       
       /*! Velocity divergence */
       float div_v;
@@ -195,7 +195,7 @@ struct part {
 
     } force;
   };
-
+  
   /*! Additional data used for adaptive softening */
   struct adaptive_softening_part_data adaptive_softening_data;
 

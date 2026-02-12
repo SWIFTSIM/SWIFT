@@ -224,7 +224,7 @@ def MakePlot(opt):
   #################################
   # loop over files
   
-  for filename in opt.files:
+  for i,filename in enumerate(opt.files):
     
     nb = Nbody(filename, ftype=opt.ftype)
     
@@ -276,7 +276,7 @@ def MakePlot(opt):
     G = libgrid.Spherical_1d_Grid(rmin=0, rmax=opt.rmax, nr=opt.nr, g=f, gm=fm)
     x = G.get_r()      
     y = G.get_MeanValMap(nb, y)
-    axs[0].plot(x,y)
+    axs[0].plot(x,y,label=filename)
 
     ###############
     # gradient
@@ -316,16 +316,18 @@ def MakePlot(opt):
   # density
   #################
   rho = PlummerDensity(r,a,M)
-  axs[0].plot(r,rho)
+  axs[0].plot(r,rho,c='k',ls='--',label="analytical")
   axs[0].set_xlabel('Radius')
   axs[0].set_ylabel(r'$\rho$')
-  axs[0].set_xlim(0,opt.rmax)  
+  axs[0].set_xlim(0,opt.rmax)
+  axs[0].legend()
+
 
   #################
   # gradient
   #################
   norm_grad_rho = PlummerGradientDensity(r,a,M)
-  axs[1].plot(r,norm_grad_rho)
+  axs[1].plot(r,norm_grad_rho,c='k',ls='--')
   axs[1].set_xlabel('Radius')
   axs[1].set_ylabel(r'$|\vec{\nabla} \rho|$')
   axs[1].set_xlim(0,opt.rmax)
@@ -334,12 +336,11 @@ def MakePlot(opt):
   # laplacian
   #################
   laplacian_rho = PlummerLapacianDensity(r,a,M)
-  axs[2].plot(r,laplacian_rho)
+  axs[2].plot(r,laplacian_rho,c='k',ls='')
   axs[2].set_xlabel('Radius')
   axs[2].set_ylabel(r'$\nabla^2 \rho$')
   axs[2].set_xlim(0,opt.rmax)
 
-  
 
   # save or display
   if opt.outputfilename:

@@ -521,15 +521,16 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
-  p->density.grad_rho[0] = 0.f;
-  p->density.grad_rho[1] = 0.f;
-  p->density.grad_rho[2] = 0.f;
-  p->density.norm_grad_rho2 = 0.f;
-  p->density.laplacian_rho = 0.f;  
   p->density.div_v = 0.f;
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+
+  p->grad_rho[0] = 0.f;
+  p->grad_rho[1] = 0.f;
+  p->grad_rho[2] = 0.f;
+  p->norm_grad_rho2 = 0.f;
+  p->laplacian_rho = 0.f;    
 }
 
 /**
@@ -621,23 +622,19 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
-  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
   const float h_inv_dim_plus_two = h_inv_dim * h_inv * h_inv; /* 1/h^(d+2) */
   const float rho = p->rho;
   
-  p->density.grad_rho[0] *= h_inv_dim_plus_one;
-  p->density.grad_rho[1] *= h_inv_dim_plus_one;
-  p->density.grad_rho[2] *= h_inv_dim_plus_one;
-  
-  const float norm_grad_rho2 = p->density.grad_rho[0]*p->density.grad_rho[0] +
-                               p->density.grad_rho[1]*p->density.grad_rho[1] +
-                               p->density.grad_rho[2]*p->density.grad_rho[2];
+  const float norm_grad_rho2 = p->grad_rho[0]*p->grad_rho[0] +
+                               p->grad_rho[1]*p->grad_rho[1] +
+                               p->grad_rho[2]*p->grad_rho[2];
 
-  p->density.norm_grad_rho2 = norm_grad_rho2;
+  p->norm_grad_rho2 = norm_grad_rho2;
 
-  p->density.laplacian_rho -= norm_grad_rho2/rho;
-  p->density.laplacian_rho *= h_inv_dim_plus_two; 
-}
+  p->laplacian_rho -= norm_grad_rho2/rho;
+  p->laplacian_rho *= h_inv_dim_plus_two;
+
+  }
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.

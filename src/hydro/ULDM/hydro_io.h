@@ -170,23 +170,23 @@ INLINE static void convert_part_laplacian_density(const struct engine *e,
                                           const struct part *p,
                                           const struct xpart *xp, float *ret) {
 
-  ret[0] = p->density.laplacian_rho;
+  ret[0] = p->laplacian_rho;
 }
 
 INLINE static void convert_part_gradient_density(const struct engine *e,
                                           const struct part *p,
                                           const struct xpart *xp, float *ret) {
 
-  ret[0] = p->density.grad_rho[0];
-  ret[1] = p->density.grad_rho[1];
-  ret[2] = p->density.grad_rho[2];  
+  ret[0] = p->grad_rho[0];
+  ret[1] = p->grad_rho[1];
+  ret[2] = p->grad_rho[2];
 }
 
 INLINE static void convert_part_norm_gradient_density(const struct engine *e,
                                           const struct part *p,
                                           const struct xpart *xp, float *ret) {
 
-  ret[0] = fsqrt(p->density.norm_grad_rho2);  
+  ret[0] = fsqrt(p->norm_grad_rho2);  
 }
 
 /**

@@ -19,4 +19,4 @@ To compare SPH quantities with analytical ones:
 
 ./plot.py snap/snapshot_0000.hdf5
 
-
+./plotSphericalProfile --remove_ic_shift -y density --xmin 0 --xmax 0.5 --ymin 0 --rmax 0.5 --nr 128 snap05/snapshot_0000.hdf5 snap07/snapshot_0000.hdf5
