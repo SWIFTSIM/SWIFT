@@ -165,6 +165,13 @@ def PlummerDensity(r,a,M):
   cte = 3*M/(4*np.pi*a**3)
   return cte * (r**2/a**2  + 1)**(-5/2)
 
+def PlummerGradientDensity(r,a,M):
+  """
+  return Plummer norm of the density gradient
+  """
+  cte = 3*M/(4*np.pi*a**3)
+  return cte*(5*r/a**2)*(r**2/a**2  + 1)**(-7/2)
+
 def PlummerLapacianDensity(r,a,M):
   """
   return Plummer radial Laplacian density
@@ -211,7 +218,7 @@ def MakePlot(opt):
   datas = []
 
 
-  fig, axs = plt.subplots(2, 1, figsize=(12, 12))
+  fig, axs = plt.subplots(3, 1, figsize=(12, 16))
   
   
   #################################
@@ -272,6 +279,19 @@ def MakePlot(opt):
     axs[0].plot(x,y)
 
     ###############
+    # gradient
+    ###############
+    y = nb.norm_grad_rho
+    # grid division
+    rc = 1
+    def f(r): return np.log(r / rc + 1.)
+    def fm(r): return rc * (np.exp(r) - 1.)    
+    G = libgrid.Spherical_1d_Grid(rmin=0, rmax=opt.rmax, nr=opt.nr, g=f, gm=fm)
+    x = G.get_r()      
+    y = G.get_MeanValMap(nb, y)
+    axs[1].plot(x,y)
+    
+    ###############
     # density laplacian
     ###############
     y = nb.laplacian_rho
@@ -282,7 +302,7 @@ def MakePlot(opt):
     G = libgrid.Spherical_1d_Grid(rmin=0, rmax=opt.rmax, nr=opt.nr, g=f, gm=fm)
     x = G.get_r()      
     y = G.get_MeanValMap(nb, y)
-    axs[1].plot(x,y)
+    axs[2].plot(x,y)
     
 
 
@@ -300,15 +320,24 @@ def MakePlot(opt):
   axs[0].set_xlabel('Radius')
   axs[0].set_ylabel(r'$\rho$')
   axs[0].set_xlim(0,opt.rmax)  
-    
+
+  #################
+  # gradient
+  #################
+  norm_grad_rho = PlummerGradientDensity(r,a,M)
+  axs[1].plot(r,norm_grad_rho)
+  axs[1].set_xlabel('Radius')
+  axs[1].set_ylabel(r'$|\vec{\nabla} \rho|$')
+  axs[1].set_xlim(0,opt.rmax)
+  
   #################
   # laplacian
   #################
   laplacian_rho = PlummerLapacianDensity(r,a,M)
-  axs[1].plot(r,laplacian_rho)
-  axs[1].set_xlabel('Radius')
-  axs[1].set_ylabel(r'$\nabla^2 \rho$')
-  axs[1].set_xlim(0,opt.rmax)
+  axs[2].plot(r,laplacian_rho)
+  axs[2].set_xlabel('Radius')
+  axs[2].set_ylabel(r'$\nabla^2 \rho$')
+  axs[2].set_xlim(0,opt.rmax)
 
   
 
