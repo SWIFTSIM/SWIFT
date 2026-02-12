@@ -33,7 +33,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
+        testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
+        testNeutrinoFermiDirac \
 	    testLog testDistance testTimeline
 
 # List of test programs to compile
@@ -46,7 +47,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
-		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
+		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
+		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
 
 # Rebuild tests when SWIFT is updated.
@@ -56,6 +58,8 @@ $(check_PROGRAMS): ../src/.libs/libswiftsim.a
 testGreetings_SOURCES = testGreetings.c
 
 testMaths_SOURCES = testMaths.c
+
+testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 
 testAtomic_SOURCES = testAtomic.c
 
