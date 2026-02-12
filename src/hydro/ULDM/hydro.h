@@ -628,10 +628,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->density.grad_rho[0] *= h_inv_dim_plus_one;
   p->density.grad_rho[1] *= h_inv_dim_plus_one;
   p->density.grad_rho[2] *= h_inv_dim_plus_one;
-
+  
   const float norm_grad_rho2 = p->density.grad_rho[0]*p->density.grad_rho[0] +
-                          p->density.grad_rho[1]*p->density.grad_rho[1] +
-                          p->density.grad_rho[2]*p->density.grad_rho[2];
+                               p->density.grad_rho[1]*p->density.grad_rho[1] +
+                               p->density.grad_rho[2]*p->density.grad_rho[2];
 
   p->density.norm_grad_rho2 = norm_grad_rho2;
 
