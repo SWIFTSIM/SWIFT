@@ -517,17 +517,26 @@ void cooling_cool_part(const struct phys_const *phys_const,
 
   /* Expected change in energy over the next kick step
      (assuming no change in dt) */
-  const double delta_u = u_final - max(u_start, u_floor);
+  /* const double delta_u = u_final - max(u_start, u_floor); */
+
+
 
   /* Turn this into a rate of change (including cosmology term) */
-  const float cooling_du_dt = delta_u / dt_therm;
+  /* const float cooling_du_dt = delta_u / dt_therm; */
 
   /* Update the internal energy time derivative */
-  hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
+  /* hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt); */
 
   /* Store the radiated energy */
-  xp->cooling_data.radiated_energy -=
-      hydro_get_mass(p) * (cooling_du_dt - hydro_du_dt) * dt;
+  /* xp->cooling_data.radiated_energy -=
+      hydro_get_mass(p) * (cooling_du_dt - hydro_du_dt) * dt; */
+
+  /* Rapid Cooling */
+  hydro_set_physical_internal_energy(p, xp, cosmo, u_final);
+  hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_final);
+  hydro_set_physical_internal_energy_dt(p, cosmo, 0.);
+
+  xp->cooling_data.radiated_energy -= hydro_get_mass(p) * (u_final - u_0);
 }
 
 /**
