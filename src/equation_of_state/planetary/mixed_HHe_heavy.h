@@ -135,7 +135,6 @@ INLINE static void load_table_mixedHHeHeavy(struct single_mixedHHeHeavy_params *
 
 // Misc. modifications
 INLINE static void prepare_table_mixedHHeHeavy(struct single_mixedHHeHeavy_params *mat) {
-
   // Convert to log
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
     mat->table_log_rho[i_rho] = logf(mat->table_log_rho[i_rho]);
@@ -149,11 +148,11 @@ INLINE static void prepare_table_mixedHHeHeavy(struct single_mixedHHeHeavy_param
         mat->table_log_u_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] =
             logf(mat->table_log_u_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T]);
 
-            mat->table_log_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] =
-                logf(mat->table_log_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T]);
+        mat->table_log_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] =
+            logf(mat->table_log_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T]);
 
-            mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] =
-                logf(mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T]);
+        mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] =
+            logf(mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T]);
       }
     }
   }
@@ -191,9 +190,9 @@ INLINE static void convert_units_mixedHHeHeavy(struct single_mixedHHeHeavy_param
         mat->table_P_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] *=
             units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE) /
             units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-        mat->table_log_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] *=
-            units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
-            units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+        mat->table_log_c_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] +=
+            logf(units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
+                units_cgs_conversion_factor(us, UNIT_CONV_SPEED));
         mat->table_log_s_mix_rho_T[i_mix * mat->num_rho_T + i_rho * mat->num_T + i_T] +=
             logf(units_cgs_conversion_factor(
                     &si, UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS) /
@@ -268,9 +267,11 @@ INLINE static float single_mixedHHeHeavy_pressure_from_internal_energy(
   float intp_mix = (mix - mat->table_mix[idx_mix]) / 
                    (mat->table_mix[idx_mix + 1] - mat->table_mix[idx_mix]);
 
-  // Density index
+  // Density
   int idx_rho =
       find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
+  float intp_rho = (log_rho - mat->table_log_rho[idx_rho]) /
+                  (mat->table_log_rho[idx_rho + 1] - mat->table_log_rho[idx_rho]);
 
   // If outside the table then extrapolate from the edge and edge-but-one values
   if (idx_rho <= -1) {
@@ -300,20 +301,18 @@ INLINE static float single_mixedHHeHeavy_pressure_from_internal_energy(
   } else if (idx_u_2 >= mat->num_T) {
     idx_u_2 = mat->num_T - 2;
   }
-
-  // Check for duplicates in the table before interpolation
-  float intp_rho, intp_u_1, intp_u_2;
+  
+  // Sp. int. energy, for each density slice
+  float intp_u_1, intp_u_2;
   int idx_u_1_mix_rho_T = idx_mix * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
   int idx_u_2_mix_rho_T = idx_mix * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
-  intp_rho = (log_rho - mat->table_log_rho[idx_rho]) /
-              (mat->table_log_rho[idx_rho + 1] - mat->table_log_rho[idx_rho]);
   intp_u_1 = (log_u - mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]) /
               (mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T + 1] -
               mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]);
   intp_u_2 = (log_u - mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]) /
               (mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T + 1] -
               mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]);
-
+  
   // Table values
   float P_1 = mat->table_P_mix_rho_T[idx_u_1_mix_rho_T];
   float P_2 = mat->table_P_mix_rho_T[idx_u_1_mix_rho_T + 1];
@@ -363,8 +362,6 @@ INLINE static float single_mixedHHeHeavy_pressure_from_internal_energy(
     // Check for duplicates in the table before interpolation
     idx_u_1_mix_rho_T = (idx_mix + 1) * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
     idx_u_2_mix_rho_T = (idx_mix + 1) * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
-    intp_rho = (log_rho - mat->table_log_rho[idx_rho]) /
-                (mat->table_log_rho[idx_rho + 1] - mat->table_log_rho[idx_rho]);
     intp_u_1 = (log_u - mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]) /
                 (mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T + 1] -
                 mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]);

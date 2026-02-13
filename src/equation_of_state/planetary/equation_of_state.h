@@ -2941,6 +2941,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
     parser_get_param_string(params, "EoS:planetary_mixed_HHe_rock_table_file",
                             mixed_HHe_rock_table_file);
     load_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[0], mixed_HHe_rock_table_file);
+    prepare_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[0]);
     convert_units_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[0], us);
     
     char mixed_HHe_water_table_file[PARSER_MAX_LINE_SIZE];
@@ -2949,6 +2950,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
     parser_get_param_string(params, "EoS:planetary_mixed_HHe_water_table_file",
                             mixed_HHe_water_table_file);
     load_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[1], mixed_HHe_water_table_file);
+    prepare_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[1]);
     convert_units_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[1], us);
     
     char mixed_HHe_iron_table_file[PARSER_MAX_LINE_SIZE];
@@ -2957,6 +2959,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
     parser_get_param_string(params, "EoS:planetary_mixed_HHe_iron_table_file",
                             mixed_HHe_iron_table_file);
     load_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[2], mixed_HHe_iron_table_file);
+    prepare_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[2]);
     convert_units_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[2], us);
   }
 
