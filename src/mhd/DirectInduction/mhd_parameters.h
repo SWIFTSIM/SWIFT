@@ -25,6 +25,7 @@
 #include "config.h"
 
 /* Global headers */
+#include <float.h>
 #if defined(HAVE_HDF5)
 #include <hdf5.h>
 #endif
@@ -68,10 +69,15 @@
 /* Artificial diffussion term */
 #define mhd_props_artificial_diffusion_beta 1.0f
 
-// #define monopole_beta 1.0f
-// #define resistivity_beta 1.0f
-// #define dedner_beta 1.0f
-// #define dedner_gamma 0.5f
+/* Prefactor for per time-step change in B constraint */
+#define mhd_props_default_dt_deltaB_prefactor FLT_MAX
+
+/* Prefactor for per time-step change in psi constraint */
+#define mhd_props_default_dt_deltaPsi_prefactor FLT_MAX
+
+/* Default ratio of specific energy in psi to specific energy in B beyond which
+ * per time-step change in psi constraint is applied */
+#define mhd_props_default_R_ePsi_to_eB FLT_MAX
 
 /* Structs that store the relevant variables */
 
@@ -84,6 +90,16 @@ struct mhd_global_data {
   float hyp_dedner_divv;
   float par_dedner;
   float mhd_eta;
+
+  /* Maximal per time-step relative change in co-moving B over rho */
+  float maxRelChangeBoverRho;
+
+  /* Maximal per time-step relative change in co-moving psi over ch */
+  float maxRelChangePsiOverCh;
+
+  /* Ratio of specific energy in psi to specific energy in B beyond which
+   * per time-step change in psi constraint is applied */
+  float R_ePsi_to_eB;
 };
 
 /* Functions for reading from parameter file */
@@ -121,6 +137,14 @@ static INLINE void mhd_init(struct swift_params *params,
       parser_get_param_float(params, "MHD:artificial_diffusion");
   mhd->hyp_dedner_divv =
       parser_get_param_float(params, "MHD:hyperbolic_dedner_divv");
+  mhd->maxRelChangeBoverRho =
+      parser_get_opt_param_float(params, "MHD:maxRelChangeBoverRho",
+                                 mhd_props_default_dt_deltaB_prefactor);
+  mhd->maxRelChangePsiOverCh =
+      parser_get_opt_param_float(params, "MHD:maxRelChangePsiOverCh",
+                                 mhd_props_default_dt_deltaPsi_prefactor);
+  mhd->R_ePsi_to_eB = parser_get_opt_param_float(
+      params, "MHD:R_ePsi_to_eB", mhd_props_default_R_ePsi_to_eB);
 }
 
 /**
@@ -148,6 +172,15 @@ static INLINE void mhd_print(const struct mhd_global_data *mhd) {
   message("Dedner Hyperbolic/Hyperbolic div(v)/Parabolic: %.3f, %.3f, %.3f ",
           mhd->hyp_dedner, mhd->hyp_dedner_divv, mhd->par_dedner);
   message("MHD global Resistive Eta: %.3f", mhd->mhd_eta);
+  message("Maximal per time-step relative change in co-moving B over rho: %.3f",
+          mhd->maxRelChangeBoverRho);
+  message(
+      "Maximal per time-step relative change in co-moving psi over ch: %.3f",
+      mhd->maxRelChangePsiOverCh);
+  message(
+      "Threshold in energy content in psi beyond which relative change in psi "
+      "constraint in applied: %.8f",
+      mhd->R_ePsi_to_eB);
 }
 
 #if defined(HAVE_HDF5)
@@ -170,6 +203,17 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
   io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
                        mhd_data->par_dedner);
   io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
+  io_write_attribute_f(
+      h_grpsph, "Maximal per time-step relative change in co-moving B over rho",
+      mhd_data->maxRelChangeBoverRho);
+  io_write_attribute_f(
+      h_grpsph,
+      "Maximal per time-step relative change in co-moving psi over ch",
+      mhd_data->maxRelChangePsiOverCh);
+  io_write_attribute_f(
+      h_grpsph, "Threshold of application of relative change in psi constraint",
+      mhd_data->R_ePsi_to_eB);
+
   // io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif
