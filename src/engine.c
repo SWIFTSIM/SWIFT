@@ -2767,12 +2767,10 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
-
-  #ifdef FORCING_BALSARAKIM
-    /* Update the forcing terms */
-    forcing_update(e->forcing_terms, e->time_old);
-  #endif
-
+  
+  /* Update the forcing terms */
+  forcing_update(e->forcing_terms, e->time_old);
+  
   /* Update the rt properties */
   if (e->policy & engine_policy_rt)
     rt_props_update(e->rt_props, e->internal_units, e->cosmology);
