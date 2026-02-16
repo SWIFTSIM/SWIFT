@@ -99,12 +99,6 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
       struct part *const p = &parts[k];
       struct xpart *const xp = &xparts[k];
 
-      /*lily->count particles to be split*/
-      //if (p->split_flag == 1){
-      //c->top->black_holes.split_marked_count ++;
-      //}
-      
-      
       /* Ignore inhibited particles (they have already been removed!) */
       if (part_is_inhibited(p, e)) continue;
 
