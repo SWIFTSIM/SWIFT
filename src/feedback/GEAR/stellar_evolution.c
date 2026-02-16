@@ -637,7 +637,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
 void stellar_evolution_compute_preSN_properties(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct unit_system *us, const struct phys_const *phys_const, 
-    const double dt_myr, const float m_beg_step,
+    const float dt_myr, const float m_beg_step,
     const float m_end_step, const float m_init) {
 
   /* the end/beg step mass are already limited to the imf if SSP or continuous
@@ -684,8 +684,24 @@ void stellar_evolution_compute_preSN_properties(
         mass_ejected * phys_const->const_solar_mass;
     const double energy_ejected_in_IU = 
         energy_ejected / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+    if (fabs(mass_ejected_in_IU) > FLT_MAX) {
+      error(
+          "Mass ejected by stellar winds in internal units is bigger than "
+          "FLT_MAX, capping it to FLT_MAX. Star id: %lld, mass ejected in IU: %e",
+          sp->id, mass_ejected_in_IU);
+      sp->feedback_data.preSN.mass_ejected = FLT_MAX;
+    } else {
+      sp->feedback_data.preSN.mass_ejected = (float)mass_ejected_in_IU;
+    }
+    if (fabs(energy_ejected_in_IU) > FLT_MAX) {
+      error(
+          "Energy ejected by stellar winds in internal units is bigger than "
+          "FLT_MAX, capping it to FLT_MAX. Star id: %lld, energy ejected in IU: %e",
+          sp->id, energy_ejected_in_IU);
+      sp->feedback_data.preSN.energy_ejected = FLT_MAX;
+    } else {  
     sp->feedback_data.preSN.energy_ejected = (float)energy_ejected_in_IU;
-    sp->feedback_data.preSN.mass_ejected = (float)mass_ejected_in_IU;
+    }
 
 
   } else {
@@ -717,8 +733,24 @@ void stellar_evolution_compute_preSN_properties(
         mass_ejected * phys_const->const_solar_mass;
     const double energy_ejected_in_IU = 
         energy_ejected / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+    if (fabs(mass_ejected_in_IU) > FLT_MAX) {
+      error(
+          "Mass ejected by stellar winds in internal units is bigger than "
+          "FLT_MAX, capping it to FLT_MAX. Star id: %lld, mass ejected in IU: %e",
+          sp->id, mass_ejected_in_IU);
+      sp->feedback_data.preSN.mass_ejected = FLT_MAX;
+    } else {
+      sp->feedback_data.preSN.mass_ejected = (float)mass_ejected_in_IU;
+    }
+    if (fabs(energy_ejected_in_IU) > FLT_MAX) {
+      error(
+          "Energy ejected by stellar winds in internal units is bigger than "
+          "FLT_MAX, capping it to FLT_MAX. Star id: %lld, energy ejected in IU: %e",
+          sp->id, energy_ejected_in_IU);
+      sp->feedback_data.preSN.energy_ejected = FLT_MAX;
+    } else {  
     sp->feedback_data.preSN.energy_ejected = (float)energy_ejected_in_IU;
-    sp->feedback_data.preSN.mass_ejected = (float)mass_ejected_in_IU;
+    }
 
   }
 }
@@ -1259,7 +1291,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
   const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
-  const double dt_myr = dt / conversion_to_myr;
+  const float dt_myr = (float)(dt / conversion_to_myr);
 
   /* Get the metallicity */
   const float metallicity =
@@ -1305,8 +1337,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
   sp->feedback_data.preSN.mass_ejected = 0.0;
 
   /* compute pre-SN properties */
-  stellar_evolution_compute_preSN_properties(sp, sm, us, phys_const, m_beg_step,
-                                             dt_myr, m_end_step, m_init);
+  stellar_evolution_compute_preSN_properties(sp, sm, us, phys_const, dt_myr, 
+                                            m_beg_step, m_end_step, m_init);
 
   /* Apply the mass-loss */
   stellar_evolution_preSN_apply_ejected_mass(sp, sm);
