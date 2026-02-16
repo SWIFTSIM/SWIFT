@@ -5,6 +5,8 @@
 BasedOnStyle:  Google
 KeepEmptyLinesAtTheStartOfBlocks: true
 PenaltyBreakAssignment: 2
+DerivePointerAlignment: false
+PointerAlignment: Right
 IncludeCategories:
   - Regex:           '^"(llvm|llvm-c|clang|clang-c)/'
     Priority:        3

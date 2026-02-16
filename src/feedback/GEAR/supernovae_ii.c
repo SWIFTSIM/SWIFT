@@ -444,12 +444,15 @@ void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
 
   /* Read the energy parameters from the tables */
   supernovae_ii_read_energy_from_tables(snii, params, sm->yields_table);
+}
 
-  /* Supernovae energy */
-  double e_feedback =
-      parser_get_param_double(params, "GEARFeedback:supernovae_energy_erg");
-  e_feedback /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-  snii->energy_per_supernovae = e_feedback;
+/**
+ * @brief Zero pointers in supernovae_ii structs
+ *
+ * @param snii supernovae_ii struct in which pointers to tables set to NULL.
+ */
+void supernovae_ii_zero_pointers(struct supernovae_ii *snii) {
+  /* Nothing to do here */
 }
 
 /**

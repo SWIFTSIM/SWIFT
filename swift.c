@@ -25,6 +25,10 @@
 /* Config parameters. */
 #include <config.h>
 
+#ifdef WITH_LIKWID
+#include "likwid_wrapper.h"
+#endif
+
 /* Some standard headers. */
 #include <errno.h>
 #include <fenv.h>
@@ -152,6 +156,11 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+#ifdef WITH_LIKWID
+  swift_likwid_marker_init();
+  swift_likwid_marker_register("runner_main");
+#endif
+
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings(/*fof=*/0);
 
@@ -164,6 +173,7 @@ int main(int argc, char *argv[]) {
 
   int with_aff = 0;
   int with_nointerleave = 0;
+  int with_no_io = 0;
   int with_interleave = 0; /* Deprecated. */
   int dry_run = 0;
   int dump_tasks = 0;
@@ -315,6 +325,8 @@ int main(int argc, char *argv[]) {
                   "time integration. Checks the validity of parameters and IC "
                   "files as well as memory limits.",
                   NULL, 0, 0),
+      OPT_BOOLEAN(0, "no-io", &with_no_io,
+                  "Skip writing snapshots and restart files.", NULL, 0, 0),
       OPT_BOOLEAN('e', "fpe", &with_fp_exceptions,
                   "Enable floating-point exceptions (debugging mode).", NULL, 0,
                   0),
@@ -786,6 +798,9 @@ int main(int argc, char *argv[]) {
     message("WARNING: Non-optimal thread barriers are being used.");
 #endif
 
+  if (myrank == 0 && with_no_io)
+    message("WARNING: No snapshots or restart files will be written.");
+
   /* How large are the parts? */
   if (myrank == 0) {
     message("sizeof(part)          is %4zi bytes.", sizeof(struct part));
@@ -1010,7 +1025,7 @@ int main(int argc, char *argv[]) {
       if (myrank == 0)
         message("The restart files don't all contain the same ti_current!");
 
-      for (int i = 0; i < myrank; ++i) {
+      for (int i = 0; i < nr_nodes; ++i) {
         if (myrank == i)
           message("MPI rank %d reading file '%s' found an integer time= %lld",
                   myrank, restart_file, e.ti_current);
@@ -1232,7 +1247,7 @@ int main(int argc, char *argv[]) {
     /* Initialize power spectra calculation */
     if (with_power) {
 #ifdef HAVE_FFTW
-      power_init(&pow_data, params, nr_threads);
+      power_spectrum_init(&pow_data, params, nr_threads);
 #else
       error("No FFTW library found. Cannot compute power spectra.");
 #endif
@@ -1556,6 +1571,7 @@ int main(int argc, char *argv[]) {
     if (with_sinks) engine_policies |= engine_policy_sinks;
     if (with_rt) engine_policies |= engine_policy_rt;
     if (with_power) engine_policies |= engine_policy_power_spectra;
+    if (with_no_io) engine_policies |= engine_policy_no_io;
 
     /* Initialize the engine with the space and policies. */
     engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
@@ -1860,7 +1876,7 @@ int main(int argc, char *argv[]) {
     e.step += 1;
     engine_current_step = e.step;
 
-    engine_drift_all(&e, /*drift_mpole=*/0);
+    engine_drift_all(&e, /*drift_mpole=*/0, /*init_particles=*/0);
 
     /* Write final statistics? */
     if (e.output_list_stats) {
@@ -1946,18 +1962,23 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (e.neutrino_properties->use_linear_response)
     neutrino_response_clean(e.neutrino_response);
-  if (with_self_gravity && s.periodic) pm_mesh_clean(e.mesh);
+  if (e.mesh->periodic) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   if (with_rt) rt_clean(e.rt_props, restart);
   if (with_power) power_clean(e.power_data);
+  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   if (restart) free(refparams);
+  if (restart) output_options_clean(output_options);
   free(output_options);
+
+#ifdef WITH_LIKWID
+  swift_likwid_marker_close();
+#endif
 
 #ifdef WITH_MPI
   partition_clean(&initial_partition, &reparttype);

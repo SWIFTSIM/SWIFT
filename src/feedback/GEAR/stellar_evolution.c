@@ -39,11 +39,70 @@
 #define DEFAULT_STAR_MINIMAL_GRAVITY_MASS_MSUN 1e-1
 
 /**
+ * @brief Initialize the global properties of the stellar evolution scheme.
+ *
+ * @param sm The #stellar_model.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
+ * @param params The parsed parameters.
+ * @param cosmo The cosmological model.
+ */
+void stellar_evolution_props_init(struct stellar_model *sm,
+                                  const struct phys_const *phys_const,
+                                  const struct unit_system *us,
+                                  struct swift_params *params,
+                                  const struct cosmology *cosmo) {
+
+  /* Read the list of elements */
+  stellar_evolution_read_elements(sm, params);
+
+  /* Read the solar abundances */
+  stellar_evolution_read_solar_abundances(sm, params);
+
+  /* Use the discrete yields approach? */
+  sm->discrete_yields =
+      parser_get_param_int(params, "GEARFeedback:discrete_yields");
+
+  /* Initialize the initial mass function */
+  initial_mass_function_init(&sm->imf, phys_const, us, params,
+                             sm->yields_table);
+
+  /* Initialize the lifetime model */
+  lifetime_init(&sm->lifetime, phys_const, us, params, sm->yields_table);
+
+  /* Initialize the supernovae Ia model */
+  supernovae_ia_init(&sm->snia, phys_const, us, params, sm);
+
+  /* Initialize the supernovae II model */
+  supernovae_ii_init(&sm->snii, params, sm, us);
+
+  /* Initialize the radiation model */
+  radiation_init(&sm->rad, params, sm, us, phys_const);
+  
+  /* Initialize the stellar wind model */
+  stellar_wind_init(&sm->sw, params, sm, us);
+
+  /* Initialize the minimal gravity mass for the stars */
+  /* const float default_star_minimal_gravity_mass_Msun = 1e-1; */
+  sm->discrete_star_minimal_gravity_mass = parser_get_opt_param_float(
+      params, "GEARFeedback:discrete_star_minimal_gravity_mass_Msun",
+      DEFAULT_STAR_MINIMAL_GRAVITY_MASS_MSUN);
+
+  /* Convert from M_sun to internal units */
+  sm->discrete_star_minimal_gravity_mass *= phys_const->const_solar_mass;
+
+  if (engine_rank == 0) {
+    message("discrete_star_minimal_gravity_mass: (internal units)          %e",
+            sm->discrete_star_minimal_gravity_mass);
+  }
+}
+
+/**
  * @brief Print the stellar model.
  *
  * @param sm The #stellar_model.
  */
-void stellar_model_print(const struct stellar_model* sm) {
+void stellar_model_print(const struct stellar_model *sm) {
 
   /* Only the master print */
   if (engine_rank != 0) {
@@ -61,6 +120,143 @@ void stellar_model_print(const struct stellar_model* sm) {
 }
 
 /**
+ * @brief Get the name of the element i.
+ *
+ * @param sm The #stellar_model.
+ * @param i The element indice.
+ */
+const char *stellar_evolution_get_element_name(const struct stellar_model *sm,
+                                               int i) {
+
+  return sm->elements_name + i * GEAR_LABELS_SIZE;
+}
+
+/**
+ * @brief Get the index of the element .
+ *
+ * @param sm The #stellar_model.
+ * @param element_name The element name.
+ */
+int stellar_evolution_get_element_index(const struct stellar_model *sm,
+                                        const char *element_name) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    if (strcmp(stellar_evolution_get_element_name(sm, i), element_name) == 0)
+      return i;
+  }
+  error("Chemical element %s not found !", element_name);
+
+  return -1;
+}
+
+/**
+ * @brief Get the solar abundance of the element .
+ *
+ * @param sm The #stellar_model.
+ * @param element_name The element name.
+ */
+float stellar_evolution_get_solar_abundance(const struct stellar_model *sm,
+                                            const char *element_name) {
+
+  int element_index = stellar_evolution_get_element_index(sm, element_name);
+  float solar_abundance = sm->solar_abundances[element_index];
+
+  return solar_abundance;
+}
+
+/**
+ * @brief Read the name of all the elements present in the tables.
+ *
+ * @param sm The #stellar_model.
+ * @param params The #swift_params.
+ */
+void stellar_evolution_read_elements(struct stellar_model *sm,
+                                     struct swift_params *params) {
+
+  /* Read the elements from the parameter file. */
+  int nval = -1;
+  char **elements;
+  parser_get_param_string_array(params, "GEARFeedback:elements", &nval,
+                                &elements);
+
+  /* Check that we have the correct number of elements. */
+  if (nval != GEAR_CHEMISTRY_ELEMENT_COUNT - 1) {
+    error(
+        "You need to provide %i elements but found %i. "
+        "If you wish to provide a different number of elements, "
+        "you need to compile with --with-chemistry=GEAR_N where N "
+        "is the number of elements + 1.",
+        GEAR_CHEMISTRY_ELEMENT_COUNT, nval);
+  }
+
+  /* Copy the elements into the stellar model. */
+  for (int i = 0; i < nval; i++) {
+    if (strlen(elements[i]) >= GEAR_LABELS_SIZE) {
+      error("Element name '%s' too long", elements[i]);
+    }
+    strcpy(sm->elements_name + i * GEAR_LABELS_SIZE, elements[i]);
+  }
+
+  /* Cleanup. */
+  parser_free_param_string_array(nval, elements);
+
+  /* Add the metals to the end. */
+  strcpy(
+      sm->elements_name + (GEAR_CHEMISTRY_ELEMENT_COUNT - 1) * GEAR_LABELS_SIZE,
+      "Metals");
+
+  /* Check the elements */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    for (int j = i + 1; j < GEAR_CHEMISTRY_ELEMENT_COUNT; j++) {
+      const char *el_i = stellar_evolution_get_element_name(sm, i);
+      const char *el_j = stellar_evolution_get_element_name(sm, j);
+      if (strcmp(el_i, el_j) == 0) {
+        error("You need to provide each element only once (%s).", el_i);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Read the solar abundances.
+ *
+ * @param parameter_file The parsed parameter file.
+ * @param data The properties to initialise.
+ */
+void stellar_evolution_read_solar_abundances(struct stellar_model *sm,
+                                             struct swift_params *params) {
+
+#if defined(HAVE_HDF5)
+
+  /* Get the yields table */
+  char filename[DESCRIPTION_BUFFER_SIZE];
+  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+
+  /* Open file. */
+  hid_t file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (file_id < 0) error("unable to open file %s.\n", filename);
+
+  /* Open group. */
+  hid_t group_id = H5Gopen(file_id, "Data", H5P_DEFAULT);
+  if (group_id < 0) error("unable to open group Data.\n");
+
+  /* Read the data */
+  io_read_array_attribute(group_id, "SolarMassAbundances", FLOAT,
+                          sm->solar_abundances, GEAR_CHEMISTRY_ELEMENT_COUNT);
+
+  /* Close group */
+  hid_t status = H5Gclose(group_id);
+  if (status < 0) error("error closing group.");
+
+  /* Close file */
+  status = H5Fclose(file_id);
+  if (status < 0) error("error closing file.");
+
+#else
+  message("Cannot read the solar abundances without HDF5");
+#endif
+}
+
+/**
  * @brief Compute the integer number of supernovae from the floating number.
  *
  * @param sp The particle to act upon
@@ -71,7 +267,7 @@ void stellar_model_print(const struct stellar_model* sm) {
  * @return The integer number of supernovae.
  */
 int stellar_evolution_compute_integer_number_supernovae(
-    struct spart* restrict sp, float number_supernovae_f,
+    struct spart *restrict sp, float number_supernovae_f,
     const integertime_t ti_begin, enum random_number_type random_type) {
 
   const int number_supernovae_i = floor(number_supernovae_f);
@@ -98,8 +294,8 @@ int stellar_evolution_compute_integer_number_supernovae(
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
  */
-void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
-                                             const struct stellar_model* sm) {
+void stellar_evolution_sn_apply_ejected_mass(struct spart *restrict sp,
+                                             const struct stellar_model *sm) {
   /* If a star is a discrete star */
   if (sp->star_type == single_star) {
     const int null_mass = (sp->mass == sp->feedback_data.mass_ejected);
@@ -162,6 +358,71 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
 }
 
 /**
+ * @brief Update the #spart mass from the stellar wind ejected mass.
+ *
+ * This function deals with each star_type.
+ *
+ * Note: This function is called by
+ * stellar_evolution_compute_preSN_properties().
+ *
+ * @param sp The particle to act upon
+ * @param sm The #stellar_model structure.
+ */
+void stellar_evolution_preSN_apply_ejected_mass(
+    struct spart *restrict sp, const struct stellar_model *sm) {
+  /* If a star is a discrete star */
+  if (sp->star_type == single_star) {
+    const char null_mass = (sp->mass == sp->feedback_data.preSN.mass_ejected);
+    const int negative_mass = (sp->mass < sp->feedback_data.preSN.mass_ejected);
+
+    if (null_mass) {
+      message("Star %lld (m_star = %e, m_ej = %e) completely exploded!", sp->id,
+              sp->mass, sp->feedback_data.preSN.mass_ejected);
+
+      sp->mass = sm->discrete_star_minimal_gravity_mass;
+
+      /* If somehow the star has a negative mass, we have a problem. */
+    } else if (negative_mass) {
+      error(
+          "(Discrete star) Negative mass (m_star = %e, m_ej = %e), skipping "
+          "current star: %lli",
+          sp->mass, sp->feedback_data.preSN.mass_ejected, sp->id);
+      /* Reset everything */
+      sp->feedback_data.preSN.mass_ejected = 0.0;
+
+      /* Reset energy to avoid injecting anything in the
+         runner_iact_nonsym_feedback_apply() */
+      sp->feedback_data.preSN.energy_ejected = 0.0;
+      return;
+    } else {
+      /* Update the mass */
+      sp->mass -= sp->feedback_data.preSN.mass_ejected;
+    }
+
+    /* If the star is the continuous part of the IMF or the entire IMF */
+  } else {
+    /* Check if we can eject the required amount of elements. */
+    const int negative_mass =
+        (sp->mass <= sp->feedback_data.preSN.mass_ejected);
+    if (negative_mass) {
+      warning(
+          "(Continuous star) Negative mass (m_star = %e, m_ej = %e), skipping "
+          "current star: %lli",
+          sp->mass, sp->feedback_data.preSN.mass_ejected, sp->id);
+      /* Reset everything */
+      sp->feedback_data.preSN.mass_ejected = 0.0;
+
+      /* Reset energy to avoid injecting anything in the
+         runner_iact_nonsym_feedback_apply() */
+      sp->feedback_data.preSN.energy_ejected = 0.0;
+      return;
+    }
+    /* Update the mass */
+    sp->mass -= sp->feedback_data.preSN.mass_ejected;
+  }
+}
+
+/**
  * @brief Compute the feedback properties.
  *
  * @param sp The particle to act upon
@@ -183,8 +444,8 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
  *
  */
 void stellar_evolution_compute_continuous_feedback_properties(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct phys_const* phys_const, const float log_m_beg_step,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct phys_const *phys_const, const float log_m_beg_step,
     const float log_m_end_step, const float m_beg_step, const float m_end_step,
     const float m_init, const float number_snia_f, const float number_snii_f) {
 
@@ -202,13 +463,33 @@ void stellar_evolution_compute_continuous_feedback_properties(
   sp->feedback_data.mass_ejected = mass_frac_snii * sp->sf_data.birth_mass +
                                    mass_snia * phys_const->const_solar_mass;
 
+  /* Check whether the mass that has to be expelled by SN in case the cumulated
+   SW + SN mass-loss is negative. No need to check for population types as both
+   behave the same way in this case, i.e., expelling all the remaining mass. It
+   is checked only if the stellar wind actually ejects mass. (In the case of
+   stellar winds without mass-loss) */
+  if (sp->feedback_data.preSN.mass_ejected != 0.0) {
+    /* The `stellar_evolution_preSN_apply_ejected_mass(...)` function has
+       already been called at this stage, verrifying that
+       `sp->feedback_data.preSN.mass_ejected` is not bigger than `sp->mass`*/
+    const double mass_minus_winds =
+        sp->mass - sp->feedback_data.preSN.mass_ejected;
+    if (sp->feedback_data.mass_ejected > mass_minus_winds) {
+      sp->feedback_data.mass_ejected = mass_minus_winds;
+      message(
+          "[%lld]. The mass ejected during discrete SN : %e, is bigger than "
+          "the remaining mass after the stellar winds mass-loss : %e",
+          sp->id, sp->feedback_data.mass_ejected, mass_minus_winds);
+    }
+  }
+
   /* Removes the ejected mass from the star */
   stellar_evolution_sn_apply_ejected_mass(sp, sm);
 
   /* Now deal with the metals */
 
   /* Get the SNIa yields */
-  const float* snia_yields = supernovae_ia_get_yields(&sm->snia);
+  const float *snia_yields = supernovae_ia_get_yields(&sm->snia);
 
   /* Compute the SNII yields */
   float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT];
@@ -255,8 +536,8 @@ void stellar_evolution_compute_continuous_feedback_properties(
  *
  */
 void stellar_evolution_compute_discrete_feedback_properties(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct phys_const* phys_const, const float m_beg_step,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct phys_const *phys_const, const float m_beg_step,
     const float m_end_step, const float m_init, const int number_snia,
     const int number_snii) {
 
@@ -284,11 +565,31 @@ void stellar_evolution_compute_discrete_feedback_properties(
   /* Transform into internal units */
   sp->feedback_data.mass_ejected *= phys_const->const_solar_mass;
 
+  /* Check whether the mass that has to be expelled by SN in case the cumulated
+   SW + SN mass-loss is negative. No need to check for population types as both
+   behave the same way in this case, i.e., expelling all the remaining mass. It
+   is checked only if the stellar wind actually ejects mass. (In the case of
+   stellar winds without mass-loss) */
+  if (sp->feedback_data.preSN.mass_ejected != 0.0) {
+    /* The `stellar_evolution_preSN_apply_ejected_mass(...)` function has
+       already been called at this stage, verrifying that
+       `sp->feedback_data.preSN.mass_ejected` is not bigger than `sp->mass`*/
+    const double mass_minus_winds =
+        sp->mass - sp->feedback_data.preSN.mass_ejected;
+    if (sp->feedback_data.mass_ejected > mass_minus_winds) {
+      sp->feedback_data.mass_ejected = mass_minus_winds;
+      message(
+          "[%lli]. The mass ejected during discrete SN : %e, is bigger than "
+          "the remaining mass after the stellar winds mass-loss : %e",
+          sp->id, sp->feedback_data.mass_ejected, mass_minus_winds);
+    }
+  }
+
   /* Removes the ejected mass from the star */
   stellar_evolution_sn_apply_ejected_mass(sp, sm);
 
   /* Get the SNIa yields */
-  const float* snia_yields = supernovae_ia_get_yields(&sm->snia);
+  const float *snia_yields = supernovae_ia_get_yields(&sm->snia);
 
   /* Compute the SNII yields */
   float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT];
@@ -335,8 +636,8 @@ void stellar_evolution_compute_discrete_feedback_properties(
  *
  */
 void stellar_evolution_compute_preSN_properties(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct phys_const* phys_const, const float m_beg_step,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct phys_const *phys_const, const float m_beg_step,
     const float m_end_step, const float m_init) {
 
   /* the end/beg step mass are already limited to the imf if SSP or continuous
@@ -371,7 +672,7 @@ void stellar_evolution_compute_preSN_properties(
     message(
         "Star_type=single init_mass[M_odot]=%g metallicity[Z_odot]=%g "
         "Energy[erg/yr]=%g Mass_ejected[Msol/yr]=%g",
-        exp10(log_m), exp10(log_metallicity), energy_per_unit_time,
+        m_init, exp10(log_metallicity), energy_per_unit_time,
         mass_ejected_per_unit_time);
 
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
@@ -393,7 +694,7 @@ void stellar_evolution_compute_preSN_properties(
         "Star_type=continuous init_mass[M_odot]=%g metallicity[Z_odot]=%g "
         "Energy_per_progenitor_mass[erg/yr/Msol]=%g "
         "Mass_ejected_per_progenitor_mass[Msol/yr/Msol]=%g",
-        exp10(log_m), exp10(log_metallicity),
+        m_init, exp10(log_metallicity),
         energy_per_unit_time_per_progenitor_mass,
         mass_ejected_per_unit_time_per_progenitor_mass);
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
@@ -420,9 +721,9 @@ void stellar_evolution_compute_preSN_properties(
  * @param dt The time-step size of this star in internal units.
  */
 void stellar_evolution_evolve_individual_star(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for single_star only. */
@@ -480,9 +781,9 @@ void stellar_evolution_evolve_individual_star(
  * @param dt The time-step size of this star in internal units.
  */
 void stellar_evolution_evolve_spart(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for populations of stars and not
@@ -512,276 +813,6 @@ void stellar_evolution_evolve_spart(
 }
 
 /**
- * @brief Get the name of the element i.
- *
- * @param sm The #stellar_model.
- * @param i The element indice.
- */
-const char* stellar_evolution_get_element_name(const struct stellar_model* sm,
-                                               int i) {
-
-  return sm->elements_name + i * GEAR_LABELS_SIZE;
-}
-
-/**
- * @brief Get the index of the element .
- *
- * @param sm The #stellar_model.
- * @param element_name The element name.
- */
-int stellar_evolution_get_element_index(const struct stellar_model* sm,
-                                        const char* element_name) {
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    if (strcmp(stellar_evolution_get_element_name(sm, i), element_name) == 0)
-      return i;
-  }
-  error("Chemical element %s not found !", element_name);
-
-  return -1;
-}
-
-/**
- * @brief Get the solar abundance of the element .
- *
- * @param sm The #stellar_model.
- * @param element_name The element name.
- */
-float stellar_evolution_get_solar_abundance(const struct stellar_model* sm,
-                                            const char* element_name) {
-
-  int element_index = stellar_evolution_get_element_index(sm, element_name);
-  float solar_abundance = sm->solar_abundances[element_index];
-
-  return solar_abundance;
-}
-
-/**
- * @brief Read the name of all the elements present in the tables.
- *
- * @param sm The #stellar_model.
- * @param params The #swift_params.
- */
-void stellar_evolution_read_elements(struct stellar_model* sm,
-                                     struct swift_params* params) {
-
-  /* Read the elements from the parameter file. */
-  int nval = -1;
-  char** elements;
-  parser_get_param_string_array(params, "GEARFeedback:elements", &nval,
-                                &elements);
-
-  /* Check that we have the correct number of elements. */
-  if (nval != GEAR_CHEMISTRY_ELEMENT_COUNT - 1) {
-    error(
-        "You need to provide %i elements but found %i. "
-        "If you wish to provide a different number of elements, "
-        "you need to compile with --with-chemistry=GEAR_N where N "
-        "is the number of elements + 1.",
-        GEAR_CHEMISTRY_ELEMENT_COUNT, nval);
-  }
-
-  /* Copy the elements into the stellar model. */
-  for (int i = 0; i < nval; i++) {
-    if (strlen(elements[i]) >= GEAR_LABELS_SIZE) {
-      error("Element name '%s' too long", elements[i]);
-    }
-    strcpy(sm->elements_name + i * GEAR_LABELS_SIZE, elements[i]);
-  }
-
-  /* Cleanup. */
-  parser_free_param_string_array(nval, elements);
-
-  /* Add the metals to the end. */
-  strcpy(
-      sm->elements_name + (GEAR_CHEMISTRY_ELEMENT_COUNT - 1) * GEAR_LABELS_SIZE,
-      "Metals");
-
-  /* Check the elements */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    for (int j = i + 1; j < GEAR_CHEMISTRY_ELEMENT_COUNT; j++) {
-      const char* el_i = stellar_evolution_get_element_name(sm, i);
-      const char* el_j = stellar_evolution_get_element_name(sm, j);
-      if (strcmp(el_i, el_j) == 0) {
-        error("You need to provide each element only once (%s).", el_i);
-      }
-    }
-  }
-}
-
-/**
- * @brief Read the solar abundances.
- *
- * @param parameter_file The parsed parameter file.
- * @param data The properties to initialise.
- */
-void stellar_evolution_read_solar_abundances(struct stellar_model* sm,
-                                             struct swift_params* params) {
-
-#if defined(HAVE_HDF5)
-
-  /* Get the yields table */
-  char filename[DESCRIPTION_BUFFER_SIZE];
-  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
-
-  /* Open file. */
-  hid_t file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
-  if (file_id < 0) error("unable to open file %s.\n", filename);
-
-  /* Open group. */
-  hid_t group_id = H5Gopen(file_id, "Data", H5P_DEFAULT);
-  if (group_id < 0) error("unable to open group Data.\n");
-
-  /* Read the data */
-  io_read_array_attribute(group_id, "SolarMassAbundances", FLOAT,
-                          sm->solar_abundances, GEAR_CHEMISTRY_ELEMENT_COUNT);
-
-  /* Close group */
-  hid_t status = H5Gclose(group_id);
-  if (status < 0) error("error closing group.");
-
-  /* Close file */
-  status = H5Fclose(file_id);
-  if (status < 0) error("error closing file.");
-
-#else
-  message("Cannot read the solar abundances without HDF5");
-#endif
-}
-
-/**
- * @brief Initialize the global properties of the stellar evolution scheme.
- *
- * @param sm The #stellar_model.
- * @param phys_const The physical constants in the internal unit system.
- * @param us The internal unit system.
- * @param params The parsed parameters.
- * @param cosmo The cosmological model.
- */
-void stellar_evolution_props_init(struct stellar_model* sm,
-                                  const struct phys_const* phys_const,
-                                  const struct unit_system* us,
-                                  struct swift_params* params,
-                                  const struct cosmology* cosmo) {
-
-  /* Read the list of elements */
-  stellar_evolution_read_elements(sm, params);
-
-  /* Read the solar abundances */
-  stellar_evolution_read_solar_abundances(sm, params);
-
-  /* Use the discrete yields approach? */
-  sm->discrete_yields =
-      parser_get_param_int(params, "GEARFeedback:discrete_yields");
-
-  /* Initialize the initial mass function */
-  initial_mass_function_init(&sm->imf, phys_const, us, params,
-                             sm->yields_table);
-
-  /* Initialize the lifetime model */
-  lifetime_init(&sm->lifetime, phys_const, us, params, sm->yields_table);
-
-  /* Initialize the supernovae Ia model */
-  supernovae_ia_init(&sm->snia, phys_const, us, params, sm);
-
-  /* Initialize the supernovae II model */
-  supernovae_ii_init(&sm->snii, params, sm, us);
-
-  /* Initialize the radiation model */
-  radiation_init(&sm->rad, params, sm, us, phys_const);
-
-  /* Initialize the stellar wind model */
-  stellar_wind_init(&sm->sw, params, sm, us);
-
-  /* Initialize the minimal gravity mass for the stars */
-  /* const float default_star_minimal_gravity_mass_Msun = 1e-1; */
-  sm->discrete_star_minimal_gravity_mass = parser_get_opt_param_float(
-      params, "GEARFeedback:discrete_star_minimal_gravity_mass_Msun",
-      DEFAULT_STAR_MINIMAL_GRAVITY_MASS_MSUN);
-
-  /* Convert from M_sun to internal units */
-  sm->discrete_star_minimal_gravity_mass *= phys_const->const_solar_mass;
-
-  if (engine_rank == 0) {
-    message("discrete_star_minimal_gravity_mass: (internal units)          %e",
-            sm->discrete_star_minimal_gravity_mass);
-  }
-}
-
-/**
- * @brief Write a stellar_evolution struct to the given FILE as a stream of
- * bytes.
- *
- * Here we are only writing the arrays, everything has been copied in the
- * feedback.
- *
- * @param sm the struct
- * @param stream the file stream
- */
-void stellar_evolution_dump(const struct stellar_model* sm, FILE* stream) {
-
-  /* Dump the initial mass function */
-  initial_mass_function_dump(&sm->imf, stream, sm);
-
-  /* Dump the lifetime model */
-  lifetime_dump(&sm->lifetime, stream, sm);
-
-  /* Dump the supernovae Ia model */
-  supernovae_ia_dump(&sm->snia, stream, sm);
-
-  /* Dump the supernovae II model */
-  supernovae_ii_dump(&sm->snii, stream, sm);
-
-  /* Dump the supernovae II model */
-  radiation_dump(&sm->rad, stream, sm);
-}
-
-/**
- * @brief Restore a stellar_evolution struct from the given FILE as a stream of
- * bytes.
- *
- * Here we are only writing the arrays, everything has been copied in the
- * feedback.
- *
- * @param sm the struct
- * @param stream the file stream
- */
-void stellar_evolution_restore(struct stellar_model* sm, FILE* stream) {
-
-  /* Restore the initial mass function */
-  initial_mass_function_restore(&sm->imf, stream, sm);
-
-  /* Restore the lifetime model */
-  lifetime_restore(&sm->lifetime, stream, sm);
-
-  /* Restore the supernovae Ia model */
-  supernovae_ia_restore(&sm->snia, stream, sm);
-
-  /* Restore the supernovae II model */
-  supernovae_ii_restore(&sm->snii, stream, sm);
-
-  /* Restore the radiation model */
-  radiation_restore(&sm->rad, stream, sm);
-
-  /* Restore the stellar wind model */
-  stellar_wind_restore(&sm->sw, stream, sm);
-}
-
-/**
- * @brief Clean the allocated memory.
- *
- * @param sm the #stellar_model.
- */
-void stellar_evolution_clean(struct stellar_model* sm) {
-
-  initial_mass_function_clean(&sm->imf);
-  lifetime_clean(&sm->lifetime);
-  supernovae_ia_clean(&sm->snia);
-  supernovae_ii_clean(&sm->snii);
-  radiation_clean(&sm->rad);
-  stellar_wind_clean(&sm->sw);
-}
-
-/**
  * @brief Computes the initial mass of a #spart. This function distinguishes
  * between the stellar particle representing a whole IMF and the stellar
  * particles representing only the continuous part.
@@ -792,10 +823,10 @@ void stellar_evolution_clean(struct stellar_model* sm) {
  * @param (return) m_init Initial mass of the star particle (in M_sun).
  */
 float stellar_evolution_compute_initial_mass(
-    const struct spart* restrict sp, const struct stellar_model* sm,
-    const struct phys_const* phys_const) {
+    const struct spart *restrict sp, const struct stellar_model *sm,
+    const struct phys_const *phys_const) {
 
-  const struct initial_mass_function* imf = &sm->imf;
+  const struct initial_mass_function *imf = &sm->imf;
   switch (sp->star_type) {
     case star_population:
       return sp->sf_data.birth_mass / phys_const->const_solar_mass;
@@ -839,9 +870,9 @@ float stellar_evolution_compute_initial_mass(
  * @param dt The time-step size of this star in internal units.
  */
 void stellar_evolution_compute_SN_feedback_individual_star(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for individual stars */
@@ -943,9 +974,9 @@ void stellar_evolution_compute_SN_feedback_individual_star(
  * @param dt The time-step size of this star in internal units.
  */
 void stellar_evolution_compute_SN_feedback_spart(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for populations of stars and not
@@ -1118,9 +1149,9 @@ void stellar_evolution_compute_SN_feedback_spart(
  * @param dt The time-step size of this star in internal units.
  */
 void stellar_evolution_compute_preSN_feedback_individual_star(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for individual stars */
@@ -1183,8 +1214,8 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const float m_init = 0;
 
   /* initialize */
-  sp->feedback_data.preSN.energy_ejected = 0;
-  sp->feedback_data.preSN.mass_ejected = 0;
+  sp->feedback_data.preSN.energy_ejected = 0.0;
+  sp->feedback_data.preSN.mass_ejected = 0.0;
 
   /* The duration of the preSN feedback in yr*/
   const float feedback_duration_yr =
@@ -1202,6 +1233,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   sp->feedback_data.preSN.energy_ejected /=
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   sp->feedback_data.preSN.mass_ejected *= phys_const->const_solar_mass;
+
+  /* Apply the mass-loss */
+  stellar_evolution_preSN_apply_ejected_mass(sp, sm);
 }
 
 /**
@@ -1222,9 +1256,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
  * @param dt The time-step size of this star in internal units.
  */
 void stellar_evolution_compute_preSN_feedback_spart(
-    struct spart* restrict sp, const struct stellar_model* sm,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    const struct phys_const* phys_const, const integertime_t ti_begin,
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for populations of stars and not
@@ -1310,8 +1344,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
   /* TODO: Here we should use the m_min instead of the M_beg_step */
 
   /* initialize */
-  sp->feedback_data.preSN.energy_ejected = 0;
-  sp->feedback_data.preSN.mass_ejected = 0;
+  sp->feedback_data.preSN.energy_ejected = 0.0;
+  sp->feedback_data.preSN.mass_ejected = 0.0;
 
   /* compute pre-SN properties */
   stellar_evolution_compute_preSN_properties(sp, sm, phys_const, m_beg_step,
@@ -1325,4 +1359,102 @@ void stellar_evolution_compute_preSN_feedback_spart(
   sp->feedback_data.preSN.energy_ejected /=
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   sp->feedback_data.preSN.mass_ejected *= phys_const->const_solar_mass;
+
+  /* Apply the mass-loss */
+  stellar_evolution_preSN_apply_ejected_mass(sp, sm);
+}
+
+/**
+ * @brief Zero pointers in stellar_model structs
+ *
+ * @param sm stellar_model struct in which pointers to tables
+ * set to NULL
+ */
+void stellar_evolution_zero_pointers(struct stellar_model sm) {
+
+  /* Delegate zeroing to the sub-modules */
+  initial_mass_function_zero_pointers(&sm.imf);
+  lifetime_zero_pointers(&sm.lifetime);
+  supernovae_ii_zero_pointers(&sm.snii);
+  supernovae_ia_zero_pointers(&sm.snia);
+  stellar_wind_zero_pointers(&sm.sw);
+
+  /* TODO: Zero radiation pointers */
+}
+
+/**
+ * @brief Write a stellar_evolution struct to the given FILE as a stream of
+ * bytes.
+ *
+ * Here we are only writing the arrays, everything has been copied in the
+ * feedback.
+ *
+ * @param sm the struct
+ * @param stream the file stream
+ */
+void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
+
+  /* Dump the initial mass function */
+  initial_mass_function_dump(&sm->imf, stream, sm);
+
+  /* Dump the lifetime model */
+  lifetime_dump(&sm->lifetime, stream, sm);
+
+  /* Dump the supernovae Ia model */
+  supernovae_ia_dump(&sm->snia, stream, sm);
+
+  /* Dump the supernovae II model */
+  supernovae_ii_dump(&sm->snii, stream, sm);
+
+  /* Dump the stellar wind model */
+  stellar_wind_dump(&sm->sw, stream, sm);
+
+  /* Dump the supernovae II model */
+  radiation_dump(&sm->rad, stream, sm);  
+}
+
+/**
+ * @brief Restore a stellar_evolution struct from the given FILE as a stream of
+ * bytes.
+ *
+ * Here we are only writing the arrays, everything has been copied in the
+ * feedback.
+ *
+ * @param sm the struct
+ * @param stream the file stream
+ */
+void stellar_evolution_restore(struct stellar_model *sm, FILE *stream) {
+
+  /* Restore the initial mass function */
+  initial_mass_function_restore(&sm->imf, stream, sm);
+
+  /* Restore the lifetime model */
+  lifetime_restore(&sm->lifetime, stream, sm);
+
+  /* Restore the supernovae Ia model */
+  supernovae_ia_restore(&sm->snia, stream, sm);
+
+  /* Restore the supernovae II model */
+  supernovae_ii_restore(&sm->snii, stream, sm);
+
+  /* Restore the stellar wind model */
+  stellar_wind_restore(&sm->sw, stream, sm);
+
+  /* Restore the radiation model */
+  radiation_restore(&sm->rad, stream, sm);  
+}
+
+/**
+ * @brief Clean the allocated memory.
+ *
+ * @param sm the #stellar_model.
+ */
+void stellar_evolution_clean(struct stellar_model *sm) {
+
+  initial_mass_function_clean(&sm->imf);
+  lifetime_clean(&sm->lifetime);
+  supernovae_ia_clean(&sm->snia);
+  supernovae_ii_clean(&sm->snii);
+  stellar_wind_clean(&sm->sw);
+  radiation_clean(&sm->rad);  
 }

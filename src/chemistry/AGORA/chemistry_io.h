@@ -29,8 +29,8 @@
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_read_particles(struct part* parts,
-                                           struct io_props* list) {
+INLINE static int chemistry_read_particles(struct part *parts,
+                                           struct io_props *list) {
 
   /* List what we want to read */
   list[0] = io_make_input_field(
@@ -40,9 +40,9 @@ INLINE static int chemistry_read_particles(struct part* parts,
   return 1;
 }
 
-INLINE static void convert_gas_metals(const struct engine* e,
-                                      const struct part* p,
-                                      const struct xpart* xp, double* ret) {
+INLINE static void convert_gas_metals(const struct engine *e,
+                                      const struct part *p,
+                                      const struct xpart *xp, double *ret) {
 
   for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
     ret[i] = p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
@@ -59,9 +59,9 @@ INLINE static void convert_gas_metals(const struct engine* e,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_particles(const struct part* parts,
-                                            const struct xpart* xparts,
-                                            struct io_props* list,
+INLINE static int chemistry_write_particles(const struct part *parts,
+                                            const struct xpart *xparts,
+                                            struct io_props *list,
                                             const int with_cosmology) {
 
   /* List what we want to write */
@@ -87,8 +87,8 @@ INLINE static int chemistry_write_particles(const struct part* parts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_sparticles(const struct spart* sparts,
-                                             struct io_props* list) {
+INLINE static int chemistry_write_sparticles(const struct spart *sparts,
+                                             struct io_props *list) {
 
   /* List what we want to write */
   list[0] = io_make_output_field(
@@ -107,8 +107,8 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
-                                                struct io_props* list) {
+INLINE static int chemistry_write_sinkparticles(const struct sink *sinks,
+                                                struct io_props *list) {
   return 0;
 }
 
@@ -120,8 +120,8 @@ INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
-                                             struct io_props* list) {
+INLINE static int chemistry_write_bparticles(const struct bpart *bparts,
+                                             struct io_props *list) {
 
   /* update list according to hydro_io */
 
@@ -138,11 +138,11 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
  * @param e The #engine.
  */
 INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
-                                           const struct engine* e) {
+                                           const struct engine *e) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "AGORA");
 
-  const char* element_names = e->chemistry->elements_name;
+  const char *element_names = e->chemistry->elements_name;
 
   /* Add to the named columns */
   hsize_t dims[1] = {AGORA_CHEMISTRY_ELEMENT_COUNT};
@@ -168,7 +168,7 @@ INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   /* Write all the elements as attributes */
   for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
-    const char* name = chemistry_get_element_name(e->chemistry, i);
+    const char *name = chemistry_get_element_name(e->chemistry, i);
     io_write_attribute_f(h_sol_ab, name, e->chemistry->solar_abundances[i]);
   }
 

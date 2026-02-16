@@ -167,9 +167,9 @@ struct external_potential {
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float external_gravity_timestep(
-    double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const,
-    const struct gpart* restrict g) {
+    double time, const struct external_potential *restrict potential,
+    const struct phys_const *restrict phys_const,
+    const struct gpart *restrict g) {
 
 #ifdef HAVE_LIBGSL
 
@@ -255,8 +255,8 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  */
 __attribute__((always_inline)) INLINE static float external_gravity_get_density(
     float x, float y, float z, double time,
-    const struct external_potential* potential,
-    const struct phys_const* const phys_const) {
+    const struct external_potential *potential,
+    const struct phys_const *const phys_const) {
 
   /* First for the NFW profile */
   const float R2 = x * x + y * y;
@@ -309,8 +309,8 @@ __attribute__((always_inline)) INLINE static float external_gravity_get_density(
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
-    double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const, struct gpart* restrict g) {
+    double time, const struct external_potential *restrict potential,
+    const struct phys_const *restrict phys_const, struct gpart *restrict g) {
 
 #ifdef HAVE_LIBGSL
 
@@ -441,8 +441,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    double time, const struct external_potential* potential,
-    const struct phys_const* const phys_const, const struct gpart* g) {
+    double time, const struct external_potential *potential,
+    const struct phys_const *const phys_const, const struct gpart *g) {
 
 #ifdef HAVE_LIBGSL
 
@@ -495,9 +495,9 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    struct swift_params* parameter_file, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct space* s,
-    struct external_potential* potential) {
+    struct swift_params *parameter_file, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct space *s,
+    struct external_potential *potential) {
 
 #ifdef HAVE_LIBGSL
 
@@ -667,7 +667,7 @@ static INLINE void potential_init_backend(
  * @param  potential The external potential properties.
  */
 static INLINE void potential_print_backend(
-    const struct external_potential* potential) {
+    const struct external_potential *potential) {
 
   message(
       "External potential is 'MWPotential2014' "

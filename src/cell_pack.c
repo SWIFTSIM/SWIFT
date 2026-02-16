@@ -829,13 +829,14 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->stars.parts_rebuild == NULL)
-    error("Star particles array at rebuild is NULL!");
+  if (c->grav.parts_rebuild == NULL)
+    error("Grav. particles array at rebuild is NULL!");
 #endif
 
   /* Unpack this cell's data. */
   c->grav.count = pcells[0].count;
-  c->grav.parts = c->grav.parts_rebuild + pcells[0].delta_from_rebuild;
+  c->grav.parts_foreign =
+      c->grav.parts_foreign_rebuild + pcells[0].delta_from_rebuild;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;

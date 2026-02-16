@@ -260,6 +260,7 @@ struct pcell_step {
 
     /*! Minimal integer end-of-timestep in this cell (gravity) */
     integertime_t ti_end_min;
+
   } grav;
 
   struct {
@@ -541,8 +542,8 @@ int cell_glocktree(struct cell *c);
 void cell_gunlocktree(struct cell *c);
 int cell_mlocktree(struct cell *c);
 void cell_munlocktree(struct cell *c);
-int cell_slocktree(struct cell *c);
-void cell_sunlocktree(struct cell *c);
+int cell_slocktree(struct cell *c, const int split_task);
+void cell_sunlocktree(struct cell *c, const int split_task);
 int cell_sink_locktree(struct cell *c);
 void cell_sink_unlocktree(struct cell *c);
 int cell_blocktree(struct cell *c);
@@ -614,16 +615,26 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force,
+                     const int init_particles,
                      struct replication_list *replication_list_in);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
 void cell_drift_spart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
-void cell_drift_sink(struct cell *c, const struct engine *e, int force);
+void cell_drift_sink(struct cell *c, const struct engine *e,
+                     const int init_particles, int force);
 void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
+void cell_init_part(struct cell *c, const struct engine *e);
+void cell_init_gpart(struct cell *c, const struct engine *e);
+void cell_init_spart(struct cell *c, const struct engine *e);
+void cell_init_bpart(struct cell *c, const struct engine *e);
+void cell_init_sink(struct cell *c, const struct engine *e);
 void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
                           const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
@@ -717,6 +728,11 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
+int cell_can_use_mesh(struct engine *e, const struct cell *ci,
+                      const struct cell *cj);
+int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
+                               const struct cell *cj);
+void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e);
 
 /**
  * @brief Does a #cell contain no particle at all.
@@ -728,6 +744,31 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
 
   return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
           c->black_holes.count == 0 && c->sinks.count == 0);
+}
+
+/**
+ * @brief Test if a cell contains a progeny at some level.
+ *
+ * @param c The #cell.
+ * @param progeny The progeny #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_contains_progeny(
+    const struct cell *c, const struct cell *progeny) {
+
+  /* Early exit if progeny is above c. */
+  if (progeny->depth < c->depth) {
+    return 0;
+  }
+
+  /* Check all parents of progeny to see if we reach c */
+  const struct cell *current = progeny;
+  while (current != NULL) {
+    if (current == c) {
+      return 1;
+    }
+    current = current->parent;
+  }
+  return 0;
 }
 
 /**
@@ -792,6 +833,87 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
                            fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
 
     return dx * dx + dy * dy + dz * dz;
+  }
+}
+
+/**
+ * @brief Compute the square of the minimal distance between any two points in
+ * two cells of the same size including the maximal displacement of a gpart
+ * since the last rebuild (dx_max per axis).
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Are we using periodic BCs?
+ * @param dim The dimensions of the simulation volume
+ */
+__attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const int periodic, const double dim[3]) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+#endif
+
+  const double cix_min = ci->loc[0];
+  const double ciy_min = ci->loc[1];
+  const double ciz_min = ci->loc[2];
+  const double cjx_min = cj->loc[0];
+  const double cjy_min = cj->loc[1];
+  const double cjz_min = cj->loc[2];
+
+  const double cix_max = ci->loc[0] + ci->width[0];
+  const double ciy_max = ci->loc[1] + ci->width[1];
+  const double ciz_max = ci->loc[2] + ci->width[2];
+  const double cjx_max = cj->loc[0] + cj->width[0];
+  const double cjy_max = cj->loc[1] + cj->width[1];
+  const double cjz_max = cj->loc[2] + cj->width[2];
+
+  /* Include the maximal displacement of a gpart since the last rebuild in
+   * each cell. */
+  const double dx_maxi = ci->grav.multipole->dx_max[0];
+  const double dx_maxj = cj->grav.multipole->dx_max[0];
+  const double dy_maxi = ci->grav.multipole->dx_max[1];
+  const double dy_maxj = cj->grav.multipole->dx_max[1];
+  const double dz_maxi = ci->grav.multipole->dx_max[2];
+  const double dz_maxj = cj->grav.multipole->dx_max[2];
+
+  if (periodic) {
+
+    const double dx = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
+                           fabs(nearest(cix_min - cjx_max, dim[0])),
+                           fabs(nearest(cix_max - cjx_min, dim[0])),
+                           fabs(nearest(cix_max - cjx_max, dim[0])));
+
+    const double dy = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
+                           fabs(nearest(ciy_min - cjy_max, dim[1])),
+                           fabs(nearest(ciy_max - cjy_min, dim[1])),
+                           fabs(nearest(ciy_max - cjy_max, dim[1])));
+
+    const double dz = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
+                           fabs(nearest(ciz_min - cjz_max, dim[2])),
+                           fabs(nearest(ciz_max - cjz_min, dim[2])),
+                           fabs(nearest(ciz_max - cjz_max, dim[2])));
+
+    const double dx_eff = dx + dx_maxi + dx_maxj;
+    const double dy_eff = dy + dy_maxi + dy_maxj;
+    const double dz_eff = dz + dz_maxi + dz_maxj;
+    return dx_eff * dx_eff + dy_eff * dy_eff + dz_eff * dz_eff;
+
+  } else {
+
+    const double dx = min4(fabs(cix_min - cjx_min), fabs(cix_min - cjx_max),
+                           fabs(cix_max - cjx_min), fabs(cix_max - cjx_max));
+    const double dy = min4(fabs(ciy_min - cjy_min), fabs(ciy_min - cjy_max),
+                           fabs(ciy_max - cjy_min), fabs(ciy_max - cjy_max));
+    const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
+                           fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
+
+    const double dx_eff = dx + dx_maxi + dx_maxj;
+    const double dy_eff = dy + dy_maxi + dy_maxj;
+    const double dz_eff = dz + dz_maxi + dz_maxj;
+    return dx_eff * dx_eff + dy_eff * dy_eff + dz_eff * dz_eff;
   }
 }
 
@@ -1326,6 +1448,7 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
     swift_free("hydro.sort", c->hydro.sort);
     c->hydro.sort = NULL;
     c->hydro.sort_allocated = 0;
+    c->hydro.sorted = 0;
   }
 #endif
 }
@@ -1443,6 +1566,7 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
     swift_free("stars.sort", c->stars.sort);
     c->stars.sort = NULL;
     c->stars.sort_allocated = 0;
+    c->stars.sorted = 0;
   }
 #endif
 }

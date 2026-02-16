@@ -37,8 +37,8 @@
  * @param gp The neutrino gpart in question
  * @param ret Output
  */
-INLINE static void convert_gpart_vi(const struct engine* e,
-                                    const struct gpart* gp, float* ret) {
+INLINE static void convert_gpart_vi(const struct engine *e,
+                                    const struct gpart *gp, float *ret) {
 
   /* When we are running with the delta-f method, resample the momentum */
   if (e->neutrino_properties->use_delta_f ||
@@ -46,7 +46,7 @@ INLINE static void convert_gpart_vi(const struct engine* e,
     /* Retrieve physical constants, including the neutrino mass array */
     const double a_scale = e->cosmology->a;
     const double N_nu = e->cosmology->N_nu;
-    const double* m_eV_array = e->cosmology->M_nu_eV;
+    const double *m_eV_array = e->cosmology->M_nu_eV;
     const double c_vel = e->physical_constants->const_speed_light_c;
     const double T_eV = e->cosmology->T_nu_0_eV;
     const double a_fac = c_vel * T_eV / a_scale;
@@ -74,8 +74,8 @@ INLINE static void convert_gpart_vi(const struct engine* e,
  * @param gp The neutrino gpart in question
  * @param ret Output
  */
-INLINE static void convert_gpart_mnu(const struct engine* e,
-                                     const struct gpart* gp, double* ret) {
+INLINE static void convert_gpart_mnu(const struct engine *e,
+                                     const struct gpart *gp, double *ret) {
 
   /* Physical constants */
   const double c = e->physical_constants->const_speed_light_c;
@@ -95,7 +95,7 @@ INLINE static void convert_gpart_mnu(const struct engine* e,
 
     /* Fetch neutrino masses defined in the cosmology */
     const int N_nu = e->cosmology->N_nu;
-    const double* m_eV_array = e->cosmology->M_nu_eV;
+    const double *m_eV_array = e->cosmology->M_nu_eV;
 
     micro_mass = neutrino_seed_to_mass(N_nu, m_eV_array, seed);  // eV
   } else {
@@ -118,8 +118,8 @@ INLINE static void convert_gpart_mnu(const struct engine* e,
  * @param gp The neutrino gpart in question
  * @param ret Output
  */
-INLINE static void convert_gpart_weight(const struct engine* e,
-                                        const struct gpart* gp, double* ret) {
+INLINE static void convert_gpart_weight(const struct engine *e,
+                                        const struct gpart *gp, double *ret) {
 
   /* Resample if running with the delta-f method or neutrino ic generation */
   if (e->neutrino_properties->use_delta_f ||
@@ -148,7 +148,7 @@ INLINE static void convert_gpart_weight(const struct engine* e,
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int neutrino_write_particles(
-    const struct gpart* gparts, struct io_props* list) {
+    const struct gpart *gparts, struct io_props *list) {
 
   list[0] = io_make_output_field_convert_gpart(
       "SampledSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, gparts, convert_gpart_vi,
@@ -172,8 +172,8 @@ __attribute__((always_inline)) INLINE static int neutrino_write_particles(
 
 int lightcone_map_neutrino_mass_type_contributes(int ptype);
 double lightcone_map_neutrino_mass_get_value(
-    const struct engine* e, const struct lightcone_props* lightcone_props,
-    const struct gpart* gp, const double a_cross, const double x_cross[3]);
+    const struct engine *e, const struct lightcone_props *lightcone_props,
+    const struct gpart *gp, const double a_cross, const double x_cross[3]);
 
 /*
    This associates map names to the appropriate update function and unit info.
