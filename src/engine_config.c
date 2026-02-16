@@ -910,10 +910,10 @@ void engine_config(int restart, int fof, struct engine *e,
       parser_get_opt_param_float(params, "Scheduler:links_per_tasks", 25.);
 
   /* Init the scheduler. */
-  //lily turn stealing off
+ 
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
                  (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
-  //scheduler_init(&e->sched, e->s, maxtasks, nr_queues, 0, e->nodeID, &e->threadpool);
+
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be
    * changed on restart.
@@ -957,8 +957,8 @@ void engine_config(int restart, int fof, struct engine *e,
     if (!(e->policy & engine_policy_star_formation ||
           e->policy & engine_policy_sinks) ||
         !swift_star_formation_model_creates_stars) {
-      //space_extra_sparts = 0;
-      //lily: we do need extra gparts!
+      space_extra_sparts = 0;
+      //we do need extra gparts!
       //space_extra_gparts = 0;
       space_extra_sinks = 0;
     }

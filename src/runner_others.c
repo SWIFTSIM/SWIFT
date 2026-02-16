@@ -107,6 +107,9 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   struct engine *e = r->e;
   
   //particle data
+  //const float mass_limit = 65e-5;
+  //const float mass_limit = 9e-5;
+  const float mass_limit = 1.5e-5;
   const int count_top = c->top->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -132,8 +135,8 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 
 	struct cell *restrict cp = c->progeny[k];
 	runner_do_particle_split(r, cp, 0);
-	
-        /* Update the h_max */
+
+	/* Update the h_max */
         c->hydro.h_max = max(c->hydro.h_max, cp->hydro.h_max);
         c->hydro.h_max_active =
             max(c->hydro.h_max_active, cp->hydro.h_max_active);
@@ -150,7 +153,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
     int j = 0;
     
     //loop has to be long, idk why this works but it does...
-    while (j < c->top->hydro.count){
+    while (j < c->hydro.count){
       struct part *p  = &parts[j];
       struct xpart *xp = &xparts[j];
 
@@ -163,6 +166,12 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
       //we are splitting 3 times max
       // 0 = unsplit, 1 = perform split
       //2 = max split reached
+
+      // Skip particles that are inhibited
+      if (part_is_inhibited(p, e)) {
+	j++;
+	continue;
+      }
       
       // skip if we have already split this time around, or have reached max. number of splits
       // if particle has been recently launched, ignore
@@ -171,7 +180,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	continue;
       }
 
-      if (p->mass < 9e-5) {
+      if (p->mass < mass_limit) {
 	p->split_flag = 2;
 	j++;
 	continue;
@@ -224,10 +233,9 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	
         //if particle reached target mass, never split again after this split
         //else reset to 0                                                    
-        //hardcoded final mass for now...                                                                                                                                                                                                  
-        //if (p->mass < 9e-5){
-	if (p->mass < 6.4e-4){
-          p->split_flag = 2;}
+        //hardcoded final mass for now...                                                                                                                                                                                                 
+        if (p->mass < mass_limit){
+	  p->split_flag = 2;}
         else{p->split_flag = 0;}
 
 	xp->ti_created = e->ti_current;
@@ -261,7 +269,6 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	pos_offsets[2] *= delta;
 	
 	struct part *child = cell_spawn_new_part_from_part(e, c, &parent, &parent_xp, child_mass, pos_offsets, new_h);
-
 	
 	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id);
 	if (parent_index == -1) error("parent not found!");
@@ -301,6 +308,9 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	if (child == NULL)
 	  error("Failed to spawn child particle in gas splitting.");
 	
+	if (child->gpart == NULL)
+	  error("Failed to spawn child gpart particle in gas splitting.");
+	
 #ifdef SWIFT_DEBUG_CHECKS
 	child_mass_sum += child->mass;
 #endif
@@ -318,6 +328,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 
 	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",                                                                                                                                
                 c,c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);     
+
 	
       }
       j ++;

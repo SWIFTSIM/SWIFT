@@ -1414,6 +1414,9 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
       //lily                                                                                                                                                                                             
       if (c->top->hydro.particle_split){
+	//message("Adding unlock to particle_split %p (cell %p)",
+        //(void*)c->top->hydro.particle_split,
+        //(void*)c->top);
 	scheduler_addunlock(s, c->grav.drift, c->top->hydro.particle_split);}
       
       
