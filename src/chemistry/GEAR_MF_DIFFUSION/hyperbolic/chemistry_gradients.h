@@ -20,109 +20,19 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_GRADIENTS_H
 
 #include "../chemistry_getters.h"
-#include "../chemistry_setters.h"
 #include "../chemistry_slope_limiters_cell.h"
-#include "../chemistry_slope_limiters_face.h"
 #include "../chemistry_unphysical.h"
+
+/* Forward declaration to fix implicit-function-declaration and static conflicts */
+static void chemistry_part_integrate_flux_source_term(
+    const struct part *restrict p, const int metal, const float dt,
+    const double flux_in[3], const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, double flux_out[3]);
 
 /**
  * @file src/chemistry/GEAR_MFM_diffusion/hyperbolic/chemistry_gradients.h
  * @brief Header file for hyperbolic diffusion gradient functions.
  */
-
-/**
- * @brief Gradients reconstruction. Predict the value at point x_ij given
- * current values at particle positions and gradients at particle positions.
- *
- * @param pi Particle i
- * @param pj Particle j
- * @param half_dt Time-step to integrate.
- * @param grad_qi Diffusion driver gradient of particle i
- * @param grad_qj Diffusion driver gradient of particle i
- * @param dFx_i Gradient of the hpyerbolic flux component x of particle i.
- * @param dFy_i Gradient of the hpyerbolic flux component y of particle i.
- * @param dFz_i Gradient of the hpyerbolic flux component z of particle i.
- * @param dFx_j Gradient of the hpyerbolic flux component x of particle j.
- * @param dFy_j Gradient of the hpyerbolic flux component y of particle j.
- * @param dFz_j Gradient of the hpyerbolic flux component z of particle j.
- * @param cosmo The #cosmology.
- * @param chem_data The global properties of the chemistry scheme.
- * @param dUi (return) Resulting time-predicted diffusion state of particle i
-(in physical units).
- * @param dUj (return) Resulting time-predicted and limited diffusion state of
- * particle j (in physical units).
- */
-__attribute__((always_inline)) INLINE static void
-chemistry_gradients_time_extrapolate(
-    const struct part *restrict pi, const struct part *restrict pj,
-    float half_dt, double grad_qi[3], double grad_qj[3], double dFx_i[3],
-    double dFy_i[3], double dFz_i[3], double dFx_j[3], double dFy_j[3],
-    double dFz_j[3], const struct cosmology *cosmo,
-    const struct chemistry_global_data *chem_data, double dUi[4],
-    double dUj[4]) {
-
-  const struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
-
-  /* Get drhoZ/dt = - div Flux */
-  const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
-  const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);
-
-  /* Compute dF/dt = - F/tau - K/tau * grad q */
-  const double tau_inv_i = 1.0 / chi->tau;
-  const double tau_inv_j = 1.0 / chj->tau;
-
-  double Ki[3][3];
-  chemistry_get_physical_matrix_K(pi, chem_data, cosmo, Ki);
-  double Kj[3][3];
-  chemistry_get_physical_matrix_K(pj, chem_data, cosmo, Kj);
-
-  double dF_dt_homogeneous_i[3] = {0.0};
-  double dF_dt_homogeneous_j[3] = {0.0};
-
-  /* If tau == 0, then tau*dF/dt = 0 and the diffusion is parabolic. Therefore,
-     we cannot extrapolate the flux equation in time. */
-  if (chi->tau != 0) {
-    if (chem_data->diffusion_mode == anisotropic_gradient) {
-      for (int i = 0; i < 3; ++i) {
-	for (int j = 0; j < 3; ++j) {
-	  dF_dt_homogeneous_i[i] -= tau_inv_i*Ki[i][j] * grad_qi[j];
-	}
-      }
-    } else {
-      dF_dt_homogeneous_i[0] = -chi->kappa * grad_qi[0];
-      dF_dt_homogeneous_i[1] = -chi->kappa * grad_qi[1];
-      dF_dt_homogeneous_i[2] = -chi->kappa * grad_qi[2];
-    }
-  }
-
-  /* TODO: Time integrate with the source term. Use the ODE solution */
-
-  if (chj->tau != 0) {
-    if (chem_data->diffusion_mode == anisotropic_gradient) {
-      for (int i = 0; i < 3; ++i) {
-	for (int j = 0; j < 3; ++j) {
-	  dF_dt_homogeneous_j[i] -= tau_inv_j*Kj[i][j] * grad_qj[j];
-	}
-      }
-    } else {
-      dF_dt_homogeneous_j[0] = -chj->kappa * grad_qj[0];
-      dF_dt_homogeneous_j[1] = -chj->kappa * grad_qj[1];
-      dF_dt_homogeneous_j[2] = -chj->kappa * grad_qj[2];
-    }
-  }
-  /* TODO: Time integrate with the source term. Use the ODE solution */
-
-  dUi[0] = drhoZ_dt_i * half_dt;
-  dUi[1] = dF_dt_homogeneous_i[0] * half_dt;
-  dUi[2] = dF_dt_homogeneous_i[1] * half_dt;
-  dUi[3] = dF_dt_homogeneous_i[2] * half_dt;
-
-  dUj[0] = drhoZ_dt_j * half_dt;
-  dUj[1] = dF_dt_homogeneous_j[0] * half_dt;
-  dUj[2] = dF_dt_homogeneous_j[1] * half_dt;
-  dUj[3] = dF_dt_homogeneous_j[2] * half_dt;
-}
 
 /**
  * @brief Check and correct unphysical states due to extrapolation.
@@ -322,36 +232,36 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   chemistry_slope_limit_face(Ui, Uj, dUi, dUj, xij_i, xij_j, r);
 
   /* Now, let's time-extrapolate! */
-  double dUi_time_extrapolated[4] = {0.0};
-  double dUj_time_extrapolated[4] = {0.0};
-
   const float mindt =
       (chj->flux.dt > 0.f) ? fminf(chi->flux.dt, chj->flux.dt) : chi->flux.dt;
   const float half_mindt = 0.5 * mindt;
 
-  /* Get the physical diffusion driver gradients */
-  double grad_qi[3];
-  double grad_qj[3];
-  chemistry_get_physical_diffusion_driver_gradients(pi, metal, cosmo, chem_data,
-                                                    grad_qi);
-  chemistry_get_physical_diffusion_driver_gradients(pj, metal, cosmo, chem_data,
-                                                    grad_qj);
+  /* Get drhoZ/dt = - div Flux */
+  const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
+  const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);
 
-  chemistry_gradients_time_extrapolate(
-      pi, pj, half_mindt, grad_qi, grad_qj, dFx_i, dFy_i, dFz_i,
-      dFx_j, dFy_j, dFz_j, cosmo, chem_data, dUi_time_extrapolated,
-      dUj_time_extrapolated);
+  const double flux_source_i[3] = {dUi[1], dUi[2], dUi[3]};
+  double flux_integrated_i[3] = {0.0};
+  chemistry_part_integrate_flux_source_term(pi, metal, half_mindt,
+					    flux_source_i, chem_data, cosmo,
+					    flux_integrated_i);
+
+  const double flux_source_j[3] = {dUj[1], dUj[2], dUj[3]};
+  double flux_integrated_j[3] = {0.0};
+  chemistry_part_integrate_flux_source_term(pj, metal, half_mindt,
+					    flux_source_j, chem_data, cosmo,
+					    flux_integrated_j);
 
   /* Apply the extrapolation */
-  Ui[0] += dUi[0] + dUi_time_extrapolated[0];
-  Ui[1] += dUi[1] + dUi_time_extrapolated[1];
-  Ui[2] += dUi[2] + dUi_time_extrapolated[2];
-  Ui[3] += dUi[3] + dUi_time_extrapolated[3];
+  Ui[0] += dUi[0] + drhoZ_dt_i*half_mindt;
+  Ui[1] = flux_integrated_i[0];
+  Ui[2] = flux_integrated_i[1];
+  Ui[3] = flux_integrated_i[2];
 
-  Uj[0] += dUj[0] + dUj_time_extrapolated[0];
-  Uj[1] += dUj[1] + dUj_time_extrapolated[1];
-  Uj[2] += dUj[2] + dUj_time_extrapolated[2];
-  Uj[3] += dUj[3] + dUj_time_extrapolated[3];
+  Uj[0] += dUj[0] + drhoZ_dt_j*half_mindt;
+  Uj[1] = flux_integrated_j[0];
+  Uj[2] = flux_integrated_j[1];
+  Uj[3] = flux_integrated_j[2];
 
   /* Check that we have physical masses and that we are not overshooting the
      particle's mass */
