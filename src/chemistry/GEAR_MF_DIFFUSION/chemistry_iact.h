@@ -462,7 +462,7 @@ runner_iact_chemistry_fluxes_common(
 
     /* Predict the diffusion state at the interface to compute fluxes */
     double Ui[4], Uj[4];
-    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, cosmo, Ui, Uj);
+    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, cosmo, chem_data, Ui, Uj);
     /* Note: The returned values are in physical units. No conversion needed */
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */

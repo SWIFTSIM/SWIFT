@@ -134,40 +134,14 @@ chemistry_riemann_solver_hopkins2017_HLL(
   const double q_star = 0.5 * (qR + qL);
 
   /* Get the physical gradients */
-  double grad_q_L[3], grad_q_R[3];
-  if (chem_data->diffusion_mode == isotropic_constant) {
-    /* In this case, q = U = rho*Z, grad q = grad (rho*Z) */
-    chemistry_get_metal_density_gradients(pi, m, grad_q_L);
-    chemistry_get_metal_density_gradients(pj, m, grad_q_R);
-
-    /* Convert to physical units: multiply by a^-4 (a^-3 for density and a^-1
-     * for gradient) */
-    const double a_inv_4 =
-        cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
-    grad_q_L[0] *= a_inv_4;
-    grad_q_L[1] *= a_inv_4;
-    grad_q_L[2] *= a_inv_4;
-
-    grad_q_R[0] *= a_inv_4;
-    grad_q_R[1] *= a_inv_4;
-    grad_q_R[2] *= a_inv_4;
-  } else {
-    /* In these cases, U = rho*Z, q = Z, grad q = grad Z */
-    chemistry_get_metal_mass_fraction_gradients(pi, m, grad_q_L);
-    chemistry_get_metal_mass_fraction_gradients(pj, m, grad_q_R);
-
-    /* Convert to physical units: multiply by a^-1 (Z is already physical) */
-    grad_q_L[0] *= cosmo->a_inv;
-    grad_q_L[1] *= cosmo->a_inv;
-    grad_q_L[2] *= cosmo->a_inv;
-
-    grad_q_R[0] *= cosmo->a_inv;
-    grad_q_R[1] *= cosmo->a_inv;
-    grad_q_R[2] *= cosmo->a_inv;
-  }
-  double grad_q_star[3] = {0.5 * (grad_q_L[0] + grad_q_R[0]),
-                           0.5 * (grad_q_L[1] + grad_q_R[1]),
-                           0.5 * (grad_q_L[2] + grad_q_R[2])};
+  double grad_qL[3], grad_qR[3];
+  chemistry_get_physical_diffusion_driver_gradients(pi, m, cosmo, chem_data,
+                                                    grad_qL);
+  chemistry_get_physical_diffusion_driver_gradients(pj, m, cosmo, chem_data,
+                                                    grad_qR);
+  double grad_q_star[3] = {0.5 * (grad_qL[0] + grad_qR[0]),
+                           0.5 * (grad_qL[1] + grad_qR[1]),
+                           0.5 * (grad_qL[2] + grad_qR[2])};
 
   /* Define some convenient variables. Convert to physical: add a for the norm
    */
