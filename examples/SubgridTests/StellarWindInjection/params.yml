@@ -47,7 +47,7 @@ GEARChemistry:
   initial_metallicity: 0.0               # Initial metallicity of the gas
 
 GEARFeedback:
-  supernovae_energy_erg: 1e51                  # supernovae energy, used only for SNIa
+  supernovae_Ia_energy_erg: 1e51                  # supernovae energy, used only for SNIa
   supernovae_efficiency: 0.0                   # supernovae energy efficiency, used for both SNIa and SNII
   pre_supernovae_efficiency: 1                 # the pre supernovae efficiency, used for stellar wind
   yields_table: ../POPII.hdf5
