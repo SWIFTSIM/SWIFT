@@ -22,9 +22,70 @@
 #include "../chemistry_gradients_extrapolate.h"
 
 /**
- * @file src/chemistry/GEAR_MFM_diffusion/chemistry_gradients.h
+ * @file src/chemistry/GEAR_MFM_diffusion/parabolic/chemistry_gradients.h
  * @brief Header file for parabolic diffusion gradient functions.
  */
+
+/**
+ * @brief Check and correct unphysical states due to extrapolation.
+ *
+ * This function also handles particle with negative metal masses.
+ *
+ * @param pi Particle i
+ * @param pj Particle j
+ * @param metal Metal specie to update
+ * @param cosmo The #cosmology.
+ * @param Ui (return) Resulting corrected diffusion state of particle i (in physical units).
+ * @param Uj (return) Resulting corrected diffusion state of particle j (in physical units).
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
+					      const struct part *restrict pj,
+					      int metal,
+					      const struct cosmology *cosmo,
+					      double Ui[4], double Uj[4]) {
+  const double mi = hydro_get_mass(pi);
+  const double mj = hydro_get_mass(pj);
+  const double m_Zi_not_extrapolated =
+      chemistry_get_metal_mass_fraction(pi, metal) * mi;
+  const double m_Zj_not_extrapolated =
+      chemistry_get_metal_mass_fraction(pj, metal) * mj;
+  double m_Zi = Ui[0] * mi / hydro_get_comoving_density(pi);
+  double m_Zj = Uj[0] * mj / hydro_get_comoving_density(pj);
+
+  unsigned int dumb;
+  chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
+				   /*callloc=*/1, /*element*/ metal, pi->id,
+				   /*neg_counter*/ &dumb);
+  chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
+				   /*callloc=*/1, /*element*/ metal, pj->id,
+				   &dumb);
+
+  /* If the new masses have been changed, do not extrapolate, use 0th order
+     reconstruction and update the state vectors */
+  if (m_Zi == m_Zi_not_extrapolated) {
+    Ui[0] = m_Zi_not_extrapolated * hydro_get_comoving_density(pi) / mi;
+  }
+  if (m_Zj == m_Zj_not_extrapolated) {
+    Uj[0] = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
+  }
+
+  if (m_Zi_not_extrapolated < 0.0) {
+    Ui[0] = 0.0;
+  }
+
+  if (m_Zj_not_extrapolated < 0.0) {
+    Uj[0] = 0.0;
+  }
+
+  /* Something went wrong if we get this one! */
+  if (m_Zi_not_extrapolated > mi) {
+    Ui[0] = hydro_get_comoving_density(pi);
+  }
+  if (m_Zj_not_extrapolated > mj) {
+    Uj[0] = hydro_get_comoving_density(pj);
+  }
+}
 
 /**
  * @brief Metal density gradients reconstruction. Predict the value at point
@@ -115,49 +176,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   Ui[0] += dUi;
   Uj[0] += dUj;
 
-  /* Check we have physical masses and that we are not overshooting the
+  /* Check that we have physical masses and that we are not overshooting the
      particle's mass */
-  const double mi = hydro_get_mass(pi);
-  const double mj = hydro_get_mass(pj);
-  const double m_Zi_not_extrapolated =
-      chemistry_get_metal_mass_fraction(pi, metal) * mi;
-  const double m_Zj_not_extrapolated =
-      chemistry_get_metal_mass_fraction(pj, metal) * mj;
-  double m_Zi = Ui[0] * mi / hydro_get_comoving_density(pi);
-  double m_Zj = Uj[0] * mj / hydro_get_comoving_density(pj);
-
-  unsigned int dumb;
-  chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-                                   /*callloc=*/1, /*element*/ metal, pi->id,
-                                   /*neg_counter*/ &dumb);
-  chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-                                   /*callloc=*/1, /*element*/ metal, pj->id,
-                                   &dumb);
-
-  /* If the new masses have been changed, do not extrapolate, use 0th order
-     reconstruction and update the state vectors */
-  if (m_Zi == m_Zi_not_extrapolated) {
-    Ui[0] = m_Zi_not_extrapolated * hydro_get_comoving_density(pi) / mi;
-  }
-  if (m_Zj == m_Zj_not_extrapolated) {
-    Uj[0] = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
-  }
-
-  if (m_Zi_not_extrapolated < 0.0) {
-    Ui[0] = 0.0;
-  }
-
-  if (m_Zj_not_extrapolated < 0.0) {
-    Uj[0] = 0.0;
-  }
-
-  /* Something went wrong if we get this one! */
-  if (m_Zi_not_extrapolated > mi) {
-    Ui[0] = hydro_get_comoving_density(pi);
-  }
-  if (m_Zj_not_extrapolated > mj) {
-    Uj[0] = hydro_get_comoving_density(pj);
-  }
+  chemistry_gradients_correct_unphysical_states(pi, pj, metal, cosmo, Ui, Uj);
 
   /* Convert Ui[0] and Uj[0] (metal density) to physical units */
   Ui[0] *= cosmo->a3_inv;
