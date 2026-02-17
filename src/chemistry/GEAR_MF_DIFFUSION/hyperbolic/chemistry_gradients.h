@@ -26,6 +26,93 @@
 #include "../chemistry_unphysical.h"
 
 /**
+ * @brief Gradients reconstruction. Predict the value at point x_ij given
+ * current values at particle positions and gradients at particle positions.
+ *
+ * @param pi Particle i
+ * @param pj Particle j
+ * @param half_dt Time-step to integrate.
+ *
+ * @param cosmo The #cosmology.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param dUi (return) Resulting time-predicted diffusion state of particle i
+(in physical units).
+ * @param Uj (return) Resulting time-predicted and limited diffusion state of
+ * particle j (in physical units).
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_gradients_time_extrapolate(
+    const struct part *restrict pi, const struct part *restrict pj,
+    float half_dt, double grad_qi[3], double grad_qj[3], double dFx_i[3],
+    double dFy_i[3], double dFz_i[3], double dFx_j[3], double dFy_j[3],
+    double dFz_j[3], const struct cosmology *cosmo,
+    const struct chemistry_global_data *chem_data, double dUi[4],
+    double dUj[4]) {
+
+  const struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
+
+  /* Get drhoZ/dt = - div Flux */
+  const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
+  const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);
+
+  /* Compute dF/dt = - F/tau - K/tau * grad q */
+  const double tau_inv_i = 1.0 / chi->tau;
+  const double tau_inv_j = 1.0 / chj->tau;
+
+  double Ki[3][3];
+  chemistry_get_physical_matrix_K(pi, chem_data, cosmo, Ki);
+  double Kj[3][3];
+  chemistry_get_physical_matrix_K(pj, chem_data, cosmo, Kj);
+
+  double dF_dt_homogeneous_i[3] = {0.0};
+  double dF_dt_homogeneous_j[3] = {0.0};
+
+  /* If tau == 0, then tau*dF/dt = 0 and the diffusion is parabolic. Therefore,
+     we cannot extrapolate the flux equation in time. */
+  if (chi->tau != 0) {
+    if (chem_data->diffusion_mode == anisotropic_gradient) {
+      for (int i = 0; i < 3; ++i) {
+	for (int j = 0; j < 3; ++j) {
+	  dF_dt_homogeneous_i[i] -= tau_inv_i*Ki[i][j] * grad_qi[j];
+	}
+      }
+    } else {
+      dF_dt_homogeneous_i[0] = -chi->kappa * grad_qi[0];
+      dF_dt_homogeneous_i[1] = -chi->kappa * grad_qi[1];
+      dF_dt_homogeneous_i[2] = -chi->kappa * grad_qi[2];
+    }
+  }
+
+  /* TODO: Time integrate with the source term. Use the ODE solution */
+
+  if (chj->tau != 0) {
+    if (chem_data->diffusion_mode == anisotropic_gradient) {
+      for (int i = 0; i < 3; ++i) {
+	for (int j = 0; j < 3; ++j) {
+	  dF_dt_homogeneous_j[i] -= tau_inv_j*Kj[i][j] * grad_qj[j];
+	}
+      }
+    } else {
+      dF_dt_homogeneous_j[0] = -chj->kappa * grad_qj[0];
+      dF_dt_homogeneous_j[1] = -chj->kappa * grad_qj[1];
+      dF_dt_homogeneous_j[2] = -chj->kappa * grad_qj[2];
+    }
+  }
+  /* TODO: Time integrate with the source term. Use the ODE solution */
+
+  dUi[0] = drhoZ_dt_i * half_dt;
+  dUi[1] = dF_dt_homogeneous_i[0] * half_dt;
+  dUi[2] = dF_dt_homogeneous_i[1] * half_dt;
+  dUi[3] = dF_dt_homogeneous_i[2] * half_dt;
+
+  dUj[0] = drhoZ_dt_j * half_dt;
+  dUj[1] = dF_dt_homogeneous_j[0] * half_dt;
+  dUj[2] = dF_dt_homogeneous_j[1] * half_dt;
+  dUj[3] = dF_dt_homogeneous_j[2] * half_dt;
+}
+
+/**
  * @brief Check and correct unphysical states due to extrapolation.
  *
  * This function also handles particle with negative metal masses.
@@ -221,55 +308,37 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   chemistry_slope_limit_face(Ui, Uj, dUi, dUj, xij_i, xij_j, r);
 
-  Ui[0] += dUi[0];
-  Ui[1] += dUi[1];
-  Ui[2] += dUi[2];
-  Ui[3] += dUi[3];
+  /* Now, let's time-extrapolate! */
+  double dUi_time_extrapolated[4] = {0.0};
+  double dUj_time_extrapolated[4] = {0.0};
 
-  Uj[0] += dUj[0];
-  Uj[1] += dUj[1];
-  Uj[2] += dUj[2];
-  Uj[3] += dUj[3];
+  const float mindt =
+      (chj->flux.dt > 0.f) ? fminf(chi->flux.dt, chj->flux.dt) : chi->flux.dt;
+  const float half_mindt = 0.5 * mindt;
 
-  /* Check that we have physical masses and that we are not overshooting the
-     particle's mass */
-  const double mi = hydro_get_mass(pi);
-  const double mj = hydro_get_mass(pj);
-  const double m_Zi_not_extrapolated =
-      chemistry_get_metal_mass_fraction(pi, metal) * mi;
-  const double m_Zj_not_extrapolated =
-      chemistry_get_metal_mass_fraction(pj, metal) * mj;
-  double m_Zi = Ui[0] * mi / hydro_get_comoving_density(pi);
-  double m_Zj = Uj[0] * mj / hydro_get_comoving_density(pj);
+  /* Get the physical diffusion driver gradients */
+  double grad_qi[3];
+  double grad_qj[3];
+  chemistry_get_physical_diffusion_driver_gradients(pi, metal, cosmo, chem_data,
+                                                    grad_qi);
+  chemistry_get_physical_diffusion_driver_gradients(pj, metal, cosmo, chem_data,
+                                                    grad_qj);
 
-  unsigned int dumb;
-  chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-                                   /*callloc=*/1, /*element*/ metal, pi->id,
-				   /*neg_counter*/ &dumb);
-  chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-                                   /*callloc=*/1, /*element*/ metal, pj->id,
-                                   &dumb);
+  chemistry_gradients_time_extrapolate(
+      pi, pj, half_mindt, grad_qi, grad_qj, dFx_i, dFy_i, dFz_i,
+      dFx_j, dFy_j, dFz_j, cosmo, chem_data, dUi_time_extrapolated,
+      dUj_time_extrapolated);
 
-  /* Check that we have meaningful fluxes */
-  double flux_i[3] = {Ui[1], Ui[2], Ui[3]};
-  double flux_j[3] = {Uj[1], Uj[2], Uj[3]};
-  chemistry_check_unphysical_diffusion_flux(flux_i);
-  chemistry_check_unphysical_diffusion_flux(flux_j);
+  /* Apply the extrapolation */
+  Ui[0] += dUi[0] + dUi_time_extrapolated[0];
+  Ui[1] += dUi[1] + dUi_time_extrapolated[1];
+  Ui[2] += dUi[2] + dUi_time_extrapolated[2];
+  Ui[3] += dUi[3] + dUi_time_extrapolated[3];
 
-  /* If the new masses have been changed, do not extrapolate, use 0th order
-     reconstruction and update the state vectors */
-  if (m_Zi == m_Zi_not_extrapolated) {
-    Ui[0] = m_Zi_not_extrapolated * hydro_get_comoving_density(pi) / mi;
-    flux_i[0] = chi->diffusion_flux[metal][0];
-    flux_i[1] = chi->diffusion_flux[metal][1];
-    flux_i[2] = chi->diffusion_flux[metal][2];
-  }
-  if (m_Zj == m_Zj_not_extrapolated) {
-    Uj[0] = m_Zj_not_extrapolated * hydro_get_comoving_density(pj) / mj;
-    flux_j[0] = chj->diffusion_flux[metal][0];
-    flux_j[1] = chj->diffusion_flux[metal][1];
-    flux_j[2] = chj->diffusion_flux[metal][2];
-  }
+  Uj[0] += dUj[0] + dUj_time_extrapolated[0];
+  Uj[1] += dUj[1] + dUj_time_extrapolated[1];
+  Uj[2] += dUj[2] + dUj_time_extrapolated[2];
+  Uj[3] += dUj[3] + dUj_time_extrapolated[3];
 
   /* Check that we have physical masses and that we are not overshooting the
      particle's mass */

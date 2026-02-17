@@ -339,6 +339,44 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
 }
 
 /**
+ * @brief Get the gradients of diffusion driver q.
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie.
+ * @param dq Diffusion driver gradient (of size 3).
+ * @param cosmo The #cosmology.
+ * @param chem_data The global properties of the chemistry scheme.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_get_physical_diffusion_driver_gradients(
+    const struct part *restrict p, int metal, const struct cosmology *cosmo,
+    const struct chemistry_global_data *chem_data, double dq[3]) {
+
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* In this case, q = U = rho*Z, grad q = grad (rho*Z) */
+    chemistry_get_metal_density_gradients(p, metal, dq);
+
+    /* Convert to physical units: multiply by a^-4 (a^-3 for density and a^-1
+     * for gradient) */
+    const double a_inv_4 =
+	cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
+
+    dq[0] *= a_inv_4;
+    dq[1] *= a_inv_4;
+    dq[2] *= a_inv_4;
+
+  } else {
+    /* In these cases, U = rho*Z, q = Z, grad q = grad Z */
+    chemistry_get_metal_mass_fraction_gradients(p, metal, dq);
+
+    /* Convert to physical units: multiply by a^-1 (Z is already physical) */
+    dq[0] *= cosmo->a_inv;
+    dq[1] *= cosmo->a_inv;
+    dq[2] *= cosmo->a_inv;
+  }
+}
+
+/**
  * @brief Compute the parabolic diffusion flux of given metal specie.
  *
  * F_diss = - K * \nabla \otimes q
