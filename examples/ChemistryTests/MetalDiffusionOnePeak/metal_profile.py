@@ -39,36 +39,29 @@ def get_fe_metal_mass(data):
         m_fe = data.gas.metal_mass_fractions[:, 0] * data.gas.masses
     return m_fe
 
-def radial_profile(value, r, r_min=None, r_max=None, n_bins=30):
-    # Handle default r_min and r_max
-    if r_min is None:
-        r_min = r.min()
-    if r_max is None:
-        r_max = r.max()
+def radial_profile(value, r, r_max=None, n_bins=30):
+    """
+    Compute a 1D profile across a range from -r_max to r_max.
+    """
+    # Define a symmetric linear range
+    r_min = -r_max
 
-    # Create logarithmic bin edges
-    r_bins = np.logspace(np.log10(r_min), np.log10(r_max), n_bins + 1)
+    # Create linear bin edges
+    r_bins = np.linspace(r_min, r_max, n_bins + 1)
 
-    # Get bin indices for each radius
+    # Get bin indices
     bin_indices = np.digitize(r, bins=r_bins) - 1
 
-    # Handle edge cases where radius might fall outside the range
-    bin_indices = np.clip(bin_indices, 0, n_bins - 1)
-
-    # Calculate the centers of the bins for plotting
+    # Calculate centers
     r_centers = 0.5 * (r_bins[:-1] + r_bins[1:])
 
-    # Initialize temperature array
     values = np.zeros(n_bins)
-
-    # Loop through each bin and accumulate temperatures
     for i in range(n_bins):
         in_bin = (bin_indices == i)
-        if np.any(in_bin):  # Ensure there are values in the bin
-            values[i] = np.mean(value[in_bin])  # Average temperature in bin
+        if np.any(in_bin):
+            values[i] = np.mean(value[in_bin])
 
     return r_centers, values
-
 
 def gaussian(r, t, q_0, r_0, kappa, epsilon):
     return q_0*(2*np.pi)**(-1.5) / (epsilon**2 + 2*kappa*t)**1.5 * np.exp(-0.5*((r-r_0)**2)/(epsilon**2 + 2*kappa*t))
@@ -218,28 +211,28 @@ for filename in tqdm(files):
 
     # Get data
     m_fe = get_fe_metal_mass(data)
-    r = np.linalg.norm(data.gas.coordinates, axis=1)
     t = data.metadata.time.value
 
-    # Compute the radial profile
-    r_centers, fe_bin = radial_profile(m_fe, r, r_min, r_max, n_bins=n_bins)
+    # Calculate signed distance from box center (using x-coordinate as the "radial" line)
+    center = boxsize[0] / 2.0
+    r_signed = data.gas.coordinates[:, 0] - center
 
-    # Estimate the 1D location of the metal mass peak in the ICs
-    # r_0 = np.linalg.norm(nb.boxsize/2)
-    r_0 = 0.6 # More precise somehow...
+    # Compute the profile
+    r_centers, fe_bin = radial_profile(m_fe, r_signed, r_max=r_max, n_bins=n_bins)
+
+    # The peak location for the analytical solution is now 0 (the center of our coords)
+    r_0 = 0.0
 
     # Perform the fit on all the data
     def fit_q_0(r, q_0):
         return gaussian(r, t, q_0, r_0, kappa, epsilon)
 
     initial_guess_q_0 = 1e1
-    popt, pcov = curve_fit(fit_q_0, r, m_fe, p0=initial_guess_q_0)
-
-    # Extract the fitted q_0 value
+    popt, pcov = curve_fit(fit_q_0, r_signed, m_fe, p0=initial_guess_q_0)
     q_0 = popt[0]
 
     # Compute the analytical solution
-    r_sol = np.linspace(r_min, r_max, 100)
+    r_sol = np.linspace(-r_max, r_max, 100)
     fe_sol = gaussian(r_sol, t, q_0, r_0, kappa, epsilon)
 
     #########
@@ -247,9 +240,7 @@ for filename in tqdm(files):
     def fit_q_0_hyperbolic(r, q_0):
         return hyperbolic_diffusion_solution(r, t, q_0, r_0, tau, kappa)
 
-    popt2, pcov2 = curve_fit(fit_q_0_hyperbolic, r, m_fe, p0=initial_guess_q_0)
-
-    # Extract the fitted q_0 value
+    popt2, pcov2 = curve_fit(fit_q_0_hyperbolic, r_signed, m_fe, p0=initial_guess_q_0)
     q_0_hyperbolic = popt2[0]
 
     # Compute the analytical solution
