@@ -119,8 +119,8 @@ Plot the Fe 1D density profile
     epilog = """
 Examples:
 --------
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 1.1
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 1.1 --log
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_max 1.1
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_max 1.1 --log
 """
     parser = argparse.ArgumentParser(description=description, epilog=epilog)
 
@@ -140,12 +140,6 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 
                         type=int,
                         default=40,
                         help="Number bins")
-
-    parser.add_argument("--r_min",
-                        action="store",
-                        type=float,
-                        default=1e-1,
-                        help="Minimal r.")
 
     parser.add_argument("--r_max",
                         action="store",
@@ -170,7 +164,6 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 
 # %%
 # Parse the arguments
 args, files = parse_option()
-r_min = args.r_min
 r_max = args.r_max
 n_bins = args.n_bins
 epsilon = args.epsilon
