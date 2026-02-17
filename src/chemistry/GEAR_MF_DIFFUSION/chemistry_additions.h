@@ -200,7 +200,6 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  if (chd->flux.dt > 0.0) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     const float dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
 
@@ -213,6 +212,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     }
 #endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
+  if (chd->flux.dt > 0.0) {
     /* Invalidate the particle time-step. It is considered to be inactive until
          dt is set again in chemistry_prepare_force() */
     chd->flux.dt = -1.0f;
