@@ -208,8 +208,8 @@ double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
  */
 double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
                                            float log_m, float log_z) {
-  return exp10(interpolate_2d(&sw->integrated.ejected_energy_per_progenitor_mass,
-                            log_z, log_m));
+  return exp10(interpolate_2d(
+      &sw->integrated.ejected_energy_per_progenitor_mass, log_z, log_m));
 };
 
 /**
@@ -238,7 +238,7 @@ double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
 double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
                                          float log_m, float log_z) {
   return exp10(interpolate_2d(&sw->integrated.mass_loss_per_progenitor_mass,
-                                log_z, log_m));
+                              log_z, log_m));
 };
 
 /**
