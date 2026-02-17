@@ -43,6 +43,7 @@
  * @param r Comoving distance between particle i and particle j.
  * @param xij_i Position of the "interface" w.r.t. position of particle i
  * @param cosmo The #cosmology.
+ * @param chem_data The global properties of the chemistry scheme.
  * @param Ui (return) Resulting predicted and limited diffusion state of
  * particle i (in physical units).
  * @param Uj (return) Resulting predicted and limited diffusion state of
@@ -51,7 +52,8 @@
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
     const float dx[3], const float r, const float xij_i[3],
-    const struct cosmology *cosmo, double Ui[4], double Uj[4]) {
+    const struct cosmology *cosmo,
+    const struct chemistry_global_data *chem_data, double Ui[4], double Uj[4]) {
 
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
