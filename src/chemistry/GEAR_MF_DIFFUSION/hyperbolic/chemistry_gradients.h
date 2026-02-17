@@ -26,6 +26,101 @@
 #include "../chemistry_unphysical.h"
 
 /**
+ * @brief Check and correct unphysical states due to extrapolation.
+ *
+ * This function also handles particle with negative metal masses.
+ *
+ * @param pi Particle i
+ * @param pj Particle j
+ * @param metal Metal specie to update
+ * @param cosmo The #cosmology.
+ * @param Ui (return) Resulting corrected diffusion state of particle i (in physical units).
+ * @param Uj (return) Resulting corrected diffusion state of particle j (in physical units).
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_gradients_correct_unphysical_states(
+    const struct part *restrict pi, const struct part *restrict pj, int metal,
+    const struct cosmology *cosmo,
+    double Ui[4], double Uj[4]) {
+
+  const struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
+  const double mi = hydro_get_mass(pi);
+  const double mj = hydro_get_mass(pj);
+  const double m_Zi_not_extrapolated =
+      chemistry_get_metal_mass_fraction(pi, metal) * mi;
+  const double m_Zj_not_extrapolated =
+      chemistry_get_metal_mass_fraction(pj, metal) * mj;
+  double m_Zi = Ui[0] * mi / hydro_get_physical_density(pi, cosmo);
+  double m_Zj = Uj[0] * mj / hydro_get_physical_density(pj, cosmo);
+
+  unsigned int dumb;
+  chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
+				   /*callloc=*/1, /*element*/ metal, pi->id,
+				   /*neg_counter*/ &dumb);
+  chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
+				   /*callloc=*/1, /*element*/ metal, pj->id,
+				   &dumb);
+
+  /* Check that we have meaningful fluxes */
+  double flux_i[3] = {Ui[1], Ui[2], Ui[3]};
+  double flux_j[3] = {Uj[1], Uj[2], Uj[3]};
+  chemistry_check_unphysical_diffusion_flux(flux_i);
+  chemistry_check_unphysical_diffusion_flux(flux_j);
+
+  /* If the new masses have been changed, do not extrapolate, use 0th order
+     reconstruction and update the state vectors */
+  if (m_Zi == m_Zi_not_extrapolated) {
+    Ui[0] = m_Zi_not_extrapolated * hydro_get_physical_density(pi, cosmo) / mi;
+    flux_i[0] = chi->diffusion_flux[metal][0];
+    flux_i[1] = chi->diffusion_flux[metal][1];
+    flux_i[2] = chi->diffusion_flux[metal][2];
+  }
+  if (m_Zj == m_Zj_not_extrapolated) {
+    Uj[0] = m_Zj_not_extrapolated * hydro_get_physical_density(pj, cosmo) / mj;
+    flux_j[0] = chj->diffusion_flux[metal][0];
+    flux_j[1] = chj->diffusion_flux[metal][1];
+    flux_j[2] = chj->diffusion_flux[metal][2];
+  }
+
+  if (m_Zi_not_extrapolated < 0.0) {
+    Ui[0] = 0.0;
+    flux_i[0] = 0.0;
+    flux_i[1] = 0.0;
+    flux_i[2] = 0.0;
+  }
+
+  if (m_Zj_not_extrapolated < 0.0) {
+    Uj[0] = 0.0;
+    flux_j[0] = 0.0;
+    flux_j[1] = 0.0;
+    flux_j[2] = 0.0;
+  }
+
+  /* Something went wrong if we get this one! */
+  if (m_Zi_not_extrapolated > mi) {
+    Ui[0] = hydro_get_physical_density(pi, cosmo);
+    flux_i[0] = 0.0;
+    flux_i[1] = 0.0;
+    flux_i[2] = 0.0;
+  }
+  if (m_Zj_not_extrapolated > mj) {
+    Uj[0] = hydro_get_physical_density(pj, cosmo);
+    flux_j[0] = 0.0;
+    flux_j[1] = 0.0;
+    flux_j[2] = 0.0;
+  }
+
+  /* Now assign the fluxes */
+  Ui[1] = flux_i[0];
+  Ui[2] = flux_i[1];
+  Ui[3] = flux_i[2];
+  Uj[1] = flux_j[0];
+  Uj[2] = flux_j[1];
+  Uj[3] = flux_j[2];
+}
+
+/**
  * @brief Gradients reconstruction. Predict the value at point x_ij given
  * current values at particle positions and gradients at particle positions.
  *
@@ -37,6 +132,7 @@
  * @param r Comoving distance between particle i and particle j.
  * @param xij_i Position of the "interface" w.r.t. position of particle i.
  * @param cosmo The #cosmology.
+ * @param chem_data The global properties of the chemistry scheme.
  * @param Ui (return) Resulting predicted and limited diffusion state of
  * particle i (in physical units).
  * @param Uj (return) Resulting predicted and limited diffusion state of
@@ -45,7 +141,9 @@
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
     const float dx[3], const float r, const float xij_i[3],
-    const struct cosmology *cosmo, double Ui[4], double Uj[4]) {
+    const struct cosmology *cosmo,
+    const struct chemistry_global_data *chem_data,
+    double Ui[4], double Uj[4]) {
 
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
@@ -170,46 +268,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     flux_j[2] = chj->diffusion_flux[metal][2];
   }
 
-  if (m_Zi_not_extrapolated < 0.0) {
-    Ui[0] = 0.0;
-    flux_i[0] = 0.0;
-    flux_i[1] = 0.0;
-    flux_i[2] = 0.0;
-  }
-
-  if (m_Zj_not_extrapolated < 0.0) {
-    Uj[0] = 0.0;
-    flux_j[0] = 0.0;
-    flux_j[1] = 0.0;
-    flux_j[2] = 0.0;
-  }
-
-  /* Something went wrong if we get this one! */
-  if (m_Zi_not_extrapolated > mi) {
-    Ui[0] = hydro_get_comoving_density(pi);
-    flux_i[0] = 0.0;
-    flux_i[1] = 0.0;
-    flux_i[2] = 0.0;
-  }
-  if (m_Zj_not_extrapolated > mj) {
-    Uj[0] = hydro_get_comoving_density(pj);
-    flux_j[0] = 0.0;
-    flux_j[1] = 0.0;
-    flux_j[2] = 0.0;
-  }
-
-  /* Now assign the fluxes */
-  Ui[1] = flux_i[0];
-  Ui[2] = flux_i[1];
-  Ui[3] = flux_i[2];
-  Uj[1] = flux_j[0];
-  Uj[2] = flux_j[1];
-  Uj[3] = flux_j[2];
-
-  /* Convert Ui[0] and Uj[0] (metal density) to physical units */
-  Ui[0] *= cosmo->a3_inv;
-  Uj[0] *= cosmo->a3_inv;
-  /* The fluxes are already in physical units. No conversion needed */
+  /* Check that we have physical masses and that we are not overshooting the
+     particle's mass */
+  chemistry_gradients_correct_unphysical_states(pi, pj, metal, cosmo, Ui, Uj);  
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_CHEMISTRY_HYPERBOLIC_GRADIENTS_H */

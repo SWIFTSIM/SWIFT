@@ -893,16 +893,6 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 
   /* Update diffusion coefficient */
   chd->kappa = chemistry_get_diffusion_coefficient(p, chem_data, cosmo);
-
-  /* #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) */
-  /* Not sure but maybe we can still predict here. SPHENIX does that for
-     internal energy: it kicks it in kick_extra() and predicts in
-     predict_extra() */
-  /* Predict the flux */
-  /* chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
-   * cosmo); */
-  /* } */
-  /* #endif /\* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION *\/ */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */
