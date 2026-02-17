@@ -149,12 +149,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   /* Get the metal density (comoving) and the hyperbolic flux (physical) */
-  Ui[0] = chemistry_get_comoving_metal_density(pi, metal);
+  Ui[0] = chemistry_get_physical_metal_density(pi, metal, cosmo);
   Ui[1] = pi->chemistry_data.diffusion_flux[metal][0];
   Ui[2] = pi->chemistry_data.diffusion_flux[metal][1];
   Ui[3] = pi->chemistry_data.diffusion_flux[metal][2];
 
-  Uj[0] = chemistry_get_comoving_metal_density(pj, metal);
+  Uj[0] = chemistry_get_physical_metal_density(pj, metal, cosmo);
   Uj[1] = pj->chemistry_data.diffusion_flux[metal][0];
   Uj[2] = pj->chemistry_data.diffusion_flux[metal][1];
   Uj[3] = pj->chemistry_data.diffusion_flux[metal][2];
@@ -204,14 +204,17 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   /* Linear reconstruction of U_R and U_L (rho*Z)
      Note for the flux extrapolation: grad_p = a^{-1} grad_c and xij_i/j_p = a
      * xij_i/j_p. Hence, the scale factors compensate and dUi/j[1-3] end up in
-     phyiscal units.*/
+     physical units.
+     Physical unit conversion for grad_rhoZ: multiply by a^-4 (a^-3 for density
+     and a^-1 for gradient) */
+  const double a4_inv = cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
   double dUi[4], dUj[4];
-  dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i);
+  dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i)*a4_inv;
   dUi[1] = chemistry_gradients_extrapolate_double(dFx_i, xij_i);
   dUi[2] = chemistry_gradients_extrapolate_double(dFy_i, xij_i);
   dUi[3] = chemistry_gradients_extrapolate_double(dFz_i, xij_i);
 
-  dUj[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j);
+  dUj[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j)*a4_inv;
   dUj[1] = chemistry_gradients_extrapolate_double(dFx_j, xij_j);
   dUj[2] = chemistry_gradients_extrapolate_double(dFy_j, xij_j);
   dUj[3] = chemistry_gradients_extrapolate_double(dFz_j, xij_j);
@@ -270,7 +273,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* Check that we have physical masses and that we are not overshooting the
      particle's mass */
-  chemistry_gradients_correct_unphysical_states(pi, pj, metal, cosmo, Ui, Uj);  
+  chemistry_gradients_correct_unphysical_states(pi, pj, metal, cosmo, Ui, Uj);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_CHEMISTRY_HYPERBOLIC_GRADIENTS_H */
