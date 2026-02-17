@@ -26,6 +26,11 @@
 #include "../chemistry_unphysical.h"
 
 /**
+ * @file src/chemistry/GEAR_MFM_diffusion/hyperbolic/chemistry_gradients.h
+ * @brief Header file for hyperbolic diffusion gradient functions.
+ */
+
+/**
  * @brief Gradients reconstruction. Predict the value at point x_ij given
  * current values at particle positions and gradients at particle positions.
  *
@@ -293,15 +298,16 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
      * xij_i/j_p. Hence, the scale factors compensate and dUi/j[1-3] end up in
      physical units.
      Physical unit conversion for grad_rhoZ: multiply by a^-4 (a^-3 for density
-     and a^-1 for gradient) */
-  const double a4_inv = cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
+     and a^-1 for gradient). But we multiply by a distance with a^1. So the
+     result is a factor a^3. */
+  const double a3_inv = cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
   double dUi[4], dUj[4];
-  dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i)*a4_inv;
+  dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i)*a3_inv;
   dUi[1] = chemistry_gradients_extrapolate_double(dFx_i, xij_i);
   dUi[2] = chemistry_gradients_extrapolate_double(dFy_i, xij_i);
   dUi[3] = chemistry_gradients_extrapolate_double(dFz_i, xij_i);
 
-  dUj[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j)*a4_inv;
+  dUj[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j)*a3_inv;
   dUj[1] = chemistry_gradients_extrapolate_double(dFx_j, xij_j);
   dUj[2] = chemistry_gradients_extrapolate_double(dFy_j, xij_j);
   dUj[3] = chemistry_gradients_extrapolate_double(dFz_j, xij_j);
