@@ -50,11 +50,11 @@
  *                  returned.
  */
 void space_allocate_and_fill_buffers(const struct cell *c,
-                                     struct cell_buff **restrict buff,
-                                     struct cell_buff **restrict sbuff,
-                                     struct cell_buff **restrict bbuff,
-                                     struct cell_buff **restrict gbuff,
-                                     struct cell_buff **restrict sink_buff) {
+                                     struct cell_buff *restrict *buff,
+                                     struct cell_buff *restrict *sbuff,
+                                     struct cell_buff *restrict *bbuff,
+                                     struct cell_buff *restrict *gbuff,
+                                     struct cell_buff *restrict *sink_buff) {
 
   /* Unpack particle information we need for the buffers. */
   const int count = c->hydro.count;
