@@ -218,8 +218,7 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_free(
   interp->data = NULL;
 }
 
-////////////////////////////// Interpolation 2D
-////////////////////////////////////
+/**************************** Interpolation 2D ********************************/
 
 /**
  * @brief Structure for the 2D interpolation.

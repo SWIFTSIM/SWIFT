@@ -112,7 +112,7 @@ runner_iact_nonsym_feedback_apply(
 
   const double weight = mj * wi * si_inv_weight;
   double m_ej = 0.0;
-  double new_mass = 0.0;
+  double new_mass = mj;
   double dm_SW = 0.0;
   double dm_SN = 0.0;
 
@@ -128,7 +128,7 @@ runner_iact_nonsym_feedback_apply(
        case the mass of the gas is not impacted by the mass ejected by SNe.) */
     m_ej = si->feedback_data.preSN.mass_ejected;
     dm_SW = m_ej * weight;
-    new_mass = mj + dm_SW;
+    new_mass += dm_SW;
 
     /* If the distance is null, no need to use calculation ressources. */
     if (r2 > 0.0 && new_mass > 0.0) {
@@ -264,7 +264,6 @@ runner_iact_nonsym_feedback_apply(
      * and SN) */
     m_ej = si->feedback_data.mass_ejected;
     dm_SN = m_ej * weight;
-    const double dm = dm_SW + dm_SN;
 
     /* But we are considering that the stellar wind occurs before the SN, so the
        total new mass to take into account is the combination of both. It is
@@ -279,7 +278,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* Compute momentum received. */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dm * (si->v[i] - xpj->v_full[i]);
+      xpj->feedback_data.delta_p[i] += dm_SN * (si->v[i] - xpj->v_full[i]);
     }
 
     /* Add the metals */
