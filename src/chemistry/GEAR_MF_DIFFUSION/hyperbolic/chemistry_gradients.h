@@ -37,12 +37,19 @@
  * @param pi Particle i
  * @param pj Particle j
  * @param half_dt Time-step to integrate.
- *
+ * @param grad_qi Diffusion driver gradient of particle i
+ * @param grad_qj Diffusion driver gradient of particle i
+ * @param dFx_i Gradient of the hpyerbolic flux component x of particle i.
+ * @param dFy_i Gradient of the hpyerbolic flux component y of particle i.
+ * @param dFz_i Gradient of the hpyerbolic flux component z of particle i.
+ * @param dFx_j Gradient of the hpyerbolic flux component x of particle j.
+ * @param dFy_j Gradient of the hpyerbolic flux component y of particle j.
+ * @param dFz_j Gradient of the hpyerbolic flux component z of particle j.
  * @param cosmo The #cosmology.
  * @param chem_data The global properties of the chemistry scheme.
  * @param dUi (return) Resulting time-predicted diffusion state of particle i
 (in physical units).
- * @param Uj (return) Resulting time-predicted and limited diffusion state of
+ * @param dUj (return) Resulting time-predicted and limited diffusion state of
  * particle j (in physical units).
  */
 __attribute__((always_inline)) INLINE static void
