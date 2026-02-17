@@ -13,6 +13,7 @@ The feedback prescription is composed of a few different models:
   - The supernovae of type II (SNII) define the rates and yields,
   - The supernovae of type Ia (SNIa) define the rates and yields,
   - The energy injection that defines how to inject the energy / metals into the particles.
+  - The Stellar Winds (SW) defines the energy and mass continuously ejected by stars until their death. 
 
 Most of the parameters are defined inside a table (``GEARFeedback:yields_table``). To generate the table, we use `pychem <https://www.astro.unige.ch/~revazy/PyChem/>`_ python module. You can get a table by clicking on `this link <https://virgodb.cosma.dur.ac.uk/swift-webstorage/FeedbackTables/POPIIsw.h5>`_. Some examples in ``swiftsim/examples/`` use this table, e.g. ``swiftsim/examples/GEAR``, ``swiftsim/examples/IsolatedGalaxy/IsolatedGalaxy_multi_component/GEAR/``
 
