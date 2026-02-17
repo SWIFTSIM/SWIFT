@@ -93,6 +93,9 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
     } else {
       /* DO NOT do this unless strictly necessary. This breaks metal mass
          conservation */
+      /* We should check this after extrapolating all metal masses and rescale
+	 the extrapolated values. For now, I only encountered metal mass bigger
+	 than gas mass when I messed up with diffusion or enrichment. */
       /* *metal_mass /= 1.1 * mZ_old / gas_mass; */
       warning(
           "[%lld, %d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
