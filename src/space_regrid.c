@@ -557,9 +557,7 @@ void space_regrid(struct space *s, int verbose) {
     /* NOTE: we could instead update the CoM and shift in drift tasks and
      * avoid this extra loop over all gparts but for now this is simpler
      * and **probably** not a big overhead. */
-    if (s->with_zoom_region) {
-      zoom_get_region_dim_and_shift(s, verbose);
-    }
+    zoom_get_region_dim_and_shift(s, verbose);
   }
 
   /* Get the new putative cell dimensions. */
