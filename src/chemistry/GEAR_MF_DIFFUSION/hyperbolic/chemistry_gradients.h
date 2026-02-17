@@ -240,13 +240,13 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
   const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);
 
-  const double flux_source_i[3] = {dUi[1], dUi[2], dUi[3]};
+  const double flux_source_i[3] = {Ui[1] + dUi[1], Ui[2] + dUi[2], Ui[3] + dUi[3]};
   double flux_integrated_i[3] = {0.0};
   chemistry_part_integrate_flux_source_term(pi, metal, half_mindt,
 					    flux_source_i, chem_data, cosmo,
 					    flux_integrated_i);
 
-  const double flux_source_j[3] = {dUj[1], dUj[2], dUj[3]};
+  const double flux_source_j[3] = {Uj[1] + dUj[1], Uj[2] + dUj[2],  Uj[3] + dUj[3]};
   double flux_integrated_j[3] = {0.0};
   chemistry_part_integrate_flux_source_term(pj, metal, half_mindt,
 					    flux_source_j, chem_data, cosmo,
