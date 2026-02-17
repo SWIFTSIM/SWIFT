@@ -20,7 +20,6 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_FLUX_H
 
 #include "../chemistry_riemann_HLL.h"
-#include "../chemistry_struct.h"
 #include "../chemistry_unphysical.h"
 
 /**
@@ -98,34 +97,32 @@ chemistry_part_update_fluxes_right(struct part *restrict p, const int metal,
  * @param p Particle.
  * @param metal Metal specie.
  * @param dt Time step for the flux integration (in physical units).
+ * @param flux_in The source flux.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
+ * @param flux_out (return) The time-integrated flux.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_integrate_flux_source_term(
-    struct part *restrict p, const int metal, const float dt,
-    const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo) {
+    const struct part *restrict p, const int metal, const float dt,
+    const double flux_in[3], const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, double flux_out[3]) {
 
-  struct chemistry_part_data *chd = &p->chemistry_data;
+  const struct chemistry_part_data *chd = &p->chemistry_data;
   const double tau = chd->tau;
   const double exp_decay = exp(-dt / tau);
   const double one_minus_exp_decay = -expm1(-dt / tau);
-  const double flux_current[3] = {chd->diffusion_flux[metal][0],
-                                  chd->diffusion_flux[metal][1],
-                                  chd->diffusion_flux[metal][2]};
   double flux_parabolic[3];
   chemistry_get_physical_parabolic_flux(p, metal, flux_parabolic, chem_data,
-                                        cosmo);
+					cosmo);
 
   for (int i = 0; i < 3; i++) {
     if (tau != 0.0) {
       /* Note that parabolic flux already includes the minus term. */
-      chd->diffusion_flux[metal][i] =
-          flux_current[i] * exp_decay + flux_parabolic[i] * one_minus_exp_decay;
+      flux_out[i] = flux_in[i] * exp_decay + flux_parabolic[i] * one_minus_exp_decay;
     } else {
       /* The asymptotic solution is that Flux(t+Delta t) = Flux_parabolic(t) */
-      chd->diffusion_flux[metal][i] = flux_parabolic[i];
+     flux_out[i] = flux_parabolic[i];
     }
   }
 }

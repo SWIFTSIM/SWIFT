@@ -204,11 +204,14 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const float dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
 
     /* Kick the source term for the timestep */
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-      chemistry_part_integrate_flux_source_term(p, i, dt_therm_phys, chem_data,
-                                                cosmo);
+    for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; ++m) {
+      const double flux_source[3] = {chd->diffusion_flux[m][0],
+				     chd->diffusion_flux[m][1],
+				     chd->diffusion_flux[m][2]};
+      chemistry_part_integrate_flux_source_term(p, m, dt_therm_phys, flux_source, chem_data,
+                                                cosmo, chd->diffusion_flux[m]);
       /* Element-wise sanity checks */
-      chemistry_check_unphysical_diffusion_flux(chd->diffusion_flux[i]);
+      chemistry_check_unphysical_diffusion_flux(chd->diffusion_flux[m]);
     }
 #endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
 
