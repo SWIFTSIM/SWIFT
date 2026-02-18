@@ -159,7 +159,7 @@ The ``Metals`` group from the ``SNIa`` contains the name of each element (``elts
 
 Then, for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. For the yields, the datasets required are ``Ej`` (mass fraction ejected [processed]), ``Ejnp`` (mass fraction ejected [non processed]) and one dataset for each element present in ``elts``. The datasets should all have the same size, be uniformly sampled in log and contain the attributes ``min`` (mass in log for the first element) and ``step`` (difference of mass in log between two elements).
 
-Finally, the 
+Finally, in the ``SW`` group, under the subgroup ``MetallicityDependent``, there are 4 2D datasets: ``Energy`` and ``Mass`` for the power and mass ejected by the stellar winds for a single star, and ``Integrated_Energy`` and ``Integrated_Mass_Loss`` for the power and mass ejected by a continuous stellar particle. Each of these datasets contains 8 attributes: ``label`` (the label of the dataset), ``dims`` (the dimensions of the grid), ``m0`` and ``z0`` (the the mass and metallicity in log of the first element of the grid), ``dm`` and ``dz`` (the logarithmic spacing in mass and metallcity between two element of the grid), and ``nm`` and ``nz`` (the number of elements in mass and metallicity in the grid).
 
 GEAR includes two types of tables, one for population II stars and one for population III. The tables are specified by ``GEARFeedback:yields_table`` and ``GEARFeedback:yields_table_first_stars``. The choice of the table depends on the metallicity [Fe/H] (``GEARFeedback:imf_transition_metallicity``). Below this metallicity, we use ``yields_table_first_stars`` ; above, we use ``yields_tables``. If we set ``imf_transition_metallicity`` to 0, we only use ``yields_tables``.
 
