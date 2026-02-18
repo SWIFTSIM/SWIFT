@@ -1,6 +1,7 @@
 .. GEAR sub-grid model feedback and stellar evolution
    Loic Hausammann, 17th April 2020
    Darwin Roduit, 20th January 2026
+   Rey Zachary, 18th February 2026
 
 .. _gear_stellar_evolution_and_feedback:  
 
@@ -102,6 +103,41 @@ The first integral represents the number of white dwarfs progenitor, while the s
 
 The yields are based on the same papers as the SNII.
 
+Stellar winds
+^^^^^^^^^^^^^
+
+The stellar wind model used in GEAR is based on the work of `Deng et al. (2024b) <https://arxiv.org/abs/2405.08869>`_.
+
+The energy and mass ejected by a star (single type of stellar particle) in GEAR depends only on two parameters: its initial mass (:math:`M_{init}`) and its metallicity (:math:`Z`).
+A set of power law allows to calculate two quantity, the mass ejected (:math:`\dot{M}`) and the terminal wind velocity (:math:`v_\infty`):
+
+.. math::
+  \log_{10}\mathcal{A} = \left\{ \begin{array}{rcl} b_0 + b_1 x + b_2 x^2 + b_3 x^3 + b_4 x^4\ , & x\leq x_0,\\
+  \mathcal{A}_0 + \frac{d \log_{10}\mathcal{A}}{dx}\bigg|_{x=x_0}(x - x_0)\ , & x > x_0,
+  \end{array} \right.
+
+.. math::
+  \mathcal{A}_0 = b_0 + b_1 x_0 + b_2 x^2_0 + b_3 x^3_0 + b_4 x^4_0,
+
+.. math::
+  \frac{d\log_{10}\mathcal{A}}{dx}\bigg|_{x=x_0} = (b_1 + 2b_2 x_0 + 3b_3 x^2_0 + 4b_4 x^3_0),
+
+.. math::
+  b_i = a_{i0} + a_{i1} y + a_{i2} y^2
+
+with :math:`\mathcal{A}(M,Z)` being either :math:`\dot{M}` or/and :math:`v_\infty`, :math:`y\equiv \log_{10}(Z)`, :math:`x\equiv \log_{10}(M_{init})` where :math:`x_0` is a mass limit above which the behavior is better fitted by linear relation.
+Then, the power ejected is simply:
+
+.. math::
+  \dot{E} = L = \frac{1}{2}\dot{M}v_\infty
+
+The power and mass ejected by a stellar particle owning an entire or partial IMF is the sum of all the stars contained in the stellar particle, or more precisely, the integral over the part of the IMF that is not dead yet:
+
+.. math::
+  Q_{\star} = M_{\star}\int^{M_u}_{M_{min}}\frac{\phi(m)}{m}Q(m)dm
+
+Where :math:`Q(m)` is the wanted quantity (either :math:`\dot{M}` or :math:`L`) for a single star of mass :math:`m`, :math:`Q_{\star}` the wanted quantity of the stellar particle, :math:`M_u` the upper mass limits for a star dying (or exploding), :math:`M_{min}` the minimal mass of the IMF, :math:`\delta` is the Dirac function and :math:`\phi` is the initial mass function (in mass).
+
 Stellar evolution table
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -121,7 +157,9 @@ In ``SNIa``, ``a`` is the exponent of the distribution of binaries, ``bb1``  and
 
 The ``Metals`` group from the ``SNIa`` contains the name of each element (``elts``) and the metal mass fraction ejected by each supernova (``data``) in the same order. They must contain the same elements as in ``Data``.
 
-Finally, for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. For the yields, the datasets required are ``Ej`` (mass fraction ejected [processed]), ``Ejnp`` (mass fraction ejected [non processed]) and one dataset for each element present in ``elts``. The datasets should all have the same size, be uniformly sampled in log and contain the attributes ``min`` (mass in log for the first element) and ``step`` (difference of mass in log between two elements).
+Then, for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. For the yields, the datasets required are ``Ej`` (mass fraction ejected [processed]), ``Ejnp`` (mass fraction ejected [non processed]) and one dataset for each element present in ``elts``. The datasets should all have the same size, be uniformly sampled in log and contain the attributes ``min`` (mass in log for the first element) and ``step`` (difference of mass in log between two elements).
+
+Finally, the 
 
 GEAR includes two types of tables, one for population II stars and one for population III. The tables are specified by ``GEARFeedback:yields_table`` and ``GEARFeedback:yields_table_first_stars``. The choice of the table depends on the metallicity [Fe/H] (``GEARFeedback:imf_transition_metallicity``). Below this metallicity, we use ``yields_table_first_stars`` ; above, we use ``yields_tables``. If we set ``imf_transition_metallicity`` to 0, we only use ``yields_tables``.
 
@@ -185,6 +223,10 @@ The first two parameters relate to the quantity of energy injected and are avail
 
 * ``GEARSupernovaeII:interpolation_size`` is the number of elements to keep in the interpolation of the data.
 
+* ``GEARStellar_wind:interpolation_size_mass``  Size of the mass array of the grid used in stellar winds yields.
+
+* ``GEARStellar_wind:interpolation_size_metallicity`` Size of the metallicity array of the grid used in stellar winds yields.
+
 Here is the whole feedback section:
 
 .. code:: YAML
@@ -202,6 +244,10 @@ Here is the whole feedback section:
 	  GEARSupernovaeII:
 	    interpolation_size:  200                                 # Number of elements to keep in the interpolation of the data. (Default: 200)
 
+    GEARStellar_wind:
+      interpolation_size_mass:        200                      # Size of the mass array of the grid used in stellar winds yields.
+      interpolation_size_metallicity: 110                      # Size of the metallicity array of the grid used in stellar winds yields.
+
 References
 ----------
 
@@ -218,3 +264,5 @@ References
 - `Revaz et al. (2016) <https://ui.adsabs.harvard.edu/abs/2016A&A...588A..21R>`_
 
 - `Hausammann (2021) <https://infoscience.epfl.ch/entities/publication/3e6d2e54-a782-440a-86c3-05482e83794d>`_
+
+- `Deng et al. (2024b) <https://arxiv.org/abs/2405.08869>`_
