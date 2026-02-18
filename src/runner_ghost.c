@@ -1458,6 +1458,22 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
         /* We now have a particle whose smoothing length has converged */
 
         /* Set the correct depth */
+#ifdef SWIFT_DEBUG_CHECKS
+        if (p->h > c->h_max_allowed) {
+          message(
+              "runner_do_ghost: part %lld h=%g exceeds leaf h_max_allowed=%g "
+              "(depth=%d dmin=%g cell_h_max=%g cell_h_max_active=%g)",
+              p->id, p->h, c->h_max_allowed, c->depth, c->dmin, c->hydro.h_max,
+              c->hydro.h_max_active);
+          if (c->parent != NULL) {
+            message(
+                "  parent depth=%d h_max_allowed=%g dmin=%g h_max=%g "
+                "h_max_active=%g",
+                c->parent->depth, c->parent->h_max_allowed, c->parent->dmin,
+                c->parent->hydro.h_max, c->parent->hydro.h_max_active);
+          }
+        }
+#endif
         cell_set_part_h_depth(p, c);
 
         /* Check if h_max has increased */

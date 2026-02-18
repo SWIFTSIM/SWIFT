@@ -1674,7 +1674,18 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (t->type == task_type_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)) {
+        rebuild = 1;
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ci->depth == 0 && cj->depth == 0 && ci->nodeID == nodeID) {
+          message(
+              "hydro rebuild needed: ci_depth=%d cj_depth=%d h_max=(%g,%g) "
+              "dx_max=(%g,%g) dmin=%g",
+              ci->depth, cj->depth, ci->hydro.h_max, cj->hydro.h_max,
+              ci->hydro.dx_max_part, cj->hydro.dx_max_part, cj->dmin);
+        }
+#endif
+      }
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
