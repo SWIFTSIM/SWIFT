@@ -89,8 +89,7 @@ The supernovae Ia are more complicated as they involve two different stars. The 
 .. math::
    \phi_d(m) \propto m^{-0.35}
 
-where :math:`M_{p,l}` and :math:`M_{p,u}` are the mass limits for a progenitor of a white dwarf, :math:`b_i` is the probability to have a companion and
-:math:`M_{d,l,i}` and :math:`M_{d,u,i}` are the mass limits for each type of companion.
+where :math:`M_{p,l}` and :math:`M_{p,u}` are the mass limits for a progenitor of a white dwarf, :math:`b_i` is the probability to have a companion and :math:`M_{d,l,i}` and :math:`M_{d,u,i}` are the mass limits for each type of companion.
 The first integral represents the number of white dwarfs progenitor, while the second part accounts the probability of forming a binary. The default parameters used for the SNIa rate are given in the following table. They can be set to different values via PyChem:
 
 +------------------+--------------------+-------------------+------------------+
@@ -108,8 +107,8 @@ Stellar winds
 
 The stellar wind model used in GEAR is based on the work of `Deng et al. (2024b) <https://arxiv.org/abs/2405.08869>`_.
 
-The energy and mass ejected by a star (single type of stellar particle) in GEAR depends only on two parameters: its initial mass (:math:`M_{init}`) and its metallicity (:math:`Z`).
-A set of power law allows to calculate two quantity, the mass ejected (:math:`\dot{M}`) and the terminal wind velocity (:math:`v_\infty`):
+The energy and mass ejected by a star (single type of stellar particle) in GEAR depends only on two parameters: its initial mass (:math:`M_\mathrm{init}`) and its metallicity (:math:`Z`).
+A set of power laws allows us to calculate two quantities, the mass ejected (:math:`\dot{M}`) and the terminal wind velocity (:math:`v_\infty`):
 
 .. math::
   \log_{10}\mathcal{A} = \left\{ \begin{array}{rcl} b_0 + b_1 x + b_2 x^2 + b_3 x^3 + b_4 x^4\ , & x\leq x_0,\\
@@ -125,18 +124,18 @@ A set of power law allows to calculate two quantity, the mass ejected (:math:`\d
 .. math::
   b_i = a_{i0} + a_{i1} y + a_{i2} y^2
 
-with :math:`\mathcal{A}(M,Z)` being either :math:`\dot{M}` or/and :math:`v_\infty`, :math:`y\equiv \log_{10}(Z)`, :math:`x\equiv \log_{10}(M_{init})` where :math:`x_0` is a mass limit above which the behavior is better fitted by linear relation.
-Then, the power ejected is simply:
+where :math:`\mathcal{A}(M,Z)` is either :math:`\dot{M}` or :math:`v_\infty`, :math:`y\equiv \log_{10}(Z)`, :math:`x\equiv \log_{10}(M_\mathrm{init})` and where :math:`x_0` is a mass limit above which the relations are linear.
+Then, the ejected power is given by:
 
 .. math::
   \dot{E} = L = \frac{1}{2}\dot{M}v_\infty
 
-The power and mass ejected by a stellar particle owning an entire or partial IMF is the sum of all the stars contained in the stellar particle, or more precisely, the integral over the part of the IMF that is not dead yet:
+The ejected power and mass of a Single star population (SSP) or Continuous star particles (see :ref:`particle_types` for the terminlogy) is the sum of all the stars contained in the stellar particle, or more precisely, the integral over the part of the IMF that is not dead yet:
 
 .. math::
   Q_{\star} = M_{\star}\int^{M_u}_{M_{min}}\frac{\phi(m)}{m}Q(m)dm
 
-Where :math:`Q(m)` is the wanted quantity (either :math:`\dot{M}` or :math:`L`) for a single star of mass :math:`m`, :math:`Q_{\star}` the wanted quantity of the stellar particle, :math:`M_u` the upper mass limits for a star dying (or exploding), :math:`M_{min}` the minimal mass of the IMF, :math:`\delta` is the Dirac function and :math:`\phi` is the initial mass function (in mass).
+Where :math:`Q(m)` is the desired quantity (either :math:`\dot{M}` or :math:`L`) for a single star of mass :math:`m`, :math:`Q_{\star}` the wanted quantity of the stellar particle, :math:`M_u` the upper mass limits for a dying (or exploding) star, :math:`M_{min}` the minimal mass of the IMF, :math:`\delta` is the Dirac function and :math:`\phi` is the initial mass function (in mass).
 
 Stellar evolution table
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -159,9 +158,11 @@ The ``Metals`` group from the ``SNIa`` contains the name of each element (``elts
 
 Then, for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. For the yields, the datasets required are ``Ej`` (mass fraction ejected [processed]), ``Ejnp`` (mass fraction ejected [non processed]) and one dataset for each element present in ``elts``. The datasets should all have the same size, be uniformly sampled in log and contain the attributes ``min`` (mass in log for the first element) and ``step`` (difference of mass in log between two elements).
 
-Finally, in the ``SW`` group, under the subgroup ``MetallicityDependent``, there are 4 2D datasets: ``Energy`` and ``Mass`` for the power and mass ejected by the stellar winds for a single star, and ``Integrated_Energy`` and ``Integrated_Mass_Loss`` for the power and mass ejected by a continuous stellar particle. Each of these datasets contains 8 attributes: ``label`` (the label of the dataset), ``dims`` (the dimensions of the grid), ``m0`` and ``z0`` (the the mass and metallicity in log of the first element of the grid), ``dm`` and ``dz`` (the logarithmic spacing in mass and metallcity between two element of the grid), and ``nm`` and ``nz`` (the number of elements in mass and metallicity in the grid).
+Finally, in the ``SW`` group, under the subgroup ``MetallicityDependent``, there are 4 2D datasets: ``Energy`` and ``Mass`` for the power and mass ejected by the stellar winds for a single star, and ``Integrated_Energy`` and ``Integrated_Mass_Loss`` for the ejected power and mass of either a Single stellar population (SSP) or a Continuous stars. Each of these datasets contains 8 attributes: ``label`` (the label of the dataset), ``dims`` (the dimensions of the grid), ``m0`` and ``z0`` (the mass and metallicity in log of the first element of the grid), ``dm`` and ``dz`` (the logarithmic spacing in mass and metallcity between two elements of the grid), and ``nm`` and ``nz`` (the number of elements in mass and metallicity in the grid).
 
 GEAR includes two types of tables, one for population II stars and one for population III. The tables are specified by ``GEARFeedback:yields_table`` and ``GEARFeedback:yields_table_first_stars``. The choice of the table depends on the metallicity [Fe/H] (``GEARFeedback:imf_transition_metallicity``). Below this metallicity, we use ``yields_table_first_stars`` ; above, we use ``yields_tables``. If we set ``imf_transition_metallicity`` to 0, we only use ``yields_tables``.
+
+.. _particle_types:
 
 Star particles types
 ^^^^^^^^^^^^^^^^^^^^
@@ -245,8 +246,8 @@ Here is the whole feedback section:
 	    interpolation_size:  200                                 # Number of elements to keep in the interpolation of the data. (Default: 200)
 
     GEARStellar_wind:
-      interpolation_size_mass:        200                      # Size of the mass array of the grid used in stellar winds yields.
-      interpolation_size_metallicity: 110                      # Size of the metallicity array of the grid used in stellar winds yields.
+      interpolation_size_mass:        200                      # Number of elements to keep in the mass interpolation of the data. (Default: 200)
+      interpolation_size_metallicity: 110                      # Number of elements to keep in the metallicity interpolation of the data. (Default: 110)
 
 References
 ----------
