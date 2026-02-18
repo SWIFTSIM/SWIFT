@@ -178,7 +178,7 @@ The stellar evolution is treated as follows for each star type:
 
 - **Individual stars**: There is no IMF sampling or averaging needed. We know the star's mass and metallicity. Therefore, its stellar evolution properties are known, e.g. it will explode into exactly one SN II. There is no SNIa.
 
-- **Singe star population (SSP) and Continuous stars**: They are treated in the same manner, with the only difference being the IMF upper limit. For the SSP stars, this is ``Mmax`` defined in the stellar evolution tables; for the continuous stars, this is defined by ``GEARSink:minimal_discrete_mass_Msun`` for population II stars and ``GEARSink:minimal_discrete_mass_first_stars_Msun`` for population III stars. For these particles, we need to sample the IMF. This is explained in the next section.
+- **Single star population (SSP) and Continuous stars**: They are treated in the same manner, with the only difference being the IMF upper limit. For the SSP stars, this is ``Mmax`` defined in the stellar evolution tables; for the continuous stars, this is defined by ``GEARSink:minimal_discrete_mass_Msun`` for population II stars and ``GEARSink:minimal_discrete_mass_first_stars_Msun`` for population III stars. For these particles, we need to sample the IMF. This is explained in the next section.
 
 IMF sampling
 ^^^^^^^^^^^^
