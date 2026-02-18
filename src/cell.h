@@ -2240,22 +2240,6 @@ __attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  {
-    const struct cell *cur = leaf_cell;
-    int level = 0;
-    message("cell_set_part_h_depth(): no depth for h=%g in leaf depth=%d", h,
-            leaf_cell->depth);
-    while (cur != NULL && level < 64) {
-      message(
-          "  level=%d depth=%d split=%d h_min=%g h_max=%g dmin=%g "
-          "cell_h_max=%g cell_h_max_active=%g width=[%g %g %g] loc=[%g %g %g]",
-          level, cur->depth, cur->split, cur->h_min_allowed, cur->h_max_allowed,
-          cur->dmin, cur->hydro.h_max, cur->hydro.h_max_active, cur->width[0],
-          cur->width[1], cur->width[2], cur->loc[0], cur->loc[1], cur->loc[2]);
-      cur = cur->parent;
-      level++;
-    }
-  }
   error("Could not find an appropriate depth! (%s/%s)",
         cellID_names[leaf_cell->type], subcellID_names[leaf_cell->subtype]);
 #endif
