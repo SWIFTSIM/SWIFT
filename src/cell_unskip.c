@@ -1317,9 +1317,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     /* Not for void cells though. These need to be considered regardless of the
      * fact they are "empty" in terms of particles because they contain the zoom
      * region when running a zoom simulation). */
-    if ((ci->grav.count == 0 && ci->subtype != cell_subtype_void) ||
-        (cj->grav.count == 0 && cj->subtype != cell_subtype_void))
-      return 0;
+    if (cell_is_empty_grav(ci) || cell_is_empty_grav(cj)) return 0;
 
     /* Atomically drift the multipole in ci */
     lock_lock(&ci->grav.mlock);

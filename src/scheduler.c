@@ -1658,7 +1658,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
     /* Skip any empty progeny of a void cell (void cells themselves always
      * have 0 particles but are never "empty"). */
-    if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+    if (cell_is_empty_grav(cpi)) continue;
 
     for (int j = 0; j < 8; j++) {
       struct cell *cpj = cj->progeny[j];
@@ -1669,7 +1669,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
       /* Skip any empty progeny of a void cell (void cells themselves always
        * have 0 particles but are never "empty"). */
-      if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+      if (cell_is_empty_grav(cpj)) continue;
 
       /* Skip entirely foreign pairs. */
       if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;

@@ -1369,7 +1369,7 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure in zoom land we don't get any confusing empty top level cells
      * with tasks (this breaks hierarchical task creation) */
-    if (c->grav.count == 0 && c->subtype != cell_subtype_void)
+    if (cell_is_empty_grav(c))
       error(
           "Setting super_gravity to non-void cell at depth %d with no gparts "
           "(%s/%s) "

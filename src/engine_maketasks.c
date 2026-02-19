@@ -2282,7 +2282,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
   struct cell *ci = &cells[cid];
 
   /* Skip cells without gravity particles unless they are void cells. */
-  if (ci->grav.count == 0 && ci->subtype != cell_subtype_void) return;
+  if (cell_is_empty_grav(ci)) return;
 
   /* If the cell is local build a self-interaction */
   if (ci->nodeID == nodeID) {
@@ -2328,7 +2328,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         if (cid >= cjd) continue;
 
         /* Avoid empty cells (except voids). */
-        if (cj->grav.count == 0 && cj->subtype != cell_subtype_void) continue;
+        if (cell_is_empty_grav(cj)) continue;
 
         /* Completely foreign pairs also get the Nigel treatment (AKA are kicked
          * out of the union/we skip them). Unless they are void cells, Nigels a

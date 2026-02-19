@@ -227,7 +227,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Ignore empty cells but not void cells (in zoom land). */
-  if (c->grav.count == 0 && c->subtype != cell_subtype_void) return;
+  if (cell_is_empty_grav(c)) return;
 
   /* Skip inactive cells. */
   if (!cell_is_active_gravity(c, e)) return;
@@ -239,8 +239,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   }
 
   /* Recurse */
-  if ((c->split || c->subtype == cell_subtype_void) &&
-      cell_is_above_diff_grav_depth(c)) {
+  if (cell_is_split_or_void(c) && cell_is_above_diff_grav_depth(c)) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
@@ -421,7 +420,7 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if (cell_is_empty(c) && !(c->subtype == cell_subtype_void)) continue;
+    if (cell_is_empty(c)) continue;
 
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
         (with_self_grav && cell_is_active_gravity(c, e)) ||
