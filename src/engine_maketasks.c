@@ -99,8 +99,6 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       (with_star_formation && ci->hydro.count > 0) ||
       (with_star_formation_sink &&
        (ci->hydro.count > 0 || ci->sinks.count > 0));
-      /* || */
-      /* (with_sinks && ci->hydro.count > 0); */
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
@@ -125,12 +123,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
         (ci->hydro.count > 0 || ci->sinks.count > 0)) {
       scheduler_addunlock(s, ci->sinks.star_formation_sink, t_grav_counts);
     }
-    /* Do we need that? We do not create new particles, we convert gas into
-       sink particles. Hence the number of gpart is conserved. But maybe
-       we will form sinks that will spawn stars. So maybe a safety dependency? */
-    /* if (with_sinks && ci->hydro.count > 0) { */
-    /*   scheduler_addunlock(s, ci->sinks.sink_formation, t_grav_counts); */
-    /* } */
+    /* Note: Sink formation does not change the number of gparts. Hence, we do
+       not need a dependency sink_formation --> send_grav_counts */
   } /* t_grav_counts == NULL */
 
   /* Check if any of the gravity tasks are for the target node. */
@@ -205,10 +199,6 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
         (ci->top->hydro.count > 0 || ci->top->sinks.count > 0)) {
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
     }
-    /* We are not changing the number of gravity parts. */
-    /* if (with_sinks && ci->hydro.count > 0) { */
-    /*   engine_addlink(e, &ci->mpi.send, t_grav_counts); */
-    /* } */
   }
 
   /* Recurse? */
@@ -1578,7 +1568,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   const int are_particles_forming =
       (with_star_formation && c->hydro.count > 0) ||
       (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0));
-  /* || (with_sinks && c->hydro.count > 0); */
+    /* Note: Sink formation does not change the number of gparts. Hence, we do
+       not need to create a t_grav_counts task */
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
