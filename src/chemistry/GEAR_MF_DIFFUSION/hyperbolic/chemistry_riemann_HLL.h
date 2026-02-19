@@ -128,24 +128,9 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
 			     lprod * (UR[1] - UL[1]) * one_over_dl,
 			     lprod * (UR[2] - UL[2]) * one_over_dl,
 			     lprod * (UR[3] - UL[3]) * one_over_dl};
-
-    /* const double F_transport_norm2 = F_transport[0] * F_transport[0] + F_transport[1] * F_transport[1] + */
-    /*                             F_transport[2] * F_transport[2] + F_transport[3] * F_transport[3]; */
-    /* const double F_transport_norm = sqrt(F_transport_norm2); */
-    /* const double F_diss_norm2 = F_diss[0] * F_diss[0] + F_diss[1] * F_diss[1] + */
-    /*                             F_diss[2] * F_diss[2] + F_diss[3] * F_diss[3]; */
-    /* const double F_diss_norm = sqrt(F_diss_norm2); */
-    /* const double ratio_transport_diss = F_transport_norm / F_diss_norm; */
-
-    /* if (ratio_transport_diss >= 1.0) { */
-    /*   message("[%lld %lld] Numerical diffusivity (%e) exceeds physical flux!", pi->id, pj->id, ratio_transport_diss); */
-    /* } */
-
-    /* const double beta = min(1.0, 10*ratio_transport_diss); */
-    const double beta = 1.0;
     const double fluxes_HLL[4] = {
-        F_transport[0] + beta * F_diss[0], F_transport[1] + beta * F_diss[1],
-        F_transport[2] + beta * F_diss[2], F_transport[3] + beta * F_diss[3]};
+        F_transport[0] + F_diss[0], F_transport[1] + F_diss[1],
+        F_transport[2] + F_diss[2], F_transport[3] + F_diss[3]};
 
     /* The pure hyperbolic HLL flux is unstable when tau -> 0, i.e. in the
        parabolic diffusion regime. To make the solution stable, we use the
@@ -177,7 +162,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     /* fluxes[0] = fluxes_HLL[0]; */
     /* fluxes[1] = fluxes_HLL[1]; */
     /* fluxes[2] = fluxes_HLL[2]; */
-    /* fluxes[3] = fluxes_HLL[3];     */
+    /* fluxes[3] = fluxes_HLL[3]; */
 
     /* message( */
     /*     "lambda_minus = %e, lambda_plus = %e, alpha = %e, flux_HLL = (%e %e
