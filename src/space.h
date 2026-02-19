@@ -656,11 +656,11 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_allocate_and_fill_buffers(const struct cell *c,
-                                     struct cell_buff **restrict buff,
-                                     struct cell_buff **restrict sbuff,
-                                     struct cell_buff **restrict bbuff,
-                                     struct cell_buff **restrict gbuff,
-                                     struct cell_buff **restrict sink_buff);
+                                     struct cell_buff *restrict *buff,
+                                     struct cell_buff *restrict *sbuff,
+                                     struct cell_buff *restrict *bbuff,
+                                     struct cell_buff *restrict *gbuff,
+                                     struct cell_buff *restrict *sink_buff);
 void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict buff,
                            struct cell_buff *restrict sbuff,

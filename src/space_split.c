@@ -50,11 +50,11 @@
  *                  returned.
  */
 void space_allocate_and_fill_buffers(const struct cell *c,
-                                     struct cell_buff **restrict buff,
-                                     struct cell_buff **restrict sbuff,
-                                     struct cell_buff **restrict bbuff,
-                                     struct cell_buff **restrict gbuff,
-                                     struct cell_buff **restrict sink_buff) {
+                                     struct cell_buff *restrict *buff,
+                                     struct cell_buff *restrict *sbuff,
+                                     struct cell_buff *restrict *bbuff,
+                                     struct cell_buff *restrict *gbuff,
+                                     struct cell_buff *restrict *sink_buff) {
 
   /* Unpack particle information we need for the buffers. */
   const int count = c->hydro.count;
@@ -710,6 +710,15 @@ void space_split_recursive(struct space *s, struct cell *c,
   if (gparts_need_split || parts_need_split || sparts_need_split ||
       neighbour_need_split) {
 
+    /* If the buffers are NULL (i.e. this is the top-level call), allocate and
+     * fill them now. They will be freed at the end of this split branch. */
+    const int allocate_buffer =
+        (buff == NULL && gbuff == NULL && sbuff == NULL && bbuff == NULL &&
+         sink_buff == NULL);
+    if (allocate_buffer)
+      space_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff,
+                                      &sink_buff);
+
     /* Construct the progeny ready to populate with particles and multipoles
      * (if doing gravity). */
     space_construct_progeny(s, c, tpid);
@@ -833,6 +842,15 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->black_holes.h_max_active = black_holes_h_max_active;
     c->maxdepth = maxdepth;
 
+    /* Clean up buffers if we allocated them at this level. */
+    if (allocate_buffer) {
+      if (buff != NULL) swift_free("tempbuff", buff);
+      if (gbuff != NULL) swift_free("tempgbuff", gbuff);
+      if (sbuff != NULL) swift_free("tempsbuff", sbuff);
+      if (bbuff != NULL) swift_free("tempbbuff", bbuff);
+      if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+    }
+
   } /* Split or let it be? */
 
   /* Otherwise we're in a leaf, collect the data from the particles in this
@@ -895,21 +913,9 @@ static void space_split_mapper(void *map_data, int num_cells,
      * space_get_cells guaranteeing the same tpid as this top level cells). */
     c->tpid = tpid;
 
-    /* Allocate the particle buffers. */
-    struct cell_buff *buff = NULL, *sbuff = NULL, *bbuff = NULL, *gbuff = NULL,
-                     *sink_buff = NULL;
-    space_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff,
-                                    &sink_buff);
-
-    /* Recursively split the cell. */
-    space_split_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff, tpid);
-
-    /* Free the particle buffers. */
-    if (buff != NULL) swift_free("tempbuff", buff);
-    if (gbuff != NULL) swift_free("tempgbuff", gbuff);
-    if (sbuff != NULL) swift_free("tempsbuff", sbuff);
-    if (bbuff != NULL) swift_free("tempbbuff", bbuff);
-    if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+    /* Recursively split the cell. Buffers are allocated inside
+     * space_split_recursive when needed. */
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
 
     /* Collect the max multipole power from this cell. */
     if (s->with_self_gravity) {
