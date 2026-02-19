@@ -1054,11 +1054,84 @@ __attribute__((always_inline)) INLINE static int cell_pair_is_zoom_tl(
  *
  * @param c The #cell.
  */
+/**
+ * @brief Is a cell empty of particles?
+ *
+ * Returns 1 if the cell contains no particles of any kind.
+ *
+ * Only applicable to zoom simulations: For void cells, which carry no particles
+ * directly but aggregate mass from the zoom cells they contain, the multipole
+ * mass is also checked so that a void cell with non-empty zoom progeny is not
+ * incorrectly treated as empty.
+ *
+ * @param c The #cell.
+ * @return 1 if the cell is empty, 0 otherwise.
+ */
 __attribute__((always_inline)) INLINE static int cell_is_empty(
     const struct cell *c) {
 
-  return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
-          c->black_holes.count == 0 && c->sinks.count == 0);
+  /* Check particle counts first — short-circuits immediately for the common
+   * non-empty case without touching the multipole at all. */
+  if (c->hydro.count || c->grav.count || c->stars.count ||
+      c->black_holes.count || c->sinks.count)
+    return 0;
+
+  /* All counts are zero. If there's a multipole (self-gravity is on), check
+   * whether the cell has mass — void cells containing zoom cells will have
+   * M_000 > 0 even though they hold no particles directly. */
+  if (c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.f)
+    return 0;
+
+  return 1;
+}
+
+/**
+ * @brief Does a cell have no gravity particles to work with?
+ *
+ * Returns 1 if the cell can be skipped for gravity work.
+ *
+ * This is a gravity particle specific version of cell_is_empty.
+ *
+ * @param c The #cell.
+ * @return 1 if the cell is empty for gravity purposes, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_empty_grav(
+    const struct cell *c) {
+
+  /* Obviously false if we have any grav particles. */
+  if (c->grav.count > 0) {
+    return 0;
+  }
+
+  /* If we have no grav particles but do have a multipole with mass, then we are
+   * a void cell with zoom progeny and we can't skip this cell. */
+  if (c->grav.multipole->m_pole.M_000 > 0.f) {
+    return 0;
+  }
+
+  /* Otherwise, we have no grav particles and no zoom progeny, so we can skip
+   * this cell for gravity purposes. */
+  return 1;
+}
+
+/**
+ * @brief Is a cell split, or a void cell (which has progeny but split=0)?
+ *
+ * Void cells only appears in zoom simulations and only take part in gravity
+ * calculations. As such this function should be avoided outside these
+ * contexts.
+ *
+ * Void cells sit at the zoom-region boundary and are explicitly given
+ * c->split = 0 to stop normal traversal from crossing into the zoom
+ * cell tree.
+ *
+ * @param c The #cell.
+ * @return 1 if the cell is split or a void cell, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_split_or_void(
+    const struct cell *c) {
+
+  return c->split || c->subtype == cell_subtype_void;
 }
 
 /**

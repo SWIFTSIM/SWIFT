@@ -676,7 +676,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
     if (cpi == NULL) continue;
 
     /* Skip empty non-void progeny */
-    if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+    if (cell_is_empty_grav(cpi)) continue;
 
     for (int j = 0; j < 8; j++) {
       struct cell *cpj = cj->progeny[j];
@@ -685,7 +685,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       if (cpj == NULL) continue;
 
       /* Skip empty non-void progeny */
-      if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+      if (cell_is_empty_grav(cpj)) continue;
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
