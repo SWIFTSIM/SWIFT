@@ -148,9 +148,9 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
 
   if (!restart) {
     sw->interpolation_size_m = parser_get_opt_param_int(
-        params, "GEARStellar_wind:interpolation_size_mass", 200);
+        params, "GEARStellarWind:interpolation_size_mass", 200);
     sw->interpolation_size_z = parser_get_opt_param_int(
-        params, "GEARStellar_wind:interpolation_size_metallicity", 110);
+        params, "GEARStellarWind:interpolation_size_metallicity", 110);
   }
 
   /* Open IMF group */
