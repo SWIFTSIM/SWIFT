@@ -23,7 +23,7 @@
 #  Peter W. Draper 20-JAN-2026.
 #-
 echo "Loading the GNU/GCC toolchain for SWIFT."
-
+source /cosma/local/Modules/default/init/bash
 module purge
 module load gnu_comp/14.1.0
 module load openmpi/5.0.3
