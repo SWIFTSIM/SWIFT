@@ -25,7 +25,6 @@
  * @brief Methods for applying weakening to the yield stress.
  */
 
-#include "equation_of_state.h"
 #include "math.h"
 
 /**
@@ -45,23 +44,20 @@
  *
  * @param Y The yield stress to be weakened.
  * @param mat_id The material ID.
- * @param density The density.
- * @param u The specific internal energy.
+ * @param temperature The temperature.
  */
 __attribute__((always_inline)) INLINE static void
 yield_weakening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
-                                   const float density, const float u) {
+                                   const float temperature) {
 #ifdef STRENGTH_YIELD_STRESS_WEAKENING_THERMAL
-  /* Calculate temperature. */
-  const float temperature =
-        gas_temperature_from_internal_energy(density, u, mat_id);
-
   /* Method parameters. */
   const float xi = method_yield_weakening_thermal_xi();
   const float T_melt = material_T_melt(mat_id);
 
   /* Apply weakening. */
-  *Y *= tanhf(xi * (T_melt / temperature - 1.f));
+  if (temperature > 0.f) {
+    *Y *= tanhf(xi * (T_melt / temperature - 1.f));
+  }
 #endif /* STRENGTH_YIELD_STRESS_WEAKENING_THERMAL */
 }
 
