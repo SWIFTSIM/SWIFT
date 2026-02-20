@@ -954,8 +954,53 @@ void cell_check_bpart_drift_point(struct cell *c, void *data) {
 #endif
 }
 
+
+/**
+ * @brief Checks that the #sipart in a cell are at the
+ * current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
 void cell_check_sipart_drift_point(struct cell *c, void *data) {
-  error("Implementation missing! Please code me up!");
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const integertime_t ti_drift = *(integertime_t *)data;
+
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  /* Only check cells with content */
+  if (c->sidm.count == 0) return;
+
+  if (c->sidm.ti_old_part != ti_drift)
+    error(
+        "Cell in an incorrect time-zone! c->sidm.ti_old_part=%lld "
+        "ti_drift=%lld",
+        c->sidm.ti_old_part, ti_drift);
+
+  for (int i = 0; i < c->sidm.count; ++i)
+    if (c->sidm.parts[i].ti_drift != ti_drift &&
+        c->sidm.parts[i].time_bin != time_bin_inhibited)
+      error("si-part in an incorrect time-zone! sip->ti_drift=%lld ti_drift=%lld",
+            c->sidm.parts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->sidm.count; ++i) {
+    const struct sipart *sip = &c->sidm.parts[i];
+    if (sip->depth_h == c->depth) {
+      if (!(sip->h >= c->h_min_allowed && sip->h < c->h_max_allowed) && c->split) {
+        error(
+            "depth_h set incorrectly! c->depth=%d sip->depth_h=%d h=%e h_min=%e "
+            "h_max=%e",
+            c->depth, sip->depth_h, sip->h, c->h_min_allowed, c->h_max_allowed);
+      }
+    }
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**
