@@ -35,7 +35,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
         testLog testDistance testTimeline test_yield_stress_weakening_enabled \
-        test_yield_stress_weakening_disabled
+        test_yield_stress_weakening_disabled test_strength_utils
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -49,7 +49,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline test_yield_stress_weakening_enabled \
-                 test_yield_stress_weakening_disabled
+                 test_yield_stress_weakening_disabled test_strength_utils
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -165,6 +165,8 @@ testTimeline_SOURCES = testTimeline.c
 test_yield_stress_weakening_enabled_SOURCES  = test_strength/test_yield_stress_weakening_enabled.c
 
 test_yield_stress_weakening_disabled_SOURCES = test_strength/test_yield_stress_weakening_disabled.c
+
+test_strength_utils_SOURCES = test_strength/test_strength_utils.c
 
 testHydroMPIrules = testHydroMPIrules.c
 
