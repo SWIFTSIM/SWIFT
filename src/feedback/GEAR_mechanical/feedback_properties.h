@@ -50,9 +50,11 @@ struct feedback_props {
   /* Comoving maximal radius for feedback injection */
   float r_max;
 
+#if FEEDBACK_GEAR_MECHANICAL_MODE == 2
   /* Idealized fraction of the total energy of the SN available to kinetic
      energy. It must respect 0 <= f_kin_0 <= 1 */
   float f_kin_0;
+#endif
 
   /* Enable the correction factor to momentum if multiple SN affect a gas
      particle during one timestep. This factor ensures exact energy
@@ -175,9 +177,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                          default_r_max);
 
   /* Get the fraction of the SN energy available to kinetic energy. */
-  /* Only used for mode 2 */
+#if FEEDBACK_GEAR_MECHANICAL_MODE == 2
   fp->f_kin_0 = parser_get_opt_param_float(params, "GEARFeedback:f_kin_0",
                                            DEFAULT_F_KIN_0);
+#endif
 
   /* Do we want to correct the total momentum of the gas particles after
      multiple SN ? */
