@@ -226,7 +226,7 @@ where :math:`\mathcal{F}_{k}` are functions depending on the total SN-frame ejec
 
 .. math::
 
-   p_{t, 0} = 200\, \mathrm{M_\odot\, km\, s^{-1}}, \qquad 
+   p_{t, 0} = 2 \times 10^5 \, \mathrm{M_\odot\, km\, s^{-1}}, \qquad
    \mathcal{F}_E = \frac{E}{10^{51}\, \mathrm{erg}}, \qquad 
    \mathcal{F}_{\vec{v}} = 1
 
@@ -388,6 +388,7 @@ The first two parameters relate to the quantity of energy injected and are avail
 The mechanical feedback defines a few more parameters.
 
 * The maximal radius (in internal units) for energy, momentum and metal injection: ``maximal_radius``. If the star-gas distance is larger than this value, then it is not considered for feedback. This also means that the particle is not considered to compute the weights.
+* The terminal momentum normalisation value: ``terminal_momentum_normalisation_Msun_km_per_s``. The default value is ``2.5e5``, which is the value we provided in the terminal momentum parametrisation in a previous section.
 * Enable or not the momentum correction factor if multiple supernovae occur in a given timestep: ``enable_multiple_SN_momentum_correction_factor``. See the previous section for the motivation. (default: 0)
 * This last parameter is only used for the mechanical feedback mode 2: ``f_kin_0``. It represents the idealized fraction of the SN energy available in kinetic energy. Note this is not the actual coupled kinetic energy fraction (see above). (default: 0.28)
 
@@ -410,6 +411,7 @@ Hence, the full parameter section is:
 	    maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
 	    enable_multiple_SN_momentum_correction_factor: 0         # Enable the correction factor to momentum if multiple SN affect a gas particle during one timestep. This factor ensures exact energy conservation in the case of multiple SN. (Default: 0)
 	    f_kin_0: 0.28                                            # Idealized fraction of the SN energy available in kinetic energy. The default value is for an idealized Sedov solution in a homogenous background. Only for GEAR-mechanical_2. (Default: 0.28)
+	    terminal_momentum_normalisation_Msun_km_per_s: 2.5e5     # Normalisation factor for the terminal momentum relation, in Msun*km/s. (Default: 2.5e5)
 
 References
 ----------
