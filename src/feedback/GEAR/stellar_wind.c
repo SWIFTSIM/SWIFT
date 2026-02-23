@@ -148,9 +148,9 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
 
   if (!restart) {
     sw->interpolation_size_m = parser_get_opt_param_int(
-        params, "GEARStellar_wind:interpolation_size_mass", 200);
+        params, "GEARStellarWind:interpolation_size_mass", 200);
     sw->interpolation_size_z = parser_get_opt_param_int(
-        params, "GEARStellar_wind:interpolation_size_metallicity", 110);
+        params, "GEARStellarWind:interpolation_size_metallicity", 110);
   }
 
   /* Open IMF group */
@@ -208,8 +208,8 @@ double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
  */
 double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
                                            float log_m, float log_z) {
-  return exp10(interpolate_2d(&sw->integrated.ejected_energy_per_progenitor_mass,
-                            log_z, log_m));
+  return exp10(interpolate_2d(
+      &sw->integrated.ejected_energy_per_progenitor_mass, log_z, log_m));
 };
 
 /**
@@ -238,7 +238,7 @@ double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
 double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
                                          float log_m, float log_z) {
   return exp10(interpolate_2d(&sw->integrated.mass_loss_per_progenitor_mass,
-                                log_z, log_m));
+                              log_z, log_m));
 };
 
 /**
