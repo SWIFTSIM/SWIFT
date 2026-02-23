@@ -89,7 +89,8 @@ void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
 double feedback_get_physical_SN_terminal_momentum(
     const struct spart *restrict sp, const struct part *restrict p,
     const struct xpart *restrict xp, const struct phys_const *phys_const,
-    const struct unit_system *us, const struct cosmology *cosmo);
+    const struct unit_system *us, const struct feedback_props *feedback_props,
+    const struct cosmology *cosmo);
 
 float feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
                                               float p_SN_initial,

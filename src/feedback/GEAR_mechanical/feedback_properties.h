@@ -24,8 +24,11 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
-#define DEFAULT_F_KIN_0 \
-  0.28 /* Idealized Sedov solution in a homogenous background*/
+/* Default value for the terminal momentum normalisation factor. */
+#define DEFAULT_P_TERMINAL_0_MSUN_KM_PER_S 2.5e5
+
+/* Idealized Sedov solution in a homogenous background*/
+#define DEFAULT_F_KIN_0 0.28
 
 /**
  * @brief Properties of the GEAR feedback model.
@@ -55,6 +58,9 @@ struct feedback_props {
      energy. It must respect 0 <= f_kin_0 <= 1 */
   float f_kin_0;
 #endif
+
+  /* Terminal momentum normalisation factor (in internal units). */
+  float p_terminal_0;
 
   /* Enable the correction factor to momentum if multiple SN affect a gas
      particle during one timestep. This factor ensures exact energy
@@ -181,6 +187,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   fp->f_kin_0 = parser_get_opt_param_float(params, "GEARFeedback:f_kin_0",
                                            DEFAULT_F_KIN_0);
 #endif
+
+  /* Get the terminal momentum normalisation */
+  fp->p_terminal_0 = parser_get_opt_param_float(params, "GEARFeedback:terminal_momentum_normalisation_Msun_km_per_s", DEFAULT_P_TERMINAL_0_MSUN_KM_PER_S);
+
+  /* Convert to internal units. Note the 1e-5 term since we read it in km and
+   * not cm. */
+  fp->p_terminal_0 *= phys_const->const_solar_mass * 1e-5 * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* Do we want to correct the total momentum of the gas particles after
      multiple SN ? */

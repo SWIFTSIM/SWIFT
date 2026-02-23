@@ -238,7 +238,7 @@ runner_iact_nonsym_mechanical_2_feedback_apply(
      cooling. */
   const double p_available = sqrt(2.0 * epsilon * m_ej);
   const double p_terminal = feedback_get_physical_SN_terminal_momentum(
-      si, pj, xpj, phys_const, us, cosmo);
+								       si, pj, xpj, phys_const, us, fb_props, cosmo);
   const double xsi = min(1, p_terminal / (psi * p_available));
 
   /* Finally, the ejected velocity is */
