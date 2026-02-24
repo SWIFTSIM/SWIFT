@@ -115,6 +115,9 @@ swift-intel-build-mr-long:
         $CI_MERGE_REQUEST_DRAFT == "false"
   #  And job is requested to run.
   when: manual
+  allow_failure: false
+  needs:
+    - swift-intel-build-mr-quick
   timeout: 6h
   script:
     - echo "Full Intel toolchain check in a merge request"
