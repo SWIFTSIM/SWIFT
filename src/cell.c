@@ -1761,6 +1761,20 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
 int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
                                const struct cell *cj) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure the multipoles have been drifted at this point */
+  if (ci->grav.ti_old_multipole != e->ti_current)
+    error(
+        "Multipole of ci not drifted to the current time "
+        "(ci->grav.ti_old_multipole=%lld e->ti_current=%lld)",
+        ci->grav.ti_old_multipole, e->ti_current);
+  if (cj->grav.ti_old_multipole != e->ti_current)
+    error(
+        "Multipole of cj not drifted to the current time "
+        "(cj->grav.ti_old_multipole=%lld e->ti_current=%lld)",
+        cj->grav.ti_old_multipole, e->ti_current);
+#endif
+
   struct space *s = e->s;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
@@ -1793,16 +1807,17 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
         "Forcing rebuild due to particle motion. Cell pair: "
         "min_radius2=%e ci->grav.multipole->r_max=%e "
         "ci->grav.multipole->r_max_rebuild=%e ci->grav.multipole->dx_max=%e %e "
-        "%e "
+        "%e ci->nodeID=%d "
         "cj->grav.multipole->r_max=%e cj->grav.multipole->r_max_rebuild=%e "
         "cj->grav.multipole->dx_max=%e %e %e, ci->grav.count=%d "
-        "cj->grav.count=%d",
+        "cj->grav.count=%d cj->nodeID=%d",
         min_radius2, ci->grav.multipole->r_max,
         ci->grav.multipole->r_max_rebuild, ci->grav.multipole->dx_max[0],
         ci->grav.multipole->dx_max[1], ci->grav.multipole->dx_max[2],
-        cj->grav.multipole->r_max, cj->grav.multipole->r_max_rebuild,
-        cj->grav.multipole->dx_max[0], cj->grav.multipole->dx_max[1],
-        cj->grav.multipole->dx_max[2], ci->grav.count, cj->grav.count);
+        ci->nodeID, cj->grav.multipole->r_max,
+        cj->grav.multipole->r_max_rebuild, cj->grav.multipole->dx_max[0],
+        cj->grav.multipole->dx_max[1], cj->grav.multipole->dx_max[2],
+        ci->grav.count, cj->grav.count, cj->nodeID);
   }
 
   return (could_use_mesh_at_rebuild && !can_use_mesh_now);
@@ -1858,6 +1873,21 @@ static int cell_check_grav_mesh_pairs_recursive(struct cell *ci,
 
           /* Can we use the mesh for this pair? */
           if (cell_can_use_mesh(e, cpj, cpk)) {
+
+            /* Atomically drift the multipole in cj if needs be. */
+            lock_lock(&cpj->grav.mlock);
+            if (cpj->grav.ti_old_multipole < e->ti_current)
+              cell_drift_multipole(cpj, e);
+            if (lock_unlock(&cpj->grav.mlock) != 0)
+              error("Impossible to unlock m-pole");
+
+            /* Atomically drift the multipole in cj if needs be. */
+            lock_lock(&cpk->grav.mlock);
+            if (cpk->grav.ti_old_multipole < e->ti_current)
+              cell_drift_multipole(cpk, e);
+            if (lock_unlock(&cpk->grav.mlock) != 0)
+              error("Impossible to unlock m-pole");
+
             /* Check if we can no longer use the mesh */
             if (cell_cant_use_mesh_anymore(e, cpj, cpk)) {
               atomic_inc(&e->forcerebuild);
@@ -1900,6 +1930,21 @@ static int cell_check_grav_mesh_pairs_recursive(struct cell *ci,
 
           /* Can we use the mesh for this pair? */
           if (cell_can_use_mesh(e, cpi, cpj)) {
+
+            /* Atomically drift the multipole in ci if needs be. */
+            lock_lock(&cpi->grav.mlock);
+            if (cpi->grav.ti_old_multipole < e->ti_current)
+              cell_drift_multipole(cpi, e);
+            if (lock_unlock(&cpi->grav.mlock) != 0)
+              error("Impossible to unlock m-pole");
+
+            /* Atomically drift the multipole in cj if needs be. */
+            lock_lock(&cpj->grav.mlock);
+            if (cpj->grav.ti_old_multipole < e->ti_current)
+              cell_drift_multipole(cpj, e);
+            if (lock_unlock(&cpj->grav.mlock) != 0)
+              error("Impossible to unlock m-pole");
+
             /* Check if we can no longer use the mesh */
             if (cell_cant_use_mesh_anymore(e, cpi, cpj)) {
               atomic_inc(&e->forcerebuild);

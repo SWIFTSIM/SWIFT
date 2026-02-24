@@ -570,7 +570,7 @@ EAGLECooling:
   Ca_over_Si_in_solar:       1.                # (Optional) Ratio of Ca/Si to use in units of solar. If set to 1, the code uses [Ca/Si] = 0, i.e. Ca/Si = 0.0941736.
   S_over_Si_in_solar:        1.                # (Optional) Ratio of S/Si to use in units of solar. If set to 1, the code uses [S/Si] = 0, i.e. S/Si = 0.6054160.
 
-# Quick Lyman-alpha cooling (EAGLE-XL with fixed primoridal Z)
+# Quick Lyman-alpha cooling (PS2020 with fixed primoridal Z)
 QLACooling:
   dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the Ploeckinger+20 cooling tables
   H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
