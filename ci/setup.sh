@@ -22,10 +22,13 @@
 #  Peter W. Draper 20-JAN-2026.
 #-
 
+#  Initial working directory.
+export WORKDIR="$PWD"
+
 #  When exiting in error report current configuration options.
 function ONEXIT {
    if test "$?" != 0; then
-      echo "## CURRENT CONFIGURATION: $(grep "\./configure" config.log)"
+      echo "## CURRENT CONFIGURATION: $(grep "${WORKDIR}/configure" config.log)"
    fi
 }
 trap ONEXIT EXIT

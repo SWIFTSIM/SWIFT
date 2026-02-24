@@ -1834,6 +1834,9 @@ void io_select_sink_fields(const struct sink *const sinks,
 
   sink_write_particles(sinks, list, num_fields, with_cosmology);
   *num_fields += chemistry_write_sinkparticles(sinks, list + *num_fields);
+  if (with_fof) {
+    *num_fields += fof_write_sinks(sinks, list + *num_fields);
+  }
 }
 
 /**
