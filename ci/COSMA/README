@@ -1,0 +1,9 @@
+These are the COSMA specific version of the ci/ scripts. They establish the
+module environment and then source the generic test scripts. When setting up
+the modules it is assumed that the run is in a minimal container with access to
+the /cosma/local file system this means we need to initial the module command
+itself as well using:
+
+   source /cosma/local/Modules/default/init/bash
+
+which is normally done when a user logs in.
