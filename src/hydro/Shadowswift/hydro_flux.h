@@ -94,8 +94,8 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
 
   double V_inv_i = 1. / pi->geometry.volume;
   double V_inv_j = 1. / pi->geometry.volume;
-  double flux_fac_i =  pi->flux.dt * pi->geometry.nface;
-  double flux_fac_j =  pj->flux.dt * pj->geometry.nface;
+  double flux_fac_i =  pi->flux.dt * pi->geometry.nface * pi->flux.dt;
+  double flux_fac_j =  pj->flux.dt * pj->geometry.nface * pj->flux.dt;
   //double flux_fac_i = (1. + 1e-5) * pi->geometry.area / Anorm * pi->flux.dt;
   //double flux_fac_j = (1. + 1e-5) * pj->geometry.area / Anorm * pj->flux.dt;
   double m_dagger_i = pi->conserved.mass - flux_fac_i * fluxes[0];
@@ -146,10 +146,6 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
     Qj[k] += flux_fac_j * fluxes[k];
   }
 
-  /* dE acts on entire cell, should not be multiplied by flux_fac */
-  //Qi[4] -= pi->gravity.dE_prev;
-  //Qj[4] -= pj->gravity.dE_prev;
-
   double mi_inv = 1. / Qi[0];
   double mj_inv = 1. / Qj[0];
 
@@ -175,8 +171,6 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
     for (int k = 0; k < 6; ++k) {
       Q_lo[k] -= flux_fac_i * fluxes_lo[k];
     }
-    /* dE acts on entire cell, should not be multiplied by flux_fac */
-    //Q_lo[4] -= pi->gravity.dE_prev;
 
     double m_inv = 1. / Q_lo[0];
     double u_lo =
@@ -196,9 +190,6 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
     for (int k = 0; k < 6; ++k) {
       Q_lo[k] += flux_fac_j * fluxes_lo[k];
     }
-
-    /* dE acts on entire cell, should not be multiplied by flux_fac */
-    //Q_lo[4] -= pj->gravity.dE_prev;
 
     double m_inv = 1. / Q_lo[0];
     double u_lo =
@@ -229,15 +220,13 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
     theta = fmin(theta, pj->conserved.mass / (-flux_fac_j * fluxes[0]));
   }
   if (pi->conserved.energy <
-      flux_fac_i * fluxes[4]) {
-    theta = fmin(theta, (pi->conserved.energy) /
-      (flux_fac_i * fluxes[4]));
-  }
+      pi->geometry.area / Anorm * pi->flux.dt * fluxes[4]) {
+    theta = fmin(theta, pi->conserved.energy / (flux_fac_i * fluxes[4]));
+      }
   if (pj->conserved.energy <
-      -flux_fac_j * fluxes[4]) {
-    theta = fmin(theta, (pj->conserved.energy) /
-      (-flux_fac_j * fluxes[4]));
-  }
+      -pj->geometry.area / Anorm * pj->flux.dt * fluxes[4]) {
+    theta = fmin(theta, pj->conserved.energy / (-flux_fac_j * fluxes[4]));
+      }
   theta = fmax(0., theta);
   if (theta < 1.) {
 
