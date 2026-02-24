@@ -407,9 +407,6 @@ struct zoom_region_properties {
    * void cells). */
   double dim[3];
 
-  /*! Dimensions of the buffer region. */
-  double buffer_dim[3];
-
   /*! Width of the top level zoom cells. */
   double width[3];
 
@@ -418,18 +415,6 @@ struct zoom_region_properties {
 
   /*! The depth of the zoom cells within a background cell. */
   int zoom_cell_depth;
-
-  /*! Do we have buffer cells?. */
-  int with_buffer_cells;
-
-  /*! The depth of the buffer cells inside a background cell. */
-  int buffer_cell_depth;
-
-  /*! Width of the neighbour top level zoom cells. */
-  double buffer_width[3];
-
-  /*! Inverse width of the neighbour top level zoom cells. */
-  double buffer_iwidth[3];
 
   /*! Space dimensions in number of top level zoom cells. */
   int cdim[3];
@@ -440,7 +425,6 @@ struct zoom_region_properties {
 
   /*! The target number of top level neighbour cells the size of
    *  the zoom region. */
-  int buffer_cdim[3];
 
   /*! The minimum top-level zoom cell width allowed. */
   double cell_min;
@@ -464,27 +448,15 @@ struct zoom_region_properties {
   /*! Vector outlining the zoom region lower boundaries. */
   double region_lower_bounds[3];
 
-  /*! Vector outlining the neighbour region upper boundaries. */
-  double buffer_upper_bounds[3];
-
-  /*! Vector outlining the neighbour region lower boundaries. */
-  double buffer_lower_bounds[3];
-
   /*! The width of the void region. */
   double void_dim[3];
 
   /*! Vector outlining the void cell region upper boundaries. This is a
-   * convenience variable to avoid having to check if we need the region or
-   * buffer cell boundaries (i.e. without buffer cells it will match
-   * region_upper_bounds, with buffer cells it will match
-   * buffer_upper_bounds). */
+   * convenience variable; it matches region_upper_bounds. */
   double void_upper_bounds[3];
 
   /*! Vector outlining the void cell region lower boundaries. This is a
-   * convenience variable to avoid having to check if we need the region or
-   * buffer cell boundaries (i.e. without buffer cells it will match
-   * region_lower_bounds, with buffer cells it will match
-   * buffer_lower_bounds). */
+   * convenience variable; it matches region_lower_bounds. */
   double void_lower_bounds[3];
 
   /*! The depth of the neighbour cell tree. */
@@ -492,9 +464,6 @@ struct zoom_region_properties {
 
   /*! Offset in the top level cell list background cells start from. */
   int bkg_cell_offset;
-
-  /*! Offset in the top level cell list background cells start from. */
-  int buffer_cell_offset;
 
   /*! Number of zoom cells */
   int nr_zoom_cells;
@@ -507,12 +476,6 @@ struct zoom_region_properties {
 
   /*! Pointers the the top level background cells. */
   struct cell *bkg_cells_top;
-
-  /*! Number of neighbour top-level bkg cells */
-  int nr_buffer_cells;
-
-  /*! Pointers the the top level buffer cells. */
-  struct cell *buffer_cells_top;
 
   /*! Number of particles in zoom cells */
   size_t nr_zoom_cell_particles;
@@ -548,12 +511,6 @@ struct zoom_region_properties {
   int *local_bkg_cells_top;
 
   /*! Number of *local* top-level zoom cells */
-  int nr_local_buffer_cells;
-
-  /*! The indices of the *local* top-level background cells */
-  int *local_buffer_cells_top;
-
-  /*! Number of *local* top-level zoom cells */
   int nr_local_zoom_cells_with_particles;
 
   /*! The indices of the *local* top-level zoom cells */
@@ -564,12 +521,6 @@ struct zoom_region_properties {
 
   /*! The indices of the *local* top-level background cells */
   int *local_bkg_cells_with_particles_top;
-
-  /*! Number of *local* top-level zoom cells */
-  int nr_local_buffer_cells_with_particles;
-
-  /*! The indices of the *local* top-level background cells */
-  int *local_buffer_cells_with_particles_top;
 
   /*! Number of baryonic particles that have left the zoom region and been
    * converted to dark matter */
