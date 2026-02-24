@@ -183,9 +183,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
  *
  * This function handles the following long range interactions:
  * - zoom -> bkg
- * - zoom -> buffer (if their are buffer cells)
  * - bkg -> bkg
- * - bkg -> buffer (if their are buffer cells)
  *
  * Since we define the original pair tasks at the void level we only need to
  * consider combinations of background cells. However, If a zoom cell has a long
@@ -894,9 +892,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       case cell_type_zoom:
         runner_do_grav_long_range_zoom_periodic(r, ci, top);
         break;
-      case cell_type_buffer:
-        runner_do_grav_long_range_zoom_periodic(r, ci, top);
-        break;
       case cell_type_bkg:
         runner_do_grav_long_range_zoom_periodic(r, ci, top);
         break;
@@ -911,9 +906,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
         break;
       case cell_type_zoom:
-        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
-        break;
-      case cell_type_buffer:
         runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
         break;
       case cell_type_bkg:

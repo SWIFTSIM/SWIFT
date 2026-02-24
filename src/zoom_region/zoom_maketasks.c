@@ -43,8 +43,8 @@
  * - All pairs within range according to the multipole acceptance
  *   criterion get a pair task.
  *
- * This will create pair tasks between void cells and background cells (if
- * running without buffer cells). These pair tasks will be split into smaller
+ * This will create pair tasks between void cells and background cells. These
+ * pair tasks will be split into smaller
  * tasks during task splitting to make the most of any possible void mm
  * interactions above the zoom level in the cell tree.
  *
@@ -64,8 +64,8 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
   /* We always use the mesh if the volume is periodic. */
   const int use_mesh = s->periodic;
 
-  /* Unlike buffer or zoom cells, background cells are periodic at the box
-   * boundaries if the space is periodic. */
+  /* Unlike zoom cells, background cells are periodic at the box boundaries if
+   * the space is periodic. */
   const int periodic = s->periodic;
 
   /* Compute maximal distance where we can expect a direct interaction */

@@ -52,7 +52,6 @@ class Space:
     bkg_top_level_cells: int
     zoom_cell_depth: int = 2
     bkg_cdim: np.ndarray = None
-    buffer_cell_depth: int = 0
     region_pad_factor: float = 1.1
     zoom_shift: list = None
     com: list = None
@@ -62,7 +61,6 @@ class Space:
     zoom_props: dict = None
     bkg_cells: list = None
     zoom_cells: list = None
-    buffer_cells: list = None
     cdim: np.ndarray = np.zeros(3, dtype=int)
     width: np.ndarray = np.zeros(3)
     dim: np.ndarray = np.zeros(3)
@@ -88,19 +86,12 @@ class Space:
                 "neighbour_max_tree_depth": -1,
                 "bkg_subdepth_diff_grav": zoom_bkg_subdepth_diff_grav_default,
                 "bkg_cdim": self.bkg_cdim,
-                "buffer_cell_depth": self.buffer_cell_depth,
                 "zoom_cell_depth": self.zoom_cell_depth,
                 "zoom_shift": self.zoom_shift,
                 "com": self.com,
                 "void_lower_bounds": self.void_lower_bounds,
                 "void_upper_bounds": self.void_upper_bounds,
                 "void_dim": self.void_dim,
-                "buffer_lower_bounds": [0.0, 0.0, 0.0],
-                "buffer_upper_bounds": [0.0, 0.0, 0.0],
-                "buffer_dim": [0.0, 0.0, 0.0],
-                "buffer_cdim": [0, 0, 0],
-                "buffer_width": [0.0, 0.0, 0.0],
-                "buffer_iwidth": [0.0, 0.0, 0.0],
                 "region_lower_bounds": [0.0, 0.0, 0.0],
                 "region_upper_bounds": [0.0, 0.0, 0.0],
                 "dim": [0.0, 0.0, 0.0],
@@ -109,18 +100,14 @@ class Space:
                 "iwidth": [0.0, 0.0, 0.0],
                 "cell_min": 0.0,
                 "nr_bkg_cells": 0,
-                "nr_buffer_cells": 0,
                 "nr_zoom_cells": 0,
                 "bkg_cell_offset": 0,
-                "buffer_cell_offset": 0,
             }
         self.dim = np.array([self.box_size] * 3)
         if self.bkg_cells is None:
             self.bkg_cells = []
         if self.zoom_cells is None:
             self.zoom_cells = []
-        if self.buffer_cells is None:
-            self.buffer_cells = []
 
 
 class Cell:
@@ -151,9 +138,6 @@ class Cell:
         if self.type == "background":
             color = "#bbe6e4"
             order = 0
-        elif self.type == "buffer":
-            color = "#42bfdd"
-            order = 1
         elif self.type == "zoom":
             color = "#084b83"
             order = 2
@@ -212,13 +196,6 @@ def zoom_parse_params(params):
     # Set the target background cdim
     bkg_cdim = params["ZoomRegion"].get("bkg_top_level_cells", 16)
 
-    # Get the buffer cell depth
-    buffer_cell_depth = params["ZoomRegion"].get("buffer_top_level_depth", 0)
-
-    # Ensure the buffer cell depth is less than the zoom cell depth
-    if buffer_cell_depth > zoom_cell_depth:
-        raise ValueError("Buffer cell depth must be less than the zoom cell depth.")
-
     # Extract the zoom width boost factor
     region_pad_factor = params["ZoomRegion"].get("region_pad_factor", 1.1)
 
@@ -240,7 +217,6 @@ def zoom_parse_params(params):
         box_size=box_size,
         bkg_top_level_cells=bkg_cdim,
         zoom_cell_depth=zoom_cell_depth,
-        buffer_cell_depth=buffer_cell_depth,
         region_pad_factor=region_pad_factor,
     )
 
@@ -261,7 +237,7 @@ def zoom_get_cdim_at_depth(region_dim, parent_width, child_depth):
     region_parent_cdim = np.floor((region_dim + (0.1 * parent_width)) / parent_width)
 
     # Calculate cdim as the number of parents times the number of children per parent
-    return int(region_parent_cdim * (2 ** child_depth))
+    return int(region_parent_cdim * (2**child_depth))
 
 
 def zoom_get_region_dim_and_shift(space, params):
@@ -331,8 +307,7 @@ def zoom_get_void_geometry(space, region_dim):
 
     The void region is the region covered by background cells above the zoom
     region. If the void region is sufficiently close to the zoom region size,
-    then the two will be made equivalent later on. Otherwise, the void region is
-    equivalent to the buffer region.
+    then the two will be made equivalent later on.
 
     Args:
         space (Space): The space object containing the properties.
@@ -375,25 +350,13 @@ def zoom_get_void_geometry(space, region_dim):
     return nr_zoom_regions
 
 
-def zoom_get_geometry_no_buffer_cells(space):
+def zoom_get_geometry(space):
     """
-    Compute the geometry when no buffer cells are needed.
+    Compute the zoom region geometry.
 
     Args:
         space (Space): The space object containing the properties.
     """
-    # If we have a buffer cell depth, warn that we will ignore it
-    if space.buffer_cell_depth > 0:
-        print("No buffer cells are needed, ignoring buffer cell depth.")
-        space.buffer_cell_depth = 0
-
-    # Zero the buffer region properties explicitly
-    space.zoom_props["buffer_lower_bounds"] = [0.0, 0.0, 0.0]
-    space.zoom_props["buffer_upper_bounds"] = [0.0, 0.0, 0.0]
-    space.zoom_props["buffer_dim"] = [0.0, 0.0, 0.0]
-    space.zoom_props["buffer_cdim"] = [0, 0, 0]
-    space.zoom_props["buffer_width"] = [0.0, 0.0, 0.0]
-
     # Match the zoom region bounds to the void region bounds
     space.zoom_props["region_lower_bounds"] = space.void_lower_bounds
     space.zoom_props["region_upper_bounds"] = space.void_upper_bounds
@@ -410,101 +373,6 @@ def zoom_get_geometry_no_buffer_cells(space):
         space.zoom_props["dim"][0],
         space.box_size / space.bkg_top_level_cells,
         space.zoom_cell_depth,
-    )
-
-    # Compute the zoom cdim and cell width
-    space.zoom_props["cdim"] = [cdim] * 3
-    space.zoom_props["width"] = [space.zoom_props["dim"][i] / cdim for i in range(3)]
-    space.zoom_props["iwidth"] = [1.0 / space.zoom_props["width"][i] for i in range(3)]
-
-
-def zoom_get_geometry_with_buffer_cells(space):
-    """
-    Compute the geometry when buffer cells are needed.
-
-    Args:
-        space (Space): The space object containing the properties.
-    """
-    # Ensure we have a buffer cell depth
-    if space.buffer_cell_depth == 0:
-        zoom_report_cell_properties(space)
-        raise ValueError(
-            "Current cell structure requires buffer cells but no buffer cell depth has "
-            "been given. ZoomRegion:buffer_top_level_depth must be greater than 0."
-        )
-
-    # Match the buffer region bounds to the void region bounds
-    space.zoom_props["buffer_lower_bounds"] = space.void_lower_bounds[:]
-    space.zoom_props["buffer_upper_bounds"] = space.void_upper_bounds[:]
-
-    # Compute the buffer region dimensions
-    space.zoom_props["buffer_dim"] = [
-        space.zoom_props["buffer_upper_bounds"][i]
-        - space.zoom_props["buffer_lower_bounds"][i]
-        for i in range(3)
-    ]
-
-    # Compute the number of buffer cells in the void region
-    buffer_cdim = zoom_get_cdim_at_depth(
-        space.zoom_props["buffer_dim"][0],
-        space.box_size / space.bkg_top_level_cells,
-        space.buffer_cell_depth,
-    )
-
-    # Compute the buffer cdim and cell width
-    space.zoom_props["buffer_cdim"] = [buffer_cdim] * 3
-    space.zoom_props["buffer_width"] = [
-        space.zoom_props["buffer_dim"][i] / buffer_cdim for i in range(3)
-    ]
-    space.zoom_props["buffer_iwidth"] = [
-        1.0 / space.zoom_props["buffer_width"][i] for i in range(3)
-    ]
-
-    # Find the buffer cell edges that contain the zoom region bounds
-    region_lower_bounds = []
-    region_upper_bounds = []
-    for i in range(3):
-        lower = int(
-            np.floor(
-                (
-                    space.zoom_props["region_lower_bounds"][i]
-                    - space.zoom_props["buffer_lower_bounds"][i]
-                )
-                * space.zoom_props["buffer_iwidth"][i]
-            )
-        )
-        upper = int(
-            np.floor(
-                (
-                    space.zoom_props["region_upper_bounds"][i]
-                    - space.zoom_props["buffer_lower_bounds"][i]
-                )
-                * space.zoom_props["buffer_iwidth"][i]
-            )
-        )
-        region_lower_bounds.append(
-            lower * space.zoom_props["buffer_width"][i]
-            + space.zoom_props["buffer_lower_bounds"][i]
-        )
-        region_upper_bounds.append(
-            (upper + 1) * space.zoom_props["buffer_width"][i]
-            + space.zoom_props["buffer_lower_bounds"][i]
-        )
-
-    # Assign the new aligned zoom bounds
-    space.zoom_props["region_lower_bounds"] = region_lower_bounds
-    space.zoom_props["region_upper_bounds"] = region_upper_bounds
-
-    # Compute the zoom region dimensions
-    space.zoom_props["dim"] = [
-        region_upper_bounds[i] - region_lower_bounds[i] for i in range(3)
-    ]
-
-    # Compute the number of zoom cells in the zoom region
-    cdim = zoom_get_cdim_at_depth(
-        space.zoom_props["dim"][0],
-        space.zoom_props["buffer_width"][0],
-        space.zoom_cell_depth - space.buffer_cell_depth,
     )
 
     # Compute the zoom cdim and cell width
@@ -532,10 +400,6 @@ def zoom_report_cell_properties(space):
     print(
         f"{'Background cdim':>28} = [{space.bkg_cdim[0]}, {space.bkg_cdim[1]}, {space.bkg_cdim[2]}]"
     )
-    if zoom_props.get("with_buffer_cells"):
-        print(
-            f"{'Buffer cdim':>28} = [{zoom_props['buffer_cdim'][0]}, {zoom_props['buffer_cdim'][1]}, {zoom_props['buffer_cdim'][2]}]"
-        )
     print(
         f"{'Zoom cdim':>28} = [{zoom_props['cdim'][0]}, {zoom_props['cdim'][1]}, {zoom_props['cdim'][2]}]"
     )
@@ -544,10 +408,6 @@ def zoom_report_cell_properties(space):
     print(
         f"{'Background Dimensions':>28} = [{space.box_size}, {space.box_size}, {space.box_size}]"
     )
-    if zoom_props.get("with_buffer_cells"):
-        print(
-            f"{'Buffer Region Dimensions':>28} = [{zoom_props['buffer_dim'][0]}, {zoom_props['buffer_dim'][1]}, {zoom_props['buffer_dim'][2]}]"
-        )
     print(
         f"{'Zoom Region Dimensions':>28} = [{zoom_props['dim'][0]}, {zoom_props['dim'][1]}, {zoom_props['dim'][2]}]"
     )
@@ -556,34 +416,20 @@ def zoom_report_cell_properties(space):
     print(
         f"{'Background Cell Width':>28} = [{space.box_size / space.bkg_top_level_cells}, {space.box_size / space.bkg_top_level_cells}, {space.box_size / space.bkg_top_level_cells}]"
     )
-    if zoom_props.get("with_buffer_cells"):
-        print(
-            f"{'Buffer Cell Width':>28} = [{zoom_props['buffer_width'][0]}, {zoom_props['buffer_width'][1]}, {zoom_props['buffer_width'][2]}]"
-        )
     print(
         f"{'Zoom Cell Width':>28} = [{zoom_props['width'][0]}, {zoom_props['width'][1]}, {zoom_props['width'][2]}]"
     )
 
     # Number of Cells
     print(f"{'Number of Background Cells':>28} = {zoom_props.get('nr_bkg_cells', 0)}")
-    if zoom_props.get("with_buffer_cells"):
-        print(
-            f"{'Number of Buffer Cells':>28} = {zoom_props.get('nr_buffer_cells', 0)}"
-        )
     print(f"{'Number of Zoom Cells':>28} = {zoom_props.get('nr_zoom_cells', 0)}")
 
     # Bounds
-    if zoom_props.get("with_buffer_cells"):
-        print(
-            f"{'Buffer Bounds':>28} = [{zoom_props['buffer_lower_bounds'][0]}-{zoom_props['buffer_upper_bounds'][0]}, {zoom_props['buffer_lower_bounds'][1]}-{zoom_props['buffer_upper_bounds'][1]}, {zoom_props['buffer_lower_bounds'][2]}-{zoom_props['buffer_upper_bounds'][2]}]"
-        )
     print(
         f"{'Zoom Region Bounds':>28} = [{zoom_props['region_lower_bounds'][0]}-{zoom_props['region_upper_bounds'][0]}, {zoom_props['region_lower_bounds'][1]}-{zoom_props['region_upper_bounds'][1]}, {zoom_props['region_lower_bounds'][2]}-{zoom_props['region_upper_bounds'][2]}]"
     )
 
     # Depths
-    if zoom_props.get("with_buffer_cells"):
-        print(f"{'Buffer Top Level Depth':>28} = {zoom_props['buffer_cell_depth']}")
     print(f"{'Zoom Top Level Depth':>28} = {zoom_props['zoom_cell_depth']}")
 
     # Assorted extra zoom properties
@@ -613,10 +459,6 @@ def zoom_report_cell_properties_text(space):
     report_lines.append(
         f"{'Background cdim':>28} = [{space.bkg_cdim[0]}, {space.bkg_cdim[1]}, {space.bkg_cdim[2]}]"
     )
-    if zoom_props.get("with_buffer_cells"):
-        report_lines.append(
-            f"{'Buffer cdim':>28} = [{zoom_props['buffer_cdim'][0]}, {zoom_props['buffer_cdim'][1]}, {zoom_props['buffer_cdim'][2]}]"
-        )
     report_lines.append(
         f"{'Zoom cdim':>28} = [{zoom_props['cdim'][0]}, {zoom_props['cdim'][1]}, {zoom_props['cdim'][2]}]"
     )
@@ -625,10 +467,6 @@ def zoom_report_cell_properties_text(space):
     report_lines.append(
         f"{'Background Dimensions':>28} = [{space.box_size}, {space.box_size}, {space.box_size}]"
     )
-    if zoom_props.get("with_buffer_cells"):
-        report_lines.append(
-            f"{'Buffer Region Dimensions':>28} = [{zoom_props['buffer_dim'][0]}, {zoom_props['buffer_dim'][1]}, {zoom_props['buffer_dim'][2]}]"
-        )
     report_lines.append(
         f"{'Zoom Region Dimensions':>28} = [{zoom_props['dim'][0]}, {zoom_props['dim'][1]}, {zoom_props['dim'][2]}]"
     )
@@ -637,10 +475,6 @@ def zoom_report_cell_properties_text(space):
     report_lines.append(
         f"{'Background Cell Width':>28} = [{space.box_size / space.bkg_top_level_cells}, {space.box_size / space.bkg_top_level_cells}, {space.box_size / space.bkg_top_level_cells}]"
     )
-    if zoom_props.get("with_buffer_cells"):
-        report_lines.append(
-            f"{'Buffer Cell Width':>28} = [{zoom_props['buffer_width'][0]}, {zoom_props['buffer_width'][1]}, {zoom_props['buffer_width'][2]}]"
-        )
     report_lines.append(
         f"{'Zoom Cell Width':>28} = [{zoom_props['width'][0]}, {zoom_props['width'][1]}, {zoom_props['width'][2]}]"
     )
@@ -649,22 +483,11 @@ def zoom_report_cell_properties_text(space):
     report_lines.append(
         f"{'Number of Background Cells':>28} = {zoom_props.get('nr_bkg_cells', 0)}"
     )
-    if zoom_props.get("with_buffer_cells"):
-        report_lines.append(
-            f"{'Number of Buffer Cells':>28} = {zoom_props.get('nr_buffer_cells', 0)}"
-        )
     report_lines.append(
         f"{'Number of Zoom Cells':>28} = {zoom_props.get('nr_zoom_cells', 0)}"
     )
 
     # Bounds
-    if zoom_props.get("with_buffer_cells"):
-        report_lines.append(
-            f"{'Buffer Lower Bounds':>28} = [{zoom_props['buffer_lower_bounds'][0]}, {zoom_props['buffer_lower_bounds'][1]}, {zoom_props['buffer_lower_bounds'][2]}]"
-        )
-        report_lines.append(
-            f"{'Buffer Upper Bounds':>28} = [{zoom_props['buffer_upper_bounds'][0]}, {zoom_props['buffer_upper_bounds'][1]}, {zoom_props['buffer_upper_bounds'][2]}]"
-        )
     report_lines.append(
         f"{'Zoom Region Lower Bounds':>28} = [{zoom_props['region_lower_bounds'][0]}, {zoom_props['region_lower_bounds'][1]}, {zoom_props['region_lower_bounds'][2]}]"
     )
@@ -673,10 +496,6 @@ def zoom_report_cell_properties_text(space):
     )
 
     # Depths
-    if zoom_props.get("with_buffer_cells"):
-        report_lines.append(
-            f"{'Buffer Top Level Depth':>28} = {zoom_props['buffer_cell_depth']}"
-        )
     report_lines.append(
         f"{'Zoom Top Level Depth':>28} = {zoom_props['zoom_cell_depth']}"
     )
@@ -744,18 +563,12 @@ def zoom_region_init(space, params, verbose=False):
         if verbose:
             print(
                 "Warning: Background cell size is large relative to the zoom region! "
-                "(we'll need at least {} buffer cells which may be slow).".format(
+                "(we'll need at least {} zoom regions which may be slow).".format(
                     nr_zoom_regions
                 )
             )
 
-    # Decide whether to use buffer cells based on the padding due to background cells
-    if nr_zoom_regions <= 2:
-        space.zoom_props["with_buffer_cells"] = 0
-        zoom_get_geometry_no_buffer_cells(space)
-    else:
-        space.zoom_props["with_buffer_cells"] = 1
-        zoom_get_geometry_with_buffer_cells(space)
+    zoom_get_geometry(space)
 
     # Store what the true boost factor ended up being
     input_pad_factor = space.zoom_props["region_pad_factor"]
@@ -776,7 +589,7 @@ def zoom_region_init(space, params, verbose=False):
             print(
                 "Warning: The pad region has to be {} times larger than requested. "
                 "Either increase ZoomRegion:region_pad_factor, increase the number of "
-                "background cells, or increase the depths of the zoom cells (and buffer cells if using).".format(
+                "background cells, or increase the depths of the zoom cells.".format(
                     int(space.zoom_props["region_pad_factor"] / input_pad_factor)
                 )
             )
@@ -803,14 +616,6 @@ def zoom_region_init(space, params, verbose=False):
     )
     space.zoom_props["nr_zoom_cells"] = space.zoom_props["bkg_cell_offset"]
     space.zoom_props["nr_bkg_cells"] = space.cdim[0] * space.cdim[1] * space.cdim[2]
-    space.zoom_props["buffer_cell_offset"] = (
-        space.zoom_props["bkg_cell_offset"] + space.zoom_props["nr_bkg_cells"]
-    )
-    space.zoom_props["nr_buffer_cells"] = (
-        space.zoom_props["buffer_cdim"][0]
-        * space.zoom_props["buffer_cdim"][1]
-        * space.zoom_props["buffer_cdim"][2]
-    )
 
 
 def construct_tl_cells(space):
@@ -843,21 +648,6 @@ def construct_tl_cells(space):
             )
             space.zoom_cells.append(cell)
 
-    # Create the buffer cells
-    if space.zoom_props.get("with_buffer_cells"):
-        space.buffer_cells = []
-        for i in range(space.zoom_props["buffer_cdim"][0]):
-            for j in range(space.zoom_props["buffer_cdim"][1]):
-                cell = Cell(
-                    i * space.zoom_props["buffer_width"][0]
-                    + space.zoom_props["buffer_lower_bounds"][0],
-                    j * space.zoom_props["buffer_width"][1]
-                    + space.zoom_props["buffer_lower_bounds"][1],
-                    space.zoom_props["buffer_width"],
-                    ctype="buffer",
-                )
-                space.buffer_cells.append(cell)
-
 
 def draw_grid(space, params):
     """
@@ -874,8 +664,6 @@ def draw_grid(space, params):
 
     # Draw each cell
     for cell in space.bkg_cells:
-        cell.draw_cell(ax)
-    for cell in space.buffer_cells:
         cell.draw_cell(ax)
     for cell in space.zoom_cells:
         cell.draw_cell(ax)
@@ -894,21 +682,6 @@ def draw_grid(space, params):
             alpha=0.9,
         )
     ]
-
-    if len(space.buffer_cells) > 0:
-        handles.append(
-            Line2D(
-                [0],
-                [0],
-                marker="s",  # Use a square marker
-                color="w",  # Set the color of the line to be invisible
-                markerfacecolor="#42bfdd",
-                markeredgecolor="black",
-                markersize=15,
-                label="Buffer",
-                alpha=0.9,
-            )
-        )
 
     handles.append(
         Line2D(
