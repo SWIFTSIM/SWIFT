@@ -118,7 +118,7 @@ swift-intel-build-mr-long:
   timeout: 6h
   script:
     - echo "Full Intel toolchain check in a merge request"
-    - ci/COSMA/swift-intel-check-mr.sh
+    - ci/COSMA/swift-intel-check.sh
     - echo "complete."
 
 #  Whatever toolchain is provided in the runner environment.
