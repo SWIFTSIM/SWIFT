@@ -168,7 +168,7 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hyperbolic_flux(
   if (p->chemistry_data.tau == 0.0) {
     /* Don't do anything to avoid NaNs */
     for (int i = 0; i < 4; i++) {
-      for (int j = 0; j < 3; i++) {
+      for (int j = 0; j < 3; j++) {
         hypflux[i][j] = 0.0;
       }
     }
