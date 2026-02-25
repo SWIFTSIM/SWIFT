@@ -458,6 +458,12 @@ struct cell {
    * a zoom region. */
   struct cell *void_parent;
 
+  /*! The void cell super (if this cell is nested below void cells).
+   * Only set for zoom cells that have void cells above them with active
+   * gravity. Used during gravity down-pass to check if void level has active
+   * tasks. Only used if running with a zoom region. */
+  struct cell *void_super;
+
   /*! (Only applicable to void cells) Flag for whether this void cell has
    * real, non-empty, local zoom cells nested within it. Certain geometries
    * or totally foreign progeny can lead to this being false and we need

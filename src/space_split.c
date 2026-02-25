@@ -234,6 +234,7 @@ void space_construct_progeny(struct space *s, struct cell *c,
     cp->parent = c;
     cp->top = c->top;
     cp->super = NULL;
+    cp->void_super = NULL;
     cp->hydro.super = NULL;
     cp->grav.super = NULL;
     cp->flags = 0;
