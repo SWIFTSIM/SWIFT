@@ -1192,6 +1192,12 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const int periodic, const double dim[3]) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+#endif
+
   const double cix_min = ci->loc[0];
   const double ciy_min = ci->loc[1];
   const double ciz_min = ci->loc[2];

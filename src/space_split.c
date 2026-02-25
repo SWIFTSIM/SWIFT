@@ -880,6 +880,10 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Store the global max depth */
   if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
+  if (c->depth == 0 && c->type == cell_type_zoom)
+    atomic_max(&s->zoom_props->zoom_maxdepth, maxdepth);
+  if (c->depth == 0 && c->type == cell_type_bkg)
+    atomic_max(&s->zoom_props->bkg_maxdepth, maxdepth);
 }
 
 /**
@@ -1033,7 +1037,19 @@ void space_split(struct space *s, int verbose) {
   }
 
   if (verbose) {
-    message("Max tree depth after split: %d", s->maxdepth);
+    if (!s->with_zoom_region) {
+      message("Max tree depth after split: %d", s->maxdepth);
+    } else {
+      message("Max zoom tree depth after split (from zoom top level): %d",
+              s->zoom_props->zoom_maxdepth);
+      message(
+          "Max zoom tree depth after split (from void top level): %d",
+          s->zoom_props->zoom_maxdepth + s->zoom_props->zoom_cell_depth + 1);
+      message("Max background tree depth after split: %d",
+              s->zoom_props->bkg_maxdepth);
+    }
+    message("Have %d cells including subcells (cell footprint: %zd MB)",
+            s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
   }
