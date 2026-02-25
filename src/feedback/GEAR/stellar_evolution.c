@@ -498,22 +498,11 @@ void stellar_evolution_compute_continuous_feedback_properties(
           &sm->snii, log_m_end_step, log_m_beg_step);
 
   /* Set the yields */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    /* Compute the mass fraction of metals */
-    sp->feedback_data.metal_mass_ejected[i] =
-        /* Supernovae II yields */
-        snii_yields[i] +
-        /* Gas contained in stars initial metallicity */
-        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
-            non_processed;
-
-    /* Convert it to total mass */
-    sp->feedback_data.metal_mass_ejected[i] *= sp->sf_data.birth_mass;
-
-    /* Add the Supernovae Ia */
-    sp->feedback_data.metal_mass_ejected[i] +=
-        snia_yields[i] * number_snia_f * phys_const->const_solar_mass;
-  }
+  const float birth_mass_Msun =
+      sp->sf_data.birth_mass * phys_const->const_solar_mass;
+  chemistry_set_star_supernovae_ejected_yields(
+      sp, birth_mass_Msun, non_processed,
+      /*number_snii*/ 1, number_snia_f, snii_yields, snia_yields, phys_const);
 }
 
 /**
@@ -591,31 +580,15 @@ void stellar_evolution_compute_discrete_feedback_properties(
   float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT];
   supernovae_ii_get_yields_from_raw(&sm->snii, log_m_avg, snii_yields);
 
-  /* Compute the mass fraction of non processed elements */
+  /* Compute the mass of non processed elements */
   const float non_processed =
       supernovae_ii_get_ejected_mass_fraction_non_processed_from_raw(&sm->snii,
                                                                      log_m_avg);
 
   /* Set the yields */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-
-    /* Compute the mass fraction of metals */
-    sp->feedback_data.metal_mass_ejected[i] =
-        /* Supernovae II yields */
-        snii_yields[i] +
-        /* Gas contained in stars initial metallicity */
-        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
-            non_processed;
-
-    /* Convert it to total mass */
-    sp->feedback_data.metal_mass_ejected[i] *= m_avg * number_snii;
-
-    /* Supernovae Ia yields */
-    sp->feedback_data.metal_mass_ejected[i] += snia_yields[i] * number_snia;
-
-    /* Convert everything in code units */
-    sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
-  }
+  chemistry_set_star_supernovae_ejected_yields(
+      sp, m_avg, non_processed, number_snii, number_snia, snii_yields,
+      snia_yields, phys_const);
 }
 
 /**
@@ -678,7 +651,7 @@ void stellar_evolution_compute_preSN_properties(
         m_init, exp10(log_metallicity), energy_per_unit_time,
         mass_ejected_per_unit_time);
 
-#endif /* !defined SWIFT_TEST_STELLAR_WIND */
+#endif /* defined SWIFT_TEST_STELLAR_WIND */
 
     /* Converting to internal units*/
     const double mass_ejected_in_IU =
@@ -728,7 +701,7 @@ void stellar_evolution_compute_preSN_properties(
         m_init, exp10(log_metallicity),
         energy_per_unit_time_per_progenitor_mass,
         mass_ejected_per_unit_time_per_progenitor_mass);
-#endif /* !defined SWIFT_TEST_STELLAR_WIND */
+#endif /* defined SWIFT_TEST_STELLAR_WIND */
 
     /* Converting to internal units*/
     const double mass_ejected_in_IU =
@@ -1241,9 +1214,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const float m_end_step = sp->mass / phys_const->const_solar_mass;
 
   /* This is needed by stellar_evolution_compute_preSN_feedback_properties(),
-      but this is not used inside the function. */
-  const float m_init =
-      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+      but this is used only for the StellarWindInjection example. */
+  const float m_init = 
+          stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0.0;
