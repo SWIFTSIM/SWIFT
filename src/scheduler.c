@@ -1653,7 +1653,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   for (int i = 0; i < 8; i++) {
     struct cell *cpi = ci->progeny[i];
 
-    /* Skip NULL progeny (can happen is a background cell tree has no
+    /* Skip NULL progeny (can happen if a background cell tree has no
      * particles at the leaves for whatever reason). */
     if (cpi == NULL) continue;
 
@@ -1675,10 +1675,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Skip entirely foreign pairs. */
       if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
 
-      /* Are we at the zoom top level and if so can we get away with using
-       * the mesh here instead of a direct interaction? */
-      if (cell_pair_is_zoom_tl(cpi, cpj, sp) &&
-          cell_can_use_mesh(e, cpi, cpj)) {
+      /* Could we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpi, cpj)) {
         continue;
       }
 
@@ -1754,15 +1752,17 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
       /* Skip non-existant progeny. */
       if (ci->progeny[first_child] == NULL) continue;
 
-      /* Skip empty non-void progeny. */
-      if (ci->progeny[first_child]->subtype != cell_subtype_void &&
-          ci->progeny[first_child]->grav.count == 0)
-        continue;
+      /* Skip empty progeny. */
+      if (cell_is_empty_grav(ci->progeny[first_child])) continue;
 
-      /* Skip foreign progeny (no such thing as a foreign self task). */
+      /* Skip foreign zoom progeny (no such thing as a foreign self task). */
       if (ci->progeny[first_child]->type == cell_type_zoom &&
-          ci->progeny[first_child]->nodeID != engine_rank)
+          ci->progeny[first_child]->nodeID != engine_rank) {
         continue;
+      }
+
+      /* We found our first child. Stop looking. */
+      break;
     }
 
     /* If we have found no progeny, we are done here. */
@@ -1778,10 +1778,8 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
       /* Skip non-existant progeny. */
       if (ci->progeny[i] == NULL) continue;
 
-      /* Skip empty non-void progeny. */
-      if (ci->progeny[i]->subtype != cell_subtype_void &&
-          ci->progeny[i]->grav.count == 0)
-        continue;
+      /* Skip empty progeny. */
+      if (cell_is_empty_grav(ci->progeny[i])) continue;
 
       /* Skip non-local progeny (no such thing as a foreign self task). */
       if (ci->progeny[i]->type == cell_type_zoom &&
@@ -1811,10 +1809,8 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
         /* Skip non-existant progeny. */
         if (ci->progeny[k] == NULL) continue;
 
-        /* Skip empty non-void progeny. */
-        if (ci->progeny[k]->subtype != cell_subtype_void &&
-            ci->progeny[k]->grav.count == 0)
-          continue;
+        /* Skip empty progeny. */
+        if (cell_is_empty_grav(ci->progeny[k])) continue;
 
         /* Skip entirely foreign pairs. */
         if ((ci->progeny[j]->type == cell_type_zoom &&
@@ -1823,10 +1819,8 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
             ci->progeny[k]->nodeID != engine_rank)
           continue;
 
-        /* Check if we are at the zoom top level and if so can we get away
-         * with using the mesh here instead of a direct interaction? */
-        if (cell_pair_is_zoom_tl(ci->progeny[j], ci->progeny[k], s->space) &&
-            cell_can_use_mesh(s->space->e, ci->progeny[j], ci->progeny[k])) {
+        /* Could we use the mesh for this pair? */
+        if (cell_can_use_mesh(s->space->e, ci->progeny[j], ci->progeny[k])) {
           continue;
         }
 
