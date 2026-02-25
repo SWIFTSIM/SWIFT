@@ -235,7 +235,13 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   /* At the top level we need to recursively check particles haven't moved
    * too far for the mesh gravity (if using the mesh). */
   if (c->depth == 0 && e->s->periodic) {
-    cell_check_grav_mesh_pairs(c, e);
+
+    /* In zoom land we need to redirect to the zoom version. */
+    if (!e->s->with_zoom_region) {
+      cell_check_grav_mesh_pairs(c, e);
+    } else {
+      cell_check_grav_mesh_pairs_zoom(c, e);
+    }
   }
 
   /* Recurse */
