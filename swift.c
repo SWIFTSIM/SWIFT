@@ -755,6 +755,10 @@ int main(int argc, char *argv[]) {
   message("Running on: %s", hostname());
 #endif
 
+  if (with_zoom_region) {
+    message("Running with a zoom region");
+  }
+
 /* Do we have debugging checks ? */
 #ifdef SWIFT_DEBUG_CHECKS
   if (myrank == 0)
@@ -1013,6 +1017,20 @@ int main(int argc, char *argv[]) {
 
     /* Now read it. */
     restart_read(&e, restart_file);
+
+    /* Ensure that we are running a zoom if we were running a zoom (and vice
+     * versa). */
+    if (with_zoom_region != e.s->with_zoom_region) {
+      if (with_zoom_region) {
+        error(
+            "Restart file was created without a zoom region but --zoom was "
+            "requested.");
+      } else {
+        error(
+            "Restart file was created with a zoom region but --zoom was not "
+            "requested.");
+      }
+    }
 
 #ifdef WITH_MPI
     integertime_t min_ti_current = e.ti_current;
