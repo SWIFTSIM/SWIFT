@@ -50,7 +50,8 @@ void stellar_evolution_props_init(struct stellar_model *sm,
                                   const struct phys_const *phys_const,
                                   const struct unit_system *us,
                                   struct swift_params *params,
-                                  const struct cosmology *cosmo) {
+                                  const struct cosmology *cosmo,
+                                  const char *do_stellar_wind_feedback) {
 
   /* Read the list of elements */
   stellar_evolution_read_elements(sm, params);
@@ -75,8 +76,10 @@ void stellar_evolution_props_init(struct stellar_model *sm,
   /* Initialize the supernovae II model */
   supernovae_ii_init(&sm->snii, params, sm, us);
 
-  /* Initialize the stellar wind model */
-  stellar_wind_init(&sm->sw, params, sm, us);
+  /* Initialize the stellar wind model if needed */
+  if(do_stellar_wind_feedback){ 
+    stellar_wind_init(&sm->sw, params, sm, us);
+  }
 
   /* Initialize the minimal gravity mass for the stars */
   /* const float default_star_minimal_gravity_mass_Msun = 1e-1; */
@@ -753,7 +756,8 @@ void stellar_evolution_compute_preSN_properties(
 void stellar_evolution_evolve_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
+    const struct phys_const *phys_const, const char do_stellar_wind_feedback,
+    const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for single_star only. */
@@ -784,9 +788,10 @@ void stellar_evolution_evolve_individual_star(
   }
 
   /* Pre-SN feedback */
-  stellar_evolution_compute_preSN_feedback_individual_star(
-      sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
-
+  if(do_stellar_wind_feedback) {
+    stellar_evolution_compute_preSN_feedback_individual_star(
+        sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
+  }
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_individual_star(
       sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
@@ -813,7 +818,8 @@ void stellar_evolution_evolve_individual_star(
 void stellar_evolution_evolve_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
+    const struct phys_const *phys_const, const char do_stellar_wind_feedback,
+    const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for populations of stars and not
@@ -834,8 +840,10 @@ void stellar_evolution_evolve_spart(
   }
 
   /* Pre-SN feedback */
-  stellar_evolution_compute_preSN_feedback_spart(
-      sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
+  if (do_stellar_wind_feedback) {
+    stellar_evolution_compute_preSN_feedback_spart(
+        sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
+  }
 
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const,

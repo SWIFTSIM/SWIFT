@@ -49,14 +49,16 @@ void stellar_evolution_compute_discrete_feedback_properties(
 void stellar_evolution_evolve_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt);
+    const struct phys_const *phys_const, const char do_stellar_wind_feedback,
+    const integertime_t ti_begin, const double star_age_beg_step, 
+    const double dt);
 
 void stellar_evolution_evolve_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt);
+    const struct phys_const *phys_const, const char do_stellar_wind_feedback,
+    const integertime_t ti_begin, const double star_age_beg_step, 
+    const double dt);
 
 const char *stellar_evolution_get_element_name(const struct stellar_model *sm,
                                                int i);
@@ -72,7 +74,8 @@ void stellar_evolution_props_init(struct stellar_model *sm,
                                   const struct phys_const *phys_const,
                                   const struct unit_system *us,
                                   struct swift_params *params,
-                                  const struct cosmology *cosmo);
+                                  const struct cosmology *cosmo,
+                                  const char *do_stellar_wind_feedback);
 
 float stellar_evolution_compute_initial_mass(
     const struct spart *restrict sp, const struct stellar_model *sm,
