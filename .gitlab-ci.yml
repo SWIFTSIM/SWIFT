@@ -87,7 +87,7 @@ runtime-check-cosma:
     - echo "complete."
 
 #  Small test for MRs only. Some like to push a lot...
-swift-intel-build-mr:
+swift-intel-build-mr-quick:
   stage: build
   tags: 
     - cosma
@@ -96,10 +96,29 @@ swift-intel-build-mr:
     - if: >
         $CI_PIPELINE_SOURCE == "merge_request_event" &&
         $CI_MERGE_REQUEST_DRAFT == "false"
-  timeout: 6h
+  timeout: 1h
   script:
     - echo "Merge request check using Intel toolchain"
     - ci/COSMA/swift-intel-check-mr.sh
+    - echo "complete."
+
+#  Fuller test for MRs only, but only when requested.
+#  Shows a run chevron in the job in the pipeline page.
+swift-intel-build-mr-long:
+  stage: build
+  tags:
+    - cosma
+  #  When this commit is part of an active MR.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "merge_request_event" &&
+        $CI_MERGE_REQUEST_DRAFT == "false"
+  #  And job is requested to run.
+  when: manual
+  timeout: 6h
+  script:
+    - echo "Full Intel toolchain check in a merge request"
+    - ci/COSMA/swift-intel-check.sh
     - echo "complete."
 
 #  Whatever toolchain is provided in the runner environment.
