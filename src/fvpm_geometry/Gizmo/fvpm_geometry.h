@@ -325,13 +325,16 @@ __attribute__((always_inline)) INLINE static void
 fvpm_check_total_face_area_vector_sum(const struct part *p) {
 
   const float threshold = 1e-2;
+  const float area_threshold = p->geometry.area*threshold;
 
-  if (p->geometry.area_sum[0] > threshold ||
-      p->geometry.area_sum[1] > threshold ||
-      p->geometry.area_sum[2] > threshold) {
-    warning("[%lld] Sum A_ij strongly deviating from 0! A_tot = %e, Sum_j A_ij = ( %e %e %e ).", p->id,
-	    p->geometry.area, p->geometry.area_sum[0], p->geometry.area_sum[1],
-	    p->geometry.area_sum[2]);
+  if (p->geometry.area_sum[0] > area_threshold ||
+      p->geometry.area_sum[1] > area_threshold ||
+      p->geometry.area_sum[2] > area_threshold) {
+    warning(
+        "[%lld] Sum A_ij strongly deviating from 0! A_tot = %e, Sum_j A_ij = ( "
+        "%e %e %e ).",
+        p->id, p->geometry.area, p->geometry.area_sum[0],
+        p->geometry.area_sum[1], p->geometry.area_sum[2]);
   }
 }
 
