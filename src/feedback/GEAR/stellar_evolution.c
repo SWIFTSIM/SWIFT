@@ -1215,8 +1215,8 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 
   /* This is needed by stellar_evolution_compute_preSN_feedback_properties(),
       but this is used only for the StellarWindInjection example. */
-  const float m_init = 
-          stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+  const float m_init =
+      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0.0;
