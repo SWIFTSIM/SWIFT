@@ -219,6 +219,11 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   int d =
       ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
 
+  /* Ensure we don't go out of bounds */
+  if (d > s->cdim[0] / 2) d = s->cdim[0] / 2;
+  if (d > s->cdim[1] / 2) d = s->cdim[1] / 2;
+  if (d > s->cdim[2] / 2) d = s->cdim[2] / 2;
+
   /* Loop over plausibly useful cells */
   for (int ii = top_i - d; ii <= top_i + d; ++ii) {
     for (int jj = top_j - d; jj <= top_j + d; ++jj) {
@@ -311,6 +316,11 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
    * rounded up to the next integer */
   int d =
       ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
+
+  /* Ensure we don't go out of bounds */
+  if (d > s->cdim[0] / 2) d = s->cdim[0] / 2;
+  if (d > s->cdim[1] / 2) d = s->cdim[1] / 2;
+  if (d > s->cdim[2] / 2) d = s->cdim[2] / 2;
 
   /* Loop over plausibly useful cells */
   for (int ii = top_i - d; ii <= top_i + d; ++ii) {
@@ -473,11 +483,13 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
   if (ci == cj) {
     return;
   }
-  if (c == cj) {
-    return;
-  }
 
   struct engine *e = s->e;
+
+  /* Foreign pair? This mirrors scheduler_splittask_gravity. */
+  if (ci->nodeID != engine_rank && cj->nodeID != engine_rank) {
+    return;
+  }
 
   /* Should this pair be split? */
   if (cell_can_split_pair_gravity_task(ci, cj)) {
@@ -537,6 +549,11 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
                                                           struct space *s) {
 
   struct engine *e = s->e;
+
+  /* Foreign task? This mirrors scheduler_splittask_gravity. */
+  if (ci->nodeID != engine_rank) {
+    return;
+  }
 
   /* Should this self task be split? */
   if (cell_can_split_self_gravity_task(ci)) {
@@ -685,6 +702,9 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       /* Skip empty non-void progeny */
       if (cell_is_empty_grav(cpj)) continue;
 
+      /* Skip entirely foreign pairs. */
+      if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
+
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
         /* Record the mesh interaction */
@@ -694,7 +714,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
       /* Can we use M-M for this pair? */
       if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                               /*is_tree_walk=*/0,
+                               /*is_tree_walk=*/1,
                                /*periodic boundaries*/ s->periodic,
                                /*use_mesh*/ s->periodic)) {
         /* M-M task handles this, nothing to count */
@@ -734,9 +754,12 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
   for (int k = 0; k < 8; k++) {
     if (ci->progeny[k] == NULL) continue;
 
-    /* Skip empty non-void progeny */
-    if (ci->progeny[k]->subtype != cell_subtype_void &&
-        ci->progeny[k]->grav.count == 0)
+    /* Skip empty progeny (void cells are never empty). */
+    if (cell_is_empty_grav(ci->progeny[k])) continue;
+
+    /* Skip foreign progeny (no such thing as a foreign self task). */
+    if (ci->progeny[k]->type == cell_type_zoom &&
+        ci->progeny[k]->nodeID != engine_rank)
       continue;
 
     runner_count_mesh_interactions_zoom_self_recursive(c, ci->progeny[k], s);
@@ -746,22 +769,23 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
   for (int j = 0; j < 8; j++) {
     if (ci->progeny[j] == NULL) continue;
 
-    /* Skip empty non-void progeny */
-    if (ci->progeny[j]->subtype != cell_subtype_void &&
-        ci->progeny[j]->grav.count == 0)
-      continue;
+    /* Skip empty progeny. */
+    if (cell_is_empty_grav(ci->progeny[j])) continue;
 
     struct cell *cpj = ci->progeny[j];
 
     for (int k = j + 1; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
 
-      /* Skip empty non-void progeny */
-      if (ci->progeny[k]->subtype != cell_subtype_void &&
-          ci->progeny[k]->grav.count == 0)
-        continue;
+      /* Skip empty progeny. */
+      if (cell_is_empty_grav(ci->progeny[k])) continue;
 
       struct cell *cpk = ci->progeny[k];
+
+      /* Skip entirely foreign pairs. */
+      if ((cpj->type == cell_type_zoom && cpk->type == cell_type_zoom) &&
+          cpj->nodeID != engine_rank && cpk->nodeID != engine_rank)
+        continue;
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpj, cpk)) {
