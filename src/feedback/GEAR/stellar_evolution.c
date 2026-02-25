@@ -651,7 +651,7 @@ void stellar_evolution_compute_preSN_properties(
         m_init, exp10(log_metallicity), energy_per_unit_time,
         mass_ejected_per_unit_time);
 
-#endif /* !defined SWIFT_TEST_STELLAR_WIND */
+#endif /* defined SWIFT_TEST_STELLAR_WIND */
 
     /* Converting to internal units*/
     const double mass_ejected_in_IU =
@@ -701,7 +701,7 @@ void stellar_evolution_compute_preSN_properties(
         m_init, exp10(log_metallicity),
         energy_per_unit_time_per_progenitor_mass,
         mass_ejected_per_unit_time_per_progenitor_mass);
-#endif /* !defined SWIFT_TEST_STELLAR_WIND */
+#endif /* defined SWIFT_TEST_STELLAR_WIND */
 
     /* Converting to internal units*/
     const double mass_ejected_in_IU =
@@ -1214,9 +1214,14 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const float m_end_step = sp->mass / phys_const->const_solar_mass;
 
   /* This is needed by stellar_evolution_compute_preSN_feedback_properties(),
-      but this is not used inside the function. */
-  const float m_init = 
-          stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+      but this is used only when the code is configured for the StellarWindInjection example. */
+  #if defined(SWIFT_TEST_STELLAR_WIND)
+    const float m_init = 
+            stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+  #else /* defined SWIFT_TEST_STELLAR_WIND */
+    const float m_init = 0;
+  #endif /* !defined SWIFT_TEST_STELLAR_WIND */
+          
 
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0.0;
