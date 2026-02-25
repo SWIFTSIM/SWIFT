@@ -24,9 +24,24 @@
 
 #include <math.h>
 #include <stdio.h>
-// #include "unit.h"
 
 // TODO: Do we want to print properties of the stellar wind?
+
+/**
+ * @brief Initialize the #stellar_wind structure.
+ *
+ * @param sw The #stellar_wind model.
+ * @param params The simulation parameters.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void stellar_wind_init(struct stellar_wind *sw, struct swift_params *params,
+                       const struct stellar_model *sm,
+                       const struct unit_system *us) {
+
+  /* Read the stellar wind yields */
+  stellar_wind_read_yields(sw, params, sm, 0);
+}
 
 /**
  * @brief Read an array of stellar wind from the table.
@@ -115,8 +130,7 @@ void stellar_wind_read_yields_array(
 /**
  * @brief Read the SW yields from the table.
  *
- * The tables are in [erg/yr] units at the end of this function. TODO: convert
- * into internal units
+ * The tables are in log10 of [erg/yr] units at the end of this function.
  *
  * @param sw The #stellar_wind model.
  * @param params The simulation parameters.
@@ -134,9 +148,9 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
 
   if (!restart) {
     sw->interpolation_size_m = parser_get_opt_param_int(
-        params, "GEARStellar_wind:interpolation_size_mass", 200);
+        params, "GEARStellarWind:interpolation_size_mass", 200);
     sw->interpolation_size_z = parser_get_opt_param_int(
-        params, "GEARStellar_wind:interpolation_size_metallicity", 110);
+        params, "GEARStellarWind:interpolation_size_metallicity", 110);
   }
 
   /* Open IMF group */
@@ -170,19 +184,85 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
 };
 
 /**
- * @brief Initialize the #stellar_wind structure.
+ * @brief Get the ejected energy given a discrete mass.
  *
  * @param sw The #stellar_wind model.
- * @param params The simulation parameters.
- * @param sm The #stellar_model.
- * @param us The unit system.
+ * @param log_m The upper mass in log.
+ * @param log_z The metallicity in log.
+ *
+ * @return energy per unit time in [erg/yr].
  */
-void stellar_wind_init(struct stellar_wind *sw, struct swift_params *params,
-                       const struct stellar_model *sm,
-                       const struct unit_system *us) {
+double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
+                                       float log_m, float log_z) {
+  return exp10(interpolate_2d(&sw->raw.ejected_energy, log_z, log_m));
+};
 
-  /* Read the stellar wind yields */
-  stellar_wind_read_yields(sw, params, sm, 0);
+/**
+ * @brief Get the ejected energy per progenitor mass.
+ *
+ * @param sw The #stellar_wind model.
+ * @param log_m The upper mass in log.
+ * @param log_z The metallicity in log.
+ *
+ * @return energy per progenitor mass per unit time in [erg/yr].
+ */
+double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
+                                           float log_m, float log_z) {
+  return exp10(interpolate_2d(
+      &sw->integrated.ejected_energy_per_progenitor_mass, log_z, log_m));
+};
+
+/**
+ * @brief Get the ejected mass given a discrete mass.
+ *
+ * @param sw The #stellar_wind model.
+ * @param log_m The upper mass in log.
+ * @param log_z The metallicity in log.
+ *
+ * @return mass per unit time in [Msol/yr].
+ */
+double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
+                                     float log_z) {
+  return exp10(interpolate_2d(&sw->raw.mass_loss, log_z, log_m));
+};
+
+/**
+ * @brief Get the ejected mass per progenitor mass.
+ *
+ * @param sw The #stellar_wind model.
+ * @param log_m The upper mass in log.
+ * @param log_z The metallicity in log.
+ *
+ * @return mass per progenitor mass per unit time in [Msol/yr].
+ */
+double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
+                                         float log_m, float log_z) {
+  return exp10(interpolate_2d(&sw->integrated.mass_loss_per_progenitor_mass,
+                              log_z, log_m));
+};
+
+/**
+ * @brief Zero pointers in stellar_wind structs
+ *
+ * @param sw stellar_wind struct in which pointers to tables set to NULL.
+ */
+void stellar_wind_zero_pointers(struct stellar_wind *sw) {
+  /* Nothing to do here */
+}
+
+/**
+ * @brief Write a stellar_wind struct to the given FILE as a stream of bytes.
+ *
+ * Here we are only writing the arrays, everything else has been copied in the
+ * feedback.
+ *
+ * @param sw the struct
+ * @param stream the file stream
+ * @param sm The #stellar_model.
+ */
+void stellar_wind_dump(const struct stellar_wind *sw, FILE *stream,
+                       const struct stellar_model *sm) {
+  /* Nothing to do here */
 }
 
 /**
@@ -198,65 +278,6 @@ void stellar_wind_restore(struct stellar_wind *sw, FILE *stream,
 
   stellar_wind_read_yields(sw, NULL, sm, 1);
 }
-
-/**
- * @brief Get the ejected energy given a discrete mass.
- *
- * @param sw The #stellar_wind model.
- * @param log_m The upper mass in log.
- * @param log_z The metallicity in log.
- *
- * @return energy per unit time in [erg/yr].
- */
-double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
-                                       float log_m, float log_z) {
-  return pow(10, interpolate_2d(&sw->raw.ejected_energy, log_z, log_m));
-};
-
-/**
- * @brief Get the ejected energy per progenitor mass.
- *
- * @param sw The #stellar_wind model.
- * @param log_m The upper mass in log.
- * @param log_z The metallicity in log.
- *
- * @return energy per progenitor mass per unit time in [erg/yr].
- */
-double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
-                                           float log_m, float log_z) {
-  return pow(10,
-             interpolate_2d(&sw->integrated.ejected_energy_per_progenitor_mass,
-                            log_z, log_m));
-};
-
-/**
- * @brief Get the ejected mass given a discrete mass.
- *
- * @param sw The #stellar_wind model.
- * @param log_m The upper mass in log.
- * @param log_z The metallicity in log.
- *
- * @return mass per unit time in [Msol/yr].
- */
-double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
-                                     float log_z) {
-  return pow(10, interpolate_2d(&sw->raw.mass_loss, log_z, log_m));
-};
-
-/**
- * @brief Get the ejected mass per progenitor mass.
- *
- * @param sw The #stellar_wind model.
- * @param log_m The upper mass in log.
- * @param log_z The metallicity in log.
- *
- * @return mass per progenitor mass per unit time in [Msol/yr].
- */
-double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
-                                         float log_m, float log_z) {
-  return pow(10, interpolate_2d(&sw->integrated.mass_loss_per_progenitor_mass,
-                                log_z, log_m));
-};
 
 /**
  * @brief Clean the allocated memory.

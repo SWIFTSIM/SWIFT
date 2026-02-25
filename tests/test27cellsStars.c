@@ -280,19 +280,23 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
 /* Just a forward declaration... */
 void runner_dopair_branch_stars_density(struct runner *r, struct cell *ci,
-                                        struct cell *cj, int limit_h_min,
-                                        int limit_h_max);
+                                        struct cell *cj, const int offset,
+                                        const int ntasks, const int limit_h_min,
+                                        const int limit_h_max);
 void runner_doself_branch_stars_density(struct runner *r, struct cell *c,
-                                        int limit_h_min, int limit_h_max);
+                                        const int offset, const int ntasks,
+                                        const int limit_h_min,
+                                        const int limit_h_max);
 void runner_dopair_subset_branch_stars_density(struct runner *r,
-                                               struct cell *restrict ci,
+                                               const struct cell *restrict ci,
                                                struct spart *restrict sparts_i,
-                                               int *restrict ind, int scount,
+                                               const int *ind, const int scount,
                                                struct cell *restrict cj);
 void runner_doself_subset_branch_stars_density(struct runner *r,
-                                               struct cell *restrict ci,
+                                               const struct cell *restrict ci,
                                                struct spart *restrict sparts,
-                                               int *restrict ind, int scount);
+                                               const int *ind,
+                                               const int scount);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -476,7 +480,9 @@ int main(int argc, char *argv[]) {
         DOPAIR1_SUBSET(&runner, main_cell, main_cell->stars.parts, pid, scount,
                        cells[j]);
 #else
-        DOPAIR1(&runner, main_cell, cells[j], /*limit_h_min=*/0,
+        DOPAIR1(&runner, main_cell, cells[j],
+                /*offset=*/0, /*ntasks=*/1,
+                /*limit_h_min=*/0,
                 /*limit_h_max=*/0);
 #endif
 
@@ -490,7 +496,9 @@ int main(int argc, char *argv[]) {
 #ifdef TEST_DOSELF_SUBSET
     DOSELF1_SUBSET(&runner, main_cell, main_cell->stars.parts, pid, scount);
 #else
-    DOSELF1(&runner, main_cell, /*limit_h_min=*/0,
+    DOSELF1(&runner, main_cell,
+            /*offset=*/0, /*ntasks=*/1,
+            /*limit_h_min=*/0,
             /*limit_h_max=*/0);
 #endif
 

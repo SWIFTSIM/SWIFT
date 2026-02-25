@@ -112,7 +112,9 @@ runner_iact_nonsym_feedback_apply(
 
   const double weight = mj * wi * si_inv_weight;
   double m_ej = 0.0;
-  double new_mass = 0.0;
+  double new_mass = mj;
+  double dm_SW = 0.0;
+  double dm_SN = 0.0;
 
   /* Distribute pre-SN */
   if (e_preSN != 0.0 && weight > 0.0) {
@@ -125,8 +127,9 @@ runner_iact_nonsym_feedback_apply(
        similar to not do the pre-SN feedback in the same step as SN, in that
        case the mass of the gas is not impacted by the mass ejected by SNe.) */
     m_ej = si->feedback_data.preSN.mass_ejected;
-    const double dm_SW = m_ej * weight;
-    new_mass = mj + dm_SW;
+    dm_SW = m_ej * weight;
+    new_mass += dm_SW;
+
     /* If the distance is null, no need to use calculation ressources. */
     if (r2 > 0.0 && new_mass > 0.0) {
       /* -------------------- set to physical quantities -------------------- */
@@ -149,8 +152,7 @@ runner_iact_nonsym_feedback_apply(
       const float r_p = sqrtf(r2) * a;
       const float dx_p[3] = {dx[0] * a, dx[1] * a, dx[2] * a};
 
-      /* --------------- Compute physical momentum received
-       * ---------------------------- */
+      /* --------------- Compute physical momentum received ---------------- */
       /* Total momentum ejected by the winds during the timestep from the star
        * particle i */
       const double p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected *
@@ -183,8 +185,7 @@ runner_iact_nonsym_feedback_apply(
                                         dp_lab_frame[2] * dp_lab_frame[2];
       const double norm2_dp = weight * weight * p_ej * p_ej;
 
-      /* ------------------ calculate physical Energy and internal Energy
-       * received -------------------------- */
+      /* ----- Calculate physical Energy and internal Energy received ------ */
 
       /* The energy ejected from the star particle i by stellar wind that is
        * actually received by the gas particle j */
@@ -200,15 +201,15 @@ runner_iact_nonsym_feedback_apply(
 
       /* The momentum of the gas particle j after receiving the momentum from
        * stellar wind */
-      const double p_new[3] = {pj->mass * v_j_p[0] + dp_lab_frame[0],
-                               pj->mass * v_j_p[1] + dp_lab_frame[1],
-                               pj->mass * v_j_p[2] + dp_lab_frame[2]};
+      const double p_new[3] = {mj * v_j_p[0] + dp_lab_frame[0],
+                               mj * v_j_p[1] + dp_lab_frame[1],
+                               mj * v_j_p[2] + dp_lab_frame[2]};
       const double norm2_p_new = {p_new[0] * p_new[0] + p_new[1] * p_new[1] +
                                   p_new[2] * p_new[2]};
 
       /* The new and old kinetic energy of the gas particle j */
       const double new_kinetic_energy = 0.5 * norm2_p_new / new_mass;
-      const double old_kinetic_energy = 0.5 * pj->mass * norm2_v_p;
+      const double old_kinetic_energy = 0.5 * mj * norm2_v_p;
 
       /* The additional specific internal energy of the gas particle j.
         Ekin_new + U_new = Ekin_old + U_old + dEtot
@@ -262,7 +263,8 @@ runner_iact_nonsym_feedback_apply(
      * with the mass actually ejected by the SN (not the combination of pre-SN
      * and SN) */
     m_ej = si->feedback_data.mass_ejected;
-    const double dm_SN = m_ej * weight;
+    dm_SN = m_ej * weight;
+
     /* But we are considering that the stellar wind occurs before the SN, so the
        total new mass to take into account is the combination of both. It is
        similar to not do pre-SN feedback in the same step as SN, in that case
@@ -276,7 +278,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* Compute momentum received. */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dm * (si->v[i] - xpj->v_full[i]);
+      xpj->feedback_data.delta_p[i] += dm_SN * (si->v[i] - xpj->v_full[i]);
     }
 
     /* Add the metals */

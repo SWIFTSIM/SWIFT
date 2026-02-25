@@ -752,7 +752,7 @@ EAGLEFeedback:
 
 # GEAR feedback model
 GEARFeedback:
-  supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+  supernovae_Ia_energy_erg: 1e51                         # Energy released by a single supernovae of type Ia.
   supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
   pre_supernovae_efficiency: 1.0                           # Pre-supernovae energy efficiency, used for Stellar Winds. The energy released effectively is E_pre_sn = pre_supernovae_efficiency*E_pre_sn
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
@@ -762,6 +762,13 @@ GEARFeedback:
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
   discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
+
+GEARSupernovaeII:
+    interpolation_size:  200                               # Number of elements to keep in the interpolation of the data. (Default: 200)
+
+GEARStellarWind:
+  interpolation_size_mass:        200       # Number of elements to keep in the mass interpolation of the data. (Default: 200).
+  interpolation_size_metallicity: 110       # Number of elements to keep in the metallicity interpolation of the data. (Default: 110).
 
 # AGORA feedback model
 AGORAFeedback:
@@ -1030,12 +1037,6 @@ SPHM1RT:
   alphaB:                 2.59e-13                    # (Conditional) (if useparams=1) The case B recombination coefficient for hydrogen (cgs)
   beta:                   1.245e-15                   # (Conditional) (if useparams=1) The collisional ionization coefficient for hydrogen (cgs)
   reinject:               1                           # (Optional) gather energy around injection radius and re-inject the energy
-
-# Parameters related to stellar winds --------------------------------------------
-
-GEARStellar_wind:
-  interpolation_size_mass:        200       # Size of the mass array of the grid used in stellar winds yields.
-  interpolation_size_metallicity: 110       # Size of the metallicity array of the grid used in stellar winds yields.
 
 # Parameters related to power spectra --------------------------------------------
 
