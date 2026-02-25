@@ -1394,6 +1394,13 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     error("Got a task with a void cell.");
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Mark that we reached this cell in the task splitting. We need to only do
+   * this for ci since we check this at the top level (for zoom cells) which
+   * should all make it this far for a self task. */
+  t->ci->reached_in_task_split = 1;
+#endif
+
   /* Iterate on this task until we're done with it. */
   int redo = 1;
   while (redo) {
