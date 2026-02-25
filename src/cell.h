@@ -1155,8 +1155,8 @@ __attribute__((always_inline)) INLINE static double cell_mpole_CoM_dist2(
 __attribute__((always_inline)) INLINE static int cell_contains_progeny(
     const struct cell *c, const struct cell *progeny) {
 
-  /* Early exit if progeny is above c. */
-  if (progeny->depth < c->depth) {
+  /* Early exit if progeny is above c (only holds for regular cells). */
+  if (c->type == cell_type_regular && progeny->depth < c->depth) {
     return 0;
   }
 
@@ -1166,7 +1166,13 @@ __attribute__((always_inline)) INLINE static int cell_contains_progeny(
     if (current == c) {
       return 1;
     }
-    current = current->parent;
+
+    /* Handle the zoom->void cell case, otherwise normal parent. */
+    if (current->void_parent != NULL) {
+      current = current->void_parent;
+    } else {
+      current = current->parent;
+    }
   }
   return 0;
 }
