@@ -69,10 +69,12 @@ void runner_do_init_grav(struct runner *r, struct cell *c, const int timer) {
   /* Recurse? */
   if (cell_is_split_or_void(c)) {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL &&
-          !(c->subtype == cell_subtype_void &&
-            c->progeny[k]->subtype != cell_subtype_void))
-        runner_do_init_grav(r, c->progeny[k], /*timer=*/0);
+      /* Only recurse if the progeny exists and isn't its own super. This is
+       * possible when recursing from a void cell into the zoom cell tree,
+       * which will have its own super level. */
+      struct cell *cp = c->progeny[k];
+      if (cp != NULL && cp->grav.super != cp)
+        runner_do_init_grav(r, cp, /*timer=*/0);
     }
   }
 
