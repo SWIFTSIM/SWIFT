@@ -1671,7 +1671,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Are we at the zoom top level and if so can we get away with using
        * the mesh here instead of a direct interaction? */
       if (cell_pair_is_zoom_tl(cpi, cpj, sp) &&
-          engine_gravity_can_use_mesh(e, cpi, cpj)) {
+          cell_can_use_mesh(e, cpi, cpj)) {
         continue;
       }
 
@@ -1819,8 +1819,7 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
         /* Check if we are at the zoom top level and if so can we get away
          * with using the mesh here instead of a direct interaction? */
         if (cell_pair_is_zoom_tl(ci->progeny[j], ci->progeny[k], s->space) &&
-            engine_gravity_can_use_mesh(s->space->e, ci->progeny[j],
-                                        ci->progeny[k])) {
+            cell_can_use_mesh(s->space->e, ci->progeny[j], ci->progeny[k])) {
           continue;
         }
 
