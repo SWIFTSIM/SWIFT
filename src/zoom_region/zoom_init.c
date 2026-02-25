@@ -590,7 +590,7 @@ static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
   /* We now know how many parent cells we have in the region, use this and the
    * depth of the zoom region to calculate the cdim (the number of parents times
    * the number of children in a parent. */
-  return region_parent_cdim * pow(2, child_depth);
+  return region_parent_cdim * integer_pow(2, child_depth);
 }
 
 static void zoom_get_geometry(struct space *s) {
@@ -614,7 +614,9 @@ static void zoom_get_geometry(struct space *s) {
   /* Compute the zoom cdim and cell width. */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->cdim[i] = cdim;
-    s->zoom_props->width[i] = s->zoom_props->dim[i] / cdim;
+    s->zoom_props->width[i] =
+        s->dim[i] /
+        (s->cdim[i] * integer_pow(2, s->zoom_props->zoom_cell_depth));
     s->zoom_props->iwidth[i] = 1.0 / s->zoom_props->width[i];
   }
 }
