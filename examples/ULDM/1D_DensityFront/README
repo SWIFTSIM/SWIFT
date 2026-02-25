@@ -1,0 +1,22 @@
+The goal of this example is to test the density, density gradient, Laplacian of the density,
+as well as the theoretical quantum pressure gradient. The quantities are computed for a
+1D density front corresponding to the first test presented in Nori 2018.
+
+To generate the initial conditions locally, if pNbody is installed, run:
+
+./makeICs.py
+
+
+To run this example with the ULDM SPH solver, SWIFT must be configured with the following options:
+ 
+./configure --with-hydro="uldm" --with-kernel=cubic-spline
+
+To start the simulation:
+
+./run.sh
+
+To compare SPH quantities with analytical ones:
+
+./plot.py snap/snapshot_0000.hdf5
+
+./plotSphericalProfile --remove_ic_shift -y density --xmin 0 --xmax 0.5 --ymin 0 --rmax 0.5 --nr 128 snap05/snapshot_0000.hdf5 snap07/snapshot_0000.hdf5
