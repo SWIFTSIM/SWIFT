@@ -376,6 +376,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->sinks.count = 0;
         c->top = c;
         c->super = c;
+        c->void_super = NULL;
         c->hydro.super = c;
         c->grav.super = c;
         c->hydro.ti_old_part = ti_current;
@@ -433,6 +434,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->sinks.count = 0;
         c->top = c;
         c->super = c;
+        c->void_super = NULL;
         c->hydro.super = c;
         c->grav.super = c;
         c->hydro.ti_old_part = ti_current;
@@ -573,4 +575,67 @@ void zoom_void_timestep_collect(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+/**
+ * @brief Set the void_super pointer for all zoom cells.
+ *
+ * This function will also identify any zoom cells with no super level
+ * because the gravity is handled in the void cells/mesh, and make the top
+ * level cell the super for these cells (assuming they have particles).
+ *
+ * @param c The cell to set the void super for.
+ * @param super The super level cell, if we've found it yet.
+ */
+static void zoom_cell_set_void_super(struct cell *c) {
+
+  /* Extract the void super. */
+  struct cell *void_super = c->top->void_parent->super;
+
+  /* No void super? No problem, we're done. */
+  if (void_super == NULL) {
+    return;
+  }
+
+  /* Set the void super. */
+  c->void_super = void_super;
+
+  /* Recurse to progeny. */
+  for (int k = 0; k < 8; k++) {
+    if (c->progeny[k] != NULL) {
+      zoom_cell_set_void_super(c->progeny[k]);
+    }
+  }
+}
+
+/**
+ * @brief Set the void_super pointer for all zoom cells.
+ *
+ * This function will also identify any zoom cells with no super level
+ * because the gravity is handled in the void cells/mesh, and make the top
+ * level cell the super for these cells (assuming they have particles).
+ *
+ * @param c The cell to set the void super for.
+ * @param super The super level cell, if we've found it yet.
+ */
+void zoom_cell_set_void_super_mapper(void *map_data, int num_elements,
+                                     void *extra_data) {
+  const struct engine *e = (const struct engine *)extra_data;
+
+  /* Nothing to do without gravity. */
+  if (!(e->policy & engine_policy_self_gravity) ||
+      (e->policy & engine_policy_external_gravity)) {
+    return;
+  }
+
+  /* Loop over the zoom cells we have been handed and set the void super. */
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *zoom_c = &((struct cell *)map_data)[ind];
+
+    /* Skip parentless zoom cells (these are truly empty). */
+    if (zoom_c->void_parent == NULL) continue;
+
+    /* If we aren't doing gravity we have nothing to do. */
+    zoom_cell_set_void_super(zoom_c);
+  }
 }

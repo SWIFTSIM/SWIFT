@@ -428,6 +428,7 @@ static void uniform_construct_tl_cells(struct space *s,
         c->sinks.count = 0;
         c->top = c;
         c->super = c;
+        c->void_super = NULL;
         c->hydro.super = c;
         c->grav.super = c;
         c->hydro.ti_old_part = ti_current;

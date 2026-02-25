@@ -1607,21 +1607,18 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
 
-        /* In zoom land we also need to link the void cell tasks and zoom/buffer
-         * cell tasks if there are tasks at the void level. */
-        if (c->top->void_parent != NULL &&
-            c->top->void_parent->grav.super != NULL) {
+        /* In zoom land we need to link the void super down task to the zoom
+         * level down_in to ensure the void down pass happens first. */
+        if (c->void_super != NULL) {
 
-          /* nested.init -> void.init */
-          /* This dependency is needed to ensure no MM tasks at the void
-           * level that interact nested cells run before the zoom multipoles
-           * are ready. */
+          /* zoom.init_out -> void.init_out */
+          /* Avoids void level MM tasks interacting zoom top level multipoles
+           * which have not yet been initialised. */
           scheduler_addunlock(s, c->grav.init_out,
-                              c->top->void_parent->grav.init_out);
+                              c->void_parent->grav.init_out);
 
-          /* void.down -> nested.down */
-          scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
-                              c->grav.down);
+          /* void.down -> zoom.down_in */
+          scheduler_addunlock(s, c->void_super->grav.down, c->grav.down_in);
         }
       }
     }
@@ -1652,10 +1649,13 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   }
 
   /* Recurse but not below the maximal splitting depth */
-  if (c->split && cell_is_above_diff_grav_depth(c))
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
+  if (c->split && cell_is_above_diff_grav_depth(c)) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
         engine_make_hierarchical_tasks_gravity(e, c->progeny[k]);
+      }
+    }
+  }
 }
 
 /**
@@ -4378,9 +4378,39 @@ void engine_maketasks(struct engine *e) {
     message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* In zoom land we need to create the hierarchical void tasks before all
-   * others. */
+  /* In zoom land we need to set the void_super pointers on zoom cells now
+   * that the super-pointers are known, then create the hierarchical void
+   * tasks before all others. */
   if (e->s->with_zoom_region) {
+
+    /* Set void_super pointers and handle any "superless" zoom top level
+     * cells. */
+    threadpool_map(&e->threadpool, zoom_cell_set_void_super_mapper,
+                   s->zoom_props->zoom_cells_top, s->zoom_props->nr_zoom_cells,
+                   sizeof(struct cell), threadpool_auto_chunk_size, e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that all zoom cells have their void_super set correctly. */
+    for (int i = 0; i < s->zoom_props->nr_zoom_cells; i++) {
+      struct cell *c = &s->zoom_props->zoom_cells_top[i];
+      if (c->void_super == NULL && c->void_parent != NULL &&
+          c->void_parent->super != NULL)
+        error(
+            "Top level zoom cell has NULL void_super but non-NULL "
+            "void_parent->super!");
+
+      if (c->void_super != NULL && c->void_parent != NULL &&
+          (c->void_super->type != cell_type_bkg ||
+           c->void_super->subtype != cell_subtype_void))
+        error(
+            "Zoom cell at depth %d has non-void void_super (type=%s, "
+            "subtype=%s)",
+            c->depth, cellID_names[c->void_super->type],
+            subcellID_names[c->void_super->subtype]);
+    }
+#endif
+
+    /* Make the hierarchical void tasks. */
     zoom_engine_make_hierarchical_void_tasks(e);
   }
 
