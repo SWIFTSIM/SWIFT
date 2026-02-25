@@ -4314,6 +4314,24 @@ void engine_maketasks(struct engine *e) {
     const struct task *t = &e->sched.tasks[i];
     if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
   }
+
+  /* Verify that all top-level zoom cells were reached during task splitting */
+  if (e->s->with_zoom_region) {
+    for (int i = 0; i < e->s->zoom_props->nr_zoom_cells; i++) {
+      struct cell *c = &e->s->cells_top[i];
+      if (c->grav.count > 0 && !c->reached_in_task_split) {
+        error(
+            "Top-level zoom cell (ind=%d, cellID=%lld) with %d particles was "
+            "never reached during task splitting! "
+            "loc=[%g,%g,%g], width=[%g,%g,%g], type=%s, subtype=%s, split=%d, "
+            "void_parent=%p, grav.super=%p, nodeID=%d, depth=%d",
+            i, c->cellID, c->grav.count, c->loc[0], c->loc[1], c->loc[2],
+            c->width[0], c->width[1], c->width[2], cellID_names[c->type],
+            subcellID_names[c->subtype], c->split, (void *)c->void_parent,
+            (void *)c->grav.super, c->nodeID, c->depth);
+      }
+    }
+  }
 #endif
 
   /* Free the old list of cell-task links. */

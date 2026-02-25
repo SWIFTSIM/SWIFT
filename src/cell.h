@@ -597,6 +597,9 @@ struct cell {
 
   /*! The list of sub-tasks that have been executed on this cell */
   char subtasks_executed[task_type_count];
+
+  /*! Flag set to 1 when this cell has been reached during task splitting */
+  int reached_in_task_split;
 #endif
 
   struct ghost_stats ghost_statistics;
