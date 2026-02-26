@@ -38,7 +38,7 @@ def main() -> None:
 
     # Copy to the hydro-specific file name expected by the YAML file.
     shutil.copy2(SOURCE_IC, TARGET_IC)
-    print(f"Copied {SOURCE_IC.name} -> {TARGET_IC.name}")
+    print(f"Copying DMO ICs to hydro example: {SOURCE_IC.name} -> {TARGET_IC.name}")
 
 
 if __name__ == "__main__":
