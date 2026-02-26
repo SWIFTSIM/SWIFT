@@ -20,13 +20,13 @@ TimeIntegration:
 
 Snapshots:
   basename:            zoom_uniform_dm_gravity
-  scale_factor_first:  0.1005
-  delta_time:          1.01
+  scale_factor_first:  0.109
+  delta_time:          2.0
   compression:         1
 
 Statistics:
-  scale_factor_first:  0.1001
-  delta_time:          1.01
+  scale_factor_first:  0.109
+  delta_time:          2.0
 
 Scheduler:
   max_top_level_cells: 8

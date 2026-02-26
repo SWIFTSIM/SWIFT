@@ -172,7 +172,7 @@ EAGLEAGN:
   boost_n_h_star_H_p_cm3:             0.1
   with_fixed_T_near_EoS:              0
   fixed_T_above_EoS_dex:              0.3
-  fixed_T_near_EoS_K:                 8000
+  fixed_T_near_EoS_K:                 80004 
   radiative_efficiency:               0.1
   use_nibbling:                       1
   min_gas_mass_for_nibbling_Msun:     9e5
