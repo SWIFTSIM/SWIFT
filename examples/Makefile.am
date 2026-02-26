@@ -72,3 +72,8 @@ EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py 
 
 # Default parameter file
 EXTRA_DIST += parameter_example.yml
+
+# Zoom integration examples
+EXTRA_DIST += ZoomSimulations/README
+EXTRA_DIST += ZoomSimulations/UniformDMGravity/README ZoomSimulations/UniformDMGravity/makeIC.py ZoomSimulations/UniformDMGravity/run.sh ZoomSimulations/UniformDMGravity/zoom_uniform_dm_gravity.yml
+EXTRA_DIST += ZoomSimulations/UniformDMGravityWithHoles/README ZoomSimulations/UniformDMGravityWithHoles/makeIC.py ZoomSimulations/UniformDMGravityWithHoles/run.sh ZoomSimulations/UniformDMGravityWithHoles/zoom_uniform_dm_gravity_holes.yml
