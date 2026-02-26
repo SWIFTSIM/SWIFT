@@ -36,24 +36,80 @@ git clean -fdx
 ./autogen.sh
 
 echo
-echo "-----------------------------------"
-echo "Building SWIFT binaries for zoom CI"
-echo "-----------------------------------"
+echo "------------------------------------------------------"
+echo "Configure group: DMO + hydro zoom integration examples"
+echo "------------------------------------------------------"
 do_configure --with-parmetis --enable-debugging-checks --disable-vec --enable-debug
 do_make
 
-# echo
-# echo "---------------------------------------------------"
-# echo "Zoom integration check: UniformDMGravity, 16 steps"
-# echo "---------------------------------------------------"
-# cd examples/ZoomSimulations/UniformDMGravity
-# do_run bash run.sh
-#
-# echo
-# echo "------------------------------------------------------------"
-# echo "Zoom integration check: UniformDMGravityWithHoles, 16 steps"
-# echo "------------------------------------------------------------"
-# cd ../UniformDMGravityWithHoles
-# do_run bash run.sh
+echo
+echo "-------------------"
+echo "DMO integration runs"
+echo "-------------------"
+
+echo
+echo "---------------------------------------------------"
+echo "Zoom integration check: UniformDMGravity, 16 steps"
+echo "---------------------------------------------------"
+cd examples/ZoomSimulations/UniformDMGravity
+do_run bash run.sh
+
+echo
+echo "------------------------------------------------------------"
+echo "Zoom integration check: UniformDMGravityWithHoles, 16 steps"
+echo "------------------------------------------------------------"
+cd ../UniformDMGravityWithHoles
+do_run bash run.sh
+
+echo
+echo "------------------------------------------------------"
+echo "Zoom integration check: OffsetUniDMGravity, 16 steps"
+echo "------------------------------------------------------"
+cd ../OffsetUniDMGravity
+do_run bash run.sh
+
+echo
+echo "------------------------------------------------------------"
+echo "Zoom integration check: BoundaryOffsetUniDMGrav, 16 steps"
+echo "------------------------------------------------------------"
+cd ../BoundaryOffsetUniDMGrav
+do_run bash run.sh
+
+echo
+echo "---------------------"
+echo "Hydro integration runs"
+echo "---------------------"
+
+cd "${WORKDIR}"
+do_make clean
+
+echo
+echo "-------------------------------------------"
+echo "Configure group: hydro zoom integration runs"
+echo "-------------------------------------------"
+do_configure --with-parmetis --with-hydro=sphenix --with-kernel=wendland-C2 --enable-debugging-checks --disable-vec --enable-debug
+do_make
+
+echo
+echo "-------------------------------------------------"
+echo "Zoom integration check: UniformDMHydro, 16 steps"
+echo "-------------------------------------------------"
+cd ../UniformDMHydro
+do_run bash run.sh
+
+echo
+echo "-----------------------------------------------------"
+echo "Configure group: full physics zoom integration builds"
+echo "-----------------------------------------------------"
+
+cd "${WORKDIR}"
+do_make clean
+do_configure --with-parmetis --with-subgrid=EAGLE-XL --with-hydro=sphenix --with-kernel=wendland-C2 --enable-debugging-checks --disable-vec --enable-debug
+do_make
+
+echo "------------------------------------------------"
+echo "Full physics runtime checks currently not enabled"
+echo "------------------------------------------------"
+echo "UniformDMEAGLE run remains disabled until tuned."
 
 exit
