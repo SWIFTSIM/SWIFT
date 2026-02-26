@@ -6,8 +6,9 @@ This script constructs a deterministic two-component DM-only IC file:
 - ``PartType2``: low-resolution background particles outside that cube.
 
 Geometry and hierarchy:
-- background grid with ``8`` top-level cells per axis;
-- zoom region spanning the central ``2x2x2`` background cells;
+- background grid with ``16`` top-level cells per axis;
+- zoom region spanning the central ``2x2x2`` background cells
+  (12.5% of the box width per axis, i.e. close to the requested 10% scale);
 - zoom top-level depth fixed to ``2`` (``8`` zoom cells per axis);
 - ``region_pad_factor = 1.1``.
 
@@ -73,7 +74,7 @@ TARGET_PARENT_MASS = TARGET_DM_POST_SPLIT / (1.0 - FBARYON)
 
 # Zoom geometry.
 REGION_PAD_FACTOR = 1.1
-BKG_CELLS = 8
+BKG_CELLS = 16
 ZOOM_BKG_CELLS_SPANNED = 2
 ZOOM_TOP_LEVEL_DEPTH = 2
 ZOOM_CELLS_PER_AXIS = ZOOM_BKG_CELLS_SPANNED * (2**ZOOM_TOP_LEVEL_DEPTH)
@@ -328,6 +329,9 @@ def write_ic_file(hi_pos: np.ndarray, bkg_pos: np.ndarray) -> None:
     )
     print(f"Target post-split DM mass [Msun]:         {dm_post_split:.3e}")
     print(f"Target post-split gas mass [Msun]:        {gas_post_split:.3e}")
+    print(
+        f"Zoom-region width fraction per axis:      {TARGET_ZOOM_EXTENT / BOX_SIZE:.3f}"
+    )
     print(
         f"Background/high-res mass ratio target:    {BACKGROUND_MASS_RATIO_TARGET:.1f}"
     )

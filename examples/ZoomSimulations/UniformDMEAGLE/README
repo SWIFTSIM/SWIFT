@@ -6,7 +6,7 @@ runs with the EAGLE model stack in a zoom configuration.
 
 The setup is tuned for:
 
-- ZoomRegion:bkg_top_level_cells = 8,
+- ZoomRegion:bkg_top_level_cells = 16,
 - ZoomRegion:zoom_top_level_depth = 2,
 - a zoom extent spanning the central 2x2x2 background cells,
 - region_pad_factor = 1.1.

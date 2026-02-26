@@ -35,7 +35,7 @@ Statistics:
   delta_time:          2.0
 
 Scheduler:
-  max_top_level_cells: 8
+  max_top_level_cells: 16
   cell_split_size:     50
 
 Gravity:
@@ -87,7 +87,7 @@ InitialConditions:
 ZoomRegion:
   region_pad_factor:        1.1
   zoom_top_level_depth:     2
-  bkg_top_level_cells:      8
+  bkg_top_level_cells:      16
   buffer_top_level_depth:   0
   neighbour_max_tree_depth: 2
 
