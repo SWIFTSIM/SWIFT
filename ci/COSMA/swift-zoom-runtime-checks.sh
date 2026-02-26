@@ -97,13 +97,14 @@ echo "-------------------------------------------------"
 cd ../UniformDMHydro
 do_run bash run.sh
 
+cd "${WORKDIR}"
+do_make clean
+
 echo
 echo "-----------------------------------------------------"
 echo "Configure group: full physics zoom integration builds"
 echo "-----------------------------------------------------"
 
-cd "${WORKDIR}"
-do_make clean
 do_configure --with-parmetis --with-subgrid=EAGLE-XL --with-hydro=sphenix --with-kernel=wendland-C2 --enable-debugging-checks --disable-vec --enable-debug
 do_make
 
