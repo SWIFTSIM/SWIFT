@@ -86,6 +86,22 @@ runtime-check-cosma:
     - ci/COSMA/swift-runtime-check.sh
     - echo "complete."
 
+#  Zoom runtime checks
+zoom-runtime-check-cosma:
+  stage: runtime
+  tags:
+    - cosma
+  #  Switch to master branch rules when ready.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "push" &&
+        $CI_COMMIT_BRANCH == "zoom_merge"
+  timeout: 6h
+  script:
+    - echo "Zoom runtime checks"
+    - ci/COSMA/swift-zoom-runtime-checks.sh
+    - echo "complete."
+
 #  Small test for MRs only. Some like to push a lot...
 swift-intel-build-mr:
   stage: build
