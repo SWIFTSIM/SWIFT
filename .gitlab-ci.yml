@@ -75,11 +75,11 @@ runtime-check-cosma:
   stage: runtime
   tags: 
     - cosma
-  #  When MR to master happens, or commit is to master.
+  #  TODO: remove zoom_merge branch once zoom work lands in master.
   rules:
     - if: >
         $CI_PIPELINE_SOURCE == "push" &&
-        $CI_COMMIT_BRANCH == "master"
+        ($CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "zoom_merge")
   timeout: 6h
   script:
     - echo "Runtime checks"
@@ -91,11 +91,11 @@ zoom-runtime-check-cosma:
   stage: runtime
   tags:
     - cosma
-  #  Switch to master branch rules when ready.
+  #  TODO: remove zoom_merge branch once zoom work lands in master.
   rules:
     - if: >
         $CI_PIPELINE_SOURCE == "push" &&
-        $CI_COMMIT_BRANCH == "zoom_merge"
+        ($CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "zoom_merge")
   timeout: 6h
   script:
     - echo "Zoom runtime checks"
