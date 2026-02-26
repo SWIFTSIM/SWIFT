@@ -1235,6 +1235,12 @@ void cell_check_multipole(struct cell *c,
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
       message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
               tolerance);
+      message(
+          "Cell %d (%s/%s): CoM=(%e %e %e) r_max=%e M_000=%e num_gpart=%lld",
+          c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
+          c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
+          c->grav.multipole->CoM[2], c->grav.multipole->r_max,
+          c->grav.multipole->m_pole.M_000, c->grav.multipole->m_pole.num_gpart);
       message("Correct answer:");
       gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");
