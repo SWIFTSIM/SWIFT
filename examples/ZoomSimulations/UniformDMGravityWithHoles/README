@@ -1,4 +1,4 @@
-Uniform dark-matter zoom test case with carved holes.
+Uniform dark-matter zoom example with carved holes.
 
 This setup matches UniformDMGravity but removes particles to simulate having 
 a zoom region with empty top-level cells. This is mainly included to check 
@@ -11,4 +11,6 @@ The setup has been tuned for a zoom-region with:
 - ZoomRegion:zoom_top_level_depth = 2,
 - a zoom extent that spans the central 2x2x2 background cells.
 
-This test should be run with the --zoom runtime option.
+This example should be run with the --zoom runtime option.
+
+The setup is suitable for both local standalone use and CI runtime checks.

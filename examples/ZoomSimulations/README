@@ -1,8 +1,12 @@
 Zoom simulation examples.
 
 These are simulations with high resolution particles isolated to a single
-region of the box and low resolution background particles (PartType2) 
+region of the box and low resolution background particles (PartType2)
 elsewhere. These examples should be run including the --zoom runtime option.
+
+These examples are not CI-only assets. They are intended to remain useful as
+general zoom-region examples for local testing, debugging, and documentation,
+with CI simply reusing them as lightweight runtime checks.
 
 Current examples:
 
