@@ -1,0 +1,15 @@
+Zoom simulation examples.
+
+These are simulations with high resolution particles isolated to a single
+region of the box and low resolution background particles (PartType2) 
+elsewhere. These examples should be run including the --zoom runtime option.
+
+Current examples:
+
+- UniformDMGravity:
+  Uniform high-resolution dark matter in a central zoom region, with
+  lower-resolution uniform dark matter in the background.
+
+- UniformDMGravityWithHoles:
+  As above, but with carved holes near the outskirts of the high-resolution
+  region to exercise empty zoom-cell edge cases.
