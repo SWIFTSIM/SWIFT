@@ -1236,7 +1236,7 @@ void cell_check_multipole(struct cell *c,
       message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
               tolerance);
       message(
-          "Cell %d (%s/%s): CoM=(%e %e %e) r_max=%e M_000=%e num_gpart=%lld",
+          "Cell %lld (%s/%s): CoM=(%e %e %e) r_max=%e M_000=%e num_gpart=%lld",
           c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
           c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
           c->grav.multipole->CoM[2], c->grav.multipole->r_max,
