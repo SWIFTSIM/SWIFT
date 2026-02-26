@@ -11,10 +11,10 @@ InternalUnitSystem:
   UnitTemp_in_cgs:     1             # Kelvin
 
 Cosmology:
-  Omega_cdm:    0.84
-  Omega_lambda: 0.0
-  Omega_b:      0.16
-  h:            1.0
+  Omega_cdm:    0.2587481
+  Omega_lambda: 0.693
+  Omega_b:      0.0482519
+  h:            0.6777
   a_begin:      0.1
   a_end:        0.11
 
@@ -44,18 +44,19 @@ Gravity:
   theta_cr:                    0.7
   epsilon_fmm:                 0.001
   mesh_side_length:            64
-  comoving_DM_softening:       0.002
-  max_physical_DM_softening:   0.002
-  comoving_baryon_softening:   0.002
-  max_physical_baryon_softening: 0.002
+  comoving_DM_softening:       0.003320
+  max_physical_DM_softening:   0.001300
+  comoving_baryon_softening:   0.001790
+  max_physical_baryon_softening: 0.000700
   softening_ratio_background:  0.05
 
 SPH:
   resolution_eta:                    1.2348
-  h_min_ratio:                       0.1
-  CFL_condition:                     0.1
+  h_min_ratio:                       0.01
+  h_max:                             0.5
+  CFL_condition:                     0.2
   minimal_temperature:               100.
-  initial_temperature:               1000.
+  initial_temperature:               268.7
   particle_splitting:                0
 
 Stars:

@@ -1,8 +1,8 @@
 Uniform dark-matter zoom example with gas generation and EAGLE physics.
 
-This example reuses the same deterministic DM-only IC geometry as
-UniformDMGravity, then enables gas generation (`generate_gas_in_ics`) and runs
-with the EAGLE model stack in a zoom configuration.
+This example uses a standalone deterministic DM-only IC generator tuned for
+EAGLE-like mass scales, then enables gas generation (`generate_gas_in_ics`) and
+runs with the EAGLE model stack in a zoom configuration.
 
 The setup is tuned for:
 
@@ -14,5 +14,9 @@ The setup is tuned for:
 Important: the parameter file for this example is configured for the
 EAGLE-XL subgrid model (`--with-subgrid=EAGLE-XL`), not the legacy EAGLE
 subgrid configuration.
+
+The IC setup targets a post-split high-resolution DM mass of ~9.7e6 Msun and
+uses a lower-resolution background particle distribution with ~100x lower
+number density than the high-resolution zoom region.
 
 The run script fetches required EAGLE tables if they are missing.
