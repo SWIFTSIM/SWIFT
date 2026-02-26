@@ -19,3 +19,11 @@ Current examples:
 - UniformDMGravityWithHoles:
   As above, but with carved holes near the outskirts of the high-resolution
   region to exercise empty zoom-cell edge cases.
+
+- UniformDMHydro:
+  Reuses the UniformDMGravity DM-only IC layout, then generates gas in SWIFT
+  and evolves with hydro + gravity in zoom mode.
+
+- UniformDMEAGLE:
+  Reuses the UniformDMGravity DM-only IC layout, then generates gas in SWIFT
+  and evolves with the EAGLE model stack in zoom mode.

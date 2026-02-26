@@ -1,0 +1,15 @@
+Uniform dark-matter zoom example with gas generation and hydro evolution.
+
+This example reuses the same deterministic DM-only IC geometry as
+UniformDMGravity (central high-resolution region plus PartType2 background),
+then uses SWIFT's internal gas generation (`generate_gas_in_ics`) and evolves
+the system with cosmology, hydrodynamics, self-gravity, and zoom enabled.
+
+The setup is tuned for:
+
+- ZoomRegion:bkg_top_level_cells = 8,
+- ZoomRegion:zoom_top_level_depth = 2,
+- a zoom extent spanning the central 2x2x2 background cells,
+- region_pad_factor = 1.1.
+
+Run with the --zoom runtime option (via run.sh).

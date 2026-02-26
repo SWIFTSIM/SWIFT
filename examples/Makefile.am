@@ -77,3 +77,5 @@ EXTRA_DIST += parameter_example.yml
 EXTRA_DIST += ZoomSimulations/README
 EXTRA_DIST += ZoomSimulations/UniformDMGravity/README ZoomSimulations/UniformDMGravity/makeIC.py ZoomSimulations/UniformDMGravity/run.sh ZoomSimulations/UniformDMGravity/zoom_uniform_dm_gravity.yml
 EXTRA_DIST += ZoomSimulations/UniformDMGravityWithHoles/README ZoomSimulations/UniformDMGravityWithHoles/makeIC.py ZoomSimulations/UniformDMGravityWithHoles/run.sh ZoomSimulations/UniformDMGravityWithHoles/zoom_uniform_dm_gravity_holes.yml
+EXTRA_DIST += ZoomSimulations/UniformDMHydro/README ZoomSimulations/UniformDMHydro/makeIC.py ZoomSimulations/UniformDMHydro/run.sh ZoomSimulations/UniformDMHydro/zoom_uniform_dm_hydro.yml
+EXTRA_DIST += ZoomSimulations/UniformDMEAGLE/README ZoomSimulations/UniformDMEAGLE/makeIC.py ZoomSimulations/UniformDMEAGLE/run.sh ZoomSimulations/UniformDMEAGLE/zoom_uniform_dm_eagle.yml

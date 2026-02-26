@@ -1,0 +1,14 @@
+Uniform dark-matter zoom example with gas generation and EAGLE physics.
+
+This example reuses the same deterministic DM-only IC geometry as
+UniformDMGravity, then enables gas generation (`generate_gas_in_ics`) and runs
+with the EAGLE model stack in a zoom configuration.
+
+The setup is tuned for:
+
+- ZoomRegion:bkg_top_level_cells = 8,
+- ZoomRegion:zoom_top_level_depth = 2,
+- a zoom extent spanning the central 2x2x2 background cells,
+- region_pad_factor = 1.1.
+
+The run script fetches required EAGLE tables if they are missing.
