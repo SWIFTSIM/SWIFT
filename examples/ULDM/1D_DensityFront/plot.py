@@ -172,7 +172,7 @@ def MakePlot(opt):
   datas = []
 
 
-  fig, axs = plt.subplots(3, 1, figsize=(12, 16))
+  fig, axs = plt.subplots(4, 1, figsize=(12, 18))
   
   
   #################################
@@ -231,6 +231,8 @@ def MakePlot(opt):
   rho0  = 1e-8/3                   # 1e10Msol/kpc^3
   c     = 1.0
   sigma = 500                      # kpc
+  hbar  = 1
+  mx    = 1
    
   def fct_Rho(x):
     return rho0 * (c+1-np.tanh((x-x0)/sigma))
@@ -238,7 +240,27 @@ def MakePlot(opt):
   def fct_GradRho(x):
     return -rho0/sigma * 1/np.cosh((x-x0)/sigma)**2
 
+  def fct_QuantumPotential(x):
+    t = np.tanh((x-x0)/sigma)
+    hbar2  = hbar*hbar
+    mx2    = mx*mx
+    sigma2 = sigma*sigma 
+    cte = -hbar2/2/mx2
+    return cte/4/sigma2*(1-t**2)/(c+1-t)**2 * (1-4*t*(c+1) + 3*t**2)
 
+  
+  def fct_QuantumAcceleration(x):
+    t = np.tanh((x-x0)/sigma)
+    hbar2  = hbar*hbar
+    mx2    = mx*mx
+    sigma3 = sigma*sigma*sigma 
+    cte = -hbar2/2/mx2
+    cte2= (c+1-t)
+    return -cte/4/sigma3*(1-t**2)**2/cte2**3 * (6*t**2*cte2 - 4*t*cte2**2 - (1-t**2)*cte2 )
+
+
+
+  
   
   # density
   rho  = fct_Rho(x)
@@ -256,7 +278,26 @@ def MakePlot(opt):
   axs[1].set_xlim(1000,9000)
   axs[1].set_ylim(-1.1e-3,0.1e-3)
   
+  # quantum potential
+  Q  = fct_QuantumPotential(x)
+  axs[2].plot(x,Q,c='k')
+  axs[2].set_xlabel(r'$r\,\rm{[kpc]}$')
+  axs[2].set_ylabel(r'$Q$')
+  axs[2].set_xlim(1000,9000)
+  #axs[2].set_ylim(-1.1e-3,0.1e-3)
 
+  # quantum acceleration
+  Q  = fct_QuantumPotential(x)
+  a  = np.gradient(Q)
+  axs[3].plot(x,a,c='k')  
+  a  = fct_QuantumAcceleration(x)
+  axs[3].plot(x,a,c='r')    
+  axs[3].set_xlabel(r'$r\,\rm{[kpc]}$')
+  axs[3].set_ylabel(r'$Acceleration$')
+  axs[3].set_xlim(1000,9000)
+  #axs[2].set_ylim(-1.1e-3,0.1e-3)
+  
+  
   # save or display
   if opt.outputfilename:
     plt.savefig(opt.outputfilename)
