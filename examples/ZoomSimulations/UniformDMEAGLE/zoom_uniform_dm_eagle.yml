@@ -27,6 +27,8 @@ Snapshots:
   scale_factor_first:  0.109
   delta_time:          2.0
   compression:         1
+  recording_triggers_part:  [-1, -1]
+  recording_triggers_bpart: [-1, -1]
 
 Statistics:
   scale_factor_first:  0.109
@@ -183,7 +185,7 @@ EAGLEAGN:
   boost_n_h_star_H_p_cm3:             0.1
   with_fixed_T_near_EoS:              0
   fixed_T_above_EoS_dex:              0.3
-  fixed_T_near_EoS_K:                 80004 
+  fixed_T_near_EoS_K:                 8000
   radiative_efficiency:               0.1
   use_nibbling:                       1
   min_gas_mass_for_nibbling_Msun:     9e5
