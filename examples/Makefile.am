@@ -79,3 +79,5 @@ EXTRA_DIST += ZoomSimulations/UniformDMGravity/README ZoomSimulations/UniformDMG
 EXTRA_DIST += ZoomSimulations/UniformDMGravityWithHoles/README ZoomSimulations/UniformDMGravityWithHoles/makeIC.py ZoomSimulations/UniformDMGravityWithHoles/run.sh ZoomSimulations/UniformDMGravityWithHoles/zoom_uniform_dm_gravity_holes.yml
 EXTRA_DIST += ZoomSimulations/UniformDMHydro/README ZoomSimulations/UniformDMHydro/makeIC.py ZoomSimulations/UniformDMHydro/run.sh ZoomSimulations/UniformDMHydro/zoom_uniform_dm_hydro.yml
 EXTRA_DIST += ZoomSimulations/UniformDMEAGLE/README ZoomSimulations/UniformDMEAGLE/makeIC.py ZoomSimulations/UniformDMEAGLE/run.sh ZoomSimulations/UniformDMEAGLE/zoom_uniform_dm_eagle.yml
+EXTRA_DIST += ZoomSimulations/OffsetUniDMGravity/README ZoomSimulations/OffsetUniDMGravity/makeIC.py ZoomSimulations/OffsetUniDMGravity/run.sh ZoomSimulations/OffsetUniDMGravity/offset_uni_dm_gravity.yml
+EXTRA_DIST += ZoomSimulations/BoundaryOffsetUniDMGrav/README ZoomSimulations/BoundaryOffsetUniDMGrav/makeIC.py ZoomSimulations/BoundaryOffsetUniDMGrav/run.sh ZoomSimulations/BoundaryOffsetUniDMGrav/boundary_offset_uni_dm_grav.yml
