@@ -8,7 +8,9 @@ Current examples:
 
 - UniformDMGravity:
   Uniform high-resolution dark matter in a central zoom region, with
-  lower-resolution uniform dark matter in the background.
+  lower-resolution uniform dark matter in the background. Uniform here means 
+  uniform at the top level cell level, i.e. the particles are placed with 64 
+  particles randomly distributed in each background and zoom top-level cell.
 
 - UniformDMGravityWithHoles:
   As above, but with carved holes near the outskirts of the high-resolution
