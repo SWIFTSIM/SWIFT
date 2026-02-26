@@ -815,8 +815,11 @@ void zoom_region_init(struct space *s, const int regridding,
   }
 
   if (verbose) {
-    message("Initial geometry gives %d zoom regions in the void region.",
-            nr_zoom_regions);
+    message(
+        "Initial geometry gives %d zoom regions in the void region "
+        "(void_dim=[%f, %f, %f], initial_zoom_dim=[%f, %f, %f])",
+        nr_zoom_regions, s->zoom_props->void_dim[0], s->zoom_props->void_dim[1],
+        s->zoom_props->void_dim[2], max_dim, max_dim, max_dim);
   }
 
   /* Construct the zoom region geometry. */
