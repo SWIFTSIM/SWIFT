@@ -8,7 +8,7 @@ This script constructs a deterministic two-component DM-only IC file:
 Geometry and hierarchy:
 - background grid with ``16`` top-level cells per axis;
 - zoom region spanning the central ``2x2x2`` background cells
-  (12.5% of the box width per axis, i.e. close to the requested 10% scale);
+  (12.5% of the box width per axis);
 - zoom top-level depth fixed to ``2`` (``8`` zoom cells per axis);
 - ``region_pad_factor = 1.1``.
 
@@ -16,8 +16,8 @@ Mass model:
 - cosmology follows EAGLE reference values;
 - high-resolution parent masses are chosen so that, after
   ``generate_gas_in_ics``, the remaining DM mass is ~``9.7e6 Msun``;
-- background particles are ~``100x`` more massive than high-resolution parent
-  particles (i.e. ``100x`` lower mass resolution), while preserving mean matter
+- background particles are ~``10x`` more massive than high-resolution parent
+  particles (i.e. ``10x`` lower mass resolution), while preserving mean matter
   density in the background volume.
 
 Dependencies:
@@ -80,9 +80,9 @@ ZOOM_TOP_LEVEL_DEPTH = 2
 ZOOM_CELLS_PER_AXIS = ZOOM_BKG_CELLS_SPANNED * (2**ZOOM_TOP_LEVEL_DEPTH)
 
 # Particle layout.
-HI_PARTICLES_AXIS = 4
+HI_PARTICLES_AXIS = 1
 HI_PARTICLES_PER_ZOOM_CELL = HI_PARTICLES_AXIS**3
-BACKGROUND_MASS_RATIO_TARGET = 100.0
+BACKGROUND_MASS_RATIO_TARGET = 10.0
 RNG_SEED = 20260227
 
 OUTPUT_FILE = "zoom_uniform_dm_eagle.hdf5"
@@ -340,7 +340,10 @@ def write_ic_file(hi_pos: np.ndarray, bkg_pos: np.ndarray) -> None:
 
 def main() -> None:
     """Generate, validate, and write the ``UniformDMEAGLE`` IC file."""
-    centre = 0.5 * BOX_SIZE
+    # Offset the centre by a tiny deterministic amount to avoid exact lattice
+    # symmetries at depth-1 multipole checks while staying in the same central
+    # background-cell block.
+    centre = 0.5003 * BOX_SIZE
     rng = np.random.default_rng(RNG_SEED)
 
     # Build particle positions from the target zoom hierarchy.

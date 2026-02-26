@@ -16,7 +16,7 @@ EAGLE-XL subgrid model (`--with-subgrid=EAGLE-XL`), not the legacy EAGLE
 subgrid configuration.
 
 The IC setup targets a post-split high-resolution DM mass of ~9.7e6 Msun and
-uses a lower-resolution background particle distribution with ~100x lower
-number density than the high-resolution zoom region.
+uses a lower-resolution background particle distribution with ~10x larger
+particle masses than the high-resolution parent DM particles.
 
 The run script fetches required EAGLE tables if they are missing.
