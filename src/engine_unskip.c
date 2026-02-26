@@ -333,6 +333,12 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
     const ptrdiff_t delta = &local_cells[ind] - list_base;
     const int type = delta / num_active_cells;
 
+    /* When running a zoom background cells only have gravity tasks. Skip
+     * here to enforce this. */
+    if (c->type == cell_type_bkg &&
+        task_types[type] != task_broad_types_gravity)
+      continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (type >= data->multiplier) error("Invalid broad task type!");
     if (c == NULL) error("Got an invalid cell index!");
