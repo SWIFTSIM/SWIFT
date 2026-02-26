@@ -61,6 +61,17 @@ Stars:
   h_tolerance:           7e-3
   luminosity_filename:   ./photometry
 
+FOF:
+  basename:                        fof_output
+  min_group_size:                  16
+  linking_length_ratio:            0.2
+  seed_black_holes_enabled:        0
+  black_hole_seed_halo_mass_Msun:  1.0e10
+  scale_factor_first:              0.105
+  delta_time:                      1.01
+  linking_types:   [0, 1, 0, 0, 0, 0, 0]
+  attaching_types: [1, 0, 0, 0, 1, 1, 0]
+
 InitialConditions:
   file_name:                   zoom_uniform_dm_eagle.hdf5
   periodic:                    1
