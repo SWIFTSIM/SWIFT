@@ -30,4 +30,4 @@ fi
 
 rm -f zoom_uniform_dm_eagle_*.hdf5 statistics.txt output.log
 
-../../../swift --cosmology --eagle --zoom --threads=4 -n 16 zoom_uniform_dm_eagle.yml 2>&1 | tee output.log
+../../../swift --cosmology --eagle --zoom --threads=8 -n 16 zoom_uniform_dm_eagle.yml 2>&1 | tee output.log

@@ -10,4 +10,4 @@ fi
 
 rm -f zoom_uniform_dm_gravity_*.hdf5 statistics.txt output.log
 
-../../../swift --cosmology --self-gravity --zoom --threads=4 -n 16 zoom_uniform_dm_gravity.yml 2>&1 | tee output.log
+../../../swift --cosmology --self-gravity --zoom --threads=8 -n 16 zoom_uniform_dm_gravity.yml 2>&1 | tee output.log
