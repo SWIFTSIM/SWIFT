@@ -11,4 +11,8 @@ The setup is tuned for:
 - a zoom extent spanning the central 2x2x2 background cells,
 - region_pad_factor = 1.1.
 
+Important: the parameter file for this example is configured for the
+EAGLE-XL subgrid model (`--with-subgrid=EAGLE-XL`), not the legacy EAGLE
+subgrid configuration.
+
 The run script fetches required EAGLE tables if they are missing.
