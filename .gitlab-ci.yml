@@ -48,6 +48,7 @@ gnu-build-cosma:
     - if: >
         $CI_PIPELINE_SOURCE == "push" &&
         $CI_COMMIT_BRANCH == "master"
+    - when: never
   timeout: 6h
   script:
     - echo "GNU toolchain compilation and unit tests (full)"
@@ -64,6 +65,7 @@ intel-build-cosma:
     - if: >
         $CI_PIPELINE_SOURCE == "push" &&
         $CI_COMMIT_BRANCH == "master"
+    - when: never
   timeout: 6h
   script:
     - echo "Intel OneAPI toolchain compilation and unit tests (full)"
@@ -75,11 +77,11 @@ runtime-check-cosma:
   stage: runtime
   tags: 
     - cosma
-  #  TODO: remove zoom_merge branch once zoom work lands in master.
+  #  TODO: remove zoom-ci branch once zoom work lands in master.
   rules:
-    - if: >
-        $CI_PIPELINE_SOURCE == "push" &&
-        ($CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "zoom_merge")
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == "zoom-ci"'
+    - when: never
   timeout: 6h
   script:
     - echo "Runtime checks"
@@ -91,11 +93,11 @@ zoom-runtime-check-cosma:
   stage: runtime
   tags:
     - cosma
-  #  TODO: remove zoom_merge branch once zoom work lands in master.
+  #  TODO: remove zoom-ci branch once zoom work lands in master.
   rules:
-    - if: >
-        $CI_PIPELINE_SOURCE == "push" &&
-        ($CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "zoom_merge")
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == "zoom-ci"'
+    - when: never
   timeout: 6h
   script:
     - echo "Zoom runtime checks"
@@ -103,7 +105,7 @@ zoom-runtime-check-cosma:
     - echo "complete."
 
 #  Small test for MRs only. Some like to push a lot...
-swift-intel-build-mr:
+swift-intel-build-mr-quick:
   stage: build
   tags: 
     - cosma
@@ -112,10 +114,33 @@ swift-intel-build-mr:
     - if: >
         $CI_PIPELINE_SOURCE == "merge_request_event" &&
         $CI_MERGE_REQUEST_DRAFT == "false"
-  timeout: 6h
+    - when: never
+  timeout: 1h
   script:
     - echo "Merge request check using Intel toolchain"
     - ci/COSMA/swift-intel-check-mr.sh
+    - echo "complete."
+
+#  Fuller test for MRs only, but only when requested.
+#  Shows a run chevron in the job in the pipeline page.
+swift-intel-build-mr-long:
+  stage: build
+  tags:
+    - cosma
+  #  When this commit is part of an active MR.
+  rules:
+    - if: >
+        $CI_PIPELINE_SOURCE == "merge_request_event" &&
+        $CI_MERGE_REQUEST_DRAFT == "false"
+  #  And job is requested to run.
+  when: manual
+  allow_failure: true
+  needs:
+    - swift-intel-build-mr-quick
+  timeout: 6h
+  script:
+    - echo "Full Intel toolchain check in a merge request"
+    - ci/COSMA/swift-intel-check.sh
     - echo "complete."
 
 #  Whatever toolchain is provided in the runner environment.
@@ -131,6 +156,7 @@ swift-intel-build-mr:
 #    - if: >
 #        $CI_PIPELINE_SOURCE == "push" &&
 #        $CI_COMMIT_BRANCH == "master"
+#    - when: never
 #  timeout: 6h
 #  script:
 #    - echo "Full compilation and unit tests"
