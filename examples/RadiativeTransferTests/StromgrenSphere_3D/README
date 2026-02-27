@@ -67,7 +67,14 @@ for Stromgren3D test:
     --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
 
 for Stromgren3D test without dynamics (no acceleration and no velocity):
-    --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT --enable-boundary-particles=262145 --enable-fixed-boundary-particles=262145 
+    --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT --with-forcing=boundary-particles
+
+The flag `--with-forcing=boundary-particles` requires that the maximum boundary particle ID is
+specified in the parameter file as follows:
+
+BoundaryParticles:
+  boundary_particle_max_id:        262144 # Particles with ID <= boundary_particle_max_id are treated as boundary particles.
+  enable_fixed_position:           1      # Whether or not boundary particles are fixed in place.
 
 SUNDIALS_ROOT is the root directory that contains the lib and include directories, e.g. on cosma:
 SUNDIALS_ROOT=/cosma/local/sundials/5.1.0/

@@ -227,14 +227,25 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Ignore empty cells but not void cells (in zoom land). */
-  if (c->grav.count == 0 && c->subtype != cell_subtype_void) return;
+  if (cell_is_empty_grav(c)) return;
 
   /* Skip inactive cells. */
   if (!cell_is_active_gravity(c, e)) return;
 
+  /* At the top level we need to recursively check particles haven't moved
+   * too far for the mesh gravity (if using the mesh). */
+  if (c->depth == 0 && e->s->periodic) {
+
+    /* In zoom land we need to redirect to the zoom version. */
+    if (!e->s->with_zoom_region) {
+      cell_check_grav_mesh_pairs(c, e);
+    } else {
+      cell_check_grav_mesh_pairs_zoom(c, e);
+    }
+  }
+
   /* Recurse */
-  if ((c->split || c->subtype == cell_subtype_void) &&
-      cell_is_above_diff_grav_depth(c)) {
+  if (cell_is_split_or_void(c) && cell_is_above_diff_grav_depth(c)) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
@@ -321,6 +332,12 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
      * This gives us the broad type of task we are working on. */
     const ptrdiff_t delta = &local_cells[ind] - list_base;
     const int type = delta / num_active_cells;
+
+    /* When running a zoom background cells only have gravity tasks. Skip
+     * here to enforce this. */
+    if (c->type == cell_type_bkg &&
+        task_types[type] != task_broad_types_gravity)
+      continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (type >= data->multiplier) error("Invalid broad task type!");
@@ -415,7 +432,7 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if (cell_is_empty(c) && !(c->subtype == cell_subtype_void)) continue;
+    if (cell_is_empty(c)) continue;
 
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
         (with_self_grav && cell_is_active_gravity(c, e)) ||

@@ -129,16 +129,19 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
 
   /* Have we exceeded the allowed shift of the zoom region? */
   if (zoom_need_regrid_motion(s)) {
+    message("Regridding due to zoom region motion.");
     return 1;
   }
 
   /* Has the particle distribution exceeded the allowed extent? */
   if (zoom_need_regrid_extent(s)) {
+    message("Regridding due to zoom region extent.");
     return 1;
   }
 
   /* Has hmax increased such that we need larger zoom cells? */
   if (zoom_need_regrid_hmax(s, new_cdim)) {
+    message("Regridding due to hmax requiring larger zoom cells.");
     return 1;
   }
   return 0;
@@ -263,8 +266,7 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
  * pointer arrays and computing the new zoom region geometry if necessary.
  *
  * The cells are counted here and stored on the space. In the zoom case this
- * includes counts from each top-level cell grid (zoom, bkg, and buffer if
- * used).
+ * includes counts from each top-level cell grid (zoom and bkg).
  *
  * @param s The #space.
  * @param zoom_cdim The new top-level cell dimensions (based on current hmax).
@@ -279,8 +281,6 @@ void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose) {
                s->zoom_props->local_zoom_cells_with_particles_top);
     swift_free("local_bkg_cell_with_particless_top",
                s->zoom_props->local_bkg_cells_with_particles_top);
-    swift_free("local_buffer_cell_with_particless_top",
-               s->zoom_props->local_buffer_cells_with_particles_top);
     swift_free("void_cell_indices", s->zoom_props->void_cell_indices);
     swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
 
@@ -292,9 +292,7 @@ void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose) {
   s->tot_cells = s->nr_cells =
       (s->cdim[0] * s->cdim[1] * s->cdim[2]) +
       (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] *
-       s->zoom_props->cdim[2]) +
-      (s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
-       s->zoom_props->buffer_cdim[2]);
+       s->zoom_props->cdim[2]);
 }
 
 /**
@@ -322,17 +320,6 @@ void zoom_allocate_cells(struct space *s) {
   bzero(s->zoom_props->local_bkg_cells_top,
         s->zoom_props->nr_bkg_cells * sizeof(int));
 
-  /* Allocate the indices of local buffer cells */
-  if (s->zoom_props->with_buffer_cells) {
-    if (swift_memalign("local_buffer_cells_top",
-                       (void **)&s->zoom_props->local_buffer_cells_top,
-                       SWIFT_STRUCT_ALIGNMENT,
-                       s->zoom_props->nr_buffer_cells * sizeof(int)) != 0)
-      error("Failed to allocate indices of local top-level background cells.");
-    bzero(s->zoom_props->local_buffer_cells_top,
-          s->zoom_props->nr_buffer_cells * sizeof(int));
-  }
-
   /* Allocate the indices of local zoom cells with particles */
   if (swift_memalign(
           "local_zoom_cells_with_particles_top",
@@ -356,18 +343,4 @@ void zoom_allocate_cells(struct space *s) {
         "particles.");
   bzero(s->zoom_props->local_bkg_cells_with_particles_top,
         s->zoom_props->nr_bkg_cells * sizeof(int));
-
-  /* Allocate the indices of local buffer cells with particles */
-  if (s->zoom_props->with_buffer_cells) {
-    if (swift_memalign(
-            "local_buffer_cells_with_particles_top",
-            (void **)&s->zoom_props->local_buffer_cells_with_particles_top,
-            SWIFT_STRUCT_ALIGNMENT,
-            s->zoom_props->nr_buffer_cells * sizeof(int)) != 0)
-      error(
-          "Failed to allocate indices of local top-level buffer cells with "
-          "particles.");
-    bzero(s->zoom_props->local_buffer_cells_with_particles_top,
-          s->zoom_props->nr_buffer_cells * sizeof(int));
-  }
 }

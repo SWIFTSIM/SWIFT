@@ -137,7 +137,8 @@ const char *engine_policy_names[] = {"none",
                                      "rt",
                                      "power spectra",
                                      "moving mesh",
-                                     "moving mesh hydro"};
+                                     "moving mesh hydro",
+                                     "no_io"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
@@ -1065,6 +1066,72 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Mapper function to count tasks by cell type (zoom/bkg).
+ *
+ * This function counts tasks in parallel, accumulating them into separate
+ * arrays for zoom and background cells.
+ *
+ * @param map_data Array of tasks to process
+ * @param num_elements Number of tasks in this chunk
+ * @param extra_data Pointer to structure containing count arrays
+ */
+void engine_count_cell_type_tasks_mapper(void *map_data, int num_elements,
+                                         void *extra_data) {
+
+  /* Unpack the mapper data */
+  const struct task *tasks = (struct task *)map_data;
+  int *const global_counts = (int *)extra_data;
+
+  /* Extract pointers to the two count arrays from extra_data
+   * Each array has (task_type_count + 1) elements */
+  int *const zoom_counts = global_counts;
+  int *const bkg_counts = global_counts + (task_type_count + 1);
+
+  /* Local accumulator copies */
+  int local_zoom_counts[task_type_count + 1];
+  int local_bkg_counts[task_type_count + 1];
+
+  /* Initialize local counts to zero */
+  for (int k = 0; k <= task_type_count; k++) {
+    local_zoom_counts[k] = 0;
+    local_bkg_counts[k] = 0;
+  }
+
+  /* Add task counts locally by cell type */
+  for (int k = 0; k < num_elements; k++) {
+    const struct task *t = &tasks[k];
+
+    /* Skip tasks with NULL cells */
+    if (t->ci == NULL) continue;
+
+    /* Determine which array to increment based on cell type */
+    int *local_counts = NULL;
+    switch (t->ci->type) {
+      case cell_type_zoom:
+        local_counts = local_zoom_counts;
+        break;
+      case cell_type_bkg:
+        local_counts = local_bkg_counts;
+        break;
+      default:
+        continue;
+    }
+
+    /* Increment the appropriate counter */
+    if (t->skip)
+      local_counts[task_type_count] += 1;
+    else
+      local_counts[(int)t->type] += 1;
+  }
+
+  /* Update the global counts atomically */
+  for (int k = 0; k <= task_type_count; k++) {
+    if (local_zoom_counts[k]) atomic_add(zoom_counts + k, local_zoom_counts[k]);
+    if (local_bkg_counts[k]) atomic_add(bkg_counts + k, local_bkg_counts[k]);
+  }
+}
+
+/**
  * @brief Prints the number of tasks in the engine
  *
  * @param e The #engine.
@@ -1124,64 +1191,25 @@ void engine_print_task_counts(const struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("nr_parts = %zu.", e->s->nr_parts);
-  message("nr_gparts = %zu.", e->s->nr_gparts);
-  message("nr_sink = %zu.", e->s->nr_sinks);
-  message("nr_sparts = %zu.", e->s->nr_sparts);
-  message("nr_bparts = %zu.", e->s->nr_bparts);
-
-#ifdef SWIFT_DEBUG_CHECKS
 
   /* In zoom land we can also break this down by cell type. */
   if (e->s->with_zoom_region) {
-    int zoom_counts[task_type_count + 1];
-    int buffer_counts[task_type_count + 1];
-    int bkg_counts[task_type_count + 1];
-    for (int k = 0; k <= task_type_count; k++) {
-      zoom_counts[k] = 0;
-      buffer_counts[k] = 0;
-      bkg_counts[k] = 0;
+
+    /* Allocate count arrays for zoom and background cells
+     * Each array has (task_type_count + 1) elements */
+    int all_counts[2 * (task_type_count + 1)];
+    for (int k = 0; k < 2 * (task_type_count + 1); k++) {
+      all_counts[k] = 0;
     }
 
-    /* Loop over tasks. */
-    for (int i = 0; i < nr_tasks; i++) {
-      const struct task *t = &tasks[i];
+    /* Use mapper to count tasks by cell type in parallel */
+    threadpool_map((struct threadpool *)&e->threadpool,
+                   engine_count_cell_type_tasks_mapper, (void *)tasks, nr_tasks,
+                   sizeof(struct task), threadpool_auto_chunk_size, all_counts);
 
-      /* Handle NULL pointers. */
-      if (t->ci == NULL) continue;
-
-      /* Count the task type by cell type. */
-      switch (t->ci->type) {
-        case cell_type_zoom:
-          if (t->skip) {
-            zoom_counts[task_type_count]++;
-          } else {
-            zoom_counts[(int)t->type]++;
-          }
-          break;
-        case cell_type_buffer:
-          if (t->skip) {
-            buffer_counts[task_type_count]++;
-          } else {
-            buffer_counts[(int)t->type]++;
-          }
-          break;
-        case cell_type_bkg:
-          if (t->skip) {
-            bkg_counts[task_type_count]++;
-          } else {
-            bkg_counts[(int)t->type]++;
-          }
-          break;
-        case cell_type_regular:
-          error(
-              "Regular cell found in zoom simulation task! There should be no "
-              "regular cells in zoom simulations.");
-          break;
-        default:
-          error("Unknown cell type %d", t->ci->type);
-      }
-    }
+    /* Extract individual count arrays */
+    int *zoom_counts = all_counts;
+    int *bkg_counts = all_counts + (task_type_count + 1);
 
     /* Print the counts. */
 #ifdef WITH_MPI
@@ -1197,24 +1225,6 @@ void engine_print_task_counts(const struct engine *e) {
       printf(" %s=%i", taskID_names[k], zoom_counts[k]);
     printf(" skipped=%i ]\n", zoom_counts[task_type_count]);
     fflush(stdout);
-
-    /* Only print buffer cells if we have them. */
-    if (e->s->zoom_props->with_buffer_cells) {
-#ifdef WITH_MPI
-      printf(
-          "[%04i] %s engine_print_task_counts: buffer task counts are [ %s=%i",
-          e->nodeID, clocks_get_timesincestart(), taskID_names[0],
-          buffer_counts[0]);
-#else
-      printf("%s engine_print_task_counts: buffer task counts are [ %s=%i",
-             clocks_get_timesincestart(), taskID_names[0], buffer_counts[0]);
-#endif /* WITH_MPI */
-
-      for (int k = 1; k < task_type_count; k++)
-        printf(" %s=%i", taskID_names[k], buffer_counts[k]);
-      printf(" skipped=%i ]\n", buffer_counts[task_type_count]);
-      fflush(stdout);
-    }
 
 #ifdef WITH_MPI
     printf(
@@ -1232,14 +1242,13 @@ void engine_print_task_counts(const struct engine *e) {
     fflush(stdout);
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+
   /* In zoom land its helpful to print the pair and mm types. */
   if (e->s->with_zoom_region) {
     /* Initialise counts; */
     int nr_zoom_zoom = 0;
-    int nr_zoom_buffer = 0;
     int nr_zoom_bkg = 0;
-    int nr_buffer_buffer = 0;
-    int nr_buffer_bkg = 0;
     int nr_bkg_bkg = 0;
     int nr_zoom_neighbour = 0;
     /* Loop over tasks. */
@@ -1268,26 +1277,8 @@ void engine_print_task_counts(const struct engine *e) {
             case cell_type_zoom:
               nr_zoom_zoom++;
               break;
-            case cell_type_buffer:
-              nr_zoom_buffer++;
-              break;
             case cell_type_bkg:
               nr_zoom_bkg++;
-              break;
-            default:
-              error("Unknown cell type %d", t->cj->type);
-          }
-          break;
-        case cell_type_buffer:
-          switch (t->cj->type) {
-            case cell_type_zoom:
-              nr_zoom_buffer++;
-              break;
-            case cell_type_buffer:
-              nr_buffer_buffer++;
-              break;
-            case cell_type_bkg:
-              nr_buffer_bkg++;
               break;
             default:
               error("Unknown cell type %d", t->cj->type);
@@ -1297,9 +1288,6 @@ void engine_print_task_counts(const struct engine *e) {
           switch (t->cj->type) {
             case cell_type_zoom:
               nr_zoom_bkg++;
-              break;
-            case cell_type_buffer:
-              nr_buffer_bkg++;
               break;
             case cell_type_bkg:
               nr_bkg_bkg++;
@@ -1320,46 +1308,24 @@ void engine_print_task_counts(const struct engine *e) {
 
     /* Print the pair types. */
 #ifdef WITH_MPI
-    if (e->s->zoom_props->with_buffer_cells) {
-      printf(
-          "[%04i] %s engine_print_task_counts: pair task type counts are [ "
-          "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
-          "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
-          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
-          nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg,
-          nr_zoom_neighbour);
-    } else {
-      printf(
-          "[%04i] %s engine_print_task_counts: pair task type counts are [ "
-          "zoom<->zoom=%i zoom<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
-          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_bkg,
-          nr_bkg_bkg, nr_zoom_neighbour);
-    }
+    printf(
+        "[%04i] %s engine_print_task_counts: pair task type counts are [ "
+        "zoom<->zoom=%i zoom<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
+        e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_bkg,
+        nr_bkg_bkg, nr_zoom_neighbour);
 #else
-    if (e->s->zoom_props->with_buffer_cells) {
-      printf(
-          "%s engine_print_task_counts: pair task type counts are [ "
-          "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
-          "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
-          clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
-          nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg,
-          nr_zoom_neighbour);
-    } else {
-      printf(
-          "%s engine_print_task_counts: pair task type counts are [ "
-          "zoom<->zoom=%i  zoom<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
-          clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_bkg, nr_bkg_bkg,
-          nr_zoom_neighbour);
-    }
+    printf(
+        "%s engine_print_task_counts: pair task type counts are [ "
+        "zoom<->zoom=%i  zoom<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
+        clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_bkg, nr_bkg_bkg,
+        nr_zoom_neighbour);
 #endif /* WITH_MPI */
 
     /* Now count MM tasks. */
     nr_zoom_zoom = 0;
-    nr_buffer_buffer = 0;
     nr_bkg_bkg = 0;
     int nr_void_zoom = 0;
     int nr_void_bkg = 0;
-    int nr_void_buffer = 0;
     /* Loop over tasks. */
     for (int i = 0; i < nr_tasks; i++) {
       const struct task *t = &tasks[i];
@@ -1375,11 +1341,6 @@ void engine_print_task_counts(const struct engine *e) {
         case cell_type_zoom:
           if (t->cj->type == cell_type_zoom) {
             nr_zoom_zoom++;
-          }
-          break;
-        case cell_type_buffer:
-          if (t->cj->type == cell_type_buffer) {
-            nr_buffer_buffer++;
           }
           break;
         case cell_type_bkg:
@@ -1402,9 +1363,6 @@ void engine_print_task_counts(const struct engine *e) {
           case cell_type_zoom:
             nr_void_zoom++;
             break;
-          case cell_type_buffer:
-            nr_void_buffer++;
-            break;
           case cell_type_bkg:
             nr_void_bkg++;
             break;
@@ -1415,9 +1373,6 @@ void engine_print_task_counts(const struct engine *e) {
         switch (t->ci->type) {
           case cell_type_zoom:
             nr_void_zoom++;
-            break;
-          case cell_type_buffer:
-            nr_void_buffer++;
             break;
           case cell_type_bkg:
             nr_void_bkg++;
@@ -1430,38 +1385,19 @@ void engine_print_task_counts(const struct engine *e) {
 
     /* Print the pair types. */
 #ifdef WITH_MPI
-    if (e->s->zoom_props->with_buffer_cells) {
-      printf(
-          "[%04i] %s engine_print_task_counts: grav-MM task type counts are [ "
-          "zoom<->zoom=%i buffer<->buffer=%i bkg<->bkg=%i "
-          "void<->zoom=%i void<->buffer=%i void<->bkg=%i ]\n",
-          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom,
-          nr_buffer_buffer, nr_bkg_bkg, nr_void_zoom, nr_void_buffer,
-          nr_void_bkg);
-    } else {
-      printf(
-          "[%04i] %s engine_print_task_counts: grav-MM task type counts are [ "
-          "zoom<->zoom=%i  bkg<->bkg=%i "
-          "void<->zoom=%i  void<->bkg=%i ]\n",
-          e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_bkg_bkg,
-          nr_void_zoom, nr_void_bkg);
-    }
+    printf(
+        "[%04i] %s engine_print_task_counts: grav-MM task type counts are [ "
+        "zoom<->zoom=%i  bkg<->bkg=%i "
+        "void<->zoom=%i  void<->bkg=%i ]\n",
+        e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_bkg_bkg,
+        nr_void_zoom, nr_void_bkg);
 #else
-    if (e->s->zoom_props->with_buffer_cells) {
-      printf(
-          "%s engine_print_task_counts: grav-MM task type counts are [ "
-          "zoom<->zoom=%i buffer<->buffer=%i bkg<->bkg=%i "
-          "void<->zoom=%i void<->buffer=%i void<->bkg=%i ]\n",
-          clocks_get_timesincestart(), nr_zoom_zoom, nr_buffer_buffer,
-          nr_bkg_bkg, nr_void_zoom, nr_void_buffer, nr_void_bkg);
-    } else {
-      printf(
-          "%s engine_print_task_counts: grav-MM task type counts are [ "
-          "zoom<->zoom=%i  bkg<->bkg=%i "
-          "void<->zoom=%i  void<->bkg=%i ]\n",
-          clocks_get_timesincestart(), nr_zoom_zoom, nr_bkg_bkg, nr_void_zoom,
-          nr_void_bkg);
-    }
+    printf(
+        "%s engine_print_task_counts: grav-MM task type counts are [ "
+        "zoom<->zoom=%i  bkg<->bkg=%i "
+        "void<->zoom=%i  void<->bkg=%i ]\n",
+        clocks_get_timesincestart(), nr_zoom_zoom, nr_bkg_bkg, nr_void_zoom,
+        nr_void_bkg);
 #endif /* WITH_MPI */
   }
 #endif /* SWIFT_DEBUG_CHECKS */
@@ -1478,6 +1414,12 @@ void engine_print_task_counts(const struct engine *e) {
             global_counts[1]);
   }
 #endif
+
+  message("nr_parts = %zu.", e->s->nr_parts);
+  message("nr_gparts = %zu.", e->s->nr_gparts);
+  message("nr_sink = %zu.", e->s->nr_sinks);
+  message("nr_sparts = %zu.", e->s->nr_sparts);
+  message("nr_bparts = %zu.", e->s->nr_bparts);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1947,6 +1889,7 @@ int engine_prepare(struct engine *e) {
   const ticks tic = getticks();
 
   int drifted_all = 0;
+  int ran_fof_for_seeding = 0;
   int repartitioned = 0;
 
   /* Unskip active tasks and check for rebuild */
@@ -1968,12 +1911,16 @@ int engine_prepare(struct engine *e) {
   if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
       e->run_fof && e->fof_properties->seed_black_holes_enabled) {
 
-    /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    /* Let's start by drifting everybody to the current time.
+     * Do not initialise the particles as we need their drifted
+     * properties for th FOF (BH seeding in particular) */
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/0);
     drifted_all = 1;
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
+
+    ran_fof_for_seeding = 1;
 
     if (e->dump_catalogue_when_seeding) e->snapshot_output_count++;
   }
@@ -1983,7 +1930,8 @@ int engine_prepare(struct engine *e) {
   if (!e->restarting && e->forcerebuild && !e->forcerepart && e->step > 1) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     engine_split_gas_particles(e);
@@ -1993,7 +1941,7 @@ int engine_prepare(struct engine *e) {
   if (e->forcerepart) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     /* Free the PM grid */
@@ -2013,12 +1961,19 @@ int engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!e->restarting && !drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     drifted_all = 1;
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
+  }
+
+  if (ran_fof_for_seeding) {
+
+    /* Now, we can init all the active particles to prepare them for the step */
+    engine_init_all_particles(e);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2301,6 +2256,33 @@ void engine_first_init_particles(struct engine *e) {
   space_first_init_sparts(e->s, e->verbose);
   space_first_init_bparts(e->s, e->verbose);
   space_first_init_sinks(e->s, e->verbose);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Call the initialisation on all local particles.
+ *
+ * @param e The #engine.
+ */
+void engine_init_all_particles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  /* Set the particles in a state where they are ready for time-step
+   * Note that a drift *MUST* have been run. */
+  for (int i = 0; i < e->s->nr_local_cells; ++i) {
+    struct cell *c = &e->s->cells_top[e->s->local_cells_top[i]];
+
+    /* Initialise each type */
+    cell_init_part(c, e);
+    cell_init_gpart(c, e);
+    cell_init_spart(c, e);
+    cell_init_bpart(c, e);
+    cell_init_sink(c, e);
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3055,7 +3037,8 @@ int engine_step(struct engine *e) {
   e->ti_current_subcycle = e->ti_end_min;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
+  if (e->restarting)
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -3184,7 +3167,7 @@ int engine_step(struct engine *e) {
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
-    engine_drift_all(e, /*drift_mpole=*/1);
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
@@ -3266,7 +3249,8 @@ int engine_step(struct engine *e) {
       e->mesh->ti_end_mesh_next == e->ti_current) {
 
     /* We might need to drift things */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
@@ -4406,6 +4390,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
     free((void *)e->neutrino_properties);
+    free((void *)e->neutrino_response);
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);
@@ -4489,7 +4474,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_dump(e->lightcone_array_properties, stream);
+#endif
   ic_info_struct_dump(e->ics_metadata, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
@@ -4666,9 +4653,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->los_properties = los_properties;
 
   struct lightcone_array_props *lightcone_array_properties =
-      (struct lightcone_array_props *)malloc(
-          sizeof(struct lightcone_array_props));
+      (struct lightcone_array_props *)calloc(
+          1, sizeof(struct lightcone_array_props));
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_restore(lightcone_array_properties, stream);
+#endif
   e->lightcone_array_properties = lightcone_array_properties;
 
   struct ic_info *ics_metadata =

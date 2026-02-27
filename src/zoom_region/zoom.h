@@ -68,6 +68,10 @@ void zoom_void_space_split(struct space *s, int verbose);
 /* Task creation functions. */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 
+/* Void cell super mapper. */
+void zoom_cell_set_void_super_mapper(void *map_data, int num_elements,
+                                     void *extra_data);
+
 /* Void cell gravity task creation. */
 void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
 

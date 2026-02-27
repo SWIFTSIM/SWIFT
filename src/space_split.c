@@ -50,11 +50,11 @@
  *                  returned.
  */
 void space_allocate_and_fill_buffers(const struct cell *c,
-                                     struct cell_buff **restrict buff,
-                                     struct cell_buff **restrict sbuff,
-                                     struct cell_buff **restrict bbuff,
-                                     struct cell_buff **restrict gbuff,
-                                     struct cell_buff **restrict sink_buff) {
+                                     struct cell_buff *restrict *buff,
+                                     struct cell_buff *restrict *sbuff,
+                                     struct cell_buff *restrict *bbuff,
+                                     struct cell_buff *restrict *gbuff,
+                                     struct cell_buff *restrict *sink_buff) {
 
   /* Unpack particle information we need for the buffers. */
   const int count = c->hydro.count;
@@ -234,6 +234,7 @@ void space_construct_progeny(struct space *s, struct cell *c,
     cp->parent = c;
     cp->top = c->top;
     cp->super = NULL;
+    cp->void_super = NULL;
     cp->hydro.super = NULL;
     cp->grav.super = NULL;
     cp->flags = 0;
@@ -352,6 +353,9 @@ void space_populate_multipole(struct cell *c) {
   c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
   c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
   c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+  c->grav.multipole->dx_max[0] = 0.f;
+  c->grav.multipole->dx_max[1] = 0.f;
+  c->grav.multipole->dx_max[2] = 0.f;
 
   /* Compute the multipole power */
   gravity_multipole_compute_power(&c->grav.multipole->m_pole);
@@ -637,6 +641,9 @@ static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
   c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
   c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
   c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+  c->grav.multipole->dx_max[0] = 0.f;
+  c->grav.multipole->dx_max[1] = 0.f;
+  c->grav.multipole->dx_max[2] = 0.f;
 }
 
 /**
@@ -703,6 +710,15 @@ void space_split_recursive(struct space *s, struct cell *c,
       c->subtype == cell_subtype_neighbour && depth < neighbour_depth;
   if (gparts_need_split || parts_need_split || sparts_need_split ||
       neighbour_need_split) {
+
+    /* If the buffers are NULL (i.e. this is the top-level call), allocate and
+     * fill them now. They will be freed at the end of this split branch. */
+    const int allocate_buffer =
+        (buff == NULL && gbuff == NULL && sbuff == NULL && bbuff == NULL &&
+         sink_buff == NULL);
+    if (allocate_buffer)
+      space_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff,
+                                      &sink_buff);
 
     /* Construct the progeny ready to populate with particles and multipoles
      * (if doing gravity). */
@@ -827,6 +843,15 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->black_holes.h_max_active = black_holes_h_max_active;
     c->maxdepth = maxdepth;
 
+    /* Clean up buffers if we allocated them at this level. */
+    if (allocate_buffer) {
+      if (buff != NULL) swift_free("tempbuff", buff);
+      if (gbuff != NULL) swift_free("tempgbuff", gbuff);
+      if (sbuff != NULL) swift_free("tempsbuff", sbuff);
+      if (bbuff != NULL) swift_free("tempbbuff", bbuff);
+      if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+    }
+
   } /* Split or let it be? */
 
   /* Otherwise we're in a leaf, collect the data from the particles in this
@@ -855,6 +880,10 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Store the global max depth */
   if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
+  if (c->depth == 0 && c->type == cell_type_zoom)
+    atomic_max(&s->zoom_props->zoom_maxdepth, maxdepth);
+  if (c->depth == 0 && c->type == cell_type_bkg)
+    atomic_max(&s->zoom_props->bkg_maxdepth, maxdepth);
 }
 
 /**
@@ -889,21 +918,9 @@ static void space_split_mapper(void *map_data, int num_cells,
      * space_get_cells guaranteeing the same tpid as this top level cells). */
     c->tpid = tpid;
 
-    /* Allocate the particle buffers. */
-    struct cell_buff *buff = NULL, *sbuff = NULL, *bbuff = NULL, *gbuff = NULL,
-                     *sink_buff = NULL;
-    space_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff,
-                                    &sink_buff);
-
-    /* Recursively split the cell. */
-    space_split_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff, tpid);
-
-    /* Free the particle buffers. */
-    if (buff != NULL) swift_free("tempbuff", buff);
-    if (gbuff != NULL) swift_free("tempgbuff", gbuff);
-    if (sbuff != NULL) swift_free("tempsbuff", sbuff);
-    if (bbuff != NULL) swift_free("tempbbuff", bbuff);
-    if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+    /* Recursively split the cell. Buffers are allocated inside
+     * space_split_recursive when needed. */
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
 
     /* Collect the max multipole power from this cell. */
     if (s->with_self_gravity) {
@@ -946,23 +963,6 @@ static void space_split_mapper(void *map_data, int num_cells,
  * @param extra_data Pointers to the #space.
  */
 void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
-  space_split_mapper(map_data, num_cells, extra_data);
-}
-
-/**
- * @brief A wrapper for #threadpool mapper function to split background cells if
- * they contain too many particles.
- *
- * The threadpools are split to ensure efficient parallelisation over each cell
- * grid. This wrapper enables better labelling of these split threadpools when
- * threadpool debugging is enabled.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void buffer_space_split_mapper(void *map_data, int num_cells,
-                               void *extra_data) {
   space_split_mapper(map_data, num_cells, extra_data);
 }
 
@@ -1023,21 +1023,6 @@ void space_split(struct space *s, int verbose) {
       message("Zoom cell tree and multipole construction took %.3f %s.",
               clocks_from_ticks(getticks() - zoom_tic), clocks_getunit());
 
-    if (s->zoom_props->with_buffer_cells) {
-
-      const ticks buffer_tic = getticks();
-
-      /* Create the background cell trees and populate their multipoles. */
-      threadpool_map(&s->e->threadpool, buffer_space_split_mapper,
-                     s->zoom_props->local_buffer_cells_with_particles_top,
-                     s->zoom_props->nr_local_buffer_cells_with_particles,
-                     sizeof(int), threadpool_uniform_chunk_size, s);
-
-      if (verbose)
-        message("Buffer cell tree and multipole construction took %.3f %s.",
-                clocks_from_ticks(getticks() - buffer_tic), clocks_getunit());
-    }
-
     const ticks bkg_tic = getticks();
 
     /* Create the background cell trees and populate their multipoles. */
@@ -1051,7 +1036,21 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - bkg_tic), clocks_getunit());
   }
 
-  if (verbose)
+  if (verbose) {
+    if (!s->with_zoom_region) {
+      message("Max tree depth after split: %d", s->maxdepth);
+    } else {
+      message("Max zoom tree depth after split (from zoom top level): %d",
+              s->zoom_props->zoom_maxdepth);
+      message(
+          "Max zoom tree depth after split (from void top level): %d",
+          s->zoom_props->zoom_maxdepth + s->zoom_props->zoom_cell_depth + 1);
+      message("Max background tree depth after split: %d",
+              s->zoom_props->bkg_maxdepth);
+    }
+    message("Have %d cells including subcells (cell footprint: %zd MB)",
+            s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+  }
 }

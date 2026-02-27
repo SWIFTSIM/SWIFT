@@ -559,6 +559,21 @@ void space_free_buff_sort_indices(struct space *s) {
 }
 
 /**
+ * @brief Free the sort arrays and grid arrays for all local
+ * and foreign cells.
+ *
+ * @brief s The #space.
+ */
+void space_free_sort_indices(struct space *s) {
+
+  for (int i = 0; i < s->nr_local_cells_with_tasks; ++i) {
+
+    struct cell *c = &s->cells_top[s->local_cells_with_tasks_top[i]];
+    cell_clean(c);
+  }
+}
+
+/**
  * @brief Construct the list of top-level cells that have any tasks in
  * their hierarchy on this MPI rank. Also construct the list of top-level
  * cells on any rank that have > 0 particles (of any kind).
@@ -2596,8 +2611,6 @@ void space_clean(struct space *s) {
                s->zoom_props->local_zoom_cells_with_particles_top);
     swift_free("local_bkg_cell_with_particless_top",
                s->zoom_props->local_bkg_cells_with_particles_top);
-    swift_free("local_buffer_cell_with_particless_top",
-               s->zoom_props->local_buffer_cells_with_particles_top);
     swift_free("void_cell_indices", s->zoom_props->void_cell_indices);
     swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
     free(s->zoom_props);
@@ -2921,16 +2934,12 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         stream, NULL, "zoom_props");
     s->zoom_props->nr_local_zoom_cells = 0;
     s->zoom_props->nr_local_bkg_cells = 0;
-    s->zoom_props->nr_local_buffer_cells = 0;
     s->zoom_props->nr_local_zoom_cells_with_particles = 0;
     s->zoom_props->nr_local_bkg_cells_with_particles = 0;
-    s->zoom_props->nr_local_buffer_cells_with_particles = 0;
     s->zoom_props->local_zoom_cells_top = NULL;
     s->zoom_props->local_bkg_cells_top = NULL;
-    s->zoom_props->local_buffer_cells_top = NULL;
     s->zoom_props->local_zoom_cells_with_particles_top = NULL;
     s->zoom_props->local_bkg_cells_with_particles_top = NULL;
-    s->zoom_props->local_buffer_cells_with_particles_top = NULL;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

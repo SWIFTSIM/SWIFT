@@ -214,6 +214,9 @@ struct pcell {
     /*! Upper limit of the CoM<->gpart distance at last rebuild. */
     double r_max_rebuild;
 
+    /*! Upper limit of the CoM<->gpart distance along each axis */
+    float dx_max[3];
+
     /*! Minimal integer end-of-timestep in this cell for gravity tasks */
     integertime_t ti_end_min;
 
@@ -336,6 +339,7 @@ struct pcell_step {
 
     /*! Minimal integer end-of-timestep in this cell (gravity) */
     integertime_t ti_end_min;
+
   } grav;
 
   struct {
@@ -437,6 +441,64 @@ enum cell_flags {
 };
 
 /**
+ * @brief Names of the cell types.
+ */
+extern const char *cellID_names[];
+
+/**
+ * @brief Names of the cell sub-types.
+ */
+extern const char *subcellID_names[];
+
+/**
+ * @brief What type of top level cell is this cell?
+ *
+ * All cells are cell_type_regular when running a periodic box. The other types
+ * are never used in a periodic box and conversely, cell_type_regular cells are
+ * never used when running with a zoom region.
+ *
+ * When running with a zoom region:
+ *
+ * - Background cells are low resolution cells covering the majority of
+ *   the volume. The zoom region fills a number of these cells in the centre
+ *   of the volume.
+ * - Zoom cells are the high resolution cells that cover the zoom region.
+ */
+enum cell_types {
+  cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
+  cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
+  cell_type_bkg,     /* A background cell (only applicable for zooms). */
+} __attribute__((__packed__));
+
+/**
+ * @brief What subtype of top level cell is this cell?
+ *
+ * When running a periodic box, cells can only have regular_sub type.
+ *
+ * When running with a zoom region:
+ *
+ * - Zoom cells can only be cell_subtype_regular.
+ * - Background cells can be neighbours if they are within the gravity
+ *   criterion of the zoom region or void cells if they contain the zoom
+ *   region. Otherwise, they are cell_subtype_regular.
+ *
+ * All cell types serve a function but only cell_subtype_neighbour and
+ * cell_subtype_regular can get tasks.
+ *
+ * Void cells do not contain any pointers to particles but carry multipoles and
+ * particle counts based on the nested zoom cells.
+ *
+ * Empty cells do not contain anything, they should not feature in any
+ * calculation and only exist to ensure the cell grids are maintained.
+ */
+enum cell_subtypes {
+  cell_subtype_regular,   /* A normal cell. */
+  cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
+                             region. */
+  cell_subtype_void,      /* A cell containing the zoom region (void cell). */
+} __attribute__((__packed__));
+
+/**
  * @brief Cell within the tree structure.
  *
  * Contains particles, links to tasks, a multipole object and counters.
@@ -470,6 +532,12 @@ struct cell {
   /*! The direct void cell parent of a zoom cell. Only used if running with
    * a zoom region. */
   struct cell *void_parent;
+
+  /*! The void cell super (if this cell is nested below void cells).
+   * Only set for zoom cells that have void cells above them with active
+   * gravity. Used during gravity down-pass to check if void level has active
+   * tasks. Only used if running with a zoom region. */
+  struct cell *void_super;
 
   /*! (Only applicable to void cells) Flag for whether this void cell has
    * real, non-empty, local zoom cells nested within it. Certain geometries
@@ -610,6 +678,9 @@ struct cell {
 
   /*! The list of sub-tasks that have been executed on this cell */
   char subtasks_executed[task_type_count];
+
+  /*! Flag set to 1 when this cell has been reached during task splitting */
+  int reached_in_task_split;
 #endif
 
   struct ghost_stats ghost_statistics;
@@ -633,8 +704,8 @@ int cell_glocktree(struct cell *c);
 void cell_gunlocktree(struct cell *c);
 int cell_mlocktree(struct cell *c);
 void cell_munlocktree(struct cell *c);
-int cell_slocktree(struct cell *c);
-void cell_sunlocktree(struct cell *c);
+int cell_slocktree(struct cell *c, const int split_task);
+void cell_sunlocktree(struct cell *c, const int split_task);
 int cell_sink_locktree(struct cell *c);
 void cell_sink_unlocktree(struct cell *c);
 int cell_blocktree(struct cell *c);
@@ -706,16 +777,26 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force,
+                     const int init_particles,
                      struct replication_list *replication_list_in);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
 void cell_drift_spart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
-void cell_drift_sink(struct cell *c, const struct engine *e, int force);
+void cell_drift_sink(struct cell *c, const struct engine *e,
+                     const int init_particles, int force);
 void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
+                      const int init_particles,
                       struct replication_list *replication_list);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
+void cell_init_part(struct cell *c, const struct engine *e);
+void cell_init_gpart(struct cell *c, const struct engine *e);
+void cell_init_spart(struct cell *c, const struct engine *e);
+void cell_init_bpart(struct cell *c, const struct engine *e);
+void cell_init_sink(struct cell *c, const struct engine *e);
 void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
                           const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
@@ -812,6 +893,12 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk,
                          const int periodic, const int use_mesh);
+int cell_can_use_mesh(struct engine *e, const struct cell *ci,
+                      const struct cell *cj);
+int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
+                               const struct cell *cj);
+void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e);
+void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e);
 
 /***
  * @brief Get the cell ID of a cell including an offset.
@@ -872,21 +959,17 @@ __attribute__((always_inline)) INLINE int cell_getid_below_bkg(
  *
  * Any calls to cell_getid_from_pos will be redirected to this function when
  * running with a zoom region. This function will then identify which level of
- * top level (TL) cell should be returned, either background, buffer (if used),
- * or zoom.
+ * top level (TL) cell should be returned, either background or zoom.
  *
- * The cell hierarchy is structured with background cells at the top (largest),
- * followed by buffer cells (intermediate), and finally zoom cells (smallest).
- * When running without buffer cells the hierarchy is bkg -> zoom.
+ * The cell hierarchy is structured with background cells at the top (largest)
+ * and zoom cells nested inside void background cell(s).
  *
  * We do this by testing each level from the top down. First we see what
  * background cell the position is in. If it's a void cell, we then get the
- * zoom cell (in the no buffer cell case). If it's an empty cell (buffer cell
- * case), we then get the buffer cell. If it's then a void buffer cell, we
- * then get the zoom region.
+ * zoom cell.
  *
  * Cells are not stored in their hierarchy order in s->cells_top. Instead,
- * zoom cells are first, followed by background cells, and finally buffer cells.
+ * zoom cells are first, followed by background cells.
  * This is a bit strange but puts the zoom cells as the primary cell type and
  * means we can simplify the code surrounding hydro operations which are
  * isolated to the zoom region.
@@ -907,10 +990,6 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
   const double zoom_lower_bounds[3] = {zoom_props->region_lower_bounds[0],
                                        zoom_props->region_lower_bounds[1],
                                        zoom_props->region_lower_bounds[2]};
-  const int buffer_cell_offset = zoom_props->buffer_cell_offset;
-  const double buffer_lower_bounds[3] = {zoom_props->buffer_lower_bounds[0],
-                                         zoom_props->buffer_lower_bounds[1],
-                                         zoom_props->buffer_lower_bounds[2]};
 
   /* Get the background cell ijk coordinates. */
   const int bkg_i = x * s->iwidth[0];
@@ -929,28 +1008,7 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
   /* If this is a void cell we are in the zoom region. */
   if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
-    /* If we have buffer cells then we first need to check those. */
-    if (s->zoom_props->with_buffer_cells) {
-
-      /* Which buffer TL cell are we in? */
-      cell_id = cell_getid_below_bkg(
-          s->zoom_props->buffer_cdim, buffer_lower_bounds, x, y, z,
-          s->zoom_props->buffer_iwidth, buffer_cell_offset);
-
-      /* Here we need to check if this is the void buffer cell.
-       * Otherwise, It's a legitimate buffer cell, and we'll return it. */
-      if (s->cells_top[cell_id].subtype == cell_subtype_void) {
-
-        /* Which zoom TL cell are we in? */
-        return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x,
-                                    y, z, s->zoom_props->iwidth,
-                                    /*offset*/ 0);
-      }
-
-      return cell_id;
-    }
-
-    /* Otherwise, we are in the zoom region, which zoom TL cell are we in? */
+    /* Which zoom TL cell are we in? */
     return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y, z,
                                 s->zoom_props->iwidth,
                                 /*offset*/ 0);
@@ -1044,11 +1102,84 @@ __attribute__((always_inline)) INLINE static int cell_pair_is_zoom_tl(
  *
  * @param c The #cell.
  */
+/**
+ * @brief Is a cell empty of particles?
+ *
+ * Returns 1 if the cell contains no particles of any kind.
+ *
+ * Only applicable to zoom simulations: For void cells, which carry no particles
+ * directly but aggregate mass from the zoom cells they contain, the multipole
+ * mass is also checked so that a void cell with non-empty zoom progeny is not
+ * incorrectly treated as empty.
+ *
+ * @param c The #cell.
+ * @return 1 if the cell is empty, 0 otherwise.
+ */
 __attribute__((always_inline)) INLINE static int cell_is_empty(
     const struct cell *c) {
 
-  return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
-          c->black_holes.count == 0 && c->sinks.count == 0);
+  /* Check particle counts first — short-circuits immediately for the common
+   * non-empty case without touching the multipole at all. */
+  if (c->hydro.count || c->grav.count || c->stars.count ||
+      c->black_holes.count || c->sinks.count)
+    return 0;
+
+  /* All counts are zero. If there's a multipole (self-gravity is on), check
+   * whether the cell has mass — void cells containing zoom cells will have
+   * M_000 > 0 even though they hold no particles directly. */
+  if (c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.f)
+    return 0;
+
+  return 1;
+}
+
+/**
+ * @brief Does a cell have no gravity particles to work with?
+ *
+ * Returns 1 if the cell can be skipped for gravity work.
+ *
+ * This is a gravity particle specific version of cell_is_empty.
+ *
+ * @param c The #cell.
+ * @return 1 if the cell is empty for gravity purposes, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_empty_grav(
+    const struct cell *c) {
+
+  /* Obviously false if we have any grav particles. */
+  if (c->grav.count > 0) {
+    return 0;
+  }
+
+  /* If we have no grav particles but do have a multipole with mass, then we are
+   * a void cell with zoom progeny and we can't skip this cell. */
+  if (c->grav.multipole->m_pole.M_000 > 0.f) {
+    return 0;
+  }
+
+  /* Otherwise, we have no grav particles and no zoom progeny, so we can skip
+   * this cell for gravity purposes. */
+  return 1;
+}
+
+/**
+ * @brief Is a cell split, or a void cell (which has progeny but split=0)?
+ *
+ * Void cells only appears in zoom simulations and only take part in gravity
+ * calculations. As such this function should be avoided outside these
+ * contexts.
+ *
+ * Void cells sit at the zoom-region boundary and are explicitly given
+ * c->split = 0 to stop normal traversal from crossing into the zoom
+ * cell tree.
+ *
+ * @param c The #cell.
+ * @return 1 if the cell is split or a void cell, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_split_or_void(
+    const struct cell *c) {
+
+  return c->split || c->subtype == cell_subtype_void;
 }
 
 /**
@@ -1091,6 +1222,37 @@ __attribute__((always_inline)) INLINE static double cell_mpole_CoM_dist2(
 }
 
 /**
+ * @brief Test if a cell contains a progeny at some level.
+ *
+ * @param c The #cell.
+ * @param progeny The progeny #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_contains_progeny(
+    const struct cell *c, const struct cell *progeny) {
+
+  /* Early exit if progeny is above c (only holds for regular cells). */
+  if (c->type == cell_type_regular && progeny->depth < c->depth) {
+    return 0;
+  }
+
+  /* Check all parents of progeny to see if we reach c */
+  const struct cell *current = progeny;
+  while (current != NULL) {
+    if (current == c) {
+      return 1;
+    }
+
+    /* Handle the zoom->void cell case, otherwise normal parent. */
+    if (current->void_parent != NULL) {
+      current = current->void_parent;
+    } else {
+      current = current->parent;
+    }
+  }
+  return 0;
+}
+
+/**
  * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size
  *
@@ -1104,6 +1266,12 @@ __attribute__((always_inline)) INLINE static double cell_mpole_CoM_dist2(
 __attribute__((always_inline)) INLINE static double cell_min_dist2(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const int periodic, const double dim[3]) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+#endif
 
   const double cix_min = ci->loc[0];
   const double ciy_min = ci->loc[1];
@@ -1187,6 +1355,86 @@ __attribute__((always_inline)) INLINE static int cell_is_inside(
           inner->loc[1] < outer->loc[1] + outer->width[1] &&
           inner->loc[2] >= outer->loc[2] &&
           inner->loc[2] < outer->loc[2] + outer->width[2]);
+}
+/**
+ * @brief Compute the square of the minimal distance between any two points in
+ * two cells of the same size including the maximal displacement of a gpart
+ * since the last rebuild (dx_max per axis).
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Are we using periodic BCs?
+ * @param dim The dimensions of the simulation volume
+ */
+__attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const int periodic, const double dim[3]) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+#endif
+
+  const double cix_min = ci->loc[0];
+  const double ciy_min = ci->loc[1];
+  const double ciz_min = ci->loc[2];
+  const double cjx_min = cj->loc[0];
+  const double cjy_min = cj->loc[1];
+  const double cjz_min = cj->loc[2];
+
+  const double cix_max = ci->loc[0] + ci->width[0];
+  const double ciy_max = ci->loc[1] + ci->width[1];
+  const double ciz_max = ci->loc[2] + ci->width[2];
+  const double cjx_max = cj->loc[0] + cj->width[0];
+  const double cjy_max = cj->loc[1] + cj->width[1];
+  const double cjz_max = cj->loc[2] + cj->width[2];
+
+  /* Include the maximal displacement of a gpart since the last rebuild in
+   * each cell. */
+  const double dx_maxi = ci->grav.multipole->dx_max[0];
+  const double dx_maxj = cj->grav.multipole->dx_max[0];
+  const double dy_maxi = ci->grav.multipole->dx_max[1];
+  const double dy_maxj = cj->grav.multipole->dx_max[1];
+  const double dz_maxi = ci->grav.multipole->dx_max[2];
+  const double dz_maxj = cj->grav.multipole->dx_max[2];
+
+  if (periodic) {
+
+    const double dx = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
+                           fabs(nearest(cix_min - cjx_max, dim[0])),
+                           fabs(nearest(cix_max - cjx_min, dim[0])),
+                           fabs(nearest(cix_max - cjx_max, dim[0])));
+
+    const double dy = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
+                           fabs(nearest(ciy_min - cjy_max, dim[1])),
+                           fabs(nearest(ciy_max - cjy_min, dim[1])),
+                           fabs(nearest(ciy_max - cjy_max, dim[1])));
+
+    const double dz = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
+                           fabs(nearest(ciz_min - cjz_max, dim[2])),
+                           fabs(nearest(ciz_max - cjz_min, dim[2])),
+                           fabs(nearest(ciz_max - cjz_max, dim[2])));
+
+    const double dx_eff = dx + dx_maxi + dx_maxj;
+    const double dy_eff = dy + dy_maxi + dy_maxj;
+    const double dz_eff = dz + dz_maxi + dz_maxj;
+    return dx_eff * dx_eff + dy_eff * dy_eff + dz_eff * dz_eff;
+
+  } else {
+
+    const double dx = min4(fabs(cix_min - cjx_min), fabs(cix_min - cjx_max),
+                           fabs(cix_max - cjx_min), fabs(cix_max - cjx_max));
+    const double dy = min4(fabs(ciy_min - cjy_min), fabs(ciy_min - cjy_max),
+                           fabs(ciy_max - cjy_min), fabs(ciy_max - cjy_max));
+    const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
+                           fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
+
+    const double dx_eff = dx + dx_maxi + dx_maxj;
+    const double dy_eff = dy + dy_maxi + dy_maxj;
+    const double dz_eff = dz + dz_maxi + dz_maxj;
+    return dx_eff * dx_eff + dy_eff * dy_eff + dz_eff * dz_eff;
+  }
 }
 
 /* Inlined functions (for speed). */
@@ -1759,6 +2007,7 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
     swift_free("hydro.sort", c->hydro.sort);
     c->hydro.sort = NULL;
     c->hydro.sort_allocated = 0;
+    c->hydro.sorted = 0;
   }
 #endif
 }
@@ -1876,6 +2125,7 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
     swift_free("stars.sort", c->stars.sort);
     c->stars.sort = NULL;
     c->stars.sort_allocated = 0;
+    c->stars.sorted = 0;
   }
 #endif
 }
@@ -2022,12 +2272,10 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
       atomic_inc(&last_leaf_cell_id);
     } else {
 
-      /* In the zoom case we assign 2 or 3 separate cell grids (3 when buffer
-       * cells have been turned on, 2 otherwise). These are all stored in
-       * s->cells_top with zoom cells first, followed by background cells, and
-       * finally buffer cells (if used).
+      /* In the zoom case we assign 2 separate cell grids. These are stored in
+       * s->cells_top with zoom cells first, followed by background cells.
        *
-       * Therefore: zoom_cell_ids < background_cell_ids < buffer_cell_ids
+       * Therefore: zoom_cell_ids < background_cell_ids
        *
        * The offsets of each cell grid are stored for accessing the cells, but
        * this means cell ids are only reproducable if the total number of all
@@ -2037,22 +2285,18 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
       const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
       const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                                 s->zoom_props->cdim[2]};
-      const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
-                                  s->zoom_props->buffer_cdim[1],
-                                  s->zoom_props->buffer_cdim[2]};
 
       if (((cdim[0] * cdim[1] * cdim[2]) +
-           (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2]) +
-           (buffer_cdim[0] * buffer_cdim[1] * buffer_cdim[2])) > 32 * 32 * 32) {
+           (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2])) > 32 * 32 * 32) {
         /* print warning only once */
         if (last_cell_id == 1ULL) {
           message(
-              "WARNING: Got (%d x %d x %d + %d x %d x %d + %d x %d x %d) top "
+              "WARNING: Got (%d x %d x %d + %d x %d x %d) top "
               "level cells. "
               "Cell IDs are only guaranteed to be "
               "reproduceably unique if count is < 32^3",
               cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1],
-              zoom_cdim[2], buffer_cdim[0], buffer_cdim[1], buffer_cdim[2]);
+              zoom_cdim[2]);
         }
         /* Do this in same line. Otherwise, bad things happen. */
         c->cellID = atomic_inc(&last_cell_id);

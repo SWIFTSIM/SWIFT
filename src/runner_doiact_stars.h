@@ -96,13 +96,17 @@
 #define IACT_STARS _IACT_STARS(FUNCTION)
 
 void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
+                          const int offset, const int ntasks,
                           const int limit_min_h, const int limit_max_h);
 void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                          const int offset, const int ntasks,
                           const int limit_min_h, const int limit_max_h);
 
-void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci,
-                       int recurse_below_h_max, const int gettimer);
+void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, const int offset,
+                       const int ntasks, int recurse_below_h_max,
+                       const int gettimer);
 void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                       const int offset, const int ntasks,
                        int recurse_below_h_max, const int gettimer);
 
 void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, const struct cell *ci,

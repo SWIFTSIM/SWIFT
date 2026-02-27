@@ -318,6 +318,11 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
 
+    case UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME:
+      baseUnitsExp[UNIT_LENGTH] = 2.f;
+      baseUnitsExp[UNIT_TIME] = -3.f;
+      break;
+
     case UNIT_CONV_ENERGY_VELOCITY:
       baseUnitsExp[UNIT_MASS] = 1.f;
       baseUnitsExp[UNIT_LENGTH] = 3.f;
@@ -467,6 +472,11 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_CURRENT] = -1.f;
       break;
 
+    case UNIT_CONV_MAGNETIC_DIFFUSIVITY:
+      baseUnitsExp[UNIT_LENGTH] = 2.f;
+      baseUnitsExp[UNIT_TIME] = -1.f;
+      break;
+
     case UNIT_CONV_TEMPERATURE:
       baseUnitsExp[UNIT_TEMPERATURE] = 1.f;
       break;
@@ -539,6 +549,11 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       break;
 
     case UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE:
+      baseUnitsExp[UNIT_LENGTH] = -2.f;
+      baseUnitsExp[UNIT_TIME] = -1.f;
+      break;
+    case UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA:
+      baseUnitsExp[UNIT_MASS] = 1.f;
       baseUnitsExp[UNIT_LENGTH] = -2.f;
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;

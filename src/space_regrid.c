@@ -428,6 +428,7 @@ static void uniform_construct_tl_cells(struct space *s,
         c->sinks.count = 0;
         c->top = c;
         c->super = c;
+        c->void_super = NULL;
         c->hydro.super = c;
         c->grav.super = c;
         c->hydro.ti_old_part = ti_current;
@@ -553,13 +554,11 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Otherwise, if we are running a zoom simulation but this is not our first
      * rodeo we need to update the extent of the zoom region and any shift we
-     * might need to keep the zoom reigon centred on the same location. */
+     * might need to keep the zoom region centred on the same location. */
     /* NOTE: we could instead update the CoM and shift in drift tasks and
      * avoid this extra loop over all gparts but for now this is simpler
      * and **probably** not a big overhead. */
-    if (s->with_zoom_region) {
-      zoom_get_region_dim_and_shift(s, verbose);
-    }
+    zoom_get_region_dim_and_shift(s, verbose);
   }
 
   /* Get the new putative cell dimensions. */
@@ -639,26 +638,20 @@ void space_regrid(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check the cell types counts against what we have now. */
     int nr_zoom_cells = 0;
-    int nr_buffer_cells = 0;
     int nr_bkg_cells = 0;
     for (int k = 0; k < s->nr_cells; k++) {
       if (s->cells_top[k].type == cell_type_zoom) {
         nr_zoom_cells++;
-      } else if (s->cells_top[k].type == cell_type_buffer) {
-        nr_buffer_cells++;
       } else if (s->cells_top[k].type == cell_type_bkg) {
         nr_bkg_cells++;
       }
     }
-    if (s->with_zoom_region &&
-        (nr_zoom_cells != s->zoom_props->nr_zoom_cells ||
-         nr_buffer_cells != s->zoom_props->nr_buffer_cells ||
-         nr_bkg_cells != s->zoom_props->nr_bkg_cells)) {
+    if (s->with_zoom_region && (nr_zoom_cells != s->zoom_props->nr_zoom_cells ||
+                                nr_bkg_cells != s->zoom_props->nr_bkg_cells)) {
       error(
-          "The number of zoom cells (%d), buffer cells (%d) or background "
-          "cells (%d) does not match the expected values (%d, %d, %d).",
-          nr_zoom_cells, nr_buffer_cells, nr_bkg_cells,
-          s->zoom_props->nr_zoom_cells, s->zoom_props->nr_buffer_cells,
+          "The number of zoom cells (%d) or background cells (%d) does not "
+          "match the expected values (%d, %d).",
+          nr_zoom_cells, nr_bkg_cells, s->zoom_props->nr_zoom_cells,
           s->zoom_props->nr_bkg_cells);
     }
 
