@@ -120,16 +120,16 @@ cd "${WORKDIR}/examples/ZoomSimulations/UniformDMEAGLE"
 
 # Link tables from shared HOME location when available; run.sh downloads
 # any missing dependencies.
-if [ ! -e yieldtables ]; then
+if [ ! -e yieldtables ] && [ -e "$HOME/yieldtables" ]; then
 	link_data yieldtables
 fi
-if [ ! -e coolingtables ]; then
+if [ ! -e coolingtables ] && [ -e "$HOME/coolingtables" ]; then
 	link_data coolingtables
 fi
-if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]; then
+if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ] && [ -e "$HOME/UV_dust1_CR1_G1_shield1.hdf5" ]; then
 	link_data UV_dust1_CR1_G1_shield1.hdf5
 fi
-if [ ! -e photometry ]; then
+if [ ! -e photometry ] && [ -e "$HOME/photometry" ]; then
 	link_data photometry
 fi
 
