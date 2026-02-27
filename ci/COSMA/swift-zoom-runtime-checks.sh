@@ -55,28 +55,28 @@ echo
 echo "---------------------------------------------------"
 echo "Zoom integration check: UniformDMGravity, 16 steps"
 echo "---------------------------------------------------"
-cd examples/ZoomSimulations/UniformDMGravity
+cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravity"
 do_run bash run.sh
 
 echo
 echo "------------------------------------------------------------"
 echo "Zoom integration check: UniformDMGravityWithHoles, 16 steps"
 echo "------------------------------------------------------------"
-cd ../UniformDMGravityWithHoles
+cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravityWithHoles"
 do_run bash run.sh
 
 echo
 echo "------------------------------------------------------"
 echo "Zoom integration check: OffsetUniDMGravity, 16 steps"
 echo "------------------------------------------------------"
-cd ../OffsetUniDMGravity
+cd "${WORKDIR}/examples/ZoomSimulations/OffsetUniDMGravity"
 do_run bash run.sh
 
 echo
 echo "------------------------------------------------------------"
 echo "Zoom integration check: BoundaryOffsetUniDMGrav, 16 steps"
 echo "------------------------------------------------------------"
-cd ../BoundaryOffsetUniDMGrav
+cd "${WORKDIR}/examples/ZoomSimulations/BoundaryOffsetUniDMGrav"
 do_run bash run.sh
 
 echo
@@ -98,7 +98,7 @@ echo
 echo "-------------------------------------------------"
 echo "Zoom integration check: UniformDMHydro, 16 steps"
 echo "-------------------------------------------------"
-cd ../UniformDMHydro
+cd "${WORKDIR}/examples/ZoomSimulations/UniformDMHydro"
 do_run bash run.sh
 
 cd "${WORKDIR}"
