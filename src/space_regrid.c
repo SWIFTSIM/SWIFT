@@ -554,7 +554,7 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Otherwise, if we are running a zoom simulation but this is not our first
      * rodeo we need to update the extent of the zoom region and any shift we
-     * might need to keep the zoom reigon centred on the same location. */
+     * might need to keep the zoom region centred on the same location. */
     /* NOTE: we could instead update the CoM and shift in drift tasks and
      * avoid this extra loop over all gparts but for now this is simpler
      * and **probably** not a big overhead. */
