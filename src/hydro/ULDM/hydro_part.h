@@ -136,6 +136,9 @@ struct part {
       
   /*! Laplacian of the density */
   float laplacian_rho;
+
+  /*! Quantum potential */
+  float QP;
   
   /* Store density/force specific stuff. */
   union {

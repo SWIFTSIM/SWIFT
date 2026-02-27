@@ -30,14 +30,29 @@ The Laplacian of the density is computed in the second loop, as:
   \label{eq:uldm:implementation:laplacian_rho}
   \nabla^2 \rho_i
   & = &  \sum_j m_j \vec{\nabla}^2 W(\vec{x}_{ij}, h_i) \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}} - \frac{|\vec{\nabla}\rho_i|^2}{\rho_i}\\
-  & = & \frac{1}{h_i^5}  \sum_j m_j \left[ f''(u_i) + \frac{2}{u_i} f'(u_j) \right]  \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}} \\
+  & = & \frac{1}{h_i^5}  \sum_j m_j \left[ f''(u_i) + \frac{2}{u_i} f'(u_i) \right]  \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}} \\
   && - \frac{|\vec{\nabla}\rho_i|^2}{\rho_i}
 \end{eqnarray}
 
 Note that the  $\frac{1}{h_i^5}$ factor as well as the last ratio that involve only $\rho_i$ are computed at the end of the loop.
 
 
-The gradient of the quantum pressure is computed in the third loop, as:
+The quantum potential is computed in the third loop, as:
+
+\begin{eqnarray}
+  \label{eq:uldm:implementation:Q}
+  Q_i
+  & = &  \frac{\hbar}{2 m^2_\chi }  \sum_j \frac{m_j}{\rho_j} W(\vec{x}_{ij}, h_i)
+  \left( \frac{\nabla^2\rho_j}{2\rho_j} -\frac{|\vec{\nabla}\rho_j|^2}{4\rho^2_j} \right)\\
+  & = &  \frac{\hbar}{2 m^2_\chi } \frac{1}{h_i^3}
+         \sum_j \frac{m_j}{\rho_j} f(u_i) 
+         \left( \frac{\nabla^2\rho_j}{2\rho_j} -\frac{|\vec{\nabla}\rho_j|^2}{4\rho^2_j} \right)
+\end{eqnarray}
+
+Note that the  $\frac{1}{h_i^3}$ factor as well as the constant are computed at the end of the loop. The quantum potential is only
+used for debugging purposes.
+
+The gradient of the quantum potential is computed in the third loop, as:
 
 \begin{eqnarray}
   \label{eq:uldm:implementation:grad_Q}

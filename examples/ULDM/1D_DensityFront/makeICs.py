@@ -29,6 +29,11 @@ parser.add_argument("-n",
                   help="number of particles",
                   metavar=" INT")   
 
+parser.add_argument("--regular-grid",
+                    action="store_true",
+                    default=False,
+                    help="Put particles on a regular grid") 
+
 parser.add_argument("-o",
                     action="store",
                     type=str,
@@ -74,19 +79,38 @@ Mtot = fct_CumMass(xmax)
 m    = fct_normedCumMass(x)
 
 
-# generate the positions
-n = opt.n
-X = np.linspace(0,1,n)
-xx = np.interp(X,m,x)
+if opt.regular_grid:
 
-# remove the last point (at the border of the domain)
-xx = xx[:-1]
-n = len(xx)
+  # generate the positions
+  n = opt.n
+  X = np.linspace(0,1,n)
+  xx = X*xmax
+  
+  # remove the last point (at the border of the domain)
+  xx = xx[:-1]
+  n = len(xx)
 
+  rho = fct_Rho(xx)
+  mass = Mtot*rho/sum(rho)
+
+else:  
+
+  # generate the positions
+  n = opt.n
+  X = np.linspace(0,1,n)
+  xx = np.interp(X,m,x)
+   
+  # remove the last point (at the border of the domain)
+  xx = xx[:-1]
+  n = len(xx)
+
+  mass = Mtot*np.ones(n)/n
+
+  
 # create the pNbody object
 pos  = np.transpose(np.array([xx, np.zeros(n), np.zeros(n)]))
 vel  = np.transpose(np.array([np.zeros(n),  np.zeros(n), np.zeros(n)]))
-mass = Mtot*np.ones(n)/n
+
 nb = Nbody(status='new',pos=pos,vel=vel,mass=mass,ftype='swift')
 # set particles to gas
 nb.set_tpe(0)

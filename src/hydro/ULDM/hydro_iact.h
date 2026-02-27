@@ -241,7 +241,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->grad_rho[1] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[1];
   pi->grad_rho[2] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[2];
 
-  /* Lapacien of the gradient */
+  /* Lapacien of the density */
   pi->laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
     
   /* Compute quantities for pj. */
@@ -259,6 +259,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   /* Lapacien of the gradient */
   pj->laplacian_rho += mi * (wj_d2x + 2/uj * wj_dx) * (rhoi-rhoj) *sqrtrhoij_inv;
+  
 }
 
 /**
@@ -315,8 +316,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->grad_rho[1] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[1];
   pi->grad_rho[2] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[2];
 
-  /* Lapacien of the gradient */
+  /* Lapacien of the density */
   pi->laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
+  
 }
 
 /**
@@ -372,12 +374,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(xj, &wj, &wj_dx);
 
   /* Assemble the acceleration */
-  const float QPi = lapacian_rhoj/2.0f/rhoj - norm_grad_rhoj2/4.0f/rhoj2; 
+  const float QPi = lapacian_rhoj/2.0f/rhoj - norm_grad_rhoj2/4.0f/rhoj2;   
   const float QPj = lapacian_rhoi/2.0f/rhoi - norm_grad_rhoi2/4.0f/rhoi2; 
   
   const float fi = wi_dx/mj/rhoj*QPi*r_inv;
   const float fj = wj_dx/mi/rhoi*QPj*r_inv;
 
+  
+  /* Quantum Potential */
+  pi->QP += mj * wi * QPj / rhoj;
+  pj->QP += mi * wj * QPi / rhoj;
+    
+  
   /* Use the force Luke ! Last part of the acceleration is not included */
   pi->a_hydro[0] -= fi * dx[0];
   pi->a_hydro[1] -= fi * dx[1];   // check sign !!!
@@ -430,10 +438,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xi, &wi, &wi_dx);
 
   /* Assemble the acceleration */
-  const float QPi = lapacian_rhoj/2.0f/rhoj - norm_grad_rhoj2/4.0f/rhoj2; 
-  
+  const float QPi = lapacian_rhoj/2.0f/rhoj - norm_grad_rhoj2/4.0f/rhoj2;   
   const float fi = wi_dx/mj/rhoj*QPi*r_inv;
 
+
+  /* Quantum Potential */
+  pi->QP += mj * wi * QPi / rhoj;
+  
   /* Use the force Luke ! Last part of the acceleration is not included */
   pi->a_hydro[0] -= fi * dx[0];
   pi->a_hydro[1] -= fi * dx[1];   // check sign !!!

@@ -23,7 +23,16 @@ The Laplacian of the density write:
   \nabla^2 \rho_i =  \sum_j m_j \vec{\nabla}^2 W(\vec{x}_{ij}, h_i) \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}} - \frac{|\vec{\nabla}\rho_i|^2}{\rho_i}.
 \end{equation}
 
-The acceleration of the particle $i$ is equal to the gradient of the quantum pressure:
+The quantum potential of the particle $i$ is :
+
+\begin{equation}
+  \label{eq:uldm:grad_Q}
+  Q_i =  \frac{\hbar}{2 m^2_\chi }  \sum_j \frac{m_j}{\rho_j} W(\vec{x}_{ij}, h_i)
+  \left( \frac{\nabla^2\rho_j}{2\rho_j} -\frac{|\vec{\nabla}\rho_j|^2}{4\rho^2_j} \right)
+\end{equation}
+
+
+The acceleration of the particle $i$ is equal to the gradient of the quantum potential:
 
 \begin{equation}
   \label{eq:uldm:grad_Q}

@@ -530,7 +530,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->grad_rho[1] = 0.f;
   p->grad_rho[2] = 0.f;
   p->norm_grad_rho2 = 0.f;
-  p->laplacian_rho = 0.f;    
+  p->laplacian_rho = 0.f;
+  p->QP = 0.f;
 }
 
 /**
@@ -910,8 +911,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  const float uldm_Cte = 1e-40;
+  const float uldm_Cte = 1;
+
+  /* Quantum potential : finish the calculation by inserting the missing h-factors and constant */
+  p->QP *= h_inv_dim*uldm_Cte;  
   
+  /* Quantum acceleration : finish the calculation by inserting the missing h-factors and constant */
   p->a_hydro[0] *= h_inv_dim_plus_one*uldm_Cte;
   p->a_hydro[1] *= h_inv_dim_plus_one*uldm_Cte;
   p->a_hydro[2] *= h_inv_dim_plus_one*uldm_Cte;

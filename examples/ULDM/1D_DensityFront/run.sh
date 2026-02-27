@@ -8,7 +8,8 @@ rm -rf snap*
 
 # generating initial conditions
 printf "Generating ICs"
-./makeICs.py -n 1024
+#./makeICs.py -n 256
+./makeICs.py -n 256 --regular-grid
 
 # running swift
 printf "Running simulation for one step..."

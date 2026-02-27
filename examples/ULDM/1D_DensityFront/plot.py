@@ -172,7 +172,7 @@ def MakePlot(opt):
   datas = []
 
 
-  fig, axs = plt.subplots(4, 1, figsize=(12, 18))
+  fig, axs = plt.subplots(5, 1, figsize=(12, 18))
   
   
   #################################
@@ -209,92 +209,114 @@ def MakePlot(opt):
 
     x = nb.x()
     y = nb.rho
-
-    axs[0].plot(x,y,label=filename,c='r',ls=':')
+    axs[0].plot(x,y,label=filename,c='r',ls='-',zorder=10)
 
 
     ################
-    # plot the gradient
+    # plot the density gradient
     ################    
 
     x = nb.x()
-    y = nb.grad_rho[:,0]/nb.rho
+    y = nb.grad_rho[:,0]
+    axs[1].plot(x,y,label=filename,c='r',ls='-',zorder=10)
 
-    axs[1].plot(x,y,label=filename,c='r',ls=':')
+    ################
+    # plot the laplacien of the gradient
+    ################    
+
+    x = nb.x()
+    y = nb.laplacian_rho
+    axs[2].plot(x,y,label=filename,c='r',ls='-',zorder=10)
+
     
+    ################
+    # plot the quantum potential
+    ################    
+
+    x = nb.x()
+    y = nb.quantum_potential
+    axs[3].plot(x,y,label=filename,c='r',ls='-',zorder=10)
+
+
     
   # ground truth
     
-  xmax  = 10000
-  x     = np.linspace(0,xmax,1000) # kpc
-  x0    = 5000                     # kpc
-  rho0  = 1e-8/3                   # 1e10Msol/kpc^3
-  c     = 1.0
-  sigma = 500                      # kpc
-  hbar  = 1
-  mx    = 1
-   
+  xmax   = 10000
+  x      = np.linspace(0,xmax,1000) # kpc
+  x0     = 5000                     # kpc
+  rho0   = 1e-8/3                   # 1e10Msol/kpc^3
+  c      = 1.0
+  sigma  = 500                      # kpc
+  sigma2 = sigma*sigma
+  sigma3 = sigma*sigma*sigma 
+  hbar   = 1
+  hbar2  = hbar*hbar
+  mx     = 1
+  mx2    = mx*mx
+
+  Qcte = 1 # hbar2/2/mx2
+
+    
   def fct_Rho(x):
     return rho0 * (c+1-np.tanh((x-x0)/sigma))
    
   def fct_GradRho(x):
-    return -rho0/sigma * 1/np.cosh((x-x0)/sigma)**2
+    t = np.tanh((x-x0)/sigma)
+    return -rho0/sigma * (1-t**2)
 
+  def fct_LaplacianRho(x):
+    t = np.tanh((x-x0)/sigma)
+    return 2*rho0/sigma2 *t*(1-t**2)
+  
   def fct_QuantumPotential(x):
     t = np.tanh((x-x0)/sigma)
-    hbar2  = hbar*hbar
-    mx2    = mx*mx
-    sigma2 = sigma*sigma 
-    cte = -hbar2/2/mx2
-    return cte/4/sigma2*(1-t**2)/(c+1-t)**2 * (1-4*t*(c+1) + 3*t**2)
+    return -Qcte/4/sigma2*(1-t**2)/(c+1-t)**2 * (1-4*t*(c+1) + 3*t**2)
 
-  
   def fct_QuantumAcceleration(x):
     t = np.tanh((x-x0)/sigma)
-    hbar2  = hbar*hbar
-    mx2    = mx*mx
-    sigma3 = sigma*sigma*sigma 
-    cte = -hbar2/2/mx2
-    cte2= (c+1-t)
-    return -cte/4/sigma3*(1-t**2)**2/cte2**3 * (6*t**2*cte2 - 4*t*cte2**2 - (1-t**2)*cte2 )
+    return -Qcte/4/sigma2*(1-t**2)/sigma *( -2/(t-c-1)**3 * (3*t**4 + (-8*c-8)*t**3 + (6*c**2+12*c+6)*t**2 -2*c**2 - 4*c - 1 ) )
+ 
 
+  rho      = fct_Rho(x)
+  grad_rho = fct_GradRho(x)
+  lapl_rho = fct_LaplacianRho(x)
+  QP       = fct_QuantumPotential(x)
+  Qa       = fct_QuantumAcceleration(x)
 
-
-  
   
   # density
-  rho  = fct_Rho(x)
-  axs[0].plot(x,rho,c='k')
+  axs[0].plot(x,rho,c='k',lw=4,alpha=0.5)
   axs[0].set_xlabel(r'$r\,\rm{[kpc]}$')
   axs[0].set_ylabel(r'$\rho [10^{10}\,\rm{M_{\odot}\cdot kpc^{-3}}$')
   axs[0].set_xlim(1000,9000)
   axs[0].set_ylim(0.3e-8,1.1e-8)
 
   # density gradient
-  rho  = fct_GradRho(x)/fct_Rho(x)
-  axs[1].plot(x,rho,c='k')
+  axs[1].plot(x,grad_rho,c='k',lw=4,alpha=0.5)
   axs[1].set_xlabel(r'$r\,\rm{[kpc]}$')
-  axs[1].set_ylabel(r'$\nabla\rho /\rho$')
+  axs[1].set_ylabel(r'$\nabla\rho$')
   axs[1].set_xlim(1000,9000)
-  axs[1].set_ylim(-1.1e-3,0.1e-3)
-  
-  # quantum potential
-  Q  = fct_QuantumPotential(x)
-  axs[2].plot(x,Q,c='k')
+  axs[1].set_ylim(-8e-12,1e-12)
+
+  # laplacian of the gradient
+  axs[2].plot(x,lapl_rho,c='k',lw=4,alpha=0.5) 
   axs[2].set_xlabel(r'$r\,\rm{[kpc]}$')
-  axs[2].set_ylabel(r'$Q$')
+  axs[2].set_ylabel(r'$\nabla^2\rho$')
   axs[2].set_xlim(1000,9000)
-  #axs[2].set_ylim(-1.1e-3,0.1e-3)
+  axs[2].set_ylim(-1.1e-14,1.1e-14)
+
+  # quantum potential
+  axs[3].plot(x,QP,c='k',lw=4,alpha=0.5)  
+  axs[3].set_xlabel(r'$r\,\rm{[kpc]}$')
+  axs[3].set_ylabel(r'$Q$')
+  axs[3].set_xlim(1000,9000)
+  axs[3].set_ylim(-1.1e-6,1.1e-6)
 
   # quantum acceleration
-  Q  = fct_QuantumPotential(x)
-  a  = np.gradient(Q)
-  axs[3].plot(x,a,c='k')  
-  a  = fct_QuantumAcceleration(x)
-  axs[3].plot(x,a,c='r')    
-  axs[3].set_xlabel(r'$r\,\rm{[kpc]}$')
-  axs[3].set_ylabel(r'$Acceleration$')
-  axs[3].set_xlim(1000,9000)
+  axs[4].plot(x,Qa,c='k',lw=4,alpha=0.5)
+  axs[4].set_xlabel(r'$r\,\rm{[kpc]}$')
+  axs[4].set_ylabel(r'$|\vec{a}|$')
+  axs[4].set_xlim(1000,9000)
   #axs[2].set_ylim(-1.1e-3,0.1e-3)
   
   
