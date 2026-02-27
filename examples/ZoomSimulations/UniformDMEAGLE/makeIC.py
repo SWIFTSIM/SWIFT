@@ -6,9 +6,9 @@ This script constructs a deterministic two-component DM-only IC file:
 - ``PartType2``: low-resolution background particles outside that cube.
 
 Geometry and hierarchy:
-- background grid with ``16`` top-level cells per axis;
+- background grid with ``8`` top-level cells per axis;
 - zoom region spanning the central ``2x2x2`` background cells
-  (12.5% of the box width per axis);
+  (25% of the box width per axis);
 - zoom top-level depth fixed to ``2`` (``8`` zoom cells per axis);
 - ``region_pad_factor = 1.1``.
 
@@ -16,9 +16,9 @@ Mass model:
 - cosmology follows EAGLE reference values;
 - high-resolution parent masses are chosen so that, after
   ``generate_gas_in_ics``, the remaining DM mass is ~``9.7e6 Msun``;
-- background particles are ~``10x`` more massive than high-resolution parent
-  particles (i.e. ``10x`` lower mass resolution), while preserving mean matter
-  density in the background volume.
+- both zoom and background cells are populated with the same fixed number of
+  particles per cell; particle masses are then set by mass conservation in each
+  region, so the background particles are naturally more massive.
 
 Dependencies:
 - ``numpy`` for geometry and sampling;
@@ -74,15 +74,16 @@ TARGET_PARENT_MASS = TARGET_DM_POST_SPLIT / (1.0 - FBARYON)
 
 # Zoom geometry.
 REGION_PAD_FACTOR = 1.1
-BKG_CELLS = 16
+BKG_CELLS = 8
 ZOOM_BKG_CELLS_SPANNED = 2
 ZOOM_TOP_LEVEL_DEPTH = 2
 ZOOM_CELLS_PER_AXIS = ZOOM_BKG_CELLS_SPANNED * (2**ZOOM_TOP_LEVEL_DEPTH)
 
-# Particle layout.
-HI_PARTICLES_AXIS = 1
-HI_PARTICLES_PER_ZOOM_CELL = HI_PARTICLES_AXIS**3
-BACKGROUND_MASS_RATIO_TARGET = 10.0
+# Particle layout. Keep occupancy fixed and identical across zoom and
+# background cells.
+PARTICLES_AXIS_PER_CELL = 4
+HI_PARTICLES_PER_ZOOM_CELL = PARTICLES_AXIS_PER_CELL**3
+BKG_PARTICLES_PER_TOP_CELL = PARTICLES_AXIS_PER_CELL**3
 RNG_SEED = 20260227
 
 OUTPUT_FILE = "zoom_uniform_dm_eagle.hdf5"
@@ -148,23 +149,6 @@ def sample_stratified_in_cell(
     return lo + u * width
 
 
-def sample_uniform_in_cell(
-    rng: np.random.Generator, lo: np.ndarray, hi: np.ndarray, n_part: int
-) -> np.ndarray:
-    """Sample ``n_part`` positions uniformly in one Cartesian cell.
-
-    Args:
-        rng: NumPy random generator.
-        lo: Lower coordinate bounds of the cell.
-        hi: Upper coordinate bounds of the cell.
-        n_part: Number of particles to sample.
-
-    Returns:
-        ``(n_part, 3)`` array of sampled positions.
-    """
-    return rng.uniform(lo, hi, size=(n_part, 3))
-
-
 def generate_high_res_particles(rng: np.random.Generator, centre: float) -> np.ndarray:
     """Populate all zoom cells with fixed high-resolution occupancy.
 
@@ -185,28 +169,10 @@ def generate_high_res_particles(rng: np.random.Generator, centre: float) -> np.n
             for iz in range(ZOOM_CELLS_PER_AXIS):
                 lo = hi_lo + zoom_w * np.array([ix, iy, iz], dtype=np.float64)
                 hi = lo + zoom_w
-                chunks.append(sample_stratified_in_cell(rng, lo, hi, HI_PARTICLES_AXIS))
+                chunks.append(
+                    sample_stratified_in_cell(rng, lo, hi, PARTICLES_AXIS_PER_CELL)
+                )
     return np.vstack(chunks)
-
-
-def background_particles_per_top_cell() -> int:
-    """Particles per background top cell for target lower mass resolution.
-
-    We enforce a target background-to-highres particle mass ratio and solve for
-    the total number of background particles required by mass conservation.
-
-    Returns:
-        Integer number of ``PartType2`` particles per non-central top-level
-        background cell.
-    """
-    total_background_mass = RHO_M * (BOX_SIZE**3 - HI_REGION_SIZE**3)
-    target_background_mass = BACKGROUND_MASS_RATIO_TARGET * TARGET_PARENT_MASS
-
-    n_background_target = max(
-        1, int(round(total_background_mass / target_background_mass))
-    )
-    n_background_cells = BKG_CELLS**3 - ZOOM_BKG_CELLS_SPANNED**3
-    return max(1, int(round(n_background_target / n_background_cells)))
 
 
 def generate_background_particles(rng: np.random.Generator) -> np.ndarray:
@@ -220,8 +186,6 @@ def generate_background_particles(rng: np.random.Generator) -> np.ndarray:
     """
     top_w = BOX_SIZE / BKG_CELLS
     central = {BKG_CELLS // 2 - 1, BKG_CELLS // 2}
-    n_per_cell = background_particles_per_top_cell()
-
     chunks = []
     for ix in range(BKG_CELLS):
         for iy in range(BKG_CELLS):
@@ -230,7 +194,9 @@ def generate_background_particles(rng: np.random.Generator) -> np.ndarray:
                     continue
                 lo = top_w * np.array([ix, iy, iz], dtype=np.float64)
                 hi = lo + top_w
-                chunks.append(sample_uniform_in_cell(rng, lo, hi, n_per_cell))
+                chunks.append(
+                    sample_stratified_in_cell(rng, lo, hi, PARTICLES_AXIS_PER_CELL)
+                )
     return np.vstack(chunks)
 
 
@@ -260,6 +226,25 @@ def validate_layout(hi_pos: np.ndarray, bkg_pos: np.ndarray, centre: float) -> N
     bkg_in_hi = np.all((bkg_pos >= lo) & (bkg_pos < hi), axis=1)
     if np.any(bkg_in_hi):
         raise RuntimeError("Background particles found inside zoom cube.")
+
+    # Background occupancy should also be uniform by construction.
+    top_w = BOX_SIZE / BKG_CELLS
+    idx = np.floor(bkg_pos / top_w).astype(np.int64)
+    idx = np.clip(idx, 0, BKG_CELLS - 1)
+    linear = idx[:, 0] + BKG_CELLS * (idx[:, 1] + BKG_CELLS * idx[:, 2])
+    bkg_only_occ = np.bincount(linear, minlength=BKG_CELLS**3)
+    central = {BKG_CELLS // 2 - 1, BKG_CELLS // 2}
+    for ix in range(BKG_CELLS):
+        for iy in range(BKG_CELLS):
+            for iz in range(BKG_CELLS):
+                lin = ix + BKG_CELLS * (iy + BKG_CELLS * iz)
+                if ix in central and iy in central and iz in central:
+                    if bkg_only_occ[lin] != 0:
+                        raise RuntimeError(
+                            "Background particles found in the central 2x2x2 block."
+                        )
+                elif bkg_only_occ[lin] != BKG_PARTICLES_PER_TOP_CELL:
+                    raise RuntimeError("Background top-level occupancy is not uniform.")
 
 
 def write_ic_file(hi_pos: np.ndarray, bkg_pos: np.ndarray) -> None:
@@ -324,16 +309,12 @@ def write_ic_file(hi_pos: np.ndarray, bkg_pos: np.ndarray) -> None:
     print(f"Box size [Mpc]:                           {BOX_SIZE:.6f}")
     print(f"High-resolution particles (PartType1):    {n_hi}")
     print(f"Background particles (PartType2):         {n_bkg}")
-    print(
-        f"Background particles/top-level cell:      {background_particles_per_top_cell()}"
-    )
+    print(f"Particles per zoom cell (PartType1):      {HI_PARTICLES_PER_ZOOM_CELL}")
+    print(f"Particles per top cell (PartType2):       {BKG_PARTICLES_PER_TOP_CELL}")
     print(f"Target post-split DM mass [Msun]:         {dm_post_split:.3e}")
     print(f"Target post-split gas mass [Msun]:        {gas_post_split:.3e}")
     print(
         f"Zoom-region width fraction per axis:      {TARGET_ZOOM_EXTENT / BOX_SIZE:.3f}"
-    )
-    print(
-        f"Background/high-res mass ratio target:    {BACKGROUND_MASS_RATIO_TARGET:.1f}"
     )
     print(f"Background/high-res mass ratio actual:    {bkg_mass[0] / hi_mass[0]:.2f}")
 
@@ -343,7 +324,7 @@ def main() -> None:
     # Offset the centre by a tiny deterministic amount to avoid exact lattice
     # symmetries at depth-1 multipole checks while staying in the same central
     # background-cell block.
-    centre = 0.5003 * BOX_SIZE
+    centre = 0.5 * BOX_SIZE
     rng = np.random.default_rng(RNG_SEED)
 
     # Build particle positions from the target zoom hierarchy.
