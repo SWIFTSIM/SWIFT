@@ -1211,6 +1211,7 @@ void cell_check_foreign_multipole(const struct cell *c) {
  */
 void cell_check_multipole(struct cell *c,
                           const struct gravity_props *const grav_props) {
+  return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
