@@ -2,6 +2,7 @@
 
 # This file is part of SWIFT.
 # Copyright (C) 2026 p.w.draper@durham.ac.uk.
+#               2026 w.roper@sussex.ac.uk
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,6 +35,9 @@ git clean -fdx
 
 #  And off we go.
 ./autogen.sh
+
+#  Python environment for zoom IC generation scripts.
+source ci/COSMA/zoom-python-env.sh
 
 echo
 echo "------------------------------------------------------"
