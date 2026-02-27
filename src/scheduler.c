@@ -1613,9 +1613,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have a proxy if we are at the zoom top level. */
   if ((ci->type == cell_type_zoom && cj->type == cell_type_zoom) &&
-      (ci->depth == 0 && cj->depth == 0) &&
-      (ci->nodeID != engine_rank || cj->nodeID != engine_rank)) {
-    engine_check_proxy_exists(e, ci, cj, e->nodeID);
+      ((ci->nodeID == engine_rank && cj->nodeID != engine_rank) ||
+       (ci->nodeID != engine_rank && cj->nodeID == engine_rank))) {
+    engine_check_proxy_exists(e, ci->top, cj->top, e->nodeID);
   }
 #endif
 #endif
@@ -2024,47 +2024,6 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                    s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                    s);
   }
-
-  // /* In zoom land we now need to go over our tasks and make sure we actually
-  //  * need them based on geometry consideration as if they were created at the
-  //  * top level. */
-  // if (s->space->with_zoom_region) {
-  //
-  //   const ticks tic = getticks();
-  //
-  //   /* Loop over all tasks. */
-  //   for (int ind = 0; ind < s->nr_tasks; ind++) {
-  //     struct task *t = &s->tasks[ind];
-  //
-  //     /* Skip empty tasks. */
-  //     if (t->type == task_type_none) continue;
-  //
-  //     /* We only care about gravity pairs and gravity MM tasks here. */
-  //     if ((t->type != task_type_pair && t->subtype == task_subtype_grav) &&
-  //         t->type != task_type_grav_mm)
-  //       continue;
-  //
-  //     /* We only care about tasks involving zoom cells. */
-  //     if ((t->ci->type != cell_type_zoom || t->cj->type != cell_type_zoom) &&
-  //         (t->ci->depth != 0 || t->cj->depth != 0))
-  //       continue;
-  //
-  //     /* Remove the task if we don't need it based on geometry. */
-  //     if (!engine_gravity_need_cell_pair_task(s->space->e, t->ci, t->cj,
-  //                                             s->space->periodic,
-  //                                             s->space->periodic)) {
-  //       t->type = task_type_none;
-  //       t->subtype = task_subtype_none;
-  //       t->ci = NULL;
-  //       t->cj = NULL;
-  //       t->skip = 1;
-  //     }
-  //   }
-  //
-  //   if (s->space->e->verbose)
-  //     message("Cleaning up zoom tasks took %.3f %s.",
-  //             clocks_from_ticks(getticks() - tic), clocks_getunit());
-  // }
 }
 
 /**
@@ -3220,13 +3179,13 @@ void scheduler_check_deadlock(struct scheduler *s) {
   ticks last = s->last_successful_task_fetch;
 
   if (last == 0LL) {
-    /* Ensure that the first check each engine_launch doesn't fail. There is
-     * no guarantee how long it will take from the point where
+    /* Ensure that the first check each engine_launch doesn't fail. There is no
+     * guarantee how long it will take from the point where
      * last_successful_task_fetch was reset to get to this point. A poorly
-     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in
-     * places where there is no deadlock. Better safe than sorry, so at
-     * start-up, the last successful task fetch time is marked as 0. So we
-     * just exit without checking the time. */
+     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in places
+     * where there is no deadlock. Better safe than sorry, so at start-up, the
+     * last successful task fetch time is marked as 0. So we just exit without
+     * checking the time. */
     while (atomic_cas(&s->last_successful_task_fetch, last, now) != last) {
       now = getticks();
       last = s->last_successful_task_fetch;
@@ -3243,8 +3202,7 @@ void scheduler_check_deadlock(struct scheduler *s) {
 
   if (idle_time > s->deadlock_waiting_time_ms) {
     message(
-        "Detected what looks like a deadlock after %g ms of no new task "
-        "being "
+        "Detected what looks like a deadlock after %g ms of no new task being "
         "fetched from queues. Dumping diagnostic data.",
         idle_time);
     engine_dump_diagnostic_data(s->e);

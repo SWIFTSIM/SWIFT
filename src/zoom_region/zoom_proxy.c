@@ -42,24 +42,24 @@ static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
 
   const struct space *s = e->s;
 
-  /* Which are void? */
-  const int ci_is_void = (ci->subtype == cell_subtype_void);
-  const int cj_is_void = (cj->subtype == cell_subtype_void);
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we don't have NULL cells here */
   if (ci == NULL || cj == NULL)
     error("NULL cell passed to zoom void proxy checker.");
 #endif
 
+  /* Which are void? */
+  const int ci_is_void = (ci->subtype == cell_subtype_void);
+  const int cj_is_void = (cj->subtype == cell_subtype_void);
+
   /* Both are void - need to check zoom cells in both */
   if (ci_is_void && cj_is_void) {
     for (int zid = 0; zid < s->zoom_props->nr_zoom_cells; zid++) {
-      struct cell *zi = &s->cells_top[zid];
+      struct cell *zi = &s->zoom_props->zoom_cells_top[zid];
       if (!cell_is_inside(zi, ci)) continue;
 
       for (int zjd = 0; zjd < s->zoom_props->nr_zoom_cells; zjd++) {
-        struct cell *zj = &s->cells_top[zjd];
+        struct cell *zj = &s->zoom_props->zoom_cells_top[zjd];
         if (!cell_is_inside(zj, cj)) continue;
 
         /* Early abort (both same node or both foreign) */
@@ -74,7 +74,7 @@ static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
   /* Only ci is void - find zoom cells in ci to pair with cj */
   else if (ci_is_void) {
     for (int zid = 0; zid < s->zoom_props->nr_zoom_cells; zid++) {
-      struct cell *zi = &s->cells_top[zid];
+      struct cell *zi = &s->zoom_props->zoom_cells_top[zid];
       if (!cell_is_inside(zi, ci)) continue;
 
       /* Early abort (both same node or both foreign) */
@@ -88,7 +88,7 @@ static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
   /* Only cj is void - find zoom cells in cj to pair with ci */
   else if (cj_is_void) {
     for (int zjd = 0; zjd < s->zoom_props->nr_zoom_cells; zjd++) {
-      struct cell *zj = &s->cells_top[zjd];
+      struct cell *zj = &s->zoom_props->zoom_cells_top[zjd];
       if (!cell_is_inside(zj, cj)) continue;
 
       /* Early abort (both same node or both foreign) */

@@ -630,33 +630,6 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "cell data from proxy %i has arrived." , pid );
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Validate cells_in array before unpacking */
-    for (int j = 0; j < proxies[pid].nr_cells_in; j++) {
-      struct cell *c = proxies[pid].cells_in[j];
-
-      /* Check the receiving cell has valid depth */
-      if (c->depth < 0) {
-        error(
-            "Proxy %d: cell_in[%d/%d] has negative depth=%d before unpacking "
-            "(type=%s subtype=%s nodeID=%d)",
-            pid, j, proxies[pid].nr_cells_in, c->depth, cellID_names[c->type],
-            subcellID_names[c->subtype], c->nodeID);
-      }
-
-      /* Check that cell depth doesn't exceed the hard limit */
-      if (c->depth > 64) {
-        error(
-            "Proxy %d: cell_in[%d/%d] has excessive depth=%d (hard limit is "
-            "64!) type=%s subtype=%s nodeID=%d - this cell should not be in "
-            "cells_in array!",
-            pid, j, proxies[pid].nr_cells_in, c->depth, cellID_names[c->type],
-            subcellID_names[c->subtype], c->nodeID);
-      }
-    }
-#endif
-
     for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&proxies[pid].pcells_in[count],
                            proxies[pid].cells_in[j], s, with_gravity);
@@ -708,10 +681,6 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
 
   /* Do we need to grow the number of in cells? */
   if (p->nr_cells_in == p->size_cells_in) {
-#ifdef SWIFT_DEBUG_CHECKS
-    message("Growing proxy input cell list from %d to %d", p->size_cells_in,
-            (int)(p->size_cells_in * proxy_buffgrow));
-#endif /* SWIFT_DEBUG_CHECKS */
 
     p->size_cells_in *= proxy_buffgrow;
 
@@ -732,18 +701,6 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
     p->cells_in_type = temp_type;
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we don't have a NULL cell being added */
-  if (c == NULL) {
-    error("Attempting to add NULL cell to proxy input list.");
-  }
-
-  /* Ensure the entries make sense */
-  if (p->nr_cells_in > 0 && p->cells_in[p->nr_cells_in - 1] == NULL) {
-    error("Previous entry in proxy input list is NULL %d.", p->nr_cells_in - 1);
-  }
-#endif /* SWIFT_DEBUG_CHECKS */
-
   /* Add the cell. */
   p->cells_in[p->nr_cells_in] = c;
   p->cells_in_type[p->nr_cells_in] = type;
@@ -755,7 +712,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
  *
  * @param p The #proxy.
  * @param c The #cell.
- * @param type Why is this cell in the proxy (hydro, gravity, ...) ?
+ * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
  */
 void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
 
@@ -772,10 +729,6 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
 
   /* Do we need to grow the number of out cells? */
   if (p->nr_cells_out == p->size_cells_out) {
-#ifdef SWIFT_DEBUG_CHECKS
-    message("Growing proxy output cell list from %d to %d", p->size_cells_out,
-            (int)(p->size_cells_out * proxy_buffgrow));
-#endif /* SWIFT_DEBUG_CHECKS */
     p->size_cells_out *= proxy_buffgrow;
 
     struct cell **temp_cell;
@@ -794,19 +747,6 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
     swift_free("cells_out_type", p->cells_out_type);
     p->cells_out_type = temp_type;
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we don't have a NULL cell being added */
-  if (c == NULL) {
-    error("Attempting to add NULL cell to proxy output list.");
-  }
-
-  /* Ensure the entries make sense */
-  if (p->nr_cells_out > 0 && p->cells_out[p->nr_cells_out - 1] == NULL) {
-    error("Previous entry in proxy output list is NULL %d.",
-          p->nr_cells_out - 1);
-  }
-#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Add the cell. */
   p->cells_out[p->nr_cells_out] = c;

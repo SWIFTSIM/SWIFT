@@ -277,12 +277,10 @@ void engine_exchange_strays(
     if (pid < 0) {
       error(
           "Do not have a proxy for the requested nodeID %i for part with "
-          "id=%lli, x=[%e,%e,%e] c->type/subtype=%s/%s.",
+          "id=%lli, x=[%e,%e,%e].",
           node_id, s->gparts[offset_gparts + k].id_or_neg_offset,
           s->gparts[offset_gparts + k].x[0], s->gparts[offset_gparts + k].x[1],
-          s->gparts[offset_gparts + k].x[2],
-          cellID_names[e->s->cells_top[ind_gpart[k]].type],
-          subcellID_names[e->s->cells_top[ind_gpart[k]].subtype]);
+          s->gparts[offset_gparts + k].x[2]);
     }
 
 #ifdef SWIFT_DEBUG_CHECKS

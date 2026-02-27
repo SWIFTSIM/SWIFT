@@ -2004,30 +2004,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
-          if (cj->mpi.pack == NULL) {
-
-            const double min_dist_CoM2 =
-                cell_min_dist2(ci, cj, e->s->periodic, e->s->dim);
-            error(
-                "No pack task for cell %s/%s at depth %d on rank %d (ci is "
-                "%s/%s at depth "
-                "%d on rank %d cj->grav.count=%d, ci->grav.count=%d, "
-                "ci->grav.ti_end_min=%lld, cj->grav.ti_end_min=%lld, "
-                "e->ti_current=%lld, cj->grav.grav=%p, cj->mpi.send=%p, "
-                "ci->grav.super=%p, cj->grav.super=%p, ci->super=%s/%s, "
-                "cj->super=%s/%s, min_dist_CoM2=%e, max_mesh_dist=%e)",
-                cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
-                cj_nodeID, cellID_names[ci->type], subcellID_names[ci->subtype],
-                ci->depth, ci_nodeID, cj->grav.count, ci->grav.count,
-                ci->grav.ti_end_min, cj->grav.ti_end_min, e->ti_current,
-                cj->grav.grav, cj->mpi.send, ci->grav.super, cj->grav.super,
-                cellID_names[ci->super->type],
-                subcellID_names[ci->super->subtype],
-                cellID_names[cj->super->type],
-                subcellID_names[cj->super->subtype], min_dist_CoM2,
-                e->mesh->r_cut_max * e->mesh->r_cut_max);
-          }
-
           scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
                                   ci_nodeID);
 
@@ -2058,29 +2034,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
-
-          if (ci->mpi.pack == NULL) {
-            const double min_dist_CoM2 =
-                cell_min_dist2(ci, cj, e->s->periodic, e->s->dim);
-            error(
-                "No pack task for cell %s/%s at depth %d on rank %d (cj is "
-                "%s/%s at depth "
-                "%d on rank %d ci->grav.count=%d, cj->grav.count=%d, "
-                "ci->grav.ti_end_min=%lld, cj->grav.ti_end_min=%lld, "
-                "e->ti_current=%lld, ci->grav.grav=%p, ci->mpi.send=%p, "
-                "cj->grav.super=%p, ci->grav.super=%p, ci->super=%s/%s, "
-                "cj->super=%s/%s, min_dist_CoM2=%e, max_mesh_dist=%e)",
-                cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
-                ci_nodeID, cellID_names[cj->type], subcellID_names[cj->subtype],
-                cj->depth, cj_nodeID, ci->grav.count, cj->grav.count,
-                ci->grav.ti_end_min, cj->grav.ti_end_min, e->ti_current,
-                ci->grav.grav, ci->mpi.send, cj->grav.super, ci->grav.super,
-                cellID_names[ci->super->type],
-                subcellID_names[ci->super->subtype],
-                cellID_names[cj->super->type],
-                subcellID_names[cj->super->subtype], min_dist_CoM2,
-                e->mesh->r_cut_max * e->mesh->r_cut_max);
-          }
 
           scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
                                   cj_nodeID);

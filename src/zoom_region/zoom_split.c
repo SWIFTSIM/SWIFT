@@ -85,25 +85,11 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
 
-    // /* Is this zoom progeny empty? Empty means no particles (and if running
-    //  * with self-gravity no multipole mass). When running with self-gravity
-    //  * over MPI we can have 0 particles but we will have multipole mass from
-    //  * the other ranks so we need to keep the cell in the tree. */
-    // int empty = 0;
-    // if (!s->with_self_gravity && zoom_cell->grav.count == 0 &&
-    //     zoom_cell->hydro.count == 0 && zoom_cell->stars.count == 0 &&
-    //     zoom_cell->sinks.count == 0 && zoom_cell->black_holes.count == 0) {
-    //   empty = 1;
-    // } else if (s->with_self_gravity &&
-    //            zoom_cell->grav.multipole->m_pole.M_000 == 0.f) {
-    //   empty = 1;
-    // }
-    //
-    // /* If this top level cell is empty, don't link it in. */
-    // if (empty) {
-    //   c->progeny[k] = NULL;
-    //   continue;
-    // }
+    /* If this top level cell is empty, don't link it in. */
+    if (cell_is_empty(zoom_cell)) {
+      c->progeny[k] = NULL;
+      continue;
+    }
 
     /* Link this nested cell into the void cell hierarchy. */
     c->progeny[k] = zoom_cell;
@@ -334,48 +320,6 @@ void zoom_void_space_split(struct space *s, int verbose) {
           "Number of gparts is inconsistent between zoom cells and "
           "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
           nr_gparts_in_void, nr_gparts);
-  }
-
-#ifdef WITH_MPI
-  /* Ensure all void cells agree on their time zone across ranks and the
-   * timesteps have been initialised correctly. */
-  integertime_t *global_ti_beg_max =
-      (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
-  integertime_t *global_ti_end_min =
-      (integertime_t *)malloc(nr_void_cells * sizeof(integertime_t));
-  for (int ind = 0; ind < nr_void_cells; ind++) {
-    struct cell *c = &cells_top[void_cell_indices[ind]];
-    integertime_t local_ti_beg_max = c->grav.ti_beg_max;
-    integertime_t local_ti_end_min = c->grav.ti_end_min;
-    MPI_Allreduce(&local_ti_beg_max, &global_ti_beg_max[ind], 1,
-                  MPI_LONG_LONG_INT, MPI_MAX, MPI_COMM_WORLD);
-    MPI_Allreduce(&local_ti_end_min, &global_ti_end_min[ind], 1,
-                  MPI_LONG_LONG_INT, MPI_MIN, MPI_COMM_WORLD);
-  }
-
-  /* Count how many void cells have bad timesteps. */
-  int bad_min_timesteps = 0;
-  int bad_max_timesteps = 0;
-  for (int ind = 0; ind < nr_void_cells; ind++) {
-    struct cell *c = &cells_top[void_cell_indices[ind]];
-    /* We only care if the void cell matters (i.e. contains zoom cells). */
-    if (!c->contains_zoom_cells) continue;
-    if (c->grav.ti_end_min == -1) bad_min_timesteps++;
-    if (c->grav.ti_beg_max == -1) bad_max_timesteps++;
-  }
-
-  /* If we have any bad timesteps we have a problem. */
-  if (bad_min_timesteps > 0) {
-    message(
-        "%d void cells have incorrect minimum end timesteps after MPI "
-        "reduction!",
-        bad_min_timesteps);
-  }
-  if (bad_max_timesteps > 0) {
-    message(
-        "%d void cells have incorrect maximum begin timesteps after MPI "
-        "reduction!",
-        bad_max_timesteps);
   }
 #endif
 }

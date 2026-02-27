@@ -250,7 +250,7 @@ scheduler_activate_pack(struct scheduler *s, struct link *link,
   }
 
   if (l == NULL) {
-    error("Missing link to pack task (subtype=%s).", subtaskID_names[subtype]);
+    error("Missing link to pack task.");
   }
   scheduler_activate(s, l->t);
   return l;

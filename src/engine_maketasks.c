@@ -88,27 +88,10 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   const int with_star_formation_sink) {
 
 #ifdef WITH_MPI
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure both cells exist. */
-  if (ci == NULL) {
-    error(
-        "ci is NULL. cj=%p (%s/%s, cj->depth=%d, cj->count=%d, cj->nodeID=%d)",
-        (void *)cj, cellID_names[cj->type], subcellID_names[cj->subtype],
-        cj->depth, cj->grav.count, cj->nodeID);
-  }
-  if (cj == NULL) {
-    error(
-        "cj is NULL. ci=%p (%s/%s, ci->depth=%d, ci->count=%d, ci->nodeID=%d)",
-        (void *)ci, cellID_names[ci->type], subcellID_names[ci->subtype],
-        ci->depth, ci->grav.count, ci->nodeID);
-  }
-#endif
-
 #if !defined(SWIFT_DEBUG_CHECKS)
   if (with_sinks) {
     error("TODO: Sink and star formation sink over MPI");
   }
-
 #endif
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
@@ -2186,7 +2169,7 @@ void engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
   /* Ensure we have the proxy for the foreign cell */
-  engine_check_proxy_exists(e, cj, cj, nodeID);
+  engine_check_proxy_exists(e, ci, cj, nodeID);
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
 }
@@ -2274,10 +2257,8 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         /* Avoid empty cells (except voids). */
         if (cell_is_empty_grav(cj)) continue;
 
-        /* Completely foreign pairs also get the Nigel treatment (AKA are kicked
-         * out of the union/we skip them). Unless they are void cells, Nigels a
-         * fan of those (and we need to make tasks for them to be later split
-         * even if they are empty and foreign). */
+        /* Completely foreign pairs also get the Nigel treatment (AKA are
+         * kicked out of the union/we skip them). */
         if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
 
         /* Do we need a pair interaction for these cells? */
@@ -2528,9 +2509,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID)
-        error("Non-local self task (%s/%s)", cellID_names[ci->type],
-              subcellID_names[ci->subtype]);
+      if (ci_nodeID != nodeID) error("Non-local self task");
 #endif
 
       /* drift ---+-> gravity --> grav_down */
@@ -2545,9 +2524,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
              t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID)
-        error("Non-local self task (%s/%s)", cellID_names[ci->type],
-              subcellID_names[ci->subtype]);
+      if (ci_nodeID != nodeID) error("Non-local self task");
 #endif
 
       /* drift -----> gravity --> end_gravity_force */
@@ -2582,9 +2559,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID)
-        error("Non-local sub-self task (%s/%s)", cellID_names[ci->type],
-              subcellID_names[ci->subtype]);
+      if (ci_nodeID != nodeID) error("Non-local sub-self task");
 #endif
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
@@ -2598,9 +2573,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
              t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID)
-        error("Non-local sub-self task (%s/%s)", cellID_names[ci->type],
-              subcellID_names[ci->subtype]);
+      if (ci_nodeID != nodeID) error("Non-local sub-self task");
 #endif
 
       /* drift -----> gravity --> end_force */
@@ -3877,24 +3850,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure we have valid cells */
-    if (ci == NULL) {
-      error(
-          "ci is NULL. cj=%p (%s/%s, cj->depth=%d, cj->count=%d, "
-          "cj->nodeID=%d)",
-          (void *)cj, cellID_names[cj->type], subcellID_names[cj->subtype],
-          cj->depth, cj->grav.count, cj->nodeID);
-    }
-    if (cj == NULL) {
-      error(
-          "cj is NULL. ci=%p (%s/%s, ci->depth=%d, ci->count=%d, "
-          "ci->nodeID=%d)",
-          (void *)ci, cellID_names[ci->type], subcellID_names[ci->subtype],
-          ci->depth, ci->grav.count, ci->nodeID);
-    }
-#endif
-
 #ifdef WITH_MPI
 
     if (!cell_is_empty(ci)) {
@@ -4480,76 +4435,10 @@ void engine_maketasks(struct engine *e) {
       }
     }
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure we have valid cells */
-    for (int n = 0; n < num_send_cells; n++) {
-      struct cell *ci = send_cell_type_pairs[n].ci;
-      struct cell *cj = send_cell_type_pairs[n].cj;
-      if (ci == NULL) {
-        error(
-            "ci is NULL. cj=%p (%s/%s, cj->depth=%d, cj->count=%d, "
-            "cj->nodeID=%d)",
-            (void *)cj, cellID_names[cj->type], subcellID_names[cj->subtype],
-            cj->depth, cj->grav.count, cj->nodeID);
-      }
-      if (cj == NULL) {
-        error(
-            "cj is NULL. ci=%p (%s/%s, ci->depth=%d, ci->count=%d, "
-            "ci->nodeID=%d)",
-            (void *)ci, cellID_names[ci->type], subcellID_names[ci->subtype],
-            ci->depth, ci->grav.count, ci->nodeID);
-      }
-    }
-#endif
-
     threadpool_map(&e->threadpool, engine_addtasks_send_mapper,
                    send_cell_type_pairs, num_send_cells,
                    sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
                    e);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Cross-check that all send tasks have been created */
-    for (int n = 0; n < num_send_cells; n++) {
-      struct cell *ci = send_cell_type_pairs[n].ci;
-      struct cell *cj = send_cell_type_pairs[n].cj;
-      const int type = send_cell_type_pairs[n].type;
-      if (type == proxy_cell_type_gravity && ci->nodeID != e->nodeID &&
-          ci->mpi.send == NULL)
-        error(
-            "Missing send task for gravity cell ci=(type/subtype=%s/%s "
-            "depth=%d) cj=(type/subtype=%s/%s depth=%d, cjd=%d)!",
-            cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
-            cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
-            (int)(cj - cells));
-    }
-
-    /* Loop over cells checking that all cells with pairs to foreign nodes
-     * have send tasks */
-    struct link *l = NULL;
-    int nodeID = e->nodeID;
-    for (int i = 0; i < nr_cells; i++) {
-      struct cell *c = &cells[i];
-      if (c->nodeID != e->nodeID) continue;
-      for (l = c->grav.grav; l != NULL; l = l->next)
-        if (l->t->ci->nodeID != nodeID ||
-            (l->t->cj != NULL && l->t->cj->nodeID != nodeID))
-          break;
-
-      if (l != NULL && c->mpi.pack == NULL) {
-        engine_check_proxy_exists(e, l->t->ci->top, l->t->cj->top, e->nodeID);
-        const double min_dist_CoM2 =
-            cell_min_dist2(l->t->ci->top, l->t->cj->top, s->periodic, s->dim);
-        error(
-            "Cell %d (type/subtype=%s/%s depth=%d) has foreign gravity pairs "
-            "(cj=%s/%s cj->nodeID=%d, depth=%d, cjd=%d, min_dist_CoM2=%.3e, "
-            "ci->grav.count=%d, cj->grav.count=%d), but no send task!",
-            i, cellID_names[c->type], subcellID_names[c->subtype], c->depth,
-            cellID_names[l->t->cj->type], subcellID_names[l->t->cj->subtype],
-            l->t->cj->nodeID, l->t->cj->depth, (int)(l->t->cj->top - cells),
-            min_dist_CoM2, l->t->ci->grav.count, l->t->cj->grav.count);
-      }
-    }
-#endif
 
     free(send_cell_type_pairs);
 

@@ -229,10 +229,9 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
   if (c->grav.ti_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
-        "e->ti_current=%lld (t=%e, a=%e, c->type/c->subtype=%s/%s depth=%d)",
+        "e->ti_current=%lld (t=%e, a=%e)",
         c->grav.ti_end_min, c->grav.ti_end_min * e->time_base, e->ti_current,
-        e->ti_current * e->time_base, e->cosmology->a, cellID_names[c->type],
-        subcellID_names[c->subtype], c->depth);
+        e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
   return (c->grav.ti_end_min == e->ti_current);

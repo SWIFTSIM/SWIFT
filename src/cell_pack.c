@@ -290,7 +290,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   if (c->depth > 64) {
     error(
         "Unpacking into cell with excessive depth=%d (should never exceed 64!) "
-        "pc->maxdepth=%d type=%s subtype=%s nodeID=%d - possible recursion bug!",
+        "pc->maxdepth=%d type=%s subtype=%s nodeID=%d - possible recursion "
+        "bug!",
         c->depth, pc->maxdepth, cellID_names[c->type],
         subcellID_names[c->subtype], c->nodeID);
   }
@@ -357,16 +358,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->split = 0;
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
-      if (c->depth < 0) {
-        error(
-            "Parent cell has negative depth when creating progeny %d! "
-            "c->depth=%d pc->progeny[%d]=%d c->type=%s c->subtype=%s "
-            "pc->type=%s pc->subtype=%s pc->maxdepth=%d",
-            k, c->depth, k, pc->progeny[k], cellID_names[c->type],
-            subcellID_names[c->subtype], cellID_names[pc->type],
-            subcellID_names[pc->subtype], pc->maxdepth);
-      }
-
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check if recursion would overflow the depth field */
       if (c->depth + 1 < 0) {

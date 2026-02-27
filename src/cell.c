@@ -1213,7 +1213,6 @@ void cell_check_multipole(struct cell *c,
                           const struct gravity_props *const grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  return;
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
 

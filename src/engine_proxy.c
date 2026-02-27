@@ -120,32 +120,6 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
  */
 void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
                       const int proxy_type) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure neither cell is NULL */
-  if (ci == NULL) {
-    error("ci is NULL. cj=%p (%s/%s, cj->count=%d, cj->nodeID=%d)", (void *)cj,
-          cellID_names[cj->type], subcellID_names[cj->subtype], cj->grav.count,
-          cj->nodeID);
-  }
-  if (cj == NULL) {
-    error("cj is NULL. ci=%p (%s/%s, ci->count=%d, ci->nodeID=%d)", (void *)ci,
-          cellID_names[ci->type], subcellID_names[ci->subtype], ci->grav.count,
-          ci->nodeID);
-  }
-
-  /* Ensure we aren't trying to make a proxy for a void cell */
-  if (ci->subtype == cell_subtype_void) {
-    error("Trying to make a proxy for a void ci (%s/%s -> %s/%s)",
-          cellID_names[ci->type], subcellID_names[ci->subtype],
-          cellID_names[cj->type], subcellID_names[cj->subtype]);
-  } else if (cj->subtype == cell_subtype_void) {
-    error("Trying to make a proxy for a void cj (%s/%s -> %s/%s)",
-          cellID_names[ci->type], subcellID_names[ci->subtype],
-          cellID_names[cj->type], subcellID_names[cj->subtype]);
-  }
-#endif
-
 #ifdef WITH_MPI
   /* Unpack what we need */
   struct proxy *proxies = e->proxies;
@@ -228,11 +202,8 @@ void engine_makeproxies(struct engine *e) {
 
   /* When running a zoom simulation we need to redirect to the zoom version. */
   if (e->s->with_zoom_region) {
-    if (e->verbose) message("Making proxies (zoom version)");
     zoom_engine_makeproxies(e);
     return;
-  } else {
-    if (e->verbose) message("Making proxies (non-zoom version)");
   }
 
 #ifdef WITH_MPI
@@ -402,7 +373,7 @@ void engine_check_proxy_exists(const struct engine *e, const struct cell *topi,
       error(
           "Cell %d not found in the proxy but trying to construct "
           "grav task!",
-          (int)(e->s->cells_top - topj));
+          (int)(topj - e->s->cells_top));
 
   } else if (topj->nodeID == nodeID && topi->nodeID != engine_rank) {
 
@@ -423,7 +394,7 @@ void engine_check_proxy_exists(const struct engine *e, const struct cell *topi,
       error(
           "Cell %d not found in the proxy but trying to construct "
           "grav task!",
-          (int)(e->s->cells_top - topi));
+          (int)(topi - e->s->cells_top));
   }
 #endif /* WITH_MPI */
 }
