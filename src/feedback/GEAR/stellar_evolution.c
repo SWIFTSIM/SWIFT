@@ -51,7 +51,7 @@ void stellar_evolution_props_init(struct stellar_model *sm,
                                   const struct unit_system *us,
                                   struct swift_params *params,
                                   const struct cosmology *cosmo,
-                                  const char *do_stellar_wind_feedback) {
+                                  const char *with_stellar_wind_feedback) {
 
   /* Read the list of elements */
   stellar_evolution_read_elements(sm, params);
@@ -77,7 +77,7 @@ void stellar_evolution_props_init(struct stellar_model *sm,
   supernovae_ii_init(&sm->snii, params, sm, us);
 
   /* Initialize the stellar wind model if needed */
-  if(do_stellar_wind_feedback){ 
+  if(with_stellar_wind_feedback){ 
     stellar_wind_init(&sm->sw, params, sm, us);
   }
 
@@ -756,7 +756,7 @@ void stellar_evolution_compute_preSN_properties(
 void stellar_evolution_evolve_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char do_stellar_wind_feedback,
+    const struct phys_const *phys_const, const char with_stellar_wind_feedback,
     const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
@@ -788,7 +788,7 @@ void stellar_evolution_evolve_individual_star(
   }
 
   /* Pre-SN feedback */
-  if(do_stellar_wind_feedback) {
+  if(with_stellar_wind_feedback) {
     stellar_evolution_compute_preSN_feedback_individual_star(
         sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
   }
@@ -818,7 +818,7 @@ void stellar_evolution_evolve_individual_star(
 void stellar_evolution_evolve_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char do_stellar_wind_feedback,
+    const struct phys_const *phys_const, const char with_stellar_wind_feedback,
     const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
@@ -840,7 +840,7 @@ void stellar_evolution_evolve_spart(
   }
 
   /* Pre-SN feedback */
-  if (do_stellar_wind_feedback) {
+  if (with_stellar_wind_feedback) {
     stellar_evolution_compute_preSN_feedback_spart(
         sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
   }
