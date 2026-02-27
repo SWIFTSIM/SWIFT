@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
@@ -620,11 +621,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part *p) {
 
   /* Some smoothing length multiples. */
-  const float h = p->h;
-  const float h_inv = 1.0f / h;                       /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
-  const float h_inv_dim_plus_two = h_inv_dim * h_inv * h_inv; /* 1/h^(d+2) */
-  const float rho = p->rho;
+  //const float h = p->h;
+  //const float h_inv = 1.0f / h;                       /* 1/h */
+  //const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  //const float h_inv_dim_plus_two = h_inv_dim * h_inv * h_inv; /* 1/h^(d+2) */
+  //const float rho = p->rho;
   
   const float norm_grad_rho2 = p->grad_rho[0]*p->grad_rho[0] +
                                p->grad_rho[1]*p->grad_rho[1] +
@@ -632,8 +633,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   p->norm_grad_rho2 = norm_grad_rho2;
 
-  p->laplacian_rho -= norm_grad_rho2/rho;
-  p->laplacian_rho *= h_inv_dim_plus_two;
+  // !!! ignore to test the naive gradient implementation !!!
+  //p->laplacian_rho -= norm_grad_rho2/rho;
+  //p->laplacian_rho *= h_inv_dim_plus_two;
+
+
+  
 
   }
 
@@ -920,6 +925,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   p->a_hydro[0] *= h_inv_dim_plus_one*uldm_Cte;
   p->a_hydro[1] *= h_inv_dim_plus_one*uldm_Cte;
   p->a_hydro[2] *= h_inv_dim_plus_one*uldm_Cte;
+  
 }
 
 /**

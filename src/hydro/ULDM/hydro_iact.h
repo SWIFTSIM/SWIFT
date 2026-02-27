@@ -241,8 +241,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->grad_rho[1] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[1];
   pi->grad_rho[2] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[2];
 
-  /* Lapacien of the density */
-  pi->laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
+  /* Lapacian of the density */
+  //pi->laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
     
   /* Compute quantities for pj. */
   const float hj_inv = 1.f / hj;
@@ -258,7 +258,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->grad_rho[2] -= mi * (rhoi-rhoj)*sqrtrhoij_inv_r_inv * wj_dr * dx[2];
 
   /* Lapacien of the gradient */
-  pj->laplacian_rho += mi * (wj_d2x + 2/uj * wj_dx) * (rhoi-rhoj) *sqrtrhoij_inv;
+  //pj->laplacian_rho += mi * (wj_d2x + 2/uj * wj_dx) * (rhoi-rhoj) *sqrtrhoij_inv;
   
 }
 
@@ -317,7 +317,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->grad_rho[2] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[2];
 
   /* Lapacien of the density */
-  pi->laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
+  //pi->laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
   
 }
 
@@ -394,6 +394,34 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[0] += fj * dx[0];
   pj->a_hydro[1] += fj * dx[1];
   pj->a_hydro[2] += fj * dx[2];
+
+  /* below is a tested example to compute the 1d density derivative */
+  //const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
+  //const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */  
+  //const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */    
+  //const float wi_dr = hid_inv * wi_dx;  
+  //const float wj_dr = hjd_inv * wj_dx;
+  //pi->laplacian_rho -= mj * (rhoj-rhoi)*sqrtrhoij_inv * wi_dr;
+  //pj->laplacian_rho += mi * (rhoi-rhoj)*sqrtrhoij_inv * wj_dr;
+  /* this is the naive way, tested too */
+  ////pi->laplacian_rho -= mj *  wi_dr;
+  ////pj->laplacian_rho += mi *  wj_dr;  
+
+  /* !!! Laplacian of the gradient : naive way !!! */
+  const float gradrhoi = sqrtf(norm_grad_rhoi2);
+  const float gradrhoj = sqrtf(norm_grad_rhoj2);
+  const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */  
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */    
+  const float wi_dr = hid_inv * wi_dx;  
+  const float wj_dr = hjd_inv * wj_dx;
+  pi->laplacian_rho += mj * (gradrhoj-gradrhoi)*sqrtrhoij_inv * wi_dr;
+  pj->laplacian_rho -= mi * (gradrhoi-gradrhoj)*sqrtrhoij_inv * wj_dr;
+
+  
+
+
+  
 }
 
 /**
@@ -449,6 +477,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[0] -= fi * dx[0];
   pi->a_hydro[1] -= fi * dx[1];   // check sign !!!
   pi->a_hydro[2] -= fi * dx[2];
+
+  
+  /* below is a tested example to compute the 1d density derivative */
+  //const float rhoi = pi->rho;  
+  //const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
+  //const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */  
+  //const float wi_dr = hid_inv * wi_dx;  
+  //pi->laplacian_rho -= mj * (rhoj-rhoi)*sqrtrhoij_inv *wi_dr;
+  /* this is the naive way, tested too */
+  ////pi->laplacian_rho -= mj * wi_dr;
+
+  const float rhoi = pi->rho;  
+  const float norm_grad_rhoi2 = pi->norm_grad_rho2;
+  const float gradrhoi = sqrtf(norm_grad_rhoi2);
+  const float gradrhoj = sqrtf(norm_grad_rhoj2);
+  const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */  
+  const float wi_dr = hid_inv * wi_dx;  
+  pi->laplacian_rho += mj * (gradrhoj-gradrhoi)*sqrtrhoij_inv * wi_dr;
+  
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */

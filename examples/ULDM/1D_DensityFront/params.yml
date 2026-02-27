@@ -28,9 +28,9 @@ Gravity:
 
 # Parameters for the hydrodynamics scheme
 SPH:  
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  #h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+  resolution_eta:        1.2348  # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1     # Courant-Friedrich-Levy condition for time integration.
+  #h_max:                 10.    # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
 
 
 
