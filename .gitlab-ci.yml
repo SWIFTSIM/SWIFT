@@ -27,9 +27,9 @@ workflow:
 #  inefficient as the artefacts are uploaded to the gitlab and then
 #  retrieved.
 
-stages: 
-   - build
-   - runtime
+stages:
+  - build
+  - runtime
 
 variables:
   GIT_STRATEGY: clone
@@ -41,7 +41,7 @@ variables:
 #  Full GCC toolchain on COSMA:
 gnu-build-cosma:
   stage: build
-  tags: 
+  tags:
     - cosma
   #  When MR to master happens, or commit is to master.
   rules:
@@ -58,7 +58,7 @@ gnu-build-cosma:
 #  Full Intel toolchain on COSMA:
 intel-build-cosma:
   stage: build
-  tags: 
+  tags:
     - cosma
   #  When MR to master happens, or commit is to master.
   rules:
@@ -75,12 +75,11 @@ intel-build-cosma:
 #  Small runtime checks.
 runtime-check-cosma:
   stage: runtime
-  tags: 
+  tags:
     - cosma
-  #  TODO: remove zoom-ci branch once zoom work lands in master.
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == "zoom-ci"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "zoom_merge"'
     - when: never
   timeout: 6h
   script:
@@ -93,10 +92,9 @@ zoom-runtime-check-cosma:
   stage: runtime
   tags:
     - cosma
-  #  TODO: remove zoom-ci branch once zoom work lands in master.
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == "zoom-ci"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "zoom_merge"'
     - when: never
   timeout: 6h
   script:
@@ -107,7 +105,7 @@ zoom-runtime-check-cosma:
 #  Small test for MRs only. Some like to push a lot...
 swift-intel-build-mr-quick:
   stage: build
-  tags: 
+  tags:
     - cosma
   #  When this commit is part of an active MR.
   rules:
@@ -142,14 +140,13 @@ swift-intel-build-mr-long:
     - echo "Full Intel toolchain check in a merge request"
     - ci/COSMA/swift-intel-check.sh
     - echo "complete."
-
 #  Whatever toolchain is provided in the runner environment.
 #  Note this is not enabled by on the main repository, those
 #  jobs will only run on COSMA. Comment those out or change things
 #  to match your fork environment as needed.
 #gnu-build:
 #  stage: build
-#  tags: 
+#  tags:
 #    - genericlinux
 #  #  When MR to master happens, or commit is to master.
 #  rules:
