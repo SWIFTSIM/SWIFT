@@ -92,27 +92,6 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
     c->nodeID = ind[0] + initial_partition->grid[0] *
                              (ind[1] + initial_partition->grid[1] * ind[2]);
   }
-
-  /* Run through the buffer cells and set their nodeID. (We don't always
-   * have these) */
-  for (int k = 0; k < s->zoom_props->nr_buffer_cells; k++) {
-
-    /* Get the cell. */
-    struct cell *c = &s->zoom_props->buffer_cells_top[k];
-
-    /* Compute it's ijk grid index. */
-    int ind[3];
-    for (int j = 0; j < 3; j++) {
-      ind[j] =
-          (c->loc[j] - s->zoom_props->buffer_lower_bounds[j]) /
-          (s->zoom_props->buffer_width[j] * s->zoom_props->buffer_cdim[j]) *
-          initial_partition->grid[j];
-    }
-
-    /* Convert the grid index into the node ID. */
-    c->nodeID = ind[0] + initial_partition->grid[0] *
-                             (ind[1] + initial_partition->grid[1] * ind[2]);
-  }
 }
 
 /*  Vector support */
@@ -153,25 +132,6 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
 
   /* Clear out the samplecells. */
   bzero(samplecells, sizeof(int) * nr_nodes * 3);
-
-  /* Do the buffer cells if we have any... */
-  if (s->zoom_props->with_buffer_cells) {
-    if (s->e->nodeID == 0) {
-      pick_vector(s->zoom_props->buffer_cdim, nr_nodes, samplecells);
-    }
-
-    /* Share the samplecells around all the nodes. */
-    res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to bcast the partition sample buffer cells.");
-
-    /* And apply to our buffer cells */
-    split_vector(s->zoom_props->buffer_cells_top, s->zoom_props->buffer_cdim,
-                 nr_nodes, samplecells);
-
-    /* Clear out the samplecells. */
-    bzero(samplecells, sizeof(int) * nr_nodes * 3);
-  }
 
   /* Finally do the background cells... */
   if (s->e->nodeID == 0) {
