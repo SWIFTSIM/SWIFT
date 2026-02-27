@@ -8,7 +8,7 @@ runs with the EAGLE model stack in a zoom configuration.
 
 The setup is tuned for:
 
-- ZoomRegion:bkg_top_level_cells = 16,
+- ZoomRegion:bkg_top_level_cells = 8,
 - ZoomRegion:zoom_top_level_depth = 2,
 - a zoom extent spanning the central 2x2x2 background cells,
 - region_pad_factor = 1.1.
@@ -17,8 +17,9 @@ Important: the parameter file for this example is configured for the
 EAGLE-XL subgrid model (`--with-subgrid=EAGLE-XL`), not the legacy EAGLE
 subgrid configuration.
 
-The IC setup targets a post-split high-resolution DM mass of ~9.7e6 Msun and
-uses a lower-resolution background particle distribution with ~10x larger
-particle masses than the high-resolution parent DM particles.
+The IC setup targets a post-split high-resolution DM mass of ~9.7e6 Msun.
+Both zoom cells and non-central background top-level cells are populated with
+the same fixed number of particles per cell (64), and particle masses are then
+set from mass conservation in each region.
 
 The run script fetches required EAGLE tables if they are missing.
