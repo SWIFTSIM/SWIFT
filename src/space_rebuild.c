@@ -729,7 +729,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     const struct sipart *const sip = &s->siparts[k];
     si_index[k] = cell_getid(cdim, sip->x[0] * ih[0], sip->x[1] * ih[1],
                              sip->x[2] * ih[2]);
-    cell_spart_counts[si_index[k]]++;
+    cell_sipart_counts[si_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[si_index[k]].nodeID != local_nodeID)
       error("Received si-part that does not belong to me (nodeID=%i).",

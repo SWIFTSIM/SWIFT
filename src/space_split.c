@@ -312,7 +312,7 @@ void space_split_recursive(
       /* Remove any progeny with zero particles. */
       if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
           cp->black_holes.count == 0 && cp->sinks.count == 0 &&
-          cp->sidm.count) {
+          cp->sidm.count==0) {
 
         space_recycle(s, cp);
         c->progeny[k] = NULL;
@@ -689,8 +689,8 @@ void space_split_recursive(
 
       sidm_h_max = max(sidm_h_max, siparts[k].h);
 
-      if (sipart_is_active(&siparts[k], e))
-        sidm_h_max_active = max(sidm_h_max_active, siparts[k].h);
+      // if (sipart_is_active(&siparts[k], e))
+      //   sidm_h_max_active = max(sidm_h_max_active, siparts[k].h);
 
       cell_set_sipart_h_depth(&siparts[k], c);
 

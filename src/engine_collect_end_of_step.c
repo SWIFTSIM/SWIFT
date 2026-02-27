@@ -36,14 +36,15 @@
  */
 struct end_of_step_data {
 
-  size_t updated, g_updated, s_updated, sink_updated, b_updated;
-  size_t inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited;
+  size_t updated, g_updated, s_updated, sink_updated, b_updated, si_updated;
+  size_t inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited, si_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_beg_max;
   integertime_t ti_rt_end_min, ti_rt_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_beg_max;
   integertime_t ti_stars_end_min, ti_stars_beg_max;
   integertime_t ti_sinks_end_min, ti_sinks_beg_max;
   integertime_t ti_black_holes_end_min, ti_black_holes_beg_max;
+  integertime_t ti_sidm_end_min, ti_sidm_beg_max;
   struct engine *e;
   struct star_formation_history sfh;
   float runtime;
@@ -214,11 +215,13 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   struct end_of_step_data data;
   data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
   data.sink_updated = 0;
+  data.si_updated = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_beg_max = 0;
   data.ti_rt_end_min = max_nr_timesteps, data.ti_rt_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_beg_max = 0;
   data.ti_stars_end_min = max_nr_timesteps, data.ti_stars_beg_max = 0;
   data.ti_sinks_end_min = max_nr_timesteps, data.ti_sinks_beg_max = 0;
+  data.ti_sidm_end_min = max_nr_timesteps, data.ti_sidm_beg_max = 0;
   data.ti_black_holes_end_min = max_nr_timesteps,
   data.ti_black_holes_beg_max = 0, data.e = e, data.csds_file_size_gb = 0;
 
@@ -254,17 +257,19 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.s_inhibited = s->nr_inhibited_sparts;
   data.sink_inhibited = s->nr_inhibited_sinks;
   data.b_inhibited = s->nr_inhibited_bparts;
+  data.si_inhibited = s->nr_inhibited_siparts;
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
-      data.sink_updated, data.b_updated, data.inhibited, data.g_inhibited,
-      data.s_inhibited, data.sink_inhibited, data.b_inhibited,
+      data.sink_updated, data.b_updated, data.si_updated, data.inhibited, data.g_inhibited,
+      data.s_inhibited, data.sink_inhibited, data.b_inhibited, data.si_inhibited,
       data.ti_hydro_end_min, data.ti_hydro_beg_max, data.ti_rt_end_min,
       data.ti_rt_beg_max, data.ti_gravity_end_min, data.ti_gravity_beg_max,
       data.ti_stars_end_min, data.ti_stars_beg_max, data.ti_sinks_end_min,
       data.ti_sinks_beg_max, data.ti_black_holes_end_min,
-      data.ti_black_holes_beg_max, e->forcerebuild, e->s->tot_cells,
+      data.ti_black_holes_beg_max, data.ti_sidm_end_min,
+      data.ti_sidm_beg_max, e->forcerebuild, e->s->tot_cells,
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
       data.sfh, data.runtime, data.flush_lightcone_maps, data.deadtime,
       data.csds_file_size_gb);

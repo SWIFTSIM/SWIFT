@@ -2274,13 +2274,13 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
     gravity_props_update(e->gravity_properties, e->cosmology);
-  message("grav_props->epsilon = %e", e->gravity_properties->epsilon_DM_cur);
+
   /* Udpate the hydro properties */
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
-  // /* Udpate the SIDM properties */                     // TODO
+  // /* Udpate the SIDM properties */   - TODO                  
   // if (e->policy & engine_policy_sidm)
   //     sidm_props_update(e->sidm_properties, e->gravity_properties,
   //     e->cosmology);
@@ -3112,13 +3112,15 @@ int engine_step(struct engine *e) {
   e->s_updates_since_rebuild += e->collect_group1.s_updated;
   e->sink_updates_since_rebuild += e->collect_group1.sink_updated;
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
+  e->si_updates_since_rebuild += e->collect_group1.si_updated;
 
   /* Check if we updated all of the particles on this step */
   if ((e->collect_group1.updated == e->total_nr_parts) &&
       (e->collect_group1.g_updated == e->total_nr_gparts) &&
       (e->collect_group1.s_updated == e->total_nr_sparts) &&
       (e->collect_group1.sink_updated == e->total_nr_sinks) &&
-      (e->collect_group1.b_updated == e->total_nr_bparts))
+      (e->collect_group1.b_updated == e->total_nr_bparts) &&
+      (e->collect_group1.si_updated == e->total_nr_siparts))
     e->ti_earliest_undrifted = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS

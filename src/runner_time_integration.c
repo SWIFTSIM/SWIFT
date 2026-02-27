@@ -686,6 +686,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         const double dt_kick_grav = kick_get_grav_kick_dt(
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
+        // TODO: will need to add additional timestep lengths later on
+
         /* Finish the time-step with a second half-kick */
         kick_sipart(sip, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
                     ti_begin_mesh, ti_end_mesh);

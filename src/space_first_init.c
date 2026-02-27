@@ -533,6 +533,10 @@ void space_first_init_siparts_mapper(void *restrict map_data, int count,
   const float a_factor_vel = cosmo->a;
   const struct sidm_props *sidm_props = s->e->sidm_properties;
 
+  #ifdef SWIFT_DEBUG_CHECKS
+  const ptrdiff_t delta = sip - s->siparts;
+  #endif
+
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
 
@@ -561,6 +565,10 @@ void space_first_init_siparts_mapper(void *restrict map_data, int count,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
+     /* Check part->gpart->part linkeage. */
+    if (sip[k].gpart && sip[k].gpart->id_or_neg_offset != -(k + delta))
+      error("Invalid gpart -> sipart link");
+
     /* Initialise the time-integration check variables */
     sip[k].ti_drift = 0;
     sip[k].ti_kick = 0;
