@@ -1216,12 +1216,8 @@ void cell_check_multipole(struct cell *c,
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
 
-  /* If the cell is a void, exit immediately. We don't want
-   * to double count particles in the zoom region which are also in the void
-   * cell multipoles. This is because the void cell multipoles are populated
-   * bottom up from the zoom cells. The void cell tree itself is tested
-   * elsewhere (NOTE: This issue and these cell types only appear when running
-   * with a zoom region). */
+  /* The brute force calculation is meaningless for void cells which have
+   * no particles, so we skip them. */
   if (c->subtype == cell_subtype_void) return;
 
   /* First recurse */
@@ -1239,6 +1235,12 @@ void cell_check_multipole(struct cell *c,
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
       message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
               tolerance);
+      message(
+          "Cell %lld (%s/%s): CoM=(%e %e %e) r_max=%e M_000=%e num_gpart=%lld",
+          c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
+          c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
+          c->grav.multipole->CoM[2], c->grav.multipole->r_max,
+          c->grav.multipole->m_pole.M_000, c->grav.multipole->m_pole.num_gpart);
       message("Correct answer:");
       gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");

@@ -1,0 +1,222 @@
+# Define some meta-data about the simulation
+MetaData:
+  run_name: ZoomSimulations-UniformDMEAGLE
+
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun
+  UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
+  UnitVelocity_in_cgs: 1e5           # 1 km/s
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+Cosmology:
+  Omega_cdm:    0.2587481
+  Omega_lambda: 0.693
+  Omega_b:      0.0482519
+  h:            0.6777
+  a_begin:      0.1
+  a_end:        0.11
+
+TimeIntegration:
+  dt_min:     1e-10
+  dt_max:     1e-2
+
+Snapshots:
+  basename:            zoom_uniform_dm_eagle
+  scale_factor_first:  0.109
+  delta_time:          2.0
+  compression:         1
+  recording_triggers_part:  [-1, -1]
+  recording_triggers_bpart: [-1, -1]
+
+Statistics:
+  scale_factor_first:  0.109
+  delta_time:          2.0
+
+Scheduler:
+  max_top_level_cells: 16
+  cell_split_size:     50
+
+Gravity:
+  eta:                         0.025
+  MAC:                         adaptive
+  theta_cr:                    0.7
+  epsilon_fmm:                 0.001
+  mesh_side_length:            64
+  comoving_DM_softening:       0.003320
+  max_physical_DM_softening:   0.001300
+  comoving_baryon_softening:   0.001790
+  max_physical_baryon_softening: 0.000700
+  softening_ratio_background:  0.05
+
+SPH:
+  resolution_eta:                    1.2348
+  h_min_ratio:                       0.01
+  h_max:                             0.5
+  CFL_condition:                     0.2
+  minimal_temperature:               100.
+  initial_temperature:               268.7
+  particle_splitting:                0
+
+Stars:
+  resolution_eta:        1.1642
+  h_tolerance:           7e-3
+  luminosity_filename:   ./photometry
+
+FOF:
+  basename:                        fof_output
+  min_group_size:                  16
+  linking_length_ratio:            0.2
+  seed_black_holes_enabled:        0
+  black_hole_seed_halo_mass_Msun:  1.0e10
+  scale_factor_first:              0.105
+  delta_time:                      1.01
+  linking_types:   [0, 1, 0, 0, 0, 0, 0]
+  attaching_types: [1, 0, 0, 0, 1, 1, 0]
+
+InitialConditions:
+  file_name:                   zoom_uniform_dm_eagle.hdf5
+  periodic:                    1
+  cleanup_h_factors:           0
+  cleanup_velocity_factors:    0
+  generate_gas_in_ics:         1
+  cleanup_smoothing_lengths:   1
+  remap_ids:                   1
+
+ZoomRegion:
+  region_pad_factor:        1.1
+  zoom_top_level_depth:     2
+  bkg_top_level_cells:      16
+  buffer_top_level_depth:   0
+  neighbour_max_tree_depth: 2
+
+EAGLEChemistry:
+  init_abundance_metal:     0.
+  init_abundance_Hydrogen:  0.752
+  init_abundance_Helium:    0.248
+  init_abundance_Carbon:    0.0
+  init_abundance_Nitrogen:  0.0
+  init_abundance_Oxygen:    0.0
+  init_abundance_Neon:      0.0
+  init_abundance_Magnesium: 0.0
+  init_abundance_Silicon:   0.0
+  init_abundance_Iron:      0.0
+
+PS2020Cooling:
+  dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5
+  H_reion_z:               7.5
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_eV_p_H:         2.0
+  delta_logTEOS_subgrid_properties: 0.3
+  rapid_cooling_threshold:          0.333333
+
+EAGLEStarFormation:
+  SF_threshold:                      Subgrid
+  SF_model:                          PressureLaw
+  KS_normalisation:                  1.515e-4
+  KS_exponent:                       1.4
+  min_over_density:                  100.0
+  KS_high_density_threshold_H_p_cm3: 1e8
+  KS_high_density_exponent:          2.0
+  EOS_entropy_margin_dex:            0.3
+  threshold_norm_H_p_cm3:            0.1
+  threshold_Z0:                      0.002
+  threshold_slope:                   -0.64
+  threshold_max_density_H_p_cm3:     10.0
+  threshold_temperature1_K:          1000
+  threshold_temperature2_K:          31622
+  threshold_number_density_H_p_cm3:  10
+
+EAGLEEntropyFloor:
+  Jeans_density_threshold_H_p_cm3: 1e-4
+  Jeans_over_density_threshold:    10.
+  Jeans_temperature_norm_K:        800
+  Jeans_gamma_effective:           1.3333333
+  Cool_density_threshold_H_p_cm3:  1e-5
+  Cool_over_density_threshold:     10.
+  Cool_temperature_norm_K:         10.
+  Cool_gamma_effective:            1.
+
+EAGLEFeedback:
+  use_SNII_feedback:                    1
+  use_SNIa_feedback:                    1
+  use_AGB_enrichment:                   1
+  use_SNII_enrichment:                  1
+  use_SNIa_enrichment:                  1
+  filename:                             ./yieldtables/
+  IMF_min_mass_Msun:                    0.1
+  IMF_max_mass_Msun:                  100.0
+  SNII_min_mass_Msun:                   8.0
+  SNII_max_mass_Msun:                 100.0
+  SNII_feedback_model:                  MinimumDistance
+  SNII_sampled_delay:                   1
+  SNII_delta_T_K:                       3.16228e7
+  SNII_energy_erg:                      1.0e51
+  SNII_energy_fraction_function:        EAGLE
+  SNII_energy_fraction_min:             0.388
+  SNII_energy_fraction_max:             7.37
+  SNII_energy_fraction_Z_0:             0.00134
+  SNII_energy_fraction_n_0_H_p_cm3:     0.412
+  SNII_energy_fraction_sigma_Z:         0.311
+  SNII_energy_fraction_sigma_n:         0.428
+  SNII_energy_fraction_use_birth_density: 0
+  SNII_energy_fraction_use_birth_metallicity: 0
+  SNIa_DTD:                             Exponential
+  SNIa_DTD_delay_Gyr:                   0.04
+  SNIa_DTD_exp_timescale_Gyr:           2.0
+  SNIa_DTD_exp_norm_p_Msun:             0.002
+  SNIa_energy_erg:                      1.0e51
+  AGB_ejecta_velocity_km_p_s:           10.0
+  stellar_evolution_age_cut_Gyr:        0.1
+  stellar_evolution_sampling_rate:      10
+
+EAGLEAGN:
+  subgrid_seed_mass_Msun:             1.0e4
+  use_multi_phase_bondi:              0
+  use_subgrid_bondi:                  0
+  with_angmom_limiter:                0
+  viscous_alpha:                      1e6
+  with_boost_factor:                  1
+  boost_alpha_only:                   1
+  boost_alpha:                        0.645
+  boost_beta:                         2.
+  boost_n_h_star_H_p_cm3:             0.1
+  with_fixed_T_near_EoS:              0
+  fixed_T_above_EoS_dex:              0.3
+  fixed_T_near_EoS_K:                 8000
+  radiative_efficiency:               0.1
+  use_nibbling:                       1
+  min_gas_mass_for_nibbling_Msun:     9e5
+  max_eddington_fraction:             1.
+  eddington_fraction_for_recording:   0.1
+  coupling_efficiency:                0.035
+  AGN_feedback_model:                 MinimumDistance
+  AGN_use_deterministic_feedback:     1
+  use_variable_delta_T:               0
+  AGN_with_locally_adaptive_delta_T:  0
+  AGN_delta_T_mass_norm:              3e8
+  AGN_delta_T_mass_reference:         1e8
+  AGN_delta_T_mass_exponent:          0.666667
+  AGN_delta_T_crit_factor:            1.0
+  AGN_delta_T_background_factor:      0.0
+  AGN_delta_T_min:                    1e7
+  AGN_delta_T_max:                    3e9
+  AGN_delta_T_K:                      4.207e8
+  AGN_use_nheat_with_fixed_dT:        0
+  AGN_use_adaptive_energy_reservoir_threshold: 0
+  AGN_num_ngb_to_heat:                1.
+  max_reposition_mass:                1e20
+  max_reposition_distance_ratio:      3.0
+  with_reposition_velocity_threshold: 0
+  max_reposition_velocity_ratio:      0.5
+  min_reposition_velocity_threshold: -1.0
+  set_reposition_speed:               0
+  with_potential_correction:          1
+  threshold_major_merger:             0.333
+  threshold_minor_merger:             0.1
+  merger_threshold_type:              DynamicalEscapeVelocity
+  merger_max_distance_ratio:          3.0
+  minimum_timestep_Myr:               0.1
