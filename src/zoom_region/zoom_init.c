@@ -126,8 +126,8 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
     }
 
     /* Ignore non-existing particles */
-    if (gp->time_bin == time_bin_inhibited ||
-        gp->time_bin == time_bin_not_created)
+    if (gparts[k].time_bin == time_bin_inhibited ||
+        gparts[k].time_bin == time_bin_not_created)
       continue;
 
     /* Unpack the particle properties. */
