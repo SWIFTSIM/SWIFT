@@ -1633,10 +1633,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       !(cj->split || cj->subtype == cell_subtype_void)) {
     error(
         "zoom_scheduler_splittask_gravity_void_pair called with a non-split "
-        "non-void cell: ci->split=%d ci->subtype=%s cj->split=%d "
-        "cj->subtype=%s",
-        ci->split, subcellID_names[ci->subtype], cj->split,
-        subcellID_names[cj->subtype]);
+        "non-void cell: ci->split=%d ci->subtype=%s ci->nodeID=%d "
+        "cj->split=%d cj->subtype=%s cj->nodeID=%d",
+        ci->split, subcellID_names[ci->subtype], ci->nodeID, cj->split,
+        subcellID_names[cj->subtype], cj->nodeID);
   }
 
   /* Convert to a grav_mm/progeny task. The flags field encodes which progeny
