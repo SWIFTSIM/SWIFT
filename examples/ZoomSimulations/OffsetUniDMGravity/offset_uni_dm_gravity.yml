@@ -34,7 +34,7 @@ Scheduler:
 
 DomainDecomposition:
   initial_type: grid
-  initial_grid: [10,10,10]
+  initial_grid: [2,2,2]
   synchronous: 0
   repartition_type: none
   trigger: 0.05
