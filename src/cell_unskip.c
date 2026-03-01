@@ -207,6 +207,52 @@ void cell_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
 }
 
 /**
+ * @brief Recursively activate the stars ghosts (and implicit links) in a cell
+ * hierarchy.
+ *
+ * @param c The #cell.
+ * @param s The #scheduler.
+ * @param e The #engine.
+ */
+void cell_recursively_activate_stars_ghosts(struct cell *c, struct scheduler *s,
+                                            const struct engine *e) {
+  /* Early abort? */
+  if ((c->stars.count == 0) || !cell_is_active_stars(c, e)) return;
+
+  /* Is the ghost at this level? */
+  if (c->stars.density_ghost[0] != NULL) {
+    for (int i = 0; i < STARS_GHOST_NTASK; i++) {
+      scheduler_activate(s, c->stars.density_ghost[i]);
+    }
+  } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!c->split)
+      error("Reached the leaf level without finding a stars ghost!");
+#endif
+
+    /* Keep recursing */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_recursively_activate_stars_ghosts(c->progeny[k], s, e);
+  }
+}
+
+/**
+ * @brief Activate the stars ghosts (and implicit links) in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param s The #scheduler.
+ * @param e The #engine.
+ */
+void cell_activate_stars_ghosts(struct cell *c, struct scheduler *s,
+                                const struct engine *e) {
+  scheduler_activate(s, c->stars.ghost_in);
+  scheduler_activate(s, c->stars.ghost_out);
+  cell_recursively_activate_stars_ghosts(c, s, e);
+}
+
+/**
  * @brief Recursively activate the cooling (and implicit links) in a cell
  * hierarchy.
  *
@@ -2439,11 +2485,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (cell_need_activating_stars(c, e, with_star_formation,
                                    with_star_formation_sink)) {
 
-      if (c->stars.density_ghost[0] != NULL) {
-        for (int i = 0; i < STARS_GHOST_NTASK; i++) {
-          scheduler_activate(s, c->stars.density_ghost[i]);
-        }
-      }
+      if (c->stars.ghost_in != NULL) cell_activate_stars_ghosts(c, s, e);
       if (c->stars.prep1_ghost != NULL)
         scheduler_activate(s, c->stars.prep1_ghost);
       if (c->hydro.prep1_ghost != NULL)
