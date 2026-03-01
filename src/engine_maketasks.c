@@ -1675,7 +1675,7 @@ void engine_add_star_ghosts(struct engine *e, struct cell *c,
                             struct task *ghost_in, struct task *ghost_out) {
 
   /* Abort as there are no hydro particles here? */
-  if (c->stars.count_total == 0) return;
+  if (c->stars.count_total + c->hydro.count_total == 0) return;
 
   /* If we have reached the leaf OR have to few particles to play with*/
   if (!c->split || c->stars.count_total < engine_max_sparts_per_ghost) {

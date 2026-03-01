@@ -213,11 +213,19 @@ void cell_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
  * @param c The #cell.
  * @param s The #scheduler.
  * @param e The #engine.
+ * @param with_star_formation Are we running with star formation?
+ * @param with_star_formation_sink Are we running with star formation from
+ * sinks?
  */
-void cell_recursively_activate_stars_ghosts(struct cell *c, struct scheduler *s,
-                                            const struct engine *e) {
+void cell_recursively_activate_stars_ghosts(
+    struct cell *c, struct scheduler *s, const struct engine *e,
+    const int with_star_formation, const int with_star_formation_sink) {
+
   /* Early abort? */
-  if ((c->stars.count == 0) || !cell_is_active_stars(c, e)) return;
+  if (!cell_need_activating_stars(c, e, with_star_formation,
+                                  with_star_formation_sink)) {
+    return;
+  }
 
   /* Is the ghost at this level? */
   if (c->stars.density_ghost[0] != NULL) {
@@ -234,7 +242,8 @@ void cell_recursively_activate_stars_ghosts(struct cell *c, struct scheduler *s,
     /* Keep recursing */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        cell_recursively_activate_stars_ghosts(c->progeny[k], s, e);
+        cell_recursively_activate_stars_ghosts(
+            c->progeny[k], s, e, with_star_formation, with_star_formation_sink);
   }
 }
 
@@ -244,12 +253,18 @@ void cell_recursively_activate_stars_ghosts(struct cell *c, struct scheduler *s,
  * @param c The #cell.
  * @param s The #scheduler.
  * @param e The #engine.
+ * @param with_star_formation Are we running with star formation?
+ * @param with_star_formation_sink Are we running with star formation from
+ * sinks?
  */
 void cell_activate_stars_ghosts(struct cell *c, struct scheduler *s,
-                                const struct engine *e) {
+                                const struct engine *e,
+                                const int with_star_formation,
+                                const int with_star_formation_sink) {
   scheduler_activate(s, c->stars.ghost_in);
   scheduler_activate(s, c->stars.ghost_out);
-  cell_recursively_activate_stars_ghosts(c, s, e);
+  cell_recursively_activate_stars_ghosts(c, s, e, with_star_formation,
+                                         with_star_formation_sink);
 }
 
 /**
@@ -265,7 +280,7 @@ void cell_recursively_activate_cooling(struct cell *c, struct scheduler *s,
   /* Early abort? */
   if ((c->hydro.count == 0) || !cell_is_active_hydro(c, e)) return;
 
-  /* Is the ghost at this level? */
+  /* Is the cooling at this level? */
   if (c->hydro.cooling[0] != NULL) {
     for (int i = 0; i < HYDRO_COOLING_NTASK; i++) {
       scheduler_activate(s, c->hydro.cooling[i]);
@@ -2485,7 +2500,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (cell_need_activating_stars(c, e, with_star_formation,
                                    with_star_formation_sink)) {
 
-      if (c->stars.ghost_in != NULL) cell_activate_stars_ghosts(c, s, e);
+      if (c->stars.ghost_in != NULL)
+        cell_activate_stars_ghosts(c, s, e, with_star_formation,
+                                   with_star_formation_sink);
       if (c->stars.prep1_ghost != NULL)
         scheduler_activate(s, c->stars.prep1_ghost);
       if (c->hydro.prep1_ghost != NULL)
