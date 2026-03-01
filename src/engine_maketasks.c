@@ -1678,8 +1678,7 @@ void engine_add_star_ghosts(struct engine *e, struct cell *c,
   if (c->stars.count_total == 0) return;
 
   /* If we have reached the leaf OR have to few particles to play with*/
-  if (!c->split || c->stars.count < engine_max_sparts_per_ghost) {
-    // if (!c->split || c->stars.count < 1000000) {
+  if (!c->split || c->stars.count_total < engine_max_sparts_per_ghost) {
 
     /* Add the ghost task and its dependencies */
     struct scheduler *s = &e->sched;
@@ -1927,8 +1926,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->stars.ghost_out = scheduler_addtask(s, task_type_stars_ghost_out,
                                                task_subtype_none, 0,
                                                /* implicit = */ 1, c, NULL);
-        scheduler_addunlock(s, c->stars.ghost_in, c->stars.ghost_out);
-        // engine_add_star_ghosts(e, c, c->stars.ghost_in, c->stars.ghost_out);
+        engine_add_star_ghosts(e, c, c->stars.ghost_in, c->stars.ghost_out);
 
 #ifdef EXTRA_STAR_LOOPS
         c->stars.prep1_ghost =
