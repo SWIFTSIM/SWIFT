@@ -1056,9 +1056,10 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
     return 0;
 
   /* All counts are zero. If there's a multipole (self-gravity is on), check
-   * whether the cell has mass — void cells containing zoom cells will have
-   * M_000 > 0 even though they hold no particles directly. */
-  if (c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.f)
+   * whether the cell is local and has mass — void cells containing zoom cells
+   * will have M_000 > 0 even though they hold no particles directly. */
+  if (c->nodeID == engine_rank && c->grav.multipole != NULL &&
+      c->grav.multipole->m_pole.M_000 > 0.f)
     return 0;
 
   return 1;
@@ -1082,9 +1083,9 @@ __attribute__((always_inline)) INLINE static int cell_is_empty_grav(
     return 0;
   }
 
-  /* If we have no grav particles but do have a multipole with mass, then we are
-   * a void cell with zoom progeny and we can't skip this cell. */
-  if (c->grav.multipole->m_pole.M_000 > 0.f) {
+  /* If we have no grav particles but do have a local  multipole with mass, then
+   * we are a void cell with zoom progeny and we can't skip this cell. */
+  if (c->nodeID == engine_rank && c->grav.multipole->m_pole.M_000 > 0.f) {
     return 0;
   }
 
