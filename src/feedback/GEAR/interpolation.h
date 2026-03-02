@@ -324,19 +324,21 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
             interp->data[current_cell] = 0;
             break;
           case boundary_condition_const:
-            const int midx = max(idx, 0);
-            const int midy = max(idy, 0);
-            const int row = min(midx, N_data_x - 1);
-            const int col = min(midy, N_data_y - 1);
-            const int cell_to_get = row * N_data_y + col;
-            if (cell_to_get >= N_data_x * N_data_y) {
-              error(
-                  "Index row=%d col=%d is out of boundary for the target data "
-                  "which has dimension row=%d col=%d",
-                  row, col, N_data_x, N_data_y);
-            }
-            interp->data[current_cell] = data[cell_to_get];
-            break;
+	    {
+	      const int midx = max(idx, 0);
+	      const int midy = max(idy, 0);
+	      const int row = min(midx, N_data_x - 1);
+	      const int col = min(midy, N_data_y - 1);
+	      const int cell_to_get = row * N_data_y + col;
+	      if (cell_to_get >= N_data_x * N_data_y) {
+		error(
+		      "Index row=%d col=%d is out of boundary for the target data "
+		      "which has dimension row=%d col=%d",
+		      row, col, N_data_x, N_data_y);
+	      }
+	      interp->data[current_cell] = data[cell_to_get];
+	      break;
+	    }
           default:
             error("Interpolation type not implemented");
         }
@@ -395,23 +397,25 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
         return 0;
       case boundary_condition_const:
-        const int midx = max(idx, 0);
-        const int midy = max(idy, 0);
-        const int row = min(midx, Nx - 1);
-        const int col = min(midy, Ny - 1);
-        const int cell_to_get = row * Ny + col;
-        if (cell_to_get >= array_size) {
-          error("Index %d is out of boundary for the target data", cell_to_get);
-        }
+	{
+	  const int midx = max(idx, 0);
+	  const int midy = max(idy, 0);
+	  const int row = min(midx, Nx - 1);
+	  const int col = min(midy, Ny - 1);
+	  const int cell_to_get = row * Ny + col;
+	  if (cell_to_get >= array_size) {
+	    error("Index %d is out of boundary for the target data", cell_to_get);
+	  }
 #if defined(SWIFT_TEST_STELLAR_WIND)
-        message(
-            "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
-            "interp->dx=%g interp->dy=%g idx=%d idy=%d "
-            "out_of_boundary_type=const cell_to_get=%d E[%d][%d]=%g",
-            Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx,
-            idy, cell_to_get, row, col, pow(10, interp->data[cell_to_get]));
+	  message(
+		  "interp->Nx=%d interp->Ny=%d interp->xmin=%g interp->ymin=%g "
+		  "interp->dx=%g interp->dy=%g idx=%d idy=%d "
+		  "out_of_boundary_type=const cell_to_get=%d E[%d][%d]=%g",
+		  Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx,
+		  idy, cell_to_get, row, col, pow(10, interp->data[cell_to_get]));
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
-        return interp->data[cell_to_get];
+	  return interp->data[cell_to_get];
+	}
       default:
         error("Interpolation type not implemented");
     }
