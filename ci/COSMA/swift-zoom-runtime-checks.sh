@@ -112,9 +112,27 @@ echo "-----------------------------------------------------"
 do_configure --with-parmetis --with-subgrid=EAGLE-XL --with-hydro=sphenix --with-kernel=wendland-C2 --enable-debugging-checks --disable-vec --enable-debug
 do_make
 
-echo "------------------------------------------------"
-echo "Full physics runtime checks currently not enabled"
-echo "------------------------------------------------"
-echo "UniformDMEAGLE run remains disabled until tuned."
+echo
+echo "-------------------------------------------------"
+echo "Zoom integration check: UniformDMEAGLE, 16 steps"
+echo "-------------------------------------------------"
+cd "${WORKDIR}/examples/ZoomSimulations/UniformDMEAGLE"
+
+# Link tables from shared HOME location when available; run.sh downloads
+# any missing dependencies.
+if [ ! -e yieldtables ] && [ -e "$HOME/yieldtables" ]; then
+	link_data yieldtables
+fi
+if [ ! -e coolingtables ] && [ -e "$HOME/coolingtables" ]; then
+	link_data coolingtables
+fi
+if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ] && [ -e "$HOME/UV_dust1_CR1_G1_shield1.hdf5" ]; then
+	link_data UV_dust1_CR1_G1_shield1.hdf5
+fi
+if [ ! -e photometry ] && [ -e "$HOME/photometry" ]; then
+	link_data photometry
+fi
+
+do_run bash run.sh
 
 exit
