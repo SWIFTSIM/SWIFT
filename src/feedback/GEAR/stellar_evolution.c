@@ -51,7 +51,7 @@ void stellar_evolution_props_init(struct stellar_model *sm,
                                   const struct unit_system *us,
                                   struct swift_params *params,
                                   const struct cosmology *cosmo,
-                                  const char *with_stellar_wind_feedback) {
+                                  const char with_stellar_wind_feedback) {
 
   /* Read the list of elements */
   stellar_evolution_read_elements(sm, params);
