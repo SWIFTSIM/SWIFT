@@ -1814,9 +1814,7 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
       if (ci->progeny[j] == NULL) continue;
 
       /* Skip empty non-void progeny. */
-      if (ci->progeny[j]->subtype != cell_subtype_void &&
-          ci->progeny[j]->grav.count == 0)
-        continue;
+      if (cell_is_empty_grav(ci->progeny[j])) continue;
 
       for (int k = j + 1; k < 8; k++) {
 
