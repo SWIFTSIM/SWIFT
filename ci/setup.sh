@@ -63,6 +63,12 @@ function do_run {
     rm -f "$tmp"
 }
 
+#  Function to locate test data. Should be in the home directory of this
+#  user when in a container.
+function link_data {
+    ln -s "$HOME/${1}" .
+}
+
 #  Exit scripts as soon as there is an error. If you want.
 #set -e
 
