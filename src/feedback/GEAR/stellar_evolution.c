@@ -481,7 +481,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
   float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT];
   supernovae_ii_get_yields_from_raw(&sm->snii, log_m_avg, snii_yields);
 
-  /* Compute the mass of non processed elements */
+  /* Compute the mass fraction of non processed elements */
   const float non_processed =
       supernovae_ii_get_ejected_mass_fraction_non_processed_from_raw(&sm->snii,
                                                                      log_m_avg);
