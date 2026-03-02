@@ -456,4 +456,19 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_free(
   interp->data = NULL;
 }
 
+/**
+ * @brief zero pointers in interpolation_2d struct
+ */
+__attribute__((always_inline)) static INLINE void interpolate_2d_zero_pointers(
+    struct interpolation_2d *interp) {
+  interp->data = NULL;
+  interp->Nx = 0;
+  interp->Ny = 0;
+  interp->xmin = 0;
+  interp->dx = 0;
+  interp->ymin = 0;
+  interp->dy = 0;
+  interp->boundary_condition = boundary_condition_error;
+}
+
 #endif  // SWIFT_GEAR_INTERPOLATION_H

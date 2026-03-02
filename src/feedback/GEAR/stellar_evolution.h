@@ -112,7 +112,7 @@ void stellar_evolution_compute_preSN_properties(
     const float m_init);
 void stellar_evolution_zero_pointers(struct stellar_model sm);
 void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream);
-void stellar_evolution_restore(struct stellar_model *sm, FILE *stream);
+void stellar_evolution_restore(struct stellar_model *sm, FILE *stream, const char with_stellar_wind_feedback);
 void stellar_evolution_clean(struct stellar_model *sm);
 
 #endif  // SWIFT_STELLAR_EVOLUTION_GEAR_H

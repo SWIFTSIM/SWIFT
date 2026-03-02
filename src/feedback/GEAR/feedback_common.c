@@ -357,10 +357,10 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream) {
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
 
-  stellar_evolution_restore(&feedback->stellar_model, stream);
+  stellar_evolution_restore(&feedback->stellar_model, stream, feedback->with_stellar_wind_feedback);
 
   if (feedback->metallicity_max_first_stars != -1) {
-    stellar_evolution_restore(&feedback->stellar_model_first_stars, stream);
+    stellar_evolution_restore(&feedback->stellar_model_first_stars, stream, feedback->with_stellar_wind_feedback);
   }
 }
 

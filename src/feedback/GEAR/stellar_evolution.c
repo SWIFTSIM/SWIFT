@@ -79,6 +79,8 @@ void stellar_evolution_props_init(struct stellar_model *sm,
   /* Initialize the stellar wind model if needed */
   if(with_stellar_wind_feedback){ 
     stellar_wind_init(&sm->sw, params, sm, us);
+  } else {
+    stellar_wind_zero_pointers(&sm->sw);
   }
 
   /* Initialize the minimal gravity mass for the stars */
@@ -1383,8 +1385,9 @@ void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
  *
  * @param sm the struct
  * @param stream the file stream
+ * @param with_stellar_wind_feedback Are we restoring with stellar wind feedback?
  */
-void stellar_evolution_restore(struct stellar_model *sm, FILE *stream) {
+void stellar_evolution_restore(struct stellar_model *sm, FILE *stream, const char with_stellar_wind_feedback) {
 
   /* Restore the initial mass function */
   initial_mass_function_restore(&sm->imf, stream, sm);
@@ -1399,7 +1402,11 @@ void stellar_evolution_restore(struct stellar_model *sm, FILE *stream) {
   supernovae_ii_restore(&sm->snii, stream, sm);
 
   /* Restore the stellar wind model */
-  stellar_wind_restore(&sm->sw, stream, sm);
+  if(with_stellar_wind_feedback){ 
+    stellar_wind_restore(&sm->sw, stream, sm);
+  } else {
+    stellar_wind_zero_pointers(&sm->sw);
+  }
 }
 
 /**
