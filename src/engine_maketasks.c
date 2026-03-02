@@ -4264,10 +4264,12 @@ void engine_maketasks(struct engine *e) {
     if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
   }
 
-  /* Verify that all top-level zoom cells were reached during task splitting */
+  /* Verify that all local top-level zoom cells were reached during task
+   * splitting */
   if (e->s->with_zoom_region) {
-    for (int i = 0; i < e->s->zoom_props->nr_zoom_cells; i++) {
-      struct cell *c = &e->s->cells_top[i];
+    for (int i = 0; i < e->s->zoom_props->nr_local_zoom_cells; i++) {
+      struct cell *c =
+          &e->s->cells_top[e->s->zoom_props->local_zoom_cells_top[i]];
       if (c->grav.count > 0 && !c->reached_in_task_split) {
         error(
             "Top-level zoom cell (ind=%d, cellID=%lld) with %d particles was "
