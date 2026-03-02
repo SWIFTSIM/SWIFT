@@ -90,6 +90,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
                          multipole_rec_end);
     c->hydro.sorts = NULL;
     c->stars.sorts = NULL;
+    c->sidm.sorts = NULL;
 #ifdef SWIFT_DEBUG_CHECKS
     c->nr_tasks = 0;
 #endif
@@ -105,6 +106,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.dx_max_part = 0.f;
     c->stars.dx_max_part = 0.f;
     c->stars.dx_max_sort = 0.f;
+    c->sidm.dx_max_part = 0.f;
+    c->sidm.dx_max_sort = 0.f;	
     c->black_holes.dx_max_part = 0.f;
     c->hydro.sorted = 0;
     c->hydro.sort_allocated = 0;
@@ -122,6 +125,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.count = 0;
     c->black_holes.count_total = 0;
     c->black_holes.updated = 0;
+    c->sidm.count = 0;
+    c->sidm.count_total = 0;
+    c->sidm.updated = 0;
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
@@ -182,6 +188,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.sink_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
+    c->sidm.drift = NULL;
+    c->sidm.density_ghost = NULL;
+    c->sidm.density = NULL;
     c->hydro.cooling_in = NULL;
     c->hydro.cooling_out = NULL;
     for (int i = 0; i < HYDRO_COOLING_NTASK; i++) {
@@ -211,6 +220,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.ti_end_min = -1;
     c->stars.ti_end_min = -1;
     c->black_holes.ti_end_min = -1;
+    c->sidm.ti_end_min = -1;
     c->rt.rt_in = NULL;
     c->rt.rt_ghost1 = NULL;
     c->rt.rt_gradient = NULL;
