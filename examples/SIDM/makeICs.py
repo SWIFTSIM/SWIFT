@@ -1,6 +1,5 @@
 import h5py
 import numpy as np
-from astropy import units
 
 num_sidm = 100
 nparttype = 8
@@ -14,10 +13,10 @@ UnitCurrent_in_cgs = 1  # Amperes
 UnitTemp_in_cgs = 1  # Kelvin
 UnitTime_in_cgs = UnitLength_in_cgs / UnitVelocity_in_cgs
 
-UnitMass = UnitMass_in_cgs * units.g
-UnitLength = UnitLength_in_cgs * units.cm
-UnitTime = UnitTime_in_cgs * units.s
-UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
+UnitMass = UnitMass_in_cgs
+UnitLength = UnitLength_in_cgs
+UnitTime = UnitTime_in_cgs 
+UnitVelocity = UnitVelocity_in_cgs
 
 with h5py.File("sidm_ics.hdf5", "w") as f:
     # Header attributes
@@ -47,15 +46,3 @@ with h5py.File("sidm_ics.hdf5", "w") as f:
     parttype7.create_dataset("Velocities", data=np.random.rand(num_sidm, 3))
     parttype7.create_dataset("ParticleIDs", data=np.arange(1, num_sidm+1))
     parttype7.create_dataset("Masses", data=np.ones(num_sidm))
-
-    # parttype1 = f.create_group("PartType1")
-    # parttype1.create_dataset("Coordinates", data=np.random.rand(num_sidm, 3))
-    # parttype1.create_dataset("Velocities", data=np.random.rand(num_sidm, 3))
-    # parttype1.create_dataset("ParticleIDs", data=np.arange(num_sidm+1, 2*num_sidm+1))
-    # parttype1.create_dataset("Masses", data=np.ones(num_sidm))
-
-    # parttype1 = f.create_group("PartType4")
-    # parttype1.create_dataset("Coordinates", data=np.random.rand(num_sidm, 3))
-    # parttype1.create_dataset("Velocities", data=np.random.rand(num_sidm, 3))
-    # parttype1.create_dataset("ParticleIDs", data=np.arange(2*num_sidm+1, 3*num_sidm+1))
-    # parttype1.create_dataset("Masses", data=np.ones(num_sidm))

@@ -1328,7 +1328,7 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
             }
 #endif
             /* One last action before death? */
-            sidm_remove_sipart(sip, e->time);  // TODO
+            sidm_remove_sipart(sip, e->time);
 
             /* Remove the particle entirely */
             cell_remove_sipart(e, c, sip);
@@ -1366,11 +1366,6 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
         /* Update the maximal active smoothing length in the cell */
         cell_h_max_active = max(cell_h_max_active, sip->h);
       }
-
-#ifdef SWIFT_SIDM_DENSITY_CHECKS
-      sip->limiter_data.n_limiter = 0.f;
-      sip->limiter_data.N_limiter = 0;
-#endif
     }
 
     /* Now, get the maximal particle motion from its square */

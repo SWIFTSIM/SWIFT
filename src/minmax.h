@@ -139,13 +139,12 @@
     max(_temp3, _u);                                  \
   })
 
-
 /**
  * @brief Minimum of six numbers
  *
  * This macro evaluates its arguments exactly once.
  */
-#define min6(x, y, z, w, u, v)                           \
+#define min6(x, y, z, w, u, v)                        \
   ({                                                  \
     const __typeof__(x) _x = (x);                     \
     const __typeof__(y) _y = (y);                     \
@@ -157,7 +156,7 @@
     const __typeof__(x) _temp2 = min(_z, _w);         \
     const __typeof__(x) _temp3 = min(_u, _v);         \
     const __typeof__(x) _temp4 = min(_temp1, _temp2); \
-    min(_temp3, _temp4);                                  \
+    min(_temp3, _temp4);                              \
   })
 
 /**
@@ -165,7 +164,7 @@
  *
  * This macro evaluates its arguments exactly once.
  */
-#define max6(x, y, z, w, u, v)                           \
+#define max6(x, y, z, w, u, v)                        \
   ({                                                  \
     const __typeof__(x) _x = (x);                     \
     const __typeof__(y) _y = (y);                     \
@@ -177,7 +176,7 @@
     const __typeof__(x) _temp2 = max(_z, _w);         \
     const __typeof__(x) _temp3 = max(_u, _v);         \
     const __typeof__(x) _temp4 = max(_temp1, _temp2); \
-    max(_temp3, _temp4);                                  \
+    max(_temp3, _temp4);                              \
   })
 
 #endif /* SWIFT_MINMAX_H */

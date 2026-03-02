@@ -1575,7 +1575,8 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
       c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
-      c->sinks.ti_end_min == 0 && c->sidm.ti_end_min == 0 && c->rt.ti_rt_end_min == 0 && c->nr_tasks > 0)
+      c->sinks.ti_end_min == 0 && c->sidm.ti_end_min == 0 &&
+      c->rt.ti_rt_end_min == 0 && c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {
@@ -1585,7 +1586,7 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   } else {
     if (c->nodeID == engine_rank) {
       for (int i = 0; i < c->hydro.count; ++i) {
-        if (c->hydro.parts[i].time_bin == 0)	  
+        if (c->hydro.parts[i].time_bin == 0)
           error("Particle without assigned time-bin");
       }
       for (int i = 0; i < c->sidm.count; ++i) {

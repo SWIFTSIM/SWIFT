@@ -408,11 +408,22 @@ void stellar_evolution_compute_continuous_feedback_properties(
           &sm->snii, log_m_end_step, log_m_beg_step);
 
   /* Set the yields */
-  const float birth_mass_Msun =
-      sp->sf_data.birth_mass * phys_const->const_solar_mass;
-  chemistry_set_star_supernovae_ejected_yields(
-      sp, birth_mass_Msun, non_processed,
-      /*number_snii*/ 1, number_snia_f, snii_yields, snia_yields, phys_const);
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    /* Compute the mass fraction of metals */
+    sp->feedback_data.metal_mass_ejected[i] =
+        /* Supernovae II yields */
+        snii_yields[i] +
+        /* Gas contained in stars initial metallicity */
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            non_processed;
+
+    /* Convert it to total mass */
+    sp->feedback_data.metal_mass_ejected[i] *= sp->sf_data.birth_mass;
+
+    /* Add the Supernovae Ia */
+    sp->feedback_data.metal_mass_ejected[i] +=
+        snia_yields[i] * number_snia_f * phys_const->const_solar_mass;
+  }
 }
 
 /**
@@ -476,9 +487,25 @@ void stellar_evolution_compute_discrete_feedback_properties(
                                                                      log_m_avg);
 
   /* Set the yields */
-  chemistry_set_star_supernovae_ejected_yields(
-      sp, m_avg, non_processed, number_snii, number_snia, snii_yields,
-      snia_yields, phys_const);
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+
+    /* Compute the mass fraction of metals */
+    sp->feedback_data.metal_mass_ejected[i] =
+        /* Supernovae II yields */
+        snii_yields[i] +
+        /* Gas contained in stars initial metallicity */
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            non_processed;
+
+    /* Convert it to total mass */
+    sp->feedback_data.metal_mass_ejected[i] *= m_avg * number_snii;
+
+    /* Supernovae Ia yields */
+    sp->feedback_data.metal_mass_ejected[i] += snia_yields[i] * number_snia;
+
+    /* Convert everything in code units */
+    sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
+  }
 }
 
 /**

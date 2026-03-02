@@ -37,7 +37,8 @@
 struct end_of_step_data {
 
   size_t updated, g_updated, s_updated, sink_updated, b_updated, si_updated;
-  size_t inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited, si_inhibited;
+  size_t inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited,
+      si_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_beg_max;
   integertime_t ti_rt_end_min, ti_rt_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_beg_max;
@@ -262,17 +263,16 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   /* Store these in the temporary collection group. */
   collectgroup1_init(
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
-      data.sink_updated, data.b_updated, data.si_updated, data.inhibited, data.g_inhibited,
-      data.s_inhibited, data.sink_inhibited, data.b_inhibited, data.si_inhibited,
-      data.ti_hydro_end_min, data.ti_hydro_beg_max, data.ti_rt_end_min,
-      data.ti_rt_beg_max, data.ti_gravity_end_min, data.ti_gravity_beg_max,
-      data.ti_stars_end_min, data.ti_stars_beg_max, data.ti_sinks_end_min,
-      data.ti_sinks_beg_max, data.ti_black_holes_end_min,
-      data.ti_black_holes_beg_max, data.ti_sidm_end_min,
-      data.ti_sidm_beg_max, e->forcerebuild, e->s->tot_cells,
-      e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
-      data.sfh, data.runtime, data.flush_lightcone_maps, data.deadtime,
-      data.csds_file_size_gb);
+      data.sink_updated, data.b_updated, data.si_updated, data.inhibited,
+      data.g_inhibited, data.s_inhibited, data.sink_inhibited, data.b_inhibited,
+      data.si_inhibited, data.ti_hydro_end_min, data.ti_hydro_beg_max,
+      data.ti_rt_end_min, data.ti_rt_beg_max, data.ti_gravity_end_min,
+      data.ti_gravity_beg_max, data.ti_stars_end_min, data.ti_stars_beg_max,
+      data.ti_sinks_end_min, data.ti_sinks_beg_max, data.ti_black_holes_end_min,
+      data.ti_black_holes_beg_max, data.ti_sidm_end_min, data.ti_sidm_beg_max,
+      e->forcerebuild, e->s->tot_cells, e->sched.nr_tasks,
+      (float)e->sched.nr_tasks / (float)e->s->tot_cells, data.sfh, data.runtime,
+      data.flush_lightcone_maps, data.deadtime, data.csds_file_size_gb);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI

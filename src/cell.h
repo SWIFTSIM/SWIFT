@@ -362,10 +362,6 @@ enum cell_flags {
   cell_flag_rt_requests_sort = (1UL << 23), /* was this sort requested by RT? */
   cell_flag_do_sidm_drift = (1UL << 24),
   cell_flag_do_sidm_sub_drift = (1UL << 25),
-  cell_flag_do_sidm_limiter = (1UL << 26),
-  cell_flag_do_sidm_sub_limiter = (1UL << 27),
-  cell_flag_do_sidm_sync = (1UL << 28),
-  cell_flag_do_sidm_sub_sync = (1UL << 29),
 };
 
 /**

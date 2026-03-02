@@ -2280,7 +2280,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
-  // /* Udpate the SIDM properties */   - TODO                  
+  // /* Udpate the SIDM properties */   - TODO
   // if (e->policy & engine_policy_sidm)
   //     sidm_props_update(e->sidm_properties, e->gravity_properties,
   //     e->cosmology);
