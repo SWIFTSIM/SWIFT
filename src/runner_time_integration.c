@@ -1953,7 +1953,6 @@ void runner_do_siparts_sync(struct runner *r, struct cell *c, int force,
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int sicount = c->sidm.count;
   struct sipart *restrict siparts = c->sidm.parts;
 
@@ -2044,13 +2043,13 @@ void runner_do_siparts_sync(struct runner *r, struct cell *c, int force,
 
         /* Time-step length in physical units */
         // MATTHIEU: TODO: think about this one!
-        double time_step_length;
-        if (with_cosmology) {
-          time_step_length = cosmology_get_delta_time(
-              e->cosmology, e->ti_current, e->ti_current + ti_new_step);
-        } else {
-          time_step_length = get_timestep(new_time_bin, e->time_base);
-        }
+        /* double time_step_length; */
+        /* if (with_cosmology) { */
+        /*   time_step_length = cosmology_get_delta_time( */
+        /*       e->cosmology, e->ti_current, e->ti_current + ti_new_step); */
+        /* } else { */
+        /*   time_step_length = get_timestep(new_time_bin, e->time_base); */
+        /* } */
 
         /* Update particle */
         sip->time_bin = new_time_bin;

@@ -1278,15 +1278,12 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
   } else if (!c->split && force && ti_current > ti_old_sipart) {
 
     /* Drift from the last time the cell was drifted to the current time */
-    double dt_drift, dt_kick_grav;
+    double dt_drift;
     if (with_cosmology) {
       dt_drift =
           cosmology_get_drift_factor(e->cosmology, ti_old_sipart, ti_current);
-      dt_kick_grav = cosmology_get_grav_kick_factor(e->cosmology, ti_old_sipart,
-                                                    ti_current);
     } else {
       dt_drift = (ti_current - ti_old_sipart) * e->time_base;
-      dt_kick_grav = (ti_current - ti_old_sipart) * e->time_base;
     }
 
     /* Loop over all the SIDM particles in the cell */

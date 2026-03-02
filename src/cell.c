@@ -1583,13 +1583,16 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
       if (c->progeny[k] != NULL)
         cell_check_timesteps(c->progeny[k], ti_current, max_bin);
   } else {
-    if (c->nodeID == engine_rank)
-      for (int i = 0; i < c->hydro.count; ++i)
-        if (c->hydro.parts[i].time_bin == 0)
+    if (c->nodeID == engine_rank) {
+      for (int i = 0; i < c->hydro.count; ++i) {
+        if (c->hydro.parts[i].time_bin == 0)	  
           error("Particle without assigned time-bin");
-      for (int i = 0; i < c->sidm.count; ++i)
+      }
+      for (int i = 0; i < c->sidm.count; ++i) {
         if (c->sidm.parts[i].time_bin == 0)
           error("Particle without assigned time-bin");
+      }
+    }
   }
 
   /* Other checks not relevent when starting-up */
