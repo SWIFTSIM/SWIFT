@@ -29,6 +29,14 @@
 /* Local includes */
 #include "timeline.h"
 
+/* METIS/ParMETIS headers only used when MPI is also available. */
+#ifdef HAVE_PARMETIS
+#include <parmetis.h>
+#endif
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
+
 /* Avoid cyclic inclusions. */
 struct swift_params;
 struct space;
