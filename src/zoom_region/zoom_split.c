@@ -85,8 +85,21 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
 
-    /* If this top level cell is empty, don't link it in. */
-    if (cell_is_empty(zoom_cell)) {
+    /* If this top-level zoom cell is empty, don't link it in.
+     *
+     * Important: we cannot use cell_is_empty() here because that helper treats
+     * foreign cells as empty when particle counts are zero (it only trusts
+     * local multipoles). For void-tree construction we need to link zoom cells
+     * that are non-local but have a valid exchanged top-level multipole. */
+    const int zoom_cell_has_particles =
+        (zoom_cell->hydro.count > 0 || zoom_cell->grav.count > 0 ||
+         zoom_cell->stars.count > 0 || zoom_cell->black_holes.count > 0 ||
+         zoom_cell->sinks.count > 0);
+    const int zoom_cell_has_multipole_mass =
+        (zoom_cell->grav.multipole != NULL &&
+         zoom_cell->grav.multipole->m_pole.M_000 > 0.f);
+
+    if (!zoom_cell_has_particles && !zoom_cell_has_multipole_mass) {
       c->progeny[k] = NULL;
       continue;
     }
