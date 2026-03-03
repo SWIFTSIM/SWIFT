@@ -235,6 +235,7 @@ int zoom_partition_count_vertex_edges(struct space *s, int periodic,
 
   int *zoom_cdim = s->zoom_props->cdim;
   int *bkg_cdim = s->zoom_props->bkg_cdim;
+  const int bkg_offset = s->zoom_props->bkg_cell_offset;
   struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
 
   /* Temporary array to track edge counts per cell during counting */
@@ -286,20 +287,24 @@ int zoom_partition_count_vertex_edges(struct space *s, int periodic,
         for (int bkg_ii = -1; bkg_ii <= 1; bkg_ii++) {
           int bkg_iii = bkg_i + bkg_ii;
           if (!periodic && (bkg_iii < 0 || bkg_iii >= bkg_cdim[0])) continue;
+          if (periodic) bkg_iii = (bkg_iii + bkg_cdim[0]) % bkg_cdim[0];
           for (int bkg_jj = -1; bkg_jj <= 1; bkg_jj++) {
             int bkg_jjj = bkg_j + bkg_jj;
             if (!periodic && (bkg_jjj < 0 || bkg_jjj >= bkg_cdim[1])) continue;
+            if (periodic) bkg_jjj = (bkg_jjj + bkg_cdim[1]) % bkg_cdim[1];
             for (int bkg_kk = -1; bkg_kk <= 1; bkg_kk++) {
               int bkg_kkk = bkg_k + bkg_kk;
               if (!periodic && (bkg_kkk < 0 || bkg_kkk >= bkg_cdim[2]))
                 continue;
+              if (periodic) bkg_kkk = (bkg_kkk + bkg_cdim[2]) % bkg_cdim[2];
 
               /* Skip the void cell containing this zoom cell */
               if (bkg_i == bkg_iii && bkg_j == bkg_jjj && bkg_k == bkg_kkk)
                 continue;
 
               /* Get the cell index */
-              int bkg_cjd = cell_getid(bkg_cdim, bkg_iii, bkg_jjj, bkg_kkk);
+              int bkg_cjd = cell_getid_offset(bkg_cdim, bkg_offset, bkg_iii,
+                                              bkg_jjj, bkg_kkk);
 
               /* We have a background neighbour - count for both cells */
               edge_counts[cid]++;
@@ -317,7 +322,7 @@ int zoom_partition_count_vertex_edges(struct space *s, int periodic,
       for (int k = 0; k < bkg_cdim[2]; k++) {
 
         /* Get the cell. */
-        int cid = cell_getid(bkg_cdim, i, j, k);
+        int cid = cell_getid_offset(bkg_cdim, bkg_offset, i, j, k);
 
         /* Loop over the immediate neighbours in this grid (we've done the zoom
          * edges above) */
@@ -335,7 +340,7 @@ int zoom_partition_count_vertex_edges(struct space *s, int periodic,
               kkk = (kkk + bkg_cdim[2]) % bkg_cdim[2];
 
               /* Get the cell index */
-              int cjd = cell_getid(bkg_cdim, iii, jjj, kkk);
+              int cjd = cell_getid_offset(bkg_cdim, bkg_offset, iii, jjj, kkk);
 
               /* Avoid duplicates. */
               if (cid >= cjd) continue;
@@ -369,6 +374,7 @@ void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
 
   int *zoom_cdim = s->zoom_props->cdim;
   int *bkg_cdim = s->zoom_props->bkg_cdim;
+  const int bkg_offset = s->zoom_props->bkg_cell_offset;
   struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
 
   /* Track current position in adjncy for each cell using temporary array */
@@ -429,20 +435,24 @@ void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
         for (int bkg_ii = -1; bkg_ii <= 1; bkg_ii++) {
           int bkg_iii = bkg_i + bkg_ii;
           if (!periodic && (bkg_iii < 0 || bkg_iii >= bkg_cdim[0])) continue;
+          if (periodic) bkg_iii = (bkg_iii + bkg_cdim[0]) % bkg_cdim[0];
           for (int bkg_jj = -1; bkg_jj <= 1; bkg_jj++) {
             int bkg_jjj = bkg_j + bkg_jj;
             if (!periodic && (bkg_jjj < 0 || bkg_jjj >= bkg_cdim[1])) continue;
+            if (periodic) bkg_jjj = (bkg_jjj + bkg_cdim[1]) % bkg_cdim[1];
             for (int bkg_kk = -1; bkg_kk <= 1; bkg_kk++) {
               int bkg_kkk = bkg_k + bkg_kk;
               if (!periodic && (bkg_kkk < 0 || bkg_kkk >= bkg_cdim[2]))
                 continue;
+              if (periodic) bkg_kkk = (bkg_kkk + bkg_cdim[2]) % bkg_cdim[2];
 
               /* Skip the void cell containing this zoom cell */
               if (bkg_i == bkg_iii && bkg_j == bkg_jjj && bkg_k == bkg_kkk)
                 continue;
 
               /* Get the cell index */
-              int bkg_cjd = cell_getid(bkg_cdim, bkg_iii, bkg_jjj, bkg_kkk);
+              int bkg_cjd = cell_getid_offset(bkg_cdim, bkg_offset, bkg_iii,
+                                              bkg_jjj, bkg_kkk);
 
               /* We have a background neighbour - record in both directions */
               if (adjncy != NULL) {
@@ -464,7 +474,7 @@ void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
       for (int k = 0; k < bkg_cdim[2]; k++) {
 
         /* Get the cell. */
-        int ci_id = cell_getid(bkg_cdim, i, j, k);
+        int ci_id = cell_getid_offset(bkg_cdim, bkg_offset, i, j, k);
 
         /* Loop over the immediate neighbours in this grid (we've done the zoom
          * edges above) */
@@ -482,7 +492,7 @@ void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
               kkk = (kkk + bkg_cdim[2]) % bkg_cdim[2];
 
               /* Get the cell index */
-              int cjd = cell_getid(bkg_cdim, iii, jjj, kkk);
+              int cjd = cell_getid_offset(bkg_cdim, bkg_offset, iii, jjj, kkk);
 
               /* Avoid duplicates. */
               if (ci_id >= cjd) continue;
