@@ -219,7 +219,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 /**
  * @brief Computes the gravitational forcing terms.
  *
- * We do nothing in this 'none' scheme.
+ * Nothing to do here
  *
  * @param id The particle ID.
  * @param terms The properties of the forcing terms.
@@ -275,7 +275,10 @@ __attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
 /**
  * @brief Computes the time-step condition due to the forcing terms.
  *
- * Nothing to do here. --> Return FLT_MAX.
+ * Set particle timestep such that it ends at the next injection event.
+ * This way the particles are synchronised at the injection time and 
+ * particles will not "miss" energy injections that are supposed to happen.
+ * It will return FLT_MAX if there is no injection event after dt_max.
  *
  * @param time The current time.
  * @param terms The properties of the forcing terms.
