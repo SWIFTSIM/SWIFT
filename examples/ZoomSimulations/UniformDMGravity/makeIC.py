@@ -84,7 +84,10 @@ HI_REGION_SIZE = TARGET_ZOOM_EXTENT / REGION_PAD_FACTOR
 ZOOM_CELLS_PER_AXIS = ZOOM_BKG_CELLS_SPANNED * (2**ZOOM_TOP_LEVEL_DEPTH)
 HI_PARTICLES_AXIS = 4
 HI_PARTICLES_PER_ZOOM_CELL = HI_PARTICLES_AXIS**3
-BKG_PARTICLES_PER_TOP_CELL = 32
+BKG_PARTICLES_X = 4
+BKG_PARTICLES_Y = 4
+BKG_PARTICLES_Z = 2
+BKG_PARTICLES_PER_TOP_CELL = BKG_PARTICLES_X * BKG_PARTICLES_Y * BKG_PARTICLES_Z
 
 # Output file name for the generated ICs, this needs to match the param file.
 OUTPUT_FILE = "zoom_uniform_dm_gravity.hdf5"
@@ -136,10 +139,23 @@ def sample_stratified_in_cell(rng, lo, hi, n_axis):
     return lo + u * width
 
 
-def sample_uniform_in_cell(rng, lo, hi, n_parts):
-    """Sample ``n_parts`` points uniformly within one Cartesian cell."""
+def sample_stratified_rectangular_in_cell(rng, lo, hi, nx, ny, nz):
+    """Sample ``nx*ny*nz`` points stratified in a rectangular 3D lattice."""
     width = hi - lo
-    return lo + rng.random((n_parts, 3)) * width
+
+    ox = (np.arange(nx, dtype=np.float64) + 0.5) / nx
+    oy = (np.arange(ny, dtype=np.float64) + 0.5) / ny
+    oz = (np.arange(nz, dtype=np.float64) + 0.5) / nz
+    gx, gy, gz = np.meshgrid(ox, oy, oz, indexing="ij")
+    centers = np.column_stack((gx.ravel(), gy.ravel(), gz.ravel()))
+
+    jitter = np.empty_like(centers)
+    jitter[:, 0] = rng.uniform(-0.45, 0.45, size=centers.shape[0]) / nx
+    jitter[:, 1] = rng.uniform(-0.45, 0.45, size=centers.shape[0]) / ny
+    jitter[:, 2] = rng.uniform(-0.45, 0.45, size=centers.shape[0]) / nz
+
+    u = np.clip(centers + jitter, 0.0, 1.0 - np.finfo(np.float64).eps)
+    return lo + u * width
 
 
 def generate_high_res_particles(rng, centre):
@@ -192,7 +208,14 @@ def generate_background_particles(rng):
                 lo = top_w * np.array([ix, iy, iz], dtype=np.float64)
                 hi = lo + top_w
                 chunks.append(
-                    sample_uniform_in_cell(rng, lo, hi, BKG_PARTICLES_PER_TOP_CELL)
+                    sample_stratified_rectangular_in_cell(
+                        rng,
+                        lo,
+                        hi,
+                        BKG_PARTICLES_X,
+                        BKG_PARTICLES_Y,
+                        BKG_PARTICLES_Z,
+                    )
                 )
 
     return np.vstack(chunks)
