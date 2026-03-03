@@ -2478,7 +2478,7 @@ void partition_initial_partition(struct partition *initial_partition,
     if (s->cells_top[k].nodeID == nodeID) {
       local_cells++;
       if (s->cells_top[k].type == cell_type_zoom) local_zooms++;
-      if (s->cells_top[k].type == cell_type_background) local_bkg++;
+      if (s->cells_top[k].type == cell_type_bkg) local_bkg++;
     }
   }
   message("Node %d has %d cells.", nodeID, local_cells);
