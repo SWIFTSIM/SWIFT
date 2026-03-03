@@ -122,12 +122,16 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   fp->supernovae_efficiency = e_efficiency;
 
   /* Activate the stellar wind feedback */
-  char with_stellar_wind_feedback =
-      (char)parser_get_param_int(params, "GEARFeedback:with_stellar_wind_feedback");
+  char with_stellar_wind_feedback = (char)parser_get_param_int(
+      params, "GEARFeedback:with_stellar_wind_feedback");
   fp->with_stellar_wind_feedback = with_stellar_wind_feedback;
 
   /* Pre-Supernovae energy efficiency */
-  double w_efficiency = with_stellar_wind_feedback ? parser_get_param_double(params, "GEARFeedback:pre_supernovae_efficiency") : 0.0;
+  double w_efficiency =
+      with_stellar_wind_feedback
+          ? parser_get_param_double(params,
+                                    "GEARFeedback:pre_supernovae_efficiency")
+          : 0.0;
   fp->preSN_efficiency = w_efficiency;
 
   /* filename of the chemistry tables. */

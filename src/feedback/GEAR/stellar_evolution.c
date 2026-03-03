@@ -77,7 +77,7 @@ void stellar_evolution_props_init(struct stellar_model *sm,
   supernovae_ii_init(&sm->snii, params, sm, us);
 
   /* Initialize the stellar wind model if needed */
-  if(with_stellar_wind_feedback){ 
+  if (with_stellar_wind_feedback) {
     stellar_wind_init(&sm->sw, params, sm, us);
   } else {
     stellar_wind_zero_pointers(&sm->sw);
@@ -759,8 +759,8 @@ void stellar_evolution_evolve_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
     const struct phys_const *phys_const, const char with_stellar_wind_feedback,
-    const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for single_star only. */
   if (sp->star_type != single_star) {
@@ -790,7 +790,7 @@ void stellar_evolution_evolve_individual_star(
   }
 
   /* Pre-SN feedback */
-  if(with_stellar_wind_feedback) {
+  if (with_stellar_wind_feedback) {
     stellar_evolution_compute_preSN_feedback_individual_star(
         sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
   }
@@ -821,8 +821,8 @@ void stellar_evolution_evolve_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
     const struct phys_const *phys_const, const char with_stellar_wind_feedback,
-    const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for populations of stars and not
      individual stars. */
@@ -1385,9 +1385,11 @@ void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
  *
  * @param sm the struct
  * @param stream the file stream
- * @param with_stellar_wind_feedback Are we restoring with stellar wind feedback?
+ * @param with_stellar_wind_feedback Are we restoring with stellar wind
+ * feedback?
  */
-void stellar_evolution_restore(struct stellar_model *sm, FILE *stream, const char with_stellar_wind_feedback) {
+void stellar_evolution_restore(struct stellar_model *sm, FILE *stream,
+                               const char with_stellar_wind_feedback) {
 
   /* Restore the initial mass function */
   initial_mass_function_restore(&sm->imf, stream, sm);
@@ -1402,7 +1404,7 @@ void stellar_evolution_restore(struct stellar_model *sm, FILE *stream, const cha
   supernovae_ii_restore(&sm->snii, stream, sm);
 
   /* Restore the stellar wind model */
-  if(with_stellar_wind_feedback){ 
+  if (with_stellar_wind_feedback) {
     stellar_wind_restore(&sm->sw, stream, sm);
   } else {
     stellar_wind_zero_pointers(&sm->sw);

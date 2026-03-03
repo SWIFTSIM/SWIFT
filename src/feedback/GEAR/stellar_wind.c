@@ -256,7 +256,8 @@ void stellar_wind_zero_pointers(struct stellar_wind *sw) {
 
   interpolate_2d_zero_pointers(&sw->raw.ejected_energy);
   interpolate_2d_zero_pointers(&sw->raw.mass_loss);
-  interpolate_2d_zero_pointers(&sw->integrated.ejected_energy_per_progenitor_mass);
+  interpolate_2d_zero_pointers(
+      &sw->integrated.ejected_energy_per_progenitor_mass);
   interpolate_2d_zero_pointers(&sw->integrated.mass_loss_per_progenitor_mass);
 }
 
