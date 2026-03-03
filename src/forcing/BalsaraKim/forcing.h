@@ -51,9 +51,9 @@ enum mechanism {
 
 struct forcing_terms {
     /* Amount of SN injections */
-    size_t size;
+    size_t num_supernovae;
 
-    /* injection energy */
+    /* injection energy per supernova event */
     double E_inj;
 
     /* injection radius */
@@ -88,10 +88,6 @@ struct forcing_terms {
     /* keep track if the final injection has happened already */
     int final_injection;
 
-    /* min and max timestep, for timestep computation purposes */
-    float dt_min;
-    float dt_max;
-
 };
 
 /**
@@ -114,10 +110,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
       (terms->final_injection == 0)) {
     terms->counter++;
 
-    float SN_loc[3];
-    SN_loc[0] = terms->x_SN[t_index];
-    SN_loc[1] = terms->y_SN[t_index];
-    SN_loc[2] = terms->z_SN[t_index];
+    const float SN_loc[3] = {terms->x_SN[t_index], terms->y_SN[t_index], terms->z_SN[t_index]};
     
     const int periodic = s->periodic;
     const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -322,7 +315,7 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  */
 static INLINE void forcing_update(struct forcing_terms *terms, const double time_old) {
   /* if the current time is later than the latest SN event */
-  if (time_old >= terms->times[terms->size - 1]) {
+  if (time_old >= terms->times[terms->num_supernovae - 1]) {
     /* we do not want any more energy injections */
     terms->final_injection = 1;
   }
@@ -331,7 +324,7 @@ static INLINE void forcing_update(struct forcing_terms *terms, const double time
   else if (time_old >= terms->times[terms->t_index]) {
     message("%d particles passed time condition", terms->counter);
     message("updating forcing term index at time: %f", time_old);
-    terms->t_index += 1;
+    terms->t_index++;
     terms->counter = 0;
   }
 }
@@ -377,8 +370,7 @@ static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
 
   message("Injection radius r_inj: %f", terms->r_inj);
   
-  size_t i;
-  for (i = 0; i < terms->size; i++) {
+  for (size_t i = 0; i < terms->num_supernovae; i++) {
     message("SN at t: %f, at [x,y,z]: [%.2f,%.2f,%.2f]", terms->times[i],
     terms->x_SN[i], terms->y_SN[i], terms->z_SN[i]);
   }
@@ -417,14 +409,14 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   size_t nber_line = 0;
   while (getline(&line, &len, file) != -1) nber_line++;
 
-  terms->size = nber_line - 1; /* Do not count header */
+  terms->num_supernovae = nber_line - 1; /* Do not count header */
 
   /* Return to start of file and initialize time array */
   fseek(file, 0, SEEK_SET);
-  terms->times = (double *)malloc(sizeof(double) * terms->size);
-  terms->x_SN = (double *)malloc(sizeof(double) * terms->size);
-  terms->y_SN = (double *)malloc(sizeof(double) * terms->size);
-  terms->z_SN = (double *)malloc(sizeof(double) * terms->size);
+  terms->times = (double *)malloc(sizeof(double) * terms->num_supernovae);
+  terms->x_SN = (double *)malloc(sizeof(double) * terms->num_supernovae);
+  terms->y_SN = (double *)malloc(sizeof(double) * terms->num_supernovae);
+  terms->z_SN = (double *)malloc(sizeof(double) * terms->num_supernovae);
 
   if ((!terms->times) || (!terms->z_SN)) {
     error(
@@ -467,17 +459,17 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
     terms->y_SN[ind]  *= s->dim[1];
     terms->z_SN[ind]  *= s->dim[2];
     
-    ind += 1;
+    ind++;
   }
 
   /* Cleanup */
   free(line);
 
-  if (ind != terms->size)
+  if (ind != terms->num_supernovae)
     error("Did not read the correct number of injections.");
 
   /* Check that the list is in monotonic order */
-  for (size_t i = 1; i < terms->size; ++i) {
+  for (size_t i = 1; i < terms->num_supernovae; ++i) {
 
     if (terms->times[i] <= terms->times[i - 1])
       error("injection coordinate list not having monotonically increasing times.");
