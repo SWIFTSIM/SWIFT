@@ -1,40 +1,40 @@
 # Define the system of units to use internally.
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun
-  UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
-  UnitVelocity_in_cgs: 1e5           # 1 km/s
-  UnitCurrent_in_cgs:  1             # Amperes
-  UnitTemp_in_cgs:     1             # Kelvin
+  UnitMass_in_cgs: 1.98848e43 # 10^10 M_sun
+  UnitLength_in_cgs: 3.08567758e24 # 1 Mpc
+  UnitVelocity_in_cgs: 1e5 # 1 km/s
+  UnitCurrent_in_cgs: 1 # Amperes
+  UnitTemp_in_cgs: 1 # Kelvin
 
 Cosmology:
-  Omega_cdm:    1.0
+  Omega_cdm: 1.0
   Omega_lambda: 0.0
-  Omega_b:      0.0
-  h:            1.0
-  a_begin:      0.1
-  a_end:        0.11
+  Omega_b: 0.0
+  h: 1.0
+  a_begin: 0.1
+  a_end: 0.11
 
 TimeIntegration:
-  dt_min:     1e-8
-  dt_max:     1e-2
+  dt_min: 1e-8
+  dt_max: 1e-2
 
 Snapshots:
-  basename:            zoom_uniform_dm_gravity
-  scale_factor_first:  0.109
-  delta_time:          2.0
-  compression:         1
+  basename: zoom_uniform_dm_gravity
+  scale_factor_first: 0.109
+  delta_time: 2.0
+  compression: 1
 
 Statistics:
-  scale_factor_first:  0.109
-  delta_time:          2.0
+  scale_factor_first: 0.109
+  delta_time: 2.0
 
 Scheduler:
   max_top_level_cells: 8
-  cell_split_size:     50
+  cell_split_size: 50
 
 DomainDecomposition:
-  initial_type: grid
-  initial_grid: [2,2,2]
+  initial_type: memory
+  initial_grid: [2, 2, 2]
   synchronous: 0
   repartition_type: none
   trigger: 0.05
@@ -45,26 +45,25 @@ DomainDecomposition:
   use_fixed_costs: 0
   wedges_per_rank: 8
 
-
 Gravity:
-  eta:                         0.025
-  MAC:                         adaptive
-  theta_cr:                    0.7
-  epsilon_fmm:                 0.001
-  mesh_side_length:            64
-  comoving_DM_softening:       0.002
-  max_physical_DM_softening:   0.002
-  softening_ratio_background:  0.05
+  eta: 0.025
+  MAC: adaptive
+  theta_cr: 0.7
+  epsilon_fmm: 0.001
+  mesh_side_length: 64
+  comoving_DM_softening: 0.002
+  max_physical_DM_softening: 0.002
+  softening_ratio_background: 0.05
 
 InitialConditions:
-  file_name:                   zoom_uniform_dm_gravity.hdf5
-  periodic:                    1
-  cleanup_h_factors:           0
-  cleanup_velocity_factors:    0
+  file_name: zoom_uniform_dm_gravity.hdf5
+  periodic: 1
+  cleanup_h_factors: 0
+  cleanup_velocity_factors: 0
 
 ZoomRegion:
-  region_pad_factor:        1.1
-  zoom_top_level_depth:     2
-  bkg_top_level_cells:      8
-  buffer_top_level_depth:   0
+  region_pad_factor: 1.1
+  zoom_top_level_depth: 2
+  bkg_top_level_cells: 8
+  buffer_top_level_depth: 0
   neighbour_max_tree_depth: 2
