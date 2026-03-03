@@ -323,7 +323,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
           case boundary_condition_zero:
             interp->data[current_cell] = 0;
             break;
-          case boundary_condition_const:
+          case boundary_condition_const: {
             const int midx = max(idx, 0);
             const int midy = max(idy, 0);
             const int row = min(midx, N_data_x - 1);
@@ -337,6 +337,7 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_init(
             }
             interp->data[current_cell] = data[cell_to_get];
             break;
+          }
           default:
             error("Interpolation type not implemented");
         }
@@ -394,7 +395,7 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
             idy);
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
         return 0;
-      case boundary_condition_const:
+      case boundary_condition_const: {
         const int midx = max(idx, 0);
         const int midy = max(idy, 0);
         const int row = min(midx, Nx - 1);
@@ -412,6 +413,7 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
             idy, cell_to_get, row, col, pow(10, interp->data[cell_to_get]));
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
         return interp->data[cell_to_get];
+      }
       default:
         error("Interpolation type not implemented");
     }
@@ -454,6 +456,21 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_free(
   /* Free the allocated memory */
   free(interp->data);
   interp->data = NULL;
+}
+
+/**
+ * @brief zero pointers in interpolation_2d struct
+ */
+__attribute__((always_inline)) static INLINE void interpolate_2d_zero_pointers(
+    struct interpolation_2d *interp) {
+  interp->data = NULL;
+  interp->Nx = 0;
+  interp->Ny = 0;
+  interp->xmin = 0.0;
+  interp->dx = 0.0;
+  interp->ymin = 0.0;
+  interp->dy = 0.0;
+  interp->boundary_condition = boundary_condition_error;
 }
 
 #endif  // SWIFT_GEAR_INTERPOLATION_H
