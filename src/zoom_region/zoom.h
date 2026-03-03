@@ -87,6 +87,14 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
 void partition_zoom_vector(int nr_nodes, struct space *s);
 void zoom_partition_voids(struct space *s, int nodeID);
 
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+/* Zoom metis-specific partitioning functions. */
+int zoom_partition_count_vertex_edges(struct space *s, int periodic,
+                                      int *cell_edge_offsets);
+void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
+                               int *nadjcny, idx_t *xadj, int *nxadj,
+                               const int *cell_edge_offsets);
+#endif
 /* Zoom specific IO. */
 void zoom_write_metadata(hid_t root_grp, hid_t head_grp, const struct space *s);
 void zoom_unshift_pos(const struct space *s, double pos[3]);
