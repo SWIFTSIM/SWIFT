@@ -2469,6 +2469,25 @@ void partition_initial_partition(struct partition *initial_partition,
     zoom_partition_voids(s, nodeID);
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Report the partition. */
+  int local_zooms = 0;
+  int local_bkg = 0;
+  int local_cells = 0;
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells_top[k].nodeID == nodeID) {
+      local_cells++;
+      if (s->cells_top[k].type == cell_type_zoom) local_zooms++;
+      if (s->cells_top[k].type == cell_type_background) local_bkg++;
+    }
+  }
+  message("Node %d has %d cells.", nodeID, local_cells);
+  if (local_zooms > 0)
+    message("Node %d has %d zoom cells.", nodeID, local_zooms);
+  if (local_bkg > 0)
+    message("Node %d has %d background cells.", nodeID, local_bkg);
+#endif
+
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
