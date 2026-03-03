@@ -36,7 +36,7 @@ DomainDecomposition:
   initial_type: memory
   initial_grid: [2, 2, 2]
   synchronous: 0
-  repartition_type: none
+  repartition_type: memory
   trigger: 0.05
   minfrac: 0.9
   usemetis: 0
