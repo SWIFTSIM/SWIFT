@@ -236,7 +236,6 @@ int zoom_partition_count_vertex_edges(struct space *s, int periodic,
   int *zoom_cdim = s->zoom_props->cdim;
   int *bkg_cdim = s->zoom_props->bkg_cdim;
   struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
-  struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
 
   /* Temporary array to track edge counts per cell during counting */
   int *edge_counts = (int *)calloc(s->nr_cells, sizeof(int));
@@ -371,7 +370,6 @@ void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
   int *zoom_cdim = s->zoom_props->cdim;
   int *bkg_cdim = s->zoom_props->bkg_cdim;
   struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
-  struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
 
   /* Track current position in adjncy for each cell using temporary array */
   int *edge_pos = (int *)malloc(s->nr_cells * sizeof(int));
