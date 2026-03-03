@@ -468,39 +468,48 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   fclose(file);
 
   /* Read the injection radius, defaults to 5 pc*/
-  double r_inj_pc = parser_get_opt_param_double(parameter_file,
-        "BalsaraKimForcing:r_inj", 5.);
+  double r_inj_pc = parser_get_param_double(parameter_file,
+        "BalsaraKimForcing:r_inj_pc");
 
   /* Calculate & store injection volume, saves calculations */
   double V_inj_pc3 = (4./3.) * M_PI * r_inj_pc * r_inj_pc * r_inj_pc;
 
-  /* What energy injection scheme do we use? */
+  /* Initialise parameters */
+  double E_inj_cgs = 0.;
+  double u_inj_cgs = 0.;
+  double vel_inj_cgs = 0.; 
+
+  /* Read injection scheme and required parameters */
   char injection_model[20];
   parser_get_param_string(parameter_file, "BalsaraKimForcing:inj_model",
         injection_model);
   if (strcmp(injection_model, "set_u") == 0) {
     terms->injection_model = SET_U;
+
+    E_inj_cgs = parser_get_param_double(parameter_file,
+        "BalsaraKimForcing:E_inj_cgs");
   }
   else if (strcmp(injection_model, "set_const_u") == 0) {
     terms->injection_model = SET_CONST_U;
+
+    u_inj_cgs = parser_get_param_double(parameter_file,
+	      "BalsaraKimForcing:u_inj_cgs");
   }
   else if (strcmp(injection_model, "set_v") == 0) {
     terms->injection_model = SET_V;
+
+    E_inj_cgs = parser_get_param_double(parameter_file,
+        "BalsaraKimForcing:E_inj_cgs");
   }
   else if (strcmp(injection_model, "set_const_v") == 0) {
     terms->injection_model = SET_CONST_V;
+
+    vel_inj_cgs = parser_get_param_double(parameter_file,
+        "BalsaraKimForcing:v_inj_kms") * 1.e5;
   }
   else {
     error("unknown injection model '%s'", injection_model);
   }
-  
-  /* Read injection parameters */
-  double E_inj_cgs = parser_get_opt_param_double(parameter_file,
-        "BalsaraKimForcing:E_inj", 1.e51);
-  double u_inj_cgs = parser_get_opt_param_double(parameter_file,
-	      "BalsaraKimForcing:u_inj", 2.8263e15);
-  double vel_inj_cgs = parser_get_opt_param_double(parameter_file,
-        "BalsaraKimForcing:v_inj", 200.) * 1.e5;
 
   /* convert everything to internal units */
   double parsec_ui = phys_const->const_parsec;
