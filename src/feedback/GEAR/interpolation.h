@@ -468,10 +468,10 @@ __attribute__((always_inline)) static INLINE void interpolate_2d_zero_pointers(
   interp->data = NULL;
   interp->Nx = 0;
   interp->Ny = 0;
-  interp->xmin = 0;
-  interp->dx = 0;
-  interp->ymin = 0;
-  interp->dy = 0;
+  interp->xmin = 0.0;
+  interp->dx = 0.0;
+  interp->ymin = 0.0;
+  interp->dy = 0.0;
   interp->boundary_condition = boundary_condition_error;
 }
 

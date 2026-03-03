@@ -249,10 +249,10 @@ double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
 void stellar_wind_zero_pointers(struct stellar_wind *sw) {
   sw->interpolation_size_m = 0;
   sw->interpolation_size_z = 0;
-  sw->mass_min = 0;
-  sw->mass_max = 0;
-  sw->metallicity_min = 0;
-  sw->metallicity_max = 0;
+  sw->mass_min = 0.0;
+  sw->mass_max = 0.0;
+  sw->metallicity_min = 0.0;
+  sw->metallicity_max = 0.0;
 
   interpolate_2d_zero_pointers(&sw->raw.ejected_energy);
   interpolate_2d_zero_pointers(&sw->raw.mass_loss);
