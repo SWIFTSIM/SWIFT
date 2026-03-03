@@ -15,7 +15,7 @@ Particle construction:
 - PartType1 (high-resolution DM): every zoom cell is populated with exactly
   4^3 = 64 particles sampled with stratified random positions inside that cell;
 - PartType2 (background DM): every non-central background top-level cell is
-  populated with exactly 4^3 = 64 particles, also stratified within-cell.
+  populated with exactly 32 particles sampled uniformly within-cell.
 
 Example requires:
 - ``h5py`` for direct HDF5 manipulation to append PartType2.
@@ -83,9 +83,8 @@ HI_REGION_SIZE = TARGET_ZOOM_EXTENT / REGION_PAD_FACTOR
 # Populate the expected cell hierarchy directly.
 ZOOM_CELLS_PER_AXIS = ZOOM_BKG_CELLS_SPANNED * (2**ZOOM_TOP_LEVEL_DEPTH)
 HI_PARTICLES_AXIS = 4
-BKG_PARTICLES_AXIS = 4
 HI_PARTICLES_PER_ZOOM_CELL = HI_PARTICLES_AXIS**3
-BKG_PARTICLES_PER_TOP_CELL = BKG_PARTICLES_AXIS**3
+BKG_PARTICLES_PER_TOP_CELL = 32
 
 # Output file name for the generated ICs, this needs to match the param file.
 OUTPUT_FILE = "zoom_uniform_dm_gravity.hdf5"
@@ -135,6 +134,12 @@ def sample_stratified_in_cell(rng, lo, hi, n_axis):
     jitter = rng.uniform(-0.45, 0.45, size=centers.shape) / n_axis
     u = np.clip(centers + jitter, 0.0, 1.0 - np.finfo(np.float64).eps)
     return lo + u * width
+
+
+def sample_uniform_in_cell(rng, lo, hi, n_parts):
+    """Sample ``n_parts`` points uniformly within one Cartesian cell."""
+    width = hi - lo
+    return lo + rng.random((n_parts, 3)) * width
 
 
 def generate_high_res_particles(rng, centre):
@@ -187,7 +192,7 @@ def generate_background_particles(rng):
                 lo = top_w * np.array([ix, iy, iz], dtype=np.float64)
                 hi = lo + top_w
                 chunks.append(
-                    sample_stratified_in_cell(rng, lo, hi, BKG_PARTICLES_AXIS)
+                    sample_uniform_in_cell(rng, lo, hi, BKG_PARTICLES_PER_TOP_CELL)
                 )
 
     return np.vstack(chunks)
