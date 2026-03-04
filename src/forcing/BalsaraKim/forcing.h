@@ -158,9 +158,13 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
           /* set the specific energy */
           hydro_set_physical_internal_energy(p, xp, s->e->cosmology, u_new);
+          hydro_set_drifted_physical_internal_energy(p, s->e->cosmology, s->e->pressure_floor_props, u_new);
 
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += (u_new - u_old) * mass;
+
+          /* set visocity to maximum */
+          hydro_diffusive_feedback_reset(p);
           break;
         
         case FORCING_BALSARA_KIM_MECHANISM_SET_CONST_U:
@@ -170,9 +174,13 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
           /* set the specific energy */
           hydro_set_physical_internal_energy(p, xp, s->e->cosmology, u_new);
+          hydro_set_drifted_physical_internal_energy(p, s->e->cosmology, s->e->pressure_floor_props, u_new);
 
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += (u_new - u_old) * mass;
+
+          /* set visocity to maximum */
+          hydro_diffusive_feedback_reset(p);
           break;
 
         case FORCING_BALSARA_KIM_MECHANISM_SET_V:
@@ -188,6 +196,9 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += 
                 mass * (v_new * v_new - v_old * v_old) / 2;
+
+          /* update signal velocity based on velocity kick */
+          hydro_set_v_sig_based_on_velocity_kick(p, s->e->cosmology, v_new);
           break;
 
         case FORCING_BALSARA_KIM_MECHANISM_SET_CONST_V:
@@ -203,6 +214,9 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           /* store injected energy */
           xp->forcing_data.forcing_injected_energy += 
                 mass * (v_new * v_new - v_old * v_old) / 2;
+
+          /* update signal velocity based on velocity kick */
+          hydro_set_v_sig_based_on_velocity_kick(p, s->e->cosmology, v_new);
           break;
         
         default:
@@ -211,6 +225,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           
       }
       
+      /* synchronize particle on timeline */
       timestep_sync_part(p);
     }
   }
