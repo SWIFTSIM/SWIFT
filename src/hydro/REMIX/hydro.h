@@ -117,7 +117,7 @@ hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part *restrict p) {
 
-  return gas_pressure_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+  return gas_pressure_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 }
 
 /**
@@ -133,7 +133,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
   return cosmo->a_factor_pressure *
-         gas_pressure_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+         gas_pressure_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 }
 
 /**
@@ -149,7 +149,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
     const struct part *restrict p, const struct xpart *restrict xp) {
 
-  return gas_entropy_from_internal_energy(p->rho_evol, xp->u_full, p->mat_id);
+  return gas_entropy_from_internal_energy(p->rho_evol, xp->u_full, &p->mat_data);
 }
 
 /**
@@ -170,7 +170,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  return gas_entropy_from_internal_energy(p->rho_evol, xp->u_full, p->mat_id);
+  return gas_entropy_from_internal_energy(p->rho_evol, xp->u_full, &p->mat_data);
 }
 
 /**
@@ -182,7 +182,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_comoving_entropy(const struct part *restrict p) {
 
-  return gas_entropy_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+  return gas_entropy_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 }
 
 /**
@@ -198,7 +198,7 @@ hydro_get_drifted_physical_entropy(const struct part *restrict p,
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  return gas_entropy_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+  return gas_entropy_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 }
 
 /**
@@ -345,7 +345,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
   /* Note there is no conversion from physical to comoving entropy */
   const float comoving_entropy = entropy;
   xp->u_full = gas_internal_energy_from_entropy(p->rho_evol, comoving_entropy,
-                                                p->mat_id);
+                                                &p->mat_data);
 }
 
 /**
@@ -382,7 +382,7 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Compute the sound speed */
   const float pressure =
-      gas_pressure_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+      gas_pressure_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
   const float soundspeed = hydro_get_comoving_soundspeed(p);
 
   /* Update variables. */
@@ -639,13 +639,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
 #ifdef PLANETARY_FIXED_ENTROPY
   /* Override the internal energy to satisfy the fixed entropy */
-  p->u = gas_internal_energy_from_entropy(p->rho_evol, p->s_fixed, p->mat_id);
+  p->u = gas_internal_energy_from_entropy(p->rho_evol, p->s_fixed, &p->mat_data);
   xp->u_full = p->u;
 #endif
 
   /* Compute the sound speed */
   const float soundspeed =
-      gas_soundspeed_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+      gas_soundspeed_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 
   const float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] +
                       p->dv_norm_kernel[2][2];
@@ -668,7 +668,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the pressure */
   const float pressure =
-      gas_pressure_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+      gas_pressure_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
@@ -726,11 +726,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Compute the pressure */
   const float pressure =
-      gas_pressure_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+      gas_pressure_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 
   /* Compute the sound speed */
   const float soundspeed =
-      gas_soundspeed_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+      gas_soundspeed_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
@@ -793,11 +793,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Compute the new pressure */
   const float pressure =
-      gas_pressure_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+      gas_pressure_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 
   /* Compute the new sound speed */
   const float soundspeed =
-      gas_soundspeed_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+      gas_soundspeed_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
@@ -902,11 +902,11 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   /* Compute the pressure */
   const float pressure =
-      gas_pressure_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+      gas_pressure_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 
   /* Compute the sound speed */
   const float soundspeed =
-      gas_soundspeed_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+      gas_soundspeed_from_internal_energy(p->rho_evol, p->u, &p->mat_data);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
@@ -975,7 +975,7 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
       "%lld, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, "
       "%.7g, %.7g, %.7g, %.7g, %.7g, %d, %.7g \n",
       p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->mass,
-      p->u, p->force.pressure, p->rho, p->h, p->mat_id, time);
+      p->u, p->force.pressure, p->rho, p->h, p->mat_data.mat_id, time);
 }
 
 #endif /* SWIFT_REMIX_HYDRO_H */

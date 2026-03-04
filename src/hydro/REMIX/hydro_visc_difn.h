@@ -101,7 +101,7 @@ hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
 
     /* Contributions only from same-material particles for u and rho diffusion
      */
-    if (pi->mat_id == pj->mat_id) {
+    if (pi->mat_data.mat_id == pj->mat_data.mat_id) {
       pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
       pj->du_norm_kernel[i] += (pi->u - pj->u) * wj_dx_term[i] * volume_i;
 
@@ -161,7 +161,7 @@ hydro_runner_iact_nonsym_gradient_extra_visc_difn(
 
     /* Contributions only from same-material particles for u and rho diffusion
      */
-    if (pi->mat_id == pj->mat_id) {
+    if (pi->mat_data.mat_id == pj->mat_data.mat_id) {
       pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
       pi->drho_norm_kernel[i] +=
           (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;

@@ -346,7 +346,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                   (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
 
   /* Only include diffusion for same-material particle pair */
-  if (pi->mat_id == pj->mat_id) {
+  if (pi->mat_data.mat_id == pj->mat_data.mat_id) {
     /* Diffusion parameters */
     const float a_difn_rho = const_remix_difn_a_rho;
     const float b_difn_rho = const_remix_difn_b_rho;
@@ -505,7 +505,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                   (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
 
   /* Only include diffusion for same-material particle pair */
-  if (pi->mat_id == pj->mat_id) {
+  if (pi->mat_data.mat_id == pj->mat_data.mat_id) {
     /* Diffusion parameters */
     const float a_difn_rho = const_remix_difn_a_rho;
     const float b_difn_rho = const_remix_difn_b_rho;
