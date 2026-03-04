@@ -93,4 +93,13 @@ void partition_restore_celllist(struct space *s,
 void partition_struct_dump(struct repartition *reparttype, FILE *stream);
 void partition_struct_restore(struct repartition *reparttype, FILE *stream);
 
+/* Debugging. */
+#ifdef SWIFT_DEBUG_CHECKS
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+static void check_weights(struct task *tasks, int nr_tasks,
+                          struct weights_mapper_data *mydata,
+                          double *ref_weights_v, double *ref_weights_e);
+#endif
+#endif
+
 #endif /* SWIFT_PARTITION_H */
