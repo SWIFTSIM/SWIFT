@@ -507,6 +507,34 @@ void partition_clean(struct partition *partition,
 #endif
 }
 
+#ifdef WITH_MPI
+/**
+ * @brief Set the fixed costs for repartition using METIS.
+ *
+ *  These are determined using a run with the -y flag on which produces
+ *  a statistical analysis that is condensed into a .h file for inclusion.
+ *
+ *  If the default include file is used then no fixed costs are set and this
+ *  function will return 0.
+ */
+static int repart_init_fixed_costs(void) {
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /* Set the default fixed cost. */
+  for (int j = 0; j < task_type_count; j++) {
+    for (int k = 0; k < task_subtype_count; k++) {
+      repartition_costs[j][k] = 1.0;
+    }
+  }
+
+#include <partition_fixed_costs.h>
+  return HAVE_FIXED_COSTS;
+#endif
+
+  return 0;
+}
+#endif /* WITH_MPI */
+
 /*  General support */
 /*  =============== */
 
