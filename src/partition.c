@@ -1184,12 +1184,11 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   } else {
 
-    int nedge = 0;
-    MPI_Status edge_status;
-    res = MPI_Probe(0, 1, comm, &edge_status);
-    if (res != MPI_SUCCESS) mpi_error(res, "Failed to probe edge receive size");
-    res = MPI_Get_count(&edge_status, IDX_T, &nedge);
-    if (res != MPI_SUCCESS) mpi_error(res, "Failed to get edge receive size");
+    /* Receive xadj first so we know the exact local edge count. */
+    res = MPI_Recv(xadj, nverts + 1, IDX_T, 0, 0, comm, MPI_STATUS_IGNORE);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive xadj data");
+
+    const int nedge = xadj[nverts];
 
     if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedge)) == NULL)
       error("Failed to allocate local adjncy array.");
@@ -1198,22 +1197,21 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if ((weights_e = (idx_t *)malloc(sizeof(idx_t) * nedge)) == NULL)
         error("Failed to allocate local edge weight array.");
 
-    /* Receive stuff from rank 0. */
-    res = MPI_Irecv(xadj, nverts + 1, IDX_T, 0, 0, comm, &reqs[0]);
-    if (res == MPI_SUCCESS)
-      res = MPI_Irecv(adjncy, nedge, IDX_T, 0, 1, comm, &reqs[1]);
+    /* Receive remaining graph data from rank 0. */
+    res = MPI_Irecv(adjncy, nedge, IDX_T, 0, 1, comm, &reqs[0]);
     if (res == MPI_SUCCESS && weights_e != NULL)
-      res = MPI_Irecv(weights_e, nedge, IDX_T, 0, 2, comm, &reqs[2]);
+      res = MPI_Irecv(weights_e, nedge, IDX_T, 0, 2, comm, &reqs[1]);
     if (res == MPI_SUCCESS && weights_v != NULL)
-      res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[3]);
+      res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[2]);
     if (refine && res == MPI_SUCCESS)
-      res += MPI_Irecv((void *)regionid, nverts, IDX_T, 0, 4, comm, &reqs[4]);
+      res += MPI_Irecv((void *)regionid, nverts, IDX_T, 0, 4, comm, &reqs[3]);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive graph data");
 
-    /* Wait for all recvs to complete. */
+    /* Wait for posted receives to complete. */
+    const int nreq = 1 + (weights_e != NULL) + (weights_v != NULL) + refine;
     int result;
-    if ((result = MPI_Waitall(5, reqs, stats)) != MPI_SUCCESS) {
-      for (int k = 0; k < 5; k++) {
+    if ((result = MPI_Waitall(nreq, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < nreq; k++) {
         char buff[MPI_MAX_ERROR_STRING];
         MPI_Error_string(stats[k].MPI_ERROR, buff, &result);
         message("recv request from source %i, tag %i has error '%s'.",
