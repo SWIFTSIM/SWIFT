@@ -93,6 +93,11 @@ void partition_restore_celllist(struct space *s,
 void partition_struct_dump(struct repartition *reparttype, FILE *stream);
 void partition_struct_restore(struct repartition *reparttype, FILE *stream);
 
+/* Metis/ParMetis support. */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+void accumulate_sizes(struct space *s, int verbose, double *counts);
+#endif
+
 /* Debugging. */
 #ifdef SWIFT_DEBUG_CHECKS
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
