@@ -71,7 +71,7 @@ struct forcing_terms {
     double *z_SN;
 
     /* next event injection index */
-    int t_index;
+    size_t t_index;
 
     /* injection mechanism */
     enum mechanism injection_model;
@@ -104,13 +104,13 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     const double time, struct forcing_terms* terms, const struct space* s,
     const struct phys_const* phys_const, struct part* p, struct xpart* xp) {
 
-  const int t_index = terms->t_index;
+  const size_t t_index = terms->t_index;
 
   if ((time >= terms->times[t_index]) &&
       (terms->final_injection == 0)) {
     terms->counter++;
 
-    const float SN_loc[3] = {terms->x_SN[t_index], terms->y_SN[t_index], terms->z_SN[t_index]};
+    const double SN_loc[3] = {terms->x_SN[t_index], terms->y_SN[t_index], terms->z_SN[t_index]};
     
     const int periodic = s->periodic;
     const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -137,7 +137,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
                                  xp->v_full[1]*xp->v_full[1] +
                                  xp->v_full[2]*xp->v_full[2]) / s->e->cosmology->a;
 
-      const float mass = hydro_get_mass(p);
+      const double mass = hydro_get_mass(p);
  
       /* initialise new internal energy and velocity */
       double u_new;
@@ -291,7 +291,7 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
     const struct space *s, const struct phys_const *phys_const, 
     const struct part *p, const struct xpart *xp) {
  
-  const int t_index = terms->t_index;
+  const size_t t_index = terms->t_index;
 
   const double dt_min = s->e->dt_min;
   const double dt_max = s->e->dt_max;
@@ -302,8 +302,8 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
     return FLT_MAX;
   }
 
-  /* End timestap at (or just after) next injection time */
-  float new_dt_forcing = fmaxf(terms->times[t_index] - time, 2.*dt_min);
+  /* End timestep at (or just after) next injection time */
+  double new_dt_forcing = fmaxf(terms->times[t_index] - time, 2.*dt_min);
    
   return new_dt_forcing;
 }
