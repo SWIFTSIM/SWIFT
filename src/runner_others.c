@@ -80,25 +80,24 @@ int find_parent_linear(const struct part *parts, int cnt, long long id) {
 __attribute__((always_inline)) INLINE static void get_random_ray(double n[3], uint64_t seed1, uint64_t seed2)
 {
   // Generate deterministic random numbers in [0,1] using the rays 
+  const double rand_theta =
+    random_unit_interval_two_IDs(seed1, seed2, 0,
+				 random_number_isotropic_AGN_feedback_ray_theta);
   
-    const double rand_theta =
-        random_unit_interval_two_IDs(seed1, seed2, 0,
-                                     random_number_isotropic_AGN_feedback_ray_theta);
-
-    const double rand_phi =
-        random_unit_interval_two_IDs(seed2, seed1, 0,
-                                     random_number_isotropic_AGN_feedback_ray_phi);
-
-    // Convert to spherical angles 
-    const double cos_theta = 2.0 * rand_theta - 1.0;
-    const double theta     = acos(cos_theta);
-    const double phi       = 2.0 * M_PI * rand_phi - M_PI;
-
-    // Convert to unit vector (ray direction) 
-    n[0] = sin(theta) * cos(phi);
-    n[1] = sin(theta) * sin(phi);
-    n[2] = cos(theta);
-
+  const double rand_phi =
+    random_unit_interval_two_IDs(seed2, seed1, 0,
+				 random_number_isotropic_AGN_feedback_ray_phi);
+  
+  // Convert to spherical angles 
+  const double cos_theta = 2.0 * rand_theta - 1.0;
+  const double theta     = acos(cos_theta);
+  const double phi       = 2.0 * M_PI * rand_phi - M_PI;
+  
+  // Convert to unit vector (ray direction) 
+  n[0] = sin(theta) * cos(phi);
+  n[1] = sin(theta) * sin(phi);
+  n[2] = cos(theta);
+  
 }
 
 /* serialise the splits */
@@ -108,8 +107,8 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   
   //particle data
   //const float mass_limit = 65e-5;
-  //const float mass_limit = 9e-5;
-  const float mass_limit = 1.5e-5;
+  const float mass_limit = 2.5e-5;
+  //const float mass_limit = 1.5e-5;
   const int count_top = c->top->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -152,11 +151,9 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 
     int j = 0;
     
-    //loop has to be long, idk why this works but it does...
     while (j < c->hydro.count){
       struct part *p  = &parts[j];
       struct xpart *xp = &xparts[j];
-
       
       //this only really needs to be calculated once
       const float child_mass = p->mass / 2;  
@@ -191,7 +188,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
       if (p->split_flag == 1) {
 	// since we are adding a relaxation time, parts marked to be split may have moved away...
 	//check again whether they are close to the BH again...
-
+	
 	/* Compute distance to this BH */
 	double dx = p->x[0] - bp->x[0];
 	double dy = p->x[1] - bp->x[1];
@@ -221,7 +218,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	  }
 	  
 	  float avg_dt =  2.6e-4;
-	  relax_dt = fmaxf(relax_dt, 10.f*avg_dt);        // at least ten smallest timesteps (~2.5 Myrs)	  
+	  relax_dt = fmaxf(relax_dt, 10.f*avg_dt);        // at least 10 smallest timesteps (~2.5 Myrs)	  
 	  //relax_dt = fminf(relax_dt, 25.f * avg_dt); // don’t let it dominate   
 	  message("next available split: %g", e->time + relax_dt);
 	  c->top->black_holes.split_relax_time = e->time + relax_dt;
@@ -243,7 +240,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	//split into 3D shape
 	message("------- splitting particles ------");
 	
-	double delta = p->h / 8;
+	double delta = p->h / 10;
 
 	//check particle masses add up
 #ifdef SWIFT_DEBUG_CHECKS
@@ -257,9 +254,9 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	struct part parent = *p;    // copy all fields of parent 
 	struct xpart parent_xp = *xp;
 	
-	message("Cell: %p, Parent before splits: id=%lld, mass=%e, pos=(%g,%g,%g), vel=(%g,%g,%g), a_hydro=(%g,%g,%g)",
+	message("Cell: %p, Parent before splits: id=%lld, mass=%e, pos=(%g,%g,%g), vel=(%g,%g,%g)",
 		(void*)c, parent.id, parent.mass, parent.x[0], parent.x[1], parent.x[2],
-		parent.v[0], parent.v[1], parent.v[2], parent.a_hydro[0], parent.a_hydro[1], parent.a_hydro[2]);
+		parent.v[0], parent.v[1], parent.v[2]);
 	
 
 	double pos_offsets[3] = {0,0,0};
@@ -269,6 +266,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	pos_offsets[2] *= delta;
 	
 	struct part *child = cell_spawn_new_part_from_part(e, c, &parent, &parent_xp, child_mass, pos_offsets, new_h);
+	message("child rho immediately after spawn: %e", child->rho);
 	
 	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id);
 	if (parent_index == -1) error("parent not found!");
@@ -334,10 +332,10 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
       j ++;
     }
     
-  } 
+  }
   
-  /* If we formed any hydro parts, need to force flag for resort and drift*/
-  if (c->top->hydro.count!= count_top) {
+  /* If we formed any hydro parts, need to force relaxation and flag for resort and drift*/
+  if (c == c->top && c->top->hydro.count != count_top) {    
     //message("setting resort flag");
     cell_set_hydro_resort_flag(c->top);
     cell_set_flag(c->top, cell_flag_do_hydro_drift);
