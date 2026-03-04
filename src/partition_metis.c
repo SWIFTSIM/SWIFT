@@ -415,7 +415,7 @@ void accumulate_sizes(struct space *s, int verbose, double *counts) {
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions. Should be 26 * counts.
  */
-static void sizes_to_edges(struct space *s, double *counts, double *edges) {
+void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
   bzero(edges, sizeof(double) * s->nr_cells * 26);
 
@@ -448,7 +448,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
  * @param nregions number of regions.
  * @param celllist list of regions for each cell.
  */
-static void split_metis(struct space *s, int nregions, int *celllist) {
+void split_metis(struct space *s, int nregions, int *celllist) {
 
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
@@ -590,9 +590,9 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        size of number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
  */
-static void pick_parmetis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int refine,
-                          int adaptive, float itr, int *celllist) {
+void pick_parmetis(int nodeID, struct space *s, int nregions, double *vertexw,
+                   double *edgew, int refine, int adaptive, float itr,
+                   int *celllist) {
 
   int res;
   MPI_Comm comm;
@@ -1085,8 +1085,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
  * @param celllist on exit this contains the ids of the selected regions,
  *        sizeof number of cells.
  */
-static void pick_metis(int nodeID, struct space *s, int nregions,
-                       double *vertexw, double *edgew, int *celllist) {
+void pick_metis(int nodeID, struct space *s, int nregions, double *vertexw,
+                double *edgew, int *celllist) {
 
   /* Total number of cells. */
   int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];

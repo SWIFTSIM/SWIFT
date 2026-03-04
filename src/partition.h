@@ -96,6 +96,13 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream);
 /* Metis/ParMetis support. */
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 void accumulate_sizes(struct space *s, int verbose, double *counts);
+void sizes_to_edges(struct space *s, double *counts, double *edges);
+void pick_metis(int nodeID, struct space *s, int nregions, double *vertexw,
+                double *edgew, int *celllist);
+void pick_parmetis(int nodeID, struct space *s, int nregions, double *vertexw,
+                   double *edgew, int refine, int adaptive, float itr,
+                   int *celllist);
+void split_metis(struct space *s, int nregions, int *celllist);
 #endif
 
 /* Debugging. */
