@@ -43,10 +43,10 @@
 #include "engine.h"
 
 enum mechanism {
-  FORCING_BALSARA_KIM_MECHANISM_SET_U,
-  FORCING_BALSARA_KIM_MECHANISM_SET_CONST_U,
-  FORCING_BALSARA_KIM_MECHANISM_SET_V,
-  FORCING_BALSARA_KIM_MECHANISM_SET_CONST_V 
+  forcing_balsara_kim_mechanism_set_u,
+  forcing_balsara_kim_mechanism_set_const_u,
+  forcing_balsara_kim_mechanism_set_v,
+  forcing_balsara_kim_mechanism_set_const_v 
 };
 
 struct forcing_terms {
@@ -148,7 +148,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
       switch (injection_model) {
 
-        case FORCING_BALSARA_KIM_MECHANISM_SET_U:
+        case forcing_balsara_kim_mechanism_set_u:
         
           /* compute new (physical) specific energy
            * note rho & V are comoving but
@@ -167,7 +167,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           hydro_diffusive_feedback_reset(p);
           break;
         
-        case FORCING_BALSARA_KIM_MECHANISM_SET_CONST_U:
+        case forcing_balsara_kim_mechanism_set_const_u:
 
           /* get new (physical) specific energy */
           u_new = terms->u_inj;
@@ -183,7 +183,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           hydro_diffusive_feedback_reset(p);
           break;
 
-        case FORCING_BALSARA_KIM_MECHANISM_SET_V:
+        case forcing_balsara_kim_mechanism_set_v:
 
           /* compute new (physical) velocity */
           v_new = sqrtf(2 * terms->E_inj / (p->rho * terms->V_inj));
@@ -201,7 +201,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
           hydro_set_v_sig_based_on_velocity_kick(p, s->e->cosmology, v_new);
           break;
 
-        case FORCING_BALSARA_KIM_MECHANISM_SET_CONST_V:
+        case forcing_balsara_kim_mechanism_set_const_v:
 
           /* get new velocity */
           v_new = terms->vel_inj;
@@ -358,24 +358,24 @@ static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
 
   switch (injection_model) {
 
-    case FORCING_BALSARA_KIM_MECHANISM_SET_U:
+    case forcing_balsara_kim_mechanism_set_u:
     
       message("Balsara-Kim density dependent specific energy injection with E_inj: %f",
         terms->E_inj);
       break;
     
-    case FORCING_BALSARA_KIM_MECHANISM_SET_CONST_U:
+    case forcing_balsara_kim_mechanism_set_const_u:
 
       message("Balsara-Kim specific energy injection u_inj: %f", terms->u_inj);
       break;
 
-    case FORCING_BALSARA_KIM_MECHANISM_SET_V:
+    case forcing_balsara_kim_mechanism_set_v:
 
       message("Balsara-Kim density dependent velocity kick with E_inj: %f", 
         terms->E_inj);
       break;
 
-    case FORCING_BALSARA_KIM_MECHANISM_SET_CONST_V:
+    case forcing_balsara_kim_mechanism_set_const_v:
 
       message("Balsara-Kim constant velocity kick v_inj: %f", terms->vel_inj);
       break;
@@ -512,25 +512,25 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   parser_get_param_string(parameter_file, "BalsaraKimForcing:inj_model",
         injection_model);
   if (strcmp(injection_model, "set_u") == 0) {
-    terms->injection_model = FORCING_BALSARA_KIM_MECHANISM_SET_U;
+    terms->injection_model = forcing_balsara_kim_mechanism_set_u;
 
     E_inj_cgs = parser_get_param_double(parameter_file,
         "BalsaraKimForcing:E_inj_cgs");
   }
   else if (strcmp(injection_model, "set_const_u") == 0) {
-    terms->injection_model = FORCING_BALSARA_KIM_MECHANISM_SET_CONST_U;
+    terms->injection_model = forcing_balsara_kim_mechanism_set_const_u;
 
     u_inj_cgs = parser_get_param_double(parameter_file,
 	      "BalsaraKimForcing:u_inj_cgs");
   }
   else if (strcmp(injection_model, "set_v") == 0) {
-    terms->injection_model = FORCING_BALSARA_KIM_MECHANISM_SET_V;
+    terms->injection_model = forcing_balsara_kim_mechanism_set_v;
 
     E_inj_cgs = parser_get_param_double(parameter_file,
         "BalsaraKimForcing:E_inj_cgs");
   }
   else if (strcmp(injection_model, "set_const_v") == 0) {
-    terms->injection_model = FORCING_BALSARA_KIM_MECHANISM_SET_CONST_V;
+    terms->injection_model = forcing_balsara_kim_mechanism_set_const_v;
 
     vel_inj_cgs = parser_get_param_double(parameter_file,
         "BalsaraKimForcing:v_inj_kms") * 1.e5;
