@@ -48,6 +48,152 @@
 #include "task.h"
 #include "version.h"
 
+#ifdef WITH_MPI
+
+/**
+ * @brief Define the #task_dependency for MPI.
+ *
+ * @param tstype The MPI_Datatype to initialize.
+ */
+static void task_dependency_define(MPI_Datatype *tstype) {
+  const int count = 14;
+  int blocklens[count];
+  MPI_Datatype types[count];
+  MPI_Aint disps[count];
+
+  for (int i = 0; i < count; i++) {
+    types[i] = MPI_INT;
+  }
+
+  disps[0] = offsetof(struct task_dependency, type_in);
+  blocklens[0] = 1;
+  disps[1] = offsetof(struct task_dependency, subtype_in);
+  blocklens[1] = 1;
+  disps[2] = offsetof(struct task_dependency, implicit_in);
+  blocklens[2] = 1;
+  disps[3] = offsetof(struct task_dependency, task_in_is_top);
+  blocklens[3] = 1;
+  disps[4] = offsetof(struct task_dependency, task_in_is_hydro_super);
+  blocklens[4] = 1;
+  disps[5] = offsetof(struct task_dependency, task_in_is_grav_super);
+  blocklens[5] = 1;
+
+  disps[6] = offsetof(struct task_dependency, type_out);
+  blocklens[6] = MAX_NUMBER_DEP;
+  disps[7] = offsetof(struct task_dependency, subtype_out);
+  blocklens[7] = MAX_NUMBER_DEP;
+  disps[8] = offsetof(struct task_dependency, implicit_out);
+  blocklens[8] = MAX_NUMBER_DEP;
+  disps[9] = offsetof(struct task_dependency, task_out_is_top);
+  blocklens[9] = MAX_NUMBER_DEP;
+  disps[10] = offsetof(struct task_dependency, task_out_is_hydro_super);
+  blocklens[10] = MAX_NUMBER_DEP;
+  disps[11] = offsetof(struct task_dependency, task_out_is_grav_super);
+  blocklens[11] = MAX_NUMBER_DEP;
+
+  disps[12] = offsetof(struct task_dependency, number_link);
+  blocklens[12] = MAX_NUMBER_DEP;
+  disps[13] = offsetof(struct task_dependency, number_rank);
+  blocklens[13] = MAX_NUMBER_DEP;
+
+  MPI_Type_create_struct(count, blocklens, disps, types, tstype);
+  MPI_Type_commit(tstype);
+}
+
+/**
+ * @brief Sum operator of #task_dependency for MPI.
+ *
+ * @param in_p The #task_dependency to add.
+ * @param out_p The #task_dependency where in_p is added.
+ * @param len The length of the arrays.
+ * @param type The MPI datatype.
+ */
+static void task_dependency_sum(void *in_p, void *out_p, int *len,
+                                MPI_Datatype *type) {
+  struct task_dependency *in = (struct task_dependency *)in_p;
+  struct task_dependency *out = (struct task_dependency *)out_p;
+
+  for (int i = 0; i < *len; i++) {
+    for (int j = 0; j < MAX_NUMBER_DEP; j++) {
+      if (in[i].number_link[j] == -1) {
+        break;
+      }
+
+      const int tb_type = in[i].type_out[j];
+      const int tb_subtype = in[i].subtype_out[j];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (tb_type >= task_type_count) {
+        error("Unknown task type %i", tb_type);
+      }
+
+      if (tb_subtype >= task_subtype_count) {
+        error("Unknown subtask type %i", tb_subtype);
+      }
+#endif
+
+      int k = 0;
+      while (k < MAX_NUMBER_DEP) {
+        if (out[i].number_link[k] == -1) {
+          out[i].number_link[k] = 0;
+          out[i].number_rank[k] = 0;
+
+          out[i].type_in = in[i].type_in;
+          out[i].subtype_in = in[i].subtype_in;
+          out[i].implicit_in = in[i].implicit_in;
+
+          out[i].type_out[k] = in[i].type_out[j];
+          out[i].subtype_out[k] = in[i].subtype_out[j];
+          out[i].implicit_out[k] = in[i].implicit_out[j];
+          break;
+        }
+
+        if (out[i].type_out[k] == tb_type &&
+            out[i].subtype_out[k] == tb_subtype) {
+          break;
+        }
+
+        k++;
+      }
+
+      if (k == MAX_NUMBER_DEP) {
+        error("Not enough memory, please increase MAX_NUMBER_DEP");
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (out[i].type_in != in[i].type_in ||
+          out[i].subtype_in != in[i].subtype_in ||
+          out[i].implicit_in != in[i].implicit_in ||
+          out[i].type_out[k] != in[i].type_out[j] ||
+          out[i].subtype_out[k] != in[i].subtype_out[j] ||
+          out[i].implicit_out[k] != in[i].implicit_out[j]) {
+        error("Tasks do not correspond");
+      }
+#endif
+
+      out[i].number_link[k] += in[i].number_link[j];
+      out[i].number_rank[k] += in[i].number_rank[j];
+
+      out[i].task_in_is_top = min(out[i].task_in_is_top, in[i].task_in_is_top);
+      out[i].task_in_is_hydro_super =
+          min(out[i].task_in_is_hydro_super, in[i].task_in_is_hydro_super);
+      out[i].task_in_is_grav_super =
+          min(out[i].task_in_is_grav_super, in[i].task_in_is_grav_super);
+
+      out[i].task_out_is_top[j] =
+          min(out[i].task_out_is_top[j], in[i].task_out_is_top[j]);
+      out[i].task_out_is_hydro_super[j] = min(out[i].task_out_is_hydro_super[j],
+                                              in[i].task_out_is_hydro_super[j]);
+      out[i].task_out_is_grav_super[j] = min(out[i].task_out_is_grav_super[j],
+                                             in[i].task_out_is_grav_super[j]);
+    }
+  }
+
+  (void)type;
+}
+
+#endif
+
 /**
  * @brief Write a csv file with the task dependencies.
  *
