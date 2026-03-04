@@ -969,12 +969,16 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   /* Number of cells on this node and space for the expected arrays. */
   int nverts = vtxdist[nodeID + 1] - vtxdist[nodeID];
+  int nedge_local = cell_edge_offsets[vtxdist[nodeID + 1]] -
+                    cell_edge_offsets[vtxdist[nodeID]];
 
   idx_t *xadj = NULL;
   if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
     error("Failed to allocate xadj buffer.");
 
   idx_t *adjncy = NULL;
+  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedge_local)) == NULL)
+    error("Failed to allocate adjncy array.");
 
   idx_t *weights_v = NULL;
   if (vertexw != NULL)
@@ -982,6 +986,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       error("Failed to allocate vertex weights array");
 
   idx_t *weights_e = NULL;
+  if (edgew != NULL)
+    if ((weights_e = (idx_t *)malloc(sizeof(idx_t) * nedge_local)) == NULL)
+      error("Failed to allocate edge weights array");
 
   idx_t *regionid = NULL;
   if ((regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
@@ -1126,11 +1133,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         for (int i = 0; i < nvt; i++) full_regionid[j3 + i] = celllist[j3 + i];
 
       if (rank == 0) {
-        if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedge)) == NULL)
-          error("Failed to allocate local adjncy array.");
-        if (edgew != NULL)
-          if ((weights_e = (idx_t *)malloc(sizeof(idx_t) * nedge)) == NULL)
-            error("Failed to allocate local edge weight array.");
         memcpy(xadj, &full_xadj[j1], sizeof(idx_t) * (nvt + 1));
         memcpy(adjncy, &full_adjncy[j2], sizeof(idx_t) * nedge);
         if (weights_e != NULL)
@@ -1189,13 +1191,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive xadj data");
 
     const int nedge = xadj[nverts];
-
-    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedge)) == NULL)
-      error("Failed to allocate local adjncy array.");
-
-    if (edgew != NULL)
-      if ((weights_e = (idx_t *)malloc(sizeof(idx_t) * nedge)) == NULL)
-        error("Failed to allocate local edge weight array.");
+    if (nedge != nedge_local)
+      error("Inconsistent local edge count (xadj=%d, offsets=%d)", nedge,
+            nedge_local);
 
     /* Receive remaining graph data from rank 0. */
     res = MPI_Irecv(adjncy, nedge, IDX_T, 0, 1, comm, &reqs[0]);
