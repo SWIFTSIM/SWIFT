@@ -23,8 +23,6 @@
 #include <config.h>
 
 /* Local includes */
-#include "forcing.h"
-#include "engine.h"
 #include "io_properties.h"
 
 /**
