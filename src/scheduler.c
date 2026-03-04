@@ -167,13 +167,13 @@ struct task_dependency {
   /* Is the task implicit */
   int implicit_in;
 
-  /* Is the taks_in at the top level? */
+  /* Is the task_in at the top level? */
   int task_in_is_top;
 
-  /* Is the taks_in at the grav.super level? */
+  /* Is the task_in at the grav.super level? */
   int task_in_is_grav_super;
 
-  /* Is the taks_in at the hydro.super level? */
+  /* Is the task_in at the hydro.super level? */
   int task_in_is_hydro_super;
 
   /* Dependent task */
@@ -186,13 +186,13 @@ struct task_dependency {
   /* Is the dependent task implicit */
   int implicit_out[MAX_NUMBER_DEP];
 
-  /* Is the taks_out at the top level? */
+  /* Is the task_out at the top level? */
   int task_out_is_top[MAX_NUMBER_DEP];
 
-  /* Is the taks_out at the grav.super level? */
+  /* Is the task_out at the grav.super level? */
   int task_out_is_grav_super[MAX_NUMBER_DEP];
 
-  /* Is the taks_out at the hydro.super level? */
+  /* Is the task_out at the hydro.super level? */
   int task_out_is_hydro_super[MAX_NUMBER_DEP];
 
   /* Statistics */
@@ -1027,7 +1027,7 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
             (1LL << (8 * sizeof(t->wait) - 1)) - 1);
 #endif
 
-    /* Sets the waits of the dependances */
+    /* Sets the waits of the dependencies */
     for (int k = 0; k < t->nr_unlock_tasks; k++) {
       struct task *u = t->unlock_tasks[k];
       atomic_inc(&u->wait);
