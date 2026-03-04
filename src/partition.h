@@ -23,6 +23,18 @@
 #include "space.h"
 #include "task.h"
 
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+/* METIS/ParMETIS headers only used when MPI is also available. */
+#ifdef HAVE_PARMETIS
+#include <parmetis.h>
+#endif
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
+#endif
+
 /* Initial partitioning types. */
 enum partition_type {
   INITPART_GRID = 0,
