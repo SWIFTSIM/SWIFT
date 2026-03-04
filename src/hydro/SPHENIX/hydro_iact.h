@@ -379,6 +379,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
 
+  //desperattion checks --lily
+  if ((pi->mass > 8.5e-5) && (pi->time_bin < 38) && (pi->force.pressure) && (pi->time_bin > 0)){
+    message("SUSPICIOUS pi: id=%lld mass=%e time_bin=%d rho=%e u=%e P=%e v_sig=%e alpha=%e pos=(%g,%g,%g)",
+            pi->id, pi->mass, pi->time_bin, pi->rho, pi->u,
+            pi->force.pressure, pi->viscosity.v_sig, pi->viscosity.alpha,
+            pi->x[0], pi->x[1], pi->x[2]);
+  }
+  if ((pj->mass > 8.5e-5) && (pj->time_bin < 38) && (pj->force.pressure > 1) && (pj->time_bin > 0)){
+    message("SUSPICIOUS pj: id=%lld mass=%e time_bin=%d rho=%e u=%e P=%e v_sig=%e alpha=%e pos=(%g,%g,%g)",
+            pj->id, pj->mass, pj->time_bin, pj->rho, pj->u,
+            pj->force.pressure, pj->viscosity.v_sig, pj->viscosity.alpha,
+            pj->x[0], pj->x[1], pj->x[2]);
+  }
+  
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */

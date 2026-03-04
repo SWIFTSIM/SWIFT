@@ -209,9 +209,13 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     message("H_LIMIT pid=%lld h=%g h_dt=%g rho=%g",
 	    p->id, p->h, p->force.h_dt, p->rho);
   }
-  if (new_dt < 5e-9){
-    message("dt getting very small for part pid = %lld and mass=%g\n", p->id, p->mass);
-      }
+  if ((p->u > 3.2e8f) && (p->mass > 8.5e5)) {
+    message("HOT LARGE PARTICLE: id=%lld u=%e pos=(%g,%g,%g) rho=%e h=%e",
+            p->id, p->u,
+            p->x[0], p->x[1], p->x[2],
+            p->rho, p->h);
+  }
+  
   if (new_dt < e->dt_min){
     //lily
     message(

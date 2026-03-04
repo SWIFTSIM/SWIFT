@@ -1009,6 +1009,17 @@ runner_iact_nonsym_bh_gas_feedback(
     Loop through num_jet_injections divided by 2 because of two sets of rays */
     for (int i = 0; i < num_jet_injections_per_BH / 2; i++) {
       if (pj->id == bi->rays_jet[i].id_min_length) {
+
+	/*lily -> we can't kick a particle thats just been created                                                                                          
+          but if the list is full of newly created particles, just skip feedback                                                                            
+          for this timestep                                                                                                                                 
+        */
+
+        if (xpj->ti_created == ti_current){
+          message("We are trying to kick a new child! STOP!");
+          continue;
+	}
+	message("particle pid %lld is being launched", pj->id);
         num_of_jet_inj_received_by_gas++;
 
         /*This particle is in the 'negative' hemisphere (pointing away from the
@@ -1029,6 +1040,7 @@ runner_iact_nonsym_bh_gas_feedback(
 	  continue;
 	}
 	
+	message("particle pid %lld is being launched", pj->id);
         num_of_jet_inj_received_by_gas++;
 
         /* This particle is in the 'positive' hemisphere (pointing in the
