@@ -97,6 +97,8 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream);
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 void accumulate_sizes(struct space *s, int verbose, double *counts);
 void sizes_to_edges(struct space *s, double *counts, double *edges);
+void graph_init(struct space *s, int periodic, idx_t *weights_e, idx_t *adjncy,
+                int *nadjcny, idx_t *xadj, int *nxadj);
 void pick_metis(int nodeID, struct space *s, int nregions, double *vertexw,
                 double *edgew, int *celllist);
 void pick_parmetis(int nodeID, struct space *s, int nregions, double *vertexw,

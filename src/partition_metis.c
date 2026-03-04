@@ -95,8 +95,8 @@
  *             number of cells in space + 1. NULL for not used.
  * @param nxadj the number of xadj element used.
  */
-static void graph_init(struct space *s, int periodic, idx_t *weights_e,
-                       idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj) {
+void graph_init(struct space *s, int periodic, idx_t *weights_e, idx_t *adjncy,
+                int *nadjcny, idx_t *xadj, int *nxadj) {
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
