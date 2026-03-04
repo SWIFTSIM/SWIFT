@@ -54,9 +54,9 @@
  * using this in a unweighted scheme, which works well and seems to be
  * guaranteed, and a weighted by the number of particles scheme.
  *
- * Repartitioning is based on ParMETIS and uses weights determined from the
- * estimated costs that a cells tasks will take or the relative time bins of
- * the cells next updates.
+ * Repartitioning is based on ParMETIS (but can also use METIS) and uses weights
+ * determined from the estimated costs that a cells tasks will take or the
+ * relative time bins of the cells next updates.
  */
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
