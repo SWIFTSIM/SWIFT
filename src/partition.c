@@ -754,22 +754,13 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges,
                            const int *cell_edge_offsets) {
 
   int nedges = cell_edge_offsets[s->nr_cells];
-
-  idx_t *adjncy = NULL;
-  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
-    error("Failed to allocate adjncy for edge weights.");
-
-  int nadjcny = 0;
-  int nxadj = 0;
-  graph_init(s, s->periodic, adjncy, &nadjcny, NULL, &nxadj, cell_edge_offsets);
+  bzero(edges, sizeof(double) * nedges);
 
   for (int cid = 0; cid < s->nr_cells; cid++) {
     for (int k = cell_edge_offsets[cid]; k < cell_edge_offsets[cid + 1]; k++) {
-      edges[k] = counts[adjncy[k]];
+      edges[k] = counts[cid] / 26.0;
     }
   }
-
-  free(adjncy);
 }
 #endif
 
