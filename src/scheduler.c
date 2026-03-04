@@ -59,6 +59,8 @@
 
 /**
  * @brief Re-set the list of active tasks.
+ *
+ * @param s The #scheduler.
  */
 void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
 
@@ -437,7 +439,7 @@ struct unlock_extra_data {
 };
 
 /**
- * @brief Cound the number of tasks unlocking each task
+ * @brief Count the number of tasks unlocking each task
  *
  * @param map_data the index of unlocks in this pool thread.
  * @param num_elements the number of indexes in this pool thread
@@ -469,7 +471,7 @@ void scheduler_set_unlock_counts_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Cound the number of tasks unlocking each task
+ * @brief Count the number of tasks unlocking each task
  *
  * @param map_data the index of unlocks in this pool thread.
  * @param num_elements the number of indexes in this pool thread
@@ -998,6 +1000,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 /**
  * @brief #threadpool_map function which runs through the task
  *        graph and re-computes the task wait counters.
+ *
+ * @param map_data the index of tasks in this pool thread.
+ * @param num_elements the number of indexes in this pool thread
+ * @param extra_data The scheduler.
  */
 void scheduler_rewait_mapper(void *map_data, int num_elements,
                              void *extra_data) {
@@ -1029,6 +1035,14 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief #threadpool_map function which runs through the task graph and
+ *        enqueues the ready tasks.
+ *
+ * @param map_data the index of tasks in this pool thread.
+ * @param num_elements the number of indexes in this pool thread
+ * @param extra_data The scheduler.
+ */
 void scheduler_enqueue_mapper(void *map_data, int num_elements,
                               void *extra_data) {
   struct scheduler *s = (struct scheduler *)extra_data;
@@ -1724,6 +1738,8 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 
 /**
  * @brief Frees up the memory allocated for this #scheduler
+ *
+ * @param s The #scheduler
  */
 void scheduler_clean(struct scheduler *s) {
   scheduler_free_tasks(s);
@@ -1735,6 +1751,8 @@ void scheduler_clean(struct scheduler *s) {
 
 /**
  * @brief Free the task arrays allocated by this #scheduler.
+ *
+ * @param s The #scheduler
  */
 void scheduler_free_tasks(struct scheduler *s) {
   if (s->tasks != NULL) {
@@ -1753,6 +1771,14 @@ void scheduler_free_tasks(struct scheduler *s) {
   s->nr_tasks = 0;
 }
 
+/**
+ * @brief #threadpool_map function which runs through the task graph and
+ *        gathers the time spent in the different task categories.
+ *
+ * @param map_data the index of tasks in this pool thread.
+ * @param num_elements the number of indexes in this pool thread
+ * @param extra_data The array to store the times in.
+ */
 void scheduler_report_task_times_mapper(void *map_data, int num_elements,
                                         void *extra_data) {
 

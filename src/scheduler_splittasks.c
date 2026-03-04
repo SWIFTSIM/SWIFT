@@ -414,7 +414,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
                     /* Flag this pair as being treated by the M-M task.
                      * We use the 64 bits in the task->flags field to store
-                     * this information. The corresponding taks will unpack
+                     * this information. The corresponding task will unpack
                      * the information and operate according to the choices
                      * made here. */
                     const int flag = i * 8 + j;
