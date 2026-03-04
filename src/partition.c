@@ -2406,6 +2406,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e, cell_edge_offsets);
+      message("Calculated edge weights from vertex weights.");
     }
 
     /* Do the calculation. */
