@@ -43,6 +43,12 @@ struct feedback_props {
 
   /* Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
+
+  /*! Pre-supernova feedback energy effectively deposited */
+  float preSN_efficiency;
+
+  /*! Do stellar wind feedback? */
+  char with_stellar_wind_feedback;
 };
 
 /**
@@ -75,6 +81,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   /* Print the feedback properties */
   message("Supernovae efficiency = %.2g",
           feedback_props->supernovae_efficiency);
+  message("Stellar wind feedback = %s",
+          feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
+  message("Pre-Supernovae efficiency = %.2g", feedback_props->preSN_efficiency);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
@@ -112,13 +121,26 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
   fp->supernovae_efficiency = e_efficiency;
 
+  /* Activate the stellar wind feedback */
+  char with_stellar_wind_feedback = (char)parser_get_param_int(
+      params, "GEARFeedback:with_stellar_wind_feedback");
+  fp->with_stellar_wind_feedback = with_stellar_wind_feedback;
+
+  /* Pre-Supernovae energy efficiency */
+  double w_efficiency =
+      with_stellar_wind_feedback
+          ? parser_get_param_double(params,
+                                    "GEARFeedback:pre_supernovae_efficiency")
+          : 0.0;
+  fp->preSN_efficiency = w_efficiency;
+
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",
                           fp->stellar_model.yields_table);
 
   /* Initialize the stellar models. */
   stellar_evolution_props_init(&fp->stellar_model, phys_const, us, params,
-                               cosmo);
+                               cosmo, fp->with_stellar_wind_feedback);
 
   /* Read the metallicity threashold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
@@ -153,7 +175,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     parser_get_param_string(params, "GEARFeedback:yields_table_first_stars",
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
-                                 params, cosmo);
+                                 params, cosmo, fp->with_stellar_wind_feedback);
   }
 
   /* Print the stellar properties */
