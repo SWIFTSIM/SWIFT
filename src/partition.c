@@ -85,7 +85,7 @@ static int check_complete(struct space *s, int verbose, int nregions);
  * statistics output produced when running with task debugging enabled.
  */
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-static double repartition_costs[task_type_count][task_subtype_count];
+double repartition_costs[task_type_count][task_subtype_count];
 #endif
 #if defined(WITH_MPI)
 static int repart_init_fixed_costs(void);

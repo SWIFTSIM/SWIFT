@@ -107,6 +107,21 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream);
 
 /* Metis/ParMetis support. */
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+struct weights_mapper_data {
+  double *weights_e;
+  double *weights_v;
+  idx_t *inds;
+  int eweights;
+  int nodeID;
+  int timebins;
+  int vweights;
+  int nr_cells;
+  int use_ticks;
+  struct cell *cells;
+};
+
+extern double repartition_costs[task_type_count][task_subtype_count];
+
 void accumulate_sizes(struct space *s, int verbose, double *counts);
 void sizes_to_edges(struct space *s, double *counts, double *edges);
 void graph_init(struct space *s, int periodic, idx_t *weights_e, idx_t *adjncy,
