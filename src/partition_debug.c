@@ -23,36 +23,15 @@
 #include <config.h>
 
 /* Standard headers. */
-#include <float.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
 
-/* Include int min and max values. Define these limits in C++ as well. */
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
-
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-/* METIS/ParMETIS headers only used when MPI is also available. */
-#ifdef HAVE_PARMETIS
-#include <parmetis.h>
-#endif
-#ifdef HAVE_METIS
-#include <metis.h>
-#endif
-#endif
-
 /* Local headers. */
-#include "debug.h"
 #include "engine.h"
 #include "error.h"
 #include "partition.h"
-#include "restart.h"
 #include "space.h"
-#include "threadpool.h"
 #include "tools.h"
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))

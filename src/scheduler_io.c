@@ -24,12 +24,9 @@
 #include <config.h>
 
 /* Some standard headers. */
-#include <limits.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -44,8 +41,6 @@
 #include "engine.h"
 #include "error.h"
 #include "queue.h"
-#include "space.h"
-#include "task.h"
 #include "version.h"
 
 #ifdef WITH_MPI

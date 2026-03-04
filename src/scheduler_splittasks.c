@@ -24,29 +24,16 @@
 #include <config.h>
 
 /* Some standard headers. */
-#include <limits.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
 
 /* This object's header. */
 #include "scheduler.h"
 
 /* Local headers. */
-#include "cycle.h"
 #include "engine.h"
 #include "error.h"
 #include "sort_part.h"
 #include "space.h"
 #include "space_getsid.h"
-#include "task.h"
 #include "threadpool.h"
 
 /**

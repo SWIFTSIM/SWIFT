@@ -23,15 +23,9 @@
 #include <config.h>
 
 /* Standard headers. */
-#include <float.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
-
-/* Include int min and max values. Define these limits in C++ as well. */
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -46,11 +40,9 @@
 #endif
 
 /* Local headers. */
-#include "debug.h"
 #include "engine.h"
 #include "error.h"
 #include "partition.h"
-#include "restart.h"
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
