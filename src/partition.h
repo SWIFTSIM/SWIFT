@@ -108,9 +108,9 @@ void split_metis(struct space *s, int nregions, int *celllist);
 /* Debugging. */
 #ifdef SWIFT_DEBUG_CHECKS
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-static void check_weights(struct task *tasks, int nr_tasks,
-                          struct weights_mapper_data *mydata,
-                          double *ref_weights_v, double *ref_weights_e);
+void check_weights(struct task *tasks, int nr_tasks,
+                   struct weights_mapper_data *mydata, double *ref_weights_v,
+                   double *ref_weights_e);
 #endif
 #endif
 
