@@ -129,7 +129,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   /* Pre-Supernovae energy efficiency */
   double w_efficiency = 0.0;
   if (with_stellar_wind_feedback) {
-    w_efficiency = parser_get_param_double(params, "GEARFeedback:pre_supernovae_efficiency");
+    w_efficiency = parser_get_param_double(
+        params, "GEARFeedback:pre_supernovae_efficiency");
   }
 
   fp->preSN_efficiency = w_efficiency;

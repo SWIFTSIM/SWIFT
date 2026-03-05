@@ -156,7 +156,7 @@ runner_iact_nonsym_feedback_apply(
       /* Total momentum ejected by the winds during the timestep from the star
        * particle i */
       const float p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected *
-                               si->feedback_data.preSN.energy_ejected);
+                              si->feedback_data.preSN.energy_ejected);
 
       /* norm of physical velocities of the gas particle j */
       const float norm2_v_p =
@@ -172,18 +172,18 @@ runner_iact_nonsym_feedback_apply(
         const float change_of_frame_delta_p =
             si->feedback_data.preSN.mass_ejected * v_i_p[i];
         /* momentum in lab frame due to the ejecta */
-        delta_p_lab_frame[i] = weight * (p_ej + change_of_frame_delta_p) * unit_direction;
+        delta_p_lab_frame[i] =
+            weight * (p_ej + change_of_frame_delta_p) * unit_direction;
 
         /* Give the comoving momentum to the gas particle.
          * The minus sign comes from the direction of dx (si - pj) */
-        xpj->feedback_data.delta_p[i] -=
-            delta_p_lab_frame[i] *
-            a;
+        xpj->feedback_data.delta_p[i] -= delta_p_lab_frame[i] * a;
       }
 
-      const double norm2_delta_p_lab_frame = delta_p_lab_frame[0] * delta_p_lab_frame[0] +
-                                        delta_p_lab_frame[1] * delta_p_lab_frame[1] +
-                                        delta_p_lab_frame[2] * delta_p_lab_frame[2];
+      const double norm2_delta_p_lab_frame =
+          delta_p_lab_frame[0] * delta_p_lab_frame[0] +
+          delta_p_lab_frame[1] * delta_p_lab_frame[1] +
+          delta_p_lab_frame[2] * delta_p_lab_frame[2];
       const double norm2_delta_p = weight * weight * p_ej * p_ej;
 
       /* ----- Calculate physical Energy and internal Energy received ------ */
