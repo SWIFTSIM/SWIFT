@@ -5,4 +5,4 @@ echo "Generating initial conditions for the basic SIDM example..."
 python3 makeICs.py
 
 # Run SWIFT
-../../swift --sidm --self-gravity --verbose 1 sidm_test.yml 2>&1 | tee output.log
+../../../swift --sidm --self-gravity --verbose 1 params.yml 2>&1 | tee output.log

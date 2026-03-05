@@ -5,8 +5,7 @@ InternalUnitSystem:
   UnitVelocity_in_cgs: 1e5       # km / s
   UnitCurrent_in_cgs:  1         # Amperes
   UnitTemp_in_cgs:     1         # Kelvin
-
-
+  
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025                # Constant dimensionless multiplier for time integration.
@@ -18,24 +17,18 @@ Gravity:
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          0.01    # The end time of the simulation (in internal units).
+  time_end:          0.1    # The end time of the simulation (in internal units).
   dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
-
 
 # Parameters governing the snapshots
 Snapshots:
   basename:   output      # Common part of the name of output files
-  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01         # Time difference between consecutive outputs (in internal units)
-
-Scheduler:
-  max_top_level_cells:  16
 
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:           1e-1     # Time between statistics output
-  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
 
 # Parameters related to the initial conditions
 InitialConditions:
