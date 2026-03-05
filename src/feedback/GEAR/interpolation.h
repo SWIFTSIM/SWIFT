@@ -410,7 +410,7 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
             "interp->dx=%g interp->dy=%g idx=%d idy=%d "
             "out_of_boundary_type=const cell_to_get=%d E[%d][%d]=%g",
             Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx,
-            idy, cell_to_get, row, col, pow(10, interp->data[cell_to_get]));
+            idy, cell_to_get, row, col, exp10(interp->data[cell_to_get]));
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
         return interp->data[cell_to_get];
       }
@@ -432,10 +432,10 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(
       "interp->dx=%g interp->dy=%g idx=%d idy=%d out_of_boundary_type=none "
       "E[idx][idy]=%g E[idx][idy+1]=%g E[idx+1][idy]=%g E[idx+1][idy+1]=%g",
       Nx, Ny, interp->xmin, interp->ymin, interp->dx, interp->dy, idx, idy,
-      pow(10, interp->data[idx * Ny + idy]),
-      pow(10, interp->data[idx * Ny + idy + 1]),
-      pow(10, interp->data[(idx + 1) * Ny + idy]),
-      pow(10, interp->data[(idx + 1) * Ny + idy + 1]));
+      exp10(interp->data[idx * Ny + idy]),
+      exp10(interp->data[idx * Ny + idy + 1]),
+      exp10(interp->data[(idx + 1) * Ny + idy]),
+      exp10(interp->data[(idx + 1) * Ny + idy + 1]));
 #endif /* !defined SWIFT_TEST_STELLAR_WIND */
 
   const float fx1 = interp->data[idx * Ny + idy] * (1. - dx) +
