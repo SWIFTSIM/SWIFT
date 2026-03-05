@@ -31,6 +31,12 @@ INLINE static void convert_part_group_id(const struct engine *e,
   ret[0] = p->gpart->fof_data.group_id;
 }
 
+INLINE static void convert_sink_group_id(const struct engine *e,
+                                         const struct sink *si,
+                                         long long *ret) {
+  ret[0] = si->gpart->fof_data.group_id;
+}
+
 INLINE static void convert_spart_group_id(const struct engine *e,
                                           const struct spart *sp,
                                           long long *ret) {
@@ -93,6 +99,29 @@ INLINE static int fof_write_gparts(const struct gpart *gparts,
       fof_data.group_id,
       "Friends-Of-Friends ID of the group the particles belong to");
 
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+/**
+ * @brief Specifies which FoF-related sink-particle fields to write to a dataset
+ *
+ * @param sinks The sink-particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return The number of fields to write.
+ */
+INLINE static int fof_write_sinks(const struct sink *sinks,
+                                  struct io_props *list) {
+
+#ifdef WITH_FOF
+
+  list[0] = io_make_output_field_convert_sink(
+      "FOFGroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
+      convert_sink_group_id,
+      "Friends-Of-Friends ID of the group the particles belong to");
   return 1;
 #else
   return 0;

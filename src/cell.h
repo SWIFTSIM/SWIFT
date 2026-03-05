@@ -145,6 +145,9 @@ struct pcell {
     /*! Upper limit of the CoM<->gpart distance at last rebuild. */
     double r_max_rebuild;
 
+    /*! Upper limit of the CoM<->gpart distance along each axis */
+    float dx_max[3];
+
     /*! Minimal integer end-of-timestep in this cell for gravity tasks */
     integertime_t ti_end_min;
 
