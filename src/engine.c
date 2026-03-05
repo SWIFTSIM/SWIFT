@@ -1396,37 +1396,44 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Report the number of particles and memory */
   if (e->verbose)
     message(
-        "Space has memory for %zd/%zd/%zd/%zd/%zd part/gpart/spart/sink/bpart "
-        "(%zd/%zd/%zd/%zd/%zd MB)",
+        "Space has memory for %zd/%zd/%zd/%zd/%zd/%zd "
+        "part/gpart/spart/sink/bpart/sipart "
+        "(%zd/%zd/%zd/%zd/%zd/%zd MB)",
         e->s->size_parts, e->s->size_gparts, e->s->size_sparts,
-        e->s->size_sinks, e->s->size_bparts,
+        e->s->size_sinks, e->s->size_bparts, e->s->size_siparts,
         e->s->size_parts * sizeof(struct part) / (1024 * 1024),
         e->s->size_gparts * sizeof(struct gpart) / (1024 * 1024),
         e->s->size_sparts * sizeof(struct spart) / (1024 * 1024),
         e->s->size_sinks * sizeof(struct sink) / (1024 * 1024),
-        e->s->size_bparts * sizeof(struct bpart) / (1024 * 1024));
+        e->s->size_bparts * sizeof(struct bpart) / (1024 * 1024),
+        e->s->size_siparts * sizeof(struct sipart) / (1024 * 1024));
 
   if (e->verbose)
     message(
-        "Space holds %zd/%zd/%zd/%zd/%zd part/gpart/spart/sink/bpart (fracs: "
-        "%f/%f/%f/%f/%f)",
+        "Space holds %zd/%zd/%zd/%zd/%zd/%zd "
+        "part/gpart/spart/sink/bpart/sipart (fracs: "
+        "%f/%f/%f/%f/%f/%f)",
         e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts, e->s->nr_sinks,
-        e->s->nr_bparts,
+        e->s->nr_bparts, e->s->nr_siparts,
         e->s->nr_parts ? e->s->nr_parts / ((double)e->s->size_parts) : 0.,
         e->s->nr_gparts ? e->s->nr_gparts / ((double)e->s->size_gparts) : 0.,
         e->s->nr_sparts ? e->s->nr_sparts / ((double)e->s->size_sparts) : 0.,
         e->s->nr_sinks ? e->s->nr_sinks / ((double)e->s->size_sinks) : 0.,
-        e->s->nr_bparts ? e->s->nr_bparts / ((double)e->s->size_bparts) : 0.);
+        e->s->nr_bparts ? e->s->nr_bparts / ((double)e->s->size_bparts) : 0.,
+        e->s->nr_siparts ? e->s->nr_siparts / ((double)e->s->size_siparts)
+                         : 0.);
 
   const ticks tic2 = getticks();
 
   /* Update the global counters of particles */
-  long long num_particles[5] = {
+  long long num_particles[6] = {
       (long long)(e->s->nr_parts - e->s->nr_extra_parts),
       (long long)(e->s->nr_gparts - e->s->nr_extra_gparts),
       (long long)(e->s->nr_sparts - e->s->nr_extra_sparts),
       (long long)(e->s->nr_sinks - e->s->nr_extra_sinks),
-      (long long)(e->s->nr_bparts - e->s->nr_extra_bparts)};
+      (long long)(e->s->nr_bparts - e->s->nr_extra_bparts),
+      (long long)(e->s->nr_siparts - e->s->nr_extra_siparts),
+  };
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, num_particles, 5, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -1436,6 +1443,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->total_nr_sparts = num_particles[2];
   e->total_nr_sinks = num_particles[3];
   e->total_nr_bparts = num_particles[4];
+  e->total_nr_siparts = num_particles[5];
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, &e->s->min_a_grav, 1, MPI_FLOAT, MPI_MIN,
@@ -1453,6 +1461,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->nr_inhibited_sparts = 0;
   e->nr_inhibited_sinks = 0;
   e->nr_inhibited_bparts = 0;
+  e->nr_inhibited_siparts = 0;
 
   if (e->verbose)
     message("updating particle counts took %.3f %s.",
@@ -1561,6 +1570,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->s_updates_since_rebuild = 0;
   e->sink_updates_since_rebuild = 0;
   e->b_updates_since_rebuild = 0;
+  e->si_updates_since_rebuild = 0;
 
   /* Flag that a rebuild has taken place */
   e->step_props |= engine_step_prop_rebuild;
@@ -1796,8 +1806,9 @@ void engine_skip_force_and_kick(struct engine *e) {
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_drift_sink || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->type == task_type_drift_sink || t->type == task_type_drift_sipart ||
+        t->type == task_type_kick1 || t->type == task_type_kick2 ||
+        t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync || t->type == task_type_collect ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
@@ -1837,6 +1848,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
         t->subtype == task_subtype_sink_do_gas_swallow ||
+        t->subtype == task_subtype_sipart_rho ||
         t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
@@ -1870,7 +1882,7 @@ void engine_skip_drift(struct engine *e) {
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_drift_sink)
+        t->type == task_type_drift_sink || t->type == task_type_drift_sipart)
       t->skip = 1;
   }
 
@@ -1977,6 +1989,7 @@ void engine_init_all_particles(struct engine *e) {
     cell_init_spart(c, e);
     cell_init_bpart(c, e);
     cell_init_sink(c, e);
+    cell_init_sipart(c, e);
   }
 
   if (e->verbose)
@@ -2267,6 +2280,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
+  // /* Udpate the SIDM properties */   - TODO
+  // if (e->policy & engine_policy_sidm)
+  //     sidm_props_update(e->sidm_properties, e->gravity_properties,
+  //     e->cosmology);
+
   /* Start by setting the particles in a good state */
   if (e->nodeID == 0) message("Setting particles to a valid state...");
   engine_first_init_particles(e);
@@ -2305,6 +2323,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(s, e->verbose);
   space_init_bparts(s, e->verbose);
   space_init_sinks(s, e->verbose);
+  space_init_siparts(s, e->verbose);
 
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
@@ -2463,6 +2482,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check the accuracy of the sink calculation */
   if (e->policy & engine_policy_sinks)
     sink_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
+#endif
+
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  /* Run the brute-force stars calculation for some parts */
+  if (e->policy & engine_policy_sidm) sidm_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the stars calculation */
+  if (e->policy & engine_policy_sidm)
+    sidm_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -3084,13 +3112,15 @@ int engine_step(struct engine *e) {
   e->s_updates_since_rebuild += e->collect_group1.s_updated;
   e->sink_updates_since_rebuild += e->collect_group1.sink_updated;
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
+  e->si_updates_since_rebuild += e->collect_group1.si_updated;
 
   /* Check if we updated all of the particles on this step */
   if ((e->collect_group1.updated == e->total_nr_parts) &&
       (e->collect_group1.g_updated == e->total_nr_gparts) &&
       (e->collect_group1.s_updated == e->total_nr_sparts) &&
       (e->collect_group1.sink_updated == e->total_nr_sinks) &&
-      (e->collect_group1.b_updated == e->total_nr_bparts))
+      (e->collect_group1.b_updated == e->total_nr_bparts) &&
+      (e->collect_group1.si_updated == e->total_nr_siparts))
     e->ti_earliest_undrifted = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS

@@ -954,8 +954,55 @@ void cell_check_bpart_drift_point(struct cell *c, void *data) {
 #endif
 }
 
+/**
+ * @brief Checks that the #sipart in a cell are at the
+ * current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
 void cell_check_sipart_drift_point(struct cell *c, void *data) {
-  error("Implementation missing! Please code me up!");
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const integertime_t ti_drift = *(integertime_t *)data;
+
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  /* Only check cells with content */
+  if (c->sidm.count == 0) return;
+
+  if (c->sidm.ti_old_part != ti_drift)
+    error(
+        "Cell in an incorrect time-zone! c->sidm.ti_old_part=%lld "
+        "ti_drift=%lld",
+        c->sidm.ti_old_part, ti_drift);
+
+  for (int i = 0; i < c->sidm.count; ++i)
+    if (c->sidm.parts[i].ti_drift != ti_drift &&
+        c->sidm.parts[i].time_bin != time_bin_inhibited)
+      error(
+          "si-part in an incorrect time-zone! sip->ti_drift=%lld ti_drift=%lld",
+          c->sidm.parts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->sidm.count; ++i) {
+    const struct sipart *sip = &c->sidm.parts[i];
+    if (sip->depth_h == c->depth) {
+      if (!(sip->h >= c->h_min_allowed && sip->h < c->h_max_allowed) &&
+          c->split) {
+        error(
+            "depth_h set incorrectly! c->depth=%d sip->depth_h=%d h=%e "
+            "h_min=%e "
+            "h_max=%e",
+            c->depth, sip->depth_h, sip->h, c->h_min_allowed, c->h_max_allowed);
+      }
+    }
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
 }
 
 /**
@@ -1279,7 +1326,8 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
                          cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift |
                          cell_flag_do_stars_drift |
                          cell_flag_do_stars_sub_drift |
-                         cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift);
+                         cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift |
+                         cell_flag_do_sidm_drift | cell_flag_do_sidm_sub_drift);
 }
 
 /**
@@ -1527,7 +1575,8 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
       c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
-      c->sinks.ti_end_min == 0 && c->rt.ti_rt_end_min == 0 && c->nr_tasks > 0)
+      c->sinks.ti_end_min == 0 && c->sidm.ti_end_min == 0 &&
+      c->rt.ti_rt_end_min == 0 && c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {
@@ -1535,10 +1584,16 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
       if (c->progeny[k] != NULL)
         cell_check_timesteps(c->progeny[k], ti_current, max_bin);
   } else {
-    if (c->nodeID == engine_rank)
-      for (int i = 0; i < c->hydro.count; ++i)
+    if (c->nodeID == engine_rank) {
+      for (int i = 0; i < c->hydro.count; ++i) {
         if (c->hydro.parts[i].time_bin == 0)
           error("Particle without assigned time-bin");
+      }
+      for (int i = 0; i < c->sidm.count; ++i) {
+        if (c->sidm.parts[i].time_bin == 0)
+          error("Particle without assigned time-bin");
+      }
+    }
   }
 
   /* Other checks not relevent when starting-up */
