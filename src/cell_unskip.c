@@ -547,6 +547,43 @@ void cell_activate_drift_sink(struct cell *c, struct scheduler *s) {
 }
 
 /**
+ * @brief Activate the #sipart drifts on the given cell.
+ */
+void cell_activate_drift_sipart(struct cell *c, struct scheduler *s) {
+  /* If this cell is already marked for drift, quit early. */
+  if (cell_get_flag(c, cell_flag_do_sidm_drift)) return;
+
+  /* Mark this cell for drifting. */
+  cell_set_flag(c, cell_flag_do_sidm_drift);
+
+  /* Set the do_sidm_sub_drifts all the way up and activate the super drift
+     if this has not yet been done. */
+  if (c == c->sidm.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->sidm.drift == NULL)
+      error("Trying to activate un-existing c->sidm.drift");
+#endif
+    scheduler_activate(s, c->sidm.drift);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_sidm_sub_drift);
+         parent = parent->parent) {
+      /* Mark this cell for drifting */
+      cell_set_flag(parent, cell_flag_do_sidm_sub_drift);
+
+      if (parent == c->sidm.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->sidm.drift == NULL)
+          error("Trying to activate un-existing parent->sidm.drift");
+#endif
+        scheduler_activate(s, parent->sidm.drift);
+        break;
+      }
+    }
+  }
+}
+
+/**
  * @brief Activate the drifts on the given cell.
  */
 void cell_activate_limiter(struct cell *c, struct scheduler *s) {

@@ -1245,6 +1245,9 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
      replication lists if we allocated them.
   */
   struct replication_list *replication_list = NULL;
+#ifdef WITH_LIGHTCONE
+  replication_list = refine_replications(e, c, replication_list_in);
+#endif
 
   /* Are we not in a leaf ? */
   if (c->split && (force || cell_get_flag(c, cell_flag_do_sidm_sub_drift))) {
@@ -1290,6 +1293,9 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
       /* Get a handle on the sipart. */
       struct sipart *const sip = &siparts[k];
 
+      /* Ignore inhibited particles */
+      if (sipart_is_inhibited(sip, e)) continue;
+
       /* Drift... */
       drift_sipart(sip, dt_drift, ti_old_sipart, ti_current, e,
                    replication_list, c->loc);
@@ -1315,14 +1321,18 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
 
           /* Re-check that the particle has not been removed
            * by another thread before we do the deed. */
+          if (!sipart_is_inhibited(sip, e)) {
 #ifdef WITH_CSDS
-          if (e->policy & engine_policy_csds) {
-            error("Logging of SIDM particles is not yet implemented.");
-          }
+            if (e->policy & engine_policy_csds) {
+              error("Logging of SIDM particles is not yet implemented.");
+            }
 #endif
+            /* One last action before death? */
+            sidm_remove_sipart(sip, e->time);
 
-          /* Remove the particle entirely */
-          cell_remove_sipart(e, c, sip);
+            /* Remove the particle entirely */
+            cell_remove_sipart(e, c, sip);
+          }
 
           if (lock_unlock(&e->s->lock) != 0)
             error("Failed to unlock the space!");

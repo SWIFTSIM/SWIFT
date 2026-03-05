@@ -19,6 +19,8 @@
 #ifndef SWIFT_BASIC_SIDM_H
 #define SWIFT_BASIC_SIDM_H
 
+#include <float.h>
+
 /* Local includes */
 #include "sidm_part.h"
 #include "sidm_properties.h"
@@ -152,4 +154,50 @@ __attribute__((always_inline)) INLINE static float sidm_get_comoving_density(
   return sip->rho;
 }
 
+/**
+ * @brief Kick the additional variables
+ *
+ * @param sip The particle to act upon
+ * @param dt The time-step for this kick
+ */
+__attribute__((always_inline)) INLINE static void sidm_kick_extra(
+    struct sipart *sip, float dt) {}
+
+/**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param sip The particle.
+ */
+__attribute__((always_inline)) INLINE static void sidm_reset_predicted_values(
+    struct sipart *restrict sip) {}
+
+/**
+ * @brief Computes the time-step of a given SIDM particle.
+ *
+ * @param sip Pointer to the si-particle data.
+ * @param sidm_properties Properties of the SIDM model.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param time The current time (used if running without cosmology).
+ * @param time_base The time base.
+ */
+__attribute__((always_inline)) INLINE static float sidm_compute_timestep(
+    const struct sipart *const sip, const struct sidm_props *sidm_properties,
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const double time_base) {
+
+  return FLT_MAX;
+}
+
+/**
+ * @brief Operations performed when an SIDM particle gets removed from the
+ * simulation volume.
+ *
+ * @param sip The si-particle.
+ * @param time The simulation time.
+ */
+__attribute__((always_inline)) INLINE static void sidm_remove_sipart(
+    const struct sipart *sip, const double time) {}
 #endif /* SWIFT_BASIC_SIDM_H */
