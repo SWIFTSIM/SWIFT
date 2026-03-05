@@ -572,7 +572,7 @@ int main(int argc, char *argv[]) {
   const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
   /* Do we have SIDM particles? */
-  const int with_SIDM = N_total[swift_type_sidm] > 0;
+  const int with_SIDM_particles = N_total[swift_type_sidm] > 0;
 
   /* Zero out neutrino properties to avoid running neutrino tasks */
   bzero(&neutrino_properties, sizeof(struct neutrino_props));
