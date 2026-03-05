@@ -352,6 +352,9 @@ __attribute__((always_inline)) INLINE static void gravity_predict_extra(
     case swift_type_dark_matter:
       gp->epsilon = grav_props->epsilon_DM_cur;
       break;
+    case swift_type_sidm:
+      gp->epsilon = grav_props->epsilon_DM_cur;
+      break;
     case swift_type_sink:
       gp->epsilon = grav_props->epsilon_baryon_cur;
       break;
@@ -418,6 +421,9 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
 
   switch (gp->type) {
     case swift_type_dark_matter:
+      gp->epsilon = grav_props->epsilon_DM_cur;
+      break;
+    case swift_type_sidm:
       gp->epsilon = grav_props->epsilon_DM_cur;
       break;
     case swift_type_stars:

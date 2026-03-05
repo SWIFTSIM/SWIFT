@@ -1,0 +1,5 @@
+This test verifies that the I/O and time integration chain works correctly in the SIDM version of the code. The SIDM initial conditions are generated in makeICs.py and individual particles should move in a straight line without interacting.
+
+To run this example, the code needs to be configured with SIDM:
+
+./configure --with-sidm=Basic

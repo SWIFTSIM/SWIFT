@@ -48,7 +48,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
                         const struct cosmology *cosmo, const int with_cosmology,
                         const int with_external_potential,
-                        const int has_baryons, const int has_DM,
+                        const int has_baryons, const int has_DM, int has_SIDM,
                         const int has_neutrinos, const int is_zoom_simulation,
                         const int periodic, const double dim[3],
                         const int cdim[3]) {
@@ -170,7 +170,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Softening parameters */
   if (with_cosmology) {
 
-    if (has_DM) {
+    if (has_DM || has_SIDM) {
       /* Maximal physical softening taken straight from the parameter file */
       p->epsilon_DM_max_physical =
           parser_get_param_double(params, "Gravity:max_physical_DM_softening");
@@ -221,7 +221,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   } else {
 
-    if (has_DM) {
+    if (has_DM || has_SIDM) {
       p->epsilon_DM_max_physical =
           parser_get_param_double(params, "Gravity:max_physical_DM_softening");
     }
@@ -237,7 +237,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     /* Some gravity models use the DM softening as the one and only softening
        length that exists. So, if we don't have DM (e.g. hydro test or planetary
        physics), we must have a non-zero epsilon. */
-    if (!has_DM && has_baryons)
+    if (!has_DM && !has_SIDM && has_baryons)
       p->epsilon_DM_max_physical = p->epsilon_baryon_max_physical;
 
     p->epsilon_DM_comoving = p->epsilon_DM_max_physical;

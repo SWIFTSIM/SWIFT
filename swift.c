@@ -1427,6 +1427,9 @@ int main(int argc, char *argv[]) {
     /* Do we have neutrino DM particles? */
     const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
+    /* Do we have SIDM particles? */
+    const int with_SIDM_particles = N_total[swift_type_sidm] > 0;
+
     /* Initialise the neutrino properties */
     bzero(&neutrino_properties, sizeof(struct neutrino_props));
     neutrino_props_init(&neutrino_properties, &prog_const, &us, params, &cosmo,
@@ -1468,8 +1471,8 @@ int main(int argc, char *argv[]) {
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                          with_cosmology, with_external_gravity,
                          with_baryon_particles, with_DM_particles,
-                         with_neutrinos, with_DM_background_particles, periodic,
-                         s.dim, s.cdim);
+                         with_SIDM_particles, with_neutrinos,
+                         with_DM_background_particles, periodic, s.dim, s.cdim);
 
     /* Initialize the neutrino response if used */
     bzero(&neutrino_response, sizeof(struct neutrino_response));

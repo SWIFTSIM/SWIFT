@@ -247,3 +247,47 @@ void cell_init_sink(struct cell *c, const struct engine *e) {
     }
   }
 }
+
+/**
+ * @brief Recursively initialise all SIDM particles in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine.
+ */
+void cell_init_sipart(struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID) error("Calling function on foreign cell!");
+#endif
+
+  if (c->split) {
+    /* Loop over the progeny and recurse. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        cell_init_sipart(c->progeny[k], e);
+      }
+    }
+  } else {
+
+    /* Loop over all the SIDM particles in the cell */
+    const size_t nr_siparts = c->sidm.count;
+    for (size_t k = 0; k < nr_siparts; k++) {
+      /* Get a handle on the sipart. */
+      struct sipart *const sip = &c->sidm.parts[k];
+
+      /* Ignore inhibited particles */
+      if (sipart_is_inhibited(sip, e)) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sip->ti_drift != e->ti_current) {
+        error(
+            "Trying to initialise a particle not drifted to the current time!");
+      }
+#endif
+
+      if (sipart_is_active(sip, e)) {
+        sipart_init(sip, e);
+      }
+    }
+  }
+}
