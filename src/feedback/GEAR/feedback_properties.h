@@ -127,11 +127,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   fp->with_stellar_wind_feedback = with_stellar_wind_feedback;
 
   /* Pre-Supernovae energy efficiency */
-  double w_efficiency =
-      with_stellar_wind_feedback
-          ? parser_get_param_double(params,
-                                    "GEARFeedback:pre_supernovae_efficiency")
-          : 0.0;
+  double w_efficiency = 0.0;
+  if (with_stellar_wind_feedback) {
+    w_efficiency = parser_get_param_double(
+        params, "GEARFeedback:pre_supernovae_efficiency");
+  }
+
   fp->preSN_efficiency = w_efficiency;
 
   /* filename of the chemistry tables. */
@@ -158,7 +159,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->metallicity_max_first_stars = -1;
   else
     fp->metallicity_max_first_stars =
-        pow(10, fp->imf_transition_metallicity) * XFe;
+        exp10(fp->imf_transition_metallicity) * XFe;
 
   /* Now initialize the first stars. */
   if (fp->metallicity_max_first_stars == -1) {
