@@ -148,13 +148,15 @@ and the path to the tables. A valid section of the YAML file looks like:
 
 .. code:: YAML
 
+   # Quick Lyman-alpha cooling (PS2020 with fixed primoridal Z)
    QLACooling:
-     dir_name:     /path/to/the/Wiersma/tables/directory # Absolute or relative path
-     H_reion_z:            11.5      # Redshift of Hydrogen re-ionization
-     H_reion_ev_p_H:        2.0      # Energy injected in eV per Hydrogen atom for Hydrogen re-ionization.
-     He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
-     He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
-     He_reion_ev_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium II re-ionization.
+     dir_name:     /path/to/the/PS2020/tables/directory # Absolute or relative path
+     H_reion_z:                11.5      # Redshift of Hydrogen re-ionization
+     H_reion_eV_p_H:            2.0      # Energy injected in eV per Hydrogen atom for Hydrogen re-ionization.
+     He_reion_z_centre:         3.5      # Centre of the Gaussian used for Helium re-ionization
+     He_reion_z_sigma:          0.5      # Width of the Gaussian used for Helium re-ionization
+     He_reion_ev_p_H:           2.0      # Energy injected in eV per Hydrogen atom for Helium II re-ionization.
+     rapid_cooling_threshold:   0.333333 # Switch to rapid cooling regime for dt / t_cool above this threshold.
 
 .. _QLA_star_formation:
 
