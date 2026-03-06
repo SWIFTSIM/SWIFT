@@ -46,9 +46,9 @@
  * @param ref_weights_v vertex weights to check
  * @param ref_weights_e edge weights to check
  */
-void check_weights(struct task *tasks, int nr_tasks,
-                   struct weights_mapper_data *mydata, double *ref_weights_v,
-                   double *ref_weights_e) {
+void partition_check_weights(struct task *tasks, int nr_tasks,
+                             struct weights_mapper_data *mydata,
+                             double *ref_weights_v, double *ref_weights_e) {
 
   idx_t *inds = mydata->inds;
   int eweights = mydata->eweights;

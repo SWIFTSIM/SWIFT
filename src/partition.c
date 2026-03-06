@@ -234,7 +234,7 @@ void partition_initial_partition(struct partition *initial_partition,
         error("Failed to allocate weights_v buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
-      accumulate_sizes(s, s->e->verbose, weights_v);
+      partition_accumulate_sizes(s, s->e->verbose, weights_v);
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
@@ -247,10 +247,10 @@ void partition_initial_partition(struct partition *initial_partition,
         error("Failed to allocate weights_e buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
-      accumulate_sizes(s, s->e->verbose, weights_v);
+      partition_accumulate_sizes(s, s->e->verbose, weights_v);
 
       /* Spread these into edge weights. */
-      sizes_to_edges(s, weights_v, weights_e);
+      partition_sizes_to_edges(s, weights_v, weights_e);
     }
 
     /* Do the calculation. */
@@ -259,17 +259,17 @@ void partition_initial_partition(struct partition *initial_partition,
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+      partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
     } else {
-      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0, 0.0f,
-                    celllist);
+      partition_pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0,
+                              0.0f, celllist);
     }
 #else
-    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+    partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
 #endif
 
     /* And apply to our cells */
-    split_metis(s, nr_nodes, celllist);
+    partition_split_metis(s, nr_nodes, celllist);
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */

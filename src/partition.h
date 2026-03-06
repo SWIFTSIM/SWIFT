@@ -122,24 +122,24 @@ struct weights_mapper_data {
 
 extern double repartition_costs[task_type_count][task_subtype_count];
 
-void accumulate_sizes(struct space *s, int verbose, double *counts);
-void sizes_to_edges(struct space *s, double *counts, double *edges);
-void graph_init(struct space *s, int periodic, idx_t *weights_e, idx_t *adjncy,
-                int *nadjcny, idx_t *xadj, int *nxadj);
-void pick_metis(int nodeID, struct space *s, int nregions, double *vertexw,
-                double *edgew, int *celllist);
-void pick_parmetis(int nodeID, struct space *s, int nregions, double *vertexw,
-                   double *edgew, int refine, int adaptive, float itr,
-                   int *celllist);
-void split_metis(struct space *s, int nregions, int *celllist);
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
+void partition_sizes_to_edges(struct space *s, double *counts, double *edges);
+void partition_graph_init(struct space *s, int periodic, idx_t *weights_e,
+                          idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj);
+void partition_pick_metis(int nodeID, struct space *s, int nregions,
+                          double *vertexw, double *edgew, int *celllist);
+void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
+                             double *vertexw, double *edgew, int refine,
+                             int adaptive, float itr, int *celllist);
+void partition_split_metis(struct space *s, int nregions, int *celllist);
 #endif
 
 /* Debugging. */
 #ifdef SWIFT_DEBUG_CHECKS
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-void check_weights(struct task *tasks, int nr_tasks,
-                   struct weights_mapper_data *mydata, double *ref_weights_v,
-                   double *ref_weights_e);
+void partition_check_weights(struct task *tasks, int nr_tasks,
+                             struct weights_mapper_data *mydata,
+                             double *ref_weights_v, double *ref_weights_e);
 #endif
 #endif
 

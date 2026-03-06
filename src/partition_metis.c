@@ -87,8 +87,9 @@
  *             number of cells in space + 1. NULL for not used.
  * @param nxadj the number of xadj element used.
  */
-void graph_init(struct space *s, int periodic, idx_t *weights_e, idx_t *adjncy,
-                int *nadjcny, idx_t *xadj, int *nxadj) {
+void partition_graph_init(struct space *s, int periodic, idx_t *weights_e,
+                          idx_t *adjncy, int *nadjcny, idx_t *xadj,
+                          int *nxadj) {
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
@@ -294,7 +295,7 @@ static int ptrcmp(const void *p1, const void *p2) {
  * @param counts the number of bytes in particles per cell. Should be
  *               allocated as size s->nr_cells.
  */
-void accumulate_sizes(struct space *s, int verbose, double *counts) {
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   bzero(counts, sizeof(double) * s->nr_cells);
 
@@ -407,7 +408,7 @@ void accumulate_sizes(struct space *s, int verbose, double *counts) {
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions. Should be 26 * counts.
  */
-void sizes_to_edges(struct space *s, double *counts, double *edges) {
+void partition_sizes_to_edges(struct space *s, double *counts, double *edges) {
 
   bzero(edges, sizeof(double) * s->nr_cells * 26);
 
@@ -440,7 +441,7 @@ void sizes_to_edges(struct space *s, double *counts, double *edges) {
  * @param nregions number of regions.
  * @param celllist list of regions for each cell.
  */
-void split_metis(struct space *s, int nregions, int *celllist) {
+void partition_split_metis(struct space *s, int nregions, int *celllist) {
 
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
@@ -582,9 +583,9 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        size of number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
  */
-void pick_parmetis(int nodeID, struct space *s, int nregions, double *vertexw,
-                   double *edgew, int refine, int adaptive, float itr,
-                   int *celllist) {
+void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
+                             double *vertexw, double *edgew, int refine,
+                             int adaptive, float itr, int *celllist) {
 
   int res;
   MPI_Comm comm;
@@ -753,8 +754,8 @@ void pick_parmetis(int nodeID, struct space *s, int nregions, double *vertexw,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
-    graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
-               &nxadj);
+    partition_graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny,
+                         std_xadj, &nxadj);
 
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
@@ -1077,8 +1078,8 @@ void pick_parmetis(int nodeID, struct space *s, int nregions, double *vertexw,
  * @param celllist on exit this contains the ids of the selected regions,
  *        sizeof number of cells.
  */
-void pick_metis(int nodeID, struct space *s, int nregions, double *vertexw,
-                double *edgew, int *celllist) {
+void partition_pick_metis(int nodeID, struct space *s, int nregions,
+                          double *vertexw, double *edgew, int *celllist) {
 
   /* Total number of cells. */
   int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
@@ -1171,7 +1172,8 @@ void pick_metis(int nodeID, struct space *s, int nregions, double *vertexw,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
-    graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
+    partition_graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj,
+                         &nxadj);
 
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];

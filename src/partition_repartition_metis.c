@@ -243,8 +243,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     error("Failed to allocate the inds array");
   int nadjcny = 0;
   int nxadj = 0;
-  graph_init(s, 1 /* periodic */, NULL /* no edge weights */, inds, &nadjcny,
-             NULL /* no xadj needed */, &nxadj);
+  partition_graph_init(s, 1 /* periodic */, NULL /* no edge weights */, inds,
+                       &nadjcny, NULL /* no xadj needed */, &nxadj);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
@@ -284,7 +284,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
             clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
-  check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e);
+  partition_check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e);
 #endif
 
   /* Merge the weights arrays across all nodes. */
@@ -385,15 +385,16 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
-               repartition->celllist);
+    partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+                         repartition->celllist);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                  repartition->adaptive, repartition->itr,
-                  repartition->celllist);
+    partition_pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
+                            repartition->adaptive, repartition->itr,
+                            repartition->celllist);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+  partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+                       repartition->celllist);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
@@ -427,7 +428,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 
   /* And apply to our cells */
-  split_metis(s, nr_nodes, repartition->celllist);
+  partition_split_metis(s, nr_nodes, repartition->celllist);
 
   /* Clean up. */
   free(inds);
@@ -453,7 +454,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
     error("Failed to allocate cell weights buffer.");
 
   /* Check each particle and accumulate the sizes per cell. */
-  accumulate_sizes(s, s->e->verbose, weights);
+  partition_accumulate_sizes(s, s->e->verbose, weights);
 
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
@@ -483,14 +484,16 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+    partition_pick_metis(nodeID, s, nr_nodes, weights, NULL,
+                         repartition->celllist);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
-                  repartition->adaptive, repartition->itr,
-                  repartition->celllist);
+    partition_pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
+                            repartition->adaptive, repartition->itr,
+                            repartition->celllist);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+  partition_pick_metis(nodeID, s, nr_nodes, weights, NULL,
+                       repartition->celllist);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
@@ -524,7 +527,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   }
 
   /* And apply to our cells */
-  split_metis(s, nr_nodes, repartition->celllist);
+  partition_split_metis(s, nr_nodes, repartition->celllist);
 }
 #endif /* WITH_MPI && (HAVE_METIS || HAVE_PARMETIS) */
 
