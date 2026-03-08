@@ -96,6 +96,7 @@ const char *taskID_names[task_type_count] = {
     "stars_ghost_in",
     "stars_density_ghost",
     "stars_ghost_out",
+    "stars_sidm_density_ghost",
     "stars_prep_ghost1",
     "hydro_prep_ghost1",
     "stars_prep_ghost2",
@@ -149,6 +150,7 @@ const char *subtaskID_names[task_subtype_count] = {"none",
                                                    "part_prep1",
                                                    "spart_prep2",
                                                    "stars_density",
+                                                   "stars_sidm_density",
                                                    "stars_prep1",
                                                    "stars_prep2",
                                                    "stars_feedback",
@@ -245,6 +247,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_drift_spart:
     case task_type_stars_ghost:
+    case task_type_stars_sidm_ghost:
     case task_type_stars_sort:
     case task_type_stars_resort:
       return task_action_spart;
@@ -280,6 +283,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           break;
 
         case task_subtype_stars_density:
+        case task_subtype_stars_sidm_density:
         case task_subtype_stars_feedback:
           return task_action_all;
           break;

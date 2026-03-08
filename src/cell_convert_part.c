@@ -269,6 +269,11 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Give the new particle the correct depth */
   cell_set_spart_h_depth(sp, c);
 
+#ifdef STARS_SIDM_INTERACTIONS
+  /* Also set the correct depth for star-sidm interactions */
+  cell_set_spart_sidm_h_depth(sp,c);
+#endif
+
   /* Register that we used one of the free slots. */
   const size_t one = 1;
   atomic_sub(&e->s->nr_extra_sparts, one);
