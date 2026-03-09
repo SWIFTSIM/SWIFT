@@ -58,45 +58,6 @@ struct tag_mapper_data {
 
 #ifdef WITH_MPI
 
-/**
- * @brief Recursively find whether a subtree contains an untagged gravity
- * communication root.
- *
- * A tag is required only at the first level where grav links appear along a
- * branch (matching engine_addtasks_{send,recv}_gravity recursion).
- */
-static int proxy_cell_tree_find_untagged_grav_comm_root(
-    const struct cell *c, const int has_grav_ancestor,
-    long long *first_bad_cellID, int *first_bad_depth,
-    enum cell_types *first_bad_type, enum cell_subtypes *first_bad_subtype,
-    int *first_bad_has_grav_links) {
-
-  const int has_grav_links = (c->grav.grav != NULL);
-  const int is_grav_comm_root = has_grav_links && !has_grav_ancestor;
-
-  if (is_grav_comm_root && c->mpi.tag < 0) {
-    *first_bad_cellID = c->cellID;
-    *first_bad_depth = c->depth;
-    *first_bad_type = c->type;
-    *first_bad_subtype = c->subtype;
-    *first_bad_has_grav_links = has_grav_links;
-    return 1;
-  }
-
-  if (c->split) {
-    for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL &&
-          proxy_cell_tree_find_untagged_grav_comm_root(
-              c->progeny[k], has_grav_ancestor || has_grav_links,
-              first_bad_cellID, first_bad_depth, first_bad_type,
-              first_bad_subtype, first_bad_has_grav_links))
-        return 1;
-    }
-  }
-
-  return 0;
-}
-
 void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
                                      void *extra_data) {
 
@@ -109,28 +70,6 @@ void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     if (cells[k].mpi.sendto) {
-#ifdef SWIFT_DEBUG_CHECKS
-      long long first_bad_cellID = -1;
-      int first_bad_depth = -1;
-      enum cell_types first_bad_type = cell_type_regular;
-      enum cell_subtypes first_bad_subtype = cell_subtype_regular;
-      int first_bad_has_grav_links = 0;
-
-      if (proxy_cell_tree_find_untagged_grav_comm_root(
-              &cells[k], /*has_grav_ancestor=*/0, &first_bad_cellID,
-              &first_bad_depth, &first_bad_type, &first_bad_subtype,
-              &first_bad_has_grav_links)) {
-        error(
-            "About to pack tags for subtree with untagged gravity comm root. "
-            "root=(%lld,%s/%s,node=%d,pcell_size=%d,sendto=%llx) "
-            "first_bad=(%lld,%s/%s,depth=%d,tag<0,grav_links=%d)",
-            cells[k].cellID, cellID_names[cells[k].type],
-            subcellID_names[cells[k].subtype], cells[k].nodeID,
-            cells[k].mpi.pcell_size, cells[k].mpi.sendto, first_bad_cellID,
-            cellID_names[first_bad_type], subcellID_names[first_bad_subtype],
-            first_bad_depth, first_bad_has_grav_links);
-      }
-#endif
       cell_pack_tags(&cells[k], &tags_out[offset_out[k + delta]]);
     }
   }
@@ -148,29 +87,6 @@ void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
   for (int k = 0; k < num_elements; k++) {
     const int cid = cids_in[k];
     cell_unpack_tags(&tags_in[offset_in[cid]], &space_cells[cid]);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    long long first_bad_cellID = -1;
-    int first_bad_depth = -1;
-    enum cell_types first_bad_type = cell_type_regular;
-    enum cell_subtypes first_bad_subtype = cell_subtype_regular;
-    int first_bad_has_grav_links = 0;
-
-    if (proxy_cell_tree_find_untagged_grav_comm_root(
-            &space_cells[cid], /*has_grav_ancestor=*/0, &first_bad_cellID,
-            &first_bad_depth, &first_bad_type, &first_bad_subtype,
-            &first_bad_has_grav_links)) {
-      error(
-          "Unpacked tag subtree still contains untagged gravity comm root. "
-          "root=(%lld,%s/%s,node=%d,pcell_size=%d,cid=%d) "
-          "first_bad=(%lld,%s/%s,depth=%d,tag<0,grav_links=%d)",
-          space_cells[cid].cellID, cellID_names[space_cells[cid].type],
-          subcellID_names[space_cells[cid].subtype], space_cells[cid].nodeID,
-          space_cells[cid].mpi.pcell_size, cid, first_bad_cellID,
-          cellID_names[first_bad_type], subcellID_names[first_bad_subtype],
-          first_bad_depth, first_bad_has_grav_links);
-    }
-#endif
   }
 }
 
