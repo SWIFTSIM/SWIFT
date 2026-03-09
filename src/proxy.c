@@ -63,7 +63,7 @@ struct tag_mapper_data {
  */
 static int proxy_cell_tree_find_untagged(
     const struct cell *c, long long *first_bad_cellID, int *first_bad_depth,
-    enum cell_type *first_bad_type, enum cell_subtypes *first_bad_subtype) {
+    enum cell_types *first_bad_type, enum cell_subtypes *first_bad_subtype) {
 
   if (c->mpi.tag < 0) {
     *first_bad_cellID = c->cellID;
@@ -101,8 +101,8 @@ void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
       long long first_bad_cellID = -1;
       int first_bad_depth = -1;
-      enum cell_type first_bad_type = cell_type_count;
-      enum cell_subtypes first_bad_subtype = cell_subtype_count;
+      enum cell_types first_bad_type = cell_type_regular;
+      enum cell_subtypes first_bad_subtype = cell_subtype_regular;
 
       if (proxy_cell_tree_find_untagged(&cells[k], &first_bad_cellID,
                                         &first_bad_depth, &first_bad_type,
@@ -139,8 +139,8 @@ void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
     long long first_bad_cellID = -1;
     int first_bad_depth = -1;
-    enum cell_type first_bad_type = cell_type_count;
-    enum cell_subtypes first_bad_subtype = cell_subtype_count;
+    enum cell_types first_bad_type = cell_type_regular;
+    enum cell_subtypes first_bad_subtype = cell_subtype_regular;
 
     if (proxy_cell_tree_find_untagged(&space_cells[cid], &first_bad_cellID,
                                       &first_bad_depth, &first_bad_type,
