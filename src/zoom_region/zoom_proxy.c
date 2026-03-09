@@ -20,10 +20,50 @@
 /* Local includes. */
 #include "cell.h"
 #include "engine.h"
+#include "error.h"
 #include "proxy.h"
 #include "zoom.h"
 
 #ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Debug check that propagated proxy flags remain valid for expanded
+ * void->zoom pairs.
+ */
+static void zoom_debug_check_expanded_proxy_type(
+    struct engine *e, const struct cell *src_i, const struct cell *src_j,
+    const struct cell *exp_i, const struct cell *exp_j, const int proxy_type) {
+
+  const double ir_diag2 = exp_i->width[0] * exp_i->width[0] +
+                          exp_i->width[1] * exp_i->width[1] +
+                          exp_i->width[2] * exp_i->width[2];
+  const double ir_diag = 0.5 * sqrt(ir_diag2);
+  const double jr_diag2 = exp_j->width[0] * exp_j->width[0] +
+                          exp_j->width[1] * exp_j->width[1] +
+                          exp_j->width[2] * exp_j->width[2];
+  const double jr_diag = 0.5 * sqrt(jr_diag2);
+  const double pair_r_max = ir_diag + jr_diag;
+  const int recomputed_type = engine_get_proxy_type(
+      e, (struct cell *)exp_i, (struct cell *)exp_j, pair_r_max);
+
+  if ((proxy_type & proxy_cell_type_gravity) &&
+      !(recomputed_type & proxy_cell_type_gravity)) {
+    error(
+        "Zoom proxy propagation mismatch (gravity bit dropped): "
+        "src=(%lld,%s/%s,node=%d)-(%lld,%s/%s,node=%d) "
+        "expanded=(%lld,%s/%s,node=%d)-(%lld,%s/%s,node=%d) "
+        "propagated=0x%x recomputed=0x%x",
+        src_i->cellID, cellID_names[src_i->type],
+        subcellID_names[src_i->subtype], src_i->nodeID, src_j->cellID,
+        cellID_names[src_j->type], subcellID_names[src_j->subtype],
+        src_j->nodeID, exp_i->cellID, cellID_names[exp_i->type],
+        subcellID_names[exp_i->subtype], exp_i->nodeID, exp_j->cellID,
+        cellID_names[exp_j->type], subcellID_names[exp_j->subtype],
+        exp_j->nodeID, proxy_type, recomputed_type);
+  }
+}
+#endif
+
 /**
  * @brief Get proxies for void cell pairs by checking nested zoom cells.
  *
@@ -67,6 +107,9 @@ static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
             (zi->nodeID != nodeID && zj->nodeID != nodeID))
           continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+        zoom_debug_check_expanded_proxy_type(e, ci, cj, zi, zj, proxy_type);
+#endif
         engine_add_proxy(e, zi, zj, proxy_type);
       }
     }
@@ -82,6 +125,9 @@ static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
           (zi->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+      zoom_debug_check_expanded_proxy_type(e, ci, cj, zi, cj, proxy_type);
+#endif
       engine_add_proxy(e, zi, cj, proxy_type);
     }
   }
@@ -96,6 +142,9 @@ static void zoom_get_void_cell_proxies(struct engine *e, struct cell *ci,
           (ci->nodeID != nodeID && zj->nodeID != nodeID))
         continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+      zoom_debug_check_expanded_proxy_type(e, ci, cj, ci, zj, proxy_type);
+#endif
       engine_add_proxy(e, ci, zj, proxy_type);
     }
   }

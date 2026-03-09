@@ -58,6 +58,34 @@ struct tag_mapper_data {
 
 #ifdef WITH_MPI
 
+/**
+ * @brief Recursively find whether a subtree contains any untagged cell.
+ */
+static int proxy_cell_tree_find_untagged(
+    const struct cell *c, long long *first_bad_cellID, int *first_bad_depth,
+    enum cell_type *first_bad_type, enum cell_subtypes *first_bad_subtype) {
+
+  if (c->mpi.tag < 0) {
+    *first_bad_cellID = c->cellID;
+    *first_bad_depth = c->depth;
+    *first_bad_type = c->type;
+    *first_bad_subtype = c->subtype;
+    return 1;
+  }
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL &&
+          proxy_cell_tree_find_untagged(c->progeny[k], first_bad_cellID,
+                                        first_bad_depth, first_bad_type,
+                                        first_bad_subtype))
+        return 1;
+    }
+  }
+
+  return 0;
+}
+
 void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
                                      void *extra_data) {
 
@@ -70,6 +98,26 @@ void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     if (cells[k].mpi.sendto) {
+#ifdef SWIFT_DEBUG_CHECKS
+      long long first_bad_cellID = -1;
+      int first_bad_depth = -1;
+      enum cell_type first_bad_type = cell_type_count;
+      enum cell_subtypes first_bad_subtype = cell_subtype_count;
+
+      if (proxy_cell_tree_find_untagged(&cells[k], &first_bad_cellID,
+                                        &first_bad_depth, &first_bad_type,
+                                        &first_bad_subtype)) {
+        error(
+            "About to pack tags for subtree with untagged cell. "
+            "root=(%lld,%s/%s,node=%d,pcell_size=%d,sendto=%llx) "
+            "first_bad=(%lld,%s/%s,depth=%d,tag<0)",
+            cells[k].cellID, cellID_names[cells[k].type],
+            subcellID_names[cells[k].subtype], cells[k].nodeID,
+            cells[k].mpi.pcell_size, cells[k].mpi.sendto, first_bad_cellID,
+            cellID_names[first_bad_type], subcellID_names[first_bad_subtype],
+            first_bad_depth);
+      }
+#endif
       cell_pack_tags(&cells[k], &tags_out[offset_out[k + delta]]);
     }
   }
@@ -87,6 +135,27 @@ void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
   for (int k = 0; k < num_elements; k++) {
     const int cid = cids_in[k];
     cell_unpack_tags(&tags_in[offset_in[cid]], &space_cells[cid]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    long long first_bad_cellID = -1;
+    int first_bad_depth = -1;
+    enum cell_type first_bad_type = cell_type_count;
+    enum cell_subtypes first_bad_subtype = cell_subtype_count;
+
+    if (proxy_cell_tree_find_untagged(&space_cells[cid], &first_bad_cellID,
+                                      &first_bad_depth, &first_bad_type,
+                                      &first_bad_subtype)) {
+      error(
+          "Unpacked tag subtree still contains untagged cell. "
+          "root=(%lld,%s/%s,node=%d,pcell_size=%d,cid=%d) "
+          "first_bad=(%lld,%s/%s,depth=%d,tag<0)",
+          space_cells[cid].cellID, cellID_names[space_cells[cid].type],
+          subcellID_names[space_cells[cid].subtype], space_cells[cid].nodeID,
+          space_cells[cid].mpi.pcell_size, cid, first_bad_cellID,
+          cellID_names[first_bad_type], subcellID_names[first_bad_subtype],
+          first_bad_depth);
+    }
+#endif
   }
 }
 

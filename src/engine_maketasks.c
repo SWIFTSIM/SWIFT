@@ -125,6 +125,18 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_grav == NULL) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci->type == cell_type_zoom && ci->mpi.tag < 0) {
+        message(
+            "Zoom gravity-send path reached untagged cell before tagging: "
+            "cellID=%lld type=%s subtype=%s nodeID=%d target_node=%d depth=%d "
+            "split=%d grav_links=%p sendto=%llx",
+            ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype],
+            ci->nodeID, nodeID, ci->depth, ci->split, (void *)ci->grav.grav,
+            ci->mpi.sendto);
+      }
+#endif
+
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
@@ -4019,11 +4031,27 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
-        (type & proxy_cell_type_gravity))
+        (type & proxy_cell_type_gravity)) {
+
+#ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci->type == cell_type_zoom && ci->mpi.tag < 0) {
+        error(
+            "About to create recv gravity tasks for untagged zoom root cell. "
+            "cellID=%lld type=%s subtype=%s nodeID=%d depth=%d split=%d "
+            "proxy_type=0x%x grav_links=%p pcell_size=%d",
+            ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype],
+            ci->nodeID, ci->depth, ci->split, type, (void *)ci->grav.grav,
+            ci->mpi.pcell_size);
+      }
+#endif
+#endif
+
       engine_addtasks_recv_gravity(e, ci, /*t_grav_count=*/NULL,
                                    /*t_grav=*/NULL, /*t_fof=*/NULL, tend,
                                    with_fof, with_sinks, with_star_formation,
                                    with_star_formation_sink);
+    }
   }
 }
 
