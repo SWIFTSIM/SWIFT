@@ -1183,9 +1183,10 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_sink_vel_norm = 0.f;
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
-  s->nr_queues = 1; /* Temporary value until engine construction */
+  s->nr_queues = 1;
   s->with_hydro_splitting = 0;
   s->splitting_need_unique_id = 0;
+  /* Temporary value until engine construction */
 
   /* do a quick check that the box size has valid values */
 #if defined HYDRO_DIMENSION_1D
@@ -1511,7 +1512,8 @@ void space_init(struct space *s, struct swift_params *params,
   /* Do we want any spare particles for on the fly creation?
      This condition should be the same than in engine_config.c */
   if (!(star_formation || with_sink) ||
-      !swift_star_formation_model_creates_stars) {
+      !swift_star_formation_model_creates_stars ||
+      !s->with_hydro_splitting) {
     space_extra_sparts = 0;
     space_extra_sinks = 0;
     if (!s->with_hydro_splitting) {

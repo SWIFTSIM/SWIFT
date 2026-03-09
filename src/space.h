@@ -125,7 +125,7 @@ struct space {
   /*! Are we splitting any gas? */
   int with_hydro_splitting;
   int splitting_need_unique_id;
-
+  
   /*! Are we doing gravity? */
   int with_self_gravity;
 
