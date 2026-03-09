@@ -1322,7 +1322,10 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
-    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+    if (c->mpi.tag < 0)
+      error("Trying to receive from untagged cell. (c: %s/%s)",
+            cellID_names[c->type], subcellID_names[c->subtype]);
+
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
