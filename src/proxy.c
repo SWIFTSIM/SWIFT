@@ -59,26 +59,29 @@ struct tag_mapper_data {
 #ifdef WITH_MPI
 
 /**
- * @brief Recursively find whether a subtree contains any untagged cell.
+ * @brief Recursively find whether a subtree contains an untagged cell that
+ * will require gravity communication tasks.
  */
-static int proxy_cell_tree_find_untagged(
+static int proxy_cell_tree_find_untagged_for_grav(
     const struct cell *c, long long *first_bad_cellID, int *first_bad_depth,
-    enum cell_types *first_bad_type, enum cell_subtypes *first_bad_subtype) {
+    enum cell_types *first_bad_type, enum cell_subtypes *first_bad_subtype,
+    int *first_bad_has_grav_links) {
 
-  if (c->mpi.tag < 0) {
+  if (c->mpi.tag < 0 && c->grav.grav != NULL) {
     *first_bad_cellID = c->cellID;
     *first_bad_depth = c->depth;
     *first_bad_type = c->type;
     *first_bad_subtype = c->subtype;
+    *first_bad_has_grav_links = 1;
     return 1;
   }
 
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL &&
-          proxy_cell_tree_find_untagged(c->progeny[k], first_bad_cellID,
-                                        first_bad_depth, first_bad_type,
-                                        first_bad_subtype))
+          proxy_cell_tree_find_untagged_for_grav(
+              c->progeny[k], first_bad_cellID, first_bad_depth, first_bad_type,
+              first_bad_subtype, first_bad_has_grav_links))
         return 1;
     }
   }
@@ -103,19 +106,20 @@ void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
       int first_bad_depth = -1;
       enum cell_types first_bad_type = cell_type_regular;
       enum cell_subtypes first_bad_subtype = cell_subtype_regular;
+      int first_bad_has_grav_links = 0;
 
-      if (proxy_cell_tree_find_untagged(&cells[k], &first_bad_cellID,
-                                        &first_bad_depth, &first_bad_type,
-                                        &first_bad_subtype)) {
+      if (proxy_cell_tree_find_untagged_for_grav(
+              &cells[k], &first_bad_cellID, &first_bad_depth, &first_bad_type,
+              &first_bad_subtype, &first_bad_has_grav_links)) {
         error(
-            "About to pack tags for subtree with untagged cell. "
+            "About to pack tags for subtree with untagged gravity cell. "
             "root=(%lld,%s/%s,node=%d,pcell_size=%d,sendto=%llx) "
-            "first_bad=(%lld,%s/%s,depth=%d,tag<0)",
+            "first_bad=(%lld,%s/%s,depth=%d,tag<0,grav_links=%d)",
             cells[k].cellID, cellID_names[cells[k].type],
             subcellID_names[cells[k].subtype], cells[k].nodeID,
             cells[k].mpi.pcell_size, cells[k].mpi.sendto, first_bad_cellID,
             cellID_names[first_bad_type], subcellID_names[first_bad_subtype],
-            first_bad_depth);
+            first_bad_depth, first_bad_has_grav_links);
       }
 #endif
       cell_pack_tags(&cells[k], &tags_out[offset_out[k + delta]]);
@@ -141,19 +145,20 @@ void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
     int first_bad_depth = -1;
     enum cell_types first_bad_type = cell_type_regular;
     enum cell_subtypes first_bad_subtype = cell_subtype_regular;
+    int first_bad_has_grav_links = 0;
 
-    if (proxy_cell_tree_find_untagged(&space_cells[cid], &first_bad_cellID,
-                                      &first_bad_depth, &first_bad_type,
-                                      &first_bad_subtype)) {
+    if (proxy_cell_tree_find_untagged_for_grav(
+            &space_cells[cid], &first_bad_cellID, &first_bad_depth,
+            &first_bad_type, &first_bad_subtype, &first_bad_has_grav_links)) {
       error(
-          "Unpacked tag subtree still contains untagged cell. "
+          "Unpacked tag subtree still contains untagged gravity cell. "
           "root=(%lld,%s/%s,node=%d,pcell_size=%d,cid=%d) "
-          "first_bad=(%lld,%s/%s,depth=%d,tag<0)",
+          "first_bad=(%lld,%s/%s,depth=%d,tag<0,grav_links=%d)",
           space_cells[cid].cellID, cellID_names[space_cells[cid].type],
           subcellID_names[space_cells[cid].subtype], space_cells[cid].nodeID,
           space_cells[cid].mpi.pcell_size, cid, first_bad_cellID,
           cellID_names[first_bad_type], subcellID_names[first_bad_subtype],
-          first_bad_depth);
+          first_bad_depth, first_bad_has_grav_links);
     }
 #endif
   }
