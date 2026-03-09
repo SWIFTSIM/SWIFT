@@ -59,28 +59,36 @@ struct tag_mapper_data {
 #ifdef WITH_MPI
 
 /**
- * @brief Recursively find whether a subtree contains an untagged cell that
- * will require gravity communication tasks.
+ * @brief Recursively find whether a subtree contains an untagged gravity
+ * communication root.
+ *
+ * A tag is required only at the first level where grav links appear along a
+ * branch (matching engine_addtasks_{send,recv}_gravity recursion).
  */
-static int proxy_cell_tree_find_untagged_for_grav(
-    const struct cell *c, long long *first_bad_cellID, int *first_bad_depth,
+static int proxy_cell_tree_find_untagged_grav_comm_root(
+    const struct cell *c, const int has_grav_ancestor,
+    long long *first_bad_cellID, int *first_bad_depth,
     enum cell_types *first_bad_type, enum cell_subtypes *first_bad_subtype,
     int *first_bad_has_grav_links) {
 
-  if (c->mpi.tag < 0 && c->grav.grav != NULL) {
+  const int has_grav_links = (c->grav.grav != NULL);
+  const int is_grav_comm_root = has_grav_links && !has_grav_ancestor;
+
+  if (is_grav_comm_root && c->mpi.tag < 0) {
     *first_bad_cellID = c->cellID;
     *first_bad_depth = c->depth;
     *first_bad_type = c->type;
     *first_bad_subtype = c->subtype;
-    *first_bad_has_grav_links = 1;
+    *first_bad_has_grav_links = has_grav_links;
     return 1;
   }
 
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL &&
-          proxy_cell_tree_find_untagged_for_grav(
-              c->progeny[k], first_bad_cellID, first_bad_depth, first_bad_type,
+          proxy_cell_tree_find_untagged_grav_comm_root(
+              c->progeny[k], has_grav_ancestor || has_grav_links,
+              first_bad_cellID, first_bad_depth, first_bad_type,
               first_bad_subtype, first_bad_has_grav_links))
         return 1;
     }
@@ -108,11 +116,12 @@ void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
       enum cell_subtypes first_bad_subtype = cell_subtype_regular;
       int first_bad_has_grav_links = 0;
 
-      if (proxy_cell_tree_find_untagged_for_grav(
-              &cells[k], &first_bad_cellID, &first_bad_depth, &first_bad_type,
-              &first_bad_subtype, &first_bad_has_grav_links)) {
+      if (proxy_cell_tree_find_untagged_grav_comm_root(
+              &cells[k], /*has_grav_ancestor=*/0, &first_bad_cellID,
+              &first_bad_depth, &first_bad_type, &first_bad_subtype,
+              &first_bad_has_grav_links)) {
         error(
-            "About to pack tags for subtree with untagged gravity cell. "
+            "About to pack tags for subtree with untagged gravity comm root. "
             "root=(%lld,%s/%s,node=%d,pcell_size=%d,sendto=%llx) "
             "first_bad=(%lld,%s/%s,depth=%d,tag<0,grav_links=%d)",
             cells[k].cellID, cellID_names[cells[k].type],
@@ -147,11 +156,12 @@ void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
     enum cell_subtypes first_bad_subtype = cell_subtype_regular;
     int first_bad_has_grav_links = 0;
 
-    if (proxy_cell_tree_find_untagged_for_grav(
-            &space_cells[cid], &first_bad_cellID, &first_bad_depth,
-            &first_bad_type, &first_bad_subtype, &first_bad_has_grav_links)) {
+    if (proxy_cell_tree_find_untagged_grav_comm_root(
+            &space_cells[cid], /*has_grav_ancestor=*/0, &first_bad_cellID,
+            &first_bad_depth, &first_bad_type, &first_bad_subtype,
+            &first_bad_has_grav_links)) {
       error(
-          "Unpacked tag subtree still contains untagged gravity cell. "
+          "Unpacked tag subtree still contains untagged gravity comm root. "
           "root=(%lld,%s/%s,node=%d,pcell_size=%d,cid=%d) "
           "first_bad=(%lld,%s/%s,depth=%d,tag<0,grav_links=%d)",
           space_cells[cid].cellID, cellID_names[space_cells[cid].type],
