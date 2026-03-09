@@ -125,18 +125,6 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_grav == NULL) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-      if (ci->type == cell_type_zoom && ci->mpi.tag < 0) {
-        message(
-            "Zoom gravity-send path reached untagged cell before tagging: "
-            "cellID=%lld type=%s subtype=%s nodeID=%d target_node=%d depth=%d "
-            "split=%d grav_links=%p sendto=%llx",
-            ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype],
-            ci->nodeID, nodeID, ci->depth, ci->split, (void *)ci->grav.grav,
-            ci->mpi.sendto);
-      }
-#endif
-
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
