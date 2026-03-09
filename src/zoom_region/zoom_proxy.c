@@ -34,6 +34,11 @@ static void zoom_debug_check_expanded_proxy_type(
     struct engine *e, const struct cell *src_i, const struct cell *src_j,
     const struct cell *exp_i, const struct cell *exp_j, const int proxy_type) {
 
+  /* engine_get_proxy_type() assumes same-sized cells for distance checks. */
+  if (exp_i->width[0] != exp_j->width[0] ||
+      exp_i->width[1] != exp_j->width[1] || exp_i->width[2] != exp_j->width[2])
+    return;
+
   const double ir_diag2 = exp_i->width[0] * exp_i->width[0] +
                           exp_i->width[1] * exp_i->width[1] +
                           exp_i->width[2] * exp_i->width[2];
