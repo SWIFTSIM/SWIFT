@@ -2119,6 +2119,10 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
 
   const struct engine *e = r->e;
 
+  /* Empty gravity cells should never enter M-M progeny interactions. */
+  /* TEMPORARY */
+  if (cell_is_empty_grav(ci) || cell_is_empty_grav(cj)) return;
+
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
