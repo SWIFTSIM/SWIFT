@@ -230,10 +230,16 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e, a=%e) cell: %s/%s depth=%d nodeID=%d "
-        "tend=%p grav.count=%d",
+#ifdef WITH_MPI
+        "tend=%p"
+#endif
+        "grav.count=%d",
         c->grav.ti_end_min, c->grav.ti_end_min * e->time_base, e->ti_current,
         e->ti_current * e->time_base, e->cosmology->a, cellID_names[c->type],
-        subcellID_names[c->subtype], c->depth, c->nodeID, c->mpi.recv,
+        subcellID_names[c->subtype], c->depth, c->nodeID,
+#ifdef WITH_MPI
+        c->mpi.recv,
+#endif
         c->grav.count);
 #endif
 
