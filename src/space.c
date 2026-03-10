@@ -1184,6 +1184,8 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
+  s->with_hydro_splitting = 0;
+  s->splitting_need_unique_id = 0;
 
   /* do a quick check that the box size has valid values */
 #if defined HYDRO_DIMENSION_1D
@@ -1509,7 +1511,7 @@ void space_init(struct space *s, struct swift_params *params,
   /* Do we want any spare particles for on the fly creation?
      This condition should be the same than in engine_config.c */
   if (!(star_formation || with_sink) ||
-      !swift_star_formation_model_creates_stars) {
+      !swift_star_formation_model_creates_stars || !s->with_hydro_splitting) {
     space_extra_sparts = 0;
     space_extra_gparts = 0;
     space_extra_sinks = 0;
@@ -1539,7 +1541,7 @@ void space_init(struct space *s, struct swift_params *params,
   if (!dry_run) space_regrid(s, verbose);
 
   /* Compute the max id for the generation of unique id. */
-  if (create_sparts) {
+  if (create_sparts || s->splitting_need_unique_id) {
     space_init_unique_id(s, nr_nodes);
   }
 }
