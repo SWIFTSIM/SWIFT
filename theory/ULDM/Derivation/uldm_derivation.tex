@@ -2,29 +2,68 @@ The implementation follows the ones given by \citet{nori2024}.
 
 For a set of particles $i$ with positions $\vec{x}_i$, masses $m_i$,
 and smoothing length $h_i$, we compute the density for each particle as:
-
+%
 \begin{equation}
   \rho_i \equiv \rho(\vec{x}_i) = \sum_j m_j W(\vec{x}_{ij}, h_i).
   \label{eq:uldm:rho}
 \end{equation}
 and the derivative of its density with respect to $h$:
 
-The density gradient is:
-
+\noindent
+Several possibilities exists to write the density gradient.
+The standard way writes:
 \begin{equation}
   \label{eq:uldm:grad_rho}
-  \vec{\nabla} \rho_i =  \sum_j m_j \vec{\nabla} W(\vec{x}_{ij}, h_i) \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}}.
+  \vec{\nabla} \rho_i =  \sum_j \frac{m_j}{\rho_j} \left( \rho_j - \rho_i \right) \vec{\nabla} W(\vec{x}_{ij}, h_i),
+\end{equation}
+which includes the substraction of the first order term. 
+Another choice is \citep{nori2024}:
+%
+\begin{equation}
+  \label{eq:uldm:grad_rho}
+  \vec{\nabla} \rho_i =  \sum_j \frac{m_j}{\sqrt{\rho_i \rho_j}} \left( \rho_j - \rho_i \right) \vec{\nabla} W(\vec{x}_{ij}, h_i).
+\end{equation}
+This latter provides slightly better results on the 1D density front.
+
+\noindent
+As for the gradient density, several choices to write the Laplacian exits.
+The simplest formulation  \citep[][Eq.~86]{price2012}:
+%
+\begin{equation}
+  \nabla^2 \rho_i =  \sum_j \frac{m_j}{\rho_j} \rho_j \vec{\nabla}^2 W(\vec{x}_{ij}, h_i) =  \sum_j m_j  \vec{\nabla}^2 W(\vec{x}_{ij}, h_i),
+\end{equation}
+or removing the first order term \citep[][Eq.~90]{price2012}:
+%
+\begin{equation}
+  \nabla^2 \rho_i =  \sum_j \frac{m_j}{\rho_j} \left( \rho_j - \rho_i \right)  \vec{\nabla}^2 W(\vec{x}_{ij}, h_i).
+\end{equation}
+Note that those two formulations totally fails the 1D density front test.
+An alternative is to compute the Laplacian from the gradient (this works only in 1D I guess).
+%
+\begin{equation}
+  \nabla^2 \rho_i =  \sum_j \frac{m_j}{\sqrt{\rho_i \rho_j}} \left( \vec{\nabla}\rho_j - \vec{\nabla}\rho_i \right) \vec{\nabla} W(\vec{x}_{ij}, h_i).
+\end{equation}
+This formulation is working.
+Another formulation is \citep[][Eq.~18]{nori2018} {\bf (check with Price eq. 91)}:
+%
+\begin{equation}
+  \nabla^2 \rho_i =  -2 \sum_j m_j \frac{ \rho_j - \rho_i }{\rho_j} \frac{ \vec{r_{ij}} \vec{\nabla} W(\vec{x}_{ij}, h_i)}{r^2_{ij}}.
 \end{equation}
 
-The Laplacian of the density write:
 
+
+
+
+The Laplacian of the density write:
+%
 \begin{equation}
   \label{eq:uldm:laplacian_rho}
   \nabla^2 \rho_i =  \sum_j m_j \vec{\nabla}^2 W(\vec{x}_{ij}, h_i) \frac{\rho_j - \rho_i}{\sqrt{\rho_i \rho_j}} - \frac{|\vec{\nabla}\rho_i|^2}{\rho_i}.
 \end{equation}
 
+\noindent
 The quantum potential of the particle $i$ is :
-
+%
 \begin{equation}
   \label{eq:uldm:grad_Q}
   Q_i =  \frac{\hbar}{2 m^2_\chi }  \sum_j \frac{m_j}{\rho_j} W(\vec{x}_{ij}, h_i)

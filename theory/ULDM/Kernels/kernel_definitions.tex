@@ -1,21 +1,46 @@
 
+\subsection{Kernel}
+
+Lets define the kernel function as:
+
+\begin{equation}
+W(\vec{x},h) = \frac{1}{h^n} f\left(\frac{|\vec{x}|}{h}\right),
+\end{equation}
+
+where $n$ is the dimentionallity of the problem, 1, 2 or 3 and
+$f(u)$ is a dimensionless function.
 
 \subsection{Kernel Derivatives}
 
-The first derivatives of the kernel function have relatively simple
-expressions:
+Using:
+\begin{eqnarray}
+  \frac{\partial}{\partial x} \left(\frac{|\vec{x}|}{h}\right) & = & \frac{1}{h}\frac{x}{|\vec{x}|} \\
+  \nabla\left(\frac{|\vec{x}|}{h}\right) & = & \frac{1}{h}\frac{\vec{x}}{|\vec{x}|} \\
+   \frac{\partial}{\partial x} \left( \frac{1}{|\vec{x}|} \right) & = & -\frac{x}{|\vec{x}|^3} 
+\end{eqnarray}
+on can compute kernel derivatives.
+
+\noindent
+
+The first derivative with respect to $x_i$ of the kernel function is:
 
 \begin{align}
- \vec\nabla_x W(\vec{x},h) &= \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|}.
+\frac{\partial}{\partial x_i} W(\vec{x},h) &= \frac{1}{h^{n+1}}f'\left(\frac{|\vec{x}|}{h}\right) \frac{x_i}{|\vec{x}|}.
 \end{align}
 Note that for all the kernels listed above, $f'(0) = 0$. 
 
+One can deduce the gradient of the kernel:
+
+\begin{align}
+ \vec\nabla_x W(\vec{x},h) &= \frac{1}{h^{n+1}}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|}.
+\end{align}
+
 \noindent
-In order to compute the quantum pressure, the Laplacian of the kernel is needed. It first derivative writes:
+In order to compute the quantum potential, the Laplacian of the kernel is needed. It writes:
 
 \begin{align}
 \frac{\partial^2 W(\vec{x},h)}{\partial x_i^2}
-= \frac{1}{h^4} \left[
+= \frac{1}{h^{n+1}} \left[
 \frac{x_i^2}{h |\vec{x}|^2}\, f''\!\left(\frac{|\vec{x}|}{h}\right) +
 \frac{|\vec{x}|^2 - x_i^2}{|\vec{x}|^3}\,f'\!\left(\frac{|\vec{x}|}{h}\right)\right]
 \end{align}
@@ -26,7 +51,7 @@ The Laplacian writes:
 
 \begin{align}
 \nabla^2 W(\vec{x},h)
-= \frac{1}{h^5}
+= \frac{1}{h^{n+2}}
 \left[
 f''\!\left(\frac{|\vec{x}|}{h}\right)
 + \frac{2h}{|\vec{x}|}\,

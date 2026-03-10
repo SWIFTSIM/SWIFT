@@ -236,10 +236,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   kernel_d2eval(ui, &wi_d2x);
   const float wi_dr = hid_inv * wi_dx;  
 
-  /* Density gradient */  
+  /* Density gradient */
   pi->grad_rho[0] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[0];
   pi->grad_rho[1] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[1];
   pi->grad_rho[2] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[2];
+  
 
   /* Lapacian of the density */
   //pi->laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
@@ -256,7 +257,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->grad_rho[0] -= mi * (rhoi-rhoj)*sqrtrhoij_inv_r_inv * wj_dr * dx[0];
   pj->grad_rho[1] -= mi * (rhoi-rhoj)*sqrtrhoij_inv_r_inv * wj_dr * dx[1];
   pj->grad_rho[2] -= mi * (rhoi-rhoj)*sqrtrhoij_inv_r_inv * wj_dr * dx[2];
-
+  
   /* Lapacien of the gradient */
   //pj->laplacian_rho += mi * (wj_d2x + 2/uj * wj_dx) * (rhoi-rhoj) *sqrtrhoij_inv;
   
@@ -311,11 +312,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   kernel_d2eval(ui, &wi_d2x);
   const float wi_dr = hid_inv * wi_dx;  
 
-  /* Density gradient */  
-  pi->grad_rho[0] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[0];
+  /* Density gradient */ 
+  pi->grad_rho[0] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[0];  
   pi->grad_rho[1] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[1];
   pi->grad_rho[2] += mj * (rhoj-rhoi)*sqrtrhoij_inv_r_inv *wi_dr * dx[2];
-
+  
   /* Lapacien of the density */
   //pi->laplacian_rho += mj * (wi_d2x + 2/ui * wi_dx) * (rhoj-rhoi) *sqrtrhoij_inv;
   
@@ -408,19 +409,39 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   ////pj->laplacian_rho += mi *  wj_dr;  
 
   /* !!! Laplacian of the gradient : naive way !!! */
-  const float gradrhoi = sqrtf(norm_grad_rhoi2);
-  const float gradrhoj = sqrtf(norm_grad_rhoj2);
-  const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
+  //const float gradrhoi = sqrtf(norm_grad_rhoi2);
+  //const float gradrhoj = sqrtf(norm_grad_rhoj2);
+  //const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */  
   const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */    
-  const float wi_dr = hid_inv * wi_dx;  
-  const float wj_dr = hjd_inv * wj_dx;
-  pi->laplacian_rho += mj * (gradrhoj-gradrhoi)*sqrtrhoij_inv * wi_dr;
-  pj->laplacian_rho -= mi * (gradrhoi-gradrhoj)*sqrtrhoij_inv * wj_dr;
+  //const float wi_dr = hid_inv * wi_dx;  
+  //const float wj_dr = hjd_inv * wj_dx;
+  //pi->laplacian_rho += mj * (gradrhoj-gradrhoi)*sqrtrhoij_inv * wi_dr;
+  //pj->laplacian_rho -= mi * (gradrhoi-gradrhoj)*sqrtrhoij_inv * wj_dr;
+
+  /* below, we try to compute the second derivative of the density assuming 1d (naive approach) */
+  float wi_d2x, wj_d2x;
+  const float ui = r * hi_inv;
+  const float uj = r * hj_inv;
+  kernel_d2eval(ui, &wi_d2x);
+  kernel_d2eval(uj, &wj_d2x);
+  //pi->laplacian_rho += mj * ( wi_d2x + 2/ui*wi_dx ) * hid_inv * hi_inv;
+  //pj->laplacian_rho += mi * ( wj_d2x + 2/uj*wj_dx ) * hjd_inv * hj_inv;
+  pi->laplacian_rho += mj * ( wi_d2x ) * hid_inv * hi_inv;
+  pj->laplacian_rho += mi * ( wj_d2x ) * hjd_inv * hj_inv;
+
 
   
 
-
+  //or (int k=0;k<1000;k++)
+  //{
+  //  float xxi = 0.2*(float)k/100;
+  //  kernel_deval(xxi, &wi, &wi_dx);
+  //  kernel_d2eval(xxi, &wi_d2x);
+  //  message("%d %f %f %f %f",k,xxi,wi,wi_dx,wi_d2x);
+  //  
+  //}
+  //xit(-1);
   
 }
 
@@ -488,14 +509,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* this is the naive way, tested too */
   ////pi->laplacian_rho -= mj * wi_dr;
 
-  const float rhoi = pi->rho;  
-  const float norm_grad_rhoi2 = pi->norm_grad_rho2;
-  const float gradrhoi = sqrtf(norm_grad_rhoi2);
-  const float gradrhoj = sqrtf(norm_grad_rhoj2);
-  const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
+  //const float rhoi = pi->rho;  
+  //const float norm_grad_rhoi2 = pi->norm_grad_rho2;
+  //const float gradrhoi = sqrtf(norm_grad_rhoi2);
+  //const float gradrhoj = sqrtf(norm_grad_rhoj2);
+  //const float sqrtrhoij_inv = 1/sqrtf(rhoj*rhoi);
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */  
-  const float wi_dr = hid_inv * wi_dx;  
-  pi->laplacian_rho += mj * (gradrhoj-gradrhoi)*sqrtrhoij_inv * wi_dr;
+  //const float wi_dr = hid_inv * wi_dx;  
+  //pi->laplacian_rho += mj * (gradrhoj-gradrhoi)*sqrtrhoij_inv * wi_dr;
+
+  float wi_d2x;
+  const float ui = r * hi_inv;
+  kernel_d2eval(ui, &wi_d2x);
+  //pi->laplacian_rho += mj * ( wi_d2x + 2/ui*wi_dx ) * hid_inv * hi_inv;
+  pi->laplacian_rho += mj * ( wi_d2x ) * hid_inv * hi_inv;
   
 }
 

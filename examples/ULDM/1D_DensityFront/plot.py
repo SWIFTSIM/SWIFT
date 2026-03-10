@@ -303,7 +303,7 @@ def MakePlot(opt):
   axs[2].set_xlabel(r'$r\,\rm{[kpc]}$')
   axs[2].set_ylabel(r'$\nabla^2\rho$')
   axs[2].set_xlim(1000,9000)
-  axs[2].set_ylim(-1.1e-14,1.1e-14)
+  #axs[2].set_ylim(-1.1e-14,1.1e-14)
 
   # quantum potential
   axs[3].plot(x,QP,c='k',lw=4,alpha=0.5)  
