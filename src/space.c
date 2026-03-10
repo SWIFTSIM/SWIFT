@@ -1183,10 +1183,9 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_sink_vel_norm = 0.f;
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
-  s->nr_queues = 1;
+  s->nr_queues = 1; /* Temporary value until engine construction */
   s->with_hydro_splitting = 0;
   s->splitting_need_unique_id = 0;
-  /* Temporary value until engine construction */
 
   /* do a quick check that the box size has valid values */
 #if defined HYDRO_DIMENSION_1D
