@@ -1508,9 +1508,16 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           for (int i = 0; i < 8; i++) {
             if (ci->progeny[i] != NULL) {
               struct cell *cpi = ci->progeny[i];
+
+              /* Empty gravity cells should not contribute to M-M flags. */
+              if (cell_is_empty_grav(cpi)) continue;
+
               for (int j = 0; j < 8; j++) {
                 if (cj->progeny[j] != NULL) {
                   struct cell *cpj = cj->progeny[j];
+
+                  /* Empty gravity cells should not contribute to M-M flags. */
+                  if (cell_is_empty_grav(cpj)) continue;
 
                   /* If running with the mesh this pair may be beyond the mesh
                    * criterion meaning we won't need a task here. */
