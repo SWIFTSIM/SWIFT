@@ -1514,11 +1514,9 @@ void space_init(struct space *s, struct swift_params *params,
       !swift_star_formation_model_creates_stars) {
     space_extra_sparts = 0; 
     space_extra_sinks = 0;
-  }
-
-  /* Hydro splitting requires extra gparts */
-  if (!s->with_hydro_splitting) {
+    if (!s->with_hydro_splitting) {
     space_extra_gparts = 0;
+    } 
   }
 
   const int create_sparts =
