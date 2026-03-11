@@ -965,9 +965,8 @@ void engine_config(int restart, int fof, struct engine *e,
       space_extra_sparts = 0;
       space_extra_sinks = 0;
       if (!e->s->with_hydro_splitting) {
-	space_extra_gparts = 0;
+        space_extra_gparts = 0;
       }
-      
     }
 
     engine_max_parts_per_ghost =
