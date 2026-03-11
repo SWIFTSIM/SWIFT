@@ -1512,7 +1512,7 @@ void space_init(struct space *s, struct swift_params *params,
      This condition should be the same than in engine_config.c */
   if (!(star_formation || with_sink) ||
       !swift_star_formation_model_creates_stars) {
-    space_extra_sparts = 0; 
+    space_extra_sparts = 0;
     space_extra_sinks = 0;
   }
 
