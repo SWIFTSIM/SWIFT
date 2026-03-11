@@ -43,6 +43,34 @@
 #include "queue.h"
 #include "version.h"
 
+/* Conservative number of dependencies per task type. */
+#define MAX_NUMBER_DEP 128
+
+/**
+ * @brief Information about all the task dependencies of a single task.
+ */
+struct task_dependency {
+  /* Main task */
+  int type_in;
+  int subtype_in;
+  int implicit_in;
+  int task_in_is_top;
+  int task_in_is_grav_super;
+  int task_in_is_hydro_super;
+
+  /* Dependent task */
+  int type_out[MAX_NUMBER_DEP];
+  int subtype_out[MAX_NUMBER_DEP];
+  int implicit_out[MAX_NUMBER_DEP];
+  int task_out_is_top[MAX_NUMBER_DEP];
+  int task_out_is_grav_super[MAX_NUMBER_DEP];
+  int task_out_is_hydro_super[MAX_NUMBER_DEP];
+
+  /* Statistics */
+  int number_link[MAX_NUMBER_DEP];
+  int number_rank[MAX_NUMBER_DEP];
+};
+
 #ifdef WITH_MPI
 
 /**
