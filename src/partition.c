@@ -77,7 +77,6 @@ const char *repartition_name[] = {
     "vertex task costs and edge delta timebin weights"};
 
 /* Local functions, if needed. */
-/* TODO: We don't actually need this? */
 static int check_complete(struct space *s, int verbose, int nregions);
 
 /*
