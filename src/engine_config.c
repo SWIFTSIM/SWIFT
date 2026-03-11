@@ -968,7 +968,7 @@ void engine_config(int restart, int fof, struct engine *e,
     }
 
     /* Hydro splitting requires extra gparts */
-    if (!s->with_hydro_splitting) {
+    if (!e->s->with_hydro_splitting) {
       space_extra_gparts = 0;
     }
 
