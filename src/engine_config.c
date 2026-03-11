@@ -970,6 +970,11 @@ void engine_config(int restart, int fof, struct engine *e,
       }
     }
 
+    /* Hydro splitting requires extra gparts */
+    if (!s->with_hydro_splitting) {
+      space_extra_gparts = 0;
+    }
+
     engine_max_parts_per_ghost =
         parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
                                  engine_max_parts_per_ghost);
