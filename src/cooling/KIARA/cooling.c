@@ -247,7 +247,6 @@ cooling_compute_self_shielding(const struct part *restrict p,
     /* Compute self-shielding from H */
     const float a = cooling->units.a_value;
     const float a3_inv = 1.f / (a * a * a);
-    // const double r_in_cm = p->h * a * cooling->units.length_units;
     const double rho_grad_norm2 = p->rho_gradient[0] * p->rho_gradient[0] +
                                   p->rho_gradient[1] * p->rho_gradient[1] +
                                   p->rho_gradient[2] * p->rho_gradient[2];
@@ -267,17 +266,16 @@ cooling_compute_self_shielding(const struct part *restrict p,
     const double xH = NH_cgs * 3.50877e-24;
     const double fH_shield = pow(1.f + xH, -1.62) * exp(-0.149 * xH);
 
-    /* Extra self-shielding from H2 if present - DON'T DO THIS HERE SINCE IT IS
-    IN CRACKLE const float fH2 = p->sf_data.H2_fraction; if (fH2 > 0.f) { const
-    double NH2_cgs = fH2 * NH_cgs; const double DH2_cgs = 1.e-5 *
-    sqrt(2.*1.38e-16 * T_ism * 2.98864e23); const double xH2 = NH2_cgs
-    * 1.18133e-14; fH2_shield = 0.9379 * pow(1.f + xH2 / DH2_cgs, -1.879) +
-    0.03465 * pow(1.f + xH2, -0.473) * exp(-2.293e-4 * sqrt(1.f + xH2));
-      message("G0 shield: r=%g xH2=%g NH2=%g fH2sh=%g term1=%g term2=%g
-    term3=%g\n",r_in_cm/3.086e21, xH2, NH2_cgs, fH2_shield, pow(1.f + xH2 /
-    DH2_cgs, -1.879), pow(1.f + xH2, -0.473), exp(-2.293e-4 * sqrt(1.f + xH2)));
-    }*/
     fH2_shield *= fH_shield;
+    /* Extra self-shielding from H2 if present - DON'T DO THIS HERE SINCE IT IS IN CRACKLE 
+    const float fH2 = p->sf_data.H2_fraction; 
+    if (fH2 > 0.f) { 
+      const double NH2_cgs = fH2 * NH_cgs; 
+      const double DH2_cgs = 1.e-5 * sqrt(2.*1.38e-16 * T_ism * 2.98864e23); 
+      const double xH2 = NH2_cgs * 1.18133e-14; 
+      fH2_shield *= 0.9379 * pow(1.f + xH2 / DH2_cgs, -1.879) +
+          0.03465 * pow(1.f + xH2, -0.473) * exp(-2.293e-4 * sqrt(1.f + xH2));
+    } */
   }
 #endif
 
@@ -303,25 +301,40 @@ __attribute__((always_inline)) INLINE static float cooling_compute_G0(
   /* Determine ISRF in Habing units based on chosen method */
   if (cooling->G0_computation_method == 0) {
     G0 = 0.f;
-  } else if (cooling->G0_computation_method == 1) {
+  } 
+  else if (cooling->G0_computation_method == 1) {
     fH2_shield = cooling_compute_self_shielding(p, cooling);
     G0 = fH2_shield * p->chemistry_data.local_sfr_density * cooling->G0_factor1;
-  } else if (cooling->G0_computation_method == 2) {
+  } 
+  else if (cooling->G0_computation_method == 2) {
     G0 = ssfr * cooling->G0_factor2;
-  } else if (cooling->G0_computation_method == 3) {
+  } 
+  else if (cooling->G0_computation_method == 3) {
     if (ssfr > 0.) {
       G0 = ssfr * cooling->G0_factor2;
-    } else {
+    } 
+    else {
       fH2_shield = cooling_compute_self_shielding(p, cooling);
       G0 = fH2_shield * p->chemistry_data.local_sfr_density *
            cooling->G0_factor1;
+    }
+  } 
+  else if (cooling->G0_computation_method == -3) {
+    if (p->chemistry_data.local_sfr_density > 0.) {
+      fH2_shield = cooling_compute_self_shielding(p, cooling);
+      G0 = fH2_shield * p->chemistry_data.local_sfr_density *
+           cooling->G0_factor1;
+    } 
+    else {
+      G0 = ssfr * cooling->G0_factor2;
     }
   }
 #if COOLING_GRACKLE_MODE >= 2
   else if (cooling->G0_computation_method == 4) {
     /* Remember SNe_ThisTimeStep stores SN **rate** */
     G0 = p->cooling_data.SNe_ThisTimeStep * cooling->G0_factorSNe * dt;
-  } else if (cooling->G0_computation_method == 5) {
+  } 
+  else if (cooling->G0_computation_method == 5) {
     float pssfr = max(p->sf_data.SFR, 0.f);
     pssfr /= max(mstar, 8. * p->mass);
     G0 = max(ssfr, pssfr) * cooling->G0_factor2 +
@@ -333,17 +346,21 @@ __attribute__((always_inline)) INLINE static float cooling_compute_G0(
           cooling->G0_computation_method);
   }
 
-  /*if (p->galaxy_mstar * 1.e10 > 1.e9 && p->id % 10000 == 0) {
-    message("G0: id=%lld M*=%g SFR=%g rho_sfr=%g Td=%g fshield=%g G0=%g",
+  /* Scale G0 by user-input value */
+  G0 *= cooling->G0_multiplier;
+
+  if (mstar * 1.e10 > 1.e9 && p->id % 100000 == 0 && p->chemistry_data.local_sfr_density > 0) {
+    message("G0: id=%lld M*=%g SFR=%g rho_sfr=%g SNe=%g Td=%g fshield=%g G0=%g",
             p->id,
             mstar * 1.e10,
             mstar * 1.e10 *
                 ssfr / (1.e6 * cooling->time_to_Myr),
             p->chemistry_data.local_sfr_density * 0.002 / 1.6,
+	    p->cooling_data.SNe_ThisTimeStep,
             p->cooling_data.dust_temperature,
             fH2_shield,
             G0);
-  }*/
+  }
 
   return G0;
 }

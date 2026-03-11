@@ -2783,19 +2783,19 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
       struct part *restrict p = &(s->parts[-gp->id_or_neg_offset]);
       p->galaxy_data.stellar_mass = stellar_mass[index];
       p->galaxy_data.gas_mass = gas_mass[index];
-      p->galaxy_data.specific_sfr =
+      if (stellar_mass[index] > 0.f) p->galaxy_data.specific_sfr =
           star_formation_rate[index] / stellar_mass[index];
     } else if (gp->type == swift_type_stars) {
       struct spart *restrict sp = &(s->sparts[-gp->id_or_neg_offset]);
       sp->galaxy_data.stellar_mass = stellar_mass[index];
       sp->galaxy_data.gas_mass = gas_mass[index];
-      sp->galaxy_data.specific_sfr =
+      if (stellar_mass[index] > 0.f) sp->galaxy_data.specific_sfr =
           star_formation_rate[index] / stellar_mass[index];
     } else if (gp->type == swift_type_black_hole) {
       struct bpart *restrict bp = &(s->bparts[-gp->id_or_neg_offset]);
       bp->galaxy_data.stellar_mass = stellar_mass[index];
       bp->galaxy_data.gas_mass = gas_mass[index];
-      bp->galaxy_data.specific_sfr =
+      if (stellar_mass[index] > 0.f) bp->galaxy_data.specific_sfr =
           star_formation_rate[index] / stellar_mass[index];
       bp->galactocentric_radius = r;
     }

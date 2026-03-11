@@ -117,9 +117,12 @@ struct cooling_function_data {
   /*! For subgrid model (eg KIARA) need a subgrid ISM fraction */
   double cold_ISM_frac;
 
-  /*! For Grackle subgrid model, choose way to determine G0: 1=Local SFR
-   * density; 2=Global sSFR */
+  /*! For Grackle subgrid model, choose way to determine G0: 1=Local SFR density; 
+   * 2=Global sSFR; 3=2 if sSFR != 0, else 1; -3: vice versa */
   int G0_computation_method;
+
+  /*! For Grackle subgrid model, arbitrary multiplier for G0 */
+  double G0_multiplier;
 
   /*! For Grackle subgrid model, set max density to avoid pointlessly
    * over-iterating in Grackle */

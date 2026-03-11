@@ -331,8 +331,11 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->cold_ISM_frac = parser_get_opt_param_double(
       parameter_file, "KIARACooling:cold_ISM_frac", 1.0);
 
-  cooling->G0_computation_method = parser_get_opt_param_double(
+  cooling->G0_computation_method = parser_get_opt_param_int(
       parameter_file, "KIARACooling:G0_computation_method", 3);
+
+  cooling->G0_multiplier = parser_get_opt_param_double(
+      parameter_file, "KIARACooling:G0_multiplier", 1.0);
 
   cooling->max_subgrid_density = parser_get_opt_param_double(
       parameter_file, "KIARACooling:max_subgrid_density_g_p_cm3", FLT_MAX);

@@ -1302,12 +1302,12 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   torque_accr_rate *= f_suppress;
 
   /* If not near galaxy center, torque accr is suppressed */
-  //const float suppression_distance = kernel_gravity_softening_plummer_equivalent_inv *
-  //                props->max_reposition_distance_ratio * bp->h;
-  //if (bp->galactocentric_radius > suppression_distance) {
+  const float suppression_distance = kernel_gravity_softening_plummer_equivalent_inv *
+                  props->max_reposition_distance_ratio * bp->h;
+  if (bp->galactocentric_radius > suppression_distance) {
     //torque_accr_rate *= exp(-(bp->galactocentric_radius - suppression_distance) / suppression_distance);
-    //torque_accr_rate = 0.f;
-  //}
+    torque_accr_rate = 0.f;
+  }
 
 #ifdef OBSIDIAN_DEBUG_CHECKS
   if (isnan(bondi_accr_rate)) error("bondi_accr_rate nan");

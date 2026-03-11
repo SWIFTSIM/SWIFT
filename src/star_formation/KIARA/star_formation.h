@@ -407,11 +407,12 @@ INLINE static void star_formation_compute_SFR_wn07(
   const double fc = 0.5 * erfc(z);
 
   /* This is the SFR density from eq. 17, except use actual
-   * density rho_V not estimated density rho_c
+   * density rho_V not estimated density rho_c. 3pi/32=0.294524.
    */
-  const double rhosfr = epsc * sqrt(phys_const->const_newton_G * rho_V) * fc;
+  const double rhosfr = epsc * sqrt(0.294524 * phys_const->const_newton_G * rho_V) * fc;
 
-  /* multiply by dense gas effective volume to get SFR */
+  /* multiply by dense gas effective volume to get SFR (rho_V appears in both
+   * this eqn and previous one so it is cancelled out for efficiency) */
   const double sfr =
       rhosfr * (p->cooling_data.subgrid_fcold * hydro_get_mass(p));
 

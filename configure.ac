@@ -365,6 +365,7 @@ AC_ARG_ENABLE([obsidian-debugging-checks],
 )
 if test "$enable_obsidian_debugging_checks" = "yes"; then
    AC_DEFINE([OBSIDIAN_DEBUG_CHECKS],1,[Enable Obsidian expensive debugging])
+fi
 
 AC_ARG_ENABLE([likwid],
    [AS_HELP_STRING([--enable-likwid],
