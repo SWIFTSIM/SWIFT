@@ -240,7 +240,9 @@ INLINE static void compute_SNII_feedback(
     /* ------- Compute magnetic feedback ------- */
 
     /* magnetic energy available for injection */
-    const float E_B_inj = feedback_props->f_E_B * f_E * E_SNe * number_of_SN_events;
+    const float E_B_inj = feedback_props->f_E_B * f_E * E_SNe * N_SNe;
+
+    message("number of supernovae %f", N_SNe);
 
     /* compute the normalisation factor for the injected magnetic field */
     float B_conv_factor = 0.f;

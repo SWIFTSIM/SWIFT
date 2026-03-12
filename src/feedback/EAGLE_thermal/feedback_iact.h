@@ -413,12 +413,18 @@ runner_iact_nonsym_feedback_apply(
                       pj->x[1] - si->x[1],
                       pj->x[2] - si->x[2]};
 
+      /* cross product moment and distance vector -> toroidal direction */
       float B_inj[3] = {moment[1]*dr[2] - moment[2]*dr[1],
                         moment[2]*dr[0] - moment[0]*dr[2],
                         moment[0]*dr[1] - moment[1]*dr[0]};
 
+      /* rescale B_inj to the right value */
+      const float B_inj_abs = sqrtf(B_inj[0]*B_inj[0] + 
+                                    B_inj[1]*B_inj[1] + 
+                                    B_inj[2]*B_inj[2]);
+
       for (size_t i = 0; i < 3; i++){
-          B_inj[i] *= si->feedback_data.to_distribute.B_inj_abs;
+          B_inj[i] *= si->feedback_data.to_distribute.B_inj_abs / B_inj_abs;
       }
 
       xpj->mhd_data.B_over_rho_full[0] += B_inj[0] / rho_j;
