@@ -444,10 +444,10 @@ runner_iact_nonsym_feedback_apply(
       tracers_after_supernovae_feedback_part(xpj, /*delta_p_magnitude=*/0.f,
                                              delta_u, /*kick_velocity=*/0.f);
 
-      /* message( */
-      /*     "We did some heating! id %llu star id %llu probability %.5e " */
-      /*     "random_num %.5e du %.5e du/ini %.5e", */
-      /*     pj->id, si->id, 0., 0., delta_u, delta_u / u_init); */
+      message( 
+          "We did some heating! id %llu star id %llu probability %.5e " 
+          "random_num %.5e du %.5e du/ini %.5e", 
+          pj->id, si->id, 0., 0., delta_u, delta_u / u_init); 
 
       /* Synchronize the particle on the timeline */
       timestep_sync_part(pj);
