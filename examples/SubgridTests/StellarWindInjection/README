@@ -1,0 +1,33 @@
+# Intro
+This example consists of a homogeneous and periodic box filled with gas particles of equal mass. An individual star particle may be added after some time to first let the system rearrange.
+
+This example tests energy ejected by the stellar winds with no external influence. Compared to Feedback_IC_box this one has a cartesian grid !
+
+# Configure
+To run this example with the GEAR model,
+
+```
+CFLAGS="-DSWIFT_TEST_STELLAR_WIND" ./configure  --with-chemistry=GEAR_10 --with-stars=GEAR --with-star-formation=GEAR --with-sink=GEAR --with-feedback=GEAR --with-kernel=wendland-C2
+```
+
+Then, type
+
+```
+make -j
+```
+
+You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
+
+# ICs
+The start.slurm script calls the `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
+
+# run 
+To run the script, once you've changed the parameter you wanted, you can simply make a sbatch or srun. It will automatically create a folder containing the IC and the simulation as well as a `verification.txt`. This file tells you if it detected an error in the interpolation made inside swift.
+(Exemple: ./run.sh)
+
+If you want to launch multiple simulations in parallel you can use the script `run_multiple.sh` after having modified the parameters you want. 
+(Exempl: ./run_multiple.sh)
+
+The `verification.py` script can be used directly on all your folder (to avoid going through many directories to search for errors) !
+(Example: python3 verification.py -v test_*/output.log | tee verification.txt)
+
