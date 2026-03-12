@@ -40,7 +40,6 @@ git clean -fdx
 
 echo "--------------"
 echo "SIDM          "
-do_make clean
 echo "--------------"
 do_configure --with-sidm=Basic
 do_make -j 2
@@ -49,7 +48,6 @@ do_make clean
 
 echo "--------------"
 echo "SIDM + debugs "
-do_make clean
 echo "--------------"
 do_configure --with-sidm=Basic --enable-debugging-checks
 do_make -j 2
@@ -59,7 +57,6 @@ do_make clean
 
 echo "--------------"
 echo "SIDM + EAGLE  "
-do_make clean
 echo "--------------"
 do_configure --with-sidm=Basic --with-subgrid=EAGLE
 do_make -j 2
