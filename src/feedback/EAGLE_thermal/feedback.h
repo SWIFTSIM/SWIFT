@@ -154,6 +154,9 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
 
   /* Zero the SNII feedback properties */
   sp->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj = 0;
+
+  /* Zero the magnetic energy injection */
+  sp->feedback_data.to_distribute.B_inj_abs = 0.f;
 }
 
 /**

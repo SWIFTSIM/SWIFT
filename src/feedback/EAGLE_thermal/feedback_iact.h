@@ -127,7 +127,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(r, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            mj);
+                            mj, rho);
       break;
     }
     case SNII_minimum_density_model: {
@@ -143,7 +143,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(rho, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            mj);
+                            mj, rho);
       break;
     }
     case SNII_random_ngb_model: {
@@ -165,7 +165,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller 'fake' distances to the BH. */
       ray_minimise_distance(dist, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            mj);
+                            mj, rho);
       break;
     }
   }
@@ -383,7 +383,6 @@ runner_iact_nonsym_feedback_apply(
   hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
   hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
                                              u_new_enrich);
-  mhd_set_drifted_physical_internal_energy(pj);
 
   /* Finally, SNII stochastic feedback */
 
@@ -405,6 +404,26 @@ runner_iact_nonsym_feedback_apply(
 
     /* If the number of SNII energy injections > 0, do SNII feedback */
     if (N_of_SNII_energy_inj_received_by_gas > 0) {
+
+      /* Compute magnetic field injection */
+
+      /* get directions */
+      float moment[3] = {0.f, 0.f, 1.f};
+      double dr[3] = {pj->x[0] - si->x[0], 
+                      pj->x[1] - si->x[1],
+                      pj->x[2] - si->x[2]};
+
+      float B_inj[3] = {moment[1]*dr[2] - moment[2]*dr[1],
+                        moment[2]*dr[0] - moment[0]*dr[2],
+                        moment[0]*dr[1] - moment[1]*dr[0]};
+
+      for (size_t i = 0; i < 3; i++){
+          B_inj[i] *= si->feedback_data.to_distribute.B_inj_abs;
+      }
+
+      xpj->mhd_data.B_over_rho_full[0] += B_inj[0] / rho_j;
+      xpj->mhd_data.B_over_rho_full[1] += B_inj[1] / rho_j;
+      xpj->mhd_data.B_over_rho_full[2] += B_inj[2] / rho_j;
 
       /* Compute new energy of this particle */
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);

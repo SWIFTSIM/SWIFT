@@ -118,6 +118,9 @@ struct feedback_spart_data {
       /*! Change in energy from SNII feedback energy injection */
       float SNII_delta_u;
 
+      /* Normalisation of the magnetic field injection */
+      float B_inj_abs;
+
     } to_distribute;
   };
 

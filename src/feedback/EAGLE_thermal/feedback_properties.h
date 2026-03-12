@@ -305,6 +305,14 @@ struct feedback_props {
    * feedback time? */
   int use_birth_Z_for_f_th;
 
+  /* ------------ MHD feedback properties ----------- */
+
+  /* Energy fraction used for magnetic field injection */
+  float f_E_B;
+
+  /* vacuum permeability */
+  double mu_0;
+
   /* ------------ Enrichment sampling properties ------------ */
 
   /*! Star age above which the enrichment will be downsampled (in internal
