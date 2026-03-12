@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 # This file is part of SWIFT.
-# Copyright (C) 2026 p.w.draper@durham.ac.uk.
+# Copyright (C) 2026 schaller@strw.leidenuniv.nl
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,23 +23,14 @@
 #  Note that we no longer use the -e flag to check floating point operations
 #  as as that is no longer reliable with Intel 2024 onwards.
 #
-#  Peter W. Draper 20-JAN-2026.
+#  Matthieu Schaller 12-MAR-2026.
 #-
 #  Build toolchain.
 source ci/COSMA/intel-modules.sh
 source ci/setup.sh
 
-#  Extra modules for runtime.
-module load grackle-swift/3.3.dev1
-
 #  Need 2.70 for Fortran support.
 module load autoconf
-
-#  Function to locate the test data. Should be in the home directory of this
-#  user when in a container.
-function link_data {
-    ln -s $HOME/${1} .
-}
 
 #  Clean sources.
 git clean -fdx
