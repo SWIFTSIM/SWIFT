@@ -443,10 +443,10 @@ runner_iact_nonsym_feedback_apply(
       /* Mark this particle has having been heated by supernova feedback */
       tracers_after_feedback(xpj);
 
-      /* message( */
-      /*     "We did some heating! id %llu star id %llu probability %.5e " */
-      /*     "random_num %.5e du %.5e du/ini %.5e", */
-      /*     pj->id, si->id, 0., 0., delta_u, delta_u / u_init); */
+      message( 
+          "We did some heating! id %llu star id %llu probability %.5e " 
+          "random_num %.5e du %.5e du/ini %.5e", 
+          pj->id, si->id, 0., 0., delta_u, delta_u / u_init); 
 
       /* Synchronize the particle on the timeline */
       timestep_sync_part(pj);
