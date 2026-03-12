@@ -237,6 +237,21 @@ INLINE static void compute_SNII_feedback(
       number_of_SN_events = eagle_SNII_feedback_num_of_rays;
     }
 
+    /* ------- Compute magnetic feedback ------- */
+
+    /* magnetic energy available for injection */
+    const float E_B_inj = feedback_props->f_E_B * f_E * E_SNe * number_of_SN_events;
+
+    /* compute the normalisation factor for the injected magnetic field */
+    float B_conv_factor = 0.f;
+    for (int i = 0; i < number_of_SN_events; i++) {
+      B_conv_factor += sp->feedback_data.SNII_rays[i].mass / 
+                         sp->feedback_data.SNII_rays[i].rho; 
+    }
+    B_conv_factor *= 1 / (2 * feedback_props->mu_0);
+
+    const float B_inj = sqrtf(E_B_inj / B_conv_factor);
+
     /* Current total f_E for this star */
     double star_f_E = sp->f_E * sp->number_of_SNII_events;
 
@@ -249,6 +264,7 @@ INLINE static void compute_SNII_feedback(
     sp->feedback_data.to_distribute.SNII_delta_u = delta_u;
     sp->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj =
         number_of_SN_events;
+    sp->feedback_data.to_distribute.B_inj_abs = B_inj;
   }
 }
 
@@ -687,6 +703,21 @@ void feedback_props_init(struct feedback_props *fp,
     error(
         "Time at which the enrichment downsampling starts is lower than the "
         "SNII wind delay!");
+
+  /* Properties of the MHD feedback ----------------------------------------- */
+  
+  /* fraction of energy used for magnetic field injection */
+  fp->f_E_B = parser_get_opt_param_float(params,
+      "EAGLEFeedback:SNII_energy_fraction_magnetic_field", 0.);
+
+  /* check that energy fraction makes sense */
+  if ((fp->f_E_B < 0.f) || (fp->f_E_B > 1.f)) {
+    error("Invalid value energy fraction for magnetic field injections: %f",
+      fp->f_E_B);
+  }
+
+  /* store the vacuum permeability for easy access */
+  fp->mu_0 = phys_const->const_vacuum_permeability;
 
   /* Gather common conversion factors --------------------------------------- */
 

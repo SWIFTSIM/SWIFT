@@ -452,10 +452,11 @@ ray_kinetic_feedback_compute_kick_velocity(
  * @param N_ray_arr Size of ray array
  * @param gas_part_id ID of the gas particle
  * @param m Gas particle mass
+ * @param rho Gas particle density
  */
 __attribute__((always_inline)) INLINE static void ray_minimise_distance(
     const float r, struct ray_data *ray, const int N_ray_arr,
-    const long long gas_part_id, const float m) {
+    const long long gas_part_id, const float m, const float rho) {
 
   /* Id of the element of the ray array that we want to update */
   int elem_update_id = -1;
@@ -480,12 +481,14 @@ __attribute__((always_inline)) INLINE static void ray_minimise_distance(
       ray[i + 1].min_length = ray[i].min_length;
       ray[i + 1].id_min_length = ray[i].id_min_length;
       ray[i + 1].mass = ray[i].mass;
+      ray[i + 1].rho = ray[i].rho;
     }
 
     /* Update elem_update_id */
     ray[elem_update_id].min_length = r;
     ray[elem_update_id].id_min_length = gas_part_id;
     ray[elem_update_id].mass = m;
+    ray[elem_update_id].rho = rho;
   }
 }
 
