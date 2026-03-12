@@ -165,5 +165,5 @@ sidm-runtime-check-cosma:
   timeout: 6h
   script:
     - echo "SIDM runtime checks"
-    - ci/COSMA/swift-sidm-runtime-checks.sh
+    - ci/COSMA/swift-sidm-runtime-check.sh
     - echo "complete."
