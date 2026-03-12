@@ -793,6 +793,7 @@ void feedback_props_init(struct feedback_props *fp,
     message("Feedback energy fraction widths: s_n=%f, s_Z=%f", s_n, s_Z);
     message("Feedback energy fraction pivots: Z_0=%f, n_0_cgs=%f", fp->Z_0,
             fp->n_0_cgs);
+    message("Feedback magnetic energy fraction f_B=%f", fp->f_E_B);
   }
 }
 
