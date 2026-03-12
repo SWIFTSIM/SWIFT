@@ -74,6 +74,7 @@ runtime-check-cosma:
   #  When MR to master happens, or commit is to master.
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "sidm_merge"'
     - when: never
   timeout: 6h
   script:
@@ -151,3 +152,18 @@ swift-intel-build-mr-long:
 #    - echo "Zoom runtime checks"
 #    - ci/COSMA/swift-zoom-runtime-checks.sh
 #    - echo "complete."
+
+#  SIDM runtime checks
+sidm-runtime-check-cosma:
+  stage: runtime
+  tags:
+    - cosma
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "sidm_merge"'
+    - when: never
+  timeout: 6h
+  script:
+    - echo "SIDM runtime checks"
+    - ci/COSMA/swift-sidm-runtime-checks.sh
+    - echo "complete."
