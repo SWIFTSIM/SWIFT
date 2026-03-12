@@ -144,7 +144,7 @@ if COMMON_GEAR_NEEDED
 COMMON_GEAR_SOURCES = \
     feedback/GEAR/stellar_evolution.c feedback/GEAR/initial_mass_function.c \
     feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c \
-    feedback/GEAR/feedback_common.c
+    feedback/GEAR/feedback_common.c feedback/GEAR/stellar_wind.c
 
 GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
 endif
@@ -187,11 +187,11 @@ AM_SOURCES += cell_unskip.c cell_grid.c cell_init.c
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c
 AM_SOURCES += engine_drift.c engine_unskip.c engine_collect_end_of_step.c
 AM_SOURCES += engine_redistribute.c engine_fof.c engine_proxy.c engine_io.c engine_config.c
-AM_SOURCES += queue.c task.c timers.c debug.c scheduler.c proxy.c version.c
+AM_SOURCES += queue.c task.c timers.c debug.c scheduler.c scheduler_io.c scheduler_splittasks.c proxy.c version.c
 AM_SOURCES += common_io.c common_io_copy.c common_io_cells.c common_io_fields.c
 AM_SOURCES += single_io.c serial_io.c distributed_io.c parallel_io.c
 AM_SOURCES += output_options.c line_of_sight.c restart.c parser.c xmf.c
-AM_SOURCES += kernel_hydro.c tools.c map.c part.c partition.c clocks.c
+AM_SOURCES += kernel_hydro.c tools.c map.c part.c partition.c partition_debug.c partition_metis.c partition_repartition_metis.c clocks.c
 AM_SOURCES += physical_constants.c units.c potential.c hydro_properties.c
 AM_SOURCES += threadpool.c cooling.c star_formation.c
 AM_SOURCES += hydro.c stars.c sink.c sidm.c
@@ -487,6 +487,7 @@ nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
+nobase_noinst_HEADERS += feedback/GEAR/stellar_wind.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_debug.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h
