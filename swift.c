@@ -1410,7 +1410,7 @@ int main(int argc, char *argv[]) {
                periodic, replicate, remap_ids, generate_gas_in_ics, with_hydro,
                with_self_gravity, with_star_formation, with_sinks,
                with_DM_particles, with_DM_background_particles, with_neutrinos,
-               talking, dry_run, nr_nodes);
+               talking, dry_run, nr_nodes, nr_pool_threads);
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
