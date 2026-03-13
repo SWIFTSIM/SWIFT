@@ -375,6 +375,11 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         if (ci->progeny[k] == NULL) continue;
         struct cell *cpk = ci->progeny[k];
 
+        /* Avoid a self interaction */
+        if (c == cpk) {
+          continue;
+        }
+
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
