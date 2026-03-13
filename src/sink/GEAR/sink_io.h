@@ -48,7 +48,7 @@ INLINE static void sink_read_particles(struct sink *sinks,
   list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_LENGTH, sinks, h);
   list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
-                                sinks, birth_time);
+                                sinks, birth_data.time);
 }
 
 INLINE static void convert_sink_pos(const struct engine *e,
@@ -181,12 +181,12 @@ INLINE static void sink_write_particles(const struct sink *sinks,
   if (with_cosmology) {
     list[10] = io_make_physical_output_field(
         "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
-        birth_scale_factor, /*can convert to comoving=*/0,
+        birth_data.scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the sinks were born");
   } else {
     list[10] =
         io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sinks,
-                             birth_time, "Times at which the sinks were born");
+                             birth_data.time, "Times at which the sinks were born");
   }
 
 #ifdef DEBUG_INTERACTIONS_SINKS
