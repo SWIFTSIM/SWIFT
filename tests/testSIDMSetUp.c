@@ -78,7 +78,6 @@ int main(int argc, char *argv[]) {
   struct chemistry_global_data chemistry;
   struct cooling_function_data cooling_func;
   struct los_props los_properties;
-  struct output_options output_options;
   struct repartition reparttype;
 
   strcpy(ics_metadata.group_name, "NoSUCH");
@@ -99,6 +98,10 @@ int main(int argc, char *argv[]) {
   message("Initialization of the physical constants.");
   struct phys_const prog_const;
   phys_const_init(&us, &param_file, &prog_const);
+
+  struct output_options *output_options =
+      (struct output_options *)malloc(sizeof(struct output_options));
+  output_options_init(&param_file, 0, output_options);
 
   /* Read data */
   message("Reading initial conditions.");
@@ -180,7 +183,7 @@ int main(int argc, char *argv[]) {
   e.physical_constants = &prog_const;
 
   /* Initialize the engine with the space and policies. */
-  engine_init(&e, &s, &param_file, &output_options, Ngas,
+  engine_init(&e, &s, &param_file, output_options, Ngas,
               /*Ngparts=*/0, /*Nsinks=*/0, /*Nstars=*/0,
               /*Nblackholes=*/0, /*Nbackground_gparts=*/0, /*Nnuparts=*/0,
               Nsipart, engine_policies,
