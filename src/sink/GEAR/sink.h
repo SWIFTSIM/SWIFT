@@ -964,14 +964,13 @@ INLINE static void sink_copy_properties_to_star(
   /* Note: The sink module need to be compiled with GEAR SF as we store data
      in the SF struct. However, we do not need to run with --star-formation */
 
-  /* Mass at birth */
+  /* Birth properties. For density and temperature, we simply propagate the
+     sink's value. */
+  star_formation_set_spart_birth_density(sp, sink->birth_data.density);
+  star_formation_set_spart_birth_temperature(sp, sink->birth_data.temperature);
   star_formation_set_spart_birth_mass(sp, sp->mass);
-
-  /* Store either the birth_scale_factor or birth_time */
   star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a,
                                                       with_cosmology);
-
-  /* Copy the progenitor id */
   star_formation_set_spart_progenitor_id(sp, sink->id);
 
   /* Copy the chemistry properties */
