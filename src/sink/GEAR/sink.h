@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
     const double time_base) {
 
   /* Background sink particles have no time-step limits */
-  if (sink->birth_time == -1.) {
+  if (sink->birth_data.time == -1.) {
     return FLT_MAX;
   }
 
@@ -611,7 +611,13 @@ INLINE static void sink_copy_properties(
   /* Note, we do not need to update sp->mass_tot_before_star_spawning because
      it is performed within the 'sink_init_sink()' function. */
 
-  /* Set the birth time of the sink */
+  /* Set the birth properties of the sink */
+  const float birth_density = hydro_get_physical_density(p, cosmo);
+  const float birth_temperature = cooling_get_temperature(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
+  sink_set_sink_birth_density(sink, birth_density);
+  sink_set_sink_birth_temperature(sink, birth_temperature);
   sink_set_sink_birth_time_or_scale_factor(sink, e->time, cosmo->a,
                                            with_cosmology);
 }
@@ -959,14 +965,13 @@ INLINE static void sink_copy_properties_to_star(
   /* Note: The sink module need to be compiled with GEAR SF as we store data
      in the SF struct. However, we do not need to run with --star-formation */
 
-  /* Mass at birth */
+  /* Birth properties. For density and temperature, we simply propagate the
+     sink's value. */
+  star_formation_set_spart_birth_density(sp, sink->birth_data.density);
+  star_formation_set_spart_birth_temperature(sp, sink->birth_data.temperature);
   star_formation_set_spart_birth_mass(sp, sp->mass);
-
-  /* Store either the birth_scale_factor or birth_time */
   star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a,
                                                       with_cosmology);
-
-  /* Copy the progenitor id */
   star_formation_set_spart_progenitor_id(sp, sink->id);
 
   /* Copy the chemistry properties */
