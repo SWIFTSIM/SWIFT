@@ -613,7 +613,8 @@ INLINE static void sink_copy_properties(
 
   /* Set the birth properties of the sink */
   const float birth_density = hydro_get_physical_density(p, cosmo);
-  const float birth_temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const float birth_temperature = cooling_get_temperature(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
   sink_set_sink_birth_density(sink, birth_density);
   sink_set_sink_birth_temperature(sink, birth_temperature);

@@ -398,7 +398,8 @@ INLINE static void star_formation_copy_properties(
 
   /* Store the birth density and temperature in the star particle */
   const float birth_density = hydro_get_physical_density(p, cosmo);
-  const float birth_temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const float birth_temperature = cooling_get_temperature(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
   star_formation_set_spart_birth_density(sp, birth_density);
   star_formation_set_spart_birth_temperature(sp, birth_temperature);

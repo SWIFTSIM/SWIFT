@@ -54,8 +54,8 @@ sink_set_sink_birth_time_or_scale_factor(struct sink *restrict sink,
  * @param sink The #sink.
  * @param birth_density Birth density of the star.
  */
-__attribute__((always_inline)) INLINE void
-sink_set_sink_birth_density(struct sink *restrict sink, const float birth_density) {
+__attribute__((always_inline)) INLINE void sink_set_sink_birth_density(
+    struct sink *restrict sink, const float birth_density) {
   sink->birth_data.density = birth_density;
 }
 
@@ -65,8 +65,8 @@ sink_set_sink_birth_density(struct sink *restrict sink, const float birth_densit
  * @param sink The #sink.
  * @param birth_temperature Birth temperature of the sink.
  */
-__attribute__((always_inline)) INLINE void
-sink_set_sink_birth_temperature(struct sink *restrict sink, const float birth_temperature) {
+__attribute__((always_inline)) INLINE void sink_set_sink_birth_temperature(
+    struct sink *restrict sink, const float birth_temperature) {
   sink->birth_data.temperature = birth_temperature;
 }
 
