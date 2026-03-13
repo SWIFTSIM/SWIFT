@@ -42,10 +42,32 @@ sink_set_sink_birth_time_or_scale_factor(struct sink *restrict sink,
                                          const float birth_scale_factor,
                                          const int with_cosmology) {
   if (with_cosmology) {
-    sink->birth_scale_factor = birth_scale_factor;
+    sink->birth_data.scale_factor = birth_scale_factor;
   } else {
-    sink->birth_time = birth_time;
+    sink->birth_data.time = birth_time;
   }
+}
+
+/**
+ * @brief Set the birth density of a sink particle.
+ *
+ * @param sink The #sink.
+ * @param birth_density Birth density of the star.
+ */
+__attribute__((always_inline)) INLINE void
+sink_set_sink_birth_density(struct sink *restrict sink, const float birth_density) {
+  sink->birth_data.density = birth_density;
+}
+
+/**
+ * @brief Set the birth temperature of a sink particle.
+ *
+ * @param sink The #sink.
+ * @param birth_temperature Birth temperature of the sink.
+ */
+__attribute__((always_inline)) INLINE void
+sink_set_sink_birth_temperature(struct sink *restrict sink, const float birth_temperature) {
+  sink->birth_data.temperature = birth_temperature;
 }
 
 /**
