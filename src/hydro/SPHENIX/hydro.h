@@ -1125,9 +1125,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
+  
+  /* store desired change in energy */
+  const float u_new = xp->u_full + delta_u;
 
   /* Do not decrease the energy by more than a factor of 2*/
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
+  xp->limited_energies += (xp->u_full - u_new) * p->mass;
 
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);

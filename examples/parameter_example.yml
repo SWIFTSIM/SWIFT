@@ -519,7 +519,16 @@ RobertsFlowAccelerationForcing:
   u0:              1.5      # Forcing velocity (internal units)
   nu:              1.0      # Viscosity (internal units) to convert velocities to accelerations.
   Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
-  
+
+# Balsara-Kim energy injections 
+BalsaraKimForcing:
+  coords:        ./injection_coords.txt  # File containing times and locations of energy injections
+  inj_model:     set_u                   # what injection model to use options: set_u, set_const_u, set_v, set_const_v
+  r_inj_pc:      5.                      # Injection radius in parsec (comoving)
+  E_inj_cgs:     1.e53                   # (required if inj_model=set_u/set_v) Injection energy in erg (physical)
+  u_inj_cgs:     3.0298e15               # (required if inj_model=set_const_u) Specific energy to inject in the particles (physical)
+  v_inj_kms:     200.                    # (required if inj_model=set_const_v) Injection velocity in km/s (physical)
+
 # Parameters related to entropy floors    ----------------------------------------------
 
 EAGLEEntropyFloor:
