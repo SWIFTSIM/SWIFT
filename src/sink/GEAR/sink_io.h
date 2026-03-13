@@ -189,6 +189,19 @@ INLINE static void sink_write_particles(const struct sink *sinks,
                              birth_data.time, "Times at which the sinks were born");
   }
 
+  list[11] = io_make_physical_output_field(
+      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sinks,
+      birth_data.density, /*can convert to comoving=*/0,
+      "Physical densities at the time of birth of the gas particles that "
+      "turned into sink (note that we store the physical density at the birth "
+      "redshift, no conversion is needed)");
+
+  list[12] = io_make_physical_output_field(
+      "BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, sinks,
+      birth_data.temperature, /*can convert to comoving=*/0,
+      "Temperatures at the time of birth of the gas particles that turned into"
+      " sinks");
+
 #ifdef DEBUG_INTERACTIONS_SINKS
 
   list += *num_fields;
