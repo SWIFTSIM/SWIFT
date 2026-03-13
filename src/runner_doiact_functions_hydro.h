@@ -1070,11 +1070,10 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
       (cj->hydro.sorted & (1 << sid)) &&
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
-
   /* Now we can unlock */
   if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
     error("Impossible to unlock cell!");
-  
+
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   const int force_naive = 1;
 #else

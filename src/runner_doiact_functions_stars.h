@@ -1205,7 +1205,7 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
   /* Now we can unlock */
   if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
     error("Impossible to unlock cell!");
-  
+
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   const int force_naive = 1;
 #else
