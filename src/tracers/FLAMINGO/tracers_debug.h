@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,26 +16,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TRACERS_STRUCT_H
-#define SWIFT_TRACERS_STRUCT_H
+#ifndef SWIFT_TRACERS_FLAMINGO_DEBUG_H
+#define SWIFT_TRACERS_FLAMINGO_DEBUG_H
 
-/**
- * @file src/tracers_struct.h
- * @brief Branches between the different particle data tracers
- */
+__attribute__((always_inline)) INLINE static void tracers_debug_particle(
+    const struct part *p, const struct xpart *xp) {
 
-/* Config parameters. */
-#include <config.h>
+  if (xp != NULL) {
+    warning("[PID%lld] tracers_xpart_data:", p->id);
+    warning(
+        "[PID%lld] maximum_temperature = %.3e, "
+        "maximum_temperature_scale_factor/time = %.3e, "
+        "last_AGN_injection_scale_factor/time = %.3e, "
+        "AGN_feedback_energy = "
+        "%.3e, ",
+        p->id, xp->tracers_data.maximum_temperature,
+        xp->tracers_data.maximum_temperature_scale_factor,
+        xp->tracers_data.last_AGN_injection_scale_factor,
+        xp->tracers_data.AGN_feedback_energy);
+  }
+}
 
-/* Import the right cooling definition */
-#if defined(TRACERS_NONE)
-#include "./tracers/none/tracers_struct.h"
-#elif defined(TRACERS_EAGLE)
-#include "./tracers/EAGLE/tracers_struct.h"
-#elif defined(TRACERS_FLAMINGO)
-#include "./tracers/FLAMINGO/tracers_struct.h"
-#else
-#error "Invalid choice of tracers."
-#endif
-
-#endif /* SWIFT_TRACERS_STRUCT_H */
+#endif /* SWIFT_TRACERS_FLAMINGO_DEBUG_H */

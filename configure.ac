@@ -1997,7 +1997,7 @@ AC_SUBST([SUNDIALS_INCS])
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
 		[Master switch for subgrid methods. Inexperienced user should
-		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
+		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE, FLAMINGO, SPIN_JET_FLAMINGO default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -2121,7 +2121,7 @@ case "$with_subgrid" in
 	with_subgrid_extra_io=none
 	enable_fof=yes
    ;;
-  SPIN_JET_EAGLE-XL)
+   SPIN_JET_EAGLE-XL)
 	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
@@ -2133,6 +2133,32 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
+   ;;
+   FLAMINGO)
+        with_subgrid_cooling=PS2020
+     	with_subgrid_chemistry=EAGLE
+        with_subgrid_tracers=FLAMINGO
+        with_subgrid_entropy_floor=EAGLE
+        with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+        with_subgrid_feedback=EAGLE-kinetic
+        with_subgrid_black_holes=EAGLE
+        with_subgrid_sink=none
+        with_subgrid_extra_io=EAGLE
+        enable_fof=yes
+   ;;
+   SPIN_JET_FLAMINGO)
+        with_subgrid_cooling=PS2020
+        with_subgrid_chemistry=EAGLE
+        with_subgrid_tracers=FLAMINGO
+        with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+        with_subgrid_star_formation=EAGLE
+        with_subgrid_feedback=EAGLE-kinetic
+        with_subgrid_black_holes=SPIN_JET
+        with_subgrid_sink=none
+        with_subgrid_extra_io=EAGLE
+        enable_fof=yes
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -2689,7 +2715,7 @@ fi
 #  Particle tracers
 AC_ARG_WITH([tracers],
    [AS_HELP_STRING([--with-tracers=<function>],
-      [chemistry function @<:@none, EAGLE default: none@:>@]
+      [chemistry function @<:@none, EAGLE, FLAMINGO default: none@:>@]
    )],
    [with_tracers="$withval"],
    [with_tracers="none"]
@@ -2709,6 +2735,9 @@ case "$with_tracers" in
    ;;
    EAGLE)
       AC_DEFINE([TRACERS_EAGLE], [1], [Tracers taken from the EAGLE model])
+   ;;
+   FLAMINGO)
+      AC_DEFINE([TRACERS_FLAMINGO], [1], [Tracers taken from the FLAMINGO model])
    ;;
    *)
       AC_MSG_ERROR([Unknown tracers choice: $with_tracers])

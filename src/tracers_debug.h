@@ -27,6 +27,8 @@
 #include "./tracers/none/tracers_debug.h"
 #elif defined(TRACERS_EAGLE)
 #include "./tracers/EAGLE/tracers_debug.h"
+#elif defined(TRACERS_FLAMINGO)
+#include "./tracers/FLAMINGO/tracers_debug.h"
 #else
 #error "Invalid choice of tracers."
 #endif
