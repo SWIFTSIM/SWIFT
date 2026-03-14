@@ -60,9 +60,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "Maximal temperatures ever reached by the particles");
 
   if (with_cosmology) {
-    list[1] = io_make_output_field(
+    list[1] = io_make_physical_output_field(
         "MaximalTemperatureScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         xparts, tracers_data.maximum_temperature_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the maximal temperature was reached");
 
   } else {
@@ -75,9 +76,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 
   if (with_cosmology) {
 
-    list[2] = io_make_output_field(
+    list[2] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         xparts, tracers_data.last_AGN_injection_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the particles were last hit by AGN feedback. "
         "-1 if a particle has never been hit by feedback");
 
@@ -99,9 +101,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 
   if (with_cosmology) {
 
-    list[0] = io_make_output_field(
+    list[0] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         sparts, tracers_data.last_AGN_injection_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the particles were last hit by AGN feedback "
         "when they were still gas particles. -1 if a particle has never been "
         "hit by feedback");
