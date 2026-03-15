@@ -3029,6 +3029,47 @@ void space_check_unskip_flags(const struct space *s) {
   //int cdim;
 //};
 
+void free_gparts_in_cells(struct cell *c) {
+  // Free gparts array if it exists
+  if (c->grav.parts != NULL) {
+      swift_free("gparts", c->grav.parts);
+      c->grav.parts = NULL;
+      c->grav.count = 0;
+  }
+  // Recursively free gparts in daughter cells
+  if (c->progeny != NULL) {
+    for (int i = 0; i < 8; ++i) {
+      free_gparts_in_cells(c->progeny[i]);
+    }
+  }
+}
+
+void init_test_single_particle(struct engine *e) {
+  /* Clean current array of particles */
+  struct space *s = e->s;
+  int nr_cells = s->nr_cells;
+  for (int i=0; i<nr_cells; i++) {
+    free_gparts_in_cells(&(s->cells_top[i]));
+  }
+  swift_free("gparts", s->gparts);
+  s->gparts = NULL;
+  s->nr_gparts = 0;  
+
+  /* Set the single particle to the desired state */
+  s->nr_gparts = 1;
+  s->gparts = calloc(1, sizeof(struct gpart*));
+  struct gpart *part = &s->gparts[0];
+
+  //Put it in the middle of the box
+  part->mass = 50.;
+  part->x[0] = s->dim[0]/2;
+  part->x[1] = s->dim[0]/2;
+  part->x[2] = s->dim[0]/2;
+
+  /* Let the cell rebuild */
+  space_rebuild(s, 0,1 );
+}
+
 void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
   const double box_size = s->dim[0];
   struct cell *cells_top = s->cells_top;
@@ -3056,130 +3097,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
   int nr_gparts = s->nr_gparts;
   message("There are supposed to be %d particles", nr_gparts);
 
-  //int cells_old = 1;
-  //message("The total number of cells before is %d", s->tot_cells);
-  //int cells_new = 0;
-  //int passes = 0;
-  //int new_cell_count[max_depth+1];
-
-  /* Do the smoothing *//*
-  message("Smoothing tree");
-  while (cells_old != cells_new) {
-    cells_old = s->tot_cells;
-    build_refinement_map(s, min_depth, max_depth, levels);
-    modify_tree(s, min_depth, max_depth, levels, new_cell_count);
-    cells_new = s->tot_cells;
-    passes +=1;
-    message("The total number of cells after %d passes is %d", passes, s->tot_cells);
-
-    for (int i = min_depth; i <= max_depth; i++) {
-      for (int j = 0; j < levels[i].cell_count; j++) {
-        levels[i].cells[j]->refine = 0;
-        //levels[i].cells[j]->refine2 = 0;
-      }
-    }
-
-    for (int i=min_depth+1; i<max_depth+1; i++) {
-      link_nonuniform_level(s, &levels[i], old_cell_count[i], new_cell_count[i]);
-      old_cell_count[i] += new_cell_count[i];
-    }*/
-    /* Did any of the nonuniform levels become uniform? */
-    //message("The largest uniform grid was at %d", min_depth);
-    //int temp_depth = min_depth;
-    //for (int i=min_depth+1; i<max_depth; i++) {
-      //int N = levels[i].cdim;
-      //if (levels[i].cell_count == N*N*N) temp_depth +=1;
-      //else break;
-    //}
-    //for (int i=min_depth; i<temp_depth;i++) {
-      /* Sort the newly uniform grids in row major order based on the location */
-      //qsort(levels[i+1].cells, levels[i+1].cell_count, sizeof(struct cell *), sort_cell);
-    //}
-    //min_depth = temp_depth;
-  //}
-
-  /* Set ghost values all to zero */
-  //for (int i=min_depth; i<max_depth+1; i++) {
-    //for (int j=0; j<levels[i].cell_count; j++) {
-      //levels[i].cells[j]->ghost=0;
-    //}
-  //}
-
-  //for (int i=0; i<levels[3].cell_count; i++) {
-    //struct cell *c = levels[3].cells[i];
-    //int x = (int) (c->loc[0]/c->width[0]);
-    //int y = (int) (c->loc[1]/c->width[1]);
-    //int z = (int) (c->loc[2]/c->width[2]);
-    //if (x == 1 && y == 10 && z == 18) {
-      //if (c->split) {
-        //for (int j=0; j<8; j++) {
-          //message("The child %d has address %p", j, c->progeny[j]);
-        //}
-      //}
-      //else {
-        //message("Cell not split!");
-      //}
-    //}
-  //}
-  //sleep(10);
-
-  //for (int i=min_depth; i<max_depth;i++) {
-    /* Sort the uniform grids in row major order based on the location */
-    //message("Sorting level %d", i);
-    //qsort(levels[i+1].cells, levels[i+1].cell_count, sizeof(struct cell *), sort_cell);
-  //}
-
-  /* Loop over particles and perform tree searches to get the density everywhere*/
-  assign_densities(cells_top, &e->threadpool, s->nr_cells, box_size, level_check);
-  int min_depth = 0;
-  int max_gridsize = perform_uniform_calculation(s, cells_top, min_depth);
-  message("max_gridsize = %d", max_gridsize);
-  max_gridsize = 8;
-
-  //int level_nr = 1;
-  //message("Exporting AMR density data");
-  //FILE *file_swift_density1 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/level_density_nonsplit_cells/AMR_density_level1_50split.txt", "w");
-  //for (int i=0; i<levels[level_nr].cell_count; i++) {
-    //struct cell *c = levels[level_nr].cells[i];
-    //if (c->split) continue;
-    //int x_loc = (int) ((c->loc[0] + 0.001)/(s->dim[0]/levels[level_nr].cdim));
-    //int y_loc = (int) ((c->loc[1] + 0.001)/(s->dim[0]/levels[level_nr].cdim));
-    //int z_loc = (int) ((c->loc[2] + 0.001)/(s->dim[0]/levels[level_nr].cdim));
-    //int cdim2[3] = {levels[level_nr].cdim, levels[level_nr].cdim, levels[level_nr].cdim};
-    //int cid = cell_getid(cdim2, x_loc, y_loc, z_loc);
-    //fprintf(file_swift_density1, "%.15g \n", c->CIC_density);
-  //}
-  //fclose(file_swift_density1);
-  //message("Exported the grid density data.");
-  //sleep(5);
-
-  /* Hide first oct of the 16^3 grid */
-  message("Hiding first oct");
-  for (int i=0; i<8; i++) {
-    cells_top[0].progeny[i]->parent = NULL;
-    for (int j=0; j<8; j++) {
-      cells_top[0].progeny[i]->progeny[j] = NULL;
-    }
-    /*cells_top[0].progeny[i]->neighbours[0]->neighbours[1] = NULL;
-    cells_top[0].progeny[i]->neighbours[0] = NULL;
-    cells_top[0].progeny[i]->neighbours[1]->neighbours[0] = NULL;
-    cells_top[0].progeny[i]->neighbours[1] = NULL;
-    cells_top[0].progeny[i]->neighbours[2]->neighbours[3] = NULL;
-    cells_top[0].progeny[i]->neighbours[2] = NULL;
-    cells_top[0].progeny[i]->neighbours[3]->neighbours[2] = NULL;
-    cells_top[0].progeny[i]->neighbours[3] = NULL;
-    cells_top[0].progeny[i]->neighbours[4]->neighbours[5] = NULL;
-    cells_top[0].progeny[i]->neighbours[4] = NULL;
-    cells_top[0].progeny[i]->neighbours[5]->neighbours[4] = NULL;
-    cells_top[0].progeny[i]->neighbours[5] = NULL;*/
- 
-    cells_top[0].progeny[i] = NULL;
-    cells_top[0].split = 0;
-  }
-  cells_top[0].maxdepth = 0;
-  message("Successfully hid oct");
-
-  /* Initialise the patch structure */
+    /* Initialise the patch structure */
   struct AMR_levels levels[max_depth+1];
   memset(levels, 0, sizeof levels);
 
@@ -3228,7 +3146,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
   max_depth = level_i;
   
   /* Set the minimum depth */ 
-  min_depth = 0;
+  int min_depth = 0;
   for (int i=1; i<max_depth+1; i++) {
     int N_curr = levels[i].cdim;
     if (levels[i].cell_count < N_curr * N_curr * N_curr) break;
@@ -3240,19 +3158,142 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
     qsort(levels[i+1].cells, levels[i+1].cell_count, sizeof(struct cell *), sort_cell);
   }
 
-  //int old_cell_count[max_depth+1];
+  int old_cell_count[max_depth+1];
 
   /* Link the uniform levels */
   for (int i=0; i<min_depth+1;i++) {
     link_uniform_level(&levels[i]);
-    //old_cell_count[i] = levels[i].cell_count;
+    old_cell_count[i] = levels[i].cell_count;
   }
 
   for (int i=min_depth+1; i<max_depth+1; i++) {
     message("Linking nonuniform level %d", i);
     link_nonuniform_level(s, &levels[i], 0, levels[i].cell_count);
-    //old_cell_count[i] = levels[i].cell_count;
+    old_cell_count[i] = levels[i].cell_count;
   }
+
+  int cells_old = 1;
+  message("The total number of cells before is %d", s->tot_cells);
+  int cells_new = 0;
+  int passes = 0;
+  int new_cell_count[max_depth+1];
+
+  /* Do the smoothing */
+  message("Smoothing tree");
+  while (cells_old != cells_new) {
+    cells_old = s->tot_cells;
+    build_refinement_map(s, min_depth, max_depth, levels);
+    modify_tree(s, min_depth, max_depth, levels, new_cell_count);
+    cells_new = s->tot_cells;
+    passes +=1;
+    message("The total number of cells after %d passes is %d", passes, s->tot_cells);
+
+    for (int i = min_depth; i <= max_depth; i++) {
+      for (int j = 0; j < levels[i].cell_count; j++) {
+        levels[i].cells[j]->refine = 0;
+        //levels[i].cells[j]->refine2 = 0;
+      }
+    }
+
+    for (int i=min_depth+1; i<max_depth+1; i++) {
+      link_nonuniform_level(s, &levels[i], old_cell_count[i], new_cell_count[i]);
+      old_cell_count[i] += new_cell_count[i];
+    }
+    /* Did any of the nonuniform levels become uniform? */
+    message("The largest uniform grid was at %d", min_depth);
+    int temp_depth = min_depth;
+    for (int i=min_depth+1; i<max_depth; i++) {
+      int N = levels[i].cdim;
+      if (levels[i].cell_count == N*N*N) temp_depth +=1;
+      else break;
+    }
+    for (int i=min_depth; i<temp_depth;i++) {
+      /* Sort the newly uniform grids in row major order based on the location */
+      qsort(levels[i+1].cells, levels[i+1].cell_count, sizeof(struct cell *), sort_cell);
+    }
+    min_depth = temp_depth;
+  }
+
+  /* Set ghost values all to zero */
+  for (int i=min_depth; i<max_depth+1; i++) {
+    for (int j=0; j<levels[i].cell_count; j++) {
+      levels[i].cells[j]->ghost=0;
+    }
+  }
+
+  //for (int i=0; i<levels[3].cell_count; i++) {
+    //struct cell *c = levels[3].cells[i];
+    //int x = (int) (c->loc[0]/c->width[0]);
+    //int y = (int) (c->loc[1]/c->width[1]);
+    //int z = (int) (c->loc[2]/c->width[2]);
+    //if (x == 1 && y == 10 && z == 18) {
+      //if (c->split) {
+        //for (int j=0; j<8; j++) {
+          //message("The child %d has address %p", j, c->progeny[j]);
+        //}
+      //}
+      //else {
+        //message("Cell not split!");
+      //}
+    //}
+  //}
+  //sleep(10);
+
+  //for (int i=min_depth; i<max_depth;i++) {
+    /* Sort the uniform grids in row major order based on the location */
+    //message("Sorting level %d", i);
+    //qsort(levels[i+1].cells, levels[i+1].cell_count, sizeof(struct cell *), sort_cell);
+  //}
+
+  /* Loop over particles and perform tree searches to get the density everywhere*/
+  assign_densities(cells_top, &e->threadpool, s->nr_cells, box_size, level_check);
+  //min_depth = 0;
+  int max_gridsize = perform_uniform_calculation(s, min_depth, max_depth, levels);
+  message("max_gridsize = %d", max_gridsize);
+  //max_gridsize = 8;
+
+  //int level_nr = 1;
+  //message("Exporting AMR density data");
+  //FILE *file_swift_density1 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/level_density_nonsplit_cells/AMR_density_level1_50split.txt", "w");
+  //for (int i=0; i<levels[level_nr].cell_count; i++) {
+    //struct cell *c = levels[level_nr].cells[i];
+    //if (c->split) continue;
+    //int x_loc = (int) ((c->loc[0] + 0.001)/(s->dim[0]/levels[level_nr].cdim));
+    //int y_loc = (int) ((c->loc[1] + 0.001)/(s->dim[0]/levels[level_nr].cdim));
+    //int z_loc = (int) ((c->loc[2] + 0.001)/(s->dim[0]/levels[level_nr].cdim));
+    //int cdim2[3] = {levels[level_nr].cdim, levels[level_nr].cdim, levels[level_nr].cdim};
+    //int cid = cell_getid(cdim2, x_loc, y_loc, z_loc);
+    //fprintf(file_swift_density1, "%.15g \n", c->CIC_density);
+  //}
+  //fclose(file_swift_density1);
+  //message("Exported the grid density data.");
+  //sleep(5);
+
+  /* Hide first oct of the 16^3 grid */
+  /*message("Hiding first oct");
+  for (int i=0; i<8; i++) {
+    cells_top[0].progeny[i]->parent = NULL;
+    for (int j=0; j<8; j++) {
+      cells_top[0].progeny[i]->progeny[j] = NULL;
+    }
+    cells_top[0].progeny[i]->neighbours[0]->neighbours[1] = NULL;
+    cells_top[0].progeny[i]->neighbours[0] = NULL;
+    cells_top[0].progeny[i]->neighbours[1]->neighbours[0] = NULL;
+    cells_top[0].progeny[i]->neighbours[1] = NULL;
+    cells_top[0].progeny[i]->neighbours[2]->neighbours[3] = NULL;
+    cells_top[0].progeny[i]->neighbours[2] = NULL;
+    cells_top[0].progeny[i]->neighbours[3]->neighbours[2] = NULL;
+    cells_top[0].progeny[i]->neighbours[3] = NULL;
+    cells_top[0].progeny[i]->neighbours[4]->neighbours[5] = NULL;
+    cells_top[0].progeny[i]->neighbours[4] = NULL;
+    cells_top[0].progeny[i]->neighbours[5]->neighbours[4] = NULL;
+    cells_top[0].progeny[i]->neighbours[5] = NULL;
+ 
+    cells_top[0].progeny[i] = NULL;
+    cells_top[0].split = 0;
+  }
+  cells_top[0].maxdepth = 0;
+  message("Successfully hid oct");*/
 
   /* Check that the densities are the same for the existing cells */
   //double fac = box_size/16;
@@ -3309,21 +3350,21 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
   
   potential_to_gparts(s, min_depth, max_depth, levels);
   
-  //message("Exporting AMR potential particle data");
-  //FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/full_grid_check/AMR_pot_split1.txt", "w");
-  //for (int i=min_depth; i<max_depth+1; i++) {
-    //for (int j=0; j<levels[i].cell_count; j++) {
-      //if (levels[i].cells[j]->split) continue;
-      //for (int k=0; k<levels[i].cells[j]->grav.count; k++) {
-        //struct gpart p = levels[i].cells[j]->grav.parts[k];
+  message("Exporting AMR potential particle data");
+  FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/full_grid_check2/AMR_pot_split5.txt", "w");
+  for (int i=min_depth; i<max_depth+1; i++) {
+    for (int j=0; j<levels[i].cell_count; j++) {
+      if (levels[i].cells[j]->split) continue;
+      for (int k=0; k<levels[i].cells[j]->grav.count; k++) {
+        struct gpart p = levels[i].cells[j]->grav.parts[k];
         //fprintf(file_swift_density, "%.15g \n", levels[1].cells[i]->);
-        //fprintf(file_swift_density, "%.15g %.15g %.15g %.15g %d \n", p.potential_mesh, p.x[0], p.x[1], p.x[2], levels[i].depth);
-      //}
-    //}
-  //}
-  //fclose(file_swift_density);
-  //message("Exported the particle potential data.");
-  //sleep(5);
+        fprintf(file_swift_density, "%.15g %.15g %.15g %.15g %d \n", p.potential_mesh, p.x[0], p.x[1], p.x[2], levels[i].depth);
+      }
+    }
+  }
+  fclose(file_swift_density);
+  message("Exported the particle potential data.");
+  sleep(5);
 
   /* Free memory of the pointer array to the cells */
   for (int i=0; i<max_depth+1; i++) {
@@ -3891,6 +3932,11 @@ void mark_neighbours(struct space *s, int min_depth, struct AMR_levels *level, s
     level->cells[cell_getid(cdim, cell_i, j_min, cell_k)]->refine = 1;
     level->cells[cell_getid(cdim, cell_i, cell_j, k_plus)]->refine = 1;
     level->cells[cell_getid(cdim, cell_i, cell_j, k_min)]->refine = 1;
+    
+    level->cells[cell_getid(cdim, i_plus, j_plus, cell_k)]->refine = 1;
+    level->cells[cell_getid(cdim, i_plus, cell_j, k_plus)]->refine = 1;
+    level->cells[cell_getid(cdim, cell_i, j_plus, k_plus)]->refine = 1;
+    level->cells[cell_getid(cdim, i_plus, j_plus, k_plus)]->refine = 1;
 
     //level->cells[cell_getid(cdim, i_plus, cell_j, cell_k)]->refine2 = 1;
     //level->cells[cell_getid(cdim, i_min, cell_j, cell_k)]->refine2 = 1;
@@ -3904,8 +3950,37 @@ void mark_neighbours(struct space *s, int min_depth, struct AMR_levels *level, s
     for (int i=0; i<6; i++) {
       if (curr_cell->neighbours[i] != NULL) curr_cell->neighbours[i]->refine = 1;
     }
+    if (curr_cell->neighbours[0] != NULL) {
+      if (curr_cell->neighbours[0]->neighbours[2] != NULL) {
+        curr_cell->neighbours[0]->neighbours[2]->refine = 1;
+        if (curr_cell->neighbours[0]->neighbours[2]->neighbours[4] != NULL) curr_cell->neighbours[0]->neighbours[2]->neighbours[4]->refine = 1;
+      }
+      if (curr_cell->neighbours[0]->neighbours[4] != NULL) {
+        curr_cell->neighbours[0]->neighbours[4]->refine = 1;
+        if (curr_cell->neighbours[0]->neighbours[4]->neighbours[2] != NULL) curr_cell->neighbours[0]->neighbours[4]->neighbours[2]->refine = 1;
+      }
+    }
+    if (curr_cell->neighbours[2] != NULL) {
+      if (curr_cell->neighbours[2]->neighbours[0] != NULL) {
+        curr_cell->neighbours[2]->neighbours[0]->refine = 1;
+        if (curr_cell->neighbours[2]->neighbours[0]->neighbours[4] != NULL) curr_cell->neighbours[2]->neighbours[0]->neighbours[4]->refine = 1;
+      }
+      if (curr_cell->neighbours[2]->neighbours[4] != NULL) {
+        curr_cell->neighbours[2]->neighbours[4]->refine = 1;
+        if (curr_cell->neighbours[2]->neighbours[4]->neighbours[0] != NULL) curr_cell->neighbours[2]->neighbours[4]->neighbours[0]->refine = 1;
+      }
+    }
+    if (curr_cell->neighbours[4] != NULL) {
+      if (curr_cell->neighbours[4]->neighbours[0] != NULL) {
+        curr_cell->neighbours[4]->neighbours[0]->refine = 1;
+        if (curr_cell->neighbours[4]->neighbours[0]->neighbours[2] != NULL) curr_cell->neighbours[4]->neighbours[0]->neighbours[2]->refine = 1;
+      }
+      if (curr_cell->neighbours[4]->neighbours[2] != NULL) {
+        curr_cell->neighbours[4]->neighbours[2]->refine = 1;
+        if (curr_cell->neighbours[4]->neighbours[2]->neighbours[0] != NULL) curr_cell->neighbours[4]->neighbours[2]->neighbours[0]->refine = 1;
+      }
+    }
   }
-
 }
 
 int search_neighbours(struct AMR_levels *level, double search_loc[3], double fac) {
@@ -3981,14 +4056,14 @@ void get_patch_density(struct space *s, struct AMR_levels *level) {
 
   // Find the total mass of all particles
   double mass_tot = 0.;
-  size_t level_cells = N*N*N;
+  size_t level_cells = (size_t) N*N*N;
   for (size_t i=0; i<s->nr_gparts; ++i) {
     mass_tot += s->gparts[i].mass;
   }
   mean_density = mass_tot/level_cells;
   //mean_density = sum/nr_cells;
   level->mean_density = mean_density;
-  message("The mean density of level %d is %lf", level->depth, level->mean_density);
+  message("The mean density of level %d is %lf and the cell count was %d", level->depth, level->mean_density, nr_cells);
   for (int i = 0; i < nr_cells; i++) {
     if (mean_density >0.) level->cells[i]->CIC_density = (level->cells[i]->CIC_density)/mean_density;
   }
@@ -3999,7 +4074,8 @@ void get_patch_density(struct space *s, struct AMR_levels *level) {
   //}
   //mean_density = sum/nr_cells;
   //level->mean_density *= 4.*M_PI*nr_cells/(box_size*box_size*box_size);
-  level->mean_density *= 4.*M_PI*N*N*N/(box_size*box_size*box_size);
+  double fac = N/box_size;
+  level->mean_density *= 4.*M_PI*fac*fac*fac;
 }
 
 void perform_multigrid_acceleration(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int current_depth) {
@@ -4072,7 +4148,7 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
   int count = 0;
   double pot_mean = 0.;
   double level_weight[current_depth+1];
-  size_t tot_weight = levels[current_depth].cdim * levels[current_depth].cdim * levels[current_depth].cdim;
+  size_t tot_weight = (size_t) levels[current_depth].cdim * levels[current_depth].cdim * levels[current_depth].cdim;
   level_weight[current_depth] = 1./tot_weight;
   for (int i=0; i<current_depth+1; i++) {
     if (i>0) level_weight[current_depth-i] = 8*level_weight[current_depth-i+1];
@@ -4756,7 +4832,7 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
 
     for (int j=0; j<6; j++) {
       if (fine->cells[i]->neighbours[j] == NULL) {
-        message("Neighbour %d not connected", j);
+        //message("Neighbour %d not connected", j);
         //if (cell_i == 0 && cell_j == 0 && cell_k == 1) message("Neighbour %d not connected", j);
         //message("Searching for neighbour %d for cell %d", j, i);
         int pre_smoothing = 0;
@@ -4923,15 +4999,22 @@ void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine) {
     double dx = (offset[0] > 0) ? 0.5 : 0.;
     double dy = (offset[1] > 0) ? 0.5 : 0.;
     double dz = (offset[2] > 0) ? 0.5 : 0.;
-    message("The offsets are (%lf, %lf, %lf) and we calculated (%lf,%lf,%lf)", offset[0], offset[1], offset[2], dx, dy, dz);
+    //message("The offsets are (%lf, %lf, %lf) and we calculated (%lf,%lf,%lf)", offset[0], offset[1], offset[2], dx, dy, dz);
 
+    if (parent->neighbours[0] == NULL) message("Neighbour 0 null for cell %d", i);
+    if (parent->neighbours[2] == NULL) message("Neighbour 2 null for cell %d", i);
+    if (parent->neighbours[4] == NULL) message("Neighbour 4 null for cell %d", i);
+    if (parent->neighbours[0]->neighbours[2] == NULL) message("Neighbour 0,2 null for cell %d", i);
+    if (parent->neighbours[0]->neighbours[4] == NULL) message("Neighbour 0,4 null for cell %d", i);
+    if (parent->neighbours[2]->neighbours[4] == NULL) message("Neighbour 2,4 null for cell %d", i);
+    if (parent->neighbours[0]->neighbours[2]->neighbours[4] == NULL) message("Neighbour 0,2,4 null for cell %d", i);
     child->CIC_potential = ((1.-dx)*(1.-dy)*(1.-dz)*parent->CIC_potential + dx*(1.-dy)*(1.-dz)*parent->neighbours[0]->CIC_potential
                               + (1.-dx)*dy*(1.-dz)*parent->neighbours[2]->CIC_potential + (1.-dx)*(1.-dy)*dz*parent->neighbours[4]->CIC_potential
                               + dx*dy*(1.-dz)*parent->neighbours[0]->neighbours[2]->CIC_potential + dx*(1.-dy)*dz*parent->neighbours[0]->neighbours[4]->CIC_potential
                               + (1.-dx)*dy*dz*parent->neighbours[2]->neighbours[4]->CIC_potential+ dx*dy*dz*parent->neighbours[0]->neighbours[2]->neighbours[4]->CIC_potential);
 
     if (!child->ghost) child->mask_value = 1.;
-    else message("Set ghost at loc (%lf, %lf, %lf) to value %lf", child->loc[0], child->loc[1], child->loc[2], child->CIC_potential);
+    //else message("Set ghost at loc (%lf, %lf, %lf) to value %lf", child->loc[0], child->loc[1], child->loc[2], child->CIC_potential);
   }
 }
 
@@ -5175,14 +5258,15 @@ void extract_lower(struct cell *parent, int *current_depth, int extract_depth, s
   *current_depth -= 1;
 }
 
-int perform_uniform_calculation(struct space *s, struct cell *cells_top, int N_levels) {
+int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]) {
   message("Going to do the uniform calculation");
   const int N_min = s->cdim[0];
   const double box_size = s->dim[0];
-  if (N_levels < 0) {
+  if (min_depth < 0) {
     error("N_levels must be >= 0");
   }
-  int array_size = N_levels+1;
+  int array_size = min_depth+1;
+  message("Array size is %d", array_size);
 
   /* Get array of the different grid sizes */
   int n = N_min;
@@ -5206,6 +5290,7 @@ int perform_uniform_calculation(struct space *s, struct cell *cells_top, int N_l
 
   /* Initialise arrays for density calculation. */
   for (int i=0; i<array_size; i++) {
+    message("Doing i=%d",i);
     //cells_uniform[i] = calloc()
     rho[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
     pot[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
@@ -5213,29 +5298,12 @@ int perform_uniform_calculation(struct space *s, struct cell *cells_top, int N_l
     if (!rho[i]) error("Uninitialised value");
     if (!pot[i]) error("Uninitialised value");
 
-    //if (i==2) break;
     /* Pass density information from cells to uniform grid */
-    //They should be equal for the top grid, so we only have to worry about uniform finer levels
-    if (i==0) {
-      for (int j=0;j<N_min*N_min*N_min;j++) {
-        rho[i][j] = cells_top[j].CIC_density;
-      }
+    for (int j=0; j<grid_sizes[i]*grid_sizes[i]*grid_sizes[i]; j++) {
+      rho[i][j] = levels[i].cells[j]->CIC_density;
     }
-    //Worry about uniform finer levels
-    else {
-      level = 0;
-      double fac = box_size/grid_sizes[i];
-      for (int j=0; j<N_min*N_min*N_min;j++) {
-        int cdim_sort[3] = {grid_sizes[i], grid_sizes[i], grid_sizes[i]};
-        //message("The current cell factor is %lf", fac);
-        sort_lower_level(&cells_top[j], rho[i], fac, i, &level, cdim_sort);
-      }
-      //for (int j=0;j<N_min*N_min*N_min;j++) {
-        //message("The density assigned to array index %d is %lf", j,rho[i][j]);
-      //}
-    }
-    
-    if (i==1) {
+
+    /*if (i==1) {
       struct cic_mapper_data data; 
       data.N = grid_sizes[i];
       data.rho = rho[i];
@@ -5245,7 +5313,8 @@ int perform_uniform_calculation(struct space *s, struct cell *cells_top, int N_l
       data.dim[2] = s->dim[2];
       int cdim[3] = {grid_sizes[i], grid_sizes[i], grid_sizes[i]};
       get_pm_potential(&data, grid_sizes[i], box_size, &s->e->threadpool, cdim);
-    }
+    }*/
+    message("Getting mean density for i=%d", i);
     mean_density[i] = get_mean_density(rho[i], grid_sizes[i]);
   }
 
@@ -5283,15 +5352,10 @@ int perform_uniform_calculation(struct space *s, struct cell *cells_top, int N_l
   }
 
   /* Now pass the information calculated on the grid back to the cells */
-  //Don't worry about the top level
-  for (int j=0;j<N_min*N_min*N_min;j++) {
-    cells_top[j].CIC_potential = pot[0][j];
-  }
-  //Tree-search for finer levels
-  for (int i=1;i<array_size;i++) {
-    message("Assigning potential to cells for level %d", i);
-    double fac = box_size/grid_sizes[i];
-    potential_to_cells(cells_top, pot[i], grid_sizes[i], grid_sizes[0], fac, i);
+  for (int i=0; i<array_size; i++) {
+    for (int j=0; j<grid_sizes[i]*grid_sizes[i]*grid_sizes[i]; j++) {
+      levels[i].cells[j]->CIC_potential = pot[i][j];
+    }
   }
 
   for (int i=0; i<array_size; i++) {
@@ -5299,7 +5363,7 @@ int perform_uniform_calculation(struct space *s, struct cell *cells_top, int N_l
     free(pot[i]);
   }
 
-  return grid_sizes[N_levels];
+  return grid_sizes[min_depth];
 }
 
 void potential_to_cells(struct cell *cells_top, double *pot, int grid_size, double grid_top, double fac, int level) {
@@ -6175,7 +6239,8 @@ void apply_multigrid(double *density, double *pot, int cdim[3], double mean_dens
 
   double delta = box_size/N;
   double residual; 
-  mean_density *= 4.*M_PI*N*N*N/(box_size*box_size*box_size);
+  double fac2 = N/box_size;
+  mean_density *= 4.*M_PI*fac2*fac2*fac2;
   get_residual(pot, density, cdim, mean_density, &residual, delta);
   message("The first residual is %lf", residual);
   double tolerance = 10e-6; //Choose reasonable value here
@@ -6258,7 +6323,7 @@ void apply_multigrid(double *density, double *pot, int cdim[3], double mean_dens
   free(residual_array);
 
   //Set mean of potential to zero
-  /*sum = 0.;
+  sum = 0.;
   for (int i = 0; i < N*N*N; i++) {
       sum += pot[i];
   }
@@ -6269,7 +6334,7 @@ void apply_multigrid(double *density, double *pot, int cdim[3], double mean_dens
   double potential_sum = 0.;
   for (int i =0; i<N*N*N; i++)
     potential_sum += fabs(pot[i]);
-  message("The mean absolute value of the potential is %lf", potential_sum/(N*N*N));*/
+  message("The mean absolute value of the potential is %lf", potential_sum/(N*N*N));
 
   //if (N==16) {
   //Export the potential array to a .txt file to be read in Python

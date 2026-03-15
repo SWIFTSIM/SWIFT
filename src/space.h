@@ -542,8 +542,8 @@ void test_density_assignment(struct cell *cells_top, int nr_cells, const double 
 //void search_tree_test(struct gpart *part, double pbox[6], struct cell *cells_top, double width, int nr_topcells, double *CIC_overlap, int *CIC_cell, int *counter);
 void get_CIC_results(struct gpart *gp, struct cell *cells_top, struct space *s);
 //void get_AMR_results(struct gpart *gp, struct cell *cells_top, struct space *s, double *CIC_overlap, int *CIC_cell);
-//int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
-int perform_uniform_calculation(struct space *s, struct cell *cells_top, int N_levels);
+int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
+//int perform_uniform_calculation(struct space *s, struct cell *cells_top, int N_levels);
 void sort_lower_level(struct cell *parent, double *rho, double fac, int max_level, int *current_level, int cdim[3]);
 void potential_to_cells(struct cell *cells_top, double *pot, int grid_size, double grid_top, double fac, int level);
 void to_lower_level(struct cell *cell, double pot_cell[6], double pot, int level, int *current_level);
