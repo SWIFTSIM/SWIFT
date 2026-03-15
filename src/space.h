@@ -589,6 +589,7 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
 double CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize);
 void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_index, int link_nr);
 void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine);
-void free_gparts_in_cells(struct cell *c);
+void free_gparts_in_cells(struct cell *c, int *level);
 void init_test_single_particle(struct engine *e);
+void get_progeny(struct space *s, struct cell *c, int deisred_depth, int *curr_depth);
 #endif /* SWIFT_SPACE_H */

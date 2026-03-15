@@ -1625,8 +1625,10 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Initialise the particles */
+    message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
+    message("Going to remove particles");
     init_test_single_particle(&e);
 
     //double mass = 0.;

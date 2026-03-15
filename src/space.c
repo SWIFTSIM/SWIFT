@@ -3029,45 +3029,119 @@ void space_check_unskip_flags(const struct space *s) {
   //int cdim;
 //};
 
-void free_gparts_in_cells(struct cell *c) {
+void free_gparts_in_cells(struct cell *c, int *level) {
   // Free gparts array if it exists
   if (c->grav.parts != NULL) {
-      swift_free("gparts", c->grav.parts);
-      c->grav.parts = NULL;
-      c->grav.count = 0;
+    c->grav.parts = NULL;
+    c->grav.count = 0;
   }
   // Recursively free gparts in daughter cells
-  if (c->progeny != NULL) {
+  if (c->split) {
+    //message("Cell split");
     for (int i = 0; i < 8; ++i) {
-      free_gparts_in_cells(c->progeny[i]);
+      if (c->progeny[i] == NULL) {
+        message("Child %d does not exist", i);
+        continue;
+      } 
+      //message("Going to remove parts from child %d", i);
+      *level += 1;
+      free_gparts_in_cells(c->progeny[i], level);
     }
   }
+  *level -= 1;
 }
 
 void init_test_single_particle(struct engine *e) {
+  message("Reached function");
   /* Clean current array of particles */
   struct space *s = e->s;
   int nr_cells = s->nr_cells;
-  for (int i=0; i<nr_cells; i++) {
-    free_gparts_in_cells(&(s->cells_top[i]));
-  }
   swift_free("gparts", s->gparts);
+  for (int i=0; i<nr_cells; i++) {
+    int level = 0;
+    free_gparts_in_cells(&(s->cells_top[i]), &level);
+  }
   s->gparts = NULL;
   s->nr_gparts = 0;  
 
   /* Set the single particle to the desired state */
+  message("Getting particle");
   s->nr_gparts = 1;
   s->gparts = calloc(1, sizeof(struct gpart*));
   struct gpart *part = &s->gparts[0];
 
   //Put it in the middle of the box
+  message("Initialising particle");
   part->mass = 50.;
   part->x[0] = s->dim[0]/2;
   part->x[1] = s->dim[0]/2;
   part->x[2] = s->dim[0]/2;
 
-  /* Let the cell rebuild */
-  space_rebuild(s, 0,1 );
+  /* Let the cells rebuild */
+  message("Going to rebuild");
+  engine_rebuild(e, 1, 0);
+
+  /* Find the cell with the particle and split it 5 times */
+  for (int i=0; i<nr_cells; i++) {
+    struct cell *c = &s->cells_top[i];
+    c->split = 0;
+    if (c->split) error("Cell is split when it should not be");
+    c->maxdepth = 0;
+    int nr_gparts = c->grav.count;
+    if (nr_gparts > 0) { 
+      message("The gpart was found in cell %d with location (%lf, %lf, %lf)", i, c->loc[0], c->loc[1], c->loc[2]);
+      int desired_depth = 5;
+      int curr_depth = 0;
+      get_progeny(s, c, desired_depth, &curr_depth);
+      c->maxdepth = 5;
+    }
+  }
+  //sleep(15);
+}
+
+void get_progeny(struct space *s, struct cell *c, int desired_depth, int *curr_depth) {
+  if (*curr_depth < desired_depth) {
+    space_getcells(s, 8, c->progeny, 0, 0, 0);
+    c->split = 1;
+    for (int k=0; k<8; k++) {
+      struct cell *child = c->progeny[k];
+      child->loc[0] = c->loc[0];
+      child->loc[1] = c->loc[1];
+      child->loc[2] = c->loc[2];
+
+      double width = c->width[0]/2;
+      child->width[0] = width;
+      child->width[1] = width;
+      child->width[2] = width;
+
+      if (k & 4) {
+        child->loc[0] += child->width[0];
+        c->progeny[k]->neighbours[1] = c->progeny[k-4];
+        c->progeny[k-4]->neighbours[0] = c->progeny[k];
+      }
+      if (k & 2) {
+        child->loc[1] += child->width[1];
+        c->progeny[k]->neighbours[3] = c->progeny[k-2];
+        c->progeny[k-2]->neighbours[2] = c->progeny[k];
+      }
+      if (k & 1) {
+        child->loc[2] += child->width[2];
+        c->progeny[k]->neighbours[5] = c->progeny[k-1];
+        c->progeny[k-1]->neighbours[4] = c->progeny[k];
+      }
+      child->parent = c;
+    }
+    /* Put the particles in the cell */
+    if (c->hydro.count != 0 || c->grav.count != 0 || c->stars.count != 0 ||
+    c->black_holes.count != 0 || c->sinks.count != 0) {
+      divide_particles(c, s);
+    }
+    for (int k=0; k<8; k++) {
+      *curr_depth += 1;
+      get_progeny(s, c->progeny[k], desired_depth, curr_depth);
+    }
+  }
+  *curr_depth -= 1;
 }
 
 void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
@@ -3349,22 +3423,6 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
   //sleep(5);
   
   potential_to_gparts(s, min_depth, max_depth, levels);
-  
-  message("Exporting AMR potential particle data");
-  FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/full_grid_check2/AMR_pot_split5.txt", "w");
-  for (int i=min_depth; i<max_depth+1; i++) {
-    for (int j=0; j<levels[i].cell_count; j++) {
-      if (levels[i].cells[j]->split) continue;
-      for (int k=0; k<levels[i].cells[j]->grav.count; k++) {
-        struct gpart p = levels[i].cells[j]->grav.parts[k];
-        //fprintf(file_swift_density, "%.15g \n", levels[1].cells[i]->);
-        fprintf(file_swift_density, "%.15g %.15g %.15g %.15g %d \n", p.potential_mesh, p.x[0], p.x[1], p.x[2], levels[i].depth);
-      }
-    }
-  }
-  fclose(file_swift_density);
-  message("Exported the particle potential data.");
-  sleep(5);
 
   /* Free memory of the pointer array to the cells */
   for (int i=0; i<max_depth+1; i++) {
@@ -3932,53 +3990,11 @@ void mark_neighbours(struct space *s, int min_depth, struct AMR_levels *level, s
     level->cells[cell_getid(cdim, cell_i, j_min, cell_k)]->refine = 1;
     level->cells[cell_getid(cdim, cell_i, cell_j, k_plus)]->refine = 1;
     level->cells[cell_getid(cdim, cell_i, cell_j, k_min)]->refine = 1;
-    
-    level->cells[cell_getid(cdim, i_plus, j_plus, cell_k)]->refine = 1;
-    level->cells[cell_getid(cdim, i_plus, cell_j, k_plus)]->refine = 1;
-    level->cells[cell_getid(cdim, cell_i, j_plus, k_plus)]->refine = 1;
-    level->cells[cell_getid(cdim, i_plus, j_plus, k_plus)]->refine = 1;
-
-    //level->cells[cell_getid(cdim, i_plus, cell_j, cell_k)]->refine2 = 1;
-    //level->cells[cell_getid(cdim, i_min, cell_j, cell_k)]->refine2 = 1;
-    //level->cells[cell_getid(cdim, cell_i, j_plus, cell_k)]->refine2 = 1;
-    //level->cells[cell_getid(cdim, cell_i, j_min, cell_k)]->refine2 = 1;
-    //level->cells[cell_getid(cdim, cell_i, cell_j, k_plus)]->refine2 = 1;
-    //level->cells[cell_getid(cdim, cell_i, cell_j, k_min)]->refine2 = 1;
   }
 
   else {
     for (int i=0; i<6; i++) {
       if (curr_cell->neighbours[i] != NULL) curr_cell->neighbours[i]->refine = 1;
-    }
-    if (curr_cell->neighbours[0] != NULL) {
-      if (curr_cell->neighbours[0]->neighbours[2] != NULL) {
-        curr_cell->neighbours[0]->neighbours[2]->refine = 1;
-        if (curr_cell->neighbours[0]->neighbours[2]->neighbours[4] != NULL) curr_cell->neighbours[0]->neighbours[2]->neighbours[4]->refine = 1;
-      }
-      if (curr_cell->neighbours[0]->neighbours[4] != NULL) {
-        curr_cell->neighbours[0]->neighbours[4]->refine = 1;
-        if (curr_cell->neighbours[0]->neighbours[4]->neighbours[2] != NULL) curr_cell->neighbours[0]->neighbours[4]->neighbours[2]->refine = 1;
-      }
-    }
-    if (curr_cell->neighbours[2] != NULL) {
-      if (curr_cell->neighbours[2]->neighbours[0] != NULL) {
-        curr_cell->neighbours[2]->neighbours[0]->refine = 1;
-        if (curr_cell->neighbours[2]->neighbours[0]->neighbours[4] != NULL) curr_cell->neighbours[2]->neighbours[0]->neighbours[4]->refine = 1;
-      }
-      if (curr_cell->neighbours[2]->neighbours[4] != NULL) {
-        curr_cell->neighbours[2]->neighbours[4]->refine = 1;
-        if (curr_cell->neighbours[2]->neighbours[4]->neighbours[0] != NULL) curr_cell->neighbours[2]->neighbours[4]->neighbours[0]->refine = 1;
-      }
-    }
-    if (curr_cell->neighbours[4] != NULL) {
-      if (curr_cell->neighbours[4]->neighbours[0] != NULL) {
-        curr_cell->neighbours[4]->neighbours[0]->refine = 1;
-        if (curr_cell->neighbours[4]->neighbours[0]->neighbours[2] != NULL) curr_cell->neighbours[4]->neighbours[0]->neighbours[2]->refine = 1;
-      }
-      if (curr_cell->neighbours[4]->neighbours[2] != NULL) {
-        curr_cell->neighbours[4]->neighbours[2]->refine = 1;
-        if (curr_cell->neighbours[4]->neighbours[2]->neighbours[0] != NULL) curr_cell->neighbours[4]->neighbours[2]->neighbours[0]->refine = 1;
-      }
     }
   }
 }
@@ -4142,31 +4158,6 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
     if (counter_post_smoothing % 100 == 0) message("Did %d steps in post-smoothing and the residual is %lf", counter_post_smoothing, residual);
   }
   message("Had to do post-smoothing on level %d for %d steps and the residual is %lf", current_depth, counter_post_smoothing, residual);
-  sleep(15);
-
-  /* Find the mean potential on the grid */
-  int count = 0;
-  double pot_mean = 0.;
-  double level_weight[current_depth+1];
-  size_t tot_weight = (size_t) levels[current_depth].cdim * levels[current_depth].cdim * levels[current_depth].cdim;
-  level_weight[current_depth] = 1./tot_weight;
-  for (int i=0; i<current_depth+1; i++) {
-    if (i>0) level_weight[current_depth-i] = 8*level_weight[current_depth-i+1];
-    message("Level %d has weight %lf", current_depth-i, level_weight[current_depth-i]);
-    for (int j=0; j<levels[current_depth - i].cell_count; j++) {
-      struct cell *c = levels[current_depth - i].cells[j];
-      if (c->split && i>0) continue; //Only sum the potential if the cell is not split
-      pot_mean += c->CIC_potential * level_weight[current_depth-i];
-      if (i==0) count +=1;
-      if (i==1) count +=8;
-    }
-  }
-  message("The mean of the potential on the grid is %lf and the count was %d", pot_mean, count);
-
-  /* Subtract the mean potential from the values on the finest level */
-  for (int i=0; i<levels[current_depth].cell_count; i++) {
-    levels[current_depth].cells[i]->CIC_potential -= pot_mean;
-  }
 
   //Set mean of potential to zero if uniform grid
   if (levels[current_depth].cell_count == levels[current_depth].cdim * levels[current_depth].cdim * levels[current_depth].cdim) { //I.e. secretly uniform
@@ -4926,7 +4917,7 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
 
   //int cdimH[3] = {gridsize/2, gridsize/2, gridsize/2}; //For finding cells on the coarse grid
 
-  int trilinear = 1;
+  int trilinear = 0;
 
   if (trilinear) {
     interpolate_trilinear(coarse, fine);
@@ -5495,12 +5486,13 @@ void assign_densities(struct cell *cells_top, struct threadpool *tp, int nr_cell
     split = cells_top[i].split;
     //cells_top[i].CIC_density = 0.;
     if (split && level_check!=0) { 
+      //message("Going to do this");
       for (int j=0;j<8;j++) {
         check_lower_level(cells_top[i].progeny[j], cells_top, boxsize, nr_cells, &level, level_check);
       }
     }
     else {
-      message("Initialising tree search at level %d", level);
+      //message("Initialising tree search at level %d", level);
       //message("At least one top level cell is not split");
       int nr_gparts = cells_top[i].grav.count;
       for (int j=0; j<nr_gparts; j++) {
