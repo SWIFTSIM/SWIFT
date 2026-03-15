@@ -201,7 +201,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 1;
 
     /* Create the cell's progeny. */
-    space_getcells(s, 8, c->progeny, tpid);
+    space_getcells(s, 8, c->progeny, tpid, 0, 0);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       cp->hydro.count = 0;
@@ -229,9 +229,21 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->dmin = c->dmin / 2;
       cp->h_min_allowed = cp->dmin * 0.5 * (1. / kernel_gamma);
       cp->h_max_allowed = cp->dmin * (1. / kernel_gamma);
-      if (k & 4) cp->loc[0] += cp->width[0];
-      if (k & 2) cp->loc[1] += cp->width[1];
-      if (k & 1) cp->loc[2] += cp->width[2];
+      if (k & 4) {
+        cp->loc[0] += cp->width[0];
+        c->progeny[k]->neighbours[1] = c->progeny[k-4];
+        c->progeny[k-4]->neighbours[0] = c->progeny[k];
+      }
+      if (k & 2) {
+        cp->loc[1] += cp->width[1];
+        c->progeny[k]->neighbours[3] = c->progeny[k-2];
+        c->progeny[k-2]->neighbours[2] = c->progeny[k];
+      }
+      if (k & 1) {
+        cp->loc[2] += cp->width[2];
+        c->progeny[k]->neighbours[5] = c->progeny[k-1];
+        c->progeny[k-1]->neighbours[4] = c->progeny[k];
+      }
       cp->depth = c->depth + 1;
       cp->split = 0;
       cp->hydro.h_max = 0.f;
@@ -283,8 +295,26 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
           cp->black_holes.count == 0 && cp->sinks.count == 0) {
 
-        space_recycle(s, cp);
-        c->progeny[k] = NULL;
+        //space_recycle(s, cp);
+        //c->progeny[k] = NULL;
+
+        /* Deal with the multipole */
+        if (s->with_self_gravity) {
+
+          /* Reset everything */
+          gravity_reset(cp->grav.multipole);
+
+          cp->grav.multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+          cp->grav.multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+          cp->grav.multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+          cp->grav.multipole->r_max = 0.;
+
+          cp->grav.multipole->r_max_rebuild = cp->grav.multipole->r_max;
+          cp->grav.multipole->CoM_rebuild[0] = cp->grav.multipole->CoM[0];
+          cp->grav.multipole->CoM_rebuild[1] = cp->grav.multipole->CoM[1];
+          cp->grav.multipole->CoM_rebuild[2] = cp->grav.multipole->CoM[2];
+
+        } 
 
       } else {
 

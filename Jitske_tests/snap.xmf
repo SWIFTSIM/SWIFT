@@ -1,0 +1,42 @@
+<?xml version="1.0" ?> 
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []> 
+<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.1">
+<Domain>
+<Grid Name="TimeSeries" GridType="Collection" CollectionType="Temporal">
+
+
+<!-- XMF description for file: ./snap_0000.hdf5 -->
+<Grid GridType="Collection" CollectionType="Spatial">
+<Time Type="Single" Value="0.000000"/>
+
+<Grid Name="DM" GridType="Uniform">
+<Topology TopologyType="Polyvertex" Dimensions="262144"/>
+<Geometry GeometryType="XYZ">
+<DataItem Dimensions="262144 3" NumberType="Double" Precision="8" Format="HDF">snap_0000.hdf5:/PartType1/Coordinates</DataItem>
+</Geometry>
+ <!-- Done geometry for DM, start of particle fields list -->
+<Attribute Name="Coordinates" AttributeType="Vector" Center="Node">
+<DataItem Dimensions="262144 3" NumberType="Float" Precision="8" Format="HDF">snap_0000.hdf5:/PartType1/Coordinates</DataItem>
+</Attribute>
+<Attribute Name="Velocities" AttributeType="Vector" Center="Node">
+<DataItem Dimensions="262144 3" NumberType="Float" Precision="4" Format="HDF">snap_0000.hdf5:/PartType1/Velocities</DataItem>
+</Attribute>
+<Attribute Name="Masses" AttributeType="Scalar" Center="Node">
+<DataItem Dimensions="262144" NumberType="Float" Precision="4" Format="HDF">snap_0000.hdf5:/PartType1/Masses</DataItem>
+</Attribute>
+<Attribute Name="ParticleIDs" AttributeType="Scalar" Center="Node">
+<DataItem Dimensions="262144" NumberType="Int" Precision="8" Format="HDF">snap_0000.hdf5:/PartType1/ParticleIDs</DataItem>
+</Attribute>
+<Attribute Name="Softenings" AttributeType="Scalar" Center="Node">
+<DataItem Dimensions="262144" NumberType="Float" Precision="4" Format="HDF">snap_0000.hdf5:/PartType1/Softenings</DataItem>
+</Attribute>
+<Attribute Name="Potentials" AttributeType="Scalar" Center="Node">
+<DataItem Dimensions="262144" NumberType="Float" Precision="4" Format="HDF">snap_0000.hdf5:/PartType1/Potentials</DataItem>
+</Attribute>
+</Grid> <!-- End of meta-data for parttype=DM -->
+
+</Grid> <!-- End of meta-data for output=0000, time=0.000000 -->
+
+</Grid> <!-- timeSeries -->
+</Domain>
+</Xdmf>
