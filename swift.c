@@ -1627,6 +1627,60 @@ int main(int argc, char *argv[]) {
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
+    init_test_single_particle(&e);
+
+    //double mass = 0.;
+    //int nr_parts = (int) s.nr_gparts;
+    //message("the number of particles is %d", nr_parts);
+    //for (int i=0; i<nr_parts; i++) {
+      //mass += s.gparts[i].mass;
+    //}
+    //message("The total particle mass is %lf", mass);
+    
+
+    //message("Exporting mesh density data");
+    //FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/full_grid_check2/full_pot_split5_soft889_mesh256.txt", "w");
+    //for (int i=0; i<s.nr_cells; i++) {
+      //for (int j = 0; j < s.cells_top[i].grav.count; j++) {
+        //struct gpart p = s.cells_top[i].grav.parts[j];
+        //fprintf(file_swift_density, "%.15g %.15g %.15g %.15g \n", p.potential, p.x[0], p.x[1], p.x[2]);
+      //}
+    //}
+    //fclose(file_swift_density);
+    //message("Exported the regular particle potential data.");
+    //sleep(5);
+
+    //message("Exporting FFT potential particle data");
+    //FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/FFT_64_particles.txt", "w");
+    //for (int i=0; i<e.s->nr_cells; i++) {
+      //for (int j = 0; j < e.s->cells_top[i].grav.count; j++) {
+        //struct gpart part = e.s->cells_top[i].grav.parts[j];
+        //fprintf(file_swift_density, "%.15g %.15g %.15g %.15g \n", part.potential_mesh, part.x[0], part.x[1], part.x[2]);
+        
+        //else {
+          //fprintf(file_swift_density, "%lf\n", 30000.);
+        //}
+      //}
+    //}
+    //fclose(file_swift_density);
+    //m/essage("Exported the particle potential data.");
+    //sleep(5);
+
+    //space_get_density(&s, params, &e, 0);
+    space_get_AMR_density(&s, &e, 3000);
+
+    //space_get_density(&s, params, &e, 1);
+    //space_apply_FMG(&s, &e);
+    //message("We get called");
+    //message("Reached the right part of the code");
+    //sleep(3); 
+    //space_apply_FMG(&s, &e);
+    //pm_mesh_compute_potential(e.mesh, e.s, &e.threadpool, e.verbose);
+    //message("Done");
+    //gravity_export_force(e.s, &e);
+
+    //message("maximum depth is %d.", s.maxdepth);
+
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
     if (with_cosmology && with_self_gravity && !dry_run) {
@@ -1735,6 +1789,8 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+//error("We don't want to do any time integration now");
+
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0;
@@ -1746,6 +1802,12 @@ int main(int argc, char *argv[]) {
 
     /* Take a step. */
     force_stop = engine_step(&e);
+
+    //pm_mesh_compute_potential(e.mesh, e.s, &e.threadpool, e.verbose);
+    //space_apply_FMG(&s, &e);
+    //message("Done");
+    //sleep(5);
+    //gravity_export_force(e.s, &e);
 
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);

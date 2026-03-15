@@ -1,0 +1,14 @@
+# Host: styx.lorentz.leidenuniv.nl
+# Branch: master
+# Revision: v2025.04-54-g4738b923-dirty
+# Compiler: GCC, Version: 11.5.0 
+# Number of threads: 8
+# Number of MPI ranks: 1
+# Hydrodynamic scheme: SPHENIX (Borrow+ 2020)
+# Hydrodynamic kernel: Cubic spline (M4)
+# No. of neighbours: 0.00 +/- 0.0000
+# Eta: 0.000000
+# Config: '--enable-debug'
+# CFLAGS: '-g -O0  -gdwarf -fvar-tracking-assignments -O3 -fomit-frame-pointer -malign-double -fstrict-aliasing -ffast-math -funroll-loops -march=core2 -mavx512vbmi -pthread -Wall -Wextra -Wno-unused-parameter -Wshadow -Werror -Wno-alloc-size-larger-than -Wstrict-prototypes'
+# Step Properties: Rebuild=1, Redistribute=2, Repartition=4, Statistics=8, Snapshot=16, Restarts=32 STF=64, FOF=128, mesh=256
+#   Step           Time Scale-factor     Redshift      Time-step Time-bins      Updates    g-Updates    s-Updates Sink-Updates    b-Updates  Wall-clock time [ms]  Props    Dead time [ms]

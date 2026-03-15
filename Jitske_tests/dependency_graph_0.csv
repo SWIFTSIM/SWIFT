@@ -1,0 +1,21 @@
+# v2025.04-54-g4738b923-dirty
+task_in,task_out,implicit_in,implicit_out,mpi_in,mpi_out,cluster_in,cluster_out,number_link,number_rank,task_in_is_top,task_in_is_hydro_super,task_in_is_grav_super,task_out_is_top,task_out_is_hydro_super,task_out_is_grav_super,cell_has_active_task
+self_grav,grav_down_in,0,1,0,0,Gravity,None,512,1,1,1,1,1,1,1,1
+pair_grav,grav_down_in,0,1,0,0,Gravity,None,13312,1,1,1,1,1,1,1,1
+init_grav,grav_long_range,0,0,0,0,None,Gravity,512,1,1,1,1,1,1,1,1
+init_grav,init_grav_out,0,1,0,0,None,None,512,1,1,1,1,1,1,1,1
+init_grav_out,init_grav_out,1,1,0,0,None,None,3024,1,0,0,0,0,0,0,1
+init_grav_out,self_grav,1,0,0,0,None,Gravity,512,1,0,0,0,1,1,1,1
+init_grav_out,pair_grav,1,0,0,0,None,Gravity,13312,1,0,0,0,1,1,1,1
+drift_gpart,drift_gpart_out,0,1,0,0,None,None,512,1,1,1,1,1,1,1,1
+drift_gpart_out,drift_gpart_out,1,1,0,0,None,None,3024,1,0,0,0,0,0,0,1
+drift_gpart_out,self_grav,1,0,0,0,None,Gravity,512,1,0,0,0,1,1,1,1
+drift_gpart_out,pair_grav,1,0,0,0,None,Gravity,13312,1,0,0,0,1,1,1,1
+kick2,timestep,0,0,0,0,None,None,512,1,1,1,1,1,1,1,1
+timestep,kick1,0,0,0,0,None,None,512,1,1,1,1,1,1,1,1
+timestep,collect,0,0,0,0,None,None,512,1,1,1,1,1,1,1,1
+grav_long_range,grav_down,0,0,0,0,Gravity,None,512,1,1,1,1,1,1,1,1
+grav_down_in,grav_down,1,0,0,0,None,None,512,1,0,0,0,1,1,1,1
+grav_down_in,grav_down_in,1,1,0,0,None,None,3024,1,0,0,0,0,0,0,1
+grav_down,grav_end_force,0,0,0,0,None,None,512,1,1,1,1,1,1,1,1
+grav_end_force,kick2,0,0,0,0,None,None,512,1,1,1,1,1,1,1,1

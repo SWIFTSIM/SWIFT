@@ -49,6 +49,7 @@
 
 /* Standard includes */
 #include <math.h>
+#include <unistd.h>
 
 #ifdef HAVE_FFTW
 
@@ -234,8 +235,8 @@ void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   /* Pointer to the chunk to be processed */
   const struct gpart* gparts = (const struct gpart*)map_data;
 
-  for (int i = 0; i < num; ++i) {
-    if (gparts[i].time_bin == time_bin_inhibited) continue;
+  for (int i = 0; i < num; ++i) { 
+    if (gparts[i].time_bin == time_bin_inhibited) continue; 
     gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim, nu_model);
   }
 }
@@ -306,7 +307,7 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
  * @param dim The dimensions of the simulation box.
  */
 void mesh_to_gpart_CIC(struct gpart* gp, const double* pot, const int N,
-                       const double fac, const double dim[3]) {
+                       const double fac, const double dim[3], int display) {
 
   /* Box wrap the gpart's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
@@ -343,9 +344,20 @@ void mesh_to_gpart_CIC(struct gpart* gp, const double* pot, const int N,
   if (gp->potential_mesh != 0.) error("Particle with non-initalised stuff");
 #endif
 #endif
-
+  if (pot == NULL)
+    error("Potential pointer is NULL!");
   /* First, copy the necessary part of the mesh for stencil operations */
   /* This includes box-wrapping in all 3 dimensions. */
+
+  /*
+  int idx = row_major_id_periodic(i,j,k,N);
+size_t expected = (size_t)N * N * N;
+
+if ((size_t)idx >= expected) {
+    error("Potential index OOB: idx=%d (N=%d → expected max %zu)",
+          idx, N, expected - 1);
+}*/
+
   double phi[6][6][6];
   for (int iii = -2; iii <= 3; ++iii) {
     for (int jjj = -2; jjj <= 3; ++jjj) {
@@ -414,7 +426,9 @@ void cell_mesh_to_gpart_CIC(const struct cell* c, const double* potential,
     gp->potential_mesh = 0.f;
 #endif
 
-    mesh_to_gpart_CIC(gp, potential, N, fac, dim);
+    int display = 0;
+
+    mesh_to_gpart_CIC(gp, potential, N, fac, dim, display);
 
     gp->a_grav_mesh[0] *= const_G;
     gp->a_grav_mesh[1] *= const_G;
@@ -451,7 +465,9 @@ void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
     gp->potential_mesh = 0.f;
 #endif
 
-    mesh_to_gpart_CIC(gp, potential, N, fac, dim);
+    int display = 1;
+
+    mesh_to_gpart_CIC(gp, potential, N, fac, dim, display);
 
     gp->a_grav_mesh[0] *= const_G;
     gp->a_grav_mesh[1] *= const_G;
@@ -507,6 +523,8 @@ struct Green_function_data {
   double k_fac;
   int slice_offset;
   int slice_width;
+  int deconvolve;
+  int discrete_symbol;
 };
 
 /**
@@ -530,6 +548,9 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
   const double green_fac = data->green_fac;
   const double a_smooth2 = data->a_smooth2;
   const double k_fac = data->k_fac;
+  const int deconvolve = data->deconvolve;
+  const int discrete_symbol = data->discrete_symbol;
+  //const int h_fac = -1/(M_PI*green_fac*N);
 
   /* Find what slice of the full mesh is stored on this MPI rank */
   const int slice_offset = data->slice_offset;
@@ -545,6 +566,7 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
     const int kx = (i > N_half ? i - N : i);
     const double kx_d = (double)kx;
     const double fx = k_fac * kx_d;
+    const double sin2_kx = sin(fx)*sin(fx);
     const double sinc_kx_inv = (kx != 0) ? fx / sin(fx) : 1.;
 
     for (int j = 0; j < N; ++j) {
@@ -553,6 +575,7 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
       const int ky = (j > N_half ? j - N : j);
       const double ky_d = (double)ky;
       const double fy = k_fac * ky_d;
+      const double sin2_ky = sin(fy)*sin(fy);
       const double sinc_ky_inv = (ky != 0) ? fy / sin(fy) : 1.;
 
       for (int k = 0; k < N_half + 1; ++k) {
@@ -561,6 +584,7 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
         const int kz = (k > N_half ? k - N : k);
         const double kz_d = (double)kz;
         const double fz = k_fac * kz_d;
+        const double sin2_kz = sin(fz)*sin(fz);
         const double sinc_kz_inv = (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
 
         /* Norm of vector in Fourier space */
@@ -568,19 +592,30 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
 
         /* Avoid FPEs... */
         if (k2 == 0.) continue;
+        const double inv_sin = 1/(sin2_kx + sin2_ky + sin2_kz);
 
         /* Green function */
         double W = 1.;
         fourier_kernel_long_grav_eval(k2 * a_smooth2, &W);
-        const double green_cor = green_fac * W / (k2 + FLT_MIN);
+        double green_cor;
+        if (discrete_symbol) {
+          green_cor = green_fac * W * inv_sin;
+        }
+        else
+          green_cor = green_fac * W / (k2 + FLT_MIN);
 
         /* Deconvolution of CIC */
         const double CIC_cor = sinc_kx_inv * sinc_ky_inv * sinc_kz_inv;
         const double CIC_cor2 = CIC_cor * CIC_cor;
         const double CIC_cor4 = CIC_cor2 * CIC_cor2;
+        
+        double total_cor;
 
         /* Combined correction */
-        const double total_cor = green_cor * CIC_cor4;
+        if (deconvolve)
+          total_cor = green_cor * CIC_cor4;
+        else
+          total_cor = green_cor;
 
         /* Apply to the mesh */
         const int index =
@@ -611,13 +646,16 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
 void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
                                const int slice_offset, const int slice_width,
                                const int N, const double r_s,
-                               const double box_size) {
+                               const double box_size, const int deconvolve, const int discrete_symbol) {
 
   /* Some common factors */
   struct Green_function_data data;
   data.frho = frho;
   data.N = N;
   data.green_fac = -1. / (M_PI * box_size);
+  data.deconvolve = deconvolve;
+  data.discrete_symbol = discrete_symbol;
+  //data.a_smooth2 = 0.; //r_s = 0
   data.a_smooth2 = 4. * M_PI * M_PI * r_s * r_s / (box_size * box_size);
   data.k_fac = M_PI / (double)N;
   data.slice_offset = slice_offset;
@@ -757,9 +795,12 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
 
   tic = getticks();
 
+  const int deconvolve = 1;
+  const int discrete_symbol = 0;
+
   /* Apply Green function to local slice of the MPI mesh */
   mesh_apply_Green_function(tp, frho_slice, local_0_start, local_n0, N, r_s,
-                            box_size);
+                            box_size, deconvolve, discrete_symbol);
   if (verbose)
     message("Applying Green function took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -846,13 +887,13 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
 
 #ifdef HAVE_FFTW
 
-  const double r_s = mesh->r_s;
+  //const double r_s = mesh->r_s;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int* local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
 
-  if (r_s <= 0.) error("Invalid value of a_smooth");
+  //if (r_s <= 0.) error("Invalid value of a_smooth");
   if (mesh->dim[0] != dim[0] || mesh->dim[1] != dim[1] ||
       mesh->dim[2] != dim[2])
     error("Domain size does not match the value stored in the space.");
@@ -943,6 +984,16 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   // message("\n\n\n DENSITY");
   // print_array(rho, N);
 
+  //message("Exporting mesh density data");
+  //message("N=%d", N);
+  //FILE *file_swift_density2 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/SWIFT_density_64.txt", "w");
+  //for (int i=0; i<N*N*N; i++) {
+    //fprintf(file_swift_density2, "%.15g \n", rho[i]);
+  //}
+  //fclose(file_swift_density2);
+  //message("Exported the mesh density data.");
+  //sleep(5);
+
   tic = getticks();
 
   /* Fourier transform to go to magic-land */
@@ -957,9 +1008,15 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
 
   tic = getticks();
 
+  message("Calling this");
+  const int deconvolve = 0;
+  const int discrete_symbol = 1;
+
+  double r_s = 0.0;
+
   /* Now de-convolve the CIC kernel and apply the Green function */
   mesh_apply_Green_function(tp, frho, /*slice_offset=*/0, /*slice_width=*/N,
-                            /* mesh_size=*/N, r_s, box_size);
+                            /* mesh_size=*/N, r_s, box_size, deconvolve, discrete_symbol);
 
   if (verbose)
     message("Applying Green function took %.3f %s.",
@@ -982,6 +1039,14 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   /* Fourier transform to come back from magic-land */
   fftw_execute(inverse_plan);
 
+  double conversion_factor;
+  if (discrete_symbol)
+    conversion_factor = (M_PI*M_PI/(N*N));
+  else
+    conversion_factor = 1.;
+  for (int i =0; i<N*N*N; i++)
+    rho[i] = rho[i] * conversion_factor; 
+
   if (verbose)
     message("Reverse Fourier transform took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -994,6 +1059,15 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
 
   /* message("\n\n\n POTENTIAL"); */
   /* print_array(mesh->potential_global, N); */
+
+  //message("Exporting SWIFT potential data");
+ // FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/uniform_check/FFT_16.txt", "w");
+  //for (int j = 0; j < N*N*N; j++) {
+    //fprintf(file_swift_density, "%lf\n", rho[j]);
+  //}
+  //fclose(file_swift_density);
+  //message("Exported the SWIFT potential data.");
+  //sleep(5);
 
   tic = getticks();
 
@@ -1034,6 +1108,30 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   fftw_destroy_plan(inverse_plan);
   memuse_log_allocation("fftw_frho", frho, 0, 0);
   fftw_free(frho);
+
+
+  //for (int i = 0; i<num; i++) {
+    //gp = &(s->gparts)[i];
+    //gp->a_grav_mesh[0] = 0.;
+    //gp->a_grav_mesh[1] = 0.;
+    //gp->a_grav_mesh[2] = 0.;
+  //}
+  //message("Eepy");
+  //sleep(5);
+  //int num = s->nr_gparts;
+  //struct gpart* gp;
+  //double acc;
+
+  //message("Exporting SWIFT acceleration data");
+  //FILE *file_swift_acc = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/FFT_64_particles.txt", "w");
+  //for (int j = 0; j < num; j++) {
+    //gp = &(s->gparts)[j];
+    //acc = gp->a_grav_mesh[0];
+    //fprintf(file_swift_acc, "%lf %.15g %.15g %.15g \n", gp->potential_mesh, gp->x[0], gp->x[1], gp->x[2]);
+  //}
+  //fclose(file_swift_acc);
+  //message("Exported the SWIFT acceleration data.");
+  //sleep(5);
 
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
@@ -1135,7 +1233,7 @@ void initialise_fftw(int N, int nr_threads) {
  * @brief Initialises the mesh used for the long-range periodic forces
  *
  * @param mesh The #pm_mesh to initialise.
- * @param props The propoerties of the gravity scheme.
+ * @param props The properties of the gravity scheme.
  * @param dim The (comoving) side-lengths of the simulation volume.
  * @param nr_threads The number of threads on this MPI rank.
  */

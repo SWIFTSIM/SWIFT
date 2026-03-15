@@ -673,6 +673,43 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
 #endif
 }
 
+void gravity_export_force(struct space *s, const struct engine *e) {
+  int num = s->nr_gparts;
+  struct gpart* gp;
+  double acc;
+
+  message("Exporting data in explicit function");
+  FILE *file_swift_acc = fopen("/data1/vandervlugt/PythonFiles/acceleration_test/SWIFT_testacc_x", "w");
+  for (int i=0; i<num; i++) {
+      gp = &(s->gparts)[i];
+      acc = gp->a_grav_mesh[0];
+      fprintf(file_swift_acc, "%lf\n", acc);
+    }
+  fclose(file_swift_acc);
+  message("Eepy_final");
+  sleep(5);
+
+  //if (e->step == 100) {
+
+    //FILE *file_swift_x = fopen("/data1/vandervlugt/PythonFiles/acceleration_test/SWIFT_mesh_x", "w"); 
+    //FILE *file_swift_y = fopen("/data1/vandervlugt/PythonFiles/acceleration_test/SWIFT_mesh_y", "w"); 
+    //FILE *file_swift_z = fopen("/data1/vandervlugt/PythonFiles/acceleration_test/SWIFT_mesh_z", "w"); 
+
+    /* Output particle SWIFT accelerations  */
+    //for (size_t i = 0; i < s->nr_gparts; ++i) {
+
+      //struct gpart *gpi = &s->gparts[i];
+      //fprintf(file_swift_x, "%lf\n", gpi->a_grav_mesh[0]);
+      //fprintf(file_swift_y, "%lf\n", gpi->a_grav_mesh[1]);
+      //fprintf(file_swift_z, "%lf\n", gpi->a_grav_mesh[2]);
+    //}
+
+    //fclose(file_swift_x);
+    //fclose(file_swift_y);
+    //fclose(file_swift_z);
+  //}
+}
+
 /**
  * @brief Check the accuracy of the gravity calculation by comparing the
  * accelerations

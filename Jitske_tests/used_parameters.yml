@@ -1,0 +1,168 @@
+---
+
+# SWIFT used parameter file
+# code version: 2025.04
+# git revision: v2025.04-54-g4738b923-dirty
+# git branch: master
+# git date: 2025-10-18 12:12:21 -0400
+# current date: 13:59:44 2026-03-15 CET
+
+InternalUnitSystem:
+  UnitMass_in_cgs: 1.98841e43
+  UnitLength_in_cgs: 3.08567758e24
+  UnitVelocity_in_cgs: 1e5
+  UnitCurrent_in_cgs: 1
+  UnitTemp_in_cgs: 1
+
+TimeIntegration:
+  time_begin: 0.
+  time_end: 0.2
+  dt_min: 1e-6
+  dt_max: 1e-2
+  max_nr_rt_subcycles: 0
+  max_dt_RMS_factor: 0.25
+  dt_RMS_use_gas_only: 0
+
+Gravity:
+  eta: 0.025
+  MAC: adaptive
+  theta_cr: 0.7
+  epsilon_fmm: 0.001
+  max_physical_DM_softening: 0.0889
+  mesh_side_length: 256
+  rebuild_frequency: 0.01
+  rebuild_active_fraction: 1.01
+  distributed_mesh: 0
+  mesh_uses_local_patches: 1
+  a_smooth: 1.25
+  r_cut_max: 4.5
+  r_cut_min: 0
+  allow_truncation_in_MAC: 0
+  use_tree_below_softening: 0
+  max_adaptive_softening: 1.13427e+38
+  min_adaptive_softening: 0
+
+Snapshots:
+  basename: snap
+  delta_time: 1.0816
+  scale_factor_first: 0.1
+  compression: 4
+  invoke_ps: 1
+  select_output_on: 0
+  time_first: 0
+  subdir: .
+  subsample:  [0, 0, 0, 0, 0, 0, 0]
+  subsample_fraction:  [0, 0, 0, 0, 0, 0, 0]
+  run_on_dump: 0
+  distributed: 0
+  lustre_OST_checks: 0
+  lustre_OST_free: 0
+  lustre_OST_test: 0
+  invoke_stf: 0
+  invoke_fof: 0
+  use_delta_from_edge: 0
+  UnitMass_in_cgs: 1.98841e+43
+  UnitLength_in_cgs: 3.08568e+24
+  UnitVelocity_in_cgs: 100000
+  UnitCurrent_in_cgs: 1
+  UnitTemp_in_cgs: 1
+  output_list_on: 0
+
+Statistics:
+  delta_time: 1.01
+  scale_factor_first: 0.02
+  time_first: 0
+  energy_file_name: statistics
+  timestep_file_name: timesteps
+  output_list_on: 0
+
+Scheduler:
+  max_top_level_cells: 8
+  cell_split_size: 5
+  cell_max_size: 8000000
+  cell_sub_size_pair_hydro: 256000000
+  cell_sub_size_self_hydro: 32000
+  cell_sub_size_pair_stars: 256000000
+  cell_sub_size_self_stars: 32000
+  cell_sub_size_pair_grav: 256000000
+  cell_sub_size_self_grav: 32000
+  grid_split_threshold: 400
+  cell_subdepth_diff_grav: 4
+  cell_recurse_size_self_hydro: 100
+  cell_recurse_size_pair_hydro: 100
+  cell_recurse_size_self_stars: 100
+  cell_recurse_size_pair_stars: 100
+  cell_recurse_size_self_black_holes: 100
+  cell_recurse_size_pair_black_holes: 100
+  cell_recurse_size_self_sinks: 100
+  cell_recurse_size_pair_sinks: 100
+  cell_extra_parts: 0
+  cell_extra_sparts: 200
+  cell_extra_gparts: 200
+  cell_extra_bparts: 0
+  cell_extra_sinks: 0
+  engine_max_parts_per_ghost: 1000
+  engine_max_sparts_per_ghost: 1000
+  engine_max_parts_per_cooling: 10000
+  engine_redist_alloc_margin: 1.2
+  engine_foreign_alloc_margin: 1.05
+  free_foreign_during_restart: 0
+  free_foreign_during_rebuild: 0
+  nr_queues: 8
+  dependency_graph_frequency: 0
+  dependency_graph_cell: 0
+  task_level_output_frequency: 0
+  tasks_per_cell: 0
+  links_per_tasks: 25
+  mpi_message_limit: 4
+
+InitialConditions:
+  file_name: snap_0030.hdf5
+  periodic: 1
+  cleanup_h_factors: 0
+  cleanup_velocity_factors: 0
+  replicate: 1
+  cleanup_smoothing_lengths: 0
+  generate_gas_in_ics: 0
+  remap_ids: 0
+  metadata_group_name: ICs_parameters
+  smoothing_length_scaling: 1
+  stars_smoothing_length: -1
+  black_holes_smoothing_length: -1
+  shift:  [0, 0, 0]
+
+Restarts:
+  subdir: restart
+  basename: swift
+  stop_steps: 100
+  max_run_time: 3.40282e+38
+  resubmit_on_exit: 0
+  enable: 1
+  save: 1
+  onexit: 0
+  lustre_OST_checks: 0
+  lustre_OST_free: 0
+  lustre_OST_test: 0
+  delta_hours: 5
+
+PhysicalConstants:
+  G: 43.0092
+  mu_0: 1.95009e-30
+
+Neutrino:
+  use_delta_f: 0
+  use_delta_f_mesh_only: 0
+  use_model_none: 0
+  generate_ics: 0
+  neutrino_seed: 0
+  use_linear_response: 0
+
+ForceChecks:
+  exact_gravity_check_types:  [1, 1, 1, 1, 1, 1, 1]
+
+FOF:
+  dump_catalogue_when_seeding: 0
+
+MetaData:
+  run_name: Untitled SWIFT simulation
+...

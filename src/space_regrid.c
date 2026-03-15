@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "cell.h"
+#include "error.h"
 #include "engine.h"
 #include "scheduler.h"
 

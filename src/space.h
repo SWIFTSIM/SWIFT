@@ -28,6 +28,7 @@
 
 /* Some standard headers. */
 #include <stddef.h>
+#include <fftw3.h>
 
 /* Includes. */
 #include "hydro_space.h"
@@ -376,6 +377,18 @@ struct space {
 #endif
 };
 
+struct cic_mapper_data;
+struct tree_data;
+//struct cell_basic;
+struct AMR_levels {
+  struct cell **cells;
+  double mean_density; 
+  int cell_count; 
+  int ghost_count;
+  int depth; 
+  int cdim;
+};
+
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
@@ -391,7 +404,7 @@ void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
 void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
                       ptrdiff_t sinks_offset);
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
-                    const short int tid);
+                    const short int tid, int index, int ghost);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
@@ -488,4 +501,94 @@ void space_write_cell_hierarchy(const struct space *s, int j);
 void space_compute_star_formation_stats(const struct space *s,
                                         struct star_formation *star_form);
 void space_check_unskip_flags(const struct space *s);
+void space_get_density(struct space *s, struct swift_params *params, struct engine *e, int use_multigrid);
+void space_apply_FMG(struct space *s, struct engine *e);
+void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra);
+void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra);
+void density_to_cells(struct cic_mapper_data* data, struct cell* top_cells, int nr_cells, int cdim[3]);
+void get_residual(double *pot, double *dens, int cdim[3], double multiplier, double *residual, double delta);
+void get_residual_array(double *pot, double *dens, int cdim[3], double multiplier, double *residual, double delta);
+void perform_red_black_sweep(double *pot, double *dens, int cdim[3], double multiplier, double delta);
+void set_initial_guess(double *potential_array, int cdim[3]);
+double get_mean_density(double *dens, const int N);
+void get_pm_potential(struct cic_mapper_data* data, const int N, const double box_size, struct threadpool* tp, int cdim[3]);
+void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
+                               const int slice_offset, const int slice_width,
+                               const int N, const double r_s,
+                               const double box_size, const int deconvolve, const int discrete_symbol);
+void restrict_problem(double *H_array, double *residual, int cdim[3], double delta);
+void solve_coarser_problem(double *pot, double *residual, int cdim[3], double delta, const int N_stop, const int N_start);
+void prolongate_problem(double *coarser_solution, double *pot, int cdim[3]);
+void apply_GS(double *density, double *pot, int cdim[3], double mean_density, double box_size);
+void apply_multigrid(double *density, double *pot, int cdim[3], double mean_density, double box_size, int N_stop, int N_start, int V_max);
+void prolongate_solution(double *pot_coarse, double *pot_fine, const int N, const int N_double);
+void get_accelerations(struct cic_mapper_data* data, double *pot, struct threadpool* tp, struct space *s,const int N, int step);
+void space_get_AMR_density(struct space *s, struct engine *e, int level_check);
+void check_progeny(struct space *s, struct cell *parent, int *length, int *level);
+void construct_daughter(struct cell *parent, int i, int *length);
+void destroy_daughters(struct space *s, struct cell *cells_top, int nr_cells);
+void level_down(struct space *s, struct cell *parent, int *length);
+void assign_densities(struct cell *cells_top, struct threadpool *tp, int nr_cells, const double boxsize, int level_check);
+void initialise_tree_search(struct gpart *part, struct cell *home_cell, struct cell *cells_top, const double boxsize, int nr_topcells, int level_check, int verbose);
+void check_lower_level(struct cell *parent, struct cell *cells_top, const double boxsize, int nr_topcells, int *level, int level_check);
+double get_overlap(double pbox[6], double cloc[3], double cwidth[3]);
+void search_tree(struct gpart *part, double pbox[6], struct cell *cells_top, double width, int nr_topcells, double *acc, int level_check, int reverse, int verbose);
+void assign_lower_level(struct gpart *part, double pbox[6], struct cell *parent, double width, int *level, double *acc, int level_check, int reverse, int verbose);
+void assign_parent_densities(struct cell *parent, int *level);
+void export_grid_data(struct cell *cells_top, int nr_cells);
+void test_density_assignment(struct cell *cells_top, int nr_cells, const double boxsize, int nr_gparts, struct space *s, int level_check);
+//void assign_CIC_densities(struct space *s);
+//void assign_densities_test(struct space *s);
+//void search_tree_test(struct gpart *part, double pbox[6], struct cell *cells_top, double width, int nr_topcells, double *CIC_overlap, int *CIC_cell, int *counter);
+void get_CIC_results(struct gpart *gp, struct cell *cells_top, struct space *s);
+//void get_AMR_results(struct gpart *gp, struct cell *cells_top, struct space *s, double *CIC_overlap, int *CIC_cell);
+//int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
+int perform_uniform_calculation(struct space *s, struct cell *cells_top, int N_levels);
+void sort_lower_level(struct cell *parent, double *rho, double fac, int max_level, int *current_level, int cdim[3]);
+void potential_to_cells(struct cell *cells_top, double *pot, int grid_size, double grid_top, double fac, int level);
+void to_lower_level(struct cell *cell, double pot_cell[6], double pot, int level, int *current_level);
+void cells_top_mapper(void* map_data, const int num, void* extra);
+//void perform_nonuniform_calculation(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int max_gridsize);
+void perform_nonuniform_calculation(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels, int max_gridsize, double box_size);
+void extract_AMR_patches(struct space *s, struct cell *cells_top, int extract_depth, struct cell ***extracted_cells, int *count);
+void extract_lower(struct cell *parent, int *current_depth, int extract_depth, struct cell ***extracted_cells, int *count);
+int sort_cell(const void *a, const void *b);
+void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, int nr_cells, int gridsize, double box_size, int min_depth); 
+double find_coarse_cell(struct AMR_levels *coarse, int cid, int missing, double fac_coarse, int cdimH[3]);
+int find_neighbour(struct AMR_levels *fine, struct cell *parent, struct cell *cell_link, int search_id, double fac, int which_neighbour, int pre_smoothing);
+//void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, double search_loc[3], int which_neighbour, double fac_coarse);
+void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *parent, size_t search_id, double fac_coarse, int min_depth, int which_neighbour);
+void initialise_link_neighbours(struct AMR_levels *fine, double box_size, int gridsize);
+void link_neighbour(struct cell *link_cell, struct AMR_levels *fine, double search_loc[3], double fac, int which_neighbour);
+void extrapolate_mask_values(struct AMR_levels *coarse);
+void get_patch_density(struct space *s, struct AMR_levels *level);
+void perform_patch_sweep(struct AMR_levels *level, double delta);
+void transfer_residual_array(struct AMR_levels fine, struct AMR_levels *coarse, double delta);
+void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth, int min_depth);
+void perform_multigrid_acceleration(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int current_depth);
+double get_patch_residual(struct AMR_levels level, double delta);
+//void replace_masked_cells(struct AMR_levels *level, double delta);
+void perform_masked_patch_sweep(struct AMR_levels *level, double delta);
+double get_masked_residual(struct AMR_levels level, double delta, int nr_active, int step_nr);
+void link_uniform_level(struct AMR_levels *level);
+double get_solution_magnitude(struct AMR_levels level);
+void converge_first_order(struct AMR_levels *level, double delta, int nr_steps);
+void first_order_sweep(struct AMR_levels *level, double delta);
+double get_first_order_residual(struct AMR_levels *level, double delta);
+void to_finer_patch(struct AMR_levels *levels, int target_depth);
+void transfer_coarser_residual(struct AMR_levels fine, struct AMR_levels *coarse, double delta);
+void build_refinement_map(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
+void modify_tree(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int new_cell_count[max_depth +1]);
+void divide_particles(struct cell *c, struct space *s);
+//void create_concept_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells);
+int search_neighbours(struct AMR_levels *level, double search_loc[3], double fac);
+void mark_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);
+void create_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells, int which_neighbour);
+void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels);
+void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr);
+double CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize);
+void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_index, int link_nr);
+void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine);
+void free_gparts_in_cells(struct cell *c);
+void init_test_single_particle(struct engine *e);
 #endif /* SWIFT_SPACE_H */

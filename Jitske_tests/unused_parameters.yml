@@ -1,0 +1,31 @@
+---
+
+# SWIFT unused parameter file
+# code version: 2025.04
+# git revision: v2025.04-54-g4738b923-dirty
+# git branch: master
+# git date: 2025-10-18 12:12:21 -0400
+# current date: 13:59:44 2026-03-15 CET
+
+Gravity:
+  comoving_DM_softening: 0.0889
+
+StructureFinding:
+  config_file_name: vrconfig_3dfof_subhalos_SO_hydro.cfg
+  basename: ./stf
+  scale_factor_first: 0.1
+  delta_time: 1.04
+
+PowerSpectrum:
+  grid_side_length: 256
+  num_folds: 4
+  fold_factor: 2
+  window_order: 2
+  requested_spectra: ["matter-matter"]
+
+CSDS:
+  delta_step: 10
+  basename: csds_index
+  initial_buffer_size: 0.3
+  buffer_scale: 2
+...

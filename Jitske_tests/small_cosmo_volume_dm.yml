@@ -1,0 +1,71 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun
+  UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
+  UnitVelocity_in_cgs: 1e5           # 1 km/s
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   0.2   # The end time of the simulation (in internal units).
+  dt_min:     1e-6 
+  dt_max:     1e-2 
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:          0.025
+  MAC:          adaptive
+  theta_cr:     0.7
+  epsilon_fmm:  0.001
+  comoving_DM_softening:     0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  max_physical_DM_softening: 0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  mesh_side_length:       256
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            snap
+  delta_time:          1.0816  # Only every second VELOCIraptor invoke gets a full snapshot dump.
+  scale_factor_first:  0.1     # z = 9
+  compression:         4
+  invoke_ps:           1
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1.01
+  scale_factor_first:  0.02
+  
+Scheduler:
+  max_top_level_cells: 8
+  cell_split_size:     5
+  
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:                   snap_0030.hdf5
+  periodic:                    1
+  cleanup_h_factors:           0    
+  cleanup_velocity_factors:    0  
+
+# Structure finding options
+StructureFinding:
+  config_file_name:     vrconfig_3dfof_subhalos_SO_hydro.cfg
+  basename:             ./stf
+  scale_factor_first:   0.1       # z = 9
+  delta_time:           1.04
+
+# Power spectrum calculation options
+PowerSpectrum:
+  grid_side_length: 256
+  num_folds: 4
+  fold_factor: 2
+  window_order: 2
+  requested_spectra: ["matter-matter"]
+
+# Parameters governing the CSDS snapshot system
+CSDS:
+  delta_step:           10       # Update the particle log every this many updates
+  basename:             csds_index  # Common part of the filenames
+  initial_buffer_size:  0.3      # (Optional) Buffer size in GB
+  buffer_scale:	        2       # (Optional) When buffer size is too small, update it with required memory times buffer_scale
+

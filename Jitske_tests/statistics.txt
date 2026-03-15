@@ -1,0 +1,112 @@
+# Global statistics file
+######################################################
+# The quantities are all given in internal units!
+#
+# (0)  Simulation step
+#      Unit = dimensionless
+# (1)  Time since Big Bang (cosmological run), Time since start of the simulation (non-cosmological run).
+#      Unit = 3.085678e+19 s
+#      Unit = 9.778131e+11 yr 
+#      Unit = 9.778131e+05 Myr 
+# (2)  Scale factor
+#      Unit = dimensionless
+# (3)  Redshift
+#      Unit = dimensionless
+# (4)  Total mass in the simulation. 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (5)  Total gas mass in the simulation (Particle type 0). 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (6)  Total dark matter mass in the simulation (Particle type 1 & 2). 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (7)  Total sink mass in the simulation (Particle type 3). 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (8)  Total stellar mass in the simulation (Particle type 4). 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (9)  Total black hole mass in the simulation (Particle type 5). 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (10) Total metal mass in the gas phase. 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (11) Total metal mass locked in stars. 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (12) Total metal mass locked in black holes. 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (13) Total kinetic energy (physical). 
+#      Unit = 1.988410e+53 erg
+# (14) Total internal (thermal) energy of the gas (physical). 
+#      Unit = 1.988410e+53 erg
+# (15) Total potential energy (physical). 
+#      Unit = 1.988410e+53 erg
+# (16) Total radiated energy of the gas (physical). 
+#      Unit = 1.988410e+53 erg
+# (17) Total gas entropy (physical). 
+#      Unit = 2.579515e+73 gram**(0.333) * cm**(4.000) * s**(-2.000)
+# (18) Comoving centre of mass of the simulation (x coordinate). 
+#      Unit = 3.085678e+24 cm
+#      Unit = 1.000000e+06 pc
+#      Unit = 1.000000e+00 Mpc
+# (19) Comoving centre of mass of the simulation (y coordinate). 
+#      Unit = 3.085678e+24 cm
+#      Unit = 1.000000e+06 pc
+#      Unit = 1.000000e+00 Mpc
+# (20) Comoving centre of mass of the simulation (z coordinate). 
+#      Unit = 3.085678e+24 cm
+#      Unit = 1.000000e+06 pc
+#      Unit = 1.000000e+00 Mpc
+# (21) Comoving momentum of the simulation (x coordinate). 
+#      Unit = 1.988410e+48 gram * cm * s**-1
+# (22) Comoving momentum of the simulation (y coordinate). 
+#      Unit = 1.988410e+48 gram * cm * s**-1
+# (23) Comoving momentum of the simulation (z coordinate). 
+#      Unit = 1.988410e+48 gram * cm * s**-1
+# (24) Comoving angular momentum of the simulation (x coordinate). 
+#      Unit = 6.135592e+72 gram * cm**2 * s**-1
+# (25) Comoving angular momentum of the simulation (y coordinate). 
+#      Unit = 6.135592e+72 gram * cm**2 * s**-1
+# (26) Comoving angular momentum of the simulation (z coordinate). 
+#      Unit = 6.135592e+72 gram * cm**2 * s**-1
+# (27) Sum of instantaneous accretion rate of all black holes in the simulation. 
+#      Unit = 6.443998e+23 gram * s**-1
+#      Unit = 1.022690e-02 Msun/yr
+# (28)  Total mass accreted by black holes in the simulation (not including mass accreted by progenitors that have merged in the current BHs). 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (29)  Total black hole subgrid mass in the simulation. 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (30) Total Hydrogen (all species) mass in the gas phase of the simulation. 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (31) Total Molecular Hydrogen mass in the gas phase of the simulation. 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (32) Total Atomic Hydrogen mass in the gas phase of the simulation. 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (33) Total Helium (all species) mass in the gas phase of the simulation. 
+#      Unit = 1.988410e+43 gram
+#      Unit = 1.000000e+10 Msun
+# (34) Total Magnetic Energy B2/(2*mu0) in thesimulation. 
+#      Unit = 1.988410e+53 erg
+# (35) Total DivB error in thesimulation. 
+#      Unit = dimensionless
+# (36) Total Cross Helicity :: sum(V.B) in thesimulation. 
+#      Unit = 1.345737e+28 gram * cm * s**-3 * A**-1 
+# (37) Total Magnetic Helicity :: sum(A.B) in thesimulation. 
+#      Unit = 7.430872e-34 gram**2 * cm * s**-4 * A**-2
+# (38) Total bolometric luminosity of the BHs. 
+#      Unit = 6.443998e+33 erg * s**-1
+# (39) Total jet power of the BHs. 
+#      Unit = 6.443998e+33 erg * s**-1
+#
+#           (0)            (1)            (2)            (3)            (4)            (5)            (6)            (7)            (8)            (9)           (10)           (11)           (12)           (13)           (14)           (15)           (16)           (17)           (18)           (19)           (20)           (21)           (22)           (23)           (24)           (25)           (26)           (27)           (28)           (29)           (30)           (31)           (32)           (33)           (34)            (35)            (36)            (37)           (38)            (39) 
+#          Step           Time              a              z     Total mass       Gas mass        DM mass      Sink mass      Star mass        BH mass     Gas Z mass    Star Z mass      BH Z mass    Kin. Energy    Int. Energy    Pot. energy    Rad. energy    Gas Entropy          CoM x          CoM y          CoM z         Mom. x         Mom. y         Mom. z    Ang. mom. x    Ang. mom. y    Ang. mom. z   BH acc. rate   BH acc. mass   BH sub. mass     Gas H mass    Gas H2 mass    Gas HI mass    Gas He mass    Mag. Energy        DivB err    Cr. Helicity   Mag. Helicity   BH bol. lum.   BH jet power 
+              0   0.000000e+00      1.0000000      0.0000000   1.089551e+07   0.000000e+00   1.089551e+07   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   1.389640e+12   0.000000e+00  -2.484858e+12   0.000000e+00   0.000000e+00   7.124151e+01   7.140809e+01   7.934788e+01  -8.916626e+04  -4.601577e+04  -4.427792e+04   4.410908e+09  -3.059903e+08   3.306512e+09   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00
