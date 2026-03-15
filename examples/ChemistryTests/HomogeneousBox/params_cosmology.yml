@@ -92,8 +92,9 @@ GEARChemistry:
   tau: 1e-1                           # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
 
 GEARFeedback:
-  supernovae_energy_erg: 1e51                       # Supernovae energy, used only for SNIa
+  supernovae_Ia_energy_erg: 1e51                       # Supernovae energy, used only for SNIa
   supernovae_efficiency: 0.01                       # Supernovae energy efficiency, used for both SNIa and SNII
+  with_stellar_wind_feedback: 0
   yields_table: POPIIsw.h5                          # Table containing the yields.
   yields_table_first_stars: POPIIsw.h5              # Table containing the yields of the first stars.
   discrete_yields: 1                                # Should we use discrete yields or the IMF integrated one?
