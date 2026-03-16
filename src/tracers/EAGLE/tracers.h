@@ -264,10 +264,13 @@ static INLINE void tracers_first_init_bpart(struct bpart *bp,
  * event.
  *
  * @param xp The extended particle data.
+ * @param delta_E the SNII energy increase (physical).
  */
-static INLINE void tracers_after_feedback(struct xpart *xp) {
+static INLINE void tracers_after_feedback(struct xpart *xp, const float delta_E) {
 
   xp->tracers_data.hit_by_SNII_feedback++;
+
+  xp->tracers_data.snii_feedback_energy += delta_E;
 }
 
 /**
