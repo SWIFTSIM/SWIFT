@@ -237,20 +237,27 @@ INLINE static void compute_SNII_feedback(
       number_of_SN_events = eagle_SNII_feedback_num_of_rays;
     }
 
-    /* ------- Compute magnetic feedback ------- */
+    /* ------- Magnetic Feedback ------- */
 
-    /* magnetic energy available for injection */
-    const float E_B_inj = feedback_props->f_E_B * f_E * E_SNe * N_SNe;
-
-    message("number of supernovae %f", N_SNe);
-
-    /* compute the normalisation factor for the injected magnetic field */
+    /* Compute injected magnetic field strength 
+     *
+     * Note that due to the stochastic nature of the SNII feedback 
+     * the thermal energy injection is not exactly f_th * E_SN * N_SNe
+     * so we calculate it here from the change in internal energy. 
+     * The final magnetic field injection strength depends on the local
+     * properties of the gas particles */
+    float E_th_tot = 0.f;
     float B_conv_factor = 0.f;
     for (int i = 0; i < number_of_SN_events; i++) {
+      /* TODO: take into account particles receiving two rays */
       B_conv_factor += sp->feedback_data.SNII_rays[i].mass / 
                          sp->feedback_data.SNII_rays[i].rho; 
+      E_th_tot += delta_u * sp->feedback_data.SNII_rays[i].mass;
     }
     B_conv_factor *= 1 / (2 * feedback_props->mu_0);
+
+    /* magnetic energy available for injection */
+    const float E_B_inj = feedback_props->f_E_B * E_th_tot;
 
     const float B_inj = sqrtf(E_B_inj / B_conv_factor);
 
