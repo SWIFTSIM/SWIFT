@@ -107,8 +107,8 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   
   //particle data
   //const float mass_limit = 65e-5;
-  const float mass_limit = 2.5e-5;
-  //const float mass_limit = 1.5e-5;
+  //const float mass_limit = 2.5e-5;
+  const float mass_limit = 1.5e-5;
   const int count_top = c->top->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -216,9 +216,9 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	  else {
 	    relax_dt = bp->h / v_cs;
 	  }
-	  
+	  message("BH sound crossing time: %g", relax_dt);
 	  float avg_dt =  2.6e-4;
-	  relax_dt = fmaxf(relax_dt, 10.f*avg_dt);        // at least 10 smallest timesteps (~2.5 Myrs)	  
+	  relax_dt = fmaxf(relax_dt, 5.f*avg_dt);        // at least 5 timesteps (~1.25 Myrs)	  
 	  //relax_dt = fminf(relax_dt, 25.f * avg_dt); // don’t let it dominate   
 	  message("next available split: %g", e->time + relax_dt);
 	  c->top->black_holes.split_relax_time = e->time + relax_dt;
@@ -230,7 +230,8 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	
         //if particle reached target mass, never split again after this split
         //else reset to 0                                                    
-        //hardcoded final mass for now...                                                                                                                                                                                                 
+        //hardcoded final mass for now...
+	// if parent is nibbled and half its mass is past limit also ignore?
         if (p->mass < mass_limit){
 	  p->split_flag = 2;}
         else{p->split_flag = 0;}
@@ -266,7 +267,6 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	pos_offsets[2] *= delta;
 	
 	struct part *child = cell_spawn_new_part_from_part(e, c, &parent, &parent_xp, child_mass, pos_offsets, new_h);
-	message("child rho immediately after spawn: %e", child->rho);
 	
 	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id);
 	if (parent_index == -1) error("parent not found!");

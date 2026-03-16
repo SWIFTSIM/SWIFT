@@ -1947,11 +1947,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
     //lily
-    if ((c->hydro.hydro_resort != NULL) && (c->top->black_holes.count > 0) &&
-	(c->top->black_holes.split_relax_time <= e->time)){
+    if (c->hydro.hydro_resort != NULL){
+      cell_activate_drift_part(c, s);
       scheduler_activate(s, c->hydro.hydro_resort);} 
-    if ((c->top->hydro.particle_split != NULL) && (c->top->black_holes.count > 0) &&
-      (c->top->black_holes.split_relax_time <= e->time)){
+    if (c->top->hydro.particle_split != NULL){
       cell_activate_drift_part(c, s);
       scheduler_activate(s, c->top->hydro.particle_split);}
     if (c->top->hydro.star_formation != NULL) {

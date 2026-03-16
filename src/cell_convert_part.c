@@ -50,7 +50,7 @@ void cell_recursively_shift_parts(struct cell *c,
     c->hydro.count++;
     /* Invalidate sorting */
     c->hydro.sorted = 0;
-    c->hydro.do_sort = 1;
+    c->hydro.do_sort = 0x1FFF;
     cell_free_hydro_sorts(c);
   } else {
     c->hydro.parts++;
@@ -210,15 +210,6 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
   /* copy over everything */
   *new_p = parent_copy;
   *new_xp = xparent_copy;
-
-  /* New distance since rebuild */
-  //new_xp->x_diff[0] = xparent_copy.x_diff[0] + pos_offset[0];
-  //new_xp->x_diff[1] = xparent_copy.x_diff[1] + pos_offset[1];
-  //new_xp->x_diff[2] = xparent_copy.x_diff[2] + pos_offset[2];
-  //new child, no movement since displacement
-  new_xp->x_diff[0] = 0.0f;
-  new_xp->x_diff[1] = 0.0f;
-  new_xp->x_diff[2] = 0.0f;
   
   /* give the child a new name */
   new_p->id = space_get_new_unique_id(e->s);
@@ -277,6 +268,16 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
   new_p->ti_drift = parent_copy.ti_drift;
 #endif
 
+  /* Initialise sort displacement to reflect actual offset from sort position */
+  new_xp->x_diff[0] = xparent_copy.x_diff[0] + pos_offset[0];
+  new_xp->x_diff[1] = xparent_copy.x_diff[1] + pos_offset[1];
+  new_xp->x_diff[2] = xparent_copy.x_diff[2] + pos_offset[2];
+  
+  
+  new_xp->x_diff_sort[0] = xparent_copy.x_diff_sort[0] + pos_offset[0];
+  new_xp->x_diff_sort[1] = xparent_copy.x_diff_sort[1] + pos_offset[1];
+  new_xp->x_diff_sort[2] = xparent_copy.x_diff_sort[2] + pos_offset[2];
+  
   /* Set a smoothing length */
   new_p->h = new_h;  
   //v long timebin

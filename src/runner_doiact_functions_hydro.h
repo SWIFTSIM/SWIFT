@@ -2685,8 +2685,10 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
           "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
           "ci->sorted=%d sid=%d",
           ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
+    
     if (!(cj->hydro.sorted & (1 << sid)) ||
         cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
+      
       error(
           "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
           "cj->sorted=%d sid=%d",
