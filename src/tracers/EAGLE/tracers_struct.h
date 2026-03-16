@@ -93,6 +93,9 @@ struct tracers_xpart_data {
   /*! Total jet feedback energy received by this particle */
   float jet_feedback_energy;
 
+  /* Total SNII feedback energy received by this particle */
+  float snii_feedback_energy;
+
   /*! Counts how many times this particle has been kicked as part of
      jet feedback */
   char hit_by_jet_feedback;
