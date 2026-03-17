@@ -26,11 +26,10 @@
 #include <stdio.h>
 
 /* Local includes */
-
-/* Local includes */
 #include "cell.h"
 #include "engine.h"
 #include "gravity_properties.h"
+#include "part.h"
 #include "space.h"
 #include "timers.h"
 #include "zoom.h"
@@ -901,44 +900,87 @@ void zoom_region_init(struct space *s, const int regridding,
 }
 
 /**
- * @brief Dump the zoom region geometry and cell properties to diagnostic files.
+ * @brief Dump the zoom region geometry and per-cell particle occupancy to
+ *        diagnostic files.
  *
- * @param e The engine.
+ * This function is called when SWIFT is invoked with --zoom-geometry. It
+ * writes two files:
+ *   - zoom_metadata.yml: Global zoom geometry metadata (box size, cell grid
+ *     dimensions, zoom region bounds, shifts, etc.).
+ *   - zoom_cell_data.dat: A table with one row per top-level cell containing
+ *     the cell location, width, type, subtype, owning MPI rank, and per-type
+ *     particle counts.
+ *
+ * Particle counts are computed locally on each rank by looping over the
+ * particle arrays and mapping each particle to its top-level cell. An MPI
+ * reduction then aggregates these counts onto rank 0, which writes the files.
+ *
+ * When self-gravity is enabled, all particle types are accessible via the
+ * gpart array (since every particle has a gpart companion). When self-gravity
+ * is disabled, we loop over each particle array (parts, sparts, bparts, sinks)
+ * independently. In the latter case DM counts will be zero since there is no
+ * gpart array.
+ *
+ * @param e The #engine.
  */
 void zoom_dump_geometry(const struct engine *e) {
+
   const struct space *s = e->s;
   const int nr_cells = s->nr_cells;
   const int myrank = e->nodeID;
 
-  /* Allocate local per-cell DM split counters. */
+  /* --- Phase A: Allocate local per-cell, per-type counters. --- */
   long long *local_counts =
       calloc(nr_cells * swift_type_count, sizeof(long long));
+  if (local_counts == NULL)
+    error("Failed to allocate local particle count array (%d cells).",
+          nr_cells);
 
-  /* Loop over all local gparts/parts and classify them. */
+  /* --- Phase B: Count particles into cells on each rank. --- */
+
   if (e->policy & engine_policy_self_gravity) {
+
+    /* With self-gravity every particle has a gpart companion, so we can
+     * classify all particles (gas, DM, DM_bkg, stars, BH, sinks, neutrinos)
+     * in a single pass over the gpart array. */
     for (size_t k = 0; k < s->nr_gparts; k++) {
       const struct gpart *gp = &s->gparts[k];
-      if (gp->type >= swift_type_count) continue;
+
+      /* Safety check: skip any unknown particle types. */
+      if (gp->type < 0 || gp->type >= swift_type_count) continue;
+
       const int cid = cell_getid_from_pos(s, gp->x[0], gp->x[1], gp->x[2]);
       local_counts[cid * swift_type_count + gp->type]++;
     }
+
   } else {
-    /* If no gravity, we count parts, sparts, bparts, sinks manually */
+
+    /* Without self-gravity there is no gpart array for DM particles, so
+     * we loop over each particle array independently. DM and DM_background
+     * counts will remain zero. */
+
+    /* Gas particles */
     for (size_t k = 0; k < s->nr_parts; k++) {
       const int cid = cell_getid_from_pos(s, s->parts[k].x[0], s->parts[k].x[1],
                                           s->parts[k].x[2]);
       local_counts[cid * swift_type_count + swift_type_gas]++;
     }
+
+    /* Star particles */
     for (size_t k = 0; k < s->nr_sparts; k++) {
       const int cid = cell_getid_from_pos(s, s->sparts[k].x[0],
                                           s->sparts[k].x[1], s->sparts[k].x[2]);
       local_counts[cid * swift_type_count + swift_type_stars]++;
     }
+
+    /* Black hole particles */
     for (size_t k = 0; k < s->nr_bparts; k++) {
       const int cid = cell_getid_from_pos(s, s->bparts[k].x[0],
                                           s->bparts[k].x[1], s->bparts[k].x[2]);
       local_counts[cid * swift_type_count + swift_type_black_hole]++;
     }
+
+    /* Sink particles */
     for (size_t k = 0; k < s->nr_sinks; k++) {
       const int cid = cell_getid_from_pos(s, s->sinks[k].x[0], s->sinks[k].x[1],
                                           s->sinks[k].x[2]);
@@ -946,11 +988,15 @@ void zoom_dump_geometry(const struct engine *e) {
     }
   }
 
-  /* MPI reduction */
+  /* --- Phase C: MPI reduction of counts onto rank 0. --- */
+
 #ifdef WITH_MPI
   long long *global_counts = NULL;
   if (myrank == 0) {
     global_counts = calloc(nr_cells * swift_type_count, sizeof(long long));
+    if (global_counts == NULL)
+      error("Failed to allocate global particle count array (%d cells).",
+            nr_cells);
   }
   MPI_Reduce(local_counts, global_counts, nr_cells * swift_type_count,
              MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -958,59 +1004,78 @@ void zoom_dump_geometry(const struct engine *e) {
   long long *global_counts = local_counts;
 #endif
 
-  /* Write files (Rank 0 only) */
+  /* --- Phase D: Write diagnostic files (rank 0 only). --- */
+
   if (myrank == 0) {
-    FILE *f_meta = fopen("zoom_metadata.yml", "w");
-    if (f_meta == NULL) error("Failed to open zoom_metadata.yml");
+
+    /* ---- Write the metadata YAML file. ---- */
     const struct zoom_region_properties *z = s->zoom_props;
+
+    FILE *f_meta = fopen("zoom_metadata.yml", "w");
+    if (f_meta == NULL) error("Failed to open zoom_metadata.yml for writing.");
+
     fprintf(f_meta, "# Zoom Geometry Diagnostic Output\n");
-    fprintf(f_meta, "BoxSize: [%f, %f, %f]\n", s->dim[0], s->dim[1], s->dim[2]);
+    fprintf(f_meta, "# Generated by SWIFT --zoom-geometry\n");
+    fprintf(f_meta, "BoxSize: [%.15e, %.15e, %.15e]\n", s->dim[0], s->dim[1],
+            s->dim[2]);
     fprintf(f_meta, "BackgroundCdim: [%d, %d, %d]\n", s->cdim[0], s->cdim[1],
             s->cdim[2]);
-    fprintf(f_meta, "BackgroundCellWidth: [%f, %f, %f]\n", s->width[0],
+    fprintf(f_meta, "BackgroundCellWidth: [%.15e, %.15e, %.15e]\n", s->width[0],
             s->width[1], s->width[2]);
     fprintf(f_meta, "ZoomCdim: [%d, %d, %d]\n", z->cdim[0], z->cdim[1],
             z->cdim[2]);
-    fprintf(f_meta, "ZoomCellWidth: [%f, %f, %f]\n", z->width[0], z->width[1],
-            z->width[2]);
-    fprintf(f_meta, "ZoomRegionDim: [%f, %f, %f]\n", z->dim[0], z->dim[1],
-            z->dim[2]);
-    fprintf(f_meta, "ZoomRegionLowerBounds: [%f, %f, %f]\n",
+    fprintf(f_meta, "ZoomCellWidth: [%.15e, %.15e, %.15e]\n", z->width[0],
+            z->width[1], z->width[2]);
+    fprintf(f_meta, "ZoomRegionDim: [%.15e, %.15e, %.15e]\n", z->dim[0],
+            z->dim[1], z->dim[2]);
+    fprintf(f_meta, "ZoomRegionLowerBounds: [%.15e, %.15e, %.15e]\n",
             z->region_lower_bounds[0], z->region_lower_bounds[1],
             z->region_lower_bounds[2]);
-    fprintf(f_meta, "ZoomRegionUpperBounds: [%f, %f, %f]\n",
+    fprintf(f_meta, "ZoomRegionUpperBounds: [%.15e, %.15e, %.15e]\n",
             z->region_upper_bounds[0], z->region_upper_bounds[1],
             z->region_upper_bounds[2]);
-    fprintf(f_meta, "VoidDim: [%f, %f, %f]\n", z->void_dim[0], z->void_dim[1],
-            z->void_dim[2]);
-    fprintf(f_meta, "VoidLowerBounds: [%f, %f, %f]\n", z->void_lower_bounds[0],
-            z->void_lower_bounds[1], z->void_lower_bounds[2]);
-    fprintf(f_meta, "VoidUpperBounds: [%f, %f, %f]\n", z->void_upper_bounds[0],
-            z->void_upper_bounds[1], z->void_upper_bounds[2]);
+    fprintf(f_meta, "VoidDim: [%.15e, %.15e, %.15e]\n", z->void_dim[0],
+            z->void_dim[1], z->void_dim[2]);
+    fprintf(f_meta, "VoidLowerBounds: [%.15e, %.15e, %.15e]\n",
+            z->void_lower_bounds[0], z->void_lower_bounds[1],
+            z->void_lower_bounds[2]);
+    fprintf(f_meta, "VoidUpperBounds: [%.15e, %.15e, %.15e]\n",
+            z->void_upper_bounds[0], z->void_upper_bounds[1],
+            z->void_upper_bounds[2]);
     fprintf(f_meta, "ZoomCellDepth: %d\n", z->zoom_cell_depth);
     fprintf(f_meta, "NeighbourMaxTreeDepth: %d\n", z->neighbour_max_tree_depth);
-    fprintf(f_meta, "RegionPadFactor: %f\n", z->region_pad_factor);
-    fprintf(f_meta, "AppliedZoomShift: [%f, %f, %f]\n",
+    fprintf(f_meta, "RegionPadFactor: %.15e\n", z->region_pad_factor);
+    fprintf(f_meta, "AppliedZoomShift: [%.15e, %.15e, %.15e]\n",
             z->applied_zoom_shift[0], z->applied_zoom_shift[1],
             z->applied_zoom_shift[2]);
-    fprintf(f_meta, "ZoomRegionCoM: [%f, %f, %f]\n", z->com[0], z->com[1],
-            z->com[2]);
+    fprintf(f_meta, "ZoomRegionCoM: [%.15e, %.15e, %.15e]\n", z->com[0],
+            z->com[1], z->com[2]);
     fprintf(f_meta, "NrZoomCells: %d\n", z->nr_zoom_cells);
     fprintf(f_meta, "NrBkgCells: %d\n", z->nr_bkg_cells);
     fprintf(f_meta, "BkgCellOffset: %d\n", z->bkg_cell_offset);
     fprintf(f_meta, "TotalCells: %d\n", nr_cells);
     fclose(f_meta);
 
+    message("Wrote zoom_metadata.yml");
+
+    /* ---- Write the per-cell data table. ---- */
     FILE *f_data = fopen("zoom_cell_data.dat", "w");
-    if (f_data == NULL) error("Failed to open zoom_cell_data.dat");
+    if (f_data == NULL) error("Failed to open zoom_cell_data.dat for writing.");
+
     fprintf(f_data,
+            "# Zoom Cell Diagnostic Data\n"
+            "# Generated by SWIFT --zoom-geometry\n"
+            "# Columns:\n"
             "# CellID Type Subtype Rank LocX LocY LocZ WidthX WidthY WidthZ "
-            "MaxDepth Gas DM DM_Bkg Sink Stars BH Neutrino\n");
+            "MaxDepth Gas DM DM_Bkg Sink Stars BH Neutrino\n"
+            "# Note: MaxDepth is 0 at this exit point since the sub-cell tree "
+            "has not been constructed.\n");
+
     for (int i = 0; i < nr_cells; i++) {
       const struct cell *c = &s->cells_top[i];
       fprintf(f_data,
-              "%d %d %d %d %f %f %f %f %f %f %d %lld %lld %lld %lld %lld %lld "
-              "%lld\n",
+              "%d %d %d %d %.15e %.15e %.15e %.15e %.15e %.15e %d "
+              "%lld %lld %lld %lld %lld %lld %lld\n",
               i, (int)c->type, (int)c->subtype, c->nodeID, c->loc[0], c->loc[1],
               c->loc[2], c->width[0], c->width[1], c->width[2],
               (int)c->maxdepth,
@@ -1024,7 +1089,11 @@ void zoom_dump_geometry(const struct engine *e) {
               global_counts[i * swift_type_count + swift_type_neutrino]);
     }
     fclose(f_data);
+
+    message("Wrote zoom_cell_data.dat (%d cells)", nr_cells);
   }
+
+  /* --- Phase E: Clean up. --- */
 
   free(local_counts);
 #ifdef WITH_MPI
