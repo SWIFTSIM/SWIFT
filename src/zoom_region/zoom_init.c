@@ -1054,6 +1054,11 @@ void zoom_dump_geometry(const struct engine *e) {
     fprintf(f_meta, "NrBkgCells: %d\n", z->nr_bkg_cells);
     fprintf(f_meta, "BkgCellOffset: %d\n", z->bkg_cell_offset);
     fprintf(f_meta, "TotalCells: %d\n", nr_cells);
+    fprintf(f_meta, "ParticleDim: [%.15e, %.15e, %.15e]\n", z->part_dim[0],
+            z->part_dim[1], z->part_dim[2]);
+    fprintf(f_meta, "UserRegionPadFactor: %.15e\n", z->user_region_pad_factor);
+    fprintf(f_meta, "NrVoidCells: %d\n", z->nr_void_cells);
+    fprintf(f_meta, "NrNeighbourCells: %d\n", z->nr_neighbour_cells);
     fclose(f_meta);
 
     message("Wrote zoom_metadata.yml");

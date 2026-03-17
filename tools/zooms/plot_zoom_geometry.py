@@ -13,6 +13,10 @@ The following plots are produced:
   3. Cell grid coloured by MPI rank (domain decomposition).
   4. Particle count histograms split by cell type (zoom vs background).
   5. DM vs DM_background occupancy comparison for zoom cells.
+  6. Per-particle-type spatial occupancy maps.
+  7. Padding analysis: particle extent vs zoom region with breakdown.
+  8. Resolution quality: occupancy uniformity, radial profiles, and
+     DM contamination as a function of distance from the zoom centre.
 
 Example:
     python plot_zoom_geometry.py
@@ -96,6 +100,16 @@ def load_data(meta_file, data_file):
 # ---------------------------------------------------------------------------
 # Summary statistics (printed to stdout)
 # ---------------------------------------------------------------------------
+def _fmt_vec(v, fmt=".4f"):
+    """Format a 3-vector as a compact string."""
+    return f"({v[0]:{fmt}}, {v[1]:{fmt}}, {v[2]:{fmt}})"
+
+
+def _fmt_ivec(v):
+    """Format an integer 3-vector as a compact string."""
+    return f"({v[0]}, {v[1]}, {v[2]})"
+
+
 def print_summary(metadata, data):
     """Print a summary of the zoom geometry and particle counts to stdout.
 
@@ -106,6 +120,17 @@ def print_summary(metadata, data):
     # Separate zoom and background cells.
     zoom_mask = data[:, COL_TYPE] == CELL_TYPE_ZOOM
     bkg_mask = data[:, COL_TYPE] == CELL_TYPE_BKG
+
+    # Sub-type masks for background cells.
+    void_mask = (data[:, COL_TYPE] == CELL_TYPE_BKG) & (
+        data[:, COL_SUBTYPE] == CELL_SUBTYPE_VOID
+    )
+    neighbour_mask = (data[:, COL_TYPE] == CELL_TYPE_BKG) & (
+        data[:, COL_SUBTYPE] == CELL_SUBTYPE_NEIGHBOUR
+    )
+    regular_bkg_mask = (data[:, COL_TYPE] == CELL_TYPE_BKG) & (
+        data[:, COL_SUBTYPE] == CELL_SUBTYPE_REGULAR
+    )
 
     # Total particle counts across all cells.
     total_gas = int(data[:, COL_GAS].sum())
@@ -129,24 +154,106 @@ def print_summary(metadata, data):
     zoom_total = int(data[zoom_mask, COL_GAS : COL_NEUTRINO + 1].sum())
     bkg_total = int(data[bkg_mask, COL_GAS : COL_NEUTRINO + 1].sum())
 
-    # Print.
-    sep = "-" * 60
+    # Formatting constants.
+    W = 72  # total table width
+    LBL = 28  # label column width
+    sep = "=" * W
+    thin = "-" * W
+
+    # ---- Header ----
+    print()
     print(sep)
-    print("ZOOM GEOMETRY DIAGNOSTIC SUMMARY")
+    print("  ZOOM GEOMETRY DIAGNOSTIC SUMMARY".center(W))
     print(sep)
-    print(f"  Box size:            {metadata['BoxSize']}")
-    print(f"  Background cdim:     {metadata['BackgroundCdim']}")
-    print(f"  Zoom cdim:           {metadata['ZoomCdim']}")
-    print(f"  Zoom region dim:     {metadata['ZoomRegionDim']}")
-    print(f"  Zoom cell depth:     {metadata['ZoomCellDepth']}")
-    print(f"  Nr zoom cells:       {metadata['NrZoomCells']}")
-    print(f"  Nr bkg cells:        {metadata['NrBkgCells']}")
-    print(f"  Total cells:         {metadata['TotalCells']}")
-    print(sep)
-    print("PARTICLE COUNTS")
-    print(sep)
-    print(f"  {'Type':<20} {'Total':>12} {'In Zoom':>12} {'In Bkg':>12}")
-    print(f"  {'-' * 20} {'-' * 12} {'-' * 12} {'-' * 12}")
+
+    # ---- Cell grid ----
+    print()
+    print("  Cell Grid".ljust(W))
+    print(f"  {thin[2:]}")
+    print(f"  {'Box size':<{LBL}} {_fmt_vec(metadata['BoxSize'])}")
+    print(f"  {'Background cdim':<{LBL}} {_fmt_ivec(metadata['BackgroundCdim'])}")
+    print(
+        f"  {'Background cell width':<{LBL}} "
+        f"{_fmt_vec(metadata['BackgroundCellWidth'])}"
+    )
+    print(f"  {'Zoom cdim':<{LBL}} {_fmt_ivec(metadata['ZoomCdim'])}")
+    print(f"  {'Zoom cell width':<{LBL}} {_fmt_vec(metadata['ZoomCellWidth'])}")
+    print(f"  {'Zoom cell depth':<{LBL}} {metadata['ZoomCellDepth']}")
+    print()
+
+    # ---- Cell counts ----
+    nr_zoom = metadata["NrZoomCells"]
+    nr_bkg = metadata["NrBkgCells"]
+    nr_void = metadata.get("NrVoidCells", int(void_mask.sum()))
+    nr_neighbour = metadata.get("NrNeighbourCells", int(neighbour_mask.sum()))
+    nr_regular_bkg = int(regular_bkg_mask.sum())
+
+    print(f"  {'Nr zoom cells':<{LBL}} {nr_zoom}")
+    print(f"  {'Nr background cells':<{LBL}} {nr_bkg}")
+    print(f"    {'Void':<{LBL - 4}} {nr_void}")
+    print(f"    {'Neighbour':<{LBL - 4}} {nr_neighbour}")
+    print(f"    {'Regular':<{LBL - 4}} {nr_regular_bkg}")
+    print(f"  {'Total cells':<{LBL}} {metadata['TotalCells']}")
+
+    # ---- Zoom region geometry & padding ----
+    print()
+    print("  Zoom Region Geometry".ljust(W))
+    print(f"  {thin[2:]}")
+
+    zoom_dim = np.array(metadata["ZoomRegionDim"])
+    zoom_lower = np.array(metadata["ZoomRegionLowerBounds"])
+    zoom_upper = np.array(metadata["ZoomRegionUpperBounds"])
+    zoom_com = np.array(metadata["ZoomRegionCoM"])
+    applied_shift = np.array(metadata["AppliedZoomShift"])
+    actual_pad = metadata["RegionPadFactor"]
+
+    print(f"  {'Zoom region dim':<{LBL}} {_fmt_vec(zoom_dim)}")
+    print(f"  {'Zoom region lower':<{LBL}} {_fmt_vec(zoom_lower)}")
+    print(f"  {'Zoom region upper':<{LBL}} {_fmt_vec(zoom_upper)}")
+    print(f"  {'Zoom region CoM':<{LBL}} {_fmt_vec(zoom_com)}")
+    print(f"  {'Applied shift':<{LBL}} {_fmt_vec(applied_shift)}")
+
+    # Padding analysis (if metadata available).
+    has_padding_info = "ParticleDim" in metadata
+    if has_padding_info:
+        part_dim = np.array(metadata["ParticleDim"])
+        user_pad = metadata["UserRegionPadFactor"]
+        max_part_dim = np.max(part_dim)
+
+        # Padding breakdown: particle extent -> user-padded -> actual (cell-aligned)
+        user_padded_dim = max_part_dim * user_pad
+        actual_dim = np.max(zoom_dim)
+
+        # Padding shell thickness on each side.
+        padding_each_side = (zoom_dim - part_dim) / 2.0
+        padding_frac = padding_each_side / (zoom_dim / 2.0) * 100.0
+
+        print()
+        print("  Padding Analysis".ljust(W))
+        print(f"  {thin[2:]}")
+        print(f"  {'Particle extent':<{LBL}} {_fmt_vec(part_dim)}")
+        print(f"  {'Max particle extent':<{LBL}} {max_part_dim:.4f}")
+        print(f"  {'Requested pad factor':<{LBL}} {user_pad:.4f}")
+        print(f"  {'Padded extent (requested)':<{LBL}} {user_padded_dim:.4f}")
+        print(f"  {'Final region extent':<{LBL}} {actual_dim:.4f}")
+        print(f"  {'Actual pad factor':<{LBL}} {actual_pad:.4f}")
+        print(f"  {'Pad factor ratio':<{LBL}} {actual_pad / user_pad:.2f}x requested")
+        print(f"  {'Padding shell (per side)':<{LBL}} {_fmt_vec(padding_each_side)}")
+        print(f"  {'Padding fraction':<{LBL}} {_fmt_vec(padding_frac, fmt='.1f')}%")
+
+        # Volume efficiency: what fraction of zoom volume is particles vs padding.
+        part_vol = np.prod(part_dim)
+        zoom_vol = np.prod(zoom_dim)
+        vol_eff = part_vol / zoom_vol * 100.0
+        print(f"  {'Volume efficiency':<{LBL}} {vol_eff:.1f}%")
+
+    # ---- Particle counts ----
+    print()
+    print("  Particle Counts".ljust(W))
+    print(f"  {thin[2:]}")
+    hdr = f"  {'Type':<18} {'Total':>12} {'In Zoom':>12} {'In Bkg':>12}"
+    print(hdr)
+    print(f"  {'-' * 18} {'-' * 12} {'-' * 12} {'-' * 12}")
 
     for label, col in [
         ("Gas", COL_GAS),
@@ -161,34 +268,97 @@ def print_summary(metadata, data):
         z = int(data[zoom_mask, col].sum())
         b = int(data[bkg_mask, col].sum())
         if t > 0:
-            print(f"  {label:<20} {t:>12d} {z:>12d} {b:>12d}")
+            print(f"  {label:<18} {t:>12,d} {z:>12,d} {b:>12,d}")
 
-    print(f"  {'-' * 20} {'-' * 12} {'-' * 12} {'-' * 12}")
-    print(f"  {'All'::<20} {total:>12d} {zoom_total:>12d} {bkg_total:>12d}")
-    print(sep)
+    print(f"  {'-' * 18} {'-' * 12} {'-' * 12} {'-' * 12}")
+    print(f"  {'All':<18} {total:>12,d} {zoom_total:>12,d} {bkg_total:>12,d}")
 
-    # Occupancy statistics for non-empty cells.
-    for label, mask in [("Zoom", zoom_mask), ("Background", bkg_mask)]:
+    # ---- DM contamination summary ----
+    zoom_dm_total = int(data[zoom_mask, COL_DM].sum())
+    zoom_dm_bkg_total = int(data[zoom_mask, COL_DM_BKG].sum())
+    if zoom_dm_total + zoom_dm_bkg_total > 0:
+        contam_frac = zoom_dm_bkg_total / (zoom_dm_total + zoom_dm_bkg_total)
+        n_contaminated = int(((data[zoom_mask, COL_DM_BKG]) > 0).sum())
+        print()
+        print("  DM Contamination (zoom cells)".ljust(W))
+        print(f"  {thin[2:]}")
+        print(
+            f"  {'Bkg DM in zoom region':<{LBL}} "
+            f"{zoom_dm_bkg_total:,d} / {zoom_dm_total + zoom_dm_bkg_total:,d}"
+        )
+        print(f"  {'Contamination fraction':<{LBL}} {contam_frac:.6f}")
+        print(
+            f"  {'Contaminated cells':<{LBL}} {n_contaminated} / {int(zoom_mask.sum())}"
+        )
+
+    # ---- Occupancy statistics ----
+    print()
+    print("  Occupancy Statistics".ljust(W))
+    print(f"  {thin[2:]}")
+    for label, mask in [
+        ("Zoom", zoom_mask),
+        ("Background", bkg_mask),
+        ("  Void", void_mask),
+        ("  Neighbour", neighbour_mask),
+    ]:
         counts = data[mask, COL_GAS : COL_NEUTRINO + 1].sum(axis=1)
         nonempty = counts[counts > 0]
+        n_total = int(mask.sum())
+        if n_total == 0:
+            continue
         if len(nonempty) > 0:
             print(
-                f"  {label} cells: {int(mask.sum())} total, "
-                f"{len(nonempty)} non-empty, "
-                f"occupancy min/median/max = "
-                f"{int(nonempty.min())}/{int(np.median(nonempty))}/{int(nonempty.max())}"
+                f"  {label:<16} {n_total:>6} cells "
+                f"({len(nonempty):>6} non-empty)  "
+                f"min {int(nonempty.min()):>8,d}  "
+                f"med {int(np.median(nonempty)):>8,d}  "
+                f"max {int(nonempty.max()):>8,d}"
             )
         else:
-            print(f"  {label} cells: {int(mask.sum())} total, all empty")
+            print(f"  {label:<16} {n_total:>6} cells (all empty)")
 
-    # MPI rank distribution.
+    # ---- Resolution quality for zoom cells ----
+    zoom_counts = data[zoom_mask, COL_GAS : COL_NEUTRINO + 1].sum(axis=1)
+    zoom_nonempty = zoom_counts[zoom_counts > 0]
+    if len(zoom_nonempty) > 1:
+        mean_occ = np.mean(zoom_nonempty)
+        std_occ = np.std(zoom_nonempty)
+        cv = std_occ / mean_occ if mean_occ > 0 else 0.0
+        iqr = np.percentile(zoom_nonempty, 75) - np.percentile(zoom_nonempty, 25)
+        print()
+        print("  Resolution Quality (zoom cells)".ljust(W))
+        print(f"  {thin[2:]}")
+        print(f"  {'Mean occupancy':<{LBL}} {mean_occ:,.1f}")
+        print(f"  {'Std deviation':<{LBL}} {std_occ:,.1f}")
+        print(f"  {'Coeff. of variation':<{LBL}} {cv:.3f}  (0 = perfectly uniform)")
+        print(f"  {'IQR (25th-75th pctl)':<{LBL}} {iqr:,.1f}")
+        print(f"  {'10th percentile':<{LBL}} {np.percentile(zoom_nonempty, 10):,.1f}")
+        print(f"  {'90th percentile':<{LBL}} {np.percentile(zoom_nonempty, 90):,.1f}")
+
+        # Flag extreme outliers.
+        ratio = zoom_nonempty.max() / zoom_nonempty.min()
+        if ratio > 100:
+            print(f"  {'** WARNING **':<{LBL}} Max/min occupancy ratio = {ratio:,.0f}")
+            print(
+                f"  {'':<{LBL}} Large spread may indicate poor zoom region centering."
+            )
+
+    # ---- MPI ----
     ranks = np.unique(data[:, COL_RANK].astype(int))
+    print()
     if len(ranks) > 1:
+        zoom_ranks = np.unique(data[zoom_mask, COL_RANK].astype(int))
+        bkg_ranks = np.unique(data[bkg_mask, COL_RANK].astype(int))
         print(
-            f"  MPI ranks present: {len(ranks)} (ranks {int(ranks.min())}-{int(ranks.max())})"
+            f"  {'MPI ranks':<{LBL}} {len(ranks)} "
+            f"(ranks {int(ranks.min())}-{int(ranks.max())})"
         )
+        print(f"  {'Ranks with zoom cells':<{LBL}} {len(zoom_ranks)}")
+        print(f"  {'Ranks with bkg cells':<{LBL}} {len(bkg_ranks)}")
     else:
-        print("  MPI ranks present: 1 (serial run)")
+        print(f"  {'MPI ranks':<{LBL}} 1 (serial run)")
+
+    print()
     print(sep)
 
 
@@ -737,6 +907,524 @@ def plot_per_type_maps(metadata, data, outdir):
     return fig
 
 
+def plot_padding_analysis(metadata, data, outdir):
+    """Plot 7: Padding analysis showing particle extent vs zoom region.
+
+    Left panel: 2D cell map with concentric rectangles showing the particle
+    extent, user-requested padded extent, and final (cell-aligned) zoom region,
+    zoomed in to the zoom region with a small margin.
+
+    Right panel: 1D bar chart decomposing the zoom region extent into particle
+    extent, user padding, and cell-alignment overhead.
+
+    Args:
+        metadata: Zoom metadata dictionary.
+        data: Cell data array.
+        outdir: Output directory for saved figures.
+
+    Returns:
+        The matplotlib Figure, or None if padding metadata is unavailable.
+    """
+    if "ParticleDim" not in metadata:
+        print(
+            "Padding metadata not available (run with newer SWIFT), "
+            "skipping padding analysis plot."
+        )
+        return None
+
+    part_dim = np.array(metadata["ParticleDim"])
+    zoom_dim = np.array(metadata["ZoomRegionDim"])
+    zoom_lower = np.array(metadata["ZoomRegionLowerBounds"])
+    zoom_upper = np.array(metadata["ZoomRegionUpperBounds"])
+    zoom_com = np.array(metadata["ZoomRegionCoM"])
+    user_pad = metadata["UserRegionPadFactor"]
+    box_size = np.array(metadata["BoxSize"])
+
+    max_part_dim = np.max(part_dim)
+    user_padded_dim = max_part_dim * user_pad
+
+    # Compute centres and extents for concentric rectangles.
+    zoom_centre = (zoom_lower + zoom_upper) / 2.0
+
+    # Particle extent rectangle (centred on CoM).
+    part_lower = zoom_com - part_dim / 2.0
+    part_upper = zoom_com + part_dim / 2.0
+
+    # User-padded rectangle (centred on CoM, isotropic from max extent).
+    user_pad_lower = zoom_com - user_padded_dim / 2.0
+    user_pad_upper = zoom_com + user_padded_dim / 2.0
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # ---- Left panel: spatial overview ----
+    ax = axes[0]
+
+    # Draw zoom cells (faded).
+    zoom_mask = data[:, COL_TYPE] == CELL_TYPE_ZOOM
+    zoom_data = data[zoom_mask]
+    for row in zoom_data:
+        ax.add_patch(
+            Rectangle(
+                (row[COL_LOC_X], row[COL_LOC_Y]),
+                row[COL_WIDTH_X],
+                row[COL_WIDTH_Y],
+                fill=True,
+                facecolor=COLOUR_ZOOM,
+                edgecolor="black",
+                linewidth=0.15,
+                alpha=0.2,
+                zorder=0,
+            )
+        )
+
+    # Draw void cells.
+    void_mask = (data[:, COL_TYPE] == CELL_TYPE_BKG) & (
+        data[:, COL_SUBTYPE] == CELL_SUBTYPE_VOID
+    )
+    for row in data[void_mask]:
+        ax.add_patch(
+            Rectangle(
+                (row[COL_LOC_X], row[COL_LOC_Y]),
+                row[COL_WIDTH_X],
+                row[COL_WIDTH_Y],
+                fill=True,
+                facecolor=COLOUR_BKG_VOID,
+                edgecolor="black",
+                linewidth=0.3,
+                alpha=0.3,
+                zorder=0,
+            )
+        )
+
+    # Particle extent.
+    ax.add_patch(
+        Rectangle(
+            (part_lower[0], part_lower[1]),
+            part_dim[0],
+            part_dim[1],
+            fill=False,
+            edgecolor="#e63946",
+            linewidth=2.0,
+            linestyle="-",
+            label="Particle extent",
+            zorder=3,
+        )
+    )
+
+    # User-requested padded extent.
+    ax.add_patch(
+        Rectangle(
+            (user_pad_lower[0], user_pad_lower[1]),
+            user_padded_dim,
+            user_padded_dim,
+            fill=False,
+            edgecolor="#457b9d",
+            linewidth=2.0,
+            linestyle="--",
+            label=f"User padding ({user_pad:.2f}x)",
+            zorder=3,
+        )
+    )
+
+    # Final zoom region.
+    ax.add_patch(
+        Rectangle(
+            (zoom_lower[0], zoom_lower[1]),
+            zoom_dim[0],
+            zoom_dim[1],
+            fill=False,
+            edgecolor="#2a9d8f",
+            linewidth=2.0,
+            linestyle="-.",
+            label=f"Final region ({metadata['RegionPadFactor']:.2f}x)",
+            zorder=3,
+        )
+    )
+
+    # Mark CoM.
+    ax.plot(
+        zoom_com[0],
+        zoom_com[1],
+        "x",
+        color="#e63946",
+        markersize=10,
+        markeredgewidth=2,
+        zorder=4,
+        label="Zoom CoM",
+    )
+
+    # Set view to zoom region with 30% margin.
+    margin = 0.3 * np.max(zoom_dim)
+    ax.set_xlim(zoom_lower[0] - margin, zoom_upper[0] + margin)
+    ax.set_ylim(zoom_lower[1] - margin, zoom_upper[1] + margin)
+    ax.set_aspect("equal")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title("Padding Overview (x-y projection)")
+    ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+
+    # ---- Right panel: 1D breakdown bar chart ----
+    ax = axes[1]
+
+    # Break the full extent into three concentric shells per axis.
+    labels = ["x", "y", "z"]
+    particle_extents = part_dim
+    user_pads = np.full(3, user_padded_dim) - part_dim
+    alignment_pads = zoom_dim - np.full(3, user_padded_dim)
+    # Clamp negative alignment pads (can happen if void snapping shrinks).
+    alignment_pads = np.maximum(alignment_pads, 0.0)
+
+    x_pos = np.arange(3)
+    width = 0.5
+
+    ax.bar(
+        x_pos,
+        particle_extents,
+        width,
+        label="Particle extent",
+        color="#e63946",
+        edgecolor="black",
+        linewidth=0.5,
+    )
+    ax.bar(
+        x_pos,
+        user_pads,
+        width,
+        bottom=particle_extents,
+        label="User padding",
+        color="#457b9d",
+        edgecolor="black",
+        linewidth=0.5,
+    )
+    ax.bar(
+        x_pos,
+        alignment_pads,
+        width,
+        bottom=particle_extents + user_pads,
+        label="Cell alignment",
+        color="#2a9d8f",
+        edgecolor="black",
+        linewidth=0.5,
+    )
+
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(labels)
+    ax.set_ylabel("Extent")
+    ax.set_title("Zoom Region Extent Breakdown")
+    ax.legend(fontsize=9)
+
+    # Annotate percentages.
+    for i in range(3):
+        total = zoom_dim[i]
+        parts = [particle_extents[i], user_pads[i], alignment_pads[i]]
+        bottom = 0
+        for p in parts:
+            if p > 0.01 * total:
+                pct = p / total * 100
+                ax.text(
+                    x_pos[i],
+                    bottom + p / 2,
+                    f"{pct:.0f}%",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    fontweight="bold",
+                    color="white",
+                )
+            bottom += p
+
+    fig.suptitle("Zoom Region Padding Analysis", fontsize=14, y=1.02)
+    fig.tight_layout()
+    path = os.path.join(outdir, "zoom_padding_analysis.png")
+    fig.savefig(path, dpi=300, bbox_inches="tight")
+    print(f"Saved {path}")
+    return fig
+
+
+def plot_resolution_quality(metadata, data, outdir):
+    """Plot 8: Resolution quality analysis of the zoom region.
+
+    Four panels:
+      1. Occupancy distribution with percentile markers and uniformity metrics.
+      2. Spatial map of occupancy deviation from the median.
+      3. Radial profile of occupancy from the zoom region centre.
+      4. Radial profile of DM background contamination fraction.
+
+    Args:
+        metadata: Zoom metadata dictionary.
+        data: Cell data array.
+        outdir: Output directory for saved figures.
+
+    Returns:
+        The matplotlib Figure, or None if no zoom cells.
+    """
+    zoom_mask = data[:, COL_TYPE] == CELL_TYPE_ZOOM
+    zoom_data = data[zoom_mask]
+
+    if len(zoom_data) == 0:
+        print("No zoom cells found, skipping resolution quality plot.")
+        return None
+
+    # Total particle count per zoom cell.
+    zoom_counts = zoom_data[:, COL_GAS : COL_NEUTRINO + 1].sum(axis=1)
+    zoom_nonempty_mask = zoom_counts > 0
+
+    if zoom_nonempty_mask.sum() < 2:
+        print("Too few non-empty zoom cells, skipping resolution quality plot.")
+        return None
+
+    zoom_nonempty = zoom_counts[zoom_nonempty_mask]
+
+    # Cell centres and radial distances from zoom region centre.
+    cell_centres_x = zoom_data[:, COL_LOC_X] + zoom_data[:, COL_WIDTH_X] / 2.0
+    cell_centres_y = zoom_data[:, COL_LOC_Y] + zoom_data[:, COL_WIDTH_Y] / 2.0
+    cell_centres_z = zoom_data[:, COL_LOC_Z] + zoom_data[:, COL_WIDTH_Z] / 2.0
+
+    zoom_lower = np.array(metadata["ZoomRegionLowerBounds"])
+    zoom_dim = np.array(metadata["ZoomRegionDim"])
+    zoom_centre = zoom_lower + zoom_dim / 2.0
+
+    # Radial distance from zoom centre (3D).
+    dx = cell_centres_x - zoom_centre[0]
+    dy = cell_centres_y - zoom_centre[1]
+    dz = cell_centres_z - zoom_centre[2]
+    radii = np.sqrt(dx**2 + dy**2 + dz**2)
+
+    # Normalised radius (0 = centre, 1 = corner of zoom region).
+    max_radius = np.sqrt(np.sum((zoom_dim / 2.0) ** 2))
+    norm_radii = radii / max_radius
+
+    fig, axes = plt.subplots(2, 2, figsize=(13, 11))
+
+    # ---- Panel 1: Occupancy distribution ----
+    ax = axes[0, 0]
+    valid_counts = zoom_nonempty
+    with np.errstate(divide="ignore"):
+        log_counts = np.log10(valid_counts)
+
+    lo, hi = log_counts.min(), log_counts.max()
+    if lo == hi:
+        lo -= 0.5
+        hi += 0.5
+    bins = np.logspace(lo, hi, 40)
+    ax.hist(
+        valid_counts,
+        bins=bins,
+        color=COLOUR_ZOOM,
+        edgecolor="black",
+        linewidth=0.4,
+        alpha=0.8,
+    )
+
+    # Percentile lines.
+    for pct, ls, lbl in [
+        (10, ":", "10th"),
+        (50, "-", "Median"),
+        (90, ":", "90th"),
+    ]:
+        val = np.percentile(valid_counts, pct)
+        ax.axvline(val, color="#e63946", linestyle=ls, linewidth=1.5, label=lbl)
+
+    # Annotate statistics.
+    mean_occ = np.mean(valid_counts)
+    cv = np.std(valid_counts) / mean_occ if mean_occ > 0 else 0
+    ax.axvline(mean_occ, color="#2a9d8f", linestyle="--", linewidth=1.5, label="Mean")
+    ax.text(
+        0.98,
+        0.95,
+        f"CV = {cv:.3f}\n"
+        f"Mean = {mean_occ:,.0f}\n"
+        f"N(empty) = {int((~zoom_nonempty_mask).sum())}",
+        transform=ax.transAxes,
+        ha="right",
+        va="top",
+        fontsize=8,
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.9),
+    )
+
+    ax.set_xscale("log")
+    ax.set_xlabel("Particles per cell")
+    ax.set_ylabel("Number of cells")
+    ax.set_title("Zoom Cell Occupancy Distribution")
+    ax.legend(fontsize=7, loc="upper left")
+
+    # ---- Panel 2: Spatial deviation from median ----
+    ax = axes[0, 1]
+    median_count = np.median(zoom_nonempty)
+
+    # Log-ratio of count to median (positive = over-occupied).
+    with np.errstate(divide="ignore", invalid="ignore"):
+        log_ratio = np.log10(zoom_counts / median_count)
+    log_ratio[~np.isfinite(log_ratio)] = np.nan
+
+    valid_ratio = log_ratio[np.isfinite(log_ratio)]
+    if len(valid_ratio) > 0:
+        vabs = max(abs(np.nanmin(valid_ratio)), abs(np.nanmax(valid_ratio)), 0.5)
+    else:
+        vabs = 1.0
+    cmap = plt.cm.RdBu_r
+    norm = mcolors.TwoSlopeNorm(vmin=-vabs, vcenter=0, vmax=vabs)
+
+    for i, row in enumerate(zoom_data):
+        if np.isfinite(log_ratio[i]):
+            fc = cmap(norm(log_ratio[i]))
+        else:
+            fc = "#dddddd"
+        ax.add_patch(
+            Rectangle(
+                (row[COL_LOC_X], row[COL_LOC_Y]),
+                row[COL_WIDTH_X],
+                row[COL_WIDTH_Y],
+                fill=True,
+                facecolor=fc,
+                edgecolor="black",
+                linewidth=0.1,
+                zorder=1,
+            )
+        )
+
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("log$_{10}$(count / median)")
+
+    # Set view to zoom region.
+    margin = 0.05 * np.max(zoom_dim)
+    ax.set_xlim(zoom_lower[0] - margin, zoom_lower[0] + zoom_dim[0] + margin)
+    ax.set_ylim(zoom_lower[1] - margin, zoom_lower[1] + zoom_dim[1] + margin)
+    ax.set_aspect("equal")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title("Occupancy Deviation from Median")
+
+    # ---- Panel 3: Radial occupancy profile ----
+    ax = axes[1, 0]
+
+    # Bin by normalised radius.
+    n_bins = 20
+    r_edges = np.linspace(0, 1, n_bins + 1)
+    r_centres = (r_edges[:-1] + r_edges[1:]) / 2.0
+    bin_medians = np.full(n_bins, np.nan)
+    bin_q10 = np.full(n_bins, np.nan)
+    bin_q90 = np.full(n_bins, np.nan)
+
+    for i in range(n_bins):
+        in_bin = (norm_radii >= r_edges[i]) & (norm_radii < r_edges[i + 1])
+        bin_counts = zoom_counts[in_bin]
+        bin_nz = bin_counts[bin_counts > 0]
+        if len(bin_nz) > 0:
+            bin_medians[i] = np.median(bin_nz)
+            bin_q10[i] = np.percentile(bin_nz, 10)
+            bin_q90[i] = np.percentile(bin_nz, 90)
+
+    valid = np.isfinite(bin_medians)
+    ax.fill_between(
+        r_centres[valid],
+        bin_q10[valid],
+        bin_q90[valid],
+        alpha=0.25,
+        color=COLOUR_ZOOM,
+        label="10th-90th pctl",
+    )
+    ax.plot(
+        r_centres[valid],
+        bin_medians[valid],
+        "o-",
+        color=COLOUR_ZOOM,
+        markersize=4,
+        linewidth=1.5,
+        label="Median",
+    )
+
+    ax.set_xlabel("Normalised radius from zoom centre")
+    ax.set_ylabel("Particles per cell")
+    ax.set_yscale("log")
+    ax.set_xlim(0, 1)
+    ax.set_title("Radial Occupancy Profile")
+    ax.legend(fontsize=8)
+
+    # ---- Panel 4: Radial contamination profile ----
+    ax = axes[1, 1]
+
+    dm_counts = zoom_data[:, COL_DM]
+    dm_bkg_counts = zoom_data[:, COL_DM_BKG]
+    total_dm = dm_counts + dm_bkg_counts
+
+    has_dm = total_dm.sum() > 0
+
+    if has_dm:
+        with np.errstate(divide="ignore", invalid="ignore"):
+            contam_frac = np.where(total_dm > 0, dm_bkg_counts / total_dm, 0.0)
+
+        bin_contam_median = np.full(n_bins, np.nan)
+        bin_contam_max = np.full(n_bins, np.nan)
+        bin_contam_mean = np.full(n_bins, np.nan)
+
+        for i in range(n_bins):
+            in_bin = (norm_radii >= r_edges[i]) & (norm_radii < r_edges[i + 1])
+            bin_dm = total_dm[in_bin]
+            bin_frac = contam_frac[in_bin]
+            has_particles = bin_dm > 0
+            if has_particles.sum() > 0:
+                bin_contam_median[i] = np.median(bin_frac[has_particles])
+                bin_contam_max[i] = np.max(bin_frac[has_particles])
+                bin_contam_mean[i] = np.mean(bin_frac[has_particles])
+
+        valid = np.isfinite(bin_contam_median)
+        ax.plot(
+            r_centres[valid],
+            bin_contam_median[valid],
+            "o-",
+            color=COLOUR_ZOOM,
+            markersize=4,
+            linewidth=1.5,
+            label="Median",
+        )
+        ax.plot(
+            r_centres[valid],
+            bin_contam_max[valid],
+            "^--",
+            color="#e63946",
+            markersize=4,
+            linewidth=1.0,
+            label="Max",
+        )
+        ax.plot(
+            r_centres[valid],
+            bin_contam_mean[valid],
+            "s:",
+            color="#2a9d8f",
+            markersize=3,
+            linewidth=1.0,
+            label="Mean",
+        )
+
+        ax.set_xlabel("Normalised radius from zoom centre")
+        ax.set_ylabel("Background DM fraction")
+        ax.set_xlim(0, 1)
+        ax.set_ylim(bottom=0)
+        ax.set_title("Radial DM Contamination Profile")
+        ax.legend(fontsize=8)
+    else:
+        ax.text(
+            0.5,
+            0.5,
+            "No DM particles",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=12,
+        )
+        ax.set_title("Radial DM Contamination Profile")
+
+    fig.suptitle("Zoom Region Resolution Quality", fontsize=14, y=1.02)
+    fig.tight_layout()
+    path = os.path.join(outdir, "zoom_resolution_quality.png")
+    fig.savefig(path, dpi=300, bbox_inches="tight")
+    print(f"Saved {path}")
+    return fig
+
+
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
@@ -754,6 +1442,8 @@ def main():
             "  zoom_occupancy_histograms.png  Per-type occupancy histograms\n"
             "  zoom_dm_split.png              DM vs DM_bkg contamination\n"
             "  zoom_per_type_maps.png         Per-type spatial occupancy maps\n"
+            "  zoom_padding_analysis.png      Padding extent breakdown\n"
+            "  zoom_resolution_quality.png    Occupancy uniformity & radial profiles\n"
         ),
     )
     parser.add_argument(
@@ -796,6 +1486,8 @@ def main():
     figs.append(plot_occupancy_histograms(metadata, data, args.outdir))
     figs.append(plot_dm_split(metadata, data, args.outdir))
     figs.append(plot_per_type_maps(metadata, data, args.outdir))
+    figs.append(plot_padding_analysis(metadata, data, args.outdir))
+    figs.append(plot_resolution_quality(metadata, data, args.outdir))
 
     if args.show:
         plt.show()
