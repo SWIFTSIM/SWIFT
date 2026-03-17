@@ -26,7 +26,7 @@ def load_data(meta_file, data_file):
     return metadata, data
 
 
-def draw_grid(metadata, data):
+def draw_grid(metadata, data, show=False):
     """Draw the grid diagram of the cells."""
     # Setup the figure
     fig, ax = plt.subplots(figsize=(6, 6))
@@ -103,6 +103,8 @@ def draw_grid(metadata, data):
     # Save the figure
     fig.savefig("zoom_geometry.png", dpi=300)
     print("Saved zoom_geometry.png")
+    if show:
+        plt.show()
     plt.close(fig)
 
 
@@ -115,10 +117,13 @@ def main():
     parser.add_argument(
         "--cells", default="zoom_cell_data.dat", help="Cell data table file"
     )
+    parser.add_argument(
+        "--show", action="store_true", help="Show the plot interactively"
+    )
     args = parser.parse_args()
 
     metadata, data = load_data(args.metadata, args.cells)
-    draw_grid(metadata, data)
+    draw_grid(metadata, data, show=args.show)
 
 
 if __name__ == "__main__":
