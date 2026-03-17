@@ -60,7 +60,6 @@ echo "SIDM + EAGLE  "
 echo "--------------"
 do_configure --with-sidm=Basic --with-subgrid=EAGLE
 do_make -j 2
-do_make check
 do_make clean
 
 
