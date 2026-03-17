@@ -164,6 +164,70 @@ def _compute_neighbour_shells(data, void_mask, neighbour_mask):
     return shell_counts
 
 
+def _simulate_setup(box_size, part_dim, user_pad, depth, bkg_cdim):
+    """Simulate zoom geometry computation for a given bkg_cdim."""
+    # 1. Compute particle extent and requested padding
+    ini_dim = np.max(part_dim)
+    requested_dim = ini_dim * user_pad
+
+    # 2. Simulate void snapping logic
+    bkg_width = box_size / bkg_cdim
+
+    # Void snapping
+    lower = np.floor(((box_size - requested_dim) / 2.0) / bkg_width) * bkg_width
+    upper = (np.floor(((box_size + requested_dim) / 2.0) / bkg_width) + 1) * bkg_width
+    actual_dim = upper - lower
+
+    actual_pad = actual_dim / ini_dim
+
+    # 3. Compute cell counts
+    # Number of zoom regions tessellating void region
+    nr_zoom_regions = int(np.ceil(actual_dim / requested_dim))
+
+    # This is a simplification based on zoom_get_geometry
+    # zoom_cdim = nr_parents * 2^depth
+    # nr_parents = actual_dim / bkg_width
+    cdim = int(np.floor((actual_dim + (0.1 * bkg_width)) / bkg_width) * (2**depth))
+
+    nr_zoom_cells = cdim**3
+    nr_bkg_cells = bkg_cdim**3
+
+    return actual_pad, nr_bkg_cells + nr_zoom_cells
+
+
+def _find_optimal_bkg_cdim(metadata):
+    """Find the optimal bkg_cdim to minimize padding waste and total cells."""
+    if "ParticleDim" not in metadata:
+        return None
+
+    box_size = metadata["BoxSize"][0]
+    part_dim = np.array(metadata["ParticleDim"])
+    user_pad = metadata["UserRegionPadFactor"]
+    depth = metadata["ZoomCellDepth"]
+    current_bkg = metadata["BackgroundCdim"][0]
+
+    # Sweep range
+    possible_cdims = np.arange(max(8, current_bkg // 2), current_bkg * 2 + 1)
+
+    results = []
+    for cdim in possible_cdims:
+        actual_pad, total_cells = _simulate_setup(
+            box_size, part_dim, user_pad, depth, cdim
+        )
+
+        # Cost function: normalize padding ratio (want ~1.0) and cell count
+        # Padding waste ratio
+        pad_waste = actual_pad / user_pad
+
+        # Simple weighted cost function
+        cost = pad_waste + (total_cells / 1e5)
+
+        results.append((cdim, pad_waste, total_cells, cost))
+
+    # Return best
+    return min(results, key=lambda x: x[3])
+
+
 def print_summary(metadata, data):
     """Print a summary of the zoom geometry and particle counts to stdout.
 
@@ -308,13 +372,6 @@ def print_summary(metadata, data):
     print(f"  {'Zoom cell width':<{LBL}} {_fmt_vec(metadata['ZoomCellWidth'])}")
     print(f"  {'Zoom cell depth':<{LBL}} {metadata['ZoomCellDepth']}")
     print()
-
-    # ---- Cell counts ----
-    nr_zoom = metadata["NrZoomCells"]
-    nr_bkg = metadata["NrBkgCells"]
-    nr_void = metadata.get("NrVoidCells", int(void_mask.sum()))
-    nr_neighbour = metadata.get("NrNeighbourCells", int(neighbour_mask.sum()))
-    nr_regular_bkg = int(regular_bkg_mask.sum())
 
     # Compute neighbor shells around void cells.
     neighbour_shells = _compute_neighbour_shells(data, void_mask, neighbour_mask)
@@ -493,6 +550,19 @@ def print_summary(metadata, data):
         print(f"  {'Ranks with bkg cells':<{LBL}} {len(bkg_ranks)}")
     else:
         print(f"  {'MPI ranks':<{LBL}} 1 (serial run)")
+
+    # ---- Setup Optimization ----
+    best_bkg = _find_optimal_bkg_cdim(metadata)
+    if best_bkg is not None:
+        best_cdim, best_pad, best_total, _ = best_bkg
+        current_bkg = metadata["BackgroundCdim"][0]
+        if best_cdim != current_bkg:
+            print()
+            print(f"  {'Recommendation':<{LBL}} Optimal setup found:")
+            print(
+                f"    {'Proposed bkg cdim':<{LBL - 4}} {best_cdim} (currently {current_bkg})"
+            )
+            print(f"    {'Expected padding ratio':<{LBL - 4}} {best_pad:.4f}")
 
     print()
     print(sep)
