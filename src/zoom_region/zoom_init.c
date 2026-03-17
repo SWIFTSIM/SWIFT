@@ -912,14 +912,9 @@ void zoom_region_init(struct space *s, const int regridding,
  *     particle counts.
  *
  * Particle counts are computed locally on each rank by looping over the
- * particle arrays and mapping each particle to its top-level cell. An MPI
- * reduction then aggregates these counts onto rank 0, which writes the files.
- *
- * When self-gravity is enabled, all particle types are accessible via the
- * gpart array (since every particle has a gpart companion). When self-gravity
- * is disabled, we loop over each particle array (parts, sparts, bparts, sinks)
- * independently. In the latter case DM counts will be zero since there is no
- * gpart array.
+ * particle arrays and mapping each particle to its top-level cell. (If needed)
+ * An MPI reduction then aggregates these counts onto rank 0, which writes the
+ * files.
  *
  * @param e The #engine.
  */
@@ -927,17 +922,15 @@ void zoom_dump_geometry(const struct engine *e) {
 
   const struct space *s = e->s;
   const int nr_cells = s->nr_cells;
-  const int myrank = e->nodeID;
 
-  /* --- Phase A: Allocate local per-cell, per-type counters. --- */
+  /* Allocate an array to hold the local particle counts for each cell */
   long long *local_counts =
       calloc(nr_cells * swift_type_count, sizeof(long long));
   if (local_counts == NULL)
     error("Failed to allocate local particle count array (%d cells).",
           nr_cells);
 
-  /* --- Phase B: Count particles into cells on each rank. --- */
-
+  /* Can we just check all the gparts? */
   if (e->policy & engine_policy_self_gravity) {
 
     /* With self-gravity every particle has a gpart companion, so we can
@@ -988,11 +981,10 @@ void zoom_dump_geometry(const struct engine *e) {
     }
   }
 
-  /* --- Phase C: MPI reduction of counts onto rank 0. --- */
-
 #ifdef WITH_MPI
+  /* Reduce the local counts to rank 0. */
   long long *global_counts = NULL;
-  if (myrank == 0) {
+  if (e->nodeID == 0) {
     global_counts = calloc(nr_cells * swift_type_count, sizeof(long long));
     if (global_counts == NULL)
       error("Failed to allocate global particle count array (%d cells).",
@@ -1004,11 +996,9 @@ void zoom_dump_geometry(const struct engine *e) {
   long long *global_counts = local_counts;
 #endif
 
-  /* --- Phase D: Write diagnostic files (rank 0 only). --- */
+  if (e->nodeID == 0) {
 
-  if (myrank == 0) {
-
-    /* ---- Write the metadata YAML file. ---- */
+    /* Write the zoom geometry metadata file. */
     const struct zoom_region_properties *z = s->zoom_props;
 
     FILE *f_meta = fopen("zoom_metadata.yml", "w");
@@ -1063,7 +1053,7 @@ void zoom_dump_geometry(const struct engine *e) {
 
     message("Wrote zoom_metadata.yml");
 
-    /* ---- Write the per-cell data table. ---- */
+    /* Write the per-cell data file. */
     FILE *f_data = fopen("zoom_cell_data.dat", "w");
     if (f_data == NULL) error("Failed to open zoom_cell_data.dat for writing.");
 
@@ -1098,10 +1088,9 @@ void zoom_dump_geometry(const struct engine *e) {
     message("Wrote zoom_cell_data.dat (%d cells)", nr_cells);
   }
 
-  /* --- Phase E: Clean up. --- */
-
   free(local_counts);
+
 #ifdef WITH_MPI
-  if (myrank == 0) free(global_counts);
+  if (e->nodeID == 0) free(global_counts);
 #endif
 }
