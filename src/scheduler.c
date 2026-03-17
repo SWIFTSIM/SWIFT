@@ -501,7 +501,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
     const float sicount_i = (t->ci != NULL) ? t->ci->sidm.count : 0.f;
     const float sicount_j = (t->cj != NULL) ? t->cj->sidm.count : 0.f;
-    
+
     switch (t->type) {
       case task_type_sort:
       case task_type_rt_sort:
