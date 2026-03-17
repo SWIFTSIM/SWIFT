@@ -295,6 +295,9 @@ def print_summary(metadata, data):
     # Cell counts (with potential large numbers)
     nr_zoom = metadata["NrZoomCells"]
     nr_bkg = metadata["NrBkgCells"]
+    nr_void = metadata.get("NrVoidCells", int(void_mask.sum()))
+    nr_neighbour = metadata.get("NrNeighbourCells", int(neighbour_mask.sum()))
+    nr_regular_bkg = int(regular_bkg_mask.sum())
     sample_lines.append(f"  {'Nr background cells':<{LBL}} {nr_bkg}")
 
     # Particle counts table (different format)
