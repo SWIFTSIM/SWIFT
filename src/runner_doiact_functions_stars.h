@@ -1203,10 +1203,8 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
   /* Unlock if it wasn't sorted as we will not use the sort array */
-  if (!is_sorted) {
-    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
-      error("Impossible to unlock cell!");
-  }
+  if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+    error("Impossible to unlock cell!");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   const int force_naive = 1;
@@ -1219,12 +1217,6 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
     DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
   } else {
     DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
-  }
-
-  /* Unlock in the other case too now that we are all done. */
-  if (is_sorted) {
-    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
-      error("Impossible to unlock cell!");
   }
 }
 
