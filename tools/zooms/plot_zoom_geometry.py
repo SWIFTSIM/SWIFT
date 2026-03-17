@@ -9,12 +9,10 @@ To run get the files to run this analysis run the following:
 
 The following plots are produced:
   1. Cell grid coloured by cell type and subtype (geometry overview).
-  2. Cell grid coloured by total particle occupancy (log-scaled heatmap).
-  3. Particle count histograms split by cell type (zoom vs background).
-  4. DM vs DM_background occupancy comparison for zoom cells.
-  5. Per-particle-type spatial occupancy maps.
-  6. Padding analysis: particle extent vs zoom region with breakdown.
-  7. Resolution quality: occupancy uniformity, radial profiles, and
+  2. Particle count histograms split by cell type (zoom vs background).
+  3. DM vs DM_background occupancy scatter (contamination diagnostic).
+  4. Padding analysis: particle extent vs zoom region with breakdown.
+  5. Resolution quality: occupancy uniformity, radial profiles, and
      DM contamination as a function of distance from the zoom centre.
 
 Example:
@@ -661,58 +659,6 @@ def plot_cell_types(metadata, data, outdir):
     return fig
 
 
-def plot_occupancy(metadata, data, outdir):
-    """Plot 2: Cell grid coloured by total particle occupancy (log scale).
-
-    Args:
-        metadata: Zoom metadata dictionary.
-        data: Cell data array.
-        outdir: Output directory for saved figures.
-
-    Returns:
-        The matplotlib Figure.
-    """
-    fig, ax = plt.subplots(figsize=(7, 7))
-    _setup_axes(ax, metadata)
-    ax.set_title("Total Particle Occupancy (log$_{10}$)")
-
-    # Total count per cell.
-    total_counts = data[:, COL_GAS : COL_NEUTRINO + 1].sum(axis=1)
-
-    # Log-scale the counts (use nan for empty cells).
-    with np.errstate(divide="ignore"):
-        log_counts = np.log10(total_counts)
-    log_counts[~np.isfinite(log_counts)] = np.nan
-
-    # Build a colourmap.
-    valid = log_counts[np.isfinite(log_counts)]
-    if len(valid) > 0:
-        vmin, vmax = np.nanmin(valid), np.nanmax(valid)
-    else:
-        vmin, vmax = 0, 1
-    cmap = plt.cm.viridis
-    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-
-    colours = []
-    for i in range(len(data)):
-        if np.isfinite(log_counts[i]):
-            colours.append(cmap(norm(log_counts[i])))
-        else:
-            colours.append("#dddddd")  # grey for empty cells
-    _draw_cells(ax, data, colours)
-
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("log$_{10}$(particle count)")
-
-    fig.tight_layout()
-    path = os.path.join(outdir, "zoom_occupancy.png")
-    fig.savefig(path, dpi=300, bbox_inches="tight")
-    print(f"Saved {path}")
-    return fig
-
-
 def plot_occupancy_histograms(metadata, data, outdir):
     """Plot 4: Histograms of per-cell particle counts split by cell type.
 
@@ -804,11 +750,15 @@ def plot_occupancy_histograms(metadata, data, outdir):
                 linewidth=0.5,
             )
 
+        # Add gridlines
+        ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
+        ax.set_axisbelow(True)
+
         ax.set_xscale("log")
         ax.set_xlabel("Particles per cell")
         ax.set_ylabel("Number of cells")
         ax.set_title(label)
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=8, framealpha=0.9)
 
     # Hide unused panels.
     for idx in range(n_panels, nrows * ncols):
@@ -823,7 +773,7 @@ def plot_occupancy_histograms(metadata, data, outdir):
 
 
 def plot_dm_split(metadata, data, outdir):
-    """Plot 5: DM vs DM_background occupancy for zoom cells.
+    """Plot: DM vs DM_background occupancy for zoom cells.
 
     Shows a 2D scatter of normal DM count vs background DM count per zoom
     cell, which is useful for diagnosing particle contamination in the zoom
@@ -847,10 +797,9 @@ def plot_dm_split(metadata, data, outdir):
         print("No DM particles in zoom cells, skipping DM split plot.")
         return None
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(7, 6))
 
-    # Left panel: scatter of DM vs DM_bkg per zoom cell.
-    ax = axes[0]
+    # Scatter of DM vs DM_bkg per zoom cell.
     # Only show cells with at least one DM particle of either type.
     mask = (dm > 0) | (dm_bkg > 0)
     if mask.sum() > 0:
@@ -859,146 +808,27 @@ def plot_dm_split(metadata, data, outdir):
             dm_bkg[mask] + 1,
             c=dm_bkg[mask] / np.maximum(dm[mask] + dm_bkg[mask], 1),
             cmap="RdYlGn_r",
-            s=8,
+            s=12,
             alpha=0.7,
             edgecolors="none",
             vmin=0,
             vmax=1,
         )
-        cbar = fig.colorbar(sc, ax=ax)
+        cbar = fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.04)
         cbar.set_label("Background DM fraction")
+
+    # Add gridlines
+    ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
+    ax.set_axisbelow(True)
+
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel("Normal DM count + 1")
     ax.set_ylabel("Background DM count + 1")
     ax.set_title("DM Contamination (zoom cells)")
 
-    # Right panel: spatial map of background DM fraction in zoom cells.
-    ax = axes[1]
-    box_size = metadata["BoxSize"][0]
-    ax.set_xlim(0, box_size)
-    ax.set_ylim(0, box_size)
-    ax.set_aspect("equal")
-    ax.set_title("Bkg DM Fraction (zoom cells)")
-
-    total_dm = dm + dm_bkg
-    frac = np.where(total_dm > 0, dm_bkg / total_dm, 0.0)
-    cmap = plt.cm.RdYlGn_r
-    norm = mcolors.Normalize(vmin=0, vmax=max(frac.max(), 0.01))
-
-    for i in range(len(zoom_data)):
-        row = zoom_data[i]
-        fc = cmap(norm(frac[i])) if total_dm[i] > 0 else "#dddddd"
-        ax.add_patch(
-            Rectangle(
-                (row[COL_LOC_X], row[COL_LOC_Y]),
-                row[COL_WIDTH_X],
-                row[COL_WIDTH_Y],
-                fill=True,
-                facecolor=fc,
-                edgecolor="black",
-                linewidth=0.2,
-            )
-        )
-
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("Background DM fraction")
-
     fig.tight_layout()
     path = os.path.join(outdir, "zoom_dm_split.png")
-    fig.savefig(path, dpi=300, bbox_inches="tight")
-    print(f"Saved {path}")
-    return fig
-
-
-def plot_per_type_maps(metadata, data, outdir):
-    """Plot 6: Spatial maps of individual particle type counts.
-
-    One panel per particle type with non-zero counts, showing the log-scaled
-    occupancy on the cell grid.
-
-    Args:
-        metadata: Zoom metadata dictionary.
-        data: Cell data array.
-        outdir: Output directory for saved figures.
-
-    Returns:
-        The matplotlib Figure, or None if no particles.
-    """
-    particle_types = [
-        ("Gas", COL_GAS),
-        ("DM", COL_DM),
-        ("DM Background", COL_DM_BKG),
-        ("Sinks", COL_SINK),
-        ("Stars", COL_STARS),
-        ("Black Holes", COL_BH),
-        ("Neutrinos", COL_NEUTRINO),
-    ]
-
-    active = [(label, col) for label, col in particle_types if data[:, col].sum() > 0]
-    if len(active) == 0:
-        return None
-
-    n_panels = len(active)
-    ncols = min(n_panels, 3)
-    nrows = (n_panels + ncols - 1) // ncols
-    fig, axes = plt.subplots(
-        nrows, ncols, figsize=(6 * ncols, 5.5 * nrows), squeeze=False
-    )
-
-    for idx, (label, col) in enumerate(active):
-        ax = axes[idx // ncols, idx % ncols]
-        box_size = metadata["BoxSize"][0]
-        ax.set_xlim(0, box_size)
-        ax.set_ylim(0, box_size)
-        ax.set_aspect("equal")
-        ax.set_title(label)
-
-        counts = data[:, col]
-        with np.errstate(divide="ignore"):
-            log_counts = np.log10(counts)
-        log_counts[~np.isfinite(log_counts)] = np.nan
-
-        valid = log_counts[np.isfinite(log_counts)]
-        if len(valid) > 0:
-            vmin, vmax = np.nanmin(valid), np.nanmax(valid)
-        else:
-            vmin, vmax = 0, 1
-        cmap = plt.cm.inferno
-        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-
-        for i, row in enumerate(data):
-            if np.isfinite(log_counts[i]):
-                fc = cmap(norm(log_counts[i]))
-            else:
-                fc = "#dddddd"
-            ax.add_patch(
-                Rectangle(
-                    (row[COL_LOC_X], row[COL_LOC_Y]),
-                    row[COL_WIDTH_X],
-                    row[COL_WIDTH_Y],
-                    fill=True,
-                    facecolor=fc,
-                    edgecolor="black",
-                    linewidth=0.2,
-                    zorder=1,
-                )
-            )
-
-        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
-        cbar = fig.colorbar(sm, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label(f"log$_{{10}}$({label} count)")
-
-    # Hide unused panels.
-    for idx in range(n_panels, nrows * ncols):
-        axes[idx // ncols, idx % ncols].set_visible(False)
-
-    fig.suptitle("Per-Type Particle Occupancy", fontsize=14, y=1.02)
-    fig.tight_layout()
-    path = os.path.join(outdir, "zoom_per_type_maps.png")
     fig.savefig(path, dpi=300, bbox_inches="tight")
     print(f"Saved {path}")
     return fig
@@ -1158,7 +988,7 @@ def plot_padding_analysis(metadata, data, outdir):
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_title("Padding Overview (x-y projection)")
-    ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+    ax.legend(loc="lower left", fontsize=8, framealpha=0.9)
 
     # ---- Right panel: 1D breakdown bar chart ----
     ax = axes[1]
@@ -1204,11 +1034,15 @@ def plot_padding_analysis(metadata, data, outdir):
         linewidth=0.5,
     )
 
+    # Add gridlines
+    ax.grid(True, which="major", axis="y", alpha=0.3, zorder=0)
+    ax.set_axisbelow(True)
+
     ax.set_xticks(x_pos)
     ax.set_xticklabels(labels)
     ax.set_ylabel("Extent")
     ax.set_title("Zoom Region Extent Breakdown")
-    ax.legend(fontsize=9)
+    ax.legend(fontsize=9, loc="upper left", framealpha=0.9)
 
     # Annotate percentages.
     for i in range(3):
@@ -1326,6 +1160,20 @@ def plot_resolution_quality(metadata, data, outdir):
     mean_occ = np.mean(valid_counts)
     cv = np.std(valid_counts) / mean_occ if mean_occ > 0 else 0
     ax.axvline(mean_occ, color="#2a9d8f", linestyle="--", linewidth=1.5, label="Mean")
+
+    # Add gridlines
+    ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
+    ax.set_axisbelow(True)
+
+    ax.set_xscale("log")
+    ax.set_xlabel("Particles per cell")
+    ax.set_ylabel("Number of cells")
+    ax.set_title("Occupancy Distribution (zoom cells)")
+
+    # Extend y-axis by 10% to make room for text box
+    ylim = ax.get_ylim()
+    ax.set_ylim(ylim[0], ylim[1] * 1.1)
+
     ax.text(
         0.98,
         0.95,
@@ -1337,15 +1185,12 @@ def plot_resolution_quality(metadata, data, outdir):
         va="top",
         fontsize=8,
         bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.9),
+        zorder=100,
     )
 
-    ax.set_xscale("log")
-    ax.set_xlabel("Particles per cell")
-    ax.set_ylabel("Number of cells")
-    ax.set_title("Occupancy Distribution (zoom cells)")
-    ax.legend(fontsize=7, loc="upper left")
+    ax.legend(fontsize=7, loc="upper left", framealpha=0.9)
 
-    # ---- Panel 2: Spatial deviation from median ----
+    # ---- Panel 2: Deviation from median histogram ----
     ax = axes[0, 1]
     median_count = np.median(zoom_nonempty)
 
@@ -1355,50 +1200,66 @@ def plot_resolution_quality(metadata, data, outdir):
     log_ratio[~np.isfinite(log_ratio)] = np.nan
 
     valid_ratio = log_ratio[np.isfinite(log_ratio)]
-    if len(valid_ratio) > 0:
-        # Use percentiles for robust color scale (ignore extreme outliers)
-        vmin_pct = np.percentile(valid_ratio, 5)
-        vmax_pct = np.percentile(valid_ratio, 95)
-        # Ensure symmetric scale around zero
-        vabs = max(abs(vmin_pct), abs(vmax_pct))
-        # Ensure minimum dynamic range for visibility
-        vabs = max(vabs, 0.3)
-    else:
-        vabs = 1.0
-    cmap = plt.cm.RdBu_r
-    norm = mcolors.TwoSlopeNorm(vmin=-vabs, vcenter=0, vmax=vabs)
-
-    for i, row in enumerate(zoom_data):
-        if np.isfinite(log_ratio[i]):
-            fc = cmap(norm(log_ratio[i]))
-        else:
-            fc = "#dddddd"
-        ax.add_patch(
-            Rectangle(
-                (row[COL_LOC_X], row[COL_LOC_Y]),
-                row[COL_WIDTH_X],
-                row[COL_WIDTH_Y],
-                fill=True,
-                facecolor=fc,
-                edgecolor="black",
-                linewidth=0.1,
-                zorder=1,
-            )
+    if len(valid_ratio) > 1:
+        # Create histogram of deviations
+        ax.hist(
+            valid_ratio,
+            bins=30,
+            color=COLOUR_ZOOM,
+            edgecolor="black",
+            linewidth=0.4,
+            alpha=0.8,
         )
 
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("log$_{10}$(count / median)")
+        # Mark zero (median) line
+        ax.axvline(
+            0, color="#e63946", linestyle="-", linewidth=2, label="Median", zorder=10
+        )
 
-    # Set view to zoom region.
-    margin = 0.05 * np.max(zoom_dim)
-    ax.set_xlim(zoom_lower[0] - margin, zoom_lower[0] + zoom_dim[0] + margin)
-    ax.set_ylim(zoom_lower[1] - margin, zoom_lower[1] + zoom_dim[1] + margin)
-    ax.set_aspect("equal")
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_title("Occupancy Deviation from Median (zoom cells)")
+        # Mark mean deviation
+        mean_dev = np.mean(valid_ratio)
+        ax.axvline(
+            mean_dev,
+            color="#2a9d8f",
+            linestyle="--",
+            linewidth=1.5,
+            label="Mean",
+            zorder=10,
+        )
+
+        # Add gridlines
+        ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
+        ax.set_axisbelow(True)
+
+        ax.set_xlabel("log$_{10}$(count / median)")
+        ax.set_ylabel("Number of cells")
+        ax.set_title("Occupancy Deviation Distribution (zoom cells)")
+        ax.legend(fontsize=8, loc="upper right", framealpha=0.9)
+
+        # Add text box with statistics
+        std_dev = np.std(valid_ratio)
+        ax.text(
+            0.02,
+            0.98,
+            f"Std = {std_dev:.3f}\nMean = {mean_dev:.3f}\nMedian = 0.0",
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=8,
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.9),
+            zorder=100,
+        )
+    else:
+        ax.text(
+            0.5,
+            0.5,
+            "Insufficient data",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=12,
+        )
+        ax.set_title("Occupancy Deviation Distribution (zoom cells)")
 
     # ---- Panel 3: Radial occupancy profile ----
     ax = axes[1, 0]
@@ -1439,12 +1300,16 @@ def plot_resolution_quality(metadata, data, outdir):
         label="Median",
     )
 
+    # Add gridlines
+    ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
+    ax.set_axisbelow(True)
+
     ax.set_xlabel("Normalised radius from zoom centre")
     ax.set_ylabel("Particles per cell")
     ax.set_yscale("log")
     ax.set_xlim(0, 1)
     ax.set_title("Radial Occupancy Profile (zoom cells)")
-    ax.legend(fontsize=8)
+    ax.legend(fontsize=8, loc="upper right", framealpha=0.9)
 
     # ---- Panel 4: Radial contamination profile ----
     ax = axes[1, 1]
@@ -1502,12 +1367,16 @@ def plot_resolution_quality(metadata, data, outdir):
             label="Mean",
         )
 
+        # Add gridlines
+        ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
+        ax.set_axisbelow(True)
+
         ax.set_xlabel("Normalised radius from zoom centre")
         ax.set_ylabel("Background DM fraction")
         ax.set_xlim(0, 1)
         ax.set_ylim(bottom=0)
         ax.set_title("Radial DM Contamination (zoom cells)")
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=8, loc="upper left", framealpha=0.9)
     else:
         ax.text(
             0.5,
@@ -1520,7 +1389,6 @@ def plot_resolution_quality(metadata, data, outdir):
         )
         ax.set_title("Radial DM Contamination (zoom cells)")
 
-    fig.suptitle("Zoom Region Resolution Quality", fontsize=14, y=1.02)
     fig.tight_layout()
     path = os.path.join(outdir, "zoom_resolution_quality.png")
     fig.savefig(path, dpi=300, bbox_inches="tight")
@@ -1537,10 +1405,8 @@ def main():
         epilog=(
             "Output files:\n"
             "  zoom_cell_types.png            Cell grid by type/subtype\n"
-            "  zoom_occupancy.png             Total particle occupancy heatmap\n"
             "  zoom_occupancy_histograms.png  Per-type occupancy histograms\n"
-            "  zoom_dm_split.png              DM vs DM_bkg contamination\n"
-            "  zoom_per_type_maps.png         Per-type spatial occupancy maps\n"
+            "  zoom_dm_split.png              DM vs DM_bkg contamination scatter\n"
             "  zoom_padding_analysis.png      Padding extent breakdown\n"
             "  zoom_resolution_quality.png    Occupancy uniformity & radial profiles\n"
         ),
@@ -1580,10 +1446,8 @@ def main():
     # Generate all plots.
     figs = []
     figs.append(plot_cell_types(metadata, data, args.outdir))
-    figs.append(plot_occupancy(metadata, data, args.outdir))
     figs.append(plot_occupancy_histograms(metadata, data, args.outdir))
     figs.append(plot_dm_split(metadata, data, args.outdir))
-    figs.append(plot_per_type_maps(metadata, data, args.outdir))
     figs.append(plot_padding_analysis(metadata, data, args.outdir))
     figs.append(plot_resolution_quality(metadata, data, args.outdir))
 
