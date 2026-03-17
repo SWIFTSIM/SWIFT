@@ -211,14 +211,83 @@ def print_summary(metadata, data):
     zoom_total = int(data[zoom_mask, COL_GAS : COL_NEUTRINO + 1].sum())
     bkg_total = int(data[bkg_mask, COL_GAS : COL_NEUTRINO + 1].sum())
 
-    # Formatting constants.
-    # The actual line width varies by section:
-    # - Main labels: 2 (indent) + 36 (label) + 2 (space) + ~34 (value) = 74
-    # - Occupancy stats: ~92 chars (longest section)
-    # - Warning messages: ~92 chars
-    # Use the maximum to ensure all separators align properly.
+    # Formatting constants - compute dynamically based on content.
+    # We'll measure sample lines to determine the needed width.
     LBL = 36  # label column width
-    W = 92  # total table width to accommodate longest lines (occupancy stats)
+
+    # Build sample lines to measure maximum width needed.
+    sample_lines = []
+
+    # Cell grid samples
+    sample_lines.append(f"  {'Box size':<{LBL}} {_fmt_vec(metadata['BoxSize'])}")
+    sample_lines.append(
+        f"  {'Background cdim':<{LBL}} {_fmt_ivec(metadata['BackgroundCdim'])}"
+    )
+    sample_lines.append(
+        f"  {'Background cell width':<{LBL}} {_fmt_vec(metadata['BackgroundCellWidth'])}"
+    )
+
+    # Zoom region samples
+    zoom_dim = np.array(metadata["ZoomRegionDim"])
+    sample_lines.append(f"  {'Zoom region dim':<{LBL}} {_fmt_vec(zoom_dim)}")
+
+    # Cell counts (with potential large numbers)
+    nr_zoom = metadata["NrZoomCells"]
+    nr_bkg = metadata["NrBkgCells"]
+    sample_lines.append(f"  {'Nr background cells':<{LBL}} {nr_bkg}")
+
+    # Particle counts table (different format)
+    sample_lines.append(f"  {'Type':<18} {'Total':>12} {'In Zoom':>12} {'In Bkg':>12}")
+    sample_lines.append(
+        f"  {'DM Background':<18} {total_dm_bkg:>12,d} {total_dm_bkg:>12,d} {total_dm_bkg:>12,d}"
+    )
+    sample_lines.append(
+        f"  {'All':<18} {total:>12,d} {zoom_total:>12,d} {bkg_total:>12,d}"
+    )
+
+    # Occupancy statistics (typically the longest)
+    zoom_counts = data[zoom_mask, COL_GAS : COL_NEUTRINO + 1].sum(axis=1)
+    zoom_nonempty = zoom_counts[zoom_counts > 0]
+    if len(zoom_nonempty) > 0:
+        sample_lines.append(
+            f"  {'Zoom':<16} {int(zoom_mask.sum()):>6} cells "
+            f"({len(zoom_nonempty):>6} non-empty)  "
+            f"min {int(zoom_nonempty.min()):>8,d}  "
+            f"med {int(np.median(zoom_nonempty)):>8,d}  "
+            f"max {int(zoom_nonempty.max()):>8,d}"
+        )
+    bkg_counts = data[bkg_mask, COL_GAS : COL_NEUTRINO + 1].sum(axis=1)
+    bkg_nonempty = bkg_counts[bkg_counts > 0]
+    if len(bkg_nonempty) > 0:
+        sample_lines.append(
+            f"  {'Background':<16} {int(bkg_mask.sum()):>6} cells "
+            f"({len(bkg_nonempty):>6} non-empty)  "
+            f"min {int(bkg_nonempty.min()):>8,d}  "
+            f"med {int(np.median(bkg_nonempty)):>8,d}  "
+            f"max {int(bkg_nonempty.max()):>8,d}"
+        )
+
+    # Resolution quality samples
+    if len(zoom_nonempty) > 1:
+        mean_occ = np.mean(zoom_nonempty)
+        std_occ = np.std(zoom_nonempty)
+        cv = std_occ / mean_occ if mean_occ > 0 else 0.0
+        sample_lines.append(
+            f"  {'Coeff. of variation':<{LBL}} {cv:.3f}  (0 = perfectly uniform)"
+        )
+        ratio = zoom_nonempty.max() / zoom_nonempty.min()
+        sample_lines.append(
+            f"  {'** WARNING **':<{LBL}} Max/min occupancy ratio = {ratio:,.0f}"
+        )
+        sample_lines.append(
+            f"  {'':<{LBL}} Large spread may indicate poor zoom region centering."
+        )
+
+    # Compute the maximum width needed
+    max_width = max(len(line) for line in sample_lines)
+    # Add a small buffer to be safe
+    W = max_width + 2
+
     sep = "=" * W
     thin = "-" * W
 
