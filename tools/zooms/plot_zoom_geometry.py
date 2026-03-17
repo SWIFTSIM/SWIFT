@@ -10,12 +10,11 @@ To run get the files to run this analysis run the following:
 The following plots are produced:
   1. Cell grid coloured by cell type and subtype (geometry overview).
   2. Cell grid coloured by total particle occupancy (log-scaled heatmap).
-  3. Cell grid coloured by MPI rank (domain decomposition).
-  4. Particle count histograms split by cell type (zoom vs background).
-  5. DM vs DM_background occupancy comparison for zoom cells.
-  6. Per-particle-type spatial occupancy maps.
-  7. Padding analysis: particle extent vs zoom region with breakdown.
-  8. Resolution quality: occupancy uniformity, radial profiles, and
+  3. Particle count histograms split by cell type (zoom vs background).
+  4. DM vs DM_background occupancy comparison for zoom cells.
+  5. Per-particle-type spatial occupancy maps.
+  6. Padding analysis: particle extent vs zoom region with breakdown.
+  7. Resolution quality: occupancy uniformity, radial profiles, and
      DM contamination as a function of distance from the zoom centre.
 
 Example:
@@ -584,12 +583,24 @@ def plot_cell_types(metadata, data, outdir):
     _setup_axes(ax, metadata)
     ax.set_title("Cell Types & Subtypes")
 
-    # Assign colours per cell based on type/subtype.
-    colours = []
-    for row in data:
-        c, _ = _get_cell_colour_type(int(row[COL_TYPE]), int(row[COL_SUBTYPE]))
-        colours.append(c)
-    _draw_cells(ax, data, colours)
+    # Draw cells with proper z-ordering (background first, then zoom on top).
+    # Get colors and z-orders for each cell.
+    for i, row in enumerate(data):
+        c, zorder = _get_cell_colour_type(int(row[COL_TYPE]), int(row[COL_SUBTYPE]))
+        if c is None:
+            continue
+        ax.add_patch(
+            Rectangle(
+                (row[COL_LOC_X], row[COL_LOC_Y]),
+                row[COL_WIDTH_X],
+                row[COL_WIDTH_Y],
+                fill=True,
+                facecolor=c,
+                edgecolor="black",
+                linewidth=0.3,
+                zorder=zorder,
+            )
+        )
 
     # Legend
     handles = [
@@ -697,53 +708,6 @@ def plot_occupancy(metadata, data, outdir):
 
     fig.tight_layout()
     path = os.path.join(outdir, "zoom_occupancy.png")
-    fig.savefig(path, dpi=300, bbox_inches="tight")
-    print(f"Saved {path}")
-    return fig
-
-
-def plot_ranks(metadata, data, outdir):
-    """Plot 3: Cell grid coloured by MPI rank.
-
-    Args:
-        metadata: Zoom metadata dictionary.
-        data: Cell data array.
-        outdir: Output directory for saved figures.
-
-    Returns:
-        The matplotlib Figure.
-    """
-    fig, ax = plt.subplots(figsize=(7, 7))
-    _setup_axes(ax, metadata)
-    ax.set_title("MPI Domain Decomposition")
-
-    ranks = data[:, COL_RANK].astype(int)
-    unique_ranks = np.unique(ranks)
-    n_ranks = len(unique_ranks)
-
-    # Use a qualitative colourmap for ranks.
-    if n_ranks <= 10:
-        cmap = plt.cm.tab10
-    elif n_ranks <= 20:
-        cmap = plt.cm.tab20
-    else:
-        cmap = plt.cm.turbo
-    norm = mcolors.Normalize(
-        vmin=unique_ranks.min() - 0.5, vmax=unique_ranks.max() + 0.5
-    )
-
-    colours = [cmap(norm(r)) for r in ranks]
-    _draw_cells(ax, data, colours)
-
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("MPI Rank")
-    if n_ranks <= 20:
-        cbar.set_ticks(unique_ranks)
-
-    fig.tight_layout()
-    path = os.path.join(outdir, "zoom_ranks.png")
     fig.savefig(path, dpi=300, bbox_inches="tight")
     print(f"Saved {path}")
     return fig
@@ -1378,7 +1342,7 @@ def plot_resolution_quality(metadata, data, outdir):
     ax.set_xscale("log")
     ax.set_xlabel("Particles per cell")
     ax.set_ylabel("Number of cells")
-    ax.set_title("Zoom Cell Occupancy Distribution")
+    ax.set_title("Occupancy Distribution (zoom cells)")
     ax.legend(fontsize=7, loc="upper left")
 
     # ---- Panel 2: Spatial deviation from median ----
@@ -1392,7 +1356,13 @@ def plot_resolution_quality(metadata, data, outdir):
 
     valid_ratio = log_ratio[np.isfinite(log_ratio)]
     if len(valid_ratio) > 0:
-        vabs = max(abs(np.nanmin(valid_ratio)), abs(np.nanmax(valid_ratio)), 0.5)
+        # Use percentiles for robust color scale (ignore extreme outliers)
+        vmin_pct = np.percentile(valid_ratio, 5)
+        vmax_pct = np.percentile(valid_ratio, 95)
+        # Ensure symmetric scale around zero
+        vabs = max(abs(vmin_pct), abs(vmax_pct))
+        # Ensure minimum dynamic range for visibility
+        vabs = max(vabs, 0.3)
     else:
         vabs = 1.0
     cmap = plt.cm.RdBu_r
@@ -1428,7 +1398,7 @@ def plot_resolution_quality(metadata, data, outdir):
     ax.set_aspect("equal")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
-    ax.set_title("Occupancy Deviation from Median")
+    ax.set_title("Occupancy Deviation from Median (zoom cells)")
 
     # ---- Panel 3: Radial occupancy profile ----
     ax = axes[1, 0]
@@ -1473,7 +1443,7 @@ def plot_resolution_quality(metadata, data, outdir):
     ax.set_ylabel("Particles per cell")
     ax.set_yscale("log")
     ax.set_xlim(0, 1)
-    ax.set_title("Radial Occupancy Profile")
+    ax.set_title("Radial Occupancy Profile (zoom cells)")
     ax.legend(fontsize=8)
 
     # ---- Panel 4: Radial contamination profile ----
@@ -1536,7 +1506,7 @@ def plot_resolution_quality(metadata, data, outdir):
         ax.set_ylabel("Background DM fraction")
         ax.set_xlim(0, 1)
         ax.set_ylim(bottom=0)
-        ax.set_title("Radial DM Contamination Profile")
+        ax.set_title("Radial DM Contamination (zoom cells)")
         ax.legend(fontsize=8)
     else:
         ax.text(
@@ -1548,7 +1518,7 @@ def plot_resolution_quality(metadata, data, outdir):
             va="center",
             fontsize=12,
         )
-        ax.set_title("Radial DM Contamination Profile")
+        ax.set_title("Radial DM Contamination (zoom cells)")
 
     fig.suptitle("Zoom Region Resolution Quality", fontsize=14, y=1.02)
     fig.tight_layout()
@@ -1568,7 +1538,6 @@ def main():
             "Output files:\n"
             "  zoom_cell_types.png            Cell grid by type/subtype\n"
             "  zoom_occupancy.png             Total particle occupancy heatmap\n"
-            "  zoom_ranks.png                 MPI domain decomposition\n"
             "  zoom_occupancy_histograms.png  Per-type occupancy histograms\n"
             "  zoom_dm_split.png              DM vs DM_bkg contamination\n"
             "  zoom_per_type_maps.png         Per-type spatial occupancy maps\n"
@@ -1612,7 +1581,6 @@ def main():
     figs = []
     figs.append(plot_cell_types(metadata, data, args.outdir))
     figs.append(plot_occupancy(metadata, data, args.outdir))
-    figs.append(plot_ranks(metadata, data, args.outdir))
     figs.append(plot_occupancy_histograms(metadata, data, args.outdir))
     figs.append(plot_dm_split(metadata, data, args.outdir))
     figs.append(plot_per_type_maps(metadata, data, args.outdir))
