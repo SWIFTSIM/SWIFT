@@ -54,12 +54,10 @@ void zoom_parse_params(struct swift_params *params,
   props->zoom_cell_depth =
       parser_get_opt_param_int(params, "ZoomRegion:zoom_top_level_depth", 2);
 
-  /* Set the target background cdim, default is a negative value so that if no
-   * value is given for a target then the zoom region defines the background
-   * cell size. */
+  /* Set the target background cdim. Default -1 means we auto-optimize to find
+   * the best value that minimizes padding waste and total cell count. */
   int bkg_cdim =
-      parser_get_opt_param_int(params, "ZoomRegion:bkg_top_level_cells",
-                               space_max_top_level_cells_default);
+      parser_get_opt_param_int(params, "ZoomRegion:bkg_top_level_cells", -1);
   for (int i = 0; i < 3; i++) {
     props->bkg_cdim[i] = bkg_cdim;
   }
@@ -746,10 +744,82 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 }
 
 /**
+ * @brief Optimize the background cell count to minimize padding waste and
+ * total cell count.
+ *
+ * This function searches for the optimal background cell count that balances
+ * two competing goals:
+ *   1. Minimising padding waste (actual padding / requested padding)
+ *   2. Minimising total cell count
+ *
+ * @param s The space (contains zoom properties and box size)
+ * @param ini_dim The initial dimension of the zoom region (particle extent)
+ * @param max_dim The user-padded dimension of the zoom region
+ */
+static void zoom_optimise_bkg_cells(struct space *s, const double ini_dim,
+                                    const double max_dim) {
+
+  /* Search range: 8 to 64 (even the upper end of this is probably not a
+   * good idea to use but its only going to be the optimal choice in
+   * extreme sims where it may be the only option). */
+  int best_cdim = 8;
+  double best_cost = FLT_MAX;
+
+  /* Loop over candidate values for the background cell count. */
+  for (int test_cdim = 8; test_cdim <= 64; test_cdim++) {
+
+    /* Compute void geometry for this test value */
+    double test_bkg_width = s->dim[0] / test_cdim;
+
+    /* User-padded extent (same as before) */
+    double requested_lower = (s->dim[0] / 2.0) - (max_dim / 2.0);
+    double requested_upper = (s->dim[0] / 2.0) + (max_dim / 2.0);
+
+    /* Snap to background cell boundaries */
+    double void_lower =
+        floor(requested_lower / test_bkg_width) * test_bkg_width;
+    double void_upper =
+        (floor(requested_upper / test_bkg_width) + 1) * test_bkg_width;
+    double void_dim = void_upper - void_lower;
+
+    /* Actual padding ratio */
+    double actual_pad = void_dim / ini_dim;
+
+    /* Zoom cell count: zoom_cdim = nr_parents * 2^depth */
+    int nr_parents =
+        (int)floor((void_dim + (0.1 * test_bkg_width)) / test_bkg_width);
+    int zoom_cdim = nr_parents * (1 << s->zoom_props->zoom_cell_depth);
+    int nr_zoom_cells = zoom_cdim * zoom_cdim * zoom_cdim;
+
+    /* Total cells */
+    int nr_bkg_cells = test_cdim * test_cdim * test_cdim;
+    int total_cells = nr_bkg_cells + nr_zoom_cells;
+
+    /* Cost function: penalize both high padding and high cell count, where
+     * for the latter we normalise by 1e5 (a "reasonable" cell count). */
+    double pad_ratio = actual_pad / s->zoom_props->user_region_pad_factor;
+    double cost = pad_ratio + (total_cells / 1e5);
+
+    if (cost < best_cost) {
+      best_cost = cost;
+      best_cdim = test_cdim;
+    }
+  }
+
+  /* Apply best value */
+  for (int i = 0; i < 3; i++) s->zoom_props->bkg_cdim[i] = best_cdim;
+
+  message(
+      "Found an optimal bkg_cdim of %d (with a cost (padding_ratio + nr_cells "
+      "/ 1e5) = %.4f)",
+      best_cdim, best_cost);
+}
+
+/**
  * @brief Initialise the zoom region geometry.
  *
  * This will compute the cell grid properties ready for cell
- * cosntruction when zoom_construct_tl_cells.
+ * construction when zoom_construct_tl_cells.
  *
  * @param s The space.
  * @param regridding Are we regridding? If so we don't need to compute the
@@ -792,6 +862,11 @@ void zoom_region_init(struct space *s, const int regridding,
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->user_region_pad_factor;
+
+  /* If bkg_cdim is -1, auto-optimize to find the best value. */
+  if (s->zoom_props->bkg_cdim[0] == -1) {
+    zoom_optimise_bkg_cells(s, ini_dim, max_dim);
+  }
 
   /* Define the background grid (we'll treat this as gospel). */
   for (int i = 0; i < 3; i++) {
