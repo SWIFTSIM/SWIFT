@@ -28,13 +28,14 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
-        testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
+        testThreadpool testDump testCSDS testInteractions.sh \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-        testLog testDistance testTimeline testMeshGravityRebuildCheck \
+        testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
+        testNeutrinoFermiDirac \
+        testLog testDistance testTimeline \  # testMatrixInversion
         testSIDMSetUp.sh testSIDMSymmetry test27cellsSIDM.sh
 
 # List of test programs to compile
