@@ -4353,15 +4353,15 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   sink_struct_restore(sink_properties, stream);
   e->sink_properties = sink_properties;
 
-  struct neutrino_props *neutrino_properties =
-      (struct neutrino_props *)malloc(sizeof(struct neutrino_props));
-  neutrino_struct_restore(neutrino_properties, stream);
-  e->neutrino_properties = neutrino_properties;
-
   struct sidm_props *sidm_properties =
       (struct sidm_props *)malloc(sizeof(struct sidm_props));
   sidm_struct_restore(sidm_properties, stream);
   e->sidm_properties = sidm_properties;
+
+  struct neutrino_props *neutrino_properties =
+      (struct neutrino_props *)malloc(sizeof(struct neutrino_props));
+  neutrino_struct_restore(neutrino_properties, stream);
+  e->neutrino_properties = neutrino_properties;
 
   struct neutrino_response *neutrino_response =
       (struct neutrino_response *)malloc(sizeof(struct neutrino_response));
