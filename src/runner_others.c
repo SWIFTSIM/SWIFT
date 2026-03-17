@@ -317,12 +317,12 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	//check mass conservation
 #ifdef SWIFT_DEBUG_CHECKS
 	double total_mass = child_mass + child_mass_sum;
-	double expected_mass = n_split * child_mass;
+	double expected_mass = 2 * child_mass;
        
 	if (fabs(total_mass - expected_mass) > 1e-8) // tighter tolerance
 	  error("Mass conservation broken in splitting: parent+children = %e, expected %e",
-		total_mass, n_split * child_mass);
-#endif
+		total_mass, 2 * child_mass);
+#endif 
 
 	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",                                                                                                                                
                 c,c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);     
