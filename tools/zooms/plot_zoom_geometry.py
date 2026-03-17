@@ -561,11 +561,20 @@ def print_summary(metadata, data):
         current_bkg = metadata["BackgroundCdim"][0]
         if best_cdim != current_bkg:
             print()
-            print(f"  {'Recommendation':<{LBL}} Optimal setup found:")
-            print(
-                f"    {'Proposed bkg cdim':<{LBL - 4}} {best_cdim} (currently {current_bkg})"
-            )
-            print(f"    {'Expected padding ratio':<{LBL - 4}} {best_pad:.4f}")
+            print(sep)
+            print("  *** OPTIMAL ZOOM SETUP RECOMMENDATION ***".center(W))
+            print(sep)
+            print()
+            print(f"  Your current setup:")
+            print(f"    bkg_top_level_cells:     {current_bkg}")
+            print(f"    Padding ratio:           {metadata['RegionPadFactor']:.4f}")
+            print()
+            print(f"  Recommended setup:")
+            print(f"    bkg_top_level_cells:     {best_cdim}")
+            print(f"    Expected padding ratio:  {best_pad:.4f}")
+            print()
+            print(f"  This reduces padding waste while minimizing total cell count.")
+            print(sep)
 
     print()
     print(sep)
