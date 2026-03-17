@@ -592,4 +592,7 @@ void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine);
 void free_gparts_in_cells(struct cell *c, int *level);
 void init_test_single_particle(struct engine *e);
 void get_progeny(struct space *s, struct cell *c, int deisred_depth, int *curr_depth);
+void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells);
+void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_parts);
+void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
 #endif /* SWIFT_SPACE_H */

@@ -3056,7 +3056,7 @@ void init_test_single_particle(struct engine *e) {
   /* Clean current array of particles */
   struct space *s = e->s;
   int nr_cells = s->nr_cells;
-  swift_free("gparts", s->gparts);
+  free(s->gparts);
   for (int i=0; i<nr_cells; i++) {
     int level = 0;
     free_gparts_in_cells(&(s->cells_top[i]), &level);
@@ -3067,7 +3067,7 @@ void init_test_single_particle(struct engine *e) {
   /* Set the single particle to the desired state */
   message("Getting particle");
   s->nr_gparts = 1;
-  s->gparts = calloc(1, sizeof(struct gpart*));
+  s->gparts = calloc(1, sizeof(struct gpart));
   struct gpart *part = &s->gparts[0];
 
   //Put it in the middle of the box
@@ -3421,12 +3421,129 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
   //fclose(file_swift_density);
   //message("Exported the cell potential data.");
   //sleep(5);
+
+  potential_to_fake_gparts(s, min_depth, max_depth, levels);
   
-  potential_to_gparts(s, min_depth, max_depth, levels);
+  //potential_to_gparts(s, min_depth, max_depth, levels);
 
   /* Free memory of the pointer array to the cells */
   for (int i=0; i<max_depth+1; i++) {
     free(levels[i].cells);
+  }
+}
+
+void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]) {
+  /* Add function to create 'fake' particles and add them to the cells */
+  const int N_parts_old = s->nr_gparts;
+  int N_parts_new = 100;
+  s->nr_gparts += N_parts_new;
+  //s->gparts = realloc(s->gparts, s->nr_gparts * sizeof(*s->gparts));
+
+  /* Create array of particle locations */
+  double part_loc[N_parts_new][3];
+  double r_parts = 5.;
+  generate_particles(s, N_parts_new, part_loc, r_parts);
+
+  /* Pass particle locations to the gparts */
+  for (int i=N_parts_old; i<N_parts_old + N_parts_new; i++) {
+    //struct gpart *part = &s->gparts[i];
+    //part->x[0] = part_loc[i][0];
+    //part->x[1] = part_loc[i][1];
+    //part->x[2] = part_loc[i][2];
+    //message("Created particle %d with location (%lf, %lf, %lf)", i, s->gparts[i].x[0], s->gparts[i].x[1], s->gparts[i].x[2]);
+
+    for (int j=0; j<s->nr_cells; j++) {
+      struct cell *c = &s->cells_top[j];
+      //message("Accessing cell %d",j);
+      double cx0 = c->loc[0];
+      //message("Accessed cell %d", j);
+      double cx1 = c->loc[0] + c->width[0];
+      double cy0 = c->loc[1];
+      double cy1 = c->loc[1] + c->width[1];
+      double cz0 = c->loc[2];
+      double cz1 = c->loc[2] + c->width[2];
+      if (part_loc[i][0] >= cx0 && part_loc[i][0] < cx1 && part_loc[i][1] >= cy0 && part_loc[i][1] <cy1 && part_loc[i][2] >= cz0 && part_loc[i][2] < cz1) {
+        const int nr_old = c->grav.count;
+        c->grav.count += 1;
+        if (c->split) {
+          particle_to_cells_recursive(part_loc[i], c->progeny, 8);
+        }
+        else {
+        //message("Adding particle at (%lf, %lf, %lf) to cell with location (%lf, %lf, %lf) and width (%lf, %lf, %lf)", part->x[0], part->x[1], part->x[2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+          if (nr_old == 0) c->grav.parts = malloc(sizeof(struct gpart));
+          else c->grav.parts = realloc(c->grav.parts, (nr_old+1) * sizeof(struct gpart));
+          c->grav.parts[nr_old].x[0] = part_loc[i][0];
+          c->grav.parts[nr_old].x[1] = part_loc[i][1];
+          c->grav.parts[nr_old].x[2] = part_loc[i][2];
+          //message("Added particle to cell. Particle %d in cell has location (%lf, %lf, %lf)", c->grav.count + 1, c->grav.parts[nr_old].x[0], c->grav.parts[nr_old].x[1], c->grav.parts[nr_old].x[2]);
+        }        
+        break;
+      }
+    }
+  }
+  message("Finished adding particles to cells");
+
+  /* Check if cells have more than one particle */
+  /*for (int j=0; j<s->nr_cells; j++) {
+    struct cell *c = levels[0].cells[j];
+    if (c->grav.count > 1) {
+      message("Cell %d has %d particles", j, c->grav.count);
+    }
+  }*/
+
+  /* Pass potential to the particles (real and fake ones) */
+  potential_to_gparts(s, min_depth, max_depth, levels);
+}
+
+void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells) {
+  //message("The number of cells is %d", nr_cells);
+  for (int i=0; i<nr_cells; i++) {
+    struct cell *c = cells[i];
+    //message("Accessing cell %d",i);
+    double cx0 = c->loc[0];
+    //message("Accessed cell %d", i);
+    double cx1 = c->loc[0] + c->width[0];
+    double cy0 = c->loc[1];
+    double cy1 = c->loc[1] + c->width[1];
+    double cz0 = c->loc[2];
+    double cz1 = c->loc[2] + c->width[2];
+    if (part_loc[0] >= cx0 && part_loc[0] < cx1 && part_loc[1] >= cy0 && part_loc[1] <cy1 && part_loc[2] >= cz0 && part_loc[2] < cz1) {
+      const int nr_old = c->grav.count;
+      c->grav.count += 1;
+      //message("Adding particle at (%lf, %lf, %lf) to cell with location (%lf, %lf, %lf) and width (%lf, %lf, %lf)", part->x[0], part->x[1], part->x[2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+      if (c->split) {
+        particle_to_cells_recursive(part_loc, c->progeny, 8);
+      }
+      else {
+        if (nr_old == 0) c->grav.parts = malloc(sizeof(struct gpart));
+        else c->grav.parts = realloc(c->grav.parts, (nr_old+1) * sizeof(struct gpart));
+        c->grav.parts[nr_old].x[0] = part_loc[0];
+        c->grav.parts[nr_old].x[1] = part_loc[1];
+        c->grav.parts[nr_old].x[2] = part_loc[2];
+        //message("Added particle to cell. Particle %d in cell has location (%lf, %lf, %lf)", c->grav.count + 1, c->grav.parts[nr_old].x[0], c->grav.parts[nr_old].x[1], c->grav.parts[nr_old].x[2]);
+      }
+      break;
+    }
+  }
+}
+
+void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_parts) {
+  const double golden_angle = M_PI * (3.0 - sqrt(5.0));
+  double centre_loc = s->dim[0]/2.;
+
+  for (int i=0; i<N_parts_new; i++) {
+    double cos_theta = 1.0 - 2.0 * ((double)i + 0.5) / (double)N_parts_new;
+    double sin_theta = sqrt(fmax(0.0, 1.0 - cos_theta * cos_theta));
+
+    double phi = golden_angle * (double)i;
+
+    double ux = cos(phi) * sin_theta;
+    double uy = sin(phi) * sin_theta;
+    double uz = cos_theta;
+
+    positions[i][0] = centre_loc + r_parts * ux;
+    positions[i][1] = centre_loc + r_parts * uy;
+    positions[i][2] = centre_loc + r_parts * uz;
   }
 }
 
@@ -3509,7 +3626,7 @@ void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct A
       //message("Calling cell %d", j);
       struct cell *c = level->cells[j];
       if (c->split) {
-        if (level->depth == 6) message("Cell %d is split", j);
+        //if (level->depth == 6) message("Cell %d is split", j);
         continue;
       } ///Means we have already done CIC with the particles on another level
       int nr_gparts = c->grav.count;
@@ -3554,7 +3671,7 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
   gp->potential_mesh += CIC_get_AMR(s, gp, x, width, boxsize);
 
   /* 3-point stencil along each axis for the accelerations */
- /* x[0] = fmod(x[0] + width[0], boxsize);
+  x[0] = fmod(x[0] + width[0], boxsize);
   gp->a_grav_mesh[0] -= (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);
   x[0] = (x[0] - width[0] > 0) ? x[0] - width[0] : x[0] - width[0] + boxsize;
   gp->a_grav_mesh[0] += (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);
@@ -3567,7 +3684,7 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
   x[2] = fmod(x[2] + width[2], boxsize);
   gp->a_grav_mesh[2] -= (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);
   x[2] = (x[2] - width[2] > 0) ? x[2] - width[2] : x[2] - width[2] + boxsize;
-  gp->a_grav_mesh[2] += (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);*/
+  gp->a_grav_mesh[2] += (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);
 
   /* Don't forget G */
   double const_G = s->e->physical_constants->const_newton_G;
