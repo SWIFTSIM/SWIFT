@@ -212,12 +212,13 @@ def print_summary(metadata, data):
     bkg_total = int(data[bkg_mask, COL_GAS : COL_NEUTRINO + 1].sum())
 
     # Formatting constants.
-    # The actual line width is: 2 (indent) + LBL + 2 (spacing) + VAL + extra text
-    # For vector values like (1395.7156, 1395.7156, 1395.7156) we need ~34 chars
-    # Some lines have extra explanatory text like "(0 = perfectly uniform)"
-    # Longest observed: 2 + 36 + 2 + 10 (value) + 28 (explanation) = 78
+    # The actual line width varies by section:
+    # - Main labels: 2 (indent) + 36 (label) + 2 (space) + ~34 (value) = 74
+    # - Occupancy stats: ~92 chars (longest section)
+    # - Warning messages: ~92 chars
+    # Use the maximum to ensure all separators align properly.
     LBL = 36  # label column width
-    W = 78  # total table width to accommodate longest lines
+    W = 92  # total table width to accommodate longest lines (occupancy stats)
     sep = "=" * W
     thin = "-" * W
 
