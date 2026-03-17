@@ -110,6 +110,71 @@ def _fmt_ivec(v):
     return f"({v[0]}, {v[1]}, {v[2]})"
 
 
+def _compute_neighbour_shells(data, void_mask, neighbour_mask):
+    """Compute the number of neighbour cells in each shell around void cells.
+
+    A shell is defined as all neighbour cells at a given Manhattan distance
+    from the void region (measured in background cell units).
+
+    Args:
+        data: Cell data array.
+        void_mask: Boolean mask for void cells.
+        neighbour_mask: Boolean mask for neighbour cells.
+
+    Returns:
+        List of integers giving the number of neighbour cells in each shell,
+        ordered from closest to farthest from the void region.
+    """
+    if void_mask.sum() == 0 or neighbour_mask.sum() == 0:
+        return []
+
+    # Get void cell indices and their centres.
+    void_data = data[void_mask]
+    void_centres = np.column_stack(
+        [
+            void_data[:, COL_LOC_X] + void_data[:, COL_WIDTH_X] / 2,
+            void_data[:, COL_LOC_Y] + void_data[:, COL_WIDTH_Y] / 2,
+            void_data[:, COL_LOC_Z] + void_data[:, COL_WIDTH_Z] / 2,
+        ]
+    )
+
+    # Get neighbour cell centres.
+    neighbour_data = data[neighbour_mask]
+    neighbour_centres = np.column_stack(
+        [
+            neighbour_data[:, COL_LOC_X] + neighbour_data[:, COL_WIDTH_X] / 2,
+            neighbour_data[:, COL_LOC_Y] + neighbour_data[:, COL_WIDTH_Y] / 2,
+            neighbour_data[:, COL_LOC_Z] + neighbour_data[:, COL_WIDTH_Z] / 2,
+        ]
+    )
+
+    # For each neighbour cell, compute the minimum distance to any void cell
+    # (in units of background cell widths).
+    bkg_width = neighbour_data[0, COL_WIDTH_X]  # Assume cubic cells.
+    min_distances = np.full(len(neighbour_centres), np.inf)
+
+    for nc_idx, nc in enumerate(neighbour_centres):
+        # Compute distances to all void centres.
+        diffs = void_centres - nc[np.newaxis, :]
+        dists = np.sqrt(np.sum(diffs**2, axis=1))
+        min_distances[nc_idx] = dists.min() / bkg_width
+
+    # Bin by distance (rounded to nearest integer = shell number).
+    # Shell 1 = cells touching void, shell 2 = one cell away, etc.
+    shell_indices = np.round(min_distances).astype(int)
+    unique_shells = np.unique(shell_indices)
+    unique_shells = unique_shells[
+        unique_shells > 0
+    ]  # Exclude shell 0 (shouldn't happen).
+
+    shell_counts = []
+    for shell in sorted(unique_shells):
+        count = (shell_indices == shell).sum()
+        shell_counts.append(count)
+
+    return shell_counts
+
+
 def print_summary(metadata, data):
     """Print a summary of the zoom geometry and particle counts to stdout.
 
@@ -155,8 +220,8 @@ def print_summary(metadata, data):
     bkg_total = int(data[bkg_mask, COL_GAS : COL_NEUTRINO + 1].sum())
 
     # Formatting constants.
-    W = 72  # total table width
-    LBL = 28  # label column width
+    W = 80  # total table width (increased for longer entries)
+    LBL = 32  # label column width (increased for longer labels)
     sep = "=" * W
     thin = "-" * W
 
@@ -188,10 +253,18 @@ def print_summary(metadata, data):
     nr_neighbour = metadata.get("NrNeighbourCells", int(neighbour_mask.sum()))
     nr_regular_bkg = int(regular_bkg_mask.sum())
 
+    # Compute neighbor shells around void cells.
+    neighbour_shells = _compute_neighbour_shells(data, void_mask, neighbour_mask)
+
     print(f"  {'Nr zoom cells':<{LBL}} {nr_zoom}")
     print(f"  {'Nr background cells':<{LBL}} {nr_bkg}")
     print(f"    {'Void':<{LBL - 4}} {nr_void}")
     print(f"    {'Neighbour':<{LBL - 4}} {nr_neighbour}")
+    if len(neighbour_shells) > 0:
+        shells_str = ", ".join([f"{n}" for n in neighbour_shells])
+        print(
+            f"      {'Neighbour shells':<{LBL - 8}} {len(neighbour_shells)} ({shells_str} cells/shell)"
+        )
     print(f"    {'Regular':<{LBL - 4}} {nr_regular_bkg}")
     print(f"  {'Total cells':<{LBL}} {metadata['TotalCells']}")
 
