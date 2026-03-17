@@ -355,8 +355,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
   /* Should this self task be split? */
   if (cell_can_split_self_gravity_task(ci)) {
 
-    /* Check particle count threshold - mirrors scheduler_splittask_gravity
-     */
+    /* Check particle count threshold - mirrors scheduler_splittask_gravity */
     if (ci->grav.count < space_subsize_self_grav) {
       return;
     }
