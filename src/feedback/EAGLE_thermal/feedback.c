@@ -261,6 +261,9 @@ INLINE static void compute_SNII_feedback(
 
     const float B_inj = sqrtf(E_B_inj / B_conv_factor);
 
+    /* rescale the thermal energy injection */
+    delta_u *= (1 - feedback_props->f_E_B);
+
     /* Current total f_E for this star */
     double star_f_E = sp->f_E * sp->number_of_SNII_events;
 
