@@ -21,8 +21,11 @@
 /* Config */
 #include <config.h>
 
-/* Includes */
+/* Standard includes */
 #include <float.h>
+#include <stdio.h>
+
+/* Local includes */
 
 /* Local includes */
 #include "cell.h"
@@ -895,4 +898,136 @@ void zoom_region_init(struct space *s, const int regridding,
     message("Zoom region initialisation took %f %s",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
+}
+
+/**
+ * @brief Dump the zoom region geometry and cell properties to diagnostic files.
+ *
+ * @param e The engine.
+ */
+void zoom_dump_geometry(const struct engine *e) {
+  const struct space *s = e->s;
+  const int nr_cells = s->nr_cells;
+  const int myrank = e->nodeID;
+
+  /* Allocate local per-cell DM split counters. */
+  long long *local_counts =
+      calloc(nr_cells * swift_type_count, sizeof(long long));
+
+  /* Loop over all local gparts/parts and classify them. */
+  if (e->policy & engine_policy_self_gravity) {
+    for (size_t k = 0; k < s->nr_gparts; k++) {
+      const struct gpart *gp = &s->gparts[k];
+      if (gp->type >= swift_type_count) continue;
+      const int cid = cell_getid_from_pos(s, gp->x[0], gp->x[1], gp->x[2]);
+      local_counts[cid * swift_type_count + gp->type]++;
+    }
+  } else {
+    /* If no gravity, we count parts, sparts, bparts, sinks manually */
+    for (size_t k = 0; k < s->nr_parts; k++) {
+      const int cid = cell_getid_from_pos(s, s->parts[k].x[0], s->parts[k].x[1],
+                                          s->parts[k].x[2]);
+      local_counts[cid * swift_type_count + swift_type_gas]++;
+    }
+    for (size_t k = 0; k < s->nr_sparts; k++) {
+      const int cid = cell_getid_from_pos(s, s->sparts[k].x[0],
+                                          s->sparts[k].x[1], s->sparts[k].x[2]);
+      local_counts[cid * swift_type_count + swift_type_stars]++;
+    }
+    for (size_t k = 0; k < s->nr_bparts; k++) {
+      const int cid = cell_getid_from_pos(s, s->bparts[k].x[0],
+                                          s->bparts[k].x[1], s->bparts[k].x[2]);
+      local_counts[cid * swift_type_count + swift_type_black_hole]++;
+    }
+    for (size_t k = 0; k < s->nr_sinks; k++) {
+      const int cid = cell_getid_from_pos(s, s->sinks[k].x[0], s->sinks[k].x[1],
+                                          s->sinks[k].x[2]);
+      local_counts[cid * swift_type_count + swift_type_sink]++;
+    }
+  }
+
+  /* MPI reduction */
+#ifdef WITH_MPI
+  long long *global_counts = NULL;
+  if (myrank == 0) {
+    global_counts = calloc(nr_cells * swift_type_count, sizeof(long long));
+  }
+  MPI_Reduce(local_counts, global_counts, nr_cells * swift_type_count,
+             MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+  long long *global_counts = local_counts;
+#endif
+
+  /* Write files (Rank 0 only) */
+  if (myrank == 0) {
+    FILE *f_meta = fopen("zoom_metadata.yml", "w");
+    if (f_meta == NULL) error("Failed to open zoom_metadata.yml");
+    const struct zoom_region_properties *z = s->zoom_props;
+    fprintf(f_meta, "# Zoom Geometry Diagnostic Output\n");
+    fprintf(f_meta, "BoxSize: [%f, %f, %f]\n", s->dim[0], s->dim[1], s->dim[2]);
+    fprintf(f_meta, "BackgroundCdim: [%d, %d, %d]\n", s->cdim[0], s->cdim[1],
+            s->cdim[2]);
+    fprintf(f_meta, "BackgroundCellWidth: [%f, %f, %f]\n", s->width[0],
+            s->width[1], s->width[2]);
+    fprintf(f_meta, "ZoomCdim: [%d, %d, %d]\n", z->cdim[0], z->cdim[1],
+            z->cdim[2]);
+    fprintf(f_meta, "ZoomCellWidth: [%f, %f, %f]\n", z->width[0], z->width[1],
+            z->width[2]);
+    fprintf(f_meta, "ZoomRegionDim: [%f, %f, %f]\n", z->dim[0], z->dim[1],
+            z->dim[2]);
+    fprintf(f_meta, "ZoomRegionLowerBounds: [%f, %f, %f]\n",
+            z->region_lower_bounds[0], z->region_lower_bounds[1],
+            z->region_lower_bounds[2]);
+    fprintf(f_meta, "ZoomRegionUpperBounds: [%f, %f, %f]\n",
+            z->region_upper_bounds[0], z->region_upper_bounds[1],
+            z->region_upper_bounds[2]);
+    fprintf(f_meta, "VoidDim: [%f, %f, %f]\n", z->void_dim[0], z->void_dim[1],
+            z->void_dim[2]);
+    fprintf(f_meta, "VoidLowerBounds: [%f, %f, %f]\n", z->void_lower_bounds[0],
+            z->void_lower_bounds[1], z->void_lower_bounds[2]);
+    fprintf(f_meta, "VoidUpperBounds: [%f, %f, %f]\n", z->void_upper_bounds[0],
+            z->void_upper_bounds[1], z->void_upper_bounds[2]);
+    fprintf(f_meta, "ZoomCellDepth: %d\n", z->zoom_cell_depth);
+    fprintf(f_meta, "NeighbourMaxTreeDepth: %d\n", z->neighbour_max_tree_depth);
+    fprintf(f_meta, "RegionPadFactor: %f\n", z->region_pad_factor);
+    fprintf(f_meta, "AppliedZoomShift: [%f, %f, %f]\n",
+            z->applied_zoom_shift[0], z->applied_zoom_shift[1],
+            z->applied_zoom_shift[2]);
+    fprintf(f_meta, "ZoomRegionCoM: [%f, %f, %f]\n", z->com[0], z->com[1],
+            z->com[2]);
+    fprintf(f_meta, "NrZoomCells: %d\n", z->nr_zoom_cells);
+    fprintf(f_meta, "NrBkgCells: %d\n", z->nr_bkg_cells);
+    fprintf(f_meta, "BkgCellOffset: %d\n", z->bkg_cell_offset);
+    fprintf(f_meta, "TotalCells: %d\n", nr_cells);
+    fclose(f_meta);
+
+    FILE *f_data = fopen("zoom_cell_data.dat", "w");
+    if (f_data == NULL) error("Failed to open zoom_cell_data.dat");
+    fprintf(f_data,
+            "# CellID Type Subtype Rank LocX LocY LocZ WidthX WidthY WidthZ "
+            "MaxDepth Gas DM DM_Bkg Sink Stars BH Neutrino\n");
+    for (int i = 0; i < nr_cells; i++) {
+      const struct cell *c = &s->cells_top[i];
+      fprintf(f_data,
+              "%d %d %d %d %f %f %f %f %f %f %d %lld %lld %lld %lld %lld %lld "
+              "%lld\n",
+              i, (int)c->type, (int)c->subtype, c->nodeID, c->loc[0], c->loc[1],
+              c->loc[2], c->width[0], c->width[1], c->width[2],
+              (int)c->maxdepth,
+              global_counts[i * swift_type_count + swift_type_gas],
+              global_counts[i * swift_type_count + swift_type_dark_matter],
+              global_counts[i * swift_type_count +
+                            swift_type_dark_matter_background],
+              global_counts[i * swift_type_count + swift_type_sink],
+              global_counts[i * swift_type_count + swift_type_stars],
+              global_counts[i * swift_type_count + swift_type_black_hole],
+              global_counts[i * swift_type_count + swift_type_neutrino]);
+    }
+    fclose(f_data);
+  }
+
+  free(local_counts);
+#ifdef WITH_MPI
+  if (myrank == 0) free(global_counts);
+#endif
 }
