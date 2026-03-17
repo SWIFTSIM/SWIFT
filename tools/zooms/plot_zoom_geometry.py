@@ -10,9 +10,8 @@ To run get the files to run this analysis run the following:
 The following plots are produced:
   1. Cell grid coloured by cell type and subtype (geometry overview).
   2. Particle count histograms split by cell type (zoom vs background).
-  3. DM vs DM_background occupancy scatter (contamination diagnostic).
-  4. Padding analysis: particle extent vs zoom region with breakdown.
-  5. Resolution quality: occupancy uniformity, radial profiles, and
+  3. Padding analysis: particle extent vs zoom region with breakdown.
+  4. Resolution quality: occupancy uniformity, radial profiles, and
      DM contamination as a function of distance from the zoom centre.
 
 Example:
@@ -854,68 +853,6 @@ def plot_occupancy_histograms(metadata, data, outdir):
     return fig
 
 
-def plot_dm_split(metadata, data, outdir):
-    """Plot: DM vs DM_background occupancy for zoom cells.
-
-    Shows a 2D scatter of normal DM count vs background DM count per zoom
-    cell, which is useful for diagnosing particle contamination in the zoom
-    region.
-
-    Args:
-        metadata: Zoom metadata dictionary.
-        data: Cell data array.
-        outdir: Output directory for saved figures.
-
-    Returns:
-        The matplotlib Figure, or None if no DM particles.
-    """
-    zoom_mask = data[:, COL_TYPE] == CELL_TYPE_ZOOM
-    zoom_data = data[zoom_mask]
-
-    dm = zoom_data[:, COL_DM]
-    dm_bkg = zoom_data[:, COL_DM_BKG]
-
-    if dm.sum() == 0 and dm_bkg.sum() == 0:
-        print("No DM particles in zoom cells, skipping DM split plot.")
-        return None
-
-    fig, ax = plt.subplots(figsize=(7, 6))
-
-    # Scatter of DM vs DM_bkg per zoom cell.
-    # Only show cells with at least one DM particle of either type.
-    mask = (dm > 0) | (dm_bkg > 0)
-    if mask.sum() > 0:
-        sc = ax.scatter(
-            dm[mask] + 1,
-            dm_bkg[mask] + 1,
-            c=dm_bkg[mask] / np.maximum(dm[mask] + dm_bkg[mask], 1),
-            cmap="RdYlGn_r",
-            s=12,
-            alpha=0.7,
-            edgecolors="none",
-            vmin=0,
-            vmax=1,
-        )
-        cbar = fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label("Background DM fraction")
-
-    # Add gridlines
-    ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
-    ax.set_axisbelow(True)
-
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("Normal DM count + 1")
-    ax.set_ylabel("Background DM count + 1")
-    ax.set_title("DM Contamination (zoom cells)")
-
-    fig.tight_layout()
-    path = os.path.join(outdir, "zoom_dm_split.png")
-    fig.savefig(path, dpi=300, bbox_inches="tight")
-    print(f"Saved {path}")
-    return fig
-
-
 def plot_padding_analysis(metadata, data, outdir):
     """Plot 7: Padding analysis showing particle extent vs zoom region.
 
@@ -1488,7 +1425,6 @@ def main():
             "Output files:\n"
             "  zoom_cell_types.png            Cell grid by type/subtype\n"
             "  zoom_occupancy_histograms.png  Per-type occupancy histograms\n"
-            "  zoom_dm_split.png              DM vs DM_bkg contamination scatter\n"
             "  zoom_padding_analysis.png      Padding extent breakdown\n"
             "  zoom_resolution_quality.png    Occupancy uniformity & radial profiles\n"
         ),
@@ -1529,7 +1465,6 @@ def main():
     figs = []
     figs.append(plot_cell_types(metadata, data, args.outdir))
     figs.append(plot_occupancy_histograms(metadata, data, args.outdir))
-    figs.append(plot_dm_split(metadata, data, args.outdir))
     figs.append(plot_padding_analysis(metadata, data, args.outdir))
     figs.append(plot_resolution_quality(metadata, data, args.outdir))
 
