@@ -35,8 +35,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-        testLog testDistance testTimeline \  # testMatrixInversion
-        testSIDMSetUp.sh testSIDMSymmetry test27cellsSIDM.sh
+        testLog testDistance testTimeline \
+        testSIDMSetUp.sh testSIDMSymmetry test27cellsSIDM.sh  # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
