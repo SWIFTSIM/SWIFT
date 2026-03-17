@@ -114,9 +114,9 @@ INLINE static void convert_part_e_density(const struct engine *e,
 INLINE static void convert_part_T(const struct engine *e, const struct part *p,
                                   const struct xpart *xp, float *ret) {
 
-  *ret = cooling_get_temperature(e->physical_constants, e->hydro_properties,
-                                 e->internal_units, e->cosmology,
-                                 e->cooling_func, p, xp);
+  const float u = hydro_get_physical_internal_energy(p, xp, e->cosmology);
+  const float ne = xp->cooling_data.e_frac;
+  *ret = cooling_convert_u_to_temp(u, ne, e->cooling_func, p);
 }
 
 #ifdef RT_NONE

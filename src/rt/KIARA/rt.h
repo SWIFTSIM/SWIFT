@@ -118,7 +118,19 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
  * @param p Particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_part(
-    struct part* restrict p) {}
+    struct part* restrict p) {
+
+  /* Correct the energy densities and fluxes for change in volume */
+  float h_ratio = p->rt_data.h_previous / p->h;
+  const float h_ratio2 = h_ratio * h_ratio;
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    p->rt_data.radiation[g].energy_density *= h_ratio * h_ratio2;
+    p->rt_data.radiation[g].flux[0] *= h_ratio2;
+    p->rt_data.radiation[g].flux[1] *= h_ratio2;
+    p->rt_data.radiation[g].flux[2] *= h_ratio2;
+  }
+  p->rt_data.h_previous = p->h;
+}
 
 /**
  * @brief Reset the RT hydro particle data not related to the hydro density.
@@ -184,6 +196,8 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
 #endif
+
+  p->rt_data.h_previous = p->h;
 }
 
 /**
