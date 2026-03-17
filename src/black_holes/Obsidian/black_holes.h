@@ -164,7 +164,7 @@ __attribute__((always_inline)) INLINE static double get_black_hole_wind_speed(
           props->minimum_black_hole_mass_v_kick * props->mass_to_solar_mass;
       const float dlog10_BH_mass =
           log10f(subgrid_mass_Msun) - log10f(min_BH_mass_Msun);
-      v_kick = 500.f + (500.f / 3.f) * dlog10_BH_mass;
+      v_kick = fabs(props->quasar_wind_speed) + (fabs(props->slim_disk_wind_speed) / 3.f) * dlog10_BH_mass;
 
       /* Sometimes can get very small leading to huge mass loadings */
       if (v_kick < props->minimum_v_kick_km_s) {
@@ -1301,13 +1301,13 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Apply suppression factor to torque accretion */
   torque_accr_rate *= f_suppress;
 
-  /* If not near galaxy center, torque accr is suppressed */
+  /* If not near galaxy center, torque accr is suppressed 
   const float suppression_distance = kernel_gravity_softening_plummer_equivalent_inv *
                   props->max_reposition_distance_ratio * bp->h;
   if (bp->galactocentric_radius > suppression_distance) {
-    //torque_accr_rate *= exp(-(bp->galactocentric_radius - suppression_distance) / suppression_distance);
+    torque_accr_rate *= exp(-(bp->galactocentric_radius - suppression_distance) / suppression_distance);
     torque_accr_rate = 0.f;
-  }
+  }*/
 
 #ifdef OBSIDIAN_DEBUG_CHECKS
   if (isnan(bondi_accr_rate)) error("bondi_accr_rate nan");
