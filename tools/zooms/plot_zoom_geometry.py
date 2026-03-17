@@ -36,9 +36,7 @@ import yaml
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 
-# ---------------------------------------------------------------------------
 # Column index constants matching the C output format.
-# ---------------------------------------------------------------------------
 COL_CELL_ID = 0
 COL_TYPE = 1
 COL_SUBTYPE = 2
@@ -75,9 +73,6 @@ COLOUR_BKG_VOID = "#e9c46a"
 COLOUR_ZOOM = "#084b83"
 
 
-# ---------------------------------------------------------------------------
-# Data loading
-# ---------------------------------------------------------------------------
 def load_data(meta_file, data_file):
     """Load the metadata YAML and cell data table.
 
@@ -97,9 +92,6 @@ def load_data(meta_file, data_file):
     return metadata, data
 
 
-# ---------------------------------------------------------------------------
-# Summary statistics (printed to stdout)
-# ---------------------------------------------------------------------------
 def _fmt_vec(v, fmt=".4f"):
     """Format a 3-vector as a compact string."""
     return f"({v[0]:{fmt}}, {v[1]:{fmt}}, {v[2]:{fmt}})"
@@ -220,8 +212,12 @@ def print_summary(metadata, data):
     bkg_total = int(data[bkg_mask, COL_GAS : COL_NEUTRINO + 1].sum())
 
     # Formatting constants.
-    W = 80  # total table width (increased for longer entries)
-    LBL = 32  # label column width (increased for longer labels)
+    # The actual line width is: 2 (indent) + LBL + 2 (spacing) + VAL + extra text
+    # For vector values like (1395.7156, 1395.7156, 1395.7156) we need ~34 chars
+    # Some lines have extra explanatory text like "(0 = perfectly uniform)"
+    # Longest observed: 2 + 36 + 2 + 10 (value) + 28 (explanation) = 78
+    LBL = 36  # label column width
+    W = 78  # total table width to accommodate longest lines
     sep = "=" * W
     thin = "-" * W
 
@@ -435,9 +431,6 @@ def print_summary(metadata, data):
     print(sep)
 
 
-# ---------------------------------------------------------------------------
-# Plotting helpers
-# ---------------------------------------------------------------------------
 def _get_cell_colour_type(ctype, csubtype):
     """Return face colour for a cell based on its type and subtype.
 
@@ -506,9 +499,6 @@ def _setup_axes(ax, metadata):
     ax.set_ylabel("y")
 
 
-# ---------------------------------------------------------------------------
-# Individual plot functions
-# ---------------------------------------------------------------------------
 def plot_cell_types(metadata, data, outdir):
     """Plot 1: Cell grid coloured by type and subtype.
 
@@ -1498,9 +1488,6 @@ def plot_resolution_quality(metadata, data, outdir):
     return fig
 
 
-# ---------------------------------------------------------------------------
-# Main entry point
-# ---------------------------------------------------------------------------
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
