@@ -224,11 +224,11 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (lock) {
 
     if ((c->hydro.sorted & flags) &&
-        c->hydro.dx_max_sort_old < c->dmin * space_maxreldx) {
+        c->hydro.dx_max_sort_old <= c->dmin * space_maxreldx) {
       /* Another thread did the sort while we were waiting.
        * We can free the lock and exit. */
 
-      if (lock && lock_unlock(&c->hydro.extra_sort_lock) != 0)
+      if (lock_unlock(&c->hydro.extra_sort_lock) != 0)
         error("Impossible to unlock the cell!");
 
       return;
