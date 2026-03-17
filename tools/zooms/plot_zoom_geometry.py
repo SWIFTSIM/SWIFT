@@ -15,8 +15,11 @@ The following plots are produced:
   5. DM vs DM_background occupancy comparison for zoom cells.
 
 Example:
-    python plot_zoom_geometry.py --metadata zoom_metadata.yml \
-                                --cells zoom_cell_data.dat
+    python plot_zoom_geometry.py
+
+    # Or with custom file paths and output directory:
+    python plot_zoom_geometry.py --metadata my_zoom_metadata.yml \
+        --cells my_zoom_cell_data.dat --outdir zoom_plots
 """
 
 import argparse
