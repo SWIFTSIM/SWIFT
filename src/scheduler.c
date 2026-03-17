@@ -1879,9 +1879,9 @@ void scheduler_ranktasks(struct scheduler *s) {
       //lily
       if (tid[j] >= s->size)
 	message("OVERFLOW: tid[%d]=%d >= size=%d nr_tasks=%d", j, tid[j], s->size, nr_tasks);
+
       struct task *t = &tasks[tid[j]];
-      if (t == NULL)
-	error("NULL task pointer at j=%d tid=%d", j, tid[j]);
+      
       t->rank = rank;
       /* message( "task %i of type %s has rank %i." , i ,
           (t->type == task_type_self) ? "self" : (t->type == task_type_pair) ?

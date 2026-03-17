@@ -2234,7 +2234,10 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 
   /* Verify that all limited particles have been treated */
   for (int k = 0; k < nr_parts; k++) {
-
+    //lily
+    /* Skip particles that haven't been fully birthed yet */
+    if (parts[k].id == -42) continue;
+    
     if (parts[k].time_bin == time_bin_inhibited) continue;
 
     if (parts[k].time_bin < 0) error("Particle has negative time-bin!");

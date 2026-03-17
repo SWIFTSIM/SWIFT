@@ -1648,12 +1648,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                                          task_subtype_none, 0, 0, c, NULL);
 
 
-      if (c->top->black_holes.count > 0){
-	scheduler_addunlock(s, c->hydro.drift, c->top->hydro.particle_split);
-	scheduler_addunlock(s, c->top->hydro.particle_split, c->hydro.hydro_resort);
-	scheduler_addunlock(s, c->hydro.hydro_resort, c->hydro.sorts);
-      }
-	
+      scheduler_addunlock(s, c->hydro.drift, c->top->hydro.particle_split);
+      scheduler_addunlock(s, c->top->hydro.particle_split, c->hydro.hydro_resort);
+      scheduler_addunlock(s, c->hydro.hydro_resort, c->hydro.sorts);
+
+      
       /* Add the task finishing the force calculation */
       c->hydro.end_force = scheduler_addtask(s, task_type_end_hydro_force,
                                              task_subtype_none, 0, 0, c, NULL);
@@ -1681,9 +1680,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->stars.drift, c->super->kick2);
 	
 	//lily
-	//if (c->top->black_holes.count > 0){
-	scheduler_addunlock(s, c->hydro.hydro_resort, c->super->kick2);
-	//}
+	if (c->hydro.hydro_resort != NULL){
+	  scheduler_addunlock(s, c->hydro.hydro_resort, c->super->kick2);
+	}
         if (with_star_formation && c->top->hydro.count > 0)
           scheduler_addunlock(s, c->stars.drift, c->top->hydro.star_formation);
       }
