@@ -205,12 +205,12 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
 
-  /* if (new_dt < e->dt_min) { */
+  if (new_dt < e->dt_min) { 
   /*   hydro_debug_particle(p, xp); */
   /*   mhd_debug_particle(p, xp); */
-  /*   printf(" dt_hydro = %.8f \n dt_mhd = %.8f \n dt_h_change = %.8f \n",
-   * new_dt_hydro, new_dt_mhd, dt_h_change); */
-  /* } */
+     printf(" dt_hydro = %.8f \n dt_mhd = %.8f \n dt_h_change = %.8f \n",
+     new_dt_hydro, new_dt_mhd, dt_h_change);
+  } 
 
   if (new_dt < e->dt_min)
     error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
