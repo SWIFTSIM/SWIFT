@@ -663,9 +663,16 @@ def plot_cell_types(metadata, data, outdir):
     ax.set_title("Cell Types & Subtypes")
 
     # Draw cells with proper z-ordering (background first, then zoom on top).
-    # Get colors and z-orders for each cell.
+    # Note: void cells are not drawn because zoom cells always obscure them.
     for i, row in enumerate(data):
-        c, zorder = _get_cell_colour_type(int(row[COL_TYPE]), int(row[COL_SUBTYPE]))
+        ctype = int(row[COL_TYPE])
+        csubtype = int(row[COL_SUBTYPE])
+
+        # Skip void cells - they're always covered by zoom cells
+        if ctype == CELL_TYPE_BKG and csubtype == CELL_SUBTYPE_VOID:
+            continue
+
+        c, zorder = _get_cell_colour_type(ctype, csubtype)
         if c is None:
             continue
         ax.add_patch(
@@ -702,16 +709,6 @@ def plot_cell_types(metadata, data, outdir):
             markeredgecolor="black",
             markersize=12,
             label="Bkg (neighbour)",
-        ),
-        Line2D(
-            [0],
-            [0],
-            marker="s",
-            color="w",
-            markerfacecolor=COLOUR_BKG_VOID,
-            markeredgecolor="black",
-            markersize=12,
-            label="Bkg (void)",
         ),
         Line2D(
             [0],
