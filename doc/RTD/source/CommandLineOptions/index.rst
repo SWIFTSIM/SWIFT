@@ -47,6 +47,7 @@ can be found by typing ``./swift -h``:
                                       Stream (CSDS).
     -R, --radiation                   Run with radiative transfer.
     --power                           Run with power spectrum outputs.
+    -z, --zoom                        Run with a zoom region.
 
   Simulation meta-options:
 
@@ -79,6 +80,13 @@ can be found by typing ``./swift -h``:
                                       integration. Checks the validity of
                                       parameters and IC files as well as memory
                                       limits.
+    --dump-zoom-geometry              Compute the zoom geometry, dump cell
+                                      diagnostic data, and exit. Implies --zoom.
+                                      This will load the particles, build the
+                                      space and then analyse the zoom geometry.
+                                      Thus, unlike --dry-run, you will need to
+                                      run this option with the same resources
+                                      as the full run.
     --no-io                           Skip writing snapshots and restart files.
     -e, --fpe                         Enable floating-point exceptions (debugging
                                       mode).
