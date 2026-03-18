@@ -33,9 +33,9 @@
  * we always evaluate this on background cells and then propagate the result to
  * zoom/background proxy pairs.
  */
-static INLINE int zoom_get_proxy_type_from_bkg_pair(struct engine *e,
-                                                    const struct cell *ci,
-                                                    const struct cell *cj) {
+static int zoom_get_proxy_type_from_bkg_pair(struct engine *e,
+                                             const struct cell *ci,
+                                             const struct cell *cj) {
 
   const double ir_diag2 = ci->width[0] * ci->width[0] +
                           ci->width[1] * ci->width[1] +
@@ -53,9 +53,9 @@ static INLINE int zoom_get_proxy_type_from_bkg_pair(struct engine *e,
 /**
  * @brief Compute proxy type from a pair of zoom cells.
  */
-static INLINE int zoom_get_proxy_type_from_zoom_pair(struct engine *e,
-                                                     const struct cell *ci,
-                                                     const struct cell *cj) {
+static int zoom_get_proxy_type_from_zoom_pair(struct engine *e,
+                                              const struct cell *ci,
+                                              const struct cell *cj) {
 
   const double ir_diag2 = ci->width[0] * ci->width[0] +
                           ci->width[1] * ci->width[1] +
