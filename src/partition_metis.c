@@ -59,6 +59,8 @@
  * relative time bins of the cells next updates.
  */
 
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
 /**
  * @brief Count vertex edges for uniform (non-zoom) spaces.
  *
