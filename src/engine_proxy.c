@@ -33,7 +33,7 @@
 
 /* Local headers. */
 #include "proxy.h"
-#include "zoom.h"
+#include "zoom_region/zoom.h"
 
 /**
  * @brief Get the type of proxy needed for a pair of cells.
