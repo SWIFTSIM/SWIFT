@@ -90,6 +90,7 @@ GEARFeedback:
 =======
   supernovae_Ia_energy_erg: 1e51                           # Energy released by a single supernova.
   supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
+  with_stellar_wind_feedback: 0                            # Activate the stellar wind feedback
   yields_table: POPIIsw.h5                                 # Table containing the yields of the first stars.
   yields_table_first_stars: POPIIsw.h5                     # Table containing the yields of the first stars.
   discrete_yields: 1                                       # Should we use discrete yields or the IMF integrated one?

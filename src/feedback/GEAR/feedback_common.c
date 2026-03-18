@@ -80,10 +80,13 @@ void feedback_will_do_feedback(
 
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.preSN.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
-  /* Quit if the birth_scale_factor or birth_time is negative */
-  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
+  /* Quit if the birth_scale_factor or birth_time is negative.
+     No Feedback event for the initial fake step. */
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0 || sp->time_bin == 0)
+    return;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metal =
@@ -119,6 +122,7 @@ void feedback_will_do_feedback(
     error("Negative age for a star");
   }
 #endif
+
   /* Ensure that the age is positive (rounding errors) */
   const double star_age_beg_step_safe =
       star_age_beg_step < 0 ? 0 : star_age_beg_step;
@@ -137,24 +141,57 @@ void feedback_will_do_feedback(
 
     /* Now, compute the stellar evolution state for individual star particles.
      */
-    stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
-                                             ti_begin, star_age_beg_step_safe,
-                                             dt_enrichment);
+    stellar_evolution_evolve_individual_star(
+        sp, model, cosmo, us, phys_const,
+        feedback_props->with_stellar_wind_feedback, ti_begin,
+        star_age_beg_step_safe, dt_enrichment);
   } else {
     /* Compute the stellar evolution including SNe energy. This function treats
        the case of particles representing the whole IMF (star_type =
        star_population) and the particles representing only the continuous part
        of the IMF (star_type = star_population_continuous_IMF) */
-    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
-                                   star_age_beg_step_safe, dt_enrichment);
+    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const,
+                                   feedback_props->with_stellar_wind_feedback,
+                                   ti_begin, star_age_beg_step_safe,
+                                   dt_enrichment);
   }
 
   /* Apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
+  /* Multiply pre-SN energy by the efficiency */
+  sp->feedback_data.preSN.energy_ejected *= feedback_props->preSN_efficiency;
+
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback =
-      sp->feedback_data.energy_ejected != 0. || !sp->feedback_data.is_dead;
+      sp->feedback_data.energy_ejected != 0. ||
+      sp->feedback_data.preSN.energy_ejected != 0. ||
+      !sp->feedback_data.is_dead;
+}
+
+/**
+ * @brief Compute age of the star at the end of the current timestep.
+ *
+ * @param sp The #spart to act upon
+ * @param with_cosmology Are we running with the cosmological expansion?
+ * @param cosmo The current cosmological model.
+ * @param time The current time (in double)
+ */
+double compute_star_age_end_of_step(const struct spart *sp,
+                                    const int with_cosmology,
+                                    const struct cosmology *cosmo,
+                                    const double time) {
+  double star_age_end_of_step;
+  if (with_cosmology) {
+    if (cosmo->a > (double)sp->birth_scale_factor)
+      star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+          cosmo, (double)sp->birth_scale_factor, cosmo->a);
+    else
+      star_age_end_of_step = 0.;
+  } else {
+    star_age_end_of_step = max(time - (double)sp->birth_time, 0.);
+  }
+  return star_age_end_of_step;
 }
 
 /**
@@ -173,7 +210,7 @@ void feedback_will_do_feedback(
  * @param time_base The time base.
  * @param time The current time (in double)
  */
-void compute_time(struct spart *sp, const int with_cosmology,
+void compute_time(const struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
                   double *dt_enrichment, integertime_t *ti_begin_star,
                   const integertime_t ti_current, const double time_base,
@@ -191,16 +228,8 @@ void compute_time(struct spart *sp, const int with_cosmology,
   }
 
   /* Calculate age of the star at current time */
-  double star_age_end_of_step;
-  if (with_cosmology) {
-    if (cosmo->a > (double)sp->birth_scale_factor)
-      star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
-          cosmo, (double)sp->birth_scale_factor, cosmo->a);
-    else
-      star_age_end_of_step = 0.;
-  } else {
-    star_age_end_of_step = max(time - (double)sp->birth_time, 0.);
-  }
+  const double star_age_end_of_step =
+      compute_star_age_end_of_step(sp, with_cosmology, cosmo, time);
 
   /* Get the length of the enrichment time-step */
   *dt_enrichment = feedback_get_enrichment_timestep(sp, with_cosmology, cosmo,
@@ -328,10 +357,12 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream) {
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
 
-  stellar_evolution_restore(&feedback->stellar_model, stream);
+  stellar_evolution_restore(&feedback->stellar_model, stream,
+                            feedback->with_stellar_wind_feedback);
 
   if (feedback->metallicity_max_first_stars != -1) {
-    stellar_evolution_restore(&feedback->stellar_model_first_stars, stream);
+    stellar_evolution_restore(&feedback->stellar_model_first_stars, stream,
+                              feedback->with_stellar_wind_feedback);
   }
 }
 
