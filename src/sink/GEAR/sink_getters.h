@@ -44,14 +44,14 @@ __attribute__((always_inline)) INLINE double sink_get_sink_age(
   if (with_cosmology) {
 
     /* Deal with rounding issues */
-    if (sink->birth_scale_factor >= cosmo->a) {
+    if (sink->birth_data.scale_factor >= cosmo->a) {
       sink_age = 0.;
     } else {
       sink_age = cosmology_get_delta_time_from_scale_factors(
-          cosmo, sink->birth_scale_factor, cosmo->a);
+          cosmo, sink->birth_data.scale_factor, cosmo->a);
     }
   } else {
-    sink_age = time - sink->birth_time;
+    sink_age = time - sink->birth_data.time;
   }
   return sink_age;
 }
