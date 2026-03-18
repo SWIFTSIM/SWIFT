@@ -17,59 +17,15 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include <config.h>
+
 /* Local includes. */
 #include "cell.h"
 #include "engine.h"
 #include "error.h"
 #include "proxy.h"
 #include "zoom.h"
-
-#ifdef WITH_MPI
-
-/**
- * @brief Compute proxy type from a pair of background cells.
- *
- * Proxy type evaluation uses geometry helpers that assume same-size cells, so
- * we always evaluate this on background cells and then propagate the result to
- * zoom/background proxy pairs.
- */
-static INLINE int zoom_get_proxy_type_from_bkg_pair(struct engine *e,
-                                                    const struct cell *ci,
-                                                    const struct cell *cj) {
-
-  const double ir_diag2 = ci->width[0] * ci->width[0] +
-                          ci->width[1] * ci->width[1] +
-                          ci->width[2] * ci->width[2];
-  const double ir_diag = 0.5 * sqrt(ir_diag2);
-  const double jr_diag2 = cj->width[0] * cj->width[0] +
-                          cj->width[1] * cj->width[1] +
-                          cj->width[2] * cj->width[2];
-  const double jr_diag = 0.5 * sqrt(jr_diag2);
-  const double pair_r_max = ir_diag + jr_diag;
-
-  return engine_get_proxy_type(e, ci, cj, pair_r_max);
-}
-
-/**
- * @brief Compute proxy type from a pair of zoom cells.
- */
-static INLINE int zoom_get_proxy_type_from_zoom_pair(struct engine *e,
-                                                     const struct cell *ci,
-                                                     const struct cell *cj) {
-
-  const double ir_diag2 = ci->width[0] * ci->width[0] +
-                          ci->width[1] * ci->width[1] +
-                          ci->width[2] * ci->width[2];
-  const double ir_diag = 0.5 * sqrt(ir_diag2);
-  const double jr_diag2 = cj->width[0] * cj->width[0] +
-                          cj->width[1] * cj->width[1] +
-                          cj->width[2] * cj->width[2];
-  const double jr_diag = 0.5 * sqrt(jr_diag2);
-  const double pair_r_max = ir_diag + jr_diag;
-
-  return engine_get_proxy_type(e, ci, cj, pair_r_max);
-}
-#endif /* WITH_MPI */
 
 /**
  * @brief Create and fill the proxies.
@@ -96,7 +52,6 @@ void zoom_engine_makeproxies(struct engine *e) {
   const int nodeID = e->nodeID;
   struct cell *cells = s->cells_top;
   struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
-
   const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                             s->zoom_props->cdim[2]};
   const int bkg_cdim[3] = {s->zoom_props->bkg_cdim[0],
@@ -116,22 +71,20 @@ void zoom_engine_makeproxies(struct engine *e) {
   for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
   e->nr_proxies = 0;
 
-  /* Compute maximum distance for zoom cell proxy interactions */
+  /* Compute maximum distance for zoom cell interactions */
   const double zoom_cell_width[3] = {
       zoom_cells[0].width[0], zoom_cells[0].width[1], zoom_cells[0].width[2]};
-
   const double zoom_r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
                               zoom_cell_width[1] * zoom_cell_width[1] +
                               zoom_cell_width[2] * zoom_cell_width[2];
   const double zoom_r_diag = 0.5 * sqrt(zoom_r_diag2);
   const double zoom_r_max = 2 * zoom_r_diag;
 
-  /* Compute maximum distance for background cell proxy interactions */
+  /* Compute maximum distance for background cell interactions */
   const double bkg_cell_width[3] = {
       cells[s->zoom_props->bkg_cell_offset].width[0],
       cells[s->zoom_props->bkg_cell_offset].width[1],
       cells[s->zoom_props->bkg_cell_offset].width[2]};
-
   const double bkg_r_diag2 = bkg_cell_width[0] * bkg_cell_width[0] +
                              bkg_cell_width[1] * bkg_cell_width[1] +
                              bkg_cell_width[2] * bkg_cell_width[2];
@@ -157,6 +110,7 @@ void zoom_engine_makeproxies(struct engine *e) {
   int bkg_delta_m = bkg_delta_cells;
   int bkg_delta_p = bkg_delta_cells;
 
+  /* Special case where every zoom cell is in range of every other one. */
   if (zoom_delta_cells > zoom_cdim[0]) {
     zoom_delta_m = zoom_cdim[0];
     zoom_delta_p = zoom_cdim[0];
@@ -169,18 +123,20 @@ void zoom_engine_makeproxies(struct engine *e) {
   }
 
   /* Let's be verbose about this choice */
-  if (e->verbose)
+  if (e->verbose) {
     message(
         "Looking for proxies up to %d zoom cells away (delta_m=%d delta_p=%d)"
         " and %d background cells away (delta_m=%d delta_p=%d)",
         zoom_delta_cells, zoom_delta_m, zoom_delta_p, bkg_delta_cells,
         bkg_delta_m, bkg_delta_p);
+  }
 
   /*  Zoom -> zoom and zoom -> background neighbours */
   for (int i = 0; i < zoom_cdim[0]; i++) {
     for (int j = 0; j < zoom_cdim[1]; j++) {
       for (int k = 0; k < zoom_cdim[2]; k++) {
 
+        /* Get this zoom cell. */
         const int zid = cell_getid(zoom_cdim, i, j, k);
         struct cell *zi = &zoom_cells[zid];
 
@@ -188,28 +144,35 @@ void zoom_engine_makeproxies(struct engine *e) {
         for (int ii = -zoom_delta_m; ii <= zoom_delta_p; ii++) {
           const int iii = i + ii;
           if (iii < 0 || iii >= zoom_cdim[0]) continue;
-
           for (int jj = -zoom_delta_m; jj <= zoom_delta_p; jj++) {
             const int jjj = j + jj;
             if (jjj < 0 || jjj >= zoom_cdim[1]) continue;
-
             for (int kk = -zoom_delta_m; kk <= zoom_delta_p; kk++) {
               const int kkk = k + kk;
               if (kkk < 0 || kkk >= zoom_cdim[2]) continue;
 
+              /* Get the zoom neighbour index */
               const int zjd = cell_getid(zoom_cdim, iii, jjj, kkk);
+
+              /* Skip duplicate and self interactions */
               if (zid >= zjd) continue;
 
+              /* Get the cell */
               struct cell *zj = &zoom_cells[zjd];
 
+              /* Skip entirely local and entirely foreign pairs */
               if ((zi->nodeID == nodeID && zj->nodeID == nodeID) ||
                   (zi->nodeID != nodeID && zj->nodeID != nodeID))
                 continue;
 
+              /* Get the proxy type */
               const int proxy_type =
-                  zoom_get_proxy_type_from_zoom_pair(e, zi, zj);
+                  engine_get_proxy_type(e, zi, zj, zoom_r_max);
+
+              /* No proxy needed? No problem, move on */
               if (proxy_type == proxy_cell_type_none) continue;
 
+              /* Add the proxy */
               engine_add_proxy(e, zi, zj, proxy_type);
             }
           }
@@ -220,39 +183,47 @@ void zoom_engine_makeproxies(struct engine *e) {
         const int bkg_j = (zi->loc[1] + 0.5 * zi->width[1]) * s->iwidth[1];
         const int bkg_k = (zi->loc[2] + 0.5 * zi->width[2]) * s->iwidth[2];
 
-        const int ci_void_id =
+        /* Get the parent void cell */
+        const int vid =
             cell_getid_offset(bkg_cdim, bkg_offset, bkg_i, bkg_j, bkg_k);
-        struct cell *ci_void = &cells[ci_void_id];
+        struct cell *vi = &cells[vid];
 
+        /* Walk out from the void cell containing this zoom cell to find
+         * zoom -> background neighbours. */
         for (int ii = -bkg_delta_m; ii <= bkg_delta_p; ii++) {
           int iii = bkg_i + ii;
           if (!periodic && (iii < 0 || iii >= bkg_cdim[0])) continue;
           iii = (iii + bkg_cdim[0]) % bkg_cdim[0];
-
           for (int jj = -bkg_delta_m; jj <= bkg_delta_p; jj++) {
             int jjj = bkg_j + jj;
             if (!periodic && (jjj < 0 || jjj >= bkg_cdim[1])) continue;
             jjj = (jjj + bkg_cdim[1]) % bkg_cdim[1];
-
             for (int kk = -bkg_delta_m; kk <= bkg_delta_p; kk++) {
               int kkk = bkg_k + kk;
               if (!periodic && (kkk < 0 || kkk >= bkg_cdim[2])) continue;
               kkk = (kkk + bkg_cdim[2]) % bkg_cdim[2];
 
+              /* Get the cell */
               const int cjd =
                   cell_getid_offset(bkg_cdim, bkg_offset, iii, jjj, kkk);
               struct cell *cj = &cells[cjd];
 
-              const int proxy_type =
-                  zoom_get_proxy_type_from_bkg_pair(e, ci_void, cj);
-              if (proxy_type == proxy_cell_type_none) continue;
-
+              /* No need to create proxies with other void cells */
               if (cj->subtype == cell_subtype_void) continue;
 
+              /* Skip entirely local and entirely foreign pairs */
               if ((zi->nodeID == nodeID && cj->nodeID == nodeID) ||
                   (zi->nodeID != nodeID && cj->nodeID != nodeID))
                 continue;
 
+              /* Get the proxy type */
+              const int proxy_type =
+                  engine_get_proxy_type(e, vi, cj, bkg_r_max);
+
+              /* No proxy needed? No problem, move on */
+              if (proxy_type == proxy_cell_type_none) continue;
+
+              /* Add the proxy */
               engine_add_proxy(e, zi, cj, proxy_type);
             }
           }
@@ -266,42 +237,53 @@ void zoom_engine_makeproxies(struct engine *e) {
     for (int j = 0; j < bkg_cdim[1]; j++) {
       for (int k = 0; k < bkg_cdim[2]; k++) {
 
+        /* Get this background cell. */
         const int cid = cell_getid_offset(bkg_cdim, bkg_offset, i, j, k);
         struct cell *ci = &cells[cid];
 
+        /* No need to create proxies with void cells. */
         if (ci->subtype == cell_subtype_void) continue;
 
+        /* Walk from this cell finding background -> background neighbours. */
         for (int ii = -bkg_delta_m; ii <= bkg_delta_p; ii++) {
           int iii = i + ii;
           if (!periodic && (iii < 0 || iii >= bkg_cdim[0])) continue;
           iii = (iii + bkg_cdim[0]) % bkg_cdim[0];
-
           for (int jj = -bkg_delta_m; jj <= bkg_delta_p; jj++) {
             int jjj = j + jj;
             if (!periodic && (jjj < 0 || jjj >= bkg_cdim[1])) continue;
             jjj = (jjj + bkg_cdim[1]) % bkg_cdim[1];
-
             for (int kk = -bkg_delta_m; kk <= bkg_delta_p; kk++) {
               int kkk = k + kk;
               if (!periodic && (kkk < 0 || kkk >= bkg_cdim[2])) continue;
               kkk = (kkk + bkg_cdim[2]) % bkg_cdim[2];
 
+              /* Get the background neighbour index */
               const int cjd =
                   cell_getid_offset(bkg_cdim, bkg_offset, iii, jjj, kkk);
+
+              /* Skip duplicate and self interactions */
               if (cid >= cjd) continue;
 
+              /* Get the cell */
               struct cell *cj = &cells[cjd];
 
+              /* No need to create proxies with void cells. */
               if (cj->subtype == cell_subtype_void) continue;
 
+              /* Skip entirely local and entirely foreign pairs */
               if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
                   (ci->nodeID != nodeID && cj->nodeID != nodeID))
                 continue;
 
+              /* Get the proxy type */
               const int proxy_type =
-                  zoom_get_proxy_type_from_bkg_pair(e, ci, cj);
+                  engine_get_proxy_type(e, ci, cj, bkg_r_max);
+
+              /* No proxy needed? No problem, move on */
               if (proxy_type == proxy_cell_type_none) continue;
 
+              /* Add the proxy */
               engine_add_proxy(e, ci, cj, proxy_type);
             }
           }
