@@ -213,6 +213,7 @@ int main(int argc, char *argv[]) {
   int with_rt = 0;
   int with_power = 0;
   int with_zoom_region = 0;
+  int with_zoom_geometry_dry_run = 0;
   int verbose = 0;
   int nr_threads = 1;
   int nr_pool_threads = -1;
@@ -328,6 +329,13 @@ int main(int argc, char *argv[]) {
                   "time integration. Checks the validity of parameters and IC "
                   "files as well as memory limits.",
                   NULL, 0, 0),
+      OPT_BOOLEAN(0, "dump-zoom-geometry", &with_zoom_geometry_dry_run,
+                  "Compute the zoom geometry, dump cell diagnostic data, "
+                  "and exit. Implies --zoom. This will load the particles, "
+                  "build the space and then analyse the zoom geometry. Thus, "
+                  "unlike --dry-run, you will need to run this option with the "
+                  "same resources as the full run.",
+                  NULL, 0, 0),
       OPT_BOOLEAN(0, "no-io", &with_no_io,
                   "Skip writing snapshots and restart files.", NULL, 0, 0),
       OPT_BOOLEAN('e', "fpe", &with_fp_exceptions,
@@ -428,6 +436,11 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
+  /* --dump-zoom-geometry implies --zoom */
+  if (with_zoom_geometry_dry_run) {
+    with_zoom_region = 1;
+  }
+
 #ifdef MOVING_MESH
   if (with_hydro) {
     with_grid = 1;
@@ -739,6 +752,11 @@ int main(int argc, char *argv[]) {
   if (myrank == 0 && dry_run)
     message(
         "Executing a dry run. No i/o or time integration will be performed.");
+
+  if (myrank == 0 && with_zoom_geometry_dry_run)
+    message(
+        "Executing a zoom geometry dry run. Diagnostic files will be "
+        "written and the run will exit before time integration.");
 
   /* Report CPU frequency.*/
   cpufreq = clocks_get_cpufreq();
@@ -1635,6 +1653,22 @@ int main(int argc, char *argv[]) {
           e.dt_min, e.dt_max);
       fflush(stdout);
     }
+  }
+
+  /* Time to dump zoom geometry diagnostics if requested. */
+  if (with_zoom_geometry_dry_run) {
+    zoom_dump_geometry(&e);
+#ifdef WITH_MPI
+    if ((res = MPI_Finalize()) != MPI_SUCCESS)
+      error("call to MPI_Finalize failed with error %i.", res);
+#endif
+    if (myrank == 0)
+      message(
+          "Zoom geometry diagnostic files written. End of zoom "
+          "geometry dry run.");
+    engine_clean(&e, /*fof=*/0, /*restart=*/0);
+    free(params);
+    return 0;
   }
 
   /* Time to say good-bye if this was not a serious run. */

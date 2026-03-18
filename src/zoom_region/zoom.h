@@ -46,6 +46,7 @@ void zoom_region_init(struct space *s, const int regridding, const int verbose);
 void zoom_get_region_dim_and_shift(struct space *s, const int verbose);
 void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose);
 void zoom_report_cell_properties(const struct space *s);
+void zoom_dump_geometry(const struct engine *e);
 
 /* Construct top level cells with a zoom region. */
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
