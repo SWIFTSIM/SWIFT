@@ -1,11 +1,11 @@
 """Plot the cell geometry and particle distribution diagnostics.
 
 This script generates diagnostic plots of the zoom region cell structure and
-particle occupancy from files produced by running SWIFT with --zoom-geometry.
+particle occupancy from files produced by running SWIFT with --dump-zoom-geometry.
 
 To run get the files to run this analysis run the following:
 
-    swift --zoom-geometry <extra-options> <param file>
+    swift --dump-zoom-geometry <extra-options> <param file>
 
 The following plots are produced:
   1. Cell grid coloured by cell type and subtype (geometry overview).
@@ -1340,7 +1340,7 @@ def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
         description="Analyse zoom geometry diagnostic files produced by "
-        "SWIFT --zoom-geometry.",
+        "SWIFT --dump-zoom-geometry.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Output files:\n"

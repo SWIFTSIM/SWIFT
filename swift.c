@@ -329,7 +329,7 @@ int main(int argc, char *argv[]) {
                   "time integration. Checks the validity of parameters and IC "
                   "files as well as memory limits.",
                   NULL, 0, 0),
-      OPT_BOOLEAN(0, "zoom-geometry", &with_zoom_geometry_dry_run,
+      OPT_BOOLEAN(0, "dump-zoom-geometry", &with_zoom_geometry_dry_run,
                   "Compute the zoom geometry, dump cell diagnostic data, "
                   "and exit. Implies --zoom.",
                   NULL, 0, 0),
@@ -433,7 +433,7 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
-  /* --zoom-geometry implies --zoom */
+  /* --dump-zoom-geometry implies --zoom */
   if (with_zoom_geometry_dry_run) {
     with_zoom_region = 1;
   }
