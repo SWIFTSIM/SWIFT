@@ -103,6 +103,17 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     p->a_hydro[1] = 0.0f;
     p->a_hydro[2] = 0.0f;
 
+    /* Reset change in magnetic field of boundary particles */
+    p->mhd_data.B_over_rho_dt[0] = 0.0f;
+    p->mhd_data.B_over_rho_dt[1] = 0.0f;
+    p->mhd_data.B_over_rho_dt[2] = 0.0f;
+
+    /* Reset change in dedner field of boundary particles */
+    p->mhd_data.psi_over_ch_dt = 0.0f;
+
+    /* Reset change in internal energy of boundary particles */
+    hydro_set_physical_internal_energy_dt(p, s->e->cosmology, 0.f);
+
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 
     /* Some values need to be reset in the Gizmo case. */
