@@ -11,9 +11,7 @@
 #  master branch. Don't do anything on draft MRs.
 workflow:
   rules:
-    - if: >
-        $CI_PIPELINE_SOURCE == "merge_request_event" &&
-        $CI_MERGE_REQUEST_DRAFT == "true"
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT == "true"'
       when: never
 
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -45,9 +43,7 @@ gnu-build-cosma:
     - cosma
   #  When MR to master happens, or commit is to master.
   rules:
-    - if: >
-        $CI_PIPELINE_SOURCE == "push" &&
-        $CI_COMMIT_BRANCH == "master"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
     - when: never
   timeout: 6h
   script:
@@ -62,9 +58,7 @@ intel-build-cosma:
     - cosma
   #  When MR to master happens, or commit is to master.
   rules:
-    - if: >
-        $CI_PIPELINE_SOURCE == "push" &&
-        $CI_COMMIT_BRANCH == "master"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
     - when: never
   timeout: 6h
   script:
@@ -79,7 +73,6 @@ runtime-check-cosma:
     - cosma
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "zoom_merge"'
     - when: never
   timeout: 6h
   script:
@@ -109,9 +102,7 @@ swift-intel-build-mr-quick:
     - cosma
   #  When this commit is part of an active MR.
   rules:
-    - if: >
-        $CI_PIPELINE_SOURCE == "merge_request_event" &&
-        $CI_MERGE_REQUEST_DRAFT == "false"
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT == "false"'
     - when: never
   timeout: 1h
   script:
@@ -127,14 +118,12 @@ swift-intel-build-mr-long:
     - cosma
   #  When this commit is part of an active MR.
   rules:
-    - if: >
-        $CI_PIPELINE_SOURCE == "merge_request_event" &&
-        $CI_MERGE_REQUEST_DRAFT == "false"
-  #  And job is requested to run.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_DRAFT == "false"'
+    - when: never
+  #  And job is requested to run, note will not block the stage unless
+  #  allow_failure is set to false.
   when: manual
   allow_failure: true
-  needs:
-    - swift-intel-build-mr-quick
   timeout: 6h
   script:
     - echo "Full Intel toolchain check in a merge request"
@@ -150,12 +139,28 @@ swift-intel-build-mr-long:
 #    - genericlinux
 #  #  When MR to master happens, or commit is to master.
 #  rules:
-#    - if: >
-#        $CI_PIPELINE_SOURCE == "push" &&
-#        $CI_COMMIT_BRANCH == "master"
+#    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
 #    - when: never
 #  timeout: 6h
 #  script:
 #    - echo "Full compilation and unit tests"
 #    - ci/swift-gnu-check.sh
+#    - echo "complete."
+
+#  Example of running other tests on a branch from the zoom work. Note this
+#  runs in the runtime stage and on the zoom-ci branch as well as the master
+#  branch. When an MR the branch name is not in CI_COMMIT_BRANCH.
+#
+#zoom-runtime-check-cosma:
+#  stage: runtime
+#  tags:
+#    - cosma
+#  rules:
+#    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
+#    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == "zoom-ci"'
+#    - when: never
+#  timeout: 6h
+#  script:
+#    - echo "Zoom runtime checks"
+#    - ci/COSMA/swift-zoom-runtime-checks.sh
 #    - echo "complete."

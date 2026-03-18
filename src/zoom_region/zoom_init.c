@@ -125,6 +125,11 @@ void zoom_get_region_dim_and_shift_mapper(void *map_data, int num_elements,
       continue;
     }
 
+    /* Ignore non-existing particles */
+    if (gparts[k].time_bin == time_bin_inhibited ||
+        gparts[k].time_bin == time_bin_not_created)
+      continue;
+
     /* Unpack the particle properties. */
     /* NOTE: these will have already been shifted by the user requested amount
      * in space_init if shift in the parameter file is non-zero. */
