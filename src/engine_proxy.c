@@ -21,8 +21,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "zoom_region/zoom.h"
-
 #include <config.h>
 
 /* MPI headers. */
@@ -35,6 +33,7 @@
 
 /* Local headers. */
 #include "proxy.h"
+#include "zoom.h"
 
 /**
  * @brief Get the type of proxy needed for a pair of cells.
