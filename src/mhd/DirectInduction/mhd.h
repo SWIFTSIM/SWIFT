@@ -162,17 +162,19 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   /* Condition to limit the per time-step change in the magnitude of the
    * magnetic field */
-  const float maxRelChangeBoverRho = hydro_properties->mhd.maxRelChangeBoverRho;
+  /* const float maxRelChangeBoverRho = hydro_properties->mhd.maxRelChangeBoverRho; */
 
   float denum_dt_deltaB2 = 0.f;
   for (int k = 0; k < 3; k++) {
     denum_dt_deltaB2 += B_over_rho_dt[k] * B_over_rho_dt[k];
   }
 
-  const float dt_deltaB =
+  /* const float dt_deltaB =
       denum_dt_deltaB2
           ? maxRelChangeBoverRho * a2 * sqrtf(B_over_rho2 / denum_dt_deltaB2)
-          : FLT_MAX;
+          : FLT_MAX; */
+
+  const float dt_deltaB = FLT_MAX;
 
   /* Condition to limit the per time-step change in the magnitude of the Dedner
    * scalar field */
