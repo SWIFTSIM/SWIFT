@@ -151,9 +151,10 @@ static int partition_count_edges_uniform(struct space *s, int periodic,
  * @param nxadj the number of xadj element used.
  * @param cell_edge_offsets array[nr_cells+1] with cumulative edge offsets.
  */
-static void graph_init_uniform(struct space *s, int periodic, idx_t *adjncy,
-                               int *nadjcny, idx_t *xadj, int *nxadj,
-                               const int *cell_edge_offsets) {
+static void partition_graph_init_uniform(struct space *s, int periodic,
+                                         idx_t *adjncy, int *nadjcny,
+                                         idx_t *xadj, int *nxadj,
+                                         const int *cell_edge_offsets) {
 
   int cid = 0;
 
@@ -245,14 +246,14 @@ static void graph_init_uniform(struct space *s, int periodic, idx_t *adjncy,
  * @param nxadj the number of xadj element used.
  * @param cell_edge_offsets array[nr_cells+1] with cumulative edge offsets.
  */
-static void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
-                                 int *nadjcny, idx_t *xadj, int *nxadj,
-                                 const int *cell_edge_offsets) {
+void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
+                          int *nadjcny, idx_t *xadj, int *nxadj,
+                          const int *cell_edge_offsets) {
 
   /* Use the appropriate graph initialization function. */
   if (!s->with_zoom_region) {
-    graph_init_uniform(s, periodic, adjncy, nadjcny, xadj, nxadj,
-                       cell_edge_offsets);
+    partition_graph_init_uniform(s, periodic, adjncy, nadjcny, xadj, nxadj,
+                                 cell_edge_offsets);
   } else {
     zoom_partition_graph_init(s, periodic, adjncy, nadjcny, xadj, nxadj,
                               cell_edge_offsets);
@@ -843,8 +844,8 @@ static void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
-    graph_init(s, s->periodic, full_adjncy, &nadjcny, std_xadj, &nxadj,
-               cell_edge_offsets);
+    partition_graph_init(s, s->periodic, full_adjncy, &nadjcny, std_xadj,
+                         &nxadj, cell_edge_offsets);
 
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
@@ -1271,8 +1272,8 @@ static void partition_pick_metis(int nodeID, struct space *s, int nregions,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
-    graph_init(s, s->periodic, adjncy, &nadjcny, xadj, &nxadj,
-               cell_edge_offsets);
+    partition_graph_init(s, s->periodic, adjncy, &nadjcny, xadj, &nxadj,
+                         cell_edge_offsets);
 
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];

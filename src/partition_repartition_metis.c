@@ -254,8 +254,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   int nadjcny_check = 0;
   int nxadj = 0;
-  graph_init(s, 1 /* periodic */, inds, &nadjcny_check, xadj, &nxadj,
-             cell_edge_offsets);
+  parititon_graph_init(s, 1 /* periodic */, inds, &nadjcny_check, xadj, &nxadj,
+                       cell_edge_offsets);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
