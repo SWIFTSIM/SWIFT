@@ -854,14 +854,13 @@ def plot_occupancy_histograms(metadata, data, outdir):
 
 
 def plot_padding_analysis(metadata, data, outdir):
-    """Plot 7: Padding analysis showing particle extent vs zoom region.
+    """Plot: Padding analysis showing particle extent vs zoom region.
 
-    Left panel: 2D cell map with concentric rectangles showing the particle
-    extent, user-requested padded extent, and final (cell-aligned) zoom region,
-    zoomed in to the zoom region with a small margin.
-
-    Right panel: 1D bar chart decomposing the zoom region extent into particle
-    extent, user padding, and cell-alignment overhead.
+    2x2 grid:
+      - Top-left: x-y spatial projection with padding rectangles
+      - Top-right: bar chart of extent breakdown
+      - Bottom-left: x-z spatial projection
+      - Bottom-right: y-z spatial projection
 
     Args:
         metadata: Zoom metadata dictionary.
@@ -900,117 +899,172 @@ def plot_padding_analysis(metadata, data, outdir):
     user_pad_lower = zoom_com - user_padded_dim / 2.0
     user_pad_upper = zoom_com + user_padded_dim / 2.0
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 
-    # ---- Left panel: spatial overview ----
-    ax = axes[0]
+    margin = 0.3 * np.max(zoom_dim)
 
-    # Draw zoom cells (faded).
-    zoom_mask = data[:, COL_TYPE] == CELL_TYPE_ZOOM
-    zoom_data = data[zoom_mask]
-    for row in zoom_data:
+    # ---- Helper function to draw a projection ----
+    def draw_projection(ax, proj_x, proj_y, proj_label_x, proj_label_y, title):
+        """Draw a 2D projection with padding rectangles."""
+        # Draw zoom cells (faded).
+        zoom_mask = data[:, COL_TYPE] == CELL_TYPE_ZOOM
+        zoom_data = data[zoom_mask]
+
+        x_idx = {"x": COL_LOC_X, "y": COL_LOC_Y, "z": COL_LOC_Z}[proj_x]
+        y_idx = {"x": COL_LOC_X, "y": COL_LOC_Y, "z": COL_LOC_Z}[proj_y]
+        w_idx_x = {"x": COL_WIDTH_X, "y": COL_WIDTH_X, "z": COL_WIDTH_X}[proj_y]
+        w_idx_y = {"x": COL_WIDTH_Y, "y": COL_WIDTH_Y, "z": COL_WIDTH_Y}[proj_y]
+
+        for row in zoom_data:
+            ax.add_patch(
+                Rectangle(
+                    (row[x_idx], row[y_idx]),
+                    row[w_idx_x],
+                    row[w_idx_y],
+                    fill=True,
+                    facecolor=COLOUR_ZOOM,
+                    edgecolor="black",
+                    linewidth=0.15,
+                    alpha=0.2,
+                    zorder=0,
+                )
+            )
+
+        # Draw void cells.
+        void_mask = (data[:, COL_TYPE] == CELL_TYPE_BKG) & (
+            data[:, COL_SUBTYPE] == CELL_SUBTYPE_VOID
+        )
+        for row in data[void_mask]:
+            ax.add_patch(
+                Rectangle(
+                    (row[x_idx], row[y_idx]),
+                    row[w_idx_x],
+                    row[w_idx_y],
+                    fill=True,
+                    facecolor=COLOUR_BKG_VOID,
+                    edgecolor="black",
+                    linewidth=0.3,
+                    alpha=0.3,
+                    zorder=0,
+                )
+            )
+
+        # Get indices for the projection axes
+        dim_idx = {"x": 0, "y": 1, "z": 2}
+        ix = dim_idx[proj_x]
+        iy = dim_idx[proj_y]
+
+        # Particle extent.
         ax.add_patch(
             Rectangle(
-                (row[COL_LOC_X], row[COL_LOC_Y]),
-                row[COL_WIDTH_X],
-                row[COL_WIDTH_Y],
-                fill=True,
-                facecolor=COLOUR_ZOOM,
-                edgecolor="black",
-                linewidth=0.15,
-                alpha=0.2,
-                zorder=0,
+                (part_lower[ix], part_lower[iy]),
+                part_dim[ix],
+                part_dim[iy],
+                fill=False,
+                edgecolor="#e63946",
+                linewidth=2.0,
+                linestyle="-",
+                zorder=3,
             )
         )
 
-    # Draw void cells.
-    void_mask = (data[:, COL_TYPE] == CELL_TYPE_BKG) & (
-        data[:, COL_SUBTYPE] == CELL_SUBTYPE_VOID
-    )
-    for row in data[void_mask]:
+        # User-requested padded extent.
         ax.add_patch(
             Rectangle(
-                (row[COL_LOC_X], row[COL_LOC_Y]),
-                row[COL_WIDTH_X],
-                row[COL_WIDTH_Y],
-                fill=True,
-                facecolor=COLOUR_BKG_VOID,
-                edgecolor="black",
-                linewidth=0.3,
-                alpha=0.3,
-                zorder=0,
+                (user_pad_lower[ix], user_pad_lower[iy]),
+                user_padded_dim,
+                user_padded_dim,
+                fill=False,
+                edgecolor="#457b9d",
+                linewidth=2.0,
+                linestyle="--",
+                zorder=3,
             )
         )
 
-    # Particle extent.
-    ax.add_patch(
-        Rectangle(
-            (part_lower[0], part_lower[1]),
-            part_dim[0],
-            part_dim[1],
-            fill=False,
+        # Final zoom region.
+        ax.add_patch(
+            Rectangle(
+                (zoom_lower[ix], zoom_lower[iy]),
+                zoom_dim[ix],
+                zoom_dim[iy],
+                fill=False,
+                edgecolor="#2a9d8f",
+                linewidth=2.0,
+                linestyle="-.",
+                zorder=3,
+            )
+        )
+
+        # Mark CoM.
+        ax.plot(
+            zoom_com[ix],
+            zoom_com[iy],
+            "x",
+            color="#e63946",
+            markersize=10,
+            markeredgewidth=2,
+            zorder=4,
+        )
+
+        # Set view to zoom region with margin.
+        ax.set_xlim(zoom_lower[ix] - margin, zoom_upper[ix] + margin)
+        ax.set_ylim(zoom_lower[iy] - margin, zoom_upper[iy] + margin)
+        ax.set_aspect("equal")
+        ax.set_xlabel(proj_label_x)
+        ax.set_ylabel(proj_label_y)
+        ax.set_title(title)
+
+    # ---- Top-left: x-y projection ----
+    draw_projection(axes[0, 0], "x", "y", "x", "y", "x-y projection")
+
+    # Add legend only to top-left plot
+    from matplotlib.patches import Patch
+    from matplotlib.lines import Line2D
+
+    legend_elements = [
+        Patch(facecolor=COLOUR_ZOOM, alpha=0.2, edgecolor="black", label="Zoom cells"),
+        Patch(
+            facecolor=COLOUR_BKG_VOID, alpha=0.3, edgecolor="black", label="Void cells"
+        ),
+        Patch(
+            facecolor="none",
             edgecolor="#e63946",
-            linewidth=2.0,
+            linewidth=2,
             linestyle="-",
             label="Particle extent",
-            zorder=3,
-        )
-    )
-
-    # User-requested padded extent.
-    ax.add_patch(
-        Rectangle(
-            (user_pad_lower[0], user_pad_lower[1]),
-            user_padded_dim,
-            user_padded_dim,
-            fill=False,
+        ),
+        Patch(
+            facecolor="none",
             edgecolor="#457b9d",
-            linewidth=2.0,
+            linewidth=2,
             linestyle="--",
             label=f"User padding ({user_pad:.2f}x)",
-            zorder=3,
-        )
-    )
-
-    # Final zoom region.
-    ax.add_patch(
-        Rectangle(
-            (zoom_lower[0], zoom_lower[1]),
-            zoom_dim[0],
-            zoom_dim[1],
-            fill=False,
+        ),
+        Patch(
+            facecolor="none",
             edgecolor="#2a9d8f",
-            linewidth=2.0,
+            linewidth=2,
             linestyle="-.",
             label=f"Final region ({metadata['RegionPadFactor']:.2f}x)",
-            zorder=3,
-        )
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="x",
+            color="w",
+            markerfacecolor="#e63946",
+            markersize=10,
+            markeredgewidth=2,
+            label="Zoom CoM",
+        ),
+    ]
+    axes[0, 0].legend(
+        handles=legend_elements, loc="lower left", fontsize=7, framealpha=0.9
     )
 
-    # Mark CoM.
-    ax.plot(
-        zoom_com[0],
-        zoom_com[1],
-        "x",
-        color="#e63946",
-        markersize=10,
-        markeredgewidth=2,
-        zorder=4,
-        label="Zoom CoM",
-    )
-
-    # Set view to zoom region with 30% margin.
-    margin = 0.3 * np.max(zoom_dim)
-    ax.set_xlim(zoom_lower[0] - margin, zoom_upper[0] + margin)
-    ax.set_ylim(zoom_lower[1] - margin, zoom_upper[1] + margin)
-    ax.set_aspect("equal")
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_title("Padding Overview (x-y projection)")
-    ax.legend(loc="lower left", fontsize=8, framealpha=0.9)
-
-    # ---- Right panel: 1D breakdown bar chart ----
-    ax = axes[1]
+    # ---- Top-right: bar chart ----
+    ax = axes[0, 1]
 
     # Break the full extent into three concentric shells per axis.
     labels = ["x", "y", "z"]
@@ -1083,7 +1137,12 @@ def plot_padding_analysis(metadata, data, outdir):
                 )
             bottom += p
 
-    fig.suptitle("Zoom Region Padding Analysis", fontsize=14, y=1.02)
+    # ---- Bottom-left: x-z projection ----
+    draw_projection(axes[1, 0], "x", "z", "x", "z", "x-z projection")
+
+    # ---- Bottom-right: y-z projection ----
+    draw_projection(axes[1, 1], "y", "z", "y", "z", "y-z projection")
+
     fig.tight_layout()
     path = os.path.join(outdir, "zoom_padding_analysis.png")
     fig.savefig(path, dpi=300, bbox_inches="tight")
@@ -1092,13 +1151,14 @@ def plot_padding_analysis(metadata, data, outdir):
 
 
 def plot_resolution_quality(metadata, data, outdir):
-    """Plot 8: Resolution quality analysis of the zoom region.
+    """Plot: Radial profiles of zoom region quality metrics.
 
-    Four panels:
-      1. Occupancy distribution with percentile markers and uniformity metrics.
-      2. Spatial map of occupancy deviation from the median.
-      3. Radial profile of occupancy from the zoom region centre.
-      4. Radial profile of DM background contamination fraction.
+    Two panels:
+      1. Radial profile of occupancy from the zoom region centre.
+         Shows median, 10th and 90th percentiles of particle counts within
+         each radial bin.
+      2. Radial profile of DM background contamination fraction.
+         Shows how contamination varies with distance from the zoom centre.
 
     Args:
         metadata: Zoom metadata dictionary.
@@ -1112,7 +1172,7 @@ def plot_resolution_quality(metadata, data, outdir):
     zoom_data = data[zoom_mask]
 
     if len(zoom_data) == 0:
-        print("No zoom cells found, skipping resolution quality plot.")
+        print("No zoom cells found, skipping radial distributions plot.")
         return None
 
     # Total particle count per zoom cell.
@@ -1120,10 +1180,8 @@ def plot_resolution_quality(metadata, data, outdir):
     zoom_nonempty_mask = zoom_counts > 0
 
     if zoom_nonempty_mask.sum() < 2:
-        print("Too few non-empty zoom cells, skipping resolution quality plot.")
+        print("Too few non-empty zoom cells, skipping radial distributions plot.")
         return None
-
-    zoom_nonempty = zoom_counts[zoom_nonempty_mask]
 
     # Cell centres and radial distances from zoom region centre.
     cell_centres_x = zoom_data[:, COL_LOC_X] + zoom_data[:, COL_WIDTH_X] / 2.0
@@ -1144,144 +1202,10 @@ def plot_resolution_quality(metadata, data, outdir):
     max_radius = np.sqrt(np.sum((zoom_dim / 2.0) ** 2))
     norm_radii = radii / max_radius
 
-    fig, axes = plt.subplots(2, 2, figsize=(13, 11))
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
-    # ---- Panel 1: Occupancy distribution ----
-    ax = axes[0, 0]
-    valid_counts = zoom_nonempty
-    with np.errstate(divide="ignore"):
-        log_counts = np.log10(valid_counts)
-
-    lo, hi = log_counts.min(), log_counts.max()
-    if lo == hi:
-        lo -= 0.5
-        hi += 0.5
-    bins = np.logspace(lo, hi, 40)
-    ax.hist(
-        valid_counts,
-        bins=bins,
-        color=COLOUR_ZOOM,
-        edgecolor="black",
-        linewidth=0.4,
-        alpha=0.8,
-    )
-
-    # Percentile lines.
-    for pct, ls, lbl in [
-        (10, ":", "10th"),
-        (50, "-", "Median"),
-        (90, ":", "90th"),
-    ]:
-        val = np.percentile(valid_counts, pct)
-        ax.axvline(val, color="#e63946", linestyle=ls, linewidth=1.5, label=lbl)
-
-    # Annotate statistics.
-    mean_occ = np.mean(valid_counts)
-    cv = np.std(valid_counts) / mean_occ if mean_occ > 0 else 0
-    ax.axvline(mean_occ, color="#2a9d8f", linestyle="--", linewidth=1.5, label="Mean")
-
-    # Add gridlines
-    ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
-    ax.set_axisbelow(True)
-
-    ax.set_xscale("log")
-    ax.set_xlabel("Particles per cell")
-    ax.set_ylabel("Number of cells")
-    ax.set_title("Occupancy Distribution (zoom cells)")
-
-    # Extend y-axis by 10% to make room for text box
-    ylim = ax.get_ylim()
-    ax.set_ylim(ylim[0], ylim[1] * 1.1)
-
-    ax.text(
-        0.98,
-        0.95,
-        f"CV = {cv:.3f}\n"
-        f"Mean = {mean_occ:,.0f}\n"
-        f"N(empty) = {int((~zoom_nonempty_mask).sum())}",
-        transform=ax.transAxes,
-        ha="right",
-        va="top",
-        fontsize=8,
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.9),
-        zorder=100,
-    )
-
-    ax.legend(fontsize=7, loc="upper left", framealpha=0.9)
-
-    # ---- Panel 2: Deviation from median histogram ----
-    ax = axes[0, 1]
-    median_count = np.median(zoom_nonempty)
-
-    # Log-ratio of count to median (positive = over-occupied).
-    with np.errstate(divide="ignore", invalid="ignore"):
-        log_ratio = np.log10(zoom_counts / median_count)
-    log_ratio[~np.isfinite(log_ratio)] = np.nan
-
-    valid_ratio = log_ratio[np.isfinite(log_ratio)]
-    if len(valid_ratio) > 1:
-        # Create histogram of deviations
-        ax.hist(
-            valid_ratio,
-            bins=30,
-            color=COLOUR_ZOOM,
-            edgecolor="black",
-            linewidth=0.4,
-            alpha=0.8,
-        )
-
-        # Mark zero (median) line
-        ax.axvline(
-            0, color="#e63946", linestyle="-", linewidth=2, label="Median", zorder=10
-        )
-
-        # Mark mean deviation
-        mean_dev = np.mean(valid_ratio)
-        ax.axvline(
-            mean_dev,
-            color="#2a9d8f",
-            linestyle="--",
-            linewidth=1.5,
-            label="Mean",
-            zorder=10,
-        )
-
-        # Add gridlines
-        ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
-        ax.set_axisbelow(True)
-
-        ax.set_xlabel("log$_{10}$(count / median)")
-        ax.set_ylabel("Number of cells")
-        ax.set_title("Occupancy Deviation Distribution (zoom cells)")
-        ax.legend(fontsize=8, loc="upper right", framealpha=0.9)
-
-        # Add text box with statistics
-        std_dev = np.std(valid_ratio)
-        ax.text(
-            0.02,
-            0.98,
-            f"Std = {std_dev:.3f}\nMean = {mean_dev:.3f}\nMedian = 0.0",
-            transform=ax.transAxes,
-            ha="left",
-            va="top",
-            fontsize=8,
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.9),
-            zorder=100,
-        )
-    else:
-        ax.text(
-            0.5,
-            0.5,
-            "Insufficient data",
-            transform=ax.transAxes,
-            ha="center",
-            va="center",
-            fontsize=12,
-        )
-        ax.set_title("Occupancy Deviation Distribution (zoom cells)")
-
-    # ---- Panel 3: Radial occupancy profile ----
-    ax = axes[1, 0]
+    # ---- Panel 1: Radial occupancy profile ----
+    ax = axes[0]
 
     # Bin by normalised radius.
     n_bins = 20
@@ -1323,15 +1247,15 @@ def plot_resolution_quality(metadata, data, outdir):
     ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
     ax.set_axisbelow(True)
 
-    ax.set_xlabel("Normalised radius from zoom centre")
+    ax.set_xlabel("Radius / Zoom Region Radius")
     ax.set_ylabel("Particles per cell")
     ax.set_yscale("log")
     ax.set_xlim(0, 1)
     ax.set_title("Radial Occupancy Profile (zoom cells)")
     ax.legend(fontsize=8, loc="upper right", framealpha=0.9)
 
-    # ---- Panel 4: Radial contamination profile ----
-    ax = axes[1, 1]
+    # ---- Panel 2: Radial contamination profile ----
+    ax = axes[1]
 
     dm_counts = zoom_data[:, COL_DM]
     dm_bkg_counts = zoom_data[:, COL_DM_BKG]
@@ -1390,7 +1314,7 @@ def plot_resolution_quality(metadata, data, outdir):
         ax.grid(True, which="major", axis="both", alpha=0.3, zorder=0)
         ax.set_axisbelow(True)
 
-        ax.set_xlabel("Normalised radius from zoom centre")
+        ax.set_xlabel("Radius / Zoom Region Radius")
         ax.set_ylabel("Background DM fraction")
         ax.set_xlim(0, 1)
         ax.set_ylim(bottom=0)
@@ -1409,7 +1333,7 @@ def plot_resolution_quality(metadata, data, outdir):
         ax.set_title("Radial DM Contamination (zoom cells)")
 
     fig.tight_layout()
-    path = os.path.join(outdir, "zoom_resolution_quality.png")
+    path = os.path.join(outdir, "zoom_radial_distributions.png")
     fig.savefig(path, dpi=300, bbox_inches="tight")
     print(f"Saved {path}")
     return fig
