@@ -222,7 +222,10 @@ def compute_face_area(
 def compute_flux_by_cos_theta(
     star_position, neighbor_positions, neighbor_fluxes, n_bins=50
 ):
-    """Compute the metal flux as a function of |cos(theta)|."""
+    """Compute the metal flux as a function of |cos(theta)|.
+       Note that in the disk, |cos(theta)| = 0 and in the vertical plane,
+       |cos(theta)| = 1.
+    """
     rel_positions = neighbor_positions - star_position
     z = rel_positions[:, 2]
     distances = np.linalg.norm(rel_positions, axis=1)
