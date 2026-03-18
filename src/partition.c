@@ -529,7 +529,7 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_accumulate_sizes(s, s->e->verbose, weights_v);
 
       /* Spread these into edge weights. */
-      partition_sizes_to_edges(s, weights_v, weights_e);
+      partition_sizes_to_edges(s, weights_v, weights_e, cell_edge_offsets);
     }
 
     /* Do the calculation. */
