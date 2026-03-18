@@ -572,7 +572,7 @@ def print_summary(metadata, data):
             print(f"    bkg_top_level_cells:     {best_cdim}")
             print(f"    Expected padding ratio:  {best_pad:.4f}")
             print()
-            print(f"  This reduces padding waste while minimizing total cell count.")
+            print(f"  This reduces padding waste while minimising total cell count.")
             print(sep)
 
     print()
