@@ -374,7 +374,7 @@ static int partition_radial_wedges(struct partition *initial_partition,
     error("Failed to allocate cell weights buffer.");
 
   /* Check each particle and accumulate the sizes per cell. */
-  accumulate_sizes(s, s->e->verbose, weights);
+  partition_accumulate_sizes(s, s->e->verbose, weights);
 
   /* Set up an array to store slice weights. */
   double tot_weight = 0;
