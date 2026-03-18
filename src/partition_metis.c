@@ -272,8 +272,8 @@ void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
  * @param cell_edge_offsets output array[nr_cells+1]: offset per cell.
  * @return total number of edges across all cells.
  */
-static int partition_count_edges(struct space *s, int periodic, int verbose,
-                                 int *cell_edge_offsets) {
+int partition_count_edges(struct space *s, int periodic, int verbose,
+                          int *cell_edge_offsets) {
   const ticks tic = getticks();
 
   int nedges;
@@ -384,8 +384,7 @@ static int ptrcmp(const void *p1, const void *p2) {
  * @param counts the number of bytes in particles per cell. Should be
  *               allocated as size s->nr_cells.
  */
-static void partition_accumulate_sizes(struct space *s, int verbose,
-                                       double *counts) {
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   bzero(counts, sizeof(double) * s->nr_cells);
 
@@ -499,9 +498,8 @@ static void partition_accumulate_sizes(struct space *s, int verbose,
  * @param edges weights for the graph edges in CSR order.
  * @param cell_edge_offsets array[nr_cells+1] with cumulative edge offsets.
  */
-static void partition_sizes_to_edges(struct space *s, double *counts,
-                                     double *edges,
-                                     const int *cell_edge_offsets) {
+void partition_sizes_to_edges(struct space *s, double *counts, double *edges,
+                              const int *cell_edge_offsets) {
 
   int nedges = cell_edge_offsets[s->nr_cells];
   bzero(edges, sizeof(double) * nedges);
@@ -520,8 +518,7 @@ static void partition_sizes_to_edges(struct space *s, double *counts,
  * @param nregions number of regions.
  * @param celllist list of regions for each cell.
  */
-static void partition_split_metis(struct space *s, int nregions,
-                                  int *celllist) {
+void partition_split_metis(struct space *s, int nregions, int *celllist) {
 
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
@@ -665,10 +662,10 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  * @param cell_edge_offsets array[nr_cells+1] with cumulative edge offsets.
  * @param nedges total number of edges in the graph.
  */
-static void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
-                                    double *vertexw, double *edgew, int refine,
-                                    int adaptive, float itr, int *celllist,
-                                    const int *cell_edge_offsets, int nedges) {
+void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
+                             double *vertexw, double *edgew, int refine,
+                             int adaptive, float itr, int *celllist,
+                             const int *cell_edge_offsets, int nedges) {
 
   int res;
   MPI_Comm comm;
@@ -1177,9 +1174,9 @@ static void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
  * @param cell_edge_offsets array[nr_cells+1] with cumulative edge offsets.
  * @param nedges total number of edges in the graph.
  */
-static void partition_pick_metis(int nodeID, struct space *s, int nregions,
-                                 double *vertexw, double *edgew, int *celllist,
-                                 const int *cell_edge_offsets, int nedges) {
+void partition_pick_metis(int nodeID, struct space *s, int nregions,
+                          double *vertexw, double *edgew, int *celllist,
+                          const int *cell_edge_offsets, int nedges) {
 
   /* Total number of cells. */
   int ncells = s->nr_cells;

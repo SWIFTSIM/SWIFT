@@ -538,13 +538,15 @@ void partition_initial_partition(struct partition *initial_partition,
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+      partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
+                           cell_edge_offsets, nadjcny);
     } else {
       partition_pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0,
-                              0.0f, celllist);
+                              0.0f, celllist, cell_edge_offsets, nadjcny);
     }
 #else
-    partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+    partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
+                         cell_edge_offsets, nadjcny);
 #endif
 
     /* And apply to our cells */

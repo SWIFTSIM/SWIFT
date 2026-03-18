@@ -254,7 +254,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   int nadjcny_check = 0;
   int nxadj = 0;
-  parititon_graph_init(s, 1 /* periodic */, inds, &nadjcny_check, xadj, &nxadj,
+  partition_graph_init(s, 1 /* periodic */, inds, &nadjcny_check, xadj, &nxadj,
                        cell_edge_offsets);
 
   /* Allocate and init weights. */
@@ -398,16 +398,16 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist,
-               cell_edge_offsets, nadjcny);
+    partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+                         repartition->celllist, cell_edge_offsets, nadjcny);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                  repartition->adaptive, repartition->itr,
-                  repartition->celllist, cell_edge_offsets, nadjcny);
+    partition_pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
+                            repartition->adaptive, repartition->itr,
+                            repartition->celllist, cell_edge_offsets, nadjcny);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist,
-             cell_edge_offsets, nadjcny);
+  partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+                       repartition->celllist, cell_edge_offsets, nadjcny);
 #endif
 
   /* Clean up edge info */
@@ -444,7 +444,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 
   /* And apply to our cells */
-  split_metis(s, nr_nodes, repartition->celllist);
+  partition_split_metis(s, nr_nodes, repartition->celllist);
 
   /* Clean up. */
   free(inds);
@@ -471,7 +471,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
     error("Failed to allocate cell weights buffer.");
 
   /* Check each particle and accumulate the sizes per cell. */
-  accumulate_sizes(s, s->e->verbose, weights);
+  partition_accumulate_sizes(s, s->e->verbose, weights);
 
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
@@ -506,16 +506,16 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist,
-               cell_edge_offsets, nadjcny);
+    partition_pick_metis(nodeID, s, nr_nodes, weights, NULL,
+                         repartition->celllist, cell_edge_offsets, nadjcny);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
-                  repartition->adaptive, repartition->itr,
-                  repartition->celllist, cell_edge_offsets, nadjcny);
+    partition_pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
+                            repartition->adaptive, repartition->itr,
+                            repartition->celllist, cell_edge_offsets, nadjcny);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist,
-             cell_edge_offsets, nadjcny);
+  partition_pick_metis(nodeID, s, nr_nodes, weights, NULL,
+                       repartition->celllist, cell_edge_offsets, nadjcny);
 #endif
 
   /* Clean up edge info */
@@ -552,7 +552,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   }
 
   /* And apply to our cells */
-  split_metis(s, nr_nodes, repartition->celllist);
+  partition_split_metis(s, nr_nodes, repartition->celllist);
 }
 #endif /* WITH_MPI && (HAVE_METIS || HAVE_PARMETIS) */
 
