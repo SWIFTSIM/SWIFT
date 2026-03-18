@@ -331,7 +331,10 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "dump-zoom-geometry", &with_zoom_geometry_dry_run,
                   "Compute the zoom geometry, dump cell diagnostic data, "
-                  "and exit. Implies --zoom.",
+                  "and exit. Implies --zoom. This will load the particles, "
+                  "build the space and then analyse the zoom geometry. Thus, "
+                  "unlike --dry-run, you will need to run this option with the "
+                  "same resources as the full run.",
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "no-io", &with_no_io,
                   "Skip writing snapshots and restart files.", NULL, 0, 0),
