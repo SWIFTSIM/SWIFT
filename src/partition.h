@@ -104,6 +104,9 @@ void partition_init(struct partition *partition,
 void partition_clean(struct partition *partition,
                      struct repartition *repartition);
 
+/* Accumulate the total particle counts in each cell for weighting. */
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
+
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);
 void partition_restore_celllist(struct space *s,
@@ -128,7 +131,6 @@ struct weights_mapper_data {
 
 extern double repartition_costs[task_type_count][task_subtype_count];
 
-void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
 void partition_sizes_to_edges(struct space *s, double *counts, double *edges);
 void partition_graph_init(struct space *s, int periodic, idx_t *weights_e,
                           idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj);
