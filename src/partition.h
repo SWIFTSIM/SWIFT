@@ -19,6 +19,13 @@
 #ifndef SWIFT_PARTITION_H
 #define SWIFT_PARTITION_H
 
+/* Config parameters. */
+#include <config.h>
+
+/* Standard headers. */
+#include <limits.h>
+
+/* Local headers. */
 #include "parser.h"
 #include "space.h"
 #include "task.h"
@@ -26,6 +33,7 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
+
 /* METIS/ParMETIS headers only used when MPI is also available. */
 #ifdef HAVE_PARMETIS
 #include <parmetis.h>
@@ -33,6 +41,13 @@
 #ifdef HAVE_METIS
 #include <metis.h>
 #endif
+
+#endif
+
+#ifndef IDX_MAX
+/* When compiled without METIS/ParMETIS support, we need to define IDX_MAX
+ * for accumulate_sizes which can be used by the wedge decomposition. */
+#define IDX_MAX LLONG_MAX
 #endif
 
 /* Forward declarations. */
@@ -113,6 +128,9 @@ void pick_vector(const int cdim[3], const int nregions, int *samplecells);
 void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
                   int *samplecells);
 
+/* Accumulate the total particle counts in each cell for weighting. */
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
+
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);
 void partition_restore_celllist(struct space *s,
@@ -139,7 +157,6 @@ struct weights_mapper_data {
 
 extern double repartition_costs[task_type_count][task_subtype_count];
 
-void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
 void partition_sizes_to_edges(struct space *s, double *counts, double *edges,
                               const int *cell_edge_offsets);
 int partition_count_edges(struct space *s, int periodic, int verbose,
