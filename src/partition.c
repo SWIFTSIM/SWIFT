@@ -363,6 +363,10 @@ void partition_initial_partition(struct partition *initial_partition,
     error("Initial partition failed, not all nodes have cells");
   }
 
+  if (s->with_zoom_region) {
+    zoom_partition_voids(s, nodeID);
+  }
+
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

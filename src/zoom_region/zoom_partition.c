@@ -108,3 +108,16 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
   free(samplecells);
 }
 #endif
+
+/*  Void cell support */
+/*  ================= */
+
+/**
+ *  @brief Partition the void cells.
+ */
+void zoom_partition_voids(struct space *s, int nodeID) {
+
+  for (int k = 0; k < s->zoom_props->nr_void_cells; k++) {
+    s->cells_top[s->zoom_props->void_cell_indices[k]].nodeID = nodeID;
+  }
+}
