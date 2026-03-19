@@ -948,6 +948,12 @@ int main(int argc, char *argv[]) {
               initial_partition.grid[1], initial_partition.grid[2]);
     message("  repartitioning: %s", repartition_name[reparttype.type]);
   }
+
+#if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
+  /* Zoom simulations can't use "timecosts" repartition. */
+  if (with_zoom_region && reparttype.type == REPART_METIS_VERTEX_COSTS_TIMEBINS)
+    error("Zoom simulations cannot use the 'timecosts' repartition strategy.");
+#endif
 #endif
 
   /* Common variables for restart and IC sections. */
