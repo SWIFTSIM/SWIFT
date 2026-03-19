@@ -174,8 +174,7 @@ endif
 
 # source files for Zoom support
 ZOOM_REGION_SOURCES = zoom_region/zoom_init.c zoom_region/zoom_cell.c \
-    zoom_region/zoom_regrid.c zoom_region/zoom_maketasks.c \
-    zoom_region/zoom_split.c \ 
+    zoom_region/zoom_regrid.c zoom_region/zoom_maketasks.c zoom_region/zoom_split.c \ 
     zoom_region/zoom_partition.c \
     zoom_region/zoom_io.c
 
