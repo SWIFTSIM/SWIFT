@@ -58,7 +58,7 @@ struct spart {
   /*! Star mass */
   float mass;
 
-  /* Particle cutoff radius. */
+  /* Smoothing length for gas */
   float h;
 
   struct {
@@ -175,6 +175,24 @@ struct stars_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /*! SIDM: Resolution parameter */
+  float eta_neighbours_sidm;
+
+  /*! SIDM: Target weightd number of neighbours (for info only)*/
+  float target_neighbours_sidm;
+
+  /*! SIDM: Smoothing length tolerance */
+  float h_tolerance_sidm;
+
+  /*! SIDM: Tolerance on neighbour number  (for info only)*/
+  float delta_neighbours_sidm;
+
+  /*! SIDM: Maximal number of iterations to converge h */
+  int max_smoothing_iterations_sidm;
+
+  /*! SIDM: Maximal change of h over one time-step */
+  float log_max_h_change_sidm;
 };
 
 #endif /* SWIFT_BASIC_STAR_PART_H */
