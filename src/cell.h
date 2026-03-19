@@ -1087,6 +1087,8 @@ cell_can_recurse_in_subself_sidm_task(const struct cell *c) {
   return (kernel_gamma * c->sidm.h_max_active < 0.5f * c->dmin);
 }
 
+#ifdef STARS_SIDM_INTERACTIONS
+
 /**
  * @brief Can a sub-pair star-sidm task recurse to a lower level based
  * on the status of the particles in the cell.
@@ -1145,6 +1147,8 @@ cell_can_recurse_in_subself_stars_sidm_task(const struct cell *c) {
   /* Is the cell not smaller than the smoothing length? */
   return (kernel_gamma * c->stars.sidm.h_max_active < 0.5f * c->dmin);
 }
+
+#endif
 
 /**
  * @brief Can a pair hydro task associated with a cell be split into smaller
@@ -1885,6 +1889,8 @@ __attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
 #endif
 }
 
+#ifdef STARS_SIDM_INTERACTIONS
+
 /**
  * @brief Set the sidm.depth_h field of a #spart.
  *
@@ -1919,6 +1925,8 @@ __attribute__((always_inline)) static INLINE void cell_set_spart_sidm_h_depth(
   error("Could not find an appropriate depth!");
 #endif
 }
+
+#endif
 
 /**
  * @brief Set the depth_h field of a #bpart.
