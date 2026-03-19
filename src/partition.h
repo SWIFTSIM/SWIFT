@@ -122,8 +122,7 @@ void partition_init(struct partition *partition,
 void partition_clean(struct partition *partition,
                      struct repartition *repartition);
 
-/* Partition type specific functions (common between zoom and uniform
- * partitions). */
+/* Partition helper functions shared by the uniform and zoom partitioners. */
 void pick_vector(const int cdim[3], const int nregions, int *samplecells);
 void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
                   int *samplecells);

@@ -46,168 +46,106 @@
 /**
  *  @brief Partition the space using a simple grid.
  *
- *  Using the sample positions as seeds pick cells that are geometrically
- *  closest and apply the partition to the space.
- *
- *  This is the function used for a volume with a zoom region.
- *
- *  Each cell grid will be partitioned onto the grid separately. This will
- *  not result in anything close to an optimal partitioning, but it will
- *  suffice given the relative cost between the cell grids.
- *
- *  @param initial_partition The initial partition data.
- *  @param nr_nodes The number of nodes.
- *  @param s The #space.
+ *  @param initial_partition The initial partition settings.
+ *  @param nr_nodes The number of MPI ranks.
+ *  @param s The #space containing the zoom and background top-level cells.
  */
 void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
                          struct space *s) {
 
-  /* If we've got the wrong number of nodes, fail. */
+  /* Ensure we have a compatible grid size. */
   if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
-                      initial_partition->grid[2])
+                      initial_partition->grid[2]) {
     error("Grid size does not match number of nodes.");
-
-  /* Run through the zoom cells and set their nodeID. */
-  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-
-    /* Get the cell. */
-    struct cell *c = &s->zoom_props->zoom_cells_top[k];
-
-    /* Compute it's ijk grid index. */
-    int ind[3];
-    for (int j = 0; j < 3; j++) {
-      ind[j] = (c->loc[j] - s->zoom_props->region_lower_bounds[j]) /
-               s->zoom_props->dim[j] * initial_partition->grid[j];
-    }
-
-    /* Convert the grid index into the node ID. */
-    c->nodeID = ind[0] + initial_partition->grid[0] *
-                             (ind[1] + initial_partition->grid[1] * ind[2]);
   }
 
-  /* Run through the background cells and set their nodeID. */
-  for (int k = 0; k < s->zoom_props->nr_bkg_cells; k++) {
+  /* Apply the grid partitioning to the zoom top-level cells. */
+  for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
 
-    /* Get the cell. */
-    struct cell *c = &s->zoom_props->bkg_cells_top[k];
+    /* Get the cell and compute its (i,j,k) index in the grid. */
+    struct cell *c = &s->zoom_props->zoom_cells_top[cid];
+    int i = (c->loc[0] - s->zoom_props->region_lower_bounds[0]) /
+            s->zoom_props->dim[0] * initial_partition->grid[0];
+    int j = (c->loc[1] - s->zoom_props->region_lower_bounds[1]) /
+            s->zoom_props->dim[1] * initial_partition->grid[1];
+    int k = (c->loc[2] - s->zoom_props->region_lower_bounds[2]) /
+            s->zoom_props->dim[2] * initial_partition->grid[2];
 
-    /* Compute it's ijk grid index. */
-    int ind[3];
-    for (int j = 0; j < 3; j++) {
-      ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
-    }
+    /* Compute the nodeID from the (i,j,k) index. */
+    c->nodeID =
+        i + initial_partition->grid[0] * (j + initial_partition->grid[1] * k);
+  }
 
-    /* Convert the grid index into the node ID. */
-    c->nodeID = ind[0] + initial_partition->grid[0] *
-                             (ind[1] + initial_partition->grid[1] * ind[2]);
+  /* Now the same for the background top-level cells. */
+  for (int cid = 0; cid < s->zoom_props->nr_bkg_cells; cid++) {
+
+    /* Get the cell and compute its (i,j,k) index in the grid. */
+    struct cell *c = &s->zoom_props->bkg_cells_top[cid];
+    int i = c->loc[0] / s->dim[0] * initial_partition->grid[0];
+    int j = c->loc[1] / s->dim[1] * initial_partition->grid[1];
+    int k = c->loc[2] / s->dim[2] * initial_partition->grid[2];
+
+    /* Compute the nodeID from the (i,j,k) index. */
+    c->nodeID =
+        i + initial_partition->grid[0] * (j + initial_partition->grid[1] * k);
   }
 }
 
 /*  Vector support */
-/*  ============ */
+/*  ============== */
 
 #ifdef WITH_MPI
 /**
  * @brief Partition the space using a vectorised list of sample positions.
  *
- * Like the grid approach this will apply the vector independently to each
- * cell grid. This will not result in anything close to an optimal partitioning,
- * but it will suffice given the relative cost between the cell grids.
+ * The zoom and background top-level grids are vectorised independently using
+ * their own grid geometry.
  *
- * @param nr_nodes The number of nodes.
- * @param s The #space.
+ * @param nr_nodes The number of MPI ranks.
+ * @param s The #space containing the zoom and background top-level cells.
  */
 void partition_zoom_vector(int nr_nodes, struct space *s) {
 
-  /* Vectorised selection, guaranteed to work for samples less than the
-   * number of cells, but not very clumpy in the selection of regions. */
+  /* Allocate a buffer for the sample cell indices. We need 3 integers per node
+   * to store the (i,j,k) index of the sample cell. */
   int *samplecells = NULL;
   if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
     error("Failed to allocate samplecells");
 
-  /* Do the zoom cells... */
+  /* First distribute the zoom top-level cells. */
   if (s->e->nodeID == 0) {
     pick_vector(s->zoom_props->cdim, nr_nodes, samplecells);
   }
 
-  /* Share the samplecells around all the nodes. */
+  /* Broadcast the sample cell indices to all ranks. */
   int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS)
     mpi_error(res, "Failed to bcast the partition sample zoom cells.");
 
-  /* And apply to our zoom cells */
+  /* Now split the zoom top-level cells according to the sample cell indices. */
   split_vector(s->zoom_props->zoom_cells_top, s->zoom_props->cdim, nr_nodes,
                samplecells);
 
-  /* Clear out the samplecells. */
+  /* Clear the sample cell buffer ready for the background top-level cells. */
   bzero(samplecells, sizeof(int) * nr_nodes * 3);
 
-  /* Finally do the background cells... */
+  /* Then reuse the same buffer for the background top-level cells. */
   if (s->e->nodeID == 0) {
     pick_vector(s->cdim, nr_nodes, samplecells);
   }
 
-  /* Share the samplecells around all the nodes. */
+  /* Broadcast the sample cell indices to all ranks. */
   res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS)
     mpi_error(res, "Failed to bcast the partition sample background cells.");
 
-  /* And apply to our background cells */
+  /* Now split the background top-level cells according to the sample cell
+   * indices. */
   split_vector(s->zoom_props->bkg_cells_top, s->cdim, nr_nodes, samplecells);
 
-  /* We're done */
   free(samplecells);
 }
 #endif
-
-/*  Void cell support */
-/*  ================ */
-
-/**
- *  @brief Partition the void cells
- *
- *  If a void cell has one or more zoom cell leaves on this rank, then it
- *  is local.
- *
- *  @param s The #space.
- *  @param nodeID The node ID.
- */
-void zoom_partition_voids(struct space *s, int nodeID) {
-
-  /* All void cells are local for now. */
-  for (int k = 0; k < s->zoom_props->nr_void_cells; k++) {
-    s->cells_top[s->zoom_props->void_cell_indices[k]].nodeID = nodeID;
-  }
-
-  // /* Initialise the void cell nodeIDs to -1 (non-local). */
-  // for (int k = 0; k < s->zoom_props->nr_void_cells; k++) {
-  //   s->cells_top[s->zoom_props->void_cell_indices[k]].nodeID = -1;
-  // }
-  //
-  // /* Run through the local zoom cells and mark their containing void cells as
-  //  * local. */
-  // for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-  //
-  //   /* Get the cell. */
-  //   struct cell *c = &s->cells_top[k];
-  //
-  //   /* Skip foreign cells. */
-  //   if (c->nodeID != nodeID) continue;
-  //
-  //   /* Find the top level void cell index. */
-  //   double x = c->loc[0] + (c->width[0] / 2);
-  //   double y = c->loc[1] + (c->width[1] / 2);
-  //   double z = c->loc[2] + (c->width[2] / 2);
-  //   int vid =
-  //       cell_getid_offset(s->cdim, s->zoom_props->bkg_cell_offset, x, y, z);
-  //
-  //   /* Get the void cell. */
-  //   struct cell *vc = &s->cells_top[vid];
-  //
-  //   /* Set the void cell's nodeID. */
-  //   vc->nodeID = nodeID;
-  // }
-}
 
 /*  Metis/Parmetis support */
 /*  ====================== */
@@ -526,3 +464,23 @@ void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
   if (nxadj != NULL) *nxadj = s->nr_cells;
 }
 #endif
+
+/* Void cell support */
+/* ================= */
+
+/**
+ *  @brief Partition the void cells.
+ *
+ *  For now we simply place all void cells on all ranks. In the future we may
+ *  want to only assign void cells to be local if they have local zoom
+ *  progeny, but this is a bit complex downstream for now.
+ *
+ *  @param s The #space containing the void top-level cells.
+ *  @param nodeID The local MPI rank.
+ */
+void zoom_partition_voids(struct space *s, int nodeID) {
+
+  for (int k = 0; k < s->zoom_props->nr_void_cells; k++) {
+    s->cells_top[s->zoom_props->void_cell_indices[k]].nodeID = nodeID;
+  }
+}
