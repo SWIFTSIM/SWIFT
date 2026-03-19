@@ -127,9 +127,11 @@ struct cell_stars {
     /*! Star formation history struct */
     struct star_formation_history sfh;
 
-#ifdef STARS_SIDM_INTERACTIONS
-
     struct {
+
+#ifndef STARS_SIDM_INTERACTIONS
+    union {
+#endif
 
       /*! Linked list of the tasks computing this cell's star density from SIDM. */
       struct link *density;
@@ -146,9 +148,11 @@ struct cell_stars {
       /*! Values of h_max_sidm before the drifts, used for sub-cell tasks. */
       float h_max_old;
 
-    } sidm;
-
+#ifndef STARS_SIDM_INTERACTIONS
+  };
 #endif
+
+    } sidm;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
