@@ -63,6 +63,7 @@
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "zoom_region/zoom.h"
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
@@ -135,7 +136,12 @@ static void partition_uniform_grid(struct partition *initial_partition,
 static int partition_grid(struct partition *initial_partition, int nr_nodes,
                           struct space *s) {
 
-  partition_uniform_grid(initial_partition, nr_nodes, s);
+  /* Call the appropriate grid partitioner. */
+  if (!s->with_zoom_region) {
+    partition_uniform_grid(initial_partition, nr_nodes, s);
+  } else {
+    partition_zoom_grid(initial_partition, nr_nodes, s);
+  }
 
   return check_complete(s, (s->e->nodeID == 0), nr_nodes);
 }
@@ -701,6 +707,15 @@ void partition_initial_partition(struct partition *initial_partition,
    * to every rank. */
   if (!check_complete(s, (nodeID == 0), nr_nodes)) {
     error("Initial partition failed, not all nodes have cells");
+  }
+
+  /* Partition the void cells explicitly. We do this separately because the
+   * partitioning of void cells is dependent on the nested zoom cells. */
+  /* TODO: For now this assigns all void cells to be local on all ranks, which
+   * is fine for now but could be improved with only void cells with local
+   * zoom cells assigned locally. */
+  if (s->with_zoom_region) {
+    zoom_partition_voids(s, nodeID);
   }
 
   if (s->e->verbose)
