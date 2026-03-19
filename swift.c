@@ -1628,8 +1628,9 @@ int main(int argc, char *argv[]) {
     message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
+    int desired_depth = 1;
     message("Going to remove particles");
-    init_test_single_particle(&e);
+    init_test_single_particle(&e, desired_depth);
 
     //double mass = 0.;
     //int nr_parts = (int) s.nr_gparts;
@@ -1669,7 +1670,7 @@ int main(int argc, char *argv[]) {
     //sleep(5);
 
     //space_get_density(&s, params, &e, 0);
-    space_get_AMR_density(&s, &e, 3000);
+    space_get_AMR_density(&s, &e, 3000, desired_depth);
 
     //space_get_density(&s, params, &e, 1);
     //space_apply_FMG(&s, &e);

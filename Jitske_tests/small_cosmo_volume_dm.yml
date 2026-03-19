@@ -37,7 +37,7 @@ Statistics:
   scale_factor_first:  0.02
   
 Scheduler:
-  max_top_level_cells: 8
+  max_top_level_cells: 32
   cell_split_size:     5
   
 # Parameters related to the initial conditions

@@ -425,7 +425,7 @@ struct cell {
 
   double mask_value;
 
-  double residual;
+  double conv_residual;
   
   int ghost;
 

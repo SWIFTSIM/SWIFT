@@ -383,10 +383,16 @@ struct tree_data;
 struct AMR_levels {
   struct cell **cells;
   double mean_density; 
+  double mean_potential;
   int cell_count; 
   int ghost_count;
   int depth; 
   int cdim;
+};
+struct gpart_ref {
+  struct cell *cell;
+  int level;
+  int index;
 };
 
 /* Function prototypes. */
@@ -523,7 +529,7 @@ void apply_GS(double *density, double *pot, int cdim[3], double mean_density, do
 void apply_multigrid(double *density, double *pot, int cdim[3], double mean_density, double box_size, int N_stop, int N_start, int V_max);
 void prolongate_solution(double *pot_coarse, double *pot_fine, const int N, const int N_double);
 void get_accelerations(struct cic_mapper_data* data, double *pot, struct threadpool* tp, struct space *s,const int N, int step);
-void space_get_AMR_density(struct space *s, struct engine *e, int level_check);
+void space_get_AMR_density(struct space *s, struct engine *e, int level_check, int desired_depth);
 void check_progeny(struct space *s, struct cell *parent, int *length, int *level);
 void construct_daughter(struct cell *parent, int i, int *length);
 void destroy_daughters(struct space *s, struct cell *cells_top, int nr_cells);
@@ -586,13 +592,14 @@ void mark_neighbours(struct space *s, int min_depth, struct AMR_levels *level, s
 void create_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells, int which_neighbour);
 void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels);
 void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr);
-double CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize);
+double CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize, int stop_depth);
 void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_index, int link_nr);
 void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine);
 void free_gparts_in_cells(struct cell *c, int *level);
-void init_test_single_particle(struct engine *e);
+void init_test_single_particle(struct engine *e, int desired_depth);
 void get_progeny(struct space *s, struct cell *c, int deisred_depth, int *curr_depth);
-void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells);
-void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_parts);
-void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
+void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells, int *counter_added, int N_parts_old, int N_parts_new, struct gpart_ref p_ref[N_parts_old + N_parts_new], int *depth, int desired_depth);
+void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_parts, int start);
+void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int desired_depth);
+void get_patch_potential(struct space *s, struct AMR_levels *fine, struct AMR_levels *coarse);
 #endif /* SWIFT_SPACE_H */

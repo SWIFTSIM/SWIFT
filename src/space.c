@@ -3051,7 +3051,7 @@ void free_gparts_in_cells(struct cell *c, int *level) {
   *level -= 1;
 }
 
-void init_test_single_particle(struct engine *e) {
+void init_test_single_particle(struct engine *e, int desired_depth) {
   message("Reached function");
   /* Clean current array of particles */
   struct space *s = e->s;
@@ -3090,10 +3090,9 @@ void init_test_single_particle(struct engine *e) {
     int nr_gparts = c->grav.count;
     if (nr_gparts > 0) { 
       message("The gpart was found in cell %d with location (%lf, %lf, %lf)", i, c->loc[0], c->loc[1], c->loc[2]);
-      int desired_depth = 5;
       int curr_depth = 0;
       get_progeny(s, c, desired_depth, &curr_depth);
-      c->maxdepth = 5;
+      c->maxdepth = desired_depth;
     }
   }
   //sleep(15);
@@ -3144,7 +3143,7 @@ void get_progeny(struct space *s, struct cell *c, int desired_depth, int *curr_d
   *curr_depth -= 1;
 }
 
-void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
+void space_get_AMR_density(struct space *s, struct engine *e, int level_check, int desired_depth) {
   const double box_size = s->dim[0];
   struct cell *cells_top = s->cells_top;
   //int maxdepth = s->maxdepth;
@@ -3321,53 +3320,17 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
 
   /* Loop over particles and perform tree searches to get the density everywhere*/
   assign_densities(cells_top, &e->threadpool, s->nr_cells, box_size, level_check);
+
   //min_depth = 0;
   int max_gridsize = perform_uniform_calculation(s, min_depth, max_depth, levels);
   message("max_gridsize = %d", max_gridsize);
   //max_gridsize = 8;
 
-  //int level_nr = 1;
-  //message("Exporting AMR density data");
-  //FILE *file_swift_density1 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/level_density_nonsplit_cells/AMR_density_level1_50split.txt", "w");
-  //for (int i=0; i<levels[level_nr].cell_count; i++) {
-    //struct cell *c = levels[level_nr].cells[i];
-    //if (c->split) continue;
-    //int x_loc = (int) ((c->loc[0] + 0.001)/(s->dim[0]/levels[level_nr].cdim));
-    //int y_loc = (int) ((c->loc[1] + 0.001)/(s->dim[0]/levels[level_nr].cdim));
-    //int z_loc = (int) ((c->loc[2] + 0.001)/(s->dim[0]/levels[level_nr].cdim));
-    //int cdim2[3] = {levels[level_nr].cdim, levels[level_nr].cdim, levels[level_nr].cdim};
-    //int cid = cell_getid(cdim2, x_loc, y_loc, z_loc);
-    //fprintf(file_swift_density1, "%.15g \n", c->CIC_density);
-  //}
-  //fclose(file_swift_density1);
-  //message("Exported the grid density data.");
-  //sleep(5);
-
-  /* Hide first oct of the 16^3 grid */
-  /*message("Hiding first oct");
-  for (int i=0; i<8; i++) {
-    cells_top[0].progeny[i]->parent = NULL;
-    for (int j=0; j<8; j++) {
-      cells_top[0].progeny[i]->progeny[j] = NULL;
-    }
-    cells_top[0].progeny[i]->neighbours[0]->neighbours[1] = NULL;
-    cells_top[0].progeny[i]->neighbours[0] = NULL;
-    cells_top[0].progeny[i]->neighbours[1]->neighbours[0] = NULL;
-    cells_top[0].progeny[i]->neighbours[1] = NULL;
-    cells_top[0].progeny[i]->neighbours[2]->neighbours[3] = NULL;
-    cells_top[0].progeny[i]->neighbours[2] = NULL;
-    cells_top[0].progeny[i]->neighbours[3]->neighbours[2] = NULL;
-    cells_top[0].progeny[i]->neighbours[3] = NULL;
-    cells_top[0].progeny[i]->neighbours[4]->neighbours[5] = NULL;
-    cells_top[0].progeny[i]->neighbours[4] = NULL;
-    cells_top[0].progeny[i]->neighbours[5]->neighbours[4] = NULL;
-    cells_top[0].progeny[i]->neighbours[5] = NULL;
- 
-    cells_top[0].progeny[i] = NULL;
-    cells_top[0].split = 0;
-  }
-  cells_top[0].maxdepth = 0;
-  message("Successfully hid oct");*/
+  int cdim2[3] = {32, 32, 32};
+  struct cell *c = levels[min_depth].cells[cell_getid(cdim2, 16, 16, 16)];
+  message("The potential of the cell at (%lf, %lf, %lf) is %lf", c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
+  
+  //max_gridsize = 8;
 
   /* Check that the densities are the same for the existing cells */
   //double fac = box_size/16;
@@ -3422,7 +3385,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
   //message("Exported the cell potential data.");
   //sleep(5);
 
-  potential_to_fake_gparts(s, min_depth, max_depth, levels);
+  potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
   
   //potential_to_gparts(s, min_depth, max_depth, levels);
 
@@ -3432,26 +3395,43 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check) {
   }
 }
 
-void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]) {
+void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int desired_depth) {
   /* Add function to create 'fake' particles and add them to the cells */
   const int N_parts_old = s->nr_gparts;
-  int N_parts_new = 100;
+  int N_parts_new = 30*9;
   s->nr_gparts += N_parts_new;
   //s->gparts = realloc(s->gparts, s->nr_gparts * sizeof(*s->gparts));
 
   /* Create array of particle locations */
   double part_loc[N_parts_new][3];
   double r_parts = 5.;
-  generate_particles(s, N_parts_new, part_loc, r_parts);
+  for (int i=0; i<9; i++) {
+    r_parts += 0.5 * (int) i;
+    generate_particles(s, 30, part_loc, r_parts,30*i);
+  }
+  
+  struct gpart_ref p_ref[N_parts_old + N_parts_new];
+
+  message("Going to add the old particles");
+  int counter_added= 0;
+  for (int i=0; i<levels[desired_depth].cell_count; i++) {
+    struct cell *c = levels[desired_depth].cells[i];
+    if (c->grav.count > 0) {
+      message("The grav count of cell %d is %d", i, c->grav.count);
+      for (int j=0; j<c->grav.count; j++) {
+        p_ref[counter_added].cell = c;
+        p_ref[counter_added].index = j;
+        p_ref[counter_added].level = 0;
+        counter_added += 1;
+      }
+    }
+  }
+  if (counter_added>N_parts_old) error("Somehow added too many particles");
 
   /* Pass particle locations to the gparts */
+  counter_added = 0;
+  int depth = 0;
   for (int i=N_parts_old; i<N_parts_old + N_parts_new; i++) {
-    //struct gpart *part = &s->gparts[i];
-    //part->x[0] = part_loc[i][0];
-    //part->x[1] = part_loc[i][1];
-    //part->x[2] = part_loc[i][2];
-    //message("Created particle %d with location (%lf, %lf, %lf)", i, s->gparts[i].x[0], s->gparts[i].x[1], s->gparts[i].x[2]);
-
     for (int j=0; j<s->nr_cells; j++) {
       struct cell *c = &s->cells_top[j];
       //message("Accessing cell %d",j);
@@ -3462,26 +3442,41 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
       double cy1 = c->loc[1] + c->width[1];
       double cz0 = c->loc[2];
       double cz1 = c->loc[2] + c->width[2];
-      if (part_loc[i][0] >= cx0 && part_loc[i][0] < cx1 && part_loc[i][1] >= cy0 && part_loc[i][1] <cy1 && part_loc[i][2] >= cz0 && part_loc[i][2] < cz1) {
+      if (part_loc[i-N_parts_old][0] >= cx0 && part_loc[i-N_parts_old][0] < cx1 && part_loc[i-N_parts_old][1] >= cy0 && part_loc[i-N_parts_old][1] <cy1 && part_loc[i-N_parts_old][2] >= cz0 && part_loc[i-N_parts_old][2] < cz1) {
+        //if (i== 4 || i==9 || i==34) message("Found overlap for %d with cell at (%lf, %lf, %lf)", i, cx0, cy0, cz0);
+        //if (j==16912) message("Placing particle at (%lf,%lf, %lf) in this cell", part_loc[i-N_parts_old][0], part_loc[i-N_parts_old][1], part_loc[i-N_parts_old][2]);
         const int nr_old = c->grav.count;
         c->grav.count += 1;
-        if (c->split) {
-          particle_to_cells_recursive(part_loc[i], c->progeny, 8);
+        if (c->split && depth<desired_depth) {
+          //if (i== 4 || i==9 || i==34) message("Going to recurse for %d", j);
+          particle_to_cells_recursive(part_loc[i-N_parts_old], c->progeny, 8, &counter_added, N_parts_old, N_parts_new, p_ref, &depth, desired_depth);
         }
         else {
+          //if (i== 4 || i==9 || i==34) message("Not going to recurse for %d", j);
         //message("Adding particle at (%lf, %lf, %lf) to cell with location (%lf, %lf, %lf) and width (%lf, %lf, %lf)", part->x[0], part->x[1], part->x[2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
           if (nr_old == 0) c->grav.parts = malloc(sizeof(struct gpart));
-          else c->grav.parts = realloc(c->grav.parts, (nr_old+1) * sizeof(struct gpart));
-          c->grav.parts[nr_old].x[0] = part_loc[i][0];
-          c->grav.parts[nr_old].x[1] = part_loc[i][1];
-          c->grav.parts[nr_old].x[2] = part_loc[i][2];
+          else {
+            //if (j == 16912) message("We found %d particles in this cell", c->grav.count);
+            c->grav.parts = realloc(c->grav.parts, (nr_old+1) * sizeof(struct gpart));
+          }
+          p_ref[N_parts_old + counter_added].cell = c;
+          p_ref[N_parts_old + counter_added].index = c->grav.count - 1;
+          p_ref[N_parts_old + counter_added].level = 0;
+          c->grav.parts[nr_old].x[0] = part_loc[i-N_parts_old][0];
+          c->grav.parts[nr_old].x[1] = part_loc[i-N_parts_old][1];
+          c->grav.parts[nr_old].x[2] = part_loc[i-N_parts_old][2];
           //message("Added particle to cell. Particle %d in cell has location (%lf, %lf, %lf)", c->grav.count + 1, c->grav.parts[nr_old].x[0], c->grav.parts[nr_old].x[1], c->grav.parts[nr_old].x[2]);
+          counter_added +=1;
         }        
         break;
       }
     }
   }
-  message("Finished adding particles to cells");
+  message("Finished adding particles to cells. The added counter is %d", counter_added);
+
+  //for (int i=0; i<N_parts_new + N_parts_old; i++) {
+    //message("particle %d in the pointer array has loc (%lf, %lf, %lf)", i, gparts[i]->x[0], gparts[i]->x[1], gparts[i]->x[2]);
+  //}
 
   /* Check if cells have more than one particle */
   /*for (int j=0; j<s->nr_cells; j++) {
@@ -3493,10 +3488,22 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 
   /* Pass potential to the particles (real and fake ones) */
   potential_to_gparts(s, min_depth, max_depth, levels);
+
+  message("Writing accelerations to file");
+  FILE *accelerations;
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/potential_normalised_1_32.txt", "w");
+  for (int i=0; i<N_parts_old + N_parts_new; i++) {
+    struct gpart gpart = p_ref[i].cell->grav.parts[p_ref[i].index];
+    //message("Going to write %d", i);
+    //fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", gparts[i]->a_grav_mesh[0], gparts[i]->a_grav_mesh[1], gparts[i]->a_grav_mesh[2], gparts[i]->x[0], gparts[i]->x[1], gparts[i]->x[2]);
+    fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
+  }
+  fclose(accelerations);
 }
 
-void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells) {
+void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells, int *counter_added, int N_parts_old, int N_parts_new, struct gpart_ref p_ref[N_parts_old + N_parts_new], int *depth, int desired_depth) {
   //message("The number of cells is %d", nr_cells);
+  *depth += 1;
   for (int i=0; i<nr_cells; i++) {
     struct cell *c = cells[i];
     //message("Accessing cell %d",i);
@@ -3508,11 +3515,12 @@ void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr
     double cz0 = c->loc[2];
     double cz1 = c->loc[2] + c->width[2];
     if (part_loc[0] >= cx0 && part_loc[0] < cx1 && part_loc[1] >= cy0 && part_loc[1] <cy1 && part_loc[2] >= cz0 && part_loc[2] < cz1) {
+      message("Found overlap for %d at (%lf, %lf, %lf) with the cell at (%lf, %lf, %lf)", *counter_added, part_loc[0], part_loc[1], part_loc[2], cx0, cy0, cz0);
       const int nr_old = c->grav.count;
       c->grav.count += 1;
       //message("Adding particle at (%lf, %lf, %lf) to cell with location (%lf, %lf, %lf) and width (%lf, %lf, %lf)", part->x[0], part->x[1], part->x[2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-      if (c->split) {
-        particle_to_cells_recursive(part_loc, c->progeny, 8);
+      if (c->split && *depth<desired_depth) {
+        particle_to_cells_recursive(part_loc, c->progeny, 8, counter_added, N_parts_old, N_parts_new, p_ref, depth, desired_depth);
       }
       else {
         if (nr_old == 0) c->grav.parts = malloc(sizeof(struct gpart));
@@ -3521,13 +3529,19 @@ void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr
         c->grav.parts[nr_old].x[1] = part_loc[1];
         c->grav.parts[nr_old].x[2] = part_loc[2];
         //message("Added particle to cell. Particle %d in cell has location (%lf, %lf, %lf)", c->grav.count + 1, c->grav.parts[nr_old].x[0], c->grav.parts[nr_old].x[1], c->grav.parts[nr_old].x[2]);
+        p_ref[N_parts_old + *counter_added].cell = c;
+        p_ref[N_parts_old + *counter_added].index = c->grav.count - 1;
+        p_ref[N_parts_old + *counter_added].level = *depth;
+        *counter_added +=1;
+        //message("Added particle to cell. Particle %d in cell has location (%lf, %lf, %lf)", c->grav.count + 1, c->grav.parts[nr_old].x[0], c->grav.parts[nr_old].x[1], c->grav.parts[nr_old].x[2]);
       }
       break;
     }
   }
+  *depth -= 1;
 }
 
-void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_parts) {
+void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_parts, int start) {
   const double golden_angle = M_PI * (3.0 - sqrt(5.0));
   double centre_loc = s->dim[0]/2.;
 
@@ -3541,9 +3555,9 @@ void generate_particles(struct space *s, int N_parts_new, double positions[N_par
     double uy = sin(phi) * sin_theta;
     double uz = cos_theta;
 
-    positions[i][0] = centre_loc + r_parts * ux;
-    positions[i][1] = centre_loc + r_parts * uy;
-    positions[i][2] = centre_loc + r_parts * uz;
+    positions[i+start][0] = centre_loc + r_parts * ux;
+    positions[i+start][1] = centre_loc + r_parts * uy;
+    positions[i+start][2] = centre_loc + r_parts * uz;
   }
 }
 
@@ -3617,25 +3631,27 @@ void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_
 void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels) {
   //message("Calling this function");
   /* Loop over the levels. At each level loop over the cells and then over the particles in each cell */
-  for (int i=max_depth; i<max_depth+1; i++) {
+  for (int i=0; i<max_depth+1; i++) {
     struct AMR_levels *level = &(levels[max_depth-i]); //Start at deepest level
     //message("Doing level %d", max_depth-i);
     int nr_cells = level->cell_count; //Cell count should be excluding ghost cells
     message("The cell count is %d", nr_cells);
     for (int j=0; j<nr_cells; j++) {
-      //message("Calling cell %d", j);
+      if (i==0) message("Calling cell %d", j);
       struct cell *c = level->cells[j];
-      if (c->split) {
-        //if (level->depth == 6) message("Cell %d is split", j);
+      if (c->split && level->depth<1) {
+        if (i==0) message("Cell %d is split", j);
         continue;
       } ///Means we have already done CIC with the particles on another level
       int nr_gparts = c->grav.count;
       //message("The particle count is %d", nr_gparts);
+      //if (nr_gparts>0) message("Going to do cell %d with loc (%lf, %lf, %lf) \n", j, c->loc[0], c->loc[1], c->loc[2]);
       for (int k=0; k<nr_gparts; k++) {
         struct gpart *gp = &(c->grav.parts[k]);
-        //message("Going to get the potential for (%d, %d, %d)", i,j,k);
+        if (i==0) message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
         get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
-        //message("The assigned potential is %lf", c->grav.parts[k].potential_mesh);
+        //get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
+        if (i==0) message("The assigned potential is %lf", c->grav.parts[k].potential_mesh);
       }
     }
   }
@@ -3644,6 +3660,8 @@ void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct A
 void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr) {
   double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   double boxsize = dim[0];
+  int stop_depth = current_depth;
+  //message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
   /* Box wrap the particle's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
   const double pos_y = box_wrap(gp->x[1], 0., dim[1]);
@@ -3655,6 +3673,48 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
 
   /* CIC for the potential: Get overlap with the cell it is in and 7 others */
   struct cell *home_cell = levels[current_depth].cells[cell_nr];
+  /* Check if the particle cloud lies entirely within this level */
+  for (int i=0; i<current_depth+1; i++) {
+    if (home_cell->neighbours[0] == NULL || home_cell->neighbours[2] == NULL || home_cell->neighbours[4] == NULL) {
+      home_cell = levels[current_depth].cells[cell_nr]->parent;
+      stop_depth -= 1;
+      if (stop_depth < 0) error("Cells that should exist not found!");
+      continue;
+    }
+    else if (home_cell->neighbours[0]->ghost || home_cell->neighbours[2]->ghost || home_cell->neighbours[4]->ghost) {
+      home_cell = levels[current_depth].cells[cell_nr]->parent;
+      stop_depth -= 1;
+      if (stop_depth < 0) error("Cells that should exist not found!");
+      continue;
+    }
+    else if (home_cell->neighbours[0]->neighbours[2] == NULL || home_cell->neighbours[0]->neighbours[4] == NULL || home_cell->neighbours[2]->neighbours[4] == NULL) {
+      home_cell = levels[current_depth].cells[cell_nr]->parent;
+      stop_depth -= 1;
+      if (stop_depth < 0) error("Cells that should exist not found!");
+      continue;
+    }
+    else if (home_cell->neighbours[0]->neighbours[2]->ghost || home_cell->neighbours[0]->neighbours[4]->ghost || home_cell->neighbours[2]->neighbours[4]->ghost) {
+      home_cell = levels[current_depth].cells[cell_nr]->parent;
+      stop_depth -= 1;
+      if (stop_depth < 0) error("Cells that should exist not found!");
+      continue;
+    }
+    else if (home_cell->neighbours[0]->neighbours[2]->neighbours[4] == NULL) {
+      home_cell = levels[current_depth].cells[cell_nr]->parent;
+      stop_depth -= 1;
+      if (stop_depth < 0) error("Cells that should exist not found!");
+      continue;
+    }
+    else if (home_cell->neighbours[0]->neighbours[2]->neighbours[4]->ghost) {
+      home_cell = levels[current_depth].cells[cell_nr]->parent;
+      stop_depth -= 1;
+      if (stop_depth < 0) error("Cells that should exist not found!");
+      continue;
+    }
+    break;
+  }
+  message("Found the stop depth %d", stop_depth);
+
   double x[3] = {pos_x, pos_y, pos_z};
   double width[3] = {home_cell->width[0], home_cell->width[1], home_cell->width[2]};
   //CIC_get_AMR(s, gp, x, width, boxsize);
@@ -3668,10 +3728,13 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
 
   //overlap = get_overlap(pbox, home_cell->loc, home_cell->width);
   //if (overlap <= 0.) error("Overlap with home cell not valid");
-  gp->potential_mesh += CIC_get_AMR(s, gp, x, width, boxsize);
+  //message("Passing (%lf, %lf, %lf)", x[0], x[1], x[2]);
+  double acc = CIC_get_AMR(s, gp, x, width, boxsize, stop_depth);
+  //message("Adding %lf to potential with value %lf", acc, gp->potential_mesh);
+  gp->potential_mesh += acc;
 
   /* 3-point stencil along each axis for the accelerations */
-  x[0] = fmod(x[0] + width[0], boxsize);
+  /*x[0] = fmod(x[0] + width[0], boxsize);
   gp->a_grav_mesh[0] -= (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);
   x[0] = (x[0] - width[0] > 0) ? x[0] - width[0] : x[0] - width[0] + boxsize;
   gp->a_grav_mesh[0] += (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);
@@ -3684,17 +3747,21 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
   x[2] = fmod(x[2] + width[2], boxsize);
   gp->a_grav_mesh[2] -= (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);
   x[2] = (x[2] - width[2] > 0) ? x[2] - width[2] : x[2] - width[2] + boxsize;
-  gp->a_grav_mesh[2] += (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);
+  gp->a_grav_mesh[2] += (1./2.) * CIC_get_AMR(s, gp, x, width, boxsize);*/
+
+  //message("We added (%lf, %lf, %lf)", gp->a_grav_mesh[0], gp->a_grav_mesh[1], gp->a_grav_mesh[2]);
 
   /* Don't forget G */
   double const_G = s->e->physical_constants->const_newton_G;
+  //message("Before, we had %lf", gp->potential_mesh);
   gp->a_grav_mesh[0] *= const_G;
   gp->a_grav_mesh[1] *= const_G;
   gp->a_grav_mesh[2] *= const_G;
   gp->potential_mesh *= const_G;
+  //message("After, we have %lf", gp->potential_mesh);
 }
 
-double CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize) {
+double CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize, int stop_depth) {
   double acc = 0.; //Local accumulator. Either potential or acceleration
   double pbox[6] = {x[0], x[0] + width[0], x[1], x[1] + width[1], x[2], x[2] + width[2]};
   double pbox_shift[6];
@@ -3713,7 +3780,8 @@ double CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[
         pbox_shift[4] = pbox[4]+z_shift[k];
         pbox_shift[5] = pbox[5]+z_shift[k];
         if (pbox_shift[1]<0. || pbox_shift[3] <0. || pbox_shift[5]<0.) continue;
-        search_tree(gp, pbox_shift, s->cells_top, width[0], s->nr_cells, &acc, 3000, 1, 0);
+        search_tree(gp, pbox_shift, s->cells_top, width[0], s->nr_cells, &acc, stop_depth, 1, 0);
+        message("We have found the value %lf", acc);
       }
     }
   }
@@ -3743,6 +3811,7 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
 
   for (int i=0; i<max_depth+1; i++) {
     get_patch_density(s, &levels[i]);
+    if (i>0) get_patch_potential(s, &levels[i], &levels[i-1]);
   }
 
   /* Link the uniform levels */
@@ -3822,6 +3891,11 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
     }
     msq = msq/(levels[i+1].cell_count + levels[i+1].ghost_count);
     message("The final msq potential of level %d is %lf", i+1, msq);
+
+    for (int j=0; j<levels[i+1].cell_count; j++) {
+      struct cell *c = levels[i+1].cells[j];
+      message("The potential of cell %d at (%lf, %lf, %lf) is %lf", j, c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
+    }
   }
 
   //int nr_cells = levels[1].cell_count;
@@ -4181,6 +4255,17 @@ void link_uniform_level(struct AMR_levels *level) {
   }
 }
 
+void get_patch_potential(struct space *s, struct AMR_levels *fine, struct AMR_levels *coarse) {
+  fine->mean_potential = 0.;
+  int coarse_split_count = fine->cell_count/8;
+  for (int i=0; i<coarse->cell_count; i++) {
+    struct cell *c = coarse->cells[i];
+    if (!c->split) continue;
+    fine->mean_potential += c->CIC_potential;
+  }
+  fine->mean_potential /= coarse_split_count;
+}
+
 void get_patch_density(struct space *s, struct AMR_levels *level) {
   double mean_density = 0.0;
   int nr_cells = level->cell_count;
@@ -4276,6 +4361,25 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
   }
   message("Had to do post-smoothing on level %d for %d steps and the residual is %lf", current_depth, counter_post_smoothing, residual);
 
+  int normalise = 1;
+  if (normalise) {
+
+    /* Find the mean potential on the patch */
+    double pot_mean = 0.;
+
+    for (int i=0; i<levels[current_depth].cell_count; i++) {
+      pot_mean += levels[current_depth].cells[i]->CIC_potential;
+    }
+    pot_mean /= levels[current_depth].cell_count;
+
+    message("The current mean density is %lf, while it is supposed to be %lf", pot_mean, levels[current_depth].mean_potential);
+
+    /* Subtract the mean potential from the values on the finest level */
+    for (int i=0; i<levels[current_depth].cell_count; i++) {
+      levels[current_depth].cells[i]->CIC_potential -= (pot_mean - levels[current_depth].mean_potential);
+    }
+  }
+
   //Set mean of potential to zero if uniform grid
   if (levels[current_depth].cell_count == levels[current_depth].cdim * levels[current_depth].cdim * levels[current_depth].cdim) { //I.e. secretly uniform
     double sum = 0.;
@@ -4336,7 +4440,7 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
   double msq = 0;
   for (int j=0; j<levels[current_depth].cell_count; j++) {
     if (levels[current_depth].cells[j]->mask_value > 0) {
-      msq += fabs(levels[current_depth].cells[j]->CIC_potential);
+      msq += fabs(levels[current_depth].cells[j]->conv_residual);
     }
   }
   msq = msq/nr_active;
@@ -4350,7 +4454,6 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
   }
   msq = msq/nr_active;
   message("The initial mean density of level %d is %lf", current_depth, msq);
-
   if (current_depth == 0) { //On the coarsest grid, so solve the equation exactly 
     while (residual_new > tolerance) {
       counter +=1;
@@ -4361,7 +4464,7 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
       msq = 0;
       for (int j=0; j<levels[current_depth].cell_count; j++) {
         if (levels[current_depth].cells[j]->mask_value > 0) {
-          msq += fabs(levels[current_depth].cells[j]->CIC_potential);
+          msq += fabs(levels[current_depth].cells[j]->conv_residual);
         }
       }
       msq = msq/nr_active;
@@ -4393,7 +4496,7 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
       msq = 0;
       for (int j=0; j<levels[current_depth].cell_count; j++) {
         if (levels[current_depth].cells[j]->mask_value > 0) {
-          msq += fabs(levels[current_depth].cells[j]->CIC_potential);
+          msq += fabs(levels[current_depth].cells[j]->conv_residual);
         }
       }
       msq = msq/nr_active;
@@ -4469,7 +4572,7 @@ void to_finer_patch(struct AMR_levels *levels, int target_depth) {
       message("Fake value is %d", fake);
     }
     if (current_cell->parent->mask_value<=0) continue;
-    levels[target_depth].cells[i]->CIC_potential += current_cell->parent->CIC_potential;
+    levels[target_depth].cells[i]->CIC_potential += current_cell->parent->conv_residual;
   }
 }
 
@@ -4569,14 +4672,14 @@ double get_masked_residual(struct AMR_levels level, double delta, int nr_active,
       }
       else {
         delta_nb[j] = 1;
-        pot[j] = current_cell->neighbours[j]->CIC_potential;
+        pot[j] = current_cell->neighbours[j]->conv_residual;
       }
     }
     double potential_term = ((double) delta_nb[0]*pot[0] + (double) delta_nb[1]*pot[1] + (double) delta_nb[2]*pot[2] + (double) delta_nb[3]*pot[3] + 
                                 (double) delta_nb[4]*pot[4] + (double) delta_nb[5]*pot[5]);
     double ghost_correction = (((((double) 1-delta_nb[0])*mask_nb[0] + ((double) 1-delta_nb[1])*mask_nb[1] + ((double) 1-delta_nb[2])*mask_nb[2] +
                                   ((double) 1-delta_nb[3])*mask_nb[3] + ((double) 1-delta_nb[4])*mask_nb[4] + ((double) 1-delta_nb[5])*mask_nb[5]))/(current_cell->mask_value));
-    double res = (potential_term - (6.-ghost_correction)*current_cell->CIC_potential)/(delta*delta) - current_cell->CIC_density;
+    double res = (potential_term - (6.-ghost_correction)*current_cell->conv_residual)/(delta*delta) - current_cell->CIC_density;
     //double res = (pot[0] + pot[1] + pot[2] + pot[3] + pot[4] + pot[5] - 6.0*current_cell->CIC_potential)/(delta*delta) - current_cell->CIC_density;
     //if (level.depth == 1 && i<30) {
       //message("We just found the residual %lf", res);
@@ -4599,7 +4702,7 @@ void perform_masked_patch_sweep(struct AMR_levels *level, double delta) {
         //message("The mask is %lf, so skipped this", current_cell->mask_value);
         continue;
       }
-      int location =  (int) ((current_cell->loc[0]+0.01)/delta) + (int) ((current_cell->loc[1]+0.01)/delta) + (int) ((current_cell->loc[2]+0.01)/delta);
+      int location =  (int) ((current_cell->loc[0]+0.0001)/delta) + (int) ((current_cell->loc[1]+0.0001)/delta) + (int) ((current_cell->loc[2]+0.0001)/delta);
       //message("Checking location  (%lf,%lf,%lf) with index (%d,%d,%d)", current_cell->loc[0], current_cell->loc[1], current_cell->loc[2], (int) ((current_cell->loc[0]+0.01)/delta), (int) ((current_cell->loc[1]+0.01)/delta), (int) ((current_cell->loc[2]+0.01)/delta));
       if (location%2 != col) {
         //message("Skipped this cell on location grounds");
@@ -4629,7 +4732,8 @@ void perform_masked_patch_sweep(struct AMR_levels *level, double delta) {
                                    ((double) 1-delta_nb[3])*mask_nb[3] + ((double) 1-delta_nb[4])*mask_nb[4] + ((double) 1-delta_nb[5])*mask_nb[5])/(current_cell->mask_value));
       double potential_term = ((double) delta_nb[0]*pot[0] + (double) delta_nb[1]*pot[1] + (double) delta_nb[2]*pot[2] + (double) delta_nb[3]*pot[3] + 
                                 (double) delta_nb[4]*pot[4] + (double) delta_nb[5]*pot[5] - delta*delta*current_cell->CIC_density);
-      level->cells[i]->CIC_potential = potential_term/ghost_correction;
+      level->cells[i]->conv_residual = potential_term/ghost_correction;
+
       //if (level->depth == 0) {
         //message("The potential term is %lf and the ghost correction %lf", potential_term, ghost_correction);
         //message("The new value of the cell is %lf", level->cells[i]->CIC_potential);
@@ -4654,7 +4758,7 @@ void transfer_coarser_residual(struct AMR_levels fine, struct AMR_levels *coarse
     if (coarse->cells[i]->mask_value < 0) continue; //We only restrict if the coarse cell is not masked
     //message("Restricting to unmasked cell %d", i);
     counter += 1;
-    coarse->cells[i]->CIC_potential = 0.;
+    coarse->cells[i]->conv_residual = 0.;
     coarse->cells[i]->CIC_density = 0.;
     for (int j=0;j<8;j++) { //Loop over the fine cells and add the residual
       struct cell *child = coarse->cells[i]->progeny[j];
@@ -4666,7 +4770,7 @@ void transfer_coarser_residual(struct AMR_levels fine, struct AMR_levels *coarse
           }
           else {
             delta_nb[k] = 1;
-            pot[k] = child->neighbours[k]->CIC_potential;
+            pot[k] = child->neighbours[k]->conv_residual;
           }
         }
         double potential_term = ((double) delta_nb[0]*pot[0] + (double) delta_nb[1]*pot[1] + (double) delta_nb[2]*pot[2] + (double) delta_nb[3]*pot[3] + 
@@ -4675,7 +4779,7 @@ void transfer_coarser_residual(struct AMR_levels fine, struct AMR_levels *coarse
                                       + ((double) 1-delta_nb[3])*mask_nb[3] + ((double) 1-delta_nb[4])*mask_nb[4] + ((double) 1-delta_nb[5])*mask_nb[5]))/(child->mask_value));
         /* The below calculates the residual and stores it in the density slot */
         /* Add zero if a child is masked? */
-        coarse->cells[i]->CIC_density += ((potential_term - (6.-ghost_correction)*child->CIC_potential)/(delta*delta) - child->CIC_density)/8.;
+        coarse->cells[i]->CIC_density += ((potential_term - (6.-ghost_correction)*child->conv_residual)/(delta*delta) - child->CIC_density)/8.;
       }
     }
     //Don't forget to multiply by -1
@@ -4697,7 +4801,7 @@ void transfer_residual_array(struct AMR_levels fine, struct AMR_levels *coarse, 
     if (coarse->cells[i]->mask_value <= 0) continue; //We only restrict if the coarse cell is not masked
     //message("Restricting to unmasked cell %d", i);
     counter += 1;
-    coarse->cells[i]->CIC_potential = 0.;
+    coarse->cells[i]->conv_residual = 0.;
     coarse->cells[i]->CIC_density = 0.;
     for (int j=0;j<8;j++) { //Loop over the fine cells and add the residual
       struct cell *child = coarse->cells[i]->progeny[j];
@@ -5786,6 +5890,7 @@ void search_tree(struct gpart *part, double pbox[6], struct cell *cells_top, dou
 
   for (int i=0; i<nr_topcells;i++) {
     overlap = get_overlap(pbox,cells_top[i].loc, cells_top[i].width);
+    //if (overlap >0. && reverse) message("Overlap was %lf between pbox with edge (%lf, %lf, %lf) and top cell at (%lf, %lf, %lf)", overlap, pbox[0], pbox[2], pbox[4], cells_top[i].loc[0], cells_top[i].loc[1], cells_top[i].loc[2]);
     if (overlap == 0.) continue;
     if (overlap<0.) error("Overlap smaller than zero detected..");
     if (!reverse) {
@@ -5797,10 +5902,12 @@ void search_tree(struct gpart *part, double pbox[6], struct cell *cells_top, dou
     if (cells_top[i].split && level_check!=0) {
     //if (cells_top[i].split && level <2) {
       /* Go a level lower */
+      //if (reverse) message("Going to recurse");
       assign_lower_level(part, pbox, &cells_top[i], width, &level, acc, level_check, reverse, verbose);
     }
     else if (reverse) {
       //message("Doing this");
+      //message("Just assigned %lf", cells_top[i].CIC_potential * overlap/(width*width*width));
       *acc += cells_top[i].CIC_potential * overlap/(width*width*width);
     }
   }
@@ -5815,6 +5922,7 @@ void assign_lower_level(struct gpart *part, double pbox[6], struct cell *parent,
       error("This cell should have been created");
     }
     overlap = get_overlap(pbox, parent->progeny[i]->loc, parent->progeny[i]->width);
+    //if (overlap >0. && reverse) message("Overlap was %lf between pbox with edge (%lf, %lf, %lf) and child at (%lf, %lf, %lf)", overlap, pbox[0], pbox[2], pbox[4], parent->progeny[i]->loc[0], parent->progeny[i]->loc[1], parent->progeny[i]->loc[2]);
     if (overlap == 0.) continue;
     if (overlap<0.) error("Overlap smaller than zero detected..");
     //if (*level>5) message("Assigning at level %d", *level);
@@ -5827,11 +5935,13 @@ void assign_lower_level(struct gpart *part, double pbox[6], struct cell *parent,
     if (parent->progeny[i]->split && *level<level_check) {
     //if (parent->progeny[i]->split && *level<3) {
       //message("The overlap was nonzero. Going to lower level");
+      //if (reverse) message("Going to recurse further");
       assign_lower_level(part, pbox, parent->progeny[i], width, level, acc, level_check, reverse, verbose);
     }
     else if (reverse) {
+      //message("Going to assign");
       *acc += parent->progeny[i]->CIC_potential * overlap/(width*width*width);
-      //message("Just assigned %lf", parent->progeny[i]->CIC_potential * overlap/(parent->progeny[i]->width[0]*parent->progeny[i]->width[0]*parent->progeny[i]->width[0]));
+      //message("Just assigned %lf", parent->progeny[i]->CIC_potential * overlap/(width*width*width));
     }
     //else {
       //message("The overlap was nonzero. Assigning mass");
