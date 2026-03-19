@@ -41,7 +41,8 @@ enum partition_type {
   INITPART_VECTORIZE,
   INITPART_METIS_WEIGHT,
   INITPART_METIS_NOWEIGHT,
-  INITPART_METIS_WEIGHT_EDGE
+  INITPART_METIS_WEIGHT_EDGE,
+  INITPART_WEDGE,
 };
 
 /* Simple descriptions of types for reports. */
@@ -52,6 +53,11 @@ struct partition {
   enum partition_type type;
   int grid[3];
   int usemetis;
+  int nr_wedges;
+  int nr_theta_slices;
+  int nr_phi_slices;
+  double theta_width;
+  double phi_width;
 };
 
 /* Repartition type to use. */
