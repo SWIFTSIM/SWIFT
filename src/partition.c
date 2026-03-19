@@ -97,14 +97,20 @@ static int repart_init_fixed_costs(void);
 
 /**
  *  @brief Partition the space using a simple grid.
+ *
+ *  @param initial_partition The initial partition settings.
+ *  @param nr_nodes The number of MPI ranks.
+ *  @param s The #space to partition.
  */
 static void partition_uniform_grid(struct partition *initial_partition,
                                    int nr_nodes, struct space *s) {
 
+  /* Ensure we have a compatible grid size. */
   if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
                       initial_partition->grid[2])
     error("Grid size does not match number of nodes.");
 
+  /* Convert each cell centre into a grid index and hence into an MPI rank. */
   int ind[3];
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *c = &s->cells_top[k];
@@ -118,10 +124,17 @@ static void partition_uniform_grid(struct partition *initial_partition,
 
 /**
  *  @brief Partition the space using a simple grid.
+ *
+ *  @param initial_partition The initial partition settings.
+ *  @param nr_nodes The number of MPI ranks.
+ *  @param s The #space to partition.
+ *
+ *  @return Whether all ranks received at least one cell.
  */
 static int partition_grid(struct partition *initial_partition, int nr_nodes,
                           struct space *s) {
 
+  /* Call the appropriate grid partitioner. */
   if (!s->with_zoom_region) {
     partition_uniform_grid(initial_partition, nr_nodes, s);
   } else {
@@ -179,7 +192,7 @@ void pick_vector(const int cdim[3], const int nregions, int *samplecells) {
 
 #if defined(WITH_MPI)
 /**
- * @brief Partition the space.
+ * @brief Partition the space from a vectorised seed list.
  *
  * Using the sample positions as seeds pick cells that are geometrically
  * closest and apply the partition to the space.
@@ -195,6 +208,7 @@ void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
+        /* Assign this cell to the nearest seed in the vectorised sample. */
         int select = -1;
         float rsqmax = FLT_MAX;
         int m = 0;
@@ -218,6 +232,9 @@ void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
 #ifdef WITH_MPI
 /**
  * @brief Partition the space using a vectorised list of sample positions.
+ *
+ * @param nr_nodes The number of MPI ranks.
+ * @param s The #space to partition.
  */
 static void partition_uniform_vector(int nr_nodes, struct space *s) {
 
@@ -225,6 +242,7 @@ static void partition_uniform_vector(int nr_nodes, struct space *s) {
   if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
     error("Failed to allocate samplecells");
 
+  /* Pick the seeds once on rank 0 and broadcast them to the other ranks. */
   if (s->e->nodeID == 0) {
     pick_vector(s->cdim, nr_nodes, samplecells);
   }
@@ -239,9 +257,13 @@ static void partition_uniform_vector(int nr_nodes, struct space *s) {
 
 /**
  * @brief Partition the space using a vectorised list of sample positions.
+ *
+ * @param nr_nodes The number of MPI ranks.
+ * @param s The #space to partition.
  */
 static void partition_vector(int nr_nodes, struct space *s) {
 
+  /* Call the appropriate vector partitioner. */
   if (!s->with_zoom_region) {
     partition_uniform_vector(nr_nodes, s);
   } else {
@@ -359,10 +381,17 @@ void partition_initial_partition(struct partition *initial_partition,
 #endif
   }
 
+  /* All initial decomposition paths should assign at least one top-level cell
+   * to every rank. */
   if (!check_complete(s, (nodeID == 0), nr_nodes)) {
     error("Initial partition failed, not all nodes have cells");
   }
 
+  /* Partition the void cells explicitly. We do this separately because the
+   * partitioning of void cells is dependent on the nested zoom cells. */
+  /* TODO: For now this assigns all void cells to be local on all ranks, which
+   * is fine for now but could be improved with only void cells with local
+   * zoom cells assigned locally. */
   if (s->with_zoom_region) {
     zoom_partition_voids(s, nodeID);
   }
