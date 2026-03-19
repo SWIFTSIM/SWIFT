@@ -50,6 +50,9 @@
 #define IDX_MAX LLONG_MAX
 #endif
 
+/* Forward declarations. */
+struct cell;
+
 /* Initial partitioning types. */
 enum partition_type {
   INITPART_GRID = 0,
@@ -121,6 +124,11 @@ void partition_clean(struct partition *partition,
 
 /* Accumulate the total particle counts in each cell for weighting. */
 void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
+
+/* Partition helper functions shared by the uniform and zoom partitioners. */
+void pick_vector(const int cdim[3], const int nregions, int *samplecells);
+void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
+                  int *samplecells);
 
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);

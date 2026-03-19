@@ -63,6 +63,7 @@
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "zoom_region/zoom.h"
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
@@ -93,6 +94,58 @@ double repartition_costs[task_type_count][task_subtype_count];
 static int repart_init_fixed_costs(void);
 #endif
 
+/*  Grid support */
+/*  ============ */
+
+/**
+ *  @brief Partition the space using a simple grid.
+ *
+ *  @param initial_partition The initial partition settings.
+ *  @param nr_nodes The number of MPI ranks.
+ *  @param s The #space to partition.
+ */
+static void partition_uniform_grid(struct partition *initial_partition,
+                                   int nr_nodes, struct space *s) {
+
+  /* Ensure we have a compatible grid size. */
+  if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
+                      initial_partition->grid[2])
+    error("Grid size does not match number of nodes.");
+
+  /* Convert each cell centre into a grid index and hence into an MPI rank. */
+  int ind[3];
+  for (int k = 0; k < s->nr_cells; k++) {
+    struct cell *c = &s->cells_top[k];
+    for (int j = 0; j < 3; j++) {
+      ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
+    }
+    c->nodeID = ind[0] + initial_partition->grid[0] *
+                             (ind[1] + initial_partition->grid[1] * ind[2]);
+  }
+}
+
+/**
+ *  @brief Partition the space using a simple grid.
+ *
+ *  @param initial_partition The initial partition settings.
+ *  @param nr_nodes The number of MPI ranks.
+ *  @param s The #space to partition.
+ *
+ *  @return Whether all ranks received at least one cell.
+ */
+static int partition_grid(struct partition *initial_partition, int nr_nodes,
+                          struct space *s) {
+
+  /* Call the appropriate grid partitioner. */
+  if (!s->with_zoom_region) {
+    partition_uniform_grid(initial_partition, nr_nodes, s);
+  } else {
+    partition_zoom_grid(initial_partition, nr_nodes, s);
+  }
+
+  return check_complete(s, (s->e->nodeID == 0), nr_nodes);
+}
+
 /*  Vectorisation support */
 /*  ===================== */
 
@@ -104,14 +157,14 @@ static int repart_init_fixed_costs(void);
  *  expected regions using a single step. Vectorisation is guaranteed
  *  to work, providing there are more cells than regions.
  *
- *  @param s the space.
- *  @param nregions the number of regions
- *  @param samplecells the list of sample cell positions, size of 3*nregions
+ *  @param cdim The dimensions of the cell space.
+ *  @param nregions The number of regions
+ *  @param samplecells The list of sample cell positions, size of 3*nregions
  */
-static void pick_vector(struct space *s, int nregions, int *samplecells) {
+void pick_vector(const int cdim[3], const int nregions, int *samplecells) {
 
   /* Get length of space and divide up. */
-  int length = s->cdim[0] * s->cdim[1] * s->cdim[2];
+  int length = cdim[0] * cdim[1] * cdim[2];
   if (nregions > length) {
     error("Too few cells (%d) for this number of regions (%d)", length,
           nregions);
@@ -122,9 +175,9 @@ static void pick_vector(struct space *s, int nregions, int *samplecells) {
   int m = 0;
   int l = 0;
 
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
         if (n == 0 && l < nregions) {
           samplecells[m++] = i;
           samplecells[m++] = j;
@@ -141,16 +194,23 @@ static void pick_vector(struct space *s, int nregions, int *samplecells) {
 
 #if defined(WITH_MPI)
 /**
- * @brief Partition the space.
+ * @brief Partition the space from a vectorised seed list.
  *
  * Using the sample positions as seeds pick cells that are geometrically
  * closest and apply the partition to the space.
+ *
+ * @param cells_top The top level cells to partition.
+ * @param cdim The dimensions of the cell space.
+ * @param nregions The number of regions.
+ * @param samplecells The list of sample cell positions, size of 3*nregions.
  */
-static void split_vector(struct space *s, int nregions, int *samplecells) {
+void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
+                  int *samplecells) {
   int n = 0;
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+        /* Assign this cell to the nearest seed in the vectorised sample. */
         int select = -1;
         float rsqmax = FLT_MAX;
         int m = 0;
@@ -164,7 +224,7 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
             select = l;
           }
         }
-        s->cells_top[n++].nodeID = select;
+        cells_top[n++].nodeID = select;
       }
     }
   }
@@ -371,6 +431,49 @@ void partition_accumulate_sizes(struct space *s, int verbose, double *counts) {
 
 #endif /* WITH_MPI */
 
+#ifdef WITH_MPI
+/**
+ * @brief Partition the space using a vectorised list of sample positions.
+ *
+ * @param nr_nodes The number of MPI ranks.
+ * @param s The #space to partition.
+ */
+static void partition_uniform_vector(int nr_nodes, struct space *s) {
+
+  int *samplecells = NULL;
+  if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
+    error("Failed to allocate samplecells");
+
+  /* Pick the seeds once on rank 0 and broadcast them to the other ranks. */
+  if (s->e->nodeID == 0) {
+    pick_vector(s->cdim, nr_nodes, samplecells);
+  }
+
+  int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to bcast the partition sample cells.");
+
+  split_vector(s->cells_top, s->cdim, nr_nodes, samplecells);
+  free(samplecells);
+}
+
+/**
+ * @brief Partition the space using a vectorised list of sample positions.
+ *
+ * @param nr_nodes The number of MPI ranks.
+ * @param s The #space to partition.
+ */
+static void partition_vector(int nr_nodes, struct space *s) {
+
+  /* Call the appropriate vector partitioner. */
+  if (!s->with_zoom_region) {
+    partition_uniform_vector(nr_nodes, s);
+  } else {
+    partition_zoom_vector(nr_nodes, s);
+  }
+}
+#endif
+
 /*  Radial wedge support */
 /*  ===================== */
 
@@ -546,26 +649,8 @@ void partition_initial_partition(struct partition *initial_partition,
 
   /* Geometric grid partitioning. */
   if (initial_partition->type == INITPART_GRID) {
-    int j, k;
-    int ind[3];
-    struct cell *c;
-
-    /* If we've got the wrong number of nodes, fail. */
-    if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
-                        initial_partition->grid[2])
-      error("Grid size does not match number of nodes.");
-
-    /* Run through the cells and set their nodeID. */
-    for (k = 0; k < s->nr_cells; k++) {
-      c = &s->cells_top[k];
-      for (j = 0; j < 3; j++)
-        ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
-      c->nodeID = ind[0] + initial_partition->grid[0] *
-                               (ind[1] + initial_partition->grid[1] * ind[2]);
-    }
-
     /* The grid technique can fail, so check for this before proceeding. */
-    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+    if (!partition_grid(initial_partition, nr_nodes, s)) {
       if (nodeID == 0)
         message("Grid initial partition failed, using a vectorised partition");
       initial_partition->type = INITPART_VECTORIZE;
@@ -655,27 +740,25 @@ void partition_initial_partition(struct partition *initial_partition,
   } else if (initial_partition->type == INITPART_VECTORIZE) {
 
 #if defined(WITH_MPI)
-    /* Vectorised selection, guaranteed to work for samples less than the
-     * number of cells, but not very clumpy in the selection of regions. */
-    int *samplecells = NULL;
-    if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
-      error("Failed to allocate samplecells");
-
-    if (nodeID == 0) {
-      pick_vector(s, nr_nodes, samplecells);
-    }
-
-    /* Share the samplecells around all the nodes. */
-    int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to bcast the partition sample cells.");
-
-    /* And apply to our cells */
-    split_vector(s, nr_nodes, samplecells);
-    free(samplecells);
+    partition_vector(nr_nodes, s);
 #else
     error("SWIFT was not compiled with MPI support");
 #endif
+  }
+
+  /* All initial decomposition paths should assign at least one top-level cell
+   * to every rank. */
+  if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+    error("Initial partition failed, not all nodes have cells");
+  }
+
+  /* Partition the void cells explicitly. We do this separately because the
+   * partitioning of void cells is dependent on the nested zoom cells. */
+  /* TODO: For now this assigns all void cells to be local on all ranks, which
+   * is fine for now but could be improved with only void cells with local
+   * zoom cells assigned locally. */
+  if (s->with_zoom_region) {
+    zoom_partition_voids(s, nodeID);
   }
 
   if (s->e->verbose)
