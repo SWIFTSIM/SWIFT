@@ -777,6 +777,28 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_black_holes(
 }
 
 /**
+ * @brief Does a cell contain any si-particle starting their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_starting_sidm(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->sidm.ti_beg_max > e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->sidm.ti_beg_max, c->sidm.ti_beg_max * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
+#endif
+
+  return (c->sidm.ti_beg_max == e->ti_current);
+}
+
+/**
  * @brief Is this particle starting its time-step now ?
  *
  * @param p The #part.
@@ -914,6 +936,34 @@ __attribute__((always_inline)) INLINE static int sink_is_starting(
 #endif
 
   return (sink_bin <= max_active_bin);
+}
+
+/**
+ * @brief Is this sidm-particle starting its time-step now ?
+ *
+ * @param sip The #sipart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #spart is active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int sipart_is_starting(
+    const struct sipart *sip, const struct engine *e) {
+
+  const timebin_t max_active_bin = e->max_active_bin;
+  const timebin_t sipart_bin = sip->time_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_beg =
+      get_integer_time_begin(ti_current + 1, sip->time_bin);
+
+  if (ti_beg > ti_current)
+    error(
+        "siparticle in an impossible time-zone! sip->ti_beg=%lld "
+        "e->ti_current=%lld",
+        ti_beg, ti_current);
+#endif
+
+  return (sipart_bin <= max_active_bin);
 }
 
 #endif /* SWIFT_ACTIVE_H */

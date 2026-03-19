@@ -29,6 +29,11 @@
 #include "engine.h"
 #include "lightcone/lightcone_array.h"
 
+struct engine_drift_all_data {
+  struct engine *e;
+  int init_particles;
+};
+
 /**
  * @brief Mapper function to drift *all* the #part to the current time.
  *
@@ -39,7 +44,10 @@
 void engine_do_drift_all_part_mapper(void *map_data, int num_elements,
                                      void *extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine_drift_all_data *data =
+      (const struct engine_drift_all_data *)extra_data;
+  const struct engine *e = data->e;
+  const int init_particles = data->init_particles;
   const int restarting = e->restarting;
   struct space *s = e->s;
   struct cell *cells_top;
@@ -72,7 +80,8 @@ void engine_do_drift_all_part_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_part(c, e, /* force the drift=*/1, NULL);
+      cell_drift_part(c, e, /*force the drift=*/1, init_particles,
+                      /*replication_list=*/NULL);
     }
   }
 }
@@ -87,7 +96,10 @@ void engine_do_drift_all_part_mapper(void *map_data, int num_elements,
 void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
                                       void *extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine_drift_all_data *data =
+      (const struct engine_drift_all_data *)extra_data;
+  const struct engine *e = data->e;
+  const int init_particles = data->init_particles;
   const int restarting = e->restarting;
   struct space *s = e->s;
   struct cell *cells_top;
@@ -120,7 +132,8 @@ void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_gpart(c, e, /* force the drift=*/1, /*replication_list=*/NULL);
+      cell_drift_gpart(c, e, /*force the drift=*/1, init_particles,
+                       /*replication_list=*/NULL);
     }
   }
 }
@@ -134,8 +147,10 @@ void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
  */
 void engine_do_drift_all_spart_mapper(void *map_data, int num_elements,
                                       void *extra_data) {
-
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine_drift_all_data *data =
+      (const struct engine_drift_all_data *)extra_data;
+  const struct engine *e = data->e;
+  const int init_particles = data->init_particles;
   const int restarting = e->restarting;
   struct space *s = e->s;
   struct cell *cells_top;
@@ -168,7 +183,8 @@ void engine_do_drift_all_spart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_spart(c, e, /* force the drift=*/1, NULL);
+      cell_drift_spart(c, e, /*force the drift=*/1, init_particles,
+                       /*replication_list=*/NULL);
     }
   }
 }
@@ -182,8 +198,10 @@ void engine_do_drift_all_spart_mapper(void *map_data, int num_elements,
  */
 void engine_do_drift_all_bpart_mapper(void *map_data, int num_elements,
                                       void *extra_data) {
-
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine_drift_all_data *data =
+      (const struct engine_drift_all_data *)extra_data;
+  const struct engine *e = data->e;
+  const int init_particles = data->init_particles;
   const int restarting = e->restarting;
   struct space *s = e->s;
   struct cell *cells_top;
@@ -216,7 +234,8 @@ void engine_do_drift_all_bpart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_bpart(c, e, /* force the drift=*/1, NULL);
+      cell_drift_bpart(c, e, /*force the drift=*/1, init_particles,
+                       /*replication_list=*/NULL);
     }
   }
 }
@@ -231,7 +250,10 @@ void engine_do_drift_all_bpart_mapper(void *map_data, int num_elements,
 void engine_do_drift_all_sink_mapper(void *map_data, int num_elements,
                                      void *extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine_drift_all_data *data =
+      (const struct engine_drift_all_data *)extra_data;
+  const struct engine *e = data->e;
+  const int init_particles = data->init_particles;
   const int restarting = e->restarting;
   struct space *s = e->s;
   struct cell *cells_top;
@@ -264,7 +286,59 @@ void engine_do_drift_all_sink_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_sink(c, e, /* force the drift=*/1);
+      cell_drift_sink(c, e, /*force the drift=*/1, init_particles);
+    }
+  }
+}
+
+/**
+ * @brief Mapper function to drift *all* the #sipart to the current time.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void engine_do_drift_all_sipart_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+
+  const struct engine_drift_all_data *data =
+      (const struct engine_drift_all_data *)extra_data;
+  const struct engine *e = data->e;
+  const int init_particles = data->init_particles;
+  const int restarting = e->restarting;
+  struct space *s = e->s;
+  struct cell *cells_top;
+  int *local_cells_top;
+
+  if (restarting) {
+
+    /* When restarting, we loop over all top-level cells */
+    cells_top = (struct cell *)map_data;
+    local_cells_top = NULL;
+
+  } else {
+
+    /* In any other case, we use the list of local cells with tasks */
+    cells_top = s->cells_top;
+    local_cells_top = (int *)map_data;
+  }
+
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    struct cell *c;
+
+    /* When restarting, the list of local cells does not
+       yet exist. We use the raw list of top-level cells instead */
+    if (restarting)
+      c = &cells_top[ind];
+    else
+      c = &cells_top[local_cells_top[ind]];
+
+    if (c->nodeID == e->nodeID) {
+
+      /* Drift all the particles */
+      cell_drift_sipart(c, e, /*force the drift=*/1, init_particles,
+                        /*replication_list=*/NULL);
     }
   }
 }
@@ -279,7 +353,9 @@ void engine_do_drift_all_sink_mapper(void *map_data, int num_elements,
 void engine_do_drift_all_multipole_mapper(void *map_data, int num_elements,
                                           void *extra_data) {
 
-  const struct engine *e = (const struct engine *)extra_data;
+  const struct engine_drift_all_data *data =
+      (const struct engine_drift_all_data *)extra_data;
+  const struct engine *e = data->e;
   const int restarting = e->restarting;
   struct space *s = e->s;
   struct cell *cells_top;
@@ -319,18 +395,21 @@ void engine_do_drift_all_multipole_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  * @param drift_mpoles Do we want to drift all the multipoles as well?
+ * @param init_particles Are we also initialising the particles?
  */
-void engine_drift_all(struct engine *e, const int drift_mpoles) {
+void engine_drift_all(struct engine *e, const int drift_mpoles,
+                      const int init_particles) {
 
   const ticks tic = getticks();
 
   if (e->nodeID == 0 && e->verbose) {
     if (e->policy & engine_policy_cosmology)
-      message("Drifting all to a=%15.12e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+      message("Drifting all to a=%15.12e (init_particles=%d)",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin,
+              init_particles);
     else
-      message("Drifting all to t=%15.12e",
-              e->ti_current * e->time_base + e->time_begin);
+      message("Drifting all to t=%15.12e (init_particles=%d)",
+              e->ti_current * e->time_base + e->time_begin, init_particles);
   }
 
 #ifdef WITH_LIGHTCONE
@@ -340,6 +419,10 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                                    e->ti_earliest_undrifted, e->ti_current);
 #endif
 
+  struct engine_drift_all_data extra_data;
+  extra_data.e = e;
+  extra_data.init_particles = init_particles;
+
   if (!e->restarting) {
 
     /* Normal case: We have a list of local cells with tasks to play with */
@@ -347,33 +430,38 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
     if (e->s->nr_parts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (e->s->nr_gparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (e->s->nr_sparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_spart_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (e->s->nr_sinks > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_sink_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (e->s->nr_bparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_bpart_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
+    }
+    if (e->s->nr_siparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_sipart_mapper,
+                     e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (drift_mpoles && (e->policy & engine_policy_self_gravity)) {
       threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
                      e->s->local_cells_with_tasks_top,
                      e->s->nr_local_cells_with_tasks, sizeof(int),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
 
   } else {
@@ -384,32 +472,37 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
     if (e->s->nr_parts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (e->s->nr_sparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_spart_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (e->s->nr_sinks > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_sink_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (e->s->nr_bparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_bpart_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
+    }
+    if (e->s->nr_siparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_sipart_mapper,
+                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (e->s->nr_gparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
     if (e->policy & engine_policy_self_gravity) {
       threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     threadpool_auto_chunk_size, e);
+                     threadpool_auto_chunk_size, &extra_data);
     }
   }
 

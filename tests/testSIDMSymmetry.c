@@ -119,6 +119,12 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
+#ifdef SIDM_NONE
+  message("SIDM disabled: skipping unit test.");
+  message("Test automatically passes.");
+  return 0;
+#endif
+
 /* Choke on FPEs */
 #ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);

@@ -62,6 +62,8 @@ struct hydro_props;
 #define space_subsize_self_stars_default 32000
 #define space_subsize_pair_grav_default 256000000
 #define space_subsize_self_grav_default 32000
+#define space_subsize_pair_sidm_default 256000000
+#define space_subsize_self_sidm_default 32000
 #define space_recurse_size_self_hydro_default 100
 #define space_recurse_size_pair_hydro_default 100
 #define space_recurse_size_self_stars_default 100
@@ -91,6 +93,8 @@ extern int space_subsize_pair_stars;
 extern int space_subsize_self_stars;
 extern int space_subsize_pair_grav;
 extern int space_subsize_self_grav;
+extern int space_subsize_pair_sidm;
+extern int space_subsize_self_sidm;
 extern int space_subdepth_diff_grav;
 extern int space_recurse_size_self_hydro;
 extern int space_recurse_size_pair_hydro;
@@ -127,6 +131,10 @@ struct space {
 
   /*! Are we doing hydrodynamics? */
   int with_hydro;
+
+  /*! Are we splitting any gas? */
+  int with_hydro_splitting;
+  int splitting_need_unique_id;
 
   /*! Are we doing gravity? */
   int with_self_gravity;

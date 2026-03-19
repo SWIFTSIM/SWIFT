@@ -95,6 +95,7 @@
 #include "restart.h"
 #include "rt_properties.h"
 #include "runner.h"
+#include "sidm.h"
 #include "sidm_properties.h"
 #include "sink_properties.h"
 #include "sort_part.h"
@@ -1395,37 +1396,44 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Report the number of particles and memory */
   if (e->verbose)
     message(
-        "Space has memory for %zd/%zd/%zd/%zd/%zd part/gpart/spart/sink/bpart "
-        "(%zd/%zd/%zd/%zd/%zd MB)",
+        "Space has memory for %zd/%zd/%zd/%zd/%zd/%zd "
+        "part/gpart/spart/sink/bpart/sipart "
+        "(%zd/%zd/%zd/%zd/%zd/%zd MB)",
         e->s->size_parts, e->s->size_gparts, e->s->size_sparts,
-        e->s->size_sinks, e->s->size_bparts,
+        e->s->size_sinks, e->s->size_bparts, e->s->size_siparts,
         e->s->size_parts * sizeof(struct part) / (1024 * 1024),
         e->s->size_gparts * sizeof(struct gpart) / (1024 * 1024),
         e->s->size_sparts * sizeof(struct spart) / (1024 * 1024),
         e->s->size_sinks * sizeof(struct sink) / (1024 * 1024),
-        e->s->size_bparts * sizeof(struct bpart) / (1024 * 1024));
+        e->s->size_bparts * sizeof(struct bpart) / (1024 * 1024),
+        e->s->size_siparts * sizeof(struct sipart) / (1024 * 1024));
 
   if (e->verbose)
     message(
-        "Space holds %zd/%zd/%zd/%zd/%zd part/gpart/spart/sink/bpart (fracs: "
-        "%f/%f/%f/%f/%f)",
+        "Space holds %zd/%zd/%zd/%zd/%zd/%zd "
+        "part/gpart/spart/sink/bpart/sipart (fracs: "
+        "%f/%f/%f/%f/%f/%f)",
         e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts, e->s->nr_sinks,
-        e->s->nr_bparts,
+        e->s->nr_bparts, e->s->nr_siparts,
         e->s->nr_parts ? e->s->nr_parts / ((double)e->s->size_parts) : 0.,
         e->s->nr_gparts ? e->s->nr_gparts / ((double)e->s->size_gparts) : 0.,
         e->s->nr_sparts ? e->s->nr_sparts / ((double)e->s->size_sparts) : 0.,
         e->s->nr_sinks ? e->s->nr_sinks / ((double)e->s->size_sinks) : 0.,
-        e->s->nr_bparts ? e->s->nr_bparts / ((double)e->s->size_bparts) : 0.);
+        e->s->nr_bparts ? e->s->nr_bparts / ((double)e->s->size_bparts) : 0.,
+        e->s->nr_siparts ? e->s->nr_siparts / ((double)e->s->size_siparts)
+                         : 0.);
 
   const ticks tic2 = getticks();
 
   /* Update the global counters of particles */
-  long long num_particles[5] = {
+  long long num_particles[6] = {
       (long long)(e->s->nr_parts - e->s->nr_extra_parts),
       (long long)(e->s->nr_gparts - e->s->nr_extra_gparts),
       (long long)(e->s->nr_sparts - e->s->nr_extra_sparts),
       (long long)(e->s->nr_sinks - e->s->nr_extra_sinks),
-      (long long)(e->s->nr_bparts - e->s->nr_extra_bparts)};
+      (long long)(e->s->nr_bparts - e->s->nr_extra_bparts),
+      (long long)(e->s->nr_siparts - e->s->nr_extra_siparts),
+  };
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, num_particles, 5, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -1435,6 +1443,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->total_nr_sparts = num_particles[2];
   e->total_nr_sinks = num_particles[3];
   e->total_nr_bparts = num_particles[4];
+  e->total_nr_siparts = num_particles[5];
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, &e->s->min_a_grav, 1, MPI_FLOAT, MPI_MIN,
@@ -1452,6 +1461,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->nr_inhibited_sparts = 0;
   e->nr_inhibited_sinks = 0;
   e->nr_inhibited_bparts = 0;
+  e->nr_inhibited_siparts = 0;
 
   if (e->verbose)
     message("updating particle counts took %.3f %s.",
@@ -1560,6 +1570,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->s_updates_since_rebuild = 0;
   e->sink_updates_since_rebuild = 0;
   e->b_updates_since_rebuild = 0;
+  e->si_updates_since_rebuild = 0;
 
   /* Flag that a rebuild has taken place */
   e->step_props |= engine_step_prop_rebuild;
@@ -1582,6 +1593,7 @@ int engine_prepare(struct engine *e) {
   const ticks tic = getticks();
 
   int drifted_all = 0;
+  int ran_fof_for_seeding = 0;
   int repartitioned = 0;
 
   /* Unskip active tasks and check for rebuild */
@@ -1603,12 +1615,16 @@ int engine_prepare(struct engine *e) {
   if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
       e->run_fof && e->fof_properties->seed_black_holes_enabled) {
 
-    /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    /* Let's start by drifting everybody to the current time.
+     * Do not initialise the particles as we need their drifted
+     * properties for th FOF (BH seeding in particular) */
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/0);
     drifted_all = 1;
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
+
+    ran_fof_for_seeding = 1;
 
     if (e->dump_catalogue_when_seeding) e->snapshot_output_count++;
   }
@@ -1618,7 +1634,8 @@ int engine_prepare(struct engine *e) {
   if (!e->restarting && e->forcerebuild && !e->forcerepart && e->step > 1) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     engine_split_gas_particles(e);
@@ -1628,7 +1645,7 @@ int engine_prepare(struct engine *e) {
   if (e->forcerepart) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     /* Free the PM grid */
@@ -1648,12 +1665,19 @@ int engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!e->restarting && !drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     drifted_all = 1;
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
+  }
+
+  if (ran_fof_for_seeding) {
+
+    /* Now, we can init all the active particles to prepare them for the step */
+    engine_init_all_particles(e);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1782,8 +1806,9 @@ void engine_skip_force_and_kick(struct engine *e) {
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_drift_sink || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->type == task_type_drift_sink || t->type == task_type_drift_sipart ||
+        t->type == task_type_kick1 || t->type == task_type_kick2 ||
+        t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync || t->type == task_type_collect ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
@@ -1823,6 +1848,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
         t->subtype == task_subtype_sink_do_gas_swallow ||
+        t->subtype == task_subtype_sipart_rho ||
         t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
@@ -1856,7 +1882,7 @@ void engine_skip_drift(struct engine *e) {
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_drift_sink)
+        t->type == task_type_drift_sink || t->type == task_type_drift_sipart)
       t->skip = 1;
   }
 
@@ -1937,6 +1963,34 @@ void engine_first_init_particles(struct engine *e) {
   space_first_init_bparts(e->s, e->verbose);
   space_first_init_sinks(e->s, e->verbose);
   space_first_init_siparts(e->s, e->verbose);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Call the initialisation on all local particles.
+ *
+ * @param e The #engine.
+ */
+void engine_init_all_particles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  /* Set the particles in a state where they are ready for time-step
+   * Note that a drift *MUST* have been run. */
+  for (int i = 0; i < e->s->nr_local_cells; ++i) {
+    struct cell *c = &e->s->cells_top[e->s->local_cells_top[i]];
+
+    /* Initialise each type */
+    cell_init_part(c, e);
+    cell_init_gpart(c, e);
+    cell_init_spart(c, e);
+    cell_init_bpart(c, e);
+    cell_init_sink(c, e);
+    cell_init_sipart(c, e);
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2226,6 +2280,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
+  // /* Udpate the SIDM properties */   - TODO
+  // if (e->policy & engine_policy_sidm)
+  //     sidm_props_update(e->sidm_properties, e->gravity_properties,
+  //     e->cosmology);
+
   /* Start by setting the particles in a good state */
   if (e->nodeID == 0) message("Setting particles to a valid state...");
   engine_first_init_particles(e);
@@ -2264,6 +2323,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(s, e->verbose);
   space_init_bparts(s, e->verbose);
   space_init_sinks(s, e->verbose);
+  space_init_siparts(s, e->verbose);
 
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
@@ -2424,10 +2484,28 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     sink_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  /* Run the brute-force stars calculation for some parts */
+  if (e->policy & engine_policy_sidm) sidm_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the stars calculation */
+  if (e->policy & engine_policy_sidm)
+    sidm_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_check(e->s, e, 1e-1);
+#endif
+
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  /* Run the brute-force stars calculation for some parts */
+  if (e->policy & engine_policy_sidm) sidm_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sidm calculation */
+  if (e->policy & engine_policy_sidm)
+    sidm_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2686,7 +2764,8 @@ int engine_step(struct engine *e) {
   e->ti_current_subcycle = e->ti_end_min;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
+  if (e->restarting)
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -2815,7 +2894,7 @@ int engine_step(struct engine *e) {
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
-    engine_drift_all(e, /*drift_mpole=*/1);
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
@@ -2894,7 +2973,8 @@ int engine_step(struct engine *e) {
       e->mesh->ti_end_mesh_next == e->ti_current) {
 
     /* We might need to drift things */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
@@ -3000,6 +3080,15 @@ int engine_step(struct engine *e) {
   }
 #endif
 
+#ifdef SWIFT_SIDM_DENSITY_CHECKS
+  /* Run the brute-force stars calculation for some parts */
+  if (e->policy & engine_policy_sidm) sidm_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sidm calculation */
+  if (e->policy & engine_policy_sidm)
+    sidm_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
@@ -3023,13 +3112,15 @@ int engine_step(struct engine *e) {
   e->s_updates_since_rebuild += e->collect_group1.s_updated;
   e->sink_updates_since_rebuild += e->collect_group1.sink_updated;
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
+  e->si_updates_since_rebuild += e->collect_group1.si_updated;
 
   /* Check if we updated all of the particles on this step */
   if ((e->collect_group1.updated == e->total_nr_parts) &&
       (e->collect_group1.g_updated == e->total_nr_gparts) &&
       (e->collect_group1.s_updated == e->total_nr_sparts) &&
       (e->collect_group1.sink_updated == e->total_nr_sinks) &&
-      (e->collect_group1.b_updated == e->total_nr_bparts))
+      (e->collect_group1.b_updated == e->total_nr_bparts) &&
+      (e->collect_group1.si_updated == e->total_nr_siparts))
     e->ti_earliest_undrifted = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -3734,7 +3825,7 @@ void engine_print_policy(struct engine *e) {
   if (e->nodeID == 0) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
-    for (int k = 0; k <= engine_maxpolicy; k++)
+    for (int k = 0; k < engine_maxpolicy; k++)
       if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
@@ -3742,7 +3833,7 @@ void engine_print_policy(struct engine *e) {
 #else
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
-  for (int k = 0; k <= engine_maxpolicy; k++)
+  for (int k = 0; k < engine_maxpolicy; k++)
     if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
@@ -4032,6 +4123,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
     free((void *)e->neutrino_properties);
+    free((void *)e->neutrino_response);
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);
@@ -4116,7 +4208,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_dump(e->lightcone_array_properties, stream);
+#endif
   ic_info_struct_dump(e->ics_metadata, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
@@ -4259,15 +4353,15 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   sink_struct_restore(sink_properties, stream);
   e->sink_properties = sink_properties;
 
-  struct neutrino_props *neutrino_properties =
-      (struct neutrino_props *)malloc(sizeof(struct neutrino_props));
-  neutrino_struct_restore(neutrino_properties, stream);
-  e->neutrino_properties = neutrino_properties;
-
   struct sidm_props *sidm_properties =
       (struct sidm_props *)malloc(sizeof(struct sidm_props));
   sidm_struct_restore(sidm_properties, stream);
   e->sidm_properties = sidm_properties;
+
+  struct neutrino_props *neutrino_properties =
+      (struct neutrino_props *)malloc(sizeof(struct neutrino_props));
+  neutrino_struct_restore(neutrino_properties, stream);
+  e->neutrino_properties = neutrino_properties;
 
   struct neutrino_response *neutrino_response =
       (struct neutrino_response *)malloc(sizeof(struct neutrino_response));
@@ -4298,9 +4392,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->los_properties = los_properties;
 
   struct lightcone_array_props *lightcone_array_properties =
-      (struct lightcone_array_props *)malloc(
-          sizeof(struct lightcone_array_props));
+      (struct lightcone_array_props *)calloc(
+          1, sizeof(struct lightcone_array_props));
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_restore(lightcone_array_properties, stream);
+#endif
   e->lightcone_array_properties = lightcone_array_properties;
 
   struct ic_info *ics_metadata =

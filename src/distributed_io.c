@@ -81,6 +81,8 @@ static const int io_max_size_output_list = 100;
  * @param lossy_compression Level of lossy compression to use for this field.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
@@ -90,7 +92,7 @@ void write_distributed_array(
     const char *partTypeGroupName, const struct io_props props, const size_t N,
     const enum lossy_compression_schemes lossy_compression,
     const struct unit_system *internal_units,
-    const struct unit_system *snapshot_units) {
+    const struct unit_system *snapshot_units, const int is_named_column) {
 
 #ifdef IO_SPEED_MEASUREMENT
   const ticks tic_total = getticks();
@@ -131,19 +133,32 @@ void write_distributed_array(
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = 20;
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
 
   int rank;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
 
-  if (props.dimension > 1) {
+  /* Set the chunking:
+   * - Datasets that are "named columns": Use Nx1 chunking
+   * - Datasets in 1D are chunked Nx1
+   * Other datasets are chunked NxM as the data is likely accessed as
+   * vectors.
+   * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
+   */
+  if (is_named_column) {
+    rank = 2;
+    shape[0] = N;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << log2_chunk_size;
+    chunk_shape[1] = 1;
+  } else if (props.dimension > 1) {
     rank = 2;
     shape[0] = N;
     shape[1] = props.dimension;
     chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
-  } else {
+  } else { /* props.dimension == 1 */
     rank = 1;
     shape[0] = N;
     shape[1] = 0;
@@ -1502,10 +1517,13 @@ void write_output_distributed(struct engine *e,
               (enum part_type)ptype, compression_level_current_default,
               e->verbose);
 
+      const int is_named_column =
+          io_field_is_named_column(h_file, list[i].name);
+
       if (compression_level != compression_do_not_write) {
         write_distributed_array(e, h_grp, fileName, partTypeGroupName, list[i],
                                 Nparticles, compression_level, internal_units,
-                                snapshot_units);
+                                snapshot_units, is_named_column);
         num_fields_written++;
       }
     }

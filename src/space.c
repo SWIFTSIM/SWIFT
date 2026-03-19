@@ -70,6 +70,8 @@ int space_subsize_pair_stars = space_subsize_pair_stars_default;
 int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
+int space_subsize_pair_sidm = space_subsize_pair_sidm_default;
+int space_subsize_self_sidm = space_subsize_self_sidm_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 int space_grid_split_threshold = space_grid_split_threshold_default;
@@ -1280,6 +1282,8 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_bpart_vel_norm = 0.f;
   s->sum_sipart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
+  s->with_hydro_splitting = 0;
+  s->splitting_need_unique_id = 0;
 
   /* do a quick check that the box size has valid values */
 #if defined HYDRO_DIMENSION_1D
@@ -1636,8 +1640,10 @@ void space_init(struct space *s, struct swift_params *params,
   if (!(star_formation || with_sink) ||
       !swift_star_formation_model_creates_stars) {
     space_extra_sparts = 0;
-    space_extra_gparts = 0;
     space_extra_sinks = 0;
+    if (!s->with_hydro_splitting) {
+      space_extra_gparts = 0;
+    }
   }
 
   const int create_sparts =
@@ -1664,7 +1670,7 @@ void space_init(struct space *s, struct swift_params *params,
   if (!dry_run) space_regrid(s, verbose);
 
   /* Compute the max id for the generation of unique id. */
-  if (create_sparts) {
+  if (create_sparts || s->splitting_need_unique_id) {
     space_init_unique_id(s, nr_nodes);
   }
 }

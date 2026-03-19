@@ -571,6 +571,9 @@ int main(int argc, char *argv[]) {
   /* Do we have neutrino DM particles? */
   const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
+  /* Do we have SIDM particles? */
+  const int with_SIDM_particles = N_total[swift_type_sidm] > 0;
+
   /* Zero out neutrino properties to avoid running neutrino tasks */
   bzero(&neutrino_properties, sizeof(struct neutrino_props));
 
@@ -595,7 +598,8 @@ int main(int argc, char *argv[]) {
   bzero(&gravity_properties, sizeof(struct gravity_props));
   gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                      with_cosmology, /*with_external_gravity=*/0,
-                     with_baryon_particles, with_DM_particles, with_neutrinos,
+                     with_baryon_particles, with_DM_particles,
+                     with_SIDM_particles, with_neutrinos,
                      with_DM_background_particles, periodic, s.dim, s.cdim);
 
   /* Initialise the long-range gravity mesh */

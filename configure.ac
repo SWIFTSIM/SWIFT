@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[2025.10],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[2026.01],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -319,6 +319,18 @@ if test "$enable_timers" = "yes"; then
    AC_DEFINE([SWIFT_USE_TIMERS],1,[Enable individual timers])
 fi
 
+AC_ARG_ENABLE([likwid],
+   [AS_HELP_STRING([--enable-likwid],
+      [Enable LIKWID performance monitoring])],
+   [enable_likwid="$enableval"],
+   [enable_likwid="no"]
+)
+
+if test "$enable_likwid" = "yes"; then
+   AC_DEFINE([WITH_LIKWID], 1, [Enable LIKWID performance monitoring])
+   LIBS="$LIBS -llikwid"
+fi
+
 # Check if expensive debugging is on.
 AC_ARG_ENABLE([debugging-checks],
    [AS_HELP_STRING([--enable-debugging-checks],
@@ -445,6 +457,20 @@ if test "$sink_density_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sink-density-checks!)
 elif test "$sink_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_SINK_DENSITY_CHECKS], [$enableval] ,[Enable sink density brute-force checks])
+fi
+
+# Check if sidm density checks are on for some particles.
+AC_ARG_ENABLE([sidm-density-checks],
+   [AS_HELP_STRING([--enable-sidm-density-checks],
+     [Activate expensive brute-force sidm density checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [sidm_density_checks="$enableval"],
+   [sidm_density_checks="no"]
+)
+if test "$sidm_density_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sidm-density-checks!)
+elif test "$sidm_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_SIDM_DENSITY_CHECKS], [$enableval] ,[Enable sidm density brute-force checks])
 fi
 
 # Check if ghost statistics are enabled
@@ -2927,7 +2953,7 @@ esac
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
-      [Hydrodynamics forcing terms @<:@none, boundary-particles, roberts-flow, roberts-flow-acceleration, abc-flow, default: none@:>@]
+      [Hydrodynamics forcing terms @<:@none, boundary-particles, roberts-flow, roberts-flow-acceleration, abc-flow, idealized-agn-jet, default: none@:>@]
    )],
    [with_forcing="$withval"],
    [with_forcing="none"]
@@ -2947,6 +2973,9 @@ case "$with_forcing" in
    ;;
    abc-flow)
       AC_DEFINE([FORCING_ABC_FLOW], [1], [ABC flow external forcing terms])
+   ;;
+   idealized-agn-jet)
+      AC_DEFINE([FORCING_IDEALIZED_AGN_JET], [1], [Launch AGN jets and treats particles in jet reservoir as fixed boundary particles])
    ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
@@ -3471,6 +3500,10 @@ AC_MSG_RESULT([
    Naive interactions          : $enable_naive_interactions
    Naive stars interactions    : $enable_naive_interactions_stars
    Gravity checks              : $gravity_force_checks
+   Hydro density checks        : $hydro_density_checks
+   Star density checks         : $stars_density_checks
+   Sink density checks         : $sink_density_checks
+   SIDM density checks         : $sidm_density_checks
    Custom icbrtf               : $enable_custom_icbrtf
    Planetary fixed entropy     : $planetary_fixed_entropy
    Ghost statistics            : $ghost_stats

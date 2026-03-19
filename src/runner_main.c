@@ -152,6 +152,11 @@
 #include "runner_doiact_sidm.h"
 #include "runner_doiact_undef.h"
 
+/* likwid markers. */
+#ifdef WITH_LIKWID
+#include "likwid_wrapper.h"
+#endif
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -163,6 +168,9 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
 
+#ifdef WITH_LIKWID
+  swift_likwid_marker_start_region("runner_main");
+#endif
   /* Main loop. */
   while (1) {
 
@@ -428,6 +436,9 @@ void *runner_main(void *data) {
         case task_type_drift_gpart:
           runner_do_drift_gpart(r, ci, 1);
           break;
+        case task_type_drift_sipart:
+          runner_do_drift_sipart(r, ci, 1);
+          break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;
@@ -627,6 +638,9 @@ void *runner_main(void *data) {
 
     } /* main loop. */
   }
+#ifdef WITH_LIKWID
+  swift_likwid_marker_stop_region("runner_main");
+#endif
 
   /* Be kind, rewind. */
   return NULL;

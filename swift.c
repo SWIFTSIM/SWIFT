@@ -25,6 +25,10 @@
 /* Config parameters. */
 #include <config.h>
 
+#ifdef WITH_LIKWID
+#include "likwid_wrapper.h"
+#endif
+
 /* Some standard headers. */
 #include <errno.h>
 #include <fenv.h>
@@ -152,6 +156,11 @@ int main(int argc, char *argv[]) {
     pretime_message(
         "WARNING: you should use the non-MPI version of this program.");
   }
+#endif
+
+#ifdef WITH_LIKWID
+  swift_likwid_marker_init();
+  swift_likwid_marker_register("runner_main");
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
@@ -1027,7 +1036,7 @@ int main(int argc, char *argv[]) {
       if (myrank == 0)
         message("The restart files don't all contain the same ti_current!");
 
-      for (int i = 0; i < myrank; ++i) {
+      for (int i = 0; i < nr_nodes; ++i) {
         if (myrank == i)
           message("MPI rank %d reading file '%s' found an integer time= %lld",
                   myrank, restart_file, e.ti_current);
@@ -1256,7 +1265,7 @@ int main(int argc, char *argv[]) {
     /* Initialize power spectra calculation */
     if (with_power) {
 #ifdef HAVE_FFTW
-      power_init(&pow_data, params, nr_threads);
+      power_spectrum_init(&pow_data, params, nr_threads);
 #else
       error("No FFTW library found. Cannot compute power spectra.");
 #endif
@@ -1418,6 +1427,9 @@ int main(int argc, char *argv[]) {
     /* Do we have neutrino DM particles? */
     const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
+    /* Do we have SIDM particles? */
+    const int with_SIDM_particles = N_total[swift_type_sidm] > 0;
+
     /* Initialise the neutrino properties */
     bzero(&neutrino_properties, sizeof(struct neutrino_props));
     neutrino_props_init(&neutrino_properties, &prog_const, &us, params, &cosmo,
@@ -1459,8 +1471,8 @@ int main(int argc, char *argv[]) {
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                          with_cosmology, with_external_gravity,
                          with_baryon_particles, with_DM_particles,
-                         with_neutrinos, with_DM_background_particles, periodic,
-                         s.dim, s.cdim);
+                         with_SIDM_particles, with_neutrinos,
+                         with_DM_background_particles, periodic, s.dim, s.cdim);
 
     /* Initialize the neutrino response if used */
     bzero(&neutrino_response, sizeof(struct neutrino_response));
@@ -1903,7 +1915,7 @@ int main(int argc, char *argv[]) {
     e.step += 1;
     engine_current_step = e.step;
 
-    engine_drift_all(&e, /*drift_mpole=*/0);
+    engine_drift_all(&e, /*drift_mpole=*/0, /*init_particles=*/0);
 
     /* Write final statistics? */
     if (e.output_list_stats) {
@@ -1989,18 +2001,23 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (e.neutrino_properties->use_linear_response)
     neutrino_response_clean(e.neutrino_response);
-  if (with_self_gravity && s.periodic) pm_mesh_clean(e.mesh);
+  if (e.mesh->periodic) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   if (with_rt) rt_clean(e.rt_props, restart);
   if (with_power) power_clean(e.power_data);
+  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   if (restart) free(refparams);
+  if (restart) output_options_clean(output_options);
   free(output_options);
+
+#ifdef WITH_LIKWID
+  swift_likwid_marker_close();
+#endif
 
 #ifdef WITH_MPI
   partition_clean(&initial_partition, &reparttype);
