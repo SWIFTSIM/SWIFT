@@ -52,10 +52,10 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
   }
 
   /* Apply the grid partitioning to the zoom top-level cells. */
-  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+  for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
 
     /* Get the cell and compute its (i,j,k) index in the grid. */
-    struct cell *c = &s->zoom_props->zoom_cells_top[k];
+    struct cell *c = &s->zoom_props->zoom_cells_top[cid];
     int i = (c->loc[0] - s->zoom_props->region_lower_bounds[0]) /
             s->zoom_props->dim[0] * initial_partition->grid[0];
     int j = (c->loc[1] - s->zoom_props->region_lower_bounds[1]) /
@@ -69,10 +69,10 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
   }
 
   /* Now the same for the background top-level cells. */
-  for (int k = 0; k < s->zoom_props->nr_bkg_cells; k++) {
+  for (int cid = 0; cid < s->zoom_props->nr_bkg_cells; cid++) {
 
     /* Get the cell and compute its (i,j,k) index in the grid. */
-    struct cell *c = &s->zoom_props->bkg_cells_top[k];
+    struct cell *c = &s->zoom_props->bkg_cells_top[cid];
     int i = c->loc[0] / s->dim[0] * initial_partition->grid[0];
     int j = c->loc[1] / s->dim[1] * initial_partition->grid[1];
     int k = c->loc[2] / s->dim[2] * initial_partition->grid[2];
