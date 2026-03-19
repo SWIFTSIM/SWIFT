@@ -32,20 +32,6 @@ Scheduler:
   max_top_level_cells: 8
   cell_split_size:     50
 
-DomainDecomposition:
-  initial_type: grid
-  initial_grid: [2,2,2]
-  synchronous: 0
-  repartition_type: none
-  trigger: 0.05
-  minfrac: 0.9
-  usemetis: 0
-  adaptive: 1
-  itr: 100
-  use_fixed_costs: 0
-  wedges_per_rank: 8
-
-
 Gravity:
   eta:                         0.025
   MAC:                         adaptive
