@@ -43,6 +43,7 @@
 #include "engine.h"
 #include "error.h"
 #include "partition.h"
+#include "sort_part.h"
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
@@ -128,6 +129,73 @@ static int partition_count_edges_uniform(struct space *s, int periodic,
   }
 
   return cell_edge_offsets[s->nr_cells];
+}
+
+/**
+ * @brief Make edge weights from the accumulated particle sizes per cell for a
+ * uniform cell graph.
+ *
+ * This preserves the pre-existing directional sid-based weighting, but writes
+ * the weights in CSR order instead of the old fixed 26-neighbour layout.
+ *
+ * @param s the space containing the cells.
+ * @param counts the number of bytes in particles per cell.
+ * @param edges weights for the graph edges in CSR order.
+ * @param cell_edge_offsets array[nr_cells+1] with cumulative edge offsets.
+ */
+static void partition_sizes_to_edges_uniform(struct space *s, double *counts,
+                                             double *edges,
+                                             const int *cell_edge_offsets) {
+
+  const int nedges = cell_edge_offsets[s->nr_cells];
+  bzero(edges, sizeof(double) * nedges);
+
+  int cid = 0;
+  for (int l = 0; l < s->cdim[0]; l++) {
+    for (int m = 0; m < s->cdim[1]; m++) {
+      for (int n = 0; n < s->cdim[2]; n++) {
+
+        int ind = cell_edge_offsets[cid];
+        for (int i = -1; i <= 1; i++) {
+          int ii = l + i;
+
+          if (s->periodic) {
+            ii = (ii + s->cdim[0]) % s->cdim[0];
+          } else if (ii < 0 || ii >= s->cdim[0]) {
+            continue;
+          }
+
+          for (int j = -1; j <= 1; j++) {
+            int jj = m + j;
+
+            if (s->periodic) {
+              jj = (jj + s->cdim[1]) % s->cdim[1];
+            } else if (jj < 0 || jj >= s->cdim[1]) {
+              continue;
+            }
+
+            for (int k = -1; k <= 1; k++) {
+              int kk = n + k;
+
+              if (s->periodic) {
+                kk = (kk + s->cdim[2]) % s->cdim[2];
+              } else if (kk < 0 || kk >= s->cdim[2]) {
+                continue;
+              }
+
+              if (i || j || k) {
+                const int ksid = ((i + 1) * 9 + (j + 1) * 3 + (k + 1));
+                edges[ind] = counts[cid] * sid_scale[sortlistID[ksid]] / 26.0;
+                ind++;
+              }
+            }
+          }
+        }
+
+        cid++;
+      }
+    }
+  }
 }
 
 /**
@@ -309,14 +377,10 @@ int partition_count_edges(struct space *s, int periodic, int verbose,
  */
 void partition_sizes_to_edges(struct space *s, double *counts, double *edges,
                               const int *cell_edge_offsets) {
-
-  int nedges = cell_edge_offsets[s->nr_cells];
-  bzero(edges, sizeof(double) * nedges);
-
-  for (int cid = 0; cid < s->nr_cells; cid++) {
-    for (int k = cell_edge_offsets[cid]; k < cell_edge_offsets[cid + 1]; k++) {
-      edges[k] = counts[cid] / 26.0;
-    }
+  if (!s->with_zoom_region) {
+    partition_sizes_to_edges_uniform(s, counts, edges, cell_edge_offsets);
+  } else {
+    zoom_partition_sizes_to_edges(s, counts, edges, cell_edge_offsets);
   }
 }
 
@@ -343,6 +407,14 @@ struct indexval {
   int old_val;
   int new_val;
 };
+
+/**
+ * @brief Compare two indexval structs by descending count.
+ *
+ * @param p1 Pointer to the first #indexval.
+ * @param p2 Pointer to the second #indexval.
+ * @return Negative, zero, or positive according to qsort convention.
+ */
 static int indexvalcmp(const void *p1, const void *p2) {
   const struct indexval *iv1 = (const struct indexval *)p1;
   const struct indexval *iv2 = (const struct indexval *)p2;

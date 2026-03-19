@@ -144,7 +144,6 @@ struct weights_mapper_data {
   double *weights_v;
   idx_t *inds;
   idx_t *xadj;
-  int nr_edges;
   int eweights;
   int nodeID;
   int timebins;

@@ -100,6 +100,8 @@ void zoom_partition_voids(struct space *s, int nodeID);
 /* Zoom metis-specific partitioning functions. */
 int zoom_partition_count_vertex_edges(struct space *s, int periodic,
                                       int *cell_edge_offsets);
+void zoom_partition_sizes_to_edges(struct space *s, double *counts,
+                                   double *edges, const int *cell_edge_offsets);
 void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
                                int *nadjcny, idx_t *xadj, int *nxadj,
                                const int *cell_edge_offsets);

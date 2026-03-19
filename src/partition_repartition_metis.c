@@ -55,8 +55,8 @@
  * @param num_elements the number of data elements to process.
  * @param extra_data additional data for the mapper context.
  */
-void partition_gather_weights(void *map_data, int num_elements,
-                              void *extra_data) {
+static void partition_gather_weights(void *map_data, int num_elements,
+                                     void *extra_data) {
 
   struct task *tasks = (struct task *)map_data;
   struct weights_mapper_data *mydata = (struct weights_mapper_data *)extra_data;
@@ -279,7 +279,6 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.inds = inds;
   weights_data.xadj = xadj;
   weights_data.nodeID = nodeID;
-  weights_data.nr_edges = nadjcny;
   weights_data.nr_cells = nr_cells;
   weights_data.timebins = timebins;
   weights_data.vweights = vweights;
