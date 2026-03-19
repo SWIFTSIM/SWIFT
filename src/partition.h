@@ -44,7 +44,7 @@
 
 #endif
 
-#if not defined(HAVE_METIS) && not defined(HAVE_PARMETIS)
+#if !defined(HAVE_METIS) && !defined(HAVE_PARMETIS)
 /* When compiled without METIS/ParMETIS support, we need to define IDX_MAX
  * for accumulate_sizes which can be used by the wedge decomposition. */
 #define IDX_MAX LLONG_MAX
