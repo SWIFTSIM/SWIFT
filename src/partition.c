@@ -676,6 +676,12 @@ void partition_initial_partition(struct partition *initial_partition,
      * counts as weights or not. Should be best when starting with a
      * inhomogeneous dist.
      */
+    int *cell_edge_offsets = (int *)malloc(sizeof(int) * (s->nr_cells + 1));
+    if (cell_edge_offsets == NULL)
+      error("Failed to allocate cell_edge_offsets");
+    int nadjcny =
+        partition_count_edges(s, s->periodic, s->e->verbose, cell_edge_offsets);
+
     double *weights_v = NULL;
     double *weights_e = NULL;
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
@@ -692,15 +698,14 @@ void partition_initial_partition(struct partition *initial_partition,
 
       if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
-      if ((weights_e = (double *)malloc(sizeof(double) * s->nr_cells * 26)) ==
-          NULL)
+      if ((weights_e = (double *)malloc(sizeof(double) * nadjcny)) == NULL)
         error("Failed to allocate weights_e buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
       partition_accumulate_sizes(s, s->e->verbose, weights_v);
 
       /* Spread these into edge weights. */
-      partition_sizes_to_edges(s, weights_v, weights_e);
+      partition_sizes_to_edges(s, weights_v, weights_e, cell_edge_offsets);
     }
 
     /* Do the calculation. */
@@ -709,13 +714,15 @@ void partition_initial_partition(struct partition *initial_partition,
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+      partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
+                           cell_edge_offsets, nadjcny);
     } else {
       partition_pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0,
-                              0.0f, celllist);
+                              0.0f, celllist, cell_edge_offsets, nadjcny);
     }
 #else
-    partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+    partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
+                         cell_edge_offsets, nadjcny);
 #endif
 
     /* And apply to our cells */
@@ -733,6 +740,7 @@ void partition_initial_partition(struct partition *initial_partition,
     if (weights_v != NULL) free(weights_v);
     if (weights_e != NULL) free(weights_e);
     free(celllist);
+    free(cell_edge_offsets);
 #else
     error("SWIFT was not compiled with METIS or ParMETIS support");
 #endif
