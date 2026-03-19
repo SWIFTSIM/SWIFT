@@ -492,6 +492,15 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           depth_j, cellID_names[t->cj->type], subcellID_names[t->cj->subtype]);
   }
 
+#ifdef WITH_MPI
+  /* Ensure we have a proxy whenever this pair spans local/foreign nodes.
+   * For void/zoom interactions this must hold at the top-cell level too. */
+  if ((t->ci->nodeID == engine_rank && t->cj->nodeID != engine_rank) ||
+      (t->ci->nodeID != engine_rank && t->cj->nodeID == engine_rank)) {
+    engine_check_proxy_exists(e, t->ci->top, t->cj->top, e->nodeID);
+  }
+#endif
+
 #endif
 
   /* Get a handle on the cells involved. */
