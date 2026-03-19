@@ -35,6 +35,9 @@
 #endif
 #endif
 
+/* Forward declarations. */
+struct cell;
+
 /* Initial partitioning types. */
 enum partition_type {
   INITPART_GRID = 0,
@@ -97,6 +100,11 @@ void partition_init(struct partition *partition,
 
 void partition_clean(struct partition *partition,
                      struct repartition *repartition);
+
+/* Partition helper functions shared by the uniform and zoom partitioners. */
+void pick_vector(const int cdim[3], const int nregions, int *samplecells);
+void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
+                  int *samplecells);
 
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);
