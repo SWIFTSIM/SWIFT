@@ -1718,9 +1718,9 @@ will give a poorer partition:
 
     * *wedge*
 
-    Split the cells over the solid angle into box-centred angular wedges and assign the
-    wedges to ranks in a round-robin fashion, aiming for roughly equal particle
-    weight per rank. The number of wedges is controlled by the::
+    Split the cells over the solid angle into box-centred angular wedges and 
+    assign the wedges to ranks, aiming for roughly equal particle weight per 
+    rank. The number of wedges is controlled by the::
 
        wedges_per_rank
 
