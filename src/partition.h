@@ -122,13 +122,13 @@ void partition_init(struct partition *partition,
 void partition_clean(struct partition *partition,
                      struct repartition *repartition);
 
-/* Accumulate the total particle counts in each cell for weighting. */
-void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
-
 /* Partition helper functions shared by the uniform and zoom partitioners. */
 void pick_vector(const int cdim[3], const int nregions, int *samplecells);
 void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
                   int *samplecells);
+
+/* Accumulate the total particle counts in each cell for weighting. */
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
 
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);
