@@ -474,49 +474,6 @@ void partition_accumulate_sizes(struct space *s, int verbose, double *counts) {
 
 #endif /* WITH_MPI */
 
-#ifdef WITH_MPI
-/**
- * @brief Partition the space using a vectorised list of sample positions.
- *
- * @param nr_nodes The number of MPI ranks.
- * @param s The #space to partition.
- */
-static void partition_uniform_vector(int nr_nodes, struct space *s) {
-
-  int *samplecells = NULL;
-  if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
-    error("Failed to allocate samplecells");
-
-  /* Pick the seeds once on rank 0 and broadcast them to the other ranks. */
-  if (s->e->nodeID == 0) {
-    pick_vector(s->cdim, nr_nodes, samplecells);
-  }
-
-  int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS)
-    mpi_error(res, "Failed to bcast the partition sample cells.");
-
-  split_vector(s->cells_top, s->cdim, nr_nodes, samplecells);
-  free(samplecells);
-}
-
-/**
- * @brief Partition the space using a vectorised list of sample positions.
- *
- * @param nr_nodes The number of MPI ranks.
- * @param s The #space to partition.
- */
-static void partition_vector(int nr_nodes, struct space *s) {
-
-  /* Call the appropriate vector partitioner. */
-  if (!s->with_zoom_region) {
-    partition_uniform_vector(nr_nodes, s);
-  } else {
-    partition_zoom_vector(nr_nodes, s);
-  }
-}
-#endif
-
 /*  Radial wedge support */
 /*  ===================== */
 
