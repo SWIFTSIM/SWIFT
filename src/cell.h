@@ -1245,45 +1245,6 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2(
 }
 
 /**
- * @brief Is a cell a direct neighbour of another cell?
- *
- * This function will use the integer indices in the grid to determine if
- * two cells are direct neighbours. Note that this can only be used for top
- * level cells.
- *
- * @param s The #space.
- * @param ci The first #cell.
- * @param cj The second #cell.
- *
- * @return 1 if the cells are direct neighbours, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int cell_is_direct_neighbour(
-    const struct space *s, const struct cell *ci, const struct cell *cj) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Only applicable to top level cells. */
-  if (ci->top != ci || cj->top != cj) {
-    error("cell_is_direct_neighbour can only be used for top level cells!");
-  }
-#endif
-
-  /* Get the integer coordinates of the cells in the grid. */
-  int i = (ci->loc[0] + 0.5 * ci->width[0]) * s->iwidth[0];
-  int ii = (cj->loc[0] + 0.5 * cj->width[0]) * s->iwidth[0];
-  int j = (ci->loc[1] + 0.5 * ci->width[1]) * s->iwidth[1];
-  int jj = (cj->loc[1] + 0.5 * cj->width[1]) * s->iwidth[1];
-  int k = (ci->loc[2] + 0.5 * ci->width[2]) * s->iwidth[2];
-  int kk = (cj->loc[2] + 0.5 * cj->width[2]) * s->iwidth[2];
-
-  return ((abs(i - ii) <= 1 || abs(i - ii - s->cdim[0]) <= 1 ||
-           abs(i - ii + s->cdim[0]) <= 1) &&
-          (abs(j - jj) <= 1 || abs(j - jj - s->cdim[1]) <= 1 ||
-           abs(j - jj + s->cdim[1]) <= 1) &&
-          (abs(k - kk) <= 1 || abs(k - kk - s->cdim[2]) <= 1 ||
-           abs(k - kk + s->cdim[2]) <= 1));
-}
-
-/**
  * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size including the maximal displacement of a gpart
  * since the last rebuild (dx_max per axis).

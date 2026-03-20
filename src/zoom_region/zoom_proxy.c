@@ -166,8 +166,8 @@ void zoom_engine_makeproxies(struct engine *e) {
                 continue;
 
               /* Get the proxy type */
-              const int proxy_type =
-                  engine_get_proxy_type(e, zi, zj, zoom_r_max);
+              const int proxy_type = engine_get_proxy_type(
+                  e, zi, i, j, k, zj, iii, jjj, kkk, zoom_r_max);
 
               /* No proxy needed? No problem, move on */
               if (proxy_type == proxy_cell_type_none) continue;
@@ -217,8 +217,8 @@ void zoom_engine_makeproxies(struct engine *e) {
                 continue;
 
               /* Get the proxy type */
-              const int proxy_type =
-                  engine_get_proxy_type(e, vi, cj, bkg_r_max);
+              const int proxy_type = engine_get_proxy_type(
+                  e, vi, bkg_i, bkg_j, bkg_k, cj, iii, jjj, kkk, bkg_r_max);
 
               /* No proxy needed? No problem, move on */
               if (proxy_type == proxy_cell_type_none) continue;
@@ -277,8 +277,8 @@ void zoom_engine_makeproxies(struct engine *e) {
                 continue;
 
               /* Get the proxy type */
-              const int proxy_type =
-                  engine_get_proxy_type(e, ci, cj, bkg_r_max);
+              const int proxy_type = engine_get_proxy_type(
+                  e, ci, i, j, k, cj, iii, jjj, kkk, bkg_r_max);
 
               /* No proxy needed? No problem, move on */
               if (proxy_type == proxy_cell_type_none) continue;
