@@ -49,7 +49,7 @@ Another formulation is \citep[][Eq.~18]{nori2018} {\bf (check with Price eq. 91)
 \begin{equation}
   \nabla^2 \rho_i =  -2 \sum_j m_j \frac{ \rho_j - \rho_i }{\rho_j} \frac{ \vec{r_{ij}} \vec{\nabla} W(\vec{x}_{ij}, h_i)}{r^2_{ij}}.
 \end{equation}
-
+It is working but is less accurate than the previous one.
 
 
 
@@ -66,8 +66,7 @@ The quantum potential of the particle $i$ is :
 %
 \begin{equation}
   \label{eq:uldm:grad_Q}
-  Q_i =  \frac{\hbar}{2 m^2_\chi }  \sum_j \frac{m_j}{\rho_j} W(\vec{x}_{ij}, h_i)
-  \left( \frac{\nabla^2\rho_j}{2\rho_j} -\frac{|\vec{\nabla}\rho_j|^2}{4\rho^2_j} \right)
+  Q_i =  \frac{\hbar}{2 m^2_\chi }  \left( \frac{\nabla^2\rho_i}{2\rho_i} -\frac{|\vec{\nabla}\rho_i|^2}{4\rho^2_i} \right)
 \end{equation}
 
 
