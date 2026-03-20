@@ -1,0 +1,558 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2026 Maarten Elion (elion@lorentz.leidenuniv.nl)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_FORCING_BALSARAKIM_H
+#define SWIFT_FORCING_BALSARAKIM_H
+
+/* Config parameters */
+#include <config.h>
+
+/* Standard includes. */
+#include <float.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+
+/* Local includes. */
+#include "error.h"
+#include "parser.h"
+#include "part.h"
+#include "physical_constants.h"
+#include "space.h"
+#include "units.h"
+#include "hydro.h"
+#include "periodic.h"
+#include "timeline.h"
+#include "timestep_sync_part.h"
+#include "equation_of_state.h"
+#include "engine.h"
+
+enum mechanism {
+  forcing_balsara_kim_mechanism_set_u,
+  forcing_balsara_kim_mechanism_set_const_u,
+  forcing_balsara_kim_mechanism_set_v,
+  forcing_balsara_kim_mechanism_set_const_v 
+};
+
+struct forcing_terms {
+    /* Amount of SN injections */
+    size_t num_supernovae;
+
+    /* injection energy per supernova event */
+    double E_inj;
+
+    /* injection radius */
+    double r_inj;
+
+    /* injection volume */
+    double V_inj;
+
+    /* injection times */
+    double *times;
+
+    /* injection coordinates */
+    double *x_SN;
+    double *y_SN;
+    double *z_SN;
+
+    /* next event injection index */
+    size_t t_index;
+
+    /* injection mechanism */
+    enum mechanism injection_model;
+
+    /* injection model: set_const_u, specific energy injection */ 
+    double u_inj;
+
+    /* injection model: set_const_v, velocity kick */
+    double vel_inj;
+
+    /* keep track of times time-condition was valid */
+    int counter;
+
+    /* keep track if the final injection has happened already */
+    int final_injection;
+
+};
+
+/**
+ * @brief Computes the forcing terms.
+ *
+ * @param time The current time.
+ * @param terms The properties of the forcing terms.
+ * @param s The #space we act on.
+ * @param phys_const The physical constants in internal units.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
+    const double time, struct forcing_terms* terms, const struct space* s,
+    const struct phys_const* phys_const, struct part* p, struct xpart* xp) {
+
+  const size_t t_index = terms->t_index;
+
+  if ((time >= terms->times[t_index]) &&
+      (terms->final_injection == 0)) {
+    terms->counter++;
+
+    const double SN_loc[3] = {terms->x_SN[t_index], terms->y_SN[t_index], terms->z_SN[t_index]};
+    
+    const int periodic = s->periodic;
+    const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+
+    double dx = SN_loc[0] - p->x[0];
+    double dy = SN_loc[1] - p->x[1];
+    double dz = SN_loc[2] - p->x[2];
+
+    if (periodic) {
+          dx = nearest(dx, dim[0]);
+          dy = nearest(dy, dim[1]);
+          dz = nearest(dz, dim[2]);
+        }
+    
+    double distance = sqrtf( dx * dx + dy * dy + dz * dz);
+
+    if (distance <= terms->r_inj) {
+      message("applying injection to particle %lld at t: %f", p->id, 
+        time);
+
+      /* store old (physical) specific energy and velocity */
+      const double u_old = hydro_get_physical_internal_energy(p, xp, s->e->cosmology);
+      const double v_old = sqrtf(xp->v_full[0]*xp->v_full[0] + 
+                                 xp->v_full[1]*xp->v_full[1] +
+                                 xp->v_full[2]*xp->v_full[2]) / s->e->cosmology->a;
+
+      const double mass = hydro_get_mass(p);
+ 
+      /* initialise new internal energy and velocity */
+      double u_new;
+      double v_new;
+
+      /* inject energy according to specified model */
+      enum mechanism injection_model = terms->injection_model;
+
+      switch (injection_model) {
+
+        case forcing_balsara_kim_mechanism_set_u:
+        
+          /* compute new (physical) specific energy
+           * note rho & V are comoving but
+           * rho * V is scale factor free */
+
+          u_new = terms->E_inj / (p->rho * terms->V_inj);
+
+          /* set the specific energy */
+          hydro_set_physical_internal_energy(p, xp, s->e->cosmology, u_new);
+          hydro_set_drifted_physical_internal_energy(p, s->e->cosmology, s->e->pressure_floor_props, u_new);
+
+          /* store injected energy */
+          xp->forcing_data.forcing_injected_energy += (u_new - u_old) * mass;
+
+          /* set visocity to maximum */
+          hydro_diffusive_feedback_reset(p);
+          break;
+        
+        case forcing_balsara_kim_mechanism_set_const_u:
+
+          /* get new (physical) specific energy */
+          u_new = terms->u_inj;
+
+          /* set the specific energy */
+          hydro_set_physical_internal_energy(p, xp, s->e->cosmology, u_new);
+          hydro_set_drifted_physical_internal_energy(p, s->e->cosmology, s->e->pressure_floor_props, u_new);
+
+          /* store injected energy */
+          xp->forcing_data.forcing_injected_energy += (u_new - u_old) * mass;
+
+          /* set visocity to maximum */
+          hydro_diffusive_feedback_reset(p);
+          break;
+
+        case forcing_balsara_kim_mechanism_set_v:
+
+          /* compute new (physical) velocity */
+          v_new = sqrtf(2 * terms->E_inj / (p->rho * terms->V_inj));
+        
+          /* set the velocity */
+          xp->v_full[0] = (dx / distance) * v_new * s->e->cosmology->a;
+          xp->v_full[1] = (dy / distance) * v_new * s->e->cosmology->a;
+          xp->v_full[2] = (dz / distance) * v_new * s->e->cosmology->a;
+
+          /* store injected energy */
+          xp->forcing_data.forcing_injected_energy += 
+                mass * (v_new * v_new - v_old * v_old) / 2;
+
+          /* update signal velocity based on velocity kick */
+          hydro_set_v_sig_based_on_velocity_kick(p, s->e->cosmology, v_new);
+          break;
+
+        case forcing_balsara_kim_mechanism_set_const_v:
+
+          /* get new velocity */
+          v_new = terms->vel_inj;
+        
+          /* set the velocity */
+          xp->v_full[0] = (dx / distance) * v_new * s->e->cosmology->a;
+          xp->v_full[1] = (dy / distance) * v_new * s->e->cosmology->a;
+          xp->v_full[2] = (dz / distance) * v_new * s->e->cosmology->a;
+
+          /* store injected energy */
+          xp->forcing_data.forcing_injected_energy += 
+                mass * (v_new * v_new - v_old * v_old) / 2;
+
+          /* update signal velocity based on velocity kick */
+          hydro_set_v_sig_based_on_velocity_kick(p, s->e->cosmology, v_new);
+          break;
+        
+        default:
+
+          error("no injection model specified");
+          
+      }
+      
+      /* synchronize particle on timeline */
+      timestep_sync_part(p);
+    }
+  }
+}
+
+/**
+ * @brief Computes the gravitational forcing terms.
+ *
+ * Nothing to do here
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param gp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
+    const long long id, const struct forcing_terms *terms, struct gpart *gp) {
+  /* Nothing to do here */
+}
+
+/**
+ * @brief Sets the forcing of gparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param gp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_gpart_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct gpart *gp) {}
+
+/**
+ * @brief Sets the forcing of parts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_part_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct part *p,
+    struct xpart *xp) {}
+
+/**
+ * @brief Sets the forcing of sparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_spart_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct spart *sp) {}
+
+/**
+ * @brief Sets the forcing of bparts prior to drift.
+ *
+ * @param id The particle ID.
+ * @param terms The properties of the forcing terms.
+ * @param bp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
+    const long long id, const struct forcing_terms *terms, struct bpart *bp) {}
+
+/**
+ * @brief Computes the time-step condition due to the forcing terms.
+ *
+ * Set particle timestep such that it ends at the next injection event.
+ * This way the particles are synchronised at the injection time and 
+ * particles will not "miss" energy injections that are supposed to happen.
+ * It will return FLT_MAX if there is no injection event after dt_max.
+ *
+ * @param time The current time.
+ * @param terms The properties of the forcing terms.
+ * @param phys_const The physical constants in internal units.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static float forcing_terms_timestep(
+    const double time, const struct forcing_terms *terms, 
+    const struct space *s, const struct phys_const *phys_const, 
+    const struct part *p, const struct xpart *xp) {
+ 
+  const size_t t_index = terms->t_index;
+
+  const double dt_min = s->e->dt_min;
+  const double dt_max = s->e->dt_max;
+
+  /* Don't do anything if there is no injection happening in the near future */
+  if (((terms->times[t_index] - time) > dt_max) ||
+      (terms->final_injection == 1)) {
+    return FLT_MAX;
+  }
+
+  /* End timestep at (or just after) next injection time */
+  double new_dt_forcing = fmaxf(terms->times[t_index] - time, 2.*dt_min);
+   
+  return new_dt_forcing;
+}
+
+/**  
+ * @brief updates the forcing terms
+ *
+ * increases the current supernova index after one has happend 
+ * 
+ * @param terms The #forcing_terms properties of the run
+ * @param time_old The previous system time
+ */
+static INLINE void forcing_update(struct forcing_terms *terms, const double time_old) {
+  /* if the current time is later than the latest SN event */
+  if (time_old >= terms->times[terms->num_supernovae - 1]) {
+    /* we do not want any more energy injections */
+    terms->final_injection = 1;
+  }
+
+  /* else, if the next SN has happened, update the index to the next SN event */
+  else if (time_old >= terms->times[terms->t_index]) {
+    message("%d particles passed time condition", terms->counter);
+    message("updating forcing term index at time: %f", time_old);
+    terms->t_index++;
+    terms->counter = 0;
+  }
+}
+
+/**
+ * @brief Prints the properties of the forcing terms to stdout.
+ *
+ * @param terms The #forcing_terms properties of the run.
+ */
+static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
+  /* Print energy injection mechanism */
+  enum mechanism injection_model = terms->injection_model;
+
+  switch (injection_model) {
+
+    case forcing_balsara_kim_mechanism_set_u:
+    
+      message("Balsara-Kim density dependent specific energy injection with E_inj: %f",
+        terms->E_inj);
+      break;
+    
+    case forcing_balsara_kim_mechanism_set_const_u:
+
+      message("Balsara-Kim specific energy injection u_inj: %f", terms->u_inj);
+      break;
+
+    case forcing_balsara_kim_mechanism_set_v:
+
+      message("Balsara-Kim density dependent velocity kick with E_inj: %f", 
+        terms->E_inj);
+      break;
+
+    case forcing_balsara_kim_mechanism_set_const_v:
+
+      message("Balsara-Kim constant velocity kick v_inj: %f", terms->vel_inj);
+      break;
+    
+    default:
+
+      error("no injection model specified");
+      
+  }
+
+  message("Injection radius r_inj: %f", terms->r_inj);
+  
+  for (size_t i = 0; i < terms->num_supernovae; i++) {
+    message("SN at t: %f, at [x,y,z]: [%.2f,%.2f,%.2f]", terms->times[i],
+    terms->x_SN[i], terms->y_SN[i], terms->z_SN[i]);
+  }
+}
+
+/**
+ * @brief Initialises the forcing term properties
+ *
+ * @param parameter_file The parsed parameter file
+ * @param phys_const Physical constants in internal units
+ * @param us The current internal system of units
+ * @param s The #space object.
+ * @param terms The forcing term properties to initialize
+ */
+static INLINE void forcing_terms_init(struct swift_params* parameter_file,
+                                      const struct phys_const* phys_const,
+                                      const struct unit_system* us,
+                                      const struct space* s,
+                                      struct forcing_terms* terms) {
+
+  /* Read the filename containing the SN times & coordinates */
+  char coords_filename[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(parameter_file,"BalsaraKimForcing:coords", 
+                          coords_filename);
+
+  /* Read the file containing the SN times & coordinates
+   * Store the read values in terms */
+  
+  /* Open file */
+  FILE *file = fopen(coords_filename, "r");
+  if (file == NULL) error("Error opening file '%s'", coords_filename);
+
+  /* Count number of lines */
+  size_t len = 0;
+  char *line = NULL;
+  size_t nber_line = 0;
+  while (getline(&line, &len, file) != -1) nber_line++;
+
+  terms->num_supernovae = nber_line - 1; /* Do not count header */
+
+  /* Return to start of file and initialize time array */
+  fseek(file, 0, SEEK_SET);
+  terms->times = (double *)malloc(sizeof(double) * terms->num_supernovae);
+  terms->x_SN = (double *)malloc(sizeof(double) * terms->num_supernovae);
+  terms->y_SN = (double *)malloc(sizeof(double) * terms->num_supernovae);
+  terms->z_SN = (double *)malloc(sizeof(double) * terms->num_supernovae);
+
+  if ((!terms->times) || (!terms->z_SN)) {
+    error(
+        "Unable to malloc output_list. "
+        "Try reducing the number of lines in %s",
+        coords_filename);
+  }
+
+  /* Read header */
+  if (getline(&line, &len, file) == -1)
+    error("Unable to read header in file '%s'", coords_filename);
+
+  /* Remove end of line character */
+  line[strcspn(line, "\n")] = 0;
+
+  /* Read file */
+  size_t ind = 0;
+  int read_successfully = 0;
+  while (getline(&line, &len, file) != -1) {
+
+    double *time = &terms->times[ind];
+    double *x_SN = &terms->x_SN[ind];
+    double *y_SN = &terms->y_SN[ind];
+    double *z_SN = &terms->z_SN[ind];
+
+    /* Write data to output_list */
+    read_successfully = sscanf(line, "%lf,%lf,%lf,%lf", time,
+                               x_SN, y_SN, z_SN) == 4;
+
+    if (!read_successfully) {
+      error(
+          "Tried parsing injection coordinate list but found '%s' with illegal "
+          "characters in file '%s'.",
+          line, coords_filename);
+    }
+    
+    /* convert the times [Myr] and coordinates [L_box] to IU */
+    terms->times[ind] *= 1.e6 * phys_const->const_year;
+    terms->x_SN[ind]  *= s->dim[0];
+    terms->y_SN[ind]  *= s->dim[1];
+    terms->z_SN[ind]  *= s->dim[2];
+    
+    ind++;
+  }
+
+  /* Cleanup */
+  free(line);
+
+  if (ind != terms->num_supernovae)
+    error("Did not read the correct number of injections.");
+
+  /* Check that the list is in monotonic order */
+  for (size_t i = 1; i < terms->num_supernovae; ++i) {
+
+    if (terms->times[i] <= terms->times[i - 1])
+      error("injection coordinate list not having monotonically increasing times.");
+  }
+
+  fclose(file);
+
+  /* Read the injection radius, defaults to 5 pc*/
+  double r_inj_pc = parser_get_param_double(parameter_file,
+        "BalsaraKimForcing:r_inj_pc");
+
+  /* Calculate & store injection volume, saves calculations */
+  double V_inj_pc3 = (4./3.) * M_PI * r_inj_pc * r_inj_pc * r_inj_pc;
+
+  /* Initialise parameters */
+  double E_inj_cgs = 0.;
+  double u_inj_cgs = 0.;
+  double vel_inj_cgs = 0.; 
+
+  /* Read injection scheme and required parameters */
+  char injection_model[20];
+  parser_get_param_string(parameter_file, "BalsaraKimForcing:inj_model",
+        injection_model);
+  if (strcmp(injection_model, "set_u") == 0) {
+    terms->injection_model = forcing_balsara_kim_mechanism_set_u;
+
+    E_inj_cgs = parser_get_param_double(parameter_file,
+        "BalsaraKimForcing:E_inj_cgs");
+  }
+  else if (strcmp(injection_model, "set_const_u") == 0) {
+    terms->injection_model = forcing_balsara_kim_mechanism_set_const_u;
+
+    u_inj_cgs = parser_get_param_double(parameter_file,
+	      "BalsaraKimForcing:u_inj_cgs");
+  }
+  else if (strcmp(injection_model, "set_v") == 0) {
+    terms->injection_model = forcing_balsara_kim_mechanism_set_v;
+
+    E_inj_cgs = parser_get_param_double(parameter_file,
+        "BalsaraKimForcing:E_inj_cgs");
+  }
+  else if (strcmp(injection_model, "set_const_v") == 0) {
+    terms->injection_model = forcing_balsara_kim_mechanism_set_const_v;
+
+    vel_inj_cgs = parser_get_param_double(parameter_file,
+        "BalsaraKimForcing:v_inj_kms") * 1.e5;
+  }
+  else {
+    error("unknown injection model '%s'", injection_model);
+  }
+
+  /* convert everything to internal units */
+  double parsec_ui = phys_const->const_parsec;
+  double erg_cgs = units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  double v_cgs = us->UnitLength_in_cgs / us->UnitTime_in_cgs;
+
+  terms->r_inj = r_inj_pc * parsec_ui;
+  terms->V_inj = V_inj_pc3 * (parsec_ui * parsec_ui * parsec_ui);
+  terms->E_inj = E_inj_cgs / erg_cgs;
+  terms->u_inj = u_inj_cgs / (v_cgs * v_cgs);
+  terms->vel_inj = vel_inj_cgs / v_cgs;
+
+  /* initialise some indices and counters */
+  terms->t_index = 0;
+  terms->counter = 0;
+  terms->final_injection = 0;
+}
+#endif /* SWIFT_FORCING_BALSARAKIM_H */

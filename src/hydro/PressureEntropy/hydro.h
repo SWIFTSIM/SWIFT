@@ -165,7 +165,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
                                    const struct cosmology *cosmo,
                                    const float u) {
-  error("To be implemented");
+  /* See Borrow+ (2021) (2021MNRAS.505.2316B) for more details */
+  error("Can not accurately set the physical internal energy in Pressure-Entropy");
 }
 
 /**
@@ -180,7 +181,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(
     struct part *p, const struct cosmology *cosmo,
     const struct pressure_floor_props *pressure_floor, const float u) {
-  error("To be implemented");
+  /* See Borrow+ (2021) (2021MNRAS.505.2316B) for more details */
+  error("Can not accurately set the physical internal energy in Pressure-Entropy");
 }
 
 /**

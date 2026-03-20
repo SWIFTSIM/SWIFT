@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2026 Maarten Elion (elion@lorentz.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,21 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_EAGLE_H
-#define SWIFT_COOLING_STRUCT_EAGLE_H
+#ifndef SWIFT_FORCING_IDEALIZED_AGN_JET_STRUCT_H
+#define SWIFT_FORCING_IDEALIZED_AGN_JET_STRUCT_H
 
 /**
- * @brief Properties of the cooling stored in the #part data.
+ * @brief Properties of the forcing stored in the extended particle data.
  */
-struct cooling_part_data {};
+struct forcing_xpart_data {};
 
-/**
- * @brief Properties of the cooling stored in the extended particle data.
- */
-struct cooling_xpart_data {
-
-  /*! Cumulative energy radiated by the particle */
-  double radiated_energy;
-};
-
-#endif /* SWIFT_COOLING_STRUCT_EAGLE_H */
+#endif /* SWIFT_FORCING_IDEALIZED_AGN_JET_STRUCT_H */
