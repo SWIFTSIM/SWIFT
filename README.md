@@ -5,8 +5,7 @@
 </a>
 </div>
 
-SWIFT: SPH With Inter-dependent Fine-grained Tasking
-====================================================
+# SWIFT: SPH With Inter-dependent Fine-grained Tasking
 
 [![Build Status](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/badge/icon)](https://gitlab.cosma.dur.ac.uk/jenkins/job/GNU%20SWIFT%20build/)
 
@@ -35,8 +34,7 @@ Please feel free to submit issues to this repository, or even pull
 requests. We will try to deal with them as soon as possible, but as the
 core development team is quite small this could take some time.
 
-Disclaimer
-----------
+## Disclaimer
 
 We would like to emphasise that SWIFT comes without any warranty of accuracy,
 correctness or efficiency. As mentioned in the license, the software comes
@@ -55,11 +53,10 @@ experimentation with various values is highly encouraged. Each problem will
 likely require different values and the sensitivity to the details of the
 physical model is something left to the users to explore.
 
-Acknowledgement & Citation
--------------------------
+## Acknowledgement & Citation
 
 The SWIFT code was last described in this paper:
-https://ui.adsabs.harvard.edu/abs/2023arXiv230513380S.  The core solver, the
+https://ui.adsabs.harvard.edu/abs/2023arXiv230513380S. The core solver, the
 numerical methods as well as many extensions where described there. We ask users
 running SWIFT for their research to please cite this paper when they present
 their results.
@@ -75,10 +72,7 @@ version X.Y.Z."
 with the version number set to the version used for the simulations and the
 reference pointing to the ASCL entry of the code: https://ascl.net/1805.020.
 
-
-
-Contribution Guidelines
------------------------
+## Contribution Guidelines
 
 The SWIFT source code uses a variation of the 'Google' formatting style.
 The script 'format.sh' in the root directory applies the clang-format-20
@@ -94,8 +88,7 @@ Any contributions that fail any of the automated tests will not be accepted.
 Contributions that include tests of the proposed modules (or any current ones!)
 are highly encouraged.
 
-Runtime parameters
-------------------
+## Runtime parameters
 
 ```
  Welcome to the cosmological hydrodynamical code
@@ -167,10 +160,10 @@ Parameters:
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback.
     --agora                           Run with all the options needed for the
-                                      GEAR model. This is equivalent to --hydro
+                                      AGORA model. This is equivalent to --hydro
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback.
-                                      
+
   Control options:
 
     -a, --pin                         Pin runners using processor affinity.
