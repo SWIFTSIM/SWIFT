@@ -3081,7 +3081,7 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
   message("Going to rebuild");
   engine_rebuild(e, 1, 0);
 
-  /* Find the cell with the particle and split it 5 times */
+  /* Find the cell with the particle and split it desired_depth times */
   for (int i=0; i<nr_cells; i++) {
     struct cell *c = &s->cells_top[i];
     c->split = 0;
@@ -3095,6 +3095,26 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
       c->maxdepth = desired_depth;
     }
   }
+
+  /* Split neighbouring cells desired_depth times */
+  /*int i_loc = 16;
+  int j_loc = 16;
+  int k_loc = 16;
+  int offset[3] = {-1, 0, 1};
+  for (int i=0; i<3; i++) {
+    for (int j=0; j<3; j++) {
+      for (int k=0; k<3; k++) {
+        struct cell *c = &s->cells_top[cell_getid(s->cdim, i_loc-offset[i], j_loc-offset[j], k_loc-offset[k])];
+        message("Going to do the cell with loc (%lf, %lf, %lf)", c->loc[0], c->loc[1], c->loc[2]);
+        if (i==1 && j==1 && k==1) continue;
+        int curr_depth = 0;
+        get_progeny(s, c, desired_depth, &curr_depth);
+        c->maxdepth = desired_depth;
+      }
+    }
+  }*/
+
+
   //sleep(15);
 }
 
@@ -3443,16 +3463,16 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
       double cz0 = c->loc[2];
       double cz1 = c->loc[2] + c->width[2];
       if (part_loc[i-N_parts_old][0] >= cx0 && part_loc[i-N_parts_old][0] < cx1 && part_loc[i-N_parts_old][1] >= cy0 && part_loc[i-N_parts_old][1] <cy1 && part_loc[i-N_parts_old][2] >= cz0 && part_loc[i-N_parts_old][2] < cz1) {
-        //if (i== 4 || i==9 || i==34) message("Found overlap for %d with cell at (%lf, %lf, %lf)", i, cx0, cy0, cz0);
+        if (i== 126) message("Found overlap for %d with cell at (%lf, %lf, %lf)", i, cx0, cy0, cz0);
         //if (j==16912) message("Placing particle at (%lf,%lf, %lf) in this cell", part_loc[i-N_parts_old][0], part_loc[i-N_parts_old][1], part_loc[i-N_parts_old][2]);
         const int nr_old = c->grav.count;
         c->grav.count += 1;
         if (c->split && depth<desired_depth) {
-          //if (i== 4 || i==9 || i==34) message("Going to recurse for %d", j);
+          if (i== 126) message("Going to recurse for %d", j);
           particle_to_cells_recursive(part_loc[i-N_parts_old], c->progeny, 8, &counter_added, N_parts_old, N_parts_new, p_ref, &depth, desired_depth);
         }
         else {
-          //if (i== 4 || i==9 || i==34) message("Not going to recurse for %d", j);
+          if (i== 126) message("Not going to recurse for %d", j);
         //message("Adding particle at (%lf, %lf, %lf) to cell with location (%lf, %lf, %lf) and width (%lf, %lf, %lf)", part->x[0], part->x[1], part->x[2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
           if (nr_old == 0) c->grav.parts = malloc(sizeof(struct gpart));
           else {
@@ -3491,7 +3511,7 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 
   message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/potential_normalised_1_32.txt", "w");
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/potential_normalised_5_32.txt", "w");
   for (int i=0; i<N_parts_old + N_parts_new; i++) {
     struct gpart gpart = p_ref[i].cell->grav.parts[p_ref[i].index];
     //message("Going to write %d", i);
@@ -3499,6 +3519,7 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
     fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
   }
   fclose(accelerations);
+  message("Done writing accelerations to file");
 }
 
 void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells, int *counter_added, int N_parts_old, int N_parts_new, struct gpart_ref p_ref[N_parts_old + N_parts_new], int *depth, int desired_depth) {
@@ -3515,7 +3536,7 @@ void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr
     double cz0 = c->loc[2];
     double cz1 = c->loc[2] + c->width[2];
     if (part_loc[0] >= cx0 && part_loc[0] < cx1 && part_loc[1] >= cy0 && part_loc[1] <cy1 && part_loc[2] >= cz0 && part_loc[2] < cz1) {
-      message("Found overlap for %d at (%lf, %lf, %lf) with the cell at (%lf, %lf, %lf)", *counter_added, part_loc[0], part_loc[1], part_loc[2], cx0, cy0, cz0);
+      if (*counter_added == 125) message("Found overlap for %d at (%lf, %lf, %lf) with the cell at (%lf, %lf, %lf)", *counter_added, part_loc[0], part_loc[1], part_loc[2], cx0, cy0, cz0);
       const int nr_old = c->grav.count;
       c->grav.count += 1;
       //message("Adding particle at (%lf, %lf, %lf) to cell with location (%lf, %lf, %lf) and width (%lf, %lf, %lf)", part->x[0], part->x[1], part->x[2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
@@ -3528,7 +3549,7 @@ void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr
         c->grav.parts[nr_old].x[0] = part_loc[0];
         c->grav.parts[nr_old].x[1] = part_loc[1];
         c->grav.parts[nr_old].x[2] = part_loc[2];
-        //message("Added particle to cell. Particle %d in cell has location (%lf, %lf, %lf)", c->grav.count + 1, c->grav.parts[nr_old].x[0], c->grav.parts[nr_old].x[1], c->grav.parts[nr_old].x[2]);
+        if (*counter_added == 125) message("Added particle to cell. Particle %d in cell has location (%lf, %lf, %lf)", c->grav.count + 1, c->grav.parts[nr_old].x[0], c->grav.parts[nr_old].x[1], c->grav.parts[nr_old].x[2]);
         p_ref[N_parts_old + *counter_added].cell = c;
         p_ref[N_parts_old + *counter_added].index = c->grav.count - 1;
         p_ref[N_parts_old + *counter_added].level = *depth;
@@ -3648,10 +3669,10 @@ void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct A
       //if (nr_gparts>0) message("Going to do cell %d with loc (%lf, %lf, %lf) \n", j, c->loc[0], c->loc[1], c->loc[2]);
       for (int k=0; k<nr_gparts; k++) {
         struct gpart *gp = &(c->grav.parts[k]);
-        if (i==0) message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
+        message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
         get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
         //get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
-        if (i==0) message("The assigned potential is %lf", c->grav.parts[k].potential_mesh);
+        message("The assigned potential is %lf", c->grav.parts[k].potential_mesh);
       }
     }
   }
