@@ -50,5 +50,22 @@ do_make clean
 #  Formatting only from the tests.
 do_make check TESTS=testFormat.sh
 
+echo
+echo "-----------"
+echo "EAGLE build"
+echo "-----------"
+do_configure --with-subgrid=EAGLE
+do_make
+do_make clean
+
+echo
+echo "--------------"
+echo "FLAMINGO build"
+echo "--------------"
+do_configure --with-subgrid=FLAMINGO
+do_make
+do_make clean
+
+
 #  Keep simple, may have a number of these happening.
 exit
