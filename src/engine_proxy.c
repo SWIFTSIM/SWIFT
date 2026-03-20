@@ -73,7 +73,8 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
     with_hydro = 0;
   }
 
-  /* Are these cells adjacent or not? */
+  /* Are these cells adjacent or not? Note that this harmlessly assumes
+   * periodicity. */
   const int is_direct_neighbour =
       ((abs(i - ii) <= 1 || abs(i - ii - s->cdim[0]) <= 1 ||
         abs(i - ii + s->cdim[0]) <= 1) &&
