@@ -558,8 +558,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
   /* Should this self task be split? */
   if (cell_can_split_self_gravity_task(ci)) {
 
-    /* Check particle count threshold - mirrors scheduler_splittask_gravity
-     */
+    /* Check particle count threshold - mirrors scheduler_splittask_gravity */
     if (ci->grav.count < space_subsize_self_grav) {
       return;
     }
@@ -577,6 +576,11 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
       for (int k = j + 1; k < 8; k++) {
         if (ci->progeny[k] == NULL) continue;
         struct cell *cpk = ci->progeny[k];
+
+        /* Avoid a self interaction */
+        if (c == cpk) {
+          continue;
+        }
 
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpj, cpk)) {
