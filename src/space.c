@@ -1515,8 +1515,8 @@ void space_init(struct space *s, struct swift_params *params,
     space_extra_sparts = 0;
     space_extra_sinks = 0;
     if (!s->with_hydro_splitting) {
-      space_extra_gparts = 0;
-    }
+    space_extra_gparts = 0;
+    } 
   }
 
   const int create_sparts =
