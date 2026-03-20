@@ -1,0 +1,114 @@
+Default:
+  # Particle Type Gas
+  Coordinates_Gas: DScale5
+  Velocities_Gas: DScale1
+  Masses_Gas: on
+  SmoothingLengths_Gas: on
+  InternalEnergies_Gas: off
+  ParticleIDs_Gas: Nbit40
+  Densities_Gas: FMantissa9
+  Entropies_Gas: off
+  Pressures_Gas: FMantissa9
+  ViscosityParameters_Gas: off
+  DiffusionParameters_Gas: off
+  LaplacianInternalEnergies_Gas: off
+  VelocityDivergences_Gas: off
+  VelocityDivergenceTimeDifferentials_Gas: off
+  ElementMassFractions_Gas: off
+  SmoothedElementMassFractions_Gas: FMantissa9
+  MetalMassFractions_Gas: FMantissa9
+  SmoothedMetalMassFractions_Gas: FMantissa9
+  Temperatures_Gas: FMantissa9
+  ElectronNumberDensities_Gas: DMantissa9
+  ComptonYParameters_Gas: FMantissa9
+  LastAGNFeedbackScaleFactors_Gas: HalfFloat
+  StarFormationRates_Gas: FMantissa9
+  XrayLuminosities_Gas: DMantissa9
+  XrayPhotonLuminosities_Gas: DMantissa9
+  MaximalTemperatures_Gas: DMantissa9
+  MaximalTemperatureScaleFactors_Gas: on
+
+  # Particle Type DM
+  Coordinates_DM: DScale5
+  Velocities_DM: DScale1
+  Masses_DM: on
+  ParticleIDs_DM: Nbit40
+  Softenings_DM: off
+
+  # Particle Type Stars
+  Coordinates_Stars: DScale5
+  Velocities_Stars: DScale1
+  Masses_Stars: on  
+  ParticleIDs_Stars: Nbit40
+  SmoothingLengths_Stars: on
+  InitialMasses_Stars: FMantissa9
+  BirthScaleFactors_Stars: HalfFloat
+  FeedbackEnergyFractions_Stars: off
+  NumberOfFeedbackEvents_Stars: off
+  BirthDensities_Stars: BFloat16
+  BirthTemperatures_Stars: off
+  FeedbackNumberOfHeatingEvents_Stars: off
+  Luminosities_Stars: FMantissa9
+  ElementMassFractions_Stars: off
+  SmoothedElementMassFractions_Stars: FMantissa9
+  MetalMassFractions_Stars: FMantissa9
+  SmoothedMetalMassFractions_Stars: FMantissa9
+  LastAGNFeedbackScaleFactors_Stars: off
+
+  # Particle Type BH
+  Coordinates_BH: DScale5
+  Velocities_BH: DScale1
+  DynamicalMasses_BH: on
+  ParticleIDs_BH: Nbit40
+  SmoothingLengths_BH: on
+  SubgridMasses_BH: on
+  FormationScaleFactors_BH: on
+  GasDensities_BH: off
+  GasSoundSpeeds_BH: off
+  EnergyReservoirs_BH: off
+  AccretionRates_BH: on
+  TotalAccretedMasses_BH: on
+  CumulativeNumberOfSeeds_BH: off
+  NumberOfMergers_BH: on
+  LastHighEddingtonFractionScaleFactors_BH: on
+  LastMinorMergerScaleFactors_BH: on
+  LastMajorMergerScaleFactors_BH: on
+  SwallowedAngularMomenta_BH: off
+  GasRelativeVelocities_BH: off
+  GasCircularVelocities_BH: off
+  TimeBins_BH: off
+  NumberOfSwallows_BH: off
+  NumberOfDirectSwallows_BH: off
+  NumberOfRepositions_BH: off
+  NumberOfRepositionAttempts_BH: off
+  NumberOfTimeSteps_BH: off
+  ViscosityFactors_BH: off
+  SubgridDensities_BH: off 
+  SubgridSoundSpeeds_BH: off
+  BirthGasDensities_BH: off
+  AccretedAngularMomenta_BH: off
+  NumberOfGasNeighbours_BH: off
+  FeedbackDeltaT_BH: off
+  LastRepositionVelocities_BH: off
+  NumberOfHeatingEvents_BH: on
+  NumberOfAGNEvents_BH: on
+  LastAGNFeedbackScaleFactors_BH: on
+  AccretionLimitedTimeSteps_BH: off
+  AGNTotalInjectedEnergies_BH: off
+  AccretionBoostFactors_BH: off
+  GasTemperatures_BH: off
+  EnergyReservoirThresholds_BH: off
+  EddingtonFractions_BH: off
+  ElementMasses_BH: off
+  MetalMasses_BH: off
+  BirthMetallicities_BH: off
+  SmoothedBirthMetallicities_BH: off
+
+  # Particle Type Neutrino
+  Coordinates_Neutrino: DScale5
+  Velocities_Neutrino: DScale1
+  Masses_Neutrino: on
+  ParticleIDs_Neutrino: on
+  Softenings_Neutrino: off
+  SampledSpeeds_Neutrino: DScale1
+  MicroscopicMasses_Neutrino: off
