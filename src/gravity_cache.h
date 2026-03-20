@@ -238,6 +238,15 @@ INLINE static void gravity_cache_populate(
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (gparts[i].time_bin == time_bin_not_created) {
+      message("BAD gpart at i=%d, type=%d, id_or_neg_offset=%lld, cell=%p, cell_count=%d",
+                i, gparts[i].type, gparts[i].id_or_neg_offset,
+                (void*)cell, cell->grav.count);
+      message("  cell->grav.parts=%p, this gpart=%p, offset_in_cell=%ld",
+	      (void*)cell->grav.parts, (void*)&gparts[i],
+	      &gparts[i] - cell->grav.parts);
+      message("  cell->top=%p, cell->top->grav.parts=%p, cell->top->grav.count=%d",
+                (void*)cell->top, (void*)cell->top->grav.parts,
+                cell->top->grav.count);
       error("Found an extra gpart in the gravity cache");
     }
 #endif

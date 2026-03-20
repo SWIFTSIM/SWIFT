@@ -97,6 +97,31 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
   }
 }
 
+
+/* same but for hydro - Lily */
+void cell_activate_hydro_resort_tasks(struct cell *c, struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super != NULL && c->hydro.super != c)
+    error("Function called below the super level!");
+#endif
+
+  /* The resort tasks are at either the chosen depth or the super level,
+   * whichever comes first. */
+  if ((c->depth == engine_hydro_resort_task_depth || c->hydro.super == c) &&
+      c->hydro.count > 0) {
+    scheduler_activate(s, c->hydro.hydro_resort);
+  } else {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        cell_activate_hydro_resort_tasks(c->progeny[k], s);
+      }
+    }
+  }
+}
+
+
+
 /**
  * @brief Activate the star formation task as well as the resorting of stars
  *
@@ -1948,12 +1973,12 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
     //lily
     if (c->hydro.hydro_resort != NULL){
-      //cell_activate_drift_part(c, s);
-      scheduler_activate(s, c->hydro.hydro_resort);} 
-    if (c->top->hydro.particle_split != NULL){
-      //cell_activate_drift_part(c, s);
+      cell_activate_hydro_resort_tasks(c, s);}
+    if ((c->top->hydro.particle_split != NULL) && (c->top->black_holes.split_relax_time <= e->time)){
+    //if ((c->top->hydro.particle_split != NULL)){
+      cell_activate_drift_gpart(c, s);
+      //cell_activate-_drift_part(c, s);
       scheduler_activate(s, c->top->hydro.particle_split);}
-    
     if (c->top->hydro.star_formation != NULL) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
       cell_activate_super_spart_drifts(c->top, s);

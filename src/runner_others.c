@@ -110,8 +110,8 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
   //const float mass_limit = 2.5e-5;
   const float mass_limit = 1.5e-5;
   const int count_top = c->top->hydro.count;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  struct part *restrict parts = c->top->hydro.parts;
+  struct xpart *restrict xparts = c->top->hydro.xparts;
   struct bpart *restrict bp = c->top->black_holes.parts;
   
   TIMER_TIC;
@@ -151,7 +151,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 
     int j = 0;
     
-    while (j < c->hydro.count){
+    while (j < c->top->hydro.count){
       struct part *p  = &parts[j];
       struct xpart *xp = &xparts[j];
       
@@ -230,8 +230,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	
         //if particle reached target mass, never split again after this split
         //else reset to 0                                                    
-        //hardcoded final mass for now...
-	// if parent is nibbled and half its mass is past limit also ignore?
+        //hardcoded final mass for now...                                                                                                                                                                                                 
         if (p->mass < mass_limit){
 	  p->split_flag = 2;}
         else{p->split_flag = 0;}
@@ -255,6 +254,13 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	struct part parent = *p;    // copy all fields of parent 
 	struct xpart parent_xp = *xp;
 	
+	for (int i = 0; i < c->grav.count; i++) {
+	  if (c->grav.parts[i].time_bin == time_bin_not_created) {
+	    message("STARTUP bad gpart at i=%d type=%d id_or_neg_offset=%lld cell=%p",
+		    i, c->grav.parts[i].type, c->grav.parts[i].id_or_neg_offset,
+		    (void*)c);
+	  }
+	}
 	message("Cell: %p, Parent before splits: id=%lld, mass=%e, pos=(%g,%g,%g), vel=(%g,%g,%g)",
 		(void*)c, parent.id, parent.mass, parent.x[0], parent.x[1], parent.x[2],
 		parent.v[0], parent.v[1], parent.v[2]);
@@ -265,17 +271,28 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	pos_offsets[0] *= delta;
 	pos_offsets[1] *= delta;
 	pos_offsets[2] *= delta;
-	
+
 	struct part *child = cell_spawn_new_part_from_part(e, c, &parent, &parent_xp, child_mass, pos_offsets, new_h);
-	
+
 	int parent_index = find_parent_linear(c->top->hydro.parts, c->top->hydro.count, parent_id);
 	if (parent_index == -1) error("parent not found!");
 
+	message("BEFORE shift: parent_index=%d, pos=(%g,%g,%g), offset=(%g,%g,%g)",
+        parent_index,
+        c->top->hydro.parts[parent_index].x[0],
+        c->top->hydro.parts[parent_index].x[1],
+        c->top->hydro.parts[parent_index].x[2],
+        pos_offsets[0], pos_offsets[1], pos_offsets[2]);
+	
 	/* shift parent back */
 	c->top->hydro.parts[parent_index].x[0] -= pos_offsets[0];
 	c->top->hydro.parts[parent_index].x[1] -= pos_offsets[1];
 	c->top->hydro.parts[parent_index].x[2] -= pos_offsets[2];
 
+	message("AFTER shift: pos=(%g,%g,%g)",
+        c->top->hydro.parts[parent_index].x[0],
+        c->top->hydro.parts[parent_index].x[1],
+        c->top->hydro.parts[parent_index].x[2]);
 	/* Update the maximum displacement information of a cell based on a
 	   part's movement.
 	   Notes:
@@ -322,7 +339,7 @@ void runner_do_particle_split(struct runner *r, struct cell *c, int timer) {
 	if (fabs(total_mass - expected_mass) > 1e-8) // tighter tolerance
 	  error("Mass conservation broken in splitting: parent+children = %e, expected %e",
 		total_mass, 2 * child_mass);
-#endif 
+#endif
 
 	message("Leaf Cell: %p,Parent ID after full split: %lld, mass=%e",                                                                                                                                
                 c,c->top->hydro.parts[parent_index].id, c->top->hydro.parts[parent_index].mass);     

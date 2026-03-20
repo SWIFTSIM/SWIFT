@@ -380,7 +380,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float pressurej = pj->force.pressure;
   
   //desperattion checks --lily
-  
+ 
   if ((pi->mass > 8.5e-5) && (pi->time_bin < 38) && (pi->force.pressure) && (pi->time_bin > 0)){
     message("SUSPICIOUS pi: id=%lld mass=%e time_bin=%d rho=%e u=%e P=%e v_sig=%e alpha=%e pos=(%g,%g,%g)",
             pi->id, pi->mass, pi->time_bin, pi->rho, pi->u,

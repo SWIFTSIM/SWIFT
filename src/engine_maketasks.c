@@ -1231,7 +1231,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   if (c->top == c && c->nodeID == e->nodeID) {
 
     /*lily split task */
-    //if (c->top->black_holes.count > 0){
+    //if (c->black_holes.count > 0){
     c->hydro.particle_split = scheduler_addtask(s, task_type_particle_split,
 						task_subtype_none, 0, 0, c, NULL);
     //}
@@ -1435,19 +1435,21 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                               task_subtype_none, 0, 1, c, NULL);
 
 	//lily
-	if (c->top->hydro.particle_split){
-	  scheduler_addunlock(s, c->grav.drift_out, c->top->hydro.particle_split);}
+	if (c->top->hydro.particle_split)
+	  scheduler_addunlock(s, c->top->hydro.particle_split, c->grav.long_range);
 	
         c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
                                              task_subtype_none, 0, 1, c, NULL);
         c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                             task_subtype_none, 0, 1, c, NULL);
 
+	if (c->top->hydro.particle_split)
+          scheduler_addunlock(s, c->top->hydro.particle_split, c->grav.init_out);
         /* Long-range gravity forces (not the mesh ones!) */
         scheduler_addunlock(s, c->grav.init, c->grav.long_range);
         scheduler_addunlock(s, c->grav.long_range, c->grav.down);
         scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
-	
+
         /* With adaptive softening, force the hydro density to complete first */
         if (gravity_after_hydro_density && c->hydro.super == c) {
           scheduler_addunlock(s, c->hydro.ghost_out, c->grav.init_out);
@@ -1579,7 +1581,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 #ifdef WITH_CSDS
   const int with_csds = (e->policy & engine_policy_csds);
 #endif
-   
+  
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
    * super-level is above the level we want */
@@ -1593,7 +1595,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
       /* Record this is the level where we re-sort */
       star_resort_cell = c;
-
+      
       c->hydro.stars_resort = scheduler_addtask(
           s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
 
@@ -1622,12 +1624,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
 
     //lily
-    //if (c->top->black_holes.count > 0){
     c->hydro.hydro_resort = scheduler_addtask(s, task_type_hydro_resort,
 					      task_subtype_none, 0, 0, c, NULL);
-    //}
     
-  
     if (with_feedback) {
       c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
                                          task_subtype_none, 0, 0, c, NULL);
@@ -1646,12 +1645,17 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       /* Add the drift task. */
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
+      
+    
+      //if (c->top->black_holes.count > 0){
+      scheduler_addunlock(s,  c->hydro.drift, c->top->hydro.particle_split);
+      scheduler_addunlock(s,  c->top->hydro.particle_split,  c->hydro.hydro_resort);
+      //lily just added
+      //if (c->hydro.sorts)
+      scheduler_addunlock(s,  c->hydro.hydro_resort, c->hydro.sorts);
 
-
-      scheduler_addunlock(s, c->hydro.drift, c->top->hydro.particle_split);
-      scheduler_addunlock(s, c->top->hydro.particle_split, c->hydro.hydro_resort);
-      scheduler_addunlock(s, c->hydro.hydro_resort, c->hydro.sorts);
-
+      if (c->hydro.hydro_resort != NULL){
+	scheduler_addunlock(s,  c->hydro.hydro_resort, c->super->kick2);}
       
       /* Add the task finishing the force calculation */
       c->hydro.end_force = scheduler_addtask(s, task_type_end_hydro_force,
@@ -1678,11 +1682,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
                                            task_subtype_none, 0, 0, c, NULL);
         scheduler_addunlock(s, c->stars.drift, c->super->kick2);
-	
-	//lily
-	if (c->hydro.hydro_resort != NULL){
-	  scheduler_addunlock(s, c->hydro.hydro_resort, c->super->kick2);
-	}
+
         if (with_star_formation && c->top->hydro.count > 0)
           scheduler_addunlock(s, c->stars.drift, c->top->hydro.star_formation);
       }
@@ -1918,7 +1918,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         if (c->progeny[k] != NULL)
           engine_make_hierarchical_tasks_hydro(e, c->progeny[k],
                                                star_resort_cell);
- }
+  }
 }
 
 void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
@@ -2331,6 +2331,10 @@ void engine_link_gravity_tasks(struct engine *e) {
       if (ci_nodeID != nodeID) error("Non-local self task");
 #endif
 
+      /* LILY: External gravity must also wait for the split to finish */
+      if (ci->top->hydro.particle_split != NULL) {
+        scheduler_addunlock(sched, ci->top->hydro.particle_split, t);
+      }
       /* drift -----> gravity --> end_gravity_force */
       scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
       scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
@@ -2429,7 +2433,6 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
   }
 }
-
 #ifdef EXTRA_HYDRO_LOOP
 
 /**

@@ -150,6 +150,10 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.do_gas_swallow = NULL;
     c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
+    //lily
+    c->hydro.hydro_resort = NULL;
+    c->hydro.particle_split = NULL;
+
 #ifdef WITH_CSDS
     c->csds = NULL;
 #endif

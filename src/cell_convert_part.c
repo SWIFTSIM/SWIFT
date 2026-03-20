@@ -106,7 +106,6 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.parts + n_copy > top->hydro.parts + top->hydro.count_total){
-    lock_unlock(&top->stars.star_formation_lock);
     error("Copying beyond allowed range");}
 #endif
 
@@ -143,8 +142,10 @@ struct part_pair cell_add_part(struct engine *e, struct cell *const c) {
   }
   top2->hydro.ti_old_part = e->ti_current;
 
-  /* Unlock */
-  lock_unlock(&top->stars.star_formation_lock);
+  /* Release the local lock before exiting. */
+  if (lock_unlock(&top->stars.star_formation_lock) != 0)
+    error("Failed to unlock the top-level cell.");
+
 
   /* Initialize new particle */
   struct part *p = &c->hydro.parts[0];
@@ -246,6 +247,7 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
     //message("in cell %p, gp idx offset:%lld for child id:%lld", (void*)c,  gp->id_or_neg_offset, new_p->id);
     
     /* Synchronize clocks */
+    //ghost particle for a timesteo
     gp->time_bin = p->time_bin;
   } else {
     /* No gpart exists for parent, so child also has none */
@@ -257,10 +259,12 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
   new_p->x[0] = parent_copy.x[0] + pos_offset[0];
   new_p->x[1] = parent_copy.x[1] + pos_offset[1];
   new_p->x[2] = parent_copy.x[2] + pos_offset[2];
-  
+   
   new_xp->v_full[0] = xparent_copy.v_full[0];
   new_xp->v_full[1] = xparent_copy.v_full[1];
   new_xp->v_full[2] = xparent_copy.v_full[2];
+
+
   new_xp->ti_created = e->ti_current;
     
 #ifdef SWIFT_DEBUG_CHECKS
@@ -269,15 +273,13 @@ struct part *cell_spawn_new_part_from_part(struct engine *e, struct cell *c,
 #endif
 
   /* Initialise sort displacement to reflect actual offset from sort position */
-  new_xp->x_diff[0] = xparent_copy.x_diff[0] + pos_offset[0];
-  new_xp->x_diff[1] = xparent_copy.x_diff[1] + pos_offset[1];
-  new_xp->x_diff[2] = xparent_copy.x_diff[2] + pos_offset[2];
+  new_xp->x_diff[0] = 0.f;
+  new_xp->x_diff[1] = 0.f;
+  new_xp->x_diff[2] = 0.f;
   
-  
-  new_xp->x_diff_sort[0] = xparent_copy.x_diff_sort[0] + pos_offset[0];
-  new_xp->x_diff_sort[1] = xparent_copy.x_diff_sort[1] + pos_offset[1];
-  new_xp->x_diff_sort[2] = xparent_copy.x_diff_sort[2] + pos_offset[2];
-  
+  new_xp->x_diff_sort[0] = 0.f;
+  new_xp->x_diff_sort[1] = 0.f;
+  new_xp->x_diff_sort[2] = 0.f;
   /* Set a smoothing length */
   new_p->h = new_h;  
   //v long timebin

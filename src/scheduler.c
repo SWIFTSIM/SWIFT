@@ -1876,12 +1876,7 @@ void scheduler_ranktasks(struct scheduler *s) {
     /* Unlock the next layer of tasks. */
     const int left_old = left;
     for (; j < left_old; j++) {
-      //lily
-      if (tid[j] >= s->size)
-	message("OVERFLOW: tid[%d]=%d >= size=%d nr_tasks=%d", j, tid[j], s->size, nr_tasks);
-
       struct task *t = &tasks[tid[j]];
-      
       t->rank = rank;
       /* message( "task %i of type %s has rank %i." , i ,
           (t->type == task_type_self) ? "self" : (t->type == task_type_pair) ?
@@ -2229,11 +2224,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 	//lily
       case task_type_particle_split:
+	// Assign cost based on number of particles in the cell? this is wrong but whatever
 	cost = wscale * count_i; 
 	break;
-      case task_type_hydro_resort:
-	cost = wscale * count_i;
-        break;
       case task_type_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
         break;

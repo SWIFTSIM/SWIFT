@@ -1033,14 +1033,10 @@ runner_iact_nonsym_bh_gas_feedback(
 	/*lily -> we can't kick a particle thats just been created
 	  but if the list is full of newly created particles, just skip feedback
 	  for this timestep
+	*/
 	
 	if (xpj->ti_created == ti_current){
 	  message("We are trying to kick a new child! STOP!");
-	  continue;
-	}
-	*/
-	if (ti_current - xpj->ti_created < 5 * (1 << pj->time_bin)){
-	  message("Skipping recently created particle - not yet relaxed!");
 	  continue;
 	}
 	

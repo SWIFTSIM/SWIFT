@@ -1165,10 +1165,16 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
-        if (pix > shift_threshold_x || pix < -shift_threshold_x)
-          error(
+        if (pix > shift_threshold_x || pix < -shift_threshold_x){
+	  //lily
+	  message("BAD PARTICLE: id=%lld, x=(%g,%g,%g), pix=%g, ci->loc=(%g,%g,%g), shift=(%g,%g,%g)",
+		  pi->id, pi->x[0], pi->x[1], pi->x[2],
+		  pix,
+		  ci->loc[0], ci->loc[1], ci->loc[2],
+		  shift[0], shift[1], shift[2]);
+	error(
               "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
-              pix, ci->width[0]);
+              pix, ci->width[0]);}
         if (piy > shift_threshold_y || piy < -shift_threshold_y)
           error(
               "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
@@ -2685,10 +2691,8 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
           "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
           "ci->sorted=%d sid=%d",
           ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
-    
     if (!(cj->hydro.sorted & (1 << sid)) ||
         cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
-      
       error(
           "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
           "cj->sorted=%d sid=%d",
