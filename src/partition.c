@@ -67,10 +67,12 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "axis aligned grids of cells", "vectorized point associated cells",
+    "axis aligned grids of cells",
+    "vectorized point associated cells",
     "memory balanced, using particle weighted cells",
     "similar sized regions, using unweighted cells",
-    "memory and edge balanced cells using particle weights"};
+    "memory and edge balanced cells using particle weights",
+    "box-centered wedges"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
@@ -272,6 +274,359 @@ static void partition_vector(int nr_nodes, struct space *s) {
 }
 #endif
 
+#ifdef WITH_MPI
+
+/* Data structure for accumulating counts in the mappers. */
+struct counts_mapper_data {
+  double *counts;
+  size_t size;
+  struct space *s;
+};
+
+/* Generic function for accumulating sized counts for TYPE parts. Note uses
+ * local memory to reduce contention, the amount of memory required is
+ * precalculated by an additional loop determining the range of cell IDs. */
+#define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
+  partition_accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,   \
+                                           void *extra_data) {                 \
+    struct TYPE *parts = (struct TYPE *)map_data;                              \
+    struct counts_mapper_data *mydata =                                        \
+        (struct counts_mapper_data *)extra_data;                               \
+    double size = mydata->size;                                                \
+    int *cdim = mydata->s->cdim;                                               \
+    double iwidth[3] = {mydata->s->iwidth[0], mydata->s->iwidth[1],            \
+                        mydata->s->iwidth[2]};                                 \
+    double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
+    double *lcounts = NULL;                                                    \
+    int lcid = mydata->s->nr_cells;                                            \
+    int ucid = 0;                                                              \
+    for (int k = 0; k < num_elements; k++) {                                   \
+      for (int j = 0; j < 3; j++) {                                            \
+        if (parts[k].x[j] < 0.0)                                               \
+          parts[k].x[j] += dim[j];                                             \
+        else if (parts[k].x[j] >= dim[j])                                      \
+          parts[k].x[j] -= dim[j];                                             \
+      }                                                                        \
+      const int cid =                                                          \
+          cell_getid(cdim, parts[k].x[0] * iwidth[0],                          \
+                     parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);    \
+      if (cid > ucid) ucid = cid;                                              \
+      if (cid < lcid) lcid = cid;                                              \
+    }                                                                          \
+    int nused = ucid - lcid + 1;                                               \
+    if ((lcounts = (double *)calloc(nused, sizeof(double))) == NULL)           \
+      error("Failed to allocate counts thread-specific buffer");               \
+    for (int k = 0; k < num_elements; k++) {                                   \
+      const int cid =                                                          \
+          cell_getid(cdim, parts[k].x[0] * iwidth[0],                          \
+                     parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);    \
+      lcounts[cid - lcid] += size;                                             \
+    }                                                                          \
+    for (int k = 0; k < nused; k++)                                            \
+      atomic_add_d(&mydata->counts[k + lcid], lcounts[k]);                     \
+    free(lcounts);                                                             \
+  }
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * part version.
+ */
+void ACCUMULATE_SIZES_MAPPER(part);
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * gpart version.
+ */
+void ACCUMULATE_SIZES_MAPPER(gpart);
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * spart version.
+ */
+void ACCUMULATE_SIZES_MAPPER(spart);
+
+/* qsort support. */
+static int ptrcmp(const void *p1, const void *p2) {
+  const double *v1 = *(const double **)p1;
+  const double *v2 = *(const double **)p2;
+  return (*v1) - (*v2);
+}
+
+/**
+ * @brief Accumulate total memory size in particles per cell.
+ *
+ * @param s the space containing the cells.
+ * @param verbose whether to report any clipped cell counts.
+ * @param counts the number of bytes in particles per cell. Should be
+ *               allocated as size s->nr_cells.
+ */
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts) {
+
+  bzero(counts, sizeof(double) * s->nr_cells);
+
+  struct counts_mapper_data mapper_data;
+  mapper_data.s = s;
+  double gsize = 0.0;
+  double *gcounts = NULL;
+  double hsize = 0.0;
+  double ssize = 0.0;
+
+  if (s->nr_gparts > 0) {
+    /* Self-gravity gets more efficient with density (see gitlab issue #640)
+     * so we end up with too much weight in cells with larger numbers of
+     * gparts, to suppress this we fix a upper weight limit based on a
+     * percentile clip to on the numbers of cells. Should be relatively
+     * harmless when not really needed. */
+    if ((gcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      error("Failed to allocate gcounts buffer.");
+    bzero(gcounts, sizeof(double) * s->nr_cells);
+    gsize = (double)sizeof(struct gpart);
+
+    mapper_data.counts = gcounts;
+    mapper_data.size = gsize;
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_gpart,
+                   s->gparts, s->nr_gparts, sizeof(struct gpart),
+                   space_splitsize, &mapper_data);
+
+    /* Get all the counts from all the nodes. */
+    if (MPI_Allreduce(MPI_IN_PLACE, gcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce particle cell gpart weights.");
+
+    /* Now we need to sort... */
+    double **ptrs = NULL;
+    if ((ptrs = (double **)malloc(sizeof(double *) * s->nr_cells)) == NULL)
+      error("Failed to allocate pointers buffer.");
+    for (int k = 0; k < s->nr_cells; k++) {
+      ptrs[k] = &gcounts[k];
+    }
+
+    /* Sort pointers, not counts... */
+    qsort(ptrs, s->nr_cells, sizeof(double *), ptrcmp);
+
+    /* Percentile cut keeps 99.8% of cells and clips above. */
+    int cut = ceil(s->nr_cells * 0.998);
+    if (cut == s->nr_cells) cut = s->nr_cells - 1;
+
+    /* And clip. */
+    int nadj = 0;
+    double clip = *ptrs[cut];
+    for (int k = cut + 1; k < s->nr_cells; k++) {
+      *ptrs[k] = clip;
+      nadj++;
+    }
+    if (verbose) message("clipped gravity part counts of %d cells", nadj);
+    free(ptrs);
+  }
+
+  /* Other particle types are assumed to correlate with processing time. */
+  if (s->nr_parts > 0) {
+    mapper_data.counts = counts;
+    hsize = (double)sizeof(struct part);
+    mapper_data.size = hsize;
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_part,
+                   s->parts, s->nr_parts, sizeof(struct part), space_splitsize,
+                   &mapper_data);
+  }
+
+  if (s->nr_sparts > 0) {
+    ssize = (double)sizeof(struct spart);
+    mapper_data.size = ssize;
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_spart,
+                   s->sparts, s->nr_sparts, sizeof(struct spart),
+                   space_splitsize, &mapper_data);
+  }
+
+  /* Merge the counts arrays across all nodes, if needed. Doesn't include any
+   * gparts. */
+  if (s->nr_parts > 0 || s->nr_sparts > 0) {
+    if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce particle cell weights.");
+  }
+
+  /* And merge with gravity counts. */
+  double sum = 0.0;
+  if (s->nr_gparts > 0) {
+    for (int k = 0; k < s->nr_cells; k++) {
+      counts[k] += gcounts[k];
+      sum += counts[k];
+    }
+    free(gcounts);
+  } else {
+    for (int k = 0; k < s->nr_cells; k++) {
+      sum += counts[k];
+    }
+  }
+
+  /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+  if (sum > (double)(IDX_MAX - 10000)) {
+    double vscale = (double)(IDX_MAX - 10000) / sum;
+    for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
+  }
+}
+
+#endif /* WITH_MPI */
+
+/*  Radial wedge support */
+/*  ===================== */
+
+/**
+ * @brief Get the wedge index for a cell.
+ *
+ * Wedges are centred on the box centre.
+ *
+ * @param p The partition structure.
+ * @param s The #space.
+ * @param c The cell to get the wedge index for.
+ *
+ * @return The wedge index.
+ */
+int partition_get_wedge_index(struct partition *p, struct space *s,
+                              struct cell *c) {
+#ifdef WITH_MPI
+
+  /* The number of wedges in theta. */
+  int theta_nwedges = p->nr_theta_slices;
+  int phi_nwedges = p->nr_phi_slices;
+
+  /* Calculate the size of a slice in theta and phi. */
+  double theta_width = p->theta_width;
+  double phi_width = p->phi_width;
+
+  /* Center cell coordinates. */
+  double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
+  double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
+  double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
+
+  /* Handle the central cell, just put it in wedge 0, there won't
+   * be particles here anyway. */
+  if (dx < (c->width[0] / 2) && dy < (c->width[1] / 2) &&
+      dz < (c->width[2] / 2)) {
+    return 0;
+  }
+
+  /* Calculate the spherical version of these coordinates. */
+  double r = sqrt(dx * dx + dy * dy + dz * dz);
+  double theta = atan2(dy, dx) + M_PI;
+  double phi = acos(dz / r);
+
+  /* Find this wedge index. */
+  int phi_ind = ((int)floor(phi / phi_width) + phi_nwedges) % phi_nwedges;
+  int theta_ind =
+      ((int)floor(theta / theta_width) + theta_nwedges) % theta_nwedges;
+  return theta_ind * phi_nwedges + phi_ind;
+#endif /* WITH_MPI */
+  return 0;
+}
+
+/**
+ * @brief Partition the into radial wedges.
+ *
+ * This partitions the space into a number of radial wedges, each
+ * with approximately equal numbers of particles and assigns these
+ * to nodes in a round-robin fashion. These wedges are centred on
+ * the box centre.
+ *
+ * @param initial_partition The initial partition structure.
+ * @param s The #space.
+ * @param nregions The number of regions to partition into.
+ */
+static int partition_radial_wedges(struct partition *initial_partition,
+                                   struct space *s, int nregions) {
+#ifdef WITH_MPI
+
+  /* Get useful information */
+  int nwedges = initial_partition->nr_wedges;
+
+  /* Space for counts of particle memory use per cell. */
+  double *weights = NULL;
+  if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    error("Failed to allocate cell weights buffer.");
+
+  /* Check each particle and accumulate the sizes per cell. */
+  partition_accumulate_sizes(s, s->e->verbose, weights);
+
+  /* Set up an array to store slice weights. */
+  double tot_weight = 0;
+  double *wedge_weights;
+  if ((wedge_weights = (double *)malloc(sizeof(double) * nwedges)) == NULL)
+    error("Failed to allocate wedge_weights buffer.");
+  bzero(wedge_weights, sizeof(double) * nwedges);
+
+  /* Accumulate the weights in each wedge. */
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+
+    /* Get the cell. */
+    struct cell *c = &s->cells_top[cid];
+
+    /* Get this cells weight. */
+    double w = weights[cid];
+
+    /* Get the wedge index. */
+    int wedge_ind = partition_get_wedge_index(initial_partition, s, c);
+
+    /* Add this cell to its wedge. */
+    tot_weight += w;
+    wedge_weights[wedge_ind] += w;
+  }
+
+  /* What would a perfectly distributed weight look like? */
+  double split_weight = tot_weight / nregions;
+
+  /* Set up an array dictating where each wedge ends up. */
+  int *wedgelist;
+  double *region_weights;
+  if ((wedgelist = (int *)malloc(sizeof(int) * nwedges)) == NULL)
+    error("Failed to allocate wedgelist");
+  if ((region_weights = (double *)malloc(sizeof(double) * nregions)) == NULL)
+    error("Failed to allocate region_weights buffer.");
+  bzero(region_weights, sizeof(double) * nregions);
+
+  /* Lets distribute these wedges. */
+  int select = 0;
+  for (int iwedge = 0; iwedge < nwedges; iwedge++) {
+
+    /* Assign this slice and include its weight. */
+    wedgelist[iwedge] = select;
+    region_weights[select] += wedge_weights[iwedge];
+
+    /* Have we filled this region/rank? */
+    if (region_weights[select] > split_weight) {
+      select++;
+      select = select % nregions;
+    }
+  }
+
+  /* Now lets tell each cell where it is. */
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+
+    /* Get the cell. */
+    struct cell *c = &s->cells_top[cid];
+
+    /* Get the wedge index. */
+    int wedge_ind = partition_get_wedge_index(initial_partition, s, c);
+
+    /* Assign the nodeID we have found. */
+    s->cells_top[cid].nodeID = wedgelist[wedge_ind];
+  }
+
+  free(weights);
+  free(wedge_weights);
+  free(wedgelist);
+  free(region_weights);
+
+  return check_complete(s, (s->e->nodeID == 0), nregions);
+#endif /* WITH_MPI */
+  return 0;
+}
+
 /**
  * @brief Initial partition of space cells.
  *
@@ -298,6 +653,16 @@ void partition_initial_partition(struct partition *initial_partition,
     if (!partition_grid(initial_partition, nr_nodes, s)) {
       if (nodeID == 0)
         message("Grid initial partition failed, using a vectorised partition");
+      initial_partition->type = INITPART_VECTORIZE;
+      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
+      return;
+    }
+
+  } else if (initial_partition->type == INITPART_WEDGE) {
+    /* The wedge technique can fail, so check for this before proceeding. */
+    if (!partition_radial_wedges(initial_partition, s, nr_nodes)) {
+      if (nodeID == 0)
+        message("Wedge initial partition failed, using a vectorised partition");
       initial_partition->type = INITPART_VECTORIZE;
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
       return;
@@ -447,6 +812,9 @@ void partition_init(struct partition *partition,
     case 'v':
       partition->type = INITPART_VECTORIZE;
       break;
+    case 'w':
+      partition->type = INITPART_WEDGE;
+      break;
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
     case 'r':
       partition->type = INITPART_METIS_NOWEIGHT;
@@ -460,14 +828,14 @@ void partition_init(struct partition *partition,
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid', 'region', 'memory', 'edgememory' or "
-          "'vectorized'");
+          "Permitted values are: 'grid', 'region', 'memory', 'edgememory', "
+          "'wedge' or 'vectorized'");
 #else
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid' or 'vectorized' when compiled "
-          "without METIS or ParMETIS.");
+          "Permitted values are: 'grid', 'vectorized', or `wedge` when "
+          "compiled without METIS or ParMETIS.");
 #endif
   }
 
@@ -549,6 +917,19 @@ void partition_init(struct partition *partition,
   repartition->use_fixed_costs = parser_get_opt_param_int(
       params, "DomainDecomposition:use_fixed_costs", 0);
   if (repartition->type == REPART_NONE) repartition->use_fixed_costs = 0;
+
+  /* Number of wedges to use for the wedge domain decomposition (only
+   * used if partition->type == INITPART_WEDGE). */
+  partition->nr_wedges = parser_get_opt_param_int(
+      params, "DomainDecomposition:wedges_per_rank", 8);
+  partition->nr_wedges *= nr_nodes;
+
+  /* Derive the theta and phi properties of the wedges (only used if
+   * partition->type == INITPART_WEDGE). */
+  partition->nr_theta_slices = (int)sqrt((double)partition->nr_wedges / 2.0);
+  partition->nr_phi_slices = partition->nr_wedges / partition->nr_theta_slices;
+  partition->theta_width = 2.0 * M_PI / (double)partition->nr_theta_slices;
+  partition->phi_width = M_PI / (double)partition->nr_phi_slices;
 
   /* Check if this is true or required and initialise them. */
   if (repartition->use_fixed_costs || repartition->trigger > 1) {
