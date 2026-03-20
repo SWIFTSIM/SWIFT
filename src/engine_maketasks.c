@@ -1322,7 +1322,10 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
-    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+    if (c->mpi.tag < 0)
+      error("Trying to receive from untagged cell. (c: %s/%s)",
+            cellID_names[c->type], subcellID_names[c->subtype]);
+
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
@@ -2168,49 +2171,8 @@ void engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
-
-  /* Let's cross-check that we had a proxy for that cell */
-  if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
-
-    /* Find the proxy for this node */
-    const int proxy_id = e->proxy_ind[cj->nodeID];
-    if (proxy_id < 0)
-      error("No proxy exists for that foreign node %d!", cj->nodeID);
-
-    const struct proxy *p = &e->proxies[proxy_id];
-
-    /* Check whether the cell exists in the proxy */
-    int n = 0;
-    for (; n < p->nr_cells_in; n++)
-      if (p->cells_in[n] == cj) {
-        break;
-      }
-    if (n == p->nr_cells_in)
-      error(
-          "Cell %d not found in the proxy but trying to construct "
-          "grav task!",
-          cjd);
-  } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-    /* Find the proxy for this node */
-    const int proxy_id = e->proxy_ind[ci->nodeID];
-    if (proxy_id < 0)
-      error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-    const struct proxy *p = &e->proxies[proxy_id];
-
-    /* Check whether the cell exists in the proxy */
-    int n = 0;
-    for (; n < p->nr_cells_in; n++)
-      if (p->cells_in[n] == ci) {
-        break;
-      }
-    if (n == p->nr_cells_in)
-      error(
-          "Cell %d not found in the proxy but trying to construct "
-          "grav task!",
-          cid);
-  }
+  /* Ensure we have the proxy for the foreign cell */
+  engine_check_proxy_exists(e, ci, cj, nodeID);
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
 }
@@ -2298,19 +2260,9 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         /* Avoid empty cells (except voids). */
         if (cell_is_empty_grav(cj)) continue;
 
-        /* Completely foreign pairs also get the Nigel treatment (AKA are kicked
-         * out of the union/we skip them). Unless they are void cells, Nigels a
-         * fan of those (and we need to make tasks for them to be later split
-         * even if they are empty and foreign). */
-        /* TODO: Once we have the partitioning sorted it would be far better
-         * to know exactly which void cells contain local zoom progeny. We
-         * only actually need to make tasks for void cells with at least one
-         * local zoom cell within their tree. This could be achieved with a
-         * flag of some form. */
-        if ((ci->nodeID != nodeID && cj->nodeID != nodeID) &&
-            (ci->subtype != cell_subtype_void &&
-             cj->subtype != cell_subtype_void))
-          continue;
+        /* Completely foreign pairs also get the Nigel treatment (AKA are
+         * kicked out of the union/we skip them). */
+        if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
 
         /* Do we need a pair interaction for these cells? */
         if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
@@ -4315,10 +4267,12 @@ void engine_maketasks(struct engine *e) {
     if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
   }
 
-  /* Verify that all top-level zoom cells were reached during task splitting */
+  /* Verify that all local top-level zoom cells were reached during task
+   * splitting */
   if (e->s->with_zoom_region) {
-    for (int i = 0; i < e->s->zoom_props->nr_zoom_cells; i++) {
-      struct cell *c = &e->s->cells_top[i];
+    for (int i = 0; i < e->s->zoom_props->nr_local_zoom_cells; i++) {
+      struct cell *c =
+          &e->s->cells_top[e->s->zoom_props->local_zoom_cells_top[i]];
       if (c->grav.count > 0 && !c->reached_in_task_split) {
         error(
             "Top-level zoom cell (ind=%d, cellID=%lld) with %d particles was "
