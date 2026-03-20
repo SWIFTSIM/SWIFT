@@ -727,7 +727,8 @@ int main(int argc, char *argv[]) {
 #if defined(TRACERS_EAGLE) || defined(TRACERS_FLAMINGO)
   if (!with_cooling && !with_temperature)
     error(
-        "Error: Cannot use EAGLE tracers without --cooling or --temperature.");
+        "Error: Cannot use EAGLE or FLAMINGO tracers without --cooling or "
+        "--temperature.");
 #endif
 
 /* Let's pin the main thread, now we know if affinity will be used. */
