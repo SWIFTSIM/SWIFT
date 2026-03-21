@@ -2331,48 +2331,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
-            /* Let's cross-check that we had a proxy for that cell */
-            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
-
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[cj->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", cj->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == cj) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cjd);
-            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[ci->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == ci) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cid);
-            }
+            engine_check_proxy_exists(e, ci, cj, nodeID);
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
           }
