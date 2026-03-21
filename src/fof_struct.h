@@ -36,6 +36,24 @@ struct fof_gpart_data {
   size_t group_size;
 };
 
+#ifdef WITH_FOF_GALAXIES
+/**
+ * @brief Particle-carried fields for the FoF galaxies scheme (e.g. KIARA).
+ */
+struct fof_galaxy_data {
+
+  /*! Host galaxy stellar mass */
+  float stellar_mass;
+
+  /*! Host galaxy gas mass */
+  float gas_mass;
+
+  /*! Host galaxy specific star formation rate = SFR/M* */
+  float specific_sfr;
+};
+
+#endif
+
 #else
 
 /**

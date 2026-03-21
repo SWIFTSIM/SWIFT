@@ -95,8 +95,8 @@ static INLINE void chemistry_print_backend(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
-    struct part *restrict p, const struct chemistry_global_data *cd,
-    const struct cosmology *cosmo) {}
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct chemistry_global_data *cd, const struct cosmology *cosmo) {}
 
 /**
  * @brief Finishes the gradient calculation.
@@ -139,7 +139,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
  * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
-    struct part *restrict p, const struct cosmology *cosmo,
+    struct part *restrict p, struct xpart *xp, const struct cosmology *cosmo,
     const int with_cosmology, const double time, const double dt,
     const struct chemistry_global_data *cd) {}
 

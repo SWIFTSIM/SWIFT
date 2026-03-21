@@ -40,6 +40,8 @@
 #include "./chemistry/QLA/chemistry_struct.h"
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry_struct.h"
+#elif defined(CHEMISTRY_KIARA)
+#include "./chemistry/KIARA/chemistry_struct.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif

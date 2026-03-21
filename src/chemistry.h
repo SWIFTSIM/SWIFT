@@ -49,6 +49,9 @@
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry.h"
 #include "./chemistry/EAGLE/chemistry_iact.h"
+#elif defined(CHEMISTRY_KIARA)
+#include "./chemistry/KIARA/chemistry.h"
+#include "./chemistry/KIARA/chemistry_iact.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif

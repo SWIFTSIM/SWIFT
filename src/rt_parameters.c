@@ -31,7 +31,7 @@
  * The fake initialisation below forces the compiler to keep the
  * instance and pass it to the linker stage.
  */
-#if defined(RT_GEAR)
+#if defined(RT_GEAR) || defined(RT_KIARA)
 struct rt_parameters rt_params = {.reduced_speed_of_light = 1.f,
                                   .reduced_speed_of_light_inverse = 1.f};
 #else

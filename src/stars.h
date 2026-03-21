@@ -36,6 +36,9 @@
 #include "./stars/GEAR/stars.h"
 #include "./stars/GEAR/stars_iact.h"
 #include "./stars/GEAR/stars_stellar_type.h"
+#elif defined(STARS_KIARA)
+#include "./stars/KIARA/stars.h"
+#include "./stars/KIARA/stars_iact.h"
 #else
 #error "Invalid choice of star model"
 #endif

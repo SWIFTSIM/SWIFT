@@ -157,10 +157,12 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
-    struct part *restrict p, const struct rt_props *rt_props,
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct rt_props *rt_props,
     const struct hydro_props *hydro_props,
     const struct phys_const *restrict phys_const,
     const struct unit_system *restrict us,
+    const struct cooling_function_data *cool_func,
     const struct cosmology *restrict cosmo) {}
 
 /**
@@ -168,7 +170,8 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
  * of a given particle (during timestep tasks)
  *
  * @param p Particle to work on.
- * @param rt_props RT properties struct
+ * @param xp Particle extra data.
+ * @param rt_props RT properties struct.
  * @param cosmo The current cosmological model.
  * @param hydro_props The #hydro_props.
  * @param phys_const The physical constants in internal units.
@@ -176,11 +179,12 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static float rt_compute_timestep(
-    const struct part *restrict p, const struct xpart *restrict xp,
-    struct rt_props *rt_props, const struct cosmology *restrict cosmo,
-    const struct hydro_props *hydro_props,
-    const struct phys_const *restrict phys_const,
-    const struct unit_system *restrict us) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct phys_const* restrict phys_const,
+    const struct cooling_function_data* restrict cooling,
+    const struct unit_system* restrict us) {
 
   return FLT_MAX;
 }
@@ -250,24 +254,57 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part *restrict p, struct rt_props *rtp, const double dt,
     const struct cosmology *restrict cosmo) {}
+
+/**
+ * @brief Compute the time-step length for an RT step of a particle from given
+ * integer times ti_beg and ti_end. This time-step length is then used to
+ * compute the actual time integration of the transport/force step and the
+ * thermochemistry. This is not used to determine the time-step length during
+ * the time-step tasks.
+ *
+ * @param ti_beg Start of the time-step (on the integer time-line).
+ * @param ti_end End of the time-step (on the integer time-line).
+ * @param time_base Minimal time-step size on the time-line.
+ * @param with_cosmology Are we running with cosmology integration?
+ * @param cosmo The #cosmology object.
+ *
+ * @return The time-step size for the rt integration. (internal units).
+ */
+__attribute__((always_inline)) INLINE static double rt_part_dt_therm(
+    const integertime_t ti_beg, const integertime_t ti_end,
+    const double time_base, const int with_cosmology,
+    const struct cosmology* cosmo) {
+
+    return FLT_MAX;
+}
+
 /**
  * @brief Do the thermochemistry on a particle.
+ *
+ * This function wraps around rt_do_thermochemistry function.
  *
  * @param p Particle to work on.
  * @param xp Pointer to the particle' extended data.
  * @param rt_props RT properties struct
  * @param cosmo The current cosmological model.
  * @param hydro_props The #hydro_props.
+ * @param floor_props Properties of the entropy floor.
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param dt The time-step of this particle.
+ * @param dt_therm The time-step operator used for thermal quantities.
+ * @param time The current time (since the Big Bang or start of the run) in
+ * internal units.
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part *restrict p, struct xpart *restrict xp,
-    struct rt_props *rt_props, const struct cosmology *restrict cosmo,
-    const struct hydro_props *hydro_props,
-    const struct phys_const *restrict phys_const,
-    const struct unit_system *restrict us, const double dt) {}
+    struct part* restrict p, struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props,
+    const struct phys_const* restrict phys_const,
+    const struct cooling_function_data* restrict cooling,
+    const struct unit_system* restrict us, const double dt,
+    const double dt_therm, const double time) {}
 
 /**
  * @brief Extra operations done during the kick.

@@ -1763,7 +1763,7 @@ void io_select_hydro_fields(const struct part *const parts,
   *num_fields +=
       star_formation_write_particles(parts, xparts, list + *num_fields);
   if (with_rt) {
-    *num_fields += rt_write_particles(parts, list + *num_fields);
+    *num_fields += rt_write_particles(parts, xparts, list + *num_fields);
   }
   *num_fields += extra_io_write_particles(parts, xparts, list + *num_fields,
                                           with_cosmology);

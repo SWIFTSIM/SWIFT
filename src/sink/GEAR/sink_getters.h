@@ -106,6 +106,9 @@ INLINE static float sink_get_physical_div_v_from_part(
   div_v = (1. / 3.) * (p->viscosity.velocity_gradient[0][0] +
                        p->viscosity.velocity_gradient[1][1] +
                        p->viscosity.velocity_gradient[2][2]);
+#elif MAGMA2_SPH
+  /* Copy the velocity divergence */
+  div_v = hydro_get_physical_div_v(p, cosmo);
 #elif HOPKINS_PU_SPH
   div_v = p->density.div_v;
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)

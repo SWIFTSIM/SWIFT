@@ -34,6 +34,8 @@
 #define feedback_use_newborn_stars 1
 #elif defined(FEEDBACK_AGORA)
 #define feedback_use_newborn_stars 1
+#elif defined(FEEDBACK_KIARA)
+#define feedback_use_newborn_stars 0
 #else
 #error "Invalid choice of feedback model"
 #endif

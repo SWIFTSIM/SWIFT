@@ -130,6 +130,9 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     cooling_first_init_part(phys_const, us, hydro_props, cosmo, cool_func,
                             &p[k], &xp[k]);
 
+    /* And the feedback */
+    feedback_first_init_part(&p[k], &xp[k]);
+
     /* And the tracers */
     tracers_first_init_xpart(&p[k], &xp[k], us, phys_const, cosmo, hydro_props,
                              cool_func);

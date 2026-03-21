@@ -24,6 +24,11 @@
 #define star_formation_need_unique_id 0
 
 /**
+ * @brief Star-formation-related properties stored in the particle data.
+ */
+struct star_formation_part_data {};
+
+/**
  * @brief Star-formation-related properties stored in the extended particle
  * data.
  */

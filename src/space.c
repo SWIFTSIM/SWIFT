@@ -853,15 +853,18 @@ void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
   const struct phys_const *restrict phys_const = e->physical_constants;
   const struct unit_system *restrict iu = e->internal_units;
   const struct cosmology *restrict cosmo = e->cosmology;
+  const struct cooling_function_data *cool_func = e->cooling_func;
 
   struct part *restrict parts = (struct part *)map_data;
+  const ptrdiff_t delta = parts - s->parts;
+  struct xpart *restrict xp = s->xparts + delta;
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
   for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins)
-      rt_convert_quantities(&parts[k], rt_props, hydro_props, phys_const, iu,
-                            cosmo);
+      rt_convert_quantities(&parts[k], &xp[k], rt_props, hydro_props, phys_const, iu,
+                            cool_func, cosmo);
   }
 }
 

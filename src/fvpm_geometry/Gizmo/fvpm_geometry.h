@@ -24,7 +24,7 @@
 #error "Combining GIZMO MFM and GEAR-RT not implemented yet."
 #endif
 
-#if defined(GIZMO_MFV_SPH) || defined(RT_GEAR)
+#if defined(GIZMO_MFV_SPH) || defined(RT_GEAR) || defined(RT_KIARA)
 #include "./MFV/fvpm_geometry.h"
 #elif defined(GIZMO_MFM_SPH)
 #include "./MFM/fvpm_geometry.h"

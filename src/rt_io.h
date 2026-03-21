@@ -34,6 +34,8 @@
 #include "./rt/debug/rt_io.h"
 #elif defined(RT_GEAR)
 #include "./rt/GEAR/rt_io.h"
+#elif defined(RT_KIARA)
+#include "./rt/KIARA/rt_io.h"
 #elif defined(RT_SPHM1RT)
 #include "./rt/SPHM1RT/rt_io.h"
 #else

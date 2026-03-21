@@ -122,9 +122,11 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part *restrict pi, struct part *restrict pj,
+    struct xpart *restrict xpi, struct xpart *restrict xpj, const float a,
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology,
+    const struct phys_const *phys_const,
     const struct chemistry_global_data *chem_data) {}
 
 /**

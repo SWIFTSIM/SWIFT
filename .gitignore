@@ -77,6 +77,8 @@ examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
 examples/SmallCosmoVolume/SmallCosmoVolume_DM/power_spectra
 examples/SmallCosmoVolume/SmallCosmoVolume_cooling/snapshots/
 examples/SmallCosmoVolume/SmallCosmoVolume_hydro/snapshots/
+examples/**/chem5
+examples/**/CloudyData_UVB=FG2011_shielded.h5
 examples/**/CloudyData_UVB=HM2012.h5
 examples/**/CloudyData_UVB=HM2012_shielded.h5
 examples/**/CloudyData_UVB=HM2012_high_density.h5

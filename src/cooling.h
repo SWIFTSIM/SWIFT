@@ -53,6 +53,8 @@
 #include "./cooling/EAGLE/cooling.h"
 #elif defined(COOLING_PS2020)
 #include "./cooling/PS2020/cooling.h"
+#elif defined(COOLING_KIARA)
+#include "./cooling/KIARA/cooling.h"
 #else
 #error "Invalid choice of cooling function."
 #endif

@@ -36,6 +36,8 @@
 #include "./rt/SPHM1RT/rt_properties.h"
 #elif defined(RT_GEAR)
 #include "./rt/GEAR/rt_properties.h"
+#elif defined(RT_KIARA)
+#include "./rt/KIARA/rt_properties.h"
 #else
 #error "Invalid choice of radiation scheme"
 #endif

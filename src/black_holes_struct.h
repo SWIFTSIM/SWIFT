@@ -37,6 +37,8 @@
 #include "./black_holes/EAGLE/black_holes_struct.h"
 #elif defined(BLACK_HOLES_SPIN_JET)
 #include "./black_holes/SPIN_JET/black_holes_struct.h"
+#elif defined(BLACK_HOLES_OBSIDIAN)
+#include "./black_holes/Obsidian/black_holes_struct.h"
 #else
 #error "Invalid choice of black hole model."
 #endif

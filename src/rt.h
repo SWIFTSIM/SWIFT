@@ -38,6 +38,9 @@
 #elif defined(RT_GEAR)
 #include "./rt/GEAR/rt.h"
 #include "./rt/GEAR/rt_iact.h"
+#elif defined(RT_KIARA)
+#include "./rt/KIARA/rt.h"
+#include "./rt/KIARA/rt_iact.h"
 #elif defined(RT_SPHM1RT)
 #include "./rt/SPHM1RT/rt.h"
 #include "./rt/SPHM1RT/rt_iact.h"

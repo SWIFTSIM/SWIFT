@@ -256,7 +256,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
 
   float new_dt =
       rt_compute_timestep(p, xp, e->rt_props, e->cosmology, e->hydro_properties,
-                          e->physical_constants, e->internal_units);
+                          e->physical_constants, e->cooling_func, e->internal_units);
 
   if ((e->policy & engine_policy_cosmology))
     /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/

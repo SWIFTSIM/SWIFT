@@ -82,6 +82,10 @@
 #include "./hydro/Gasoline/hydro.h"
 #include "./hydro/Gasoline/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Gasoline-2 (Wadsley+ 2017)"
+#elif defined(MAGMA2_SPH)
+#include "./hydro/MAGMA2/hydro.h"
+#include "./hydro/MAGMA2/hydro_iact.h"
+#define SPH_IMPLEMENTATION "MAGMA2 (Rosswog 2020)"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro.h"
 #include "./hydro/AnarchyPU/hydro_iact.h"

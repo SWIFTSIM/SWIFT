@@ -2673,7 +2673,12 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     centre_of_mass[index * 3 + 2] += gparts[i].mass * x[2];
 
     /* Should we seed a BH in this group? */
-    if (!has_black_hole[index] && group_mass[index] > seed_halo_mass) {
+    float group_mass_for_seeding = group_mass[index];
+#ifdef WITH_FOF_GALAXIES
+    /* In Kiara this is actually a limit on stellar mass not halo mass */
+    group_mass_for_seeding = stellar_mass[index];
+#endif
+    if (!has_black_hole[index] && group_mass_for_seeding > seed_halo_mass) {
 
       /* Is this a gas particle? */
       if (gparts[i].type == swift_type_gas) {
@@ -2752,7 +2757,12 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     radii[index] = fmaxf(radii[index], r);
 
     /* Should we seed a BH in this group? */
-    if (!has_black_hole[index] && group_mass[index] > seed_halo_mass) {
+    float group_mass_for_seeding = group_mass[index];
+#ifdef WITH_FOF_GALAXIES
+    /* In Kiara this is actually a limit on stellar mass not halo mass */
+    group_mass_for_seeding = stellar_mass[index];
+#endif
+    if (!has_black_hole[index] && group_mass_for_seeding > seed_halo_mass) {
 
       /* Is this a gas particle? */
       if (gparts[i].type == swift_type_gas) {
@@ -2763,6 +2773,33 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
           (*number_of_local_seeds)++;
       }
     }
+
+#ifdef WITH_FOF_GALAXIES
+    /* Get a handle on the gpart. */
+    const struct gpart *restrict gp = &gparts[i];
+
+    /* Load FoF data into particles of various types */
+    if (gp->type == swift_type_gas) {
+      struct part *restrict p = &(s->parts[-gp->id_or_neg_offset]);
+      p->galaxy_data.stellar_mass = stellar_mass[index];
+      p->galaxy_data.gas_mass = gas_mass[index];
+      if (stellar_mass[index] > 0.f) p->galaxy_data.specific_sfr =
+          star_formation_rate[index] / stellar_mass[index];
+    } else if (gp->type == swift_type_stars) {
+      struct spart *restrict sp = &(s->sparts[-gp->id_or_neg_offset]);
+      sp->galaxy_data.stellar_mass = stellar_mass[index];
+      sp->galaxy_data.gas_mass = gas_mass[index];
+      if (stellar_mass[index] > 0.f) sp->galaxy_data.specific_sfr =
+          star_formation_rate[index] / stellar_mass[index];
+    } else if (gp->type == swift_type_black_hole) {
+      struct bpart *restrict bp = &(s->bparts[-gp->id_or_neg_offset]);
+      bp->galaxy_data.stellar_mass = stellar_mass[index];
+      bp->galaxy_data.gas_mass = gas_mass[index];
+      if (stellar_mass[index] > 0.f) bp->galaxy_data.specific_sfr =
+          star_formation_rate[index] / stellar_mass[index];
+      bp->galactocentric_radius = r;
+    }
+#endif
   }
 
 #ifdef WITH_MPI
@@ -2831,6 +2868,9 @@ void fof_seed_black_holes(const struct fof_props *props,
 
   /* Direct pointers to the arrays */
   double *group_mass = props->group_mass;
+#ifdef WITH_FOF_GALAXIES
+  float *stellar_mass = props->group_stellar_mass;
+#endif
   char *has_black_hole = props->has_black_hole;
   long long *id_gas_particle_to_convert = props->id_gas_particle_to_convert;
 
@@ -2858,7 +2898,11 @@ void fof_seed_black_holes(const struct fof_props *props,
     const size_t index = gparts[i].fof_data.group_id - 1;
 
     /* Should we seed a BH in this group? */
-    if (!has_black_hole[index] && group_mass[index] > seed_halo_mass) {
+    float group_mass_for_seeding = group_mass[index];
+#ifdef WITH_FOF_GALAXIES
+    group_mass_for_seeding = stellar_mass[index];
+#endif
+    if (!has_black_hole[index] && group_mass_for_seeding > seed_halo_mass) {
 
       /* Does it match the max density for this group?
        * (i.e. is it the particle we identified as the one to convert?) */

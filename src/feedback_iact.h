@@ -33,6 +33,8 @@
 #include "./feedback/GEAR/feedback_iact.h"
 #elif defined(FEEDBACK_AGORA)
 #include "./feedback/AGORA/feedback_iact.h"
+#elif defined(FEEDBACK_KIARA)
+#include "./feedback/KIARA/feedback_iact.h"
 #else
 #error "Invalid choice of feedback model"
 #endif

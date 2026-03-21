@@ -57,12 +57,13 @@ INLINE static int rt_read_stars(const struct spart *sparts,
  * transfer data of hydro particles.
  *
  * @param parts The particle array.
+ * @param xparts The particle extra information.
  * @param list The list of i/o properties to write.
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int rt_write_particles(const struct part *parts,
-                                     struct io_props *list) {
+INLINE static int rt_write_particles(const struct part* parts,
+                const struct xpart* xparts, struct io_props* list) {
   return 0;
 }
 

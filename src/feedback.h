@@ -34,6 +34,9 @@
 #include "./feedback/GEAR/feedback.h"
 #elif defined(FEEDBACK_AGORA)
 #include "./feedback/AGORA/feedback.h"
+#elif defined(FEEDBACK_KIARA)
+#include "./feedback/KIARA/feedback.h"
+#define EXTRA_STAR_LOOPS
 #else
 #error "Invalid choice of feedback model"
 #endif

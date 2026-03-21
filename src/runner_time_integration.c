@@ -90,6 +90,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
+  const struct feedback_props *feedback_props = e->feedback_props;
   const int periodic = e->s->periodic;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   struct part *restrict parts = c->hydro.parts;
@@ -165,6 +166,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
               ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
               ti_current);
 #endif
+
+        /* Rennehan: Here we recouple the wind particles */
+        feedback_recouple_part(p, xp, e, with_cosmology, cosmo, feedback_props);
 
         /* Time intervals for this half-kick */
         const double dt_kick_grav = kick_get_grav_kick_dt(
@@ -1394,15 +1398,20 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       /* Bip, bip, bip... wake-up time */
       if (p->limiter_data.wakeup != time_bin_not_awake) {
 
-        if (!part_is_active(p, e) && p->limiter_data.to_be_synchronized) {
+        /*if (!part_is_active(p, e) && p->limiter_data.to_be_synchronized) {
           warning(
               "Not limiting particle with id %lld because it needs to be "
-              "synced.",
-              p->id);
+              "synced tdel=%g dec=%d.",
+              p->id,
+          // MATTHIEU: TODO: Fix this
+#ifdef FEEDBACK_KIARA
+              p->feedback_data.decoupling_delay_time, p->decoupled
+#else
+              0., 0
+#endif
+          );
           continue;
-        }
-
-        // message("Limiting particle %lld in cell %lld", p->id, c->cellID);
+        }*/
 
         /* Apply the limiter and get the new end of time-step */
         const integertime_t ti_end_new = timestep_limit_part(p, xp, e);

@@ -34,6 +34,8 @@
 #include "./rt/debug/rt_parameters.h"
 #elif defined(RT_GEAR)
 #include "./rt/GEAR/rt_parameters.h"
+#elif defined(RT_KIARA)
+#include "./rt/KIARA/rt_parameters.h"
 #elif defined(RT_SPHM1RT)
 #include "./rt/SPHM1RT/rt_parameters.h"
 #elif defined(RT_NONE)

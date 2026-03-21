@@ -45,6 +45,10 @@ void test(void) {
   const float mu_0 = 4. * M_PI;
   const integertime_t ti_current = 1;
   const double time_base = 1e-5;
+#ifdef CHEMISTRY_KIARA
+  cd.use_firehose_wind_model = 1;
+  cd.firehose_max_velocity = 1000000.;
+#endif /* CHEMISTRY_KIARA */
   const int with_cosmology = floor(random_uniform(0., 2.));
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
@@ -66,6 +70,10 @@ void test(void) {
   pj.id = 2ll;
   pi.time_bin = 1;
   pj.time_bin = 1;
+  pi.decoupled = floor(random_uniform(0, 2.));
+  pj.decoupled = floor(random_uniform(0, 2.));
+
+  message("%d %d", pi.decoupled, pj.decoupled);
 
 #if defined(GIZMO_MFV_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does
@@ -117,6 +125,11 @@ void test(void) {
   struct xpart xpi, xpj;
   bzero(&xpi, sizeof(struct xpart));
   bzero(&xpj, sizeof(struct xpart));
+
+  for (size_t i = 0; i < sizeof(struct xpart) / sizeof(float); ++i) {
+    *(((float *)&xpi) + i) = (float)random_uniform(0., 2.);
+    *(((float *)&xpj) + i) = (float)random_uniform(0., 2.);
+  }
 
   /* Make some copies */
   struct part pi2, pj2;

@@ -818,7 +818,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         hydro_end_force(p, cosmo);
         mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);
-        chemistry_end_force(p, cosmo, with_cosmology, e->time, dt,
+        chemistry_end_force(p, xp, cosmo, with_cosmology, e->time, dt,
                             e->chemistry);
 
         /* Apply the forcing terms (if any) */
@@ -1242,9 +1242,12 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   struct rt_props *rt_props = e->rt_props;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct entropy_floor_properties *entropy_floor_props = e->entropy_floor;
   const struct cosmology *cosmo = e->cosmology;
   const struct phys_const *phys_const = e->physical_constants;
   const struct unit_system *us = e->internal_units;
+  const struct cooling_function_data *cooling = e->cooling_func;
+  const double time = e->time;
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1284,6 +1287,8 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
 
       const double dt =
           rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
+      const double dt_therm =
+          rt_part_dt_therm(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
 #ifdef SWIFT_DEBUG_CHECKS
       if (ti_begin != ti_current_subcycle)
         error(
@@ -1298,7 +1303,8 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       rt_finalise_transport(p, rt_props, dt, cosmo);
 
       /* And finally do thermochemistry */
-      rt_tchem(p, xp, rt_props, cosmo, hydro_props, phys_const, us, dt);
+      rt_tchem(p, xp, rt_props, cosmo, hydro_props, entropy_floor_props,
+                      phys_const, cooling, us, dt, dt_therm, time);
     }
   }
 

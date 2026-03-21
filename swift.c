@@ -212,6 +212,8 @@ int main(int argc, char *argv[]) {
   int with_line_of_sight = 0;
   int with_rt = 0;
   int with_power = 0;
+  int with_kiara = 0;
+  int with_kiarart = 0;
   int verbose = 0;
   int nr_threads = 1;
   int nr_pool_threads = -1;
@@ -309,6 +311,18 @@ int main(int argc, char *argv[]) {
           "Run with all the options needed for the AGORA model. This is "
           "equivalent to --hydro --limiter --sync --self-gravity --stars "
           "--star-formation --cooling --feedback.",
+          NULL, 0, 0),
+      OPT_BOOLEAN(
+          0, "kiara", &with_kiara,
+          "Run with all the options needed for the Kiara model. This is "
+          "equivalent to --hydro --limiter --sync --self-gravity --stars "
+          "--star-formation --cooling --feedback --black-holes --fof.",
+          NULL, 0, 0),
+      OPT_BOOLEAN(
+          0, "kiarart", &with_kiarart,
+          "Run with all the options needed for the Kiara-RT model. This is "
+          "equivalent to --hydro --limiter --sync --self-gravity --stars "
+          "--star-formation --feedback --black-holes --fof.",
           NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
@@ -424,6 +438,32 @@ int main(int argc, char *argv[]) {
     with_star_formation = 1;
     with_cooling = 1;
     with_feedback = 1;
+  }
+  if (with_kiara) {
+    with_hydro = 1;
+    with_timestep_limiter = 1;
+    with_timestep_sync = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
+    // with_hydro_decoupling = 1;
+    with_feedback = 1;
+    with_black_holes = 1;
+    with_fof = 1;
+  }
+  if (with_kiarart) {
+    with_hydro = 1;
+    with_timestep_limiter = 1;
+    with_timestep_sync = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
+    // with_hydro_decoupling = 1;
+    with_feedback = 1;
+    with_black_holes = 1;
+    with_fof = 1;
   }
 #ifdef MOVING_MESH
   if (with_hydro) {
@@ -694,9 +734,9 @@ int main(int argc, char *argv[]) {
         "Error: Cannot use radiative transfer without --feedback "
         "(even if configured --with-feedback=none).");
   }
-  if (with_rt && with_cooling) {
-    error("Error: Cannot use radiative transfer and cooling simultaneously.");
-  }
+  //if (with_rt && with_cooling) {
+  //  error("Error: Cannot use radiative transfer and cooling simultaneously.");
+  //}
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE

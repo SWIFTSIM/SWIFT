@@ -87,8 +87,13 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
   /* Effective viscosity from artificial viscosity, as in eq. 100 from
    * arXiv:1012.1885 */
+#ifndef MAGMA2_SPH
   const float nu = terms->nu * p->viscosity.alpha * c_s * p->h /
                    (2.f * (hydro_dimension + 2.f));
+#else
+  const float nu = terms->nu * p->viscosity.alpha * c_s * p->h /
+                   (2.f * (hydro_dimension + 2.f));
+#endif
 
   const float Vz_factor = terms->Vz_factor;
   const double k0 = (2. * M_PI / L) * terms->kv;
