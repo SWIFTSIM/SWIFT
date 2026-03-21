@@ -66,6 +66,7 @@ examples/*/*/yieldtables.tar.gz
 examples/*/*/yieldtables
 examples/*/*/photometry.tar.gz
 examples/*/*/photometry
+examples/*/*/photometry
 examples/*/*/plots
 examples/*/*/snapshots
 examples/*/*/restart
