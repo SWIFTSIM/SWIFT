@@ -1,4 +1,4 @@
-/*******************************************************************************
+/*********************************************A**********************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
@@ -740,7 +740,6 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->grav.parts + n_copy > top->grav.parts + top->grav.count)
     error("Copying beyond the allowed range");
-  if (c->grav.parts + n_copy > top->grav.parts + top->grav.count)
 #endif
 
   if (n_copy > 0) {
