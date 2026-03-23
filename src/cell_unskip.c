@@ -297,6 +297,7 @@ void cell_activate_super_sink_drifts(struct cell *c, struct scheduler *s) {
 
   if (c == c->hydro.super) {
     cell_activate_drift_sink(c, s);
+    cell_set_flag(c, cell_flag_do_sink_drift);
   } else {
     if (c->split) {
       for (int k = 0; k < 8; ++k) {

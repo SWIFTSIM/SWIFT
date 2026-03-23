@@ -3768,7 +3768,7 @@ void engine_print_policy(struct engine *e) {
   if (e->nodeID == 0) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
-    for (int k = 0; k <= engine_maxpolicy; k++)
+    for (int k = 0; k < engine_maxpolicy; k++)
       if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
@@ -3776,7 +3776,7 @@ void engine_print_policy(struct engine *e) {
 #else
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
-  for (int k = 0; k <= engine_maxpolicy; k++)
+  for (int k = 0; k < engine_maxpolicy; k++)
     if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);

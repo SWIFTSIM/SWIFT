@@ -35,6 +35,12 @@ module load grackle-swift/3.3.dev1
 #  Need 2.70 for Fortran support.
 module load autoconf
 
+#  Function to locate the test data. Should be in the home directory of this
+#  user when in a container.
+function link_data {
+    ln -s $HOME/${1} .
+}
+
 #  Clean sources.
 git clean -fdx
 
@@ -69,7 +75,7 @@ echo "-----------------------"
 
 #  Avoid downloading it is not necessary on COSMA which has direct access.
 #wget http://virgodb/swift-webstorage/ICs/EAGLE_low_z/EAGLE_ICs_6.hdf5
-ln -s /cosma5/data/Swift/web-storage/ICs/EAGLE_low_z/EAGLE_ICs_6.hdf5 EAGLE_ICs_6.hdf5
+link_data EAGLE_ICs_6.hdf5
 do_run ../../../swift -c -s -S -G -t 4 eagle_6.yml -n 16
 
 # Check also a dry-run
@@ -85,8 +91,8 @@ echo "SodShock threaded test, 4 threads, 256 steps"
 echo "--------------------------------------------"
 #wget http://virgodb/swift-webstorage/ICs/glassCube_64.hdf5
 #wget http://virgodb/swift-webstorage/ICs/glassCube_32.hdf5
-ln -s /cosma5/data/Swift/web-storage/ICs/glassCube_64.hdf5 glassCube_64.hdf5
-ln -s /cosma5/data/Swift/web-storage/ICs/glassCube_32.hdf5 glassCube_32.hdf5
+link_data glassCube_64.hdf5
+link_data glassCube_32.hdf5
 python makeIC.py
 do_run ../../../swift -s -t 4 -n 256 sodShock.yml
 
@@ -112,7 +118,7 @@ echo "------------------------------------------------------------------"
 echo "EAGLE_12 MPI test with ext. gravity, 4 ranks, 8 threads, 128 steps"
 echo "------------------------------------------------------------------"
 #wget http://virgodb/swift-webstorage/ICs/EAGLE_low_z/EAGLE_ICs_12.hdf5
-ln -s /cosma5/data/Swift/web-storage/ICs/EAGLE_low_z/EAGLE_ICs_12.hdf5 EAGLE_ICs_12.hdf5
+link_data EAGLE_ICs_12.hdf5
 do_run mpirun -np 4 ../../../swift_mpi -g -s -t 8 -n 1024 -PRestarts:onexit:1 eagle_12.yml
 
 #  Restart this.
@@ -142,9 +148,10 @@ echo "debugging-checks are disabled"
 do_configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=${GRACKLE_HOME}/lib
 do_make
 cd examples/SinkParticles/PlummerSphere
-ln -s /cosma5/data/Swift/web-storage/ICs/test_sink.hdf5
-ln -s /cosma5/data/Swift/web-storage/CoolingTables/CloudyData_UVB=HM2012.h5
-ln -s /cosma5/data/Swift/web-storage/FeedbackTables/POPIIsw.h5
+link_data test_sink.hdf5
+link_data CloudyData_UVB=HM2012.h5
+link_data POPIIsw.h5
 do_run ../../../swift --hydro --sinks --stars --self-gravity --feedback --cooling --threads=4 params.yml
 
 exit
+

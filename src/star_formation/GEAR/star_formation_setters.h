@@ -33,7 +33,6 @@
  * @param sp The #spart.
  * @param birth_density Birth density of the star.
  */
-
 __attribute__((always_inline)) INLINE void
 star_formation_set_spart_birth_density(struct spart *restrict sp,
                                        const float birth_density) {
@@ -46,7 +45,6 @@ star_formation_set_spart_birth_density(struct spart *restrict sp,
  * @param sp The #spart.
  * @param birth_temperature Birth temperature of the star.
  */
-
 __attribute__((always_inline)) INLINE void
 star_formation_set_spart_birth_temperature(struct spart *restrict sp,
                                            const float birth_temperature) {
@@ -59,7 +57,6 @@ star_formation_set_spart_birth_temperature(struct spart *restrict sp,
  * @param sp The #spart.
  * @param birth_mass Birth mass of the star.
  */
-
 __attribute__((always_inline)) INLINE void star_formation_set_spart_birth_mass(
     struct spart *restrict sp, const float birth_mass) {
   sp->sf_data.birth_mass = birth_mass;
@@ -71,7 +68,6 @@ __attribute__((always_inline)) INLINE void star_formation_set_spart_birth_mass(
  * @param sp The #spart.
  * @param progenitor_id The id of the particle creating sp.
  */
-
 __attribute__((always_inline)) INLINE void
 star_formation_set_spart_progenitor_id(struct spart *restrict sp,
                                        const long long progenitor_id) {
@@ -86,7 +82,6 @@ star_formation_set_spart_progenitor_id(struct spart *restrict sp,
  * @param birth_scale_factor Birth scale-factor of the star.
  * @param with_cosmology If we run with cosmology.
  */
-
 __attribute__((always_inline)) INLINE void
 star_formation_set_spart_birth_time_or_scale_factor(
     struct spart *restrict sp, const float birth_time,

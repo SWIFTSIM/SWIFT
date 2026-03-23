@@ -47,5 +47,8 @@ do_configure --with-parmetis --disable-optimization
 do_make
 do_make clean
 
+#  Formatting only from the tests.
+do_make check TESTS=testFormat.sh
+
 #  Keep simple, may have a number of these happening.
 exit

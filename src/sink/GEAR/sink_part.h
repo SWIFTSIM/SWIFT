@@ -77,15 +77,25 @@ struct sink {
   /*! Sink target stellar type */
   enum stellar_type target_type;
 
-  /*! Union for the birth time and birth scale factor */
-  union {
+  /* This mimicks sf_data */
+  struct {
 
-    /*! Birth time */
-    float birth_time;
+    /*! Union for the birth time and birth scale factor */
+    union {
 
-    /*! Birth scale factor */
-    float birth_scale_factor;
-  };
+      /*! Birth time */
+      float time;
+
+      /*! Birth scale factor */
+      float scale_factor;
+    };
+
+    /*! The birth density */
+    float density;
+
+    /*! The birth temperature */
+    float temperature;
+  } birth_data;
 
   struct {
 
