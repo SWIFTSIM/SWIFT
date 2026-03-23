@@ -23,6 +23,21 @@
 #include "space.h"
 #include "task.h"
 
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+/* METIS/ParMETIS headers only used when MPI is also available. */
+#ifdef HAVE_PARMETIS
+#include <parmetis.h>
+#endif
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
+#endif
+
+/* Forward declarations. */
+struct cell;
+
 /* Initial partitioning types. */
 enum partition_type {
   INITPART_GRID = 0,
@@ -86,11 +101,54 @@ void partition_init(struct partition *partition,
 void partition_clean(struct partition *partition,
                      struct repartition *repartition);
 
+/* Partition helper functions shared by the uniform and zoom partitioners. */
+void pick_vector(const int cdim[3], const int nregions, int *samplecells);
+void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
+                  int *samplecells);
+
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);
 void partition_restore_celllist(struct space *s,
                                 struct repartition *reparttype);
 void partition_struct_dump(struct repartition *reparttype, FILE *stream);
 void partition_struct_restore(struct repartition *reparttype, FILE *stream);
+
+/* Metis/ParMetis support. */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+struct weights_mapper_data {
+  double *weights_e;
+  double *weights_v;
+  idx_t *inds;
+  int eweights;
+  int nodeID;
+  int timebins;
+  int vweights;
+  int nr_cells;
+  int use_ticks;
+  struct cell *cells;
+};
+
+extern double repartition_costs[task_type_count][task_subtype_count];
+
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
+void partition_sizes_to_edges(struct space *s, double *counts, double *edges);
+void partition_graph_init(struct space *s, int periodic, idx_t *weights_e,
+                          idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj);
+void partition_pick_metis(int nodeID, struct space *s, int nregions,
+                          double *vertexw, double *edgew, int *celllist);
+void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
+                             double *vertexw, double *edgew, int refine,
+                             int adaptive, float itr, int *celllist);
+void partition_split_metis(struct space *s, int nregions, int *celllist);
+#endif
+
+/* Debugging. */
+#ifdef SWIFT_DEBUG_CHECKS
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+void partition_check_weights(struct task *tasks, int nr_tasks,
+                             struct weights_mapper_data *mydata,
+                             double *ref_weights_v, double *ref_weights_e);
+#endif
+#endif
 
 #endif /* SWIFT_PARTITION_H */
