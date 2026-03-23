@@ -738,7 +738,7 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       /* Drift before you send density */
       scheduler_addunlock(s, ci->hydro.super->sinks.drift, t_rho);
 
-      /* Ghost before you send density */
+      /* Ghost before you send density: i.e. first compute smoothing lengths */
       scheduler_addunlock(s, ci->hydro.super->sinks.density_ghost, t_rho);
       scheduler_addunlock(s, t_rho, ci->hydro.super->sinks.sink_ghost1);
 
@@ -751,6 +751,8 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
 	scheduler_addunlock(s, t_sink_formation_counts, t_sink_merger);
       }
 
+      /* Note that agter sink_swallow, we know who the sinks will
+	 swallow. Hence we can send both merger data at the same time */
       /* Ghost1 before you send the sink gas swallow */
       scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
                           t_sink_gas_swallow);
@@ -759,21 +761,11 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, t_sink_gas_swallow,
                           ci->hydro.super->sinks.sink_ghost2);
 
-      /* Ghost2 before you send the sink merger */
+      /* Ghost1 before you send the sink merger. */
       scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1, t_sink_merger);
-      /* scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost2, */
-      /* t_sink_merger); */
 
       /* Unlock the sink exit point after sending */
       scheduler_addunlock(s, t_sink_merger, ci->hydro.super->sinks.sink_out);
-
-      /* Now create the dependencies
-         send_sink_rho --> send_sink_gas_swallow -->
-         send_sink_merger. These dependencies ensure we do not send before the
-         previous send task was done. They also ensure that if the sink_ghost
-         or sink_do_gas, we do not break the dependencies. */
-      scheduler_addunlock(s, t_rho, t_sink_gas_swallow);
-      scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger);
     }
 
     engine_addlink(e, &ci->mpi.send, t_rho);
@@ -1463,15 +1455,6 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
         scheduler_addtask(s, task_type_recv, task_subtype_sink_gas_swallow,
                           c->mpi.tag, 0, c, NULL);
 
-    /* Now create the dependencies
-       recv_sink_rho --> recv_sink_gas_swallow -->
-       recv_sink_merger. These dependencies ensure we do not recv before the
-       previous recv task was done. They also ensure that if the sink_ghost
-       or sink_do_gas/sink_swallow are missing, one of the recv is not without
-       any upper dependency. */
-    /* scheduler_addunlock(s, t_rho, t_sink_gas_swallow); */
-    /* scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger); */
-
     if (c->hydro.count > 0) {
       /* Add dependencies recv_sink_counts --> recv rho, gas swallow, sink
 	 merger. This ensures the new counts are received before any other
@@ -1500,6 +1483,7 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
       scheduler_addunlock(s, l->t, t_rho);
     }
 
+    /* Only swallow after the gas did the force computations */
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_addunlock(s, l->t, t_sink_gas_swallow);
     }
