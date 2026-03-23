@@ -2051,9 +2051,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->sinks.sink_ghost1 =
           scheduler_addtask(s, task_type_sink_ghost1, task_subtype_none, 0,
                             /* implicit =*/1, c, NULL);
-      c->sinks.sink_ghost2 =
-          scheduler_addtask(s, task_type_sink_ghost2, task_subtype_none, 0,
-                            /* implicit =*/1, c, NULL);
     }
 
     if (with_black_holes) {
@@ -3619,13 +3616,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_sink) {
           scheduler_addunlock(sched, t_sink_swallow,
                               ci->hydro.super->sinks.sink_ghost1);
-          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
-                              t_sink_do_gas_swallow);
-
-          scheduler_addunlock(sched, t_sink_do_gas_swallow,
-                              ci->hydro.super->sinks.sink_ghost2);
-          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
-                              t_sink_do_sink_swallow);
         }
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
 
@@ -3808,13 +3798,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_sink) {
           scheduler_addunlock(sched, t_sink_swallow,
                               cj->hydro.super->sinks.sink_ghost1);
-          scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
-                              t_sink_do_gas_swallow);
-
-          scheduler_addunlock(sched, t_sink_do_gas_swallow,
-                              cj->hydro.super->sinks.sink_ghost2);
-          scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
-                              t_sink_do_sink_swallow);
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {

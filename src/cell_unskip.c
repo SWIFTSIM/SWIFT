@@ -2882,11 +2882,9 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
       if (ci_active) {
         scheduler_activate(s, ci->hydro.super->sinks.sink_ghost1);
-        scheduler_activate(s, ci->hydro.super->sinks.sink_ghost2);
       }
       if (cj_active) {
         scheduler_activate(s, cj->hydro.super->sinks.sink_ghost1);
-        scheduler_activate(s, cj->hydro.super->sinks.sink_ghost2);
       }
 
 #ifdef WITH_MPI
