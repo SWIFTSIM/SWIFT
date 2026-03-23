@@ -3511,7 +3511,7 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 
   message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/potential_normalised_5_32.txt", "w");
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/potential_unnormalised_1_32.txt", "w");
   for (int i=0; i<N_parts_old + N_parts_new; i++) {
     struct gpart gpart = p_ref[i].cell->grav.parts[p_ref[i].index];
     //message("Going to write %d", i);
@@ -4155,9 +4155,50 @@ void build_refinement_map(struct space *s, int min_depth, int max_depth, struct 
           curr_cell->refine = 1;
           //curr_cell->refine2 = 1;
           /* Step 2 */
-          mark_neighbours(s, min_depth, &levels[max_depth - i], curr_cell);
+          //mark_neighbours(s, min_depth, &levels[max_depth - i], curr_cell);
+          mark_all_neighbours(s, min_depth, &levels[max_depth -i], curr_cell);
+          sleep(10);
           break;
         }
+      }
+    }
+  }
+}
+
+enum {
+    XP = 0,  // x+1
+    XM = 1,  // x-1
+    YP = 2,  // y+1
+    YM = 3,  // y-1
+    ZP = 4,  // z+1
+    ZM = 5   // z-1
+};
+
+void mark_all_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell) {
+  //message("Marking neighbours for cell at (%lf, %lf, %lf)", curr_cell->loc[0], curr_cell->loc[1], curr_cell->loc[2]);
+  int counter = 0;
+  for (int dx = -1; dx <= 1; dx++) {
+    for (int dy = -1; dy <= 1; dy++) {
+      for (int dz = -1; dz <= 1; dz++) {
+
+        struct cell *c = curr_cell;
+          if (dx == 0 && dy == 0 && dz == 0) continue;
+
+          if (dx == 1 && c) c = c->neighbours[XP];
+          if (dx == -1 && c) c = c->neighbours[XM];
+
+          if (dy == 1 && c) c = c->neighbours[YP];
+          if (dy == -1 && c) c = c->neighbours[YM];
+
+          if (dz == 1 && c) c = c->neighbours[ZP];
+          if (dz == -1 && c) c = c->neighbours[ZM];
+
+          if (c) {
+            c->refine = 1;
+            counter += 1;
+            //message("Marked cell at (%lf, %lf, %lf)", c->loc[0], c->loc[1], c->loc[2]);
+          }
+          if (counter == 26) break;
       }
     }
   }
@@ -4202,12 +4243,50 @@ void mark_neighbours(struct space *s, int min_depth, struct AMR_levels *level, s
     level->cells[cell_getid(cdim, cell_i, j_min, cell_k)]->refine = 1;
     level->cells[cell_getid(cdim, cell_i, cell_j, k_plus)]->refine = 1;
     level->cells[cell_getid(cdim, cell_i, cell_j, k_min)]->refine = 1;
+
+    /* Create extra cells for trilinear interpolation */
+    level->cells[cell_getid(cdim, i_plus, j_plus, cell_k)]->refine = 1;
+    level->cells[cell_getid(cdim, i_plus, cell_j, k_plus)]->refine = 1;
+    level->cells[cell_getid(cdim, cell_i, j_plus, k_plus)]->refine = 1;
+    level->cells[cell_getid(cdim, i_plus, j_plus, k_plus)]->refine = 1;
+
   }
 
   else {
     for (int i=0; i<6; i++) {
       if (curr_cell->neighbours[i] != NULL) curr_cell->neighbours[i]->refine = 1;
     }
+
+    if (curr_cell->neighbours[0] != NULL) { 
+      if (curr_cell->neighbours[0]->neighbours[2] != NULL) { 
+        curr_cell->neighbours[0]->neighbours[2]->refine = 1; 
+        if (curr_cell->neighbours[0]->neighbours[2]->neighbours[4] != NULL) curr_cell->neighbours[0]->neighbours[2]->neighbours[4]->refine = 1; 
+      } 
+      if (curr_cell->neighbours[0]->neighbours[4] != NULL) { 
+        curr_cell->neighbours[0]->neighbours[4]->refine = 1; 
+        if (curr_cell->neighbours[0]->neighbours[4]->neighbours[2] != NULL) curr_cell->neighbours[0]->neighbours[4]->neighbours[2]->refine = 1; 
+      } 
+    } 
+    if (curr_cell->neighbours[2] != NULL) { 
+      if (curr_cell->neighbours[2]->neighbours[0] != NULL) { 
+        curr_cell->neighbours[2]->neighbours[0]->refine = 1; 
+        if (curr_cell->neighbours[2]->neighbours[0]->neighbours[4] != NULL) curr_cell->neighbours[2]->neighbours[0]->neighbours[4]->refine = 1; 
+      } 
+      if (curr_cell->neighbours[2]->neighbours[4] != NULL) { 
+        curr_cell->neighbours[2]->neighbours[4]->refine = 1; 
+        if (curr_cell->neighbours[2]->neighbours[4]->neighbours[0] != NULL) curr_cell->neighbours[2]->neighbours[4]->neighbours[0]->refine = 1; 
+      } 
+    } 
+    if (curr_cell->neighbours[4] != NULL) { 
+      if (curr_cell->neighbours[4]->neighbours[0] != NULL) { 
+        curr_cell->neighbours[4]->neighbours[0]->refine = 1; 
+        if (curr_cell->neighbours[4]->neighbours[0]->neighbours[2] != NULL) curr_cell->neighbours[4]->neighbours[0]->neighbours[2]->refine = 1; 
+      } 
+      if (curr_cell->neighbours[4]->neighbours[2] != NULL) { 
+        curr_cell->neighbours[4]->neighbours[2]->refine = 1; 
+        if (curr_cell->neighbours[4]->neighbours[2]->neighbours[0] != NULL) curr_cell->neighbours[4]->neighbours[2]->neighbours[0]->refine = 1; 
+      } 
+    } 
   }
 }
 
@@ -4382,7 +4461,7 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
   }
   message("Had to do post-smoothing on level %d for %d steps and the residual is %lf", current_depth, counter_post_smoothing, residual);
 
-  int normalise = 1;
+  int normalise = 0;
   if (normalise) {
 
     /* Find the mean potential on the patch */
@@ -5159,7 +5238,7 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
 
   //int cdimH[3] = {gridsize/2, gridsize/2, gridsize/2}; //For finding cells on the coarse grid
 
-  int trilinear = 0;
+  int trilinear = 1;
 
   if (trilinear) {
     interpolate_trilinear(coarse, fine);

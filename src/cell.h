@@ -376,7 +376,7 @@ struct cell {
   /*! Pointers to the next level of cells. */
   struct cell *progeny[8];
 
-  /*! Pointers to the neighbouring cells for potential calculation */
+  /*! Pointers to the 6 neighbouring cells for potential calculation */
   struct cell *neighbours[6];
 
   union {
