@@ -89,7 +89,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   float B[3] = {pj->mhd_data.B_over_rho[0] * rho,
 	            pj->mhd_data.B_over_rho[1] * rho,
 	            pj->mhd_data.B_over_rho[2] * rho};
-                
+
   /* contribution of pj to the neighbour angular magnetic field */
   float pj_m[3] = {dx[1]*B[2] - dx[2]*B[1],
 	               dx[2]*B[0] - dx[0]*B[2],
@@ -474,6 +474,11 @@ runner_iact_nonsym_feedback_apply(
           "We did some heating! id %llu star id %llu probability %.5e " 
           "random_num %.5e du %.5e du/ini %.5e", 
           pj->id, si->id, 0., 0., delta_u, delta_u / u_init); 
+      message("Coordinates of particle id %llu wrt to star part "
+              "[dx, dy, dz] = [%.5e, %.5e, %.5e], dr =  %.5e", 
+              pj->id, dx[0], dx[1], dx[2], r);
+      message("magnetic moment [mx, my, mz] = [%.5e, %.5e, %.5e]",
+                 moment[0], moment[1], moment[2]);
 
       /* Synchronize the particle on the timeline */
       timestep_sync_part(pj);
