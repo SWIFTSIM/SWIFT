@@ -46,6 +46,16 @@ enum SNII_energy_scalings {
 };
 
 /**
+ * @brief Mode of magnetic injection orientation
+ */
+enum SNII_magnetic_injection_orientation {
+  SNII_magnetic_orientation_ngb_model,   /*< plane through three nearest neighbours */ 
+  SNII_magnetic_orientation_maxB_model,  /*< orientation to maximize B injection energy */
+  SNII_magnetic_orientation_minB_model,  /*< orientation to minimize B injection energy */
+  SNII_magnetic_orientation_random_model /*< random orientation */
+};
+
+/**
  * @brief Stores AGB and SNII yield tables
  */
 struct yield_table {
@@ -127,6 +137,9 @@ struct feedback_props {
 
   /*! Are we doing SNIa feedback? */
   int with_SNIa_feedback;
+
+  /*! Are we doing MHD feedback? */
+  int with_MHD_feedback;
 
   /* ------------ Yield tables    ----------------- */
 
@@ -306,6 +319,9 @@ struct feedback_props {
   int use_birth_Z_for_f_th;
 
   /* ------------ MHD feedback properties ----------- */
+
+  /* mode of determining magnetic injection orientation */
+  enum SNII_magnetic_injection_orientation magnetic_orientation_model;
 
   /* Energy fraction used for magnetic field injection */
   float f_E_B;

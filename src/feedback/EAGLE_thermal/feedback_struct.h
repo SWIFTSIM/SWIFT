@@ -67,6 +67,9 @@ struct feedback_spart_data {
       /*! Total (unweighted) number gas neighbours in the stellar kernel */
       int ngb_N;
 
+      /* Angular magnetic field (moment) */
+      float ngb_m[3];
+
     } to_collect;
 
     /**
@@ -120,6 +123,9 @@ struct feedback_spart_data {
 
       /* Normalisation of the magnetic field injection */
       float B_inj_abs;
+
+      /* Magnetic moment */
+      float magnetic_moment[3];
 
     } to_distribute;
   };

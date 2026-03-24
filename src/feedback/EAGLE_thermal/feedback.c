@@ -112,6 +112,154 @@ double eagle_feedback_energy_fraction(const struct spart *sp,
   return f_th;
 }
 
+/** 
+ * @brief compute the properties of the magnetic field injections
+ *
+ * @param sp the #spart
+ * @param feedback_props the properties of the feedback model
+ * @param delta_u the desired change in internal energy by the SNII model
+ * @param number_of_SN_events the number of supernova events happening in 
+ * the timestep
+ * @param ti_begin the integer time of the start of the timestep
+ */
+INLINE static void compute_magnetic_feedback(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const float delta_u, const int number_of_SN_events, 
+    const integertime_t ti_begin) {
+
+  /* magnetic moment, orientation vector */
+  float m[3] = {0., 0., 1.};
+  const float ngb_m[3] = {sp->feedback_data.to_collect.ngb_m[0],
+                          sp->feedback_data.to_collect.ngb_m[1],
+                          sp->feedback_data.to_collect.ngb_m[2]};
+  const float ngb_m_abs = sqrtf(ngb_m[0]*ngb_m[0] + 
+                                ngb_m[1]*ngb_m[1] +
+                                ngb_m[2]*ngb_m[2]);
+
+  /* Choose the orientation of the magnetic moment */
+  switch (feedback_props->magnetic_orientation_model) {
+    
+    case SNII_magnetic_orientation_ngb_model: 
+      /* choose the magnetic moment perpendicular to a 
+       * plane through the closest three neighbours */
+
+      /* seperation vectors between the three nearest particles 
+       * (x_1 - x_2) and (x_1 - x_3) */
+      const float dx1[3] = {sp->feedback_data.SNII_rays[0].dx[0] - 
+                              sp->feedback_data.SNII_rays[1].dx[0],
+                            sp->feedback_data.SNII_rays[0].dx[1] - 
+                              sp->feedback_data.SNII_rays[1].dx[1],
+                            sp->feedback_data.SNII_rays[0].dx[2] - 
+                              sp->feedback_data.SNII_rays[1].dx[2]};
+      const float dx2[3] = {sp->feedback_data.SNII_rays[0].dx[0] - 
+                              sp->feedback_data.SNII_rays[2].dx[0],
+                            sp->feedback_data.SNII_rays[0].dx[1] - 
+                              sp->feedback_data.SNII_rays[2].dx[1],
+                            sp->feedback_data.SNII_rays[0].dx[2] - 
+                              sp->feedback_data.SNII_rays[2].dx[2]}; 
+
+      /* vector perpendicular to the plane is the cross-product of 
+       * the seperation vectors */
+      m[0] = dx1[1]*dx2[2] - dx1[2]*dx2[1];
+      m[1] = dx1[2]*dx2[0] - dx1[0]*dx2[2];
+      m[2] = dx1[0]*dx2[1] - dx1[1]*dx2[0];
+
+      break;
+
+    case SNII_magnetic_orientation_maxB_model:
+      /* choose the moment such that it maximizes
+       * the injected magnetic energy */
+
+      /* normalize the moment calculated in the density loop */
+      if (ngb_m_abs) {
+        m[0] = -1.f * ngb_m[0] / ngb_m_abs;
+        m[1] = -1.f * ngb_m[1] / ngb_m_abs;
+        m[2] = -1.f * ngb_m[2] / ngb_m_abs;
+      }
+
+      break;
+
+    case SNII_magnetic_orientation_minB_model:
+      /* choose the moment such that it minimizes
+       * the injected magnetic energy */
+
+      /* normalize the moment calculated in the density loop */
+      if (ngb_m_abs) {
+        m[0] = ngb_m[0] / ngb_m_abs;
+        m[1] = ngb_m[1] / ngb_m_abs;
+        m[2] = ngb_m[2] / ngb_m_abs;
+      }
+
+      break;
+
+    case SNII_magnetic_orientation_random_model:
+      /* choose a random orientation, note that the index is taken 
+       * to be eagle_SNII_feedback_num_of_rays (+ 1) as to not 
+       * coincide with the orientation of rays in the isotropic scheme 
+       * Note, for random direction we need phi and cos theta to be 
+       * uniformly distributed (not phi and theta)*/
+
+      const double rand_theta_m = random_unit_interval_part_ID_and_index(
+            sp->id, eagle_SNII_feedback_num_of_rays, ti_begin,
+            random_number_isotropic_SNII_feedback_ray_theta);
+      const double rand_phi_m = random_unit_interval_part_ID_and_index(
+            sp->id, eagle_SNII_feedback_num_of_rays + 1, ti_begin,
+            random_number_isotropic_SNII_feedback_ray_phi);
+
+      /* convert [0,1[ interval to [-1, 1[*/
+      const double cos_theta_m = 2. * rand_theta_m - 1.;
+
+      /* get polar angle */
+      const double theta_m = acos(cos_theta_m);
+
+      /* convert [0,1[ interval to [-M_PI, M_PI[ */
+      const double phi_m = 2.* M_PI * rand_phi_m - M_PI;
+
+      m[0] = sin(theta_m) * cos(phi_m);
+      m[1] = sin(theta_m) * sin(phi_m);
+      m[2] = cos_theta_m;
+
+      break;
+
+    default:
+
+      error("wrong magnetic orientation model specified");
+
+    }
+
+  /* store the desired magnetic moment */
+  sp->feedback_data.to_distribute.magnetic_moment[0] = m[0];
+  sp->feedback_data.to_distribute.magnetic_moment[1] = m[1];
+  sp->feedback_data.to_distribute.magnetic_moment[2] = m[2];
+
+  /* Compute injected magnetic field strength 
+   *
+   * Due to the stochastic nature of the SNII feedback 
+   * the thermal energy injection is not exactly f_th * E_SN * N_SNe
+   * so we calculate it here from the change in internal energy. 
+   * The final magnetic field injection strength depends on the local
+   * properties of the gas particles */
+  float E_th_tot = 0.f;
+  float B_conv_factor = 0.f;
+  for (int i = 0; i < number_of_SN_events; i++) {
+    /* TODO: take into account particles receiving two rays */
+    B_conv_factor += sp->feedback_data.SNII_rays[i].mass /
+                       sp->feedback_data.SNII_rays[i].rho;
+    E_th_tot += delta_u * sp->feedback_data.SNII_rays[i].mass;
+  }
+  B_conv_factor *= 1 / (2 * feedback_props->mu_0);
+
+  /* magnetic energy available for injection */
+  const float E_B_inj = feedback_props->f_E_B * E_th_tot;
+
+  const float B_inj = sqrtf(E_B_inj / B_conv_factor);
+
+  sp->feedback_data.to_distribute.B_inj_abs = B_inj;
+
+  /* rescale the thermal energy injection */
+  sp->feedback_data.to_distribute.SNII_delta_u *= (1 - feedback_props->f_E_B);
+}
+
 /**
  * @brief Compute the properties of the SNII stochastic feedback energy
  * injection.
@@ -237,33 +385,6 @@ INLINE static void compute_SNII_feedback(
       number_of_SN_events = eagle_SNII_feedback_num_of_rays;
     }
 
-    /* ------- Magnetic Feedback ------- */
-
-    /* Compute injected magnetic field strength 
-     *
-     * Note that due to the stochastic nature of the SNII feedback 
-     * the thermal energy injection is not exactly f_th * E_SN * N_SNe
-     * so we calculate it here from the change in internal energy. 
-     * The final magnetic field injection strength depends on the local
-     * properties of the gas particles */
-    float E_th_tot = 0.f;
-    float B_conv_factor = 0.f;
-    for (int i = 0; i < number_of_SN_events; i++) {
-      /* TODO: take into account particles receiving two rays */
-      B_conv_factor += sp->feedback_data.SNII_rays[i].mass / 
-                         sp->feedback_data.SNII_rays[i].rho; 
-      E_th_tot += delta_u * sp->feedback_data.SNII_rays[i].mass;
-    }
-    B_conv_factor *= 1 / (2 * feedback_props->mu_0);
-
-    /* magnetic energy available for injection */
-    const float E_B_inj = feedback_props->f_E_B * E_th_tot;
-
-    const float B_inj = sqrtf(E_B_inj / B_conv_factor);
-
-    /* rescale the thermal energy injection */
-    delta_u *= (1 - feedback_props->f_E_B);
-
     /* Current total f_E for this star */
     double star_f_E = sp->f_E * sp->number_of_SNII_events;
 
@@ -276,7 +397,12 @@ INLINE static void compute_SNII_feedback(
     sp->feedback_data.to_distribute.SNII_delta_u = delta_u;
     sp->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj =
         number_of_SN_events;
-    sp->feedback_data.to_distribute.B_inj_abs = B_inj;
+
+    /* Compute the strength and orientation of the magnetic injection */
+    if (feedback_props->with_MHD_feedback) {
+      compute_magnetic_feedback(sp, feedback_props, delta_u, 
+                                number_of_SN_events, ti_begin);
+      }
   }
 }
 
@@ -469,8 +595,15 @@ void feedback_props_init(struct feedback_props *fp,
   fp->with_SNIa_enrichment =
       parser_get_param_int(params, "EAGLEFeedback:use_SNIa_enrichment");
 
+  fp->with_MHD_feedback = 
+      parser_get_opt_param_int(params, "EAGLEFeedback:use_MHD_feedback", 0);
+
   if (fp->with_SNIa_feedback && !fp->with_SNIa_enrichment) {
     error("Cannot run with SNIa feedback without SNIa enrichment.");
+  }
+
+  if (fp->with_MHD_feedback && !fp->with_SNII_feedback) {
+    error("Cannot run with MHD feedback without SNII feedback.");
   }
 
   /* Properties of the IMF model ------------------------------------------ */
@@ -717,15 +850,32 @@ void feedback_props_init(struct feedback_props *fp,
         "SNII wind delay!");
 
   /* Properties of the MHD feedback ----------------------------------------- */
-  
-  /* fraction of energy used for magnetic field injection */
-  fp->f_E_B = parser_get_opt_param_float(params,
-      "EAGLEFeedback:SNII_energy_fraction_magnetic_field", 0.);
+ 
+  if (fp->with_MHD_feedback) {
+    char B_orientation_model[64];
+    parser_get_param_string(params, 
+        "EAGLEFeedback:SNII_magnetic_injection_orientation_model", 
+	  	  B_orientation_model);
+    if (strcmp(B_orientation_model, "NearestNgb") == 0)
+      fp->magnetic_orientation_model = SNII_magnetic_orientation_ngb_model;
+    else if (strcmp(B_orientation_model, "MaxB") == 0)
+      fp->magnetic_orientation_model = SNII_magnetic_orientation_maxB_model;
+    else if (strcmp(B_orientation_model, "MinB") == 0)
+      fp->magnetic_orientation_model = SNII_magnetic_orientation_minB_model;
+    else if (strcmp(B_orientation_model, "Random") == 0)
+      fp->magnetic_orientation_model = SNII_magnetic_orientation_random_model;
+    else 
+      error("Invalid magnetic orentiation model '%s'", B_orientation_model);
 
-  /* check that energy fraction makes sense */
-  if ((fp->f_E_B < 0.f) || (fp->f_E_B > 1.f)) {
-    error("Invalid value energy fraction for magnetic field injections: %f",
-      fp->f_E_B);
+    /* fraction of energy used for magnetic field injection */
+    fp->f_E_B = parser_get_param_float(params,
+        "EAGLEFeedback:SNII_energy_fraction_magnetic_field");
+
+    /* check that energy fraction makes sense */
+    if ((fp->f_E_B < 0.f) || (fp->f_E_B > 1.f)) {
+      error("Invalid value energy fraction for magnetic field injections: %f",
+        fp->f_E_B);
+    }
   }
 
   /* store the vacuum permeability for easy access */
