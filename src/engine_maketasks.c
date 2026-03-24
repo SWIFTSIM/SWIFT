@@ -2316,6 +2316,13 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
           /* Ok, we need to add a direct pair calculation */
           engine_make_pair_gravity_task(e, sched, ci, cj, nodeID, cid, cjd);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+          engine_check_proxy_exists(e, ci, cj, nodeID);
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
         }
       }
     }
