@@ -3,7 +3,7 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *               2016 Will Roper (w.roper@sussex.ac.uk)
+ *               2026 Will Roper (w.roper@sussex.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -33,6 +33,7 @@
 
 /* Local headers. */
 #include "proxy.h"
+#include "zoom_region/zoom.h"
 
 /**
  * @brief Get the type of proxy needed for a pair of cells.
@@ -55,16 +56,22 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
                           const struct cell *cj, const int ii, const int jj,
                           const int kk, const double r_max) {
 
-  const struct space *s = e->s;
+  struct space *s = e->s;
 
   /* Set up the proxy type */
   int proxy_type = 0;
 
   /* Get some info about the physics */
-  const int with_hydro = (e->policy & engine_policy_hydro);
+  int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_mesh_dist2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
+
+  /* When running a zoom only a combination of zoom cells can do hydro */
+  if (s->with_zoom_region &&
+      (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
+    with_hydro = 0;
+  }
 
   /* Are these cells adjacent or not? Note that this harmlessly assumes
    * periodicity. */
@@ -77,16 +84,16 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
         abs(k - kk + s->cdim[2]) <= 1));
 
   /* In the hydro case, only care about direct neighbours */
-  if (with_hydro && is_direct_neighbour)
+  if (with_hydro && is_direct_neighbour) {
     proxy_type |= (int)proxy_cell_type_hydro;
+  }
 
   /* In the gravity case, check distances using the MAC. */
   if (with_gravity) {
 
+    /* First just add the direct neighbours. Then look for
+       some further out if the opening angle demands it */
     if (is_direct_neighbour) {
-
-      /* First just add the direct neighbours. Then look for
-         some further out if the opening angle demands it */
       proxy_type |= (int)proxy_cell_type_gravity;
     } else {
 
@@ -112,12 +119,12 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
 
       } else {
 
-        if (!(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
+        if (!(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2)) {
           proxy_type |= (int)proxy_cell_type_gravity;
+        }
       }
     }
   }
-
   return proxy_type;
 }
 
@@ -155,8 +162,10 @@ void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
 
       /* Check the maximal proxy limit */
       if ((size_t)proxy_id > 8 * sizeof(long long))
-        error("Created more than %zd proxies. cell.mpi.sendto will overflow.",
-              8 * sizeof(long long));
+        error(
+            "Created more than %zd proxies. cell.mpi.sendto will "
+            "overflow.",
+            8 * sizeof(long long));
     }
 
     /* Add the cell to the proxy */
@@ -186,8 +195,10 @@ void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
 
       /* Check the maximal proxy limit */
       if ((size_t)proxy_id > 8 * sizeof(long long))
-        error("Created more than %zd proxies. cell.mpi.sendto will overflow.",
-              8 * sizeof(long long));
+        error(
+            "Created more than %zd proxies. cell.mpi.sendto will "
+            "overflow.",
+            8 * sizeof(long long));
     }
 
     /* Add the cell to the proxy */
@@ -206,6 +217,12 @@ void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
  * @param e The #engine.
  */
 void engine_makeproxies(struct engine *e) {
+
+  /* When running a zoom simulation we need to redirect to the zoom version. */
+  if (e->s->with_zoom_region) {
+    zoom_engine_makeproxies(e);
+    return;
+  }
 
 #ifdef WITH_MPI
   /* Let's time this */
@@ -318,12 +335,14 @@ void engine_makeproxies(struct engine *e) {
               if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID)
                 continue;
 
+              /* What sort of proxy (if any) do we need? */
               int proxy_type = engine_get_proxy_type(
                   e, &cells[cid], i, j, k, &cells[cjd], iii, jjj, kkk, r_max);
 
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
 
+              /* Otherwise, add the proxy */
               engine_add_proxy(e, &cells[cid], &cells[cjd], proxy_type);
             }
           }
