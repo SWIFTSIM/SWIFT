@@ -34,6 +34,11 @@ __attribute__((always_inline)) INLINE static void ray_init(
     rays[i].id_min_length = -1;
     rays[i].min_length = FLT_MAX;
     rays[i].mass = 0.f;
+
+    rays[i].rho = 0.f;
+    for (size_t j = 0; j < 3; j++) {
+      rays[i].dx[j] = 0.f;
+    }
   }
 }
 
@@ -58,6 +63,11 @@ __attribute__((always_inline)) INLINE static void ray_reset_part_id(
       rays[i].id_min_length = -1;
       rays[i].min_length = FLT_MAX;
       rays[i].mass = 0.f;
+
+      rays[i].rho = 0.f;
+      for (size_t j = 0; j < 3; j++) {
+        rays[i].dx[j] = 0.f;
+      }
     }
   }
 }
@@ -456,7 +466,8 @@ ray_kinetic_feedback_compute_kick_velocity(
  */
 __attribute__((always_inline)) INLINE static void ray_minimise_distance(
     const float r, struct ray_data *ray, const int N_ray_arr,
-    const long long gas_part_id, const float m, const float rho) {
+    const long long gas_part_id, const float m, const float rho,
+    const float dx[3]) {
 
   /* Id of the element of the ray array that we want to update */
   int elem_update_id = -1;
@@ -481,14 +492,24 @@ __attribute__((always_inline)) INLINE static void ray_minimise_distance(
       ray[i + 1].min_length = ray[i].min_length;
       ray[i + 1].id_min_length = ray[i].id_min_length;
       ray[i + 1].mass = ray[i].mass;
+
+      /* properties needed for magnetic feedback only */
       ray[i + 1].rho = ray[i].rho;
+      ray[i + 1].dx[0] = ray[i].dx[0];
+      ray[i + 1].dx[1] = ray[i].dx[1];
+      ray[i + 1].dx[2] = ray[i].dx[2];
     }
 
     /* Update elem_update_id */
     ray[elem_update_id].min_length = r;
     ray[elem_update_id].id_min_length = gas_part_id;
     ray[elem_update_id].mass = m;
+
+    /* properties needed for magnetic feedback only */
     ray[elem_update_id].rho = rho;
+    ray[elem_update_id].dx[0] = dx[0];
+    ray[elem_update_id].dx[1] = dx[1];
+    ray[elem_update_id].dx[2] = dx[2];
   }
 }
 

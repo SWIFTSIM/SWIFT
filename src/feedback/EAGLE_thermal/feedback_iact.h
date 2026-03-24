@@ -84,6 +84,27 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   const float rho = hydro_get_comoving_density(pj);
   if (rho != 0.f)
     si->feedback_data.to_collect.enrichment_weight_inv += wi / rho;
+  
+  /* collect magnetic field properties */
+  float B[3] = {pj->mhd_data.B_over_rho[0] * rho,
+	            pj->mhd_data.B_over_rho[1] * rho,
+	            pj->mhd_data.B_over_rho[2] * rho};
+                
+  /* contribution of pj to the neighbour angular magnetic field */
+  float pj_m[3] = {dx[1]*B[2] - dx[2]*B[1],
+	               dx[2]*B[0] - dx[0]*B[2],
+		           dx[0]*B[1] - dx[1]*B[0]};
+  
+  const float pj_m_abs = sqrtf(pj_m[0]*pj_m[0] + pj_m[1]*pj_m[1] + pj_m[2]*pj_m[2]);
+  if (pj_m_abs) {
+    pj_m[0] /= pj_m_abs;
+    pj_m[1] /= pj_m_abs;
+    pj_m[2] /= pj_m_abs;
+  }
+
+  si->feedback_data.to_collect.ngb_m[0] += pj_m[0];
+  si->feedback_data.to_collect.ngb_m[1] += pj_m[1];
+  si->feedback_data.to_collect.ngb_m[2] += pj_m[2];
 
   /* Choose SNII feedback model */
   switch (fb_props->feedback_model) {
@@ -127,7 +148,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(r, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            mj, rho);
+                            mj, rho, dx);
       break;
     }
     case SNII_minimum_density_model: {
@@ -143,7 +164,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(rho, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            mj, rho);
+                            mj, rho, dx);
       break;
     }
     case SNII_random_ngb_model: {
@@ -165,7 +186,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller 'fake' distances to the BH. */
       ray_minimise_distance(dist, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            mj, rho);
+                            mj, rho, dx);
       break;
     }
   }
@@ -408,15 +429,14 @@ runner_iact_nonsym_feedback_apply(
       /* Compute magnetic field injection */
 
       /* get directions */
-      float moment[3] = {0.f, 0.f, 1.f};
-      double dr[3] = {pj->x[0] - si->x[0], 
-                      pj->x[1] - si->x[1],
-                      pj->x[2] - si->x[2]};
+      float moment[3] = {si->feedback_data.to_distribute.magnetic_moment[0],
+                         si->feedback_data.to_distribute.magnetic_moment[1],
+                         si->feedback_data.to_distribute.magnetic_moment[2]};
 
       /* cross product moment and distance vector -> toroidal direction */
-      float B_inj[3] = {moment[1]*dr[2] - moment[2]*dr[1],
-                        moment[2]*dr[0] - moment[0]*dr[2],
-                        moment[0]*dr[1] - moment[1]*dr[0]};
+      float B_inj[3] = {dx[1]*moment[2] - dx[2]*moment[1],
+                        dx[2]*moment[0] - dx[0]*moment[2],
+                        dx[0]*moment[1] - dx[1]*moment[0]};
 
       /* rescale B_inj to the right value */
       const float B_inj_abs = sqrtf(B_inj[0]*B_inj[0] + 

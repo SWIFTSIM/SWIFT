@@ -60,6 +60,8 @@ struct ray_data {
 
   /* Gas-particle density in code units */
   float rho;
+
+  float dx[3];
 };
 
 /**
