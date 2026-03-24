@@ -561,9 +561,9 @@ void extract_lower(struct cell *parent, int *current_depth, int extract_depth, s
 int sort_cell(const void *a, const void *b);
 void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, int nr_cells, int gridsize, double box_size, int min_depth); 
 double find_coarse_cell(struct AMR_levels *coarse, int cid, int missing, double fac_coarse, int cdimH[3]);
-int find_neighbour(struct AMR_levels *fine, struct cell *parent, struct cell *cell_link, int search_id, double fac, int which_neighbour, int pre_smoothing);
+int find_neighbour(struct AMR_levels *fine, struct cell *parent, struct cell *cell_link, int search_id, double fac, int which_neighbour, int pre_smoothing, int verbose);
 //void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, double search_loc[3], int which_neighbour, double fac_coarse);
-void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *parent, size_t search_id, double fac_coarse, int min_depth, int which_neighbour);
+void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *parent, size_t search_id, double fac_coarse, int min_depth, int which_neighbour, int check_parent, int verbose);
 void initialise_link_neighbours(struct AMR_levels *fine, double box_size, int gridsize);
 void link_neighbour(struct cell *link_cell, struct AMR_levels *fine, double search_loc[3], double fac, int which_neighbour);
 void extrapolate_mask_values(struct AMR_levels *coarse);
@@ -589,7 +589,7 @@ void divide_particles(struct cell *c, struct space *s);
 //void create_concept_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells);
 int search_neighbours(struct AMR_levels *level, double search_loc[3], double fac);
 void mark_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);
-void create_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells, int which_neighbour);
+void create_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells, int which_neighbour, int verbose);
 void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels);
 void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr);
 double CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize, int stop_depth);
@@ -603,4 +603,5 @@ void generate_particles(struct space *s, int N_parts_new, double positions[N_par
 void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int desired_depth);
 void get_patch_potential(struct space *s, struct AMR_levels *fine, struct AMR_levels *coarse);
 void mark_all_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);
+void check_diagonal1(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *c, int nr_neighbours, int neighbours[nr_neighbours], int min_depth, int double_diag);
 #endif /* SWIFT_SPACE_H */

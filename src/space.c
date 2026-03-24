@@ -3346,9 +3346,9 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   message("max_gridsize = %d", max_gridsize);
   //max_gridsize = 8;
 
-  int cdim2[3] = {32, 32, 32};
-  struct cell *c = levels[min_depth].cells[cell_getid(cdim2, 16, 16, 16)];
-  message("The potential of the cell at (%lf, %lf, %lf) is %lf", c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
+  //int cdim2[3] = {32, 32, 32};
+  //struct cell *c = levels[min_depth].cells[cell_getid(cdim2, 16, 16, 16)];
+  //message("The potential of the cell at (%lf, %lf, %lf) is %lf", c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
   
   //max_gridsize = 8;
 
@@ -3511,7 +3511,7 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 
   message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/potential_unnormalised_1_32.txt", "w");
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/more_cells/potential_normalised_2_32.txt", "w");
   for (int i=0; i<N_parts_old + N_parts_new; i++) {
     struct gpart gpart = p_ref[i].cell->grav.parts[p_ref[i].index];
     //message("Going to write %d", i);
@@ -3636,7 +3636,7 @@ void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_
       if (level->cells[i]->neighbours[j] == NULL) {
         if (cell_i==0 && cell_j==0 && cell_k==2) message("Searching for neighbour %d for cell %d", j, i);
         int pre_smoothing = 1;
-        int neighbour = find_neighbour(level, parent, level->cells[i], search_id[j], fac, j, pre_smoothing);
+        int neighbour = find_neighbour(level, parent, level->cells[i], search_id[j], fac, j, pre_smoothing, 0);
         if (cell_i==0 && cell_j==0 && cell_k==2 && neighbour) message("Found neighbour %d at (%lf, %lf, %lf)", j, level->cells[i]->neighbours[j]->loc[0], level->cells[i]->neighbours[j]->loc[1], level->cells[i]->neighbours[j]->loc[2]);
         no_neighbour_counter += 1;
         //message("For cell %d, neighbour %d was not linked", i, j);
@@ -3913,10 +3913,10 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
     msq = msq/(levels[i+1].cell_count + levels[i+1].ghost_count);
     message("The final msq potential of level %d is %lf", i+1, msq);
 
-    for (int j=0; j<levels[i+1].cell_count; j++) {
-      struct cell *c = levels[i+1].cells[j];
-      message("The potential of cell %d at (%lf, %lf, %lf) is %lf", j, c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
-    }
+    //for (int j=0; j<levels[i+1].cell_count; j++) {
+      //struct cell *c = levels[i+1].cells[j];
+      //message("The potential of cell %d at (%lf, %lf, %lf) is %lf", j, c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
+    //}
   }
 
   //int nr_cells = levels[1].cell_count;
@@ -4157,7 +4157,7 @@ void build_refinement_map(struct space *s, int min_depth, int max_depth, struct 
           /* Step 2 */
           //mark_neighbours(s, min_depth, &levels[max_depth - i], curr_cell);
           mark_all_neighbours(s, min_depth, &levels[max_depth -i], curr_cell);
-          sleep(10);
+          //sleep(10);
           break;
         }
       }
@@ -4461,7 +4461,7 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
   }
   message("Had to do post-smoothing on level %d for %d steps and the residual is %lf", current_depth, counter_post_smoothing, residual);
 
-  int normalise = 0;
+  int normalise = 1;
   if (normalise) {
 
     /* Find the mean potential on the patch */
@@ -5148,7 +5148,7 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
         //if (cell_i == 0 && cell_j == 0 && cell_k == 1) message("Neighbour %d not connected", j);
         //message("Searching for neighbour %d for cell %d", j, i);
         int pre_smoothing = 0;
-        neighbour = find_neighbour(fine, parent, fine->cells[i], search_id[j], fac, j, pre_smoothing);
+        neighbour = find_neighbour(fine, parent, fine->cells[i], search_id[j], fac, j, pre_smoothing, 0);
         if (cell_i == 0 && cell_j == 0 && cell_k == 1) message("Neighbour found? %d", neighbour);
         no_neighbour_counter += 1;
         //if (fine->depth == 8) message("For cell %d, neighbour %d was not linked", i, j);
@@ -5162,10 +5162,14 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
       if (!neighbour) {
         //if (fine->depth == 8) message("For cell %d, neighbour %d did not exist", i, j);
         //if (search_id[j]<0) message("Search ID %d is %lu and we had entries %d,%d,%d and cdim %d", j, search_id[j], i_min, cell_j, cell_k, cdim[0]);
-        create_ghost(s, coarse, fine, parent->neighbours[j], search_id[j], fac_coarse, min_depth, j);
+        int check_parent = 0;
+        create_ghost(s, coarse, fine, parent->neighbours[j], search_id[j], fac_coarse, min_depth, j, check_parent, 0);
         fine->cells[i]->neighbours[j] = fine->cells[nr_cells+fine->ghost_count-1];
         int backward_neighbour = (j%2 == 0) ? j+1 : j-1;
-        fine->cells[nr_cells+fine->ghost_count-1]->neighbours[backward_neighbour] = fine->cells[i]->neighbours[j];
+        //WAIT DOES THIS LINK A CELL TO ITSELF? Should no longer now
+        fine->cells[nr_cells+fine->ghost_count-1]->neighbours[backward_neighbour] = fine->cells[i];
+        //message("We just linked the cell at (%lf, %lf, %lf) to the cell at (%lf, %lf, %lf) for neighbour %d", fine->cells[nr_cells+fine->ghost_count-1]->loc[0], fine->cells[nr_cells+fine->ghost_count-1]->loc[1], fine->cells[nr_cells+fine->ghost_count-1]->loc[2], fine->cells[i]->neighbours[j]->loc[0], fine->cells[i]->neighbours[j]->loc[1], fine->cells[i]->neighbours[j]->loc[2], backward_neighbour);
+        //sleep(15);
         for (int k=0; k<6; k++) {
           if (fine->cells[nr_cells+fine->ghost_count-1]->neighbours[k] != NULL) {
             //message("Newly made ghost has neighbour %d linked", k);
@@ -5178,9 +5182,24 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
       message("Failed to create or link the neighbour %d for cell %d with location (%lf, %lf, %lf)", j, i, fine->cells[i]->loc[0], fine->cells[i]->loc[1], fine->cells[i]->loc[2]);
       }
     }
-    if (cell_i == 0 && cell_j == 0 && cell_k == 1) sleep(10);
   }
   message("In total, %d ghosts were created", fine->ghost_count);
+
+  for (int i=0; i<nr_cells; i++) {
+    struct cell *c = fine->cells[i];
+    for (int j=0; j<6; j++) {
+      struct cell *b = c->neighbours[j];
+      int dir = (j%2 == 0) ? j : j-1;
+      int check[4] = {(dir + 2)%6, (dir + 3)%6, (dir + 4)%6, (dir + 5)%6};
+      int nr_neighbours = 4;
+      //message("Going to do the diagonal for the cell at (%lf, %lf, %lf) using neighbour at (%lf, %lf, %lf) with ghost value %d", c->loc[0], c->loc[1], c->loc[2], b->loc[0], b->loc[1], b->loc[2], b->ghost);
+      check_diagonal1(s, coarse, fine, b, nr_neighbours, check, min_depth, 0);
+      //sleep(15);
+    }
+  }
+  message("In total, %d ghosts were created", fine->ghost_count);
+  //sleep(15);
+  
 
   /* Check the neighbour assignment */
   /*for (int i=0; i<nr_cells; i++) {
@@ -5300,6 +5319,67 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
   //}
 }
 
+void check_diagonal1(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *c, int nr_neighbours, int neighbours[nr_neighbours], int min_depth, int double_diag) {
+  double fac = s->dim[0]/fine->cdim;
+  double fac_coarse = s->dim[0]/coarse->cdim;
+  int cdim[3] = {fine->cdim, fine->cdim, fine->cdim};
+
+  const int nbs[6][3] = {{1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}};
+  //if (!double_diag) message("Neighbours are %d, %d, %d, %d", neighbours[0], neighbours[1], neighbours[2], neighbours[3]);
+  for (int i=0; i<nr_neighbours; i++) {
+    int which_neighbour = neighbours[i];
+    //message("searching for neighbour %d for cell at (%lf, %lf, %lf)", which_neighbour, c->loc[0], c->loc[1], c->loc[2]);
+    //if (c->neighbours[which_neighbour] != NULL) message("Found the neighbour at (%lf, %lf, %lf)", c->neighbours[which_neighbour]->loc[0], c->neighbours[which_neighbour]->loc[1], c->neighbours[which_neighbour]->loc[2]);
+    if (c->neighbours[which_neighbour] == NULL) {
+      const double search_loc_x = box_wrap(c->loc[0], 0., s->dim[0]);
+      const double search_loc_y = box_wrap(c->loc[1], 0., s->dim[1]);
+      const double search_loc_z = box_wrap(c->loc[2], 0., s->dim[2]);
+
+      int cell_i = (int) ((search_loc_x+0.0001)/fac);
+      int cell_j = (int) ((search_loc_y+0.0001)/fac);
+      int cell_k = (int) ((search_loc_z+0.0001)/fac);
+
+      int search_i = (cell_i + nbs[which_neighbour][0] + cdim[0]) % cdim[0];
+      int search_j = (cell_j + nbs[which_neighbour][1] + cdim[1]) % cdim[1];
+      int search_k = (cell_k + nbs[which_neighbour][2] + cdim[2]) % cdim[2];
+
+      size_t search_id = cell_getid(cdim, search_i, search_j, search_k);
+      int check_parent = 1;
+      int verbose = 0;
+      create_ghost(s, coarse, fine, c->parent, search_id, fac_coarse, min_depth, which_neighbour, check_parent, verbose);
+
+      c->neighbours[which_neighbour] = fine->cells[fine->cell_count+fine->ghost_count-1];
+      int backward_neighbour = (which_neighbour%2 == 0) ? which_neighbour+1 : which_neighbour-1;
+      fine->cells[fine->cell_count+fine->ghost_count-1]->neighbours[backward_neighbour] = c;
+      //message("The new ghost has location (%lf, %lf, %lf)", fine->cells[fine->cell_count+fine->ghost_count-1]->loc[0], fine->cells[fine->cell_count+fine->ghost_count-1]->loc[1], fine->cells[fine->cell_count+fine->ghost_count-1]->loc[2]);
+      //message("Parent at location (%lf, %lf, %lf)", fine->cells[fine->cell_count+fine->ghost_count-1]->parent->loc[0], fine->cells[fine->cell_count+fine->ghost_count-1]->parent->loc[1], fine->cells[fine->cell_count+fine->ghost_count-1]->parent->loc[2]);
+      for (int k=0; k<6; k++) {
+        if (fine->cells[fine->cell_count+fine->ghost_count-1]->neighbours[k] != NULL) {
+          //message("Newly made ghost has neighbour %d linked", k);
+          //message("This neighbour has location (%lf, %lf, %lf)", fine->cells[fine->cell_count+fine->ghost_count-1]->neighbours[k]->loc[0], fine->cells[fine->cell_count+fine->ghost_count-1]->neighbours[k]->loc[1], fine->cells[fine->cell_count+fine->ghost_count-1]->neighbours[k]->loc[2]);
+        }
+      }
+      //if (!neighbour && fine->cells[i]->neighbours[j] == NULL) message("Failed to create the neighbour %d for cell %d", j, i);
+      if (fine->cells[i]->neighbours[which_neighbour] == NULL) {
+        message("Failed to create or link the neighbour %d for cell %d with location (%lf, %lf, %lf)", which_neighbour, i, fine->cells[i]->loc[0], fine->cells[i]->loc[1], fine->cells[i]->loc[2]);
+      }
+    }
+    if (double_diag) {
+      //message("\n");
+      continue;
+    }
+    struct cell *nb = c->neighbours[which_neighbour];
+    int dir = (i%2 == 0) ? i : i-1;
+
+    int check[2] = {neighbours[(dir + 2)%4], neighbours[(dir + 3)%4]};
+    //message("Going to search for neighbours %d and %d", check[0], check[1]);
+    int nr_neighbours2 = 2;
+    //message("Going to do the double diagonal");
+    check_diagonal1(s, coarse, fine, nb, nr_neighbours2, check, min_depth, 1);
+
+  }
+}
+
 void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine) {
   for (int i=0; i<fine->cell_count + fine->ghost_count; i++) {
     struct cell *child = fine->cells[i];
@@ -5330,7 +5410,7 @@ void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine) {
   }
 }
 
-void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *parent, size_t search_id, double fac_coarse, int min_depth, int which_neighbour) {
+void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *parent, size_t search_id, double fac_coarse, int min_depth, int which_neighbour, int check_parent, int verbose) {
   int ghost_count = fine->ghost_count;
   int nr_cells = fine->cell_count;
   int cdim = fine->cdim;
@@ -5340,17 +5420,28 @@ void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels 
   
   space_getcells(s, 1, fine->cells, 0, nr_cells + ghost_count, 1);
   if (fine->cells[nr_cells+ghost_count] == NULL) error("Not created");
+  struct cell *c = fine->cells[nr_cells + ghost_count];
 
-  fine->cells[nr_cells+ghost_count]->loc[0] = (double) search_loc[0] * fac; 
-  fine->cells[nr_cells+ghost_count]->loc[1] = (double) search_loc[1] * fac; 
-  fine->cells[nr_cells+ghost_count]->loc[2] = (double) search_loc[2] * fac; 
-  fine->cells[nr_cells+ghost_count]->width[0] = fine->cells[0]->width[0]; 
-  fine->cells[nr_cells+ghost_count]->width[1] = fine->cells[0]->width[1]; 
-  fine->cells[nr_cells+ghost_count]->width[2] = fine->cells[0]->width[2]; 
+  c->loc[0] = (double) search_loc[0] * fac; 
+  c->loc[1] = (double) search_loc[1] * fac; 
+  c->loc[2] = (double) search_loc[2] * fac; 
+  c->width[0] = fine->cells[0]->width[0]; 
+  c->width[1] = fine->cells[0]->width[1]; 
+  c->width[2] = fine->cells[0]->width[2]; 
 
-  fine->cells[nr_cells+ghost_count]->ghost = 1;
-  fine->cells[nr_cells+ghost_count]->mask_value = -1;
-  fine->cells[nr_cells+ghost_count]->parent = parent;
+  c->ghost = 1;
+  c->mask_value = -1;
+  if (check_parent) { /* In this case the parent is the parent of the cell of which we have now created the neighbour */
+    if (c->loc[0] >= parent->loc[0] && c->loc[0] < parent->loc[0] + parent->width[0] && c->loc[1] >= parent->loc[1] && c->loc[1] < parent->loc[1] + parent->width[1] && c->loc[2] >= parent->loc[2] && c->loc[2] < parent->loc[2] + parent->width[2]) {
+      c->parent = parent;
+    }
+    else {
+      if (verbose) message("Doing this");
+      c->parent = parent->neighbours[which_neighbour];
+      parent = parent->neighbours[which_neighbour];
+    }
+  }
+  else c->parent = parent;
   /* parent->split remains 0, but we do add some children. Which child is this? */
   int x_id = search_loc[0]%2;
   int y_id = search_loc[1]%2;
@@ -5361,16 +5452,16 @@ void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels 
     message("The existing cell had location (%lf, %lf, %lf)", parent->progeny[2*2*x_id + 2*y_id + z_id]->loc[0], parent->progeny[2*2*x_id + 2*y_id + z_id]->loc[1], parent->progeny[2*2*x_id + 2*y_id + z_id]->loc[2]);
     error("Something went wrong");
   }
-  parent->progeny[2*2*x_id + 2*y_id + z_id] = fine->cells[nr_cells+ghost_count];
+  parent->progeny[2*2*x_id + 2*y_id + z_id] = c;
   //message("Assigned progeny to parent of ghost");
   /* Link ghost cell to ALL possible neighbours */
-  create_link(s, fine, &(fine->cells[nr_cells+ghost_count]), 1, which_neighbour); //Cell doesn't need to search itself
+  create_link(s, fine, &c, 1, which_neighbour, verbose); //Cell doesn't need to search itself
   fine->ghost_count += 1;
 }
 
 /* Link cells to all cells in level. Cells could be level->cells itself, but doesn't need to be 
    nr_cells is the number of cells that need linking. */
-void create_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells, int which_neighbour) {
+void create_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells, int which_neighbour, int verbose) {
   //message("Going to create link");
   double box_size = s->dim[0];
   double fac = box_size/level->cdim;
@@ -5394,15 +5485,16 @@ void create_link(struct space *s, struct AMR_levels *level, struct cell **cells,
 
     for (int j=0; j<6; j++) {
       int pre_smoothing = 0;
-      if (cells[i]->neighbours[j] == NULL && j!=which_neighbour) find_neighbour(level, cells[i]->parent, cells[i], search_id[j], fac, j, pre_smoothing);
+      if (cells[i]->neighbours[j] == NULL && j!=which_neighbour) find_neighbour(level, cells[i]->parent, cells[i], search_id[j], fac, j, pre_smoothing, verbose);
     }
   }
 }
 
-int find_neighbour(struct AMR_levels *fine, struct cell *parent, struct cell *cell_link, int search_id, double fac, int which_neighbour, int pre_smoothing) {
+int find_neighbour(struct AMR_levels *fine, struct cell *parent, struct cell *cell_link, int search_id, double fac, int which_neighbour, int pre_smoothing, int verbose) {
   int neighbour = 0; //Set to one if we do find a neighbour later
   int backward_neighbour = (which_neighbour%2 == 0) ? which_neighbour+1 : which_neighbour-1;
   int cdim[3] = {fine->cdim, fine->cdim, fine->cdim};
+  if (verbose) message("Going to find neighbour %d for the cel at (%lf, %lf, %lf)", which_neighbour, cell_link->loc[0], cell_link->loc[1], cell_link->loc[2]);
 
   /* Check all the non-ghost cells. 
      A ghost cell does have a parent cell, but this parent is not split. But let's say it does have some (not eight) children, all ghosts!
@@ -5410,7 +5502,7 @@ int find_neighbour(struct AMR_levels *fine, struct cell *parent, struct cell *ce
      Should we do this, or does this mess up the red-black sweeps? */
 
   if (parent->split) {
-    //message("Doing this");
+    if (verbose) message("The parent of the cell with ghost value %d is split", cell_link->ghost);
     /* We can go to the parent's neighbour, because we already linked the children of the parent */
     struct cell *search_cand = parent->neighbours[which_neighbour];
     if (search_cand == NULL && pre_smoothing) {
@@ -5441,9 +5533,10 @@ int find_neighbour(struct AMR_levels *fine, struct cell *parent, struct cell *ce
 
   /* Check parent cell and neighbour j of the parent */
   else {
-    ///message("Doing the other thing for a ghost");
+    if (verbose) message("Checking progeny of the same parent which has loc (%lf, %lf, %lf)", parent->loc[0], parent->loc[1], parent->loc[2]);
     for (int i=0; i<8; i++) {
       if (parent->progeny[i] == NULL) continue;
+      if (verbose) message("Child %d at location (%lf, %lf, %lf) of the same parent exists", i, parent->progeny[i]->loc[0], parent->progeny[i]->loc[1], parent->progeny[i]->loc[2]);
       int cell_i = (int) ((parent->progeny[i]->loc[0]+0.0001)/fac);
       int cell_j = (int) ((parent->progeny[i]->loc[1]+0.0001)/fac);
       int cell_k = (int) ((parent->progeny[i]->loc[2]+0.0001)/fac);
@@ -5464,9 +5557,11 @@ int find_neighbour(struct AMR_levels *fine, struct cell *parent, struct cell *ce
     struct cell *search_cand = parent->neighbours[which_neighbour];
     //message("Trying to search in neighbour");
     if (search_cand == NULL) return neighbour;
+    if (verbose) message("Checking the parent neighbour at (%lf, %lf, %lf)", search_cand->loc[0], search_cand->loc[1], search_cand->loc[2]);
     for (int i=0; i<8; i++) {
       //message("Searching neighbour children");
       if (search_cand->progeny[i] == NULL) continue;
+      if (verbose) message("Child %d at location (%lf, %lf, %lf) of the parent neighbour %d exists", i, search_cand->progeny[i]->loc[0], search_cand->progeny[i]->loc[1], search_cand->progeny[i]->loc[2], which_neighbour);
       int cell_i = (int) ((search_cand->progeny[i]->loc[0]+0.0001)/fac);
       int cell_j = (int) ((search_cand->progeny[i]->loc[1]+0.0001)/fac);
       int cell_k = (int) ((search_cand->progeny[i]->loc[2]+0.0001)/fac);
@@ -5485,25 +5580,6 @@ int find_neighbour(struct AMR_levels *fine, struct cell *parent, struct cell *ce
       }
     }
   }
-  
-  //int nr_cells = fine->cell_count + fine->ghost_count;
-  //for (int i=0; i<nr_cells; i++) {
-    //int cell_i = (int) ((fine->cells[i]->loc[0]+0.01)/fac);
-    //int cell_j = (int) ((fine->cells[i]->loc[1]+0.01)/fac);
-    //int cell_k = (int) ((fine->cells[i]->loc[2]+0.01)/fac);
-    //int found_id = cell_getid(cdim, cell_i, cell_j, cell_k);
-
-    //if (found_id == search_id) {
-      //neighbour = 1;
-      /* Link the cells if this not already happened */
-      //if (cell_link->neighbours[which_neighbour] == NULL) {
-        //message("Creating link");
-        //cell_link->neighbours[which_neighbour] = fine->cells[i];
-        //fine->cells[i]->neighbours[backward_neighbour] = cell_link;
-      //}
-      //break;
-    //}
-  //}
   return neighbour;
 }
 
