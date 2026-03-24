@@ -100,8 +100,7 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
          cannot rely on just an M2L calculation. */
 
       /* Minimal distance between any two points in the cells */
-      const double min_dist_CoM2 =
-          cell_min_dist2_same_size(ci, cj, s->periodic, s->dim);
+      const double min_dist_CoM2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
 
       /* Are we beyond the distance where the truncated forces are 0
        * but not too far such that M2L can be used? */
