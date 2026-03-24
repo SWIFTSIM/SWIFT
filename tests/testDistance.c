@@ -38,7 +38,7 @@ void compute_interaction(struct part *pi, struct part *pj, float mu_0, float a,
   if (r2 < pi->h * pi->h * kernel_gamma2) {
 
     /* And interact them (density) */
-    runner_iact_density(r2, dx, pi->h, pj->h, pi, pj, a, H);
+    runner_iact_density(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
     runner_iact_mhd_density(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
     runner_iact_chemistry(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_pressure_floor(r2, dx, pi->h, pj->h, pi, pj, a, H);
@@ -47,12 +47,12 @@ void compute_interaction(struct part *pi, struct part *pj, float mu_0, float a,
 #ifdef EXTRA_HYDRO_LOOP
 
     /* And interact them (gradient) */
-    runner_iact_gradient(r2, dx, pi->h, pj->h, pi, pj, a, H);
+    runner_iact_gradient(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
     runner_iact_mhd_gradient(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
 #endif
 
     /* And interact them (force) */
-    runner_iact_force(r2, dx, pi->h, pj->h, pi, pj, a, H);
+    runner_iact_force(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
     runner_iact_mhd_force(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
   }
 }
