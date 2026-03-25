@@ -774,7 +774,9 @@ void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
 void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
                                const struct cell *cj, const int nodeID);
 int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
-                          const struct cell *cj, const double r_max);
+                          const int i, const int j, const int k,
+                          const struct cell *cj, const int ii, const int jj,
+                          const int kk, const double r_max);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);
