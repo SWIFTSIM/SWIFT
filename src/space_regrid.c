@@ -548,7 +548,7 @@ void space_regrid(struct space *s, int verbose) {
    * the zoom region geometry before moving on. Note that this is always
    * verbose regardless of global verbosity (but only on rank 0 in MPI land). */
   if (s->with_zoom_region && s->cells_top == NULL) {
-    zoom_region_init(s, /*regridding=*/0, /*verbose=*/s->e->nodeID == 0);
+    zoom_region_init(s, /*regridding=*/0, /*verbose=*/engine_rank == 0);
   }
 
   else if (s->with_zoom_region) {
