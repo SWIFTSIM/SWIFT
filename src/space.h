@@ -538,8 +538,8 @@ void assign_densities(struct cell *cells_top, struct threadpool *tp, int nr_cell
 void initialise_tree_search(struct gpart *part, struct cell *home_cell, struct cell *cells_top, const double boxsize, int nr_topcells, int level_check, int verbose);
 void check_lower_level(struct cell *parent, struct cell *cells_top, const double boxsize, int nr_topcells, int *level, int level_check);
 double get_overlap(double pbox[6], double cloc[3], double cwidth[3]);
-void search_tree(struct gpart *part, double pbox[6], struct cell *cells_top, double width, int nr_topcells, double *acc, int level_check, int reverse, int verbose);
-void assign_lower_level(struct gpart *part, double pbox[6], struct cell *parent, double width, int *level, double *acc, int level_check, int reverse, int verbose);
+void search_tree(struct gpart *part, double pbox[6], struct cell *cells_top, double width, int nr_topcells, double *acc, int level_check, int reverse, int verbose, int calc_acc);
+void assign_lower_level(struct gpart *part, double pbox[6], struct cell *parent, double width, int *level, double *acc, int level_check, int reverse, int verbose, int calc_acc);
 void assign_parent_densities(struct cell *parent, int *level);
 void export_grid_data(struct cell *cells_top, int nr_cells);
 void test_density_assignment(struct cell *cells_top, int nr_cells, const double boxsize, int nr_gparts, struct space *s, int level_check);
@@ -570,7 +570,7 @@ void extrapolate_mask_values(struct AMR_levels *coarse);
 void get_patch_density(struct space *s, struct AMR_levels *level);
 void perform_patch_sweep(struct AMR_levels *level, double delta);
 void transfer_residual_array(struct AMR_levels fine, struct AMR_levels *coarse, double delta);
-void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth, int min_depth);
+void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth, int min_depth, int active_depth);
 void perform_multigrid_acceleration(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int current_depth);
 double get_patch_residual(struct AMR_levels level, double delta);
 //void replace_masked_cells(struct AMR_levels *level, double delta);
@@ -581,7 +581,7 @@ double get_solution_magnitude(struct AMR_levels level);
 void converge_first_order(struct AMR_levels *level, double delta, int nr_steps);
 void first_order_sweep(struct AMR_levels *level, double delta);
 double get_first_order_residual(struct AMR_levels *level, double delta);
-void to_finer_patch(struct AMR_levels *levels, int target_depth);
+void to_finer_patch(struct AMR_levels *levels, int target_depth, int active_depth);
 void transfer_coarser_residual(struct AMR_levels fine, struct AMR_levels *coarse, double delta);
 void build_refinement_map(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
 void modify_tree(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int new_cell_count[max_depth +1]);
@@ -592,7 +592,7 @@ void mark_neighbours(struct space *s, int min_depth, struct AMR_levels *level, s
 void create_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells, int which_neighbour, int verbose);
 void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels);
 void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr);
-double CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize, int stop_depth);
+void CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize, int stop_depth, int calc_acc, double *acc);
 void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_index, int link_nr);
 void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine);
 void free_gparts_in_cells(struct cell *c, int *level);
@@ -604,4 +604,5 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 void get_patch_potential(struct space *s, struct AMR_levels *fine, struct AMR_levels *coarse);
 void mark_all_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);
 void check_diagonal1(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *c, int nr_neighbours, int neighbours[nr_neighbours], int min_depth, int double_diag);
+void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
 #endif /* SWIFT_SPACE_H */
