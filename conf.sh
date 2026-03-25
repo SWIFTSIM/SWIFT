@@ -3,16 +3,20 @@
 module purge
 module load cmake autotools 
 module load intel/2024.0.0
-module load openmpi5
+#module load openmpi5
+module load impi
 module load gsl hdf5 fftw
 module load ucx
-#module load swift
-#module load gadget4
+module load metis
 module list
 
+echo $FFTW_DIR
+echo $METIS_DIR
 
+echo " -----------------------------"
 
-./configure  --with-fftw=$FFTW_ROOT \
+./configure  --with-fftw=$FFTW_DIR \
+	     --with-metis=$METIS_DIR \
 	     --with-tbbmalloc \
              --with-kernel=quintic-spline  --with-spmhd=direct-induction \
              --with-hydro=sphenix \
