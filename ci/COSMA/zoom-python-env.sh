@@ -23,8 +23,8 @@
 #-
 
 if [ -z "${WORKDIR}" ]; then
-	echo "ERROR: WORKDIR is not set. Source ci/setup.sh first."
-	return 1
+    echo "ERROR: WORKDIR is not set. Source ci/setup.sh first."
+    return 1
 fi
 
 VENV_DIR="${WORKDIR}/.venv-zoom-ci"
@@ -34,6 +34,9 @@ python3 -m venv "${VENV_DIR}" || return 1
 source "${VENV_DIR}/bin/activate" || return 1
 
 python3 -m pip install --upgrade pip || return 1
-python3 -m pip install numpy h5py unyt swiftsimio || return 1
+python3 -m pip install numpy h5py unyt || return 1
+
+# Install a specific version of swiftsimio
+python3 -m pip install swiftsimio==11.0.0 || return 1
 
 python3 -c "import numpy, h5py, unyt, swiftsimio" || return 1
