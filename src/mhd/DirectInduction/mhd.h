@@ -707,6 +707,17 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   /* Set Artificial Difussion */
   p->mhd_data.art_diff_beta = hydro_props->mhd.art_diffusion;
 
+  /* Convert B into B/rho */ // Dispair
+	  
+  const float normV = sqrtf(p->v[0]*p->v[0]+p->v[1]*p->v[1]+p->v[2]*p->v[2]); 
+  const float normB = 1E-9 * p->rho / cosmo->mean_density / normV; 
+  
+  p->mhd_data.B_over_rho[0] = normB * p->v[0];
+  p->mhd_data.B_over_rho[1] = normB * p->v[1];
+  p->mhd_data.B_over_rho[2] = normB * p->v[2];
+  p->mhd_data.B_over_rho[0] = 0.f;
+  p->mhd_data.B_over_rho[1] = 0.f;
+  p->mhd_data.B_over_rho[2] = 1E-9;
   /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;
   p->mhd_data.B_over_rho[1] /= p->rho;
