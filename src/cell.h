@@ -422,10 +422,12 @@ struct cell {
   /*! Radiative transfer variables */
   struct cell_rt rt;
 
-  /*! Density assignment variable */
+  /*! Density and potential variables */
   double CIC_density; 
 
   double CIC_potential;
+
+  double CIC_acc[3];
 
   double mask_value;
 
@@ -434,8 +436,6 @@ struct cell {
   int ghost;
 
   int refine;
-
-  int refine2;
 
 #ifdef WITH_MPI
   /*! MPI variables */
