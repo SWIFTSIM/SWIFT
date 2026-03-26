@@ -374,6 +374,7 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
 __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(struct part *p,
                                            const struct cosmology *cosmo,
+                                           const struct pressure_floor_props *pressure_floor,
                                            const float u) {
 
   p->u = u / cosmo->a_factor_internal_energy;
@@ -411,7 +412,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
  */
 __attribute__((always_inline)) INLINE static void
 hydro_diffusive_feedback_reset(struct part *restrict p) {
-  /* This scheme has fixed alpha */
+  /* Set the diffusion controlable omega to 0 to exclude it for thermal feedback
+  particles */
+  p->diffusion.omega = 0.f;
 }
 
 /**
@@ -674,6 +677,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.balsara = balsara;
   /* Set eta_crit for arificial viscosity and diffusion slope limiters */
   p->force.eta_crit = 1.f / hydro_props->eta_neighbours;
+
+  /* Change diffusion.omega based on the current value (this is added for handling SNe particles in thermal feedback)*/
+ const float tau_inverse = p->force.v_sig / (kernel_gamma * p->h);
+ const float omega_dt = (const_remix_difn_omega_u - p->diffusion.omega) * tau_inverse;
+ const float omega = max(p->diffusion.omega + omega_dt * dt_therm, 0.f);
+ p->diffusion.omega = min(omega, const_remix_difn_omega_u);
 }
 
 /**
@@ -788,7 +797,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  const float floor_u = FLT_MIN;
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho_evol, floor_A, p->mat_id);
   p->u = max(p->u, floor_u);
 
   /* Compute the new pressure */
@@ -855,7 +866,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   /* Check against absolute minimum */
   const float min_u =
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  const float floor_u = FLT_MIN;
+  
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho_evol, floor_A, p->mat_id);
 
   /* Take highest of both limits */
   const float energy_min = max(min_u, floor_u);
@@ -936,6 +950,15 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
+
+  /* Set the initial values for the thermal diffusion controlling variable*/
+  p->diffusion.omega = const_remix_difn_omega_u;
+
+  /*Specific for the thermal feedback event, particle 18159 is the sne particle, switch off
+  omega there -> no diffusion */
+  if (p->id == 18159){
+    p->diffusion.omega = 0.f;
+  }
 }
 
 /**

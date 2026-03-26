@@ -53,6 +53,7 @@
 #define const_remix_visc_b 1.0f / 3.0f
 #define const_remix_difn_a_u 0.05f
 #define const_remix_difn_b_u 0.95f
+#define const_remix_difn_omega_u 1.0f /*Controls the diffusion for SNe particles over time*/
 #define const_remix_difn_a_rho 0.05f
 #define const_remix_difn_b_rho 0.95f
 #define const_remix_norm_alpha 1.0f

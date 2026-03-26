@@ -368,8 +368,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                mean_rho_inv;
 
     /* Add artificial diffusion to evolution of internal energy */
-    pi->u_dt += du_dt_difn_i;
-    pj->u_dt += du_dt_difn_j;
+    pi->u_dt += (pi->diffusion.omega * pj->diffusion.omega)*du_dt_difn_i;
+    pj->u_dt += (pi->diffusion.omega * pj->diffusion.omega)*du_dt_difn_j;
 
     /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
     drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
@@ -524,7 +524,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                mean_rho_inv;
 
     /* Add artificial diffusion to evolution of internal energy */
-    pi->u_dt += du_dt_difn_i;
+    pi->u_dt += (pi->diffusion.omega * pj->diffusion.omega)*du_dt_difn_i;
 
     /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
     drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
