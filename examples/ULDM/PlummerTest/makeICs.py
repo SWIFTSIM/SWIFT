@@ -209,7 +209,18 @@ outputfile = opt.outputfilename
 
 if opt.regular_grid:
   #nb = generate_plummer_grid(N_target=10000, a=a, L_max=1, grid_res=opt.N)
-  nb = generate_plummer_multi_grid(opt.n, a=a, scales=[0.01*Rt,0.03*Rt,0.1*Rt, 0.3*Rt, Rt], grid_res=opt.N)
+  #nb = generate_plummer_multi_grid(opt.n, a=a, scales=[0.01*Rt,0.03*Rt,0.1*Rt, 0.3*Rt, Rt], grid_res=opt.N)
+
+  from scipy.stats import qmc
+
+  # 1. Create a 3D Sobol engine
+  sampler = qmc.Sobol(d=3, scramble=True)
+  # 2. Generate N samples in the range [0, 1]
+  # Note: N should ideally be a power of 2 for Sobol sequences
+  sample_points = sampler.random(n=opt.n)
+
+  nb = ic.plummer(sample_points,1,1,1,a,R,irand=1,ftype='swift')
+
 else:
   nb = ic.plummer(opt.n,1,1,1,a,R,irand=1,ftype='swift')
 
