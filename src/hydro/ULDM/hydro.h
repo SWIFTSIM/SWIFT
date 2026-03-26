@@ -916,7 +916,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  const float uldm_Cte = 1;
+  const float uldm_Cte = 0;
 
   /* Quantum potential : finish the calculation by inserting the missing h-factors and constant */
   p->QP *= h_inv_dim*uldm_Cte;  
