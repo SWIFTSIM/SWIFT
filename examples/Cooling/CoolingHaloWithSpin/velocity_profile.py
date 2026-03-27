@@ -3,6 +3,21 @@ import h5py as h5
 import matplotlib.pyplot as plt
 import sys
 
+# =============================================================
+# Plot velocity profiles of gas in halo.
+# Usage: python3 velocity_profile.py maxr n_bins n_snaps
+#   maxr:   Maximal radius to take into account, in units of
+#           virial radius
+#   n_bins: how many radial bins to use to histogram particles
+#           to compute profiles
+#   n_snaps: how many snapshots to plot, starting at snapshot 0
+# =============================================================
+
+# for the plotting
+max_r = float(sys.argv[1])
+n_radial_bins = int(sys.argv[2])
+n_snaps = int(sys.argv[3])
+
 
 def do_binning(x, y, x_bin_edges):
 
@@ -23,11 +38,6 @@ def do_binning(x, y, x_bin_edges):
 
     return (count, y_totals)
 
-
-# for the plotting
-max_r = float(sys.argv[1])
-n_radial_bins = int(sys.argv[2])
-n_snaps = int(sys.argv[3])
 
 # some constants
 OMEGA = 0.3  # Cosmological matter fraction at z = 0
@@ -67,7 +77,7 @@ for i in range(n_snaps):
     coords = np.array(coords_dset)
     # translate coords by centre of box
     header = f["Header"]
-    snap_time = header.attrs["Time"]
+    snap_time = header.attrs["Time"][0]
     snap_time_cgs = snap_time * unit_time_cgs
     coords[:, 0] -= box_centre[0] / 2.0
     coords[:, 1] -= box_centre[1] / 2.0
@@ -91,7 +101,7 @@ for i in range(n_snaps):
         v_r[j] = -np.dot(coords[j, :], vel[j, :]) / radius[j]
 
     bin_edges = np.linspace(0, max_r, n_radial_bins + 1)
-    (hist, v_r_totals) = do_binning(r, v_r, bin_edges)
+    hist, v_r_totals = do_binning(r, v_r, bin_edges)
 
     bin_widths = bin_edges[1] - bin_edges[0]
     radial_bin_mids = np.linspace(

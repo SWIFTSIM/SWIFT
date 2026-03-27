@@ -3,11 +3,27 @@ import h5py as h5
 import matplotlib.pyplot as plt
 import sys
 
+# =============================================================
+# Plot density profiles of gas in halo.
+# Usage: python3 internal_energy_profile.py maxr n_bins n_snaps
+#   maxr:   Maximal radius to take into account, in units of
+#           virial radius
+#   n_bins: how many radial bins to use to histogram particles
+#           to compute profiles
+#   n_snaps: how many snapshots to plot, starting at snapshot 0
+# =============================================================
+
+# for the plotting
+max_r = float(sys.argv[1])
+n_radial_bins = int(sys.argv[2])
+n_snaps = int(sys.argv[3])
+
 
 def do_binning(x, y, x_bin_edges):
 
     # x and y are arrays, where y = f(x)
-    # returns number of elements of x in each bin, and the total of the y elements corresponding to those x values
+    # returns number of elements of x in each bin, and the total of the y
+    # elements corresponding to those x values
 
     n_bins = x_bin_edges.size - 1
     count = np.zeros(n_bins)
@@ -23,11 +39,6 @@ def do_binning(x, y, x_bin_edges):
 
     return (count, y_totals)
 
-
-# for the plotting
-max_r = float(sys.argv[1])
-n_radial_bins = int(sys.argv[2])
-n_snaps = int(sys.argv[3])
 
 # some constants
 OMEGA = 0.3  # Cosmological matter fraction at z = 0
@@ -69,7 +80,7 @@ for i in range(n_snaps):
     coords = np.array(coords_dset)
     # translate coords by centre of box
     header = f["Header"]
-    snap_time = header.attrs["Time"]
+    snap_time = header.attrs["Time"][0]
     snap_time_cgs = snap_time * unit_time_cgs
     coords[:, 0] -= box_centre[0] / 2.0
     coords[:, 1] -= box_centre[1] / 2.0
@@ -87,7 +98,7 @@ for i in range(n_snaps):
     r = radius_over_virial_radius
 
     bin_edges = np.linspace(0, max_r, n_radial_bins + 1)
-    (hist, u_totals) = do_binning(r, u, bin_edges)
+    hist, u_totals = do_binning(r, u, bin_edges)
 
     bin_widths = bin_edges[1] - bin_edges[0]
     radial_bin_mids = np.linspace(
@@ -114,6 +125,7 @@ for i in range(n_snaps):
         r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$"
         % (snap_time_cgs, N, v_c)
     )
+    print(snap_time_cgs, N, v_c)
     plt.ylim((0, 2))
     plot_filename = "internal_energy_profile_%03d.png" % i
     plt.savefig(plot_filename, format="png")
