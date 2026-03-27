@@ -1628,9 +1628,9 @@ int main(int argc, char *argv[]) {
     message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
-    int desired_depth = 5;
-    message("Going to remove particles");
-    init_test_single_particle(&e, desired_depth);
+    int desired_depth = 3;
+    //message("Going to remove particles");
+    //init_test_single_particle(&e, desired_depth);
 
     //double mass = 0.;
     //int nr_parts = (int) s.nr_gparts;

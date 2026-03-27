@@ -3419,6 +3419,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
 
 /* Three-point stencil to get the accelerations in the cells */
 void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]) {
+  double scale_factor = 1.;
   for (int i=min_depth; i<max_depth+1; i++) {
     for (int j=0; j<levels[i].cell_count; j++) {
       struct cell *c = levels[i].cells[j];
@@ -3429,11 +3430,12 @@ void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struc
       for (int k=0; k<3; k++) {
         c->CIC_acc[k] = 0.;
       }
-      c->CIC_acc[0] = c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential;
-      c->CIC_acc[1] = c->neighbours[3]->CIC_potential - c->neighbours[2]->CIC_potential;
-      c->CIC_acc[2] = c->neighbours[5]->CIC_potential - c->neighbours[4]->CIC_potential;
+      c->CIC_acc[0] = (c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential) * scale_factor;
+      c->CIC_acc[1] = (c->neighbours[3]->CIC_potential - c->neighbours[2]->CIC_potential) * scale_factor;
+      c->CIC_acc[2] = (c->neighbours[5]->CIC_potential - c->neighbours[4]->CIC_potential) * scale_factor;
     }
   }
+  scale_factor *= 2.;
 }
 
 void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int desired_depth) {
@@ -3533,12 +3535,12 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 
   message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/trilinear/potential_5_fullnormalised_morecells_32.txt", "w");
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/acceleration/acceleration_1_unnormalised_morecells_32.txt", "w");
   for (int i=0; i<N_parts_old + N_parts_new; i++) {
     struct gpart gpart = p_ref[i].cell->grav.parts[p_ref[i].index];
     //message("Going to write %d", i);
-    //fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", gparts[i]->a_grav_mesh[0], gparts[i]->a_grav_mesh[1], gparts[i]->a_grav_mesh[2], gparts[i]->x[0], gparts[i]->x[1], gparts[i]->x[2]);
-    fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
+    fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", gpart.a_grav_mesh[0], gpart.a_grav_mesh[1], gpart.a_grav_mesh[2], gpart.x[0], gpart.x[1], gpart.x[2]);
+    //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
   }
   fclose(accelerations);
   message("Done writing accelerations to file");
@@ -4520,7 +4522,7 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
   }
   message("Had to do post-smoothing on level %d for %d steps and the residual is %lf", current_depth, counter_post_smoothing, residual);
 
-  int normalise = 1;
+  int normalise = 0;
   if (normalise) {
 
     /* Find the mean potential on the patch */
@@ -5751,7 +5753,7 @@ int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, s
       rho[i][j] = levels[i].cells[j]->CIC_density;
     }
 
-    /*if (i==1) {
+    if (i==0) {
       struct cic_mapper_data data; 
       data.N = grid_sizes[i];
       data.rho = rho[i];
@@ -5761,7 +5763,7 @@ int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, s
       data.dim[2] = s->dim[2];
       int cdim[3] = {grid_sizes[i], grid_sizes[i], grid_sizes[i]};
       get_pm_potential(&data, grid_sizes[i], box_size, &s->e->threadpool, cdim);
-    }*/
+    }
     message("Getting mean density for i=%d", i);
     mean_density[i] = get_mean_density(rho[i], grid_sizes[i]);
   }
@@ -7153,6 +7155,7 @@ void density_to_cells(struct cic_mapper_data* data, struct cell* top_cells, int 
 void get_pm_potential(struct cic_mapper_data* data, const int N, const double box_size, struct threadpool* tp, int cdim[3]) {
   const int N_half = N / 2;
   double* rho_copy = malloc(N*N*N *sizeof(double));
+  //rho_copy = data->rho;
   memcpy(rho_copy, data->rho, N*N*N* sizeof(double));
   if (rho_copy == NULL) error("Error allocating memory for density mesh");
 
@@ -7208,8 +7211,8 @@ void get_pm_potential(struct cic_mapper_data* data, const int N, const double bo
   for (int i=0; i<N*N*N; i++) {
     sum += fabs(rho_copy[i]);
   }
-  message("The msq of the potential is %lf", sum/(N*N*N));
-
+  message("The mean absolute value of the potential is %lf", sum/(N*N*N));
+  sleep(10);
   //mesh_to_gpart_CIC_mapper()
 
   //double residual = 0.;
@@ -7221,27 +7224,36 @@ void get_pm_potential(struct cic_mapper_data* data, const int N, const double bo
 
   //Export the potential array to a .txt file to be read in Python
   //int cdim[3] = {N,N,N};
-  //double fac = box_size/N;
+  /*double fac = box_size/N;
   
-  //message("Exporting PM FFT data");
-  //FILE *fptr;
-  //fptr = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/missing_cell_check/FFT_16_noncropped.txt", "w");
-  //for (int k=0; k<N; k++) {
-    //for (int j=0; j<N; j++) {
-      //for (int i=0; i<N; i++) {
+  message("Exporting PM FFT data");
+  FILE *fptr;
+  fptr = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/acceleration/FFT_32.txt", "w");
+  for (int k=0; k<N; k++) {
+    int k_plus = (k+1) % cdim[2];
+    int k_min = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
+    for (int j=0; j<N; j++) {
+      int j_plus = (j+1) % cdim[1];
+      int j_min = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
+      for (int i=0; i<N; i++) {
+        int i_plus = (i+1) % cdim[0];
+        int i_min = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
+        double acc0 = (1./2.) * (rho_copy[cell_getid(cdim, i_plus,j,k)] - rho_copy[cell_getid(cdim, i_min,j,k)]);
+        double acc1 = (1./2.) * (rho_copy[cell_getid(cdim, i,j_plus,k)] - rho_copy[cell_getid(cdim, i,j_min,k)]);
+        double acc2 = (1./2.) * (rho_copy[cell_getid(cdim, i,j,k_plus)] - rho_copy[cell_getid(cdim, i,j,k_min)]);
         //if (i>=2 || j>=2 || k>=2) fprintf(fptr, "%.15g %.15g %.15g %.15g \n", rho_copy[cell_getid(cdim, i,j,k)], (double) i*fac, (double) j*fac, (double) k*fac);
-        //fprintf(fptr, "%.15g %.15g %.15g %.15g \n", rho_copy[cell_getid(cdim, i,j,k)], (double) i*fac, (double) j*fac, (double) k*fac);
-      //}
-    //}
-  //}
-  //fclose(fptr); 
-  //sleep(10);
+        fprintf(fptr, "%.15g %.15g %.15g %.15g %.15g %.15g \n", acc0, acc1, acc2, (double) i*fac, (double) j*fac, (double) k*fac);
+      }
+    }
+  }
+  fclose(fptr); 
+  sleep(10);*/
 
   fftw_destroy_plan(forward_plan);
   fftw_destroy_plan(inverse_plan);
   free(rho_copy);
   //free(density);
-  sleep(10);
+  //sleep(10);
 }
 
 double get_mean_density(double *dens, const int N) {
