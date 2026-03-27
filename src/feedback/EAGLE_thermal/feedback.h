@@ -89,7 +89,7 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
   sp->feedback_data.to_collect.ngb_Z = 0.f;
 
   for (size_t i = 0; i < 3; i++) {
-    sp->feedback_data.to_collect.ngb_m[i] = 0.f;
+    sp->feedback_data.to_collect_mhd.ngb_m[i] = 0.f;
   }
 
   /* Reset all ray structs carried by this star particle */

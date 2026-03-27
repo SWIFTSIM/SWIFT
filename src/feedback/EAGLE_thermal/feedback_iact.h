@@ -102,9 +102,9 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
     pj_m[2] /= pj_m_abs;
   }
 
-  si->feedback_data.to_collect.ngb_m[0] += pj_m[0];
-  si->feedback_data.to_collect.ngb_m[1] += pj_m[1];
-  si->feedback_data.to_collect.ngb_m[2] += pj_m[2];
+  si->feedback_data.to_collect_mhd.ngb_m[0] += pj_m[0];
+  si->feedback_data.to_collect_mhd.ngb_m[1] += pj_m[1];
+  si->feedback_data.to_collect_mhd.ngb_m[2] += pj_m[2];
 
   /* Choose SNII feedback model */
   switch (fb_props->feedback_model) {

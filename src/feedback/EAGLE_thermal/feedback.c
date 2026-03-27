@@ -129,9 +129,9 @@ INLINE static void compute_magnetic_feedback(
 
   /* magnetic moment, orientation vector */
   float m[3] = {0., 0., 1.};
-  const float ngb_m[3] = {sp->feedback_data.to_collect.ngb_m[0],
-                          sp->feedback_data.to_collect.ngb_m[1],
-                          sp->feedback_data.to_collect.ngb_m[2]};
+  const float ngb_m[3] = {sp->feedback_data.to_collect_mhd.ngb_m[0],
+                          sp->feedback_data.to_collect_mhd.ngb_m[1],
+                          sp->feedback_data.to_collect_mhd.ngb_m[2]};
   const float ngb_m_abs = sqrtf(ngb_m[0]*ngb_m[0] + 
                                 ngb_m[1]*ngb_m[1] +
                                 ngb_m[2]*ngb_m[2]);
