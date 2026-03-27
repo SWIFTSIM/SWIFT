@@ -155,7 +155,7 @@ and the path to the tables. A valid section of the YAML file looks like:
      H_reion_eV_p_H:            2.0      # Energy injected in eV per Hydrogen atom for Hydrogen re-ionization.
      He_reion_z_centre:         3.5      # Centre of the Gaussian used for Helium re-ionization
      He_reion_z_sigma:          0.5      # Width of the Gaussian used for Helium re-ionization
-     He_reion_ev_p_H:           2.0      # Energy injected in eV per Hydrogen atom for Helium II re-ionization.
+     He_reion_eV_p_H:           2.0      # Energy injected in eV per Hydrogen atom for Helium II re-ionization.
      rapid_cooling_threshold:   0.333333 # Switch to rapid cooling regime for dt / t_cool above this threshold.
 
 .. _QLA_star_formation:
