@@ -67,9 +67,6 @@ struct feedback_spart_data {
       /*! Total (unweighted) number gas neighbours in the stellar kernel */
       int ngb_N;
 
-      /* Angular magnetic field (moment) */
-      float ngb_m[3];
-
     } to_collect;
 
     /**
@@ -129,6 +126,13 @@ struct feedback_spart_data {
 
     } to_distribute;
   };
+  
+  struct {
+
+    /* neighbour magnetic moment */
+    float ngb_m[3];
+
+  } to_collect_mhd;
 
   /* Instantiate ray structs for SNII isotropic feedback  */
   struct ray_data SNII_rays[eagle_SNII_feedback_num_of_rays];
