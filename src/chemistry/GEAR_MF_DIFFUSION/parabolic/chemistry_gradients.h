@@ -55,7 +55,7 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
   const double m_Zi_extrapolated = m_Zi;
   const double m_Zj_extrapolated = m_Zj;
 
-  unsigned int dumb;
+  unsigned int dumb = 0;
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
 				   /*callloc=*/1, /*element*/ metal, pi->id,
 				   /*neg_counter*/ &dumb);
