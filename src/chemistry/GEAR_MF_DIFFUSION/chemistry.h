@@ -530,7 +530,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   chemistry_part_reset_fluxes(p);
 
   /* Sanity check on the total metal mass */
-  chemistry_check_unphysical_total_metal_mass(p, 3);
+  chemistry_check_unphysical_total_metal_mass(p, 2);
 }
 
 /**
