@@ -1013,6 +1013,7 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   const int discrete_symbol = 1;
 
   double r_s = 0.0;
+  message("We have the values deconvolve = %d, discrete_symbol = %d and r_s = %lf", deconvolve, discrete_symbol, r_s);
 
   /* Now de-convolve the CIC kernel and apply the Green function */
   mesh_apply_Green_function(tp, frho, /*slice_offset=*/0, /*slice_width=*/N,
@@ -1060,54 +1061,127 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   /* message("\n\n\n POTENTIAL"); */
   /* print_array(mesh->potential_global, N); */
 
-  //message("Exporting SWIFT potential data");
- // FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/uniform_check/FFT_16.txt", "w");
-  //for (int j = 0; j < N*N*N; j++) {
-    //fprintf(file_swift_density, "%lf\n", rho[j]);
-  //}
-  //fclose(file_swift_density);
-  //message("Exported the SWIFT potential data.");
-  //sleep(5);
-
-  tic = getticks();
-
-  /* Gather the mesh shared information to be used by the threads */
-  data.cells = s->cells_top;
-  data.rho = NULL;
-  data.potential = mesh->potential_global;
-  data.N = N;
-  data.fac = cell_fac;
-  data.dim[0] = dim[0];
-  data.dim[1] = dim[1];
-  data.dim[2] = dim[2];
-  data.const_G = s->e->physical_constants->const_newton_G;
-
-  if (nr_local_cells == 0) {
-
-    /* We don't have a cell infrastructure in place so we need to
-     * directly loop over the particles */
-    threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
-                   sizeof(struct gpart), threadpool_auto_chunk_size,
-                   (void*)&data);
-
-  } else { /* Normal case */
-
-    /* Do a parallel CIC mesh interpolation onto the gparts but only using
-       the local top-level cells */
-    threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
-                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                   (void*)&data);
+  /*message("Exporting SWIFT potential data");
+  int cdim[3] = {N, N, N};
+  double fac = box_size/N;
+  FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/acceleration_new/SWIFT_pot_32_cells.txt", "w");
+  for (int i=0; i<N; i++) {
+    for (int j=0; j<N; j++) {
+      for (int k=0; k<N; k++) {
+        fprintf(file_swift_density, "%.15g %.15g %.15g %.15g \n", rho[cell_getid(cdim, i, j, k)], (double) i*fac, (double) j*fac, (double) k*fac);
+      }
+    }
   }
+  fclose(file_swift_density);
+  message("Exported the SWIFT potential data.");*/
 
-  if (verbose)
-    message("Computing mesh accelerations took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  /* Add function to create 'fake' particles and add them to the cells */
+  //const int N_parts_old = s->nr_gparts;
+  //if (N_parts_old == 1) {
+    //int N_parts_new = 30*9;
+    //s->nr_gparts += N_parts_new;
+    //s->gparts = realloc(s->gparts, s->nr_gparts * sizeof(*s->gparts));
 
-  /* Clean-up the mess */
-  fftw_destroy_plan(forward_plan);
-  fftw_destroy_plan(inverse_plan);
-  memuse_log_allocation("fftw_frho", frho, 0, 0);
-  fftw_free(frho);
+    /* Create array of particle locations */
+    //double part_loc[N_parts_new][3];
+    //double r_parts = 5.;
+    //for (int i=0; i<9; i++) {
+      //r_parts += 0.5 * (int) i;
+      //generate_particles(s, 30, part_loc, r_parts,30*i);
+    //}
+
+    /* Pass particle locations to the gparts */
+    //int counter_added = 0;
+    //for (int i=N_parts_old; i<N_parts_old + N_parts_new; i++) {
+      //for (int j=0; j<s->nr_cells; j++) {
+        //struct cell *c = &s->cells_top[j];
+        //message("Accessing cell %d",j);
+        //double cx0 = c->loc[0];
+        //message("Accessed cell %d", j);
+        //double cx1 = c->loc[0] + c->width[0];
+        //double cy0 = c->loc[1];
+        //double cy1 = c->loc[1] + c->width[1];
+        //double cz0 = c->loc[2];
+        //double cz1 = c->loc[2] + c->width[2];
+        //if (part_loc[i-N_parts_old][0] >= cx0 && part_loc[i-N_parts_old][0] < cx1 && part_loc[i-N_parts_old][1] >= cy0 && part_loc[i-N_parts_old][1] <cy1 && part_loc[i-N_parts_old][2] >= cz0 && part_loc[i-N_parts_old][2] < cz1) {
+          ////if (j==16912) message("Placing particle at (%lf,%lf, %lf) in this cell", part_loc[i-N_parts_old][0], part_loc[i-N_parts_old][1], part_loc[i-N_parts_old][2]);
+          //const int nr_old = c->grav.count;
+          //c->grav.count += 1;
+          //message("Adding particle at (%lf, %lf, %lf) to cell with location (%lf, %lf, %lf) and width (%lf, %lf, %lf)", part_loc[i-N_parts_old][0], part_loc[i-N_parts_old][1], part_loc[i-N_parts_old][2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+          //if (nr_old == 0) {
+            //message("Allocating");
+            //c->grav.parts = malloc(sizeof(struct gpart));
+          //}
+          //else {
+            //if (j == 16912) message("We found %d particles in this cell", c->grav.count);
+            //message("Reallocating");
+            //c->grav.parts = realloc(c->grav.parts, (nr_old+1) * sizeof(struct gpart));
+          //}
+          //c->grav.parts[nr_old].x[0] = part_loc[i-N_parts_old][0];
+          //c->grav.parts[nr_old].x[1] = part_loc[i-N_parts_old][1];
+          //c->grav.parts[nr_old].x[2] = part_loc[i-N_parts_old][2];
+          //message("Added particle to cell. Particle %d in cell has location (%lf, %lf, %lf)", c->grav.count + 1, c->grav.parts[nr_old].x[0], c->grav.parts[nr_old].x[1], c->grav.parts[nr_old].x[2]);
+          //counter_added +=1;     
+          //break;
+        //}
+      //}
+    //}
+    //message("Finished adding particles to cells. The added counter is %d", counter_added);*/
+
+    tic = getticks();
+
+    /* Gather the mesh shared information to be used by the threads */
+    data.cells = s->cells_top;
+    data.rho = NULL;
+    data.potential = mesh->potential_global;
+    data.N = N;
+    data.fac = cell_fac;
+    data.dim[0] = dim[0];
+    data.dim[1] = dim[1];
+    data.dim[2] = dim[2];
+    data.const_G = s->e->physical_constants->const_newton_G;
+
+    if (nr_local_cells == 0) {
+
+      /* We don't have a cell infrastructure in place so we need to
+      * directly loop over the particles */
+      threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
+                    sizeof(struct gpart), threadpool_auto_chunk_size,
+                    (void*)&data);
+
+    } else { /* Normal case */
+
+      /* Do a parallel CIC mesh interpolation onto the gparts but only using
+        the local top-level cells */
+      threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
+                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                    (void*)&data);
+    }
+
+    if (verbose)
+      message("Computing mesh accelerations took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    /* Clean-up the mess */
+    fftw_destroy_plan(forward_plan);
+    fftw_destroy_plan(inverse_plan);
+    memuse_log_allocation("fftw_frho", frho, 0, 0);
+    fftw_free(frho);
+
+    /*message("Writing accelerations to file");
+    FILE *accelerations;
+    accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/acceleration_new/SWIFT_acc_64_parts.txt", "w");
+    for (int i=0; i<s->nr_cells; i++) {
+      for (int j=0; j<s->cells_top[i].grav.count; j++) {
+        struct gpart gpart = s->cells_top[i].grav.parts[j];
+        fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", gpart.a_grav_mesh[0], gpart.a_grav_mesh[1], gpart.a_grav_mesh[2], gpart.x[0], gpart.x[1], gpart.x[2]);
+      }
+      //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
+    }
+    fclose(accelerations);
+    message("Done writing accelerations to file");
+    sleep(15);*/
+  //}
 
 
   //for (int i = 0; i<num; i++) {

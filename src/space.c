@@ -3097,7 +3097,7 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
   }
 
   /* Split neighbouring cells desired_depth times */
-  int i_loc = 16;
+  /*int i_loc = 16;
   int j_loc = 16;
   int k_loc = 16;
   int offset[3] = {-1, 0, 1};
@@ -3112,7 +3112,7 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
         c->maxdepth = desired_depth;
       }
     }
-  }
+  }*/
 
 
   //sleep(15);
@@ -3346,43 +3346,6 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   message("max_gridsize = %d", max_gridsize);
   //max_gridsize = 8;
 
-  //int cdim2[3] = {32, 32, 32};
-  //struct cell *c = levels[min_depth].cells[cell_getid(cdim2, 16, 16, 16)];
-  //message("The potential of the cell at (%lf, %lf, %lf) is %lf", c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
-  
-  //max_gridsize = 8;
-
-  /* Check that the densities are the same for the existing cells */
-  //double fac = box_size/16;
-  //int cdim2[3] = {16,16,16};
-  
-  //message("Exporting AMR density data");
-  //FILE *fptr;
-  //fptr = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/missing_cell_check/AMR_16_density.txt", "w");
-  //for (int k=0; k<levels[1].cell_count; k++) {
-    //for (int j=0; j<16; j++) {
-      //for (int i=0; i<16; i++) {
-        //if (i>=2 || j>=2 || k>=2) fprintf(fptr, "%.15g %.15g %.15g %.15g \n", levels[1].cells[cell_getid(cdim2, i,j,k)]->CIC_density, (double) i*fac, (double) j*fac, (double) k*fac);
-        //fprintf(fptr, "%.15g %.15g %.15g %.15g \n", levels[1].cells[k]->CIC_density, levels[1].cells[k]->loc[0], levels[1].cells[k]->loc[1], levels[1].cells[k]->loc[2]);
-      //}
-    //}
-  //}
-  //fclose(fptr); 
-  //sleep(10);
-
-  //struct AMR_levels levels[max_depth+1];
-  
-
-  //FILE *fptr;
-  //fptr = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/uniform_check/FMG_16_atcells.txt", "w");
-  //for (int j=0; j<levels[1].cell_count; j++) {
-    //fprintf(fptr, "%lf \n", levels[1].cells[j]->CIC_potential);
-  //}
-  //fclose(fptr);
-  //message("Exported the FMG solution at cells");
-
-  //sleep(10);
-
   perform_nonuniform_calculation(s, min_depth, max_depth, levels, max_gridsize, box_size);
 
   //FILE *fptr;
@@ -3407,9 +3370,22 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
 
   get_cell_accelerations(s, min_depth, max_depth, levels);
 
-  potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
+  //potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
   
-  //potential_to_gparts(s, min_depth, max_depth, levels);
+  message("Passing potential to the particles");
+  potential_to_gparts(s, min_depth, max_depth, levels);
+  
+  message("Writing accelerations to file");
+  FILE *accelerations;
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/acceleration_new/acceleration_cells_1_32.txt", "w");
+  for (int i=0; i<levels[1].cell_count; ++i) {
+    struct cell *c = levels[1].cells[i];
+    //message("Going to write %d", i);
+    fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", c->CIC_acc[0], c->CIC_acc[1], c->CIC_acc[2], c->loc[0], c->loc[1], c->loc[2]);
+    //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
+  }
+  fclose(accelerations);
+  message("Done writing accelerations to file");
 
   /* Free memory of the pointer array to the cells */
   for (int i=0; i<max_depth+1; i++) {
@@ -3433,6 +3409,10 @@ void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struc
       c->CIC_acc[0] = (c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential) * scale_factor;
       c->CIC_acc[1] = (c->neighbours[3]->CIC_potential - c->neighbours[2]->CIC_potential) * scale_factor;
       c->CIC_acc[2] = (c->neighbours[5]->CIC_potential - c->neighbours[4]->CIC_potential) * scale_factor;
+
+      //c->CIC_acc[0] = (c->CIC_potential - c->neighbours[0]->CIC_potential) * scale_factor;
+      //c->CIC_acc[1] = (c->CIC_potential - c->neighbours[2]->CIC_potential) * scale_factor;
+      //c->CIC_acc[2] = (c->CIC_potential - c->neighbours[4]->CIC_potential) * scale_factor;
     }
   }
   scale_factor *= 2.;
@@ -3685,7 +3665,7 @@ void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct A
     for (int j=0; j<nr_cells; j++) {
       struct cell *c = level->cells[j];
       if (i==0 && !c->split && c->grav.count>0) message("Calling cell %d", j);
-      if (c->split) {
+      if (c->split && level->depth < max_depth) {
       //if (c->split && level->depth<2) {
         if (i==0) message("Cell %d is split", j);
         continue;
@@ -3695,10 +3675,10 @@ void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct A
       //if (nr_gparts>0) message("Going to do cell %d with loc (%lf, %lf, %lf) \n", j, c->loc[0], c->loc[1], c->loc[2]);
       for (int k=0; k<nr_gparts; k++) {
         struct gpart *gp = &(c->grav.parts[k]);
-        message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
+        //message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
         get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
         //get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
-        message("The assigned potential is %lf", c->grav.parts[k].potential_mesh);
+        //message("The assigned potential is %lf", c->grav.parts[k].potential_mesh);
       }
     }
   }
@@ -3907,6 +3887,8 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
       //if (levels[i].cells[j]->split) message("The potential of coarse cell %d is %lf", j, levels[i].cells[j]->CIC_potential);
     //}
     set_patch_guess(s, &levels[i], &levels[i+1], nr_cells, max_gridsize, box_size, min_depth);
+    int no_convergence = 0;
+    if (no_convergence) return;
 
     double msq = 0.;
     for (int j=0; j<levels[i+1].cell_count + levels[i+1].ghost_count; j++) {
@@ -3920,31 +3902,6 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
       //message("Extrapolating to level %d", i-j);
       extrapolate_mask_values(&levels[i-j]); //I think we can just do this using the tree. Before summing we must first overwrite the values that were stored before, as they were relevant for the calculation on the previous level
     }
-
-    //for (int j=0; j<levels[0].cell_count; j++) {
-      //if (levels[0].cells[j]->mask_value != 1) {
-        //message("Cell %d had mask value %lf", j, levels[0].cells[j]->mask_value);
-      //}
-    //}
-    /*
-    message("The ghost count is %d", levels[i+1].ghost_count);
-    double fac = s->dim[0]/levels[i+1].cdim;
-    for (int j=0; j<levels[i+1].ghost_count; j++) {
-      struct cell *ghost = levels[i+1].cells[levels[i+1].cell_count+j];
-      int cell_i = (ghost->loc[0]+0.001)/fac;
-      int cell_j = (ghost->loc[1]+0.001)/fac;
-      int cell_k = (ghost->loc[2]+0.001)/fac;
-
-      if (cell_i == 0 && cell_j == 0 && cell_k == 0) ghost->CIC_potential = -2498.85353095973;
-      if (cell_i == 0 && cell_j == 0 && cell_k == 1) ghost->CIC_potential = 435.977450810689;
-      if (cell_i == 0 && cell_j == 1 && cell_k == 0) ghost->CIC_potential = -4523.97096905245;
-      if (cell_i == 0 && cell_j == 1 && cell_k == 1) ghost->CIC_potential = -1569.15188828691;
-      if (cell_i == 1 && cell_j == 0 && cell_k == 0) ghost->CIC_potential = -1297.60186602418;
-      if (cell_i == 1 && cell_j == 0 && cell_k == 1) ghost->CIC_potential = 1506.67695673741;
-      if (cell_i == 1 && cell_j == 1 && cell_k == 0) ghost->CIC_potential = -1961.62197957554;
-      if (cell_i == 1 && cell_j == 1 && cell_k == 1) ghost->CIC_potential = 449.393180675248;
-
-    }*/
 
     //nr_cells = levels[1].cell_count;
     ///message("Exporting AMR density and potential data");
@@ -4458,7 +4415,7 @@ void get_patch_density(struct space *s, struct AMR_levels *level) {
 }
 
 void perform_multigrid_acceleration(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int current_depth) {
-  double tolerance = 10e-5;
+  double tolerance = 10e-12;
   int V_cycles = 0;
   double delta = s->dim[0]/(levels[current_depth].cdim);
   message("The value of delta is %lf", delta);
@@ -6823,7 +6780,7 @@ void apply_GS(double *density, double *pot, int cdim[3], double mean_density, do
   double residual; 
   mean_density *= 4.*M_PI*N*N*N/(box_size*box_size*box_size);
   get_residual(pot, density, cdim, mean_density, &residual, delta);
-  double tolerance = 10e-6; //Choose reasonable value here
+  double tolerance = 10e-12; //Choose reasonable value here
   int counter = 0;
   double sum = 0;
 
@@ -7212,7 +7169,6 @@ void get_pm_potential(struct cic_mapper_data* data, const int N, const double bo
     sum += fabs(rho_copy[i]);
   }
   message("The mean absolute value of the potential is %lf", sum/(N*N*N));
-  sleep(10);
   //mesh_to_gpart_CIC_mapper()
 
   //double residual = 0.;
