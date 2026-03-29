@@ -3020,15 +3020,6 @@ void space_check_unskip_flags(const struct space *s) {
 #endif
 }
 
-//struct AMR_levels {
-  //struct cell **cells;
-  //double mean_density; 
-  //int cell_count; 
-  //int ghost_count;
-  //int depth; 
-  //int cdim;
-//};
-
 void free_gparts_in_cells(struct cell *c, int *level) {
   // Free gparts array if it exists
   if (c->grav.parts != NULL) {
@@ -3097,13 +3088,13 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
   }
 
   /* Split neighbouring cells desired_depth times */
-  /*int i_loc = 16;
+  int i_loc = 16;
   int j_loc = 16;
   int k_loc = 16;
-  int offset[3] = {-1, 0, 1};
-  for (int i=0; i<3; i++) {
-    for (int j=0; j<3; j++) {
-      for (int k=0; k<3; k++) {
+  int offset[2] = {-1, 0};
+  for (int i=0; i<2; i++) {
+    for (int j=0; j<2; j++) {
+      for (int k=0; k<2; k++) {
         struct cell *c = &s->cells_top[cell_getid(s->cdim, i_loc-offset[i], j_loc-offset[j], k_loc-offset[k])];
         message("Going to do the cell with loc (%lf, %lf, %lf)", c->loc[0], c->loc[1], c->loc[2]);
         if (i==1 && j==1 && k==1) continue;
@@ -3112,7 +3103,7 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
         c->maxdepth = desired_depth;
       }
     }
-  }*/
+  }
 
 
   //sleep(15);
@@ -3370,19 +3361,22 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
 
   get_cell_accelerations(s, min_depth, max_depth, levels);
 
-  //potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
+  potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
   
-  message("Passing potential to the particles");
-  potential_to_gparts(s, min_depth, max_depth, levels);
+  //message("Passing potential to the particles");
+  //potential_to_gparts(s, min_depth, 0, levels);
   
   message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/acceleration_new/acceleration_cells_1_32.txt", "w");
-  for (int i=0; i<levels[1].cell_count; ++i) {
-    struct cell *c = levels[1].cells[i];
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered/potential_particles_modified_1_32.txt", "w");
+  for (size_t i=0; i<s->nr_gparts; ++i) {
+  //for (int i=0; i<levels[1].cell_count; ++i) {
+    struct gpart part = s->gparts[i];
+    //struct cell *c = levels[1].cells[i];
     //message("Going to write %d", i);
-    fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", c->CIC_acc[0], c->CIC_acc[1], c->CIC_acc[2], c->loc[0], c->loc[1], c->loc[2]);
+    //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", c->CIC_potential, c->loc[0] + c->width[0]/2, c->loc[1] + c->width[1]/2, c->loc[2] + c->width[2]/2);
     //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
+    fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", part.a_grav_mesh[0], part.a_grav_mesh[1], part.a_grav_mesh[2], part.x[0], part.x[1], part.x[2]);
   }
   fclose(accelerations);
   message("Done writing accelerations to file");
@@ -3511,7 +3505,7 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 
   message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/acceleration/acceleration_1_unnormalised_morecells_32.txt", "w");
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered/acceleration_fakeparts_1_32_modified.txt", "w");
   for (int i=0; i<N_parts_old + N_parts_new; i++) {
     struct gpart gpart = p_ref[i].cell->grav.parts[p_ref[i].index];
     //message("Going to write %d", i);
@@ -3696,39 +3690,44 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
 
   /* CIC for the potential: Get overlap with the cell it is in and 7 others */
   struct cell *home_cell = levels[current_depth].cells[cell_nr];
+  double offset[3] = {pos_x - home_cell->loc[0], pos_y - home_cell->loc[1], pos_z - home_cell->loc[2]};
+
+  int nbx = (offset[0] > 0) ? 0 : 1;
+  int nby = (offset[1] > 0) ? 2 : 3;
+  int nbz = (offset[2] > 0) ? 4 : 5;
   /* Check if the particle cloud lies entirely within this level */
   for (int i=0; i<current_depth+1; i++) {
-    if (home_cell->neighbours[0] == NULL || home_cell->neighbours[2] == NULL || home_cell->neighbours[4] == NULL) {
+    if (home_cell->neighbours[nbx] == NULL || home_cell->neighbours[nby] == NULL || home_cell->neighbours[nbz] == NULL) {
       home_cell = levels[current_depth].cells[cell_nr]->parent;
       stop_depth -= 1;
       if (stop_depth < 0) error("Cells that should exist not found!");
       continue;
     }
-    else if (home_cell->neighbours[0]->ghost || home_cell->neighbours[2]->ghost || home_cell->neighbours[4]->ghost) {
+    else if (home_cell->neighbours[nbx]->ghost || home_cell->neighbours[nby]->ghost || home_cell->neighbours[nbz]->ghost) {
       home_cell = levels[current_depth].cells[cell_nr]->parent;
       stop_depth -= 1;
       if (stop_depth < 0) error("Cells that should exist not found!");
       continue;
     }
-    else if (home_cell->neighbours[0]->neighbours[2] == NULL || home_cell->neighbours[0]->neighbours[4] == NULL || home_cell->neighbours[2]->neighbours[4] == NULL) {
+    else if (home_cell->neighbours[nbx]->neighbours[nby] == NULL || home_cell->neighbours[nbx]->neighbours[nbz] == NULL || home_cell->neighbours[nby]->neighbours[nbz] == NULL) {
       home_cell = levels[current_depth].cells[cell_nr]->parent;
       stop_depth -= 1;
       if (stop_depth < 0) error("Cells that should exist not found!");
       continue;
     }
-    else if (home_cell->neighbours[0]->neighbours[2]->ghost || home_cell->neighbours[0]->neighbours[4]->ghost || home_cell->neighbours[2]->neighbours[4]->ghost) {
+    else if (home_cell->neighbours[nbx]->neighbours[nby]->ghost || home_cell->neighbours[nbx]->neighbours[nbz]->ghost || home_cell->neighbours[nby]->neighbours[nbz]->ghost) {
       home_cell = levels[current_depth].cells[cell_nr]->parent;
       stop_depth -= 1;
       if (stop_depth < 0) error("Cells that should exist not found!");
       continue;
     }
-    else if (home_cell->neighbours[0]->neighbours[2]->neighbours[4] == NULL) {
+    else if (home_cell->neighbours[nbx]->neighbours[nby]->neighbours[nbz] == NULL) {
       home_cell = levels[current_depth].cells[cell_nr]->parent;
       stop_depth -= 1;
       if (stop_depth < 0) error("Cells that should exist not found!");
       continue;
     }
-    else if (home_cell->neighbours[0]->neighbours[2]->neighbours[4]->ghost) {
+    else if (home_cell->neighbours[nbx]->neighbours[nby]->neighbours[nbz]->ghost) {
       home_cell = levels[current_depth].cells[cell_nr]->parent;
       stop_depth -= 1;
       if (stop_depth < 0) error("Cells that should exist not found!");
@@ -3803,16 +3802,16 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
 }
 
 void CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize, int stop_depth, int calc_acc, double *acc) {
-  double pbox[6] = {x[0], x[0] + width[0], x[1], x[1] + width[1], x[2], x[2] + width[2]};
+  double pbox[6] = {x[0]-width[0]/2, x[0] + width[0]/2, x[1]-width[1]/2, x[1]+width[1]/2, x[2]-width[2]/2, x[2] + width[2]/2};
   double pbox_shift[6];
 
-  double x_shift[2] = {-boxsize, 0.};
-  double y_shift[2] = {-boxsize, 0.};
-  double z_shift[2] = {-boxsize, 0.};
+  double x_shift[3] = {-boxsize, 0., boxsize};
+  double y_shift[3] = {-boxsize, 0., boxsize};
+  double z_shift[3] = {-boxsize, 0., boxsize};
 
-  for (int i=0; i<2;i++) {
-    for (int j=0; j<2;j++) {
-      for (int k=0; k<2;k++) {
+  for (int i=0; i<3;i++) {
+    for (int j=0; j<3;j++) {
+      for (int k=0; k<3;k++) {
         pbox_shift[0] = pbox[0]+x_shift[i];
         pbox_shift[1] = pbox[1]+x_shift[i];
         pbox_shift[2] = pbox[2]+y_shift[j];
@@ -3820,6 +3819,7 @@ void CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3]
         pbox_shift[4] = pbox[4]+z_shift[k];
         pbox_shift[5] = pbox[5]+z_shift[k];
         if (pbox_shift[1]<0. || pbox_shift[3] <0. || pbox_shift[5]<0.) continue;
+        else if (pbox_shift[0] > boxsize || pbox_shift[2] > boxsize || pbox_shift[4] > boxsize) continue;
         //if (calc_acc) search_tree(gp, pbox_shift, s->cells_top, width[0], s->nr_cells, acc, stop_depth, 1, 0);
         //else search_tree(gp, pbox_shift, s->cells_top, width[0], s->nr_cells, &acc, stop_depth, 1, 0);
         search_tree(gp, pbox_shift, s->cells_top, width[0], s->nr_cells, acc, stop_depth, 1, 0, calc_acc);
@@ -4678,6 +4678,7 @@ void to_finer_patch(struct AMR_levels *levels, int target_depth, int active_dept
   for (int i=0; i<levels[target_depth].cell_count;i++) {
     //if (target_depth==2) message("the cell count is %d", levels[target_depth].cell_count);
     struct cell *current_cell = levels[target_depth].cells[i];
+    struct cell *parent = current_cell->parent;
     
     if (current_cell->mask_value<=0) continue;
     if (levels[target_depth].cells[i]->parent == NULL) {
@@ -4686,8 +4687,22 @@ void to_finer_patch(struct AMR_levels *levels, int target_depth, int active_dept
       message("Fake value is %d", fake);
     }
     if (current_cell->parent->mask_value<=0) continue;
-    if (target_depth<active_depth) levels[target_depth].cells[i]->conv_residual += current_cell->parent->conv_residual;
-    else levels[target_depth].cells[i]->CIC_potential += current_cell->parent->conv_residual;
+
+    double offset[3] = {current_cell->loc[0] - parent->loc[0], current_cell->loc[1] - parent->loc[1], current_cell->loc[2] - parent->loc[2]};
+    int nbx = (offset[0] > 0) ? 0 : 1;
+    int nby = (offset[1] > 0) ? 2 : 3;
+    int nbz = (offset[2] > 0) ? 4 : 5;
+    double temp = ((27./64.)*parent->CIC_potential + (9./64.)*(parent->neighbours[nbx]->CIC_potential 
+                    + parent->neighbours[nby]->CIC_potential + parent->neighbours[nbz]->CIC_potential)
+                    + (3./64.)*(parent->neighbours[nbx]->neighbours[nby]->CIC_potential + parent->neighbours[nbx]->neighbours[nbz]->CIC_potential
+                    + parent->neighbours[nby]->neighbours[nbz]->CIC_potential) + (1./64.)*parent->neighbours[nbx]->neighbours[nby]->neighbours[nbz]->CIC_potential);
+
+    if (target_depth<active_depth) {
+      current_cell->conv_residual += temp;
+    }
+    else {
+      current_cell->CIC_potential += temp;
+    }
   }
 }
 
@@ -5094,39 +5109,6 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
     }
   }
 
-  /* Check if prolongation is the issue */
-  /*if (fine->depth <= min_depth) {
-    message("Doing this");
-    int cdimh[3] = {fine->cdim, fine->cdim, fine->cdim};
-    cdim[0] = coarse->cdim;
-    cdim[1] = coarse->cdim;
-    cdim[2] = coarse->cdim;
-    int N = coarse->cdim;
-
-    for (int i = 0; i<fine->cdim; i++) {
-      for (int j = 0; j<fine->cdim; j++) {
-        for (int k=0; k<fine->cdim; k++) {
-          int iH = i/2;
-          int jH = j/2;
-          int kH = k/2;
-          double dx = (i%2) * 0.5;
-          double dy = (j%2) * 0.5;
-          double dz = (k%2) * 0.5;
-
-          int iHp = (iH +1)%N;
-          int jHp = (jH +1)%N;
-          int kHp = (kH +1)%N;
-
-          fine->cells[cell_getid(cdimh,i,j,k)]->CIC_potential = ((1.-dx)*(1.-dy)*(1.-dz)*coarse->cells[cell_getid(cdim,iH,jH,kH)]->CIC_potential + dx*(1.-dy)*(1.-dz)*coarse->cells[cell_getid(cdim,iHp, jH, kH)]->CIC_potential
-                                    + (1.-dx)*dy*(1.-dz)*coarse->cells[cell_getid(cdim,iH,jHp,kH)]->CIC_potential + (1.-dx)*(1.-dy)*dz*coarse->cells[cell_getid(cdim,iH,jH,kHp)]->CIC_potential
-                                    + dx*dy*(1.-dz)*coarse->cells[cell_getid(cdim,iHp,jHp,kH)]->CIC_potential + dx*(1.-dy)*dz*coarse->cells[cell_getid(cdim,iHp,jH, kHp)]->CIC_potential
-                                    + (1.-dx)*dy*dz*coarse->cells[cell_getid(cdim,iH,jHp,kHp)]->CIC_potential+ dx*dy*dz*coarse->cells[cell_getid(cdim,iHp,jHp,kHp)]->CIC_potential);
-        }
-      }
-    }
-    return;
-  }*/
-
   message("Going to do this");
   for (int i=0;i<nr_cells;i++) {
     /* Box wrap the multipole's position */
@@ -5272,39 +5254,7 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
 
   //int cdimH[3] = {gridsize/2, gridsize/2, gridsize/2}; //For finding cells on the coarse grid
 
-  int trilinear = 1;
-
-  if (trilinear) {
-    interpolate_trilinear(coarse, fine);
-  }
-  else {
-    for (int i=0; i<coarse->cell_count + coarse->ghost_count; i++) {
-      struct cell *parent = coarse->cells[i];
-      if (!parent->split) continue;
-      //int cell_x = (int) ((parent->loc[0]+0.01)/fac_coarse);
-      //int cell_y = (int) ((parent->loc[1]+0.01)/fac_coarse);
-      //int cell_z = (int) ((parent->loc[2]+0.01)/fac_coarse);
-
-      for (int j=0; j<8; j++) {
-        struct cell *child = parent->progeny[j];
-        child->CIC_potential = 0.;
-        //if (!child->ghost) continue;
-
-        int offset[3] = {0,0,0}; //Do we need to interpolate in this direction?
-        if (j & 4) offset[0] = 1;
-        if (j & 2) offset[1] = 1;
-        if (j & 1) offset[2] = 1;
-
-        child->CIC_potential = 1./3. * (((double) offset[0])*(-1./8.*parent->neighbours[1]->CIC_potential + 3./4.*parent->CIC_potential + 3./8.*parent->neighbours[0]->CIC_potential) +
-                                ((double) offset[1])*(-1./8.*parent->neighbours[3]->CIC_potential + 3./4.*parent->CIC_potential + 3./8.*parent->neighbours[2]->CIC_potential) +
-                                ((double) offset[2])*(-1./8.*parent->neighbours[5]->CIC_potential + 3./4.*parent->CIC_potential + 3./8.*parent->neighbours[4]->CIC_potential) +
-                                (double) ((1-offset[0]) + (1-offset[1]) + (1-offset[2])) * parent->CIC_potential);
-
-        /* Set mask value */
-        child->mask_value = 1.;
-      }
-    }
-  }
+  interpolate_trilinear(coarse, fine);
   
   nr_cells += fine->ghost_count;
   message("Done interpolating");
@@ -5403,22 +5353,24 @@ void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine) {
 
     /* Get the location/offset */
     double offset[3] = {child->loc[0] - parent->loc[0], child->loc[1] - parent->loc[1], child->loc[2] - parent->loc[2]};
-    double dx = (offset[0] > 0) ? 0.5 : 0.;
-    double dy = (offset[1] > 0) ? 0.5 : 0.;
-    double dz = (offset[2] > 0) ? 0.5 : 0.;
+
+    int nbx = (offset[0] > 0) ? 0 : 1;
+    int nby = (offset[1] > 0) ? 2 : 3;
+    int nbz = (offset[2] > 0) ? 4 : 5;
     //message("The offsets are (%lf, %lf, %lf) and we calculated (%lf,%lf,%lf)", offset[0], offset[1], offset[2], dx, dy, dz);
 
-    if (parent->neighbours[0] == NULL) message("Neighbour 0 null for cell %d", i);
-    if (parent->neighbours[2] == NULL) message("Neighbour 2 null for cell %d", i);
-    if (parent->neighbours[4] == NULL) message("Neighbour 4 null for cell %d", i);
-    if (parent->neighbours[0]->neighbours[2] == NULL) message("Neighbour 0,2 null for cell %d", i);
-    if (parent->neighbours[0]->neighbours[4] == NULL) message("Neighbour 0,4 null for cell %d", i);
-    if (parent->neighbours[2]->neighbours[4] == NULL) message("Neighbour 2,4 null for cell %d", i);
-    if (parent->neighbours[0]->neighbours[2]->neighbours[4] == NULL) message("Neighbour 0,2,4 null for cell %d", i);
-    child->CIC_potential = ((1.-dx)*(1.-dy)*(1.-dz)*parent->CIC_potential + dx*(1.-dy)*(1.-dz)*parent->neighbours[0]->CIC_potential
-                              + (1.-dx)*dy*(1.-dz)*parent->neighbours[2]->CIC_potential + (1.-dx)*(1.-dy)*dz*parent->neighbours[4]->CIC_potential
-                              + dx*dy*(1.-dz)*parent->neighbours[0]->neighbours[2]->CIC_potential + dx*(1.-dy)*dz*parent->neighbours[0]->neighbours[4]->CIC_potential
-                              + (1.-dx)*dy*dz*parent->neighbours[2]->neighbours[4]->CIC_potential+ dx*dy*dz*parent->neighbours[0]->neighbours[2]->neighbours[4]->CIC_potential);
+    if (parent->neighbours[nbx] == NULL) message("Neighbour x null for cell %d", i);
+    if (parent->neighbours[nby] == NULL) message("Neighbour y null for cell %d", i);
+    if (parent->neighbours[nbz] == NULL) message("Neighbour z null for cell %d", i);
+    if (parent->neighbours[nbx]->neighbours[nby] == NULL) message("Neighbour x,y null for cell %d", i);
+    if (parent->neighbours[nbx]->neighbours[nbz] == NULL) message("Neighbour x,z null for cell %d", i);
+    if (parent->neighbours[nby]->neighbours[nbz] == NULL) message("Neighbour y,z null for cell %d", i);
+    if (parent->neighbours[nbx]->neighbours[nby]->neighbours[nbz] == NULL) message("Neighbour x,y,z null for cell %d", i);
+
+    child->CIC_potential = ((27./64.)*parent->CIC_potential + (9./64.)*(parent->neighbours[nbx]->CIC_potential 
+                              + parent->neighbours[nby]->CIC_potential + parent->neighbours[nbz]->CIC_potential)
+                              + (3./64.)*(parent->neighbours[nbx]->neighbours[nby]->CIC_potential + parent->neighbours[nbx]->neighbours[nbz]->CIC_potential
+                              + parent->neighbours[nby]->neighbours[nbz]->CIC_potential) + (1./64.)*parent->neighbours[nbx]->neighbours[nby]->neighbours[nbz]->CIC_potential);
 
     if (!child->ghost) child->mask_value = 1.;
     //else message("Set ghost at loc (%lf, %lf, %lf) to value %lf", child->loc[0], child->loc[1], child->loc[2], child->CIC_potential);
