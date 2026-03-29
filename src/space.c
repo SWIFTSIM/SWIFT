@@ -3095,7 +3095,7 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
   for (int i=0; i<2; i++) {
     for (int j=0; j<2; j++) {
       for (int k=0; k<2; k++) {
-        struct cell *c = &s->cells_top[cell_getid(s->cdim, i_loc-offset[i], j_loc-offset[j], k_loc-offset[k])];
+        struct cell *c = &s->cells_top[cell_getid(s->cdim, i_loc+offset[i], j_loc+offset[j], k_loc+offset[k])];
         message("Going to do the cell with loc (%lf, %lf, %lf)", c->loc[0], c->loc[1], c->loc[2]);
         if (i==1 && j==1 && k==1) continue;
         int curr_depth = 0;
@@ -3364,11 +3364,11 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
   
   //message("Passing potential to the particles");
-  //potential_to_gparts(s, min_depth, 0, levels);
+  //potential_to_gparts(s, min_depth, max_depth, levels);
   
-  message("Writing accelerations to file");
+  /*message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered/potential_particles_modified_1_32.txt", "w");
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered/acc_particle_2_32.txt", "w");
   for (size_t i=0; i<s->nr_gparts; ++i) {
   //for (int i=0; i<levels[1].cell_count; ++i) {
     struct gpart part = s->gparts[i];
@@ -3379,7 +3379,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
     fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", part.a_grav_mesh[0], part.a_grav_mesh[1], part.a_grav_mesh[2], part.x[0], part.x[1], part.x[2]);
   }
   fclose(accelerations);
-  message("Done writing accelerations to file");
+  message("Done writing accelerations to file");*/
 
   /* Free memory of the pointer array to the cells */
   for (int i=0; i<max_depth+1; i++) {
@@ -3505,7 +3505,7 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 
   message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered/acceleration_fakeparts_1_32_modified.txt", "w");
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered/acceleration_fakeparts_top_32_modified.txt", "w");
   for (int i=0; i<N_parts_old + N_parts_new; i++) {
     struct gpart gpart = p_ref[i].cell->grav.parts[p_ref[i].index];
     //message("Going to write %d", i);
