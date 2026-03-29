@@ -3409,10 +3409,6 @@ void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struc
       c->CIC_acc[0] = (c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential) * scale_factor;
       c->CIC_acc[1] = (c->neighbours[3]->CIC_potential - c->neighbours[2]->CIC_potential) * scale_factor;
       c->CIC_acc[2] = (c->neighbours[5]->CIC_potential - c->neighbours[4]->CIC_potential) * scale_factor;
-
-      //c->CIC_acc[0] = (c->CIC_potential - c->neighbours[0]->CIC_potential) * scale_factor;
-      //c->CIC_acc[1] = (c->CIC_potential - c->neighbours[2]->CIC_potential) * scale_factor;
-      //c->CIC_acc[2] = (c->CIC_potential - c->neighbours[4]->CIC_potential) * scale_factor;
     }
   }
   scale_factor *= 2.;
@@ -5710,7 +5706,7 @@ int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, s
       rho[i][j] = levels[i].cells[j]->CIC_density;
     }
 
-    if (i==0) {
+    /*if (i==0) {
       struct cic_mapper_data data; 
       data.N = grid_sizes[i];
       data.rho = rho[i];
@@ -5720,7 +5716,7 @@ int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, s
       data.dim[2] = s->dim[2];
       int cdim[3] = {grid_sizes[i], grid_sizes[i], grid_sizes[i]};
       get_pm_potential(&data, grid_sizes[i], box_size, &s->e->threadpool, cdim);
-    }
+    }*/
     message("Getting mean density for i=%d", i);
     mean_density[i] = get_mean_density(rho[i], grid_sizes[i]);
   }
@@ -6031,16 +6027,16 @@ void initialise_tree_search(struct gpart *part, struct cell *home_cell, struct c
   double x[3] = {pos_x, pos_y, pos_z};
   double width[3] = {home_cell->width[0], home_cell->width[1], home_cell->width[2]}; //Width of constant density cube by which we represent the particle
   //message("We are assigning the width %lf,%lf,%lf", width[0],width[1],width[2]);
-  double pbox[6] = {x[0], x[0] + width[0], x[1],  x[1] + width[1], x[2], x[2] + width[2]};
+  double pbox[6] = {x[0] - width[0]/2, x[0] + width[0]/2, x[1] - width[1]/2,  x[1] + width[1]/2, x[2] - width[2]/2, x[2] + width[2]/2};
   double pbox_shift[6];
 
-  double x_shift[2] = {-boxsize, 0.};
-  double y_shift[2] = {-boxsize, 0.};
-  double z_shift[2] = {-boxsize, 0.};
+  double x_shift[3] = {-boxsize, 0., boxsize};
+  double y_shift[3] = {-boxsize, 0., boxsize};
+  double z_shift[3] = {-boxsize, 0., boxsize};
 
-  for (int i=0; i<2;i++) {
-    for (int j=0; j<2;j++) {
-      for (int k=0; k<2;k++) {
+  for (int i=0; i<3;i++) {
+    for (int j=0; j<3;j++) {
+      for (int k=0; k<3;k++) {
         pbox_shift[0] = pbox[0]+x_shift[i];
         pbox_shift[1] = pbox[1]+x_shift[i];
         pbox_shift[2] = pbox[2]+y_shift[j];
@@ -6048,6 +6044,7 @@ void initialise_tree_search(struct gpart *part, struct cell *home_cell, struct c
         pbox_shift[4] = pbox[4]+z_shift[k];
         pbox_shift[5] = pbox[5]+z_shift[k];
         if (pbox_shift[1]<0. || pbox_shift[3] <0. || pbox_shift[5]<0.) continue;
+        else if (pbox_shift[0] > boxsize || pbox_shift[2] > boxsize || pbox_shift[4] > boxsize) continue;
         //if (verbose) message("Initialising for i=%d, j=%d, k=%d", i, j, k);
         search_tree(part, pbox_shift, cells_top, width[0], nr_topcells, &temp, level_check, 0, verbose, 0);
       }
@@ -6526,21 +6523,26 @@ void prolongate_solution(double *pot_coarse, double *pot_fine, const int N, cons
   for (int i = 0; i<N_double; i++) {
     for (int j = 0; j<N_double; j++) {
       for (int k=0; k<N_double; k++) {
-        int iH = i/2;
-        int jH = j/2;
-        int kH = k/2;
-        double dx = (i%2) * 0.5;
-        double dy = (j%2) * 0.5;
-        double dz = (k%2) * 0.5;
+        int iH0 = i/2;
+        int jH0 = j/2;
+        int kH0 = k/2;
 
-        int iHp = (iH +1)%N;
-        int jHp = (jH +1)%N;
-        int kHp = (kH +1)%N;
+        int iHp = (iH0 +1)%N;
+        int jHp = (jH0 +1)%N;
+        int kHp = (kH0 +1)%N;
 
-        pot_fine[cell_getid(cdimh,i,j,k)] = ((1.-dx)*(1.-dy)*(1.-dz)*pot_coarse[cell_getid(cdim,iH,jH,kH)] + dx*(1.-dy)*(1.-dz)*pot_coarse[cell_getid(cdim,iHp, jH, kH)]
-                                  + (1.-dx)*dy*(1.-dz)*pot_coarse[cell_getid(cdim,iH,jHp,kH)] + (1.-dx)*(1.-dy)*dz*pot_coarse[cell_getid(cdim,iH,jH,kHp)]
-                                  + dx*dy*(1.-dz)*pot_coarse[cell_getid(cdim,iHp,jHp,kH)] + dx*(1.-dy)*dz*pot_coarse[cell_getid(cdim,iHp,jH, kHp)]
-                                  + (1.-dx)*dy*dz*pot_coarse[cell_getid(cdim,iH,jHp,kHp)]+ dx*dy*dz*pot_coarse[cell_getid(cdim,iHp,jHp,kHp)]);
+        int iHm = (iH0 -1 > 0) ? iH0 -1 : iH0 - 1 + N;
+        int jHm = (jH0 -1 > 0) ? jH0 -1 : jH0 - 1 + N;
+        int kHm = (kH0 -1 > 0) ? kH0 -1 : kH0 - 1 + N;
+
+        int iH1 = (i%2 == 0) ? iHm : iHp;
+        int jH1 = (j%2 == 0) ? jHm : jHp;
+        int kH1 = (k%2 == 0) ? kHm : kHp;
+
+        pot_fine[cell_getid(cdimh,i,j,k)] = ((27./64.)*pot_coarse[cell_getid(cdim, iH0, jH0, kH0)] + (9./64.)*(pot_coarse[cell_getid(cdim, iH1, jH0, kH0)] 
+                                      + pot_coarse[cell_getid(cdim, iH0, jH1, kH0)] + pot_coarse[cell_getid(cdim, iH0, jH0, kH1)]) 
+                                      + (3./64.)*(pot_coarse[cell_getid(cdim, iH1, jH1, kH0)] + pot_coarse[cell_getid(cdim, iH1, jH0, kH1)] 
+                                      + pot_coarse[cell_getid(cdim, iH0, jH1, jH1)]) + (1./64.) * pot_coarse[cell_getid(cdim, iH1, jH1, kH1)]);
       }
     }
   }
@@ -6952,19 +6954,33 @@ void solve_coarser_problem(double *pot, double *residual, int cdim[3], double de
 }
 
 void prolongate_problem(double *coarser_solution, double *pot, int cdim[3]) {
-  int cdimh[] = {cdim[0]*2, cdim[1]*2, cdim[2]*2};
-  for (int i=0; i<cdim[0]; i++) {
-    for (int j=0; j<cdim[0]; j++) {
-      for (int k=0; k<cdim[0]; k++) {
-        const size_t cid = cell_getid(cdim,i,j,k);
-        pot[cell_getid(cdimh,2*i,2*j,2*k)] += coarser_solution[cid];
-        pot[cell_getid(cdimh,2*i+1,2*j,2*k)] += coarser_solution[cid];
-        pot[cell_getid(cdimh,2*i,2*j+1,2*k)] += coarser_solution[cid];
-        pot[cell_getid(cdimh,2*i,2*j,2*k+1)] += coarser_solution[cid];
-        pot[cell_getid(cdimh,2*i+1,2*j+1,2*k)] += coarser_solution[cid];
-        pot[cell_getid(cdimh,2*i+1,2*j,2*k+1)] += coarser_solution[cid];
-        pot[cell_getid(cdimh,2*i,2*j+1,2*k+1)] += coarser_solution[cid];
-        pot[cell_getid(cdimh,2*i+1,2*j+1,2*k+1)] += coarser_solution[cid];
+  int N = cdim[0];
+  int N_double = cdim[0]*2;
+  int cdimh[] = {N_double, N_double, N_double};
+
+  for (int i = 0; i<N_double; i++) {
+    for (int j = 0; j<N_double; j++) {
+      for (int k=0; k<N_double; k++) {
+        int iH0 = i/2;
+        int jH0 = j/2;
+        int kH0 = k/2;
+
+        int iHp = (iH0 +1)%N;
+        int jHp = (jH0 +1)%N;
+        int kHp = (kH0 +1)%N;
+
+        int iHm = (iH0 -1 > 0) ? iH0 -1 : iH0 - 1 + N;
+        int jHm = (jH0 -1 > 0) ? jH0 -1 : jH0 - 1 + N;
+        int kHm = (kH0 -1 > 0) ? kH0 -1 : kH0 - 1 + N;
+
+        int iH1 = (i%2 == 0) ? iHm : iHp;
+        int jH1 = (j%2 == 0) ? jHm : jHp;
+        int kH1 = (k%2 == 0) ? kHm : kHp;
+
+        pot[cell_getid(cdimh,i,j,k)] = ((27./64.)*coarser_solution[cell_getid(cdim, iH0, jH0, kH0)] + (9./64.)*(coarser_solution[cell_getid(cdim, iH1, jH0, kH0)] 
+                                      + coarser_solution[cell_getid(cdim, iH0, jH1, kH0)] + coarser_solution[cell_getid(cdim, iH0, jH0, kH1)]) 
+                                      + (3./64.)*(coarser_solution[cell_getid(cdim, iH1, jH1, kH0)] + coarser_solution[cell_getid(cdim, iH1, jH0, kH1)] 
+                                      + coarser_solution[cell_getid(cdim, iH0, jH1, jH1)]) + (1./64.) * coarser_solution[cell_getid(cdim, iH1, jH1, kH1)]);
       }
     }
   }
