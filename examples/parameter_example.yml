@@ -967,7 +967,8 @@ GEARSink:
   sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
   sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
   sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
-  disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
+  disable_sink_formation: 0                       # (Optional) Disable sink formation. May only be used for debugging. (Default: 0)
+  disable_star_formation: 0                       # (Optional) Disable star formation. May only be used for debugging. (Default: 0)
   CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
   timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks no longer have time-step restrictions, except for 2-body encounters involving another young/old sink and gravity (in Mega-years). (Default: FLT_MAX)
   timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). (Default: FLT_MAX)

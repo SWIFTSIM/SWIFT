@@ -21,7 +21,6 @@
 #define SWIFT_GEAR_SINKS_IACT_H
 
 /* Local includes */
-#include "gravity.h"
 #include "gravity_iact.h"
 #include "sink.h"
 #include "sink_getters.h"
@@ -210,7 +209,7 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
   const float dv_norm = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
 
   /* Get the gravitional softening */
-  const float eps = gravity_get_softening(si->gpart, grav_props);
+  const float eps = sink_get_softening(si, grav_props);
   const float eps2 = eps * eps;
   const float eps_inv = 1.f / eps;
   const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -352,7 +351,7 @@ runner_iact_nonsym_sinks_sink_swallow(
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
-    const float eps = gravity_get_softening(si->gpart, grav_props);
+    const float eps = sink_get_softening(si, grav_props);
     const float eps2 = eps * eps;
     const float eps_inv = 1.f / eps;
     const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -523,7 +522,7 @@ runner_iact_nonsym_sinks_gas_swallow(
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
-    const float eps = gravity_get_softening(si->gpart, grav_props);
+    const float eps = sink_get_softening(si, grav_props);
     const float eps2 = eps * eps;
     const float eps_inv = 1.f / eps;
     const float eps_inv3 = eps_inv * eps_inv * eps_inv;
