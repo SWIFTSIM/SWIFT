@@ -21,7 +21,6 @@
 #define SWIFT_GEAR_SINKS_IACT_H
 
 /* Local includes */
-#include "gravity.h"
 #include "gravity_iact.h"
 #include "sink.h"
 #include "sink_getters.h"

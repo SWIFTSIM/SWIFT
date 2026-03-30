@@ -530,7 +530,7 @@ libgrav_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
 
 # Sources and special flags for the gravity MPI library
 libgrav_mpi_la_SOURCES = runner_doiact_grav.c runner_doiact_long_range_grav.c
-libgrav_mpi_la_CFLAGS = $(AM_CFLAGS) $(GRAVITY_CFLAGS) -DWITH_MPI
+libgrav_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) $(GRAVITY_CFLAGS) -DWITH_MPI
 libgrav_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Sources and flags for regular library
