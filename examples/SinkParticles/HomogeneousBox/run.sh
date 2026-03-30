@@ -17,7 +17,6 @@ then
     rm ICs_homogeneous_box.hdf5
 fi
 
-
 #Create the ICs if they do not exist
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
