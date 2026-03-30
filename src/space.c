@@ -3088,13 +3088,13 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
   }
 
   /* Split neighbouring cells desired_depth times */
-  int i_loc = 16;
+  /*int i_loc = 16;
   int j_loc = 16;
   int k_loc = 16;
-  int offset[2] = {-1, 0};
-  for (int i=0; i<2; i++) {
-    for (int j=0; j<2; j++) {
-      for (int k=0; k<2; k++) {
+  int offset[3] = {-1, 0, 1};
+  for (int i=0; i<3; i++) {
+    for (int j=0; j<3; j++) {
+      for (int k=0; k<3; k++) {
         struct cell *c = &s->cells_top[cell_getid(s->cdim, i_loc+offset[i], j_loc+offset[j], k_loc+offset[k])];
         message("Going to do the cell with loc (%lf, %lf, %lf)", c->loc[0], c->loc[1], c->loc[2]);
         if (i==1 && j==1 && k==1) continue;
@@ -3103,7 +3103,7 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
         c->maxdepth = desired_depth;
       }
     }
-  }
+  }*/
 
 
   //sleep(15);
@@ -3208,6 +3208,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   /* Set the other levels */
   int level_i=0;
   while(split && level_i <= max_depth) {
+    message("Extracting level %d", level_i);
     cdim *= 2;
     levels[level_i+1].cells = NULL;
     levels[level_i+1].cell_count = 0;
@@ -3359,6 +3360,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   //message("Exported the cell potential data.");
   //sleep(5);
 
+  message("The minimum depth is %d", min_depth);
   get_cell_accelerations(s, min_depth, max_depth, levels);
 
   potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
@@ -3368,13 +3370,13 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   
   /*message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered/acc_particle_2_32.txt", "w");
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered_check/acceleration_parts_top_32_full.txt", "w");
   for (size_t i=0; i<s->nr_gparts; ++i) {
-  //for (int i=0; i<levels[1].cell_count; ++i) {
+  //for (int i=0; i<levels[0].cell_count; ++i) {
     struct gpart part = s->gparts[i];
-    //struct cell *c = levels[1].cells[i];
+    //struct cell *c = levels[0].cells[i];
     //message("Going to write %d", i);
-    //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", c->CIC_potential, c->loc[0] + c->width[0]/2, c->loc[1] + c->width[1]/2, c->loc[2] + c->width[2]/2);
+    //fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", c->CIC_acc[0], c->CIC_acc[1], c->CIC_acc[2], c->loc[0] + c->width[0]/2, c->loc[1] + c->width[1]/2, c->loc[2] + c->width[2]/2);
     //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
     fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", part.a_grav_mesh[0], part.a_grav_mesh[1], part.a_grav_mesh[2], part.x[0], part.x[1], part.x[2]);
   }
@@ -3389,7 +3391,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
 
 /* Three-point stencil to get the accelerations in the cells */
 void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]) {
-  double scale_factor = 1.;
+  double scale_factor = 0.5;
   for (int i=min_depth; i<max_depth+1; i++) {
     for (int j=0; j<levels[i].cell_count; j++) {
       struct cell *c = levels[i].cells[j];
@@ -3403,26 +3405,31 @@ void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struc
       c->CIC_acc[0] = (c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential) * scale_factor;
       c->CIC_acc[1] = (c->neighbours[3]->CIC_potential - c->neighbours[2]->CIC_potential) * scale_factor;
       c->CIC_acc[2] = (c->neighbours[5]->CIC_potential - c->neighbours[4]->CIC_potential) * scale_factor;
+      if (i==1 && j==0) {
+        message("The difference was %lf and the scale factor %lf", c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential, scale_factor);
+        message("Assigned (%lf, %lf, %lf) to cell 0", c->CIC_acc[0], c->CIC_acc[1], c->CIC_acc[2]);
+      }
     }
+    scale_factor *= 2.;
   }
-  scale_factor *= 2.;
 }
 
 void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int desired_depth) {
   /* Add function to create 'fake' particles and add them to the cells */
   //desired_depth = 2;
   const int N_parts_old = s->nr_gparts;
-  int N_parts_new = 30*9;
+  int N_parts_new = 1000;
   s->nr_gparts += N_parts_new;
   //s->gparts = realloc(s->gparts, s->nr_gparts * sizeof(*s->gparts));
+  struct gpart part = s->gparts[0];
 
   /* Create array of particle locations */
   double part_loc[N_parts_new][3];
-  double r_parts = 5.;
-  for (int i=0; i<9; i++) {
-    r_parts += 0.5 * (int) i;
-    generate_particles(s, 30, part_loc, r_parts,30*i);
-  }
+  double r_parts = 10.;
+  //for (int i=0; i<9; i++) {
+    //r_parts += 0.5 * (int) i;
+    generate_particles(s, N_parts_new, part_loc, r_parts,0, part);
+  //}
   
   struct gpart_ref p_ref[N_parts_old + N_parts_new];
 
@@ -3503,9 +3510,9 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
   /* Pass potential to the particles (real and fake ones) */
   potential_to_gparts(s, min_depth, max_depth, levels);
 
-  message("Writing accelerations to file");
+  /*message("Writing accelerations to file");
   FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered/acceleration_fakeparts_top_32_modified.txt", "w");
+  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered_check/proper_cells/acceleration_parts_5_32_scaled_new.txt", "w");
   for (int i=0; i<N_parts_old + N_parts_new; i++) {
     struct gpart gpart = p_ref[i].cell->grav.parts[p_ref[i].index];
     //message("Going to write %d", i);
@@ -3513,7 +3520,7 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
     //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
   }
   fclose(accelerations);
-  message("Done writing accelerations to file");
+  message("Done writing accelerations to file");*/
 }
 
 void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells, int *counter_added, int N_parts_old, int N_parts_new, struct gpart_ref p_ref[N_parts_old + N_parts_new], int *depth, int desired_depth) {
@@ -3556,9 +3563,14 @@ void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr
   *depth -= 1;
 }
 
-void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_parts, int start) {
+void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_max, int start, struct gpart part) {
   const double golden_angle = M_PI * (3.0 - sqrt(5.0));
-  double centre_loc = s->dim[0]/2.;
+  double centre_loc[3];
+  centre_loc[0] = part.x[0];
+  centre_loc[1] = part.x[1];
+  centre_loc[2] = part.x[2];
+  double r_min = 0.;
+  message("The centre is at (%lf, %lf, %lf)", centre_loc[0], centre_loc[1], centre_loc[2]);
 
   for (int i=0; i<N_parts_new; i++) {
     double cos_theta = 1.0 - 2.0 * ((double)i + 0.5) / (double)N_parts_new;
@@ -3566,13 +3578,16 @@ void generate_particles(struct space *s, int N_parts_new, double positions[N_par
 
     double phi = golden_angle * (double)i;
 
+    double u = (double)rand() / (double)RAND_MAX;
+    double r = r_min + u * (r_max - r_min);
+
     double ux = cos(phi) * sin_theta;
     double uy = sin(phi) * sin_theta;
     double uz = cos_theta;
 
-    positions[i+start][0] = centre_loc + r_parts * ux;
-    positions[i+start][1] = centre_loc + r_parts * uy;
-    positions[i+start][2] = centre_loc + r_parts * uz;
+    positions[i+start][0] = centre_loc[0] + r * ux;
+    positions[i+start][1] = centre_loc[1] + r * uy;
+    positions[i+start][2] = centre_loc[2] + r * uz;
   }
 }
 
@@ -3654,7 +3669,7 @@ void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct A
     message("The cell count is %d", nr_cells);
     for (int j=0; j<nr_cells; j++) {
       struct cell *c = level->cells[j];
-      if (i==0 && !c->split && c->grav.count>0) message("Calling cell %d", j);
+      //if (i==0 && !c->split && c->grav.count>0) message("Calling cell %d", j);
       if (c->split && level->depth < max_depth) {
       //if (c->split && level->depth<2) {
         if (i==0) message("Cell %d is split", j);
@@ -3697,6 +3712,10 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
   int nbz = (offset[2] > 0) ? 4 : 5;
   /* Check if the particle cloud lies entirely within this level */
   for (int i=0; i<current_depth+1; i++) {
+    if (pos_x == dim[0]/2 && pos_y == dim[1]/2 && pos_z == dim[2]/2) {
+      message("Doing this for the middle particle");
+      continue;
+    }
     if (home_cell->neighbours[nbx] == NULL || home_cell->neighbours[nby] == NULL || home_cell->neighbours[nbz] == NULL) {
       home_cell = levels[current_depth].cells[cell_nr]->parent;
       stop_depth -= 1;
@@ -3735,7 +3754,7 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
     }
     break;
   }
-  message("Found the stop depth %d", stop_depth);
+  //message("Found the stop depth %d", stop_depth);
   /*if (stop_depth == 3) {
     message("Particle at (%lf, %lf, %lf) has home cell (%lf, %lf, %lf)", pos_x, pos_y, pos_z, home_cell->loc[0], home_cell->loc[1], home_cell->loc[2]);
     message("The neighbour 1 is at (%lf, %lf, %lf)", home_cell->neighbours[0]->loc[0], home_cell->neighbours[0]->loc[1], home_cell->neighbours[0]->loc[2]);
@@ -3898,7 +3917,10 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
       //message("Extrapolating to level %d", i-j);
       extrapolate_mask_values(&levels[i-j]); //I think we can just do this using the tree. Before summing we must first overwrite the values that were stored before, as they were relevant for the calculation on the previous level
     }
-
+    //for (int j=0; j<levels[0].cell_count; j++) {
+      //if (levels[0].cells[j]->mask_value == 1) message("The cell at (%lf, %lf, %lf) has mask value 1", levels[0].cells[j]->loc[0], levels[0].cells[j]->loc[1], levels[0].cells[j]->loc[2]);
+    //}
+    //sleep(15);
     //nr_cells = levels[1].cell_count;
     ///message("Exporting AMR density and potential data");
       //FILE *file_swift_density2 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/missing_cell_check/FFT_16_initguess.txt", "w");
@@ -4411,11 +4433,11 @@ void get_patch_density(struct space *s, struct AMR_levels *level) {
 }
 
 void perform_multigrid_acceleration(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int current_depth) {
-  double tolerance = 10e-12;
+  double tolerance = 10e-8;
   int V_cycles = 0;
   double delta = s->dim[0]/(levels[current_depth].cdim);
   message("The value of delta is %lf", delta);
-  int V_max = 5;
+  int V_max = 10;
 
   message("The mean density of the current level is %lf", levels[current_depth].mean_density);
 
@@ -4454,8 +4476,8 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
     /* Initialise V-cycle recursion */
     transfer_residual_array(levels[current_depth], &levels[current_depth-1],delta);
     to_coarser_patch(levels, delta, current_depth-1, max_depth, current_depth);
-    //residual = get_patch_residual(levels[current_depth], delta);
-
+    residual = get_patch_residual(levels[current_depth], delta);
+    message("Directly after transferring the residual is %lf", residual);
     /* Post-smoothing for 10 steps */
     for (int i=0; i<10; i++) {
       perform_patch_sweep(&levels[current_depth], delta);
@@ -4531,7 +4553,7 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
 void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth, int max_depth, int active_depth) {
   //message("Converging on level %d", current_depth);
   delta *= 2.0;
-  double tolerance = 10e-4;
+  double tolerance = 10e-6;
   double conv_tolerance = 0.9999;
   //double conv_tolerance2 = 0.1;
   int counter = 0;
@@ -4574,6 +4596,7 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
       counter_abs +=1;
       perform_masked_patch_sweep(&levels[current_depth], delta);
       residual_new = get_masked_residual(levels[current_depth], delta, nr_active, counter);
+      message("After step %d the residual is %lf", counter_abs, residual_new);
       //msq = get_solution_magnitude(levels[current_depth]);
       msq = 0;
       for (int j=0; j<levels[current_depth].cell_count; j++) {
@@ -4584,18 +4607,19 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
       msq = msq/nr_active;
       //message("The msq potential of level %d after %d step is %lf", current_depth, counter, msq);
       //message("The msq of the current solution is %lf", sqrt(msq/nr_active));
-      if (counter_abs>1) {
+      //if (counter_abs>1) {
+        //message("Doing this :(");
         //message("The previous residual was %lf and the new one is %lf", residual_old, residual_new);
-        if (residual_new/residual_old>conv_tolerance && counter_abs >20) {
+        //if (residual_new/residual_old>conv_tolerance && counter_abs >20) {
           //converge_first_order(&levels[current_depth], delta, nr_steps);
           //message("Finished with first order convergence");
           //counter =0;
-          to_finer_patch(levels, current_depth+1, active_depth);
+          //to_finer_patch(levels, current_depth+1, active_depth);
           //sleep(5);
-          return;
+          //return;
           //error("Residuals diverging during exact solving at depth %d", current_depth);
-        }
-      }
+        //}
+      //}
       residual_old = residual_new;
     }  
     message("Going back to level %d", current_depth+1);
@@ -4692,10 +4716,10 @@ void to_finer_patch(struct AMR_levels *levels, int target_depth, int active_dept
     int nbx = (offset[0] > 0) ? 0 : 1;
     int nby = (offset[1] > 0) ? 2 : 3;
     int nbz = (offset[2] > 0) ? 4 : 5;
-    double temp = ((27./64.)*parent->CIC_potential + (9./64.)*(parent->neighbours[nbx]->CIC_potential 
-                    + parent->neighbours[nby]->CIC_potential + parent->neighbours[nbz]->CIC_potential)
-                    + (3./64.)*(parent->neighbours[nbx]->neighbours[nby]->CIC_potential + parent->neighbours[nbx]->neighbours[nbz]->CIC_potential
-                    + parent->neighbours[nby]->neighbours[nbz]->CIC_potential) + (1./64.)*parent->neighbours[nbx]->neighbours[nby]->neighbours[nbz]->CIC_potential);
+    double temp = ((27./64.)*parent->conv_residual + (9./64.)*(parent->neighbours[nbx]->conv_residual 
+                    + parent->neighbours[nby]->conv_residual + parent->neighbours[nbz]->conv_residual)
+                    + (3./64.)*(parent->neighbours[nbx]->neighbours[nby]->conv_residual + parent->neighbours[nbx]->neighbours[nbz]->conv_residual
+                    + parent->neighbours[nby]->neighbours[nbz]->conv_residual) + (1./64.)*parent->neighbours[nbx]->neighbours[nby]->neighbours[nbz]->conv_residual);
 
     if (target_depth<active_depth) {
       current_cell->conv_residual += temp;
@@ -4847,7 +4871,7 @@ void perform_masked_patch_sweep(struct AMR_levels *level, double delta) {
         }
         else {
           delta_nb[j] = 1;
-          pot[j] = current_cell->neighbours[j]->CIC_potential;
+          pot[j] = current_cell->neighbours[j]->conv_residual;
           //message("Added neighbour potential %lf", pot[j]);
         }
       }

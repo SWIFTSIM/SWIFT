@@ -599,7 +599,7 @@ void free_gparts_in_cells(struct cell *c, int *level);
 void init_test_single_particle(struct engine *e, int desired_depth);
 void get_progeny(struct space *s, struct cell *c, int deisred_depth, int *curr_depth);
 void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells, int *counter_added, int N_parts_old, int N_parts_new, struct gpart_ref p_ref[N_parts_old + N_parts_new], int *depth, int desired_depth);
-void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_parts, int start);
+void generate_particles(struct space *s, int N_parts_new, double positions[N_parts_new][3], double r_parts, int start, struct gpart part);
 void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int desired_depth);
 void get_patch_potential(struct space *s, struct AMR_levels *fine, struct AMR_levels *coarse);
 void mark_all_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);

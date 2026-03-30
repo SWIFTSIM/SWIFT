@@ -1628,20 +1628,21 @@ int main(int argc, char *argv[]) {
     message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
-    int desired_depth = 0;
+    int desired_depth = 5;
     message("Going to remove particles");
     init_test_single_particle(&e, desired_depth);
 
     /* Recompute mesh forces for the single particle */
     //pm_mesh_compute_potential(e.mesh, e.s, &e.threadpool, e.verbose);
-    /*FILE *pm_acc = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/acceleration_new/SWIFT_acc_16.txt", "w");
+    /*FILE *pm_acc = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered_check/SWIFT_acc_32.txt", "w");
     for (size_t i=0; i<s.nr_gparts; ++i) {
       struct gpart p = s.gparts[i];
-      message("Exporting part %lu", i);
+      //message("Exporting part %lu", i);
       fprintf(pm_acc, "%.15g %.15g %.15g %.15g %.15g %.15g \n", p.a_grav_mesh[0], p.a_grav_mesh[1], p.a_grav_mesh[2], p.x[0], p.x[1], p.x[2]);
     }
     fclose(pm_acc);
     message("Exported the SWIFT mesh acceleration");*/
+    //sleep(15);
 
     //double mass = 0.;
     //int nr_parts = (int) s.nr_gparts;
