@@ -123,7 +123,7 @@ hydro_set_comoving_internal_energy_dt(struct part* restrict p,
 
   const float old_du_dt = hydro_get_comoving_internal_energy_dt(p);
 
-  // Store cooling du_dt (without mass) to use for next timestep
+  /* Store cooling du_dt used in KDK time integration in Kick1 and Kick2 */
   p->cool_du_dt_prev = du_dt - old_du_dt;
 }
 
@@ -151,34 +151,36 @@ hydro_set_physical_internal_energy_dt(struct part* restrict p,
  * This overrides the current state of the particle but does *not* change its
  * time-derivatives
  * NOTE: This function may violate energy conservation.
+ * NOTE : This has been updated to instead directly change total energy with
+ * the change in internal energy. This avoids having to invoke both:
+ *   1. E = Etherm + Ekin, which is a risky calculation as the p**2/2m can be
+ *   inaccurate.
+ *   2. Inconsistency between thermal evolution in the kicks and this.
+ *
+ *   W[4] and W[5] are safe because they are linear in u.
+
  *
  * @param p The particle
- * @param u The new internal energy
+ * @param delta_u The change in internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_comoving_internal_energy(struct part* p, const float u) {
+hydro_set_comoving_internal_energy(struct part* p, const float delta_u) {
 
-  const float mass = p->conserved.mass;
-  if (mass <= 0.0f) {
+  /* Avoid Nan and inf */
+  if (p->conserved.mass <= 0.0f) {
     return;
   }
 
-  const float Ekin = 0.5f *
-                     (p->conserved.momentum[0] * p->conserved.momentum[0] +
-                      p->conserved.momentum[1] * p->conserved.momentum[1] +
-                      p->conserved.momentum[2] * p->conserved.momentum[2]) /
-                     mass;
-
   float W[6];
   hydro_part_get_primitive_variables(p, W);
-  W[4] = gas_pressure_from_internal_energy(p->rho, u);
-  W[5] = gas_entropy_from_internal_energy(p->rho, u);
+  W[4] += gas_pressure_from_internal_energy(p->rho, delta_u);
+  W[5] += gas_entropy_from_internal_energy(p->rho, delta_u);
   hydro_part_set_primitive_variables(p, W);
 
   /* thermal_energy is NOT the specific energy (u), but the total thermal
      energy (u*m) */
-  p->conserved.energy = p->conserved.mass * u + Ekin;
-  p->conserved.entropy = p->conserved.mass * p->A;
+  p->conserved.energy += p->conserved.mass * delta_u;
+  p->conserved.entropy += p->conserved.mass * W[5]; // W[5] not p.A...
 }
 
 /**
@@ -208,7 +210,11 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy(struct part* p, struct xpart* xp,
                                    const struct cosmology* cosmo,
                                    const float u) {
-  hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
+
+  const float old_u = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float delta_u = u - old_u;
+  hydro_set_comoving_internal_energy(p, delta_u /
+                                          cosmo->a_factor_internal_energy);
 }
 
 /**
@@ -222,7 +228,13 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(
     struct part* p, const struct cosmology* cosmo,
     const struct pressure_floor_props* pressure_floor, const float u) {
-  hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
+
+  /* setting internal energy is best done with energy changes */
+  const float old_u_comoving = gas_internal_energy_from_pressure(p->rho,
+                                                      p->P);
+  const float delta_u = u - old_u_comoving * cosmo->a_factor_internal_energy;
+  hydro_set_comoving_internal_energy(p, delta_u /
+                                          cosmo->a_factor_internal_energy);
 }
 
 /**
