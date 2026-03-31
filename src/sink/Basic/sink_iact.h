@@ -20,9 +20,9 @@
 #define SWIFT_BASIC_SINKS_IACT_H
 
 /* Local includes */
-#include "gravity.h"
 #include "gravity_iact.h"
 #include "random.h"
+#include "sink.h"
 #include "sink_properties.h"
 
 /**
@@ -193,9 +193,7 @@ runner_iact_nonsym_sinks_sink_swallow(
 
   /* Compute the Newtonian or softened potential the sink exherts onto the
       gas particle */
-  /* TODO: needs updating for MPI safety. We don't have access to foreign gparts
-   * here. */
-  const float eps = gravity_get_softening(si->gpart, grav_props);
+  const float eps = sink_get_softening(si, grav_props);
   const float eps2 = eps * eps;
   const float eps_inv = 1.f / eps;
   const float eps_inv3 = eps_inv * eps_inv * eps_inv;

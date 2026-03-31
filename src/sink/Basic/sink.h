@@ -643,4 +643,18 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     const struct cosmology *cosmo, const struct sink_props *sink_props,
     const double time) {}
 
+/**
+ * @brief Returns the current co-moving softening of a sink particle
+ *
+ * Notice that on foreign MPI ranks, we do not have access to the gpart. Hence,
+ * we directly read from the gravity props.
+ *
+ * @param sink The particle of interest
+ * @param grav_props The global gravity properties.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_softening(
+    const struct sink *sink, const struct gravity_props *grav_props) {
+  return grav_props->epsilon_baryon_cur;
+}
+
 #endif /* SWIFT_BASIC_SINK_H */
