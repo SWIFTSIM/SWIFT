@@ -3363,10 +3363,10 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   message("The minimum depth is %d", min_depth);
   get_cell_accelerations(s, min_depth, max_depth, levels);
 
-  potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
+  //potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
   
-  //message("Passing potential to the particles");
-  //potential_to_gparts(s, min_depth, max_depth, levels);
+  message("Passing potential to the particles");
+  potential_to_gparts(s, min_depth, max_depth, levels);
   
   /*message("Writing accelerations to file");
   FILE *accelerations;
@@ -3643,7 +3643,7 @@ void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_
 
     for (int j=0; j<6; j++) {
       if (level->cells[i]->neighbours[j] == NULL) {
-        if (cell_i==0 && cell_j==0 && cell_k==2) message("Searching for neighbour %d for cell %d", j, i);
+        //if (cell_i==0 && cell_j==0 && cell_k==2) message("Searching for neighbour %d for cell %d", j, i);
         int pre_smoothing = 1;
         int neighbour = find_neighbour(level, parent, level->cells[i], search_id[j], fac, j, pre_smoothing, 0);
         if (cell_i==0 && cell_j==0 && cell_k==2 && neighbour) message("Found neighbour %d at (%lf, %lf, %lf)", j, level->cells[i]->neighbours[j]->loc[0], level->cells[i]->neighbours[j]->loc[1], level->cells[i]->neighbours[j]->loc[2]);
@@ -4596,7 +4596,7 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
       counter_abs +=1;
       perform_masked_patch_sweep(&levels[current_depth], delta);
       residual_new = get_masked_residual(levels[current_depth], delta, nr_active, counter);
-      message("After step %d the residual is %lf", counter_abs, residual_new);
+      //message("After step %d the residual is %lf", counter_abs, residual_new);
       //msq = get_solution_magnitude(levels[current_depth]);
       msq = 0;
       for (int j=0; j<levels[current_depth].cell_count; j++) {
@@ -5184,6 +5184,8 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
         //if (fine->depth == 8) message("For cell %d, neighbour %d did not exist", i, j);
         //if (search_id[j]<0) message("Search ID %d is %lu and we had entries %d,%d,%d and cdim %d", j, search_id[j], i_min, cell_j, cell_k, cdim[0]);
         int check_parent = 0;
+        //int cdim2 = fine->cdim;
+        //size_t search_loc[3] = {(search_id[j]/(cdim2*cdim2))%cdim2, (search_id[j]/cdim2)%cdim2, search_id[j] % cdim2};
         create_ghost(s, coarse, fine, parent->neighbours[j], search_id[j], fac_coarse, min_depth, j, check_parent, 0);
         fine->cells[i]->neighbours[j] = fine->cells[nr_cells+fine->ghost_count-1];
         int backward_neighbour = (j%2 == 0) ? j+1 : j-1;
@@ -5191,12 +5193,13 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
         fine->cells[nr_cells+fine->ghost_count-1]->neighbours[backward_neighbour] = fine->cells[i];
         //message("We just linked the cell at (%lf, %lf, %lf) to the cell at (%lf, %lf, %lf) for neighbour %d", fine->cells[nr_cells+fine->ghost_count-1]->loc[0], fine->cells[nr_cells+fine->ghost_count-1]->loc[1], fine->cells[nr_cells+fine->ghost_count-1]->loc[2], fine->cells[i]->neighbours[j]->loc[0], fine->cells[i]->neighbours[j]->loc[1], fine->cells[i]->neighbours[j]->loc[2], backward_neighbour);
         //sleep(15);
-        for (int k=0; k<6; k++) {
-          if (fine->cells[nr_cells+fine->ghost_count-1]->neighbours[k] != NULL) {
+        //for (int k=0; k<6; k++) {
+          //if (fine->cells[nr_cells+fine->ghost_count-1]->neighbours[k] != NULL && search_loc[0]==1 && search_loc[1] == 16 && search_loc[2] == 28) {
             //message("Newly made ghost has neighbour %d linked", k);
             //message("This neighbour has location (%lf, %lf, %lf)", fine->cells[nr_cells+fine->ghost_count-1]->neighbours[k]->loc[0], fine->cells[nr_cells+fine->ghost_count-1]->neighbours[k]->loc[1], fine->cells[nr_cells+fine->ghost_count-1]->neighbours[k]->loc[2]);
-          }
-        }
+            //sleep(5);
+          //}
+        //}
       }
       //if (!neighbour && fine->cells[i]->neighbours[j] == NULL) message("Failed to create the neighbour %d for cell %d", j, i);
       if (fine->cells[i]->neighbours[j] == NULL) {
@@ -5332,9 +5335,15 @@ void check_diagonal1(struct space *s, struct AMR_levels *coarse, struct AMR_leve
       int search_j = (cell_j + nbs[which_neighbour][1] + cdim[1]) % cdim[1];
       int search_k = (cell_k + nbs[which_neighbour][2] + cdim[2]) % cdim[2];
 
+      //message("Searching for neighbour %d for the cell with loc (%lf, %lf, %lf)", which_neighbour, search_loc_x, search_loc_y, search_loc_z);
+
       size_t search_id = cell_getid(cdim, search_i, search_j, search_k);
       int check_parent = 1;
       int verbose = 0;
+      if (search_i==1 && search_j == 17 && search_k == 28) {
+        message("Going to create the specific cell as neighbour %d of the cell at (%lf, %lf, %lf)", which_neighbour, search_loc_x, search_loc_y, search_loc_z);
+        sleep(10);
+      }
       create_ghost(s, coarse, fine, c->parent, search_id, fac_coarse, min_depth, which_neighbour, check_parent, verbose);
 
       c->neighbours[which_neighbour] = fine->cells[fine->cell_count+fine->ghost_count-1];
@@ -5423,7 +5432,8 @@ void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels 
   c->ghost = 1;
   c->mask_value = -1;
   if (check_parent) { /* In this case the parent is the parent of the cell of which we have now created the neighbour */
-    if (c->loc[0] >= parent->loc[0] && c->loc[0] < parent->loc[0] + parent->width[0] && c->loc[1] >= parent->loc[1] && c->loc[1] < parent->loc[1] + parent->width[1] && c->loc[2] >= parent->loc[2] && c->loc[2] < parent->loc[2] + parent->width[2]) {
+    if (c->loc[0]>= parent->loc[0] && c->loc[0] < parent->loc[0] + parent->width[0] - 0.001 && c->loc[1] >= parent->loc[1] && c->loc[1] < parent->loc[1] + parent->width[1] - 0.001 && c->loc[2] >= parent->loc[2] && c->loc[2] < parent->loc[2] + parent->width[2] - 0.001) {
+      if (verbose) message("Neighbours parent is its own parent: Created cell at (%lf, %lf, %lf) with parent at (%lf, %lf, %lf)", c->loc[0], c->loc[1], c->loc[2], parent->loc[0], parent->loc[1], parent->loc[2]);
       c->parent = parent;
     }
     else {
@@ -5440,7 +5450,7 @@ void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels 
   if (parent->progeny[2*2*x_id + 2*y_id + z_id] != NULL) {
     message("We are doing ID %d and the search loc was (%lu, %lu, %lu)", 2*2*x_id + 2*y_id + z_id, search_loc[0], search_loc[1], search_loc[2]);
     message("Created ghost cell at (%lf, %lf, %lf)", (double) search_loc[0] * fac, (double) search_loc[1] * fac, (double) search_loc[2] * fac);
-    message("The existing cell had location (%lf, %lf, %lf)", parent->progeny[2*2*x_id + 2*y_id + z_id]->loc[0], parent->progeny[2*2*x_id + 2*y_id + z_id]->loc[1], parent->progeny[2*2*x_id + 2*y_id + z_id]->loc[2]);
+    message("The existing cell had location (%lf, %lf, %lf) and ghost value %d", parent->progeny[2*2*x_id + 2*y_id + z_id]->loc[0], parent->progeny[2*2*x_id + 2*y_id + z_id]->loc[1], parent->progeny[2*2*x_id + 2*y_id + z_id]->loc[2], parent->progeny[2*2*x_id + 2*y_id + z_id]->ghost);
     error("Something went wrong");
   }
   parent->progeny[2*2*x_id + 2*y_id + z_id] = c;
@@ -5476,7 +5486,10 @@ void create_link(struct space *s, struct AMR_levels *level, struct cell **cells,
 
     for (int j=0; j<6; j++) {
       int pre_smoothing = 0;
-      if (cells[i]->neighbours[j] == NULL && j!=which_neighbour) find_neighbour(level, cells[i]->parent, cells[i], search_id[j], fac, j, pre_smoothing, verbose);
+      if (cells[i]->neighbours[j] == NULL) {
+        if (cell_i == 1 && cell_j == 16 && cell_k == 28) message("Going to search for neighbour %d", j);
+        find_neighbour(level, cells[i]->parent, cells[i], search_id[j], fac, j, pre_smoothing, verbose);
+      }
     }
   }
 }
@@ -6058,7 +6071,7 @@ void search_tree(struct gpart *part, double pbox[6], struct cell *cells_top, dou
 
   for (int i=0; i<nr_topcells;i++) {
     overlap = get_overlap(pbox,cells_top[i].loc, cells_top[i].width);
-    if (overlap >0. && reverse && level_check == 3) message("Overlap was %lf between pbox with edge (%lf, %lf, %lf) and top cell at (%lf, %lf, %lf)", overlap, pbox[0], pbox[2], pbox[4], cells_top[i].loc[0], cells_top[i].loc[1], cells_top[i].loc[2]);
+    //if (overlap >0. && reverse && level_check == 3) message("Overlap was %lf between pbox with edge (%lf, %lf, %lf) and top cell at (%lf, %lf, %lf)", overlap, pbox[0], pbox[2], pbox[4], cells_top[i].loc[0], cells_top[i].loc[1], cells_top[i].loc[2]);
     if (overlap == 0.) continue;
     if (overlap<0.) error("Overlap smaller than zero detected..");
     if (!reverse) {
@@ -6095,7 +6108,7 @@ void assign_lower_level(struct gpart *part, double pbox[6], struct cell *parent,
       error("This cell should have been created");
     }
     overlap = get_overlap(pbox, parent->progeny[i]->loc, parent->progeny[i]->width);
-    if (overlap >0. && reverse && level_check == 3) message("Overlap was %lf between pbox with edge (%lf, %lf, %lf) and child at (%lf, %lf, %lf)", overlap, pbox[0], pbox[2], pbox[4], parent->progeny[i]->loc[0], parent->progeny[i]->loc[1], parent->progeny[i]->loc[2]);
+    //if (overlap >0. && reverse && level_check == 3) message("Overlap was %lf between pbox with edge (%lf, %lf, %lf) and child at (%lf, %lf, %lf)", overlap, pbox[0], pbox[2], pbox[4], parent->progeny[i]->loc[0], parent->progeny[i]->loc[1], parent->progeny[i]->loc[2]);
     if (overlap == 0.) continue;
     if (overlap<0.) error("Overlap smaller than zero detected..");
     //if (*level>5) message("Assigning at level %d", *level);
@@ -6119,7 +6132,7 @@ void assign_lower_level(struct gpart *part, double pbox[6], struct cell *parent,
         acc[2] += parent->progeny[i]->CIC_acc[2] * overlap/(width*width*width);
       }
       else *acc += parent->progeny[i]->CIC_potential * overlap/(width*width*width);
-      if (level_check == 3) message("Just assigned %lf", parent->progeny[i]->CIC_potential * overlap/(width*width*width));
+      //if (level_check == 3) message("Just assigned %lf", parent->progeny[i]->CIC_potential * overlap/(width*width*width));
     }
     //else {
       //message("The overlap was nonzero. Assigning mass");
@@ -6159,7 +6172,7 @@ void check_lower_level(struct cell *parent, struct cell *cells_top, const double
     for (int j=0;j<nr_gparts;j++) {
       //double tot_assigned[6] = {0.};
       if (*level == 4) {
-        verbose = 1;
+        verbose = 0;
         //message("Doing particle number %d", j);
       }
       initialise_tree_search(&(parent->grav.parts[j]), parent, cells_top, boxsize, nr_topcells, level_check, verbose);
