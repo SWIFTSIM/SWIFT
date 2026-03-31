@@ -155,6 +155,7 @@ struct weights_mapper_data {
 
 extern double repartition_costs[task_type_count][task_subtype_count];
 
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
 void partition_sizes_to_edges(struct space *s, double *counts, double *edges,
                               const int *cell_edge_offsets);
 int partition_count_edges(struct space *s, int periodic, int verbose,

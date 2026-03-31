@@ -3,6 +3,17 @@ import h5py as h5
 import matplotlib.pyplot as plt
 import sys
 
+# =============================================================
+# Plot density profiles of gas in halo.
+# Usage: python3 density_profile.py maxr n_bins n_snaps
+#   maxr:   Maximal radius to take into account, in units of
+#           virial radius
+#   n_bins: how many radial bins to use to histogram particles
+#           to compute profiles
+#   n_snaps: how many snapshots to plot, starting at snapshot 0
+# =============================================================
+
+
 # for the plotting
 max_r = float(sys.argv[1])  # in units of the virial radius
 n_radial_bins = int(sys.argv[2])
@@ -48,7 +59,7 @@ for i in range(n_snaps):
     coords = np.array(coords_dset)
     # translate coords by centre of box
     header = f["Header"]
-    snap_time = header.attrs["Time"]
+    snap_time = header.attrs["Time"][0]
     snap_time_cgs = snap_time * unit_time_cgs
     coords[:, 0] -= box_centre[0] / 2.0
     coords[:, 1] -= box_centre[1] / 2.0
@@ -68,8 +79,10 @@ for i in range(n_snaps):
     mass_dset = f["PartType0/Masses"]
     # mass of each particles should be equal
     part_mass = np.array(mass_dset)[0]
-    part_mass_cgs = part_mass * unit_mass_cgs
-    part_mass_over_virial_mass = part_mass_cgs / M_vir_cgs
+
+    # NOTE: put division by unit_mass_cgs in divisor to avoid overflows
+    # when computing part_mass_cgs instead
+    part_mass_over_virial_mass = part_mass / (M_vir_cgs / unit_mass_cgs)
 
     mass_hist = hist * part_mass_over_virial_mass
     radial_bin_mids = np.linspace(
@@ -106,6 +119,7 @@ for i in range(n_snaps):
         rho_0 = density[0]
 
         rho_analytic_init = rho_0 * (radial_bin_mids / r_0) ** (-2)
+
     plt.plot(radial_bin_mids, density, "ko", label="Average density of shell")
     plt.plot(
         radial_bin_mids, rho_analytic_init, label="Initial analytic density profile"
@@ -117,6 +131,7 @@ for i in range(n_snaps):
         % (snap_time_cgs, N, v_c)
     )
     # plt.ylim((1.e-2,1.e1))
+
     plt.plot(
         (r_cool_over_r_vir, r_cool_over_r_vir),
         (1.0e-4, 1.0e4),

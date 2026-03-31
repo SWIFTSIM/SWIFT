@@ -249,7 +249,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     error("Failed to allocate the xadj array");
 
   idx_t *inds;
-  if ((inds = (idx_t *)malloc(sizeof(idx_t) * nadjcny)) == NULL)
+  if ((inds = (idx_t *)swift_malloc("partition_adjncy",
+                                    sizeof(idx_t) * nadjcny)) == NULL)
     error("Failed to allocate the inds array");
 
   int nadjcny_check = 0;
@@ -266,7 +267,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     bzero(weights_v, sizeof(double) * nr_cells);
   }
   if (eweights) {
-    if ((weights_e = (double *)malloc(sizeof(double) * nadjcny)) == NULL)
+    if ((weights_e = (double *)swift_malloc("partition_edge_weights",
+                                            sizeof(double) * nadjcny)) == NULL)
       error("Failed to allocate edge weights arrays.");
     bzero(weights_e, sizeof(double) * nadjcny);
   }
@@ -446,10 +448,10 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   partition_split_metis(s, nr_nodes, repartition->celllist);
 
   /* Clean up. */
-  free(inds);
+  swift_free("partition_adjncy", inds);
   free(xadj);
   if (vweights) free(weights_v);
-  if (eweights) free(weights_e);
+  if (eweights) swift_free("partition_edge_weights", weights_e);
 }
 
 /**

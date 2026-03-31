@@ -674,8 +674,7 @@ void partition_initial_partition(struct partition *initial_partition,
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
     /* Simple k-way partition selected by METIS using cell particle
      * counts as weights or not. Should be best when starting with a
-     * inhomogeneous dist.
-     */
+     * inhomogeneous dist. */
     int *cell_edge_offsets = (int *)malloc(sizeof(int) * (s->nr_cells + 1));
     if (cell_edge_offsets == NULL)
       error("Failed to allocate cell_edge_offsets");
@@ -698,7 +697,8 @@ void partition_initial_partition(struct partition *initial_partition,
 
       if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
-      if ((weights_e = (double *)malloc(sizeof(double) * nadjcny)) == NULL)
+      if ((weights_e = (double *)swift_malloc(
+               "partition_edge_weights", sizeof(double) * nadjcny)) == NULL)
         error("Failed to allocate weights_e buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
@@ -738,7 +738,7 @@ void partition_initial_partition(struct partition *initial_partition,
     }
 
     if (weights_v != NULL) free(weights_v);
-    if (weights_e != NULL) free(weights_e);
+    if (weights_e != NULL) swift_free("partition_edge_weights", weights_e);
     free(celllist);
     free(cell_edge_offsets);
 #else

@@ -74,7 +74,8 @@
  * @param cell_edge_offsets output array[nr_cells+1]: offset in adjncy per cell.
  * @return total number of edges across all cells.
  */
-static int partition_count_edges_uniform(struct space *s, int periodic,
+static int partition_count_edges_uniform(const struct space *s,
+                                         const int periodic,
                                          int *cell_edge_offsets) {
 
   cell_edge_offsets[0] = 0;
@@ -128,6 +129,16 @@ static int partition_count_edges_uniform(struct space *s, int periodic,
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (periodic) {
+    for (int i = 0; i < s->nr_cells; i++) {
+      const int count = cell_edge_offsets[i + 1] - cell_edge_offsets[i];
+      if (count != 26)
+        error("Expected 26 edges for periodic cell %d but found %d", i, count);
+    }
+  }
+#endif
+
   return cell_edge_offsets[s->nr_cells];
 }
 
@@ -143,8 +154,9 @@ static int partition_count_edges_uniform(struct space *s, int periodic,
  * @param edges weights for the graph edges in CSR order.
  * @param cell_edge_offsets array[nr_cells+1] with cumulative edge offsets.
  */
-static void partition_sizes_to_edges_uniform(struct space *s, double *counts,
-                                             double *edges,
+static void partition_sizes_to_edges_uniform(const struct space *s,
+                                             double *restrict counts,
+                                             double *restrict edges,
                                              const int *cell_edge_offsets) {
 
   const int nedges = cell_edge_offsets[s->nr_cells];
@@ -326,6 +338,8 @@ void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
     zoom_partition_graph_init(s, periodic, adjncy, nadjcny, xadj, nxadj,
                               cell_edge_offsets);
   }
+
+  return nedges;
 }
 
 /**
@@ -600,7 +614,8 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
     error("Failed to allocate xadj buffer.");
 
   idx_t *adjncy = NULL;
-  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedge_local)) == NULL)
+  if ((adjncy = (idx_t *)swift_malloc("partition_adjncy_local",
+                                      sizeof(idx_t) * nedge_local)) == NULL)
     error("Failed to allocate adjncy array.");
 
   idx_t *weights_v = NULL;
@@ -610,7 +625,9 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
 
   idx_t *weights_e = NULL;
   if (edgew != NULL)
-    if ((weights_e = (idx_t *)malloc(sizeof(idx_t) * nedge_local)) == NULL)
+    if ((weights_e = (idx_t *)swift_malloc("partition_edge_weights_local",
+                                           sizeof(idx_t) * nedge_local)) ==
+        NULL)
       error("Failed to allocate edge weights array");
 
   idx_t *regionid = NULL;
@@ -644,9 +661,9 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
     for (int i = 0; i <= ncells; i++) {
       std_xadj[i] = cell_edge_offsets[i];
     }
-
     idx_t *full_adjncy = NULL;
-    if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
+    if ((full_adjncy = (idx_t *)swift_malloc("partition_adjncy_full",
+                                             sizeof(idx_t) * nedges)) == NULL)
       error("Failed to allocate full adjncy array.");
     idx_t *full_weights_v = NULL;
     if (weights_v != NULL)
@@ -654,7 +671,8 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate full vertex weights array");
     idx_t *full_weights_e = NULL;
     if (weights_e != NULL)
-      if ((full_weights_e = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
+      if ((full_weights_e = (idx_t *)swift_malloc(
+               "partition_edge_weights_full", sizeof(idx_t) * nedges)) == NULL)
         error("Failed to allocate full edge weights array");
 
     idx_t *full_regionid = NULL;
@@ -782,7 +800,6 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
         if (res != MPI_SUCCESS) mpi_error(res, "Failed to send graph data");
       }
       j1 += nvt + 1;
-
       j2 += nedge;
       j3 += nvt;
     }
@@ -801,10 +818,11 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Clean up. */
     if (weights_v != NULL) free(full_weights_v);
-    if (weights_e != NULL) free(full_weights_e);
+    if (weights_e != NULL)
+      swift_free("partition_edge_weights_full", full_weights_e);
     free(full_xadj);
     free(std_xadj);
-    free(full_adjncy);
+    swift_free("partition_adjncy_full", full_adjncy);
     if (refine) free(full_regionid);
 
   } else {
@@ -1025,11 +1043,11 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
   free(reqs);
   free(stats);
   if (weights_v != NULL) free(weights_v);
-  if (weights_e != NULL) free(weights_e);
+  if (weights_e != NULL) swift_free("partition_edge_weights_local", weights_e);
   free(vtxdist);
   free(tpwgts);
   free(xadj);
-  free(adjncy);
+  swift_free("partition_adjncy_local", adjncy);
   free(regionid);
 }
 #endif
@@ -1077,7 +1095,8 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
     if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
       error("Failed to allocate xadj buffer.");
     idx_t *adjncy;
-    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
+    if ((adjncy = (idx_t *)swift_malloc("partition_adjncy",
+                                        sizeof(idx_t) * nedges)) == NULL)
       error("Failed to allocate adjncy array.");
     idx_t *weights_v = NULL;
     if (vertexw != NULL)
@@ -1085,7 +1104,8 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate vertex weights array");
     idx_t *weights_e = NULL;
     if (edgew != NULL)
-      if ((weights_e = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
+      if ((weights_e = (idx_t *)swift_malloc("partition_edge_weights",
+                                             sizeof(idx_t) * nedges)) == NULL)
         error("Failed to allocate edge weights array");
     idx_t *regionid;
     if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
@@ -1188,9 +1208,9 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
 
     /* Clean up. */
     if (weights_v != NULL) free(weights_v);
-    if (weights_e != NULL) free(weights_e);
+    if (weights_e != NULL) swift_free("partition_edge_weights", weights_e);
     free(xadj);
-    free(adjncy);
+    swift_free("partition_adjncy", adjncy);
     free(regionid);
   }
 
