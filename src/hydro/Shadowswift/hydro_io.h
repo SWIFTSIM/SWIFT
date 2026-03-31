@@ -94,23 +94,8 @@ INLINE static void convert_h(const struct engine* e, const struct part* p,
 INLINE static void convert_u(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  // //ANOTHER METHOD
-  // float Q[6], fluxes[6];
-  // hydro_part_get_conserved_variables(p, Q);
-  // hydro_part_get_fluxes(p, fluxes);
-  // Q[0] += fluxes[0];
-  //
-  // const double m_inv = (Q[0] != 0.0f) ? 1.0 / Q[0] : 0.0f;
-  //
-  // double thermal_energy_evolved =
-  //     p->conserved.mass * xp->u_full + fluxes[4] -
-  //     (p->v[0] * fluxes[1] + p->v[1] * fluxes[2] + p->v[2] * fluxes[3]) +
-  //     0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) *
-  //         fluxes[0];
-  //
-  // ret[0] = thermal_energy_evolved * m_inv;
-
-  ret[0] = xp->u_full;
+  /* Get internal energy from pressure */
+  ret[0] = hydro_get_comoving_internal_energy(p, xp);
 }
 
 /**
@@ -148,6 +133,7 @@ INLINE static void convert_Ekin(const struct engine* e, const struct part* p,
 /**
  * @brief Get the peculiar total energy of a particle
  *
+ *Note: The Etherm here is blatantly false
  * @param e #engine.
  * @param p Particle.
  * @return Total energy of the particle
