@@ -203,8 +203,9 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
   if (fa * fb > 0.0f) {
     error(
         "Brent's method called with equal sign function values!\n"
-        "f(%g) = %g, f(%g) = %g\n",
-        a, fa, b, fb);
+        "f(%g) = %g, f(%g) = %g\n"
+        "WL = %g, WR = %G, vL = %g, vR = %g, aL = %g, aR = %g",
+        a, fa, b, fb, WL, WR, vL, vR, aL, aR);
     /* return NaN */
     return 0.0f / 0.0f;
   }

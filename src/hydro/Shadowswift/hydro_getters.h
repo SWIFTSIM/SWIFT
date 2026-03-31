@@ -369,7 +369,7 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 
   // Catch updated mass?
   if ((p->conserved.mass + p->flux.mass) <= 0.) {
-    warning("Mass 2 is <= 0, setting internal energy dt to 0!");
+    warning("Mass 2 is <= 0, setting internal energy dt to u/dt");
     m_inv_2 = 0.;
   } else {
     m_inv_2 = 1.f / (p->conserved.mass + p->flux.mass);

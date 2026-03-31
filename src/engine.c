@@ -1546,7 +1546,10 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Run through the cells, and their tasks to mark as unskipped. */
   engine_unskip(e);
-  if (e->forcerebuild) error("engine_unskip faled after a rebuild!");
+  if (e->forcerebuild) {
+    message("break");
+    error("engine_unskip faled after a rebuild!");
+  }
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);

@@ -48,6 +48,10 @@ struct eos_parameters {};
 __attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_entropy(const float density, const float entropy) {
 
+  if (density <= 0.0) {
+    warning("density must be positive");
+  }
+
   return entropy * pow_gamma_minus_one(density) *
          hydro_one_over_gamma_minus_one;
 }
@@ -77,6 +81,10 @@ gas_pressure_from_entropy(const float density, const float entropy) {
  */
 __attribute__((always_inline, const)) INLINE static float
 gas_entropy_from_pressure(const float density, const float pressure) {
+
+  if (density == 0.0) {
+    return 0.0;
+  }
 
   return pressure * pow_minus_gamma(density);
 }
@@ -135,6 +143,10 @@ gas_pressure_from_internal_energy(const float density, const float u) {
 __attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_pressure(const float density, const float pressure) {
 
+  if (density == 0.0) {
+    return 0.0;
+  }
+
   return hydro_one_over_gamma_minus_one * pressure / density;
 }
 
@@ -162,6 +174,10 @@ gas_soundspeed_from_internal_energy(const float density, const float u) {
  */
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_pressure(const float density, const float P) {
+
+  if (density == 0.0) {
+    return 0.0;
+  }
 
   return sqrtf(hydro_gamma * P / density);
 }

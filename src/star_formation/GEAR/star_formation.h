@@ -521,7 +521,7 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
  */
 __attribute__((always_inline)) INLINE static void star_formation_split_part(
     struct part* p, struct xpart* xp, const double n) {
-  error("Loic: to be implemented");
+  error("Loic: to be implemented. Bonus note from Eric: No idea here, will get to it eventually as needed");
 }
 
 /**

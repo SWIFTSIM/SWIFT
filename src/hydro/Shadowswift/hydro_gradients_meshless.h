@@ -168,7 +168,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     hydro_gradients_init(p);
     message("conserved_mass = %f", p->conserved.mass);
 #ifdef SHADOWSWIFT_WARNINGS
-    warning("Mass is 0, falling back to first order for this particle");
+    warning("Mass is <= 0, falling back to first order for this particle");
 #endif
     return;
   }
@@ -229,7 +229,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   hydro_gradients_extrapolate(pj, dx_j, dWj);
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
-  /* Add the extrapolations in time, so they also get include in the slope
+  /* Add the extrapolations in time, so they also get included in the slope
    * limiting. */
   dWi[0] += pi->dW_time[0];
   dWi[1] += pi->dW_time[1];
