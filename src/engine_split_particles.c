@@ -141,7 +141,7 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
 
     /* Ignore particles with highly irregular geometry in moving mesh.
      * Sorry, there really is no better place to put this */
-#ifdef SHADOWSWIFT_STEERING_FACEANGLE_FLOWS && MOVING_MESH_HYDRO
+#if defined(SHADOWSWIFT_STEERING_FACEANGLE_FLOWS) && defined(MOVING_MESH_HYDRO)
     /* This is to prevent irregular cells from entering a rapid and uncontrolled
      * negative feedback loop of regularity. Features like
      * SHADOWSWIFT_STEERING_COLD_FLOWS and SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
@@ -151,7 +151,7 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
 
     /* Here we set angle > beta from Weinberger 2020 Eq. 39, where beta is
      * usually 2  or 2.25, the same as the velocity steering criteria */
-    if (p->geometry.max_face_angle > 2.) {
+    if (p->geometry.max_face_angle > 1.5 * 2.) {
       continue;
     }
 #endif

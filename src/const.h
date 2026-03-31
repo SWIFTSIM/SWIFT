@@ -114,6 +114,10 @@
 /*! @brief Option to enable extra flux positivity limiter */
 #define SHADOWSWIFT_FLUX_LIMITER
 
+/*! @brief Option to enable using density to compute centre of mass, assumes linear gradients */
+#define CENTER_OF_MASS_DENSITY
+
+
 /*! @brief Option controlling output of grids */
 // #define SHADOWSWIFT_OUTPUT_GRIDS
 

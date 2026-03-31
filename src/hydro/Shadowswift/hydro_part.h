@@ -111,6 +111,11 @@ struct part {
   /*! Density. */
   float rho;
 
+#ifdef CENTER_OF_MASS_DENSITY
+  /*! Density evaluated at particle position, used for CoM calculations */
+  float rho_generator;
+#endif
+
   /*! Fluid velocity (integrated) */
   float v[3];
 
@@ -292,6 +297,11 @@ struct part {
 
     /*! Max face angle, alpha_max as described in Vogelberger 2012 2.2.2 (i) */
     float max_face_angle;
+
+#ifdef CENTER_OF_MASS_DENSITY
+    /*! The Density Weighted Center of Mass, relative to particles position */
+    float center_of_mass[3];
+#endif
 
   } geometry;
 

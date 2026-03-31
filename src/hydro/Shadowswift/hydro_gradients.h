@@ -8,6 +8,7 @@
 #if defined(SHADOWSWIFT_GRADIENTS) | defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
 
 #include "hydro_slope_limiters.h"
+#include "hydro_getters.h"
 
 /**
  * @brief Initialize gradient variables.

@@ -312,6 +312,13 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     double area = 0.;
     double centroid[3] = {0., 0., 0.};
     int nface = 0;
+
+#ifdef CENTER_OF_MASS_DENSITY
+    /* Initiate Center of Mass,update through each tetrahedron of cell */
+    double center_of_mass[3] = {0., 0., 0.};
+
+#endif
+
 #ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
     int pair_connections_offset = v->cell_pair_connections_index;
 #else
@@ -447,6 +454,20 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
         centroid[1] += temp * temp_centroid[1];
         centroid[2] += temp * temp_centroid[2];
 
+#ifdef CENTER_OF_MASS_DENSITY
+        /* Get the mass(tetrahedron) * CoM(tetrahedron) */
+        double mass_com_tet[3];
+        geometry3d_compute_density_center_tetrahedron(
+          vor_vertex0, vor_vertex1, vor_vertex2, generator_pos,
+            p->gradients.rho, p->rho_generator, temp, mass_com_tet);
+
+        /* Update cell center of mass accordingly */
+        center_of_mass[0] += mass_com_tet[0];
+        center_of_mass[1] += mass_com_tet[1];
+        center_of_mass[2] += mass_com_tet[2];
+
+#endif
+
         /* Update variables */
         prev_t_idx_in_cur_t = cur_t->index_in_neighbour[next_t_idx_in_cur_t];
         cur_t_idx = next_t_idx;
@@ -526,6 +547,20 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     centroid[1] *= volume_inv;
     centroid[2] *= volume_inv;
 
+
+#ifdef CENTER_OF_MASS_DENSITY
+    /* Calculate real center of mass of the cell */
+
+    /* Divide Sum (CoM_tetras * Mass_tetras) by Mass_cell */
+    double new_mass = p->rho * volume;
+    double m_inv = (new_mass != 0.0f) ? 1.0 / new_mass : 0.0f;
+
+    center_of_mass[0] *= m_inv;
+    center_of_mass[1] *= m_inv;
+    center_of_mass[2] *= m_inv;
+
+#endif
+
     /* Estimate distance from centroid to nearest (to generator) face */
     double min_face_dist_ngb_pos[3];
     delaunay_get_vertex_at(d, min_face_dist_ngb, min_face_dist_ngb_pos);
@@ -551,6 +586,13 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 
 #ifdef SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
     p->geometry.max_face_angle = max_angle;
+#endif
+
+#ifdef CENTER_OF_MASS_DENSITY
+    /* Finally, set the centre of mass with a linear density gradient */
+    p->geometry.center_of_mass[0] = center_of_mass[0];
+    p->geometry.center_of_mass[1] = center_of_mass[1];
+    p->geometry.center_of_mass[2] = center_of_mass[2];
 #endif
 
 

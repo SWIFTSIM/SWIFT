@@ -13,6 +13,7 @@
 
 #include <float.h>
 #include <gmp.h>
+#include <hydro/Shadowswift/hydro_gradients.h>
 #include <math.h>
 #ifdef DELAUNAY_3D_HAND_VEC
 #include <immintrin.h>
@@ -1169,6 +1170,80 @@ inline static void geometry3d_cross(const double* v1, const double* v2,
 
 inline static double geometry3d_dot(const double* v1, const double* v2) {
   return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+}
+
+/**
+ * @brief Compute the center of mass of a tetrahedron assuming that
+ * density gradients are linear. Follows Equation 1 and 2 in
+ * "Tetrahedra of varying density and their applications" by Bukenberger and
+ * Lensch 2021
+ *
+ * See https://link.springer.com/article/10.1007/s00371-021-02189-0
+ *
+ * Unfortunately, readability has been sacrificed for ease of calculation. If
+ * questions on method arise, take Equation 2 from above, and then apply
+ * a centre of mass of centres of mass for each tetrahedron and see the
+ * reasoning.
+ *
+ * @param a, b, c, d Rescaled coordinates of the corners of the tetrahedron,
+ * where d is generator position. This is important as we will use generator
+ * position as the reference point of density.
+ * @param gradrho 3d density gradient assumed to be linear
+ * @param rho_gen density at generator (particle) position
+ * @param volume tetrahedron volume
+ * @param com_tetrahedron the center of mass vector iterated over
+ *
+ * Returns average density of tetrahedron
+ */
+inline static void geometry3d_compute_density_center_tetrahedron(
+    const double* restrict a, const double* restrict b,
+    const double* restrict c, const double* restrict d, const float* gradrho,
+    const float rho_gen, const float volume, double* com_tetrahedron) {
+
+  /* Make new vectors with generator position at origin */
+  const double da[3] = {a[0] - d[0], a[1] - d[1], a[2] - d[2]};
+  const double db[3] = {b[0] - d[0], b[1] - d[1], b[2] - d[2]};
+  const double dc[3] = {c[0] - d[0], c[1] - d[1], c[2] - d[2]};
+
+  /* Editors Note: here I use geometry3d_dot() where
+   * hydro_gradients_extrapolate_single_quantity() would be the exact same.
+   * This is an arbitrary choice, but with the thought that at least this
+   * file is self-consistent */
+  const double rho_a = geometry3d_dot(gradrho, da);
+  const double rho_b = geometry3d_dot(gradrho, db);
+  const double rho_c = geometry3d_dot(gradrho, dc);
+
+  const double rho_mean = 0.25 * (4 * rho_gen + rho_a + rho_b + rho_c);
+
+  /* Factor rho_n / rho_mean */
+  const double rho_a_mean = rho_a / rho_mean;
+  const double rho_b_mean = rho_b / rho_mean;
+  const double rho_c_mean = rho_c / rho_mean;
+
+  /* Pre-factor A, 1/5 * Mass */
+  const double A = 0.2 * rho_mean * volume;
+
+  /* Add components of every vertex in x y z respectively, multiply by A.
+   * Since this looks obtuse, this corresponds to the CoM of a Tetrahedron
+   * that is multiplied by its own mass. This is Eq 2 in above paper, multiplied
+   * by mass. The mass of the tetrahedron is needed so we can do a centre of
+   * mass of the entire cell by doing a centre of mass of centres of mass
+   * of tetrahedrons.
+   *
+   * This iterates for every tetrahedron, and after the entire thing is divided
+   * by cell mass. This yields an exact center of mass (hopefully)*/
+  com_tetrahedron[0] = A * (da[0] * (1 + 0.25 * rho_a_mean) +
+                              db[0] * (1 + 0.25 * rho_b_mean) +
+                                dc[0] * (1 + 0.25 * rho_c_mean));
+
+  com_tetrahedron[1] = A * (da[1] * (1 + 0.25 * rho_a_mean) +
+                              db[1] * (1 + 0.25 * rho_b_mean) +
+                                dc[1] * (1 + 0.25 * rho_c_mean));
+
+  com_tetrahedron[2] = A * (da[2] * (1 + 0.25 * rho_a_mean) +
+                              db[2] * (1 + 0.25 * rho_b_mean) +
+                                dc[2] * (1 + 0.25 * rho_c_mean));
+
 }
 
 /*! @returns the signed distance from the ray origin along the ray

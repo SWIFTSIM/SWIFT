@@ -22,6 +22,8 @@
 #include "cosmology.h"
 #include "equation_of_state.h"
 
+#include "dimension.h"
+
 /**
  * @brief Get a 5-element state vector W containing the primitive hydrodynamic
  * variables.
@@ -298,7 +300,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
  * @brief Returns the center mass of a particle
  *
  * @param p The particle of interest
- * @param com (Return) The center of mass vector
+ * @param com (Return) The center of mass vector (incorrect, returns geometric
+ * center)
  */
 __attribute__((always_inline)) INLINE static void hydro_get_center_of_mass(
     const struct part* restrict p, double* com) {

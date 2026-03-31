@@ -8,6 +8,7 @@
 #include "hydro_getters.h"
 #include "hydro_part.h"
 #include "hydro_slope_limiters.h"
+#include "kernel_hydro.h"
 #include "hydro_unphysical.h"
 #define HYDRO_GRADIENT_IMPLEMENTATION "Meshless (Gizmo) gradients"
 

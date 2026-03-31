@@ -40,6 +40,10 @@
 #include "minmax.h"
 #include "pressure_floor.h"
 #include "space.h"
+#include <string.h>
+#include <stdint.h>
+
+
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -701,6 +705,29 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 }
 
 /**
+ * @brief Extrapolate the density at the particle (generator) position
+ *
+ * Used for CoM calculations in voronoi reconstruction
+ *
+ * @param p The particle.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_extrapolate_density_to_generator(struct part *p) {
+
+  /* Update density at particle position for later use in CoM */
+  float dx[3];
+  dx[0] = p->x[0] - p->geometry.centroid[0];
+  dx[1] = p->x[1] - p->geometry.centroid[1];
+  dx[2] = p->x[2] - p->geometry.centroid[2];
+
+  double drho = hydro_gradients_extrapolate_single_quantity(
+    p->gradients.rho, dx);
+
+  p->rho_generator = p->rho + drho;
+}
+
+
+/**
  * @brief Extra operations done during the kick.
  *
  * @param p The particle to act upon.
@@ -1025,6 +1052,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float W[6];
     hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
                                          Q, W);
+
+    /* Set density at the particle (generator) position */
+    hydro_extrapolate_density_to_generator(p);
 
     /* Update the particle */
     hydro_part_set_conserved_variables(p, Q);
