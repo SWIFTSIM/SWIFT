@@ -89,6 +89,15 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
 
     /* Is the mass of this particle larger than the threshold? */
     const float gas_mass = hydro_get_mass(p);
+
+#if defined(SHADOWSWIFT_STEERING_FACEANGLE_FLOWS) && defined(MOVING_MESH_HYDRO)
+    /* Also seen in engine_split_gas_particle_split_mapper() and explained
+     * in more detail there. TLDR: Do Not split cells with irregular geometry */
+    if (p->geometry.max_face_angle > 1.5 * 2.) {
+      continue;
+    }
+#endif
+
     if (gas_mass > mass_threshold) ++counter;
 
     /* Get the maximal id */
