@@ -34,9 +34,6 @@ python3 -m venv "${VENV_DIR}" || return 1
 source "${VENV_DIR}/bin/activate" || return 1
 
 python3 -m pip install --upgrade pip || return 1
-python3 -m pip install numpy h5py unyt || return 1
-
-# Install a specific version of swiftsimio
-python3 -m pip install swiftsimio==11.0.0 || return 1
+python3 -m pip install numpy h5py unyt swiftsimio==12.0.0 || return 1
 
 python3 -c "import numpy, h5py, unyt, swiftsimio" || return 1
