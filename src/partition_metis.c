@@ -338,8 +338,6 @@ void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
     zoom_partition_graph_init(s, periodic, adjncy, nadjcny, xadj, nxadj,
                               cell_edge_offsets);
   }
-
-  return nedges;
 }
 
 /**
