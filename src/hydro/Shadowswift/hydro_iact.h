@@ -228,7 +228,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   assert(min_dt >= 0);
 #endif
 
-  float totflux[6];
+  float totflux[6]; // Curently inComme units X * s^-1, will be * dt later
 
   /* compute the normal vector of the interface */
   float n_unit[3];
