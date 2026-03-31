@@ -96,11 +96,19 @@ hydro_generator_velocity_half_kick(struct part* p, struct xpart* xp, float dt) {
  * @param Mach1 minimum threshold for cold steering
  * @param Mach2 threshold for using maximum steering
  * @param Mach_part mach of current particle
+ *
+ * Returns point along linear gradient that scales strength of velocity steering
+ * from soundspeed to vchar_dt linearly between Mach values
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline)) INLINE static float
 hydro_velocities_steering_gradient(
-  float* restrict vchar, float soundspeed, float vchar_dt, float Mach1,
-  float Mach2, float Mach_part) {
+  const float soundspeed, const float vchar_dt,
+  const float Mach1, const float Mach2, const float Mach_part) {
+
+  if (Mach1 == Mach2) {
+    error("Mach1 and Mach2 Equal");
+  }
+
   /* Set steering linear gradient (y = mx + c, find m) */
   float steering_gradient = (vchar_dt - soundspeed) / (Mach2 - Mach1);
 
@@ -109,7 +117,8 @@ hydro_velocities_steering_gradient(
                                           (Mach2 / Mach1 - 1);
 
   /* Set Vchar */
-  *vchar = steering_gradient * Mach_part + steering_constant;
+  return steering_gradient * Mach_part + steering_constant;
+
 }
 
 /**
@@ -205,13 +214,17 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
 #ifdef SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT // Apply cold steering
             /* Apply a smoother steering gradient if between Mach low and high */
-            if (Mach_part < Mach_high) {
-              hydro_velocities_steering_gradient(&vchar, soundspeed, vchar_dt,
-                Mach_low, Mach_high, Mach_part);
-            } else {
-              /* Mach is higher than max, just set to max steering */
-              vchar = vchar_dt;
+            if (p->rho < 12.f) {
+              // Activate the donkey steering
+              if (Mach_part < Mach_high) {
+                vchar = hydro_velocities_steering_gradient(soundspeed, vchar_dt,
+                  Mach_low, Mach_high, Mach_part);
+              } else {
+                /* Mach is higher than max, just set to max steering */
+                vchar = vchar_dt;
+              }
             }
+
 #else
             /* Default cold steering */
             vchar = vchar_dt;
