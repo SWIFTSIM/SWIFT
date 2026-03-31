@@ -3,7 +3,7 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *               2024 Will Roper (w.roper@sussex.ac.uk)
+ *               2026 Will Roper (w.roper@sussex.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -40,13 +40,21 @@
  *
  * @param e The #engine.
  * @param ci The first #cell.
+ * @param i The x index of the first #cell.
+ * @param j The y index of the first #cell.
+ * @param k The z index of the first #cell.
  * @param cj The second #cell.
+ * @param ii The x index of the second #cell.
+ * @param jj The y index of the second #cell.
+ * @param kk The z index of the second #cell.
  * @param r_max The maximum distance between particles in the cells.
  *
  * @returns proxy_type The proxy type for this pair.
  */
 int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
-                          const struct cell *cj, const double r_max) {
+                          const int i, const int j, const int k,
+                          const struct cell *cj, const int ii, const int jj,
+                          const int kk, const double r_max) {
 
   struct space *s = e->s;
 
@@ -65,8 +73,18 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
     with_hydro = 0;
   }
 
+  /* Are these cells adjacent or not? Note that this harmlessly assumes
+   * periodicity. */
+  const int is_direct_neighbour =
+      ((abs(i - ii) <= 1 || abs(i - ii - s->cdim[0]) <= 1 ||
+        abs(i - ii + s->cdim[0]) <= 1) &&
+       (abs(j - jj) <= 1 || abs(j - jj - s->cdim[1]) <= 1 ||
+        abs(j - jj + s->cdim[1]) <= 1) &&
+       (abs(k - kk) <= 1 || abs(k - kk - s->cdim[2]) <= 1 ||
+        abs(k - kk + s->cdim[2]) <= 1));
+
   /* In the hydro case, only care about direct neighbours */
-  if (with_hydro && cell_is_direct_neighbour(s, ci, cj)) {
+  if (with_hydro && is_direct_neighbour) {
     proxy_type |= (int)proxy_cell_type_hydro;
   }
 
@@ -75,7 +93,7 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
 
     /* First just add the direct neighbours. Then look for
        some further out if the opening angle demands it */
-    if (cell_is_direct_neighbour(s, ci, cj)) {
+    if (is_direct_neighbour) {
       proxy_type |= (int)proxy_cell_type_gravity;
     } else {
 
@@ -318,8 +336,8 @@ void engine_makeproxies(struct engine *e) {
                 continue;
 
               /* What sort of proxy (if any) do we need? */
-              int proxy_type =
-                  engine_get_proxy_type(e, &cells[cid], &cells[cjd], r_max);
+              int proxy_type = engine_get_proxy_type(
+                  e, &cells[cid], i, j, k, &cells[cjd], iii, jjj, kkk, r_max);
 
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
@@ -366,14 +384,10 @@ void engine_check_proxy_exists(const struct engine *e, const struct cell *topi,
     /* Check whether the cell exists in the proxy */
     int n = 0;
     for (; n < p->nr_cells_in; n++)
-      if (p->cells_in[n] == topj) {
-        break;
-      }
+      if (p->cells_in[n] == topj) break;
     if (n == p->nr_cells_in)
-      error(
-          "Cell %d not found in the proxy but trying to construct "
-          "grav task!",
-          (int)(topj - e->s->cells_top));
+      error("Cell %d not found in the proxy but trying to construct grav task!",
+            (int)(topj - e->s->cells_top));
 
   } else if (topj->nodeID == nodeID && topi->nodeID != engine_rank) {
 
@@ -387,14 +401,10 @@ void engine_check_proxy_exists(const struct engine *e, const struct cell *topi,
     /* Check whether the cell exists in the proxy */
     int n = 0;
     for (; n < p->nr_cells_in; n++)
-      if (p->cells_in[n] == topi) {
-        break;
-      }
+      if (p->cells_in[n] == topi) break;
     if (n == p->nr_cells_in)
-      error(
-          "Cell %d not found in the proxy but trying to construct "
-          "grav task!",
-          (int)(topi - e->s->cells_top));
+      error("Cell %d not found in the proxy but trying to construct grav task!",
+            (int)(topi - e->s->cells_top));
   }
-#endif /* WITH_MPI */
+#endif
 }

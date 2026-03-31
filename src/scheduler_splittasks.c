@@ -492,7 +492,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           depth_j, cellID_names[t->cj->type], subcellID_names[t->cj->subtype]);
   }
 
-#ifdef WITH_MPI
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
   /* Ensure we have a proxy whenever this pair spans local/foreign nodes.
    * For void/zoom interactions this must hold at the top-cell level too. */
   if ((t->ci->nodeID == engine_rank && t->cj->nodeID != engine_rank) ||

@@ -43,31 +43,30 @@ from typing import Any
 
 try:
     import h5py
-except ImportError:
-    print("ERROR: Missing dependency 'h5py'.")
-    print("Install it with: python3 -m pip install h5py")
+except ImportError as error:
+    print(f"ERROR: Failed to import 'h5py': {error}", file=sys.stderr)
+    print("Install it with: python3 -m pip install h5py", file=sys.stderr)
     sys.exit(1)
 
 try:
     import numpy as np
-except ImportError:
-    print("ERROR: Missing dependency 'numpy'.")
-    print("Install it with: python3 -m pip install numpy")
+except ImportError as error:
+    print(f"ERROR: Failed to import 'numpy': {error}", file=sys.stderr)
+    print("Install it with: python3 -m pip install numpy", file=sys.stderr)
     sys.exit(1)
 
 try:
-    from unyt import Mpc, Msun, km, s
-except ImportError:
-    print("ERROR: Missing dependency 'unyt'.")
-    print("Install it with: python3 -m pip install unyt")
+    import unyt
+except ImportError as error:
+    print(f"ERROR: Failed to import 'unyt': {error}", file=sys.stderr)
+    print("Install it with: python3 -m pip install unyt", file=sys.stderr)
     sys.exit(1)
 
 try:
-    from swiftsimio import Writer
-    from swiftsimio.units import cosmo_units
-except ImportError:
-    print("ERROR: Missing dependency 'swiftsimio'.")
-    print("Install it with: python3 -m pip install swiftsimio")
+    from swiftsimio import Writer, cosmo_array
+except ImportError as error:
+    print(f"ERROR: Failed to import 'swiftsimio': {error}", file=sys.stderr)
+    print("Install it with: python3 -m pip install swiftsimio", file=sys.stderr)
     sys.exit(1)
 
 
@@ -313,14 +312,39 @@ def write_ic_file(hi_pos, bkg_pos):
 
     # First write the high-resolution component through swiftsimio.
     writer = Writer(
-        cosmo_units,
-        np.array([BOX_SIZE, BOX_SIZE, BOX_SIZE]) * Mpc,
+        unit_system="cosmological",
+        boxsize=cosmo_array(
+            [BOX_SIZE, BOX_SIZE, BOX_SIZE],
+            units=unyt.Mpc,
+            comoving=True,
+            scale_factor=A_BEGIN,
+            scale_exponent=1,
+        ),
         dimension=3,
+        scale_factor=np.float32(A_BEGIN),
     )
     writer_any: Any = writer
-    writer_any.dark_matter.coordinates = hi_pos * Mpc
-    writer_any.dark_matter.velocities = hi_vel * km / s
-    writer_any.dark_matter.masses = hi_mass * 1e10 * Msun
+    writer_any.dark_matter.coordinates = cosmo_array(
+        hi_pos,
+        units=unyt.Mpc,
+        comoving=True,
+        scale_factor=A_BEGIN,
+        scale_exponent=1,
+    )
+    writer_any.dark_matter.velocities = cosmo_array(
+        hi_vel,
+        units="km/s",
+        comoving=True,
+        scale_factor=A_BEGIN,
+        scale_exponent=1,
+    )
+    writer_any.dark_matter.masses = cosmo_array(
+        hi_mass * 1e10,
+        units=unyt.Msun,
+        comoving=True,
+        scale_factor=A_BEGIN,
+        scale_exponent=0,
+    )
     writer.write(OUTPUT_FILE)
 
     # Then append the background component and finalise header metadata.
