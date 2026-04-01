@@ -370,22 +370,104 @@ runner_iact_nonsym_feedback_apply(
     return;
   }
 
+  const float mj = hydro_get_mass(pj);
+  double m_ej = 0.0;
+  double new_mass = mj;
+  double dm_SW = 0.0;
+  double dm_SN = 0.0;
+
+  /* Calculate the velocity with the Hubble flow */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
+  const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0],
+				   a2H * si->x[1] + si->v[1],
+				   a2H * si->x[2] + si->v[2]};
+  const float vj_plus_H_flow[3] = {a2H * pj->x[0] + xpj->v_full[0],
+				   a2H * pj->x[1] + xpj->v_full[1],
+				   a2H * pj->x[2] + xpj->v_full[2]};
+
+  /* Compute the _physical_ relative velocity between the particles */
+  const float v_i_p[3] = {vi_plus_H_flow[0] * cosmo->a_inv,
+			  vi_plus_H_flow[1] * cosmo->a_inv,
+			  vi_plus_H_flow[2] * cosmo->a_inv};
+
+  const float v_j_p[3] = {vj_plus_H_flow[0] * cosmo->a_inv,
+			  vj_plus_H_flow[1] * cosmo->a_inv,
+			  vj_plus_H_flow[2] * cosmo->a_inv};
+
+  /*****************************************/
+  /* Do we have stellar winds */
+  if (feedback_should_inject_wind_feedback(si)) {
+    const double E_ej_SW = si->feedback_data.preSN.energy_ejected;
+
+    /* Mass received by Stellar Winds */
+    /* For physical consistency, we consider that the pre-SN feedback occurs
+       before the SN feedback, not at the same time ! Thus, we have to perform
+       the calculation first with the mass ejected by the winds, otherwise the
+       effects of the winds would be artificially boosted by the SNe ! (It is
+       similar to not do the pre-SN feedback in the same step as SN. In that
+       case the mass of the gas is not impacted by the mass ejected by SNe.) */
+    m_ej = si->feedback_data.preSN.mass_ejected;
+
+    /* The max avoids to have dm=0 and 1/0 divisions */
+    dm_SW = max(w_j_bar_norm * m_ej, FLT_MIN);
+    new_mass += dm_SW;
+
+    /* Now we treat the fluxes distribution differently for each mode */
+    double dU_SW = 0.0;
+    double dKE_SW = 0.0;
+    double dp_prime_SW[3] = {0.0, 0.0, 0.0};
+    runner_iact_nonsym_mechanical_stellar_winds_apply(
+        r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SW, m_ej, mj,
+        dm_SW, new_mass, cosmo, fb_props, phys_const, us, &dU_SW, &dKE_SW,
+        dp_prime_SW);
+
+    /* Now we can give momentum, thermal and kinetic energy to the xpart.
+       Note: Do not give momentum for the isotropy check test. Momentum pushes
+       particles too efficiently and then the python face area computations are
+       not exacly the same as SWIFT. */
+#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
+    /* Convert to comoving units */
+    for (int i = 0; i < 3; i++) {
+      xpj->feedback_data.delta_p[i] += dp_prime_SW[i] * cosmo->a;
+    }
+#endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
+
+    /* Note: This is physical internal energy. See feedback_update_part(). */
+    xpj->feedback_data.delta_u += dU_SW / new_mass;
+
+    /* TODO: Determine if we need that or if we want that */
+    /* xpj->feedback_data.delta_E_kin += dKE; */
+    /* xpj->feedback_data.number_SN += 1; */
+
+    /* Flag this particle that it received stellar wind feedback */
+    xpj->feedback_data.hit_by_preSN = 1;
+  }
+
+  /*****************************************/
   /* Do we have supernovae? */
   if (feedback_should_inject_SN_feedback(si)) {
 
-    /****************************************************************************
-     * Compute the common properties for both modes
-     ****************************************************************************/
+    /* Distribute mass from the SN...
+       For the conservation of mass and energy, we perform the calculation only
+     * with the mass actually ejected by the SN (not the combination of pre-SN
+     * and SN) */
+    m_ej = si->feedback_data.mass_ejected;
+
+    /* The max avoids to have dm=0 and 1/0 divisions */
+    dm_SN = max(w_j_bar_norm * m_ej, FLT_MIN);
+
+    /* But we are considering that the stellar wind occurs before the SN, so the
+       total new mass to take into account is the combination of both. It is
+       similar to not do pre-SN feedback in the same step as SN, in that case
+       the mass of the gas is the one after receiving mass from the pre-SN
+       feedback at the previous step. */
+    new_mass += dm_SN;
+
     /* Here just get the feedback properties we want to distribute (in physical
        units) */
     const float E_ej = si->feedback_data.energy_ejected;
-    const float mj = hydro_get_mass(pj);
-    const float m_ej = si->feedback_data.mass_ejected;
-
-    /* Distribute mass... (the max avoids to have dm=0 and 1/0 divisions) */
-    const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
-    const double new_mass = mj + dm;
-    xpj->feedback_data.delta_mass += dm;
 
     /* ... metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -393,36 +475,13 @@ runner_iact_nonsym_feedback_apply(
           w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
     }
 
-    /* Calculate the velocity with the Hubble flow */
-    const float a = cosmo->a;
-    const float H = cosmo->H;
-    const float a2H = a * a * H;
-    const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0],
-                                     a2H * si->x[1] + si->v[1],
-                                     a2H * si->x[2] + si->v[2]};
-    const float vj_plus_H_flow[3] = {a2H * pj->x[0] + xpj->v_full[0],
-                                     a2H * pj->x[1] + xpj->v_full[1],
-                                     a2H * pj->x[2] + xpj->v_full[2]};
-
-    /* Compute the _physical_ relative velocity between the particles */
-    const float v_i_p[3] = {vi_plus_H_flow[0] * cosmo->a_inv,
-                            vi_plus_H_flow[1] * cosmo->a_inv,
-                            vi_plus_H_flow[2] * cosmo->a_inv};
-
-    const float v_j_p[3] = {vj_plus_H_flow[0] * cosmo->a_inv,
-                            vj_plus_H_flow[1] * cosmo->a_inv,
-                            vj_plus_H_flow[2] * cosmo->a_inv};
-
-    /****************************************************************************
-     * Now we treat the fluxes distribution differently for each mode
-     ****************************************************************************/
+    /* Now we treat the fluxes distribution differently for each mode */
     double dU = 0.0;
     double dKE = 0.0;
     double dp_prime[3] = {0.0, 0.0, 0.0};
-
     runner_iact_nonsym_mechanical_feedback_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj,
-        dm, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_prime);
+        dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_prime);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -439,6 +498,9 @@ runner_iact_nonsym_feedback_apply(
     xpj->feedback_data.delta_u += dU / new_mass;
     xpj->feedback_data.delta_E_kin += dKE;
     xpj->feedback_data.number_SN += 1;
+
+    /* Flag this particle that it received SN feedback */
+    xpj->feedback_data.hit_by_SN = 1;
 
     /* Only use this for non-cosmological simulations. In cosmological
        simulations, this suppresses the momentum effects (to be investigated
