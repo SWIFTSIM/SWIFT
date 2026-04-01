@@ -22,7 +22,6 @@
 
 /* Include local headers */
 #include "exp10.h"
-#include "feedback_struct.h"
 #include "hdf5_functions.h"
 #include "initial_mass_function.h"
 #include "lifetime.h"
