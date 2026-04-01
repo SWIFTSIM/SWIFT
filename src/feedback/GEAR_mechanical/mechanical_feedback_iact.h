@@ -108,7 +108,7 @@ runner_iact_nonsym_mechanical_1_feedback_apply(
      momentum. The thermal energy will be radiated away because of cooling. */
   const double PdV_work_fraction = sqrt(1 + mj / dm);
   const double p_terminal = feedback_get_physical_SN_terminal_momentum(
-      si, pj, xpj, phys_const, us, cosmo);
+      si, pj, xpj, phys_const, us, fb_props, cosmo);
 
   /* If we can resolve the Taylor Sedov, then we give the right coupled
      momentum (which is by definition <= p_terminal). If we cannot resolve it,

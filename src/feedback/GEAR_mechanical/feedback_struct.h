@@ -65,6 +65,15 @@ struct feedback_spart_data {
      denominator in eq (9) in https://arxiv.org/abs/1707.07010  */
   float enrichment_weight;
 
+  /*! Parameters to be accumulated in the feedback loops. Used to compute the
+     vector weights (isotropic distribution) */
+  double f_sum_plus_term[3];
+  double f_sum_minus_term[3];
+
+  /*! Sum of the weighted gas properties used to compute terminal momentum */
+  float weighted_gas_density;
+  double weighted_gas_metallicity;
+
   /*! Number of Ia supernovae */
   float number_snia;
 
@@ -83,11 +92,7 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
-  /*! Parameters to be accumulated in the feedback loops. Used to compute the
-     vector weights (isotropic distribution) */
-  double f_sum_plus_term[3];
-  double f_sum_minus_term[3];
-
+#if FEEDBACK_GEAR_MECHANICAL_MODE == 2
   struct {
     /*! Accumulated value for the total energy available in the SN, taking into
        account gas-star motion. This is eq (A4) (lower formula) sum terms in
@@ -99,10 +104,7 @@ struct feedback_spart_data {
     double beta_1; /* Accumulated value for beta_1 */
     double beta_2; /* Accumulated value for beta_2 */
   } accumulator;
-
-  /*! Sum of the weighted gas properties used to compute terminal momentum */
-  float weighted_gas_density;
-  double weighted_gas_metallicity;
+#endif
 
   /*! Checks that the sum of the fluxes is 0. These ensures the weights are
      properly constructed. */

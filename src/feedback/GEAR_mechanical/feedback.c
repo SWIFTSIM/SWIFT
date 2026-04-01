@@ -173,11 +173,11 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.f_sum_plus_term[1] = 0.0;
   sp->feedback_data.f_sum_plus_term[2] = 0.0;
 
+#if FEEDBACK_GEAR_MECHANICAL_MODE == 2
   sp->feedback_data.accumulator.E_total = 0.0;
   sp->feedback_data.accumulator.beta_1 = 0.0;
   sp->feedback_data.accumulator.beta_2 = 0.0;
-  sp->feedback_data.weighted_gas_density = 0.0;
-  sp->feedback_data.weighted_gas_metallicity = 0.0;
+#endif
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0;

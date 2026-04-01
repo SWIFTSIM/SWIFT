@@ -173,9 +173,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     parser_get_param_string(params, "GEARFeedback:yields_table_first_stars",
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
-                                 params, cosmo);
+                                 params, cosmo, fp->with_stellar_wind_feedback);
   }
 
+  /*****************************************/
+  /* Mechanical feedback properties */
+  /*****************************************/
   /* Get the maximal feedback radius */
   const float default_r_max = 2.0e3 * phys_const->const_parsec;
 
@@ -186,6 +189,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
   fp->f_kin_0 = parser_get_opt_param_float(params, "GEARFeedback:f_kin_0",
                                            DEFAULT_F_KIN_0);
+
+  if (fp->f_kin_0 < 0 || fp->f_kin_0 > 1) {
+    error("f_kin_0 must be comprised between 0 and 1  (0 <= f_kin_0 <= 1)!");
+  }
 #endif
 
   /* Get the terminal momentum normalisation */
@@ -199,10 +206,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      multiple SN ? */
   fp->enable_multiple_SN_momentum_correction_factor = parser_get_opt_param_int(
       params, "GEARFeedback:enable_multiple_SN_momentum_correction_factor", 0);
-
-  if (fp->f_kin_0 < 0 || fp->f_kin_0 > 1) {
-    error("f_kin_0 must be comprised between 0 and 1  (0 <= f_kin_0 <= 1)!");
-  }
 
   /* Print the stellar properties */
   feedback_props_print(fp);
