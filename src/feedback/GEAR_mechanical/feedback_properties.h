@@ -66,6 +66,12 @@ struct feedback_props {
      particle during one timestep. This factor ensures exact energy
      conservation in the case of multiple SN. */
   int enable_multiple_SN_momentum_correction_factor;
+
+  /*! Pre-supernova feedback energy effectively deposited */
+  float preSN_efficiency;
+
+  /*! Do stellar wind feedback? */
+  char with_stellar_wind_feedback;
 };
 
 /**
@@ -98,6 +104,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   /* Print the feedback properties */
   message("Supernovae efficiency = %.2g",
           feedback_props->supernovae_efficiency);
+  message("Stellar wind feedback = %s",
+          feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
+  message("Pre-Supernovae efficiency = %.2g", feedback_props->preSN_efficiency);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
@@ -134,15 +143,27 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   fp->supernovae_efficiency =
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
 
+  /* Activate the stellar wind feedback */
+  fp->with_stellar_wind_feedback = (char)parser_get_param_int(params, "GEARFeedback:with_stellar_wind_feedback");
+
+  /* Pre-Supernovae energy efficiency */
+  double w_efficiency = 0.0;
+  if (fp->with_stellar_wind_feedback) {
+    w_efficiency = parser_get_param_double(
+	params, "GEARFeedback:pre_supernovae_efficiency");
+  }
+
+  fp->preSN_efficiency = w_efficiency;
+
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",
                           fp->stellar_model.yields_table);
 
   /* Initialize the stellar models. */
   stellar_evolution_props_init(&fp->stellar_model, phys_const, us, params,
-                               cosmo);
+			       cosmo, fp->with_stellar_wind_feedback);
 
-  /* Read the metallicity threashold */
+  /* Read the metallicity threshold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
       params, "GEARFeedback:imf_transition_metallicity", 0);
 
@@ -173,7 +194,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     parser_get_param_string(params, "GEARFeedback:yields_table_first_stars",
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
-                                 params, cosmo, fp->with_stellar_wind_feedback);
+				 params, cosmo, fp->with_stellar_wind_feedback);
   }
 
   /*****************************************/

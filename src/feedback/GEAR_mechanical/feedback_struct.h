@@ -51,6 +51,12 @@ struct feedback_xpart_data {
 
   /*! Number of supernovae affecting this particle */
   int number_SN;
+
+  /*! Indicator if the particle receives energy from SN specifically */
+  char hit_by_SN;
+
+  /*! Indicator if the particle receives energy from SW specifically */
+  char hit_by_preSN;
 };
 
 /**
@@ -88,6 +94,17 @@ struct feedback_spart_data {
 
   /*! Chemical composition of the mass ejected */
   double metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Pre-SN data struct */
+  struct {
+
+    /*! Energy injected in the surrounding particles */
+    float energy_ejected;
+
+    /*! Mass injected in the surrounding particles */
+    float mass_ejected;
+
+  } preSN; /* TODO: Rename to stellar winds */
 
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
