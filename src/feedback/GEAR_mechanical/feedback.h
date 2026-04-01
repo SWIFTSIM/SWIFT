@@ -36,6 +36,7 @@ void feedback_reset_part(struct part *p, struct xpart *xp);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
 int feedback_should_inject_SN_feedback(const struct spart *sp);
 int feedback_should_inject_wind_feedback(const struct spart *sp);
+int feedback_should_inject_feedback(const struct spart *sp);
 void feedback_init_spart(struct spart *sp);
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props);

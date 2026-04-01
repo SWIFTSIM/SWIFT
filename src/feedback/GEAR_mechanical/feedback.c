@@ -218,7 +218,10 @@ void feedback_init_spart(struct spart *sp) {
  * @brief Prepares a star's feedback field before computing what
  * needs to be distributed.
  *
-* @param sp The #spart.
+ * This is called in the stars ghost.
+ *
+ * @param sp The #spart.
+ * @param feedback_props The properties of the feedback model.
  */
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props) {
