@@ -41,14 +41,11 @@
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
-  /* Did the particle receive a supernovae */
-  if (xp->feedback_data.delta_mass == 0) return;
+  /* Did the particle receive a feedback event? */
+  if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_preSN) return;
 
   const struct cosmology *cosmo = e->cosmology;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
-
-  /* Turn off the cooling */
-  xp->cooling_data.time_last_event = e->time;
 
   /* Update mass */
   const float dm = xp->feedback_data.delta_mass;
@@ -82,6 +79,8 @@ void feedback_update_part(struct part *p, struct xpart *xp,
         feedback_compute_momentum_correction_factor_for_multiple_sn_events(
             p, xp, old_mass, new_mass);
 
+    /* TODO: We need to determine what to do with the stellar winds since we
+       are using the same variable */
     /* Update the xpart accumulated dp */
     xp->feedback_data.delta_p[0] *= f_corr;
     xp->feedback_data.delta_p[1] *= f_corr;
@@ -100,6 +99,8 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   }
 
   /* Reset the values */
+  xp->feedback_data.hit_by_SN = 0;
+  xp->feedback_data.hit_by_preSN = 0;
   xp->feedback_data.delta_u = 0.0;
   xp->feedback_data.delta_E_kin = 0.0;
   xp->feedback_data.delta_mass = 0.0;
