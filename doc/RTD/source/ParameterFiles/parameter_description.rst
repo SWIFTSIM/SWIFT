@@ -1071,9 +1071,9 @@ be processed by the ``SpecWizard`` tool
      allowed_los_range_x: [0, 100.]   # Range along the x-axis where LoS along Y or Z are allowed
      allowed_los_range_y: [0, 100.]   # Range along the y-axis where LoS along X or Z are allowed
      allowed_los_range_z: [0, 100.]   # Range along the z-axis where LoS along X or Y are allowed
-     range_when_shooting_down_x: 100. # Range along the x-axis of LoS along x
-     range_when_shooting_down_y: 100. # Range along the y-axis of LoS along y
-     range_when_shooting_down_z: 100. # Range along the z-axis of LoS along z
+     range_when_shooting_down_x: [0., 100.] # Range along the x-axis of LoS along x
+     range_when_shooting_down_y: [0., 100.] # Range along the y-axis of LoS along y
+     range_when_shooting_down_z: [0., 100.] # Range along the z-axis of LoS along z
 
 
 .. _Parameters_light_cone:
@@ -1674,8 +1674,8 @@ should contain. The type of partitioning attempted is controlled by the::
   DomainDecomposition:
     initial_type:
 
-parameter. Which can have the values *memory*, *edgememory*, *region*, *grid* or
-*vectorized*:
+parameter. Which can have the values *memory*, *edgememory*, *region*, *grid*,
+*wedge* or *vectorized*:
 
     * *edgememory*
 
@@ -1715,6 +1715,16 @@ will give a poorer partition:
 
     parameter. It takes an array of three values. The product of these values
     must equal the number of MPI ranks. If not set a suitable default will be used.
+
+    * *wedge*
+
+    Split the cells over the solid angle into box-centred angular wedges and 
+    assign the wedges to ranks, aiming for roughly equal particle weight per 
+    rank. The number of wedges is controlled by the::
+
+       wedges_per_rank
+
+    parameter, which sets the number of wedges created for each MPI rank.
 
     * *vectorized*
 

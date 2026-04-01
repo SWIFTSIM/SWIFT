@@ -174,9 +174,9 @@ endif
 
 # source files for Zoom support
 ZOOM_REGION_SOURCES = zoom_region/zoom_init.c zoom_region/zoom_cell.c \
-    zoom_region/zoom_regrid.c zoom_region/zoom_maketasks.c zoom_region/zoom_split.c \ 
-    zoom_region/zoom_partition.c \
-    zoom_region/zoom_io.c
+    zoom_region/zoom_regrid.c zoom_region/zoom_maketasks.c \ 
+    zoom_region/zoom_split.c zoom_region/zoom_proxy.c \ 
+    zoom_region/zoom_partition.c zoom_region/zoom_io.c
 
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c
@@ -538,7 +538,7 @@ libgrav_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
 
 # Sources and special flags for the gravity MPI library
 libgrav_mpi_la_SOURCES = runner_doiact_grav.c runner_doiact_long_range_grav.c
-libgrav_mpi_la_CFLAGS = $(AM_CFLAGS) $(GRAVITY_CFLAGS) -DWITH_MPI
+libgrav_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) $(GRAVITY_CFLAGS) -DWITH_MPI
 libgrav_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Sources and flags for regular library
