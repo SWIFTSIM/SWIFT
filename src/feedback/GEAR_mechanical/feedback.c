@@ -153,7 +153,6 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
  * @param sp The #spart.
  */
 int feedback_should_inject_SN_feedback(const struct spart *sp) {
-  /* Do we have supernovae? */
   return sp->feedback_data.energy_ejected != 0;
 }
 
@@ -166,8 +165,19 @@ int feedback_should_inject_SN_feedback(const struct spart *sp) {
  * @param sp The #spart.
  */
 int feedback_should_inject_wind_feedback(const struct spart *sp) {
-  /* Do we have supernovae? */
   return sp->feedback_data.preSN.energy_ejected != 0;
+}
+
+/**
+ * @brief Should this particle inject anything as stellar feedback?
+ *
+ * This function is used in feedback_iact.h to determine if we have SN or
+ * stellar wind feedback to inject in the gas.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_feedback(const struct spart *sp) {
+  return feedback_should_inject_SN_feedback(sp) || feedback_should_inject_wind_feedback(sp);
 }
 
 /**
@@ -255,8 +265,6 @@ void feedback_prepare_spart(struct spart *sp,
  * @brief Prepare a #spart for the feedback task.
  *
  * This is called in the stars ghost task.
- *
- * In here, we only need to add the missing coefficients.
  *
  * @param sp The particle to act upon
  * @param feedback_props The #feedback_props structure.

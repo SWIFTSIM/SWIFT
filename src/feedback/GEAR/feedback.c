@@ -146,6 +146,9 @@ void feedback_init_spart(struct spart *sp) {
  * needs to be distributed.
  *
  * This is called in the stars ghost.
+ *
+ * @param sp The #spart.
+ * @param feedback_props The properties of the feedback model.
  */
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props) {}

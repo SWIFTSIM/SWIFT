@@ -62,8 +62,8 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have supernovae? */
-  if (!feedback_should_inject_SN_feedback(si)) {
+  /* Do we have SN or winds? */
+  if (!feedback_should_inject_feedback(si)) {
     return;
   }
 }
@@ -101,8 +101,8 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have supernovae? */
-  if (!feedback_should_inject_SN_feedback(si)) {
+  /* Do we have SN or winds? */
+  if (!feedback_should_inject_feedback(si)) {
     return;
   }
 }
@@ -141,8 +141,8 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have supernovae? */
-  if (!feedback_should_inject_SN_feedback(si)) {
+  /* Do we have SN or winds? */
+  if (!feedback_should_inject_feedback(si)) {
     return;
   }
 
@@ -198,8 +198,8 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have supernovae? */
-  if (!feedback_should_inject_SN_feedback(si)) {
+  /* Do we have SN or winds? */
+  if (!feedback_should_inject_feedback(si)) {
     return;
   }
 
@@ -247,8 +247,8 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have supernovae? */
-  if (!feedback_should_inject_SN_feedback(si)) {
+  /* Do we have SN or winds? */
+  if (!feedback_should_inject_feedback(si)) {
     return;
   }
 
