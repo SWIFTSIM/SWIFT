@@ -158,12 +158,27 @@ int feedback_should_inject_SN_feedback(const struct spart *sp) {
 }
 
 /**
+ * @brief Should this particle inject anything as stellar wind feedback?
+ *
+ * This function is used in feedback_iact.h to determine if we have stellar
+ * wind feedback to inject in the gas.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_wind_feedback(const struct spart *sp) {
+  /* Do we have supernovae? */
+  return sp->feedback_data.preSN.energy_ejected != 0;
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon
  */
 void feedback_init_spart(struct spart *sp) {
-  sp->feedback_data.enrichment_weight = 0.f;
+  sp->feedback_data.enrichment_weight = 0.0;
+  sp->feedback_data.weighted_gas_density = 0.0;
+  sp->feedback_data.weighted_gas_metallicity = 0.0;
 
   sp->feedback_data.f_sum_minus_term[0] = 0.0;
   sp->feedback_data.f_sum_minus_term[1] = 0.0;
@@ -193,7 +208,7 @@ void feedback_init_spart(struct spart *sp) {
  * @brief Prepares a star's feedback field before computing what
  * needs to be distributed.
  *
- * This is called in the stars ghost.
+* @param sp The #spart.
  */
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props) {
