@@ -59,176 +59,6 @@ cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravity"
 do_run bash run.sh
 
 echo
-echo "-----------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition matrix, 4 ranks, 3 steps"
-echo "-----------------------------------------------------------"
-
-echo
-echo "------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=grid, repartition=none"
-echo "------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:grid" \
-	--param="DomainDecomposition:repartition_type:none" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=vectorized, repartition=none"
-echo "------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:vectorized" \
-	--param="DomainDecomposition:repartition_type:none" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "-------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=wedge, repartition=none"
-echo "-------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:wedge" \
-	--param="DomainDecomposition:repartition_type:none" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "----------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=memory, repartition=none"
-echo "----------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:memory" \
-	--param="DomainDecomposition:repartition_type:none" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "---------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=memory, repartition=fullcosts"
-echo "---------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:memory" \
-	--param="DomainDecomposition:repartition_type:fullcosts" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "---------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=memory, repartition=edgecosts"
-echo "---------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:memory" \
-	--param="DomainDecomposition:repartition_type:edgecosts" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=memory, repartition=memory"
-echo "------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:memory" \
-	--param="DomainDecomposition:repartition_type:memory" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "--------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=edgememory, repartition=none"
-echo "--------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:edgememory" \
-	--param="DomainDecomposition:repartition_type:none" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "-------------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=edgememory, repartition=fullcosts"
-echo "-------------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:edgememory" \
-	--param="DomainDecomposition:repartition_type:fullcosts" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "-------------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=edgememory, repartition=edgecosts"
-echo "-------------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:edgememory" \
-	--param="DomainDecomposition:repartition_type:edgecosts" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "----------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=edgememory, repartition=memory"
-echo "----------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:edgememory" \
-	--param="DomainDecomposition:repartition_type:memory" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "----------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=region, repartition=none"
-echo "----------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:region" \
-	--param="DomainDecomposition:repartition_type:none" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "---------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=region, repartition=fullcosts"
-echo "---------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:region" \
-	--param="DomainDecomposition:repartition_type:fullcosts" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "---------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=region, repartition=edgecosts"
-echo "---------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:region" \
-	--param="DomainDecomposition:repartition_type:edgecosts" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
-echo "------------------------------------------------------------------------------"
-echo "UniformDMGravity MPI decomposition check: initial=region, repartition=memory"
-echo "------------------------------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
-	--threads=4 -n 3 --no-io \
-	--param="DomainDecomposition:initial_type:region" \
-	--param="DomainDecomposition:repartition_type:memory" \
-	--param="DomainDecomposition:trigger:0.1" \
-	zoom_uniform_dm_gravity.yml
-
-echo
 echo "------------------------------------------------------------"
 echo "Zoom integration check: UniformDMGravityWithHoles, 16 steps"
 echo "------------------------------------------------------------"
@@ -248,6 +78,84 @@ echo "Zoom integration check: BoundaryOffsetUniDMGrav, 16 steps"
 echo "------------------------------------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/BoundaryOffsetUniDMGrav"
 do_run bash run.sh
+
+echo
+echo "------------------------------------------------------"
+echo "Zoom MPI integration runs, 4 ranks, 3 steps"
+echo "------------------------------------------------------"
+
+echo "-------------------------------"
+echo "UniformDMGravity MPI integration run"
+echo "-------------------------------"
+cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravity"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+	--threads=1 -n 3 --no-io \
+	--param="DomainDecomposition:initial_type:grid" \
+	--param="DomainDecomposition:repartition_type:none" \
+	--param="DomainDecomposition:trigger:0.1" \
+	zoom_uniform_dm_gravity.yml
+
+echo "------------------------------------------"
+echo "UniformDMGravity wedge MPI integration run"
+echo "------------------------------------------"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+	--threads=1 -n 3 --no-io \
+	--param="DomainDecomposition:initial_type:wedge" \
+	--param="DomainDecomposition:repartition_type:none" \
+	--param="DomainDecomposition:trigger:0.1" \
+	zoom_uniform_dm_gravity.yml
+
+echo "-----------------------------------------------------"
+echo "UniformDMGravity memory/fullcosts integration run"
+echo "-----------------------------------------------------"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+	--threads=1 -n 3 --no-io \
+	--param="DomainDecomposition:initial_type:memory" \
+	--param="DomainDecomposition:repartition_type:fullcosts" \
+	--param="DomainDecomposition:trigger:0.1" \
+	zoom_uniform_dm_gravity.yml
+
+echo "--------------------------------------------------------"
+echo "UniformDMGravity edgememory/edgecosts integration run"
+echo "--------------------------------------------------------"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+	--threads=1 -n 3 --no-io \
+	--param="DomainDecomposition:initial_type:edgememory" \
+	--param="DomainDecomposition:repartition_type:edgecosts" \
+	--param="DomainDecomposition:trigger:0.1" \
+	zoom_uniform_dm_gravity.yml
+
+echo "------------------------------------------------"
+echo "UniformDMGravity region/memory integration run"
+echo "------------------------------------------------"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+	--threads=1 -n 3 --no-io \
+	--param="DomainDecomposition:initial_type:region" \
+	--param="DomainDecomposition:repartition_type:memory" \
+	--param="DomainDecomposition:trigger:0.1" \
+	zoom_uniform_dm_gravity.yml
+
+echo "--------------------------------"
+echo "OffsetUniDMGravity MPI integration run"
+echo "--------------------------------"
+cd "${WORKDIR}/examples/ZoomSimulations/OffsetUniDMGravity"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+	--threads=1 -n 3 --no-io \
+	--param="DomainDecomposition:initial_type:grid" \
+	--param="DomainDecomposition:repartition_type:none" \
+	--param="DomainDecomposition:trigger:0.1" \
+	offset_uni_dm_gravity.yml
+
+echo "--------------------------------------"
+echo "BoundaryOffsetUniDMGrav MPI integration run"
+echo "--------------------------------------"
+cd "${WORKDIR}/examples/ZoomSimulations/BoundaryOffsetUniDMGrav"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+	--threads=1 -n 3 --no-io \
+	--param="DomainDecomposition:initial_type:grid" \
+	--param="DomainDecomposition:repartition_type:none" \
+	--param="DomainDecomposition:trigger:0.1" \
+	boundary_offset_uni_dm_grav.yml
 
 echo
 echo "---------------------"
@@ -270,6 +178,17 @@ echo "Zoom integration check: UniformDMHydro, 16 steps"
 echo "-------------------------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/UniformDMHydro"
 do_run bash run.sh
+
+echo
+echo "------------------------------------------------------"
+echo "UniformDMHydro MPI integration run, 4 ranks, 3 steps"
+echo "------------------------------------------------------"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --hydro --self-gravity --zoom \
+	--threads=1 -n 3 --no-io \
+	--param="DomainDecomposition:initial_type:grid" \
+	--param="DomainDecomposition:repartition_type:none" \
+	--param="DomainDecomposition:trigger:0.1" \
+	zoom_uniform_dm_hydro.yml
 
 cd "${WORKDIR}"
 do_make clean
