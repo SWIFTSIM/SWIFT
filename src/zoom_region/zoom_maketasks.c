@@ -102,10 +102,17 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
+    const int cid = (size_t)(map_data) + ind;
+    struct cell *c = &cells[cid];
+
+    /* Skip void cells that do not contain any zoom cells. We do not want
+     * to generate self/pair gravity tasks for these top-level cells. */
+    if (c->subtype == cell_subtype_void && !c->contains_zoom_cells) continue;
+
     /* Create a self task, and loop over neighbouring cells making pair tasks
      * where appropriate. */
-    engine_gravity_make_task_loop(e, (size_t)(map_data) + ind, cdim, cells,
-                                  periodic, use_mesh, delta_m, delta_p);
+    engine_gravity_make_task_loop(e, cid, cdim, cells, periodic, use_mesh,
+                                  delta_m, delta_p);
   }
 }
 
