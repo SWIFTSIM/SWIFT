@@ -23,8 +23,8 @@
 #-
 
 if [ -z "${WORKDIR}" ]; then
-    echo "ERROR: WORKDIR is not set. Source ci/setup.sh first."
-    return 1
+	echo "ERROR: WORKDIR is not set. Source ci/setup.sh first."
+	return 1
 fi
 
 VENV_DIR="${WORKDIR}/.venv-zoom-ci"
