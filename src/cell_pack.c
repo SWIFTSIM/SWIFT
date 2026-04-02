@@ -43,6 +43,19 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
               const int with_gravity) {
 #ifdef WITH_MPI
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->subtype == cell_subtype_void) {
+    error("Packing a void cell shouldn't happen!");
+  }
+
+  /* Verify cell has valid data before packing */
+  if (c->depth < 0) {
+    error("Packing cell with negative depth=%d (type=%s subtype=%s nodeID=%d)",
+          c->depth, cellID_names[c->type], subcellID_names[c->subtype],
+          c->nodeID);
+  }
+#endif
+
   /* Start by packing the data of the current cell. */
   pc->hydro.h_max = c->hydro.h_max;
   pc->stars.h_max = c->stars.h_max;
@@ -70,6 +83,8 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->sinks.count = c->sinks.count;
   pc->black_holes.count = c->black_holes.count;
   pc->maxdepth = c->maxdepth;
+  pc->type = c->type;
+  pc->subtype = c->subtype;
 
   pc->grid.self_completeness = c->grid.self_completeness;
 
@@ -248,6 +263,40 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
                 struct space *restrict s, const int with_gravity) {
 #ifdef WITH_MPI
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->subtype == cell_subtype_void) {
+    error("Unpacking into a void cell shouldn't happen!");
+  }
+
+  /* Verify the pcell has valid data before unpacking */
+  if (pc->maxdepth < 0) {
+    error(
+        "Unpacking pcell with negative maxdepth=%d (type=%s subtype=%s counts: "
+        "hydro=%d grav=%d stars=%d)",
+        pc->maxdepth, cellID_names[pc->type], subcellID_names[pc->subtype],
+        pc->hydro.count, pc->grav.count, pc->stars.count);
+  }
+
+  /* Verify the receiving cell has valid depth */
+  if (c->depth < 0) {
+    error(
+        "Unpacking into cell with negative depth=%d (type=%s subtype=%s "
+        "nodeID=%d)",
+        c->depth, cellID_names[c->type], subcellID_names[c->subtype],
+        c->nodeID);
+  }
+
+  /* Warn about suspiciously deep cells (should never exceed 64) */
+  if (c->depth > 64) {
+    error(
+        "Unpacking into cell with excessive depth=%d (should never exceed 64!) "
+        "pc->maxdepth=%d type=%s subtype=%s nodeID=%d - possible recursion "
+        "bug!",
+        c->depth, pc->maxdepth, cellID_names[c->type],
+        subcellID_names[c->subtype], c->nodeID);
+  }
+#endif
+
   /* Unpack the current pcell. */
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
@@ -275,6 +324,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->sinks.count = pc->sinks.count;
   c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
+  c->type = pc->type;
+  c->subtype = pc->subtype;
 
   c->grid.self_completeness = pc->grid.self_completeness;
 
@@ -307,6 +358,18 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->split = 0;
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check if recursion would overflow the depth field */
+      if (c->depth + 1 < 0) {
+        error(
+            "Depth overflow detected creating progeny %d! c->depth=%d, "
+            "c->depth+1=%d would be negative (type=%s subtype=%s nodeID=%d "
+            "pc->maxdepth=%d)",
+            k, c->depth, c->depth + 1, cellID_names[c->type],
+            subcellID_names[c->subtype], c->nodeID, pc->maxdepth);
+      }
+#endif
+
       struct cell *temp;
       space_getcells(s, 1, &temp, 0);
       temp->hydro.count = 0;
