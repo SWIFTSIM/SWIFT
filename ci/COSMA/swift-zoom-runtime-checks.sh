@@ -39,6 +39,19 @@ git clean -fdx
 #  Python environment for zoom IC generation scripts.
 source ci/COSMA/zoom-python-env.sh
 
+#  Print the runtime of an integration run.
+run_with_timer() {
+	local label="$1"
+	shift
+
+	local start_time=$SECONDS
+	"$@"
+	local duration=$((SECONDS - start_time))
+
+	echo
+	echo "Runtime: ${label} completed in ${duration}s"
+}
+
 echo
 echo "------------------------------------------------------"
 echo "Configure group: DMO + hydro zoom integration examples"
@@ -56,28 +69,28 @@ echo "---------------------------------------------------"
 echo "Zoom integration check: UniformDMGravity, 16 steps"
 echo "---------------------------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravity"
-do_run bash run.sh
+run_with_timer "UniformDMGravity, 16 steps" do_run bash run.sh
 
 echo
 echo "------------------------------------------------------------"
 echo "Zoom integration check: UniformDMGravityWithHoles, 16 steps"
 echo "------------------------------------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravityWithHoles"
-do_run bash run.sh
+run_with_timer "UniformDMGravityWithHoles, 16 steps" do_run bash run.sh
 
 echo
 echo "------------------------------------------------------"
 echo "Zoom integration check: OffsetUniDMGravity, 16 steps"
 echo "------------------------------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/OffsetUniDMGravity"
-do_run bash run.sh
+run_with_timer "OffsetUniDMGravity, 16 steps" do_run bash run.sh
 
 echo
 echo "------------------------------------------------------------"
 echo "Zoom integration check: BoundaryOffsetUniDMGrav, 16 steps"
 echo "------------------------------------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/BoundaryOffsetUniDMGrav"
-do_run bash run.sh
+run_with_timer "BoundaryOffsetUniDMGrav, 16 steps" do_run bash run.sh
 
 echo
 echo "------------------------------------------------------"
@@ -88,7 +101,7 @@ echo "-------------------------------"
 echo "UniformDMGravity MPI integration run"
 echo "-------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravity"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+run_with_timer "UniformDMGravity MPI grid/none, 4 ranks, 3 steps" do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 	--threads=1 -n 3 --no-io \
 	--param="DomainDecomposition:initial_type:grid" \
 	--param="DomainDecomposition:repartition_type:none" \
@@ -98,7 +111,7 @@ do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 echo "------------------------------------------"
 echo "UniformDMGravity wedge MPI integration run"
 echo "------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+run_with_timer "UniformDMGravity MPI wedge/none, 4 ranks, 3 steps" do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 	--threads=1 -n 3 --no-io \
 	--param="DomainDecomposition:initial_type:wedge" \
 	--param="DomainDecomposition:repartition_type:none" \
@@ -108,7 +121,7 @@ do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 echo "-----------------------------------------------------"
 echo "UniformDMGravity memory/fullcosts integration run"
 echo "-----------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+run_with_timer "UniformDMGravity MPI memory/fullcosts, 4 ranks, 3 steps" do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 	--threads=1 -n 3 --no-io \
 	--param="DomainDecomposition:initial_type:memory" \
 	--param="DomainDecomposition:repartition_type:fullcosts" \
@@ -118,7 +131,7 @@ do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 echo "--------------------------------------------------------"
 echo "UniformDMGravity edgememory/edgecosts integration run"
 echo "--------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+run_with_timer "UniformDMGravity MPI edgememory/edgecosts, 4 ranks, 3 steps" do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 	--threads=1 -n 3 --no-io \
 	--param="DomainDecomposition:initial_type:edgememory" \
 	--param="DomainDecomposition:repartition_type:edgecosts" \
@@ -128,7 +141,7 @@ do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 echo "------------------------------------------------"
 echo "UniformDMGravity region/memory integration run"
 echo "------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+run_with_timer "UniformDMGravity MPI region/memory, 4 ranks, 3 steps" do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 	--threads=1 -n 3 --no-io \
 	--param="DomainDecomposition:initial_type:region" \
 	--param="DomainDecomposition:repartition_type:memory" \
@@ -139,7 +152,7 @@ echo "--------------------------------"
 echo "OffsetUniDMGravity MPI integration run"
 echo "--------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/OffsetUniDMGravity"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+run_with_timer "OffsetUniDMGravity MPI grid/none, 4 ranks, 3 steps" do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 	--threads=1 -n 3 --no-io \
 	--param="DomainDecomposition:initial_type:grid" \
 	--param="DomainDecomposition:repartition_type:none" \
@@ -150,7 +163,7 @@ echo "--------------------------------------"
 echo "BoundaryOffsetUniDMGrav MPI integration run"
 echo "--------------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/BoundaryOffsetUniDMGrav"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+run_with_timer "BoundaryOffsetUniDMGrav MPI grid/none, 4 ranks, 3 steps" do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
 	--threads=1 -n 3 --no-io \
 	--param="DomainDecomposition:initial_type:grid" \
 	--param="DomainDecomposition:repartition_type:none" \
@@ -177,13 +190,13 @@ echo "-------------------------------------------------"
 echo "Zoom integration check: UniformDMHydro, 16 steps"
 echo "-------------------------------------------------"
 cd "${WORKDIR}/examples/ZoomSimulations/UniformDMHydro"
-do_run bash run.sh
+run_with_timer "UniformDMHydro, 16 steps" do_run bash run.sh
 
 echo
 echo "------------------------------------------------------"
 echo "UniformDMHydro MPI integration run, 4 ranks, 3 steps"
 echo "------------------------------------------------------"
-do_run mpirun -np 4 ../../../swift_mpi --cosmology --hydro --self-gravity --zoom \
+run_with_timer "UniformDMHydro MPI grid/none, 4 ranks, 3 steps" do_run mpirun -np 4 ../../../swift_mpi --cosmology --hydro --self-gravity --zoom \
 	--threads=1 -n 3 --no-io \
 	--param="DomainDecomposition:initial_type:grid" \
 	--param="DomainDecomposition:repartition_type:none" \
@@ -222,6 +235,6 @@ if [ ! -e photometry ] && [ -e "$HOME/photometry" ]; then
 	link_data photometry
 fi
 
-do_run bash run.sh
+run_with_timer "UniformDMEAGLE, 16 steps" do_run bash run.sh
 
 exit
