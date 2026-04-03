@@ -6537,25 +6537,50 @@ void prolongate_solution(double *pot_coarse, double *pot_fine, const int N, cons
   }
 }
 
-void space_get_density(struct space *s, struct swift_params *params, struct engine *e, int use_multigrid) {
-  const int N = 128;
+/**
+ * @brief Compute the forces and potential on a uniform grid.
+ *
+ * Interpolates the gparts onto a mesh, performs Gauss-Seidel relaxation
+ * to compute the potential on the grid, and interpolates the potential 
+ * and acceleration back to the particles. We use CIC for the interpolation.
+ *
+ * This function calls the appropriate relaxation method (multigrid acceleration
+ * or directly solving) based on the parameter multigrid.
+ *
+ * @param e The #engine.
+ * @param N 1D size of the grid on which to solve for the potential.
+ * @param multigrid Are we doing multigrid acceleration?
+ */
+void space_get_density(struct engine *e, const int N, int multigrid) {
   int cdim[3] = {N,N,N};
+  const struct space *s = e->s;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double fac = ((double) N)/box_size;
 
+  /* Check if the space and mesh satisfy the conditions for Gauss-Seidel */
   if (dim[0] != dim[1] || dim[0] != dim[2]) {
-    message("Noncubic domain for density calculation. Did not fill density array");
-    return;
+    error("Noncubic domain for density calculation. Did not fill density array");
+  }
+  if (N%2 != 0){
+    error("Uneven domain for density calculation. Did not apply Gauss-Seidel");
   }
 
+  /* Allocate memory for density and potential arrays (on the finest level) */
   double *density_array = NULL;
-  /* Allocate the memory for the density array */
   density_array = (double*)calloc(N * N * N, sizeof(double));
   if (density_array == NULL)
     error("Error allocating memory for the density mesh.");
   memuse_log_allocation("mesh.density", density_array, 1,
                         sizeof(double) * N * N * N);
-                        
+  double *potential_array = NULL;
+  potential_array = (double*)calloc(N * N * N, sizeof(double));
+  if (potential_array == NULL){
+    error("Error allocating memory for the potential mesh.");
+  }
+  memuse_log_allocation("mesh.potential", potential_array, 1, sizeof(double)*N*N*N);
+       
+  /* Prepare for and initialise CIC to get the density at the mesh */
   struct cic_mapper_data data; 
   message("The number of cells is %d", N);
   data.N = N;
@@ -6564,213 +6589,141 @@ void space_get_density(struct space *s, struct swift_params *params, struct engi
   data.dim[0] = dim[0];
   data.dim[1] = dim[1];
   data.dim[2] = dim[2];
-
   gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
-  //get_pm_potential(&data, N, box_size, &e->threadpool, cdim);  //PM method to get the potential is implemented here
-
-  //double spacing = box_size/N;
-
-  //message("Exporting regular density data");
-  //FILE *file_regular_density = fopen("/data1/vandervlugt/PythonFiles/particle_acc_test/PM_pot_to_cells/density_CIC_8", "w");
-
-  //for (int i=0; i<N*N*N; i++) {
-    //fprintf(file_regular_density, "%lf\n", data.rho[i]);
-  //}
-  
-  /*
-  for (int i=0;i<N;i++) {
-    for (int j=0; j<N;j++) {
-      for (int k=0;k<N;k++) {
-        int cid = cell_getid(cdim,i,j,k);
-        double loc_x = spacing*(double)i;
-        if (i==4) message("calculated locx=%lf", loc_x);
-        double loc_y = spacing*(double)j;
-        double loc_z = spacing*(double)k;
-        fprintf(file_regular_density, "loc=[%lf,%lf, %lf]\t\t%lf\n", loc_x,loc_y,loc_z,data.rho[cid]);
-      }
-    }
-  }
-  */
-  //fclose(file_regular_density);
-  //message("Exported the regular density data.");
-  //sleep(5);
-
-  //if (N == s->cdim[0]){
-    //density_to_cells(&data, s->cells_top, s->nr_cells, s->cdim); 
-  //}
-  
-  double *potential_array = NULL;
-  //Allocate the memory for the potential array 
-  potential_array = (double*)malloc(sizeof(double) * N * N * N);
-  if (potential_array == NULL){
-    error("Error allocating memory for the potential mesh.");
-  }
-  memuse_log_allocation("mesh.potential", potential_array, 1, sizeof(double)*N*N*N);
-  for (int i = 0; i<N*N*N; i++)
-      potential_array[i] = 0.0;
-
-  if (N%2 != 0){
-    message("Uneven domain for density calculation. Did not apply Gauss-Seidel");
-    return;
-  }
  
+  /* Do something about this! */
+  //get_pm_potential(&data, N, box_size, &e->threadpool, cdim);  //PM method to get the potential is implemented here
+ 
+  /* Rescale density to get overdensity and rescale mean density for consistency with FFT */
   double mean_density = get_mean_density(density_array, N);
+  mean_density *= 4.* M_PI * fac*fac*fac;
   double sum = 0.0;
   double rms = 0.0;
   for (int i = 0; i < N*N*N; i++) {
-      rms += fabs(density_array[i]-1);
-      sum += density_array[i]-1;
+    rms += fabs(density_array[i]-1);
+    sum += density_array[i]-1;
   }
+  if (sum < -0.1 || sum > 0.1) message("Warning! Mean of the overdensity is nonzero");
+
   set_initial_guess(potential_array, cdim);
 
-  if (use_multigrid) {
-    apply_multigrid(density_array, potential_array, cdim, mean_density, box_size, 16, 128, 5);
+  if (multigrid) {
+    const int N_min = 16; //Size of the smallest grid to be used in multigrid acceleration 
+    apply_multigrid(density_array, potential_array, cdim, mean_density, box_size, N_min, N, 15);
   } else {
     apply_GS(density_array, potential_array, cdim, mean_density, box_size);
   }
 
-  message("Exporting PM FFT data");
-  FILE *fptr;
-  fptr = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/MG_128_cells.txt", "w");
-  for (int i=0; i<N*N*N; i++) {
-    fprintf(fptr, "%lf\n", potential_array[i]);
-  }
-  fclose(fptr); 
+  /* Pass the potential back to the particles! */
+  //Add code to do this
 
   free(density_array);
   free(potential_array);
 }
 
-void apply_multigrid(double *density, double *pot, int cdim[3], double mean_density, double box_size, int N_stop, int N_start, int V_max) {
-  //message("Applying the multigrid method...");
-  int N = cdim[0];
+/**
+ * @brief Compute potential on the grid using multigrid acceleration.
+ *
+ * Solves for the potential on the finest grid, passes the residual to 
+ * the coarser grids and recursively solves for it on every level
+ * using V-cycles.
+ *
+ * @param rho Array containing the density on the finest grid.
+ * @param pot Array containing (approximate) potential values on the finest grid.
+ * @param cdim 3D size of the grid.
+ * @param mean_density Mean density on the grid.
+ * @param box_size Side length of the box.
+ * @param N_min 1D size of the coarsest grid.
+ * @param N_max 1D size of the finest grid.
+ * @param V_max Maximum number of V-cycles that may be performed.
+ */
+void apply_multigrid(const double *rho, double *pot, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max) {
+  message("Applying the multigrid method...");
+
+  /* Allocate the memory for the residual array on the finest level */
   double *residual_array = NULL;
-  /* Allocate the memory for the potential array */
-  residual_array = (double*)malloc(sizeof(double) * N * N * N);
+  residual_array = (double*)malloc(sizeof(double) * N_max * N_max * N_max);
   if (residual_array == NULL){
     error("Error allocating memory for the residual array.");
   }
-  memuse_log_allocation("residual.array", residual_array, 1, sizeof(double)*N*N*N);
+  memuse_log_allocation("residual.array", residual_array, 1, sizeof(double)*N_max*N_max*N_max);
 
-  double delta = box_size/N;
+  double delta = box_size/N_max; //Width of a grid cell of the finest level
   double residual; 
-  double fac2 = N/box_size;
-  mean_density *= 4.*M_PI*fac2*fac2*fac2;
-  get_residual(pot, density, cdim, mean_density, &residual, delta);
+  residual = get_residual(pot, rho, cdim, mean_density, delta);
   message("The first residual is %lf", residual);
-  double tolerance = 10e-6; //Choose reasonable value here
+  const double tolerance = 10e-12; //Choose reasonable value here
   int counter = 0;
-  //const int fine_steps = 10; //Arbitrary for now
+  const int fine_steps = 10; //Choose reasonable value here
   double sum = 0;
 
   int V_cycles=0;
-  V_max = 3;
-  //const int N_stop = 16; //Dimension of coarsest grid, on which to solve the equation exactly. 
-  //const int N_start = 128; //Dimension of the finest grid
 
   while (residual > tolerance && V_cycles < V_max) {
-    //message("Performing V-cycle %d", V_cycles);
-    /* Pre-smoothing for 10 steps */
-    for (int i2=0; i2<10; i2++) {
-      //message("Performing red-black sweep %d", i);
-      perform_red_black_sweep(pot, density, cdim, mean_density, delta); 
-      /*if (V_cycles == 0 && i2==0) {
-        for (int col=0; col<2; col++){
-          for (int k=0; k<cdim[2]; k++){
-            for (int j=0; j<cdim[1]; j++){
-              for (int i=0; i<cdim[0]; i++) {
-                if ((i+j+k)%2 != col) continue;
-                if (cell_getid(cdim,i,j,k)<50) message("Set cell %lu with loc (%lf, %lf, %lf) to %lf", cell_getid(cdim,i,j,k), (double) i * delta, (double) j * delta, (double) k * delta,pot[cell_getid(cdim,i,j,k)]);
-              }
-            }
-          }
-        }
-      }*/
+    message("Performing V-cycle %d", V_cycles);
+    /* Pre-smoothing */
+    for (int i=0; i<fine_steps; i++) {
+      perform_red_black_sweep(pot, rho, cdim, mean_density, delta); 
     }
-    //if (V_cycles == 5) {
-      //message("Exporting PM FFT data");
-      //FILE *fptr;
-      //fptr = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/uniform_check/FMG_16_middle_result.txt", "w");
-      //for (int i=0; i<cdim[0]*cdim[0]*cdim[0]; i++) {
-        //fprintf(fptr, "%lf\n", pot[i]);
-      //}
-      //fclose(fptr); 
-      //message("Exported post pre-smoothing");
-    //}
-    get_residual(pot, density, cdim, mean_density, &residual, delta);
-    //message("After 10 pre-smoothing steps and %d V-cycles, the residual of the 'normal' Gauss-Seidel is %lf", V_cycles, residual);
-    get_residual_array(pot, density, cdim, mean_density, residual_array, delta);
-    /* Get coarse-grid correction */
-    solve_coarser_problem(pot, residual_array, cdim, delta, N_stop, N_start);
-    get_residual(pot, density, cdim, mean_density, &residual, delta);
-    /* Post-smoothing for 10 steps */
-    for (int i=0; i<10; i++) {
-        perform_red_black_sweep(pot, density, cdim, mean_density, delta); 
+    residual = get_residual(pot, rho, cdim, mean_density, delta);
+    get_residual_array(pot, rho, cdim, mean_density, residual_array, delta);
+
+    /* Transfer residual array to get coarse-grid correction */
+    solve_coarser_problem_recursive(pot, residual_array, cdim, delta, N_min, N_max);
+
+    /* Post-smoothing if needed */
+    residual = get_residual(pot, rho, cdim, mean_density, delta);
+    if (residual > tolerance) {
+      for (int i=0; i<fine_steps; i++) {
+        perform_red_black_sweep(pot, rho, cdim, mean_density, delta); 
+      }
     }
-    get_residual(pot, density, cdim, mean_density, &residual, delta);
-    //message("After 10 post-smoothing steps and %d V-cycles, the residual of the 'normal' Gauss-Seidel is %lf", V_cycles, residual);    
+    residual = get_residual(pot, rho, cdim, mean_density, delta);   
     V_cycles +=1;
+    message("After %d V-cycle(s) the residual is %lf", V_cycles, residual);
   }
 
-  //message("The total number of V-cycles was %d", V_cycles);
-
-  //sum = 0.0;
-  //for (int i=0; i<N*N*N; i++) {
-    //sum += residual_array[i];
-  //}
-  //message("The first index of the original residual array is %lf", residual_array[0]);
+  message("Performed %d V-cycle(s) in total", V_cycles);
   
-  /* Post-smoothing until convergence */
+  /* Post-smoothing until convergence. Should not be necessary! */
   while (residual > tolerance) {
-    perform_red_black_sweep(pot, density, cdim, mean_density, delta);
-    get_residual(pot, density, cdim, mean_density, &residual, delta);
+    perform_red_black_sweep(pot, rho, cdim, mean_density, delta);
+    residual = get_residual(pot, rho, cdim, mean_density, delta);
     counter +=1;
     if (counter % 100 ==0){
       sum = 0;
-      for (int i = 0; i < N*N*N; i++) {
+      for (int i = 0; i < N_max*N_max*N_max; i++) {
           sum += pot[i];
       }
-      //message("Performed %d steps and the residual is %lf", counter, residual);
     }
   }
-  get_residual(pot, density, cdim, mean_density, &residual, delta);
-  message("The total number of steps on the finest grid is %d and the residual is %lf", counter, residual);
+  residual = get_residual(pot, rho, cdim, mean_density, delta);
+  message("Needed to do %d step(s) in post-smoothing after which the residual was %lf", counter, residual);
   free(residual_array);
 
-  //Set mean of potential to zero
+  /* Set mean of potential to zero */
   sum = 0.;
-  for (int i = 0; i < N*N*N; i++) {
-      sum += pot[i];
+  for (int i = 0; i < N_max*N_max*N_max; i++) {
+    sum += pot[i];
   }
-  for (int i = 0; i<N*N*N; i++) {
-    pot[i] -= sum/(N*N*N); 
+  for (int i = 0; i<N_max*N_max*N_max; i++) {
+    pot[i] -= sum/(N_max*N_max*N_max); 
   }
 
+  /* Verify that the potential mean is now zero */
   double potential_sum = 0.;
-  for (int i =0; i<N*N*N; i++)
+  for (int i =0; i<N_max*N_max*N_max; i++) {
     potential_sum += fabs(pot[i]);
-  message("The mean absolute value of the potential is %lf", potential_sum/(N*N*N));
-
-  //if (N==16) {
-  //Export the potential array to a .txt file to be read in Python
-    //FILE *fptr;
-    //fptr = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/uniform_check/FMG_16_check2.txt", "w");
-    //for (int i=0; i<N*N*N; i++) {
-      //fprintf(fptr, "%lf\n", pot[i]);
-    //}
-    //fprintf(fptr, "%lf\n", 50.);
-    //fclose(fptr);
-  //}
+  }
+  if (potential_sum < 0.1 || potential_sum > 0.1) error("The mean absolute value of the potential is %lf", potential_sum/(N_max*N_max*N_max));
 }
 
 void apply_GS(double *density, double *pot, int cdim[3], double mean_density, double box_size) {
   message("Applying Gauss-Seidel...");
-  //message("The mean of the density is %lf", mean_density);
   int N = cdim[0];
   double delta = box_size/N;
-  double residual; 
   mean_density *= 4.*M_PI*N*N*N/(box_size*box_size*box_size);
-  get_residual(pot, density, cdim, mean_density, &residual, delta);
+  double residual = get_residual(pot, density, cdim, mean_density, delta);
   double tolerance = 10e-12; //Choose reasonable value here
   int counter = 0;
   double sum = 0;
@@ -6784,7 +6737,7 @@ void apply_GS(double *density, double *pot, int cdim[3], double mean_density, do
 
   while (residual >= tolerance) {
     perform_red_black_sweep(pot, density, cdim, mean_density, delta);
-    get_residual(pot, density, cdim, mean_density, &residual, delta);
+    get_residual(pot, density, cdim, mean_density, delta);
     counter +=1;
     if (counter % 50 ==0){
       sum = 0;
@@ -6824,114 +6777,90 @@ void apply_GS(double *density, double *pot, int cdim[3], double mean_density, do
   
 }
 
-void solve_coarser_problem(double *pot, double *residual, int cdim[3], double delta, const int N_stop, const int N_start) {
-  //message("The value of delta is %lf", delta);
-  int N = cdim[0];
-  delta = delta*2.0;
+/**
+ * @brief Executes the V-cycles. 
+ *
+ * At the coarsest level, the residual equation is solved exactly. On all intermediate
+ * levels pre- and post-smoothing is done to solve the residual equation before the 
+ * residual of this problem is restricted to the next coarser grid. 
+ *
+ * @param pot Array containing the approximate solution on one grid finer.
+ * @param residual Array containing the density on the grid.
+ * @param cdim 3D size of one grid finer.
+ * @param delta Cell width of one grid finer.
+ * @param N_stop Size of coarsest grid in the V-cycle.
+ * @param N_start Size of finest grid in the V-cycle.
+ */
+void solve_coarser_problem_recursive(double *pot, const double *residual, int cdim[3], double delta, const int N_stop, const int N_start) {
+  int N = cdim[0]; //Grid size of the current level we are on
+  delta = delta*2.0; //Cells are twice as big on the coarser grid
+
+  /* Below arrays are the equivalent of the density, potential and residual arrays on the finest grid */
+  /* Allocate the memory for the arrays of the problem on this level */
   double *coarser_residual = NULL;
-  /* Allocate the memory for the potential array */
   coarser_residual = (double*)malloc(sizeof(double) * N * N * N);
   if (coarser_residual == NULL){
     error("Error allocating memory for the coarser-grid array.");
   }
   memuse_log_allocation("coarser.grid", coarser_residual, 1, sizeof(double)*N*N*N);
 
-  double *coarser_solution = NULL; //The coarser solution is the error obtained from solving on the coarser array. So we suppose it is zero. 
-  /* Allocate the memory for the potential array */
-  coarser_solution = (double*)malloc(sizeof(double) * N * N * N);
+  double *coarser_solution = NULL;
+  coarser_solution = (double*)calloc(N * N * N, sizeof(double)); //Set initial guess to zero as we are essentially solving for an error.
   if (coarser_solution == NULL){
     error("Error allocating memory for the coarser-grid array.");
   }
   memuse_log_allocation("coarser.solution", coarser_solution, 1, sizeof(double)*N*N*N);
-  for (int i =0; i<N*N*N; i++)
-    coarser_solution[i] = 0.0;
 
-  double *new_residual_array = NULL; //The coarser solution is the error obtained from solving on the coarser array. So we suppose it is zero. 
-  /* Allocate the memory for the potential array */
+  double *new_residual_array = NULL; 
   new_residual_array = (double*)malloc(sizeof(double) * N * N * N);
   if (new_residual_array == NULL){
     error("Error allocating memory for the new coarser residual.");
   }
   memuse_log_allocation("coarser.newresidual", new_residual_array, 1, sizeof(double)*N*N*N);
 
-  double sum = 0.0;
-  //for (int i=0; i<N*N*N; i++) {
-    //sum += residual[i];
-  //}
-  //message("The sum of the original residual array is %lf", sum);
-
-  restrict_problem(coarser_residual, residual, cdim, delta); //Transfer residual to the coarser grid
+  restrict_problem(coarser_residual, residual, cdim); //Transfer residual to the coarser grid
   N = N/2;
-  int cdimH[] = {cdim[0]/2, cdim[1]/2, cdim[2]/2}; 
-
+  int cdimH[] = {N, N, N}; 
   double multiplier = 1.0; 
-  double coarser_residual_abs = 1.0; //Zodat we het iig 1x doen (testen!) 
-  double tolerance = 10e-4; //Beetje random
+  double tolerance = 10e-4; //Choose a reasonable value here
   int counter = 0;
 
-  //Multiply the residual array on H by -1 in order to solve the right equation
+  /* Multiply the residual array on H by -1 in order to solve the right equation */
   for (int i =0; i<N*N*N; i++) 
     coarser_residual[i] = -1.0*coarser_residual[i];
-  //sum = 0.0;
-  //for (int i =0; i<N*N*N; i++)
-    //sum += coarser_residual[i];
-  //message("The sum of the coarser residual array is %lf", sum);
+  double coarser_residual_abs = get_residual(coarser_solution, coarser_residual, cdimH, multiplier, delta);
 
-  double rhs_check = 0.;
-
+  /* Solve the equation exactly if we are on the coarsest grid */
   if (N==N_stop) {
-    //message("We are now on the coarsest grid. Solving the residual equation exactly.");
     while (coarser_residual_abs >= tolerance) {
       perform_red_black_sweep(coarser_solution, coarser_residual, cdimH, multiplier, delta); 
-      get_residual(coarser_solution, coarser_residual, cdimH, multiplier, &coarser_residual_abs, delta);
+      coarser_residual_abs = get_residual(coarser_solution, coarser_residual, cdimH, multiplier, delta);
       counter +=1;
-      if (counter % 20 ==0){
-        sum = 0.;
-        rhs_check = 0.;
-        for (int i = 0; i < N*N*N; i++) {
-            sum += fabs(coarser_solution[i]);
-            rhs_check += coarser_residual[i];
-        }
-        //message("Performed %d steps and the residual is %lf", counter, coarser_residual_abs);
-        //message("The rms of the approximated solution is %lf", sum/(N*N*N));
-        //message("The mean of the rhs is %lf", rhs_check);
-      }
     }
-    get_residual(coarser_solution, coarser_residual, cdimH, multiplier, &coarser_residual_abs, delta);
+    coarser_residual_abs = get_residual(coarser_solution, coarser_residual, cdimH, multiplier, delta);
     message("The total number of steps on the coarsest grid is %d and the residual is %lf", counter, coarser_residual_abs);
     prolongate_problem(coarser_solution, pot, cdimH);
   }
 
+  /* Do some smoothing and proceed to coarser grids */
   else { 
-    //message("Not yet on the coarsest grid. The current dimension is %d", N);
     counter = 0;
-    for (int i=0; i<50; i++) {
+    int coarse_steps = 50;
+    for (int i=0; i<coarse_steps; i++) {
       perform_red_black_sweep(coarser_solution, coarser_residual, cdimH, multiplier, delta); 
-      get_residual(coarser_solution, coarser_residual, cdimH, multiplier, &coarser_residual_abs, delta);
+      coarser_residual_abs =  get_residual(coarser_solution, coarser_residual, cdimH, multiplier, delta);
       counter +=1;
-      if (counter%10==0) {
-        sum = 0.;
-        rhs_check = 0.;
-        for (int j = 0; j < N*N*N; j++) {
-            sum += coarser_solution[j];
-            rhs_check += coarser_residual[j];
-        }
-        //message("Performed %d steps and the residual is %lf", counter, coarser_residual_abs);
-        //message("The rms of the approximated solution is %lf", sum/(N*N*N));
-        //message("The mean of the rhs is %lf", rhs_check);
-      }
+      if (coarser_residual_abs < tolerance) break;
     }
-    //message("We are passing the values cdim=%d, mean_density=%lf, delta=%lf", cdim[0], mean_density, delta);
-    get_residual(coarser_solution, coarser_residual, cdimH, multiplier, &coarser_residual_abs, delta);
-    //message("After 10 steps, the residual of the 'normal' Gauss-Seidel is %lf", residual);
-    get_residual_array(coarser_solution, coarser_residual, cdimH, multiplier, new_residual_array, delta); //Now we have a residual array instead of just a number
+    get_residual_array(coarser_solution, coarser_residual, cdimH, multiplier, new_residual_array, delta);
 
-    /* Get coarse-grid correction */
-    solve_coarser_problem(coarser_solution, new_residual_array, cdimH, delta, N_stop, N_start);
-
-    /* Post-smoothing */
-    for (int i=0; i<50; i++) {
-      perform_red_black_sweep(coarser_solution, coarser_residual, cdimH, multiplier, delta); 
+    /* Get coarse-grid correction if the residual is too high */
+    if (coarser_residual_abs > tolerance) {
+      solve_coarser_problem_recursive(coarser_solution, new_residual_array, cdimH, delta, N_stop, N_start);
+      /* Post-smoothing */
+      for (int i=0; i<coarse_steps; i++) {
+        perform_red_black_sweep(coarser_solution, coarser_residual, cdimH, multiplier, delta); 
+      }
     }
     prolongate_problem(coarser_solution, pot, cdimH);
   }
@@ -6939,52 +6868,63 @@ void solve_coarser_problem(double *pot, double *residual, int cdim[3], double de
   /* The coarser-grid correction has now been added to the finer-grid solution for the potential, so discard used arrays. */
   free(coarser_residual);
   free(coarser_solution);
-  //message("Working back up again. The dimension is now %d", N);
+  free(new_residual_array);
 }
 
-void prolongate_problem(double *coarser_solution, double *pot, int cdim[3]) {
+/**
+ * @brief Add the converged solution of the coarser grid to the solution on the finer grid.
+ * 
+ * The chosen prolongation operator is trilinear interpolation. 
+ *
+ * @param coarser_solution Solution on the coarser grid.
+ * @param pot Approximate solution on the finer grid. 
+ * @param cdim 3D size of the coarser grid.
+ */
+void prolongate_problem(const double *coarser_solution, double *pot, int cdim[3]) {
   int N = cdim[0];
   int N_double = cdim[0]*2;
   int cdimh[] = {N_double, N_double, N_double};
 
   for (int i = 0; i<N_double; i++) {
     for (int j = 0; j<N_double; j++) {
-      for (int k=0; k<N_double; k++) {
-        int iH0 = i/2;
-        int jH0 = j/2;
-        int kH0 = k/2;
+      for (int k = 0; k<N_double; k++) {
+        int iH = i/2;
+        int jH = j/2;
+        int kH = k/2;
+        double dx = (i%2) * 0.5;
+        double dy = (j%2) * 0.5;
+        double dz = (k%2) * 0.5;
 
-        int iHp = (iH0 +1)%N;
-        int jHp = (jH0 +1)%N;
-        int kHp = (kH0 +1)%N;
+        int iHp = (iH +1)%N;
+        int jHp = (jH +1)%N;
+        int kHp = (kH +1)%N;
 
-        int iHm = (iH0 -1 > 0) ? iH0 -1 : iH0 - 1 + N;
-        int jHm = (jH0 -1 > 0) ? jH0 -1 : jH0 - 1 + N;
-        int kHm = (kH0 -1 > 0) ? kH0 -1 : kH0 - 1 + N;
-
-        int iH1 = (i%2 == 0) ? iHm : iHp;
-        int jH1 = (j%2 == 0) ? jHm : jHp;
-        int kH1 = (k%2 == 0) ? kHm : kHp;
-
-        pot[cell_getid(cdimh,i,j,k)] = ((27./64.)*coarser_solution[cell_getid(cdim, iH0, jH0, kH0)] + (9./64.)*(coarser_solution[cell_getid(cdim, iH1, jH0, kH0)] 
-                                      + coarser_solution[cell_getid(cdim, iH0, jH1, kH0)] + coarser_solution[cell_getid(cdim, iH0, jH0, kH1)]) 
-                                      + (3./64.)*(coarser_solution[cell_getid(cdim, iH1, jH1, kH0)] + coarser_solution[cell_getid(cdim, iH1, jH0, kH1)] 
-                                      + coarser_solution[cell_getid(cdim, iH0, jH1, jH1)]) + (1./64.) * coarser_solution[cell_getid(cdim, iH1, jH1, kH1)]);
+        pot[cell_getid(cdimh,i,j,k)] += ((1.-dx)*(1.-dy)*(1.-dz)*coarser_solution[cell_getid(cdim,iH,jH,kH)] + dx*(1.-dy)*(1.-dz)*coarser_solution[cell_getid(cdim,iHp, jH, kH)]
+                                  + (1.-dx)*dy*(1.-dz)*coarser_solution[cell_getid(cdim,iH,jHp,kH)] + (1.-dx)*(1.-dy)*dz*coarser_solution[cell_getid(cdim,iH,jH,kHp)]
+                                  + dx*dy*(1.-dz)*coarser_solution[cell_getid(cdim,iHp,jHp,kH)] + dx*(1.-dy)*dz*coarser_solution[cell_getid(cdim,iHp,jH, kHp)]
+                                  + (1.-dx)*dy*dz*coarser_solution[cell_getid(cdim,iH,jHp,kHp)]+ dx*dy*dz*coarser_solution[cell_getid(cdim,iHp,jHp,kHp)]);
       }
     }
   }
-  /* Prepare for the next layer. */
+
+  /* Prepare for the finer layer. */
   cdim[0] *= 2.;
   cdim[1] *= 2.;
   cdim[2] *= 2.;
 }
 
-void restrict_problem(double *H_array, double *residual, int cdim[3], double delta) {
+/**
+ * @brief Restrict the residual to a coarser grid by taking the average of the children.
+ *
+ * @param H_array Array to restrict the residual to.
+ * @param residual Residual being passed to a coarser grid.
+ * @param cdim 3D size of the fine grid.
+ */
+void restrict_problem(double *H_array, const double *residual, int cdim[3]) {
   int cdimH[] = {cdim[0]/2, cdim[1]/2, cdim[2]/2};
   for (int i=0; i<cdimH[0]; i++) {
     for (int j=0; j<cdimH[0]; j++) {
       for (int k=0; k<cdimH[0]; k++) {
-        //Might be useful to have this information in a tree or something
         H_array[cell_getid(cdimH,i,j,k)] = (residual[cell_getid(cdim,2*i,2*j,2*k)] + residual[cell_getid(cdim,2*i+1,2*j,2*k)]
                                             +residual[cell_getid(cdim,2*i,2*j+1,2*k)] + residual[cell_getid(cdim,2*i,2*j,2*k+1)]
                                             +residual[cell_getid(cdim,2*i+1,2*j+1,2*k)] + residual[cell_getid(cdim,2*i+1,2*j,2*k+1)]
@@ -6994,66 +6934,90 @@ void restrict_problem(double *H_array, double *residual, int cdim[3], double del
   }
 }
 
-/* Niet heel netjes om hier twee functies voor te hebben, laten we dit later aanpassen */
-void get_residual_array(double *pot, double *dens, int cdim[3], double multiplier, double *residual, double delta) {
-  /* Make sure array gets set to zero */
+/**
+ * @brief Get the residual at every grid point of the current approximation to the potential.
+ *
+ * Calculates the difference between the Laplacian of the potential and the right 
+ * hand side of the Poisson equation.
+ *
+ * @param pot Array containing the potential on the grid.
+ * @param rho Array containing the density on the grid.
+ * @param cdim 3D size of the grid.
+ * @param multiplier Multiplicative term on the right hand side of the Poisson equation.
+ * @param residual Array containing the residual at every grid point.
+ * @param delta Width of the grid cells.
+ */
+void get_residual_array(const double *pot, const double *rho, int cdim[3], double multiplier, double *residual, double delta) {
   const int N = cdim[0];
-  float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0;
-  for (int i = 0; i<N*N*N; i++)
-      residual[i] = 0.0;
-  //double m2 = (multiplier==1.0) ? 1.0 : (double) delta*cdim[0]/3.0; //Only extra multiplier if we are on the finest grid
-  //double m2 = (double) (delta*cdim[0]/3.0); 
-  double m2 = 1.0;
-  for (int k=0; k<cdim[2]; k++){
-    int k_plus = (k+1) % cdim[2];
-    int k_min = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
-    for (int j=0; j<cdim[1]; j++){
-      int j_plus = (j+1) % cdim[1];
-      int j_min = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
-      for (int i=0; i<cdim[0]; i++) {
-        int i_plus = (i+1) % cdim[0];
-        int i_min = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
+  float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0; 
+  for (int k=0; k<N; k++){
+    int k_plus = (k+1) % N;
+    int k_min = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
+    for (int j=0; j<N; j++){
+      int j_plus = (j+1) % N;
+      int j_min = (j-1>=0) ? (j-1) % N : (j-1) % N + N;
+      for (int i=0; i<N; i++) {
+        int i_plus = (i+1) % N;
+        int i_min = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
         residual[cell_getid(cdim,i,j,k)] = ((pot[cell_getid(cdim,i_min,j,k)]+ pot[cell_getid(cdim,i_plus,j,k)]+
                                                 pot[cell_getid(cdim,i,j_min,k)]+pot[cell_getid(cdim,i,j_plus,k)]+
                                                 pot[cell_getid(cdim,i,j,k_min)]+pot[cell_getid(cdim,i,j,k_plus)]
-                                                - 6.0*pot[cell_getid(cdim,i,j,k)])/(delta*delta) - m2*multiplier*(dens[cell_getid(cdim,i,j,k)]-rhs_correction));
-        }
-    }
-  }
-}
-
-void get_residual(double *pot, double *dens, int cdim[3], double multiplier, double *residual, double delta){
-  *residual = 0.0;
-  //double m2 = (multiplier==1.0) ? 1.0 : (double) (delta*cdim[0]/3.0); //Only extra multiplier if we are on the finest grid
-  float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0;
-  //double m2 = (double) (delta*cdim[0]/3.0);
-  double m2 = 1.0;
-  for (int k=0; k<cdim[2]; k++){
-    int k_plus = (k+1) % cdim[2];
-    int k_min = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
-    for (int j=0; j<cdim[1]; j++){
-      int j_plus = (j+1) % cdim[1];
-      int j_min = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
-      for (int i=0; i<cdim[0]; i++) {
-        int i_plus = (i+1) % cdim[0];
-        int i_min = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
-        double res = ((pot[cell_getid(cdim,i_min,j,k)]+ pot[cell_getid(cdim,i_plus,j,k)]+
-                                                pot[cell_getid(cdim,i,j_min,k)]+pot[cell_getid(cdim,i,j_plus,k)]+
-                                                pot[cell_getid(cdim,i,j,k_min)]+pot[cell_getid(cdim,i,j,k_plus)]
-                                                - 6.0*pot[cell_getid(cdim,i,j,k)])/(delta*delta) - m2*multiplier*(dens[cell_getid(cdim,i,j,k)]-rhs_correction));
-      *residual += res*res;
+                                                - 6.0*pot[cell_getid(cdim,i,j,k)])/(delta*delta) - multiplier*(rho[cell_getid(cdim,i,j,k)]-rhs_correction));
       }
     }
   }
-  int N = cdim[0];
-  *residual = sqrt(*residual/(N*N*N));
 }
 
-void perform_red_black_sweep(double *pot, double *dens, int cdim[3], double multiplier, double delta) {
-  //double m2 = (multiplier==1.0) ? 1.0 : (double) delta*cdim[0]/3.0; //Only extra multiplier if we are on the finest grid
+/**
+ * @brief Get the residual of the current approximation to the potential on the grid
+ *
+ * Calculates the difference between the Laplacian of the potential and the right 
+ * hand side of the Poisson equation.
+ *
+ * @param pot Array containing the potential on the grid.
+ * @param rho Array containing the density on the grid.
+ * @param cdim 3D size of the grid.
+ * @param multiplier Multiplicative term on the right hand side of the Poisson equation.
+ * @param delta Width of the grid cells.
+ */
+double get_residual(const double *pot, const double *rho, int cdim[3], double multiplier, double delta){
+  double residual = 0.;
+  int N = cdim[0];
   float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0;
-  //double m2 = (double) (delta*cdim[0]/3.0);
-  double m2 = 1;
+  for (int k=0; k<N; k++){
+    int k_plus = (k+1) % N;
+    int k_min = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
+    for (int j=0; j<N; j++){
+      int j_plus = (j+1) % N;
+      int j_min = (j-1>=0) ? (j-1) % N : (j-1) % N + N;
+      for (int i=0; i<N; i++) {
+        int i_plus = (i+1) % N;
+        int i_min = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
+        double res = ((pot[cell_getid(cdim,i_min,j,k)]+ pot[cell_getid(cdim,i_plus,j,k)]+
+                                                pot[cell_getid(cdim,i,j_min,k)]+pot[cell_getid(cdim,i,j_plus,k)]+
+                                                pot[cell_getid(cdim,i,j,k_min)]+pot[cell_getid(cdim,i,j,k_plus)]
+                                                - 6.0*pot[cell_getid(cdim,i,j,k)])/(delta*delta) - multiplier*(rho[cell_getid(cdim,i,j,k)]-rhs_correction));
+      residual += res*res;
+      }
+    }
+  }
+  return sqrt(residual/(N*N*N));
+}
+
+/**
+ * @brief Get a new approximation to the potential on the grid.
+ *
+ * Performs a red-black sweep of the grid: first one half of the cells is
+ * updated and next the other half.
+ *
+ * @param pot Array containing the potential on the grid.
+ * @param rho Array containing the density on the grid.
+ * @param cdim 3D size of the grid.
+ * @param multiplier Multiplicative term on the right hand side of the Poisson equation.
+ * @param delta Width of the grid cells.
+ */
+void perform_red_black_sweep(double *pot, const double *rho, int cdim[3], double multiplier, double delta) {
+  float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0;
   for (int col=0; col<2; col++){
     for (int k=0; k<cdim[2]; k++){
       int k_plus = (k+1) % cdim[2];
@@ -7069,7 +7033,7 @@ void perform_red_black_sweep(double *pot, double *dens, int cdim[3], double mult
           pot[cell_getid(cdim,i,j,k)] = ((pot[cell_getid(cdim,i_min,j,k)]+ pot[cell_getid(cdim,i_plus,j,k)]+ 
                                               pot[cell_getid(cdim,i,j_min,k)]+pot[cell_getid(cdim,i,j_plus,k)] + 
                                               pot[cell_getid(cdim,i,j,k_min)]+pot[cell_getid(cdim,i,j,k_plus)] - 
-                                              delta*delta*m2*multiplier*(dens[cell_getid(cdim,i,j,k)]-rhs_correction))/6.0);
+                                              delta*delta*multiplier*(rho[cell_getid(cdim,i,j,k)]-rhs_correction))/6.0);
           
         }
       }
@@ -7077,25 +7041,33 @@ void perform_red_black_sweep(double *pot, double *dens, int cdim[3], double mult
   }
 }
 
-//First semi-uniform, then adds a random value between 0 and 200 to every cell
-void set_initial_guess(double *potential_array, int cdim[3]) {
+/**
+ * @brief Set initial guess for the potential
+ *
+ * Adds a value to half the grid and another value to the other
+ * half of the grid. Then adds a random value to all grid points.
+ *
+ * @param pot Array of potential values on the grid.
+ * @param cdim 3D size of the grid (equal in all dimensions).
+ */
+void set_initial_guess(double *pot, const int cdim[3]) {
   const int N = cdim[0];
   for (int i = 0; i<N*N*N; i++) {
-    potential_array[i] = -1000;
+    pot[i] = -1000;
   }
-  for (int k=0; k<cdim[2]; k++){
-    for (int j=0; j<cdim[1]; j++){
-      for (int i=0; i<cdim[0]; i++) {
+  for (int k=0; k<N; k++){
+    for (int j=0; j<N; j++){
+      for (int i=0; i<N; i++) {
         if ((i+j+k)%2 != 0)
           continue;
       const size_t cid = cell_getid(cdim, i, j, k);
-      potential_array[cid] += 2000;
+      pot[cid] += 2000;
       }  
     }
   } 
   srand(time(NULL));
   for (int i = 0; i<N*N*N; i++){
-    potential_array[i] += rand() % (200);
+    pot[i] += rand() % (200);
   }
 }
 
@@ -7217,28 +7189,26 @@ void get_pm_potential(struct cic_mapper_data* data, const int N, const double bo
   //sleep(10);
 }
 
-double get_mean_density(double *dens, const int N) {
-  double sum = 0.0;
-  double mean_density = 0.0;
+/**
+ * @brief Compute the mean density on the mesh.
+ *
+ * After computing the mean density, it is subtracted from the density 
+ * array such that this represents the overdensity.
+ *
+ * @param rho Array containing the density in each cell of the grid.
+ * @param N Size (1D) of the grid.
+ */
+double get_mean_density(double *rho, const int N) {
+  double sum = 0.;
+  double mean_density = 0.;
 
-  //if (N == 64) {
-  //FILE *fptr;
-  //fptr = fopen("/data1/vandervlugt/PythonFiles/FMG_test/density_64.txt", "w");
-  //for (int i=0; i<N*N*N; i++) {
-    //fprintf(fptr, "%lf\n", dens[i]);
-  //}
-  //fclose(fptr);
-  //}
-
-  // Find the sum of all elements
   for (int i = 0; i < N*N*N; i++) {
-      sum += dens[i];
+      sum += rho[i];
   }
   mean_density = sum/(N*N*N);
   for (int i = 0; i < N*N*N; i++) {
-      dens[i] = dens[i] / mean_density;
+      rho[i] = rho[i] / mean_density;
   }
 
-  message("The mean density is %lf", mean_density);
   return mean_density;
 }

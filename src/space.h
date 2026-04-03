@@ -507,26 +507,26 @@ void space_write_cell_hierarchy(const struct space *s, int j);
 void space_compute_star_formation_stats(const struct space *s,
                                         struct star_formation *star_form);
 void space_check_unskip_flags(const struct space *s);
-void space_get_density(struct space *s, struct swift_params *params, struct engine *e, int use_multigrid);
+void space_get_density(struct engine *e, const int N, int multigrid);
 void space_apply_FMG(struct space *s, struct engine *e);
 void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra);
 void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra);
 void density_to_cells(struct cic_mapper_data* data, struct cell* top_cells, int nr_cells, int cdim[3]);
-void get_residual(double *pot, double *dens, int cdim[3], double multiplier, double *residual, double delta);
-void get_residual_array(double *pot, double *dens, int cdim[3], double multiplier, double *residual, double delta);
-void perform_red_black_sweep(double *pot, double *dens, int cdim[3], double multiplier, double delta);
-void set_initial_guess(double *potential_array, int cdim[3]);
+double get_residual(const double *pot, const double *rho, int cdim[3], double multiplier, double delta);
+void get_residual_array(const double *pot, const double *dens, int cdim[3], double multiplier, double *residual, double delta);
+void perform_red_black_sweep(double *pot, const double *rho, int cdim[3], double multiplier, double delta);
+void set_initial_guess(double *potential_array, const int cdim[3]);
 double get_mean_density(double *dens, const int N);
 void get_pm_potential(struct cic_mapper_data* data, const int N, const double box_size, struct threadpool* tp, int cdim[3]);
 void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
                                const int slice_offset, const int slice_width,
                                const int N, const double r_s,
                                const double box_size, const int deconvolve, const int discrete_symbol);
-void restrict_problem(double *H_array, double *residual, int cdim[3], double delta);
-void solve_coarser_problem(double *pot, double *residual, int cdim[3], double delta, const int N_stop, const int N_start);
-void prolongate_problem(double *coarser_solution, double *pot, int cdim[3]);
+void restrict_problem(double *H_array, const double *residual, int cdim[3]);
+void solve_coarser_problem_recursive(double *pot, const double *residual, int cdim[3], double delta, const int N_stop, const int N_start);
+void prolongate_problem(const double *coarser_solution, double *pot, int cdim[3]);
 void apply_GS(double *density, double *pot, int cdim[3], double mean_density, double box_size);
-void apply_multigrid(double *density, double *pot, int cdim[3], double mean_density, double box_size, int N_stop, int N_start, int V_max);
+void apply_multigrid(const double *density, double *pot, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
 void prolongate_solution(double *pot_coarse, double *pot_fine, const int N, const int N_double);
 void get_accelerations(struct cic_mapper_data* data, double *pot, struct threadpool* tp, struct space *s,const int N, int step);
 void space_get_AMR_density(struct space *s, struct engine *e, int level_check, int desired_depth);
