@@ -234,7 +234,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
   if (c->grav.ti_end_min < e->ti_current) {
     void *buffer[64];
     const int nptrs = backtrace(buffer, 64);
-    backtrace_symbols_fd(buffer, nptrs, 64);
+    backtrace_symbols_fd(buffer, nptrs, 2);
 
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
