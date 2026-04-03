@@ -6673,6 +6673,7 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
 
     /* Post-smoothing if needed */
     residual = get_residual(pot, rho, cdim, mean_density, delta);
+    message("Back on the finest grid the residual is %lf", residual);
     if (residual > tolerance) {
       for (int i=0; i<fine_steps; i++) {
         perform_red_black_sweep(pot, rho, cdim, mean_density, delta); 
@@ -6713,9 +6714,9 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
   /* Verify that the potential mean is now zero */
   double potential_sum = 0.;
   for (int i =0; i<N_max*N_max*N_max; i++) {
-    potential_sum += fabs(pot[i]);
+    potential_sum += pot[i];
   }
-  if (potential_sum < 0.1 || potential_sum > 0.1) error("The mean absolute value of the potential is %lf", potential_sum/(N_max*N_max*N_max));
+  if (potential_sum < -0.1 || potential_sum > 0.1) error("The mean of the potential is %lf", potential_sum/(N_max*N_max*N_max));
 }
 
 void apply_GS(double *density, double *pot, int cdim[3], double mean_density, double box_size) {
@@ -6794,6 +6795,7 @@ void apply_GS(double *density, double *pot, int cdim[3], double mean_density, do
 void solve_coarser_problem_recursive(double *pot, const double *residual, int cdim[3], double delta, const int N_stop, const int N_start) {
   int N = cdim[0]; //Grid size of the current level we are on
   delta = delta*2.0; //Cells are twice as big on the coarser grid
+  N = N/2; 
 
   /* Below arrays are the equivalent of the density, potential and residual arrays on the finest grid */
   /* Allocate the memory for the arrays of the problem on this level */
@@ -6819,16 +6821,16 @@ void solve_coarser_problem_recursive(double *pot, const double *residual, int cd
   memuse_log_allocation("coarser.newresidual", new_residual_array, 1, sizeof(double)*N*N*N);
 
   restrict_problem(coarser_residual, residual, cdim); //Transfer residual to the coarser grid
-  N = N/2;
   int cdimH[] = {N, N, N}; 
   double multiplier = 1.0; 
-  double tolerance = 10e-4; //Choose a reasonable value here
+  double tolerance = 10e-8; //Choose a reasonable value here
   int counter = 0;
 
   /* Multiply the residual array on H by -1 in order to solve the right equation */
   for (int i =0; i<N*N*N; i++) 
     coarser_residual[i] = -1.0*coarser_residual[i];
   double coarser_residual_abs = get_residual(coarser_solution, coarser_residual, cdimH, multiplier, delta);
+  message("The first residual on the grid with size %d is %lf", N, coarser_residual_abs);
 
   /* Solve the equation exactly if we are on the coarsest grid */
   if (N==N_stop) {
@@ -6850,17 +6852,18 @@ void solve_coarser_problem_recursive(double *pot, const double *residual, int cd
       perform_red_black_sweep(coarser_solution, coarser_residual, cdimH, multiplier, delta); 
       coarser_residual_abs =  get_residual(coarser_solution, coarser_residual, cdimH, multiplier, delta);
       counter +=1;
-      if (coarser_residual_abs < tolerance) break;
+      //if (coarser_residual_abs < tolerance) break;
     }
     get_residual_array(coarser_solution, coarser_residual, cdimH, multiplier, new_residual_array, delta);
 
-    /* Get coarse-grid correction if the residual is too high */
-    if (coarser_residual_abs > tolerance) {
-      solve_coarser_problem_recursive(coarser_solution, new_residual_array, cdimH, delta, N_stop, N_start);
-      /* Post-smoothing */
-      for (int i=0; i<coarse_steps; i++) {
-        perform_red_black_sweep(coarser_solution, coarser_residual, cdimH, multiplier, delta); 
-      }
+    coarser_residual_abs = get_residual(coarser_solution, coarser_residual, cdimH, multiplier, delta);
+    message("The residual after pre-smoothing is %lf", coarser_residual_abs);
+    solve_coarser_problem_recursive(coarser_solution, new_residual_array, cdimH, delta, N_stop, N_start);
+    /* Post-smoothing */
+    coarser_residual_abs = get_residual(coarser_solution, coarser_residual, cdimH, multiplier, delta);
+    message("Back on the grid with size %d the residual is %lf", N, coarser_residual_abs);
+    for (int i=0; i<coarse_steps; i++) {
+      perform_red_black_sweep(coarser_solution, coarser_residual, cdimH, multiplier, delta); 
     }
     prolongate_problem(coarser_solution, pot, cdimH);
   }
@@ -6907,7 +6910,7 @@ void prolongate_problem(const double *coarser_solution, double *pot, int cdim[3]
     }
   }
 
-  /* Prepare for the finer layer. */
+  /* Prepare for the next layer */
   cdim[0] *= 2.;
   cdim[1] *= 2.;
   cdim[2] *= 2.;
