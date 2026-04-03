@@ -22,6 +22,11 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Standard headers. */
+#ifdef SWIFT_DEBUG_CHECKS
+#include <execinfo.h>
+#endif
+
 /* Local includes. */
 #include "cell.h"
 #include "engine.h"
@@ -226,7 +231,11 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grav.ti_end_min < e->ti_current)
+  if (c->grav.ti_end_min < e->ti_current) {
+    void *buffer[64];
+    const int nptrs = backtrace(buffer, 64);
+    backtrace_symbols_fd(buffer, nptrs, 64);
+
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e, a=%e) cell: %s/%s depth=%d nodeID=%d "
@@ -242,6 +251,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
 #endif
         c->grav.count,
         c->grav.multipole != NULL ? c->grav.multipole->m_pole.M_000 : -1.);
+  }
 #endif
 
   return (c->grav.ti_end_min == e->ti_current);
