@@ -233,14 +233,15 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
 #ifdef WITH_MPI
         "tend=%p"
 #endif
-        "grav.count=%d",
+        "grav.count=%d m_pole=%g",
         c->grav.ti_end_min, c->grav.ti_end_min * e->time_base, e->ti_current,
         e->ti_current * e->time_base, e->cosmology->a, cellID_names[c->type],
         subcellID_names[c->subtype], c->depth, c->nodeID,
 #ifdef WITH_MPI
         c->mpi.recv,
 #endif
-        c->grav.count);
+        c->grav.count,
+        c->grav.multipole != NULL ? c->grav.multipole->m_pole.M_000 : -1.);
 #endif
 
   return (c->grav.ti_end_min == e->ti_current);
