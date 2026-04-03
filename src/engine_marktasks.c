@@ -1633,7 +1633,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     else if ((t_type == task_type_send && t_subtype == task_subtype_tend) ||
              (t_type == task_type_recv && t_subtype == task_subtype_tend)) {
-      if (!cell_is_empty(t->ci)) {
+      if (!cell_is_empty(t->ci) ||
+          (t->ci->grav.multipole != NULL &&
+           t->ci->grav.multipole->m_pole.M_000 > 0.f)) {
         scheduler_activate(s, t);
       }
     }
