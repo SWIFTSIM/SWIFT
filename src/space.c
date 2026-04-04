@@ -6317,16 +6317,29 @@ if (swift_memalign("extra.daughter", (void **)&parent->progeny[i], cell_align,
   //message("Added a NULL daughter to the list. Length is now %d. And the i-index is %d", *length, i);
 }
 
-void space_apply_FMG(struct space *s, struct engine *e) {
-  const int N_max = 64;
-  const int N_min = 16;
+/**
+ * @brief Compute the forces and potential on a series of uniform grids.
+ *
+ * The FMG algorithm is used: on every level the density is calculated, 
+ * and at every level the multigrid method (i.e. with V-cycles) is applied
+ * to get the potential. The potential guess on the next finer grid is set 
+ * by prolongating the potential from a grid coarser.
+ *
+ * @param e The #engine.
+ * @param N_min 1D size of the smallest grid on which to solve for the potential.
+ * @param N_max 1D size of the largest grid on which to solve for the potential.
+ */
+void space_apply_FMG(const struct engine *e, const int N_min, const int N_max) {
+  const struct space *s = e->s;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  int cdim_max[3] = {N_max, N_max, N_max};
 
   if (dim[0] != dim[1] || dim[0] != dim[2]) {
     message("Noncubic domain for density calculation. Did not fill density array");
     return;
+  }
+  if (N_max%2 != 0){
+    error("Uneven domain for density calculation. Did not apply FMG");
   }
 
   /* Get array of the different grid sizes */
@@ -6335,13 +6348,12 @@ void space_apply_FMG(struct space *s, struct engine *e) {
   int grid_sizes[32];
   while (n<=N_max) {
     grid_sizes[level++] = n;
-    n *=2;
+    n *= 2;
   }
 
   const int N_levels = level;
   double *rho[N_levels];
   double *pot[N_levels];
-
   double mean_density[N_levels];
 
   struct cic_mapper_data data;
@@ -6349,189 +6361,107 @@ void space_apply_FMG(struct space *s, struct engine *e) {
   data.dim[1] = dim[1];
   data.dim[2] = dim[2];
 
-  /* Initialise arrays for density calculation. */
+  /* Initialise arrays for density and potential calculation. */
   for (int i=0; i<N_levels; i++) {
     rho[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
     pot[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
     
     /* Assign densities to all arrays */ 
     data.N = grid_sizes[i];
-    //message("The number of cells is %d", data.N);
     data.rho = rho[i];
     data.fac = grid_sizes[i]/box_size;
     gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
 
     /* Get pm potential for verification of FMG method */
-    if (i == N_levels-1) {
-      get_pm_potential(&data, N_max, box_size, &e->threadpool, cdim_max);
-    }
-
-    /* Get mean density for every level. Multiplying by the right conversion factor happens later. */
-    //if (i==N_levels-1) {
-      //message("Exporting FMG density data");
-      //FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/FMG_density_64.txt", "w");
-      //for (int j = 0; j < N_max*N_max*N_max; j++) {
-        //fprintf(file_swift_density, "%lf\n", rho[i][j]);
-      //}
-      //fclose(file_swift_density);
-      //message("Exported the FMG density data.");
-      //sleep(5);
+    //if (i == N_levels-1) {
+      //get_pm_potential(&data, N_max, box_size, &e->threadpool, cdim_max);
     //}
     mean_density[i] = get_mean_density(data.rho, grid_sizes[i]);
+    mean_density[i] *= 4.*M_PI * data.fac*data.fac*data.fac;
   }
-
-  if (N_min%2 != 0){
-    message("Uneven domain for density calculation. Did not apply Gauss-Seidel");
-    return;
-  }  
   
-  /* Set initial guess on the coarsest grid */
+  /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
   set_initial_guess(pot[0], cdim);
-
   apply_GS(rho[0], pot[0], cdim, mean_density[0], box_size);
 
-  /* Loop to get solutions on higher levels */
+  /* Solve on all finer grids by prolongating from the previous grid and performing the multigrid method */
   for (int i = 1; i<N_levels; i++) {
     message("Going to the level with grid size %d \n", grid_sizes[i]);
-    prolongate_solution(pot[i-1], pot[i], grid_sizes[i-1], grid_sizes[i]); //After this function is completed, potential_array corresponds the solution prolongated to one level finer
-    //Export the potential array to a .txt file to be read in Python
-    //FILE *fptr;
-    //fptr = fopen("/data1/vandervlugt/PythonFiles/smoothing_test/FMG_interpolated_potential_32.txt", "w");
-    //for (int j=0; j<grid_sizes[i]*grid_sizes[i]*grid_sizes[i]; j++) {
-      //fprintf(fptr, "%lf\n", pot[i][j]);
-    //}
-    //fclose(fptr);
+    prolongate_solution(pot[i-1], pot[i], grid_sizes[i-1], grid_sizes[i]); 
     
     int N = grid_sizes[i];
     cdim[0] = N;
     cdim[1] = N;
     cdim[2] = N;
-    apply_multigrid(rho[i], pot[i], cdim, mean_density[i], box_size, N_min, N, 3);
+    apply_multigrid(rho[i], pot[i], cdim, mean_density[i], box_size, N_min, N, 15);
   }
-
-  FILE *fptr;
-  fptr = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/FMG_64_cells.txt", "w");
-  for (int j=0; j<grid_sizes[N_levels-1]*grid_sizes[N_levels-1]*grid_sizes[N_levels-1]; j++) {
-    fprintf(fptr, "%lf\n", pot[N_levels-1][j]);
-  }
-  fclose(fptr);
-
-  int step = e->step;
 
   /* Now calculate the accelerations from the potential */
-  get_accelerations(&data, pot[N_levels-1], &e->threadpool, s, N_max, step);
+  data.rho = NULL;
+  data.potential = pot[N_levels -1];
+  data.fac = N_max / box_size;
+  data.dim[0] = s->dim[0];
+  data.dim[1] = s->dim[1];
+  data.dim[2] = s->dim[2];
+  data.const_G = s->e->physical_constants->const_newton_G;
+  mesh_to_gpart_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
 
+  /* Export acceleration data if we want to */
+  int export = 0;
+  if (export) {
+    int num = s->nr_gparts;
+    struct gpart* gp;
+
+    message("Exporting FMG acceleration data");
+    FILE *file_swift_acc = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/FMG_64_particles", "w");
+    for (int j = 0; j < num; j++) {
+      gp = &(s->gparts)[j];
+      fprintf(file_swift_acc, "%lf %.15g %.15g %.15g \n", gp->potential_mesh, gp->x[0], gp->x[1], gp->x[2]);
+    }
+    fclose(file_swift_acc);
+    message("Exported the FMG acceleration data.");
+  }
+
+  /* Free up memory */
   for (int i=0; i<N_levels; i++) {
     free(rho[i]);
     free(pot[i]);
   }
-
 }
 
-void get_accelerations(struct cic_mapper_data* data, double *pot, struct threadpool* tp, struct space *s,const int N, int step) {
-  double box_size = s->dim[0];
-
-  /* Gather the mesh shared information to be used by the threads */
-  //data.cells = s->cells_top; //Liever niet
-  data->rho = NULL;
-  data->potential = pot;
-  data->fac = N / box_size;
-  data->dim[0] = s->dim[0];
-  data->dim[1] = s->dim[1];
-  data->dim[2] = s->dim[2];
-  data->const_G = s->e->physical_constants->const_newton_G;
-
-  mesh_to_gpart_CIC_mapper(s->gparts, s->nr_gparts, (void*)data);
-
-  //threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
-                   //sizeof(struct gpart), threadpool_auto_chunk_size,
-                   //(void*)data);
-
-  /* Als het goed is hebben we nu de accelerations! */
-  /* Stored in gp->a_grav_mesh[0] *= const_G; */
-
-  //struct gpart* gp = &(s->gparts)[0];
-  //message("We have a_grav_mesh = %lf", gp->a_grav_mesh[0]);
-
-  int num = s->nr_gparts;
-  struct gpart* gp;
-  //double acc;
-
-  message("Exporting FMG acceleration data");
-  FILE *file_swift_acc = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/FMG_64_particles", "w");
-  for (int j = 0; j < num; j++) {
-    gp = &(s->gparts)[j];
-    //acc = gp->a_grav_mesh[0];
-    fprintf(file_swift_acc, "%lf %.15g %.15g %.15g \n", gp->potential_mesh, gp->x[0], gp->x[1], gp->x[2]);
-  }
-  fclose(file_swift_acc);
-  message("Exported the FMG acceleration data.");
-  sleep(5);
-
-  //message("Exporting FMG data");
-  //FILE *file_swift_acc = fopen("/data1/vandervlugt/PythonFiles/acceleration_test/FMG_accx_new", "w");
-  //for (int i=0; i<num; i++) {
-      //gp = &(s->gparts)[i];
-      //acc = gp->a_grav_mesh[0];
-      //fprintf(file_swift_acc, "%lf\n", acc);
-    //}
-  //fclose(file_swift_acc);
-
-  //for (int i = 0; i<num; i++) {
-    //gp = &(s->gparts)[i];
-    //gp->a_grav_mesh[0] = 0.;
-    //gp->a_grav_mesh[1] = 0.;
-    //gp->a_grav_mesh[2] = 0.;
-
-    //FILE *fptry;
-    //fptry = fopen("/data1/vandervlugt/PythonFiles/acceleration_test/FMG_y.txt", "w");
-    //for (int i=0; i<num; i++) {
-      //gp = &(s->gparts)[i];
-      //acc = gp->a_grav_mesh[1];
-      //fprintf(fptry, "%lf\n", acc);
-    //}
-    //fclose(fptry);
-
-    //FILE *fptrz;
-    //fptrz = fopen("/data1/vandervlugt/PythonFiles/acceleration_test/FMG_z.txt", "w");
-    //for (int i=0; i<num; i++) {
-      //gp = &(s->gparts)[i];
-      //acc = gp->a_grav_mesh[2];
-      //fprintf(fptrz, "%lf\n", acc);
-    //}
-    //fclose(fptrz);
-  //}
-}
-
-void prolongate_solution(double *pot_coarse, double *pot_fine, const int N, const int N_double) {
-
+/**
+ * @brief Set an initial guess on a grid by prolongation from a grid coarser.
+ *
+ * The chosen prolongation operator is trilinear interpolation. 
+ *
+ * @param pot_coarse Array containing the potential on the previous grid.
+ * @param pot_fine Array to set the initial guess for the fine grid in. 
+ * @param N 1D size of the coarse grid.
+ * @param N_double 1D size of the fine grid.
+ */
+void prolongate_solution(const double *pot_coarse, double *pot_fine, const int N, const int N_double) {
   int cdimh[3] = {N_double, N_double, N_double};
   int cdim[3] = {N,N,N};
 
   for (int i = 0; i<N_double; i++) {
     for (int j = 0; j<N_double; j++) {
-      for (int k=0; k<N_double; k++) {
-        int iH0 = i/2;
-        int jH0 = j/2;
-        int kH0 = k/2;
+      for (int k = 0; k<N_double; k++) {
+        int iH = i/2;
+        int jH = j/2;
+        int kH = k/2;
+        double dx = (i%2) * 0.5;
+        double dy = (j%2) * 0.5;
+        double dz = (k%2) * 0.5;
 
-        int iHp = (iH0 +1)%N;
-        int jHp = (jH0 +1)%N;
-        int kHp = (kH0 +1)%N;
+        int iHp = (iH +1)%N;
+        int jHp = (jH +1)%N;
+        int kHp = (kH +1)%N;
 
-        int iHm = (iH0 -1 > 0) ? iH0 -1 : iH0 - 1 + N;
-        int jHm = (jH0 -1 > 0) ? jH0 -1 : jH0 - 1 + N;
-        int kHm = (kH0 -1 > 0) ? kH0 -1 : kH0 - 1 + N;
-
-        int iH1 = (i%2 == 0) ? iHm : iHp;
-        int jH1 = (j%2 == 0) ? jHm : jHp;
-        int kH1 = (k%2 == 0) ? kHm : kHp;
-
-        pot_fine[cell_getid(cdimh,i,j,k)] = ((27./64.)*pot_coarse[cell_getid(cdim, iH0, jH0, kH0)] + (9./64.)*(pot_coarse[cell_getid(cdim, iH1, jH0, kH0)] 
-                                      + pot_coarse[cell_getid(cdim, iH0, jH1, kH0)] + pot_coarse[cell_getid(cdim, iH0, jH0, kH1)]) 
-                                      + (3./64.)*(pot_coarse[cell_getid(cdim, iH1, jH1, kH0)] + pot_coarse[cell_getid(cdim, iH1, jH0, kH1)] 
-                                      + pot_coarse[cell_getid(cdim, iH0, jH1, jH1)]) + (1./64.) * pot_coarse[cell_getid(cdim, iH1, jH1, kH1)]);
+        pot_fine[cell_getid(cdimh,i,j,k)] = ((1.-dx)*(1.-dy)*(1.-dz)*pot_coarse[cell_getid(cdim,iH,jH,kH)] + dx*(1.-dy)*(1.-dz)*pot_coarse[cell_getid(cdim,iHp, jH, kH)]
+                                  + (1.-dx)*dy*(1.-dz)*pot_coarse[cell_getid(cdim,iH,jHp,kH)] + (1.-dx)*(1.-dy)*dz*pot_coarse[cell_getid(cdim,iH,jH,kHp)]
+                                  + dx*dy*(1.-dz)*pot_coarse[cell_getid(cdim,iHp,jHp,kH)] + dx*(1.-dy)*dz*pot_coarse[cell_getid(cdim,iHp,jH, kHp)]
+                                  + (1.-dx)*dy*dz*pot_coarse[cell_getid(cdim,iH,jHp,kHp)]+ dx*dy*dz*pot_coarse[cell_getid(cdim,iHp,jHp,kHp)]);
       }
     }
   }
@@ -6719,40 +6649,35 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
   if (potential_sum < -0.1 || potential_sum > 0.1) error("The mean of the potential is %lf", potential_sum/(N_max*N_max*N_max));
 }
 
-void apply_GS(double *density, double *pot, int cdim[3], double mean_density, double box_size) {
+/**
+ * @brief Directly solve for the potential with Gauss-Seidel relaxation.
+ * 
+ * Only one grid is used and no V-cycles are done.
+ * 
+ * @param density Array containing the density on the grid.
+ * @param pot Array containing (approximate) potential values on the grid.
+ * @param cdim 3D size of the grid.
+ * @param mean_density Mean density on the grid.
+ * @param box_size Side length of the box.
+ */
+void apply_GS(const double *density, double *pot, int cdim[3], double mean_density, double box_size) {
   message("Applying Gauss-Seidel...");
   int N = cdim[0];
   double delta = box_size/N;
-  mean_density *= 4.*M_PI*N*N*N/(box_size*box_size*box_size);
   double residual = get_residual(pot, density, cdim, mean_density, delta);
   double tolerance = 10e-12; //Choose reasonable value here
   int counter = 0;
-  double sum = 0;
-
-  //sum = 0;
-  //for (int i = 0; i < N*N*N; i++) {
-      //sum += pot[i];
-  //}
-  //message("Performed %d steps and the residual is %lf", counter, residual);
-  //message("The mean of the potential is %lf", sum/(N*N*N));
+  double sum = 0.;
 
   while (residual >= tolerance) {
     perform_red_black_sweep(pot, density, cdim, mean_density, delta);
-    get_residual(pot, density, cdim, mean_density, delta);
+    residual = get_residual(pot, density, cdim, mean_density, delta);
     counter +=1;
-    if (counter % 50 ==0){
-      sum = 0;
-      for (int i = 0; i < N*N*N; i++) {
-          sum += pot[i];
-      }
-      //message("Performed %d steps and the residual is %lf", counter, residual);
-      //message("The mean of the potential is %lf", sum/(N*N*N));
-    }
   }
   message("We needed %d steps to converge", counter);
 
-  //Set mean of potential to zero
-  sum = 0;
+  /* Set mean of potential to zero */
+  sum = 0.;
   for (int i = 0; i < N*N*N; i++) {
       sum += pot[i];
   }
@@ -6762,20 +6687,7 @@ void apply_GS(double *density, double *pot, int cdim[3], double mean_density, do
 
   double potential_sum = 0;
   for (int i =0; i<N*N*N; i++)
-    potential_sum += fabs(pot[i]);
-  //message("The mean absolute value of the potential is %lf", potential_sum/(N*N*N));
-
-  //get_residual(pot, density, cdim, mean_density, &residual, delta);
-  //message("The final residual is %lf", residual);
-
-  //Export the potential array to a .txt file to be read in Python
-  //FILE *fptr;
-  //fptr = fopen("/data1/vandervlugt/PythonFiles/density_test_plots/GS_64.txt", "w");
-  //for (int i=0; i<N*N*N; i++) {
-    //fprintf(fptr, "%lf\n", pot[i]);
-  //}
-  //fclose(fptr);
-  
+    potential_sum += fabs(pot[i]);  
 }
 
 /**
@@ -7215,3 +7127,21 @@ double get_mean_density(double *rho, const int N) {
 
   return mean_density;
 }
+
+//void space_get_fR_contribution(const struct space *s, const double *rho, double *phi, const int N) {
+  //int cdim[3] = {N,N,N};
+  //const double box_size = s->dim[0];
+  //const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  //const double fac = ((double) N)/box_size;
+
+  /* Check if the space and mesh satisfy the conditions for Gauss-Seidel */
+  //if (dim[0] != dim[1] || dim[0] != dim[2]) {
+    //error("Noncubic domain for density calculation. Did not fill density array");
+  //}
+  //if (N%2 != 0){
+    //error("Uneven domain for density calculation. Did not apply Gauss-Seidel");
+  //}
+
+
+
+//}

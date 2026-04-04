@@ -883,7 +883,7 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
  * @param verbose Are we talkative?
  */
 void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
-                              struct threadpool* tp, const int verbose) {
+                              struct threadpool* tp, const int verbose, const int MG) {
 
 #ifdef HAVE_FFTW
 
@@ -962,6 +962,22 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
                    (void*)&data);
   }
+
+  /*if (MG) {
+    double *field_contribution = NULL;
+    field_contribution = (double*)calloc(N * N * N, sizeof(double));
+    if (field_contribution == NULL)
+      error("Error allocating memory for the density mesh.");
+    memuse_log_allocation("mesh.fR", field_contribution, 1,
+                          sizeof(double) * N * N * N);
+    space_get_fR_contribution(s, rho, field_contribution, N); //field_contribution is u
+    //We still need to convert: fR = mean(fR(a)) * exp(u)
+    //Then \delta R = mean(R(a))(sqrt(mean(fR(a))/fR) - 1)
+    for (int i=0; i<N*N*N; i++) {
+      //Actually the following equation: \delta\rho_eff = 1/3 \delta\rho - 1/(24*pi*G)\delta R
+      rho[i] += field_contribution[i];
+    }
+  }*/
 
   if (verbose)
     message("Gpart assignment took %.3f %s.",
@@ -1228,11 +1244,11 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
  * @param verbose Are we talkative?
  */
 void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
-                               struct threadpool* tp, const int verbose) {
-  if (mesh->distributed_mesh) {
+                               struct threadpool* tp, const int verbose, const int MG) {
+  if (mesh->distributed_mesh && !MG) {
     compute_potential_distributed(mesh, s, tp, verbose);
   } else {
-    compute_potential_global(mesh, s, tp, verbose);
+    compute_potential_global(mesh, s, tp, verbose, MG);
   }
 }
 

@@ -2240,7 +2240,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
 
     /* Compute mesh forces */
-    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose, /*MG=*/0);
 
     /* Compute mesh time-step length */
     engine_recompute_displacement_constraint(e);
@@ -2895,8 +2895,7 @@ int engine_step(struct engine *e) {
     if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
 
     /* ... and recompute */
-    //Here we recompute the pm potential in a timestep
-    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose, /*MG=*/0);
 
     /* Check whether we need to update the mesh time-step length */
     engine_recompute_displacement_constraint(e);

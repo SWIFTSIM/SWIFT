@@ -1630,9 +1630,10 @@ int main(int argc, char *argv[]) {
 
     /* Set the desired gridsize for Gauss-Seidel and perform the calculation */
     int N = 64;
-    space_get_density(&e, N, 1);
-
-    //space_apply_FMG(&s, &e);
+    space_get_density(&e, N, /*apply multigrid=*/1);
+    int N_min = 16;
+    int N_max = 64;
+    space_apply_FMG(&e, N_min, N_max);
 
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */

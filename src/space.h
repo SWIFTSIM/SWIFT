@@ -508,7 +508,7 @@ void space_compute_star_formation_stats(const struct space *s,
                                         struct star_formation *star_form);
 void space_check_unskip_flags(const struct space *s);
 void space_get_density(struct engine *e, const int N, int multigrid);
-void space_apply_FMG(struct space *s, struct engine *e);
+void space_apply_FMG(const struct engine *e, const int N_min, const int N_max);
 void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra);
 void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra);
 void density_to_cells(struct cic_mapper_data* data, struct cell* top_cells, int nr_cells, int cdim[3]);
@@ -525,10 +525,9 @@ void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
 void restrict_problem(double *H_array, const double *residual, int cdim[3]);
 void solve_coarser_problem_recursive(double *pot, const double *residual, int cdim[3], double delta, const int N_stop, const int N_start);
 void prolongate_problem(const double *coarser_solution, double *pot, int cdim[3]);
-void apply_GS(double *density, double *pot, int cdim[3], double mean_density, double box_size);
+void apply_GS(const double *density, double *pot, int cdim[3], double mean_density, double box_size);
 void apply_multigrid(const double *density, double *pot, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
-void prolongate_solution(double *pot_coarse, double *pot_fine, const int N, const int N_double);
-void get_accelerations(struct cic_mapper_data* data, double *pot, struct threadpool* tp, struct space *s,const int N, int step);
+void prolongate_solution(const double *pot_coarse, double *pot_fine, const int N, const int N_double);
 void space_get_AMR_density(struct space *s, struct engine *e, int level_check, int desired_depth);
 void check_progeny(struct space *s, struct cell *parent, int *length, int *level);
 void construct_daughter(struct cell *parent, int i, int *length);
