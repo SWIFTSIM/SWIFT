@@ -62,36 +62,40 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
   const double metal_mass_fraction = *metal_mass / gas_mass;
   const double Z_old = mZ_old / gas_mass;
   if (metal_mass_fraction < 0.0) {
-    if (callloc == 1) {
+    if (callloc == 0) {
+      if (*negativity_counter == 0) {
+	error("[%lld, %d] Negative metal mass case %d (outside diffusion) | %e %e | %e %e | %e",
+		id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
+		Z_old, gas_mass);
+      }
+    } else if (callloc == 1) {
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = (Z_old >= 0.0) ? mZ_old : 0.0;
-    } else {
-      if (callloc == 2 &&
-	  (*negativity_counter %
-	       GEAR_FVPM_DIFFUSION_NEGATIVITY_COUNTER_PRINT_LIMIT ==
-	   0) &&
-	  (*negativity_counter > 0)) {
-	/* Be verbose */
-	warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %u",
+    } else /* callloc == 2 */ {
+      /* First, be verbose */
+      if ((*negativity_counter % GEAR_FVPM_DIFFUSION_NEGATIVITY_COUNTER_PRINT_LIMIT == 0) && (*negativity_counter > 0)) {
+	  warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %u",
+		  id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
+		  Z_old, *negativity_counter);
+      }
+      /* Now increment the counter */
+      (*negativity_counter)++;
+
+      if (*negativity_counter > 1 && *metal_mass < mZ_old) {
+	warning(
+		"[%lld, %d] Metal mass is becoming more negative!!! Something went "
+		"wrong! case %d | %e %e | %e %e | %u",
 		id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
 		Z_old, *negativity_counter);
       }
-      if (callloc == 2) {
-	(*negativity_counter)++;
-
-	if (*negativity_counter > 1 && *metal_mass < mZ_old) {
-	  warning("[%lld, %d] Metal mass is becoming more negative!!! Something went wrong! case %d | %e %e | %e %e | %u",
-		  id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
-		  Z_old, *negativity_counter);
-	}
-      }
     }
 
-    if (fabs(*metal_mass) > gas_mass) {
-      error("[%lld, %d] Unphysical: metal mass (%e) is more negative than gas mass (%e) is positive! (case %d, old mass = %e, neg_counter = %u)",
-	    id, element, *metal_mass, gas_mass, callloc, mZ_old, *negativity_counter);
+    if ((callloc != 1) && (fabs(*metal_mass) > gas_mass)) {
+      error(
+	  "[%lld, %d] Unphysical: metal mass (%e) is more negative than gas "
+	  "mass (%e) is positive! (case %d, old mass = %e, neg_counter = %u)",
+	  id, element, *metal_mass, gas_mass, callloc, mZ_old, *negativity_counter);
     }
-
   }
 
   if (*metal_mass > gas_mass) {
@@ -117,7 +121,6 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
     }
   }
 }
-
 
 
 /**
