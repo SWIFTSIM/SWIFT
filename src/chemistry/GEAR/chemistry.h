@@ -834,7 +834,7 @@ chemistry_set_star_supernovae_ejected_yields(
     const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
     const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
     const struct phys_const *phys_const) {
-#ifdef FEEDBACK_GEAR
+#if defined(FEEDBACK_GEAR) || FEEDBACK_GEAR_MECHANICAL_MODE >= 1
   /* Use a chemistry function */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
 
