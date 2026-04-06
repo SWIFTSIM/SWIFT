@@ -226,31 +226,43 @@ void feedback_init_spart(struct spart *sp) {
  */
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props) {
-  sp->feedback_data.energy_ejected = 0.0;
-  sp->feedback_data.enrichment_weight = 0.f;
 
-  sp->feedback_data.f_sum_minus_term[0] = 0.0;
-  sp->feedback_data.f_sum_minus_term[1] = 0.0;
-  sp->feedback_data.f_sum_minus_term[2] = 0.0;
+  /* TODO: Determine if reinitialising here changes something or not */
+  /* GEAR does not do anything here.
+     However, this is only called if the particle is not feedback active or the
+     star was just born. I am unsure how it will change the simulations. But if
+     this is called when a particle is not active, it should not alter
+     anything. We'll see.
+  */
+  message("Reset feedback for %lld (is_dead = %d)", sp->id, sp->feedback_data.is_dead);
 
-  sp->feedback_data.f_sum_plus_term[0] = 0.0;
-  sp->feedback_data.f_sum_plus_term[1] = 0.0;
-  sp->feedback_data.f_sum_plus_term[2] = 0.0;
+/*   sp->feedback_data.energy_ejected = 0.0; */
+/*   sp->feedback_data.enrichment_weight = 0.0; */
+/*   sp->feedback_data.weighted_gas_density = 0.0; */
+/*   sp->feedback_data.weighted_gas_metallicity = 0.0; */
 
-  sp->feedback_data.accumulator.E_total = 0.0;
-  sp->feedback_data.accumulator.beta_1 = 0.0;
-  sp->feedback_data.accumulator.beta_2 = 0.0;
-  sp->feedback_data.weighted_gas_density = 0.0;
-  sp->feedback_data.weighted_gas_metallicity = 0.0;
+/*   sp->feedback_data.f_sum_minus_term[0] = 0.0; */
+/*   sp->feedback_data.f_sum_minus_term[1] = 0.0; */
+/*   sp->feedback_data.f_sum_minus_term[2] = 0.0; */
 
-#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
-  sp->feedback_data.fluxes_conservation_check.delta_m = 0.0;
-  sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0;
+/*   sp->feedback_data.f_sum_plus_term[0] = 0.0; */
+/*   sp->feedback_data.f_sum_plus_term[1] = 0.0; */
+/*   sp->feedback_data.f_sum_plus_term[2] = 0.0; */
 
-  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0.0;
-  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0.0;
-  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0.0;
-#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
+/* #if FEEDBACK_GEAR_MECHANICAL_MODE == 2     */
+/*   sp->feedback_data.accumulator.E_total = 0.0; */
+/*   sp->feedback_data.accumulator.beta_1 = 0.0; */
+/*   sp->feedback_data.accumulator.beta_2 = 0.0; */
+/* #endif */
+
+/* #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS */
+/*   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0; */
+/*   sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0; */
+
+/*   sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0.0; */
+/*   sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0.0; */
+/*   sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0.0; */
+/* #endif /\* SWIFT_FEEDBACK_DEBUG_CHECKS *\/ */
 }
 
 /**
