@@ -26,7 +26,6 @@
  */
 
 #include "const.h"
-#include "equation_of_state.h"
 #include "hydro_parameters.h"
 #include "math.h"
 
@@ -99,6 +98,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
     const struct sym_matrix stress_tensor, const int mat_id, const float mass, const float density, const float damage) {
 
   *tensile_cbrtD_dt = 0.f;
+  *number_of_activated_flaws = 0;
 
   /* Tensile damage will only accumulate if a particle has flaws. */
   if (number_of_flaws == 0) {
@@ -130,7 +130,6 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   /* The number of activated flaws is defined as the number of flaws for which
    * the local scalar strain has reached or exceeded the flaw's activation
    * threshold. */
-  *number_of_activated_flaws = 0;
   for (int i = 0; i < number_of_flaws; i++) {
     if (local_scalar_strain > activation_thresholds[i]) {
       *number_of_activated_flaws += 1;
@@ -164,7 +163,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_dD_dt(
 
   /* Particle flaws and their thresholds. */
   const float number_of_flaws = p->strength_data.number_of_flaws;
-  float activation_thresholds[40]; //###
+  float activation_thresholds[40]; //### hardcoded length
   memcpy(activation_thresholds, p->strength_data.activation_thresholds, sizeof(activation_thresholds));
 
   /* Compute the rate of cbrt(damage) accumulation due to tension. */
@@ -199,6 +198,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_
   float Delta_cbrtD = tensile_cbrtD_dt * dt_therm;
 
   /* Tensile damage is limited by the fraction of activated to total flaws. */
+  /* See B&A99 and also Schafer16 for correction of cbrt placement here */
   const float max_cbrtD =
       cbrtf((float)number_of_activated_flaws / (float)number_of_flaws);
   const float max_Delta_cbrtD =
@@ -232,7 +232,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_evolve(
 
   /* Particle flaws and their thresholds. */
   const float number_of_flaws = p->strength_data.number_of_flaws;
-  float activation_thresholds[40];
+  float activation_thresholds[40]; // ### hardcoded length
   memcpy(activation_thresholds, p->strength_data.activation_thresholds, sizeof(activation_thresholds));
 
   float tensile_cbrtD_dt;

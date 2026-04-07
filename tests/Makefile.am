@@ -37,7 +37,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testLog testDistance testTimeline test_yield_stress_weakening_enabled \
         test_yield_stress_weakening_disabled test_strength_utils test_artif_stress_basis_indep \
         test_artif_stress_monaghan00 test_artif_stress_none test_yield_stress_ba95 \
-        test_yield_stress_collins04 test_yield_stress_none test_damage_core test_damage_none
+        test_yield_stress_collins04 test_yield_stress_none test_damage_core test_damage_none \
+        test_damage_tensile_ba95 test_damage_tensile_none
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -53,7 +54,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testNeutrinoFermiDirac testLog testTimeline test_yield_stress_weakening_enabled \
                  test_yield_stress_weakening_disabled test_strength_utils test_artif_stress_basis_indep \
                  test_artif_stress_monaghan00 test_artif_stress_none test_yield_stress_ba95 \
-                 test_yield_stress_collins04 test_yield_stress_none test_damage_core test_damage_none
+                 test_yield_stress_collins04 test_yield_stress_none test_damage_core test_damage_none \
+                 test_damage_tensile_ba95 test_damage_tensile_none
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -187,6 +189,10 @@ test_yield_stress_none_SOURCES = test_strength/test_yield_stress_none.c
 test_damage_core_SOURCES = test_strength/test_damage_core.c
 
 test_damage_none_SOURCES = test_strength/test_damage_none.c
+
+test_damage_tensile_ba95_SOURCES = test_strength/test_damage_tensile_ba95.c
+
+test_damage_tensile_none_SOURCES = test_strength/test_damage_tensile_none.c
 
 testHydroMPIrules = testHydroMPIrules.c
 
