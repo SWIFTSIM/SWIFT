@@ -89,53 +89,86 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
   /* Get some convenient variables */
   const double mZi_0 = chi->metal_mass[metal];
   const double mZj_0 = chj->metal_mass[metal];
-  const double upwind_mass = (metal_mass_interface > 0.0) ? mZi_0 : mZj_0;
 
-  /* Do not allow to remove more mass, since you don't have it... */
-  if (upwind_mass <= 0.0) {
-    fluxes[0] = 0.0;
-    fluxes[1] = 0.0;
-    fluxes[2] = 0.0;
-    fluxes[3] = 0.0;
+  const float mi = hydro_get_mass(pi);
+  const float mj = hydro_get_mass(pj);
+
+  const double mZ_source = (metal_mass_interface > 0.0) ? mZi_0 : mZj_0;
+  const double mZ_sink   = (metal_mass_interface > 0.0) ? mZj_0 : mZi_0;
+  const double mass_sink = (metal_mass_interface > 0.0) ? mj : mi;
+
+  /* Source constaint: Do not allow to remove more mass, since you don't have
+   * it... */
+  if (mZ_source <= 0.0) {
+    for(int k=0; k<4; k++) fluxes[k] = 0.0;
     return;
   }
 
-  const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
-  const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
+  /* --- Capacity Constraint ---
+   * Ensures the sink particle does not exceed Z = 1.0. This prevents
+   * unphysical enrichment where metal mass exceeds gas mass, which would break
+   * secondary chemistry/cooling solvers.
+   */
+  double capacity = mass_sink - mZ_sink;
+  if (capacity <= 0.0) {
+    for (int k = 0; k < 4; k++) fluxes[k] = 0.0;
+    return;
+  }
 
-  /* The Noise Gate: If the flux is smaller than machine epsilon relative to the
-   * mass, it's just noise. Clipping it here can prevent the 'ratchet' effect.
+  /* --- Noise Gate ---
+   * Truncates fluxes that are below machine epsilon relative to the source,
+   * since it's just noise. Clipping it here can prevent the 'ratchet' effect.
    */
   const double eps = 1e-15;
-  if (fabs(metal_mass_interface) < upwind_mass * eps) {
+  if (fabs(metal_mass_interface) < mZ_source * eps) {
     /* Set to 0 to kill noise */
-    fluxes[0] = 0.0;
-    fluxes[1] = 0.0;
-    fluxes[2] = 0.0;
-    fluxes[3] = 0.0;
+    for(int k=0; k<4; k++) fluxes[k] = 0.0;
     return;
   }
 
-  /* Limit mass exchange to not overshoot too much. Smooth Rational Limiter :
-     It behaves like a hard cut at 0.5 * mass, but follows a curve:
-                     factor = 1 / (1 + |flux_mass| / source_mass) */
+  /* --- Stability & Startup Logic ---
+   * We compute an 'effective' limit for the flux to prevent overshoots.
+   *
+   * Stability: Limits the flux to a fraction of the sink's current mass
+   * to prevent the 'neighbor flooding' effect (oscillations).
+   *
+   * Startup: If the sink is pristine, the relative limit would be be zero,
+   * stalling the PDE front. We use a 'startup_fraction' of the source mass to
+   * kick-start diffusion into the vacuum.
+   */
   const double safety_scale = 0.5;
-  const double x = fabs(metal_mass_interface) / (upwind_mass * safety_scale);
+  const double relative_change_limit = 0.25;
+  const double startup_fraction = 0.01;
+  double effective_limit_mass = min(mZ_source, capacity);
+
+  /* Select the tighter of the source/capacity limit and the sink stability
+   * limit */
+  double sink_stability_limit =
+      max(mZ_sink * relative_change_limit, mZ_source * startup_fraction);
+  effective_limit_mass =
+      min(effective_limit_mass, sink_stability_limit / safety_scale);
+
+  /* --- Smooth Rational Limiter ---
+   * Softly attenuates the flux using a rational factor: 1 / (1 + x).
+   * This provides a C0-continuous transition toward the limit rather than
+   * a hard discontinuous clip, which improves numerical convergence.
+   */
+  const double x = fabs(metal_mass_interface) / (effective_limit_mass * safety_scale + 1e-40);
   const double factor = 1.0 / (1.0 + x);
   const double flux_init = fluxes[0];
-  fluxes[0] *= factor;
-  fluxes[1] *= factor;
-  fluxes[2] *= factor;
-  fluxes[3] *= factor;
+  for(int k=0; k<4; k++) fluxes[k] *= factor;
 
   if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 0 && factor < 1e-1) {
+    const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
+    const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
     message(
-        "[%lld, %lld] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
-        " mZi_r = %e, mZj_r = %e, upwind_mass = %e, mZi = %e, mZj = %e | mode "
-        "= %d, i_active = %d, j_active = %d",
-        pi->id, pj->id, flux_init * dt, fluxes[0] * dt, factor, mZi_0, mZj_0,
-        upwind_mass, chi->metal_mass[metal], chj->metal_mass[metal],
-        interaction_mode, pi_is_active, pj_is_active);
+	"[%lld, %lld | %d] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
+	" | mZi_0 = %e, mZj_0 = %e, kappa = %e, kappa = %e | mZ_source = %e, "
+	" mZ_sink = %e, sink_capacity = %e | interaction_mode = %d | "
+	" i_active = %d, j_active = %d",
+	pi->id, pj->id, metal, flux_init * dt, fluxes[0] * dt, factor, mZi_0, mZj_0,
+	chi->kappa, chj->kappa, mZ_source, mZ_sink, capacity,
+	interaction_mode, pi_is_active, pj_is_active);
   }
 }
 
