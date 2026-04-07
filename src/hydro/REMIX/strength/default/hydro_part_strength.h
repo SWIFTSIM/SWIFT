@@ -94,7 +94,7 @@ struct strength_part_data {
   float damage;
 
   // Need to store this as a particle parameter for timestep
-  float dD_dt;
+  float damage_accumulation_timescale;
 #endif
 
 #ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG

@@ -85,21 +85,6 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
     }
 
 /**
- * @brief Calculates the rate of damage accumulation due to tension
- *
- * @param tensile_dD_dt The rate of tensile damage accumulation.
- * @param p The particle of interest.
- * @param stress_tensor The stress tensor.
- * @param mat_id The material ID.
- * @param mass The particle mass.
- * @param density The density.
- * @param damage The damage.
- * @param tensile_damage The tensile damage.
- */
-__attribute__((always_inline)) INLINE static void damage_tensile_compute_dD_dt(
-    float *tensile_dD_dt, struct part *restrict p,  const struct sym_matrix stress_tensor, const int mat_id, const float mass, const float density, const float damage, const float tensile_damage) {}
-
-/**
  * @brief Steps tensile damage by applying time-step to a tensile_cbrtD_dt.
  *
  * @param tensile_damage The tensile damage.

@@ -147,39 +147,6 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
 }
 
 /**
- * @brief Calculates the rate of damage accumulation due to tension
- *
- * @param tensile_dD_dt The rate of tensile damage accumulation.
- * @param p The particle of interest.
- * @param stress_tensor The stress tensor.
- * @param mat_id The material ID.
- * @param mass The particle mass.
- * @param density The density.
- * @param damage The damage.
- * @param tensile_damage The tensile damage.
- */
-__attribute__((always_inline)) INLINE static void damage_tensile_compute_dD_dt(
-    float *tensile_dD_dt, struct part *restrict p, const struct sym_matrix stress_tensor, const int mat_id, const float mass, const float density, const float damage, const float tensile_damage) {
-
-  /* Particle flaws and their thresholds. */
-  const float number_of_flaws = p->strength_data.number_of_flaws;
-  float activation_thresholds[40]; //### hardcoded length
-  memcpy(activation_thresholds, p->strength_data.activation_thresholds, sizeof(activation_thresholds));
-
-  /* Compute the rate of cbrt(damage) accumulation due to tension. */
-  float tensile_cbrtD_dt = 0.f;
-  int number_of_activated_flaws = 0;
-  damage_tensile_compute_cbrtD_dt(&tensile_cbrtD_dt, &number_of_activated_flaws, number_of_flaws,
-                               activation_thresholds, stress_tensor, mat_id, mass, density, damage);
-
-  /* Tensile damage is limited by the fraction of activated to total flaws. */
-  if (tensile_damage < (float)number_of_activated_flaws / (float)number_of_flaws) {
-    /* Chain rule d(D^(1/3))/dt = d(D^(1/3))/dD * dD/dt. */
-    *tensile_dD_dt = 3.f * powf(tensile_damage, 2.f / 3.f) * tensile_cbrtD_dt;
-  }
-}
-
-/**
  * @brief Steps tensile damage by applying time-step to a tensile_cbrtD_dt.
  *
  * @param tensile_damage The tensile damage.

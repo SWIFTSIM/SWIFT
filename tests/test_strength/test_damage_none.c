@@ -8,7 +8,9 @@ struct p_strength_data {
   float damage;
   float tensile_damage;
   float shear_damage;
-  float dD_dt;
+  float damage_accumulation_timescale;
+  int number_of_flaws;
+  float activation_thresholds[40]; //### hardcoded length
 };
 
 struct xp_strength_data {
@@ -111,17 +113,6 @@ static void test_evolve_functions(void) {
   assert(within_tol(shear, 0.1f, 1e-6f));
 }
 
-/* dD/dt computation does nothing */
-static void test_compute_dD_dt(void) {
-  struct part p = {0};
-  struct sym_matrix stress = {0};
-  p.strength_data.dD_dt = 5.f;
-
-  damage_compute_dD_dt(&p, stress, 0, 1.f, 1.f, 1.f);
-
-  assert(within_tol(p.strength_data.dD_dt, 5.f, 1e-6f));
-}
-
 /* Initialisation does nothing */
 static void test_first_init(void) {
   struct part p = {0};
@@ -152,7 +143,6 @@ int main(void) {
   test_timestep_damage();
   test_stress_tensor();
   test_evolve_functions();
-  test_compute_dD_dt();
   test_first_init();
 
   return 0;

@@ -148,7 +148,7 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
     const int mat_id, const float mass, const float density, const float u, const float dt_therm) {}
 
 /**
- * @brief Calculate time derivative of damage.
+ * @brief Calculate timescale of damage accumulation.
  *
  * @param p The particle of interest.
  * @param stress_tensor The stress tensor.
@@ -157,7 +157,7 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
  * @param density The density.
  * @param u The specific internal energy.
  */
-__attribute__((always_inline)) INLINE static void damage_compute_dD_dt(
+__attribute__((always_inline)) INLINE static void damage_compute_timescale(
     struct part *restrict p, const struct sym_matrix stress_tensor,
     const int mat_id, const float mass, const float density, const float u) {}
 

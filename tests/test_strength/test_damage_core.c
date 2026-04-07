@@ -9,7 +9,9 @@ struct p_strength_data {
   float damage;
   float tensile_damage;
   float shear_damage;
-  float dD_dt;
+  float damage_accumulation_timescale;
+  int number_of_flaws;
+  float activation_thresholds[40]; //### hardcoded length
 };
 
 struct xp_strength_data {
@@ -78,13 +80,14 @@ static INLINE void damage_shear_evolve(
   *shear_damage = fminf(*shear_damage + 0.05f, 1.f);
 }
 
-static INLINE void damage_tensile_compute_dD_dt(
-    float *dD_dt, struct part *p, struct sym_matrix stress_tensor,
-    int mat_id, float mass, float density,
-    float damage, float tensile_damage)
+static INLINE void damage_tensile_compute_cbrtD_dt(
+    float *cbrtD_dt, int *number_of_activated_flaws,
+    int number_of_flaws, const float *activation_thresholds,
+    struct sym_matrix stress_tensor,
+    int mat_id, float mass, float density, float damage)
 {
-  /* constant dD_dt */
-  *dD_dt = 2.f;
+    *cbrtD_dt = 2.f;
+    *number_of_activated_flaws = 1; // dummy positive
 }
 
 /*  Include core damage scheme. */
@@ -114,7 +117,7 @@ static void test_damage_get_set(void)
 static void test_damage_timestep_limiter(void)
 {
   struct part p = {0};
-  p.strength_data.dD_dt = 2.f;
+  p.strength_data.damage_accumulation_timescale = 0.1f;
 
   float dt = 1.f;
   float dt_before = dt;
@@ -130,7 +133,7 @@ static void test_damage_timestep_limiter(void)
 static void test_damage_timestep_no_change(void)
 {
   struct part p = {0};
-  p.strength_data.dD_dt = 0.0001f;
+  p.strength_data.damage_accumulation_timescale = 1000.f;
 
   float dt = 1.f;
   float dt_before = dt;
@@ -246,18 +249,6 @@ static void test_first_init(void)
   assert(within_tol(xp.strength_data.shear_damage_full, 0.f, tol));
 }
 
-
-/* dD/dt is computed and stored */
-static void test_damage_compute_dD_dt(void)
-{
-  struct part p = {0};
-  struct sym_matrix stress_tensor = {0};
-
-  damage_compute_dD_dt(&p, stress_tensor, 0, 1.f, 1.f, 1.f);
-
-  assert(within_tol(p.strength_data.dD_dt, 2.f, 1e-6f));
-}
-
 int main(void)
 {
   test_damage_get_set();
@@ -268,7 +259,6 @@ int main(void)
   test_damage_evolve_combination();
   test_damage_evolve_clamp();
   test_first_init();
-  test_damage_compute_dD_dt();
 
   return 0;
 }

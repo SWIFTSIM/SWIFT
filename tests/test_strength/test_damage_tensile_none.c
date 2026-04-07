@@ -8,7 +8,7 @@ struct p_strength_data {
     float damage;
     float tensile_damage;
     float shear_damage;
-    float dD_dt;
+    float damage_accumulation_timescale;
     int number_of_flaws;
     float activation_thresholds[40];
 };

@@ -8,7 +8,7 @@ struct p_strength_data {
     float damage;
     float tensile_damage;
     float shear_damage;
-    float dD_dt;
+    float damage_accumulation_timescale;
     int number_of_flaws;
     float activation_thresholds[40]; //### hardcoded length
 };
@@ -151,7 +151,7 @@ static void test_apply_timestep(void) {
     damage_tensile_apply_timestep_to_tensile_damage(&tensile_damage, cbrtD_dt, activated_flaws, number_of_flaws, dt);
     assert(within_tol(tensile_damage, max_damage, 1e-6f));
 
-    /* Second timestep cumulative damage exceeds max, so should be capped to it */
+    /* Third timestep cumulative damage exceeds max, so should be capped to it */
     damage_tensile_apply_timestep_to_tensile_damage(&tensile_damage, cbrtD_dt, activated_flaws, number_of_flaws, dt);
     assert(within_tol(tensile_damage, max_damage, 1e-6f)); // ensure capped at maximum allowed
 }
