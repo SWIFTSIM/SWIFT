@@ -40,7 +40,7 @@
 
 /* Type of the particle size definition. If commented, we default to Gizmo's
    definition */
-#define GIZMO_LANSON_VILA_PARTICLE_SIZE
+/* #define GIZMO_LANSON_VILA_PARTICLE_SIZE */
 
 /* Options to control the movement of particles for GIZMO_SPH. */
 /* This option disables particle movement */
