@@ -23,7 +23,8 @@
 #include "../chemistry_slope_limiters_cell.h"
 #include "../chemistry_unphysical.h"
 
-/* Forward declaration to fix implicit-function-declaration and static conflicts */
+/* Forward declaration to fix implicit-function-declaration and static conflicts
+ */
 static void chemistry_part_integrate_flux_source_term(
     const struct part *restrict p, const int metal, const float dt,
     const double flux_in[3], const struct chemistry_global_data *chem_data,
@@ -43,14 +44,17 @@ static void chemistry_part_integrate_flux_source_term(
  * @param pj Particle j
  * @param metal Metal specie to update
  * @param cosmo The #cosmology.
- * @param Ui (return) Resulting corrected diffusion state of particle i (in physical units).
- * @param Uj (return) Resulting corrected diffusion state of particle j (in physical units).
+ * @param Ui (return) Resulting corrected diffusion state of particle i (in
+ * physical units).
+ * @param Uj (return) Resulting corrected diffusion state of particle j (in
+ * physical units).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_gradients_correct_unphysical_states(
-    const struct part *restrict pi, const struct part *restrict pj, int metal,
-    const struct cosmology *cosmo,
-    double Ui[4], double Uj[4]) {
+chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
+                                              const struct part *restrict pj,
+                                              int metal,
+                                              const struct cosmology *cosmo,
+                                              double Ui[4], double Uj[4]) {
 
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
@@ -65,11 +69,11 @@ chemistry_gradients_correct_unphysical_states(
 
   unsigned int dumb;
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-				   /*callloc=*/1, /*element*/ metal, pi->id,
-				   /*neg_counter*/ &dumb);
+                                   /*callloc=*/1, /*element*/ metal, pi->id,
+                                   /*neg_counter*/ &dumb);
   chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-				   /*callloc=*/1, /*element*/ metal, pj->id,
-				   &dumb);
+                                   /*callloc=*/1, /*element*/ metal, pj->id,
+                                   &dumb);
 
   /* Check that we have meaningful fluxes */
   double flux_i[3] = {Ui[1], Ui[2], Ui[3]};
@@ -151,8 +155,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
     const float dx[3], const float r, const float xij_i[3],
     const struct cosmology *cosmo,
-    const struct chemistry_global_data *chem_data,
-    double Ui[4], double Uj[4]) {
+    const struct chemistry_global_data *chem_data, double Ui[4], double Uj[4]) {
 
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
@@ -219,12 +222,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
      result is a factor a^3. */
   const double a3_inv = cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
   double dUi[4], dUj[4];
-  dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i)*a3_inv;
+  dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i) * a3_inv;
   dUi[1] = chemistry_gradients_extrapolate_double(dFx_i, xij_i);
   dUi[2] = chemistry_gradients_extrapolate_double(dFy_i, xij_i);
   dUi[3] = chemistry_gradients_extrapolate_double(dFz_i, xij_i);
 
-  dUj[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j)*a3_inv;
+  dUj[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j) * a3_inv;
   dUj[1] = chemistry_gradients_extrapolate_double(dFx_j, xij_j);
   dUj[2] = chemistry_gradients_extrapolate_double(dFy_j, xij_j);
   dUj[3] = chemistry_gradients_extrapolate_double(dFz_j, xij_j);
@@ -240,25 +243,27 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
   const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);
 
-  const double flux_source_i[3] = {Ui[1] + dUi[1], Ui[2] + dUi[2], Ui[3] + dUi[3]};
+  const double flux_source_i[3] = {Ui[1] + dUi[1], Ui[2] + dUi[2],
+                                   Ui[3] + dUi[3]};
   double flux_integrated_i[3] = {0.0};
   chemistry_part_integrate_flux_source_term(pi, metal, half_mindt,
-					    flux_source_i, chem_data, cosmo,
-					    flux_integrated_i);
+                                            flux_source_i, chem_data, cosmo,
+                                            flux_integrated_i);
 
-  const double flux_source_j[3] = {Uj[1] + dUj[1], Uj[2] + dUj[2],  Uj[3] + dUj[3]};
+  const double flux_source_j[3] = {Uj[1] + dUj[1], Uj[2] + dUj[2],
+                                   Uj[3] + dUj[3]};
   double flux_integrated_j[3] = {0.0};
   chemistry_part_integrate_flux_source_term(pj, metal, half_mindt,
-					    flux_source_j, chem_data, cosmo,
-					    flux_integrated_j);
+                                            flux_source_j, chem_data, cosmo,
+                                            flux_integrated_j);
 
   /* Apply the extrapolation */
-  Ui[0] += dUi[0] + drhoZ_dt_i*half_mindt;
+  Ui[0] += dUi[0] + drhoZ_dt_i * half_mindt;
   Ui[1] = flux_integrated_i[0];
   Ui[2] = flux_integrated_i[1];
   Ui[3] = flux_integrated_i[2];
 
-  Uj[0] += dUj[0] + drhoZ_dt_j*half_mindt;
+  Uj[0] += dUj[0] + drhoZ_dt_j * half_mindt;
   Uj[1] = flux_integrated_j[0];
   Uj[2] = flux_integrated_j[1];
   Uj[3] = flux_integrated_j[2];

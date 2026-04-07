@@ -359,7 +359,7 @@ chemistry_get_physical_diffusion_driver_gradients(
     /* Convert to physical units: multiply by a^-4 (a^-3 for density and a^-1
      * for gradient) */
     const double a_inv_4 =
-	cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
+        cosmo->a_inv * cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
 
     dq[0] *= a_inv_4;
     dq[1] *= a_inv_4;

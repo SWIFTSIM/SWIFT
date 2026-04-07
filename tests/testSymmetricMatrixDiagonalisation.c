@@ -97,12 +97,14 @@ void setup_symmetric_matrix(double A[3][3]) {
  * @brief Print the solutions.
  */
 void print_solutions(const double evals[3], const double ev0[3],
-                     const double ev1[3], const double ev2[3], const char *test_name) {
+                     const double ev1[3], const double ev2[3],
+                     const char *test_name) {
   message(
-      "[%s] Eignevalues: %e %e %e | Eigenvectors: ( %e %e %e ), ( %e %e %e ), ( %e "
+      "[%s] Eignevalues: %e %e %e | Eigenvectors: ( %e %e %e ), ( %e %e %e ), "
+      "( %e "
       "%e %e )",
-      test_name, evals[0], evals[1], evals[2], ev0[0], ev0[1], ev0[2], ev1[0], ev1[1],
-      ev1[2], ev2[0], ev2[1], ev2[2]);
+      test_name, evals[0], evals[1], evals[2], ev0[0], ev0[1], ev0[2], ev1[0],
+      ev1[1], ev1[2], ev2[0], ev2[1], ev2[2]);
 }
 
 int main(int argc, char *argv[]) {
@@ -154,7 +156,8 @@ int main(int argc, char *argv[]) {
                            {0.0, 0.0, large * 0.5}};
   sym_matrix_diagonalise_3x3_d(M_large3, evals, ev0, ev1, ev2);
   verify_diagonalization(M_large3, evals, ev0, ev1, ev2, "Large Numbers 3");
-  print_solutions(evals, ev0, ev1, ev2, "Large Numbers 3 (5e11 6.763932e11 1.123607e12)");
+  print_solutions(evals, ev0, ev1, ev2,
+                  "Large Numbers 3 (5e11 6.763932e11 1.123607e12)");
 
   /* Zero Matrix */
   double Z[3][3] = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
@@ -189,7 +192,8 @@ int main(int argc, char *argv[]) {
   double M_neg[3][3] = {{-2.0, 1.0, 0.0}, {1.0, -2.0, 1.0}, {0.0, 1.0, -2.0}};
   sym_matrix_diagonalise_3x3_d(M_neg, evals, ev0, ev1, ev2);
   verify_diagonalization(M_neg, evals, ev0, ev1, ev2, "Negative Eigenvalues");
-  print_solutions(evals, ev0, ev1, ev2, "Negative Eigenvalues (-3.414214 -2 -5.857864e-01)");
+  print_solutions(evals, ev0, ev1, ev2,
+                  "Negative Eigenvalues (-3.414214 -2 -5.857864e-01)");
 
   /* Filamentary Case: Eigenvalues (1e10, 1e10, 1e-5) */
   /* This tests if the solver can find a very small eigenvalue in the presence
@@ -206,7 +210,8 @@ int main(int argc, char *argv[]) {
       {1.0, 0.2, 0.3}, {0.200000000000001, 1.0, 0.1}, {0.3, 0.1, 1.0}};
   sym_matrix_diagonalise_3x3_d(M_nosym, evals, ev0, ev1, ev2);
   verify_diagonalization(M_nosym, evals, ev0, ev1, ev2, "Near-Symmetry");
-  print_solutions(evals, ev0, ev1, ev2, "Near-Symmetry (6.798088e-01 9.088821e-01 1.411309)");
+  print_solutions(evals, ev0, ev1, ev2,
+                  "Near-Symmetry (6.798088e-01 9.088821e-01 1.411309)");
 
   /* --- Part 3: Randomized Monte Carlo Tests --- */
 

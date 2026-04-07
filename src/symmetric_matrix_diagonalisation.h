@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static void vector_normalize_d(
  */
 __attribute__((always_inline)) INLINE static void
 vector_compute_orthogonal_complement_d(const double W[3], double U[3],
-                                              double V[3]) {
+                                       double V[3]) {
   /* Robustly compute a right-handed orthonormal set { U, V, W }. The vector W
      is guaranteed to be unit-length, in which case there is no need to worry
      about a division by zero when computing invLength. */
@@ -143,10 +143,12 @@ vector_compute_orthogonal_complement_d(const double W[3], double U[3],
  * @param (return) eigenvector0 Eigenvector corresponding to the smallest
  * eigenvalue.
  */
-__attribute__((always_inline)) INLINE static void sym_matrix_compute_eigenvector_0_d(
-    const double a00, const double a01, const double a02, const double a11,
-    const double a12, const double a22, const double eigenvalue0,
-    double eigenvector0[3]) {
+__attribute__((always_inline)) INLINE static void
+sym_matrix_compute_eigenvector_0_d(const double a00, const double a01,
+                                   const double a02, const double a11,
+                                   const double a12, const double a22,
+                                   const double eigenvalue0,
+                                   double eigenvector0[3]) {
   /* Compute a unit-length eigenvector for eigenvalue[i0]. The  matrix is rank
      2, so two of the rows are linearly independent. For a robust computation
      of the eigenvector, select the two rows whose cross product has largest
@@ -206,10 +208,13 @@ __attribute__((always_inline)) INLINE static void sym_matrix_compute_eigenvector
  * @param eigenvalue1 Second eigenvalue of the matrix.
  * @param (return) eigenvector1 Second eigenvector of the matrix.
  */
-__attribute__((always_inline)) INLINE static void sym_matrix_compute_eigenvector_1_d(
-    const double a00, const double a01, const double a02, const double a11,
-    const double a12, const double a22, const double eigenvector0[3],
-    const double eigenvalue1, double eigenvector1[3]) {
+__attribute__((always_inline)) INLINE static void
+sym_matrix_compute_eigenvector_1_d(const double a00, const double a01,
+                                   const double a02, const double a11,
+                                   const double a12, const double a22,
+                                   const double eigenvector0[3],
+                                   const double eigenvalue1,
+                                   double eigenvector1[3]) {
 
   /* Robustly compute a right-handed orthonormal set { U, V, eigenvector0 }. */
   double U[3], V[3];
@@ -331,10 +336,9 @@ __attribute__((always_inline)) INLINE static void sym_matrix_compute_eigenvector
  * @param (return) eigenvector1 Array to store the second eigenvector.
  * @param (return) eigenvector2 Array to store the third eigenvector.
  */
-__attribute__((always_inline)) INLINE static void
-sym_matrix_diagonalise_3x3_d(const double A[3][3], double eigenvalues[3],
-                                double eigenvector0[3], double eigenvector1[3],
-                                double eigenvector2[3]) {
+__attribute__((always_inline)) INLINE static void sym_matrix_diagonalise_3x3_d(
+    const double A[3][3], double eigenvalues[3], double eigenvector0[3],
+    double eigenvector1[3], double eigenvector2[3]) {
   /* Precondition the matrix by factoring out the maximum absolute value of the
      components. This guards against floating-point overflow when computing
      the eigenvalues. */
@@ -414,16 +418,18 @@ sym_matrix_diagonalise_3x3_d(const double A[3][3], double eigenvalues[3],
     /* Compute the eigenvectors so that the set {eigenvector0, eigenvector1,
        eigenvector2} is right handed and orthonormal. */
     if (halfDet >= 0.0) {
-      sym_matrix_compute_eigenvector_0_d(a00, a01, a02, a11, a12, a22, eigenvalues[2],
-                            eigenvector2);
-      sym_matrix_compute_eigenvector_1_d(a00, a01, a02, a11, a12, a22, eigenvector2,
-                            eigenvalues[1], eigenvector1);
+      sym_matrix_compute_eigenvector_0_d(a00, a01, a02, a11, a12, a22,
+                                         eigenvalues[2], eigenvector2);
+      sym_matrix_compute_eigenvector_1_d(a00, a01, a02, a11, a12, a22,
+                                         eigenvector2, eigenvalues[1],
+                                         eigenvector1);
       vector_cross_product_d(eigenvector1, eigenvector2, eigenvector0);
     } else {
-      sym_matrix_compute_eigenvector_0_d(a00, a01, a02, a11, a12, a22, eigenvalues[0],
-                            eigenvector0);
-      sym_matrix_compute_eigenvector_1_d(a00, a01, a02, a11, a12, a22, eigenvector0,
-                            eigenvalues[1], eigenvector1);
+      sym_matrix_compute_eigenvector_0_d(a00, a01, a02, a11, a12, a22,
+                                         eigenvalues[0], eigenvector0);
+      sym_matrix_compute_eigenvector_1_d(a00, a01, a02, a11, a12, a22,
+                                         eigenvector0, eigenvalues[1],
+                                         eigenvector1);
       vector_cross_product_d(eigenvector0, eigenvector1, eigenvector2);
     }
   } else /* The matrix is diagonal */ {

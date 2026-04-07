@@ -114,15 +114,16 @@ chemistry_part_integrate_flux_source_term(
   const double one_minus_exp_decay = -expm1(-dt / tau);
   double flux_parabolic[3];
   chemistry_get_physical_parabolic_flux(p, metal, flux_parabolic, chem_data,
-					cosmo);
+                                        cosmo);
 
   for (int i = 0; i < 3; i++) {
     if (tau != 0.0) {
       /* Note that parabolic flux already includes the minus term. */
-      flux_out[i] = flux_in[i] * exp_decay + flux_parabolic[i] * one_minus_exp_decay;
+      flux_out[i] =
+          flux_in[i] * exp_decay + flux_parabolic[i] * one_minus_exp_decay;
     } else {
       /* The asymptotic solution is that Flux(t+Delta t) = Flux_parabolic(t) */
-     flux_out[i] = flux_parabolic[i];
+      flux_out[i] = flux_parabolic[i];
     }
   }
 }

@@ -94,13 +94,13 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
   const float mj = hydro_get_mass(pj);
 
   const double mZ_source = (metal_mass_interface > 0.0) ? mZi_0 : mZj_0;
-  const double mZ_sink   = (metal_mass_interface > 0.0) ? mZj_0 : mZi_0;
+  const double mZ_sink = (metal_mass_interface > 0.0) ? mZj_0 : mZi_0;
   const double mass_sink = (metal_mass_interface > 0.0) ? mj : mi;
 
   /* Source constaint: Do not allow to remove more mass, since you don't have
    * it... */
   if (mZ_source <= 0.0) {
-    for(int k=0; k<4; k++) fluxes[k] = 0.0;
+    for (int k = 0; k < 4; k++) fluxes[k] = 0.0;
     return;
   }
 
@@ -122,7 +122,7 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
   const double eps = 1e-15;
   if (fabs(metal_mass_interface) < mZ_source * eps) {
     /* Set to 0 to kill noise */
-    for(int k=0; k<4; k++) fluxes[k] = 0.0;
+    for (int k = 0; k < 4; k++) fluxes[k] = 0.0;
     return;
   }
 
@@ -153,22 +153,24 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
    * This provides a C0-continuous transition toward the limit rather than
    * a hard discontinuous clip, which improves numerical convergence.
    */
-  const double x = fabs(metal_mass_interface) / (effective_limit_mass * safety_scale + 1e-40);
+  const double x = fabs(metal_mass_interface) /
+                   (effective_limit_mass * safety_scale + 1e-40);
   const double factor = 1.0 / (1.0 + x);
   const double flux_init = fluxes[0];
-  for(int k=0; k<4; k++) fluxes[k] *= factor;
+  for (int k = 0; k < 4; k++) fluxes[k] *= factor;
 
   if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 0 && factor < 1e-1) {
     const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
     const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
     message(
-	"[%lld, %lld | %d] Flux limiting, flux = %e, final_flux = %e, factor = %e,"
-	" | mZi_0 = %e, mZj_0 = %e, kappa = %e, kappa = %e | mZ_source = %e, "
-	" mZ_sink = %e, sink_capacity = %e | interaction_mode = %d | "
-	" i_active = %d, j_active = %d",
-	pi->id, pj->id, metal, flux_init * dt, fluxes[0] * dt, factor, mZi_0, mZj_0,
-	chi->kappa, chj->kappa, mZ_source, mZ_sink, capacity,
-	interaction_mode, pi_is_active, pj_is_active);
+        "[%lld, %lld | %d] Flux limiting, flux = %e, final_flux = %e, factor = "
+        "%e,"
+        " | mZi_0 = %e, mZj_0 = %e, kappa = %e, kappa = %e | mZ_source = %e, "
+        " mZ_sink = %e, sink_capacity = %e | interaction_mode = %d | "
+        " i_active = %d, j_active = %d",
+        pi->id, pj->id, metal, flux_init * dt, fluxes[0] * dt, factor, mZi_0,
+        mZj_0, chi->kappa, chj->kappa, mZ_source, mZ_sink, capacity,
+        interaction_mode, pi_is_active, pj_is_active);
   }
 }
 

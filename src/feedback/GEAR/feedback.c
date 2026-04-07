@@ -95,7 +95,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     p->chemistry_data.metal_mass[i] += xp->feedback_data.delta_metal_mass[i];
     xp->feedback_data.delta_metal_mass[i] = 0.0;
   }
-  
+
   xp->feedback_data.hit_by_SN = 0;
   xp->feedback_data.hit_by_preSN = 0;
 }

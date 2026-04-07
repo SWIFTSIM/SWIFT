@@ -35,15 +35,17 @@
  * @param pj Particle j
  * @param metal Metal specie to update
  * @param cosmo The #cosmology.
- * @param Ui (return) Resulting corrected diffusion state of particle i (in physical units).
- * @param Uj (return) Resulting corrected diffusion state of particle j (in physical units).
+ * @param Ui (return) Resulting corrected diffusion state of particle i (in
+ * physical units).
+ * @param Uj (return) Resulting corrected diffusion state of particle j (in
+ * physical units).
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
-					      const struct part *restrict pj,
-					      int metal,
-					      const struct cosmology *cosmo,
-					      double Ui[4], double Uj[4]) {
+                                              const struct part *restrict pj,
+                                              int metal,
+                                              const struct cosmology *cosmo,
+                                              double Ui[4], double Uj[4]) {
   const double mi = hydro_get_mass(pi);
   const double mj = hydro_get_mass(pj);
   const double m_Zi_not_extrapolated =
@@ -57,11 +59,11 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
 
   unsigned int dumb = 0;
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-				   /*callloc=*/1, /*element*/ metal, pi->id,
-				   /*neg_counter*/ &dumb);
+                                   /*callloc=*/1, /*element*/ metal, pi->id,
+                                   /*neg_counter*/ &dumb);
   chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-				   /*callloc=*/1, /*element*/ metal, pj->id,
-				   &dumb);
+                                   /*callloc=*/1, /*element*/ metal, pj->id,
+                                   &dumb);
 
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */

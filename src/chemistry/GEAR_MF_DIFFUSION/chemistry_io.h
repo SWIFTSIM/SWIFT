@@ -195,6 +195,7 @@ INLINE static int chemistry_write_particles(const struct part *parts,
 #endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  // TODO: Output the fluxes
   list[num] = io_make_physical_output_field(
       "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,
       chemistry_data.tau, /*can convert to comoving=*/0,
