@@ -522,9 +522,9 @@ void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
                                const int slice_offset, const int slice_width,
                                const int N, const double r_s,
                                const double box_size, const int deconvolve, const int discrete_symbol);
-void restrict_problem(double *H_array, const double *residual, int cdim[3]);
+void restrict_residual(double *H_array, const double *residual, int cdim[3]);
 void solve_coarser_problem_recursive(double *pot, const double *residual, int cdim[3], double delta, const int N_stop, const int N_start);
-void prolongate_problem(const double *coarser_solution, double *pot, int cdim[3]);
+void prolongate_residual(const double *coarser_solution, double *pot, int cdim[3]);
 void apply_GS(const double *density, double *pot, int cdim[3], double mean_density, double box_size);
 void apply_multigrid(const double *density, double *pot, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
 void prolongate_solution(const double *pot_coarse, double *pot_fine, const int N, const int N_double);
@@ -604,4 +604,16 @@ void get_patch_potential(struct space *s, struct AMR_levels *fine, struct AMR_le
 void mark_all_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);
 void check_diagonal1(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *c, int nr_neighbours, int neighbours[nr_neighbours], int min_depth, int double_diag);
 void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
+void space_get_fR_contribution(const struct space *s, double *rho, double *phi, int N_min, const int N);
+void apply_NGS(const double *rho, double *phi, int cdim[3], double mean_density, double box_size);
+double get_Laplacian(const double *phi, int cdim[3], int nbs[6], int i, int j, int k);
+double get_residual_fR(const double *phi, const double *rho, int cdim[3], double mean_density, double delta);
+double get_derivative(double *phi, int cdim[3], int nbs[6], int i, int j, int k, double delta);
+void perform_red_black_sweep_fR(double *phi, const double *rho, int cdim[3], double mean_density, double delta);
+void apply_multigrid_fR(const double *rho, double *pot, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
+void FAS_recursive(double *phi, const double *residual, const double *mean_density, int cdim[3], double delta, const int N_stop, const int N_start, int *depth);
+double get_residual_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double mean_density, double delta);
+void perform_red_black_sweep_coarser(double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double mean_density, double delta);
+void get_residual_array_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, double *residual_array, int cdim[3], double mean_density, double delta);
+void get_residual_array_fR(const double *phi, const double *rho, int cdim[3], double mean_density, double *residual_array, double delta);
 #endif /* SWIFT_SPACE_H */

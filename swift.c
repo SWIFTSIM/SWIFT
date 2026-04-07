@@ -1628,12 +1628,13 @@ int main(int argc, char *argv[]) {
     message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
+    pm_mesh_compute_potential(e.mesh, e.s, &e.threadpool, e.verbose, /*MG=*/1);
     /* Set the desired gridsize for Gauss-Seidel and perform the calculation */
-    int N = 64;
-    space_get_density(&e, N, /*apply multigrid=*/1);
-    int N_min = 16;
-    int N_max = 64;
-    space_apply_FMG(&e, N_min, N_max);
+    //int N = 64;
+    //space_get_density(&e, N, /*apply multigrid=*/1);
+    //int N_min = 16;
+    //int N_max = 64;
+    //space_apply_FMG(&e, N_min, N_max);
 
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */

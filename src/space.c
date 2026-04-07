@@ -6551,6 +6551,90 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
   free(potential_array);
 }
 
+void apply_multigrid_fR(const double *rho, double *pot, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max) {
+  message("Applying the multigrid method...");
+
+  /* Allocate the memory for the residual array on the finest level */
+  double *residual_array = NULL;
+  residual_array = (double*)malloc(sizeof(double) * N_max * N_max * N_max);
+  if (residual_array == NULL){
+    error("Error allocating memory for the residual array.");
+  }
+  memuse_log_allocation("residual.array", residual_array, 1, sizeof(double)*N_max*N_max*N_max);
+
+  double delta = box_size/N_max; //Width of a grid cell of the finest level
+  double residual; 
+  residual = get_residual_fR(pot, rho, cdim, mean_density[0], delta);
+  message("The first residual is %lf", residual);
+  const double tolerance = 10e-12; //Choose reasonable value here
+  int counter = 0;
+  const int fine_steps = 10; //Choose reasonable value here
+  double sum = 0;
+
+  int V_cycles=0;
+  int depth = 0;
+
+  while (residual > tolerance && V_cycles < V_max) {
+    message("Performing V-cycle %d", V_cycles);
+    /* Pre-smoothing */
+    for (int i=0; i<fine_steps; i++) {
+      perform_red_black_sweep_fR(pot, rho, cdim, mean_density[0], delta);
+    }
+    residual = get_residual_fR(pot, rho, cdim, mean_density[0], delta);
+    get_residual_array_fR(pot, rho, cdim, mean_density[0], residual_array, delta);
+
+    /* Transfer residual array to get coarse-grid correction */
+    FAS_recursive(pot, residual_array, mean_density, cdim, delta, N_min, N_max, &depth);
+
+    /* Post-smoothing if needed */
+    residual = get_residual_fR(pot, rho, cdim, mean_density[0], delta);
+    message("Back on the finest grid the residual is %lf", residual);
+    if (residual > tolerance) {
+      for (int i=0; i<fine_steps; i++) {
+        perform_red_black_sweep_fR(pot, rho, cdim, mean_density[0], delta);
+      }
+    }
+    residual = get_residual_fR(pot, rho, cdim, mean_density[0], delta);
+    V_cycles +=1;
+    message("After %d V-cycle(s) the residual is %lf", V_cycles, residual);
+  }
+
+  message("Performed %d V-cycle(s) in total", V_cycles);
+  
+  /* Post-smoothing until convergence. Should not be necessary! */
+  while (residual > tolerance) {
+  perform_red_black_sweep_fR(pot, rho, cdim, mean_density[0], delta);
+  residual = get_residual_fR(pot, rho, cdim, mean_density[0], delta);
+
+    counter +=1;
+    if (counter % 100 ==0){
+      sum = 0;
+      for (int i = 0; i < N_max*N_max*N_max; i++) {
+          sum += pot[i];
+      }
+    }
+  }
+  residual = get_residual_fR(pot, rho, cdim, mean_density[0], delta);
+  message("Needed to do %d step(s) in post-smoothing after which the residual was %lf", counter, residual);
+  free(residual_array);
+
+  /* Set mean of potential to zero */
+  sum = 0.;
+  for (int i = 0; i < N_max*N_max*N_max; i++) {
+    sum += pot[i];
+  }
+  for (int i = 0; i<N_max*N_max*N_max; i++) {
+    pot[i] -= sum/(N_max*N_max*N_max); 
+  }
+
+  /* Verify that the potential mean is now zero */
+  double potential_sum = 0.;
+  for (int i =0; i<N_max*N_max*N_max; i++) {
+    potential_sum += pot[i];
+  }
+  if (potential_sum < -0.1 || potential_sum > 0.1) error("The mean of the potential is %lf", potential_sum/(N_max*N_max*N_max));
+}
+
 /**
  * @brief Compute potential on the grid using multigrid acceleration.
  *
@@ -6660,18 +6744,18 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
  * @param mean_density Mean density on the grid.
  * @param box_size Side length of the box.
  */
-void apply_GS(const double *density, double *pot, int cdim[3], double mean_density, double box_size) {
+void apply_GS(const double *rho, double *pot, int cdim[3], double mean_density, double box_size) {
   message("Applying Gauss-Seidel...");
   int N = cdim[0];
   double delta = box_size/N;
-  double residual = get_residual(pot, density, cdim, mean_density, delta);
+  double residual = get_residual(pot, rho, cdim, mean_density, delta);
   double tolerance = 10e-12; //Choose reasonable value here
   int counter = 0;
   double sum = 0.;
 
   while (residual >= tolerance) {
-    perform_red_black_sweep(pot, density, cdim, mean_density, delta);
-    residual = get_residual(pot, density, cdim, mean_density, delta);
+    perform_red_black_sweep(pot, rho, cdim, mean_density, delta);
+    residual = get_residual(pot, rho, cdim, mean_density, delta);
     counter +=1;
   }
   message("We needed %d steps to converge", counter);
@@ -6732,7 +6816,7 @@ void solve_coarser_problem_recursive(double *pot, const double *residual, int cd
   }
   memuse_log_allocation("coarser.newresidual", new_residual_array, 1, sizeof(double)*N*N*N);
 
-  restrict_problem(coarser_residual, residual, cdim); //Transfer residual to the coarser grid
+  restrict_residual(coarser_residual, residual, cdim); //Transfer residual to the coarser grid
   int cdimH[] = {N, N, N}; 
   double multiplier = 1.0; 
   double tolerance = 10e-8; //Choose a reasonable value here
@@ -6753,7 +6837,7 @@ void solve_coarser_problem_recursive(double *pot, const double *residual, int cd
     }
     coarser_residual_abs = get_residual(coarser_solution, coarser_residual, cdimH, multiplier, delta);
     message("The total number of steps on the coarsest grid is %d and the residual is %lf", counter, coarser_residual_abs);
-    prolongate_problem(coarser_solution, pot, cdimH);
+    prolongate_residual(coarser_solution, pot, cdimH);
   }
 
   /* Do some smoothing and proceed to coarser grids */
@@ -6777,13 +6861,210 @@ void solve_coarser_problem_recursive(double *pot, const double *residual, int cd
     for (int i=0; i<coarse_steps; i++) {
       perform_red_black_sweep(coarser_solution, coarser_residual, cdimH, multiplier, delta); 
     }
-    prolongate_problem(coarser_solution, pot, cdimH);
+    prolongate_residual(coarser_solution, pot, cdimH);
   }
 
   /* The coarser-grid correction has now been added to the finer-grid solution for the potential, so discard used arrays. */
   free(coarser_residual);
   free(coarser_solution);
   free(new_residual_array);
+}
+
+void FAS_recursive(double *phi, const double *residual, const double *mean_density, int cdim[3], double delta, const int N_stop, const int N_start, int *depth) {
+  *depth += 1;
+  int N = cdim[0]; //Grid size of the current level we are on
+  delta = delta*2.0; //Cells are twice as big on the coarser grid
+  N = N/2; 
+
+  /* Below arrays are the equivalent of the density, potential and residual arrays on the finest grid */
+  /* Allocate the memory for the arrays of the problem on this level */
+  double *coarser_residual = NULL;
+  coarser_residual = (double*)malloc(sizeof(double) * N * N * N);
+  if (coarser_residual == NULL){
+    error("Error allocating memory for the coarser-grid array.");
+  }
+  memuse_log_allocation("coarser.grid", coarser_residual, 1, sizeof(double)*N*N*N);
+
+  double *coarser_equation = NULL;
+  coarser_equation = (double*)malloc(sizeof(double) * N * N * N);
+  if (coarser_equation == NULL) {
+    error("Error allocating memory for the coarser-grid equation.");
+  }
+  memuse_log_allocation("coarser.equation", coarser_equation, 1, sizeof(double)*N*N*N);
+
+  double *coarser_solution = NULL;
+  coarser_solution = (double*)calloc(N * N * N, sizeof(double)); //Set initial guess to zero as we are essentially solving for an error.
+  if (coarser_solution == NULL){
+    error("Error allocating memory for the coarser-grid array.");
+  }
+  memuse_log_allocation("coarser.solution", coarser_solution, 1, sizeof(double)*N*N*N);
+
+  double *new_residual_array = NULL; 
+  new_residual_array = (double*)malloc(sizeof(double) * N * N * N);
+  if (new_residual_array == NULL){
+    error("Error allocating memory for the new coarser residual.");
+  }
+  memuse_log_allocation("coarser.newresidual", new_residual_array, 1, sizeof(double)*N*N*N);
+
+  restrict_residual(coarser_residual, residual, cdim);
+  restrict_residual(coarser_equation, phi, cdim); //Restricting the solution = u_H
+  /* Don't forget to multiply residual by -1? Not necessary per se, let's see. */
+
+  /* Initial guess? Perhaps u_H?*/
+  for (int i=0; i<N*N*N; i++) {
+    coarser_solution[i] = coarser_equation[i];
+  }
+  int cdimH[] = {N, N, N}; 
+  double tolerance = 10e-8; //Choose a reasonable value here
+  int counter = 0;
+  double coarser_residual_abs = get_residual_coarser(coarser_solution, coarser_residual, coarser_equation, cdimH, mean_density[*depth], delta);
+  message("The first residual on the grid with size %d is %lf", N, coarser_residual_abs);
+
+  /* Solve the equation exactly if we are on the coarsest grid */
+  if (N==N_stop) {
+    while (coarser_residual_abs >= tolerance) {
+      perform_red_black_sweep_coarser(coarser_solution, coarser_residual, coarser_equation, cdimH, mean_density[*depth], delta); 
+      coarser_residual_abs = get_residual_coarser(coarser_solution, coarser_residual, coarser_equation, cdimH, mean_density[*depth], delta);
+      counter +=1;
+    }
+    coarser_residual_abs = get_residual_coarser(coarser_solution, coarser_residual, coarser_equation, cdimH, mean_density[*depth], delta);
+    message("The total number of steps on the coarsest grid is %d and the residual is %lf", counter, coarser_residual_abs);
+
+    /* Prepare array for prolongation */
+    for (int i=0; i<N*N*N; i++) {
+      coarser_solution[i] -= coarser_equation[i];
+    }
+    prolongate_residual(coarser_solution, phi, cdimH);
+  }
+
+  /* Do some smoothing and proceed to coarser grids */
+  else { 
+    counter = 0;
+    int coarse_steps = 50;
+    for (int i=0; i<coarse_steps; i++) {
+      perform_red_black_sweep_coarser(coarser_solution, coarser_residual, coarser_equation, cdimH, mean_density[*depth], delta); 
+      coarser_residual_abs =  get_residual_coarser(coarser_solution, coarser_residual, coarser_equation, cdimH, mean_density[*depth], delta);
+      counter +=1;
+      //if (coarser_residual_abs < tolerance) break;
+    }
+    get_residual_array_coarser(coarser_solution, coarser_residual, coarser_equation, new_residual_array, cdimH, mean_density[*depth], delta);
+
+    coarser_residual_abs = get_residual_coarser(coarser_solution, coarser_residual, coarser_equation, cdimH, mean_density[*depth], delta);
+    message("The residual after pre-smoothing is %lf", coarser_residual_abs);
+    FAS_recursive(coarser_solution, new_residual_array, mean_density, cdimH, delta, N_stop, N_start, depth);
+    /* Post-smoothing */
+    coarser_residual_abs = get_residual_coarser(coarser_solution, coarser_residual, coarser_equation, cdimH, mean_density[*depth], delta);
+    message("Back on the grid with size %d the residual is %lf", N, coarser_residual_abs);
+    for (int i=0; i<coarse_steps; i++) {
+      perform_red_black_sweep_coarser(coarser_solution, coarser_residual, coarser_equation, cdimH, mean_density[*depth], delta); 
+    }
+    /* Prepare array for prolongation */
+    for (int i=0; i<N*N*N; i++) {
+      coarser_solution[i] -= coarser_equation[i];
+    }
+    prolongate_residual(coarser_solution, phi, cdimH);
+  }
+
+  /* The coarser-grid correction has now been added to the finer-grid solution for the potential, so discard used arrays. */
+  free(coarser_residual);
+  free(coarser_solution);
+  free(new_residual_array);
+  free(coarser_equation);
+
+  *depth -= 1;
+
+}
+
+void get_residual_array_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, double *residual_array, int cdim[3], double mean_density, double delta) {
+  /* Figure out these constants later: */
+  double c = 1.;
+  double field_mean = 1.;
+  double Ricci_mean = 1.;
+
+  int N = cdim[0];
+  int nbs[6];
+  //float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0;
+  for (int k=0; k<N; k++){
+    nbs[4] = (k+1) % N;
+    nbs[5] = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
+    for (int j=0; j<N; j++){
+      nbs[2] = (j+1) % N;
+      nbs[3] = (j-1>=0) ? (j-1) % N : (j-1) % N + N;
+      for (int i=0; i<N; i++) {
+        nbs[0] = (i+1) % N;
+        nbs[1] = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
+
+        double Laplacian_exp[2] = {get_Laplacian(coarser_solution, cdim, nbs, i, j, k), get_Laplacian(coarser_equation, cdim, nbs, i, j, k)};
+        double field_term[2] = {Ricci_mean* (1. - exp(-(1./2.)*coarser_solution[cell_getid(cdim, i,j,k)])), Ricci_mean* (1. - exp(-(1./2.)*coarser_equation[cell_getid(cdim, i,j,k)]))};
+        double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*c*c*field_mean)) * (field_term[0] - field_term[1]) + coarser_residual[cell_getid(cdim, i,j,k)]; 
+
+        residual_array[cell_getid(cdim, i, j, k)] = res;
+      }
+    }
+  }
+}
+
+void perform_red_black_sweep_coarser(double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double mean_density, double delta) {
+  /* Figure out these constants later: */
+  double c = 1.;
+  double field_mean = 1.;
+  double Ricci_mean = 1.;
+
+  int nbs[6];
+
+  for (int col=0; col<2; col++){
+    for (int k=0; k<cdim[2]; k++){
+      nbs[4] = (k+1) % cdim[2];
+      nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
+      for (int j=0; j<cdim[1]; j++){
+        nbs[2] = (j+1) % cdim[1];
+        nbs[3] = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
+        for (int i=0; i<cdim[0]; i++) {
+          nbs[0] = (i+1) % cdim[0];
+          nbs[1] = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
+          if ((i+j+k)%2 != col)
+            continue;
+          
+          double Laplacian_exp[2] = {get_Laplacian(coarser_solution, cdim, nbs, i, j, k), get_Laplacian(coarser_equation, cdim, nbs, i, j, k)};
+          double field_term[2] = {Ricci_mean* (1. - exp(-(1./2.)*coarser_solution[cell_getid(cdim, i,j,k)])), Ricci_mean* (1. - exp(-(1./2.)*coarser_equation[cell_getid(cdim, i,j,k)]))};
+          double derivative_term = get_derivative(coarser_solution, cdim, nbs, i, j, k, delta);
+
+          coarser_solution[cell_getid(cdim,i,j,k)] -= ((Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*c*c*field_mean)) * (field_term[0] - field_term[1]) + coarser_residual[cell_getid(cdim, i, j, k)])/derivative_term;
+        }
+      }
+    }
+  }
+}
+
+double get_residual_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double mean_density, double delta) {
+  /* Figure out these constants later: */
+  double c = 1.;
+  double field_mean = 1.;
+  double Ricci_mean = 1.;
+
+  double residual = 0.;
+  int N = cdim[0];
+  int nbs[6];
+  //float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0;
+  for (int k=0; k<N; k++){
+    nbs[4] = (k+1) % N;
+    nbs[5] = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
+    for (int j=0; j<N; j++){
+      nbs[2] = (j+1) % N;
+      nbs[3] = (j-1>=0) ? (j-1) % N : (j-1) % N + N;
+      for (int i=0; i<N; i++) {
+        nbs[0] = (i+1) % N;
+        nbs[1] = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
+
+        double Laplacian_exp[2] = {get_Laplacian(coarser_solution, cdim, nbs, i, j, k), get_Laplacian(coarser_equation, cdim, nbs, i, j, k)};
+        double field_term[2] = {Ricci_mean* (1. - exp(-(1./2.)*coarser_solution[cell_getid(cdim, i,j,k)])), Ricci_mean* (1. - exp(-(1./2.)*coarser_equation[cell_getid(cdim, i,j,k)]))};
+        double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*c*c*field_mean)) * (field_term[0] - field_term[1]) + coarser_residual[cell_getid(cdim, i,j,k)]; 
+
+        residual += res*res;
+      }
+    }
+  }
+  return sqrt(residual/(N*N*N));
 }
 
 /**
@@ -6795,7 +7076,7 @@ void solve_coarser_problem_recursive(double *pot, const double *residual, int cd
  * @param pot Approximate solution on the finer grid. 
  * @param cdim 3D size of the coarser grid.
  */
-void prolongate_problem(const double *coarser_solution, double *pot, int cdim[3]) {
+void prolongate_residual(const double *coarser_solution, double *pot, int cdim[3]) {
   int N = cdim[0];
   int N_double = cdim[0]*2;
   int cdimh[] = {N_double, N_double, N_double};
@@ -6835,7 +7116,7 @@ void prolongate_problem(const double *coarser_solution, double *pot, int cdim[3]
  * @param residual Residual being passed to a coarser grid.
  * @param cdim 3D size of the fine grid.
  */
-void restrict_problem(double *H_array, const double *residual, int cdim[3]) {
+void restrict_residual(double *H_array, const double *residual, int cdim[3]) {
   int cdimH[] = {cdim[0]/2, cdim[1]/2, cdim[2]/2};
   for (int i=0; i<cdimH[0]; i++) {
     for (int j=0; j<cdimH[0]; j++) {
@@ -7128,20 +7409,249 @@ double get_mean_density(double *rho, const int N) {
   return mean_density;
 }
 
-//void space_get_fR_contribution(const struct space *s, const double *rho, double *phi, const int N) {
-  //int cdim[3] = {N,N,N};
-  //const double box_size = s->dim[0];
-  //const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  //const double fac = ((double) N)/box_size;
+void space_get_fR_contribution(const struct space *s, double *rho, double *phi, int N_min, const int N_max) {
+  //int cdim[3] = {N_max,N_max,N_max};
+  const double box_size = s->dim[0];
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double fac = ((double) N_max)/box_size;
 
   /* Check if the space and mesh satisfy the conditions for Gauss-Seidel */
-  //if (dim[0] != dim[1] || dim[0] != dim[2]) {
-    //error("Noncubic domain for density calculation. Did not fill density array");
-  //}
-  //if (N%2 != 0){
-    //error("Uneven domain for density calculation. Did not apply Gauss-Seidel");
-  //}
+  if (dim[0] != dim[1] || dim[0] != dim[2]) {
+    error("Noncubic domain for density calculation. Did not fill density array");
+  }
+  if (N_max%2 != 0){
+    error("Uneven domain for density calculation. Did not apply Gauss-Seidel");
+  }
 
+  /* Get array of the different grid sizes */
+  int n = N_min;
+  int level = 0;
+  int grid_sizes[32];
+  while (n<=N_max) {
+    grid_sizes[level++] = n;
+    n *= 2;
+  }
 
+  const int N_levels = level;
+  double *rho_levels[N_levels];
+  double *phi_levels[N_levels];
+  double mean_density[N_levels];
 
-//}
+  /* Store information of the largest grid */
+  rho_levels[N_levels-1] = rho;
+  phi_levels[N_levels-1] = phi;
+  mean_density[N_levels-1] = get_mean_density(rho_levels[N_levels-1], grid_sizes[N_levels-1]);
+  mean_density[N_levels-1] *= 4.*M_PI * fac*fac*fac;
+
+  struct cic_mapper_data data;
+  data.dim[0] = dim[0];
+  data.dim[1] = dim[1];
+  data.dim[2] = dim[2];
+
+  /* Initialise arrays for density and potential calculation. Except on the largest grid; there we already have them*/
+  for (int i=0; i<N_levels-1; i++) {
+    rho_levels[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
+    phi_levels[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
+    
+    /* Assign densities */ 
+    data.N = grid_sizes[i];
+    data.rho = rho_levels[i];
+    data.fac = grid_sizes[i]/box_size;
+    gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
+
+    /* Get pm potential for verification of FMG method */
+    //if (i == N_levels-1) {
+      //get_pm_potential(&data, N_max, box_size, &e->threadpool, cdim_max);
+    //}
+    mean_density[i] = get_mean_density(data.rho, grid_sizes[i]);
+    mean_density[i] *= 4.*M_PI * data.fac*data.fac*data.fac;
+  }
+  
+  /* Set initial guess on the coarsest grid and solve directly */
+  int cdim[3] = {N_min, N_min, N_min};
+  set_initial_guess(phi_levels[0], cdim);
+  apply_NGS(rho_levels[0], phi_levels[0], cdim, mean_density[0], box_size);
+
+  /* Solve on all finer grids by prolongating from the previous grid and performing the multigrid method */
+  for (int i = 1; i<N_levels; i++) {
+    message("Going to the level with grid size %d \n", grid_sizes[i]);
+    double mean_density_copy[i+1]; //Copy of mean_density containing the densities of the grid at level i to level 0
+    for (int j=0; j<i+1; j++) {
+      mean_density_copy[j] = mean_density[i-j];
+    }
+    prolongate_solution(phi_levels[i-1], phi_levels[i], grid_sizes[i-1], grid_sizes[i]); 
+    
+    int N = grid_sizes[i];
+    cdim[0] = N;
+    cdim[1] = N;
+    cdim[2] = N;
+    apply_multigrid_fR(rho_levels[i], phi_levels[i], cdim, mean_density_copy, box_size, N_min, N, 15);
+  }
+}
+
+void apply_NGS(const double *rho, double *phi, int cdim[3], double mean_density, double box_size) {
+  message("Applying Newton-Gauss-Seidel...");
+  int N = cdim[0];
+  double delta = box_size/N;
+  double residual = get_residual_fR(phi, rho, cdim, mean_density, delta);
+  double tolerance = 10e-12; //Choose reasonable value here
+  int counter = 0;
+  double sum = 0.;
+
+  while (residual >= tolerance) {
+    perform_red_black_sweep_fR(phi, rho, cdim, mean_density, delta);
+    residual = get_residual_fR(phi, rho, cdim, mean_density, delta);
+    counter +=1;
+  }
+  message("We needed %d steps to converge", counter);
+
+  /* Set mean of the field to zero */
+  sum = 0.;
+  for (int i = 0; i < N*N*N; i++) {
+      sum += phi[i];
+  }
+  for (int i = 0; i<N*N*N; i++) {
+    phi[i] -= sum/(N*N*N);
+  }
+
+  double field_sum = 0;
+  for (int i =0; i<N*N*N; i++)
+    field_sum += fabs(phi[i]);  
+}
+
+void perform_red_black_sweep_fR(double *phi, const double *rho, int cdim[3], double mean_density, double delta) {
+  /* Figure out these constants later: */
+  double G = 1.;
+  double c = 1.;
+  double field_mean = 1.;
+  double Ricci_mean = 1.;
+
+  int nbs[6];
+  //float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0;
+
+  for (int col=0; col<2; col++){
+    for (int k=0; k<cdim[2]; k++){
+      nbs[4] = (k+1) % cdim[2];
+      nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
+      for (int j=0; j<cdim[1]; j++){
+        nbs[2] = (j+1) % cdim[1];
+        nbs[3] = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
+        for (int i=0; i<cdim[0]; i++) {
+          nbs[0] = (i+1) % cdim[0];
+          nbs[1] = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
+          if ((i+j+k)%2 != col)
+            continue;
+          
+          double Laplacian_exp = get_Laplacian(phi, cdim, nbs, i, j, k);
+          double density_term = 8. * M_PI * G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1);
+          double field_term = Ricci_mean* (1. - exp(-(1./2.)*phi[cell_getid(cdim, i,j,k)]));
+          double derivative_term = get_derivative(phi, cdim, nbs, i, j, k, delta);
+
+          phi[cell_getid(cdim,i,j,k)] -= (Laplacian_exp/(delta*delta) + (1./(3.*c*c*field_mean)) * (field_term + density_term))/derivative_term;
+          
+        }
+      }
+    }
+  }
+}
+
+double get_derivative(double *phi, int cdim[3], int nbs[6], int i, int j, int k, double delta) {
+  /* Figure out these constants later: */
+  int n = 1;
+  double c = 1.;
+  double Omega_m = 1.;
+  double a = 1.;
+  double ksi = 1.;
+
+  double exp_term = (exp(phi[cell_getid(cdim, nbs[0], j, k)]) + exp(phi[cell_getid(cdim, nbs[1], j, k)]) + exp(phi[cell_getid(cdim, i, nbs[2], k)])
+                      + exp(phi[cell_getid(cdim, i, nbs[3], k)]) + exp(phi[cell_getid(cdim, i, j, nbs[4])]) + exp(phi[cell_getid(cdim, i, j, nbs[5])])
+                      + 6. * exp(phi[cell_getid(cdim, i, j, k)]));
+  double field_term = exp(phi[cell_getid(cdim, i, j, k)]) * (phi[cell_getid(cdim, nbs[0], j, k)] + phi[cell_getid(cdim, nbs[1], j, k)] 
+                      + phi[cell_getid(cdim, i, nbs[2], k)] + phi[cell_getid(cdim, i, nbs[3], k)] + phi[cell_getid(cdim, i, j, nbs[4])] 
+                      + phi[cell_getid(cdim, i, j, nbs[5])] - 6. * phi[cell_getid(cdim, i, j, k)]);
+  double model_term = (1./(n+1)) * ((Omega_m*a*a*a*a)/(3.*c*c)) * pow(((double)n *a*a*ksi), (1./(n+1))) * exp(-1. * phi[cell_getid(cdim, i, j, k)]/(n+1));
+
+  return (1./(2.*delta*delta)) * (field_term - exp_term - model_term);
+}
+
+double get_residual_fR(const double *phi, const double *rho, int cdim[3], double mean_density, double delta) {
+  /* Figure out these constants later: */
+  double G = 1.;
+  double c = 1.;
+  double field_mean = 1.;
+  double Ricci_mean = 1.;
+
+  double residual = 0.;
+  int N = cdim[0];
+  int nbs[6];
+  //float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0;
+  for (int k=0; k<N; k++){
+    nbs[4] = (k+1) % N;
+    nbs[5] = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
+    for (int j=0; j<N; j++){
+      nbs[2] = (j+1) % N;
+      nbs[3] = (j-1>=0) ? (j-1) % N : (j-1) % N + N;
+      for (int i=0; i<N; i++) {
+        nbs[0] = (i+1) % N;
+        nbs[1] = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
+
+        double Laplacian_exp = get_Laplacian(phi, cdim, nbs, i, j, k);
+        double density_term = 8. * M_PI * G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1);
+        double field_term = Ricci_mean* (1. - exp(-(1./2.)*phi[cell_getid(cdim, i,j,k)]));
+        double res = Laplacian_exp/(delta*delta) + (1./(3.*c*c*field_mean)) * (field_term + density_term); 
+
+        residual += res*res;
+      }
+    }
+  }
+  return sqrt(residual/(N*N*N));
+}
+
+void get_residual_array_fR(const double *phi, const double *rho, int cdim[3], double mean_density, double *residual_array, double delta) {
+  /* Figure out these constants later: */
+  double G = 1.;
+  double c = 1.;
+  double field_mean = 1.;
+  double Ricci_mean = 1.;
+
+  int N = cdim[0];
+  int nbs[6];
+  //float rhs_correction = (multiplier==1.0) ? 0.0 : 1.0;
+  for (int k=0; k<N; k++){
+    nbs[4] = (k+1) % N;
+    nbs[5] = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
+    for (int j=0; j<N; j++){
+      nbs[2] = (j+1) % N;
+      nbs[3] = (j-1>=0) ? (j-1) % N : (j-1) % N + N;
+      for (int i=0; i<N; i++) {
+        nbs[0] = (i+1) % N;
+        nbs[1] = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
+
+        double Laplacian_exp = get_Laplacian(phi, cdim, nbs, i, j, k);
+        double density_term = 8. * M_PI * G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1);
+        double field_term = Ricci_mean* (1. - exp(-(1./2.)*phi[cell_getid(cdim, i,j,k)]));
+        double res = Laplacian_exp/(delta*delta) + (1./(3.*c*c*field_mean)) * (field_term + density_term); 
+
+        residual_array[cell_getid(cdim, i, j, k)] = res;
+      }
+    }
+  }
+}
+
+double get_Laplacian(const double *phi, int cdim[3], int nbs[6], int i, int j, int k) {
+  double half_exp[6];
+  half_exp[0] = (1./2.) * (exp(phi[cell_getid(cdim, nbs[0], j, k)]) + exp(phi[cell_getid(cdim, i, j, k)]));
+  half_exp[1] = (1./2.) * (exp(phi[cell_getid(cdim, i, j, k)]) + exp(phi[cell_getid(cdim, nbs[1], j, k)]));
+
+  half_exp[2] = (1./2.) * (exp(phi[cell_getid(cdim, i, nbs[2], k)]) + exp(phi[cell_getid(cdim, i, j, k)]));
+  half_exp[3] = (1./2.) * (exp(phi[cell_getid(cdim, i, j, k)]) + exp(phi[cell_getid(cdim, i, nbs[3], k)]));
+
+  half_exp[4] = (1./2.) * (exp(phi[cell_getid(cdim, i, j, nbs[4])]) + exp(phi[cell_getid(cdim, i, j, k)]));
+  half_exp[5] = (1./2.) * (exp(phi[cell_getid(cdim, i, j, k)]) + exp(phi[cell_getid(cdim, i, j, nbs[5])]));
+
+  double i_comp = half_exp[0] * phi[cell_getid(cdim, nbs[0], j, k)] - phi[cell_getid(cdim, i, j, k)] * (half_exp[0]+half_exp[1]) + half_exp[1] * phi[cell_getid(cdim, nbs[1], j, k)];
+  double j_comp = half_exp[2] * phi[cell_getid(cdim, i, nbs[2], k)] - phi[cell_getid(cdim, i, j, k)] * (half_exp[2]+half_exp[3]) + half_exp[3] * phi[cell_getid(cdim, i, nbs[3], k)];
+  double k_comp = half_exp[4] * phi[cell_getid(cdim, i, j, nbs[4])] - phi[cell_getid(cdim, i, j, k)] * (half_exp[4]+half_exp[5]) + half_exp[5] * phi[cell_getid(cdim, i, j, nbs[5])];
+
+  return i_comp + j_comp + k_comp;
+}
