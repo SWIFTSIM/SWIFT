@@ -85,19 +85,20 @@ chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
-    chi->limiter.Z[m][0] =
-        min(chemistry_get_metal_mass_fraction(pj, m), chi->limiter.Z[m][0]);
-    chi->limiter.Z[m][1] =
-        max(chemistry_get_metal_mass_fraction(pj, m), chi->limiter.Z[m][1]);
+    /* Note: We tolerate negative metal masses, but they are not
+       physical. Hence, we assume the gas is pristine. This avoids amplifying
+       the diffusion flux when we have negative metal masses */
+    const double Zj = max(chemistry_get_metal_mass_fraction(pj, m), 0.0);
+    chi->limiter.Z[m][0] = min(Zj, chi->limiter.Z[m][0]);
+    chi->limiter.Z[m][1] = max(Zj, chi->limiter.Z[m][1]);
 
     /* Ensures metalicity never exceeds 1 */
     chi->limiter.Z[m][1] = min(1.0, chi->limiter.Z[m][1]);
 
-    /* Collect the comoving metal density */
-    chi->limiter.rhoZ[m][0] = min(chemistry_get_comoving_metal_density(pj, m),
-                                  chi->limiter.rhoZ[m][0]);
-    chi->limiter.rhoZ[m][1] = max(chemistry_get_comoving_metal_density(pj, m),
-                                  chi->limiter.rhoZ[m][1]);
+    /* Collect the comoving metal density. Note: Same comment as L88 */
+    const double rhoZj = max(chemistry_get_comoving_metal_density(pj, m), 0.0);
+    chi->limiter.rhoZ[m][0] = min(rhoZj, chi->limiter.rhoZ[m][0]);
+    chi->limiter.rhoZ[m][1] = max(rhoZj, chi->limiter.rhoZ[m][1]);
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
     for (int i = 0; i < 3; i++) {

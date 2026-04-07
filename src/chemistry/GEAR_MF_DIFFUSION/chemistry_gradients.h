@@ -128,8 +128,11 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
     /**** Metal mass fraction gradients ****/
-    const double Zi = chemistry_get_metal_mass_fraction(pi, g);
-    const double Zj = chemistry_get_metal_mass_fraction(pj, g);
+    /* Note: We tolerate negative metal masses, but they are not
+       physical. Hence, we assume the gas is pristine. This avoids amplifying
+       the diffusion flux when we have negative metal masses */
+    const double Zi = max(chemistry_get_metal_mass_fraction(pi, g), 0.0);
+    const double Zj = max(chemistry_get_metal_mass_fraction(pj, g), 0.0);
     const double dZ = Zi - Zj;
 
     /* First do pi */
@@ -151,8 +154,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dZ_j[2] = dZ * psij_tilde[2];
 
     /**** Metal density gradient ****/
-    const double rhoZi = chemistry_get_comoving_metal_density(pi, g);
-    const double rhoZj = chemistry_get_comoving_metal_density(pj, g);
+    /* Note: Same comment as L131 */
+    const double rhoZi = max(chemistry_get_comoving_metal_density(pi, g), 0.0);
+    const double rhoZj = max(chemistry_get_comoving_metal_density(pj, g), 0.0);
     const double drhoZ = rhoZi - rhoZj;
 
     /* First do pi */
@@ -345,8 +349,11 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
     /**** Metal mass fraction gradients ****/
-    const double Zi = chemistry_get_metal_mass_fraction(pi, g);
-    const double Zj = chemistry_get_metal_mass_fraction(pj, g);
+    /* Note: We tolerate negative metal masses, but they are not
+       physical. Hence, we assume the gas is pristine. This avoids amplifying
+       the diffusion flux when we have negative metal masses. */
+    const double Zi = max(chemistry_get_metal_mass_fraction(pi, g), 0.0);
+    const double Zj = max(chemistry_get_metal_mass_fraction(pj, g), 0.0);
     const double dZ = Zi - Zj;
 
     /* Compute gradients for pi */
@@ -359,8 +366,9 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     dZ_i[2] = dZ * psii_tilde[2];
 
     /**** Metal density gradient ****/
-    const double rhoZi = chemistry_get_comoving_metal_density(pi, g);
-    const double rhoZj = chemistry_get_comoving_metal_density(pj, g);
+    /* Note: Same comment as L131 and L350 */
+    const double rhoZi = max(chemistry_get_comoving_metal_density(pi, g), 0.0);
+    const double rhoZj = max(chemistry_get_comoving_metal_density(pj, g), 0.0);
     const double drhoZ = rhoZi - rhoZj;
 
     double drhoZ_i[3];
