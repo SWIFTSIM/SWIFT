@@ -26,9 +26,8 @@
  * methods, functions return a yield stress of FLT_MAX.
  */
 
+#include <float.h>
 #include "const.h"
-#include "equation_of_state.h"
-#include "hydro_parameters.h"
 #include "math.h"
 
 /**
@@ -127,20 +126,17 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * @param mat_id The material ID.
  * @param phase The phase ID.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
+ * @param termperature The temperature.
  * @param damage The damage.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
-    const int mat_id, const int phase, const float density, const float u, const float damage) {
+    const int mat_id, const int phase, const float density, const float pressure, const float termperature, const float damage) {
 
   /* Return 0.f if the material is not solid. */
   if (phase != mat_phase_solid) {
     return 0.f;
   }
-
-  /* Calculate pressure. */
-  const float pressure =
-    gas_pressure_from_internal_energy(density, u, mat_id);
 
   /* Get constant yield stress, FLT_MAX. */
   float yield_stress = yield_compute_yield_stress_fully_intact(mat_id, phase, pressure);

@@ -26,8 +26,6 @@
  */
 
 #include "const.h"
-#include "equation_of_state.h"
-#include "hydro_parameters.h"
 #include "math.h"
 
 /**
@@ -88,7 +86,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
     const int mat_id, const int state_type, const float pressure) {
 
   /* Return 0.f if the material is not solid. */
-  if (state_type != mat_state_type_solid) {
+  if (state_type != mat_phase_solid) {
     return 0.f;
   }
 
@@ -125,7 +123,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
     const int mat_id, const int state_type, const float pressure) {
 
   /* Return 0.f if the material is not solid. */
-  if (state_type != mat_state_type_solid) {
+  if (state_type != mat_phase_solid) {
     return 0.f;
   }
 
@@ -135,7 +133,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
   if (pressure > 0.f) {
     const float mu_d = material_mu_d(mat_id);
     const float yield_stress_fully_intact = yield_compute_yield_stress_fully_intact(mat_id, state_type, pressure);
-    return fminf(mu_d, yield_stress_fully_intact);
+    return fminf(mu_d * pressure, yield_stress_fully_intact);
   } else {
     return 0.f;
   }
@@ -150,20 +148,17 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * @param mat_id The material ID.
  * @param state_type The phase ID.
  * @param density The density.
- * @param u The specific internal energy.
+ * @param pressure The pressure.
+ * @param termperature The temperature.
  * @param damage The damage.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
-    const int mat_id, const int state_type, const float density, const float u, const float damage) {
+    const int mat_id, const int state_type, const float density, const float pressure, const float termperature, const float damage) {
 
   /* Return 0.f if the material is not solid. */
-  if (state_type != mat_state_type_solid) {
+  if (state_type != mat_phase_solid) {
     return 0.f;
   }
-
-  /* Calculate pressure. */
-  const float pressure =
-    gas_pressure_from_internal_energy(density, u, mat_id);
 
   /* Calculate yield stresses of fully intact and fully damaged material. */
   const float yield_stress_fully_intact =
@@ -177,7 +172,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 
   /* Apply weakening to yield stress. */
   yield_weakening_apply_density_to_yield_stress(&yield_stress, mat_id, density);
-  yield_weakening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, u);
+  yield_weakening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, termperature);
 
   return yield_stress;
 }
@@ -202,7 +197,10 @@ yield_apply_yield_stress_to_sym_matrix(
   float J_2 = strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
 
   /* ### Comment with name of yield criterion */
-  float f = fminf(yield_stress / sqrtf(J_2), 1.f);
+  float f = 1.f;
+  if (J_2 > 0.f) {
+      f = fminf(yield_stress / sqrtf(J_2), 1.f);
+  }
 
   /* Reduce elements of deviatoric stress tensor based on yield stress */
   M->xx *= f;
