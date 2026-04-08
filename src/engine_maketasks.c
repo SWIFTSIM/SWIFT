@@ -4519,6 +4519,30 @@ void engine_maketasks(struct engine *e) {
                    recv_cell_type_pairs, num_recv_cells,
                    sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
                    e);
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+    for (int pid = 0; pid < e->nr_proxies; pid++) {
+      struct proxy *p = &e->proxies[pid];
+      for (int k = 0; k < p->nr_cells_in; k++) {
+        if ((p->cells_in_type[k] & proxy_cell_type_gravity) &&
+            p->cells_in[k]->mpi.recv == NULL) {
+          error(
+              "Gravity proxy cell missing recv links after addtasks: "
+              "type=%s/%s depth=%d nodeID=%d proxy_type=%d grav.count=%d "
+              "m_pole=%g proxy_node=%d",
+              cellID_names[p->cells_in[k]->type],
+              subcellID_names[p->cells_in[k]->subtype], p->cells_in[k]->depth,
+              p->cells_in[k]->nodeID, p->cells_in_type[k],
+              p->cells_in[k]->grav.count,
+              p->cells_in[k]->grav.multipole != NULL
+                  ? p->cells_in[k]->grav.multipole->m_pole.M_000
+                  : -1.,
+              p->nodeID);
+        }
+      }
+    }
+#endif
+
     free(recv_cell_type_pairs);
 
     if (e->verbose)

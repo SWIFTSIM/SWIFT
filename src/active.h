@@ -231,16 +231,19 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e, a=%e) cell: %s/%s depth=%d nodeID=%d "
 #ifdef WITH_MPI
-        "tend=%p"
+        "recv=%p send=%p tag=%d "
 #endif
-        "grav.count=%d m_pole=%g",
+        "top=%p super=%p void_parent=%p contains_zoom=%d below_diff=%d "
+        "grav.count=%d ti_old_part=%lld ti_old_multipole=%lld m_pole=%g",
         c->grav.ti_end_min, c->grav.ti_end_min * e->time_base, e->ti_current,
         e->ti_current * e->time_base, e->cosmology->a, cellID_names[c->type],
         subcellID_names[c->subtype], c->depth, c->nodeID,
 #ifdef WITH_MPI
-        c->mpi.recv,
+        c->mpi.recv, c->mpi.send, c->mpi.tag,
 #endif
-        c->grav.count,
+        c->top, c->grav.super, c->void_parent, c->contains_zoom_cells,
+        c->grav.tasks_below_diff_grav_depth, c->grav.count, c->grav.ti_old_part,
+        c->grav.ti_old_multipole,
         c->grav.multipole != NULL ? c->grav.multipole->m_pole.M_000 : -1.);
   }
 #endif
