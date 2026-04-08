@@ -27,6 +27,8 @@
 #include "proxy.h"
 #include "zoom.h"
 
+#ifdef WITH_MPI
+
 /**
  * @brief Compute the square of the minimum distance between two arbitrary-sized
  * top-level cells.
@@ -107,6 +109,8 @@ __attribute__((always_inline)) INLINE static int zoom_get_mixed_proxy_type(
 
   return proxy_cell_type_none;
 }
+
+#endif
 
 /**
  * @brief Create and fill the proxies.
