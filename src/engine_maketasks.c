@@ -3862,18 +3862,30 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
 
 #ifdef WITH_MPI
 
+    struct task *tend = NULL;
     if (!cell_is_empty(ci) ||
         ((type & proxy_cell_type_gravity) && ci->grav.multipole != NULL &&
          ci->grav.multipole->m_pole.M_000 > 0.f)) {
       /* Add the timestep exchange task */
-      struct task *tend = scheduler_addtask(
-          &e->sched, task_type_send, task_subtype_tend, ci->mpi.tag, 0, ci, cj);
+      tend = scheduler_addtask(&e->sched, task_type_send, task_subtype_tend,
+                               ci->mpi.tag, 0, ci, cj);
       scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
       engine_addlink(e, &ci->mpi.send, tend);
 
       if (with_rt && (type & proxy_cell_type_hydro))
         engine_addunlock_rt_advance_cell_time_tend(ci, tend, e);
     }
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+    if ((type & proxy_cell_type_gravity) && tend == NULL) {
+      error(
+          "Missing send tend for gravity proxy cell: type=%s/%s depth=%d "
+          "nodeID=%d proxy_type=%d empty=%d grav.count=%d m_pole=%g",
+          cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
+          ci->nodeID, type, cell_is_empty(ci), ci->grav.count,
+          ci->grav.multipole != NULL ? ci->grav.multipole->m_pole.M_000 : -1.);
+    }
+#endif
 #endif
 
     /* Add the send tasks for the cells in the proxy that have a hydro
@@ -3990,6 +4002,17 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
         engine_addtasks_recv_rt_advance_cell_time(e, ci, tend);
       }
     }
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+    if ((type & proxy_cell_type_gravity) && tend == NULL) {
+      error(
+          "Missing recv tend for gravity proxy cell: type=%s/%s depth=%d "
+          "nodeID=%d proxy_type=%d empty=%d grav.count=%d m_pole=%g",
+          cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
+          ci->nodeID, type, cell_is_empty(ci), ci->grav.count,
+          ci->grav.multipole != NULL ? ci->grav.multipole->m_pole.M_000 : -1.);
+    }
+#endif
 #endif
 
     /* Add the recv tasks for the cells in the proxy that have a hydro
