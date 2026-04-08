@@ -2,7 +2,7 @@
 
 # General properties
 Material:
-    phase_state:    2               # Base phase state: fluid=0, solid=1, variable=2
+    state_type:    2               # Base phase state: fluid=0, solid=1, variable=2
 
 # General material strength parameters
 Strength:
