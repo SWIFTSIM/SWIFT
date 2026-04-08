@@ -193,4 +193,14 @@ __attribute__((always_inline)) INLINE static float sink_get_softening(
   return grav_props->epsilon_baryon_cur;
 }
 
+/**
+ * @brief Return the current instantaneous accretion rate of the sink.
+ *
+ * @param bp the #sink.
+ */
+__attribute__((always_inline)) INLINE static double sink_get_accretion_rate(
+    const struct sink *sink) {
+  return sink->accretion_rate;
+}
+
 #endif /* SWIFT_GEAR_SINK_GETTERS_H */

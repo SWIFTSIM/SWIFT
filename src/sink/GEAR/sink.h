@@ -181,6 +181,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[0] = 0.f;
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
+  sp->accretion_rate = 0.f;
   sp->n_stars = 0;
 
   sp->has_IMF_changed_from_popIII_to_popII = 0;
@@ -276,6 +277,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   sp->to_collect.minimal_sink_t_dyn = FLT_MAX;
   sp->to_collect.mass_eligible_swallow = 0.0;
   sp->to_collect.mass_swallowed = sp->mass;
+  sp->accretion_rate = 0.f;
   sp->num_ngbs = 0;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
