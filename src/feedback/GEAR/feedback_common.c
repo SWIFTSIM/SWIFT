@@ -18,6 +18,8 @@
  ******************************************************************************/
 
 /* Include header */
+#include "feedback_common.h"
+
 #include "cosmology.h"
 #include "engine.h"
 #include "hydro_properties.h"
@@ -198,16 +200,19 @@ void feedback_will_do_feedback(
 
     /* Now, compute the stellar evolution state for individual star particles.
      */
-    stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
-                                             ti_begin, star_age_beg_step_safe,
-                                             dt_enrichment);
+    stellar_evolution_evolve_individual_star(
+        sp, model, cosmo, us, phys_const,
+        feedback_props->with_stellar_wind_feedback, ti_begin,
+        star_age_beg_step_safe, dt_enrichment);
   } else {
     /* Compute the stellar evolution including SNe energy. This function treats
        the case of particles representing the whole IMF (star_type =
        star_population) and the particles representing only the continuous part
        of the IMF (star_type = star_population_continuous_IMF) */
-    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
-                                   star_age_beg_step_safe, dt_enrichment);
+    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const,
+                                   feedback_props->with_stellar_wind_feedback,
+                                   ti_begin, star_age_beg_step_safe,
+                                   dt_enrichment);
   }
 
   /* Apply the energy efficiency factor */
@@ -411,10 +416,12 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream) {
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
 
-  stellar_evolution_restore(&feedback->stellar_model, stream);
+  stellar_evolution_restore(&feedback->stellar_model, stream,
+                            feedback->with_stellar_wind_feedback);
 
   if (feedback->metallicity_max_first_stars != -1) {
-    stellar_evolution_restore(&feedback->stellar_model_first_stars, stream);
+    stellar_evolution_restore(&feedback->stellar_model_first_stars, stream,
+                              feedback->with_stellar_wind_feedback);
   }
 }
 

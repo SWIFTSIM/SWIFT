@@ -24,7 +24,6 @@
 
 #include <math.h>
 #include <stdio.h>
-// #include "unit.h"
 
 // TODO: Do we want to print properties of the stellar wind?
 
@@ -131,8 +130,7 @@ void stellar_wind_read_yields_array(
 /**
  * @brief Read the SW yields from the table.
  *
- * The tables are in [erg/yr] units at the end of this function. TODO: convert
- * into internal units
+ * The tables are in log10 of [erg/yr] units at the end of this function.
  *
  * @param sw The #stellar_wind model.
  * @param params The simulation parameters.
@@ -150,9 +148,9 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
 
   if (!restart) {
     sw->interpolation_size_m = parser_get_opt_param_int(
-        params, "GEARStellar_wind:interpolation_size_mass", 200);
+        params, "GEARStellarWind:interpolation_size_mass", 200);
     sw->interpolation_size_z = parser_get_opt_param_int(
-        params, "GEARStellar_wind:interpolation_size_metallicity", 110);
+        params, "GEARStellarWind:interpolation_size_metallicity", 110);
   }
 
   /* Open IMF group */
@@ -196,7 +194,7 @@ void stellar_wind_read_yields(struct stellar_wind *sw,
  */
 double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
                                        float log_m, float log_z) {
-  return pow(10, interpolate_2d(&sw->raw.ejected_energy, log_z, log_m));
+  return exp10(interpolate_2d(&sw->raw.ejected_energy, log_z, log_m));
 };
 
 /**
@@ -210,9 +208,8 @@ double stellar_wind_get_ejected_energy(const struct stellar_wind *sw,
  */
 double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
                                            float log_m, float log_z) {
-  return pow(10,
-             interpolate_2d(&sw->integrated.ejected_energy_per_progenitor_mass,
-                            log_z, log_m));
+  return exp10(interpolate_2d(
+      &sw->integrated.ejected_energy_per_progenitor_mass, log_z, log_m));
 };
 
 /**
@@ -226,7 +223,7 @@ double stellar_wind_get_ejected_energy_IMF(const struct stellar_wind *sw,
  */
 double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
                                      float log_z) {
-  return pow(10, interpolate_2d(&sw->raw.mass_loss, log_z, log_m));
+  return exp10(interpolate_2d(&sw->raw.mass_loss, log_z, log_m));
 };
 
 /**
@@ -240,8 +237,8 @@ double stellar_wind_get_ejected_mass(const struct stellar_wind *sw, float log_m,
  */
 double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
                                          float log_m, float log_z) {
-  return pow(10, interpolate_2d(&sw->integrated.mass_loss_per_progenitor_mass,
-                                log_z, log_m));
+  return exp10(interpolate_2d(&sw->integrated.mass_loss_per_progenitor_mass,
+                              log_z, log_m));
 };
 
 /**
@@ -250,7 +247,18 @@ double stellar_wind_get_ejected_mass_IMF(const struct stellar_wind *sw,
  * @param sw stellar_wind struct in which pointers to tables set to NULL.
  */
 void stellar_wind_zero_pointers(struct stellar_wind *sw) {
-  /* Nothing to do here */
+  sw->interpolation_size_m = 0;
+  sw->interpolation_size_z = 0;
+  sw->mass_min = 0.0;
+  sw->mass_max = 0.0;
+  sw->metallicity_min = 0.0;
+  sw->metallicity_max = 0.0;
+
+  interpolate_2d_zero_pointers(&sw->raw.ejected_energy);
+  interpolate_2d_zero_pointers(&sw->raw.mass_loss);
+  interpolate_2d_zero_pointers(
+      &sw->integrated.ejected_energy_per_progenitor_mass);
+  interpolate_2d_zero_pointers(&sw->integrated.mass_loss_per_progenitor_mass);
 }
 
 /**

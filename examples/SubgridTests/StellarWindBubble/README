@@ -21,7 +21,7 @@ The run.sh script calls the `makeIC.py' script with default values. You can expe
 Don't hesitate to change the stellar mass, but also the density and the mass of the gas particle to see the differences.
 
 # run 
-To run the script, once you've changed the parameter you wanted, you can simply make a sbatch or srun on the `run.sh` script. It will automatically create a folder containing the IC and the simulation. Then, the script will call the `gas_profile_movie.py` that makes a gif of the bubble's quantities over time and log some parameters' information in a .txt file `radial_peak_position.txt`. Finally, the `bubble_evolution.py` will use the information in the .txt file to plot the evolution of the bubble alongside with some theoretical formulas.
+To run the script, once you've changed the parameter you wanted, you can simply make a sbatch or srun on the `run.sh` script. It will automatically create a folder containing the IC and the simulation. Then, the script will call the `gas_profile_analysis.py` that makes a gif of the bubble's quantities over time and log some parameters' information in a .txt file `radial_peak_position.txt`. Finally, the `bubble_evolution.py` will use the information in the .txt file to plot the evolution of the bubble alongside with some theoretical formulas.
 (Exemple: ./run.sh)
 
 # Theorethical formulas
@@ -43,13 +43,13 @@ The two other fit for the radius come from the paper "Formation of star clusters
 R = 0.88 * (L_w / rho_0)^(1/5) * t(3/5)                             (4)         for energy conserving snowplow phase
 R = (3 * dot(M) * v_infty / (2 * pi * rho_0))^(1/4) * t^(1/2)       (6)         for momentum conserving snowplow phase 
 
-The shockwae could be described by 5 different regions:
+The shockwave could be described by 5 different regions:
     1. The free wind regions, were the ejecta of the winds encounter nothing goes freely at the speed of the winds
     2. The "hot compressed wind" consisting of shocked stellar wind mixed with a small fraction of the swept-up ISM 
     3. The contact surface of the shockwave (the actual "shock" part of the shockwave)
     4. The hot swept-up ISm, the region preceding the shockwave
     5. The untouched ISM
 
-Be aware that the theoretical formulas for the radius and velocity evolution is the same for both region 2 and 3. Whereas the formulas for the temperature and density correspond only to the region 2. 
+Be aware that the theoretical formulas for the radius and velocity evolution is the same for both region 2 and 3. Whereas the formulas for the temperature and density correspond only to the region 2. Furthermore, the "theory_vs_simulation_detailed.png" file created is just here to give an indication on the behaviour of the evolution of the gas. Do not forget to compare this graph with the evolution depicted in the gif, to detect anomalies or bad behaviour.  
 
 

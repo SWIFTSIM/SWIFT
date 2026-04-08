@@ -19,10 +19,10 @@
 #ifndef SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 #define SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 
+#include "../GEAR/stellar_evolution.h"
+#include "../GEAR/stellar_evolution_struct.h"
 #include "chemistry.h"
 #include "hydro_properties.h"
-#include "stellar_evolution.h"
-#include "stellar_evolution_struct.h"
 
 /**
  * @brief Properties of the GEAR feedback model.
@@ -44,6 +44,7 @@ struct feedback_props {
   /*! Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
 
+  /* TODO: Update this and add a with_stellar_radiation flag */  
   /*! Do we want the ionization effect (Strömgren sphere)? */
   int do_photoionization;
 
@@ -52,6 +53,9 @@ struct feedback_props {
 
   /*! Pre-supernova feedback energy effectively deposited */
   float preSN_efficiency;
+
+  /*! Do stellar wind feedback? */
+  char with_stellar_wind_feedback;
 };
 
 /**
@@ -84,6 +88,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   /* Print the feedback properties */
   message("Supernovae efficiency = %.2g",
           feedback_props->supernovae_efficiency);
+  message("Stellar wind feedback = %s",
+          feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
   message("Pre-Supernovae efficiency = %.2g", feedback_props->preSN_efficiency);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
@@ -127,9 +133,18 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
   fp->supernovae_efficiency = e_efficiency;
 
+  /* Activate the stellar wind feedback */
+  char with_stellar_wind_feedback = (char)parser_get_param_int(
+      params, "GEARFeedback:with_stellar_wind_feedback");
+  fp->with_stellar_wind_feedback = with_stellar_wind_feedback;
+
   /* Pre-Supernovae energy efficiency */
-  double w_efficiency =
-      parser_get_param_double(params, "GEARFeedback:pre_supernovae_efficiency");
+  double w_efficiency = 0.0;
+  if (with_stellar_wind_feedback) {
+    w_efficiency = parser_get_param_double(
+        params, "GEARFeedback:pre_supernovae_efficiency");
+  }
+
   fp->preSN_efficiency = w_efficiency;
 
   /* filename of the chemistry tables. */
@@ -138,7 +153,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* Initialize the stellar models. */
   stellar_evolution_props_init(&fp->stellar_model, phys_const, us, params,
-                               cosmo);
+                               cosmo, fp->with_stellar_wind_feedback);
 
   /* Read the metallicity threashold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
@@ -156,7 +171,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->metallicity_max_first_stars = -1;
   else
     fp->metallicity_max_first_stars =
-        pow(10, fp->imf_transition_metallicity) * XFe;
+        exp10(fp->imf_transition_metallicity) * XFe;
 
   /* Now initialize the first stars. */
   if (fp->metallicity_max_first_stars == -1) {
@@ -173,7 +188,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     parser_get_param_string(params, "GEARFeedback:yields_table_first_stars",
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
-                                 params, cosmo);
+                                 params, cosmo, fp->with_stellar_wind_feedback);
   }
 
   /* Radiation fields */

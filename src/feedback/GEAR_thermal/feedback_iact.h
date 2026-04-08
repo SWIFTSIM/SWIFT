@@ -21,6 +21,8 @@
 
 /* Local includes */
 #include "feedback.h"
+#include "hydro.h"
+#include "random.h"
 #include "radiation_iact.h"
 #include "timestep_sync_part.h"
 
@@ -122,9 +124,15 @@ runner_iact_nonsym_feedback_apply(
 
   const double weight = mj * wi * si_inv_weight;
   double m_ej = 0.0;
-  double new_mass = 0.0;
+  double new_mass = mj;
   double dm_SW = 0.0;
   double dm_SN = 0.0;
+
+  /*****************************************/
+  /* Radiation */
+  radiation_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                       hydro_props, fb_props, phys_const, us,
+                                       cooling, ti_current, time_base);
 
   /* Distribute pre-SN */
   if (e_preSN != 0.0 && weight > 0.0) {
@@ -138,7 +146,7 @@ runner_iact_nonsym_feedback_apply(
        case the mass of the gas is not impacted by the mass ejected by SNe.) */
     m_ej = si->feedback_data.preSN.mass_ejected;
     dm_SW = m_ej * weight;
-    new_mass = mj + dm_SW;
+    new_mass += dm_SW;
 
     /* If the distance is null, no need to use calculation ressources. */
     if (r2 > 0.0 && new_mass > 0.0) {
@@ -165,35 +173,36 @@ runner_iact_nonsym_feedback_apply(
       /* --------------- Compute physical momentum received ---------------- */
       /* Total momentum ejected by the winds during the timestep from the star
        * particle i */
-      const double p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected *
-                               si->feedback_data.preSN.energy_ejected);
+      const float p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected *
+                              si->feedback_data.preSN.energy_ejected);
 
       /* norm of physical velocities of the gas particle j */
       const float norm2_v_p =
           v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
 
-      double dp_lab_frame[3];
+      double delta_p_lab_frame[3];
 
       for (int i = 0; i < 3; i++) {
         /* the unit direction from the gas particle j to the star particle i */
-        const double unit_direction = dx_p[i] / r_p;
+        const float unit_direction = dx_p[i] / r_p;
         /* the additional momentum due to change of frame of reference (from
          * star particle frame to lab frame) */
-        const double change_of_frame_dp =
+        const float change_of_frame_delta_p =
             si->feedback_data.preSN.mass_ejected * v_i_p[i];
         /* momentum in lab frame due to the ejecta */
-        dp_lab_frame[i] = weight * (p_ej + change_of_frame_dp) * unit_direction;
+        delta_p_lab_frame[i] =
+            weight * (p_ej + change_of_frame_delta_p) * unit_direction;
 
-        /* Give the comoving momentum to the gas particle */
-        xpj->feedback_data.delta_p[i] -=
-            dp_lab_frame[i] *
-            a; /* The minus sign comes from the direction of dx (si - pj) */
+        /* Give the comoving momentum to the gas particle.
+         * The minus sign comes from the direction of dx (si - pj) */
+        xpj->feedback_data.delta_p[i] -= delta_p_lab_frame[i] * a;
       }
 
-      const double norm2_dp_lab_frame = dp_lab_frame[0] * dp_lab_frame[0] +
-                                        dp_lab_frame[1] * dp_lab_frame[1] +
-                                        dp_lab_frame[2] * dp_lab_frame[2];
-      const double norm2_dp = weight * weight * p_ej * p_ej;
+      const double norm2_delta_p_lab_frame =
+          delta_p_lab_frame[0] * delta_p_lab_frame[0] +
+          delta_p_lab_frame[1] * delta_p_lab_frame[1] +
+          delta_p_lab_frame[2] * delta_p_lab_frame[2];
+      const double norm2_delta_p = weight * weight * p_ej * p_ej;
 
       /* ----- Calculate physical Energy and internal Energy received ------ */
 
@@ -203,7 +212,7 @@ runner_iact_nonsym_feedback_apply(
       /* The additional energy received by the gas particle j due to the
        * momentum of the star particle i */
       const double dE_change_of_frame =
-          0.5 * (norm2_dp_lab_frame - norm2_dp) /
+          0.5 * (norm2_delta_p_lab_frame - norm2_delta_p) /
           (weight * si->feedback_data.preSN.mass_ejected);
       /* The total energy received from the gas particle j in the laboratory
        * frame of reference */
@@ -211,15 +220,15 @@ runner_iact_nonsym_feedback_apply(
 
       /* The momentum of the gas particle j after receiving the momentum from
        * stellar wind */
-      const double p_new[3] = {pj->mass * v_j_p[0] + dp_lab_frame[0],
-                               pj->mass * v_j_p[1] + dp_lab_frame[1],
-                               pj->mass * v_j_p[2] + dp_lab_frame[2]};
+      const double p_new[3] = {mj * v_j_p[0] + delta_p_lab_frame[0],
+                               mj * v_j_p[1] + delta_p_lab_frame[1],
+                               mj * v_j_p[2] + delta_p_lab_frame[2]};
       const double norm2_p_new = {p_new[0] * p_new[0] + p_new[1] * p_new[1] +
                                   p_new[2] * p_new[2]};
 
       /* The new and old kinetic energy of the gas particle j */
       const double new_kinetic_energy = 0.5 * norm2_p_new / new_mass;
-      const double old_kinetic_energy = 0.5 * pj->mass * norm2_v_p;
+      const float old_kinetic_energy = 0.5 * mj * norm2_v_p;
 
       /* The additional specific internal energy of the gas particle j.
         Ekin_new + U_new = Ekin_old + U_old + dEtot
@@ -235,29 +244,29 @@ runner_iact_nonsym_feedback_apply(
         /* Calculate the velocity without Hubble flow for signal velocity */
         const float v_i_without_Hubble_flow[3] = {
             si->v[0] * a_inv, si->v[1] * a_inv, si->v[2] * a_inv};
-        double dp_without_Hubble[3];
+        float delta_p_without_Hubble[3];
         for (int i = 0; i < 3; i++) {
           /* the unit direction from the gas particle j to the star particle i
            */
-          const double unit_direction = dx_p[i] / r_p;
+          const float unit_direction = dx_p[i] / r_p;
           /* the additional momentum due to change of frame of reference (from
            * star particle frame to lab frame) */
-          const double change_of_frame_without_Hubble =
+          const float change_of_frame_without_Hubble =
               si->feedback_data.preSN.mass_ejected * v_i_without_Hubble_flow[i];
           /* momentum in lab frame due to the ejecta */
-          dp_without_Hubble[i] =
+          delta_p_without_Hubble[i] =
               weight * (p_ej + change_of_frame_without_Hubble) * unit_direction;
         }
         /* The norm of the momentum without the Hubble flow participation */
-        const double norm2_dp_without_Hubble = {
-            dp_without_Hubble[0] * dp_without_Hubble[0] +
-            dp_without_Hubble[1] * dp_without_Hubble[1] +
-            dp_without_Hubble[2] * dp_without_Hubble[2]};
+        const float norm2_delta_p_without_Hubble = {
+            delta_p_without_Hubble[0] * delta_p_without_Hubble[0] +
+            delta_p_without_Hubble[1] * delta_p_without_Hubble[1] +
+            delta_p_without_Hubble[2] * delta_p_without_Hubble[2]};
 
         /* Update the signal velocity of the gas particle receiving a kick.
            We want to subtract the Hubble flow participation in the signal
            velocity.*/
-        const float dv_phys = sqrtf(norm2_dp_without_Hubble) / new_mass;
+        const float dv_phys = sqrtf(norm2_delta_p_without_Hubble) / new_mass;
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
       }
 
@@ -274,7 +283,6 @@ runner_iact_nonsym_feedback_apply(
      * and SN) */
     m_ej = si->feedback_data.mass_ejected;
     dm_SN = m_ej * weight;
-    const double dm = dm_SW + dm_SN;
 
     /* But we are considering that the stellar wind occurs before the SN, so the
        total new mass to take into account is the combination of both. It is
@@ -289,7 +297,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* Compute momentum received. */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dm * (si->v[i] - xpj->v_full[i]);
+      xpj->feedback_data.delta_p[i] += dm_SN * (si->v[i] - xpj->v_full[i]);
     }
 
     /* Add the metals */
@@ -302,18 +310,10 @@ runner_iact_nonsym_feedback_apply(
     xpj->feedback_data.hit_by_SN = 1;
   }
 
-  /*****************************************/
-  /* Distribute pre-SN */
   if (xpj->feedback_data.hit_by_preSN || xpj->feedback_data.hit_by_SN) {
     /* Update the mass of the gas particle */
     xpj->feedback_data.delta_mass += dm_SW + dm_SN;
   }
-
-  /*****************************************/
-  /* Radiation */
-  radiation_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
-                                       hydro_props, fb_props, phys_const, us,
-                                       cooling, ti_current, time_base);  
 
   /* Impose maximal viscosity (only for SN) */
   if (xpj->feedback_data.hit_by_SN) {

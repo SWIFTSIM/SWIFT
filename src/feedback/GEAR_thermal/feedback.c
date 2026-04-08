@@ -48,8 +48,7 @@
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
-  /* WARNING: Do not comment out this line, because it will mess-up with
-     SF/sinks. (I think it injects something that it should not...) */
+  /* TODO: Add hit by radiation */
   /* Did the particle receive a supernovae */
   if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_preSN) return;
 
@@ -61,13 +60,13 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     cooling_set_part_time_cooling_off(p, xp, e->time);
   }
 
-  if (xp->feedback_data.delta_mass < 0.) {
-    error("Delta mass smaller than 0");
-  }
-
   /* Update mass */
   const float old_mass = hydro_get_mass(p);
   const float new_mass = old_mass + xp->feedback_data.delta_mass;
+
+  if (xp->feedback_data.delta_mass < 0.) {
+    error("Delta mass smaller than 0");
+  }
 
   hydro_set_mass(p, new_mass);
 

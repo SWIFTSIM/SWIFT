@@ -5,7 +5,7 @@ n_threads=${n_threads:=8}  # Number of threads to use
 star_type=( 0 ) # Number corrresponding to stellar type : 0=single, 1=continuous_IMF, 2=entire_IMF
 star_type_name=( single ) # The name the repository will take for the stellar type
 coeff=( 1 ) # The coefficient of pre-supernovae feedback
-star_mass=${star_mass:=16} # In solar mass
+star_mass=${star_mass:=50} # In solar mass
 Z=${Z:=2e-3} # Metallicity (not in solar metallicity)
 
 ################## makeIC constant parameters ##################
