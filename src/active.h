@@ -27,7 +27,147 @@
 #include "engine.h"
 #include "feedback_new_stars.h"
 #include "part.h"
+#include "task.h"
 #include "timeline.h"
+
+#ifdef SWIFT_DEBUG_CHECKS
+__attribute__((always_inline)) INLINE static void
+cell_active_gravity_debug_error(const struct cell *c, const struct engine *e) {
+
+#ifdef WITH_MPI
+  int proxy_in = 0, proxy_out = 0;
+  int proxy_in_grav = 0, proxy_out_grav = 0;
+  int top_proxy_in = 0, top_proxy_out = 0;
+  int top_proxy_in_grav = 0, top_proxy_out_grav = 0;
+  int first_proxy_in_node = -1, first_proxy_in_type = 0;
+  int first_proxy_out_node = -1, first_proxy_out_type = 0;
+#endif
+  int task_ref = 0, task_ref_active = 0;
+  int pair_ref = 0, pair_ref_active = 0;
+  int mm_ref = 0, mm_ref_active = 0;
+  int tend_ref = 0, tend_ref_active = 0;
+  int top_pair_ref = 0, top_mm_ref = 0;
+  int void_mm_ref = 0;
+  int first_task_type = task_type_none;
+  int first_task_subtype = task_subtype_none;
+  int first_task_skip = -1;
+  long long first_task_flags = -1;
+
+#ifdef WITH_MPI
+  for (int pid = 0; pid < e->nr_proxies; pid++) {
+    const struct proxy *p = &e->proxies[pid];
+    for (int k = 0; k < p->nr_cells_in; k++) {
+      if (p->cells_in[k] == c) {
+        proxy_in += 1;
+        if (p->cells_in_type[k] & proxy_cell_type_gravity) proxy_in_grav += 1;
+        if (first_proxy_in_node < 0) {
+          first_proxy_in_node = p->nodeID;
+          first_proxy_in_type = p->cells_in_type[k];
+        }
+      }
+      if (c->top != NULL && p->cells_in[k] == c->top) {
+        top_proxy_in += 1;
+        if (p->cells_in_type[k] & proxy_cell_type_gravity)
+          top_proxy_in_grav += 1;
+      }
+    }
+    for (int k = 0; k < p->nr_cells_out; k++) {
+      if (p->cells_out[k] == c) {
+        proxy_out += 1;
+        if (p->cells_out_type[k] & proxy_cell_type_gravity) proxy_out_grav += 1;
+        if (first_proxy_out_node < 0) {
+          first_proxy_out_node = p->nodeID;
+          first_proxy_out_type = p->cells_out_type[k];
+        }
+      }
+      if (c->top != NULL && p->cells_out[k] == c->top) {
+        top_proxy_out += 1;
+        if (p->cells_out_type[k] & proxy_cell_type_gravity)
+          top_proxy_out_grav += 1;
+      }
+    }
+  }
+#endif
+
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    const struct task *t = &e->sched.tasks[i];
+    const int touches_c = (t->ci == c || t->cj == c);
+    const int touches_top =
+        (c->top != NULL && (t->ci == c->top || t->cj == c->top));
+    const int touches_void_parent =
+        (c->void_parent != NULL &&
+         (t->ci == c->void_parent || t->cj == c->void_parent));
+
+    if (touches_c) {
+      task_ref += 1;
+      if (!t->skip) task_ref_active += 1;
+      if (first_task_skip < 0) {
+        first_task_type = t->type;
+        first_task_subtype = t->subtype;
+        first_task_skip = t->skip;
+        first_task_flags = t->flags;
+      }
+      if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
+        pair_ref += 1;
+        if (!t->skip) pair_ref_active += 1;
+      } else if (t->type == task_type_grav_mm) {
+        mm_ref += 1;
+        if (!t->skip) mm_ref_active += 1;
+      } else if ((t->type == task_type_send || t->type == task_type_recv) &&
+                 t->subtype == task_subtype_tend) {
+        tend_ref += 1;
+        if (!t->skip) tend_ref_active += 1;
+      }
+    }
+
+    if (touches_top) {
+      if (t->type == task_type_pair && t->subtype == task_subtype_grav)
+        top_pair_ref += 1;
+      else if (t->type == task_type_grav_mm)
+        top_mm_ref += 1;
+    }
+
+    if (touches_void_parent && t->type == task_type_grav_mm) void_mm_ref += 1;
+  }
+
+  error(
+      "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
+      "e->ti_current=%lld (t=%e, a=%e) cell: %s/%s depth=%d nodeID=%d "
+#ifdef WITH_MPI
+      "recv=%p send=%p tag=%d proxy_in=%d/%d proxy_out=%d/%d "
+      "top_proxy_in=%d/%d "
+      "top_proxy_out=%d/%d first_in=(node=%d,type=%d) "
+      "first_out=(node=%d,type=%d) "
+#endif
+      "top=%p super=%p grav.super=%p void_parent=%p contains_zoom=%d "
+      "below_diff=%d "
+      "task_ref=%d/%d pair_ref=%d/%d mm_ref=%d/%d tend_ref=%d/%d top_pair=%d "
+      "top_mm=%d "
+      "void_parent_mm=%d first_task=%s/%s skip=%d flags=%lld timestep=%p "
+      "collect=%p "
+      "grav.drift=%p grav.grav=%p grav.mm=%p grav.init=%p grav.long_range=%p "
+      "grav.down=%p "
+      "grav.count=%d ti_old_part=%lld ti_old_multipole=%lld m_pole=%g",
+      c->grav.ti_end_min, c->grav.ti_end_min * e->time_base, e->ti_current,
+      e->ti_current * e->time_base, e->cosmology->a, cellID_names[c->type],
+      subcellID_names[c->subtype], c->depth, c->nodeID,
+#ifdef WITH_MPI
+      c->mpi.recv, c->mpi.send, c->mpi.tag, proxy_in, proxy_in_grav, proxy_out,
+      proxy_out_grav, top_proxy_in, top_proxy_in_grav, top_proxy_out,
+      top_proxy_out_grav, first_proxy_in_node, first_proxy_in_type,
+      first_proxy_out_node, first_proxy_out_type,
+#endif
+      c->top, c->super, c->grav.super, c->void_parent, c->contains_zoom_cells,
+      c->grav.tasks_below_diff_grav_depth, task_ref, task_ref_active, pair_ref,
+      pair_ref_active, mm_ref, mm_ref_active, tend_ref, tend_ref_active,
+      top_pair_ref, top_mm_ref, void_mm_ref, taskID_names[first_task_type],
+      subtaskID_names[first_task_subtype], first_task_skip, first_task_flags,
+      c->timestep, c->timestep_collect, c->grav.drift, c->grav.grav, c->grav.mm,
+      c->grav.init, c->grav.long_range, c->grav.down, c->grav.count,
+      c->grav.ti_old_part, c->grav.ti_old_multipole,
+      c->grav.multipole != NULL ? c->grav.multipole->m_pole.M_000 : -1.);
+}
+#endif
 
 /**
  * @brief Check that the #part in a #cell have been drifted to the current time.
@@ -227,24 +367,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->grav.ti_end_min < e->ti_current) {
-    error(
-        "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
-        "e->ti_current=%lld (t=%e, a=%e) cell: %s/%s depth=%d nodeID=%d "
-#ifdef WITH_MPI
-        "recv=%p send=%p tag=%d "
-#endif
-        "top=%p super=%p void_parent=%p contains_zoom=%d below_diff=%d "
-        "grav.count=%d ti_old_part=%lld ti_old_multipole=%lld m_pole=%g",
-        c->grav.ti_end_min, c->grav.ti_end_min * e->time_base, e->ti_current,
-        e->ti_current * e->time_base, e->cosmology->a, cellID_names[c->type],
-        subcellID_names[c->subtype], c->depth, c->nodeID,
-#ifdef WITH_MPI
-        c->mpi.recv, c->mpi.send, c->mpi.tag,
-#endif
-        c->top, c->grav.super, c->void_parent, c->contains_zoom_cells,
-        c->grav.tasks_below_diff_grav_depth, c->grav.count, c->grav.ti_old_part,
-        c->grav.ti_old_multipole,
-        c->grav.multipole != NULL ? c->grav.multipole->m_pole.M_000 : -1.);
+    cell_active_gravity_debug_error(c, e);
   }
 #endif
 
