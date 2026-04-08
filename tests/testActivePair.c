@@ -129,11 +129,11 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.energy = 1.f;
 #elif defined(PLANETARY_SPH)
-        set_idg_def(&eos.idg_def, 0);
+        set_idg_def(&eos.all_idg[0], 0);
         part->mat_id = 0;
         part->u = 1.f;
 #elif defined(REMIX_SPH)
-        set_idg_def(&eos.idg_def, 0);
+        set_idg_def(&eos.all_idg[0], 0);
         part->mat_id = 0;
         part->u = 1.f;
         part->rho_evol = 1.f;

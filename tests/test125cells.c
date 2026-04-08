@@ -116,7 +116,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
     defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH) || defined(REMIX_SPH)
-  set_idg_def(&eos.idg_def, 0);
+  set_idg_def(&eos.all_idg[0], 0);
   part->mat_id = 0;
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
