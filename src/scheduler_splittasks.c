@@ -414,6 +414,16 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                                            /*periodic boundaries*/ sp->periodic,
                                            /*use_mesh*/ sp->periodic)) {
 
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+                    if ((cpi->nodeID == engine_rank &&
+                         cpj->nodeID != engine_rank) ||
+                        (cpi->nodeID != engine_rank &&
+                         cpj->nodeID == engine_rank)) {
+                      engine_check_proxy_exists(e, cpi->top, cpj->top,
+                                                e->nodeID);
+                    }
+#endif
+
                     /* Flag this pair as being treated by the M-M task.
                      * We use the 64 bits in the task->flags field to store
                      * this information. The corresponding task will unpack
@@ -584,6 +594,13 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                /*is_tree_walk=*/1,
                                /*periodic boundaries*/ sp->periodic,
                                /*use_mesh*/ sp->periodic)) {
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+        if ((cpi->nodeID == engine_rank && cpj->nodeID != engine_rank) ||
+            (cpi->nodeID != engine_rank && cpj->nodeID == engine_rank)) {
+          engine_check_proxy_exists(e, cpi->top, cpj->top, e->nodeID);
+        }
+#endif
 
         /* Flag that we've reused the original task. */
         reused = 1;
