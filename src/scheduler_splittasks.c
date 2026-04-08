@@ -588,8 +588,16 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         continue;
       }
 
+      /* Debugging aid: do not allow a grav_mm task to jump directly across
+       * the void->zoom boundary. Force recursion down to an explicit pair
+       * task instead. */
+      const int crosses_void_zoom_boundary =
+          ((cpi->subtype == cell_subtype_void && cpj->type == cell_type_zoom) ||
+           (cpj->subtype == cell_subtype_void && cpi->type == cell_type_zoom));
+
       /* Can we use a M-M interaction here? */
-      if (cell_can_use_pair_mm(cpi, cpj, e, sp,
+      if (!crosses_void_zoom_boundary &&
+          cell_can_use_pair_mm(cpi, cpj, e, sp,
                                /*use_rebuild_data=*/1,
                                /*is_tree_walk=*/1,
                                /*periodic boundaries*/ sp->periodic,
