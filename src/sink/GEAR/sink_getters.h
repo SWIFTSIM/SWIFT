@@ -196,11 +196,24 @@ __attribute__((always_inline)) INLINE static float sink_get_softening(
 /**
  * @brief Return the current instantaneous accretion rate of the sink.
  *
- * @param bp the #sink.
+ * @param sink the #sink.
  */
-__attribute__((always_inline)) INLINE static double sink_get_accretion_rate(
+__attribute__((always_inline)) INLINE static float sink_get_accretion_rate(
     const struct sink *sink) {
   return sink->accretion_rate;
+}
+
+/**
+ * @brief Return the star formation rate of a particle.
+ *
+ * @param sink the #sink.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_SFR(
+    const struct sink *sink) {
+  if (sink->SFR <= 0.0)
+    return 0.0;
+  else
+    return sink->SFR;
 }
 
 #endif /* SWIFT_GEAR_SINK_GETTERS_H */
