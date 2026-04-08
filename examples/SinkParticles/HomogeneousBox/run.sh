@@ -9,7 +9,13 @@ level=${level:=5}  # Number of particles = 2^(3*level)
 jeans_length=${jeans_length:=0.250} # Jeans wavelength in unit of the boxsize
 debug=${debug:=0}
 run_name=${run_name:=""}
+with_star_formation=${with_star_formation=0}
 
+# Remove the ICs
+if [ -e ICs_homogeneous_box.hdf5 ]
+then
+    rm ICs_homogeneous_box.hdf5
+fi
 
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
@@ -54,10 +60,16 @@ else
   swift="../../../swift"
 fi
 
+if [[ "$with_star_formation" -eq 0 ]]; then
+    runtime_params="--sinks"
+else
+    runtime_params="--star-formation"
+fi
+
 if [[ -z "$debug" || "$debug" -eq 0 ]]; then
     
     printf "Running simulation..."
-    $swift --hydro --sinks --stars --self-gravity --feedback \
+    $swift --hydro $runtime_params --stars --self-gravity --feedback \
 		   --cooling --sync --limiter --threads=$n_threads \
 		   params.yml 2>&1 | tee output.log
 

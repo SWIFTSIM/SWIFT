@@ -42,8 +42,6 @@
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
-  /* WARNING: Do not comment out this line, because it will mess-up with
-     SF/sinks. (I think it injects something that it should not...) */
   /* Did the particle receive a supernovae */
   if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_preSN) return;
 

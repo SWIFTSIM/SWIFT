@@ -149,7 +149,7 @@ GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
 endif
 
 if HAVEGEARFEEDBACK
-GEAR_FEEDBACK_SOURCES += feedback/GEAR/feedback.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR_thermal/feedback.c
 endif
 
 if HAVEGEARMECHANICALFEEDBACK
@@ -486,18 +486,18 @@ nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback_debug.h
 nobase_noinst_HEADERS += feedback/EAGLE/yield_tables.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h
 nobase_noinst_HEADERS += feedback/EAGLE/enrichment.h
 nobase_noinst_HEADERS += feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h feedback/GEAR/feedback_common.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
-nobase_noinst_HEADERS += feedback/GEAR/stellar_wind.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback_debug.h
+nobase_noinst_HEADERS += feedback/GEAR/feedback_common.h feedback/GEAR/stellar_wind.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback.h feedback/GEAR_thermal/feedback_iact.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_properties.h feedback/GEAR_thermal/feedback_struct.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_debug.h
 nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback.h feedback/GEAR_mechanical/feedback_iact.h
 nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback_properties.h feedback/GEAR_mechanical/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback_debug.h feedback/GEAR_mechanical/mechanical_feedback_iact.h
-nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h 
-nobase_noinst_HEADERS += black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h 
-nobase_noinst_HEADERS += black_holes/Default/black_holes_properties.h 
+nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h
+nobase_noinst_HEADERS += black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h
+nobase_noinst_HEADERS += black_holes/Default/black_holes_properties.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes_struct.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes_debug.h
 nobase_noinst_HEADERS += black_holes/EAGLE/black_holes.h black_holes/EAGLE/black_holes_io.h
