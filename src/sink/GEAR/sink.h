@@ -182,6 +182,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
   sp->accretion_rate = 0.f;
+  sp->SFR = 0.f;
   sp->n_stars = 0;
 
   sp->has_IMF_changed_from_popIII_to_popII = 0;
@@ -278,6 +279,8 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   sp->to_collect.mass_eligible_swallow = 0.0;
   sp->to_collect.mass_swallowed = sp->mass;
   sp->accretion_rate = 0.f;
+  /* Do not reset the SFR! It stores the last timestep the sink was
+     star-forming */
   sp->num_ngbs = 0;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
@@ -603,6 +606,9 @@ INLINE static void sink_copy_properties(
   sink->swallowed_angular_momentum[2] = 0.f;
   sink->n_stars = 0;
   sink->has_IMF_changed_from_popIII_to_popII = 0;
+
+  /* The sink has just been converted. Hence it is not star-forming */
+  sink->SFR = 0.0;
 
   /* setup the target mass for sink star formation */
   sink_update_target_mass(sink, sink_props, e, 0);
@@ -1081,17 +1087,52 @@ INLINE static void sink_update_sink_properties_during_star_formation(
 /**
  * @brief Update the #sink particle properties after star formation.
  *
- * In GEAR, this is unused.
+ * In GEAR, we compute the sink SFR after we finished creating stars.
  *
  * @param sink The #sink particle.
- * @param e The #engine
+ * @param with_cosmology if we run with cosmology.
+ * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  * @param phys_const The physical constants in internal units.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 INLINE static void sink_update_sink_properties_after_star_formation(
-    struct sink *sink, const struct engine *e,
-    const struct sink_props *sink_props, const struct phys_const *phys_const) {}
+    struct sink *sink, const int with_cosmology, const struct cosmology *cosmo,
+    const struct sink_props *sink_props, const struct phys_const *phys_const,
+    const integertime_t ti_current, const double time, const double time_base) {
 
+  /* At this stage in the code (See runner_others.c:
+     runner_do_star_formation_sink), sink->mass is what remains after spawning
+     stars. */
+  const float mass_stars = sink->mass_tot_before_star_spawning - sink->mass;
+
+  if (mass_stars > 0.0) {
+    /* Compute the instantaneous star formation rate */
+    double delta_t = 0.0;
+    if (with_cosmology) {
+      const integertime_t ti_step = get_integer_timestep(sink->time_bin);
+      const integertime_t ti_begin =
+          get_integer_time_begin(ti_current - 1, sink->time_bin);
+      delta_t = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+    } else {
+      delta_t = get_timestep(sink->time_bin, time_base);
+    }
+
+    sink->SFR = (delta_t == 0.0) ? 0.0 : mass_stars / delta_t;
+
+    /* Check if it is the first time steps after star formation. */
+  } else if (sink->SFR > 0.0) {
+    /* Record the current time as an indicator of when this particle was last
+       star-forming. */
+    if (with_cosmology) {
+      sink->SFR = cosmo->a;
+    } else {
+      sink->SFR = -time;
+    }
+  }
+}
 /**
  * @brief Store the gravitational potential of a particle by copying it from
  * its #gpart friend.

@@ -147,6 +147,9 @@ struct sink {
   /*! Instantaneous accretion rate */
   float accretion_rate;
 
+  /*! Instantaneous SFR */
+  float SFR;
+
   /*! Total number of sink merger events (including sink swallowed
    * by merged-in sinks) */
   int number_of_sink_swallows;
@@ -165,7 +168,7 @@ struct sink {
 
   /*! Flag to determine if a sink has already changed its IMF from pop III to
      pop II. */
-  int has_IMF_changed_from_popIII_to_popII;
+  char has_IMF_changed_from_popIII_to_popII;
 
   /*! Chemistry information (e.g. metal content at birth, swallowed metal
    * content, etc.) */
