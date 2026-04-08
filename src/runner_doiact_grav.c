@@ -36,7 +36,8 @@
 #ifdef SWIFT_DEBUG_CHECKS
 static INLINE int runner_cell_is_active_gravity_debug(
     const struct cell *c, const struct engine *e, const char *context,
-    const struct cell *other) {
+    const struct cell *other, const struct cell *root_ci,
+    const struct cell *root_cj) {
 
 #ifdef WITH_MPI
   int proxy_in = 0, proxy_out = 0;
@@ -91,7 +92,8 @@ static INLINE int runner_cell_is_active_gravity_debug(
         "proxy_in=%d proxy_out=%d "
 #endif
         "other=%p other_type=%s/%s other_depth=%d other_node=%d other_top=%p "
-        "other_void_parent=%p",
+        "other_void_parent=%p root_ci=%p root_ci_type=%s/%s root_ci_node=%d "
+        "root_cj=%p root_cj_type=%s/%s root_cj_node=%d",
         context, cellID_names[c->type], subcellID_names[c->subtype], c->depth,
         c->nodeID, c->top, c->void_parent, recv, send, tag, c->grav.count,
         c->grav.ti_end_min, c->grav.ti_old_part, c->grav.ti_old_multipole,
@@ -104,13 +106,20 @@ static INLINE int runner_cell_is_active_gravity_debug(
         other != NULL ? subcellID_names[other->subtype] : "none",
         other != NULL ? other->depth : -1, other != NULL ? other->nodeID : -1,
         other != NULL ? other->top : NULL,
-        other != NULL ? other->void_parent : NULL);
+        other != NULL ? other->void_parent : NULL, root_ci,
+        root_ci != NULL ? cellID_names[root_ci->type] : "none",
+        root_ci != NULL ? subcellID_names[root_ci->subtype] : "none",
+        root_ci != NULL ? root_ci->nodeID : -1, root_cj,
+        root_cj != NULL ? cellID_names[root_cj->type] : "none",
+        root_cj != NULL ? subcellID_names[root_cj->subtype] : "none",
+        root_cj != NULL ? root_cj->nodeID : -1);
   }
 
   return cell_is_active_gravity(c, e);
 }
 #else
-#define runner_cell_is_active_gravity_debug(c, e, context, other) \
+#define runner_cell_is_active_gravity_debug(c, e, context, other, root_ci, \
+                                            root_cj)                       \
   cell_is_active_gravity((c), (e))
 #endif
 
@@ -123,14 +132,20 @@ static INLINE int runner_cell_is_active_gravity_debug(
  * @brief e The #engine (to check whether active or not).
  */
 static INLINE void runner_clear_grav_flags(struct cell *c,
-                                           const struct engine *e) {
+                                           const struct engine *e,
+                                           const char *context,
+                                           const struct cell *other,
+                                           const struct cell *root_ci,
+                                           const struct cell *root_cj) {
 
-  if ((!runner_cell_is_active_gravity_debug(c, e, "runner_clear_grav_flags",
-                                            NULL) ||
+  if ((!runner_cell_is_active_gravity_debug(c, e, context, other, root_ci,
+                                            root_cj) ||
        c->nodeID != e->nodeID) &&
       cell_is_split_or_void(c)) {
     for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL) runner_clear_grav_flags(c->progeny[k], e);
+      if (c->progeny[k] != NULL)
+        runner_clear_grav_flags(c->progeny[k], e, context, other, root_ci,
+                                root_cj);
   }
 
   /* Remove the unskip flags. */
@@ -174,7 +189,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
       /* Do we have a progenitor with any active g-particles ? */
       if (cp != NULL && runner_cell_is_active_gravity_debug(
-                            cp, e, "runner_do_grav_down", c)) {
+                            cp, e, "runner_do_grav_down", c, c, NULL)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cp->grav.ti_old_multipole != e->ti_current)
@@ -1524,10 +1539,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Record activity status */
   const int ci_active = runner_cell_is_active_gravity_debug(
-                            ci, e, "runner_dopair_grav_pp(ci)", cj) &&
+                            ci, e, "runner_dopair_grav_pp(ci)", cj, ci, cj) &&
                         (ci->nodeID == e->nodeID);
   const int cj_active = runner_cell_is_active_gravity_debug(
-                            cj, e, "runner_dopair_grav_pp(cj)", ci) &&
+                            cj, e, "runner_dopair_grav_pp(cj)", ci, ci, cj) &&
                         (cj->nodeID == e->nodeID);
 
   /* Anything to do here? */
@@ -1770,9 +1785,10 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
                         (float)e->mesh->dim[2]};
 
   /* Record activity status */
-  const int ci_active = runner_cell_is_active_gravity_debug(
-                            ci, e, "runner_dopair_grav_pp_no_cache", cj) &&
-                        (ci->nodeID == e->nodeID);
+  const int ci_active =
+      runner_cell_is_active_gravity_debug(
+          ci, e, "runner_dopair_grav_pp_no_cache", cj, ci, cj) &&
+      (ci->nodeID == e->nodeID);
 
   /* Anything to do here? */
   if (!ci_active) return;
@@ -2126,7 +2142,8 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 #endif
 
   /* Anything to do here? */
-  if (!runner_cell_is_active_gravity_debug(c, e, "runner_doself_grav_pp", NULL))
+  if (!runner_cell_is_active_gravity_debug(c, e, "runner_doself_grav_pp", NULL,
+                                           c, NULL))
     return;
 
   /* Check that we are not doing something stupid */
@@ -2208,8 +2225,8 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   const struct engine *e = r->e;
 
   /* Clear the flags */
-  runner_clear_grav_flags(ci, e);
-  runner_clear_grav_flags(cj, e);
+  runner_clear_grav_flags(ci, e, "runner_dopair_grav_mm clear(ci)", cj, ci, cj);
+  runner_clear_grav_flags(cj, e, "runner_dopair_grav_mm clear(cj)", ci, ci, cj);
 
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
@@ -2236,7 +2253,8 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
   const struct engine *e = r->e;
 
   /* Clear the flags */
-  runner_clear_grav_flags(ci, e);
+  runner_clear_grav_flags(ci, e, "runner_dopair_recursive_grav_pm clear", cj,
+                          ci, cj);
 
   /* Some constants */
   const int periodic = e->mesh->periodic;
@@ -2246,7 +2264,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 
   /* Anything to do here? */
   if (!(runner_cell_is_active_gravity_debug(
-            ci, e, "runner_dopair_recursive_grav_pm", cj) &&
+            ci, e, "runner_dopair_recursive_grav_pm", cj, ci, cj) &&
         ci->nodeID == e->nodeID))
     return;
 
@@ -2345,8 +2363,10 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   const struct engine *e = r->e;
 
   /* Clear the flags */
-  runner_clear_grav_flags(ci, e);
-  runner_clear_grav_flags(cj, e);
+  runner_clear_grav_flags(ci, e, "runner_dopair_recursive_grav clear(ci)", cj,
+                          ci, cj);
+  runner_clear_grav_flags(cj, e, "runner_dopair_recursive_grav clear(cj)", ci,
+                          ci, cj);
 
   /* Some constants */
   const int nodeID = e->nodeID;
@@ -2356,10 +2376,10 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
   /* Anything to do here? */
   if (!((runner_cell_is_active_gravity_debug(ci, e, "runner_dopair_grav_mm(ci)",
-                                             cj) &&
+                                             cj, ci, cj) &&
          ci->nodeID == nodeID) ||
         (runner_cell_is_active_gravity_debug(cj, e, "runner_dopair_grav_mm(cj)",
-                                             ci) &&
+                                             ci, ci, cj) &&
          cj->nodeID == nodeID)))
     return;
 
@@ -2376,11 +2396,11 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   if (ci == cj) error("Pair interaction between a cell and itself.");
 
   if (runner_cell_is_active_gravity_debug(
-          ci, e, "runner_dopair_grav_mm debug(ci)", cj) &&
+          ci, e, "runner_dopair_grav_mm debug(ci)", cj, ci, cj) &&
       ci->grav.ti_old_multipole != e->ti_current)
     error("ci->grav.multipole not drifted.");
   if (runner_cell_is_active_gravity_debug(
-          cj, e, "runner_dopair_grav_mm debug(cj)", ci) &&
+          cj, e, "runner_dopair_grav_mm debug(cj)", ci, ci, cj) &&
       cj->grav.ti_old_multipole != e->ti_current)
     error("cj->grav.multipole not drifted.");
 #endif
@@ -2412,23 +2432,23 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (runner_cell_is_active_gravity_debug(
-            ci, e, "runner_dopair_grav_mm periodic(ci)", cj))
+            ci, e, "runner_dopair_grav_mm periodic(ci)", cj, ci, cj))
       accumulate_add_ll(&multi_i->pot.num_interacted,
                         multi_j->m_pole.num_gpart);
     if (runner_cell_is_active_gravity_debug(
-            cj, e, "runner_dopair_grav_mm periodic(cj)", ci))
+            cj, e, "runner_dopair_grav_mm periodic(cj)", ci, ci, cj))
       accumulate_add_ll(&multi_j->pot.num_interacted,
                         multi_i->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Need to account for the interactions we missed */
-    if (runner_cell_is_active_gravity_debug(ci, e,
-                                            "runner_dopair_grav_mm pm(ci)", cj))
+    if (runner_cell_is_active_gravity_debug(
+            ci, e, "runner_dopair_grav_mm pm(ci)", cj, ci, cj))
       accumulate_add_ll(&multi_i->pot.num_interacted_pm,
                         multi_j->m_pole.num_gpart);
-    if (runner_cell_is_active_gravity_debug(cj, e,
-                                            "runner_dopair_grav_mm pm(cj)", ci))
+    if (runner_cell_is_active_gravity_debug(
+            cj, e, "runner_dopair_grav_mm pm(cj)", ci, ci, cj))
       accumulate_add_ll(&multi_j->pot.num_interacted_pm,
                         multi_i->m_pole.num_gpart);
 #endif
@@ -2534,7 +2554,8 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
   const struct engine *e = r->e;
 
   /* Clear the flags */
-  runner_clear_grav_flags(c, e);
+  runner_clear_grav_flags(c, e, "runner_doself_recursive_grav clear", NULL, c,
+                          NULL);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */
@@ -2545,7 +2566,7 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 
   /* Anything to do here? */
   if (!runner_cell_is_active_gravity_debug(c, e, "runner_doself_recursive_grav",
-                                           NULL))
+                                           NULL, c, NULL))
     return;
 
   /* If the cell is split, interact each progeny with itself, and with
