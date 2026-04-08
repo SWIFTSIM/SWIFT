@@ -948,7 +948,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_p2p, gp->num_interacted_pm);
 #endif
 
-            error(
+            message(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld, missing=%lld "
