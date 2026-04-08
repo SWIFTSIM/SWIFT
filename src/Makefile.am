@@ -149,7 +149,7 @@ GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
 endif
 
 if HAVEGEARFEEDBACK
-GEAR_FEEDBACK_SOURCES += feedback/GEAR/feedback.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR_thermal/feedback.c
 endif
 
 # source files for AGORA feedback
@@ -482,12 +482,12 @@ nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback_debug.h
 nobase_noinst_HEADERS += feedback/EAGLE/yield_tables.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h
 nobase_noinst_HEADERS += feedback/EAGLE/enrichment.h
 nobase_noinst_HEADERS += feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h feedback/GEAR/feedback_common.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
-nobase_noinst_HEADERS += feedback/GEAR/stellar_wind.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback_debug.h
+nobase_noinst_HEADERS += feedback/GEAR/feedback_common.h feedback/GEAR/stellar_wind.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback.h feedback/GEAR_thermal/feedback_iact.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_properties.h feedback/GEAR_thermal/feedback_struct.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_debug.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes_properties.h
@@ -530,7 +530,7 @@ libgrav_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
 
 # Sources and special flags for the gravity MPI library
 libgrav_mpi_la_SOURCES = runner_doiact_grav.c runner_doiact_long_range_grav.c
-libgrav_mpi_la_CFLAGS = $(AM_CFLAGS) $(GRAVITY_CFLAGS) -DWITH_MPI
+libgrav_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) $(GRAVITY_CFLAGS) -DWITH_MPI
 libgrav_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Sources and flags for regular library
