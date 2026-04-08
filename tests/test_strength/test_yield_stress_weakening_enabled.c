@@ -1,10 +1,17 @@
-#include <assert.h>
 #include <math.h>
 #define INLINE inline
 
 /* Enable yield stress weakening methods */
 #define STRENGTH_YIELD_STRESS_WEAKENING_THERMAL
 #define STRENGTH_YIELD_STRESS_WEAKENING_DENSITY
+
+/* Dummy temperature calculation */
+static float gas_temperature_from_internal_energy(const float density, const float u,
+                                     const int mat_id) {
+
+  /* Return the value of the specific internal energy */
+  return u;
+}
 
 #include "test_yield_stress_weakening.c"
 

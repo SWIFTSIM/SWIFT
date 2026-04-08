@@ -44,15 +44,16 @@
  *
  * @param Y The yield stress to be weakened.
  * @param mat_id The material ID.
- * @param temperature The temperature.
+ * @param u The specific internal energy.
  */
 __attribute__((always_inline)) INLINE static void
 yield_weakening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
-                                   const float temperature) {
+                                   const float density, const float u) {
 #ifdef STRENGTH_YIELD_STRESS_WEAKENING_THERMAL
   /* Method parameters. */
   const float xi = method_yield_weakening_thermal_xi();
   const float T_melt = material_T_melt(mat_id);
+  const float temperature = gas_temperature_from_internal_energy(density, u, mat_id);
 
   /* Apply weakening. */
   if (temperature > 0.f) {

@@ -127,11 +127,11 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * @param phase The phase ID.
  * @param density The density.
  * @param pressure The pressure.
- * @param termperature The temperature.
+ * @param u The specific internal energy.
  * @param damage The damage.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
-    const int mat_id, const int phase, const float density, const float pressure, const float termperature, const float damage) {
+    const int mat_id, const int phase, const float density, const float pressure, const float u, const float damage) {
 
   /* Return 0.f if the material is not solid. */
   if (phase != mat_phase_solid) {

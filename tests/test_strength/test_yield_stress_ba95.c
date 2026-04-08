@@ -11,12 +11,20 @@
 /* Dummy material parameters. */
 static float material_Y_0(const int mat_id) { return 200e6f; }
 
-/* Dummy no weakening. */
-static void __attribute__((unused)) yield_weakening_apply_density_to_yield_stress(
-    float *yield_stress, const int mat_id, const float density) {}
+/* Dummy weakening. */
+static int density_weakening_calls = 0;
+static int temperature_weakening_calls = 0;
+static void yield_weakening_apply_density_to_yield_stress(
+    float *yield_stress, const int mat_id, const float density)
+{
+  density_weakening_calls++;
+}
 
-static void __attribute__((unused)) yield_weakening_apply_temperature_to_yield_stress(
-    float *yield_stress, const int mat_id, const float density, const float temperature) {}
+static void yield_weakening_apply_temperature_to_yield_stress(
+    float *yield_stress, const int mat_id, const float density, const float u)
+{
+  temperature_weakening_calls++;
+}
 
 /* Dummy sym_matrix. */
 struct sym_matrix {
@@ -139,7 +147,7 @@ static void test_yield_compute_yield_stress(void)
   const int mat_id = 0;
   const float pressure = 1e5f;
   const float density = 1.f;
-  const float temperature = 300.f;
+  const float u = 1e6f;
   const float damage = 0.6f;
   const float tol = 1e-6f;
 
@@ -148,16 +156,24 @@ static void test_yield_compute_yield_stress(void)
   /* Solid should return intact yield stress regardless of damage. */
   const float Y_solid =
     yield_compute_yield_stress(mat_id, mat_phase_solid,
-                               pressure, density, temperature, damage);
+                               pressure, density, u, damage);
 
   assert(within_tol(Y_solid, Y0, tol));
+
+  /* Check weakening calls */
+  assert(density_weakening_calls == 1);
+  assert(temperature_weakening_calls == 1);
 
   /* Fluid should return zero. */
   const float Y_fluid =
     yield_compute_yield_stress(mat_id, mat_phase_fluid,
-                               pressure, density, temperature, damage);
+                               pressure, density, u, damage);
 
   assert(within_tol(Y_fluid, 0.f, tol));
+
+  /* Check weakening calls */
+  assert(density_weakening_calls == 1);
+  assert(temperature_weakening_calls == 1);
 }
 
 /* Test yield_apply_yield_stress_to_sym_matrix:

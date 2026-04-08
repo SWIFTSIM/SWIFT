@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <math.h>
 #define INLINE inline
 

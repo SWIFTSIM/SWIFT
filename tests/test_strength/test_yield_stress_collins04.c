@@ -14,12 +14,20 @@ static float material_Y_M(const int mat_id)  { return 600e6f; }
 static float material_mu_i(const int mat_id) { return 2.0f; }
 static float material_mu_d(const int mat_id) { return 0.8f; }
 
-/* Dummy no weakening. */
-static void __attribute__((unused)) yield_weakening_apply_density_to_yield_stress(
-    float *yield_stress, const int mat_id, const float density) {}
+/* Dummy weakening. */
+static int density_weakening_calls = 0;
+static int temperature_weakening_calls = 0;
+static void yield_weakening_apply_density_to_yield_stress(
+    float *yield_stress, const int mat_id, const float density)
+{
+  density_weakening_calls++;
+}
 
-static void __attribute__((unused)) yield_weakening_apply_temperature_to_yield_stress(
-    float *yield_stress, const int mat_id, const float density, const float temperature) {}
+static void yield_weakening_apply_temperature_to_yield_stress(
+    float *yield_stress, const int mat_id, const float density, const float u)
+{
+  temperature_weakening_calls++;
+}
 
 /* Dummy sym_matrix. */
 struct sym_matrix {
@@ -184,6 +192,74 @@ static void test_yield_stress_fully_damaged(void)
   assert(within_tol(Y_damaged, expected, tol));
 }
 
+/* Test full yield stress computation:
+ * - Returns 0 for non-solid phase.
+ * - Reduces to fully intact for damage=0.
+ * - Reduces to fully damaged for damage=1.
+ * - Interpolates correctly for intermediate damage. */
+static void test_yield_compute_yield_stress(void)
+{
+  const int mat_id = 0;
+  const float pressure = 1e5f;
+  const float density = 1.f;
+  const float u = 1e6f;
+  const float tol = 1e-6f;
+
+
+  /* Non-solid gives 0 */
+  assert(within_tol(
+    yield_compute_yield_stress(mat_id, mat_phase_fluid,
+                               density, pressure, u, 0.5f),
+    0.f, tol));
+
+  /* Check weakening calls */
+  assert(density_weakening_calls == 0);
+  assert(temperature_weakening_calls == 0);
+
+  /* Compute reference intact and damaged values */
+  const float Y_intact =
+    yield_compute_yield_stress_fully_intact(mat_id, mat_phase_solid, pressure);
+
+  const float Y_damaged =
+    yield_compute_yield_stress_fully_damaged(mat_id, mat_phase_solid, pressure);
+
+  /* damage = 0 gives fully intact */
+  const float Y0 =
+    yield_compute_yield_stress(mat_id, mat_phase_solid,
+                              density, pressure, u, 0.f);
+
+  assert(within_tol(Y0, Y_intact, tol));
+
+  /* Check weakening calls */
+  assert(density_weakening_calls == 1);
+  assert(temperature_weakening_calls == 1);
+
+  /* damage = 1 gives fully damaged */
+  const float Y1 =
+    yield_compute_yield_stress(mat_id, mat_phase_solid,
+                              density, pressure, u, 1.f);
+
+  assert(within_tol(Y1, Y_damaged, tol));
+
+  /* Check weakening calls */
+  assert(density_weakening_calls == 2);
+  assert(temperature_weakening_calls == 2);
+
+  /* Intermediate damage gives linear interpolation */
+  const float damage = 0.3f;
+  const float expected =
+    (1.f - damage) * Y_intact + damage * Y_damaged;
+
+  const float Yd =
+    yield_compute_yield_stress(mat_id, mat_phase_solid,
+                              density, pressure, u, damage);
+
+  assert(within_tol(Yd, expected, tol));
+
+  /* Check weakening calls */
+  assert(density_weakening_calls == 3);
+  assert(temperature_weakening_calls == 3);
+}
 
 /* Test yield_apply_yield_stress_to_sym_matrix:
  * - When stress exceeds yield, f = Y/sqrt(J_2) < 1 and M is scaled down.
@@ -249,6 +325,7 @@ int main(void)
   test_damaged_yield_stress_interpolation();
   test_yield_stress_fully_intact();
   test_yield_stress_fully_damaged();
+  test_yield_compute_yield_stress();
   test_apply_yield_stress();
 
   return 0;

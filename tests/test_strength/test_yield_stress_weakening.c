@@ -39,13 +39,15 @@ static void test_thermal_weakening(
 {
   for (int i = 0; i < n; i++) {
 
-    const float T = temperatures[i];
+    /* Set internal energies to have same values as temperatures. */
+    const float u = temperatures[i];
+    const float density = 1.f;
 
     /* Reset Y */
     float Y = Y0;
 
     /* Apply temperature weakening to Y */
-    yield_weakening_apply_temperature_to_yield_stress(&Y, test_mat_id, T);
+    yield_weakening_apply_temperature_to_yield_stress(&Y, test_mat_id, density, u);
 
     /* Check result */
     float scale = fmaxf(fabsf(expected[i]), Y0);
