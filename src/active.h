@@ -226,23 +226,12 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grav.ti_end_min < e->ti_current) {
+  if (c->grav.ti_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
-        "e->ti_current=%lld (t=%e, a=%e) cell: %s/%s depth=%d nodeID=%d "
-#ifdef WITH_MPI
-        "tend=%p"
-#endif
-        "grav.count=%d m_pole=%g",
+        "e->ti_current=%lld (t=%e, a=%e)",
         c->grav.ti_end_min, c->grav.ti_end_min * e->time_base, e->ti_current,
-        e->ti_current * e->time_base, e->cosmology->a, cellID_names[c->type],
-        subcellID_names[c->subtype], c->depth, c->nodeID,
-#ifdef WITH_MPI
-        c->mpi.recv,
-#endif
-        c->grav.count,
-        c->grav.multipole != NULL ? c->grav.multipole->m_pole.M_000 : -1.);
-  }
+        e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
   return (c->grav.ti_end_min == e->ti_current);
