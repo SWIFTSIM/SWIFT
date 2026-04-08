@@ -3862,7 +3862,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
 
 #ifdef WITH_MPI
 
-    if (!cell_is_empty(ci)) {
+    if (!cell_is_empty(ci) ||
+        ((type & proxy_cell_type_gravity) && ci->grav.multipole != NULL &&
+         ci->grav.multipole->m_pole.M_000 > 0.f)) {
       /* Add the timestep exchange task */
       struct task *tend = scheduler_addtask(
           &e->sched, task_type_send, task_subtype_tend, ci->mpi.tag, 0, ci, cj);
@@ -3951,7 +3953,9 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
 
 #ifdef WITH_MPI
     /* Add the timestep exchange task */
-    if (!cell_is_empty(ci)) {
+    if (!cell_is_empty(ci) ||
+        ((type & proxy_cell_type_gravity) && ci->grav.multipole != NULL &&
+         ci->grav.multipole->m_pole.M_000 > 0.f)) {
       tend = scheduler_addtask(&e->sched, task_type_recv, task_subtype_tend,
                                ci->mpi.tag, 0, ci, NULL);
       engine_addlink(e, &ci->mpi.recv, tend);
