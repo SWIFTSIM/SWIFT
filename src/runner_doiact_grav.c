@@ -138,6 +138,13 @@ static INLINE void runner_clear_grav_flags(struct cell *c,
                                            const struct cell *root_ci,
                                            const struct cell *root_cj) {
 
+  /* Foreign cells with no local gravity particles are only multipole carriers
+   * on this rank. They have no local task or timestep state, so we must not
+   * query activity or recurse into them when clearing flags. */
+  if (c->nodeID != e->nodeID && c->grav.count == 0) {
+    return;
+  }
+
   if ((!runner_cell_is_active_gravity_debug(c, e, context, other, root_ci,
                                             root_cj) ||
        c->nodeID != e->nodeID) &&
