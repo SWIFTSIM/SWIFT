@@ -129,7 +129,7 @@ void engine_finalize_trigger_recordings(struct engine *e) {
     }
   }
 
-  /* Finish the recording period for spart triggers */
+  /* Finish the recording period for bpart triggers */
   if (num_snapshot_triggers_bpart) {
     for (size_t k = 0; k < s->nr_bparts; ++k) {
 
@@ -160,6 +160,40 @@ void engine_finalize_trigger_recordings(struct engine *e) {
           bp, e->internal_units, e->physical_constants, with_cosmology,
           e->cosmology, missing_time,
           e->snapshot_recording_triggers_started_bpart);
+    }
+  }
+
+  /* Finish the recording period for sink triggers */
+  if (num_snapshot_triggers_sink) {
+    for (size_t k = 0; k < s->nr_sinks; ++k) {
+
+      /* Get a handle on the part. */
+      struct sink *sink = &s->sinks[k];
+      const integertime_t ti_begin =
+          get_integer_time_begin(e->ti_current, sink->time_bin);
+
+      /* Escape inhibited particles */
+      if (sink_is_inhibited(sink, e)) continue;
+
+      /* We need to escape the special case of a particle that
+       * actually ended its time-step on this very step */
+      if (e->ti_current - ti_begin == get_integer_timestep(sink->time_bin))
+        continue;
+
+      /* Time from the start of the particle's step to the snapshot (aka.
+       * current time) */
+      double missing_time;
+      if (with_cosmology) {
+        missing_time =
+            cosmology_get_delta_time(e->cosmology, ti_begin, e->ti_current);
+      } else {
+        missing_time = (e->ti_current - ti_begin) * e->time_base;
+      }
+
+      tracers_after_timestep_sink(sink, e->internal_units,
+                                  e->physical_constants, with_cosmology,
+                                  e->cosmology, missing_time,
+                                  e->snapshot_recording_triggers_started_sink);
     }
   }
 }
@@ -354,7 +388,7 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
 
   /* Cancel any triggers that are switched on */
   if (num_snapshot_triggers_part > 0 || num_snapshot_triggers_spart > 0 ||
-      num_snapshot_triggers_bpart > 0) {
+      num_snapshot_triggers_bpart > 0 || num_snapshot_triggers_sink > 0) {
 
     /* Reset the trigger flags */
     for (int i = 0; i < num_snapshot_triggers_part; ++i)
@@ -363,6 +397,8 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
       e->snapshot_recording_triggers_started_spart[i] = 0;
     for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
       e->snapshot_recording_triggers_started_bpart[i] = 0;
+    for (int i = 0; i < num_snapshot_triggers_sink; ++i)
+      e->snapshot_recording_triggers_started_sink[i] = 0;
 
     /* Reser the tracers themselves */
     space_after_snap_tracer(e->s, e->verbose);
@@ -746,6 +782,16 @@ void engine_set_and_verify_snapshot_triggers(struct engine *e) {
       } else {
         e->snapshot_recording_triggers_bpart[k] =
             e->snapshot_recording_triggers_desired_bpart[k];
+      }
+    }
+  }
+  for (int k = 0; k < num_snapshot_triggers_sink; ++k) {
+    if (e->snapshot_recording_triggers_desired_sink[k] > 0) {
+      if (e->snapshot_recording_triggers_desired_sink[k] > time_to_next_snap) {
+        e->snapshot_recording_triggers_sink[k] = time_to_next_snap;
+      } else {
+        e->snapshot_recording_triggers_sink[k] =
+            e->snapshot_recording_triggers_desired_sink[k];
       }
     }
   }
@@ -1400,7 +1446,7 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
 
         /* Time to deduct = time since the start of the step - trigger time */
         const double time_to_remove =
-            total_time - e->snapshot_recording_triggers_part[i];
+            total_time - e->snapshot_recording_triggers_spart[i];
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (time_to_remove < 0.)
@@ -1460,7 +1506,7 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
 
         /* Time to deduct = time since the start of the step - trigger time */
         const double time_to_remove =
-            total_time - e->snapshot_recording_triggers_part[i];
+            total_time - e->snapshot_recording_triggers_bpart[i];
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (time_to_remove < 0.)
@@ -1476,6 +1522,66 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
 
         tracers_after_timestep_bpart(
             bp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, -time_to_remove, my_temp_array);
+      }
+    }
+  }
+
+  /* Should any not yet switched on trigger be activated? (sink version) */
+  for (int i = 0; i < num_snapshot_triggers_sink; ++i) {
+
+    if (time_to_next_snap <= e->snapshot_recording_triggers_sink[i] &&
+        e->snapshot_recording_triggers_sink[i] > 0. &&
+        !e->snapshot_recording_triggers_started_sink[i]) {
+      e->snapshot_recording_triggers_started_sink[i] = 1;
+
+      /* Be vocal about this */
+      if (e->verbose)
+        message(
+            "Snapshot will be dumped in %e U_t. Recording trigger for sink "
+            "activated.",
+            e->snapshot_recording_triggers_sink[i]);
+
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
+      for (size_t k = 0; k < s->nr_sinks; ++k) {
+
+        /* Get a handle on the sink. */
+        struct sink *sink = &s->sinks[k];
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current, sink->time_bin);
+
+        /* Escape inhibited particles */
+        if (sink_is_inhibited(sink, e)) continue;
+
+        /* Time from the start of the particle's step to the snapshot */
+        double total_time;
+        if (with_cosmology) {
+          total_time =
+              cosmology_get_delta_time(e->cosmology, ti_begin, ti_next_snap);
+        } else {
+          total_time = (ti_next_snap - ti_begin) * e->time_base;
+        }
+
+        /* Time to deduct = time since the start of the step - trigger time */
+        const double time_to_remove =
+            total_time - e->snapshot_recording_triggers_sink[i];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (time_to_remove < 0.)
+          error("Invalid time to deduct! %e", time_to_remove);
+#endif
+
+        /* Note that we need to use a separate array (not the raw
+         * e->snapshot_recording_triggers_part) as we only want to
+         * update one entry */
+        int my_temp_array[num_snapshot_triggers_sink];
+        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_sink);
+        my_temp_array[i] = 1;
+
+        tracers_after_timestep_sink(
+            sink, e->internal_units, e->physical_constants, with_cosmology,
             e->cosmology, -time_to_remove, my_temp_array);
       }
     }

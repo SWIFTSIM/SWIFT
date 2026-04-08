@@ -201,6 +201,8 @@ Snapshots:
   recording_triggers_part:   [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for gas particle tracers start (in internal units).
   recording_triggers_spart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for star particle tracers start (in internal units).
   recording_triggers_bpart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units).
+  recording_triggers_sink:   [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for sink particle tracers start (in internal units).
+
 
 # Parameters governing the CSDS snapshot system
 CSDS:
