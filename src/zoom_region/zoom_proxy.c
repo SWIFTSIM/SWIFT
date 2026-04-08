@@ -28,6 +28,87 @@
 #include "zoom.h"
 
 /**
+ * @brief Compute the square of the minimum distance between two arbitrary-sized
+ * top-level cells.
+ */
+__attribute__((always_inline)) INLINE static double zoom_cell_min_dist2(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const int periodic, const double dim[3]) {
+
+  const double cix_min = ci->loc[0];
+  const double ciy_min = ci->loc[1];
+  const double ciz_min = ci->loc[2];
+  const double cjx_min = cj->loc[0];
+  const double cjy_min = cj->loc[1];
+  const double cjz_min = cj->loc[2];
+
+  const double cix_max = ci->loc[0] + ci->width[0];
+  const double ciy_max = ci->loc[1] + ci->width[1];
+  const double ciz_max = ci->loc[2] + ci->width[2];
+  const double cjx_max = cj->loc[0] + cj->width[0];
+  const double cjy_max = cj->loc[1] + cj->width[1];
+  const double cjz_max = cj->loc[2] + cj->width[2];
+
+  if (periodic) {
+
+    const double dx = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
+                           fabs(nearest(cix_min - cjx_max, dim[0])),
+                           fabs(nearest(cix_max - cjx_min, dim[0])),
+                           fabs(nearest(cix_max - cjx_max, dim[0])));
+
+    const double dy = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
+                           fabs(nearest(ciy_min - cjy_max, dim[1])),
+                           fabs(nearest(ciy_max - cjy_min, dim[1])),
+                           fabs(nearest(ciy_max - cjy_max, dim[1])));
+
+    const double dz = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
+                           fabs(nearest(ciz_min - cjz_max, dim[2])),
+                           fabs(nearest(ciz_max - cjz_min, dim[2])),
+                           fabs(nearest(ciz_max - cjz_max, dim[2])));
+
+    return dx * dx + dy * dy + dz * dz;
+
+  } else {
+
+    const double dx = min4(fabs(cix_min - cjx_min), fabs(cix_min - cjx_max),
+                           fabs(cix_max - cjx_min), fabs(cix_max - cjx_max));
+    const double dy = min4(fabs(ciy_min - cjy_min), fabs(ciy_min - cjy_max),
+                           fabs(ciy_max - cjy_min), fabs(ciy_max - cjy_max));
+    const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
+                           fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
+
+    return dx * dx + dy * dy + dz * dz;
+  }
+}
+
+/**
+ * @brief Get the gravity proxy type for a zoom/background top-level cell pair.
+ */
+__attribute__((always_inline)) INLINE static int zoom_get_mixed_proxy_type(
+    const struct engine *e, const struct cell *zi, const struct cell *cj,
+    const double zoom_r_max, const double bkg_r_max) {
+
+  if (!(e->policy & engine_policy_self_gravity)) return proxy_cell_type_none;
+
+  const struct space *s = e->s;
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double max_mesh_dist2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
+  const double r_max = max(zoom_r_max, bkg_r_max);
+  const double min_dist_CoM2 = zoom_cell_min_dist2(zi, cj, s->periodic, s->dim);
+
+  if (s->periodic) {
+    if ((min_dist_CoM2 < max_mesh_dist2) &&
+        !(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
+      return proxy_cell_type_gravity;
+  } else {
+    if (!(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
+      return proxy_cell_type_gravity;
+  }
+
+  return proxy_cell_type_none;
+}
+
+/**
  * @brief Create and fill the proxies.
  *
  * This is the zoom specific form of engine_makeproxies.
@@ -178,17 +259,12 @@ void zoom_engine_makeproxies(struct engine *e) {
           }
         }
 
-        /* Find this zoom cell's enclosing background (void) cell. */
+        /* Find this zoom cell's enclosing background cell index. */
         const int bkg_i = (zi->loc[0] + 0.5 * zi->width[0]) * s->iwidth[0];
         const int bkg_j = (zi->loc[1] + 0.5 * zi->width[1]) * s->iwidth[1];
         const int bkg_k = (zi->loc[2] + 0.5 * zi->width[2]) * s->iwidth[2];
 
-        /* Get the parent void cell */
-        const int vid =
-            cell_getid_offset(bkg_cdim, bkg_offset, bkg_i, bkg_j, bkg_k);
-        struct cell *vi = &cells[vid];
-
-        /* Walk out from the void cell containing this zoom cell to find
+        /* Walk out from the background cell containing this zoom cell to find
          * zoom -> background neighbours. */
         for (int ii = -bkg_delta_m; ii <= bkg_delta_p; ii++) {
           int iii = bkg_i + ii;
@@ -216,9 +292,10 @@ void zoom_engine_makeproxies(struct engine *e) {
                   (zi->nodeID != nodeID && cj->nodeID != nodeID))
                 continue;
 
-              /* Get the proxy type */
-              const int proxy_type = engine_get_proxy_type(
-                  e, vi, bkg_i, bkg_j, bkg_k, cj, iii, jjj, kkk, bkg_r_max);
+              /* Get the proxy type using the actual zoom/background geometry.
+               */
+              const int proxy_type =
+                  zoom_get_mixed_proxy_type(e, zi, cj, zoom_r_max, bkg_r_max);
 
               /* No proxy needed? No problem, move on */
               if (proxy_type == proxy_cell_type_none) continue;
