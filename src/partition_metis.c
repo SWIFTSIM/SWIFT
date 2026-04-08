@@ -302,6 +302,9 @@ static void partition_graph_init_uniform(struct space *s, int periodic,
 /**
  * @brief Fill the adjncy array defining the graph of cells in a space.
  *
+ * This is a wrapper which will run the appropriate graph initialization
+ * function depending on whether the space has a zoom region or not.
+ *
  * See the ParMETIS and METIS manuals if you want to understand this
  * format. The cell graph consists of all nodes as vertices with edges as the
  * connections to all neighbours, so we have 26 per vertex for periodic
@@ -327,13 +330,20 @@ void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
                           int *nadjcny, idx_t *xadj, int *nxadj,
                           const int *cell_edge_offsets) {
 
-  partition_graph_init_uniform(s, periodic, adjncy, nadjcny, xadj, nxadj,
-                               cell_edge_offsets);
+  /* Use the appropriate graph initialization function. */
+  if (!s->with_zoom_region) {
+    partition_graph_init_uniform(s, periodic, adjncy, nadjcny, xadj, nxadj,
+                                 cell_edge_offsets);
+  } else {
+    zoom_partition_graph_init(s, periodic, adjncy, nadjcny, xadj, nxadj,
+                              cell_edge_offsets);
+  }
 }
 
 /**
- * @brief Count vertex edges.
+ * @brief Count vertex edges for any space (wrapper for uniform/zoom).
  *
+ * Delegates to uniform or zoom counting based on s->with_zoom_region.
  * Reports statistics if verbose is enabled.
  *
  * @param s the space of cells.
@@ -346,8 +356,12 @@ int partition_count_edges(struct space *s, int periodic, int verbose,
                           int *cell_edge_offsets) {
   const ticks tic = getticks();
 
-  const int nedges =
-      partition_count_edges_uniform(s, periodic, cell_edge_offsets);
+  int nedges;
+  if (!s->with_zoom_region) {
+    nedges = partition_count_edges_uniform(s, periodic, cell_edge_offsets);
+  } else {
+    nedges = zoom_partition_count_vertex_edges(s, periodic, cell_edge_offsets);
+  }
 
   if (verbose) {
     /* Find max edges per cell */
@@ -375,7 +389,11 @@ int partition_count_edges(struct space *s, int periodic, int verbose,
  */
 void partition_sizes_to_edges(struct space *s, double *counts, double *edges,
                               const int *cell_edge_offsets) {
-  partition_sizes_to_edges_uniform(s, counts, edges, cell_edge_offsets);
+  if (!s->with_zoom_region) {
+    partition_sizes_to_edges_uniform(s, counts, edges, cell_edge_offsets);
+  } else {
+    zoom_partition_sizes_to_edges(s, counts, edges, cell_edge_offsets);
+  }
 }
 
 /**
