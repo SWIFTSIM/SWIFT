@@ -201,6 +201,8 @@ Snapshots:
   recording_triggers_part:   [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for gas particle tracers start (in internal units).
   recording_triggers_spart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for star particle tracers start (in internal units).
   recording_triggers_bpart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units).
+  recording_triggers_sink:   [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for sink particle tracers start (in internal units).
+
 
 # Parameters governing the CSDS snapshot system
 CSDS:
@@ -299,9 +301,9 @@ LineOfSight:
   allowed_los_range_x: [0, 100.]   # (Optional) Range along the x-axis where LoS along Y or Z are allowed (Defaults to the box size).
   allowed_los_range_y: [0, 100.]   # (Optional) Range along the y-axis where LoS along X or Z are allowed (Defaults to the box size).
   allowed_los_range_z: [0, 100.]   # (Optional) Range along the z-axis where LoS along X or Y are allowed (Defaults to the box size).
-  range_when_shooting_down_x: 100. # (Optional) Range along the x-axis of LoS along x (Defaults to the box size).
-  range_when_shooting_down_y: 100. # (Optional) Range along the y-axis of LoS along y (Defaults to the box size).
-  range_when_shooting_down_z: 100. # (Optional) Range along the z-axis of LoS along z (Defaults to the box size).
+  range_when_shooting_down_x: [0., 100.] # (Optional) Range along the x-axis of LoS along x (Defaults to the box size).
+  range_when_shooting_down_y: [0., 100.] # (Optional) Range along the y-axis of LoS along y (Defaults to the box size).
+  range_when_shooting_down_z: [0., 100.] # (Optional) Range along the z-axis of LoS along z (Defaults to the box size).
 
 # Parameters related to the equation of state ------------------------------------------
 
@@ -977,7 +979,8 @@ GEARSink:
   sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
   sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
   sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
-  disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
+  disable_sink_formation: 0                       # (Optional) Disable sink formation. May only be used for debugging. (Default: 0)
+  disable_star_formation: 0                       # (Optional) Disable star formation. May only be used for debugging. (Default: 0)
   CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
   timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks no longer have time-step restrictions, except for 2-body encounters involving another young/old sink and gravity (in Mega-years). (Default: FLT_MAX)
   timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). (Default: FLT_MAX)

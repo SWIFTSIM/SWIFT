@@ -27,6 +27,14 @@ The run.sh script calls `makeIC.py' script with default values. You can experime
 # Run
 Type run.sh, and let's go!
 
+Here are some runtime parameters:
+
+./run.sh				 # Runs with sinks on 1 rank and 8 threads with N = 2^(3*5) ~ 32000 gas particles
+n_ranks=8 n_threads=1 ./run.sh		 # Runs with sinks, 8 ranks, 1 thread per rank, with N = 2^(3*5) ~ 32000 gas particles
+level=6 ./run.sh			 # Runs with sinks, 1 rank, 8 threads, N = 2^(3*5) ~ 263000 gas particles
+with_star_formation=1 ./run.sh		 # Runs with star-formation (i.e. no sink particles), 1 rank, 8 threads, N = 2^(3*5) ~ 263000 gas particles
+run_name="simulation_name" ./run.sh	 # Runs with sinks on 1 rank and 8 threads with N = 2^(3*5) ~ 32000 gas particles and moves the snapshots and data analysis results to a "simulation_name" directory 
+
 # Changing the cooling
 You can experiment different cooling modes by changing grackle mode to 1,2, or 3.
 

@@ -3520,6 +3520,10 @@ void engine_init(
     parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
                                   num_snapshot_triggers_bpart,
                                   e->snapshot_recording_triggers_desired_bpart);
+  if (num_snapshot_triggers_sink)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_sink",
+                                  num_snapshot_triggers_sink,
+                                  e->snapshot_recording_triggers_desired_sink);
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =
@@ -3768,7 +3772,7 @@ void engine_print_policy(struct engine *e) {
   if (e->nodeID == 0) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
-    for (int k = 0; k <= engine_maxpolicy; k++)
+    for (int k = 0; k < engine_maxpolicy; k++)
       if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
@@ -3776,7 +3780,7 @@ void engine_print_policy(struct engine *e) {
 #else
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
-  for (int k = 0; k <= engine_maxpolicy; k++)
+  for (int k = 0; k < engine_maxpolicy; k++)
     if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);

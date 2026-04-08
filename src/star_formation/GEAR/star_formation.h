@@ -258,7 +258,7 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param xp The #xpart generating a star.
  * @param sp The new #spart.
  * @param (return) displacement The 3D displacement vector of the star with
- * respect to the sink position.
+ * respect to the star position.
  */
 INLINE static void star_formation_separate_particles(const struct engine *e,
                                                      struct part *p,
@@ -396,18 +396,19 @@ INLINE static void star_formation_copy_properties(
   /* Move over the splitting data */
   sp->split_data = xp->split_data;
 
-  /* Store the birth density in the star particle */
-  sp->sf_data.birth_density = hydro_get_physical_density(p, cosmo);
-
-  /* Store the birth temperature*/
-  sp->sf_data.birth_temperature = cooling_get_temperature(
+  /* Store the birth density and temperature in the star particle */
+  const float birth_density = hydro_get_physical_density(p, cosmo);
+  const float birth_temperature = cooling_get_temperature(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
+  star_formation_set_spart_birth_density(sp, birth_density);
+  star_formation_set_spart_birth_temperature(sp, birth_temperature);
+
+  /* Copy the progenitor id */
+  star_formation_set_spart_progenitor_id(sp, p->id);
 
   /* Copy the chemistry properties */
   chemistry_copy_star_formation_properties(p, xp, sp, chem_data, cosmo);
-
-  /* Copy the progenitor id */
-  sp->sf_data.progenitor_id = p->id;
 }
 
 /**

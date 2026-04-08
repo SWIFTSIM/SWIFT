@@ -21,7 +21,6 @@
 #define SWIFT_GEAR_SINKS_IACT_H
 
 /* Local includes */
-#include "gravity.h"
 #include "gravity_iact.h"
 #include "sink.h"
 #include "sink_getters.h"
@@ -126,7 +125,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param sink_props the sink properties to use.
  * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
@@ -134,7 +134,7 @@ runner_iact_nonsym_sinks_gas_density(
     struct sink *si, const struct part *pj, const int with_cosmology,
     const struct cosmology *cosmo, const struct gravity_props *grav_props,
     const struct sink_props *sink_props, const integertime_t ti_current,
-    const double time) {
+    const double time, const double time_base) {
 
   /* Contribution to the number of neighbours in cutoff radius */
   si->num_ngbs++;
@@ -210,7 +210,7 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
   const float dv_norm = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
 
   /* Get the gravitional softening */
-  const float eps = gravity_get_softening(si->gpart, grav_props);
+  const float eps = sink_get_softening(si, grav_props);
   const float eps2 = eps * eps;
   const float eps_inv = 1.f / eps;
   const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -253,7 +253,8 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
  * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
@@ -262,7 +263,7 @@ runner_iact_nonsym_sinks_sink_swallow(
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
-    const double time) {
+    const double time, const double time_base) {
 
   /* Convert the smoothing length back into a cutoff radius */
   const float hig = hi * kernel_gamma;
@@ -352,7 +353,7 @@ runner_iact_nonsym_sinks_sink_swallow(
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
-    const float eps = gravity_get_softening(si->gpart, grav_props);
+    const float eps = sink_get_softening(si, grav_props);
     const float eps2 = eps * eps;
     const float eps_inv = 1.f / eps;
     const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -399,6 +400,18 @@ runner_iact_nonsym_sinks_sink_swallow(
     /* Increment the swallowd mass */
     si->to_collect.mass_swallowed += sj->mass;
 
+    /* Compute the instantaneous accretion rate */
+    double delta_t = 0.0;
+    if (with_cosmology) {
+      const integertime_t ti_step = get_integer_timestep(si->time_bin);
+      const integertime_t ti_begin =
+          get_integer_time_begin(ti_current - 1, si->time_bin);
+      delta_t = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+    } else {
+      delta_t = get_timestep(si->time_bin, time_base);
+    }
+    si->accretion_rate += sj->mass / delta_t;
+
     /* The sink with the smaller mass will be merged onto the one with the
      * larger mass.
      * To avoid rounding issues, we additionally check for IDs if the sink
@@ -443,7 +456,8 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
  * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(
@@ -452,10 +466,11 @@ runner_iact_nonsym_sinks_gas_swallow(
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
-    const double time) {
+    const double time, const double time_base) {
 
   /* Convert the smoothing length back into a cutoff radius */
   const float hig = hi * kernel_gamma;
+  const float mj = hydro_get_mass(pj);
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc = sink_properties->f_acc * hig;
@@ -523,7 +538,7 @@ runner_iact_nonsym_sinks_gas_swallow(
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
-    const float eps = gravity_get_softening(si->gpart, grav_props);
+    const float eps = sink_get_softening(si, grav_props);
     const float eps2 = eps * eps;
     const float eps_inv = 1.f / eps;
     const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -562,7 +577,7 @@ runner_iact_nonsym_sinks_gas_swallow(
     }
 
     /* Swallowed mass threshold--------------------------------------------- */
-    si->to_collect.mass_eligible_swallow += hydro_get_mass(pj);
+    si->to_collect.mass_eligible_swallow += mj;
 
     /* Maximal mass that can be swallowed within a single timestep */
     const float mass_swallow_limit = sink_properties->n_IMF * si->mass_IMF;
@@ -578,7 +593,19 @@ runner_iact_nonsym_sinks_gas_swallow(
     }
 
     /* Increment the swallowd mass */
-    si->to_collect.mass_swallowed += hydro_get_mass(pj);
+    si->to_collect.mass_swallowed += mj;
+
+    /* Compute the instantaneous accretion rate */
+    double delta_t = 0.0;
+    if (with_cosmology) {
+      const integertime_t ti_step = get_integer_timestep(si->time_bin);
+      const integertime_t ti_begin =
+          get_integer_time_begin(ti_current - 1, si->time_bin);
+      delta_t = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+    } else {
+      delta_t = get_timestep(si->time_bin, time_base);
+    }
+    si->accretion_rate += mj / delta_t;
 
     /* --------------------------------------------------------------------- */
     /* Since this pair gas-sink is the most bound, keep track of the

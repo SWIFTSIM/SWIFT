@@ -59,34 +59,57 @@ struct sink {
 
   } density;
 
+  /*! Integer number of neighbours */
+  int num_ngbs;
+
   /*! Sink particle mass */
   float mass;
+
+  /*! Particle time bin */
+  timebin_t time_bin;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   /*! Sink target mass. In Msun. */
   float target_mass_Msun;
 
+  /*! Sink target stellar type */
+  enum stellar_type target_type;
+
   /* Mass of the IMF this sinks is currently affected to. In internal units. */
   double mass_IMF;
-
-  /*! Integer number of neighbours */
-  int num_ngbs;
 
   /*! Mass of the sink before starting the star spawning loop */
   float mass_tot_before_star_spawning;
 
-  /*! Sink target stellar type */
-  enum stellar_type target_type;
+  /**
+   * @brief Birth attributes of the sink
+   *
+   * This mimicks sf_data
+   */
+  struct {
 
-  /*! Union for the birth time and birth scale factor */
-  union {
+    /*! Union for the birth time and birth scale factor */
+    union {
 
-    /*! Birth time */
-    float birth_time;
+      /*! Birth time */
+      float time;
 
-    /*! Birth scale factor */
-    float birth_scale_factor;
-  };
+      /*! Birth scale factor */
+      float scale_factor;
+    };
 
+    /*! The birth density */
+    float density;
+
+    /*! The birth temperature */
+    float temperature;
+  } birth_data;
+
+  /**
+   * @brief Values collected from the gas neighbours.
+   */
   struct {
 
     /*! Minimal gas smoothing length */
@@ -115,17 +138,14 @@ struct sink {
     float mass_swallowed;
   } to_collect;
 
-  /*! Particle time bin */
-  timebin_t time_bin;
-
-  /*! Tree-depth at which size / 2 <= h * gamma < size */
-  char depth_h;
-
   /*! Number of stars spawned by this sink */
   int n_stars;
 
   /*! Total (physical) angular momentum accumulated by swallowing particles */
   float swallowed_angular_momentum[3];
+
+  /*! Instantaneous accretion rate */
+  float accretion_rate;
 
   /*! Total number of sink merger events (including sink swallowed
    * by merged-in sinks) */

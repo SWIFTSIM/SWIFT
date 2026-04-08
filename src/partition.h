@@ -35,6 +35,9 @@
 #endif
 #endif
 
+/* Forward declarations. */
+struct cell;
+
 /* Initial partitioning types. */
 enum partition_type {
   INITPART_GRID = 0,
@@ -98,6 +101,11 @@ void partition_init(struct partition *partition,
 void partition_clean(struct partition *partition,
                      struct repartition *repartition);
 
+/* Partition helper functions shared by the uniform and zoom partitioners. */
+void pick_vector(const int cdim[3], const int nregions, int *samplecells);
+void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
+                  int *samplecells);
+
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);
 void partition_restore_celllist(struct space *s,
@@ -111,6 +119,7 @@ struct weights_mapper_data {
   double *weights_e;
   double *weights_v;
   idx_t *inds;
+  idx_t *xadj;
   int eweights;
   int nodeID;
   int timebins;
@@ -123,14 +132,20 @@ struct weights_mapper_data {
 extern double repartition_costs[task_type_count][task_subtype_count];
 
 void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
-void partition_sizes_to_edges(struct space *s, double *counts, double *edges);
-void partition_graph_init(struct space *s, int periodic, idx_t *weights_e,
-                          idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj);
+void partition_sizes_to_edges(struct space *s, double *counts, double *edges,
+                              const int *cell_edge_offsets);
+int partition_count_edges(struct space *s, int periodic, int verbose,
+                          int *cell_edge_offsets);
+void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
+                          int *nadjcny, idx_t *xadj, int *nxadj,
+                          const int *cell_edge_offsets);
 void partition_pick_metis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int *celllist);
+                          double *vertexw, double *edgew, int *celllist,
+                          const int *cell_edge_offsets, int nedges);
 void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
                              double *vertexw, double *edgew, int refine,
-                             int adaptive, float itr, int *celllist);
+                             int adaptive, float itr, int *celllist,
+                             const int *cell_edge_offsets, int nedges);
 void partition_split_metis(struct space *s, int nregions, int *celllist);
 #endif
 
