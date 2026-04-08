@@ -27,6 +27,7 @@
 #include "engine.h"
 #include "feedback_new_stars.h"
 #include "part.h"
+#include "proxy.h"
 #include "task.h"
 #include "timeline.h"
 
