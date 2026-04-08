@@ -3520,6 +3520,10 @@ void engine_init(
     parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
                                   num_snapshot_triggers_bpart,
                                   e->snapshot_recording_triggers_desired_bpart);
+  if (num_snapshot_triggers_sink)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_sink",
+                                  num_snapshot_triggers_sink,
+                                  e->snapshot_recording_triggers_desired_sink);
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =
