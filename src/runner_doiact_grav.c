@@ -40,12 +40,19 @@ static INLINE int runner_cell_is_active_gravity_debug(
 
 #ifdef WITH_MPI
   int proxy_in = 0, proxy_out = 0;
+  const void *recv = c->mpi.recv;
+  const void *send = c->mpi.send;
+  const int tag = c->mpi.tag;
+#else
+  const void *recv = NULL;
+  const void *send = NULL;
+  const int tag = -1;
 #endif
   int task_ref = 0;
   int void_parent_mm = 0;
 
   if (c->type == cell_type_zoom && c->depth == 0 && c->nodeID != e->nodeID &&
-      c->grav.count == 0 && c->mpi.recv == NULL && c->mpi.send == NULL &&
+      c->grav.count == 0 && recv == NULL && send == NULL &&
       c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.) {
 
 #ifdef WITH_MPI
@@ -86,9 +93,8 @@ static INLINE int runner_cell_is_active_gravity_debug(
         "other=%p other_type=%s/%s other_depth=%d other_node=%d other_top=%p "
         "other_void_parent=%p",
         context, cellID_names[c->type], subcellID_names[c->subtype], c->depth,
-        c->nodeID, c->top, c->void_parent, c->mpi.recv, c->mpi.send, c->mpi.tag,
-        c->grav.count, c->grav.ti_end_min, c->grav.ti_old_part,
-        c->grav.ti_old_multipole,
+        c->nodeID, c->top, c->void_parent, recv, send, tag, c->grav.count,
+        c->grav.ti_end_min, c->grav.ti_old_part, c->grav.ti_old_multipole,
         c->grav.multipole != NULL ? c->grav.multipole->m_pole.M_000 : -1.,
         task_ref, void_parent_mm,
 #ifdef WITH_MPI
