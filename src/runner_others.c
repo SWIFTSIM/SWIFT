@@ -336,8 +336,10 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         } /* Loop over the stars to spawn */
 
         /* Update the sink after star formation */
-        sink_update_sink_properties_after_star_formation(s, e, sink_props,
-                                                         phys_const);
+        sink_update_sink_properties_after_star_formation(
+            s, with_cosmology, cosmo, sink_props, phys_const, e->ti_current,
+            e->time, e->time_base);
+
       } /* if sink_is_active */
     } /* Loop over the particles */
   }

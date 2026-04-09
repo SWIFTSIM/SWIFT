@@ -19,13 +19,13 @@
 #ifndef SWIFT_FEEDBACK_GEAR_H
 #define SWIFT_FEEDBACK_GEAR_H
 
+#include "../GEAR/feedback_common.h"
+#include "../GEAR/stellar_evolution.h"
 #include "cosmology.h"
 #include "error.h"
-#include "feedback_common.h"
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "stellar_evolution.h"
 #include "units.h"
 
 #include <strings.h>
