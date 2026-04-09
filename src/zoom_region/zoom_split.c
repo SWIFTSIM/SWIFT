@@ -89,7 +89,7 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
      * foreign shared multipoles to count here because top-level gravity
      * multipoles are available on every rank even when particle counts are 0.
      */
-    if (cell_is_empty(zoom_cell, /*use_mpole=*/1)) {
+    if (cell_is_empty(zoom_cell)) {
       c->progeny[k] = NULL;
       continue;
     }
@@ -193,7 +193,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     }
 
     /* If the zoom progeny is empty there's nothing to do. */
-    else if (cell_is_empty_local(cp, /*use_mpole=*/0)) {
+    else if (cp->hydro.count == 0 && cp->grav.count == 0 &&
+             cp->stars.count == 0 && cp->black_holes.count == 0 &&
+             cp->sinks.count == 0) {
       continue;
     }
 

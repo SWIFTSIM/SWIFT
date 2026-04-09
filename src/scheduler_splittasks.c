@@ -557,7 +557,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
     /* Skip any empty progeny of a void cell (void cells themselves always
      * have 0 particles but are never "empty"). */
-    if (cell_is_empty_grav_local(cpi, /*use_mpole=*/1)) continue;
+    if (cell_is_empty_grav_local(cpi)) continue;
 
     for (int j = 0; j < 8; j++) {
       struct cell *cpj = cj->progeny[j];
@@ -568,7 +568,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
       /* Skip any empty progeny of a void cell (void cells themselves always
        * have 0 particles but are never "empty"). */
-      if (cell_is_empty_grav_local(cpj, /*use_mpole=*/1)) continue;
+      if (cell_is_empty_grav_local(cpj)) continue;
 
       /* Skip entirely foreign pairs. */
       if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
@@ -651,8 +651,7 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
       if (ci->progeny[first_child] == NULL) continue;
 
       /* Skip empty progeny. */
-      if (cell_is_empty_grav_local(ci->progeny[first_child], /*use_mpole=*/1))
-        continue;
+      if (cell_is_empty_grav_local(ci->progeny[first_child])) continue;
 
       /* Skip foreign zoom progeny (no such thing as a foreign self task). */
       if (ci->progeny[first_child]->type == cell_type_zoom &&
@@ -678,7 +677,7 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
       if (ci->progeny[i] == NULL) continue;
 
       /* Skip empty progeny. */
-      if (cell_is_empty_grav_local(ci->progeny[i], /*use_mpole=*/1)) continue;
+      if (cell_is_empty_grav_local(ci->progeny[i])) continue;
 
       /* Skip non-local progeny (no such thing as a foreign self task). */
       if (ci->progeny[i]->type == cell_type_zoom &&
@@ -709,7 +708,7 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
         if (ci->progeny[k] == NULL) continue;
 
         /* Skip empty progeny. */
-        if (cell_is_empty_grav_local(ci->progeny[k], /*use_mpole=*/1)) continue;
+        if (cell_is_empty_grav_local(ci->progeny[k])) continue;
 
         /* Skip entirely foreign pairs. */
         if ((ci->progeny[j]->type == cell_type_zoom &&

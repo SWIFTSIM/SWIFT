@@ -1603,9 +1603,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->sinks.updated = 0;
       t->ci->black_holes.updated = 0;
 
-      if (!cell_is_empty_local(
-              t->ci,
-              /*use_mpole=*/e->policy & engine_policy_self_gravity)) {
+      if (!cell_is_empty_local(t->ci)) {
         if (cell_is_active_hydro(t->ci, e) ||
             cell_is_active_gravity(t->ci, e) ||
             cell_is_active_stars(t->ci, e) || cell_is_active_sinks(t->ci, e) ||
@@ -1623,9 +1621,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->black_holes.updated = 0;
       t->ci->rt.updated = 0; /* this is different from time-step */
 
-      if (!cell_is_empty_local(
-              t->ci,
-              /*use_mpole=*/e->policy & engine_policy_self_gravity)) {
+      if (!cell_is_empty_local(t->ci)) {
         if (cell_is_active_hydro(t->ci, e) ||
             cell_is_active_gravity(t->ci, e) ||
             cell_is_active_stars(t->ci, e) || cell_is_active_sinks(t->ci, e) ||
@@ -1637,9 +1633,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     else if ((t_type == task_type_send && t_subtype == task_subtype_tend) ||
              (t_type == task_type_recv && t_subtype == task_subtype_tend)) {
-      if (!cell_is_empty_local(
-              t->ci,
-              /*use_mpole=*/e->policy & engine_policy_self_gravity)) {
+      if (!cell_is_empty(t->ci)) {
         scheduler_activate(s, t);
       }
     }
