@@ -1044,24 +1044,32 @@ __attribute__((always_inline)) INLINE static int cell_pair_is_zoom_tl(
  * incorrectly treated as empty.
  *
  * @param c The #cell.
+ * @param use_mpole Whether to consider multipole mass when determining
+ * emptiness. When running with gravity this is a definitive test of emptiness,
+ * regardless whether running a serial or distributed simulation (foreign cells
+ * will always have non-zero multipoles if they contain mass but will only
+ * have non-zero particle counts if they are proxies of a local cell).
+ *
  * @return 1 if the cell is empty, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_empty(
-    const struct cell *c) {
+    const struct cell *c, const int use_mpole) {
 
   /* Check particle counts first — short-circuits immediately for the common
    * non-empty case without touching the multipole at all. */
   if (c->hydro.count || c->grav.count || c->stars.count ||
-      c->black_holes.count || c->sinks.count)
+      c->black_holes.count || c->sinks.count) {
     return 0;
+  }
 
-  /* All counts are zero. If there's a multipole (self-gravity is on), check
-   * whether the cell is local and has mass — void cells containing zoom cells
-   * will have M_000 > 0 even though they hold no particles directly. */
-  if (c->nodeID == engine_rank && c->grav.multipole != NULL &&
-      c->grav.multipole->m_pole.M_000 > 0.f)
+  /* All counts are zero. Should we check the multipole? This could be non-zero
+   * in a foreign cell or a void cell (voids only appear in zooms). */
+  if (use_mpole && c->grav.multipole != NULL &&
+      c->grav.multipole->m_pole.M_000 > 0.f) {
     return 0;
+  }
 
+  /* Otherwise, we are truly empty. */
   return 1;
 }
 
@@ -1073,24 +1081,31 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
  * This is a gravity particle specific version of cell_is_empty.
  *
  * @param c The #cell.
+ * @param use_mpole Whether to consider multipole mass when determining
+ * emptiness. When running with gravity this is a definitive test of emptiness,
+ * regardless whether running a serial or distributed simulation (foreign cells
+ * will always have non-zero multipoles if they contain mass but will only
+ * have non-zero particle counts if they are proxies of a local cell).
+ *
  * @return 1 if the cell is empty for gravity purposes, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_empty_grav(
-    const struct cell *c) {
+    const struct cell *c, const int use_mpole) {
 
   /* Obviously false if we have any grav particles. */
   if (c->grav.count > 0) {
     return 0;
   }
 
-  /* If we have no grav particles but do have a local  multipole with mass, then
-   * we are a void cell with zoom progeny and we can't skip this cell. */
-  if (c->nodeID == engine_rank && c->grav.multipole->m_pole.M_000 > 0.f) {
+  /* If we have no grav particles, but we are considering multipole mass we
+   * could be in a foreign or void cell (either of which could have non-zero
+   * multipole mass and not be truly empty for gravity purposes). */
+  if (use_mpole && c->grav.multipole != NULL &&
+      c->grav.multipole->m_pole.M_000 > 0.f) {
     return 0;
   }
 
-  /* Otherwise, we have no grav particles and no zoom progeny, so we can skip
-   * this cell for gravity purposes. */
+  /* Otherwise, we are truly empty. */
   return 1;
 }
 
