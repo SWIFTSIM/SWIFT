@@ -377,6 +377,10 @@ struct engine {
   double snapshot_recording_triggers_desired_bpart[num_snapshot_triggers_bpart];
   int snapshot_recording_triggers_started_bpart[num_snapshot_triggers_bpart];
 
+  double snapshot_recording_triggers_sink[num_snapshot_triggers_sink];
+  double snapshot_recording_triggers_desired_sink[num_snapshot_triggers_sink];
+  int snapshot_recording_triggers_started_sink[num_snapshot_triggers_sink];
+
   /* Metadata from the ICs */
   struct ic_info *ics_metadata;
 

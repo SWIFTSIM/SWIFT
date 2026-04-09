@@ -662,6 +662,14 @@ void io_write_meta_data(hid_t h_file, const struct engine *e,
                        e->snapshot_recording_triggers_bpart,
                        num_snapshot_triggers_bpart);
   }
+  if (num_snapshot_triggers_sink) {
+    io_write_attribute(h_grp, "DesiredRecordingTimesSinks", DOUBLE,
+                       e->snapshot_recording_triggers_desired_sink,
+                       num_snapshot_triggers_sink);
+    io_write_attribute(h_grp, "ActualRecordingTimesSinks", DOUBLE,
+                       e->snapshot_recording_triggers_sink,
+                       num_snapshot_triggers_sink);
+  }
   H5Gclose(h_grp);
 
   /* Print the system of Units used in the spashot */
@@ -1834,6 +1842,8 @@ void io_select_sink_fields(const struct sink *const sinks,
 
   sink_write_particles(sinks, list, num_fields, with_cosmology);
   *num_fields += chemistry_write_sinkparticles(sinks, list + *num_fields);
+  *num_fields +=
+      tracers_write_sinkparticles(sinks, list + *num_fields, with_cosmology);
   if (with_fof) {
     *num_fields += fof_write_sinks(sinks, list + *num_fields);
   }
