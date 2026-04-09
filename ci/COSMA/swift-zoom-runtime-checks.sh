@@ -87,6 +87,9 @@ do_run bash run.sh
 
 # ============================================================================
 
+cd "${WORKDIR}"
+do_make clean
+
 echo
 echo "------------------------------------------------------"
 echo "Configure: DMO MPI gravity examples (with debugging checks)"
@@ -216,10 +219,10 @@ do_run mpirun -np 4 ../../../swift_mpi --cosmology --hydro --self-gravity --zoom
     --param="DomainDecomposition:trigger:0.1" \
     zoom_uniform_dm_hydro.yml
 
+# ============================================================================
+
 cd "${WORKDIR}"
 do_make clean
-
-# ============================================================================
 
 echo
 echo "-----------------------------------------------------"
