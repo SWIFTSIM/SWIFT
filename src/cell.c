@@ -2117,7 +2117,7 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
     if (cpi == NULL) continue;
 
     /* Skip empty progeny */
-    if (cell_is_empty_grav_local(cpi)) continue;
+    if (cell_is_empty_grav(cpi)) continue;
 
     for (int j = 0; j < 8; j++) {
       struct cell *cpj = cj->progeny[j];
@@ -2126,7 +2126,7 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
       if (cpj == NULL) continue;
 
       /* Skip empty progeny */
-      if (cell_is_empty_grav_local(cpj)) continue;
+      if (cell_is_empty_grav(cpj)) continue;
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
@@ -2205,7 +2205,7 @@ static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
     if (ci->progeny[k] == NULL) continue;
 
     /* Skip empty progeny */
-    if (cell_is_empty_grav_local(ci->progeny[k])) continue;
+    if (cell_is_empty_grav(ci->progeny[k])) continue;
 
     if (cell_check_grav_mesh_pairs_zoom_self_recursive(ci->progeny[k], e)) {
       return 1;
@@ -2217,7 +2217,7 @@ static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
     if (ci->progeny[j] == NULL) continue;
 
     /* Skip empty progeny */
-    if (cell_is_empty_grav_local(ci->progeny[j])) continue;
+    if (cell_is_empty_grav(ci->progeny[j])) continue;
 
     struct cell *cpj = ci->progeny[j];
 
@@ -2225,7 +2225,7 @@ static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
       if (ci->progeny[k] == NULL) continue;
 
       /* Skip empty progeny */
-      if (cell_is_empty_grav_local(ci->progeny[k])) continue;
+      if (cell_is_empty_grav(ci->progeny[k])) continue;
 
       struct cell *cpk = ci->progeny[k];
 
@@ -2295,7 +2295,7 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
   struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
 
   /* Skip cells without gravity particles */
-  if (cell_is_empty_grav_local(c)) return;
+  if (cell_is_empty_grav(c)) return;
 
   /* Early exit if not using mesh */
   if (!s->periodic) {
@@ -2325,7 +2325,7 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
     if (c == cj) continue;
 
     /* Skip empty cells */
-    if (cell_is_empty_grav_local(cj)) continue;
+    if (cell_is_empty_grav(cj)) continue;
 
     /* Can we use the mesh for this top-level pair? */
     if (cell_can_use_mesh(e, c, cj)) {
