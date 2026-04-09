@@ -227,7 +227,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Ignore empty cells but not void cells (in zoom land). */
-  if (cell_is_empty_grav(c, /*use_mpole=*/1)) return;
+  if (cell_is_empty_grav_local(c, /*use_mpole=*/1)) return;
 
   /* Skip inactive cells. */
   if (!cell_is_active_gravity(c, e)) return;
@@ -432,7 +432,7 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if (cell_is_empty(c, /*use_mpole=*/with_self_grav)) continue;
+    if (cell_is_empty_local(c, /*use_mpole=*/with_self_grav)) continue;
 
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
         (with_self_grav && cell_is_active_gravity(c, e)) ||

@@ -2212,7 +2212,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
   struct cell *ci = &cells[cid];
 
   /* Skip cells without gravity particles unless they are void cells. */
-  if (cell_is_empty_grav(ci, /*use_mpole=*/1)) return;
+  if (cell_is_empty_grav_local(ci, /*use_mpole=*/1)) return;
 
   /* If the cell is local build a self-interaction */
   if (ci->nodeID == nodeID) {
@@ -2258,7 +2258,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         if (cid >= cjd) continue;
 
         /* Avoid empty cells (except voids). */
-        if (cell_is_empty_grav(cj, /*use_mpole=*/1)) continue;
+        if (cell_is_empty_grav_local(cj, /*use_mpole=*/1)) continue;
 
         /* Completely foreign pairs also get the Nigel treatment (AKA are
          * kicked out of the union/we skip them). */
@@ -3808,7 +3808,7 @@ void engine_addunlock_rt_advance_cell_time_tend(struct cell *c,
 
   /* safety measure */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
-  if (cell_is_empty(c, /*use_mpole=*/0)) return;
+  if (cell_is_empty_local(c, /*use_mpole=*/0)) return;
 
   if (c->super == c) {
     /* Found the super level cell. Add dependency from rt_advance_cell_time,

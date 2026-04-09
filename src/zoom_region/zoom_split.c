@@ -193,7 +193,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     }
 
     /* If the zoom progeny is empty there's nothing to do. */
-    else if (cell_is_empty(cp, /*use_mpole=*/0)) {
+    else if (cell_is_empty_local(cp, /*use_mpole=*/0)) {
       continue;
     }
 

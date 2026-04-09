@@ -701,7 +701,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
     if (cpi == NULL) continue;
 
     /* Skip empty non-void progeny */
-    if (cell_is_empty_grav(cpi, /*use_mpole=*/1)) continue;
+    if (cell_is_empty_grav_local(cpi, /*use_mpole=*/1)) continue;
 
     for (int j = 0; j < 8; j++) {
       struct cell *cpj = cj->progeny[j];
@@ -710,7 +710,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       if (cpj == NULL) continue;
 
       /* Skip empty non-void progeny */
-      if (cell_is_empty_grav(cpj, /*use_mpole=*/1)) continue;
+      if (cell_is_empty_grav_local(cpj, /*use_mpole=*/1)) continue;
 
       /* Skip entirely foreign pairs. */
       if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
@@ -765,7 +765,7 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
     if (ci->progeny[k] == NULL) continue;
 
     /* Skip empty progeny (void cells are never empty). */
-    if (cell_is_empty_grav(ci->progeny[k], /*use_mpole=*/1)) continue;
+    if (cell_is_empty_grav_local(ci->progeny[k], /*use_mpole=*/1)) continue;
 
     /* Skip foreign progeny (no such thing as a foreign self task). */
     if (ci->progeny[k]->type == cell_type_zoom &&
@@ -780,7 +780,7 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
     if (ci->progeny[j] == NULL) continue;
 
     /* Skip empty progeny. */
-    if (cell_is_empty_grav(ci->progeny[j], /*use_mpole=*/1)) continue;
+    if (cell_is_empty_grav_local(ci->progeny[j], /*use_mpole=*/1)) continue;
 
     struct cell *cpj = ci->progeny[j];
 
@@ -788,7 +788,7 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
       if (ci->progeny[k] == NULL) continue;
 
       /* Skip empty progeny. */
-      if (cell_is_empty_grav(ci->progeny[k], /*use_mpole=*/1)) continue;
+      if (cell_is_empty_grav_local(ci->progeny[k], /*use_mpole=*/1)) continue;
 
       struct cell *cpk = ci->progeny[k];
 
