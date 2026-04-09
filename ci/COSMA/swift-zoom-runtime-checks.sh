@@ -39,74 +39,191 @@ git clean -fdx
 #  Python environment for zoom IC generation scripts.
 source ci/COSMA/zoom-python-env.sh
 
+# ============================================================================
+
 echo
 echo "------------------------------------------------------"
-echo "Configure group: DMO + hydro zoom integration examples"
+echo "Configure: DMO single node gravity examples (with debugging checks)"
 echo "------------------------------------------------------"
-do_configure --with-parmetis --enable-debugging-checks --disable-vec --enable-debug
+do_configure --enable-debugging-checks --enable-debug --disable-mpi
 do_make
 
 echo
-echo "-------------------"
-echo "DMO integration runs"
-echo "-------------------"
+echo "---------"
+echo "DMO runs"
+echo "---------"
 
 echo
 echo "---------------------------------------------------"
-echo "Zoom integration check: UniformDMGravity, 16 steps"
+echo "Zoom check: UniformDMGravity, 16 steps"
 echo "---------------------------------------------------"
+# Expected runtime: ~30 seconds
 cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravity"
 do_run bash run.sh
 
 echo
 echo "------------------------------------------------------------"
-echo "Zoom integration check: UniformDMGravityWithHoles, 16 steps"
+echo "Zoom check: UniformDMGravityWithHoles, 16 steps"
 echo "------------------------------------------------------------"
+# Expected runtime: ~30 seconds
 cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravityWithHoles"
 do_run bash run.sh
 
 echo
 echo "------------------------------------------------------"
-echo "Zoom integration check: OffsetUniDMGravity, 16 steps"
+echo "Zoom check: OffsetUniDMGravity, 16 steps"
 echo "------------------------------------------------------"
+# Expected runtime: ~30 seconds
 cd "${WORKDIR}/examples/ZoomSimulations/OffsetUniDMGravity"
 do_run bash run.sh
 
 echo
 echo "------------------------------------------------------------"
-echo "Zoom integration check: BoundaryOffsetUniDMGrav, 16 steps"
+echo "Zoom check: BoundaryOffsetUniDMGrav, 16 steps"
 echo "------------------------------------------------------------"
+# Expected runtime: ~30 seconds
 cd "${WORKDIR}/examples/ZoomSimulations/BoundaryOffsetUniDMGrav"
 do_run bash run.sh
 
+# ============================================================================
+
 echo
-echo "---------------------"
-echo "Hydro integration runs"
-echo "---------------------"
+echo "------------------------------------------------------"
+echo "Configure: DMO MPI gravity examples (with debugging checks)"
+echo "------------------------------------------------------"
+do_configure --with-parmetis --enable-debugging-checks --enable-debug
+do_make
+
+echo
+echo "------------------------------------------------------"
+echo "Zoom MPI runs, 4 ranks, 3 steps"
+echo "------------------------------------------------------"
+
+echo "-------------------------------"
+echo "UniformDMGravity MPI run"
+echo "-------------------------------"
+# Expected runtime: ~20 seconds
+cd "${WORKDIR}/examples/ZoomSimulations/UniformDMGravity"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:grid" \
+    --param="DomainDecomposition:repartition_type:none" \
+    --param="DomainDecomposition:trigger:0.1" \
+    zoom_uniform_dm_gravity.yml
+
+echo "------------------------------------------"
+echo "UniformDMGravity wedge MPI run"
+echo "------------------------------------------"
+# Expected runtime: ~20 seconds
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:wedge" \
+    --param="DomainDecomposition:repartition_type:none" \
+    --param="DomainDecomposition:trigger:0.1" \
+    zoom_uniform_dm_gravity.yml
+
+echo "-----------------------------------------------------"
+echo "UniformDMGravity memory/fullcosts run"
+echo "-----------------------------------------------------"
+# Expected runtime: ~20 seconds
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:memory" \
+    --param="DomainDecomposition:repartition_type:fullcosts" \
+    --param="DomainDecomposition:trigger:0.1" \
+    zoom_uniform_dm_gravity.yml
+
+echo "--------------------------------------------------------"
+echo "UniformDMGravity edgememory/edgecosts run"
+echo "--------------------------------------------------------"
+# Expected runtime: ~20 seconds
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:edgememory" \
+    --param="DomainDecomposition:repartition_type:edgecosts" \
+    --param="DomainDecomposition:trigger:0.1" \
+    zoom_uniform_dm_gravity.yml
+
+echo "------------------------------------------------"
+echo "UniformDMGravity region/memory run"
+echo "------------------------------------------------"
+# Expected runtime: ~20 seconds
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:region" \
+    --param="DomainDecomposition:repartition_type:memory" \
+    --param="DomainDecomposition:trigger:0.1" \
+    zoom_uniform_dm_gravity.yml
+
+echo "--------------------------------"
+echo "OffsetUniDMGravity MPI run"
+echo "--------------------------------"
+# Expected runtime: ~20 seconds
+cd "${WORKDIR}/examples/ZoomSimulations/OffsetUniDMGravity"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:grid" \
+    --param="DomainDecomposition:repartition_type:none" \
+    --param="DomainDecomposition:trigger:0.1" \
+    offset_uni_dm_gravity.yml
+
+echo "--------------------------------------"
+echo "BoundaryOffsetUniDMGrav MPI run"
+echo "--------------------------------------"
+# Expected runtime: ~20 seconds
+cd "${WORKDIR}/examples/ZoomSimulations/BoundaryOffsetUniDMGrav"
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:grid" \
+    --param="DomainDecomposition:repartition_type:none" \
+    --param="DomainDecomposition:trigger:0.1" \
+    boundary_offset_uni_dm_grav.yml
+
+# ============================================================================
+
+echo
+echo "----------"
+echo "Hydro runs"
+echo "----------"
 
 cd "${WORKDIR}"
 do_make clean
 
 echo
 echo "-------------------------------------------"
-echo "Configure group: hydro zoom integration runs"
+echo "Configure: hydro zoom runs"
 echo "-------------------------------------------"
 do_configure --with-parmetis --with-hydro=sphenix --with-kernel=wendland-C2 --enable-debugging-checks --disable-vec --enable-debug
 do_make
 
 echo
 echo "-------------------------------------------------"
-echo "Zoom integration check: UniformDMHydro, 16 steps"
+echo "Zoom check: UniformDMHydro, 16 steps"
 echo "-------------------------------------------------"
+# Expected runtime: ~120 seconds
 cd "${WORKDIR}/examples/ZoomSimulations/UniformDMHydro"
 do_run bash run.sh
+
+echo
+echo "------------------------------------------------------"
+echo "UniformDMHydro MPI run, 4 ranks, 3 steps"
+echo "------------------------------------------------------"
+# Expected runtime: ~100 seconds
+do_run mpirun -np 4 ../../../swift_mpi --cosmology --hydro --self-gravity --zoom \
+    --threads=1 -n 3 --no-io \
+    --param="DomainDecomposition:initial_type:grid" \
+    --param="DomainDecomposition:repartition_type:none" \
+    --param="DomainDecomposition:trigger:0.1" \
+    zoom_uniform_dm_hydro.yml
 
 cd "${WORKDIR}"
 do_make clean
 
+# ============================================================================
+
 echo
 echo "-----------------------------------------------------"
-echo "Configure group: full physics zoom integration builds"
+echo "Configure: full physics zoom integration builds"
 echo "-----------------------------------------------------"
 
 do_configure --with-parmetis --with-subgrid=EAGLE-XL --with-hydro=sphenix --with-kernel=wendland-C2 --enable-debugging-checks --disable-vec --enable-debug
@@ -114,23 +231,24 @@ do_make
 
 echo
 echo "-------------------------------------------------"
-echo "Zoom integration check: UniformDMEAGLE, 16 steps"
+echo "Zoom check: UniformDMEAGLE, 16 steps"
 echo "-------------------------------------------------"
+# Expected runtime: ~140 seconds
 cd "${WORKDIR}/examples/ZoomSimulations/UniformDMEAGLE"
 
 # Link tables from shared HOME location when available; run.sh downloads
 # any missing dependencies.
 if [ ! -e yieldtables ] && [ -e "$HOME/yieldtables" ]; then
-	link_data yieldtables
+    link_data yieldtables
 fi
 if [ ! -e coolingtables ] && [ -e "$HOME/coolingtables" ]; then
-	link_data coolingtables
+    link_data coolingtables
 fi
 if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ] && [ -e "$HOME/UV_dust1_CR1_G1_shield1.hdf5" ]; then
-	link_data UV_dust1_CR1_G1_shield1.hdf5
+    link_data UV_dust1_CR1_G1_shield1.hdf5
 fi
 if [ ! -e photometry ] && [ -e "$HOME/photometry" ]; then
-	link_data photometry
+    link_data photometry
 fi
 
 do_run bash run.sh
