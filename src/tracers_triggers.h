@@ -32,10 +32,12 @@
 #define num_snapshot_triggers_part 0
 #define num_snapshot_triggers_spart 0
 #define num_snapshot_triggers_bpart 0
+#define num_snapshot_triggers_sink 0
 #elif defined(TRACERS_EAGLE)
 #define num_snapshot_triggers_part 2
 #define num_snapshot_triggers_spart 0
 #define num_snapshot_triggers_bpart 2
+#define num_snapshot_triggers_sink 0
 #else
 #error "Invalid choice of tracers."
 #endif

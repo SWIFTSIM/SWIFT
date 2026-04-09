@@ -2559,6 +2559,9 @@ void space_after_snap_tracer(struct space *s, int verbose) {
   for (size_t i = 0; i < s->nr_bparts; ++i) {
     tracers_after_snapshot_bpart(&s->bparts[i]);
   }
+  for (size_t i = 0; i < s->nr_sinks; ++i) {
+    tracers_after_snapshot_sink(&s->sinks[i]);
+  }
 }
 
 /**
