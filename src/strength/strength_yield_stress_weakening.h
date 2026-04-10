@@ -56,8 +56,10 @@ yield_weakening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
   const float temperature = gas_temperature_from_internal_energy(density, u, mat_id);
 
   /* Apply weakening. */
-  if (temperature > 0.f) {
+  if (temperature > 0.f && temperature < T_melt) {
     *Y *= tanhf(xi * (T_melt / temperature - 1.f));
+  } else if (temperature >= T_melt) {
+    *Y = 0.f;
   }
 #endif /* STRENGTH_YIELD_STRESS_WEAKENING_THERMAL */
 }

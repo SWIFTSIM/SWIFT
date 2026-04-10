@@ -105,14 +105,17 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
     return;
   }
 
+  /* If damage is already 1, no accumulation. */
+  if (damage == 1.f) {
+    return;
+  }
+    
+
   /* Calculate maximum principal stress. */
   float principal_stress_eigen[3];
   sym_matrix_compute_eigenvalues(principal_stress_eigen, stress_tensor);
-  float max_principal_stress = principal_stress_eigen[0];
-  if (principal_stress_eigen[1] > max_principal_stress)
-    max_principal_stress = principal_stress_eigen[1];
-  if (principal_stress_eigen[2] > max_principal_stress)
-    max_principal_stress = principal_stress_eigen[2];
+  const float max_principal_stress = fmaxf(principal_stress_eigen[0],
+                                      fmaxf(principal_stress_eigen[1], principal_stress_eigen[2]));
 
   /* Tensile damage will only accumulate if particle is in tension. */
   if (max_principal_stress <= 0.f) {
@@ -130,6 +133,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   /* The number of activated flaws is defined as the number of flaws for which
    * the local scalar strain has reached or exceeded the flaw's activation
    * threshold. */
+  // ### this can be done nicer if we sort thresholds in order and then break in this loop
   for (int i = 0; i < number_of_flaws; i++) {
     if (local_scalar_strain > activation_thresholds[i]) {
       *number_of_activated_flaws += 1;
@@ -159,7 +163,10 @@ __attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_
     float *tensile_damage, const float tensile_cbrtD_dt,
     const int number_of_activated_flaws, const int number_of_flaws, const float dt_therm) {
 
-  // ### Can this be simplified based on damage_tensile_compute_dD_dt?
+
+    if (number_of_flaws == 0 || tensile_cbrtD_dt <= 0.f) {
+      return;
+    }
 
   /* Apply time-step. */
   float Delta_cbrtD = tensile_cbrtD_dt * dt_therm;
@@ -176,7 +183,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_
 
   /* Update tensile damage. */
   const float evolved_D_cbrt = cbrtf(*tensile_damage) + Delta_cbrtD;
-  *tensile_damage = powf(evolved_D_cbrt, 3.f);
+  *tensile_damage = fminf(powf(evolved_D_cbrt, 3.f), 1.f);
 }
 
 /**
@@ -198,7 +205,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_evolve(
     const float mass, const float density, const float damage, const float dt_therm) {
 
   /* Particle flaws and their thresholds. */
-  const float number_of_flaws = p->strength_data.number_of_flaws;
+  const int number_of_flaws = p->strength_data.number_of_flaws;
   float activation_thresholds[40]; // ### hardcoded length
   memcpy(activation_thresholds, p->strength_data.activation_thresholds, sizeof(activation_thresholds));
 

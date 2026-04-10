@@ -122,7 +122,7 @@ hydro_reset_acceleration_strength(struct part *restrict p) {
 
   p->strength_data.drho_dt = 0.0f;
 
-  memset(p->strength_data.dv_force_loop, 0.f, 3 * 3 * sizeof(float));
+  memset(p->strength_data.dv_force_loop, 0, 3 * 3 * sizeof(float));
   zero_sym_matrix(&p->strength_data.dS_dt);
 }
 
@@ -137,7 +137,7 @@ hydro_end_force_strength(struct part *restrict p) {
  /* Update dS/dt for timestep. */
  stress_tensor_compute_dS_dt(p, p->strength_data.dv_force_loop);
 
-  /* Get quntities needed for dD/dt calculation. */
+  /* Get quantities needed for dD/dt calculation. */
   const int mat_id = p->mat_id;
   const float mass = p->mass;
   const float density = p->strength_data.rho_evol;
@@ -146,7 +146,7 @@ hydro_end_force_strength(struct part *restrict p) {
   const float damage = strength_get_damage(p);
   const struct sym_matrix deviatoric_stress_tensor = p->strength_data.deviatoric_stress_tensor;
 
-  struct sym_matrix stress_tensor;
+  struct sym_matrix stress_tensor = {0};
   const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
@@ -198,7 +198,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   const float yield_stress = yield_compute_yield_stress(mat_id, phase, density, pressure, u, damage);
   const struct sym_matrix deviatoric_stress_tensor = p->strength_data.deviatoric_stress_tensor;
 
-  struct sym_matrix stress_tensor;
+  struct sym_matrix stress_tensor = {0};
   const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
@@ -278,7 +278,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   const float yield_stress = yield_compute_yield_stress(mat_id, phase, density, pressure, u, damage);
   const struct sym_matrix deviatoric_stress_tensor = xp->strength_data.deviatoric_stress_tensor_full;
 
-  struct sym_matrix stress_tensor;
+  struct sym_matrix stress_tensor = {0};
   const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(deviatoric_stress_tensor, damage);
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
@@ -290,7 +290,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
 
   /* Apply yield stress to deviatoric stress tensor. */
   yield_apply_yield_stress_to_sym_matrix(
-        &p->strength_data.deviatoric_stress_tensor, p->strength_data.deviatoric_stress_tensor, density, u, yield_stress);
+        &xp->strength_data.deviatoric_stress_tensor_full, xp->strength_data.deviatoric_stress_tensor_full, density, u, yield_stress);
 
   strength_kick_extra_beginning(p, xp, density, u, yield_stress, dt_therm);
 }

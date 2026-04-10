@@ -37,10 +37,10 @@
  * The stress tensors used for the force interaction between a specific pair of
  * particles. These differ from the particle's own stress tensor, since they
  * factor in the phases of the two particles as well as the contribution of
- * artificial stress for the pairwie interaction.
+ * artificial stress for the pairwise interaction.
  *
- * @param pairwise_stress_tensor_i Stress tensor of particle i for its interactiion with j.
- * @param pairwise_stress_tensor_j Stress tensor of particle j for its interactiion with i.
+ * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
+ * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
@@ -113,7 +113,7 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
   pi->strength_data.drho_dt += pj->mass * dv_dot_G_i;
   pj->strength_data.drho_dt += pi->mass * dv_dot_G_j;
 
-  /* Add constribution to dv/dr if both particles are solid. */
+  /* Add contribution to dv/dr if both particles are solid. */
   if ((pi->phase == mat_phase_solid) &&
       (pj->phase == mat_phase_solid)) {
     for (int i = 0; i < 3; ++i) {
@@ -146,7 +146,7 @@ hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
   /* Add contribution to drho/dt. */
   pi->strength_data.drho_dt += pj->mass * dv_dot_G_i;
 
-  /* Add constribution to dv/dr if both particles are solid. */
+  /* Add contribution to dv/dr if both particles are solid. */
   if ((pi->phase == mat_phase_solid) &&
       (pj->phase == mat_phase_solid)) {
     for (int i = 0; i < 3; ++i) {

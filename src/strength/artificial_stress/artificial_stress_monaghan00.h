@@ -34,7 +34,7 @@
  * @brief Apply artificial stress to pairwise stress tensors.
  *
  * Adds a negative factor to positive elements of the stress tensor. These
- * factors consist of the corresponding element of the stress tensor muliplied
+ * factors consist of the corresponding element of the stress tensor multiplied
  * by a factor that increases with reduced particle separation, scaling by the
  * kernel function to a given power. This method is presented by Monaghan2000
  * and is used by e.g. Schäfer+2016.
@@ -44,8 +44,8 @@
  *     n: Kernel exponent in particle separation factor.
  *     epsilon: Artificial stress multiplication factor.
  *
- * @param pairwise_stress_tensor_i Stress tensor of particle i for its interactiion with j.
- * @param pairwise_stress_tensor_j Stress tensor of particle j for its interactiion with i.
+ * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
+ * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   const float artif_stress_n = method_artif_stress_n();
   const float artif_stress_epsilon = method_artif_stress_epsilon();
 
-  /* Calculate the expected separation of cloest neighbour, delta_p.
+  /* Calculate the expected separation of closest neighbour, delta_p.
    * Note that the expression for delta_p differs from the one used in other
    * papers, so direct comparisons can't be made. */
   const float max_h = fmaxf(pi->h, pj->h);

@@ -36,17 +36,15 @@
  * Adds a negative factor to diagonal elements of the stress tensor if any of
  * the principal stresses are positive. The same factor is used for each of the
  * diagonal elements, and it consists of the maximum principal stress multiplied
- * by a Gaussian function that increases from 0 to 1 with reduced particle
- * separation. Similar separation functions  are included in the artificial
- * viscosity and diffusion slope limiters in REMIX. Adding the same constant to
- * all diagonal elemenets is equivalent in any basis:
+ * by a function that increases from 0 to 1 with reduced particle separation. 
+ * Adding the same constant to all diagonal elemenets is equivalent in any basis:
  * M + c*I = P (M + c*I) P^-1 = P M P^-1 + P (c*I) P^-1 = P M P^-1 + c*I
  * Unlike the basis independent method presented by Gray+2001, this method does
  * not require basis transformation of the stress tensor, and it is therefore
  * more simple and less computationally intesive.
  *
- * @param pairwise_stress_tensor_i Stress tensor of particle i for its interactiion with j.
- * @param pairwise_stress_tensor_j Stress tensor of particle j for its interactiion with i.
+ * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
+ * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
@@ -56,7 +54,7 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
     const struct part *restrict pi, const struct part *restrict pj,
     const float r) {
 
- /* Calculate qunatities needed for separation factor. */
+ /* Calculate quantities needed for separation factor. */
   const float eta_crit = 1.f / 1.487;//viscosity_global.eta_crit; // ### hardcoded for now so it works with Planetary (WC2)
   const float eta_ab = fminf(r / pi->h, r / pj->h);
 
@@ -72,17 +70,11 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   const float artif_stress_f = fmaxf(0.f, fminf(1.f, 2.f * (1.f - eta_ab / eta_crit)));
 
   /* Get max principal stresses for particles i and j. */
-  float max_principal_stress_i = pi->strength_data.principal_stress_eigen[0];
-  if (pi->strength_data.principal_stress_eigen[1] > max_principal_stress_i)
-    max_principal_stress_i = pi->strength_data.principal_stress_eigen[1];
-  if (pi->strength_data.principal_stress_eigen[2] > max_principal_stress_i)
-    max_principal_stress_i = pi->strength_data.principal_stress_eigen[2];
+  const float max_principal_stress_i = fmaxf(pi->strength_data.principal_stress_eigen[0],
+                                         fmaxf(pi->strength_data.principal_stress_eigen[1], pi->strength_data.principal_stress_eigen[2]));
 
-  float max_principal_stress_j = pj->strength_data.principal_stress_eigen[0];
-  if (pj->strength_data.principal_stress_eigen[1] > max_principal_stress_j)
-    max_principal_stress_j = pj->strength_data.principal_stress_eigen[1];
-  if (pj->strength_data.principal_stress_eigen[2] > max_principal_stress_j)
-    max_principal_stress_j = pj->strength_data.principal_stress_eigen[2];
+  const float max_principal_stress_j = fmaxf(pj->strength_data.principal_stress_eigen[0],
+                                         fmaxf(pj->strength_data.principal_stress_eigen[1], pj->strength_data.principal_stress_eigen[2]));
 
   /* Apply artificial stress. */
   if (max_principal_stress_i > 0.f) {

@@ -109,15 +109,10 @@ __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
 
   /* Damage weakens negative pressures so that fully damaged material cannot be
    * in tension. */
-  if (pressure < 0.f) {
-    stress_tensor->xx -= (1.f - damage) * pressure;
-    stress_tensor->yy -= (1.f - damage) * pressure;
-    stress_tensor->zz -= (1.f - damage) * pressure;
-  } else {
-    stress_tensor->xx -= pressure;
-    stress_tensor->yy -= pressure;
-    stress_tensor->zz -= pressure;
-  }
+  const float effective_pressure = pressure > 0.f ? pressure : (1.f - damage) * pressure;
+  stress_tensor->xx -= effective_pressure;
+  stress_tensor->yy -= effective_pressure;
+  stress_tensor->zz -= effective_pressure;
 }
 
 /**
@@ -247,6 +242,12 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
   const float tensile_damage = damage_get_tensile_damage(p);
   const float damage = strength_get_damage(p);
 
+  /* If full tensile damage, no accumulation. */
+  if (tensile_damage == 1.f) {
+      p->strength_data.damage_accumulation_timescale = FLT_MAX;
+      return;
+  }
+
   /* Compute tensile contribution. */
   float tensile_cbrtD_dt = 0.f;
   int number_of_activated_flaws = 0;
@@ -267,7 +268,8 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
   }
 
   /* Compute the limiting timescale for tensile damage accumulation. */
-  p->strength_data.damage_accumulation_timescale = cbrtf(tensile_damage) / tensile_cbrtD_dt;
+  const float damage_scale = 1.f;
+  p->strength_data.damage_accumulation_timescale = damage_scale / tensile_cbrtD_dt;
 
   // ### If we also have a shear damage timescale, we would need to compute that and then take the minimum of the two timescales here.
   // ### That might be harder to do because of the way the delta damage is calculated directly rather than a time drivative

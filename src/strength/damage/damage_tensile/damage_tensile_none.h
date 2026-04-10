@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void damage_set_tensile_damage_full
  * @param tensile_cbrtD_dt The rate of tensile cbrt(damage) accumulation.
  * @param number_of_activated_flaws The number of currently-active flaws.
  * @param number_of_flaws The total number of flaws.
- * @param activation_thresholds The activation thresholds fo flaws.
+ * @param activation_thresholds The activation thresholds of flaws.
  * @param stress_tensor The stress tensor.
  * @param mat_id The material ID.
  * @param mass The particle mass.

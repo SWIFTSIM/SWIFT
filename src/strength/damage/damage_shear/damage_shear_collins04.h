@@ -93,19 +93,6 @@ __attribute__((always_inline)) INLINE static void damage_shear_evolve(
     return;
   }
 
-  // ### I think this is wrong and I need to calculate a quantity that gets
-  // ### evolved in time based on adding an invariant of the *plastic strain*
-  // ### each timestep. Instead of current invariant of stress. I need to evolve
-  // ### stain epsilon = strain_rate * dt in time, limited by Y/sqrtf(J_2) and
-  // ### then the plastic strain is the accumulation of the strain that gets
-  // ### reset based on Y/sqrtf(J_2). In practice this becomes:
-
-  // ### Evolve *strain* based on strain rate.
-  // ### Make sure to do evolution in co-rotating frame.
-  // ### deviatoric strain gets reduced by yield criterion in the same way as deviatoric stress.
-  // ### The accumulation of the amount that the deviatoric strain gets reduced by in each elements gets stored as the plastic strain.
-  // ### The equivalent of the J_2 invariant of this plastic strain is added up each timestep to get a quantity epsilon_tot (Collins Eqn A6).
-
   /* Calculate pressure and set invariant of total plastric strain. */
   const float pressure =
         gas_pressure_from_internal_energy(density, u, mat_id);

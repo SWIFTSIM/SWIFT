@@ -26,6 +26,7 @@
  */
 
 #include "math.h"
+#include <string.h>
 #include "symmetric_matrix.h"
 
 /**
