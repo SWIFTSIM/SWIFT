@@ -508,63 +508,10 @@ if (is_nan_float(Q[4])) {
   W[0] = Q[0] * volume_inv;
   hydro_set_velocity_from_momentum(&Q[1], m_inv, W[0], hydro_props, &W[1]);
 
-  /* Internal Energy*/
+  /* Calculate the updated internal energy and entropic function A.
+   * NOTE: This may violate energy conservation. */
+  double Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
   double u;
-
-  /* Changes in Energy and Momentum in this timestep */
-  float const delta_E = Q[4] - p->conserved.energy;
-  float delta_p[3];
-  for (int i = 0; i < 3; i++) {
-    delta_p[i] = Q[i+1] - p->conserved.momentum[i];
-  }
-
-  /* Take Full evolution of thermal energy as in Gaburov 2011, Hopkins 2015
-   * Note: This includes all relevant subgrids such as cooling etc. Q[4] is
-   * assumed to be fully updated at this point.
-   * Note2: delta_E and delta_p correspond to total change of energy
-   * and momentum respectively from ALL sources.
-   */
-
-  double thermal_energy_old = xp->u_full * p->conserved.mass; // Initial value
-
-  /* Test this: dE_therm = dE_tot - dE_springel - dE_kin_hydro
-   * previously we use dp as the momentum change but actually this is not right
-   * we should use hydro momentum change and then the contribution to energy
-   * from momentum change by gravity should be done by dE springel */
-  float fluxes[6];
-  hydro_part_get_fluxes(p, fluxes);
-  double dE_therm = delta_E -     p->gravity.dE_prev
-                               - (p->v[0] * fluxes[0] +
-                                  p->v[1] * fluxes[1] +
-                                  p->v[2] * fluxes[2]) +
-                          0.5f * (p->v[0] * p->v[0] +
-                                  p->v[1] * p->v[1] +
-                                  p->v[2] * p->v[2]) * fluxes[0];
-
-  /* Sanity check on Ekin */
-  double Ekin = 0.5 * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv +
-                                                            p->gravity.dE_prev;
-  double thermal_energy;
-
-  /* Test basic switch */
-  if (thermal_energy_old <  1e-2 * Ekin) {
-    /* Ekin >> Etherm, no big - big here. */
-    thermal_energy = xp->u_full * p->conserved.mass + dE_therm;
-    Ekin = Q[4] - thermal_energy;
-  } else {
-    /* Numbers are similar in size, this can be used.  */
-    thermal_energy = Q[4] - Ekin;
-  }
-
-  if (Ekin < 0) {
-    message("Negative Ekin, fix!");
-  }
-
-  if (thermal_energy < 0) {
-    message("Negative thermal, fix!");
-  }
-
-
 #ifdef EOS_ISOTHERMAL_GAS
   u = gas_internal_energy_from_pressure(0.f, 0.f);
 #else
@@ -576,13 +523,7 @@ if (is_nan_float(Q[4])) {
   // See eq. 24 in Alonso Asensio et al. (preprint 2023)
   float flux[6];
   hydro_part_get_fluxes(p, flux);
-  thermal_energy =
-      p->conserved.mass * xp->u_full + flux[4] -
-      (p->v[0] * flux[1] + p->v[1] * flux[2] + p->v[2] * flux[3]) +
-      0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) *
-          flux[0];
-  /* Requires the cooling to be considered */
-  thermal_energy += p->cool_du_dt_prev * Q[0] * p->flux.dt / 2;
+  thermal_energy = Q[4] - Ekin;
 
 #if SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_NONE
   u = thermal_energy * m_inv;
@@ -613,30 +554,58 @@ if (is_nan_float(Q[4])) {
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
 
-  /* Cold Flows - conserve entropy
-   * Explained: If thermal energy is small compared to maximum neighboring Ekin,
-   * cold -> Entropy conservation is safe
-   * Explained: If thermal energy is small compared to Egrav,
-   * cold -> Entropy conservation is safe */
-  if ((thermal_energy < 5e-2 * (p->timestepvars.Ekin) || // OR
-      thermal_energy < 5e-3 * Egrav)) {
+  /* This is complicated. Alonso Asensio et. al. 2023 2.3.7 for more details
+   * We also ignore any mach criteria (Hopkins 2015, appendix D, Springel
+   * comment) */
 
-    /* Keep entropy conserved and recover thermal and total energy */
+  if (thermal_energy > 1e-2 * (Egrav + Ekin)) {
+    /* Thermal Energy and Kinetic are roughly same order, it should be safe
+     * to recover thermal energy from total energy, so we proceed as normal
+     *
+     * Recall: Cooling is already included in Q[4] */
+    u = thermal_energy * m_inv;
+  }
+  else if ((thermal_energy < 1e-2 * (p->timestepvars.Ekin + thermal_energy)) ||
+    (thermal_energy < 1e-3 * Egrav)) {
+    /* Indicates cold flows where it is wise to assume adiabatic, and so we
+     * recover from entropy.
+     *
+    * Recall: Cooling is included in entropy */
     double A = Q[5] * m_inv;
-
-    /* Entropy has already been cooled, just before self is called */
     u = gas_internal_energy_from_entropy(W[0], A);
-    if (p->id == 7607587) {
-      message("break");
+  }
+  else {
+    /* Employ Gaburov 2011 method (Also used in Hopkins 2015, Asensio 2023)
+     *
+     * Note that we include dE from Gravity interactions since we include
+     * change in momentum and velocity from gravity interactions
+     *
+     * Recall: Cooling is included in Q[4]
+     */
+
+    /* Changes in Energy and Momentum in this timestep */
+    float const delta_E = Q[4] - p->conserved.energy;
+    float delta_p[3];
+    for (int i = 0; i < 3; i++) {
+      delta_p[i] = Q[i+1] - p->conserved.momentum[i];
     }
 
-    } else {
+    /* Include all effects of gravity kick, including work from gravity
+     * which was included in term dE_springel, kick to momentum, and change
+     * in velocities W[1,2,3]
+     * This term is Asensio 2023 Equation 24,
+     * dE - v . dp + 0.5 * v**2 * dM
+     */
+    double dE_therm = delta_E - (W[1] * delta_p[0] +
+                          W[2] * delta_p[1] +
+                          W[3] * delta_p[2]) +
+                           0.5f * (W[1] * W[1] +
+                                   W[2] * W[2] +
+                                   W[3] * W[3]) * p->flux.mass;
 
-      u = thermal_energy * m_inv;
-      if (p->id == 7607587) {
-        message("break");
-      }
-      }
+    thermal_energy = xp->u_full * p->conserved.mass + dE_therm;
+    u = thermal_energy * m_inv;
+  }
 
 #else
   error("Unknown thermal energy switch!");
@@ -647,6 +616,10 @@ if (is_nan_float(Q[4])) {
   if (u != u) error("NaN internal energy!");
 #endif
 
+  /* Apply entropy floor.
+   * Note that this may also violate energy conservation! */
+  /* Explicitly update density here already, since the entropy floor depends on
+   * it... */
   p->rho = W[0];
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
@@ -661,17 +634,9 @@ if (is_nan_float(Q[4])) {
   W[4] = gas_pressure_from_internal_energy(W[0], u);
   W[5] = gas_entropy_from_internal_energy(W[0], u);
   xp->u_full = u;
-  /* Q[4] is conserved if no major changes were done to u, but if switches
-   * changed evolution or flooring is applied, total energy must change */
   Q[4] = Ekin + Q[0] * u;
   Q[5] = Q[0] * W[5];
-  if (p->id == 7607587) {
-    message("break");
-  }
 
-  if (Q[4] < 0) {
-    message("negative energy after thermal switch");
-  }
   /* reset the primitive variables if we are using Lloyd's algorithm */
   /* TODO */
 }
