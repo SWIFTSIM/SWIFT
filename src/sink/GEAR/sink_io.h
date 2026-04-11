@@ -127,7 +127,7 @@ INLINE static void sink_write_particles(const struct sink *sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 13;
+  *num_fields = 15;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -201,6 +201,17 @@ INLINE static void sink_write_particles(const struct sink *sinks,
       birth_data.temperature, /*can convert to comoving=*/0,
       "Temperatures at the time of birth of the gas particles that turned into"
       " sinks");
+
+  list[13] = io_make_output_field(
+      "AccretionRates", FLOAT, 1, UNIT_CONV_MASS_PER_UNIT_TIME, 0.f, sinks,
+      accretion_rate,
+      "Physical instantaneous accretion rates of the particles");
+
+  list[14] = io_make_output_field(
+      "StarFormationRates", FLOAT, 1, UNIT_CONV_SFR, 0.f, sinks, SFR,
+      "If positive, star formation rates of the particles. If negative, stores "
+      "the last time/scale-factor at which the gas particle was star-forming. "
+      "If zero, the particle was never star-forming.");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 

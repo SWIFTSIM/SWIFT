@@ -130,4 +130,9 @@ struct tracers_bpart_data {
   float averaged_accretion_rate[num_snapshot_triggers_bpart];
 };
 
+/**
+ * @brief Properties of the tracers stored in the sink particle data.
+ */
+struct tracers_sink_data {};
+
 #endif /* SWIFT_TRACERS_STRUCT_EAGLE_H */

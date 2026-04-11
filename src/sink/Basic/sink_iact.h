@@ -20,9 +20,9 @@
 #define SWIFT_BASIC_SINKS_IACT_H
 
 /* Local includes */
-#include "gravity.h"
 #include "gravity_iact.h"
 #include "random.h"
+#include "sink.h"
 #include "sink_properties.h"
 
 /**
@@ -77,7 +77,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param sink_props the sink properties to use.
  * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
@@ -85,7 +86,7 @@ runner_iact_nonsym_sinks_gas_density(
     struct sink *si, const struct part *pj, const int with_cosmology,
     const struct cosmology *cosmo, const struct gravity_props *grav_props,
     const struct sink_props *sink_props, const integertime_t ti_current,
-    const double time) {
+    const double time, const double time_base) {
 
   float wi, wi_dx;
 
@@ -152,7 +153,8 @@ runner_iact_nonsym_sinks_gas_density(
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
  * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
@@ -161,7 +163,7 @@ runner_iact_nonsym_sinks_sink_swallow(
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
-    const double time) {
+    const double time, const double time_base) {
 
   /* Simpler version of GEAR as a placeholder. Sinks bound to each other are
    * merged. */
@@ -193,9 +195,7 @@ runner_iact_nonsym_sinks_sink_swallow(
 
   /* Compute the Newtonian or softened potential the sink exherts onto the
       gas particle */
-  /* TODO: needs updating for MPI safety. We don't have access to foreign gparts
-   * here. */
-  const float eps = gravity_get_softening(si->gpart, grav_props);
+  const float eps = sink_get_softening(si, grav_props);
   const float eps2 = eps * eps;
   const float eps_inv = 1.f / eps;
   const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -260,7 +260,8 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param si First sink particle.
  * @param pj Second particle.
  * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(
@@ -269,7 +270,7 @@ runner_iact_nonsym_sinks_gas_swallow(
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
-    const double time) {
+    const double time, const double time_base) {
 
   float wi;
 
