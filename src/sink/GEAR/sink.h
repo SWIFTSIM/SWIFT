@@ -1127,7 +1127,7 @@ INLINE static void sink_update_sink_properties_after_star_formation(
     /* Record the current time as an indicator of when this particle was last
        star-forming. */
     if (with_cosmology) {
-      sink->SFR = cosmo->a;
+      sink->SFR = -cosmo->a;
     } else {
       sink->SFR = -time;
     }

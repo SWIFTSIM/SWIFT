@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,26 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TRACERS_H
-#define SWIFT_TRACERS_H
+#ifndef SWIFT_TRACERS_NONE_DEBUG_H
+#define SWIFT_TRACERS_NONE_DEBUG_H
 
-/**
- * @file src/tracers.h
- * @brief Branches between the different particle data tracers
- */
+__attribute__((always_inline)) INLINE static void tracers_debug_particle(
+    const struct part *p, const struct xpart *xp) {}
 
-/* Config parameters. */
-#include <config.h>
-
-/* Import the right tracers definition */
-#if defined(TRACERS_NONE)
-#include "./tracers/none/tracers.h"
-#elif defined(TRACERS_EAGLE)
-#include "./tracers/EAGLE/tracers.h"
-#elif defined(TRACERS_GEAR)
-#include "./tracers/GEAR/tracers.h"
-#else
-#error "Invalid choice of tracers."
-#endif
-
-#endif /* SWIFT_TRACERS_H */
+#endif /* SWIFT_TRACERS_NONE_DEBUG_H */
