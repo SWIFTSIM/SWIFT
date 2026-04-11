@@ -395,6 +395,19 @@ struct gpart_ref {
   int index;
 };
 
+struct MG_variables {
+  int n;
+  double fR0;
+  double R;
+  double a;
+  double Omega_ratio;
+  double c;
+  double G;
+  double a3_inv;
+  double fR_correction;
+  double normalisation;
+};
+
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
@@ -508,14 +521,14 @@ void space_compute_star_formation_stats(const struct space *s,
                                         struct star_formation *star_form);
 void space_check_unskip_flags(const struct space *s);
 void space_get_density(struct engine *e, const int N, int multigrid);
-void space_apply_FMG(const struct engine *e, const int N_min, const int N_max);
+void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, int FAS);
 void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra);
 void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra);
 void density_to_cells(struct cic_mapper_data* data, struct cell* top_cells, int nr_cells, int cdim[3]);
 double get_residual(const double *pot, const double *rho, int cdim[3], double multiplier, double delta);
 void get_residual_array(const double *pot, const double *dens, int cdim[3], double multiplier, double *residual, double delta);
 void perform_red_black_sweep(double *pot, const double *rho, int cdim[3], double multiplier, double delta);
-void set_initial_guess(double *potential_array, const int cdim[3]);
+void set_initial_guess(double *potential_array, const int cdim[3], int MG);
 double get_mean_density(double *dens, const int N);
 void get_pm_potential(struct cic_mapper_data* data, const int N, const double box_size, struct threadpool* tp, int cdim[3]);
 void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
@@ -604,16 +617,18 @@ void get_patch_potential(struct space *s, struct AMR_levels *fine, struct AMR_le
 void mark_all_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);
 void check_diagonal1(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *c, int nr_neighbours, int neighbours[nr_neighbours], int min_depth, int double_diag);
 void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
-void space_get_fR_contribution(const struct space *s, double *rho, double *phi, int N_min, const int N);
-void apply_NGS(const double *rho, double *phi, int cdim[3], double mean_density, double box_size);
-double get_Laplacian(const double *phi, int cdim[3], int nbs[6], int i, int j, int k);
-double get_residual_fR(const double *phi, const double *rho, int cdim[3], double mean_density, double delta);
-double get_derivative(double *phi, int cdim[3], int nbs[6], int i, int j, int k, double delta);
-void perform_red_black_sweep_fR(double *phi, const double *rho, int cdim[3], double mean_density, double delta);
-void apply_multigrid_fR(const double *rho, double *pot, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
-void FAS_recursive(double *phi, const double *residual, const double *mean_density, int cdim[3], double delta, const int N_stop, const int N_start, int *depth);
-double get_residual_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double mean_density, double delta);
-void perform_red_black_sweep_coarser(double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double mean_density, double delta);
-void get_residual_array_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, double *residual_array, int cdim[3], double mean_density, double delta);
-void get_residual_array_fR(const double *phi, const double *rho, int cdim[3], double mean_density, double *residual_array, double delta);
+void space_get_fR_contribution(const struct space *s, double *rho, double *phi, struct MG_variables *MG, int N_min, const int N);
+void apply_NGS(const double *rho, double *phi, struct MG_variables *MG, int cdim[3], double mean_density, double box_size);
+double get_Laplacian(struct MG_variables *MG, const double *phi, int cdim[3], int nbs[6], int i, int j, int k);
+double get_residual_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+double get_derivative(double *phi, struct MG_variables *MG, int cdim[3], int nbs[6], int i, int j, int k, double delta);
+void perform_red_black_sweep_fR(double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+void apply_multigrid_fR(const double *rho, double *pot, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
+void FAS_recursive(double *phi, const double *residual, struct MG_variables *MG, const double *mean_density, int cdim[3], double delta, const int N_stop, const int N_start, int *depth);
+double get_residual_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+void perform_red_black_sweep_coarser(double *coarser_solution, const double *coarser_residual, const double *coarser_equation, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+void get_residual_array_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, double *residual_array, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+void get_residual_array_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double *residual_array, double delta);
+void apply_NGS_Poisson(const double *rho, double *phi, int cdim[3], double mean_density, double box_size);
+void perform_red_black_sweep_NGS(double *pot, const double *rho, int cdim[3], double multiplier, double delta);
 #endif /* SWIFT_SPACE_H */

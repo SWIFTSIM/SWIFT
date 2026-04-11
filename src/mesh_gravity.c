@@ -882,8 +882,8 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
  * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
-void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
-                              struct threadpool* tp, const int verbose, const int MG) {
+void compute_potential_global(struct engine *e, struct pm_mesh* mesh, const struct space* s,
+                              struct threadpool* tp, const struct cosmology *cosmo, const int verbose, const int MG) {
 
 #ifdef HAVE_FFTW
 
@@ -963,7 +963,35 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
                    (void*)&data);
   }
 
-  if (MG) {
+  if (MG) { //Assume n=1 for now
+    int uniform_test = 1;
+    double m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
+
+    struct MG_variables MG_var;
+    MG_var.a = cosmo->a;
+    MG_var.fR0 = 1e-4;
+    MG_var.n = 1;
+    MG_var.a3_inv = (1./(MG_var.a*MG_var.a*MG_var.a));
+    MG_var.Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
+    MG_var.R = (3.*m*m*(MG_var.a3_inv + 4.*(MG_var.Omega_ratio)));
+    MG_var.c = s->e->physical_constants->const_speed_light_c * e->internal_units->UnitLength_in_cgs;
+    MG_var.G = s->e->physical_constants->const_newton_G;
+    MG_var.normalisation = 1e-10;
+    //message("Set normalisation to %lf", MG_var.normalisation);
+
+    double fR_evo = ((MG_var.a3_inv + 4. * MG_var.Omega_ratio)/(1. + 4. * MG_var.Omega_ratio));
+    MG_var.fR_correction = fR_evo * fR_evo;
+
+    if (uniform_test) { //Change the density field to homogeneous
+      double density_mean = 0.;
+      for (int i=0; i<N*N*N; i++) {
+        density_mean += rho[i]/(N*N*N);
+      }
+      for (int i=0; i<N*N*N; i++) {
+        rho[i] = density_mean;
+      }
+    }
+
     message("Going to compute f(R)");
     int N_min = 16;
     double *field_contribution = NULL;
@@ -972,13 +1000,20 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
       error("Error allocating memory for the density mesh.");
     memuse_log_allocation("mesh.fR", field_contribution, 1,
                           sizeof(double) * N * N * N);
-    space_get_fR_contribution(s, rho, field_contribution, N_min, N); //field_contribution is u
+    space_get_fR_contribution(s, rho, field_contribution, &MG_var, N_min, N); //field_contribution is u
     //We still need to convert: fR = mean(fR(a)) * exp(u)
     //Then \delta R = mean(R(a))(sqrt(mean(fR(a))/fR) - 1)
+    double sum = 0.;
     for (int i=0; i<N*N*N; i++) {
       //Actually the following equation: \delta\rho_eff = 1/3 \delta\rho - 1/(24*pi*G)\delta R
-      rho[i] += field_contribution[i];
+      rho[i] *= (4./3.);
+      if (cosmo->Omega_b != 0 || cosmo->Omega_cdm != 0) {
+        rho[i] += 1/(6.*MG_var.G) * MG_var.R * (1. - exp(-(1./2.)*field_contribution[i]));
+        sum += fabs(1/(6.*MG_var.G) * MG_var.R * (1. - exp(-(1./2.)*field_contribution[i])));
+      }
+      else error("Calculating Modified Gravity but no matter present!");
     }
+    message("The total added effective density is %E", sum*1e8);
   }
 
   if (verbose)
@@ -1245,12 +1280,12 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
  * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
-void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
-                               struct threadpool* tp, const int verbose, const int MG) {
+void pm_mesh_compute_potential(struct engine *e, struct pm_mesh* mesh, const struct space* s,
+                               struct threadpool* tp, const struct cosmology *cosmo, const int verbose, const int MG) {
   if (mesh->distributed_mesh && !MG) {
     compute_potential_distributed(mesh, s, tp, verbose);
   } else {
-    compute_potential_global(mesh, s, tp, verbose, MG);
+    compute_potential_global(e, mesh, s, tp, cosmo, verbose, MG);
   }
 }
 
