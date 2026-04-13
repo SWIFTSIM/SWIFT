@@ -24,6 +24,8 @@
 #-
 echo "Loading the parallel Intel OneAPI toolchain for SWIFT."
 
+source /cosma/local/Modules/default/init/bash
+
 module purge
 module load intel_comp/2024.2.0 compiler-rt tbb compiler mpi
 module load parallel_hdf5/1.14.4

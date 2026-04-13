@@ -38,6 +38,12 @@ struct feedback_xpart_data {
 
   /*! Momemtum received from a supernovae */
   float delta_p[3];
+
+  /*! Indicator if the particle receives energy from SN specifically */
+  char hit_by_SN;
+
+  /*! Indicator if the particle receives energy from SW specifically */
+  char hit_by_preSN;
 };
 
 /**
@@ -68,6 +74,17 @@ struct feedback_spart_data {
 
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
+
+  /*! Pre-SN data struct */
+  struct {
+
+    /*! Energy injected in the surrounding particles */
+    float energy_ejected;
+
+    /*! Mass injected in the surrounding particles */
+    float mass_ejected;
+
+  } preSN;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */

@@ -258,12 +258,23 @@ __attribute__((always_inline)) INLINE static void forcing_bpart_drift_apply(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
-    double time, const struct forcing_terms *terms,
+    double time, const struct forcing_terms *terms, const struct space *s,
     const struct phys_const *phys_const, const struct part *p,
     const struct xpart *xp) {
 
   return FLT_MAX;
 }
+
+/**
+ * @brief updates the forcing terms
+ *
+ * Nothing to do here
+ *
+ * @param terms The #forcing_terms properties of the run
+ * @param time_old The previous system time
+ */
+INLINE static void forcing_update(struct forcing_terms *terms,
+                                  const double time_old) {}
 
 /**
  * @brief Prints the properties of the forcing terms to stdout.
@@ -350,5 +361,14 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
   terms->jet_duration =
       parser_get_param_float(parameter_file, "BoundaryParticles:jet_duration");
 }
+
+/**
+ * @brief Clean-up the memory allocated for the forcing routine
+ *
+ * Nothing to do here
+ *
+ * @param terms The forcing term properties
+ */
+static INLINE void forcing_terms_clean(struct forcing_terms *terms) {}
 
 #endif /* SWIFT_FORCING_IDEALIZED_AGN_JET_H */
