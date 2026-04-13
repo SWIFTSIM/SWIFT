@@ -26,11 +26,12 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  subdir:              snap  # snapshot directory
-  basename:            snapshot # Common part of the name of output files
-  time_first:          0.    # Time of the first output (in internal units)
-  delta_time:          1e-2  # Time difference between consecutive outputs (in internal units)
+  subdir:              snap                      # snapshot directory
+  basename:            snapshot                  # Common part of the name of output files
+  time_first:          0.                        # Time of the first output (in internal units)
+  delta_time:          1e-2                      # Time difference between consecutive outputs (in internal units)
   compression:         4
+  recording_triggers_sink:   [1e-2, 1e-3, 1e-4]  # Recording starts 10M, 1M and 0.1M years before a snapshot
 
 # Parameters governing the conserved quantities statistics
 Statistics:
