@@ -591,17 +591,17 @@ if (is_nan_float(Q[4])) {
     }
 
     /* Include all effects of gravity kick, including work from gravity
-     * which was included in term dE_springel, kick to momentum, and change
-     * in velocities W[1,2,3]
+     * which was included in term dE_springel and momentum kick
+     * However v is the unchanged velocity
      * This term is Asensio 2023 Equation 24,
      * dE - v . dp + 0.5 * v**2 * dM
      */
-    double dE_therm = delta_E - (W[1] * delta_p[0] +
-                          W[2] * delta_p[1] +
-                          W[3] * delta_p[2]) +
-                           0.5f * (W[1] * W[1] +
-                                   W[2] * W[2] +
-                                   W[3] * W[3]) * p->flux.mass;
+    double dE_therm = delta_E - (p->v[0] * delta_p[0] +
+                          p->v[1] * delta_p[1] +
+                          p->v[2] * delta_p[2]) +
+                           0.5f * (p->v[0] * p->v[0] +
+                                   p->v[1] * p->v[1] +
+                                   p->v[2] * p->v[2]) * p->flux.mass;
 
     thermal_energy = xp->u_full * p->conserved.mass + dE_therm;
     u = thermal_energy * m_inv;
