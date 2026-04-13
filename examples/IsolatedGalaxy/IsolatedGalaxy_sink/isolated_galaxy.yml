@@ -25,14 +25,15 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:   output      # Common part of the name of output files
-  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
+  basename:   output                             # Common part of the name of output files
+  time_first: 0.                                 # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 0.01                               # Time difference between consecutive outputs (in internal units)
+  recording_triggers_sink:   [1e-2, 1e-3, 1e-4]  # Recording starts 10M, 1M and 0.1M years before a snapshot
 
 Scheduler:
-  cell_extra_gparts: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts: 100                         # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks: 100                          # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 100                         # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
 
 # Parameters governing the conserved quantities statistics
 Statistics:

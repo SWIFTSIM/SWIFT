@@ -19,10 +19,10 @@
 #ifndef SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 #define SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 
+#include "../GEAR/stellar_evolution.h"
+#include "../GEAR/stellar_evolution_struct.h"
 #include "chemistry.h"
 #include "hydro_properties.h"
-#include "stellar_evolution.h"
-#include "stellar_evolution_struct.h"
 
 /**
  * @brief Properties of the GEAR feedback model.
