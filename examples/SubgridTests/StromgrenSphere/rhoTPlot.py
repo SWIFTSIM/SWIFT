@@ -176,6 +176,7 @@ def make_hist(filename, density_bounds, temperature_bounds, bins):
     Also returns the edges for pcolormesh to use.
     """
 
+    # Create log-spaced values
     density_bins = np.logspace(
         np.log10(density_bounds[0]), np.log10(density_bounds[1]), bins
     )
@@ -183,7 +184,9 @@ def make_hist(filename, density_bounds, temperature_bounds, bins):
         np.log10(temperature_bounds[0]), np.log10(temperature_bounds[1]), bins
     )
 
-    # print(density_bins, temperature_bins)
+    # Attache units
+    density_bins = density_bins * (mh / (cm**3))
+    temperature_bins = temperature_bins * unyt.kelvin
 
     H, density_edges, temperature_edges = np.histogram2d(
         *get_data(filename), bins=[density_bins, temperature_bins]
@@ -209,8 +212,6 @@ def setup_axes():
 def make_single_image(filename, density_bounds, temperature_bounds, bins):
     """
     Makes a single image and saves it to rhoTPlot_{filename}.png.
-
-    Filename should be given _without_ hdf5 extension.
     """
 
     fig, ax = setup_axes()
