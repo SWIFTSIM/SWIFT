@@ -30,10 +30,10 @@
 #include "hydro_properties.h"
 #include "part.h"
 #include "physical_constants.h"
-#include "radiation.h"
-#include "radiation_iact.h"
-#include "stellar_evolution.h"
-#include "stromgren_sphere.h"
+#include "../GEAR/radiation.h"
+#include "../GEAR/radiation_iact.h"
+#include "../GEAR/stellar_evolution.h"
+#include "../GEAR/stromgren_sphere.h"
 #include "units.h"
 
 #include <strings.h>

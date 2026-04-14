@@ -129,8 +129,8 @@ void radiation_read_luminosities_array(struct radiation* rad,
                                        const struct unit_system* us,
                                        const struct phys_const* phys_const);
 void radiation_read_ionization_rate_array(
-    struct radiation* rad, struct interpolation_1d_double* interp_raw,
-    struct interpolation_1d_double* interp_int, const struct stellar_model* sm,
+    struct radiation* rad, struct interpolation_1d* interp_raw,
+    struct interpolation_1d* interp_int, const struct stellar_model* sm,
     int interpolation_size, const struct unit_system* us,
     const struct phys_const* phys_const);
 

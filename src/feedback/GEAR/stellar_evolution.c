@@ -742,85 +742,6 @@ void stellar_evolution_compute_preSN_properties(
 }
 
 /**
- * @brief compute the pre-supernova feedback's properties. For the
- *
- * @param sp The particle to act upon
- * @param sm The #stellar_model structure.
- * @param phys_const The physical constants in the internal unit system.
- * @param m_beg_step Mass of a star ending its life at the begining of the step
- * (solMass)
- * @param m_end_step Mass of a star ending its life at the end of the step
- * (solMass)
- * @param m_init Birth mass in solMass.
- *
- */
-void stellar_evolution_compute_preSN_properties(
-    struct spart *restrict sp, const struct stellar_model *sm,
-    const struct phys_const *phys_const, const float m_beg_step,
-    const float m_end_step, const float m_init) {
-
-  /* the end/beg step mass are already limited to the imf if SSP or continuous
-   * IMF stars */
-  float m_end_lim = m_end_step;
-
-  /* Here, for SSP and continuous part of IMF stars,
-   it means the part of stars that explode is behind the IMF considered.
-   Thus we do not take into account this part.
-   */
-  if (m_beg_step < m_end_lim) {
-    m_end_lim = m_beg_step;
-  }
-
-  /* Get the log of the metallicity normalised by solar metallicity */
-  const float metallicity =
-      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-  const float log_metallicity =
-      log10(metallicity / stellar_evolution_get_solar_abundance(sm, "Metals"));
-  const float log_m = log10(m_beg_step);
-
-  /* If the star particle is single_star the calculation is straight forward */
-  if (sp->star_type == single_star) {
-    const double energy_per_unit_time =
-        stellar_wind_get_ejected_energy(&sm->sw, log_m, log_metallicity);
-    const double mass_ejected_per_unit_time =
-        stellar_wind_get_ejected_mass(&sm->sw, log_m, log_metallicity);
-    sp->feedback_data.preSN.energy_ejected = energy_per_unit_time;
-    sp->feedback_data.preSN.mass_ejected = mass_ejected_per_unit_time;
-
-#if defined(SWIFT_TEST_STELLAR_WIND)
-    message(
-        "Star_type=single init_mass[M_odot]=%g metallicity[Z_odot]=%g "
-        "Energy[erg/yr]=%g Mass_ejected[Msol/yr]=%g",
-        m_init, exp10(log_metallicity), energy_per_unit_time,
-        mass_ejected_per_unit_time);
-
-#endif /* !defined SWIFT_TEST_STELLAR_WIND */
-
-  } else {
-    const double energy_per_unit_time_per_progenitor_mass =
-        stellar_wind_get_ejected_energy_IMF(&sm->sw, log_m, log_metallicity);
-    const double energy_per_unit_time =
-        energy_per_unit_time_per_progenitor_mass * m_init;
-    sp->feedback_data.preSN.energy_ejected = energy_per_unit_time;
-    const double mass_ejected_per_unit_time_per_progenitor_mass =
-        stellar_wind_get_ejected_mass_IMF(&sm->sw, log_m, log_metallicity);
-    const double mass_ejected_per_unit_time =
-        mass_ejected_per_unit_time_per_progenitor_mass * m_init;
-    sp->feedback_data.preSN.mass_ejected = mass_ejected_per_unit_time;
-
-#if defined(SWIFT_TEST_STELLAR_WIND)
-    message(
-        "Star_type=continuous init_mass[M_odot]=%g metallicity[Z_odot]=%g "
-        "Energy_per_progenitor_mass[erg/yr/Msol]=%g "
-        "Mass_ejected_per_progenitor_mass[Msol/yr/Msol]=%g",
-        m_init, exp10(log_metallicity),
-        energy_per_unit_time_per_progenitor_mass,
-        mass_ejected_per_unit_time_per_progenitor_mass);
-#endif /* !defined SWIFT_TEST_STELLAR_WIND */
-  }
-}
-
-/**
  * @brief Evolve an individual star represented by a #spart, with pre-supernovae
  * and supernovae feedback.
  *
@@ -1301,7 +1222,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   /* For the ionizing band, get the number of photons produced. */
   sp->feedback_data.radiation.dot_N_ion =
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-          sp->mass, us, phys_const);
+          sp->mass, us, phys_const) * 1e50;
 
   /* message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e", */
   /* 	   sp->id, sp->star_type, sp->mass, */
@@ -1463,8 +1384,6 @@ void stellar_evolution_compute_preSN_feedback_spart(
   /* Compute the initial mass. The initial mass is different if the star
      particle is of type 'star_population' or
      'star_population_continuous_IMF'. The function call treats both cases. */
-  const float m_init =
-      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
   /* initialize */
   sp->feedback_data.preSN.energy_ejected = 0.0;

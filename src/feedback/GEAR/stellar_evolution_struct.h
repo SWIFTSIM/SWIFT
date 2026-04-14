@@ -191,7 +191,7 @@ struct radiation {
     struct interpolation_1d luminosities;
 
     /*! Ionization emission rate. */
-    struct interpolation_1d_double dot_N_ion;
+    struct interpolation_1d dot_N_ion;
   } raw;
 
   /*! Yields integrated */
@@ -201,7 +201,7 @@ struct radiation {
     struct interpolation_1d luminosities;
 
     /*! Ionization emission rate. */
-    struct interpolation_1d_double dot_N_ion;
+    struct interpolation_1d dot_N_ion;
   } integrated;
 
   /* /\*! Minimal mass for a SNII *\/ */
@@ -209,12 +209,6 @@ struct radiation {
 
   /* /\*! Maximal mass for a SNII *\/ */
   /* float mass_max; */
-
-  /* /\*! exponent of the IMF *\/ */
-  /* float exponent; */
-
-  /* /\*! coefficient of the IMF over the exponent *\/ */
-  /* float coef_exp; */
 
   /*! Number of element in the interpolation array */
   int interpolation_size;

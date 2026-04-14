@@ -23,7 +23,7 @@
 #include "feedback.h"
 #include "hydro.h"
 #include "random.h"
-#include "radiation_iact.h"
+#include "../GEAR/radiation_iact.h"
 #include "timestep_sync_part.h"
 
 /**

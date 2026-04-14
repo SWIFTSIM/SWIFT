@@ -437,6 +437,7 @@ double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
 
     const double N_dot_ion = L_ion / photon_energy_internal;
 
+    /* message("mass = %e, N_dot_ion = %e", mass, N_dot_ion); */
     return N_dot_ion;
   } else {
     return 0.0;
@@ -526,8 +527,8 @@ void radiation_clean(struct radiation* rad) {
 
   interpolate_1d_free(&rad->integrated.luminosities);
   interpolate_1d_free(&rad->raw.luminosities);
-  interpolate_1d_double_free(&rad->integrated.dot_N_ion);
-  interpolate_1d_double_free(&rad->raw.dot_N_ion);
+  interpolate_1d_free(&rad->integrated.dot_N_ion);
+  interpolate_1d_free(&rad->raw.dot_N_ion);
 }
 
 /**
@@ -569,10 +570,12 @@ float radiation_get_luminosities_from_raw(const struct radiation* rad,
 double radiation_get_ionization_rate_from_integral(const struct radiation* rad,
                                                    float log_m1, float log_m2) {
 
+  /* TODO: Multiply by the normalisation factor that avoid us using double. OR
+     use log... */
   double dot_N_ion_1 =
-      interpolate_1d_double(&rad->integrated.dot_N_ion, log_m1);
+      interpolate_1d(&rad->integrated.dot_N_ion, log_m1)*1e50;
   double dot_N_ion_2 =
-      interpolate_1d_double(&rad->integrated.dot_N_ion, log_m2);
+      interpolate_1d(&rad->integrated.dot_N_ion, log_m2)*1e50;
   return dot_N_ion_2 - dot_N_ion_1;
 };
 
@@ -583,9 +586,10 @@ double radiation_get_ionization_rate_from_integral(const struct radiation* rad,
  * @param log_m The mass in log.
  * @param The ionization rate;
  */
-double radiation_get_ionization_rate_from_raw(const struct radiation* rad,
+double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
                                               float log_m) {
-  return interpolate_1d_double(&rad->raw.dot_N_ion, log_m);
+  /* TODO: Multiply by the normalisation factor that avoid us using double */
+  return interpolate_1d(&rad->raw.dot_N_ion, log_m)*1e50;
 };
 
 /**
@@ -659,14 +663,14 @@ void radiation_read_luminosities_array(struct radiation* rad,
  * data.
  */
 void radiation_read_ionization_rate_array(
-    struct radiation* rad, struct interpolation_1d_double* interp_raw,
-    struct interpolation_1d_double* interp_int, const struct stellar_model* sm,
+    struct radiation* rad, struct interpolation_1d* interp_raw,
+    struct interpolation_1d* interp_int, const struct stellar_model* sm,
     int interpolation_size, const struct unit_system* us,
     const struct phys_const* phys_const) {
 
   /* Allocate the memory */
   const int count = 500;
-  double* data = (double*)malloc(sizeof(double) * count);
+  float* data = (float*)malloc(sizeof(float) * count);
   if (data == NULL)
     error("Failed to allocate the RAD yields for luminosities.");
 
@@ -684,22 +688,22 @@ void radiation_read_ionization_rate_array(
 
     /* Get bolometric luminosity for this mass, in internal units */
     data[j] = radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-        mass, us, phys_const);
+        mass, us, phys_const) / 1e50;
   }
 
   /* Initialize the raw interpolation */
-  interpolate_1d_double_init(interp_raw, log_mass_min, log_mass_max,
-                             interpolation_size, log_mass_min, step_size, count,
-                             data, boundary_condition_error);
+  interpolate_1d_init(interp_raw, log_mass_min, log_mass_max,
+		      interpolation_size, log_mass_min, step_size, count,
+		      data, boundary_condition_error);
 
-  initial_mass_function_integrate_double(&sm->imf, data, count, log_mass_min,
+  initial_mass_function_integrate(&sm->imf, data, count, log_mass_min,
                                          step_size);
   // TODO: decrease count in order to keep the same distance between points
 
   /* Initialize the integrated interpolation */
-  interpolate_1d_double_init(interp_int, log_mass_min, log_mass_max,
-                             interpolation_size, log_mass_min, step_size, count,
-                             data, boundary_condition_const);
+  interpolate_1d_init(interp_int, log_mass_min, log_mass_max,
+		      interpolation_size, log_mass_min, step_size, count,
+		      data, boundary_condition_const);
 
   /* Cleanup the memory */
   free(data);

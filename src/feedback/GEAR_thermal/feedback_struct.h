@@ -20,7 +20,7 @@
 #define SWIFT_FEEDBACK_STRUCT_GEAR_H
 
 #include "chemistry_struct.h"
-#include "stromgren_sphere.h"
+#include "../GEAR/stromgren_sphere.h"
 
 /**
  * @brief Feedback fields carried by each hydro particles
@@ -106,7 +106,7 @@ struct feedback_spart_data {
     /*! Bolometric luminosity (physical units) */
     double L_bol;
 
-    /*! Number of inonizing photons per unit time (this is a HUGE number, so
+    /*! Number of ionizing photons per unit time (this is a HUGE number, so
         must be a double) (physical units) */
     double dot_N_ion;
 
