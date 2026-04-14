@@ -36,9 +36,9 @@
  * @return Hydrogen mass fraction.
  */
 __attribute__((always_inline)) INLINE static float
-cooling_get_hydrogen_mass_fraction(const struct cooling_function_data* cooling,
-                                   const struct part* p,
-                                   const struct xpart* xp) {
+cooling_get_hydrogen_mass_fraction(const struct cooling_function_data *cooling,
+                                   const struct part *p,
+                                   const struct xpart *xp) {
 
 #if COOLING_GRACKLE_MODE == 0
   const float Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
@@ -47,7 +47,7 @@ cooling_get_hydrogen_mass_fraction(const struct cooling_function_data* cooling,
   return cooling->HydrogenFractionByMass - Z;
 #else
 
-  const struct cooling_xpart_data* cool_data = &xp->cooling_data;
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
 
   /* Mode 1-3 have at least thes constributions */
   float X_H = cool_data->HI_frac + cool_data->HII_frac;
@@ -73,13 +73,13 @@ cooling_get_hydrogen_mass_fraction(const struct cooling_function_data* cooling,
  * @return Mean molecular weight.
  */
 __attribute__((always_inline)) INLINE static double
-cooling_get_mean_molecular_weight(const struct phys_const* phys_const,
-                                  const struct unit_system* us,
-                                  const struct cosmology* cosmo,
-                                  const struct hydro_props* hydro_props,
-                                  const struct cooling_function_data* cooling,
-                                  const struct part* p,
-                                  const struct xpart* xp) {
+cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
+                                  const struct unit_system *us,
+                                  const struct cosmology *cosmo,
+                                  const struct hydro_props *hydro_props,
+                                  const struct cooling_function_data *cooling,
+                                  const struct part *p,
+                                  const struct xpart *xp) {
 
   const double m_H = phys_const->const_proton_mass;
 
@@ -114,7 +114,7 @@ cooling_get_mean_molecular_weight(const struct phys_const* phys_const,
 
   /* Grackle mode 1: Only HI, HII, HeI, HeII, and HeIII species */
 #elif COOLING_GRACKLE_MODE == 1
-  const struct cooling_xpart_data* cool_data = &xp->cooling_data;
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
   const double rho = hydro_get_physical_density(p, cosmo);
 
   /* Extract mass fractions for various species from the cooling data */
@@ -175,7 +175,7 @@ cooling_get_mean_molecular_weight(const struct phys_const* phys_const,
   /* Grackle mode 3: Add species like H2I, H2II, HDI, and electrons to the
    * molecular weight calculation */
 #elif COOLING_GRACKLE_MODE == 3
-  const struct cooling_xpart_data* cool_data = &xp->cooling_data;
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
   const double rho = hydro_get_physical_density(p, cosmo);
   const double XHeI = cool_data->HeI_frac;
   const double XHeII = cool_data->HeII_frac;

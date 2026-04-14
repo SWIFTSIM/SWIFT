@@ -45,10 +45,10 @@
  */
 __attribute__((always_inline)) INLINE double
 radiation_get_part_number_hydrogen_atoms(
-    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
-    const struct unit_system* us, const struct cosmology* cosmo,
-    const struct cooling_function_data* cooling, const struct part* p,
-    const struct xpart* xp) {
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
 
   const float m = hydro_get_mass(p);
   const double m_p = phys_const->const_proton_mass;
@@ -76,10 +76,10 @@ radiation_get_part_number_hydrogen_atoms(
  */
 __attribute__((always_inline)) INLINE double
 radiation_get_part_rate_to_fully_ionize(
-    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
-    const struct unit_system* us, const struct cosmology* cosmo,
-    const struct cooling_function_data* cooling, const struct part* p,
-    const struct xpart* xp) {
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
 
   /* const float m = hydro_get_mass(p); */
   const float rho = hydro_get_physical_density(p, cosmo);
@@ -109,7 +109,7 @@ radiation_get_part_rate_to_fully_ionize(
  * @return Ionizing photon rate.
  */
 __attribute__((always_inline)) INLINE double radiation_get_star_ionization_rate(
-    const struct spart* sp) {
+    const struct spart *sp) {
   return sp->feedback_data.radiation.dot_N_ion;
 }
 
@@ -120,7 +120,7 @@ __attribute__((always_inline)) INLINE double radiation_get_star_ionization_rate(
  * @param Delta_dot_N_ion The ionizing photon rate to remove.
  */
 __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
-    struct spart* sp, double Delta_dot_N_ion) {
+    struct spart *sp, double Delta_dot_N_ion) {
   sp->feedback_data.radiation.dot_N_ion -= Delta_dot_N_ion;
   return;
 }
@@ -132,7 +132,7 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  * @param xp The extended data of the particle.
  */
 __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
-    struct part* p, struct xpart* xp) {
+    struct part *p, struct xpart *xp) {
   xp->feedback_data.radiation.is_ionized = 1;
   return;
 }
@@ -144,7 +144,7 @@ __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
  * @param xp The extended data of the particle.
  */
 __attribute__((always_inline)) INLINE void radiation_reset_part_ionized_tag(
-    struct part* p, struct xpart* xp) {
+    struct part *p, struct xpart *xp) {
   xp->feedback_data.radiation.is_ionized = 0;
   return;
 }
@@ -157,7 +157,7 @@ __attribute__((always_inline)) INLINE void radiation_reset_part_ionized_tag(
  * @return Is the particle *tagged* ionized?
  */
 __attribute__((always_inline)) INLINE int radiation_is_part_tagged_as_ionized(
-    struct part* p, struct xpart* xp) {
+    struct part *p, struct xpart *xp) {
   return xp->feedback_data.radiation.is_ionized;
 }
 
@@ -175,10 +175,10 @@ __attribute__((always_inline)) INLINE int radiation_is_part_tagged_as_ionized(
  * @return Is the particle ionized?
  */
 __attribute__((always_inline)) INLINE int radiation_is_part_ionized(
-    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
-    const struct unit_system* us, const struct cosmology* cosmo,
-    const struct cooling_function_data* cooling, const struct part* p,
-    const struct xpart* xp) {
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
 
   /* Is T > 10^4 K ? */
   const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
@@ -198,7 +198,7 @@ __attribute__((always_inline)) INLINE int radiation_is_part_ionized(
  * @return Comoving gas column density at the star's location.
  */
 __attribute__((always_inline)) INLINE float
-radiation_get_comoving_gas_column_density_at_star(const struct spart* sp) {
+radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
   const float rho_gas = sp->feedback_data.rho_star;
   const float grad_rho[3] = {sp->feedback_data.grad_rho_star[0],
                              sp->feedback_data.grad_rho_star[1],
@@ -221,8 +221,8 @@ radiation_get_comoving_gas_column_density_at_star(const struct spart* sp) {
  * @return Infrared gas opacity around the star.
  */
 __attribute__((always_inline)) INLINE float radiation_get_physical_IR_opacity(
-    const struct spart* sp, const struct unit_system* us,
-    const struct phys_const* phys_const, const struct cosmology* cosmo) {
+    const struct spart *sp, const struct unit_system *us,
+    const struct phys_const *phys_const, const struct cosmology *cosmo) {
   const float Z_gas = sp->feedback_data.Z_star;
   const float Z_sun = 0.02;
   const float value = 10.0 * units_cgs_conversion_factor(us, UNIT_CONV_AREA) /
@@ -240,10 +240,10 @@ __attribute__((always_inline)) INLINE float radiation_get_physical_IR_opacity(
  * @return Infrared gas optical depth around the star.
  */
 __attribute__((always_inline)) INLINE float
-radiation_get_physical_IR_optical_depth(const struct spart* sp,
-                                        const struct unit_system* us,
-                                        const struct phys_const* phys_const,
-                                        const struct cosmology* cosmo) {
+radiation_get_physical_IR_optical_depth(const struct spart *sp,
+                                        const struct unit_system *us,
+                                        const struct phys_const *phys_const,
+                                        const struct cosmology *cosmo) {
   const float Sigma_gas_c =
       radiation_get_comoving_gas_column_density_at_star(sp);
   const float Sigma_gas_p = Sigma_gas_c * cosmo->a2_inv;
@@ -264,9 +264,9 @@ radiation_get_physical_IR_optical_depth(const struct spart* sp,
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_star_physical_radiation_pressure(
-    const struct spart* sp, const float Delta_t,
-    const struct phys_const* phys_const, const struct unit_system* us,
-    const struct cosmology* cosmo) {
+    const struct spart *sp, const float Delta_t,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo) {
 
   const float tau_IR =
       radiation_get_physical_IR_optical_depth(sp, us, phys_const, cosmo);
@@ -288,8 +288,8 @@ radiation_get_star_physical_radiation_pressure(
  * @return Radius in code units.
  */
 float radiation_get_individual_star_radius(
-    const float mass, const struct unit_system* us,
-    const struct phys_const* phys_const) {
+    const float mass, const struct unit_system *us,
+    const struct phys_const *phys_const) {
 
   /* Perform some units conversions */
   const float R_sun = phys_const->const_solar_radius;
@@ -318,8 +318,8 @@ float radiation_get_individual_star_radius(
  * @return Temperature in code units.
  */
 float radiation_get_individual_star_temperature(
-    const float mass, const struct unit_system* us,
-    const struct phys_const* phys_const) {
+    const float mass, const struct unit_system *us,
+    const struct phys_const *phys_const) {
 
   const float M_solar = phys_const->const_solar_mass;
   const float M_in_solar = mass / M_solar; /* In solar masses */
@@ -354,8 +354,8 @@ float radiation_get_individual_star_temperature(
  * @return Luminosity in code units.
  */
 float radiation_get_individual_star_luminosity(
-    const float mass, const struct unit_system* us,
-    const struct phys_const* phys_const) {
+    const float mass, const struct unit_system *us,
+    const struct phys_const *phys_const) {
 
   /* Convert mass to solar masses */
   const float M_in_solar = mass / phys_const->const_solar_mass;
@@ -391,8 +391,8 @@ float radiation_get_individual_star_luminosity(
  * [photons/U_T].
  */
 double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-    const float mass, const struct unit_system* us,
-    const struct phys_const* phys_const) {
+    const float mass, const struct unit_system *us,
+    const struct phys_const *phys_const) {
 
   /* Get star properties in internal units */
   /* const float T = radiation_get_individual_star_temperature(sp, us,
@@ -454,7 +454,7 @@ double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
  *
  * @param rad The #radiation.
  */
-void radiation_print(const struct radiation* rad) {
+void radiation_print(const struct radiation *rad) {
 
   /* Only the master print */
   if (engine_rank != 0) {
@@ -472,10 +472,10 @@ void radiation_print(const struct radiation* rad) {
  * @param sm The #stellar_model.
  * @param us The unit system.
  */
-void radiation_init(struct radiation* rad, struct swift_params* params,
-                    const struct stellar_model* sm,
-                    const struct unit_system* us,
-                    const struct phys_const* phys_const) {
+void radiation_init(struct radiation *rad, struct swift_params *params,
+                    const struct stellar_model *sm,
+                    const struct unit_system *us,
+                    const struct phys_const *phys_const) {
 
   /* Read the data */
   radiation_read_data(rad, params, sm, us, phys_const, /* restart */ 0);
@@ -491,10 +491,10 @@ void radiation_init(struct radiation* rad, struct swift_params* params,
  * @param stream the file stream
  * @param sm The #stellar_model.
  */
-void radiation_dump(const struct radiation* rad, FILE* stream,
-                    const struct stellar_model* sm) {
+void radiation_dump(const struct radiation *rad, FILE *stream,
+                    const struct stellar_model *sm) {
 
-  restart_write_blocks((void*)rad, sizeof(struct radiation), 1, stream,
+  restart_write_blocks((void *)rad, sizeof(struct radiation), 1, stream,
                        "radiation", "radiation");
   message("Dumping GEAR radiation...");
 }
@@ -510,10 +510,10 @@ void radiation_dump(const struct radiation* rad, FILE* stream,
  * @param stream the file stream
  * @param sm The #stellar_model.
  */
-void radiation_restore(struct radiation* rad, FILE* stream,
-                       const struct stellar_model* sm) {
+void radiation_restore(struct radiation *rad, FILE *stream,
+                       const struct stellar_model *sm) {
 
-  restart_read_blocks((void*)rad, sizeof(struct radiation), 1, stream, NULL,
+  restart_read_blocks((void *)rad, sizeof(struct radiation), 1, stream, NULL,
                       "radiation");
   message("Restoring GEAR radiation struct...");
 }
@@ -523,7 +523,7 @@ void radiation_restore(struct radiation* rad, FILE* stream,
  *
  * @param rad the #radiation.
  */
-void radiation_clean(struct radiation* rad) {
+void radiation_clean(struct radiation *rad) {
 
   interpolate_1d_free(&rad->integrated.luminosities);
   interpolate_1d_free(&rad->raw.luminosities);
@@ -539,7 +539,7 @@ void radiation_clean(struct radiation* rad) {
  * @param log_m2 The upper mass in log.
  * @param The bolometric luminosity.
  */
-float radiation_get_luminosities_from_integral(const struct radiation* rad,
+float radiation_get_luminosities_from_integral(const struct radiation *rad,
                                                float log_m1, float log_m2) {
 
   float luminosity_1 = interpolate_1d(&rad->integrated.luminosities, log_m1);
@@ -554,7 +554,7 @@ float radiation_get_luminosities_from_integral(const struct radiation* rad,
  * @param log_m The mass in log.
  * @param The bolometric luminosity.
  */
-float radiation_get_luminosities_from_raw(const struct radiation* rad,
+float radiation_get_luminosities_from_raw(const struct radiation *rad,
                                           float log_m) {
   return interpolate_1d(&rad->raw.luminosities, log_m);
 };
@@ -567,15 +567,15 @@ float radiation_get_luminosities_from_raw(const struct radiation* rad,
  * @param log_m2 The upper mass in log.
  * @param The ionization rate;
  */
-double radiation_get_ionization_rate_from_integral(const struct radiation* rad,
+double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
                                                    float log_m1, float log_m2) {
 
   /* TODO: Multiply by the normalisation factor that avoid us using double. OR
      use log... */
   double dot_N_ion_1 =
-      interpolate_1d(&rad->integrated.dot_N_ion, log_m1)*1e50;
+      interpolate_1d(&rad->integrated.dot_N_ion, log_m1) * 1e50;
   double dot_N_ion_2 =
-      interpolate_1d(&rad->integrated.dot_N_ion, log_m2)*1e50;
+      interpolate_1d(&rad->integrated.dot_N_ion, log_m2) * 1e50;
   return dot_N_ion_2 - dot_N_ion_1;
 };
 
@@ -589,7 +589,7 @@ double radiation_get_ionization_rate_from_integral(const struct radiation* rad,
 double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
                                               float log_m) {
   /* TODO: Multiply by the normalisation factor that avoid us using double */
-  return interpolate_1d(&rad->raw.dot_N_ion, log_m)*1e50;
+  return interpolate_1d(&rad->raw.dot_N_ion, log_m) * 1e50;
 };
 
 /**
@@ -603,17 +603,17 @@ double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
  * @param interpolation_size Number of element to keep in the interpolation
  * data.
  */
-void radiation_read_luminosities_array(struct radiation* rad,
-                                       struct interpolation_1d* interp_raw,
-                                       struct interpolation_1d* interp_int,
-                                       const struct stellar_model* sm,
+void radiation_read_luminosities_array(struct radiation *rad,
+                                       struct interpolation_1d *interp_raw,
+                                       struct interpolation_1d *interp_int,
+                                       const struct stellar_model *sm,
                                        int interpolation_size,
-                                       const struct unit_system* us,
-                                       const struct phys_const* phys_const) {
+                                       const struct unit_system *us,
+                                       const struct phys_const *phys_const) {
 
   /* Allocate the memory */
   const int count = 500;
-  float* data = (float*)malloc(sizeof(float) * count);
+  float *data = (float *)malloc(sizeof(float) * count);
   if (data == NULL)
     error("Failed to allocate the RAD yields for luminosities.");
 
@@ -662,15 +662,17 @@ void radiation_read_luminosities_array(struct radiation* rad,
  * @param interpolation_size Number of element to keep in the interpolation
  * data.
  */
-void radiation_read_ionization_rate_array(
-    struct radiation* rad, struct interpolation_1d* interp_raw,
-    struct interpolation_1d* interp_int, const struct stellar_model* sm,
-    int interpolation_size, const struct unit_system* us,
-    const struct phys_const* phys_const) {
+void radiation_read_ionization_rate_array(struct radiation *rad,
+                                          struct interpolation_1d *interp_raw,
+                                          struct interpolation_1d *interp_int,
+                                          const struct stellar_model *sm,
+                                          int interpolation_size,
+                                          const struct unit_system *us,
+                                          const struct phys_const *phys_const) {
 
   /* Allocate the memory */
   const int count = 500;
-  float* data = (float*)malloc(sizeof(float) * count);
+  float *data = (float *)malloc(sizeof(float) * count);
   if (data == NULL)
     error("Failed to allocate the RAD yields for luminosities.");
 
@@ -688,22 +690,23 @@ void radiation_read_ionization_rate_array(
 
     /* Get bolometric luminosity for this mass, in internal units */
     data[j] = radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-        mass, us, phys_const) / 1e50;
+                  mass, us, phys_const) /
+              1e50;
   }
 
   /* Initialize the raw interpolation */
   interpolate_1d_init(interp_raw, log_mass_min, log_mass_max,
-		      interpolation_size, log_mass_min, step_size, count,
-		      data, boundary_condition_error);
+                      interpolation_size, log_mass_min, step_size, count, data,
+                      boundary_condition_error);
 
   initial_mass_function_integrate(&sm->imf, data, count, log_mass_min,
-                                         step_size);
+                                  step_size);
   // TODO: decrease count in order to keep the same distance between points
 
   /* Initialize the integrated interpolation */
   interpolate_1d_init(interp_int, log_mass_min, log_mass_max,
-		      interpolation_size, log_mass_min, step_size, count,
-		      data, boundary_condition_const);
+                      interpolation_size, log_mass_min, step_size, count, data,
+                      boundary_condition_const);
 
   /* Cleanup the memory */
   free(data);
@@ -719,10 +722,10 @@ void radiation_read_ionization_rate_array(
  * @param sm The #stellar_model.
  * @param restart Are we restarting the simulation? (Is params NULL?)
  */
-void radiation_read_data(struct radiation* rad, struct swift_params* params,
-                         const struct stellar_model* sm,
-                         const struct unit_system* us,
-                         const struct phys_const* phys_const,
+void radiation_read_data(struct radiation *rad, struct swift_params *params,
+                         const struct stellar_model *sm,
+                         const struct unit_system *us,
+                         const struct phys_const *phys_const,
                          const int restart) {
 
   if (!restart) {

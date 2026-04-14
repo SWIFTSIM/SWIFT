@@ -19,8 +19,8 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_GEAR_H
 #define SWIFT_FEEDBACK_STRUCT_GEAR_H
 
-#include "chemistry_struct.h"
 #include "../GEAR/stromgren_sphere.h"
+#include "chemistry_struct.h"
 
 /**
  * @brief Feedback fields carried by each hydro particles

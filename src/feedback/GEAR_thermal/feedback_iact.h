@@ -20,10 +20,10 @@
 #define SWIFT_GEAR_FEEDBACK_IACT_H
 
 /* Local includes */
+#include "../GEAR/radiation_iact.h"
 #include "feedback.h"
 #include "hydro.h"
 #include "random.h"
-#include "../GEAR/radiation_iact.h"
 #include "timestep_sync_part.h"
 
 /**
@@ -130,7 +130,7 @@ runner_iact_nonsym_feedback_apply(
 
   /*****************************************/
   /* Radiation */
-  /* TODO: Add hit by radiation */  
+  /* TODO: Add hit by radiation */
   radiation_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                        hydro_props, fb_props, phys_const, us,
                                        cooling, ti_current, time_base);

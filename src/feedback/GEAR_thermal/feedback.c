@@ -21,6 +21,10 @@
 #include "feedback.h"
 
 /* Local includes */
+#include "../GEAR/radiation.h"
+#include "../GEAR/radiation_iact.h"
+#include "../GEAR/stellar_evolution.h"
+#include "../GEAR/stromgren_sphere.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
@@ -30,10 +34,6 @@
 #include "hydro_properties.h"
 #include "part.h"
 #include "physical_constants.h"
-#include "../GEAR/radiation.h"
-#include "../GEAR/radiation_iact.h"
-#include "../GEAR/stellar_evolution.h"
-#include "../GEAR/stromgren_sphere.h"
 #include "units.h"
 
 #include <strings.h>
@@ -99,7 +99,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   /* Update the radiation fields */
   feedback_update_part_radiation(p, xp, e);
 
-  /* Update the wind fields */  
+  /* Update the wind fields */
   xp->feedback_data.hit_by_SN = 0;
   xp->feedback_data.hit_by_preSN = 0;
 }

@@ -80,7 +80,7 @@ void stellar_evolution_props_init(struct stellar_model *sm,
 
   /* Initialize the radiation model */
   radiation_init(&sm->rad, params, sm, us, phys_const);
-  
+
   /* Initialize the stellar wind model if needed */
   if (with_stellar_wind_feedback) {
     stellar_wind_init(&sm->sw, params, sm, us);
@@ -794,7 +794,7 @@ void stellar_evolution_evolve_individual_star(
     return;
   }
 
-  /* TODO: Update to pass the with_stellar_winds down or rename the function */  
+  /* TODO: Update to pass the with_stellar_winds down or rename the function */
   /* Pre-SN feedback */
   if (with_stellar_wind_feedback) {
     stellar_evolution_compute_preSN_feedback_individual_star(
@@ -848,7 +848,7 @@ void stellar_evolution_evolve_spart(
   }
 
   /* Pre-SN feedback */
-  /* TODO: Update to pass the with_stellar_winds down or rename the function */  
+  /* TODO: Update to pass the with_stellar_winds down or rename the function */
   if (with_stellar_wind_feedback) {
     stellar_evolution_compute_preSN_feedback_spart(
         sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
@@ -1222,7 +1222,8 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   /* For the ionizing band, get the number of photons produced. */
   sp->feedback_data.radiation.dot_N_ion =
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-          sp->mass, us, phys_const) * 1e50;
+          sp->mass, us, phys_const) *
+      1e50;
 
   /* message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e", */
   /* 	   sp->id, sp->star_type, sp->mass, */
@@ -1443,7 +1444,7 @@ void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
   stellar_wind_dump(&sm->sw, stream, sm);
 
   /* Dump the supernovae II model */
-  radiation_dump(&sm->rad, stream, sm);  
+  radiation_dump(&sm->rad, stream, sm);
 }
 
 /**
@@ -1473,7 +1474,7 @@ void stellar_evolution_restore(struct stellar_model *sm, FILE *stream,
   /* Restore the supernovae II model */
   supernovae_ii_restore(&sm->snii, stream, sm);
 
-  /* Restore the stellar wind model */ 
+  /* Restore the stellar wind model */
   if (with_stellar_wind_feedback) {
     stellar_wind_restore(&sm->sw, stream, sm);
   } else {
@@ -1496,5 +1497,5 @@ void stellar_evolution_clean(struct stellar_model *sm) {
   supernovae_ia_clean(&sm->snia);
   supernovae_ii_clean(&sm->snii);
   stellar_wind_clean(&sm->sw);
-  radiation_clean(&sm->rad);  
+  radiation_clean(&sm->rad);
 }

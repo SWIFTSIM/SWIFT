@@ -1145,12 +1145,12 @@ void cooling_cool_part(const struct phys_const *phys_const,
  * @param p #part data.
  * @param xp Pointer to the #xpart data.
  */
-float cooling_get_temperature(const struct phys_const* phys_const,
-                              const struct hydro_props* hydro_props,
-                              const struct unit_system* us,
-                              const struct cosmology* cosmo,
-                              const struct cooling_function_data* cooling,
-                              const struct part* p, const struct xpart* xp) {
+float cooling_get_temperature(const struct phys_const *phys_const,
+                              const struct hydro_props *hydro_props,
+                              const struct unit_system *us,
+                              const struct cosmology *cosmo,
+                              const struct cooling_function_data *cooling,
+                              const struct part *p, const struct xpart *xp) {
   /* Physical constants */
   const double m_H = phys_const->const_proton_mass;
   const double k_B = phys_const->const_boltzmann_k;

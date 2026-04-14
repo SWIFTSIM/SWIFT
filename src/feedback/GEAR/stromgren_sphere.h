@@ -46,7 +46,7 @@ struct stromgren_shell_data {
  * @param max_number_of_rays Maximum number of rays in the feedback scheme
  */
 __attribute__((always_inline)) INLINE static void stromgren_shell_init(
-    struct stromgren_shell_data* stromgren, const int max_number_of_part) {
+    struct stromgren_shell_data *stromgren, const int max_number_of_part) {
 
   /* Set all fields in the ray struct at their default values */
   for (int i = 0; i < max_number_of_part; i++) {
@@ -69,7 +69,7 @@ __attribute__((always_inline)) INLINE static void stromgren_shell_init(
  * @param m Gas particle mass
  */
 __attribute__((always_inline)) INLINE static void stromgren_sort_distance(
-    const float r, struct stromgren_shell_data* stromgren,
+    const float r, struct stromgren_shell_data *stromgren,
     const int N_shell_arr, const double Delta_N_dot) {
 
   int insert_index = -1;

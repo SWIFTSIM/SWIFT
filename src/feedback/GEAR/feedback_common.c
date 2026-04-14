@@ -60,7 +60,7 @@ float feedback_compute_spart_timestep(
 
   /* If metal < threshold, then  sp is a first star particle. */
   const int is_first_star = metallicity < threshold;
-  const struct stellar_model* sm =
+  const struct stellar_model *sm =
       is_first_star ? &feedback_props->stellar_model_first_stars
                     : &feedback_props->stellar_model;
 

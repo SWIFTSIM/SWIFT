@@ -44,7 +44,7 @@ struct feedback_props {
   /*! Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
 
-  /* TODO: Update this and add a with_stellar_radiation flag */  
+  /* TODO: Update this and add a with_stellar_radiation flag */
   /*! Do we want the ionization effect (Strömgren sphere)? */
   int do_photoionization;
 
