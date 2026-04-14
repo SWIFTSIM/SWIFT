@@ -12,7 +12,6 @@ Gravity:
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
   theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
   eta:          0.025                      # Constant dimensionless multiplier for time integration.
-  theta:        0.7                        # Opening angle (Multipole acceptance criterion).
   max_physical_baryon_softening: 0.005     # Physical softening length (in internal units)
   mesh_side_length:        32
 
@@ -29,6 +28,7 @@ Snapshots:
   basename:   snapshot      # Common part of the name of output files
   time_first: 0.0           # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 1e-3          # Time difference between consecutive outputs (in internal units)
+  recording_triggers_sink:   [-1, -1, -1]  # Recording starts 10M, 1M and 0.1M years before a snapshot
 
 Scheduler:
   cell_extra_gparts: 10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
@@ -61,22 +61,21 @@ GrackleCooling:
   with_UV_background: 0                  # Enable or not the UV background
   redshift: -1                           # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                  # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0    # User provide volumetric heating rates
-  provide_specific_heating_rates: 0      # User provide specific heating rates
-  self_shielding_method: 3               # Grackle (<= 3) or Gear self shielding method
+  self_shielding_method: -1              # Grackle (<= 3) or Gear self shielding method
   self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
   max_steps: 1000
   convergence_limit: 1e-2
   thermal_time_myr: 0
-  maximal_density_Hpcm3: 1000            # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+  maximal_density_Hpcm3: 1e4            # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
 GEARChemistry:
   initial_metallicity: 0
   scale_initial_metallicity: 1
 
 GEARFeedback:
-  supernovae_energy_erg: 1e51                   # supernovae energy, used only for SNIa
+  supernovae_Ia_energy_erg: 1e51                   # supernovae energy, used only for SNIa
   supernovae_efficiency: 0                      # supernovae energy efficiency, used for both SNIa and SNII
+  with_stellar_wind_feedback: 0
   yields_table: POPIIsw.h5
   yields_table_first_stars: POPIIsw.h5
   discrete_yields: 1
