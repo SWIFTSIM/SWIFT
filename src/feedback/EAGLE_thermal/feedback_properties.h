@@ -46,6 +46,14 @@ enum SNII_energy_scalings {
 };
 
 /**
+ * @brief Mode of magnetic injection field
+ */
+enum SNII_magnetic_injection_model {
+  SNII_magnetic_const_toroidal_injection, /*< constant field in phi direction */
+  SNII_magnetic_dipole_injection          /*< (softened) dipole injection */
+};
+
+/**
  * @brief Mode of magnetic injection orientation
  */
 enum SNII_magnetic_injection_orientation {
@@ -320,8 +328,14 @@ struct feedback_props {
 
   /* ------------ MHD feedback properties ----------- */
 
+  /* magnetic injection field configuration */
+  enum SNII_magnetic_injection_model magnetic_injection_model;
+
   /* mode of determining magnetic injection orientation */
   enum SNII_magnetic_injection_orientation magnetic_orientation_model;
+
+  /* dipole softening length */
+  float r_softening;
 
   /* Energy fraction used for magnetic field injection */
   float f_E_B;
