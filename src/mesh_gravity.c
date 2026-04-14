@@ -964,19 +964,23 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, const stru
   }
 
   if (MG) { //Assume n=1 for now
-    int uniform_test = 1;
+    int uniform_test = 0;
+    int particle_test = 0;
+    int density_peak = 1;
     double m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
 
     struct MG_variables MG_var;
-    MG_var.a = cosmo->a;
-    MG_var.fR0 = 1e-4;
+    //MG_var.a = cosmo->a;
+    MG_var.a = 1.;
+    MG_var.fR0 = -1e-4;
     MG_var.n = 1;
     MG_var.a3_inv = (1./(MG_var.a*MG_var.a*MG_var.a));
     MG_var.Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
     MG_var.R = (3.*m*m*(MG_var.a3_inv + 4.*(MG_var.Omega_ratio)));
-    MG_var.c = s->e->physical_constants->const_speed_light_c * e->internal_units->UnitLength_in_cgs;
+    MG_var.c = s->e->physical_constants->const_speed_light_c;
     MG_var.G = s->e->physical_constants->const_newton_G;
-    MG_var.normalisation = 1e-10;
+    MG_var.normalisation = 1e-2;
+    MG_var.h = cosmo->h;
     //message("Set normalisation to %lf", MG_var.normalisation);
 
     double fR_evo = ((MG_var.a3_inv + 4. * MG_var.Omega_ratio)/(1. + 4. * MG_var.Omega_ratio));
@@ -991,9 +995,73 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, const stru
         rho[i] = density_mean;
       }
     }
+    else if (particle_test) {
+      double mean_density = 11.5;
+      int cdim[3] = {N,N,N};
+      for (int i=0; i<N; i++) {
+        for (int j=0; j<N; j++) {
+          for (int k=0; k<N; k++) {
+            if (i==N/2 && j==N/2 && k==N/2) continue;
+            rho[cell_getid(cdim, i, j, k)] = mean_density * (1. - 1e-4);
+          }
+        }
+      }
+      rho[cell_getid(cdim, N/2, N/2, N/2)] = mean_density * (1. + 1e-4*(N*N*N-1.));
+    }
+    else if (density_peak) {
+      double *x_values = NULL;
+      x_values = (double*)malloc(sizeof(double) * 1000);
+      if (x_values == NULL){
+        error("Error allocating memory for the residual array.");
+      }
+      memuse_log_allocation("theoretical.x", x, 1, sizeof(double)*1000);
+
+      double *theoretical_values = NULL;
+      theoretical_values = (double*)malloc(sizeof(double) * 1000);
+      if (theoretical_values == NULL){
+        error("Error allocating memory for the residual array.");
+      }
+      memuse_log_allocation("theoretical.values", theoretical_values, 1, sizeof(double)*1000);
+
+      double fR_mean = 10e-4;
+      double A = 2.7e-5;
+      double alpha = 0.99999;
+      double w = (15. * MG_var.h)/(e->internal_units->UnitLength_in_cgs);
+      double mean_density = 11.5;
+      int cdim[3] = {N,N,N};
+      for (int i=0; i<N; i++) {
+        for (int j=0; j<N; j++) {
+          for (int k=0; k<N; k++) {
+            double x_dist = ((double) abs(i-N/2)) * s->dim[0]/N;
+            rho[cell_getid(cdim, i, j, k)] = mean_density + peak_overdensity(&MG_var, x_dist, A, alpha, w, fR_mean);
+          }
+        }
+      }
+
+      for (int i=0; i<1000; i++) {
+        x_values[i] = -15. + (30./1000.)*i;
+        theoretical_values[i] = mean_density + peak_overdensity(&MG_var, fabs(x_values[i]), A, alpha, w, fR_mean);
+      }
+      double found_mean = 0.;
+      for (int i=0; i<1000; i++) {
+        found_mean += theoretical_values[i]/1000;
+      }
+
+      FILE *density_peak_export;
+      density_peak_export = fopen("/data1/vandervlugt/PythonFiles/FAS_test/density_peak/density_assigned.txt", "w");
+      for (int i=0; i<1000; i++) {
+        fprintf(density_peak_export, "%E %E \n", theoretical_values[i]-found_mean, x_values[i]);
+      }
+      fclose(density_peak_export);
+      message("Done exporting");
+      free(x_values);
+      free(theoretical_values);
+      sleep(10);
+
+    }
 
     message("Going to compute f(R)");
-    int N_min = 16;
+    int N_min = 32;
     double *field_contribution = NULL;
     field_contribution = (double*)calloc(N * N * N, sizeof(double));
     if (field_contribution == NULL)

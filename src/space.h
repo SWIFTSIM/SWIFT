@@ -406,6 +406,7 @@ struct MG_variables {
   double a3_inv;
   double fR_correction;
   double normalisation;
+  double h;
 };
 
 /* Function prototypes. */
@@ -620,7 +621,7 @@ void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struc
 void space_get_fR_contribution(const struct space *s, double *rho, double *phi, struct MG_variables *MG, int N_min, const int N);
 void apply_NGS(const double *rho, double *phi, struct MG_variables *MG, int cdim[3], double mean_density, double box_size);
 double get_Laplacian(struct MG_variables *MG, const double *phi, int cdim[3], int nbs[6], int i, int j, int k);
-double get_residual_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+double get_residual_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta, int verbose);
 double get_derivative(double *phi, struct MG_variables *MG, int cdim[3], int nbs[6], int i, int j, int k, double delta);
 void perform_red_black_sweep_fR(double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
 void apply_multigrid_fR(const double *rho, double *pot, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
@@ -631,4 +632,10 @@ void get_residual_array_coarser(const double *coarser_solution, const double *co
 void get_residual_array_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double *residual_array, double delta);
 void apply_NGS_Poisson(const double *rho, double *phi, int cdim[3], double mean_density, double box_size);
 void perform_red_black_sweep_NGS(double *pot, const double *rho, int cdim[3], double multiplier, double delta);
+void FAS_recursive_Poisson(double *pot, const double *residual, int cdim[3], double delta, const int N_stop, const int N_start, int *depth);
+void perform_red_black_sweep_coarser_Poisson(double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double delta);
+void get_residual_array_coarser_Poisson(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, double *new_residual_array, int cdim[3], double delta);
+double get_residual_coarser_Poisson(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double delta);
+void apply_multigrid_FAS(const double *rho, double *pot, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
+double peak_overdensity(struct MG_variables *MG, double delta_x, double A, double alpha, double w, double fR_mean);
 #endif /* SWIFT_SPACE_H */

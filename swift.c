@@ -1628,7 +1628,7 @@ int main(int argc, char *argv[]) {
     message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
-    message("The relevant parameters are Omega_m = Omega_cdm + Omega_b = %lf + %lf and Omega_lambda = %lf", cosmo.Omega_cdm, cosmo.Omega_b, cosmo.Omega_lambda);
+    //message("The relevant parameters are Omega_m = Omega_cdm + Omega_b = %lf + %lf and Omega_lambda = %lf", cosmo.Omega_cdm, cosmo.Omega_b, cosmo.Omega_lambda);
     //sleep(10);
     pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1);
     /* Set the desired gridsize for Gauss-Seidel and perform the calculation */
