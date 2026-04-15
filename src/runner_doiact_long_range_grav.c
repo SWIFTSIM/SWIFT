@@ -286,10 +286,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
 
   /* No self interactions here */
   if (ci == cj) {
-    error("Self interactions should not be handled in this function!");
-  }
-  if (c == cj) {
-    error("Self interactions should not be handled in this function!");
+    return;
   }
 
   struct engine *e = s->e;
@@ -374,11 +371,6 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         if (ci->progeny[k] == NULL) continue;
         struct cell *cpk = ci->progeny[k];
 
-        /* Avoid a self interaction */
-        if (c == cpk) {
-          continue;
-        }
-
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
@@ -386,8 +378,19 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
           continue;
         }
 
-        /* Otherwise recurse as a pair interaction */
-        runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s);
+        /* Check which cell contains c to decide how to recurse. */
+        const int cpj_contains_c = (cpj == c || cell_contains_progeny(cpj, c));
+        const int cpk_contains_c = (cpk == c || cell_contains_progeny(cpk, c));
+
+        /* Recurse as a pair interaction, ensuring we always pass the cell
+         * containing c as the first argument after c. */
+        if (cpj_contains_c) {
+          runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s);
+        } else if (cpk_contains_c) {
+          runner_count_mesh_interactions_pair_recursive(c, cpk, cpj, s);
+        } else {
+          runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s);
+        }
       }
     }
   }

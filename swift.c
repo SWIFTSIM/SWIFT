@@ -1969,6 +1969,7 @@ int main(int argc, char *argv[]) {
   if (with_rt) rt_clean(e.rt_props, restart);
   if (with_power) power_clean(e.power_data);
   if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
+  forcing_terms_clean(e.forcing_terms);
   extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
