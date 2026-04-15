@@ -459,8 +459,6 @@ runner_iact_nonsym_feedback_apply(
       tracers_after_supernovae_feedback_part(xpj, /*delta_p_magnitude=*/0.f,
                                              delta_u, /*kick_velocity=*/0.f);
 
-      message("pid %llu B_inj = [%.5e, %.5e, %.5e]", 
-        pj->id, B_inj[0], B_inj[1], B_inj[2]);
       /* message( 
           "We did some heating! id %llu star id %llu probability %.5e " 
           "random_num %.5e du %.5e du/ini %.5e", 
