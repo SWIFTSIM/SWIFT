@@ -57,10 +57,11 @@ enum SNII_magnetic_injection_model {
  * @brief Mode of magnetic injection orientation
  */
 enum SNII_magnetic_injection_orientation {
-  SNII_magnetic_orientation_ngb_model,   /*< plane through three nearest neighbours */ 
-  SNII_magnetic_orientation_maxB_model,  /*< orientation to maximize B injection energy */
-  SNII_magnetic_orientation_minB_model,  /*< orientation to minimize B injection energy */
-  SNII_magnetic_orientation_random_model /*< random orientation */
+  SNII_magnetic_orientation_ngb_model,     /*< plane through three nearest neighbours */ 
+  SNII_magnetic_orientation_maxB_model,    /*< orientation to maximize B injection energy */
+  SNII_magnetic_orientation_minB_model,    /*< orientation to minimize B injection energy */
+  SNII_magnetic_orientation_random_model,  /*< random orientation */
+  SNII_magnetic_orientation_constant_model /*< constant direction */
 };
 
 /**
@@ -333,6 +334,12 @@ struct feedback_props {
 
   /* mode of determining magnetic injection orientation */
   enum SNII_magnetic_injection_orientation magnetic_orientation_model;
+
+  /* the magnetic moment, for the constant orientation model */
+  float magnetic_moment[3];
+
+  /* dipole scale length */
+  float r_scale;
 
   /* dipole softening length */
   float r_softening;

@@ -61,7 +61,11 @@ struct ray_data {
   /* Gas-particle density in code units */
   float rho;
 
+  /* seperation vector star - particle */
   float dx[3];
+
+  /* magnetic field to inject in particle */
+  float B_inj[3];
 };
 
 /**

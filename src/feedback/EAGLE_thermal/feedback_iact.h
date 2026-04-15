@@ -417,39 +417,27 @@ runner_iact_nonsym_feedback_apply(
 
     int N_of_SNII_energy_inj_received_by_gas = 0;
 
+    float B_inj[3] = {0.f, 0.f, 0.f};
+
     /* Find out how many rays this gas particle has received. */
     for (int i = 0; i < N_of_SNII_thermal_energy_inj; i++) {
-      if (pj->id == si->feedback_data.SNII_rays[i].id_min_length)
+      if (pj->id == si->feedback_data.SNII_rays[i].id_min_length) {
         N_of_SNII_energy_inj_received_by_gas++;
+        
+        B_inj[0] += si->feedback_data.SNII_rays[i].B_inj[0];
+        B_inj[1] += si->feedback_data.SNII_rays[i].B_inj[1];
+        B_inj[2] += si->feedback_data.SNII_rays[i].B_inj[2];
+      }
     }
 
     /* If the number of SNII energy injections > 0, do SNII feedback */
     if (N_of_SNII_energy_inj_received_by_gas > 0) {
 
-      /* Compute magnetic field injection */
+      float B_inj_norm = si->feedback_data.to_distribute.B_inj_abs;
 
-      /* get directions */
-      float moment[3] = {si->feedback_data.to_distribute.magnetic_moment[0],
-                         si->feedback_data.to_distribute.magnetic_moment[1],
-                         si->feedback_data.to_distribute.magnetic_moment[2]};
-
-      /* cross product moment and distance vector -> toroidal direction */
-      float B_inj[3] = {dx[1]*moment[2] - dx[2]*moment[1],
-                        dx[2]*moment[0] - dx[0]*moment[2],
-                        dx[0]*moment[1] - dx[1]*moment[0]};
-
-      /* rescale B_inj to the right value */
-      const float B_inj_abs = sqrtf(B_inj[0]*B_inj[0] + 
-                                    B_inj[1]*B_inj[1] + 
-                                    B_inj[2]*B_inj[2]);
-
-      for (size_t i = 0; i < 3; i++){
-          B_inj[i] *= si->feedback_data.to_distribute.B_inj_abs / B_inj_abs;
-      }
-
-      xpj->mhd_data.B_over_rho_full[0] += B_inj[0] / rho_j;
-      xpj->mhd_data.B_over_rho_full[1] += B_inj[1] / rho_j;
-      xpj->mhd_data.B_over_rho_full[2] += B_inj[2] / rho_j;
+      xpj->mhd_data.B_over_rho_full[0] += B_inj_norm * B_inj[0] / rho_j;
+      xpj->mhd_data.B_over_rho_full[1] += B_inj_norm * B_inj[1] / rho_j;
+      xpj->mhd_data.B_over_rho_full[2] += B_inj_norm * B_inj[2] / rho_j;
 
       /* Compute new energy of this particle */
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
@@ -470,15 +458,17 @@ runner_iact_nonsym_feedback_apply(
       /* Mark this particle has having been heated by supernova feedback */
       tracers_after_feedback(xpj, snii_feedback_energy);
 
-      message( 
+      message("pid %llu B_inj = [%.5e, %.5e, %.5e]", 
+        pj->id, B_inj[0], B_inj[1], B_inj[2]);
+      /* message( 
           "We did some heating! id %llu star id %llu probability %.5e " 
           "random_num %.5e du %.5e du/ini %.5e", 
           pj->id, si->id, 0., 0., delta_u, delta_u / u_init); 
       message("Coordinates of particle id %llu wrt to star part "
               "[dx, dy, dz] = [%.5e, %.5e, %.5e], dr =  %.5e", 
-              pj->id, dx[0], dx[1], dx[2], r);
-      message("magnetic moment [mx, my, mz] = [%.5e, %.5e, %.5e]",
-                 moment[0], moment[1], moment[2]);
+              pj->id, dx[0], dx[1], dx[2], r); */
+      /* message("magnetic moment [mx, my, mz] = [%.5e, %.5e, %.5e]",
+                 moment[0], moment[1], moment[2]); */
 
       /* Synchronize the particle on the timeline */
       timestep_sync_part(pj);
