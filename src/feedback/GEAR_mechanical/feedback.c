@@ -234,7 +234,7 @@ void feedback_reset_feedback(struct spart *sp,
      this is called when a particle is not active, it should not alter
      anything. We'll see.
   */
-  message("Reset feedback for %lld (is_dead = %d)", sp->id, sp->feedback_data.is_dead);
+  /* message("Reset feedback for %lld (is_dead = %d)", sp->id, sp->feedback_data.is_dead); */
 
 /*   sp->feedback_data.energy_ejected = 0.0; */
 /*   sp->feedback_data.enrichment_weight = 0.0; */
