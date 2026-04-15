@@ -65,6 +65,7 @@ GEARChemistry:
 GEARFeedback:
   supernovae_Ia_energy_erg: 1e51                # Supernovae energy, used only for SNIa
   supernovae_efficiency: 0.1                    # Supernovae energy efficiency, used for both SNIa and SNII
+  with_stellar_wind_feedback: 0
   yields_table: POPIIsw.h5
   yields_table_first_stars: POPIIsw.h5
   discrete_yields: 1
