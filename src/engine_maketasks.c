@@ -3547,7 +3547,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, t_star_pair_density,
                                 cj->hydro.super->stars.ghost_in);
 #ifdef EXTRA_STAR_LOOPS
-            scheduler_addunlock(sched, ci->hydro.super->stars.ghost_out,
+            scheduler_addunlock(sched, cj->hydro.super->stars.ghost_out,
                                 t_star_prep1);
 	    scheduler_addunlock(sched, t_star_prep1,
 				cj->hydro.super->stars.prep1_ghost);
@@ -3585,7 +3585,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif /* EXTRA_STAR_LOOPS_2 */
 
 #else  /* Without EXTRA_STAR_LOOPS */
-            scheduler_addunlock(sched, ci->hydro.super->stars.ghost_out,
+            scheduler_addunlock(sched, cj->hydro.super->stars.ghost_out,
                                 t_star_feedback);
 #endif /* EXTRA_STAR_LOOPS */
 	    scheduler_addunlock(sched, t_star_feedback,
