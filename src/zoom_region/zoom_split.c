@@ -85,10 +85,10 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
 
-    /* If this top level cell is empty, don't link it in. */
-    if (zoom_cell->grav.count == 0 && zoom_cell->hydro.count == 0 &&
-        zoom_cell->stars.count == 0 && zoom_cell->sinks.count == 0 &&
-        zoom_cell->black_holes.count == 0) {
+    /* If this top-level zoom cell is empty, don't link it in. We must allow
+     * foreign shared multipoles to count here because top-level gravity
+     * multipoles are available on every rank. */
+    if (cell_is_empty(zoom_cell)) {
       c->progeny[k] = NULL;
       continue;
     }
@@ -184,6 +184,16 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
       /* Increase the depth */
       maxdepth = max(maxdepth, cp->maxdepth);
+    }
+
+    /* If the progeny is a non-local non-void cell we're done. */
+    else if (cp->nodeID != engine_rank) {
+      continue;
+    }
+
+    /* If the zoom progeny is empty there's nothing to do. */
+    else if (cell_is_empty(cp)) {
+      continue;
     }
 
     /* Update the timestep information. */
