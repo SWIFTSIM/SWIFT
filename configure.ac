@@ -2025,6 +2025,7 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=GEAR
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2037,6 +2038,7 @@ case "$with_subgrid" in
    GEAR-G3)
 	with_subgrid_cooling=grackle_3
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2714,7 +2716,7 @@ fi
 #  Particle tracers
 AC_ARG_WITH([tracers],
    [AS_HELP_STRING([--with-tracers=<function>],
-      [chemistry function @<:@none, EAGLE default: none@:>@]
+      [chemistry function @<:@none, EAGLE, GEAR default: none@:>@]
    )],
    [with_tracers="$withval"],
    [with_tracers="none"]
@@ -2734,6 +2736,9 @@ case "$with_tracers" in
    ;;
    EAGLE)
       AC_DEFINE([TRACERS_EAGLE], [1], [Tracers taken from the EAGLE model])
+   ;;
+   GEAR)
+      AC_DEFINE([TRACERS_GEAR], [1], [Tracers taken from the GEAR model])
    ;;
    *)
       AC_MSG_ERROR([Unknown tracers choice: $with_tracers])
@@ -2947,7 +2952,7 @@ esac
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
-      [Hydrodynamics forcing terms @<:@none, boundary-particles, roberts-flow, roberts-flow-acceleration, abc-flow, idealized-agn-jet, default: none@:>@]
+      [Hydrodynamics forcing terms @<:@none, boundary-particles, roberts-flow, roberts-flow-acceleration, abc-flow, idealized-agn-jet, balsarakim default: none@:>@]
    )],
    [with_forcing="$withval"],
    [with_forcing="none"]
@@ -2967,6 +2972,9 @@ case "$with_forcing" in
    ;;
    abc-flow)
       AC_DEFINE([FORCING_ABC_FLOW], [1], [ABC flow external forcing terms])
+   ;;
+   balsarakim)
+      AC_DEFINE([FORCING_BALSARAKIM], [1], [BalsaraKim internal energy injections])
    ;;
    idealized-agn-jet)
       AC_DEFINE([FORCING_IDEALIZED_AGN_JET], [1], [Launch AGN jets and treats particles in jet reservoir as fixed boundary particles])

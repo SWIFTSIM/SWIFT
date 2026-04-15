@@ -41,6 +41,7 @@
 #include "extra_io.h"
 #include "feedback.h"
 #include "fof_io.h"
+#include "forcing_io.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
 #include "mhd_io.h"
@@ -1775,6 +1776,7 @@ void io_select_hydro_fields(const struct part *const parts,
   }
   *num_fields += extra_io_write_particles(parts, xparts, list + *num_fields,
                                           with_cosmology);
+  *num_fields += forcing_write_particles(parts, xparts, list + *num_fields);
 }
 
 /**

@@ -1,5 +1,5 @@
 .. GEAR sub-grid model
-   Darwin Roduit, 5h January 2025
+   Darwin Roduit, 5th January 2026
 
 .. _gear_dev_notes:
 
