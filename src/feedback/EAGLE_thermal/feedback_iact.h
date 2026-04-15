@@ -458,8 +458,6 @@ runner_iact_nonsym_feedback_apply(
       /* Mark this particle has having been heated by supernova feedback */
       tracers_after_feedback(xpj, snii_feedback_energy);
 
-      message("pid %llu B_inj = [%.5e, %.5e, %.5e]", 
-        pj->id, B_inj[0], B_inj[1], B_inj[2]);
       /* message( 
           "We did some heating! id %llu star id %llu probability %.5e " 
           "random_num %.5e du %.5e du/ini %.5e", 
