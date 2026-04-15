@@ -38,6 +38,7 @@ __attribute__((always_inline)) INLINE static void ray_init(
     rays[i].rho = 0.f;
     for (size_t j = 0; j < 3; j++) {
       rays[i].dx[j] = 0.f;
+      rays[i].B_inj[j] = 0.f;
     }
   }
 }
@@ -67,6 +68,7 @@ __attribute__((always_inline)) INLINE static void ray_reset_part_id(
       rays[i].rho = 0.f;
       for (size_t j = 0; j < 3; j++) {
         rays[i].dx[j] = 0.f;
+        rays[i].B_inj[j] = 0.f;
       }
     }
   }
