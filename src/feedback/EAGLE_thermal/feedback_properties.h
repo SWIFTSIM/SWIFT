@@ -50,6 +50,7 @@ enum SNII_energy_scalings {
  */
 enum SNII_magnetic_injection_model {
   SNII_magnetic_const_toroidal_injection, /*< constant field in phi direction */
+  SNII_magnetic_decreasing_toroidal_injection, 
   SNII_magnetic_dipole_injection          /*< (softened) dipole injection */
 };
 
