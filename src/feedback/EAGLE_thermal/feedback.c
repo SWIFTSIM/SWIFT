@@ -119,6 +119,7 @@ INLINE static float compute_magnetic_injection_field(
     /* Initialize variables to calculate */
     float B_inj[3] = {0., 0., 0.};
     float B_inj_abs;
+    float B_inj_rescale;
 
     /* the seperation vector (si - pj)*/
     float dx[3] = {ray->dx[0], ray->dx[1], ray->dx[2]};
@@ -126,6 +127,9 @@ INLINE static float compute_magnetic_injection_field(
 
     /* the softening length */
     const float r_soft = feedback_props->r_softening;
+
+    /* the scale length of the radially decreasing toroid */
+    const float r_scale = feedback_props->r_scale;
     
     switch (feedback_props->magnetic_injection_model) {
 
@@ -138,15 +142,35 @@ INLINE static float compute_magnetic_injection_field(
 
         /* for this mode the magnetic field has constant 
          * strength in the toroid */
-        float B_inj_rescale = sqrtf(B_inj[0]*B_inj[0] + 
-                                    B_inj[1]*B_inj[1] + 
-                                    B_inj[2]*B_inj[2]);
+        B_inj_abs = 1.;
+
+        B_inj_rescale = B_inj_abs / sqrtf(B_inj[0]*B_inj[0] + 
+                                 B_inj[1]*B_inj[1] + 
+                                 B_inj[2]*B_inj[2]);
         
         for (size_t i = 0; i < 3; i++){
-          B_inj[i] /= B_inj_rescale;
+          B_inj[i] *= B_inj_rescale;
         }
+
+        break;
+
+      case SNII_magnetic_decreasing_toroidal_injection:
+
+        /* toroidal direction */
+        B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
+        B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
+        B_inj[2] = dx[0]*m[1] - dx[1]*m[0];
+
+        /* for this mode the magnetic field has decreasing 
+         * strength in the toroid */
+        B_inj_abs = exp(-1. * (r/r_scale) * (r/r_scale));
         
-        B_inj_abs = 1.;
+        B_inj_rescale = B_inj_abs / sqrtf(B_inj[0]*B_inj[0] + 
+                            B_inj[1]*B_inj[1] + B_inj[2]*B_inj[2]);
+
+        for (size_t i = 0; i < 3; i++){
+          B_inj[i] *= B_inj_rescale;
+        }
 
         break;
 
@@ -950,6 +974,11 @@ void feedback_props_init(struct feedback_props *fp,
     if (strcmp(B_injection_model, "const_toroid") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_const_toroidal_injection;
     }  
+    else if (strcmp(B_injection_model, "decreasing_toroid") == 0) {
+      fp->magnetic_injection_model = SNII_magnetic_decreasing_toroidal_injection;
+      fp->r_scale = parser_get_param_float(params,
+          "EAGLEFeedback:SNII_magnetic_toroid_scale");
+    }
     else if (strcmp(B_injection_model, "dipole") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_dipole_injection;
       
