@@ -1876,6 +1876,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
 
+    cell_activate_sync_part(c, s);
+
     if (c->hydro.extra_ghost != NULL)
       scheduler_activate(s, c->hydro.extra_ghost);
     if (c->hydro.ghost_in != NULL) cell_activate_hydro_ghosts(c, s, e);
