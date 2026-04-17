@@ -794,12 +794,12 @@ void stellar_evolution_evolve_individual_star(
     return;
   }
 
-  /* TODO: Update to pass the with_stellar_winds down or rename the function */
+  /* TODO: Update to pass the with_stellar_winds down */
   /* Pre-SN feedback */
-  if (with_stellar_wind_feedback) {
-    stellar_evolution_compute_preSN_feedback_individual_star(
-        sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
-  }
+  stellar_evolution_compute_preSN_feedback_individual_star(
+      sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
+      star_age_beg_step, dt);
+
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_individual_star(
       sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
@@ -818,6 +818,7 @@ void stellar_evolution_evolve_individual_star(
  * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_winds Enable stellar winds?
  * @param ti_begin The #integertime_t at the begining of the step.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
@@ -849,10 +850,9 @@ void stellar_evolution_evolve_spart(
 
   /* Pre-SN feedback */
   /* TODO: Update to pass the with_stellar_winds down or rename the function */
-  if (with_stellar_wind_feedback) {
-    stellar_evolution_compute_preSN_feedback_spart(
-        sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
-  }
+  stellar_evolution_compute_preSN_feedback_spart(
+        sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
+        star_age_beg_step, dt);
 
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const,
@@ -1190,6 +1190,7 @@ void stellar_evolution_compute_SN_feedback_spart(
  * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_winds Enable stellar winds?
  * @param ti_begin The #integertime_t at the begining of the step.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
@@ -1198,7 +1199,7 @@ void stellar_evolution_compute_SN_feedback_spart(
 void stellar_evolution_compute_preSN_feedback_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
+    const struct phys_const *phys_const, const char with_stellar_winds, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for individual stars */
@@ -1215,6 +1216,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
      - optical/near-IR: single scattering --> radiation pressure
      - mid/far-IR : reserved for light re-radiated by dust */
 
+  /* TODO: Add a with radiation mode */
   /* Get the bolometric luminosity */
   sp->feedback_data.radiation.L_bol =
       radiation_get_individual_star_luminosity(sp->mass, us, phys_const);
@@ -1232,6 +1234,8 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 
   /*****************************************/
   /* Stellar winds */
+
+  if (!with_stellar_winds) return;
 
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
@@ -1291,6 +1295,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
  * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_winds Enable stellar winds?
  * @param ti_begin The #integertime_t at the begining of the step.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
@@ -1299,7 +1304,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 void stellar_evolution_compute_preSN_feedback_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
+    const struct phys_const *phys_const, const char with_stellar_winds, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for populations of stars and not
