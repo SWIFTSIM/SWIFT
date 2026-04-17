@@ -594,6 +594,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       cell_set_sink_h_depth(&sinks[k], c);
 
+      /* Collect SFR from the particles after rebuilt */
+      star_formation_logger_log_inactive_sink(&sinks[k], &c->stars.sfh);
+
       /* Reset x_diff */
       sinks[k].x_diff[0] = 0.f;
       sinks[k].x_diff[1] = 0.f;
