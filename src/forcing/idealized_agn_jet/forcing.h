@@ -158,6 +158,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     /* Recompute the signal velocity of the particle */
     hydro_set_v_sig_based_on_velocity_kick(p, s->e->cosmology,
                                            terms->jet_velocity);
+    mhd_set_drifted_physical_internal_energy(p);
 
     /* Synchronize the particle on the time-line */
     timestep_sync_part(p);
