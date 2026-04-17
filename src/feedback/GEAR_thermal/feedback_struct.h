@@ -75,14 +75,46 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
+  /*! The relative velocity between the surrounding gas and the feedback emitter at the place of the emitter */
+  float relative_velocity_gas[3];
+
+  /*! The sound speed in the gas medium at the position of the feedback emitter */
+  float sound_speed_gas;
+
+  /*! The minimal smoothing length of the gas in the vicinity of the star */
+  float minimal_h_gas;
+
+  /*! The internal specific energy at the star localisation multiplied by the total mass in the kernel */
+  float total_internal_energy_gas;
+
+  /*! The kinetic energy of the gas at the star location */
+  float total_kinetic_energy_gas;
+
+  /*! Total mass gas in kernel */
+  float total_gas_mass;
+
+  /*! The total gas mass in the kernel */
+  //float local_gas_mass;
+
   /*! Pre-SN data struct */
   struct {
 
+    /*! Energy injected in the surrounding particles, needs to be double as the
+     * energy is momentally passed as energy per unit time in erg/yr units and
+     * is of order 10^40*/ /* TODO:change into float for memory but /!\ change the stellar_wind.c functions in accordance */
+    double energy_ejected;
+
+    /*! Energy injection rate, needed for timestep criterion */
+    double energy_dot;
     /*! Energy injected in the surrounding particles */
     float energy_ejected;
 
-    /*! Mass injected in the surrounding particles */
-    float mass_ejected;
+    /*! Mass injected in the surrounding particles, needs to be double as the
+     mass is currently in Msol units and can be of orders 10^-40 */ /* TODO: change into float for memory*/
+    double mass_ejected;
+
+    /*! Mass Loss rate, needed for timestep criterion*/
+    double mass_dot;
 
   } preSN;
 };

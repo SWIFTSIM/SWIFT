@@ -647,7 +647,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Sort the parts according to their cells. */
   if (nr_parts > 0)
     space_parts_sort(s->parts, s->xparts, h_index, cell_part_counts,
-                     s->nr_cells, 0);
+                     s->nr_cells, 0);      
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */

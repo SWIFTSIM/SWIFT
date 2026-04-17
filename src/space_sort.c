@@ -54,6 +54,8 @@ void space_parts_sort(struct part *parts, struct xpart *xparts,
     counts[k - 1] = 0;
   }
 
+  //message("ind size is %d", sizeof(ind) / sizeof(ind[0]));
+
   /* Loop over local cells. */
   for (int cid = 0; cid < num_bins; cid++) {
     for (size_t k = offsets[cid] + counts[cid]; k < offsets[cid + 1]; k++) {
@@ -66,7 +68,8 @@ void space_parts_sort(struct part *parts, struct xpart *xparts,
       struct xpart temp_xpart = xparts[k];
       while (target_cid != cid) {
         size_t j = offsets[target_cid] + counts[target_cid]++;
-        while (ind[j] == target_cid) {
+        //message("j = %d",j);
+        while (ind[j] == target_cid) {     
           j = offsets[target_cid] + counts[target_cid]++;
         }
         memswap(&parts[j], &temp_part, sizeof(struct part));
@@ -303,6 +306,8 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
     counts[k - 1] = 0;
   }
 
+  //message("ind size is %d", sizeof(ind) / sizeof(ind[0]));
+
   /* Loop over local cells. */
   for (int cid = 0; cid < num_bins; cid++) {
     for (size_t k = offsets[cid] + counts[cid]; k < offsets[cid + 1]; k++) {
@@ -314,6 +319,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
       struct gpart temp_gpart = gparts[k];
       while (target_cid != cid) {
         size_t j = offsets[target_cid] + counts[target_cid]++;
+        //message("j = %d",j);
         while (ind[j] == target_cid) {
           j = offsets[target_cid] + counts[target_cid]++;
         }

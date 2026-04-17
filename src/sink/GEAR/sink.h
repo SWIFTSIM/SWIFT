@@ -138,6 +138,8 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   double sink_age = sink_get_sink_age(sink, with_cosmology, cosmo, time);
 
   /* Take the minimum dt --------------------------------------------------- */
+  //message("Sink timestep components: dt_cfl=%e, dt_ff=%e, dt_2_body=%e, dt_SF=%e",
+ //         dt_cfl, dt_ff, dt_2_body, dt_SF);
   float dt = min3(dt_cfl, dt_ff, dt_SF);
 
   /* What age category are we in? */

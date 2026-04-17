@@ -1,4 +1,8 @@
 #!/bin/bash
+#SBATCH --time=00:40:00
+#SBATCH --account=master
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16G
 
 ################# Variation parameters #################
 n_threads=${n_threads:=8}  # Number of threads to use

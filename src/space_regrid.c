@@ -47,7 +47,7 @@ void space_regrid(struct space *s, int verbose) {
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
-  float h_max = s->cell_min / kernel_gamma / space_stretch;
+  float h_max = s->cell_min / kernel_gamma / space_stretch;      
   if (nr_parts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */

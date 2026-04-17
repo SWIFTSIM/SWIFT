@@ -221,6 +221,9 @@ struct stellar_wind {
 
   /*! Number of metallicity element in the interpolation 2d array*/
   int interpolation_size_z;
+
+  /*! Coefficient of the timestep criteria for the stellar winds*/
+  float timestep_criteria_coefficient;
 };
 
 /**

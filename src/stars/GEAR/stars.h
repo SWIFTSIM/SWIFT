@@ -224,6 +224,9 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   sp->density.wcount *= h_inv_dim;
   sp->density.wcount_dh *= h_inv_dim_plus_one;
+
+
+  /* Now end feedback density */
 }
 
 /**

@@ -66,6 +66,46 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
 
   /* The normalization by 1 / h^d is done in feedback.h */
   si->feedback_data.enrichment_weight += mj * wi;
+
+  si->feedback_data.total_gas_mass += mj;
+
+  /* Collect the local sound speed for gas */
+  si->feedback_data.sound_speed_gas += mj * wi * hydro_get_comoving_soundspeed(pj);
+
+  /* Minimal smoothing length accros the neighbours */
+  si->feedback_data.minimal_h_gas = min(hj, si->feedback_data.minimal_h_gas);
+
+  /* The internal specific energy of the gas at the position of the star.
+     ! In physical units. ! At the current time. 
+     The multiplication by the total mass in the kernel come in feedback.c:feedback_prepare_feedback() */
+  si->feedback_data.total_internal_energy_gas += mj * wi * hydro_get_drifted_physical_internal_energy(pj, cosmo);
+
+  /* Neighbour's (drifted) velocity in the frame of the sink
+   * (we don't include a Hubble term since we are interested in the
+   * velocity contribution at the location of the sink) */
+  const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
+                       pj->v[2] - si->v[2]};
+
+  /* Contribution to the smoothed velocity (gas w.r.t. star) */
+  si->feedback_data.relative_velocity_gas[0] += mj * dv[0] * wi;
+  si->feedback_data.relative_velocity_gas[1] += mj * dv[1] * wi;
+  si->feedback_data.relative_velocity_gas[2] += mj * dv[2] * wi;
+
+  /* Cosmology constant */
+  const float a_inv = cosmo->a_inv;
+  /* physical velocities of the gas particle j */
+  const float v_j_p[3] = {pj->v[0] * a_inv,
+                          pj->v[1] * a_inv,
+                          pj->v[2] * a_inv};
+
+  /* norm of physical velocities of the gas particle j */
+  const float norm2_v_p =
+      v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
+
+  const double specific_kinetic_energy = 0.5 * norm2_v_p;
+
+  si->feedback_data.total_kinetic_energy_gas += specific_kinetic_energy * mj * wi; 
+        
 }
 
 /**

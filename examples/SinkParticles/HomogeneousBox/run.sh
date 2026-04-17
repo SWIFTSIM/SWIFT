@@ -1,4 +1,8 @@
 #!/bin/bash
+#SBATCH --time=0:45:00
+#SBATCH --account=master
+#SBATCH --mem=16G
+#SBATCH --cpus-per-task=8
 
 # make run.sh fail if a subcommand fails
 set -e
@@ -31,11 +35,13 @@ then
     ./getGrackleCoolingTable.sh
 fi
 
+
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
     ./getChemistryTable.sh
 fi
+
 
 # Create output directory
 DIR=snap #First test of units conversion
@@ -65,13 +71,13 @@ if [[ -z "$debug" || "$debug" -eq 0 ]]; then
     printf "Running simulation..."
     $swift --hydro $runtime_params --stars --self-gravity --feedback \
 		   --cooling --sync --limiter --threads=$n_threads \
-		   params.yml 2>&1 | tee output.log
+		   ../params.yml 2>&1 | tee output.log
 
     #Do some data analysis to show what's in this box
-    python3 plot_gas_density.py -i 282 -s 'snap/snapshot'
-    python3 rhoTPlot.py -i 282 -s 'snap/snapshot'
-    python3 rhoTPlot.py -i 0 -f 282 -s 'snap/snapshot'
-    python3 plot_gas_density.py -i 0 -f 282 -s 'snap/snapshot'
+    python3 ../plot_gas_density.py -i 282 -s 'snap/snapshot'
+    python3 ../rhoTPlot.py -i 282 -s 'snap/snapshot'
+    python3 ../rhoTPlot.py -i 0 -f 282 -s 'snap/snapshot'
+    python3 ../plot_gas_density.py -i 0 -f 282 -s 'snap/snapshot'
 else
     # Get the debugging ICs
     if [ ! -e snapshot_0003restart.hdf5 ]

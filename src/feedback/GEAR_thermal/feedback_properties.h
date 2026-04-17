@@ -49,6 +49,19 @@ struct feedback_props {
 
   /*! Do stellar wind feedback? */
   char with_stellar_wind_feedback;
+
+  /*! CFL timestep tolerance parameter */
+  float CFL_condition;
+
+  /*! Mass loss timestep tolerance parameter */
+  float mass_loss_condition;
+
+  /*! Energy timestep tolerance parameter */
+  float energy_condition;
+
+  /*! Momentum timestep tolerance parameter */
+  float momentum_condition;
+  
 };
 
 /**
@@ -84,6 +97,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   message("Stellar wind feedback = %s",
           feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
   message("Pre-Supernovae efficiency = %.2g", feedback_props->preSN_efficiency);
+  message("CFL condition = %.2g", feedback_props->CFL_condition);
+  message("Mass Loss condition = %.2g", feedback_props->mass_loss_condition);
+  message("Momentum condition = %.2g", feedback_props->momentum_condition);
+  message("Energy condition = %.2g", feedback_props->energy_condition);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
@@ -134,6 +151,22 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   }
 
   fp->preSN_efficiency = w_efficiency;
+
+  /* CFL timestep tolerance parameter */
+  double cfl_cond = parser_get_param_float(params, "GEARFeedback:CFL_condition");
+  fp->CFL_condition = cfl_cond;
+
+  /* Mass-Loss timestep tolerance parameter */
+  double m_dot = parser_get_param_float(params, "GEARFeedback:mass_loss_condition");
+  fp->mass_loss_condition = m_dot;
+
+  /* Momentum timestep tolerance parameter */
+  double p_dot = parser_get_param_float(params, "GEARFeedback:momentum_condition");
+  fp->momentum_condition = p_dot;
+
+  /* Energy timestep tolerance parameter */
+  double e_dot = parser_get_param_float(params, "GEARFeedback:energy_condition");
+  fp->energy_condition = e_dot;
 
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",

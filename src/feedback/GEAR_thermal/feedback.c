@@ -137,6 +137,15 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
 void feedback_init_spart(struct spart *sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
+  sp->feedback_data.minimal_h_gas = FLT_MAX;
+  sp->feedback_data.sound_speed_gas = 0.f;
+  sp->feedback_data.total_internal_energy_gas = 0.f;
+  sp->feedback_data.total_kinetic_energy_gas = 0.f;
+  sp->feedback_data.total_gas_mass = 0.f;
+  sp->feedback_data.relative_velocity_gas[0] = 0.f;
+  sp->feedback_data.relative_velocity_gas[1] = 0.f;
+  sp->feedback_data.relative_velocity_gas[2] = 0.f;
+
 }
 
 /**
@@ -191,4 +200,19 @@ void feedback_prepare_feedback(struct spart *restrict sp,
   const float hi_inv = 1.f / sp->h;
   const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
   sp->feedback_data.enrichment_weight *= hi_inv_dim;
+  const float rho_inv = 1.f /  sp->feedback_data.enrichment_weight;
+
+  /* For the following, we also have to undo the mass smoothing */
+  sp->feedback_data.sound_speed_gas *= hi_inv_dim * rho_inv;
+  sp->feedback_data.relative_velocity_gas[0] *= hi_inv_dim * rho_inv;
+  sp->feedback_data.relative_velocity_gas[1] *= hi_inv_dim * rho_inv;
+  sp->feedback_data.relative_velocity_gas[2] *= hi_inv_dim * rho_inv;
+
+
+  sp->feedback_data.total_internal_energy_gas *= rho_inv * hi_inv_dim * sp->feedback_data.total_gas_mass; 
+  sp->feedback_data.total_kinetic_energy_gas *= rho_inv * hi_inv_dim * sp->feedback_data.total_gas_mass;
+
+  //message("sp->feedback_data.enrichment_weight = %e, sp->feedback_data.total_gas_mass = %e", sp->feedback_data.enrichment_weight, sp->feedback_data.total_gas_mass);
+ // message("In physical units: sp->feedback_data.total_kinetic_energy_gas = %e, sp->feedback_data.total_internal_energy_gas = %e", sp->feedback_data.total_kinetic_energy_gas, sp->feedback_data.total_internal_energy_gas);
+
 }

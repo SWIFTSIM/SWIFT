@@ -26,6 +26,7 @@
 #include "part.h"
 #include "stellar_evolution.h"
 #include "units.h"
+#include "lifetime.h"
 
 /**
  * @brief Computes the time-step length of a given star particle from feedback
@@ -48,12 +49,92 @@ float feedback_compute_spart_timestep(
     const int with_cosmology, const struct cosmology *cosmo,
     const integertime_t ti_current, const double time, const double time_base) {
 
-  const float dt = FLT_MAX;
+
+  /* Return FLT_MAX if in the initial fake step, as no feedback properties were calculated. Prevent timestep = 0.0*/
+  if (sp->time_bin == 0) return FLT_MAX;
+
+  /* ------------- CFL timestep for Stellar winds. -------------------- */
+
+  float dt_cfl = 0.0;
+  const float CFL_condition = feedback_props->CFL_condition;
+
+  /* Convert relative velocity to physical (without the Hubble flow contribution, here we want the local relative velocity between gas and the star) */
+  const double gas_v_phys[3] = {
+      sp->feedback_data.relative_velocity_gas[0] * cosmo->a_inv,
+      sp->feedback_data.relative_velocity_gas[1] * cosmo->a_inv,
+      sp->feedback_data.relative_velocity_gas[2] * cosmo->a_inv};
+  double gas_v_norm2 = gas_v_phys[0] * gas_v_phys[0] +
+                       gas_v_phys[1] * gas_v_phys[1] +
+                       gas_v_phys[2] * gas_v_phys[2];
+
+  if (gas_v_norm2 == 0.0) {
+    dt_cfl = FLT_MAX;
+  } else {
+    /* Compute the physical sound speed */
+    const double gas_c_phys =
+        sp->feedback_data.sound_speed_gas * cosmo->a_factor_sound_speed;
+    const double gas_c_phys2 = gas_c_phys * gas_c_phys;
+    const float denominator = sqrtf(gas_c_phys2 + gas_v_norm2);
+    const float h_min =
+        cosmo->a * kernel_gamma * min(sp->h, sp->feedback_data.minimal_h_gas);
+    dt_cfl = 2.f * CFL_condition * h_min / denominator;
+  
+
+    //message("h_min = %e, CFL timestep = %e", h_min, dt_cfl);
+  }
+
+  /* ------------- Mass-Loss based timestep for Stellar winds. -------------------- */
+  float dt_mass_loss = FLT_MAX;
+
+  if (sp->feedback_data.preSN.mass_dot > 0) {
+    const float mass_loss_condition = feedback_props->mass_loss_condition;
+    dt_mass_loss = mass_loss_condition * min(sp->mass / sp->feedback_data.preSN.mass_dot, sp->feedback_data.total_gas_mass / sp->feedback_data.preSN.mass_dot);
+    //message("init_mass = %e, mass_dot = %e, gas_mass = %e, dt_mass_loss = %e", sp->mass, sp->feedback_data.preSN.mass_dot, sp->feedback_data.total_gas_mass, dt_mass_loss);
+
+  }
+
+
+  /* ------------- Momentum based timestep for Stellar winds. -------------------- */
+
+  float dt_momentum = FLT_MAX;
+  float momentum_condition = feedback_props->momentum_condition;
+
+
+  if (gas_v_norm2 > 0 && sp->feedback_data.preSN.mass_dot > 0) {
+    const double wind_momentum_rate = sqrt(2. * sp->feedback_data.preSN.energy_dot * sp->feedback_data.preSN.mass_dot);
+
+    if (wind_momentum_rate > 0 && sp->feedback_data.total_gas_mass > 0) {
+      const double gas_c_phys =
+        sp->feedback_data.sound_speed_gas * cosmo->a_factor_sound_speed;
+      const double v_gas = min(sqrtf(gas_v_norm2), gas_c_phys);
+
+      dt_momentum = momentum_condition * (sp->feedback_data.total_gas_mass * v_gas) / wind_momentum_rate;
+
+      //message("wind_momentum_rate = %e, v_gas = %e, dt_momentum = %e", wind_momentum_rate, v_gas, dt_momentum);
+    }
+  }
+
+
+  /* ------------- Energy based timestep for Stellar winds. -------------------- */
+
+  float dt_energy = FLT_MAX;
+
+  if (sp->feedback_data.preSN.energy_dot > 0) {
+    const float energy_condition = feedback_props->energy_condition;
+    dt_energy = energy_condition * (sp->feedback_data.total_internal_energy_gas + sp->feedback_data.total_kinetic_energy_gas) / sp->feedback_data.preSN.energy_dot;
+    //message("total_internal_energy_gas = %e, total_kinetic_energy_gas = %e, energy_dot = %e, dt_energy = %e", sp->feedback_data.total_internal_energy_gas, sp->feedback_data.total_kinetic_energy_gas, sp->feedback_data.preSN.energy_dot, dt_energy);
+  }
 
   /* If the star is dead, do not limit its timestep */
   if (sp->feedback_data.is_dead) {
     return FLT_MAX;
   } else {
+    float dt_1 = min(dt_cfl, dt_mass_loss);
+    float dt_2 = min(dt_energy, dt_momentum);
+    float dt = min(dt_1, dt_2);
+    // if (dt != FLT_MAX) {
+    //   message("dt_CFL=%e; dt_mass=%e; dt_momentum=%e; dt_energy=%e; Returning timestep=%e", dt_cfl, dt_mass_loss, dt_momentum, dt_energy, dt);
+    // }
     return dt;
   }
 }
