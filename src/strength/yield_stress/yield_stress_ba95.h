@@ -40,7 +40,7 @@
  *
  * With the Benz&Asphaug95 yield stress method, damage acts to reduce all
  * elements of the deviatoric stress tensor, meaning that a fully damaged
- * material acts as afluid. See Benz&Asphaug95 Eqn. 13.
+ * material acts as a fluid. See Benz&Asphaug95 Eqn. 13.
 
  * @param deviatoric_stress_tensor (sym_matrix) The deviatoric stress tensor.
  * @param damage The damage.
