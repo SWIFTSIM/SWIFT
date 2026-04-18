@@ -177,7 +177,7 @@ const char *task_category_names[task_category_count] = {
     "limiter",     "sync",     "time integration",
     "mpi",         "pack",     "fof",
     "others",      "neutrino", "sink",
-    "RT",          "CSDS"};
+    "RT",          "CSDS",     "sidm"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -214,6 +214,7 @@ TASK_CELL_OVERLAP(gpart, grav.parts, grav.count);
 TASK_CELL_OVERLAP(spart, stars.parts, stars.count);
 TASK_CELL_OVERLAP(sink, sinks.parts, sinks.count);
 TASK_CELL_OVERLAP(bpart, black_holes.parts, black_holes.count);
+TASK_CELL_OVERLAP(sipart, sidm.parts, sidm.count)
 
 /**
  * @brief Returns the #task_actions for a given task.
@@ -268,6 +269,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_part;
       break;
 
+    case task_type_drift_sipart:
+    case task_type_sidm_density_ghost:
+      return task_action_sipart;
+      break;
+
     case task_type_self:
     case task_type_pair:
       switch (t->subtype) {
@@ -300,6 +306,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_sink_do_sink_swallow:
         case task_subtype_sink_swallow:
           return task_action_all;
+
+        case task_subtype_sidm_density:
+          return task_action_sipart;
+          break;
 
         case task_subtype_rt_transport:
         case task_subtype_rt_gradient:
@@ -402,6 +412,8 @@ float task_overlap(const struct task *restrict ta,
   const int ta_sink = (ta_act == task_action_sink || ta_act == task_action_all);
   const int ta_bpart =
       (ta_act == task_action_bpart || ta_act == task_action_all);
+  const int ta_sipart =
+      (ta_act == task_action_sipart || ta_act == task_action_all);
   const int tb_part = (tb_act == task_action_part || tb_act == task_action_all);
   const int tb_gpart =
       (tb_act == task_action_gpart || tb_act == task_action_all);
@@ -410,6 +422,8 @@ float task_overlap(const struct task *restrict ta,
   const int tb_sink = (tb_act == task_action_sink || tb_act == task_action_all);
   const int tb_bpart =
       (tb_act == task_action_bpart || tb_act == task_action_all);
+  const int tb_sipart =
+      (tb_act == task_action_sipart || tb_act == task_action_all);
 
   /* In the case where both tasks act on parts */
   if (ta_part && tb_part) {
@@ -487,7 +501,7 @@ float task_overlap(const struct task *restrict ta,
     if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
-    const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
+    const size_t size_intersect = task_cell_overlap_sink(ta->ci, tb->ci) +
                                   task_cell_overlap_sink(ta->ci, tb->cj) +
                                   task_cell_overlap_sink(ta->cj, tb->ci) +
                                   task_cell_overlap_sink(ta->cj, tb->cj);
@@ -512,6 +526,27 @@ float task_overlap(const struct task *restrict ta,
                                   task_cell_overlap_bpart(ta->ci, tb->cj) +
                                   task_cell_overlap_bpart(ta->cj, tb->ci) +
                                   task_cell_overlap_bpart(ta->cj, tb->cj);
+
+    return ((float)size_intersect) / (size_union - size_intersect);
+  }
+
+  /* In the case where both tasks act on siparts */
+  else if (ta_sipart && tb_sipart) {
+
+    /* Compute the union of the cell data. */
+    size_t size_union = 0;
+    if (ta->ci != NULL) size_union += ta->ci->sidm.count;
+    if (ta->cj != NULL) size_union += ta->cj->sidm.count;
+    if (tb->ci != NULL) size_union += tb->ci->sidm.count;
+    if (tb->cj != NULL) size_union += tb->cj->sidm.count;
+
+    if (size_union == 0) return 0.f;
+
+    /* Compute the intersection of the cell data. */
+    const size_t size_intersect = task_cell_overlap_sipart(ta->ci, tb->ci) +
+                                  task_cell_overlap_sipart(ta->ci, tb->cj) +
+                                  task_cell_overlap_sipart(ta->cj, tb->ci) +
+                                  task_cell_overlap_sipart(ta->cj, tb->cj);
 
     return ((float)size_intersect) / (size_union - size_intersect);
   }
@@ -571,6 +606,11 @@ void task_unlock(struct task *t) {
       cell_sunlocktree(ci, /*split_task=*/0);
       break;
 
+    case task_type_drift_sipart:
+    case task_type_sidm_density_ghost:
+      cell_siunlocktree(ci);
+      break;
+
     case task_type_self:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -600,6 +640,8 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
+      } else if (subtype == task_subtype_sidm_density) {
+        cell_siunlocktree(ci);
       } else if (subtype == task_subtype_limiter) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_unlocktree(ci);
@@ -643,6 +685,9 @@ void task_unlock(struct task *t) {
         cell_bunlocktree(cj);
         cell_unlocktree(ci);
         cell_unlocktree(cj);
+      } else if (subtype == task_subtype_sidm_density) {
+        cell_siunlocktree(ci);
+        cell_siunlocktree(cj);
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
         cell_bunlocktree(cj);
@@ -799,6 +844,12 @@ int task_lock(struct task *t) {
       if (cell_sink_locktree(ci) != 0) return 0;
       break;
 
+    case task_type_drift_sipart:
+    case task_type_sidm_density_ghost:
+      if (ci->sidm.hold) return 0;
+      if (cell_silocktree(ci) != 0) return 0;
+      break;
+
     case task_type_self:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -857,6 +908,9 @@ int task_lock(struct task *t) {
       } else if (subtype == task_subtype_do_bh_swallow) {
         if (ci->black_holes.hold) return 0;
         if (cell_blocktree(ci) != 0) return 0;
+      } else if (subtype == task_subtype_sidm_density) {
+        if (ci->sidm.hold) return 0;
+        if (cell_silocktree(ci) != 0) return 0;
       } else if (subtype == task_subtype_limiter) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         if (ci->hydro.hold) return 0;
@@ -967,6 +1021,13 @@ int task_lock(struct task *t) {
         if (cell_blocktree(ci) != 0) return 0;
         if (cell_blocktree(cj) != 0) {
           cell_bunlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_sidm_density) {
+        if (ci->sidm.hold || cj->sidm.hold) return 0;
+        if (cell_silocktree(ci) != 0) return 0;
+        if (cell_silocktree(cj) != 0) {
+          cell_siunlocktree(ci);
           return 0;
         }
       } else if (subtype == task_subtype_limiter) {
@@ -1181,6 +1242,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_bh_swallow:
       strcpy(cluster, "BHSwallow");
+      break;
+    case task_subtype_sidm_density:
+      strcpy(cluster, "SIDMDensity");
       break;
     case task_subtype_do_gas_swallow:
       strcpy(cluster, "DoGasSwallow");
@@ -1689,11 +1753,15 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_sink_formation:
       return task_category_sink;
 
+    case task_type_sidm_density_ghost:
+      return task_category_sidm;
+
     case task_type_drift_part:
     case task_type_drift_spart:
     case task_type_drift_sink:
     case task_type_drift_bpart:
     case task_type_drift_gpart:
+    case task_type_drift_sipart:
       return task_category_drift;
 
     case task_type_sort:
@@ -1802,6 +1870,9 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_rt_gradient:
         case task_subtype_rt_transport:
           return task_category_rt;
+
+        case task_subtype_sidm_density:
+          return task_category_sidm;
 
         default:
           return task_category_others;

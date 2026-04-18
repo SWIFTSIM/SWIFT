@@ -637,12 +637,16 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
 void cell_sanitize(struct cell *c, int treated) {
   const int count = c->hydro.count;
   const int scount = c->stars.count;
+  const int sicount = c->sidm.count;
   struct part *parts = c->hydro.parts;
   struct spart *sparts = c->stars.parts;
+  struct sipart *siparts = c->sidm.parts;
   float h_max = 0.f;
   float h_max_active = 0.f;
   float stars_h_max = 0.f;
   float stars_h_max_active = 0.f;
+  float sidm_h_max = 0.f;
+  float sidm_h_max_active = 0.f;
 
   /* Treat cells will <1000 particles */
   if (count < 1000 && !treated) {
@@ -660,6 +664,16 @@ void cell_sanitize(struct cell *c, int treated) {
     }
   }
 
+  /* Treat cells will <1000 SIDM particles */
+  if (sicount < 1000 && !treated) {
+    const float upper_h_max = c->dmin / (1.2f * kernel_gamma);
+
+    for (int i = 0; i < sicount; ++i) {
+      if (siparts[i].h == 0.f || siparts[i].h > upper_h_max)
+        siparts[i].h = upper_h_max;
+    }
+  }
+
   /* Recurse and gather the new h_max values */
   if (c->split) {
     for (int k = 0; k < 8; ++k) {
@@ -673,6 +687,9 @@ void cell_sanitize(struct cell *c, int treated) {
         stars_h_max = max(stars_h_max, c->progeny[k]->stars.h_max);
         stars_h_max_active =
             max(stars_h_max_active, c->progeny[k]->stars.h_max_active);
+        sidm_h_max = max(sidm_h_max, c->progeny[k]->sidm.h_max);
+        sidm_h_max_active =
+            max(sidm_h_max_active, c->progeny[k]->sidm.h_max_active);
       }
     }
   } else {
@@ -684,6 +701,10 @@ void cell_sanitize(struct cell *c, int treated) {
       stars_h_max = max(stars_h_max, sparts[i].h);
     for (int i = 0; i < scount; ++i)
       stars_h_max_active = max(stars_h_max_active, sparts[i].h);
+    for (int i = 0; i < sicount; ++i)
+      sidm_h_max = max(sidm_h_max, siparts[i].h);
+    for (int i = 0; i < sicount; ++i)
+      sidm_h_max_active = max(sidm_h_max_active, siparts[i].h);
   }
 
   /* Record the change */
@@ -691,6 +712,8 @@ void cell_sanitize(struct cell *c, int treated) {
   c->hydro.h_max_active = h_max_active;
   c->stars.h_max = stars_h_max;
   c->stars.h_max_active = stars_h_max_active;
+  c->sidm.h_max = sidm_h_max;
+  c->sidm.h_max_active = sidm_h_max_active;
 }
 
 /**

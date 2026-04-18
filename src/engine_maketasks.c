@@ -2057,6 +2057,56 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   }
 }
 
+/**
+ * @brief Generate the SIDM hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks -- hydro version
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * Note that there is no need to recurse below the super-cell. Note also
+ * that we only add tasks if the relevant particles are present in the cell.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param star_resort_cell Pointer to the cell where the star_resort task has
+ * been created. NULL above that level or if not running with star formation.
+ */
+void engine_make_hierarchical_tasks_sidm(struct engine *e, struct cell *c) {
+
+  struct scheduler *s = &e->sched;
+#ifdef WITH_CSDS
+  const int with_csds = (e->policy & engine_policy_csds);
+#endif
+
+  /* Are we in a super-cell ? */
+  if (c->sidm.super == c) {
+
+    /* TODO:Add the SIDM sort task. */
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Add the drift task. */
+      c->sidm.drift = scheduler_addtask(s, task_type_drift_sipart,
+                                        task_subtype_none, 0, 0, c, NULL);
+
+      /* Generate the ghost tasks. */
+      c->sidm.density_ghost = scheduler_addtask(
+          s, task_type_sidm_density_ghost, task_subtype_none, 0, 0, c, NULL);
+
+      scheduler_addunlock(s, c->sidm.drift, c->super->kick2);
+      scheduler_addunlock(s, c->sidm.density_ghost, c->super->kick2);
+    }
+  } else { /* We are above the super-cell so need to go deeper */
+
+    /* Recurse. */
+    if (c->split)
+      for (int k = 0; k < 8; k++)
+        if (c->progeny[k] != NULL)
+          engine_make_hierarchical_tasks_sidm(e, c->progeny[k]);
+  }
+}
+
 void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
 
@@ -2064,6 +2114,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
+  const int with_sidm = (e->policy & engine_policy_sidm);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -2075,6 +2126,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
+    /* And the SIDM stuff */
+    if (with_sidm) engine_make_hierarchical_tasks_sidm(e, c);
   }
 }
 
@@ -2285,57 +2338,9 @@ void engine_make_external_gravity_tasks(struct engine *e) {
 }
 
 /**
- * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
- * i.e. all the O(Npart) tasks -- hydro version
- *
- * Tasks are only created here. The dependencies will be added later on.
- *
- * Note that there is no need to recurse below the super-cell. Note also
- * that we only add tasks if the relevant particles are present in the cell.
- *
- * @param e The #engine.
- * @param c The #cell.
- * @param star_resort_cell Pointer to the cell where the star_resort task has
- * been created. NULL above that level or if not running with star formation.
- */
-void engine_make_hierarchical_tasks_sidm(struct engine *e, struct cell *c) {
-
-  struct scheduler *s = &e->sched;
-#ifdef WITH_CSDS
-  const int with_csds = (e->policy & engine_policy_csds);
-#endif
-
-  /* Are we in a super-cell ? */
-  if (c->sidm.super == c) {
-
-    /* TODO:Add the SIDM sort task. */
-
-    /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
-
-      /* Add the drift task. */
-      c->sidm.drift = scheduler_addtask(s, task_type_drift_sipart,
-                                        task_subtype_none, 0, 0, c, NULL);
-
-      /* Generate the ghost tasks. */
-      c->sidm.density_ghost = scheduler_addtask(s, task_type_sidm_density_ghost,
-                                                task_subtype_none, 0,
-                                                /* implicit = */ 1, c, NULL);
-    }
-  } else { /* We are above the super-cell so need to go deeper */
-
-    /* Recurse. */
-    if (c->split)
-      for (int k = 0; k < 8; k++)
-        if (c->progeny[k] != NULL)
-          engine_make_hierarchical_tasks_sidm(e, c->progeny[k]);
-  }
-}
-
-/**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
- * For each hydrodynamic and gravity task, construct the links with
+ * For each hydrodynamic, gravity and SIDM task, construct the links with
  * the corresponding cell.  Similarly, construct the dependencies for
  * all the sorting tasks.
  */
@@ -2380,6 +2385,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
+      } else if (t_subtype == task_subtype_sidm_density) {
+        engine_addlink(e, &ci->sidm.density, t);
       }
 
       /* Link pair tasks to cells. */
@@ -2395,6 +2402,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
+      } else if (t_subtype == task_subtype_sidm_density) {
+        engine_addlink(e, &ci->sidm.density, t);
+        engine_addlink(e, &cj->sidm.density, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -2585,8 +2595,73 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
   }
 }
 
-#ifdef EXTRA_HYDRO_LOOP
+/**
+ * @brief Creates all the task dependencies for SIDM
+ *
+ * @param map_data The task array passed to this pool thread.
+ * @param num_elements The number of tasks in this pool thread.
+ * @param extra_data Pointer to the #engine.
+ */
+void engine_link_sidm_tasks_mapper(void *map_data, int num_elements,
+                                   void *extra_data) {
 
+  struct task *tasks = (struct task *)map_data;
+  struct engine *e = (struct engine *)extra_data;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+
+  for (int k = 0; k < num_elements; k++) {
+
+    /* Get a pointer to the task. */
+    struct task *t = &tasks[k];
+
+    if (t->type == task_type_none) continue;
+
+    /* Get the cells we act on */
+    struct cell *restrict ci = t->ci;
+    struct cell *restrict cj = t->cj;
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
+
+/* Node ID (if running with MPI) */
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Self-interaction for SIDM density */
+    if (t_type == task_type_self && t_subtype == task_subtype_sidm_density) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci_nodeID != nodeID) error("Non-local self task");
+#endif
+
+      scheduler_addunlock(sched, ci->sidm.super->sidm.drift, t);
+      scheduler_addunlock(sched, t, ci->sidm.super->sidm.density_ghost);
+    }
+
+    /* Otherwise, pair interaction? */
+    else if (t_type == task_type_pair &&
+             t_subtype == task_subtype_sidm_density) {
+
+      if (ci_nodeID == nodeID) {
+        scheduler_addunlock(sched, ci->sidm.super->sidm.drift, t);
+        scheduler_addunlock(sched, t, ci->sidm.super->sidm.density_ghost);
+      }
+      if (cj_nodeID == nodeID) {
+        if (ci->sidm.super != cj->sidm.super) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj->sidm.super->sidm.drift, t);
+          scheduler_addunlock(sched, t, cj->sidm.super->sidm.density_ghost);
+        }
+      }
+    }
+  }
+}
+
+#ifdef EXTRA_HYDRO_LOOP
 /**
  * @brief Creates the dependency network for the hydro tasks of a given cell.
  *
@@ -4384,6 +4459,18 @@ void engine_maketasks(struct engine *e) {
 
   if (e->verbose)
     message("Linking gravity tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Add the dependencies for the SIDM stuff */
+  if (e->policy & engine_policy_sidm) {
+    threadpool_map(&e->threadpool, engine_link_sidm_tasks_mapper,
+                   e->sched.tasks, e->sched.nr_tasks, sizeof(struct task),
+                   threadpool_auto_chunk_size, e);
+  }
+  if (e->verbose)
+    message("Linking SIDM tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();

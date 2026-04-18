@@ -448,6 +448,66 @@ int cell_blocktree(struct cell *c) {
 }
 
 /**
+ * @brief Lock a cell for access to its array of #sipart and hold its parents.
+ *
+ * @param c The #cell.
+ * @return 0 on success, 1 on failure
+ */
+int cell_silocktree(struct cell *c) {
+  TIMER_TIC;
+
+  /* First of all, try to lock this cell. */
+  if (c->sidm.hold || lock_trylock(&c->sidm.lock) != 0) {
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Did somebody hold this cell in the meantime? */
+  if (c->sidm.hold) {
+    /* Unlock this cell. */
+    if (lock_unlock(&c->sidm.lock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Climb up the tree and lock/hold/unlock. */
+  struct cell *finger;
+  for (finger = c->parent; finger != NULL; finger = finger->parent) {
+    /* Lock this cell. */
+    if (lock_trylock(&finger->sidm.lock) != 0) break;
+
+    /* Increment the hold. */
+    atomic_inc(&finger->sidm.hold);
+
+    /* Unlock the cell. */
+    if (lock_unlock(&finger->sidm.lock) != 0) error("Failed to unlock cell.");
+  }
+
+  /* If we reached the top of the tree, we're done. */
+  if (finger == NULL) {
+    TIMER_TOC(timer_locktree);
+    return 0;
+  }
+
+  /* Otherwise, we hit a snag. */
+  else {
+    /* Undo the holds up to finger. */
+    for (struct cell *finger2 = c->parent; finger2 != finger;
+         finger2 = finger2->parent)
+      atomic_dec(&finger2->sidm.hold);
+
+    /* Unlock this cell. */
+    if (lock_unlock(&c->sidm.lock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+}
+
+/**
  * @brief Unlock a cell's parents for access to #part array.
  *
  * @param c The #cell.
@@ -562,6 +622,24 @@ void cell_bunlocktree(struct cell *c) {
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->black_holes.hold);
+
+  TIMER_TOC(timer_locktree);
+}
+
+/**
+ * @brief Unlock a cell's parents for access to #sipart array.
+ *
+ * @param c The #cell.
+ */
+void cell_siunlocktree(struct cell *c) {
+  TIMER_TIC;
+
+  /* First of all, try to unlock this cell. */
+  if (lock_unlock(&c->sidm.lock) != 0) error("Failed to unlock cell.");
+
+  /* Climb up the tree and unhold the parents. */
+  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+    atomic_dec(&finger->sidm.hold);
 
   TIMER_TOC(timer_locktree);
 }

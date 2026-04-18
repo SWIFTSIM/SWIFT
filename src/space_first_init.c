@@ -528,14 +528,32 @@ void space_first_init_siparts_mapper(void *restrict map_data, int count,
 
   struct sipart *restrict sip = (struct sipart *)map_data;
   const struct space *restrict s = (struct space *)extra_data;
+  const struct engine *e = s->e;
 
   const struct cosmology *cosmo = s->e->cosmology;
   const float a_factor_vel = cosmo->a;
   const struct sidm_props *sidm_props = s->e->sidm_properties;
+  const float sidm_h_min_ratio = e->sidm_properties->h_min_ratio;
+
+  const struct gravity_props *grav_props = s->e->gravity_properties;
+  const int with_gravity = e->policy & engine_policy_self_gravity;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sip - s->siparts;
 #endif
+
+  /* Check that the smoothing lengths are non-zero */
+  for (int k = 0; k < count; k++) {
+    if (sip[k].h <= 0.)
+      error("Invalid value of smoothing length for sipart %lld h=%e", sip[k].id,
+            sip[k].h);
+
+    if (with_gravity) {
+      const struct gpart *gp = sip[k].gpart;
+      const float softening = gravity_get_softening(gp, grav_props);
+      sip->h = max(sip->h, softening * sidm_h_min_ratio);
+    }
+  }
 
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
@@ -561,7 +579,7 @@ void space_first_init_siparts_mapper(void *restrict map_data, int count,
     sidm_first_init_sipart(&sip[k], sidm_props);
 
 #ifdef WITH_CSDS
-    csds_part_data_init(&gp[k].csds_data);
+    csds_part_data_init(&sip[k].csds_data);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS

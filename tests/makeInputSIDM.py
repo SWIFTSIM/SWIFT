@@ -131,5 +131,7 @@ ds = grp.create_dataset("Masses", (numPart, 1), "f")
 ds[()] = m
 ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids
+ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
+ds[()] = h
 
 file.close()

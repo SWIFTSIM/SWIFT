@@ -1126,6 +1126,7 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sink = %zu.", e->s->nr_sinks);
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
+  message("nr_siparts = %zu.", e->s->nr_siparts);
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
   if (e->verbose == 2) {
@@ -2280,10 +2281,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
-  // /* Udpate the SIDM properties */   - TODO
-  // if (e->policy & engine_policy_sidm)
-  //     sidm_props_update(e->sidm_properties, e->gravity_properties,
-  //     e->cosmology);
+  // /* Udpate the SIDM properties */
+  if (e->policy & engine_policy_sidm)
+    sidm_props_update(e->sidm_properties, e->gravity_properties, e->cosmology);
 
   /* Start by setting the particles in a good state */
   if (e->nodeID == 0) message("Setting particles to a valid state...");
@@ -2485,10 +2485,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
 #ifdef SWIFT_SIDM_DENSITY_CHECKS
-  /* Run the brute-force stars calculation for some parts */
+  /* Run the brute-force SIDM calculation for some parts */
   if (e->policy & engine_policy_sidm) sidm_exact_density_compute(e->s, e);
 
-  /* Check the accuracy of the stars calculation */
+  /* Check the accuracy of the SIDM calculation */
   if (e->policy & engine_policy_sidm)
     sidm_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
@@ -2497,15 +2497,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_check(e->s, e, 1e-1);
-#endif
-
-#ifdef SWIFT_SIDM_DENSITY_CHECKS
-  /* Run the brute-force stars calculation for some parts */
-  if (e->policy & engine_policy_sidm) sidm_exact_density_compute(e->s, e);
-
-  /* Check the accuracy of the sidm calculation */
-  if (e->policy & engine_policy_sidm)
-    sidm_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2620,6 +2611,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
             sink_h_max = c->sinks.parts[k].h;
         }
         c->sinks.h_max = max(sink_h_max, c->sinks.h_max);
+      }
+    }
+  }
+
+  if (s->cells_top != NULL && s->nr_siparts > 0) {
+    for (int i = 0; i < s->nr_cells; i++) {
+      struct cell *c = &s->cells_top[i];
+      if (c->nodeID == engine_rank && c->sidm.count > 0) {
+        float sipart_h_max = c->sidm.parts[0].h;
+        for (int k = 1; k < c->sidm.count; k++) {
+          if (c->sidm.parts[k].h > sipart_h_max)
+            sipart_h_max = c->sidm.parts[k].h;
+        }
+        c->sidm.h_max = max(sipart_h_max, c->sidm.h_max);
       }
     }
   }
@@ -3515,7 +3520,7 @@ void engine_init(
     struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos,
-    struct neutrino_response *neutrino_response, const struct sidm_props *sidm,
+    struct neutrino_response *neutrino_response, struct sidm_props *sidm,
     struct feedback_props *feedback,
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,

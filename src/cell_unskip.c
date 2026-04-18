@@ -1283,6 +1283,87 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Traverse a sub-cell task and activate the SIDM drift tasks that
+ * are required by an SIDM task
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ */
+void cell_activate_subcell_sidm_tasks(struct cell *ci, struct cell *cj,
+                                      struct scheduler *s) {
+  const struct engine *e = s->space->e;
+
+  /* Store the current dx_max and h_max values. */
+  ci->sidm.dx_max_part_old = ci->sidm.dx_max_part;
+  ci->sidm.h_max_old = ci->sidm.h_max;
+
+  if (cj != NULL) {
+    cj->sidm.dx_max_part_old = cj->sidm.dx_max_part;
+    cj->sidm.h_max_old = cj->sidm.h_max;
+  }
+
+  /* Self interaction? */
+  if (cj == NULL) {
+    /* Do anything? */
+    if (!cell_is_active_sidm(ci, e) || ci->sidm.count == 0) return;
+
+    /* Recurse? */
+    if (cell_can_recurse_in_self_sidm_task(ci)) {
+      /* Loop over all progenies and pairs of progenies */
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] != NULL) {
+          cell_activate_subcell_sidm_tasks(ci->progeny[j], NULL, s);
+          for (int k = j + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              cell_activate_subcell_sidm_tasks(ci->progeny[j], ci->progeny[k],
+                                               s);
+        }
+      }
+    } else {
+      /* We have reached the bottom of the tree: activate drift */
+      cell_activate_drift_sipart(ci, s);
+    }
+  }
+
+  /* Otherwise, pair interation */
+  else {
+
+    /* Get the orientation of the pair. */
+    double shift[3];
+    const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
+
+    const int ci_active = cell_is_active_sidm(ci, e);
+    const int cj_active = cell_is_active_sidm(cj, e);
+
+    /* Should we even bother? */
+    if (!ci_active && !cj_active) return;
+    if (ci->sidm.count == 0 || cj->sidm.count == 0) return;
+
+    /* recurse? */
+    if (cell_can_recurse_in_pair_sidm_task(ci) &&
+        cell_can_recurse_in_pair_sidm_task(cj)) {
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+          cell_activate_subcell_sidm_tasks(ci->progeny[pid], cj->progeny[pjd],
+                                           s);
+      }
+    }
+
+    /* Otherwise, activate the drifts. */
+    else if (ci_active || cj_active) {
+
+      /* Activate the drifts if the cells are local. */
+      if (ci->nodeID == engine_rank) cell_activate_drift_sipart(ci, s);
+      if (cj->nodeID == engine_rank) cell_activate_drift_sipart(cj, s);
+    }
+  } /* Otherwise, pair interation */
+}
+
+/**
  * @brief Traverse a sub-cell task and activate the gravity drift tasks that
  * are required by a self gravity task.
  *
@@ -3299,5 +3380,88 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     }
   }
 
+  return rebuild;
+}
+
+/**
+ * @brief Un-skips all the SIDM tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_sidm_tasks(struct cell *c, struct scheduler *s) {
+
+  struct engine *e = s->space->e;
+  const int nodeID = e->nodeID;
+  int rebuild = 0;
+
+  /* Un-skip the density tasks involved with this cell. */
+  for (struct link *l = c->sidm.density; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_sidm(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_sidm(cj, e) : 0;
+
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+
+      /* Store current values of dx_max and h_max. */
+      if (t->type == task_type_self) {
+        cell_activate_subcell_sidm_tasks(ci, NULL, s);
+
+        if (ci_nodeID == nodeID) cell_activate_drift_sipart(ci, s);
+      }
+
+      /* Store current values of dx_max and h_max. */
+      else if (t->type == task_type_pair) {
+        cell_activate_subcell_sidm_tasks(ci, cj, s);
+
+        /* Activate the drift tasks. */
+        if (ci_nodeID == nodeID) cell_activate_drift_sipart(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_sipart(cj, s);
+      }
+    }
+
+    /* Only interested in pair interactions as of here. */
+    if (t->type == task_type_pair) {
+      /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
+      if (cell_need_rebuild_for_sidm_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_sidm_pair(cj, ci)) rebuild = 1;
+    }
+  }
+
+  /* Unskip all the other task types. */
+  int c_active = cell_is_active_sidm(c, e);
+  // if (c_active) {
+  //   if (c->sidm.density_ghost != NULL)
+  //     scheduler_activate(s, c->sidm.density_ghost);
+  // }
+  if (c->nodeID == nodeID && c_active) {
+    if (c->sidm.super->sidm.density_ghost != NULL)
+      scheduler_activate(s, c->sidm.super->sidm.density_ghost);
+    if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+    if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->top->timestep_collect != NULL)
+      scheduler_activate(s, c->top->timestep_collect);
+#ifdef WITH_CSDS
+    if (c->csds != NULL) scheduler_activate(s, c->csds);
+#endif
+  }
   return rebuild;
 }

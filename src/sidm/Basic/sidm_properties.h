@@ -22,6 +22,12 @@
 /* Local header */
 #include "parser.h"
 
+#define sidm_props_default_max_iterations 30
+#define sidm_props_default_volume_change 1.4f
+#define sidm_props_default_h_max FLT_MAX
+#define sidm_props_default_h_min_ratio 0.f
+#define sidm_props_default_h_tolerance 1e-4
+
 /**
  * @brief Properties of SIDM in the Basic model.
  */
@@ -91,12 +97,12 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
      ones if the user did not provide any different values */
 
   /* Kernel properties */
-  sip->eta_neighbours = parser_get_opt_param_float(
-      params, "BasicSIDM:resolution_eta", hydro_props->eta_neighbours);
+  sip->eta_neighbours =
+      parser_get_param_float(params, "BasicSIDM:resolution_eta");
 
   /* Tolerance for the smoothing length Newton-Raphson scheme */
   sip->h_tolerance = parser_get_opt_param_float(params, "BasicSIDM:h_tolerance",
-                                                hydro_props->h_tolerance);
+                                                sidm_props_default_h_tolerance);
 
   /* Get derived properties */
   sip->target_neighbours = pow_dimension(sip->eta_neighbours) * kernel_norm;
@@ -105,10 +111,21 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
       (pow_dimension(delta_eta) - pow_dimension(sip->eta_neighbours)) *
       kernel_norm;
 
+  /* Maximal smoothing length */
+  sip->h_max = parser_get_opt_param_float(params, "BasicSIDM:h_max",
+                                          sidm_props_default_h_max);
+
+  /* Minimal smoothing length ratio to softening */
+  sip->h_min_ratio = parser_get_opt_param_float(params, "BasicSIDM:h_min_ratio",
+                                                sidm_props_default_h_min_ratio);
+
+  /* Temporarily set the minimal softening to 0. */
+  sip->h_min = 0.f;  // TODO:change
+
   /* Number of iterations to converge h */
   sip->max_smoothing_iterations =
       parser_get_opt_param_int(params, "BasicSIDM:max_ghost_iterations",
-                               hydro_props->max_smoothing_iterations);
+                               sidm_props_default_max_iterations);
 
   /* Time integration properties */
   const float max_volume_change =
@@ -117,6 +134,19 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
     sip->log_max_h_change = hydro_props->log_max_h_change;
   else
     sip->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+}
+
+/**
+ * @brief Update the global properties of the SIDM scheme for that time-step.
+ *
+ * @param p The properties to update.
+ * @param gp The properties of the gravity scheme.
+ * @param cosmo The cosmological model.
+ */
+INLINE static void sidm_props_update(struct sidm_props *sip,
+                                     const struct gravity_props *gp,
+                                     const struct cosmology *cosmo) {
+  sip->h_min = sip->h_min_ratio * gp->epsilon_DM_cur / kernel_gamma;
 }
 
 /**
