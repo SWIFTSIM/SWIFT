@@ -1,9 +1,35 @@
+#include <assert.h>
 #include <math.h>
 #define INLINE inline
 
 /* Enable yield stress weakening methods */
 #define STRENGTH_YIELD_STRESS_WEAKENING_THERMAL
 #define STRENGTH_YIELD_STRESS_WEAKENING_DENSITY
+
+/* Mock dependencies */
+const float Y0 = 200e6;
+
+const int dummy_mat_id = 0;
+
+float method_yield_weakening_thermal_xi(void) {
+  return 1.2f;
+}
+
+float material_T_melt(const int mat_id) {
+  return 933.f;
+}
+
+float material_rho_0(const int mat_id) {
+  return 2700.f;
+}
+
+float method_yield_weakening_density_mult_param(void) {
+  return 0.85f;
+}
+
+float method_yield_weakening_density_pow_param(void) {
+  return 4.f;
+}
 
 /* Dummy temperature calculation */
 static float gas_temperature_from_internal_energy(const float density, const float u,
@@ -13,13 +39,13 @@ static float gas_temperature_from_internal_energy(const float density, const flo
   return u;
 }
 
-#include "test_yield_stress_weakening.c"
+/* Include functions to test */
+#include "../../src/strength/strength_yield_stress_weakening.h"
 
-static void test_thermal_weakening_enabled(void)
-{
+static void test_thermal_weakening_enabled(void) {
   /* Set constants */
   const float xi     = method_yield_weakening_thermal_xi();
-  const float T_melt = material_T_melt(test_mat_id);
+  const float T_melt = material_T_melt(dummy_mat_id);
 
    /* Test temperatures in each regime */
   const float temperatures[4] = {
@@ -42,13 +68,27 @@ static void test_thermal_weakening_enabled(void)
   const float frac_tol = 1e-6f;
 
   /* Run test */
-  test_thermal_weakening(temperatures, expected, n, frac_tol);
+  for (int i = 0; i < n; i++) {
+
+    /* Set internal energies to have same values as temperatures. */
+    const float u = temperatures[i];
+    const float density = 1.f;
+
+    /* Reset Y */
+    float Y = Y0;
+
+    /* Apply temperature weakening to Y */
+    yield_weakening_apply_temperature_to_yield_stress(&Y, dummy_mat_id, density, u);
+
+    /* Check result */
+    float scale = fmaxf(fabsf(expected[i]), Y0);
+    assert(fabsf(Y - expected[i]) <= frac_tol * scale);
+  }
 }
 
-static void test_density_weakening_enabled(void)
-{
+static void test_density_weakening_enabled(void) {
   /* Set constants */
-  const float rho_0    = material_rho_0(test_mat_id);
+  const float rho_0    = material_rho_0(dummy_mat_id);
   const float a        = method_yield_weakening_density_mult_param();
   const float b        = method_yield_weakening_density_pow_param();
   const float rho_weak = a * rho_0;
@@ -74,11 +114,22 @@ static void test_density_weakening_enabled(void)
   const float frac_tol = 1e-6f;
 
   /* Run test */
-  test_density_weakening(densities, expected, n, frac_tol);
+  for (int i = 0; i < n; i++) {
+    const float rho = densities[i];
+    
+    /* Reset Y */
+    float Y = Y0;
+
+    /* Apply density weakening to Y */
+    yield_weakening_apply_density_to_yield_stress(&Y, dummy_mat_id, rho);
+
+    /* Check result */
+    float scale = fmaxf(fabsf(expected[i]), Y0);
+    assert(fabsf(Y - expected[i]) <= frac_tol * scale);
+  }
 }
 
-int main(void)
-{
+int main(void) {
   test_thermal_weakening_enabled();
   test_density_weakening_enabled();
   return 0;

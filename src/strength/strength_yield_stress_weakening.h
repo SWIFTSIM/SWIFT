@@ -32,9 +32,7 @@
  *
  * Weaken the material's yield stress as its temperature approaches the
  * melting temperature. This method is presented by Ohnaka1995, and
- * is used by e.g. Collins+2004 and Emsenhuber+2018. Note that we do not
- * set the yield stress to 0 here when the temperature exceeds the melting
- * temperature; this is handled elsewhere based on the material's phase state.
+ * is used by e.g. Collins+2004 and Emsenhuber+2018.
  *
  * Method parameters needed in material parameter file:
  * Strength:
