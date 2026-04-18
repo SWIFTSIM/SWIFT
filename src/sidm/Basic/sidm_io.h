@@ -33,7 +33,7 @@ INLINE static void sidm_read_particles(struct sipart *siparts,
                                        struct io_props *list, int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 4;
+  *num_fields = 6;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -42,8 +42,12 @@ INLINE static void sidm_read_particles(struct sipart *siparts,
                                 UNIT_CONV_SPEED, siparts, v);
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 siparts, mass);
-  list[3] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
+  list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
+                                UNIT_CONV_LENGTH, siparts, h);
+  list[4] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, siparts, id);
+  list[5] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_DENSITY, siparts, rho);
 }
 
 INLINE static void convert_sipart_pos(const struct engine *e,
@@ -127,7 +131,7 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 5;
+  *num_fields = 6;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sipart(
@@ -149,6 +153,10 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
   list[4] = io_make_output_field_convert_sipart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, siparts,
       convert_sipart_potential, "Gravitational potentials of the particles");
+
+  list[5] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
+                                 siparts, rho,
+                                 "Co-moving mass densities of the particles");
 }
 
 #endif /* SWIFT_BASIC_SIDM_IO_H */

@@ -120,6 +120,19 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
 }
 
 /**
+ * @brief Update the global properties of the SIDM scheme for that time-step.
+ *
+ * @param p The properties to update.
+ * @param gp The properties of the gravity scheme.
+ * @param cosmo The cosmological model.
+ */
+INLINE static void sidm_props_update(struct sidm_props *sip,
+                                     const struct gravity_props *gp,
+                                     const struct cosmology *cosmo) {
+  sip->h_min = sip->h_min_ratio * gp->epsilon_DM_cur / kernel_gamma;
+}
+
+/**
  * @brief Write an sidm_props struct to the given FILE as a stream of
  * bytes.
  *

@@ -26,24 +26,6 @@
 #include "sidm_properties.h"
 
 /**
- * @brief Initialises the si-particles for the first time
- *
- * This function is called only once just after the ICs have been
- * read in to do some conversions.
- *
- * @param sip The particle to act upon
- * @param sidm_properties The properties of the SIDM model.
- * @param with_cosmology Are we running with cosmological time integration.
- * @param scale_factor The current scale-factor (used if running with
- * cosmology).
- * @param time The current time (used if running without cosmology).
- */
-__attribute__((always_inline)) INLINE static void sidm_first_init_sipart(
-    struct sipart *sip, const struct sidm_props *sidm_properties) {
-  sip->time_bin = 0;
-}
-
-/**
  * @brief Prepares an si-particle for its interactions
  *
  * @param sip The particle to act upon
@@ -71,6 +53,25 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
   sip->n_exact = 0.f;
   sip->inhibited_exact = 0;
 #endif
+}
+
+/**
+ * @brief Initialises the si-particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param sip The particle to act upon
+ * @param sidm_properties The properties of the SIDM model.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param scale_factor The current scale-factor (used if running with
+ * cosmology).
+ * @param time The current time (used if running without cosmology).
+ */
+__attribute__((always_inline)) INLINE static void sidm_first_init_sipart(
+    struct sipart *sip, const struct sidm_props *sidm_properties) {
+  sip->time_bin = 0;
+  sidm_init_sipart(sip);
 }
 
 /**

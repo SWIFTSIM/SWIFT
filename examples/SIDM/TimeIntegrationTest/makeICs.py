@@ -15,14 +15,18 @@ UnitTime_in_cgs = UnitLength_in_cgs / UnitVelocity_in_cgs
 
 UnitMass = UnitMass_in_cgs
 UnitLength = UnitLength_in_cgs
-UnitTime = UnitTime_in_cgs 
+UnitTime = UnitTime_in_cgs
 UnitVelocity = UnitVelocity_in_cgs
 
 with h5py.File("sidm_ics.hdf5", "w") as f:
     # Header attributes
     f.create_group("Header")
-    f["Header"].attrs["NumPart_ThisFile"] = np.array([0, 0,0, 0, 0, 0, 0, num_sidm], dtype=np.uint32)
-    f["Header"].attrs["NumPart_Total"] = np.array([0, 0, 0, 0, 0, 0, 0, num_sidm], dtype=np.uint32)
+    f["Header"].attrs["NumPart_ThisFile"] = np.array(
+        [0, 0, 0, 0, 0, 0, 0, num_sidm], dtype=np.uint32
+    )
+    f["Header"].attrs["NumPart_Total"] = np.array(
+        [0, 0, 0, 0, 0, 0, 0, num_sidm], dtype=np.uint32
+    )
     f["Header"].attrs["NumPart_Total_HighWord"] = np.zeros(nparttype, dtype=np.uint32)
     f["Header"].attrs["BoxSize"] = [L, L, L]  # example box size
     f["Header"].attrs["Time"] = 0.0
@@ -44,5 +48,5 @@ with h5py.File("sidm_ics.hdf5", "w") as f:
     parttype7 = f.create_group("PartType7")
     parttype7.create_dataset("Coordinates", data=np.random.rand(num_sidm, 3))
     parttype7.create_dataset("Velocities", data=np.random.rand(num_sidm, 3))
-    parttype7.create_dataset("ParticleIDs", data=np.arange(1, num_sidm+1))
+    parttype7.create_dataset("ParticleIDs", data=np.arange(1, num_sidm + 1))
     parttype7.create_dataset("Masses", data=np.ones(num_sidm))

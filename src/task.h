@@ -179,6 +179,7 @@ enum task_actions {
   task_action_spart,
   task_action_sink,
   task_action_bpart,
+  task_action_sipart,
   task_action_all,
   task_action_multipole,
   task_action_count
@@ -208,6 +209,7 @@ enum task_categories {
   task_category_sink,
   task_category_rt,
   task_category_csds,
+  task_category_sidm,
   task_category_count
 };
 

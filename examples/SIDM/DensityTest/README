@@ -1,0 +1,5 @@
+This example runs the same ICs as in examples/IsolateddSph_cups/ with PartType7 instead of PartType1. 
+
+In run.sh, the simulation is run for one timestep and tests whether the SPH density for SIDM particles agrees with the analytical NFW profile used to generate the ICs.
+
+In run_with_gas.sh, the ICs are duplicated for PartType0 and run for one timestep. The gas densities are then compared to the SIDM densities. This script assumes you have already run run.sh.

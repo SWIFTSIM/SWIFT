@@ -558,6 +558,8 @@ int cell_sink_locktree(struct cell *c);
 void cell_sink_unlocktree(struct cell *c);
 int cell_blocktree(struct cell *c);
 void cell_bunlocktree(struct cell *c);
+int cell_silocktree(struct cell *c);
+void cell_siunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s,
                 const int with_gravity);
@@ -624,6 +626,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                          const int sub_cycle);
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_sidm_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force,
                      const int init_particles,
@@ -676,6 +679,8 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
+void cell_activate_subcell_sidm_tasks(struct cell *ci, struct cell *cj,
+                                      struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
@@ -1450,6 +1455,28 @@ cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->black_holes.h_max, cj->hydro.h_max) +
           ci->black_holes.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * @brief Have SIDM particles in a pair of cells moved too much and require a
+ * rebuild
+ * ?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_need_rebuild_for_sidm_pair(const struct cell *ci, const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  if (kernel_gamma * max(ci->sidm.h_max, cj->sidm.h_max) +
+          ci->sidm.dx_max_part + cj->sidm.dx_max_part >
       cj->dmin) {
     return 1;
   }

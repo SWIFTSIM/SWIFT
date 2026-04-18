@@ -547,7 +547,7 @@ struct engine {
   const struct neutrino_props *neutrino_properties;
 
   /* Properties of the SIDM model */
-  const struct sidm_props *sidm_properties;
+  struct sidm_props *sidm_properties;
 
   /* The linear neutrino response */
   struct neutrino_response *neutrino_response;
@@ -749,7 +749,7 @@ void engine_init(
     struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos,
-    struct neutrino_response *neutrino_response, const struct sidm_props *sidm,
+    struct neutrino_response *neutrino_response, struct sidm_props *sidm,
     struct feedback_props *feedback,
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,

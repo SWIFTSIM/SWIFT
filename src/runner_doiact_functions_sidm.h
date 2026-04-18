@@ -633,7 +633,7 @@ void DOSELF1_SUBSET_SIDM(struct runner *r, const struct cell *c,
   const int count_cell = c->sidm.count;
   struct sipart *restrict siparts_j = c->sidm.parts;
   /* Loop over the parts in ci. */
-  for (int siid = 0; siid < count_cell; siid++) {
+  for (int siid = 0; siid < sicount; siid++) {
 
     /* Get a hold of the ith part in ci. */
     struct sipart *sipi = &siparts[ind[siid]];
@@ -817,6 +817,15 @@ void DOSUB_PAIR1_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
        particle? */
     if (!recurse_below_h_max && (!cell_can_recurse_in_subpair_sidm_task(ci) ||
                                  !cell_can_recurse_in_subpair_sidm_task(cj))) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+      with all their neighbours */
       DOPAIR1_BRANCH_SIDM(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
     }
 

@@ -565,6 +565,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
         lock_init(&cells[j]->sinks.lock) != 0 ||
+        lock_init(&cells[j]->sidm.lock) != 0 ||
         lock_init(&cells[j]->sinks.sink_formation_lock) != 0 ||
         lock_init(&cells[j]->black_holes.lock) != 0 ||
         lock_init(&cells[j]->stars.star_formation_lock) != 0 ||
@@ -630,6 +631,7 @@ void space_list_useful_top_level_cells(struct space *s) {
     const int has_particles =
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
         (c->black_holes.count > 0) || (c->sinks.count > 0) ||
+        (c->sidm.count > 0) ||
         (c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.f);
 
     if (has_particles) {
@@ -1843,8 +1845,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
         }
         if (nr_siparts > 0 && nr_gparts > 0) {
           const size_t offset_sipart = offset * nr_siparts;
-          const size_t offset_gpart =
-              offset * nr_gparts + nr_dm + nr_parts + nr_sinks + nr_bparts;
+          const size_t offset_gpart = offset * nr_gparts + nr_dm + nr_parts +
+                                      nr_sinks + nr_sparts + nr_bparts;
 
           for (size_t n = 0; n < nr_siparts; ++n) {
             siparts[offset_sipart + n].gpart = &gparts[offset_gpart + n];
@@ -3058,12 +3060,12 @@ void space_struct_restore(struct space *s, FILE *stream) {
   }
   s->siparts = NULL;
   if (s->nr_siparts > 0) {
-    if (swift_memalign("siparts", (void **)&s->bparts, sipart_align,
+    if (swift_memalign("siparts", (void **)&s->siparts, sipart_align,
                        s->size_siparts * sizeof(struct sipart)) != 0)
       error("Failed to allocate restore sipart array.");
 
-    restart_read_blocks(s->siparts, s->nr_siparts, sizeof(struct spart), stream,
-                        NULL, "siparts");
+    restart_read_blocks(s->siparts, s->nr_siparts, sizeof(struct sipart),
+                        stream, NULL, "siparts");
   }
 
   /* Need to reconnect the gravity parts to their hydro, star and BH particles.

@@ -149,6 +149,7 @@ enum task_dependency_level {
   task_dependency_level_super,
   task_dependency_level_super_hydro,
   task_dependency_level_super_grav,
+  task_dependency_level_super_sidm,
   task_dependency_level_none,
 };
 
@@ -548,6 +549,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    t->subtype == task_subtype_force ||
                    t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
+        } else if (t->subtype == task_subtype_sidm_density) {
+          cost = 1.f * (wscale * sicount_i) * sicount_i;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_transport) {
@@ -667,6 +670,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_sink_density_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * sink_count_i;
         break;
+      case task_type_sidm_density_ghost:
+        if (t->ci == t->ci->sidm.super) cost = wscale * sicount_i;
+        break;
       case task_type_drift_part:
         cost = wscale * count_i;
         break;
@@ -681,6 +687,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_drift_bpart:
         cost = wscale * bcount_i;
+        break;
+      case task_type_drift_sipart:
+        cost = wscale * sicount_i;
         break;
       case task_type_init_grav:
         cost = wscale * gcount_i;
@@ -726,20 +735,20 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale;
         break;
       case task_type_csds:
-        cost =
-            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
+        cost = wscale * (count_i + gcount_i + scount_i + sink_count_i +
+                         bcount_i + sicount_i);
         break;
       case task_type_kick1:
-        cost =
-            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
+        cost = wscale * (count_i + gcount_i + scount_i + sink_count_i +
+                         bcount_i + sicount_i);
         break;
       case task_type_kick2:
-        cost =
-            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
+        cost = wscale * (count_i + gcount_i + scount_i + sink_count_i +
+                         bcount_i + sicount_i);
         break;
       case task_type_timestep:
-        cost =
-            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
+        cost = wscale * (count_i + gcount_i + scount_i + sink_count_i +
+                         bcount_i + sicount_i);
         break;
       case task_type_timestep_limiter:
         cost = wscale * count_i;
@@ -927,6 +936,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
           owner = &t->ci->grav.super->owner;
+        } else if (t->subtype == task_subtype_sidm_density) {
+          qid = t->ci->sidm.super->owner;
+          owner = &t->ci->sidm.super->owner;
         } else {
           qid = t->ci->hydro.super->owner;
           owner = &t->ci->hydro.super->owner;
@@ -937,6 +949,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_drift_part:
         qid = t->ci->hydro.super->owner;
         owner = &t->ci->hydro.super->owner;
+        break;
+      case task_type_sidm_density_ghost:
+      case task_type_drift_sipart:
+        qid = t->ci->sidm.super->owner;
+        owner = &t->ci->sidm.super->owner;
         break;
       case task_type_drift_gpart:
         qid = t->ci->grav.super->owner;
@@ -952,13 +969,24 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         owner = &t->ci->super->owner;
         break;
       case task_type_pair:
-        qid = t->ci->super->owner;
-        owner = &t->ci->super->owner;
-        if ((qid < 0) ||
-            ((t->cj->super->owner > -1) &&
-             (s->queues[qid].count > s->queues[t->cj->super->owner].count))) {
-          qid = t->cj->super->owner;
-          owner = &t->cj->super->owner;
+        if (t->subtype == task_subtype_sidm_density) {
+          qid = t->ci->sidm.super->owner;
+          owner = &t->ci->sidm.super->owner;
+          if ((qid < 0) || ((t->cj->sidm.super->owner > -1) &&
+                            (s->queues[qid].count >
+                             s->queues[t->cj->sidm.super->owner].count))) {
+            qid = t->cj->sidm.super->owner;
+            owner = &t->cj->sidm.super->owner;
+          }
+        } else {
+          qid = t->ci->super->owner;
+          owner = &t->ci->super->owner;
+          if ((qid < 0) ||
+              ((t->cj->super->owner > -1) &&
+               (s->queues[qid].count > s->queues[t->cj->super->owner].count))) {
+            qid = t->cj->super->owner;
+            owner = &t->cj->super->owner;
+          }
         }
         break;
       case task_type_recv:
