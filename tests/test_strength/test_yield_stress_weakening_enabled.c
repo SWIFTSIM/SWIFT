@@ -8,28 +8,12 @@
 
 /* Mock dependencies */
 const float Y0 = 200e6;
-
 const int dummy_mat_id = 0;
-
-float method_yield_weakening_thermal_xi(void) {
-  return 1.2f;
-}
-
-float material_T_melt(const int mat_id) {
-  return 933.f;
-}
-
-float material_rho_0(const int mat_id) {
-  return 2700.f;
-}
-
-float method_yield_weakening_density_mult_param(void) {
-  return 0.85f;
-}
-
-float method_yield_weakening_density_pow_param(void) {
-  return 4.f;
-}
+float method_yield_weakening_thermal_xi(void) {return 1.2f;}
+float material_T_melt(const int mat_id) {return 933.f;}
+float material_rho_0(const int mat_id) {return 2700.f;}
+float method_yield_weakening_density_mult_param(void) {return 0.85f;}
+float method_yield_weakening_density_pow_param(void) {return 4.f;}
 
 /* Dummy temperature calculation */
 static float gas_temperature_from_internal_energy(const float density, const float u,
