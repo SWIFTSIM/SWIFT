@@ -26,10 +26,7 @@
  */
 
 #include "const.h"
-#include "equation_of_state.h"
-#include "hydro_parameters.h"
 #include "math.h"
-#include "strength_utilities.h"
 
 /**
  * @brief Computes the stress tensor time-step of a given particle.

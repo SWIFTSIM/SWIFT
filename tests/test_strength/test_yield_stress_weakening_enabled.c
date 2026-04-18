@@ -23,7 +23,7 @@ static void test_thermal_weakening_enabled(void)
 
    /* Test temperatures in each regime */
   const float temperatures[4] = {
-      0,               /* zero temperature edge case */
+      0.f,             /* zero temperature edge case */
       0.5f * T_melt,   /* below T_melt */
       T_melt,          /* at T_melt */
       2.0f * T_melt    /* above T_melt */
@@ -33,8 +33,8 @@ static void test_thermal_weakening_enabled(void)
   const float expected[4] = {
       Y0,                                                  /* zero temperature edge case */
       Y0 * tanhf(xi * (T_melt / temperatures[1] - 1.f)),   /* below T_melt */
-      Y0 * tanhf(xi * (T_melt / temperatures[2] - 1.f)),   /* at T_melt */
-      Y0 * tanhf(xi * (T_melt / temperatures[3] - 1.f))    /* above T_melt */
+      0.f,                                                 /* at T_melt */
+      0.f                                                  /* above T_melt */
   };
 
   /* Number of test cases and fractional tolerance for comparisons */
@@ -55,7 +55,7 @@ static void test_density_weakening_enabled(void)
 
   /* Test densities in each regime */
   const float densities[4] = {
-      0,                 /* zero density edge case */
+      0.f,               /* zero density edge case */
       0.5f * rho_weak,   /* below rho_weak */
       rho_weak,          /* at rho_weak */
       2.0f * rho_weak    /* above rho_weak */
@@ -63,7 +63,7 @@ static void test_density_weakening_enabled(void)
 
   /* Expected results for each density */
   const float expected[4] = {
-      0,                                       /* zero density edge case */
+      0.f,                                     /* zero density edge case */
       Y0 * powf(densities[1] / rho_weak, b),   /* below rho_weak */
       Y0,                                      /* at rho_weak */
       Y0                                       /* above rho_weak */

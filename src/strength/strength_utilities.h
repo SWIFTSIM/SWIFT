@@ -216,8 +216,7 @@ strength_evolve_rotation_tensor(float rotation_tensor[3][3], const float rotatio
   const float theta = omega_mag * dt;
 
   /* Return to avoid division by 0. */
-  // ### Test what number to use in this if statement
-  if (theta < 1e-8) {
+  if (theta <= 0.f) {
     return;
   }
 

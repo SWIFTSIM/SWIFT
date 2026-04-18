@@ -174,63 +174,155 @@ static void test_rotation_term_identity_M(void)
     { 0.f,  0.f,  0.f}
   };
   float M[3][3] = {0};
-  float rot_term[3][3];
+  float rotation_term[3][3];
 
   for (int i = 0; i < 3; i++) {
     M[i][i] = 1.f;
   }
 
-  strength_compute_rotation_term(rot_term, R, M);
+  strength_compute_rotation_term(rotation_term, R, M);
 
   const float tol = 1e-6f;
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      assert(fabsf(rot_term[i][j]) <= tol);
+      assert(fabsf(rotation_term[i][j]) <= tol);
     }
   }
 }
 
-
-/* Test rotation term M*R - R*M for an arbitrary case. */
-static void test_rotation_term_arbitrary(void)
+/* Test that rigid-body rotation generates no new stress. */
+static void test_rigid_body_rotation_no_stress_generation(void)
 {
-  /* Arbitrary antisymmetric R */
-  float R[3][3] = {
-    { 0.f, -2.f,  1.f},
-    { 2.f,  0.f, -3.f},
-    {-1.f,  3.f,  0.f}
+    /* Initial stress set to zero everywhere */
+    float S[3][3] = {
+        {0.f, 0.f, 0.f},
+        {0.f, 0.f, 0.f},
+        {0.f, 0.f, 0.f}
+    };
+
+    /* Rigid rotation around z-axis */
+    const float omega = 1.0f;
+    float dv[3][3] = {
+        { 0.f, -omega, 0.f },
+        { omega,  0.f, 0.f },
+        { 0.f,    0.f, 0.f }
+    };
+
+    const float mu = 100.f;
+    float strain_rate[3][3];
+    float rotation_rate[3][3];
+    float rotation_term[3][3];
+    float dS_dt[3][3];
+
+    strength_compute_strain_rate_tensor(strain_rate, dv);
+    strength_compute_rotation_rate_tensor(rotation_rate, dv);
+    strength_compute_rotation_term(rotation_term, rotation_rate, S);
+
+    /* Calculate dS/dt */
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            dS_dt[i][j] = 2.f * mu * strain_rate[i][j] + rotation_term[i][j];
+        }
+    }
+
+    /* Verify that rigid rotation does not generate stress */
+    const float tol = 1e-6f;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            assert(fabsf(dS_dt[i][j]) <= tol);
+        }
+    }
+}
+
+/* Test stress rotation to detect sign errors */
+static void test_stress_rotation_45deg(void)
+{
+    /* Initial stress */
+    float S[3][3] = {
+        {1.f, 0.f, 0.f},
+        {0.f, 0.f, 0.f},
+        {0.f, 0.f, 0.f}
+    };
+
+    /* Rigid rotation around z-axis */
+    const float omega = 0.5f;
+    float dv[3][3] = {
+        { 0.f, -omega, 0.f },
+        { omega,  0.f, 0.f },
+        { 0.f,    0.f, 0.f }
+    };
+
+    /* Multi-step integration */
+    const int nsteps = 1000000;
+    const float dt_total = (M_PI / 4.f) / omega;
+    const float dt_step = dt_total / nsteps;
+
+    float rotation_rate[3][3];
+    float rotation_term[3][3];
+    float S_rot[3][3];
+    memcpy(S_rot, S, sizeof(S));
+    for (int step = 0; step < nsteps; step++) {
+        /* Compute tensors */
+        strength_compute_rotation_rate_tensor(rotation_rate, dv);
+        strength_compute_rotation_term(rotation_term, rotation_rate, S_rot);
+
+        /* Update stress */
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                S_rot[i][j] += rotation_term[i][j] * dt_step;
+            }
+        }
+    }
+
+    /* Check final values after pi/4 rotation */
+    const float tol = 1e-3f;
+    assert(fabsf(S_rot[0][0] - 0.5f) <= tol);
+    assert(fabsf(S_rot[1][1] - 0.5f) <= tol);
+    assert(fabsf(S_rot[0][1] - 0.5f) <= tol);
+    assert(fabsf(S_rot[1][0] - 0.5f) <= tol);
+}
+
+/* Test that rotating stress by 2*pi returns to the original. */
+static void test_stress_rotation_full_circle(void)
+{
+  float S[3][3] = {
+    {2.f, 1.f, 0.f},
+    {1.f, 0.f, 0.f},
+    {0.f, 0.f, 0.5f}
+  };
+  float S_init[3][3];
+  memcpy(S_init, S, sizeof(S));
+
+  const float omega = 0.5f;
+  float dv[3][3] = {
+    { 0.f, -omega, 0.f},
+    { omega,  0.f, 0.f},
+    { 0.f,    0.f, 0.f}
   };
 
-  /* Arbitrary M */
-  float M[3][3] = {
-      {2.f,  1.f, -0.5f},
-      {3.f,  5.f,  0.8f},
-      {0.1f, -1.f,  3.f}
-  };
+  const int nsteps = 1000000;
+  const float dt_total = (2.f * (float)M_PI) / omega;
+  const float dt_step = dt_total / nsteps;
 
-  float rot_term[3][3];
-  strength_compute_rotation_term(rot_term, R, M);
+  float rotation_rate[3][3];
+  float rotation_term[3][3];
 
-  /* Manual calculation of rotation term */
-  float MR[3][3] = {{0.f}};
-  float RM[3][3] = {{0.f}};
-  float expected[3][3];
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      for (int k = 0; k < 3; k++) {
-        MR[i][j] += M[i][k] * R[k][j];
-        RM[i][j] += R[i][k] * M[k][j];
+  strength_compute_rotation_rate_tensor(rotation_rate, dv);
+
+  for (int step = 0; step < nsteps; step++) {
+    strength_compute_rotation_term(rotation_term, rotation_rate, S);
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+        S[i][j] += rotation_term[i][j] * dt_step;
       }
-      expected[i][j] = MR[i][j] - RM[i][j];
     }
   }
 
-  const float tol = 1e-6f;
-
+  const float tol = 1e-3f;
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      assert(fabsf(rot_term[i][j] - expected[i][j]) <= tol);
+      assert(fabsf(S[i][j] - S_init[i][j]) <= tol);
     }
   }
 }
@@ -249,7 +341,7 @@ static void test_evolve_strain_tensor(void)
     {0.4f, 0.2f, 0.1f},
     {0.2f, 0.1f, 0.3f}
   };
-  float rot_term[3][3] = {
+  float rotation_term[3][3] = {
     { 0.f, -0.1f,  0.05f},
     { 0.1f, 0.f,  -0.02f},
     {-0.05f, 0.02f, 0.f}
@@ -261,11 +353,11 @@ static void test_evolve_strain_tensor(void)
   float expected[3][3];
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      expected[i][j] = strain_tensor[i][j] + (strain_rate[i][j] + rot_term[i][j]) * dt;
+      expected[i][j] = strain_tensor[i][j] + (strain_rate[i][j] + rotation_term[i][j]) * dt;
     }
   }
 
-  strength_evolve_strain_tensor(strain_tensor, strain_rate, rot_term, dt);
+  strength_evolve_strain_tensor(strain_tensor, strain_rate, rotation_term, dt);
 
   const float tol = 1e-6f;
 
@@ -399,21 +491,20 @@ static void test_rotation_of_arbitrary_tensor(void)
 }
 
 
-/* Test rotation tensor evolution does nothing for negligibly small theta. */
+/* Test rotation tensor evolution does nothing for zero theta. */
 static void test_rotation_evolution_zero_theta(void)
 {
-  float R[3][3] = {0};
+  float R[3][3] = {
+    { 0.f,  -1.5f,  0.3f},
+    { 1.5f,  0.f,  -0.7f},
+    {-0.3f,  0.7f,  0.f }
+  };
   float rotation_rate[3][3] = {0};
-
-  for (int i = 0; i < 3; i++) {
-    R[i][i] = 1.f;
-  }
-
   rotation_rate[0][1] = -1.f;
   rotation_rate[1][0] =  1.f;
 
   /* dt so small that early return should be triggered */
-  const float dt = 1e-10f;
+  const float dt = 0.f;
 
   float R_before[3][3];
   memcpy(R_before, R, sizeof(R));
@@ -429,6 +520,80 @@ static void test_rotation_evolution_zero_theta(void)
   }
 }
 
+/* Test that rotating by theta then -theta returns to identity. */
+static void test_rotation_tensor_round_trip(void)
+{
+  float R[3][3] = {
+    { 0.f,  -1.5f,  0.3f},
+    { 1.5f,  0.f,  -0.7f},
+    {-0.3f,  0.7f,  0.f }
+  };
+  float R_init[3][3];
+  memcpy(R_init, R, sizeof(R));
+
+  const float omega = 1.5f;
+  const float dt = 0.4f;
+
+  /* Forward rotation around z */
+  float rotation_rate_fwd[3][3] = {
+    { 0.f, -omega, 0.f},
+    { omega,  0.f, 0.f},
+    { 0.f,    0.f, 0.f}
+  };
+
+  /* Backward rotation around z */
+  float rotation_rate_bwd[3][3] = {
+    { 0.f,  omega, 0.f},
+    {-omega,  0.f, 0.f},
+    { 0.f,    0.f, 0.f}
+  };
+
+  strength_evolve_rotation_tensor(R, rotation_rate_fwd, dt);
+  strength_evolve_rotation_tensor(R, rotation_rate_bwd, dt);
+
+  const float tol = 1e-6f;
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      assert(fabsf(R[i][j] - R_init[i][j]) <= tol);
+    }
+  }
+}
+
+
+/* Test rotation direction: z-axis rotation by pi/2 maps x->y, y->-x. */
+static void test_rotation_tensor_direction(void)
+{
+  float R[3][3] = {0};
+  for (int i = 0; i < 3; i++) {
+    R[i][i] = 1.f;
+  }
+
+  /* omega around z-axis */
+  const float omega = 1.f;
+  const float dt = (float)(M_PI / 2.f) / omega;
+
+  float rotation_rate[3][3] = {
+    { 0.f, -omega, 0.f},
+    { omega,  0.f, 0.f},
+    { 0.f,    0.f, 0.f}
+  };
+
+  strength_evolve_rotation_tensor(R, rotation_rate, dt);
+
+  /* x-axis unit vector rotated by pi/2 should give y-axis */
+  const float tol = 1e-6f;
+  assert(fabsf(R[0][0] -  0.f) <= tol);
+  assert(fabsf(R[1][0] -  1.f) <= tol);
+  assert(fabsf(R[2][0] -  0.f) <= tol);
+
+  /* y-axis unit vector rotated by pi/2 should give -x-axis */
+  assert(fabsf(R[0][1] - (-1.f)) <= tol);
+  assert(fabsf(R[1][1] -   0.f)  <= tol);
+  assert(fabsf(R[2][1] -   0.f)  <= tol);
+}
+
+
 
 int main(void)
 {
@@ -439,11 +604,15 @@ int main(void)
   test_rotation_rate_tensor();
   test_rotation_rate_tensor_symmetric_input();
   test_rotation_term_identity_M();
-  test_rotation_term_arbitrary();
+  test_rigid_body_rotation_no_stress_generation();
+  test_stress_rotation_45deg();
+  test_stress_rotation_full_circle();
   test_evolve_strain_tensor();
   test_rotation_tensor_orthogonality();
   test_rotation_of_arbitrary_tensor();
   test_rotation_evolution_zero_theta();
+  test_rotation_tensor_round_trip();
+  test_rotation_tensor_direction();
 
   return 0;
 }

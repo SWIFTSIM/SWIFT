@@ -95,7 +95,7 @@ __attribute__((always_inline)) INLINE static void strength_predict_extra_beginni
   delta_elastic_strain_tensor.yz = p->strength_data.strain_tensor.yz - strain_tensor_pre_yield.yz;
 
   /* Add contribution to measure of total plastic strain. */
-  p->strength_data.total_plastic_strain += strength_compute_sym_matrix_J_2(delta_elastic_strain_tensor);
+  p->strength_data.total_plastic_strain += sqrtf(strength_compute_sym_matrix_J_2(delta_elastic_strain_tensor));
 #endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 }
 
@@ -153,7 +153,7 @@ __attribute__((always_inline)) INLINE static void strength_kick_extra_beginning(
  delta_elastic_strain_tensor.yz = xp->strength_data.strain_tensor_full.yz - strain_tensor_pre_yield.yz;
 
  /* Add contribution to measure of total plastic strain. */
- xp->strength_data.total_plastic_strain_full += strength_compute_sym_matrix_J_2(delta_elastic_strain_tensor);
+ xp->strength_data.total_plastic_strain_full += sqrtf(strength_compute_sym_matrix_J_2(delta_elastic_strain_tensor));
 #endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 }
 
