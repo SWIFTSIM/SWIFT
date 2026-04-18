@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 
@@ -14,8 +15,8 @@ struct part {
 };
 
 /* Dummy method parameters. */
-static float method_artif_stress_n(void)       { return 4.f; }
-static float method_artif_stress_epsilon(void) { return 0.2f; }
+static float method_artif_stress_n(void) {return 4.f;}
+static float method_artif_stress_epsilon(void) {return 0.2f;}
 
 /* Dummy kernel. */
 static void kernel_eval(const float q, float *const W) {
@@ -37,8 +38,7 @@ static void copy_tensor(float dst[3][3], const float src[3][3]) {
 
 
 /* Test no artificial stress when particle separation is large. */
-static void test_no_stress_large_separation(void)
-{
+static void test_no_stress_large_separation(void) {
   struct part pi = {0}, pj = {0};
   pi.h = 1.f;
   pj.h = 1.f;
@@ -48,7 +48,7 @@ static void test_no_stress_large_separation(void)
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] = (float)(i + j + 1);
+      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] = (float)(i + j + 1); // Arbitrary non-zero values
     }
   }
 
@@ -72,8 +72,7 @@ static void test_no_stress_large_separation(void)
 
 
 /* Test no artificial stress is applied when all principal stresses are non-positive. */
-static void test_no_stress_no_pos_eigen(void)
-{
+static void test_no_stress_no_pos_eigen(void) {
   struct part pi = {0}, pj = {0};
   pi.h = 1.f;
   pj.h = 1.f;
@@ -84,7 +83,7 @@ static void test_no_stress_no_pos_eigen(void)
   /* All non-positive elements. */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] = -(float)(i + j + 1);
+      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] = -(float)(i + j + 1); // Arbitrary non-positive values
     }
   }
 
@@ -108,8 +107,7 @@ static void test_no_stress_no_pos_eigen(void)
 
 /* Test that positive off-diagonal elements are also modified, unlike the
  * basis-independent method. */
-static void test_off_diagonals_modified_when_positive(void)
-{
+static void test_off_diagonals_modified_when_positive(void) {
   struct part pi = {0}, pj = {0};
   pi.h = 1.f;
   pj.h = 1.f;
@@ -141,8 +139,7 @@ static void test_off_diagonals_modified_when_positive(void)
 
 /* Test that negative elements are left unchanged while positive ones in the
  * same tensor are reduced. */
-static void test_negative_elements_unchanged(void)
-{
+static void test_negative_elements_unchanged(void) {
   struct part pi = {0}, pj = {0};
   pi.h = 1.f;
   pj.h = 1.f;
@@ -185,8 +182,7 @@ static void test_negative_elements_unchanged(void)
 
 /* Test that the reduction is proportional to each element itself, i.e. the
  * same fractional reduction is applied to all positive elements. */
-static void test_fractional_reduction_uniform(void)
-{
+static void test_fractional_reduction_uniform(void) {
   struct part pi = {0}, pj = {0};
   pi.h = 1.f;
   pj.h = 1.f;
@@ -225,8 +221,7 @@ static void test_fractional_reduction_uniform(void)
 
 
 /* Test that particles i and j are treated independently. */
-static void test_particles_treated_independently(void)
-{
+static void test_particles_treated_independently(void) {
   struct part pi = {0}, pj = {0};
   pi.h = 1.f;
   pj.h = 1.f;
@@ -265,10 +260,7 @@ static void test_particles_treated_independently(void)
   }
 }
 
-// ### Add a test_separation_factor when the handling of the kernel factor is finalised
-
-int main(void)
-{
+int main(void) {
   test_no_stress_large_separation();
   test_no_stress_no_pos_eigen();
   test_off_diagonals_modified_when_positive();

@@ -26,8 +26,6 @@
  */
 
 #include "const.h"
-#include "equation_of_state.h"
-#include "hydro_parameters.h"
 #include "math.h"
 
 /**
@@ -41,7 +39,7 @@
  * M + c*I = P (M + c*I) P^-1 = P M P^-1 + P (c*I) P^-1 = P M P^-1 + c*I
  * Unlike the basis independent method presented by Gray+2001, this method does
  * not require basis transformation of the stress tensor, and it is therefore
- * more simple and less computationally intesive.
+ * more simple and less computationally expensive.
  *
  * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
  * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.

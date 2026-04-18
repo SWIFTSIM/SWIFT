@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 
@@ -11,23 +12,22 @@ struct part {
 /* Don't define any artificial stress method */
 #include "../../src/strength/strength_artificial_stress.h"
 
-
 /* Copy a 3x3 matrix. */
 static void copy_tensor(float dst[3][3], const float src[3][3]) {
   memcpy(dst, src, 3 * 3 * sizeof(float));
 }
 
 /* No artificial stress. */
-static void test_artificial_stress_none(void)
-{
+static void test_artificial_stress_none(void) {
   struct part pi = {0}, pj = {0};
 
   float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
   float pairwise_stress_tensor_i_before[3][3], pairwise_stress_tensor_j_before[3][3];
 
+  /* Fill tensors with arbitrary non-zero values */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] = (float)(i + j + 1);
+      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] = (float)(i + j + 1); // Arbitrary non-zero values to check they are unchanged.
     }
   }
 
@@ -61,8 +61,7 @@ static void test_artificial_stress_none(void)
 }
 
 
-int main(void)
-{
+int main(void) {
   test_artificial_stress_none();
 
   return 0;
