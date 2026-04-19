@@ -22,7 +22,7 @@ from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 
 # Grab snapshot
 
-snapshot_basename = "snap"
+snapshot_basename = "snap_new"
 
 try:
     snapnr = sys.argv[1]
@@ -65,7 +65,6 @@ dm_mass = project_pixel_grid(
     # Note here that we pass in the dark matter dataset not the whole
     # data object, to specify what particle type we wish to visualise
     data=data.dark_matter,
-    boxsize=data.metadata.boxsize,
     resolution=1024,
     project="masses",
     parallel=True,

@@ -397,6 +397,7 @@ struct gpart_ref {
 
 struct MG_variables {
   int n;
+  int overdensity;
   double fR0;
   double R;
   double a;
@@ -407,6 +408,7 @@ struct MG_variables {
   double fR_correction;
   double normalisation;
   double h;
+  double m;
 };
 
 /* Function prototypes. */
@@ -637,5 +639,5 @@ void perform_red_black_sweep_coarser_Poisson(double *coarser_solution, const dou
 void get_residual_array_coarser_Poisson(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, double *new_residual_array, int cdim[3], double delta);
 double get_residual_coarser_Poisson(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double delta);
 void apply_multigrid_FAS(const double *rho, double *pot, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
-double peak_overdensity(struct MG_variables *MG, double delta_x, double A, double alpha, double w, double fR_mean);
+double peak_overdensity(struct MG_variables *MG, double delta_x, double fR_mean, double box_size);
 #endif /* SWIFT_SPACE_H */
