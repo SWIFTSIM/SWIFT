@@ -590,8 +590,10 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
       sp->feedback_data.weighted_gas_density * cosmo->a3_inv;
 
   /* Compute the cooling radius */
-  const float second_part =
-      p_terminal * p_terminal / (p_SN_initial * p_SN_initial) - 1.0;
+  const float p_terminal_2 = p_terminal * p_terminal;
+  const float p_SN_initial_2 = p_SN_initial * p_SN_initial;
+  /* The max prevents negative values that would propagate into r_cool */
+  const float second_part = max(0.0, p_terminal_2 / p_SN_initial_2 - 1.0);
   const float r_cool =
       pow(3.0 * m_ej * second_part / (4.0 * M_PI * mean_density), 1.0 / 3.0);
 
