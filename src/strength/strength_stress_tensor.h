@@ -46,7 +46,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_stre
   const float norm_dS_dt = norm_sym_matrix(&p->strength_data.dS_dt);
   const float shear_mod = material_shear_mod(p->mat_id);
 
-  /* Scale of S has floor of shear_mod to avoid zero timesteps when S is small */
+  /* Scale of S has floor of floor_factor * shear_mod to avoid zero timesteps when S is small */
   // ### probably make this floor a .yml parameter
   const float floor_factor = 1e-2f; // Arbitrary factor to set the floor for S relative to mu.
   const float S_scale = fmaxf(S_norm, floor_factor * shear_mod);
@@ -220,7 +220,7 @@ __attribute__((always_inline)) INLINE static void stress_tensor_evolve_deviatori
     struct sym_matrix *deviatoric_stress_tensor, struct part *restrict p, const int phase,
     float dt_therm) {
 
-  /* Return sym_matrix with all elements 0.f if the material is not solid. */
+  /* Set to sym_matrix with all elements 0.f if the material is not solid. */
   if (phase != mat_phase_solid) {
     zero_sym_matrix(deviatoric_stress_tensor);
     return;

@@ -44,6 +44,7 @@ struct hydro_props {
 
 static float material_shear_mod(int mat_id) { return 2.f; }
 
+/* Sym matrix functions */
 static float norm_sym_matrix(const struct sym_matrix *M) {
   return sqrtf(M->xx*M->xx + M->yy*M->yy + M->zz*M->zz +
                M->xy*M->xy + M->xz*M->xz + M->yz*M->yz);
@@ -71,7 +72,7 @@ static void get_sym_matrix_from_matrix(struct sym_matrix *M, float in[3][3]) {
   M->yz=in[1][2];
 }
 
-/* Physics hooks */
+/* Damage function */
 static float strength_get_damage(struct part *p) { return 0.5f; }
 
 static struct sym_matrix yield_compute_damaged_deviatoric_stress_tensor(struct sym_matrix S, float damage) {
@@ -93,17 +94,16 @@ static void damage_compute_stress_tensor(struct sym_matrix *S,
   S->yz = Sd.yz;
 }
 
-/* Artificial stress */
+/* Artificial stress function */
 static int artif_calls = 0;
 
 static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float A[3][3], float B[3][3],
-    const struct part *pi, const struct part *pj, float r)
-{
+    const struct part *pi, const struct part *pj, float r) {
   artif_calls++;
 }
 
-/* Core tested kernels */
+/* Strength utils function */
 static void strength_compute_strain_rate_tensor(float out[3][3],
                                                 const float dv[3][3]) {
   for (int i = 0; i < 3; i++) {
@@ -122,25 +122,19 @@ static void strength_compute_rotation_rate_tensor(float out[3][3],
   }
 }
 
+/* Rotation term is traceless */
 static void strength_compute_rotation_term(float out[3][3],
                                            float R[3][3],
                                            float S[3][3]) {
   out[0][0] =  0.8f; out[0][1] = -0.1f; out[0][2] =  0.5f;
   out[1][0] = -0.1f; out[1][1] =  0.2f; out[1][2] = -0.3f;
-  out[2][0] =  0.5f; out[2][1] = -0.3f; out[2][2] = -0.4f;
+  out[2][0] =  0.5f; out[2][1] = -0.3f; out[2][2] = -1.0f;
 }
 
 #include "../../src/strength/strength_stress_tensor.h"
 
-static int within_tol(float a, float b, float tol) {
-  float scale = fmaxf(fabsf(a), fabsf(b));
-  if (scale < 1e-12f) scale = 1.f;
-  return fabsf(a - b) <= tol * scale;
-}
 
-
-static void test_compute_timestep_reduction(void)
-{
+static void test_compute_timestep_reduction(void) {
   struct part p = {0};
   struct hydro_props hydro_props = {0};
   hydro_props.CFL_condition = 0.1f;
@@ -155,8 +149,7 @@ static void test_compute_timestep_reduction(void)
   assert(dt < 1.f);
 }
 
-static void test_compute_timestep_zero_rate(void)
-{
+static void test_compute_timestep_zero_rate(void) {
   struct part p = {0};
   struct hydro_props hydro_props = {0};
   hydro_props.CFL_condition = 0.1f;
@@ -165,11 +158,11 @@ static void test_compute_timestep_zero_rate(void)
 
   strength_compute_timestep_stress_tensor(&dt, &p, &hydro_props);
 
-  assert(within_tol(dt, 1.f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(dt - 1.f) <= tol);
 }
 
-static void test_wave_speed(void)
-{
+static void test_wave_speed(void) {
   struct part p = {.phase = mat_phase_solid};
 
   float wave_speed = 1.f;
@@ -182,71 +175,80 @@ static void test_wave_speed(void)
   float wave_speed_2 = 1.f;
   strength_compute_max_wave_speed_stress_tensor(&wave_speed_2, &p, 2.f, 1.f);
 
-  assert(within_tol(wave_speed_2, 1.f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(wave_speed_2 - 1.f) <= tol);
 }
 
-static void test_compute_stress_tensor(void)
-{
+static void test_compute_stress_tensor(void) {
   struct part p = {0};
+  const float pressure = 0.1f;
   p.strength_data.deviatoric_stress_tensor.xx = 2.f;
 
-  strength_compute_stress_tensor(&p, 1.f);
+  strength_compute_stress_tensor(&p, pressure);
 
-  assert(p.strength_data.stress_tensor.xx < 2.f);
+  const float tol = 1e-6f;
+  assert(fabsf(p.strength_data.stress_tensor.xx - 0.9f) <= tol);
 }
 
-static void test_pairwise_stress_condition(void)
-{
+static void test_pairwise_stress_condition(void) {
   struct part pi = {0}, pj = {0};
   float A[3][3] = {{0}}, B[3][3] = {{0}};
 
   pi.phase = mat_phase_solid;
   pj.phase = mat_phase_solid;
-
   artif_calls = 0;
   strength_set_pairwise_stress_tensors(A, B, &pi, &pj, 0.1f);
   assert(artif_calls == 1);
 
   pi.phase = mat_phase_solid;
   pj.phase = mat_phase_fluid;
+  artif_calls = 0;
+  strength_set_pairwise_stress_tensors(A, B, &pi, &pj, 0.1f);
+  assert(artif_calls == 0);
 
+  pi.phase = mat_phase_fluid;
+  pj.phase = mat_phase_solid;
+  artif_calls = 0;
+  strength_set_pairwise_stress_tensors(A, B, &pi, &pj, 0.1f);
+  assert(artif_calls == 0);
+
+  pi.phase = mat_phase_fluid;
+  pj.phase = mat_phase_fluid;
   artif_calls = 0;
   strength_set_pairwise_stress_tensors(A, B, &pi, &pj, 0.1f);
   assert(artif_calls == 0);
 }
 
-static void test_compute_dS_dt_pure_trace(void)
-{
+static void test_compute_dS_dt_pure_trace(void) {
   struct part p = {0};
   p.mat_id = 0;
 
-  /* dv = I  =>  strain_rate = I,  trace = 3
-   * deviatoric strain_rate = I - I = 0
+  /* dv = 2I  => deviatoric strain_rate = 2I - 2I = 0
    * 2*mu * 0 + rotation_term = rotation_term */
   float dv[3][3] = {
-    {1.f,0.f,0.f},
-    {0.f,1.f,0.f},
-    {0.f,0.f,1.f}
+    {2.f,0.f,0.f},
+    {0.f,2.f,0.f},
+    {0.f,0.f,2.f}
   };
 
   stress_tensor_compute_dS_dt(&p, dv);
 
-  const float tol = 1e-6f;
+  float rotation_term[3][3];
+  strength_compute_rotation_term(rotation_term, (float[3][3]){{0}}, (float[3][3]){{0}});
 
-  assert(within_tol(p.strength_data.dS_dt.xx,  0.8f, tol));
-  assert(within_tol(p.strength_data.dS_dt.yy,  0.2f, tol));
-  assert(within_tol(p.strength_data.dS_dt.zz, -0.4f, tol));
-  assert(within_tol(p.strength_data.dS_dt.xy, -0.1f, tol));
-  assert(within_tol(p.strength_data.dS_dt.xz,  0.5f, tol));
-  assert(within_tol(p.strength_data.dS_dt.yz, -0.3f, tol));
+  const float tol = 1e-6f;
+  assert(fabsf(p.strength_data.dS_dt.xx - rotation_term[0][0]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.yy - rotation_term[1][1]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.zz - rotation_term[2][2]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.xy - rotation_term[0][1]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.xz - rotation_term[0][2]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.yz - rotation_term[1][2]) <= tol);
 }
 
 /* Test general dv gives a traceless dS/dt. */
-static void test_compute_dS_dt_traceless(void)
-{
+static void test_compute_dS_dt_traceless(void) {
   struct part p = {0};
   p.mat_id = 0;
-
   
   float dv[3][3] = {
     {1.f,2.f,3.f},
@@ -259,21 +261,24 @@ static void test_compute_dS_dt_traceless(void)
   const float mu = 2.f;
   const float tol = 1e-5f;
 
-  /* strain_rate diagonal and off-diagonal */
-  const float exx = 1.f,  eyy = -1.f, ezz = 2.f;
-  const float exy = 1.f,  exz = 4.f,  eyz = 5.f;
-  const float trace = exx + eyy + ezz;  /* = 2 */
+  /* Strain rate. */
+  float strain_rate[3][3];
+  strength_compute_strain_rate_tensor(strain_rate, dv);
+  const float trace = strain_rate[0][0] + strain_rate[1][1] + strain_rate[2][2];
+  
+  /* Rotation term. */
+  float rotation_term[3][3];
+  strength_compute_rotation_term(rotation_term, (float[3][3]){{0}}, (float[3][3]){{0}});
 
-  assert(within_tol(p.strength_data.dS_dt.xx, 2.f*mu*(exx - trace/3.f) +  0.8f, tol));
-  assert(within_tol(p.strength_data.dS_dt.yy, 2.f*mu*(eyy - trace/3.f) +  0.2f, tol));
-  assert(within_tol(p.strength_data.dS_dt.zz, 2.f*mu*(ezz - trace/3.f) + -0.4f, tol));
-  assert(within_tol(p.strength_data.dS_dt.xy, 2.f*mu*exy               + -0.1f, tol));
-  assert(within_tol(p.strength_data.dS_dt.xz, 2.f*mu*exz               +  0.5f, tol));
-  assert(within_tol(p.strength_data.dS_dt.yz, 2.f*mu*eyz               + -0.3f, tol));
+  assert(fabsf(p.strength_data.dS_dt.xx - (2.f*mu*(strain_rate[0][0] - trace/3.f) + rotation_term[0][0])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.yy - (2.f*mu*(strain_rate[1][1] - trace/3.f) + rotation_term[1][1])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.zz - (2.f*mu*(strain_rate[2][2] - trace/3.f) + rotation_term[2][2])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.xy - (2.f*mu*strain_rate[0][1]               + rotation_term[0][1])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.xz - (2.f*mu*strain_rate[0][2]               + rotation_term[0][2])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.yz - (2.f*mu*strain_rate[1][2]               + rotation_term[1][2])) <= tol);
 }
 
-static void test_compute_dS_dt_pure_shear(void)
-{
+static void test_compute_dS_dt_pure_shear(void) {
   struct part p = {0};
   p.mat_id = 0;
 
@@ -288,19 +293,21 @@ static void test_compute_dS_dt_pure_shear(void)
 
   stress_tensor_compute_dS_dt(&p, dv);
 
+  /* Rotation term. */
+  float rotation_term[3][3];
+  strength_compute_rotation_term(rotation_term, (float[3][3]){{0}}, (float[3][3]){{0}});
+
   const float strain_rate_xy = 0.5f * dv_xy;
   const float tol = 1e-6f;
-
-  assert(within_tol(p.strength_data.dS_dt.xx,  0.f                   +  0.8f, tol));
-  assert(within_tol(p.strength_data.dS_dt.yy,  0.f                   +  0.2f, tol));
-  assert(within_tol(p.strength_data.dS_dt.zz,  0.f                   + -0.4f, tol));
-  assert(within_tol(p.strength_data.dS_dt.xy,  2.f*mu*strain_rate_xy + -0.1f, tol));
-  assert(within_tol(p.strength_data.dS_dt.xz,  0.f                   +  0.5f, tol));
-  assert(within_tol(p.strength_data.dS_dt.yz,  0.f                   + -0.3f, tol));
+  assert(fabsf(p.strength_data.dS_dt.xx - ( 0.f                   +  rotation_term[0][0])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.yy - ( 0.f                   +  rotation_term[1][1])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.zz - ( 0.f                   +  rotation_term[2][2])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.xy - ( 2.f*mu*strain_rate_xy +  rotation_term[0][1])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.xz - ( 0.f                   +  rotation_term[0][2])) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.yz - ( 0.f                   +  rotation_term[1][2])) <= tol);
 }
 
-static void test_compute_dS_dt_rotation_only(void)
-{
+static void test_compute_dS_dt_rotation_only(void) {
   struct part p = {0};
   p.mat_id = 0;
 
@@ -312,96 +319,81 @@ static void test_compute_dS_dt_rotation_only(void)
 
   stress_tensor_compute_dS_dt(&p, dv);
 
-  const float tol = 1e-6f;
+  /* Rotation term. */
+  float rotation_term[3][3];
+  strength_compute_rotation_term(rotation_term, (float[3][3]){{0}}, (float[3][3]){{0}});
 
-  assert(within_tol(p.strength_data.dS_dt.xx,  0.8f, tol));
-  assert(within_tol(p.strength_data.dS_dt.yy,  0.2f, tol));
-  assert(within_tol(p.strength_data.dS_dt.zz, -0.4f, tol));
-  assert(within_tol(p.strength_data.dS_dt.xy, -0.1f, tol));
-  assert(within_tol(p.strength_data.dS_dt.xz,  0.5f, tol));
-  assert(within_tol(p.strength_data.dS_dt.yz, -0.3f, tol));
+  const float tol = 1e-6f;
+  assert(fabsf(p.strength_data.dS_dt.xx -  rotation_term[0][0]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.yy -  rotation_term[1][1]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.zz -  rotation_term[2][2]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.xy -  rotation_term[0][1]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.xz -  rotation_term[0][2]) <= tol);
+  assert(fabsf(p.strength_data.dS_dt.yz -  rotation_term[1][2]) <= tol);
 }
 
 
 
-static void test_evolve_solid(void)
-{
+static void test_evolve_solid(void) {
   struct part p = {0};
-  p.strength_data.dS_dt.xx = 1.f;
-  p.strength_data.dS_dt.yy = 2.f;
-  p.strength_data.dS_dt.zz = 3.f;
-  p.strength_data.dS_dt.xy = 4.f;
-  p.strength_data.dS_dt.xz = 5.f;
-  p.strength_data.dS_dt.yz = 6.f;
+  p.strength_data.dS_dt.xx = 1.f;  p.strength_data.dS_dt.yy = 2.f;  p.strength_data.dS_dt.zz = 3.f;
+  p.strength_data.dS_dt.xy = 4.f;  p.strength_data.dS_dt.xz = 5.f;  p.strength_data.dS_dt.yz = 6.f;
   struct sym_matrix S = {0};
-  S.xx = 10.f;
-  S.yy = 20.f;
-  S.zz = 30.f;
-  S.xy = 40.f;
-  S.xz = 50.f;
-  S.yz = 60.f;
-
+  S.xx = 10.f;  S.yy = 20.f;  S.zz = 30.f;
+  S.xy = 40.f;  S.xz = 50.f;  S.yz = 60.f;
 
   stress_tensor_evolve_deviatoric_stress_tensor(&S, &p, mat_phase_solid, 0.1f);
 
-  assert(within_tol(S.xx, 10.1f, 1e-6f));
-  assert(within_tol(S.yy, 20.2f, 1e-6f));
-  assert(within_tol(S.zz, 30.3f, 1e-6f));
-  assert(within_tol(S.xy, 40.4f, 1e-6f));
-  assert(within_tol(S.xz, 50.5f, 1e-6f));
-  assert(within_tol(S.yz, 60.6f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(S.xx - 10.1f) <= tol);
+  assert(fabsf(S.yy - 20.2f) <= tol);
+  assert(fabsf(S.zz - 30.3f) <= tol);
+  assert(fabsf(S.xy - 40.4f) <= tol);
+  assert(fabsf(S.xz - 50.5f) <= tol);
+  assert(fabsf(S.yz - 60.6f) <= tol);
 }
 
-static void test_evolve_fluid(void)
-{
+static void test_evolve_fluid(void) {
   struct part p = {0};
-  p.strength_data.dS_dt.xx = 1.f;
-  p.strength_data.dS_dt.yy = 2.f;
-  p.strength_data.dS_dt.zz = 3.f;
-  p.strength_data.dS_dt.xy = 4.f;
-  p.strength_data.dS_dt.xz = 5.f;
-  p.strength_data.dS_dt.yz = 6.f;
+  p.strength_data.dS_dt.xx = 1.f;  p.strength_data.dS_dt.yy = 2.f;  p.strength_data.dS_dt.zz = 3.f;
+  p.strength_data.dS_dt.xy = 4.f;  p.strength_data.dS_dt.xz = 5.f;  p.strength_data.dS_dt.yz = 6.f;
   struct sym_matrix S = {0};
-  S.xx = 10.f;
-  S.yy = 20.f;
-  S.zz = 30.f;
-  S.xy = 40.f;
-  S.xz = 50.f;
-  S.yz = 60.f;
+  S.xx = 10.f;  S.yy = 20.f;  S.zz = 30.f;
+  S.xy = 40.f;  S.xz = 50.f;  S.yz = 60.f;
 
   stress_tensor_evolve_deviatoric_stress_tensor(&S, &p, mat_phase_fluid, 0.1f);
 
-  assert(within_tol(S.xx, 0.f, 1e-6f));
-  assert(within_tol(S.yy, 0.f, 1e-6f));
-  assert(within_tol(S.zz, 0.f, 1e-6f));
-  assert(within_tol(S.xy, 0.f, 1e-6f));
-  assert(within_tol(S.xz, 0.f, 1e-6f));
-  assert(within_tol(S.yz, 0.f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(S.xx) <= tol);
+  assert(fabsf(S.yy) <= tol);
+  assert(fabsf(S.zz) <= tol);
+  assert(fabsf(S.xy) <= tol);
+  assert(fabsf(S.xz) <= tol);
+  assert(fabsf(S.yz) <= tol);
 }
 
-static void test_first_init(void)
-{
+static void test_first_init(void) {
   struct part p = {0};
   struct xpart xp = {0};
 
   strength_first_init_part_stress_tensor(&p, &xp);
 
-  assert(within_tol(p.strength_data.deviatoric_stress_tensor.xx, 0.f, 1e-6f));
-  assert(within_tol(p.strength_data.deviatoric_stress_tensor.yy, 0.f, 1e-6f));
-  assert(within_tol(p.strength_data.deviatoric_stress_tensor.zz, 0.f, 1e-6f));
-  assert(within_tol(p.strength_data.deviatoric_stress_tensor.xy, 0.f, 1e-6f));
-  assert(within_tol(p.strength_data.deviatoric_stress_tensor.xz, 0.f, 1e-6f));
-  assert(within_tol(p.strength_data.deviatoric_stress_tensor.yz, 0.f, 1e-6f));
-  assert(within_tol(xp.strength_data.deviatoric_stress_tensor_full.xx, 0.f, 1e-6f));
-  assert(within_tol(xp.strength_data.deviatoric_stress_tensor_full.yy, 0.f, 1e-6f));
-  assert(within_tol(xp.strength_data.deviatoric_stress_tensor_full.zz, 0.f, 1e-6f));
-  assert(within_tol(xp.strength_data.deviatoric_stress_tensor_full.xy, 0.f, 1e-6f));
-  assert(within_tol(xp.strength_data.deviatoric_stress_tensor_full.xz, 0.f, 1e-6f));
-  assert(within_tol(xp.strength_data.deviatoric_stress_tensor_full.yz, 0.f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(p.strength_data.deviatoric_stress_tensor.xx) <= tol);
+  assert(fabsf(p.strength_data.deviatoric_stress_tensor.yy) <= tol);
+  assert(fabsf(p.strength_data.deviatoric_stress_tensor.zz) <= tol);
+  assert(fabsf(p.strength_data.deviatoric_stress_tensor.xy) <= tol);
+  assert(fabsf(p.strength_data.deviatoric_stress_tensor.xz) <= tol);
+  assert(fabsf(p.strength_data.deviatoric_stress_tensor.yz) <= tol);
+  assert(fabsf(xp.strength_data.deviatoric_stress_tensor_full.xx) <= tol);
+  assert(fabsf(xp.strength_data.deviatoric_stress_tensor_full.yy) <= tol);
+  assert(fabsf(xp.strength_data.deviatoric_stress_tensor_full.zz) <= tol);
+  assert(fabsf(xp.strength_data.deviatoric_stress_tensor_full.xy) <= tol);
+  assert(fabsf(xp.strength_data.deviatoric_stress_tensor_full.xz) <= tol);
+  assert(fabsf(xp.strength_data.deviatoric_stress_tensor_full.yz) <= tol);
 }
 
-int main(void)
-{
+int main(void) {
   test_compute_timestep_reduction();
   test_compute_timestep_zero_rate();
   test_wave_speed();
