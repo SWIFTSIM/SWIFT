@@ -41,18 +41,29 @@
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_stress_tensor(
     float *dt_cfl, const struct part *restrict p, const struct hydro_props *restrict hydro_properties) {
 
-  const float elastic_timestep_factor = hydro_properties->CFL_condition; // ### Set as same as CFL factor for now. Treat this similarly to CFL
-  const float S_norm = norm_sym_matrix(&p->strength_data.deviatoric_stress_tensor);
-  const float norm_dS_dt = norm_sym_matrix(&p->strength_data.dS_dt);
   const float shear_mod = material_shear_mod(p->mat_id);
-
-  /* Scale of S has floor of floor_factor * shear_mod to avoid zero timesteps when S is small */
-  // ### probably make this floor a .yml parameter
+  const float elastic_timestep_factor = hydro_properties->CFL_condition; // ### Set as same as CFL factor for now. Treat this similarly to CFL
   const float floor_factor = 1e-2f; // Arbitrary factor to set the floor for S relative to mu.
-  const float S_scale = fmaxf(S_norm, floor_factor * shear_mod);
 
-  if (norm_dS_dt > 0.f) {
-    const float dt_elastic = elastic_timestep_factor * S_scale / norm_dS_dt;
+  /* Find element with max |S| / |dS/dt| */
+  float ratio_max = 0.f;
+  for (int i = 0; i < 6; i++) {
+    const float S  = fabsf(p->strength_data.deviatoric_stress_tensor.elements[i]);
+    const float dS_dt = fabsf(p->strength_data.dS_dt.elements[i]);
+
+    /*Apply floor to S to avoid zero timesteps when S is small */
+    const float S_floored = fmaxf(S, floor_factor * shear_mod);
+
+    if (dS_dt > 0.f) {
+      const float ratio = S_floored / dS_dt;
+      if (ratio > ratio_max) {
+        ratio_max = ratio;
+      }
+    }
+  }
+
+  if (ratio_max > 0.f) {
+    const float dt_elastic = elastic_timestep_factor * ratio_max;
     if (dt_elastic < *dt_cfl) {
       *dt_cfl = dt_elastic;
     }
