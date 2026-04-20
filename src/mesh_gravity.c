@@ -887,7 +887,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, const stru
 
 #ifdef HAVE_FFTW
 
-  //const double r_s = mesh->r_s;
+  const double r_s = mesh->r_s;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int* local_cells = s->local_cells_top;
@@ -964,9 +964,8 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, const stru
   }
 
   if (MG) { //Assume n=1 for now
-    int uniform_test = 0;
-    int particle_test = 0;
-    int sine_wave = 1;
+    int test = 2; //1 = uniform density 2 = point mass  3 = sine wave
+    if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
     double m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
 
     struct MG_variables MG_var;
@@ -975,111 +974,125 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, const stru
     MG_var.fR0 = -1e-4;
     MG_var.n = 1;
     MG_var.a3_inv = (1./(MG_var.a*MG_var.a*MG_var.a));
-    MG_var.Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
+    //MG_var.Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
+    MG_var.Omega_ratio = 0.;
     MG_var.R = (3.*m*m*(MG_var.a3_inv + 4.*(MG_var.Omega_ratio)));
     MG_var.c = s->e->physical_constants->const_speed_light_c;
     MG_var.G = s->e->physical_constants->const_newton_G;
     MG_var.normalisation = 1.;
     MG_var.h = cosmo->h;
     MG_var.m = m;
-    MG_var.sine_wave = 0;
+    MG_var.overdensity = 0; //Do we know the overdensity instead of the density?
+    message("The relevant parameters are G = %E, c = %E, R = %E and L_cell = %E", MG_var.G, MG_var.c, MG_var.R, s->dim[0]/128.);
     //message("Set normalisation to %lf", MG_var.normalisation);
 
     double fR_evo = ((MG_var.a3_inv + 4. * MG_var.Omega_ratio)/(1. + 4. * MG_var.Omega_ratio));
     MG_var.fR_correction = fR_evo * fR_evo;
-
-    if (uniform_test) { //Change the density field to homogeneous
-      double density_mean = 0.;
-      for (int i=0; i<N*N*N; i++) {
-        density_mean += rho[i]/(N*N*N);
-      }
-      for (int i=0; i<N*N*N; i++) {
-        rho[i] = density_mean;
-      }
-    }
-    else if (particle_test) {
-      double mean_density = 11.5;
-      int cdim[3] = {N,N,N};
-      for (int i=0; i<N; i++) {
-        for (int j=0; j<N; j++) {
-          for (int k=0; k<N; k++) {
-            if (i==N/2 && j==N/2 && k==N/2) continue;
-            rho[cell_getid(cdim, i, j, k)] = mean_density * (1. - 1e-4);
+    int cdim[3] = {N,N,N};
+    /* Are we testing? */
+    switch (test) {
+      case 1:
+        /* Change the density field to homogeneous */
+        message("Testing the f(R) calculation with a uniform density field.");
+        double density_mean = 0.;
+        for (int i=0; i<N*N*N; i++) {
+          density_mean += rho[i]/(N*N*N);
+        }
+        for (int i=0; i<N*N*N; i++) {
+          rho[i] = density_mean;
+        }
+        break;
+      case 2:
+        /* Change the density field to represent a single particle at the centre of the box */
+        message("Testing the f(R) calculation with a point mass.");
+        double mean_density = 1000.;
+        for (int i=0; i<N; i++) {
+          for (int j=0; j<N; j++) {
+            for (int k=0; k<N; k++) {
+              if (i==N/2 && j==N/2 && k==N/2) continue;
+              rho[cell_getid(cdim, i, j, k)] = mean_density * (1. - 1e-4);
+            }
           }
         }
-      }
-      rho[cell_getid(cdim, N/2, N/2, N/2)] = mean_density * (1. + 1e-4*(N*N*N-1.));
-    }
-    else if (sine_wave) {
-      MG_var.sine_wave = 1;
-      double *x_values = NULL;
-      x_values = (double*)malloc(sizeof(double) * 1000);
-      if (x_values == NULL){
-        error("Error allocating memory for the residual array.");
-      }
-      memuse_log_allocation("theoretical.x", x, 1, sizeof(double)*1000);
-
-      for (int i=0; i<1000; i++) {
-        x_values[i] = (s->dim[0]/1000.) * (double) i;
-      }
-
-      double *theoretical_values = NULL;
-      theoretical_values = (double*)malloc(sizeof(double) * 1000);
-      if (theoretical_values == NULL){
-        error("Error allocating memory for the residual array.");
-      }
-      memuse_log_allocation("theoretical.values", theoretical_values, 1, sizeof(double)*1000);
-
-      FILE *density_peak_export;
-      density_peak_export = fopen("/data1/vandervlugt/PythonFiles/FAS_test/sine_wave/density_assigned.txt", "w");
-      double fR_mod = -1e-4;
-      //double mean_density = 11.5;
-      double fac = s->dim[0]/N;
-      int cdim[3] = {N,N,N};
-      for (int i=0; i<N; i++) {
-        for (int j=0; j<N; j++) {
-          for (int k=0; k<N; k++) {
-            double x_dist = ((double) i) * fac;
-            rho[cell_getid(cdim, i, j, k)] = peak_overdensity(&MG_var, x_dist, fR_mod, s->dim[0]);
-            //fprintf(density_peak_export, "%E %E \n", rho[cell_getid(cdim, i, j, k)], x_dist);
-
+        rho[cell_getid(cdim, N/2, N/2, N/2)] = mean_density * (1. + 1e-4*(N*N*N-1.));
+        MG_var.overdensity = 1;
+        break;
+      case 3:
+        /* Change the density field to represent a 1D sinusoid in the box */
+        message("Testing the f(R) calculation with a 1D sine wave.");
+        double fR_mod = -1e-4;
+        double fac = s->dim[0]/N;
+        for (int i=0; i<N; i++) {
+          for (int j=0; j<N; j++) {
+            for (int k=0; k<N; k++) {
+              double x_dist = ((double) i) * fac;
+              rho[cell_getid(cdim, i, j, k)] = peak_overdensity(&MG_var, x_dist, fR_mod, s->dim[0]);
+            }
           }
         }
-      }
-      double found_mean = 0.;
-      for (int i=0; i<N*N*N; i++) {
-        found_mean += (rho[i])/(N*N*N);
-      }
-      message("we found the mean assigned overdensity %lf", found_mean);
-      sleep(5);
-      fclose(density_peak_export);
-      message("Done exporting");
-
-      MG_var.fR0 = 2. * fR_mod;
+        MG_var.fR0 = 2. * fR_mod;
+        MG_var.overdensity = 1;
     }
     
     message("Going to compute f(R)");
     int N_min = 32;
+    int export = 0; 
     double *field_contribution = NULL;
     field_contribution = (double*)calloc(N * N * N, sizeof(double));
     if (field_contribution == NULL)
       error("Error allocating memory for the density mesh.");
     memuse_log_allocation("mesh.fR", field_contribution, 1,
                           sizeof(double) * N * N * N);
-    space_get_fR_contribution(s, rho, field_contribution, &MG_var, N_min, N); //field_contribution is u
-    //We still need to convert: fR = mean(fR(a)) * exp(u)
-    //Then \delta R = mean(R(a))(sqrt(mean(fR(a))/fR) - 1)
+    space_get_fR_contribution(s, rho, field_contribution, &MG_var, N_min, N); 
+
+    if (export) {
+      FILE *export_rho_eff;
+      export_rho_eff = fopen("/data1/vandervlugt/PythonFiles/FAS_test/rho_eff_128.txt", "w");
+      double *rho_eff = NULL;
+      rho_eff = (double*)calloc(N * N * N, sizeof(double));
+      if (rho_eff == NULL)
+        error("Error allocating memory for the effective density mesh.");
+      memuse_log_allocation("mesh.fReff", rho_eff, 1,
+                            sizeof(double) * N * N * N);
+      for (int i=0; i<N*N*N; i++) {
+        rho_eff[i] = (1./3.) * rho[i] - (MG_var.R/(24.*M_PI*MG_var.G)) * (exp(-(1./2.)*MG_var.normalisation*field_contribution[i])-1.);
+        fprintf(export_rho_eff, "%E \n", rho_eff[i]);
+      }
+      fclose(export_rho_eff);
+      free(rho_eff);
+    }
+
+  FILE *export_delta_fR;
+  export_delta_fR = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/fR_128.txt_e-4", "w");
+  double fR_evo_new = ((1.+4.*MG_var.Omega_ratio)/(MG_var.a3_inv + 4.*MG_var.Omega_ratio));
+  double *delta_fR = NULL;
+  delta_fR = (double*)calloc(N * N * N, sizeof(double));
+  if (delta_fR == NULL)
+    error("Error allocating memory for the effective density mesh.");
+  memuse_log_allocation("mesh.fReff", delta_fR, 1,
+                        sizeof(double) * N * N * N);
+  for (int i=0; i<N; i++) {
+    for (int j=0; j<N; j++) {
+      for (int k=0; k<N; k++) {
+        double dx = ((double) i) * (s->dim[0]/N);
+        double dy = ((double) j) * (s->dim[0]/N);
+        double dz = ((double) k) * (s->dim[0]/N);
+        double r = sqrt(dx*dx + dy*dy + dz*dz);
+        delta_fR[cell_getid(cdim, i,j,k)] = MG_var.fR0 * fR_evo_new *fR_evo_new*(exp(MG_var.normalisation*field_contribution[cell_getid(cdim, i,j,k)])-1.);
+        if (r<13) fprintf(export_delta_fR, "%E %lf \n", delta_fR[cell_getid(cdim, i,j,k)], r);
+      }
+    }
+  }
+  fclose(export_delta_fR);
+  free(delta_fR);
+
     double sum = 0.;
     for (int i=0; i<N*N*N; i++) {
-      //Actually the following equation: \delta\rho_eff = 1/3 \delta\rho - 1/(24*pi*G)\delta R
       rho[i] *= (4./3.);
-      if (cosmo->Omega_b != 0 || cosmo->Omega_cdm != 0) {
-        rho[i] += 1/(6.*MG_var.G) * MG_var.R * (1. - exp(-(1./2.)*field_contribution[i]));
-        sum += fabs(1/(6.*MG_var.G) * MG_var.R * (1. - exp(-(1./2.)*field_contribution[i])));
-      }
-      else error("Calculating Modified Gravity but no matter present!");
+      rho[i] += MG_var.R/(24.*M_PI*MG_var.G) * (1. - exp(-(1./2.)*MG_var.normalisation*field_contribution[i]));
+      sum += fabs(MG_var.R/(24.*M_PI*MG_var.G) * (1. - exp(-(1./2.)*MG_var.normalisation*field_contribution[i])));
     }
-    message("The total added effective density is %E", sum*1e8);
+    message("The total added effective density is %E", sum);
   }
 
   if (verbose)
@@ -1127,12 +1140,8 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, const stru
 
   tic = getticks();
 
-  message("Calling this");
-  const int deconvolve = 0;
-  const int discrete_symbol = 1;
-
-  double r_s = 0.0;
-  message("We have the values deconvolve = %d, discrete_symbol = %d and r_s = %lf", deconvolve, discrete_symbol, r_s);
+  const int deconvolve = 1;
+  const int discrete_symbol = 0;
 
   /* Now de-convolve the CIC kernel and apply the Green function */
   mesh_apply_Green_function(tp, frho, /*slice_offset=*/0, /*slice_width=*/N,

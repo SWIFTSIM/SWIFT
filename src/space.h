@@ -627,10 +627,10 @@ double get_residual_fR(const double *phi, const double *rho, struct MG_variables
 double get_derivative(double *phi, struct MG_variables *MG, int cdim[3], int nbs[6], int i, int j, int k, double delta);
 void perform_red_black_sweep_fR(double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
 void apply_multigrid_fR(const double *rho, double *pot, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
-void FAS_recursive(double *phi, const double *residual, struct MG_variables *MG, const double *mean_density, int cdim[3], double delta, const int N_stop, const int N_start, int *depth);
-double get_residual_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
-void perform_red_black_sweep_coarser(double *coarser_solution, const double *coarser_residual, const double *coarser_equation, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
-void get_residual_array_coarser(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, double *residual_array, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+void FAS_recursive(double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth);
+double get_residual_coarser(const double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
+void perform_red_black_sweep_coarser(double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
+void get_residual_array_coarser(const double *coarser_solution, const double *restricted_residual, const double *restricted_solution, double *coarser_residual, struct MG_variables *MG, int cdim[3], double delta);
 void get_residual_array_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double *residual_array, double delta);
 void apply_NGS_Poisson(const double *rho, double *phi, int cdim[3], double mean_density, double box_size);
 void perform_red_black_sweep_NGS(double *pot, const double *rho, int cdim[3], double multiplier, double delta);
