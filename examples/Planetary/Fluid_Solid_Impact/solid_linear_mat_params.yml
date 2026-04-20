@@ -1,0 +1,14 @@
+# Material parameters -- linear EoS for rubber cylinders
+
+# General properties
+Material:
+    state_type:    1               # Base phase state: fluid=0, solid=1, variable=2
+
+# General material strength parameters
+Strength:
+    shear_mod:      1e9     # Shear modulus (Pa)
+
+# Specific material-strength schemes
+ArtificialStress:
+    n:             4
+    epsilon:       0.2
