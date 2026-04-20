@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 
@@ -49,28 +50,24 @@ static void sym_matrix_compute_eigenvalues(float out[3], struct sym_matrix stres
 #define STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
 #include "../../src/strength/strength_damage.h"
 
-static int within_tol(float a, float b, float tol) {
-    const float scale = fmaxf(fabsf(a), fabsf(b));
-    return fabsf(a - b) <= tol * scale;
-}
-
 
 /* Test getters and setters */
 static void test_getters_setters(void) {
     struct part p = {0};
-    struct xpart xp = {0};
+    struct xpart xp = {0};                                    
+    const float tol = 1e-6f;
 
     p.strength_data.tensile_damage = 0.3f;
     xp.strength_data.tensile_damage_full = 0.5f;
 
-    assert(within_tol(damage_get_tensile_damage(&p), 0.3f, 1e-6f));
-    assert(within_tol(damage_get_tensile_damage_full(&xp), 0.5f, 1e-6f));
+    assert(fabsf(damage_get_tensile_damage(&p) - 0.3f) <= tol);
+    assert(fabsf(damage_get_tensile_damage_full(&xp) - 0.5f) <= tol);
 
     damage_set_tensile_damage(&p, 0.8f);
     damage_set_tensile_damage_full(&xp, 0.9f);
 
-    assert(within_tol(p.strength_data.tensile_damage, 0.8f, 1e-6f));
-    assert(within_tol(xp.strength_data.tensile_damage_full, 0.9f, 1e-6f));
+    assert(fabsf(p.strength_data.tensile_damage - 0.8f) <= tol);
+    assert(fabsf(xp.strength_data.tensile_damage_full - 0.9f) <= tol);
 }
 
 /* Test compute_cbrtD_dt with zero flaws */
@@ -85,12 +82,13 @@ static void test_compute_cbrtD_dt_zero_flaws(void) {
     damage_tensile_compute_cbrtD_dt(&cbrtD_dt, &activated_flaws, 0, p.strength_data.activation_thresholds,
                                     stress, 0, 1.f, 1.f, 0.f);
 
-    /* No flaws so no damage accumulation */
-    assert(within_tol(cbrtD_dt, 0.f, 1e-6f));
+    /* No flaws so no damage accumulation */                                    
+    const float tol = 1e-6f;
+    assert(fabsf(cbrtD_dt) <= tol);
     assert(activated_flaws == 0);
 }
 
-/* Test compute_cbrtD_dt with flaws but compressive stress (max principal ≤ 0) */
+/* Test compute_cbrtD_dt with flaws but compressive stress */
 static void test_compute_cbrtD_dt_compression_stress(void) {
     struct part p = {0};
     p.strength_data.number_of_flaws = 3;
@@ -107,8 +105,9 @@ static void test_compute_cbrtD_dt_compression_stress(void) {
     damage_tensile_compute_cbrtD_dt(&cbrtD_dt, &activated_flaws, p.strength_data.number_of_flaws,
                                     p.strength_data.activation_thresholds, stress, 0, 1.f, 1.f, 0.f);
 
-    /* Compressive stress so no damage accumulation even though flaws exist */
-    assert(within_tol(cbrtD_dt, 0.f, 1e-6f));
+    /* Compressive stress so no damage accumulation even though flaws exist */                                    
+    const float tol = 1e-6f;
+    assert(fabsf(cbrtD_dt) <= tol);
     assert(activated_flaws == 0);
 }
 
@@ -139,21 +138,22 @@ static void test_apply_timestep(void) {
     const int activated_flaws = 8;
     const int number_of_flaws = 1000;
     const float dt = 0.1f;
-    const float cbrtD_dt = 1.f;
+    const float cbrtD_dt = 1.f;                                    
+    const float tol = 1e-6f;
 
     /* First timestep should increase but remain below max */
     damage_tensile_apply_timestep_to_tensile_damage(&tensile_damage, cbrtD_dt, activated_flaws, number_of_flaws, dt);
     float max_damage = (float)activated_flaws / (float)number_of_flaws; // = 0.008. See B&A99 for correction of cbrt placement here
-    assert(within_tol(tensile_damage, 0.001f, 1e-6f));     // 0.1 * 1.f = 0.1 increase in cbrt(damage), so damage increases by 0.1^3 = 0.001
+    assert(fabsf(tensile_damage - 0.001f) <= tol);     // 0.1 * 1.f = 0.1 increase in cbrt(damage), so damage increases by 0.1^3 = 0.001
     assert(tensile_damage < max_damage); // still below max
 
     /* Second timestep cumulative is exactly max value */
     damage_tensile_apply_timestep_to_tensile_damage(&tensile_damage, cbrtD_dt, activated_flaws, number_of_flaws, dt);
-    assert(within_tol(tensile_damage, max_damage, 1e-6f));
+    assert(fabsf(tensile_damage - max_damage) <= tol);
 
     /* Third timestep cumulative damage exceeds max, so should be capped to it */
     damage_tensile_apply_timestep_to_tensile_damage(&tensile_damage, cbrtD_dt, activated_flaws, number_of_flaws, dt);
-    assert(within_tol(tensile_damage, max_damage, 1e-6f)); // ensure capped at maximum allowed
+    assert(fabsf(tensile_damage - max_damage) <= tol); // ensure capped at maximum allowed
 }
 
 /* Test fully damaged particle */
@@ -165,8 +165,9 @@ static void test_full_damage(void) {
     const float cbrtD_dt = 1.f;
 
     damage_tensile_apply_timestep_to_tensile_damage(&tensile_damage, cbrtD_dt, activated_flaws, number_of_flaws, dt);
-    float max_damage = 1.f;  // fully damaged
-    assert(within_tol(tensile_damage, max_damage, 1e-6f));
+    float max_damage = 1.f;  // fully damaged                                    
+    const float tol = 1e-6f;
+    assert(fabsf(tensile_damage - max_damage) <= tol);
 }
 
 /* Test evolve function */

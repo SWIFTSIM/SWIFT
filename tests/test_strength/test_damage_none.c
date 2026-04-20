@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 
@@ -38,18 +39,14 @@ struct sym_matrix {
 /* Include "none" damage functions */
 #include "../../src/strength/damage/damage_none.h"
 
-static int within_tol(float a, float b, float tol) {
-  const float scale = fmaxf(fabsf(a), fabsf(b));
-  return fabsf(a - b) <= tol * scale;
-}
-
 /* Getters always return 0 */
 static void test_getters(void) {
   struct part p = {0};
   struct xpart xp = {0};
 
-  assert(within_tol(strength_get_damage(&p), 0.f, 1e-6f));
-  assert(within_tol(strength_get_damage_full(&xp), 0.f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(strength_get_damage(&p)) <= tol);
+  assert(fabsf(strength_get_damage_full(&xp)) <= tol);
 }
 
 /* Setters do nothing, fields remain unmodified */
@@ -63,8 +60,9 @@ static void test_setters(void) {
   strength_set_damage(&p, 1.f);
   strength_set_damage_full(&xp, 1.f);
 
-  assert(within_tol(p.strength_data.damage, 0.5f, 1e-6f));
-  assert(within_tol(xp.strength_data.damage_full, 0.7f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(p.strength_data.damage - 0.5f) <= tol);
+  assert(fabsf(xp.strength_data.damage_full - 0.7f) <= tol);
 }
 
 /* Damage timestep limiter does nothing */
@@ -72,7 +70,9 @@ static void test_timestep_damage(void) {
   struct part p = {0};
   float dt = 1.f;
   strength_compute_timestep_damage(&dt, &p);
-  assert(within_tol(dt, 1.f, 1e-6f));
+
+  const float tol = 1e-6f;
+  assert(fabsf(dt - 1.f) <= tol);
 }
 
 /* Stress tensor computation does nothing */
@@ -88,12 +88,13 @@ static void test_stress_tensor(void) {
   damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
 
   /* Should remain unchanged */
-  assert(within_tol(stress_tensor.xx, 0.f, 1e-6f));
-  assert(within_tol(stress_tensor.yy, 0.f, 1e-6f));
-  assert(within_tol(stress_tensor.zz, 0.f, 1e-6f));
-  assert(within_tol(stress_tensor.xy, 0.f, 1e-6f));
-  assert(within_tol(stress_tensor.xz, 0.f, 1e-6f));
-  assert(within_tol(stress_tensor.yz, 0.f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(stress_tensor.xx) <= tol);
+  assert(fabsf(stress_tensor.yy) <= tol);
+  assert(fabsf(stress_tensor.zz) <= tol);
+  assert(fabsf(stress_tensor.xy) <= tol);
+  assert(fabsf(stress_tensor.xz) <= tol);
+  assert(fabsf(stress_tensor.yz) <= tol);
 }
 
 /* Evolution functions do nothing. */
@@ -108,9 +109,10 @@ static void test_evolve_functions(void) {
   damage_kick_evolve(&p, &xp, stress, 0, 1.f, 1.f, 1.f, 1.f);
 
   /* All values remain unmodified */
-  assert(within_tol(damage, 0.3f, 1e-6f));
-  assert(within_tol(tensile, 0.2f, 1e-6f));
-  assert(within_tol(shear, 0.1f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(damage - 0.3f) <= tol);
+  assert(fabsf(tensile - 0.2f) <= tol);
+  assert(fabsf(shear - 0.1f) <= tol);
 }
 
 /* Initialisation does nothing */
@@ -129,12 +131,13 @@ static void test_first_init(void) {
   strength_first_init_part_damage(&p, &xp);
 
   /* Values should remain unchanged */
-  assert(within_tol(p.strength_data.damage, 0.5f, 1e-6f));
-  assert(within_tol(p.strength_data.tensile_damage, 0.6f, 1e-6f));
-  assert(within_tol(p.strength_data.shear_damage, 0.7f, 1e-6f));
-  assert(within_tol(xp.strength_data.damage_full, 0.8f, 1e-6f));
-  assert(within_tol(xp.strength_data.tensile_damage_full, 0.9f, 1e-6f));
-  assert(within_tol(xp.strength_data.shear_damage_full, 1.0f, 1e-6f));
+  const float tol = 1e-6f;
+  assert(fabsf(p.strength_data.damage - 0.5f) <= tol);
+  assert(fabsf(p.strength_data.tensile_damage - 0.6f) <= tol);
+  assert(fabsf(p.strength_data.shear_damage - 0.7f) <= tol);
+  assert(fabsf(xp.strength_data.damage_full - 0.8f) <= tol);
+  assert(fabsf(xp.strength_data.tensile_damage_full - 0.9f) <= tol);
+  assert(fabsf(xp.strength_data.shear_damage_full - 1.0f) <= tol);
 }
 
 int main(void) {

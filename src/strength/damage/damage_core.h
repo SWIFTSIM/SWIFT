@@ -27,9 +27,7 @@
 
 #include "const.h"
 #include <float.h>
-#include "hydro_parameters.h"
 #include "math.h"
-#include "strength.h"
 
 /**
  * @brief Get damage of particle at last drift time.
@@ -242,8 +240,8 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
   const float tensile_damage = damage_get_tensile_damage(p);
   const float damage = strength_get_damage(p);
 
-  /* If full tensile damage, no accumulation. */
-  if (tensile_damage == 1.f) {
+  /* If full tensile damage or full damage, no accumulation. */
+  if (tensile_damage == 1.f || damage == 1.f) {
       p->strength_data.damage_accumulation_timescale = FLT_MAX;
       return;
   }

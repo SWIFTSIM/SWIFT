@@ -26,7 +26,6 @@
  */
 
 #include "const.h"
-#include "hydro_parameters.h"
 #include "math.h"
 
 /**
@@ -76,7 +75,7 @@ __attribute__((always_inline)) INLINE static void damage_set_tensile_damage_full
  * number of flaws, each with a corresponding activation threshold. A flaw is
  * activated if the local strain exceeds its activation threshold. Tensile
  * damage accumulates in a particle based on the number of curently-active flaws
- *  and an estimate of the crack velocity.
+ * and an estimate of the crack velocity.
  *
  * Method parameters needed in material parameter file:
  * Strength:
@@ -109,7 +108,6 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   if (damage == 1.f) {
     return;
   }
-    
 
   /* Calculate maximum principal stress. */
   float principal_stress_eigen[3];
