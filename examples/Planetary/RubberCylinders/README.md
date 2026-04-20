@@ -1,5 +1,6 @@
 ./configure --with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --enable-material-strength --with-strength-artificial-stress=basis-indp
 
+../../../swift --hydro --threads=8 --limiter cylinders.yml
 
 Units are scaled to:
 unit of length: 1 cm
