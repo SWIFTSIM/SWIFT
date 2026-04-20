@@ -37,11 +37,14 @@ InitialConditions:
   cleanup_smoothing_lengths: 1
 
 Scheduler:
-    max_top_level_cells:      250         # Maximal number of top-level cells in any dimension. The nu
+    max_top_level_cells:      250         # Maximal number of top-level cells in any dimension.
       
 EoS:
-
     planetary_use_Til_custom_0:    1
     planetary_Til_custom_0_param_file: ./Til_aluminium_eos_params.txt
     Til_custom_0_mat_params_file: ./Til_aluminium_mat_params.yml
+
+BoundaryParticles:
+    boundary_particle_max_id:        1474  # Particles with ID <= boundary_particle_max_id are treated as boundary particles.
+    enable_fixed_position:           1     # Whether or not boundary particles are fixed in place.
 

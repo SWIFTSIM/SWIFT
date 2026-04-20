@@ -1,521 +1,340 @@
-import numpy as np
 import h5py
-import sys
-
-def generate_cubic_lattice(particle_sep, side_x, side_y, side_z):
-
-    N_x = int(side_x / particle_sep)
-    N_y = int(side_y / particle_sep)
-    N_z = int(side_z / particle_sep)
-
-    A2_positions = np.zeros((N_x * N_y * N_z, 3))
-
-    for i in range(N_x):
-        for j in range(N_y):
-            for k in range(N_z):
-                index = i * N_y * N_z + j * N_z + k
-
-                x = i / float(N_x) + 1.0 / (2.0 * N_x)
-                y = j / float(N_y) + 1.0 / (2.0 * N_y)
-                z = k / float(N_z) + 1.0 / (2.0 * N_z)
-
-                A2_positions[index, 0] = x * side_x
-                A2_positions[index, 1] = y * side_y
-                A2_positions[index, 2] = z * side_z
-
-    # Adjust lattice so that 0 is in centre of x, y and at top of z
-    # This corresponds to the point of impact
-    A2_positions[:, 0] -= np.mean(A2_positions[:, 0])
-    A2_positions[:, 1] -= np.mean(A2_positions[:, 1])
-    A2_positions[:, 2] -= np.max(A2_positions[:, 2]) + 0.5 * particle_sep
-
-    return A2_positions
+import numpy as np
+from ic_config import Config
 
 
+class CubicLattice:
+    @staticmethod
+    def positions(delta: float, Lx: float, Ly: float, Lz: float) -> np.ndarray:
+        """Generate particle positions on a simple cubic lattice.
 
-def generate_highres(
-    approx_highres_width,
-    approx_highres_depth,
-    particle_sep_highres,
-    particle_sep_lowres,
-    density
-):
+        The domain is centred in x and y, with the top face at z = 0.
+        """
+        if not (
+            (np.isclose(Lx % delta, 0) or np.isclose(Lx % delta, delta))
+            and (np.isclose(Ly % delta, 0) or np.isclose(Ly % delta, delta))
+            and (np.isclose(Lz % delta, 0) or np.isclose(Lz % delta, delta))
+        ):
+            raise ValueError(
+                f"Lattice dimensions ({Lx}, {Ly}, {Lz}) must be divisible by delta ({delta})"
+            )
 
-    # Width and depth of high resolution region. Must be multiple of 2*particle_sep_lowres
-    # Add an extra 2*particle_sep_lowres so that it "rounds" up
-    highres_width = approx_highres_width - approx_highres_width%(2*particle_sep_lowres) + 2*particle_sep_lowres
-    highres_depth = approx_highres_depth - approx_highres_depth%(2*particle_sep_lowres) + 2*particle_sep_lowres
-    
-    A2_pos_highres = generate_cubic_lattice(particle_sep_highres, highres_width,
-                                                highres_width, highres_depth)
-    N_particles = len(A2_pos_highres)
-    particle_volume = (highres_width * highres_width * highres_depth) / N_particles
-    A1_m_highres = (density * particle_volume) * np.ones(N_particles)
+        # Generate coords
+        x = (np.arange(int(Lx / delta)) + 0.5) * delta - 0.5 * Lx
+        y = (np.arange(int(Ly / delta)) + 0.5) * delta - 0.5 * Ly
+        z = (np.arange(int(Lz / delta)) + 0.5) * delta - Lz
 
-    return A2_pos_highres, A1_m_highres, highres_width, highres_depth
+        X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
+        return np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
 
-
-def generate_lowres(
-    approx_surface_width,
-    approx_surface_depth,
-    highres_width,
-    highres_depth,
-    transition,
-    particle_sep_lowres,
-    particle_sep_highres,
-    density
-):
-
-    # Calculate the width of the surface. Must be whole number of partiles
-    # Approx length of low resolution region on one side of the centre
-    approx_lowres_one_side = 0.5 * (approx_surface_width - highres_width -
-                                                                2 * transition)
-    # Make multiple of particle_sep_lowres and add an extra particle_sep_lowres so that it "rounds" up
-    lowres_one_side = approx_lowres_one_side - approx_lowres_one_side%particle_sep_lowres + particle_sep_lowres
-    surface_width = 2 * lowres_one_side + 2 * transition + highres_width
-
-    # Calculate the depth of the surface. Must be whole number of partiles
-    # Approx depth of low resolution region
-    approx_lowres_depth = approx_surface_depth - highres_depth - transition
-    # Make multiple of particle_sep_lowres and add an extra particle_sep_lowres so that it "rounds" up
-    lowres_depth = approx_lowres_depth - approx_lowres_depth%particle_sep_lowres + particle_sep_lowres
-    surface_depth = lowres_depth + transition + highres_depth
-
-    # Generate full surace made up only of a low resolution region
-    A2_pos_surface = generate_cubic_lattice(particle_sep_lowres,
-                                surface_width, surface_width, surface_depth)
-    N_particles = len(A2_pos_surface)
-    particle_volume = (surface_width * surface_width * surface_depth) / N_particles
-    A1_m_surface = (density * particle_volume) * np.ones(N_particles)
-
-    # Make masks to select the low resolution region
-    mask_lowres_x = np.logical_or(
-                             A2_pos_surface[:, 0] < -(0.5 * highres_width + transition),
-                             A2_pos_surface[:, 0] > (0.5 * highres_width + transition),
-                            )
-    mask_lowres_y = np.logical_or(
-                             A2_pos_surface[:, 1] < -(0.5 * highres_width + transition),
-                             A2_pos_surface[:, 1] > (0.5 * highres_width + transition),
-                            )
-    mask_lowres_z = A2_pos_surface[:, 2] < -(highres_depth + transition)
-
-    mask_lowres = np.logical_or(mask_lowres_x, mask_lowres_y)
-    mask_lowres = np.logical_or(mask_lowres, mask_lowres_z)
-
-    # Select low region from full surface
-    A2_pos_lowres = A2_pos_surface[mask_lowres]
-    A1_m_lowres = A1_m_surface[mask_lowres]
-
-    """
-    # Slightly adjust z positions since we're shifting grid up to align with surface
-    mask = A2_pos_lowres[:, 2] < -highres_depth-transition
-    first_layer_below = np.max(A2_pos_lowres[mask, 2])
-    adjustment_needed = (-highres_depth - transition - 0.25 * (particle_sep_lowres + particle_sep_highres)) / first_layer_below
-    A2_pos_lowres[:, 2] *= adjustment_needed
-    surface_depth *= adjustment_needed
-    """
-    return A2_pos_lowres, A1_m_lowres, surface_width, surface_depth
+    @staticmethod
+    def separation(distance: float, points_per_distance: int) -> float:
+        return distance / points_per_distance
 
 
+class BCCLattice:
+    @staticmethod
+    def positions(delta: float, Lx: float, Ly: float, Lz: float) -> np.ndarray:
+        """Generate particle positions on a BCC lattice.
+
+        Constructed from two offset cubic sub-lattices, centred in the domain.
+        """
+        base = CubicLattice.positions(delta, Lx, Ly, Lz)
+        return np.vstack([base - 0.25 * delta, base + 0.25 * delta])
+
+    @staticmethod
+    def separation(distance: float, points_per_distance: int) -> float:
+        return np.cbrt(2) * distance / points_per_distance
 
 
-def generate_transition(
-    transition,
-    transition_regions,
-    highres_width,
-    highres_depth,
-    particle_sep_highres,
-    density
-):
+LATTICE_TYPES = {"cubic": CubicLattice, "bcc": BCCLattice}
 
 
-    A2_pos_transition = np.empty((0,3))
-    A1_m_transition = np.empty(0)
+class ImpactICs:
+    def __init__(self, cfg: Config):
+        self.cfg = cfg
 
+        if cfg.lattice_type not in LATTICE_TYPES:
+            raise ValueError(
+                f"Unknown lattice type '{cfg.lattice_type}'. Choose from {list(LATTICE_TYPES)}"
+            )
+        self.lattice = LATTICE_TYPES[cfg.lattice_type]
 
-    last_transition_distance = 0
-    for i in range(transition_regions):
+        self.deltas = self._compute_deltas()
+        self.widths, self.depths = self._compute_region_dimensions()
 
-        if i > 0:
-            # For most regions, halve the size
-            current_transition_distance = last_transition_distance + transition / 2**(transition_regions - i)
-        else:
-            # For last region, add an extra region of the same size
-            current_transition_distance = last_transition_distance + 2 * transition / 2**(transition_regions - i)
-        current_particle_sep =  2**(i + 1) * particle_sep_highres
+        self.surface: dict | None = None
+        self.impactor: dict | None = None
 
-        current_width = highres_width + 2 * current_transition_distance
-        current_depth = highres_depth + current_transition_distance
+    def _compute_deltas(self) -> list[float]:
+        """Particle separations for each resolution level, doubling each time."""
+        delta0 = self.lattice.separation(
+            self.cfg.impactor_radius, self.cfg.particles_per_projectile_radius
+        )
+        return [delta0 * 2**i for i in range(self.cfg.N_transitions + 1)]
 
-        A2_pos_current = generate_cubic_lattice(current_particle_sep, current_width,
-                                                    current_width, current_depth)
+    def _compute_region_dimensions(self) -> tuple[list[float], list[float]]:
+        """Compute width and depth of each nested resolution region."""
+        cfg = self.cfg
 
-        N_particles = len(A2_pos_current)
-        particle_volume = (current_width * current_width * current_depth) / N_particles
-        A1_m_current = (density * particle_volume) * np.ones(N_particles)
+        if len(self.deltas) == 1:
+            if (
+                cfg.approx_highres_width != cfg.approx_surface_width
+                or cfg.approx_highres_depth != cfg.approx_surface_depth
+            ):
+                raise ValueError(
+                    "With no transition layers, highres and surface dimensions must match"
+                )
 
-        mask_current_x = np.logical_or(
-                                    A2_pos_current[:, 0] < -(0.5 * highres_width + last_transition_distance),
-                                    A2_pos_current[:, 0] > (0.5 * highres_width + last_transition_distance),
-                                )
-        mask_current_y = np.logical_or(
-                                 A2_pos_current[:, 1] < -(0.5 * highres_width + last_transition_distance),
-                                 A2_pos_current[:, 1] > (0.5 * highres_width + last_transition_distance),
-                                )
-        mask_current_z = A2_pos_current[:, 2] < -(highres_depth + last_transition_distance)
+        # Innermost high-res region. Round up to nearest delta of low res region
+        widths = [
+            np.ceil(cfg.approx_highres_width / (2 * self.deltas[-1]))
+            * (2 * self.deltas[-1])
+        ]
+        depths = [
+            np.ceil(cfg.approx_highres_depth / (self.deltas[-1])) * (self.deltas[-1])
+        ]
 
-        mask_current = np.logical_or(mask_current_x, mask_current_y)
-        mask_current = np.logical_or(mask_current, mask_current_z)
+        # Add intermediate transition layers if needed
+        if len(self.deltas) > 2:
+            for i in range(1, len(self.deltas) - 1):
+                # Rounding up the full region (including inner regions) to nearest delta of low res region
+                width = np.ceil(
+                    (
+                        2 * cfg.approx_intermediate_layer_width * self.deltas[i]
+                        + widths[i - 1]
+                    )
+                    / (2 * self.deltas[i + 1])
+                ) * (
+                    2 * self.deltas[i + 1]
+                )  # 2 here because we add particles on both sides of the domain
+                depth = (
+                    np.ceil(
+                        (
+                            cfg.approx_intermediate_layer_width * self.deltas[i]
+                            + depths[i - 1]
+                        )
+                        / self.deltas[i + 1]
+                    )
+                    * self.deltas[i + 1]
+                )
+                widths.append(width)
+                depths.append(depth)
 
-        A2_pos_transition = np.append(A2_pos_transition, A2_pos_current[mask_current], axis=0)
-        A1_m_transition = np.append(A1_m_transition, A1_m_current[mask_current])
+        # Add final region to reach surface dimensions if needed. Round up to nearest delta
+        if len(self.deltas) > 1:
+            width = np.ceil(cfg.approx_surface_width / (2 * self.deltas[-1])) * (
+                2 * self.deltas[-1]
+            )
+            depth = (
+                np.ceil(cfg.approx_surface_depth / (self.deltas[-1]))
+                * (self.deltas[-1])
+            )
+            widths.append(width)
+            depths.append(depth)
 
-        last_transition_distance = current_transition_distance
+        return widths, depths
 
-    return A2_pos_transition, A1_m_transition
+    def _generate_region(
+        self,
+        delta: float,
+        Lx: float,
+        Ly: float,
+        Lz: float,
+        density: float,
+        mat_id: int,
+        u: float,
+    ) -> dict:
+        """Fill a box with lattice particles."""
+        pos = self.lattice.positions(delta, Lx, Ly, Lz)
+        N = len(pos)
+        particle_mass = density * (Lx * Ly * Lz) / N
+        return {
+            "pos": pos,
+            "vel": np.zeros_like(pos),
+            "m": np.full(N, particle_mass),
+            "rho": np.full(N, density),
+            "u": np.full(N, u),
+            "mat": np.full(N, mat_id),
+        }
 
-def generate_surface(
-    particle_sep_highres,
-    particle_sep_lowres,
-    approx_surface_width,
-    approx_surface_depth,
-    approx_highres_width,
-    approx_highres_depth,
-    transition,
-    mat_id_surface,
-    density_surface,
-    u_surface,
-):
+    def _mask_inner_region(
+        self, region: dict, inner_width: float, inner_depth: float
+    ) -> dict:
+        """Remove particles that lie inside the next-finer resolution region."""
+        pos = region["pos"]
+        inside = (
+            (np.abs(pos[:, 0]) <= 0.5 * inner_width)
+            & (np.abs(pos[:, 1]) <= 0.5 * inner_width)
+            & (pos[:, 2] >= -inner_depth)
+        )
+        return {k: v[~inside] for k, v in region.items()}
 
-        (
-            A2_pos_highres,
-            A1_m_highres,
-            highres_width,
-            highres_depth
-        ) = generate_highres(
-            approx_highres_width,
-            approx_highres_depth,
-            particle_sep_highres,
-            particle_sep_lowres,
-            density_surface
+    def make_surface(self):
+        """Build the multi-resolution target surface."""
+        cfg = self.cfg
+
+        # Initialise empty surface dict
+        self.surface = {
+            "pos": np.empty((0, 3)),
+            "vel": np.empty((0, 3)),
+            "m": np.empty(0),
+            "rho": np.empty(0),
+            "u": np.empty(0),
+            "mat": np.empty(0),
+        }
+
+        # Generate each resolution region and concatenate to surface, masking out inner regions to avoid overlap
+        for i, delta in enumerate(self.deltas):
+            w, d = self.widths[i], self.depths[i]
+            region = self._generate_region(
+                delta, w, w, d, cfg.density_surface, cfg.mat_id_surface, cfg.u_surface
+            )
+
+            if i > 0:
+                region = self._mask_inner_region(
+                    region, self.widths[i - 1], self.depths[i - 1]
+                )
+
+            for key in self.surface:
+                self.surface[key] = np.concatenate([self.surface[key], region[key]])
+
+    def make_impactor(self) -> None:
+        """Build the spherical impactor above the surface impact point."""
+        cfg = self.cfg
+        delta = self.deltas[0]
+        r = cfg.impactor_radius
+
+        # Fill a cube then carve out a sphere
+        cube_width = np.ceil(3 * r / delta) * delta
+        cube = self._generate_region(
+            delta,
+            cube_width,
+            cube_width,
+            cube_width,
+            cfg.density_impactor,
+            cfg.mat_id_impactor,
+            cfg.u_impactor,
         )
 
-        # check whether a transition region is needed
-        lowres_power_of_2 = int(np.log2(particle_sep_lowres / particle_sep_highres))
-        transition_regions = lowres_power_of_2 - 1
+        # Shift cube so it is centred at the origin in z (already is in x, y)
+        cube["pos"][:, 2] += 1.5 * r
 
-        if transition_regions > 0:
-            (
-                A2_pos_lowres,
-                A1_m_lowres,
-                surface_width,
-                surface_depth
-            ) = generate_lowres(
-                approx_surface_width,
-                approx_surface_depth,
-                highres_width,
-                highres_depth,
-                transition,
-                particle_sep_lowres,
-                particle_sep_highres,
-                density_surface
-            )
+        # Make impactor symmetric if BCC
+        if cfg.lattice_type == "bcc":
+            cube["pos"] += 0.25 * delta
 
-            (
-                A2_pos_transition,
-                A1_m_transition
-            ) = generate_transition(
-                transition,
-                transition_regions,
-                highres_width,
-                highres_depth,
-                particle_sep_highres,
-                density_surface
-            )
+        inside_sphere = np.linalg.norm(cube["pos"], axis=1) <= r
+        self.impactor = {k: v[inside_sphere] for k, v in cube.items()}
 
-            A2_pos_surface = np.concatenate([A2_pos_highres, A2_pos_transition])
-            A2_pos_surface = np.concatenate([A2_pos_surface, A2_pos_lowres])
+        # Place impactor with offset
+        self.impactor["pos"][:, 0] += cfg.impactor_x_offset
+        self.impactor["pos"][:, 2] += r + cfg.impactor_z_offset
 
-            A1_m_surface = np.concatenate([A1_m_highres, A1_m_transition])
-            A1_m_surface = np.concatenate([A1_m_surface, A1_m_lowres])
-
-        else:
-            (
-                A2_pos_lowres,
-                A1_m_lowres,
-                surface_width,
-                surface_depth
-            ) = generate_lowres(
-                approx_surface_width,
-                approx_surface_depth,
-                highres_width,
-                highres_depth,
-                0,
-                particle_sep_lowres,
-                particle_sep_highres,
-                density_surface
-            )
-
-            A2_pos_surface = np.concatenate([A2_pos_highres, A2_pos_lowres])
-            A1_m_surface = np.concatenate([A1_m_highres, A1_m_lowres])
-
-        numPart_surface = len(A1_m_surface)
-        A2_vel_surface = np.zeros_like(A2_pos_surface)
-        A1_rho_surface = density_surface * np.ones(numPart_surface)
-        A1_u_surface = u_surface * np.ones(numPart_surface)
-        A1_mat_id_surface = mat_id_surface * np.ones(numPart_surface)
-
-        return (
-            A2_pos_surface,
-            A2_vel_surface,
-            A1_m_surface,
-            A1_rho_surface,
-            A1_u_surface,
-            A1_mat_id_surface,
-            surface_width,
-            surface_depth,
-            highres_width,
-            highres_depth,
+        # Apply impact velocity (angle measured from horizontal)
+        self.impactor["vel"][:, 0] = -cfg.impactor_speed * np.cos(
+            cfg.impactor_angle_rad
+        )
+        self.impactor["vel"][:, 2] = -cfg.impactor_speed * np.sin(
+            cfg.impactor_angle_rad
         )
 
-def generate_impactor(
-    impactor_radius,
-    impactor_angle,
-    impactor_speed,
-    particle_sep_highres,
-    mat_id_impactor,
-    density_impactor,
-    u_impactor,
-):
+    def make_ics(self) -> None:
+        """Generate both surface and impactor."""
+        print("Generating surface...")
+        self.make_surface()
+        print("Generating impactor...")
+        self.make_impactor()
 
-    A2_pos_cube = generate_cubic_lattice(particle_sep_highres, 3 * impactor_radius,
-                                                3 * impactor_radius, 3 * impactor_radius)
-    A2_pos_cube[:, 2] += 1.5 * impactor_radius
-    N_particles = len(A2_pos_cube)
-    particle_volume = (3 * impactor_radius)**3 / N_particles
-    A1_m_cube = (density_impactor * particle_volume) * np.ones(N_particles)
+    def save(self, filename: str) -> None:
+        """Write initial conditions to an HDF5 file in SWIFT/GADGET format."""
+        if self.surface is None or self.impactor is None:
+            raise RuntimeError("Call make_ics() before save()")
 
+        surface_width = self.widths[-1]
+        surface_depth = self.depths[-1]
 
-    # Now select particles in impactor
-    A1_r_cube = np.sqrt(A2_pos_cube[:, 0]**2 + A2_pos_cube[:, 1]**2 + A2_pos_cube[:, 2]**2)
-    mask_sphere = A1_r_cube <= impactor_radius
-    A2_pos_impactor = A2_pos_cube[mask_sphere]
-    A1_m_impactor = A1_m_cube[mask_sphere]
+        # Combine surface and impactor particle data into single arrays for output
+        pos = np.concatenate([self.surface["pos"], self.impactor["pos"]])
+        vel = np.concatenate([self.surface["vel"], self.impactor["vel"]])
+        m = np.concatenate([self.surface["m"], self.impactor["m"]])
+        rho = np.concatenate([self.surface["rho"], self.impactor["rho"]])
+        u = np.concatenate([self.surface["u"], self.impactor["u"]])
+        mat = np.concatenate([self.surface["mat"], self.impactor["mat"]])
+        h = np.cbrt(m / rho)
 
-    # Move above surface
-    A2_pos_impactor[:, 0] += 2 * impactor_radius  * np.cos(np.deg2rad(impactor_angle))
-    A2_pos_impactor[:, 2] += 2 * impactor_radius  * np.sin(np.deg2rad(impactor_angle))
+        # Shift coordinates so positive
+        pos[:, 0] += 0.5 * surface_width
+        pos[:, 1] += 0.5 * surface_width
+        pos[:, 2] += surface_depth
 
-    # Generate velocities
-    A2_vel_impactor = np.zeros_like(A2_pos_impactor)
-    A2_vel_impactor[:,0] = -impactor_speed * np.cos(np.deg2rad(impactor_angle))
-    A2_vel_impactor[:,2] = -impactor_speed * np.sin(np.deg2rad(impactor_angle))
+        # Particle IDs: boundary particles get the lowest IDs for SWIFT
+        N_surface = len(self.surface["pos"])
+        surface_pos = pos[:N_surface]
+        boundary_thickness = 0.05 * surface_depth
 
-    numPart_impactor = len(A1_m_impactor)
-    A1_rho_impactor = density_impactor * np.ones(numPart_impactor)
-    A1_u_impactor = u_impactor * np.ones(numPart_impactor)
-    A1_mat_id_impactor = mat_id_impactor * np.ones(numPart_impactor)
+        is_boundary = (
+            (surface_pos[:, 2] <= surface_pos[:, 2].min() + boundary_thickness)
+            | (surface_pos[:, 0] <= surface_pos[:, 0].min() + boundary_thickness)
+            | (surface_pos[:, 0] >= surface_pos[:, 0].max() - boundary_thickness)
+            | (surface_pos[:, 1] <= surface_pos[:, 1].min() + boundary_thickness)
+            | (surface_pos[:, 1] >= surface_pos[:, 1].max() - boundary_thickness)
+        )
+        N_boundary = is_boundary.sum()
+        N_interior = N_surface - N_boundary
 
-    return (
-        A2_pos_impactor,
-        A2_vel_impactor,
-        A1_m_impactor,
-        A1_rho_impactor,
-        A1_u_impactor,
-        A1_mat_id_impactor,
-    )
+        ids = np.empty(len(pos))
+        ids[:N_surface][is_boundary] = np.arange(1, N_boundary + 1)
+        ids[:N_surface][~is_boundary] = np.arange(
+            N_boundary + 1, N_boundary + N_interior + 1
+        )
+        ids[N_surface:] = np.arange(N_surface + 1, len(pos) + 1)
 
+        N_part = len(pos)
+        print(f"\nTotal particles : {len(pos):,}")
+        print(f"Boundary particles : {N_boundary:,}")
 
-def write_out_ics(
-    filename,
-    impactor_radius,
-    impactor_angle,
-    impactor_speed,
-    particle_sep_highres,
-    particle_sep_lowres,
-    approx_surface_width,
-    approx_surface_depth,
-    approx_highres_width,
-    approx_highres_depth,
-    transition,
-    mat_id_surface,
-    density_surface,
-    u_surface,
-    mat_id_impactor,
-    density_impactor,
-    u_impactor,
-):
+        with h5py.File(filename, "w") as f:
+            # Header
+            grp = f.create_group("/Header")
+            grp.attrs["BoxSize"] = [
+                surface_width,
+                surface_width,
+                surface_depth + cfg.box_height,
+            ]
+            grp.attrs["NumPart_Total"] = [N_part, 0, 0, 0, 0, 0]
+            grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
+            grp.attrs["NumPart_ThisFile"] = [N_part, 0, 0, 0, 0, 0]
+            grp.attrs["Time"] = 0.0
+            grp.attrs["NumFilesPerSnapshot"] = 1
+            grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            grp.attrs["Flag_Entropy_ICs"] = 0
+            grp.attrs["Dimension"] = 3
 
-    (
-        A2_pos_surface,
-        A2_vel_surface,
-        A1_m_surface,
-        A1_rho_surface,
-        A1_u_surface,
-        A1_mat_id_surface,
-        surface_width,
-        surface_depth,
-        highres_width,
-        highres_depth,
-    ) = generate_surface(
-        particle_sep_highres,
-        particle_sep_lowres,
-        approx_surface_width,
-        approx_surface_depth,
-        approx_highres_width,
-        approx_highres_depth,
-        transition,
-        mat_id_surface,
-        density_surface,
-        u_surface
-    )
+            # Units
+            grp = f.create_group("/Units")
+            grp.attrs["Unit length in cgs (U_L)"] = 100.0
+            grp.attrs["Unit mass in cgs (U_M)"] = 1000.0
+            grp.attrs["Unit time in cgs (U_t)"] = 1.0
+            grp.attrs["Unit current in cgs (U_I)"] = 1.0
+            grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
-    (
-        A2_pos_impactor,
-        A2_vel_impactor,
-        A1_m_impactor,
-        A1_rho_impactor,
-        A1_u_impactor,
-        A1_mat_id_impactor,
-    ) = generate_impactor(
-        impactor_radius,
-        impactor_angle,
-        impactor_speed,
-        particle_sep_highres,
-        mat_id_impactor,
-        density_impactor,
-        u_impactor,
-    )
-    
-    # impactor offset to crudely centre crater in high resolution region
-    offset = 2 * impactor_radius * np.cos(np.deg2rad(impactor_angle))
-    A2_pos_impactor[:, 0] += offset
+            # Particle group
+            grp = f.create_group("/PartType0")
+            grp.create_dataset("Coordinates", data=pos, dtype="d")
+            grp.create_dataset("Velocities", data=vel, dtype="f")
+            grp.create_dataset("Masses", data=m, dtype="f")
+            grp.create_dataset("Density", data=rho, dtype="f")
+            grp.create_dataset("SmoothingLength", data=h, dtype="f")
+            grp.create_dataset("InternalEnergy", data=u, dtype="f")
+            grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+            grp.create_dataset("MaterialIDs", data=mat, dtype="i")
 
-    coordinates = np.concatenate([A2_pos_surface, A2_pos_impactor])
-    coordinates[:, 0] += 0.5 * surface_width
-    coordinates[:, 1] += 0.5 * surface_width
-    coordinates[:, 2] += surface_depth
-
-    
-    velocities = np.concatenate([A2_vel_surface, A2_vel_impactor])
-    masses = np.concatenate([A1_m_surface, A1_m_impactor])
-    densities = np.concatenate([A1_rho_surface, A1_rho_impactor])
-    smoothinglengths = np.cbrt(masses / densities)
-    internal_energies = np.concatenate([A1_u_surface, A1_u_impactor])
-    materials = np.concatenate([A1_mat_id_surface, A1_mat_id_impactor])
-
-    # Set particle IDs so that boundary particles have the lowest IDs
-    boundary = 0.05 * surface_depth
-    A1_ids_surface = np.empty(len(A2_pos_surface))
-    # Masks for boundary particles
-    mask_boundary = A2_pos_surface[:,2] <= np.min(A2_pos_surface[:,2]) + boundary
-    mask_boundary = np.logical_or(mask_boundary, A2_pos_surface[:,0] <= np.min(A2_pos_surface[:,0]) + boundary)
-    mask_boundary = np.logical_or(mask_boundary, A2_pos_surface[:,0] >= np.max(A2_pos_surface[:,0]) - boundary)
-    mask_boundary = np.logical_or(mask_boundary, A2_pos_surface[:,1] <= np.min(A2_pos_surface[:,1]) + boundary)
-    mask_boundary = np.logical_or(mask_boundary, A2_pos_surface[:,1] >= np.max(A2_pos_surface[:,1]) - boundary)
-
-    # Set IDs
-    A1_ids_surface[mask_boundary] = np.linspace(1, len(A1_ids_surface[mask_boundary]), len(A1_ids_surface[mask_boundary]))
-    A1_ids_surface[~mask_boundary] = np.linspace(len(A1_ids_surface[mask_boundary]) + 1, len(A1_ids_surface), len(A1_ids_surface[~mask_boundary]))
-    A1_ids_impactor = np.linspace(len(A2_pos_surface) + 1, len(A2_pos_impactor)+len(A2_pos_surface), len(A2_pos_impactor))
-    particle_ids = np.concatenate([A1_ids_surface, A1_ids_impactor])
-
-    boundary_particles = len(A1_ids_surface[mask_boundary])
-    print(
-    "You need to compile the code with " "--enable-boundary-particles=%i" % boundary_particles
-    )
-
-    numPart = coordinates.shape[0]
-    print(numPart)
-    pos = coordinates
-    v = velocities
-    m =  masses
-    rho =  densities
-    h = smoothinglengths
-    u = internal_energies
-    ids = particle_ids
-    mat = materials
-    file = h5py.File(filename, "w")
-
-    # Header
-    grp = file.create_group("/Header")
-    grp.attrs["BoxSize"] = [surface_width, surface_width, 2 * surface_depth]
-    grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFilesPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = 0
-    grp.attrs["Dimension"] = 3
-
-    # Units
-    grp = file.create_group("/Units")
-    grp.attrs["Unit length in cgs (U_L)"] = 100.0
-    grp.attrs["Unit mass in cgs (U_M)"] = 1000.0
-    grp.attrs["Unit time in cgs (U_t)"] = 1.0
-    grp.attrs["Unit current in cgs (U_I)"] = 1.0
-    grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-    # Particle group
-    grp = file.create_group("/PartType0")
-    grp.create_dataset("Coordinates", data=pos, dtype="d")
-    grp.create_dataset("Velocities", data=v, dtype="f")
-    grp.create_dataset("Masses", data=m, dtype="f")
-    grp.create_dataset("Density", data=rho, dtype="f")
-    grp.create_dataset("SmoothingLength", data=h, dtype="f")
-    grp.create_dataset("InternalEnergy", data=u, dtype="f")
-    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-    grp.create_dataset("MaterialIDs", data=mat, dtype="i")
-
-    return
+        print(f"Saved to {filename}")
 
 
 if __name__ == "__main__":
-
-    # Parameters of impact
-    impactor_radius = 0.5e-3
-    pppr = 10
-    impactor_angle = 50
-    impactor_speed = 5e3
-    lowres_power_of_2 = 3
-
-    # Particle separation in high resolution region
-    particle_sep_highres = impactor_radius / pppr
-    # Particle separation in low resolution region
-    particle_sep_lowres = 2**lowres_power_of_2 * particle_sep_highres
-
-
-    # Surface dimensions
-    approx_surface_width = 40e-3
-    approx_surface_depth = 20e-3
-    approx_highres_width = 10e-3
-    approx_highres_depth = 2e-3
-    transition = 4 * particle_sep_lowres#2e-3
-
-    # Surface and impactor properties
-    mat_id_surface = 1000
-    density_surface = 2700
-    u_surface = 1e5
-    mat_id_impactor = 1000
-    density_impactor = 2700
-    u_impactor = 1e5
-
-    write_out_ics(filename="impact.hdf5",
-                  impactor_radius = impactor_radius,
-                  impactor_angle = impactor_angle,
-                  impactor_speed = impactor_speed,
-                  particle_sep_highres = particle_sep_highres,
-                  particle_sep_lowres = particle_sep_lowres,
-                  approx_surface_width = approx_surface_width,
-                  approx_surface_depth = approx_surface_depth,
-                  approx_highres_width = approx_highres_width,
-                  approx_highres_depth = approx_highres_depth,
-                  transition = transition,
-                  mat_id_surface = mat_id_surface,
-                  density_surface = density_surface,
-                  u_surface = u_surface,
-                  mat_id_impactor = mat_id_impactor,
-                  density_impactor = density_impactor,
-                  u_impactor = u_impactor,
-    )
+    cfg = Config()
+    ics = ImpactICs(cfg)
+    ics.make_ics()
+    ics.save("impact.hdf5")

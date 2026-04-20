@@ -1,1 +1,3 @@
-./configure --with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --enable-material-strength --with-strength-artificial-stress=basis-indp --with-strength-yield-stress=collins --enable-strength-yield-stress-weakening-thermal --enable-strength-yield-stress-weakening-density --enable-boundary-particles=84708
+./configure --with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --enable-material-strength --with-strength-artificial-stress=basis-indp --with-strength-yield-stress=collins --enable-strength-yield-stress-weakening-thermal --enable-strength-yield-stress-weakening-density --with-forcing=boundary-particles
+
+../../../swift --hydro --threads=8 --limiter impact.yml
