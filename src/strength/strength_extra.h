@@ -27,7 +27,6 @@
  */
 
 #include "math.h"
-#include "symmetric_matrix.h"
 
 /**
  * @brief Sets the values of additional particle extra properties at a

@@ -1,13 +1,21 @@
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 
 #define INLINE inline
 
+/* Dummy sym_matrix. */
+struct sym_matrix {
+  union {
+    struct { float elements[6]; };
+    struct { float xx, yy, zz, xy, xz, yz; };
+  };
+};
+
 #include "../../src/strength/strength_utilities.h"
 
 /* Test J2 invariant for a deviatoric tensor. */
-static void test_J2_deviatoric(void)
-{
+static void test_J2_deviatoric(void) {
   struct sym_matrix M = {0};
 
   /* Arbitrary components with zero trace */
@@ -25,15 +33,13 @@ static void test_J2_deviatoric(void)
 
   const float J2 = strength_compute_deviatoric_sym_matrix_J_2(M);
 
-  const float tol = 1e-6f * expected;
-
+  const float tol = 1e-6f;
   assert(fabsf(J2 - expected) <= tol);
 }
 
 
 /* Test J2 invariant for hydrostatic tensor equals zero. */
-static void test_J2_hydrostatic(void)
-{
+static void test_J2_hydrostatic(void) {
   struct sym_matrix M = {0};
 
   const float p = 10.f;
@@ -43,15 +49,13 @@ static void test_J2_hydrostatic(void)
 
   const float J2 = strength_compute_sym_matrix_J_2(M);
 
-  const float tol = 1e-6f * p * p;
-
+  const float tol = 1e-6f ;
   assert(fabsf(J2) <= tol);
 }
 
 
 /* Test consistency between J2 from full tensor and J2 from deviatoric. */
-static void test_J2_consistency(void)
-{
+static void test_J2_consistency(void) {
   struct sym_matrix M = {0};
 
   /* Arbitrary symmetric tensor with non-zero trace */
@@ -75,15 +79,13 @@ static void test_J2_consistency(void)
   /* Compute deviatoric J2 */
   const float J2_dev = strength_compute_deviatoric_sym_matrix_J_2(M_dev);
 
-  const float tol = 1e-6f * fabsf(J2_full);
-
+  const float tol = 1e-6f;
   assert(fabsf(J2_full - J2_dev) <= tol);
 }
 
 
 /* Test strain-rate tensor. */
-static void test_strain_rate_tensor(void)
-{
+static void test_strain_rate_tensor(void) {
   float dv[3][3] = {
     {1.f, 2.f, 4.f},
     {4.f, 2.f, 6.f},
@@ -113,8 +115,7 @@ static void test_strain_rate_tensor(void)
 
 
 /* Test rotation-rate tensor. */
-static void test_rotation_rate_tensor(void)
-{
+static void test_rotation_rate_tensor(void) {
   float dv[3][3] = {
     {1.f, 2.f, 4.f},
     {4.f, 2.f, 6.f},
@@ -144,8 +145,7 @@ static void test_rotation_rate_tensor(void)
 
 
 /* Test rotation-rate tensor vanishes for symmetric dv. */
-static void test_rotation_rate_tensor_symmetric_input(void)
-{
+static void test_rotation_rate_tensor_symmetric_input(void) {
   float dv[3][3] = {
     {1.f, 2.f, 3.f},
     {2.f, 4.f, 5.f},
@@ -166,8 +166,7 @@ static void test_rotation_rate_tensor_symmetric_input(void)
 
 
 /* Test rotation term M*R - R*M for identity M gives zero. */
-static void test_rotation_term_identity_M(void)
-{
+static void test_rotation_term_identity_M(void) {
   float R[3][3] = {
     { 0.f, -1.f,  0.f},
     { 1.f,  0.f,  0.f},
@@ -192,8 +191,7 @@ static void test_rotation_term_identity_M(void)
 }
 
 /* Test that rigid-body rotation generates no new stress. */
-static void test_rigid_body_rotation_no_stress_generation(void)
-{
+static void test_rigid_body_rotation_no_stress_generation(void) {
     /* Initial stress set to zero everywhere */
     float S[3][3] = {
         {0.f, 0.f, 0.f},
@@ -236,8 +234,7 @@ static void test_rigid_body_rotation_no_stress_generation(void)
 }
 
 /* Test stress rotation to detect sign errors */
-static void test_stress_rotation_45deg(void)
-{
+static void test_stress_rotation_45deg(void) {
     /* Initial stress */
     float S[3][3] = {
         {1.f, 0.f, 0.f},
@@ -284,8 +281,7 @@ static void test_stress_rotation_45deg(void)
 }
 
 /* Test that rotating stress by 2*pi returns to the original. */
-static void test_stress_rotation_full_circle(void)
-{
+static void test_stress_rotation_full_circle(void) {
   float S[3][3] = {
     {2.f, 1.f, 0.f},
     {1.f, 0.f, 0.f},
@@ -329,8 +325,7 @@ static void test_stress_rotation_full_circle(void)
 
 
 /* Test strain tensor evolution. */
-static void test_evolve_strain_tensor(void)
-{
+static void test_evolve_strain_tensor(void) {
   float strain_tensor[3][3] = {
     {1.f,  0.5f, 0.2f},
     {0.5f, 2.f,  0.3f},
@@ -375,8 +370,7 @@ static void test_evolve_strain_tensor(void)
 
 
 /* Test rotation tensor evolution preserves orthogonality. */
-static void test_rotation_tensor_orthogonality(void)
-{
+static void test_rotation_tensor_orthogonality(void) {
   float R[3][3] = {0};
   float rotation_rate[3][3] = {0};
 
@@ -411,8 +405,7 @@ static void test_rotation_tensor_orthogonality(void)
 
 
 /* Test rotation tensor evolution of an arbitrary tensor. */
-static void test_rotation_of_arbitrary_tensor(void)
-{
+static void test_rotation_of_arbitrary_tensor(void) {
   float R[3][3] = {0};
   float rotation_rate[3][3] = {0};
 
@@ -492,8 +485,7 @@ static void test_rotation_of_arbitrary_tensor(void)
 
 
 /* Test rotation tensor evolution does nothing for zero theta. */
-static void test_rotation_evolution_zero_theta(void)
-{
+static void test_rotation_evolution_zero_theta(void) {
   float R[3][3] = {
     { 0.f,  -1.5f,  0.3f},
     { 1.5f,  0.f,  -0.7f},
@@ -521,8 +513,7 @@ static void test_rotation_evolution_zero_theta(void)
 }
 
 /* Test that rotating by theta then -theta returns to identity. */
-static void test_rotation_tensor_round_trip(void)
-{
+static void test_rotation_tensor_round_trip(void) {
   float R[3][3] = {
     { 0.f,  -1.5f,  0.3f},
     { 1.5f,  0.f,  -0.7f},
@@ -562,8 +553,7 @@ static void test_rotation_tensor_round_trip(void)
 
 
 /* Test rotation direction: z-axis rotation by pi/2 maps x->y, y->-x. */
-static void test_rotation_tensor_direction(void)
-{
+static void test_rotation_tensor_direction(void) {
   float R[3][3] = {0};
   for (int i = 0; i < 3; i++) {
     R[i][i] = 1.f;
@@ -595,8 +585,7 @@ static void test_rotation_tensor_direction(void)
 
 
 
-int main(void)
-{
+int main(void) {
   test_J2_deviatoric();
   test_J2_hydrostatic();
   test_J2_consistency();
