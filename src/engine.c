@@ -2602,6 +2602,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
                    e->cooling_func, e->s, e->time);
 
+  /* Update the forcing terms */
+  forcing_update(e->forcing_terms, e->time_old);
+
   if (e->policy & engine_policy_rt)
     rt_props_update(e->rt_props, e->internal_units, e->cosmology);
 
@@ -2961,7 +2964,12 @@ int engine_step(struct engine *e) {
 #endif
 
     /* Write the star formation information to the file */
-    if (e->policy & engine_policy_star_formation) {
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
 
       star_formation_logger_write_to_log_file(e->sfh_logger, e->time,
                                               e->cosmology->a, e->cosmology->z,
@@ -3064,6 +3072,9 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Update the forcing terms */
+  forcing_update(e->forcing_terms, e->time_old);
 
   /* Update the rt properties */
   if (e->policy & engine_policy_rt)
@@ -3775,7 +3786,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
-    const struct forcing_terms *forcing_terms,
+    struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -4042,7 +4053,12 @@ void engine_init(
   }
 
   /* Initialize the star formation history structure */
-  if (e->policy & engine_policy_star_formation) {
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_star_formation_sink = with_sinks && with_stars;
+
+  if (with_star_formation || with_star_formation_sink) {
     star_formation_logger_accumulator_init(&e->sfh);
   }
 
@@ -4356,7 +4372,12 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     fclose(e->file_timesteps);
     fclose(e->file_stats);
 
-    if (e->policy & engine_policy_star_formation) {
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
       fclose(e->sfh_logger);
     }
 

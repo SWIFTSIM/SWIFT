@@ -541,6 +541,9 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
 
     cell_set_sink_h_depth(&sinks[k], c);
 
+    /* Collect SFR from the sinks after rebuild */
+    star_formation_logger_log_inactive_sink(&sinks[k], &c->stars.sfh);
+
     /* Reset x_diff */
     sinks[k].x_diff[0] = 0.f;
     sinks[k].x_diff[1] = 0.f;
