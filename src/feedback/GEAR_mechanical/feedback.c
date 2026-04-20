@@ -591,7 +591,7 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
 
   /* Compute the cooling radius */
   const float second_part =
-      p_terminal * p_terminal / (p_SN_initial * p_SN_initial) - 1;
+      p_terminal * p_terminal / (p_SN_initial * p_SN_initial) - 1.0;
   const float r_cool =
       pow(3.0 * m_ej * second_part / (4.0 * M_PI * mean_density), 1.0 / 3.0);
 
@@ -625,7 +625,7 @@ feedback_compute_momentum_correction_factor_for_multiple_sn_events(
       p_old[0] * p_old[0] + p_old[1] * p_old[1] + p_old[2] * p_old[2];
   const double p_tilde_norm_2 =
       p_old_norm_2 * dm / old_mass +
-      2 * (old_mass + dm) * xp->feedback_data.delta_E_kin;
+      2.0 * (old_mass + dm) * xp->feedback_data.delta_E_kin;
 
   const double dp[3] = {xp->feedback_data.delta_p[0],
                         xp->feedback_data.delta_p[1],
