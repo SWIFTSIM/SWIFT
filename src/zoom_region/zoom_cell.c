@@ -23,6 +23,12 @@
 
 /* Standard includes */
 #include <float.h>
+#include <stdlib.h>
+
+/* MPI headers */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
 
 /* Local includes */
 #include "cell.h"
@@ -91,6 +97,47 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     if (zoom_cell_overlaps_zoom_region(&cells[cid], s) == 0)
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
+
+#ifdef WITH_MPI
+  /* Check all ranks identify the same void cells. */
+
+  int *void_flags = (int *)malloc(ncells * sizeof(int));
+  int *void_flags_min = (int *)malloc(ncells * sizeof(int));
+  int *void_flags_max = (int *)malloc(ncells * sizeof(int));
+  if (void_flags == NULL || void_flags_min == NULL || void_flags_max == NULL)
+    error("Failed to allocate void flag buffers.");
+
+  /* Get the local void cells. */
+  for (int i = 0; i < ncells; i++) {
+    const struct cell *c = &cells[offset + i];
+    void_flags[i] = (c->subtype == cell_subtype_void);
+  }
+
+  /* Collect the minimum flag value on each cell over all ranks. */
+  int res = MPI_Allreduce(void_flags, void_flags_min, ncells, MPI_INT, MPI_MIN,
+                          MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) error("Failed to allreduce void flags (MIN).");
+
+  /* Collect the maximum flag value on each cell over all ranks. */
+  res = MPI_Allreduce(void_flags, void_flags_max, ncells, MPI_INT, MPI_MAX,
+                      MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) error("Failed to allreduce void flags (MAX).");
+
+  /* Any difference between the minima and maxima means at least one rank has
+   * classified the cell differently. */
+  for (int i = 0; i < ncells; i++) {
+    if (void_flags_min[i] != void_flags_max[i]) {
+      error(
+          "Disagreement on void-cell classification for background cell "
+          "(cid=%d, local=%d, min=%d, max=%d)",
+          offset + i, void_flags[i], void_flags_min[i], void_flags_max[i]);
+    }
+  }
+
+  free(void_flags);
+  free(void_flags_min);
+  free(void_flags_max);
+#endif
 #endif
 }
 
@@ -215,6 +262,51 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
   if (verbose)
     message("%i cells neighbour the zoom region",
             zoom_props->nr_neighbour_cells);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+  /* Check all ranks identify the same neighbouring cells. */
+
+  int *neighbour_flags = (int *)malloc(ncells * sizeof(int));
+  int *neighbour_flags_min = (int *)malloc(ncells * sizeof(int));
+  int *neighbour_flags_max = (int *)malloc(ncells * sizeof(int));
+  if (neighbour_flags == NULL || neighbour_flags_min == NULL ||
+      neighbour_flags_max == NULL)
+    error("Failed to allocate neighbour flag buffers.");
+
+  /* Get the local neighbour cells. */
+  for (int i = 0; i < ncells; i++) {
+    const struct cell *c = &cells[offset + i];
+    neighbour_flags[i] = (c->subtype == cell_subtype_neighbour);
+  }
+
+  /* Collect the minimum flag value on each cell over all ranks. */
+  int res = MPI_Allreduce(neighbour_flags, neighbour_flags_min, ncells, MPI_INT,
+                          MPI_MIN, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) error("Failed to allreduce neighbour flags (MIN).");
+
+  /* Collect the maximum flag value on each cell over all ranks. */
+  res = MPI_Allreduce(neighbour_flags, neighbour_flags_max, ncells, MPI_INT,
+                      MPI_MAX, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) error("Failed to allreduce neighbour flags (MAX).");
+
+  /* Any difference between the minima and maxima means at least one rank has
+   * classified the cell differently. */
+  for (int i = 0; i < ncells; i++) {
+    if (neighbour_flags_min[i] != neighbour_flags_max[i]) {
+      error(
+          "Disagreement on neighbouring-cell classification for background "
+          "cell (cid=%d, local=%d, min=%d, max=%d)",
+          offset + i, neighbour_flags[i], neighbour_flags_min[i],
+          neighbour_flags_max[i]);
+    }
+  }
+
+  free(neighbour_flags);
+  free(neighbour_flags_min);
+  free(neighbour_flags_max);
+#endif
+#endif
 }
 
 /**

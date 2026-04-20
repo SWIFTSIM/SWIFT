@@ -804,8 +804,19 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
         continue;
       }
 
-      /* Otherwise recurse as a pair interaction */
-      runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s);
+      /* Check which cell contains c to decide how to recurse. */
+      const int cpj_contains_c = (cpj == c || cell_contains_progeny(cpj, c));
+      const int cpk_contains_c = (cpk == c || cell_contains_progeny(cpk, c));
+
+      /* Recurse as a pair interaction, ensuring we always pass the cell
+       * containing c as the first argument after c. */
+      if (cpj_contains_c) {
+        runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s);
+      } else if (cpk_contains_c) {
+        runner_count_mesh_interactions_zoom_pair_recursive(c, cpk, cpj, s);
+      } else {
+        runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s);
+      }
     }
   }
 }
