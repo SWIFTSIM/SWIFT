@@ -332,6 +332,9 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
     double dx_ij_plus[3], double dx_ij_minus[3], double *scalar_weight_j) {
 
   const float r = sqrtf(r2);
+  const float r_inv = 1.0 / r;
+  const float hi_inv = 1.0f / hi;
+  const float hj_inv = 1.0f / hj;
 
   /* Kernel derivatives evaluation */
   const float u_ij = r / hi;
@@ -341,21 +344,21 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
   kernel_deval(u_ij, &dummy_W, &dW_ij_dr_j);
   kernel_deval(u_jj, &dummy_W, &dW_jj_dr_j);
 
-  dW_ij_dr_j *= pow_dimension_plus_one(1.0 / hi); /* 1/h_i^(d+1) */
-  dW_jj_dr_j *= pow_dimension_plus_one(1.0 / hj); /* 1/h_j^(d+1) */
+  dW_ij_dr_j *= pow_dimension_plus_one(hi_inv); /* 1/h_i^(d+1) */
+  dW_jj_dr_j *= pow_dimension_plus_one(hj_inv); /* 1/h_j^(d+1) */
 
   /* Ensure they are positive (norm of the gradient) */
   dW_ij_dr_j = fabsf(dW_ij_dr_j);
   dW_jj_dr_j = fabsf(dW_jj_dr_j);
 
   /* Compute the projection vectors (scale-factors cancel out) */
-  dx_ij_plus[0] = max(dx[0], 0.0) / r;
-  dx_ij_plus[1] = max(dx[1], 0.0) / r;
-  dx_ij_plus[2] = max(dx[2], 0.0) / r;
+  dx_ij_plus[0] = max(dx[0], 0.0) * r_inv;
+  dx_ij_plus[1] = max(dx[1], 0.0) * r_inv;
+  dx_ij_plus[2] = max(dx[2], 0.0) * r_inv;
 
-  dx_ij_minus[0] = min(dx[0], 0.0) / r;
-  dx_ij_minus[1] = min(dx[1], 0.0) / r;
-  dx_ij_minus[2] = min(dx[2], 0.0) / r;
+  dx_ij_minus[0] = min(dx[0], 0.0) * r_inv;
+  dx_ij_minus[1] = min(dx[1], 0.0) * r_inv;
+  dx_ij_minus[2] = min(dx[2], 0.0) * r_inv;
 
   /* This is simply dx/r, i.e the unit vector of dx (scale-factors cancel out)
    */
@@ -423,77 +426,34 @@ feedback_compute_vector_weight_non_normalized(
   feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj, dx_ij_plus,
                                  dx_ij_minus, &scalar_weight_j);
 
-  /* Now, that we have accumulated the sums, we can compute the f_plus and
-     f_minus */
-  double value_plus[3] = {1 + (si->feedback_data.f_sum_minus_term[0] *
-                               si->feedback_data.f_sum_minus_term[0]) /
-                                  (si->feedback_data.f_sum_plus_term[0] *
-                                   si->feedback_data.f_sum_plus_term[0]),
-                          1 + (si->feedback_data.f_sum_minus_term[1] *
-                               si->feedback_data.f_sum_minus_term[1]) /
-                                  (si->feedback_data.f_sum_plus_term[1] *
-                                   si->feedback_data.f_sum_plus_term[1]),
-                          1 + (si->feedback_data.f_sum_minus_term[2] *
-                               si->feedback_data.f_sum_minus_term[2]) /
-                                  (si->feedback_data.f_sum_plus_term[2] *
-                                   si->feedback_data.f_sum_plus_term[2])};
+  for (int i = 0; i < 3; i++) {
+    /* Compute f_plus */
+    const double sum_plus = si->feedback_data.f_sum_plus_term[i];
+    const double sum_minus = si->feedback_data.f_sum_minus_term[i];
+    const double num_plus = sum_minus*sum_minus;
+    const double denom_plus = sum_plus*sum_plus;
 
-  /* In rare cases, f_sum_plus_term can have a component that is 0. Since
-     division by 0 will give inf and further operations will give NaNs, give a
-     large number to represent inf. */
-  if (isinf(value_plus[0])) {
-    value_plus[0] = FLT_MAX;
-  }
-  if (isinf(value_plus[1])) {
-    value_plus[1] = FLT_MAX;
-  }
-  if (isinf(value_plus[2])) {
-    value_plus[2] = FLT_MAX;
-  }
+    /* In rare cases, f_sum_plus_term can have a component that is 0. Since
+       division by 0 will give inf and further operations will give NaNs, give a
+       large number to represent inf, but not the maximal double number to
+       avoid overflow in later operations. */
+    const double value_plus =
+	(denom_plus == 0.0) ? FLT_MAX : 1.0 + num_plus / denom_plus;
+    f_plus_i[i] = sqrt(0.5 * value_plus);
 
-  /* Compute the vector factor f_plus */
-  f_plus_i[0] = sqrt(0.5 * value_plus[0]);
-  f_plus_i[1] = sqrt(0.5 * value_plus[1]);
-  f_plus_i[2] = sqrt(0.5 * value_plus[2]);
+    /* Compute f_minus */
+    const double num_minus = sum_plus*sum_plus;
+    const double denom_minus = sum_minus*sum_minus;
 
-  double value_minus[3] = {1 + (si->feedback_data.f_sum_plus_term[0] *
-                                si->feedback_data.f_sum_plus_term[0]) /
-                                   (si->feedback_data.f_sum_minus_term[0] *
-                                    si->feedback_data.f_sum_minus_term[0]),
-                           1 + (si->feedback_data.f_sum_plus_term[1] *
-                                si->feedback_data.f_sum_plus_term[1]) /
-                                   (si->feedback_data.f_sum_minus_term[1] *
-                                    si->feedback_data.f_sum_minus_term[1]),
-                           1 + (si->feedback_data.f_sum_plus_term[2] *
-                                si->feedback_data.f_sum_plus_term[2]) /
-                                   (si->feedback_data.f_sum_minus_term[2] *
-                                    si->feedback_data.f_sum_minus_term[2])};
+    /* Same comment as above */
+    const double value_minus =
+	(denom_minus == 0.0) ? FLT_MAX : 1.0 + num_minus / denom_minus;
+    f_minus_i[i] = sqrt(0.5 * value_minus);
 
-  /* In rare cases, f_sum_minus_term can have a component that is 0. Since
-     division by 0 will give inf and further operations will give NaNs, give a
-     large number to represent inf. */
-  if (isinf(value_minus[0])) {
-    value_minus[0] = FLT_MAX;
+    /* Now compute the vector weight (non-normalized) */
+    w_j[i] = scalar_weight_j *
+      (dx_ij_plus[i] * f_plus_i[i] + dx_ij_minus[i] * f_minus_i[i]);
   }
-  if (isinf(value_minus[1])) {
-    value_minus[1] = FLT_MAX;
-  }
-  if (isinf(value_minus[2])) {
-    value_minus[2] = FLT_MAX;
-  }
-
-  /* Compute the vector factor f_minus */
-  f_minus_i[0] = sqrt(0.5 * value_minus[0]);
-  f_minus_i[1] = sqrt(0.5 * value_minus[1]);
-  f_minus_i[2] = sqrt(0.5 * value_minus[2]);
-
-  /* Now compute the vector weight (non-normalized) */
-  w_j[0] = scalar_weight_j *
-           (dx_ij_plus[0] * f_plus_i[0] + dx_ij_minus[0] * f_minus_i[0]);
-  w_j[1] = scalar_weight_j *
-           (dx_ij_plus[1] * f_plus_i[1] + dx_ij_minus[1] * f_minus_i[1]);
-  w_j[2] = scalar_weight_j *
-           (dx_ij_plus[2] * f_plus_i[2] + dx_ij_minus[2] * f_minus_i[2]);
 }
 
 /**
@@ -528,9 +488,10 @@ feedback_compute_vector_weight_normalized(const float r2, const float *dx,
                                                 f_plus_i, f_minus_i, w_j);
 
   /* The normalized vector weight */
-  w_j_bar[0] = w_j[0] / si->feedback_data.enrichment_weight;
-  w_j_bar[1] = w_j[1] / si->feedback_data.enrichment_weight;
-  w_j_bar[2] = w_j[2] / si->feedback_data.enrichment_weight;
+  double enrichement_weight_inv = 1.0 / si->feedback_data.enrichment_weight;
+  for (int i = 0; i < 3; i++)  {
+    w_j_bar[i] = w_j[i] * enrichement_weight_inv;
+  }
 }
 
 /**
@@ -572,14 +533,15 @@ feedback_get_physical_SN_terminal_momentum(const struct spart *restrict sp,
   /* Get metallicity factor */
   const double Z_mean = sp->feedback_data.weighted_gas_metallicity;
   const double Z_sun = 0.0134;
+  const double Z_mean_over_Z_sun = Z_mean/Z_sun;
   double metallicity_factor = 0.0;
 
-  if (Z_mean / Z_sun < 0.01) {
+  if (Z_mean_over_Z_sun < 0.01) {
     metallicity_factor = 2;
-  } else if ((0.01 <= Z_mean / Z_sun) && (Z_mean / Z_sun <= 1)) {
-    metallicity_factor = pow(Z_mean / Z_sun, -0.18);
+  } else if ((0.01 <= Z_mean_over_Z_sun) && (Z_mean_over_Z_sun <= 1)) {
+    metallicity_factor = pow(Z_mean_over_Z_sun, -0.18);
   } else /* Z/Z_sun > 1 */ {
-    metallicity_factor = pow(Z_mean / Z_sun, -0.14);
+    metallicity_factor = pow(Z_mean_over_Z_sun, -0.14);
   }
 
   /* Get number density factor in cgs */
