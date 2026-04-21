@@ -2275,7 +2275,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 	  scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
 				  ci_nodeID);
 #endif
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
 	  scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep3,
 				  ci_nodeID);
 #endif
@@ -2291,7 +2291,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep2);
 #endif
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
 	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep3);
 #endif
 #ifdef EXTRA_STAR_LOOPS_4
@@ -2324,7 +2324,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep2,
                                   cj_nodeID);
 #endif
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
 	  scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep3,
 				  cj_nodeID);
 #endif
@@ -2340,7 +2340,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep2);
 #endif
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
 	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep3);
 #endif
 #ifdef EXTRA_STAR_LOOPS_4

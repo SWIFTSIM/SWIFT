@@ -88,7 +88,7 @@
 
 #endif /* EXTRA_STAR_LOOPS */
 
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
 
 /* Check that we have enabled the first two loops */
 #if !defined(EXTRA_STAR_LOOPS)
@@ -101,13 +101,13 @@
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
 
-#endif /* EXTRA_STAR_LOOPS_2 */
+#endif /* EXTRA_STAR_LOOPS_3 */
 
 #ifdef EXTRA_STAR_LOOPS_4
 
 /* Check that we have enabled the first three loops */
-#if !defined(EXTRA_STAR_LOOPS) || !defined(EXTRA_STAR_LOOPS_2)
-#error "Fourth-star neighbour loops require the first three neighbour loops. Enable EXTRA_STAR_LOOPS and EXTRA_STAR_LOOPS_2 in src/feedback.h."
+#if !defined(EXTRA_STAR_LOOPS) || !defined(EXTRA_STAR_LOOPS_3)
+#error "Fourth-star neighbour loops require the first three neighbour loops. Enable EXTRA_STAR_LOOPS and EXTRA_STAR_LOOPS_3 in src/feedback.h."
 #endif
 
 /* Import the stars prepare4 loop functions. */
@@ -274,7 +274,7 @@ void *runner_main(void *data) {
             runner_dosub_self_stars_prep2(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
           else if (t->subtype == task_subtype_stars_prep3)
             runner_dosub_self_stars_prep3(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
@@ -342,7 +342,7 @@ void *runner_main(void *data) {
             runner_dosub_pair_stars_prep2(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
           else if (t->subtype == task_subtype_stars_prep3)
             runner_dosub_pair_stars_prep3(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
