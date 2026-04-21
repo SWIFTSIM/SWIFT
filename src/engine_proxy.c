@@ -371,6 +371,11 @@ void engine_makeproxies(struct engine *e) {
 void engine_check_proxy_exists(const struct engine *e, const struct cell *topi,
                                const struct cell *topj, const int nodeID) {
 #ifdef WITH_MPI
+  /* Void cells in zoom runs can take part in gravity task construction but
+   * intentionally never get proxies. */
+  if (topi->subtype == cell_subtype_void || topj->subtype == cell_subtype_void)
+    return;
+
   /* Let's cross-check that we had a proxy for that cell */
   if (topi->nodeID == nodeID && topj->nodeID != engine_rank) {
 

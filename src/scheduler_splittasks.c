@@ -520,10 +520,14 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       !(cj->split || cj->subtype == cell_subtype_void)) {
     error(
         "zoom_scheduler_splittask_gravity_void_pair called with a non-split "
-        "non-void cell: ci->split=%d ci->subtype=%s cj->split=%d "
-        "cj->subtype=%s",
-        ci->split, subcellID_names[ci->subtype], cj->split,
-        subcellID_names[cj->subtype]);
+        "non-void cell: ci->split=%d ci->subtype=%s ci->depth=%d ci->nodeID=%d "
+        "ci->contains_zoom_cells=%d ci->grav.count=%d cj->split=%d "
+        "cj->subtype=%s cj->depth=%d cj->nodeID=%d cj->contains_zoom_cells=%d "
+        "cj->grav.count=%d",
+        ci->split, subcellID_names[ci->subtype], ci->depth, ci->nodeID,
+        ci->contains_zoom_cells, ci->grav.count, cj->split,
+        subcellID_names[cj->subtype], cj->depth, cj->nodeID,
+        cj->contains_zoom_cells, cj->grav.count);
   }
 
   /* Convert to a grav_mm/progeny task. The flags field encodes which progeny
@@ -555,6 +559,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
      * particles at the leaves for whatever reason). */
     if (cpi == NULL) continue;
 
+    /* Skip void progeny that do not contain any zoom cells. This can happen
+     * only when running with MPI and a void cell has no local (or proxy
+     * required) zoom progeny. */
+    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
+      continue;
+
     /* Skip any empty progeny of a void cell (void cells themselves always
      * have 0 particles but are never "empty"). */
     if (cell_is_empty_mpole(cpi)) continue;
@@ -565,6 +575,15 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Skip NULL progeny (can happen is a background cell tree has no
        * particles at the leaves for whatever reason). */
       if (cpj == NULL) continue;
+
+      /* Skip void progeny that do not contain any zoom cells. This can happen
+       * only when running with MPI and a void cell has no local (or proxy
+       * required) zoom progeny. */
+      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
+        continue;
+
+      /* Skip leaf neighbours interacting with non-useful void cells. */
+      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
 
       /* Skip any empty progeny of a void cell (void cells themselves always
        * have 0 particles but are never "empty"). */
@@ -697,6 +716,13 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
       /* Skip non-existant progeny. */
       if (ci->progeny[j] == NULL) continue;
 
+      /* Skip void progeny that do not contain any zoom cells. This can happen
+       * only when running with MPI and a void cell has no local (or proxy
+       * required) zoom progeny. */
+      if (ci->progeny[j]->subtype == cell_subtype_void &&
+          !ci->progeny[j]->contains_zoom_cells)
+        continue;
+
       /* Skip empty non-void progeny. */
       if (ci->progeny[j]->subtype != cell_subtype_void &&
           ci->progeny[j]->grav.count == 0)
@@ -706,6 +732,13 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
         /* Skip non-existant progeny. */
         if (ci->progeny[k] == NULL) continue;
+
+        /* Skip void progeny that do not contain any zoom cells. This can happen
+         * only when running with MPI and a void cell has no local (or proxy
+         * required) zoom progeny. */
+        if (ci->progeny[k]->subtype == cell_subtype_void &&
+            !ci->progeny[k]->contains_zoom_cells)
+          continue;
 
         /* Skip empty progeny. */
         if (cell_is_empty_mpole(ci->progeny[k])) continue;
