@@ -1233,7 +1233,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     /* Prep3: 1 self + 26/2 + 1 ghost */
     n1 += 15;
 #endif
-#ifdef EXTRA_STAR_LOOPS_3
+#ifdef EXTRA_STAR_LOOPS_4
     /* Prep3: 1 self + 26/2 pairs + 1 ghost */
     n1 += 15;
 #endif

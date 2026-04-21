@@ -72,7 +72,7 @@
 
 #endif /* EXTRA_STAR_LOOPS_2 */
 
-#ifdef EXTRA_STAR_LOOPS_3
+#ifdef EXTRA_STAR_LOOPS_4
 
 /* Import the stars prepare2 loop functions. */
 #define FUNCTION prep4
@@ -80,4 +80,4 @@
 #include "runner_doiact_functions_stars.h"
 #include "runner_doiact_undef.h"
 
-#endif /* EXTRA_STAR_LOOPS_3 */
+#endif /* EXTRA_STAR_LOOPS_4 */

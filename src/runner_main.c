@@ -103,7 +103,7 @@
 
 #endif /* EXTRA_STAR_LOOPS_2 */
 
-#ifdef EXTRA_STAR_LOOPS_3
+#ifdef EXTRA_STAR_LOOPS_4
 
 /* Check that we have enabled the first three loops */
 #if !defined(EXTRA_STAR_LOOPS) || !defined(EXTRA_STAR_LOOPS_2)
@@ -116,7 +116,7 @@
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
 
-#endif /* EXTRA_STAR_LOOPS_3 */
+#endif /* EXTRA_STAR_LOOPS_4 */
 
 /* Import the stars feedback loop functions. */
 #define FUNCTION feedback
@@ -279,7 +279,7 @@ void *runner_main(void *data) {
             runner_dosub_self_stars_prep3(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
-#ifdef EXTRA_STAR_LOOPS_3
+#ifdef EXTRA_STAR_LOOPS_4
           else if (t->subtype == task_subtype_stars_prep4)
             runner_dosub_self_stars_prep4(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
@@ -347,7 +347,7 @@ void *runner_main(void *data) {
             runner_dosub_pair_stars_prep3(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
-#ifdef EXTRA_STAR_LOOPS_3
+#ifdef EXTRA_STAR_LOOPS_4
           else if (t->subtype == task_subtype_stars_prep4)
             runner_dosub_pair_stars_prep4(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
