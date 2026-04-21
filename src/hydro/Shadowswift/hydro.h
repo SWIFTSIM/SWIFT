@@ -1070,6 +1070,19 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Update the particle */
     hydro_part_set_conserved_variables(p, Q);
     hydro_part_set_primitive_variables(p, W);
+
+    /* Update xp->mflux[3] to be current p->gravity.mflux so that we can
+     * access mflux^n in next timestep. See Hopkins 2015 Appendix H2 for use */
+    if (p->flux.dt > 0.0f) {
+      for (int i = 0; i < 3; i++) {
+        xp->mflux[i] = p->gravity.mflux[i];
+      }
+    } else {
+      for (int i = 0; i < 3; i++) {
+        xp->mflux[i] = 0;
+      }
+    }
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (p->conserved.mass < 0.) {
       error(
