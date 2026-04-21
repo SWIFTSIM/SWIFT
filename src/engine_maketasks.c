@@ -2239,8 +2239,11 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
   /* Get the first cell */
   struct cell *ci = &cells[cid];
 
-  /* Skip cells without gravity particles unless they are void cells. */
-  if (cell_is_empty_mpole(ci)) return;
+  /* Skip empty cells. For normal cells this is a particle-count test, but
+   * void cells need their multipoles to decide whether they matter. */
+  if ((ci->subtype == cell_subtype_void && cell_is_empty_mpole(ci)) ||
+      (ci->subtype != cell_subtype_void && cell_is_empty_counts(ci)))
+    return;
 
   /* If the cell is local build a self-interaction */
   if (ci->nodeID == nodeID) {
@@ -2285,8 +2288,12 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         /* Avoid duplicates. */
         if (cid >= cjd) continue;
 
-        /* Avoid empty cells (except voids). */
-        if (cell_is_empty_mpole(cj)) continue;
+        /* Avoid empty cells. For normal cells this is a particle-count test,
+         * but void cells need their multipoles to decide whether they matter.
+         */
+        if ((cj->subtype == cell_subtype_void && cell_is_empty_mpole(cj)) ||
+            (cj->subtype != cell_subtype_void && cell_is_empty_counts(cj)))
+          continue;
 
         /* Completely foreign pairs also get the Nigel treatment (AKA are
          * kicked out of the union/we skip them). */
