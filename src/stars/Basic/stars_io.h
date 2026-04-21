@@ -114,6 +114,22 @@ INLINE static void convert_spart_potential(const struct engine *e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_spart_tidal_tensors(const struct engine *e,
+                                               const struct spart *sp,
+                                               float *ret) {
+  if (sp->gpart != NULL)
+    gravity_get_comoving_tidal_tensor(sp->gpart, &ret[0], &ret[1], &ret[2],
+                                      &ret[3], &ret[4], &ret[5]);
+  else {
+    ret[0] = 0.f;
+    ret[1] = 0.f;
+    ret[2] = 0.f;
+    ret[3] = 0.f;
+    ret[4] = 0.f;
+    ret[5] = 0.f;
+  }
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -127,7 +143,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 6;
+  *num_fields = 7;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -153,6 +169,13 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[5] = io_make_output_field_convert_spart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
       convert_spart_potential, "Gravitational potentials of the particles");
+
+  list[6] = io_make_output_field_convert_spart(
+      "TidalTensors", FLOAT, 6, UNIT_CONV_TIDAL_TENSOR, -3.f, sparts,
+      convert_spart_tidal_tensors,
+      "Components of co-moving the tidal tensor (Hessian matrix of the "
+      "gravitational potential). Since the matrix is symmetric, only 6 values "
+      "per tensor are stored (xx, yy, zz, xy, xz, yz)");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
