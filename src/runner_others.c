@@ -106,6 +106,10 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       /* Is this part within the time step? */
       if (gpart_is_active(gp, e)) {
         external_gravity_acceleration(time, potential, constants, gp);
+
+        #ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          external_gravity_tidal_tensor(time, potential, constants, gp);
+        #endif
       }
     }
   }
