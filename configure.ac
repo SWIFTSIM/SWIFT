@@ -3007,6 +3007,10 @@ case "$with_potential" in
    ;;
 esac
 
+if test "$with_potential" != "none" -a "$with_potential" != "hernquist" -a "$with_potential" != "hernquist-sdmh05" -a "x$enable_gravitational_tidal_tensors" = "xyes"; then
+   AC_MSG_ERROR([Tidal tensor contribution from the $with_potential potential is not yet implemented!])
+fi
+
 #  Entropy floor
 AC_ARG_WITH([entropy-floor],
     [AS_HELP_STRING([--with-entropy-floor=<floor>],
