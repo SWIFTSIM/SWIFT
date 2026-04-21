@@ -66,6 +66,9 @@ struct xpart {
   /*! Gravitational acceleration at the end of the last step */
   float a_grav[3];
 
+  /*! Mass Flux used for gravity work term from last step */
+  float mflux[3];
+
   /*! Fluid internal energy at the last full timestep. */
   float u_full;
 
