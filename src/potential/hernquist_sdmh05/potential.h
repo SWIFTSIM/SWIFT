@@ -139,6 +139,51 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 }
 
 /**
+ * @brief Computes the contribution to the gravitational tidal tensor 
+ * from a Hernquist potential.
+ *
+ * T_xx = GM * ( r^2 * (r+a) - x^2 * (3r+a) ) / r^3 * (r+a^3)
+ * T_xy = - GM * xy * (3r+a) / r^3(r+a)^3
+ *
+ * @param time The current time.
+ * @param potential The #external_potential used in the run.
+ * @param phys_const The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
+ */
+__attribute__((always_inline)) INLINE static void external_gravity_tidal_tensor(
+    double time, const struct external_potential* potential,
+    const struct phys_const* const phys_const, struct gpart* g) {
+
+  /* Determine the position relative to the centre of the potential */
+  const float dx = g->x[0] - potential->x[0];
+  const float dy = g->x[1] - potential->x[1];
+  const float dz = g->x[2] - potential->x[2];
+
+  /* Calculate some parts */
+  const float r2 = dx * dx + dy * dy + dz * dz + potential->epsilon2;
+  const float r = sqrtf(r2);
+  const float r_inv = 1.f / r;
+  const float r_inv3 = 1.f / (r2 * r);
+  const float r_plus_a = (r + potential->al);
+  const float r_plus_a_inv = 1.f / r_plus_a;
+  const float r_plus_a_inv2 = r_plus_a_inv * r_plus_a_inv;
+  const float part1 = (r_plus_a + r + r) * r_plus_a_inv2 * r_plus_a_inv * r_inv3;
+  const float part2 = r_inv * r_plus_a_inv2;
+
+  /* Calculate final tensor contributions */
+
+  const float T_xx = potential->mass * (part2 - dx * dx * part1);
+  const float T_yy = potential->mass * (part2 - dy * dy * part1);
+  const float T_zz = potential->mass * (part2 - dz * dz * part1);
+  const float T_xy = -potential->mass * dx * dy * part1;
+  const float T_xz = -potential->mass * dx * dz * part1;
+  const float T_yz = -potential->mass * dy * dz * part1;
+
+  gravity_add_comoving_tensor(g, T_xx, T_yy, T_zz, T_xy, T_xz, T_yz);
+}
+
+
+/**
  * @brief Computes the gravitational potential energy of a particle in an
  * Hernquist potential.
  *
