@@ -18,6 +18,8 @@
  ******************************************************************************/
 
 /* Include header */
+#include "feedback_common.h"
+
 #include "cosmology.h"
 #include "engine.h"
 #include "hydro_properties.h"

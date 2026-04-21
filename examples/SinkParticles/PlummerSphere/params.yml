@@ -26,9 +26,10 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   subdir: snap
-  basename:   snapshot      # Common part of the name of output files
-  time_first: 0.            # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 1e-3          # Time difference between consecutive outputs (in internal units)
+  basename:   snapshot                     # Common part of the name of output files
+  time_first: 0.                           # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 1e-3                         # Time difference between consecutive outputs (in internal units)
+  recording_triggers_sink:   [-1, -1, -1]  # No recording needed in this example
 
 Scheduler:
   cell_extra_gparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.

@@ -459,6 +459,8 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
 #endif
 
   const struct cosmology *cosmo = e->cosmology;
+  const struct phys_const *phys_const = s->e->physical_constants;
+  const struct unit_system *us = s->e->internal_units;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -487,6 +489,9 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
 
     /* And the sink merger markers */
     sink_mark_sink_as_not_swallowed(&sink[k].merger_data);
+
+    /* And the tracers */
+    tracers_first_init_sink(&sink[k], us, phys_const, cosmo);
 
     /* Also initialize the chemistry */
     chemistry_first_init_sink(chemistry, &sink[k]);

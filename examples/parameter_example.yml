@@ -198,9 +198,11 @@ Snapshots:
   select_output:       selectoutput.yml # (Optional) File containing information to select outputs with (see documentation in the "Output Selection" section)
   run_on_dump:         0 # (Optional) Run the dump_command each time that a snapshot is dumped?
   dump_command:        ./submit_velociraptor.sh # (Optional) Command to run each time that a snapshot is dumped.
-  recording_triggers_part:   [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for gas particle tracers start (in internal units).
-  recording_triggers_spart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for star particle tracers start (in internal units).
-  recording_triggers_bpart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units).
+  recording_triggers_part:   [1e-3, 1e-2]        # (Optional) Time before the snapshots where the trigger for gas particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
+  recording_triggers_spart:  [1e-3, 1e-2]        # (Optional) Time before the snapshots where the trigger for star particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
+  recording_triggers_bpart:  [1e-3, 1e-2]        # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
+  recording_triggers_sink:   [1e-2, 1e-3, 1e-4]  # (Optional) Time before the snapshots where the trigger for sink particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
+
 
 # Parameters governing the CSDS snapshot system
 CSDS:
@@ -299,9 +301,9 @@ LineOfSight:
   allowed_los_range_x: [0, 100.]   # (Optional) Range along the x-axis where LoS along Y or Z are allowed (Defaults to the box size).
   allowed_los_range_y: [0, 100.]   # (Optional) Range along the y-axis where LoS along X or Z are allowed (Defaults to the box size).
   allowed_los_range_z: [0, 100.]   # (Optional) Range along the z-axis where LoS along X or Y are allowed (Defaults to the box size).
-  range_when_shooting_down_x: 100. # (Optional) Range along the x-axis of LoS along x (Defaults to the box size).
-  range_when_shooting_down_y: 100. # (Optional) Range along the y-axis of LoS along y (Defaults to the box size).
-  range_when_shooting_down_z: 100. # (Optional) Range along the z-axis of LoS along z (Defaults to the box size).
+  range_when_shooting_down_x: [0., 100.] # (Optional) Range along the x-axis of LoS along x (Defaults to the box size).
+  range_when_shooting_down_y: [0., 100.] # (Optional) Range along the y-axis of LoS along y (Defaults to the box size).
+  range_when_shooting_down_z: [0., 100.] # (Optional) Range along the z-axis of LoS along z (Defaults to the box size).
 
 # Parameters related to the equation of state ------------------------------------------
 
@@ -519,7 +521,16 @@ RobertsFlowAccelerationForcing:
   u0:              1.5      # Forcing velocity (internal units)
   nu:              1.0      # Viscosity (internal units) to convert velocities to accelerations.
   Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
-  
+
+# Balsara-Kim energy injections 
+BalsaraKimForcing:
+  coords:        ./injection_coords.txt  # File containing times and locations of energy injections
+  inj_model:     set_u                   # what injection model to use options: set_u, set_const_u, set_v, set_const_v
+  r_inj_pc:      5.                      # Injection radius in parsec (comoving)
+  E_inj_cgs:     1.e53                   # (required if inj_model=set_u/set_v) Injection energy in erg (physical)
+  u_inj_cgs:     3.0298e15               # (required if inj_model=set_const_u) Specific energy to inject in the particles (physical)
+  v_inj_kms:     200.                    # (required if inj_model=set_const_v) Injection velocity in km/s (physical)
+
 # Parameters related to entropy floors    ----------------------------------------------
 
 EAGLEEntropyFloor:
@@ -967,7 +978,8 @@ GEARSink:
   sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
   sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
   sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
-  disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
+  disable_sink_formation: 0                       # (Optional) Disable sink formation. May only be used for debugging. (Default: 0)
+  disable_star_formation: 0                       # (Optional) Disable star formation. May only be used for debugging. (Default: 0)
   CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
   timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks no longer have time-step restrictions, except for 2-body encounters involving another young/old sink and gravity (in Mega-years). (Default: FLT_MAX)
   timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). (Default: FLT_MAX)
