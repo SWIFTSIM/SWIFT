@@ -173,6 +173,26 @@ INLINE static float compute_magnetic_injection_field(
         }
 
         break;
+      
+      case SNII_magnetic_kernel_softened_toroidal_injection:
+
+	        /* toroidal direction */
+        B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
+        B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
+        B_inj[2] = dx[0]*m[1] - dx[1]*m[0];
+
+        /* for this mode the magnetic field is softened with 
+	 * the kernel */
+        kernel_eval(r/r_soft, &B_inj_abs);
+
+        B_inj_rescale = B_inj_abs / sqrtf(B_inj[0]*B_inj[0] +
+                            B_inj[1]*B_inj[1] + B_inj[2]*B_inj[2]);
+
+        for (size_t i = 0; i < 3; i++){
+          B_inj[i] *= B_inj_rescale;
+        }
+
+        break;
 
       case SNII_magnetic_dipole_injection:
 
@@ -978,6 +998,13 @@ void feedback_props_init(struct feedback_props *fp,
       fp->magnetic_injection_model = SNII_magnetic_decreasing_toroidal_injection;
       fp->r_scale = parser_get_param_float(params,
           "EAGLEFeedback:SNII_magnetic_toroid_scale");
+    }
+    else if (strcmp(B_injection_model, "kernel_toroid") == 0) {
+      fp->magnetic_injection_model = SNII_magnetic_kernel_softened_toroidal_injection;
+
+      /* kernel softening length */
+      fp->r_softening = parser_get_param_float(params,
+	  "EAGLEFeedback:SNII_magnetic_kernel_softening_length");
     }
     else if (strcmp(B_injection_model, "dipole") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_dipole_injection;
