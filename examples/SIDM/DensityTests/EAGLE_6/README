@@ -1,0 +1,3 @@
+This example runs the same ICs as in EAGLE_low_z/EAGLE_6.
+
+We run the simulation for one timestep with the original set up, and run again with SIDM particles instead of gas particles. We then verify the density estimates are the same for matched SIDM and gas particles. 

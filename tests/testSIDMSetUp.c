@@ -57,7 +57,9 @@ int main(int argc, char *argv[]) {
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
   struct sink_props sink_properties;
+  bzero(&sink_properties, sizeof(struct sink_props));
   struct neutrino_props neutrino_properties;
+  bzero(&neutrino_properties, sizeof(struct neutrino_props));
   struct neutrino_response neutrino_response;
   struct sidm_props sidm_properties;
   struct feedback_props feedback_properties;
@@ -65,6 +67,7 @@ int main(int argc, char *argv[]) {
   struct entropy_floor_properties entropy_floor;
   struct pressure_floor_props pressure_floor_props;
   struct black_holes_props black_holes_properties;
+  bzero(&black_holes_properties, sizeof(struct black_holes_props));
   struct fof_props fof_properties;
   struct lightcone_array_props lightcone_array_properties;
   struct ic_info ics_metadata;

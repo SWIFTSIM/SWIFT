@@ -15,7 +15,7 @@ fi
 
 printf "Running simulation..."
 
-../../../swift --hydro --external-gravity --self-gravity -n 1 --threads=14 params_gas.yml 2>&1 | tee output.log
+../../../../swift --hydro --external-gravity --self-gravity -n 1 --threads=14 params_gas.yml 2>&1 | tee output.log
 
 printf "Comparing with SIDM densities..."
 python3 compare_gas_SIDM_densities.py --sidm snap/snapshot_0000.hdf5 --gas snap_gas/snapshot_0000.hdf5

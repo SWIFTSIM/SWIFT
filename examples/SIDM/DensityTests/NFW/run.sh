@@ -11,7 +11,7 @@ fi
 
 printf "Running simulation..."
 
-../../../swift --sidm --self-gravity -n 1 --threads=14 params.yml 2>&1 | tee output.log
+../../../../swift --sidm --self-gravity -n 1 --threads=14 params.yml 2>&1 | tee output.log
 
 printf "Plotting density..."
 python3 plot_density.py snap/snapshot_0000.hdf5
