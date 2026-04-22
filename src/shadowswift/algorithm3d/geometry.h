@@ -1198,7 +1198,7 @@ inline static double geometry3d_dot(const double* v1, const double* v2) {
 inline static void geometry3d_compute_density_center_tetrahedron(
     const double* restrict a, const double* restrict b,
     const double* restrict c, const double* restrict d, const float* gradrho,
-    const float rho_gen, const float volume, double* com_tetrahedron) {
+    const float rho_gen, const float volume, double* restrict com_tetrahedron) {
 
   /* Make new vectors with generator position at origin */
   const double da[3] = {a[0] - d[0], a[1] - d[1], a[2] - d[2]};
@@ -1209,13 +1209,28 @@ inline static void geometry3d_compute_density_center_tetrahedron(
    * hydro_gradients_extrapolate_single_quantity() would be the exact same.
    * This is an arbitrary choice, but with the thought that at least this
    * file is self-consistent */
-  const double rho_a = geometry3d_dot(gradrho, da);
-  const double rho_b = geometry3d_dot(gradrho, db);
-  const double rho_c = geometry3d_dot(gradrho, dc);
+  // const double drho_a = geometry3d_dot(gradrho, da);
+  // const double drho_b = geometry3d_dot(gradrho, db);
+  // const double drho_c = geometry3d_dot(gradrho, dc);
 
-  const double rho_mean = 0.25 * (4 * rho_gen + rho_a + rho_b + rho_c);
+  /* For some reason, using geometry3d_dot() goes bad sometimes. Therefore,
+   * just do it explicitly */
+  const double drho_a = da[0] * gradrho[0] +
+                          da[1] * gradrho[1] + da[2] * gradrho[2];
+  const double drho_b = db[0] * gradrho[0] +
+                          db[1] * gradrho[1] + db[2] * gradrho[2];
+  const double drho_c = dc[0] * gradrho[0] +
+                          dc[1] * gradrho[1] + dc[2] * gradrho[2];
 
-  /* Factor rho_n / rho_mean */
+  /* gradRho (dot) d is only the change from generator to vertex, add density
+   * at generator to keep it correct */
+  const double rho_a = rho_gen + drho_a;
+  const double rho_b = rho_gen + drho_b;
+  const double rho_c = rho_gen + drho_c;
+
+  const double rho_mean = 0.25 * (rho_gen + rho_a + rho_b + rho_c);
+
+  /* Factor rho_i / rho_mean */
   const double rho_a_mean = rho_a / rho_mean;
   const double rho_b_mean = rho_b / rho_mean;
   const double rho_c_mean = rho_c / rho_mean;

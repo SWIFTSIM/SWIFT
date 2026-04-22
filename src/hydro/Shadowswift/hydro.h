@@ -200,6 +200,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * calculation. We also initialize the variables used for the time step
  * calculation.
  *
+ * Note April 2026: Not really what is done here. We just reset gradients
+ * to 0. Strictly speaking, is this necessary? I don't know.
+ *
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param cosmo The cosmological model.
@@ -210,7 +213,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
-  hydro_gradients_init(p);
+  /* Deactivate this for testing. If its still commented out, its useless */
+  //hydro_gradients_init(p);
 }
 
 /**
@@ -760,11 +764,11 @@ hydro_extrapolate_density_to_generator(struct part *p) {
 
   /* Update density at particle position for later use in CoM */
   float dx[3];
-  dx[0] = p->x[0] - p->geometry.centroid[0];
-  dx[1] = p->x[1] - p->geometry.centroid[1];
-  dx[2] = p->x[2] - p->geometry.centroid[2];
+  dx[0] = -p->geometry.centroid[0];
+  dx[1] = -p->geometry.centroid[1];
+  dx[2] = -p->geometry.centroid[2];
 
-  double drho = hydro_gradients_extrapolate_single_quantity(
+  float drho = hydro_gradients_extrapolate_single_quantity(
     p->gradients.rho, dx);
 
   p->rho_generator = p->rho + drho;

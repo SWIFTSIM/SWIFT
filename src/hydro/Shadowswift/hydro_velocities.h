@@ -162,10 +162,19 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
 #ifdef SHADOWSWIFT_STEER_MOTION
 
+    float ds_old[3];
+    ds_old[0] = p->geometry.centroid[0];
+    ds_old[1] = p->geometry.centroid[1];
+    ds_old[2] = p->geometry.centroid[2];
+    const float d_old = sqrtf(ds_old[0] * ds_old[0] + ds_old[1] * ds_old[1] + ds_old[2] * ds_old[2]);
+
+
+    /* We getting EXPERIMENTAL with it */
     float ds[3];
-    ds[0] = p->geometry.centroid[0];
-    ds[1] = p->geometry.centroid[1];
-    ds[2] = p->geometry.centroid[2];
+    ds[0] = p->geometry.center_of_mass[0];
+    ds[1] = p->geometry.center_of_mass[1];
+    ds[2] = p->geometry.center_of_mass[2];
+
     const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
     const float soundspeed = hydro_get_comoving_soundspeed(p);
 

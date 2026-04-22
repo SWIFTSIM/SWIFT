@@ -456,11 +456,13 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 
 #ifdef CENTER_OF_MASS_DENSITY
         /* Get the mass(tetrahedron) * CoM(tetrahedron) */
-        double mass_com_tet[3];
+        double mass_com_tet[3] = {0., 0., 0.};
+
+        if (p->flux.dt > 0){
         geometry3d_compute_density_center_tetrahedron(
           vor_vertex0, vor_vertex1, vor_vertex2, generator_pos,
             p->gradients.rho, p->rho_generator, temp, mass_com_tet);
-
+      }
         /* Update cell center of mass accordingly */
         center_of_mass[0] += mass_com_tet[0];
         center_of_mass[1] += mass_com_tet[1];
@@ -590,9 +592,18 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 
 #ifdef CENTER_OF_MASS_DENSITY
     /* Finally, set the centre of mass with a linear density gradient */
-    p->geometry.center_of_mass[0] = center_of_mass[0];
-    p->geometry.center_of_mass[1] = center_of_mass[1];
-    p->geometry.center_of_mass[2] = center_of_mass[2];
+    p->geometry.center_of_mass[0] = (float)center_of_mass[0];
+    p->geometry.center_of_mass[1] = (float)center_of_mass[1];
+    p->geometry.center_of_mass[2] = (float)center_of_mass[2];
+
+    /* Check that the center of mass is inside the safety radius */
+    const float r2 = p->geometry.search_radius* p->geometry.search_radius;
+    const float r2_com = center_of_mass[0] * center_of_mass[0] +
+                          center_of_mass[1] * center_of_mass[1] +
+                            center_of_mass[2] * center_of_mass[2];
+    if (r2_com > r2) {
+      warning("hey buddy you fucked the cow");
+    }
 #endif
 
 
