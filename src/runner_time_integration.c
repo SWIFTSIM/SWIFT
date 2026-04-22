@@ -1256,7 +1256,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       }
     }
 
- /* Loop over the SIDM particles in this cell. */
+    /* Loop over the SIDM particles in this cell. */
     for (int k = 0; k < sicount; k++) {
 
       /* Get a handle on the part. */
