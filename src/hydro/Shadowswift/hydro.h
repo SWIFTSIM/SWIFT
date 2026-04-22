@@ -475,7 +475,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_convert_conserved_to_primitive(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props, float *Q, float *W) {
+    const struct entropy_floor_properties *floor_props, float *Q, float *W,
+    float dt_therm) {
 
   /* Check for vacuum (or near limits of floating point precision), which give
    * rise to precision errors resulting in NaNs...
@@ -577,33 +578,65 @@ if (is_nan_float(Q[4])) {
   else {
     /* Employ Gaburov 2011 method (Also used in Hopkins 2015, Asensio 2023)
      *
-     * Note that we include dE from Gravity interactions since we include
-     * change in momentum and velocity from gravity interactions
+     * Note that we exclude dE from Gravity interactions
      *
-     * Recall: Cooling is included in Q[4]
+     * Recall: Cooling is stripped here. Manually re-add.
      */
 
-    /* Changes in Energy and Momentum in this timestep */
-    float const delta_E = Q[4] - p->conserved.energy;
-    float delta_p[3];
-    for (int i = 0; i < 3; i++) {
-      delta_p[i] = Q[i+1] - p->conserved.momentum[i];
-    }
-
-    /* Include all effects of gravity kick, including work from gravity
-     * which was included in term dE_springel and momentum kick
-     * However v is the unchanged velocity
+    /* Include ONLY hydrodynamical effects (Asensio, private communication)
      * This term is Asensio 2023 Equation 24,
      * dE - v . dp + 0.5 * v**2 * dM
      */
-    double dE_therm = delta_E - (p->v[0] * delta_p[0] +
-                          p->v[1] * delta_p[1] +
-                          p->v[2] * delta_p[2]) +
+    double dE_therm = flux[4] - (p->v[0] * flux[1] +
+                          p->v[1] * flux[2] +
+                          p->v[2] * flux[3]) +
                            0.5f * (p->v[0] * p->v[0] +
                                    p->v[1] * p->v[1] +
-                                   p->v[2] * p->v[2]) * p->flux.mass;
+                                   p->v[2] * p->v[2]) * flux[0];
 
     thermal_energy = xp->u_full * p->conserved.mass + dE_therm;
+    thermal_energy += p->cool_du_dt_prev * Q[0] * dt_therm; // Re-add cooling
+    u = thermal_energy * m_inv;
+  }
+#elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_ASENSIO_COSMO
+  /* Here we enter the default cosmological setup. This is noticably different
+   * from the above, since it does not include the entropy switch. */
+  const float *g = xp->a_grav;
+  float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
+                hydro_get_comoving_psize(p);
+
+  /* This is complicated. Alonso Asensio et. al. 2023 2.3.7 for more details
+   * We also ignore any mach criteria (Hopkins 2015, appendix D, Springel
+   * comment) */
+
+  if (thermal_energy > 1e-2 * (Egrav + Ekin)) {
+    /* Thermal Energy and Kinetic are roughly same order, it should be safe
+     * to recover thermal energy from total energy, so we proceed as normal
+     *
+     * Recall: Cooling is already included in Q[4] */
+    u = thermal_energy * m_inv;
+  }
+  else {
+    /* Employ Gaburov 2011 method (Also used in Hopkins 2015, Asensio 2023)
+     *
+     * Note that we exclude dE from Gravity interactions
+     *
+     * Recall: Cooling is stripped here. Manually re-add.
+     */
+
+    /* Include ONLY hydrodynamical effects (Asensio, private communication)
+     * This term is Asensio 2023 Equation 24,
+     * dE - v . dp + 0.5 * v**2 * dM
+     */
+    double dE_therm = flux[4] - (p->v[0] * flux[1] +
+                          p->v[1] * flux[2] +
+                          p->v[2] * flux[3]) +
+                           0.5f * (p->v[0] * p->v[0] +
+                                   p->v[1] * p->v[1] +
+                                   p->v[2] * p->v[2]) * flux[0];
+
+    thermal_energy = xp->u_full * p->conserved.mass + dE_therm;
+    thermal_energy += p->cool_du_dt_prev * Q[0] * dt_therm; // Re-add cooling
     u = thermal_energy * m_inv;
   }
 
@@ -1062,7 +1095,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
      * This also applies entropy floor/minimal internal energy limit. */
     float W[6];
     hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
-                                         Q, W);
+                                         Q, W, dt_therm);
 
     /* Set density at the particle (generator) position */
     hydro_extrapolate_density_to_generator(p);
@@ -1074,12 +1107,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Update xp->mflux[3] to be current p->gravity.mflux so that we can
      * access mflux^n in next timestep. See Hopkins 2015 Appendix H2 for use */
     if (p->flux.dt > 0.0f) {
-      for (int i = 0; i < 3; i++) {
-        xp->mflux[i] = p->gravity.mflux[i];
-      }
+      hydro_gravity_xp_mflux(p, xp);
     } else {
       for (int i = 0; i < 3; i++) {
-        xp->mflux[i] = 0;
+        xp->mflux[i] = 0.;
       }
     }
 
@@ -1153,7 +1184,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
      * This also applies entropy floor/minimal internal energy limit. */
     float W[6];
     hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
-                                         Q, W);
+                                         Q, W, dt_therm);
 
     /* Update the particle */
     hydro_part_set_conserved_variables(p, Q);
@@ -1199,7 +1230,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
      * This also applies entropy floor/minimal internal energy limit. */
     float W[6];
     hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
-                                         Q, W);
+                                         Q, W, dt_therm);
 
     /* Update the particle */
     hydro_part_set_conserved_variables(p, Q);

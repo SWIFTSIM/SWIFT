@@ -187,4 +187,20 @@ hydro_gravity_update_gpart_mass(struct part* restrict p) {
   }
 }
 
+/**
+ * @brief Update xp->mflux to be the mflux vector at end of kick2. Used in next
+ * timestep as a mflux at timestep n value.
+ *
+ * @param p Particle.
+ * @param xp The extra part of p
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gravity_xp_mflux(struct part* p, struct xpart* xp) {
+
+  for (int i = 0; i < 3; i++) {
+    xp->mflux[i] = p->gravity.mflux[i];
+  }
+}
+
+
 #endif  // SWIFTSIM_SHADOWSWIFT_HYDRO_GRAVITY_H
