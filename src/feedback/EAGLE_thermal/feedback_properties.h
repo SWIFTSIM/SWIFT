@@ -346,6 +346,11 @@ struct feedback_props {
   /* dipole softening length */
   float r_softening;
 
+  /* toroidal softening scale determination flags */
+  int constant_scale;
+  int particle_distance;
+  int sp_smoothing_length;
+
   /* Energy fraction used for magnetic field injection */
   float f_E_B;
 
