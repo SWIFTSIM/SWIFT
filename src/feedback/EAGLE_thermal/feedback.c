@@ -114,11 +114,12 @@ double eagle_feedback_energy_fraction(const struct spart *sp,
 
 INLINE static float compute_magnetic_injection_field(
     struct ray_data *ray, float m[3],
-    const struct feedback_props *feedback_props) {
+    const struct feedback_props *feedback_props,
+    const float r_max, const float sp_h) {
 
     /* Initialize variables to calculate */
     float B_inj[3] = {0., 0., 0.};
-    float B_inj_abs;
+    double B_inj_abs;
     float B_inj_rescale;
 
     /* the seperation vector (si - pj)*/
@@ -181,15 +182,38 @@ INLINE static float compute_magnetic_injection_field(
         B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
         B_inj[2] = dx[0]*m[1] - dx[1]*m[0];
 
+	/* determine the kernel smoothing length */
+	float kernel_h;
+	if (feedback_props->constant_scale){
+	  kernel_h = r_soft;
+	  message("test constant scale");
+	}
+	else if (feedback_props->particle_distance) {
+	  kernel_h = r_max * kernel_gamma_inv;
+	  message("test particle distance");
+	}
+	else {
+	  kernel_h = sp_h;
+	  message("test sp smoothing length");
+	}
+
+
+	message("r %f", r);
+	message("kernel_h %f", kernel_h);
+	message("r_max %f", r_max);
+
         /* for this mode the magnetic field is softened with 
 	 * the kernel */
-        kernel_eval(r/r_soft, &B_inj_abs);
+        kernel_eval_double(r/kernel_h, &B_inj_abs);
+	B_inj_abs /= pow_dimension(kernel_h);
+	message("B_inj_abs %f", B_inj_abs);
 
-        B_inj_rescale = B_inj_abs / sqrtf(B_inj[0]*B_inj[0] +
+        B_inj_rescale = 1 / sqrtf(B_inj[0]*B_inj[0] +
                             B_inj[1]*B_inj[1] + B_inj[2]*B_inj[2]);
 
         for (size_t i = 0; i < 3; i++){
           B_inj[i] *= B_inj_rescale;
+	  B_inj[i] *= B_inj_abs;
         }
 
         break;
@@ -221,6 +245,8 @@ INLINE static float compute_magnetic_injection_field(
         error("wrong magnetic injection field specified");
 
     }
+
+    message("B_inj_abs, %f", B_inj_abs);
 
     /* Store the field to inject in the ray data */
     ray->B_inj[0] = B_inj[0];
@@ -369,13 +395,20 @@ INLINE static void compute_magnetic_feedback(
   /* the total injected energy */
   float E_th_tot = 0.f;
 
+  /* maximum distance of injected particles */
+  float r_max = sp->feedback_data.SNII_rays[number_of_SN_events - 1].min_length;
+
+  /* stellar particle smoothing length */
+  float sp_h = sp->h;
+
   /* The normalisation of the magnetic field */
   float B_conv_factor = 0.f;
   float field_fraction = 0.f;
   for (int i = 0; i < number_of_SN_events; i++) {
     /* TODO: take into account particles receiving two rays */
     field_fraction = compute_magnetic_injection_field(
-      &sp->feedback_data.SNII_rays[i], m, feedback_props);
+      &sp->feedback_data.SNII_rays[i], m, feedback_props, 
+      r_max, sp_h);
 
     B_conv_factor += field_fraction * field_fraction * 
       sp->feedback_data.SNII_rays[i].mass / sp->feedback_data.SNII_rays[i].rho;
@@ -1002,9 +1035,29 @@ void feedback_props_init(struct feedback_props *fp,
     else if (strcmp(B_injection_model, "kernel_toroid") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_kernel_softened_toroidal_injection;
 
-      /* kernel softening length */
-      fp->r_softening = parser_get_param_float(params,
-	  "EAGLEFeedback:SNII_magnetic_kernel_softening_length");
+      /* what do we use as softening scale */ 
+      char scale_determination[20];
+      parser_get_param_string(params,
+	  "EAGLEFeedback:SNII_kernel_toroid_softening_model", 
+	  scale_determination);
+
+      if (strcmp(scale_determination, "stellar_h") == 0) {
+	/* stellar particle smoothing length as softening length */
+	fp->sp_smoothing_length = 1;
+      }
+      else if (strcmp(scale_determination, "particle_dist") == 0) {
+	/* particle with maximum distance is at kernel cut-off */
+	fp->particle_distance = 1;
+      }
+      else if (strcmp(scale_determination, "const_scale") == 0) {
+        /* use a constant kernel softening length */
+	fp->constant_scale = 1;
+        fp->r_softening = parser_get_param_float(params,
+	    "EAGLEFeedback:SNII_magnetic_kernel_softening_length");
+      }
+      else {
+	error("Wrong softening length determination given");
+      }
     }
     else if (strcmp(B_injection_model, "dipole") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_dipole_injection;
