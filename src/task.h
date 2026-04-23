@@ -165,7 +165,8 @@ enum task_subtypes {
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
   task_subtype_sidm_density,
-  task_subtype_sipart_rho,
+  task_subtype_sipart,
+  task_subtype_sidm_force,
   task_subtype_count
 } __attribute__((packed));
 
