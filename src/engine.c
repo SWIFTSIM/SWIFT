@@ -1849,8 +1849,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
         t->subtype == task_subtype_sink_do_gas_swallow ||
-        t->subtype == task_subtype_sipart_rho ||
-        t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_sipart || t->subtype == task_subtype_tend ||
+        t->subtype == task_subtype_rho ||
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
         t->subtype == task_subtype_spart_prep2 ||
