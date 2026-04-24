@@ -520,8 +520,6 @@ if (is_nan_float(Q[4])) {
 #ifdef EOS_ISOTHERMAL_GAS
   u = gas_internal_energy_from_pressure(0.f, 0.f);
 #else
-  /* Define last known okay thermal energy to use as an estimate*/
-  //double thermal_energy = xp->u_full * Q[0];
 
   /* Evolve thermal energy to final state and use that as criterion */
   double thermal_energy;
@@ -570,7 +568,7 @@ if (is_nan_float(Q[4])) {
      * Recall: Cooling is already included in Q[4] */
     u = thermal_energy * m_inv;
   }
-  else if ((thermal_energy < 1e-2 * (p->timestepvars.Ekin + thermal_energy)) ||
+  else if ((thermal_energy < 1e-3 * (p->timestepvars.Ekin + thermal_energy)) ||
     (thermal_energy < 1e-3 * Egrav)) {
     /* Indicates cold flows where it is wise to assume adiabatic, and so we
      * recover from entropy.
@@ -601,6 +599,12 @@ if (is_nan_float(Q[4])) {
     thermal_energy = xp->u_full * p->conserved.mass + dE_therm;
     thermal_energy += p->cool_du_dt_prev * Q[0] * dt_therm; // Re-add cooling
     u = thermal_energy * m_inv;
+
+    if (u <= 0.) {
+      double A = Q[5] * m_inv;
+      u = gas_internal_energy_from_entropy(W[0], A);
+
+    }
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_ASENSIO_COSMO
   /* Here we enter the default cosmological setup. This is noticably different
