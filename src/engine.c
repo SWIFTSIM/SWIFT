@@ -1223,14 +1223,17 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef WITH_MPI
     n1 += 6;
 #endif
-#ifdef EXTRA_STAR_LOOPS
-    /* Prep1: 1 self + 26/2 pairs + 2 ghosts
-       Prep2 1 self + 26/2 pairs + 1 ghost
-    */
-    n1 += 31;
+    /* TODO: Add MPI: 1 for the send/recv per prep loop */
+#ifdef EXTRA_STAR_LOOPS_1
+    /* Prep1: 1 self + 26/2 pairs + 2 ghosts */
+    n1 += 16;
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+    /* Prep2: 1 self + 26/2 pairs + 1 ghost */
+    n1 += 15;
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
-    /* Prep3: 1 self + 26/2 + 1 ghost */
+    /* Prep3: 1 self + 26/2 pairs + 1 ghost */
     n1 += 15;
 #endif
 #ifdef EXTRA_STAR_LOOPS_4
