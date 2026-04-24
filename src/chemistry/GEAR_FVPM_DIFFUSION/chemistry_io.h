@@ -125,7 +125,7 @@ INLINE static void convert_gas_diffused_metals(const struct engine *e,
   ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z;
 }
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 INLINE static void convert_gas_diffusion_flux_norm(const struct engine *e,
                                                    const struct part *p,
                                                    const struct xpart *xp,
@@ -138,7 +138,7 @@ INLINE static void convert_gas_diffusion_flux_norm(const struct engine *e,
                   F_diff[2] * F_diff[2]);
   }
 }
-#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
+#endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
 #endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
 
 /**
@@ -184,17 +184,17 @@ INLINE static int chemistry_write_particles(const struct part *parts,
 
   num += 2;
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   list[4] = io_make_output_field_convert_part(
       "NormDiffusionFluxes", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA, 0.f, parts, xparts,
       convert_gas_diffusion_flux_norm, "Norm of the diffusion fluxes");
 
   num += 1;
-#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
+#endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
 #endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   // TODO: Output the fluxes
   list[num] = io_make_physical_output_field(
       "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,

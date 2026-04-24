@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_FLUX_H
-#define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_FLUX_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_FLUX_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_FLUX_H
 
 #include "../chemistry_riemann_HLL.h"
 #include "../chemistry_unphysical.h"
@@ -193,4 +193,4 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   fluxes[3] *= Anorm;
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_FLUX_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_FLUX_H */

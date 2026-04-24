@@ -22,7 +22,7 @@
 #include "error.h"
 
 /* Import the right chemistry_part_data definition */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 #include "hyperbolic/chemistry_riemann_checks.h"
 #else
 #include "parabolic/chemistry_riemann_checks.h"

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SETTERS_H
-#define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SETTERS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_SETTERS_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_SETTERS_H
 
 #include "../chemistry_getters.h"
 #include "../chemistry_struct.h"
@@ -53,4 +53,4 @@ chemistry_part_update_flux_gradients(struct part *restrict p, int metal,
   chd->gradients.flux[metal][2][1] += dFz[1];
   chd->gradients.flux[metal][2][2] += dFz[2];
 }
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_SETTERS_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_SETTERS_H */

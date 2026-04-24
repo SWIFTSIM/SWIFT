@@ -50,7 +50,7 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
 
   const float delta_x = psize;
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   /* CFL condition */
   const float dt_cfl =
       CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;

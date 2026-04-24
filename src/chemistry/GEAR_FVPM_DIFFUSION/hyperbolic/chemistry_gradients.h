@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_GRADIENTS_H
-#define SWIFT_CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION_GRADIENTS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_GRADIENTS_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_GRADIENTS_H
 
 #include "../chemistry_getters.h"
 #include "../chemistry_slope_limiters_cell.h"

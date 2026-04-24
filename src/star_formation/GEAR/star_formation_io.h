@@ -96,7 +96,7 @@ star_formation_write_sparticles(const struct spart *sparts,
       sf_data.progenitor_id, "Unique IDs of the progenitor particle");
 
 #if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   list[4] = io_make_output_field(
       "ProgenitorDiffusionMatrixNorms", DOUBLE, 1, UNIT_CONV_MASS_DIFFUSIVITY,
       0.f, sparts, sf_data.norm_matrix_K,

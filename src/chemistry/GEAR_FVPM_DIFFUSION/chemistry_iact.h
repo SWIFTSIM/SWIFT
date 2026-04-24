@@ -290,7 +290,7 @@ runner_iact_chemistry_fluxes_common(
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   /* Calculate the maximal diffusion speed */
   const float ci =
       chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);

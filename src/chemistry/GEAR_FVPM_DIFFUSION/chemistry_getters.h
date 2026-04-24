@@ -629,7 +629,7 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
 }
 
 /* Import the right chemistry_part_data definition */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 #include "hyperbolic/chemistry_getters.h"
 #endif
 

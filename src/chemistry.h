@@ -41,7 +41,7 @@
 #include "./chemistry/GEAR_DIFFUSION/chemistry.h"
 #include "./chemistry/GEAR_DIFFUSION/chemistry_iact.h"
 #elif defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 #include "./chemistry/GEAR_FVPM_DIFFUSION/chemistry.h"
 #include "./chemistry/GEAR_FVPM_DIFFUSION/chemistry_iact.h"
 #elif defined(CHEMISTRY_AGORA)

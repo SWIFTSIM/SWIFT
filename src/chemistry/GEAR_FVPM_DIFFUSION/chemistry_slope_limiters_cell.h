@@ -46,7 +46,7 @@ chemistry_slope_limit_cell_init(struct part *p) {
     p->chemistry_data.limiter.rhoZ[m][0] = DBL_MAX;
     p->chemistry_data.limiter.rhoZ[m][1] = -DBL_MAX;
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     /* Array index reminder: 1st: metal; 2nd: flux component x, y or z; 3rd
        component: limiter min or max value. */
     for (int i = 0; i < 3; i++) {
@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   struct chemistry_part_data *chj = &pj->chemistry_data;
 #endif
 
@@ -100,7 +100,7 @@ chemistry_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {
     chi->limiter.rhoZ[m][0] = min(rhoZj, chi->limiter.rhoZ[m][0]);
     chi->limiter.rhoZ[m][1] = max(rhoZj, chi->limiter.rhoZ[m][1]);
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     for (int i = 0; i < 3; i++) {
       chi->limiter.flux[m][i][0] =
           min(chj->diffusion_flux[m][i], chi->limiter.flux[m][i][0]);
@@ -245,7 +245,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   /* DO NOT cell limit rho*Z and Z here as they can be used as diffusion
      drivers. Cell limiting the diffusion drivers reduces the diffusion
      strength and thus irrevocably alters the PDE being solved. */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     for (int i = 0; i < 3; i++) {
       const double alpha_flux = chemistry_slope_limit_quantity(

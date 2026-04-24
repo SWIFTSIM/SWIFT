@@ -159,7 +159,7 @@ chemistry_riemann_compute_alpha(const double c_s_L, const double c_s_R,
   return alpha;
 }
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 /**
  * @brief Compute the blending factor between the hyperbolic flux and the
  * parabolic flux to reduce numerical diffusion.
@@ -234,7 +234,7 @@ chemistry_riemann_compute_hyperbolic_blending_factor(
 
   return alpha;
 }
-#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
+#endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
 
 /**
  * @brief Check if the given input states are vacuum or will generate vacuum.

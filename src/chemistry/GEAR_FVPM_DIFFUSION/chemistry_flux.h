@@ -23,7 +23,7 @@
 #include "chemistry_properties.h"
 
 /* Import the right file */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 #include "hyperbolic/chemistry_flux.h"
 #else
 #include "parabolic/chemistry_flux.h"

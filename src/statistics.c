@@ -107,7 +107,7 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->H_mag += b->H_mag;
 
 #if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
     a->gas_metal_mass[l] += b->gas_metal_mass[l];
   }
@@ -222,7 +222,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 #endif
 
 #if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     /* Collect metal masses for each species */
     for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
       stats.gas_metal_mass[l] += p->chemistry_data.metal_mass[l];
@@ -884,7 +884,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           units_cgs_conversion_factor(us, UNIT_CONV_POWER));
 
 #if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   const int num_fields = 40;
 
   /* Print the dynamic species indices */
@@ -913,7 +913,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
       "(37)", "(38)", "(39)");
 
 #if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   /* Print the dynamic species indices */
   for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
     int index = num_fields + l;
@@ -940,7 +940,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
       "Mag. Helicity", "BH bol. lum.", "BH jet power");
 
 #if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   /* Print the dynamic species names (just the index) */
   for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
     char name_str[15];
@@ -990,7 +990,7 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       stats->bh_jet_power);
 
 #if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   /* Loop and print the dynamic species masses (40) onwards */
   for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
     fprintf(file, " %14e", stats->gas_metal_mass[l]);

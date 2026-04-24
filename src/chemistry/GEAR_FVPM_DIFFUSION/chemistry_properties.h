@@ -121,7 +121,7 @@ struct chemistry_global_data {
   /*! Diffusion normalisation constant: \kappa \propto C */
   float diffusion_coefficient;
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   /*! Relaxation time for the constant relaxation time case. In physical units.
    */
   double tau;

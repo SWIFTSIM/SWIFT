@@ -43,7 +43,7 @@ chemistry_part_reset_gradients(struct part *restrict p) {
     chd->gradients.rhoZ[m][1] = 0.0f;
     chd->gradients.rhoZ[m][2] = 0.0f;
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     /* Iterate over the lines of the flux gradient matrix, for metal m */
     for (int i = 0; i < 3; i++) {
       chd->gradients.flux[m][i][0] = 0.f;
@@ -161,7 +161,7 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
     chd->gradients.rhoZ[m][1] *= norm;
     chd->gradients.rhoZ[m][2] *= norm;
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     /* Iterate over the lines of the flux gradient matrix, for metal m */
     for (int i = 0; i < 3; i++) {
       chd->gradients.flux[m][i][0] *= norm;
@@ -298,7 +298,7 @@ chemistry_set_star_supernovae_ejected_yields(
 }
 
 /* Import the right chemistry_part_data definition */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 #include "hyperbolic/chemistry_setters.h"
 #endif
 

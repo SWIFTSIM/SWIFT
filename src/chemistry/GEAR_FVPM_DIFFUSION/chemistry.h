@@ -44,10 +44,10 @@
 #include "units.h"
 
 /* Some constants */
-#define GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR 0.8
-#define GEAR_MFVP_DIFFUSION_NORMALISATION_DEFAULT 1.0
-#define GEAR_MFVP_DIFFUSION_PSI_RIEMANN_SOLVER_DEFAULT 0.1
-#define GEAR_MFVP_DIFFUSION_EPSILON_RIEMANN_SOLVER_DEFAULT 0.0
+#define GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR 0.8
+#define GEAR_FVPM_DIFFUSION_NORMALISATION_DEFAULT 1.0
+#define GEAR_FVPM_DIFFUSION_PSI_RIEMANN_SOLVER_DEFAULT 0.1
+#define GEAR_FVPM_DIFFUSION_EPSILON_RIEMANN_SOLVER_DEFAULT 0.0
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
@@ -57,7 +57,7 @@
  */
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data *data) {
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   message("Chemistry function is 'Gear MF hyperbolic diffusion'.");
 #else
   message("Chemistry function is 'Gear MF parabolic diffusion'.");
@@ -273,7 +273,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
   /***************************************************************************/
   data->diffusion_coefficient = parser_get_opt_param_double(
       parameter_file, "GEARChemistry:diffusion_coefficient",
-      GEAR_MFVP_DIFFUSION_NORMALISATION_DEFAULT);
+      GEAR_FVPM_DIFFUSION_NORMALISATION_DEFAULT);
 
   char temp[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(parameter_file, "GEARChemistry:diffusion_mode", temp);
@@ -294,7 +294,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
   /* Read parameters for the Riemann solver */
   data->hll_riemann_solver_psi = parser_get_opt_param_float(
       parameter_file, "GEARChemistry:hll_riemann_solver_psi",
-      GEAR_MFVP_DIFFUSION_PSI_RIEMANN_SOLVER_DEFAULT);
+      GEAR_FVPM_DIFFUSION_PSI_RIEMANN_SOLVER_DEFAULT);
 
   if ((data->hll_riemann_solver_psi < 0)) {
     error("hll_riemann_solver_psi must be positive!");
@@ -302,7 +302,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
 
   data->hll_riemann_solver_epsilon = parser_get_opt_param_float(
       parameter_file, "GEARChemistry:hll_riemann_solver_epsilon",
-      GEAR_MFVP_DIFFUSION_EPSILON_RIEMANN_SOLVER_DEFAULT);
+      GEAR_FVPM_DIFFUSION_EPSILON_RIEMANN_SOLVER_DEFAULT);
 
   if ((data->hll_riemann_solver_epsilon > 1) ||
       (data->hll_riemann_solver_epsilon < 0)) {
@@ -315,7 +315,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
       parser_get_param_float(parameter_file, "GEARChemistry:C_CFL_chemistry");
   /***************************************************************************/
   /* Hyperbolic diffusion */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 
   char temp2[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(parameter_file, "GEARChemistry:relaxation_time_mode",
@@ -349,7 +349,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
     message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
     message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
     message("C_CFL:                      %e", data->C_CFL_chemistry);
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     message("Relaxation time mode:       %u", data->relaxation_time_mode);
     message("Relaxation time (constant_mode): %e", data->tau);
 #endif
@@ -395,11 +395,11 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /* Finish computations on the filtered quantities */
   /* Multiply by the smoothing factor */
   p->chemistry_data.filtered.rho_v[0] *=
-      GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
+      GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[1] *=
-      GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
+      GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[2] *=
-      GEAR_MFVP_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
+      GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR;
 
   /* Add self term (is it needed for rho? the formula does not include it) */
   /* p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root; */
@@ -475,7 +475,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
   /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa = chemistry_get_diffusion_coefficient(p, cd, cosmo);
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   p->chemistry_data.tau = chemistry_compute_physical_tau(p, cd, cosmo);
 #endif
 }
@@ -513,7 +513,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
         /*element*/ i, p->id, &chd->check.negativity_counter[i]);
   }
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   const double Vinv = 1.0 / p->geometry.volume;
 
   /* Homogeneous equation update for inactive particles */
@@ -524,7 +524,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     chd->diffusion_flux[i][1] += chd->flux.flux[i][1] * Vinv;
     chd->diffusion_flux[i][2] += chd->flux.flux[i][2] * Vinv;
   }
-#endif /* CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION */
+#endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
 
   /* Reset the metal mass fluxes now that they have been applied */
   chemistry_part_reset_fluxes(p);
@@ -588,7 +588,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   /* Initialize time step criterion variables */
   chd->timestepvars.vmax = 0.0;
 #endif
@@ -636,7 +636,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
      particle */
   p->geometry.wcorr = 1.0f;
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     p->chemistry_data.diffusion_flux[i][0] = 0.0;
     p->chemistry_data.diffusion_flux[i][1] = 0.0;

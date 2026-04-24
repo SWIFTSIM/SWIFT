@@ -177,7 +177,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
     chemistry_part_update_diffusion_gradients(pj, g, dZ_j, drhoZ_j);
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     /**** Flux gradients ****/
     const double dflux[3] = {
         chi->diffusion_flux[g][0] - chj->diffusion_flux[g][0],
@@ -379,7 +379,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
 
     chemistry_part_update_diffusion_gradients(pi, g, dZ_i, drhoZ_i);
 
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     /**** Flux gradients ****/
     const double dflux[3] = {
         chi->diffusion_flux[g][0] - chj->diffusion_flux[g][0],
@@ -602,7 +602,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
   double dZj = chemistry_gradients_extrapolate_double(grad_Z_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   chemistry_slope_limit_face_scalar(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
 #else
   chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
@@ -618,7 +618,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
 }
 
 /* Import the right header */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 #include "hyperbolic/chemistry_gradients.h"
 #else
 #include "parabolic/chemistry_gradients.h"

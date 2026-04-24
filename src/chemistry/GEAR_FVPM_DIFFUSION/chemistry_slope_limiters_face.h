@@ -283,7 +283,7 @@ chemistry_slope_limit_face_hydro(float Wi[5], float Wj[5], float dvi[3],
 }
 
 /* Import the right file */
-#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 #include "hyperbolic/chemistry_slope_limiter_face.h"
 #else
 #include "parabolic/chemistry_slope_limiter_face.h"
