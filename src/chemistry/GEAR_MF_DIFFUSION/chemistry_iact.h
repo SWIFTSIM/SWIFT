@@ -553,7 +553,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data) {
 
-#if !defined(GEAR_FVPM_DIFFUSION_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
+#if !defined(GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
   runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
                                       0);
 #else

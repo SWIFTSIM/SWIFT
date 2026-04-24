@@ -76,7 +76,7 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
     } else /* callloc == 2 */ {
       /* First, be verbose */
       if ((*negativity_counter %
-               GEAR_FVPM_DIFFUSION_NEGATIVITY_COUNTER_PRINT_LIMIT ==
+               GEAR_FVPM_DIFF_NEGATIVITY_COUNTER_PRINT_LIMIT ==
            0) &&
           (*negativity_counter > 0)) {
         warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %u",

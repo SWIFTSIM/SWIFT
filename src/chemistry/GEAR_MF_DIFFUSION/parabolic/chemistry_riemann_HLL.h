@@ -87,7 +87,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
 
   if ((lambda_plus == 0.f && lambda_minus == 0.f) ||
       (fabs(lambda_plus - lambda_minus) <
-       GEAR_FVMP_DIFFUSION_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE)) {
+       GEAR_FVPM_DIFF_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE)) {
     *metal_flux = 0.f;
     message(
         "[%lld, %lld] Lambda_plus (%e) and lambda_minus (%e) are very"

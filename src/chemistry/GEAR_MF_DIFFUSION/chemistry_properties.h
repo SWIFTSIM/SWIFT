@@ -30,11 +30,11 @@
 
 /* Tolerance for the positivity preserving cell limiter. We allow a small
    overshoot for diffusion */
-#define GEAR_FVPM_DIFFUSION_CELL_LIMITER_SHOOT_TOLERANGE 0.2
+#define GEAR_FVPM_DIFF_CELL_LIMITER_SHOOT_TOLERANGE 0.2
 
 /* Tolerance for the Riemann solver wavespeed estimate to avoid large numbers
    when the wavespeeds are close */
-#define GEAR_FVMP_DIFFUSION_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE 1e-8
+#define GEAR_FVPM_DIFF_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE 1e-8
 
 
 /* --- GEAR FVPM Diffusion Flux Limiter Constants --- */
@@ -60,13 +60,13 @@
    outgoing metal mass fluxes.
    For production runs, use a high value. For debugging, use small values
    (~1-10) */
-#define GEAR_FVPM_DIFFUSION_NEGATIVITY_COUNTER_PRINT_LIMIT 200
+#define GEAR_FVPM_DIFF_NEGATIVITY_COUNTER_PRINT_LIMIT 200
 
 /* DEBUG ONLY: During the force loop, if both pi and pj are active, enforce
    only one of them to update both particles.
    WARNING: This is not MPI compatible. It is only intended for non-MPI mode.
 */
-/* #define GEAR_FVPM_DIFFUSION_DEBUG_FORCE_LOOP_ONESIDED_UPDATE */
+/* #define GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE */
 
 /**
  * @brief The diffusion mode
