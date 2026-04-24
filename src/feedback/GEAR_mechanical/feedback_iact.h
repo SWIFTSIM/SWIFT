@@ -445,6 +445,40 @@ runner_iact_nonsym_feedback_apply(
 
     /* Flag this particle that it received stellar wind feedback */
     xpj->feedback_data.hit_by_preSN = 1;
+
+    /* TODO: Handle this. Should we update here for winds or take the
+       cumulative wind+SN momentum? Have a look into EAGLE kinetic... */    
+    /* Only used in non-cosmological simulations. Has to be
+       investigated in cosmological simulations*/
+    /* if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0) { */
+    /*   /\* Calculate the velocity without Hubble flow for signal velocity *\/ */
+    /*   const float v_i_without_Hubble_flow[3] = { */
+    /* 	si->v[0] * a_inv, si->v[1] * a_inv, si->v[2] * a_inv}; */
+    /*   float delta_p_without_Hubble[3]; */
+    /*   for (int i = 0; i < 3; i++) { */
+    /* 	/\* the unit direction from the gas particle j to the star particle i */
+    /* 	 *\/ */
+    /* 	const float unit_direction = dx_p[i] / r_p; */
+    /* 	/\* the additional momentum due to change of frame of reference (from */
+    /* 	 * star particle frame to lab frame) *\/ */
+    /* 	const float change_of_frame_without_Hubble = */
+    /* 	  si->feedback_data.winds.mass_ejected * v_i_without_Hubble_flow[i]; */
+    /* 	/\* momentum in lab frame due to the ejecta *\/ */
+    /* 	delta_p_without_Hubble[i] = */
+    /* 	  weight * (p_ej + change_of_frame_without_Hubble) * unit_direction; */
+    /*   } */
+    /*   /\* The norm of the momentum without the Hubble flow participation *\/ */
+    /*   const float norm2_delta_p_without_Hubble = { */
+    /* 	delta_p_without_Hubble[0] * delta_p_without_Hubble[0] + */
+    /* 	delta_p_without_Hubble[1] * delta_p_without_Hubble[1] + */
+    /* 	delta_p_without_Hubble[2] * delta_p_without_Hubble[2]}; */
+
+    /*   /\* Update the signal velocity of the gas particle receiving a kick. */
+    /* 	 We want to subtract the Hubble flow participation in the signal */
+    /* 	 velocity.*\/ */
+    /*   const float dv_phys = sqrtf(norm2_delta_p_without_Hubble) / new_mass; */
+    /*   hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys); */
+    /* }     */
   }
 
   /*****************************************/
