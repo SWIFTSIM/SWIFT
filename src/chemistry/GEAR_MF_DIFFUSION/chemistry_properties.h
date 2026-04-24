@@ -22,7 +22,9 @@
 #include "const.h"
 
 /** @brief Size of the labels used for chemical species identifiers. */
-#define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
+/* Note: This is redundant with the one in
+   src/feedback/GEAR/stellar_evolution_struct.h */
+#define GEAR_LABELS_SIZE 10
 
 /* --- Cell Slope Limiter (Hopkins 2015) --- */
 
