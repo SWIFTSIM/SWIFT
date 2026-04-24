@@ -90,7 +90,6 @@ hydro_generator_velocity_half_kick(struct part* p, struct xpart* xp, float dt) {
  *
  * Note: Only called with SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
  *
- * @param vchar the characteristic velocity governming steering strength
  * @param soundspeed
  * @param vchar_dt the maximum cold steering corrective velocity
  * @param Mach1 minimum threshold for cold steering
@@ -162,18 +161,21 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
 #ifdef SHADOWSWIFT_STEER_MOTION
 
-    float ds_old[3];
-    ds_old[0] = p->geometry.centroid[0];
-    ds_old[1] = p->geometry.centroid[1];
-    ds_old[2] = p->geometry.centroid[2];
-    const float d_old = sqrtf(ds_old[0] * ds_old[0] + ds_old[1] * ds_old[1] + ds_old[2] * ds_old[2]);
-
-
-    /* We getting EXPERIMENTAL with it */
+#ifdef CENTER_OF_MASS_DENSITY
+    /* Uses the more advanced, yet highly experimental steering option
+     * Largely untested, enter at own risk */
     float ds[3];
     ds[0] = p->geometry.center_of_mass[0];
     ds[1] = p->geometry.center_of_mass[1];
     ds[2] = p->geometry.center_of_mass[2];
+#else
+
+    float ds_old[3];
+    ds[0] = p->geometry.centroid[0];
+    ds[1] = p->geometry.centroid[1];
+    ds[2] = p->geometry.centroid[2];
+    const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
+#endif
 
     const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
     const float soundspeed = hydro_get_comoving_soundspeed(p);
@@ -194,14 +196,16 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
     /* Angle Steering Parameters (AREPO Defaults) */
     const float max_angle = p->geometry.max_face_angle;
-    const float beta = 2.25f; // Controls how steep angle is before steering. Lower -> more cells steered. AREPO = 2.25
-    const float f_shaping_speed = 0.67f; // Steering aggressiveness factor. AREPO 0.5
+    const float beta = 2.25f; // Controls how steep angle is before steering. Lower -> more cells steered. AREPO = 2.25 or 2.0
+    float f_shaping_speed = 0.5; // Steering aggressiveness factor. AREPO 0.5
     const float vchar_dt = dt > 0. ? d / dt : 0.;// Timestep based correction
     float vchar = soundspeed; // Determines cold steering corrective velocity. Default is soundspeed.
 
-    /* Additionally impose that we use the timestep based steering if
-     * it is less aggressive than soundspeed steering */
-    if (vchar_dt < vchar) {
+    /* Additionally impose that we use the timestep based steering if it is less aggressive than soundspeed steering,
+     * and if the cell is very deformed
+     * Additionally, if d = 0 or dt = 0, we enter here and prevent 1/d = NaN or inf errors
+     */
+    if ((vchar_dt < vchar) || (max_angle > 2 * beta)){
       vchar = vchar_dt;
     } else {
       if (max_angle > 0.75 * beta) {
@@ -219,9 +223,11 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
                                     fluid_v[1] * fluid_v[1] +
                                     fluid_v[2] * fluid_v[2]) / soundspeed;
           if (Mach_part > Mach_low) {
-            const float Mach_high = 10.f;
 
 #ifdef SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT // Apply cold steering
+            /* Controls for maximum values for steering gradient */
+            const float Mach_high = 10.f;
+
             /* Apply a smoother steering gradient if between Mach low and high */
             if (p->rho < 12.f) {
               // Activate the donkey steering
@@ -236,10 +242,10 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
 #else
             /* Default cold steering */
-            vchar = vchar_dt;
+              vchar = vchar_dt;
 #endif
-          }
-        }
+            }
+      }
 #endif
         float fac = f_shaping_speed * vchar / d;
 
@@ -256,8 +262,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
         v[2] += ds[2] * fac;
       }
     } // End vchar_dt > vchar
-/* Enter else correspondning strictly to SHADOWSWIFT_STEERING_FACEANGLE_FLOWS being off, but
- * SHADOWSWIFT_STEER_MOTION being on*/
+/* Enter else correspondning strictly to SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
+ * being off, but SHADOWSWIFT_STEER_MOTION being on*/
 #else
 
     /* Add a correction to the velocity to keep particle positions close enough
