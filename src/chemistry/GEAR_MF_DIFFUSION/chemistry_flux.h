@@ -138,7 +138,7 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
    */
   const double safety_scale = 0.5;
   const double relative_change_limit = 0.25;
-  const double startup_fraction = 0.01;
+  const double startup_fraction = 0.1;
   double effective_limit_mass = min(mZ_source, capacity);
 
   /* Select the tighter of the source/capacity limit and the sink stability
