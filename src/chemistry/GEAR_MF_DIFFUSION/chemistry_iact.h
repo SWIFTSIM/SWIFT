@@ -78,8 +78,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   /* Take the previous value of bar{rho} since we are computing it now */
   float rho_i_bar = chi->filtered.rho_prev;
   float rho_j_bar = chj->filtered.rho_prev;
-  float rho_bar_mean =
-      2 * rho_i_bar * rho_j_bar / (rho_i_bar + rho_j_bar); /* harmonic mean */
+  float rho_ij_bar = rho_i_bar + rho_j_bar;
+
+  /* Harmonic mean */
+  float rho_bar_mean = 2 * rho_i_bar * rho_j_bar / rho_ij_bar;
   float w_filtered;
   kernel_eval(r * h_inv_bar, &w_filtered);
 
@@ -89,7 +91,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   float rho_j = chj->rho_prev;
 
   /* Avoid 0 division and NaN */
-  if (rho_bar_mean != 0 && !isnan(rho_bar_mean)) {
+  if (rho_bar_mean > 0.0 && rho_ij_bar > 0.0) {
     /* Now compute the filtered rho*v */
     chi->filtered.rho_v[0] += hydro_get_mass(pj) / rho_bar_mean *
                               (rho_j * pj->v[0] - rho_i * pi->v[0]) *
@@ -159,8 +161,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   /* Take the previous value of \bar{rho} since we are computing it now */
   float rho_i_bar = chi->filtered.rho_prev;
   float rho_j_bar = chj->filtered.rho_prev;
-  float rho_bar_mean =
-      2 * rho_i_bar * rho_j_bar / (rho_i_bar + rho_j_bar); /* harmonic mean */
+  float rho_ij_bar = rho_i_bar + rho_j_bar;
+
+  /* Harmonic mean */
+  float rho_bar_mean = 2 * rho_i_bar * rho_j_bar / rho_ij_bar;
   float w_filtered;
   kernel_eval(r * h_inv_bar, &w_filtered);
 
@@ -170,7 +174,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   float rho_j = chj->rho_prev;
 
   /* Avoid 0 division and NaN */
-  if (rho_bar_mean != 0 && !isnan(rho_bar_mean)) {
+  if (rho_bar_mean > 0.0 && rho_ij_bar > 0.0) {
     /* Now compute the filtered rho*v */
     chi->filtered.rho_v[0] += hydro_get_mass(pj) / rho_bar_mean *
                               (rho_j * pj->v[0] - rho_i * pi->v[0]) *

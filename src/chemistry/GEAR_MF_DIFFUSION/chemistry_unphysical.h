@@ -54,9 +54,11 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
                                  const int element, const long long id,
                                  unsigned int *negativity_counter) {
 
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   if (isinf(*metal_mass) || isnan(*metal_mass))
     error("[%lld, %d] Got inf/nan metal density/mass diffusion case %d | %.6e ",
           id, element, callloc, *metal_mass);
+#endif
 
   /* Fix negative masses */
   const double metal_mass_fraction = *metal_mass / gas_mass;
@@ -152,13 +154,13 @@ chemistry_check_unphysical_diffusion_flux(double flux[3]) {
         " %.3e %.3e %.3e",
         flux[0], flux[1], flux[2]);
   }
-#endif
 
   for (int i = 0; i < 3; i++) {
     if (isnan(flux[i])) {
       flux[i] = 0.f;
     }
   }
+#endif
 }
 
 /**
@@ -214,9 +216,11 @@ __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_metallicity(double *Z, int callloc, const int metal,
                                        const long long id) {
 
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   if (isinf(*Z) || isnan(*Z))
     error("[%lld, %d] Got inf/nan metallicity, case %d | %.6e ", id, metal,
           callloc, *Z);
+#endif
 
   /* Check that we do not have unphysical values */
   if (*Z > 1.0) {
@@ -255,7 +259,6 @@ chemistry_check_unphysical_hyperbolic_flux(double flux[4][3]) {
         flux[0][0], flux[0][1], flux[0][2], flux[1][0], flux[1][1], flux[1][2],
         flux[2][0], flux[2][1], flux[2][2], flux[3][0], flux[3][1], flux[3][2]);
   }
-#endif
 
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 3; j++) {
@@ -264,6 +267,7 @@ chemistry_check_unphysical_hyperbolic_flux(double flux[4][3]) {
       }
     }
   }
+#endif
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UNPHYSICAL_H */
