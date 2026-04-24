@@ -195,7 +195,7 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
   const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
                                  dp_prime[1] * dp_prime[1] +
                                  dp_prime[2] * dp_prime[2];
-  const double dE_prime = dE + 1.0 / (2.0 * dm) * (dp_prime_norm_2 - dp_norm_2);
+  const double dE_prime = dE + 0.5 * (dp_prime_norm_2 - dp_norm_2) / dm;
 
   /* Now, we take into account for potentially unresolved energy-conserving
      phase of the SN explosion. If we cannot resolve this phase, we give mostly
@@ -234,8 +234,8 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
-  const double E_kin_old = p_old_norm_2 / (2.0 * mj);
-  const double E_kin_new = p_new_norm_2 / (2.0 * new_mass);
+  const double E_kin_old = 0.5 * p_old_norm_2 / mj;
+  const double E_kin_new = 0.5 * p_new_norm_2 / new_mass;
   *dKE = E_kin_new - E_kin_old;
 
   const double U_old = hydro_get_physical_internal_energy(pj, xpj, cosmo);
