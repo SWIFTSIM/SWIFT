@@ -87,6 +87,60 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
+  /* --------------- Compute physical momentum received ---------------- */
+  /* Total momentum ejected by the winds during the timestep from the star
+   * particle i */
+  const float p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected *
+			  si->feedback_data.preSN.energy_ejected);
+  const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
+			w_j_bar[2] * p_ej};
+
+  /* Now boost to the 'laboratory' frame */
+  for (int i = 0; i < 3; i++) {
+    dp_prime[i] = dp[i] + dm * v_i_p[i];
+  }
+
+  /* Norm of physical velocities of the gas particle j */
+  const float norm2_v_p =
+    v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
+
+  /* This is named "dp_prime" */
+  /* double delta_p_lab_frame[3]; */
+
+  /* ----- Calculate physical Energy and internal Energy received ------ */
+  const double norm2_delta_p_lab_frame = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+  const double norm2_delta_p = w_j_bar_norm * w_j_bar_norm * p_ej * p_ej;
+
+  /* The energy ejected from the star particle i by stellar wind that is
+   * actually received by the gas particle j */
+  const double weighted_energy = w_j_bar_norm * E_ej;
+
+  /* The additional energy received by the gas particle j due to the
+   * momentum of the star particle i */
+  const double dE_change_of_frame =
+      0.5 * (norm2_delta_p_lab_frame - norm2_delta_p) / dm;
+
+  /* The total energy received from the gas particle j in the laboratory
+   * frame of reference */
+  const double dE_lab_frame = weighted_energy + dE_change_of_frame;
+
+  /* The momentum of the gas particle j after receiving the momentum from
+   * stellar wind */
+  const double p_new[3] = {mj * v_j_p[0] + dp[0],
+			   mj * v_j_p[1] + dp[1],
+			   mj * v_j_p[2] + dp[2]};
+  const double norm2_p_new = {p_new[0] * p_new[0] + p_new[1] * p_new[1] +
+			      p_new[2] * p_new[2]};
+
+  /* The new and old kinetic energy of the gas particle j */
+  const double  E_kin_old = 0.5 * mj * norm2_v_p;
+  const double E_kin_new = 0.5 * norm2_p_new / new_mass;
+  *dKE = E_kin_new - E_kin_old;
+
+  /* The additional specific internal energy of the gas particle j.
+     Ekin_new + U_new = Ekin_old + U_old + dEtot
+     -> dU = (U_new - U_old) = (Ekin_old + dEtot - Ekin_new) */
+  *dU = E_kin_old + dE_lab_frame - E_kin_new;
 }
 
 /**
