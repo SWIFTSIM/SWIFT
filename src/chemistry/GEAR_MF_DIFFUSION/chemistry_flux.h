@@ -119,7 +119,7 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
    * Truncates fluxes that are below machine epsilon relative to the source,
    * since it's just noise. Clipping it here can prevent the 'ratchet' effect.
    */
-  const double eps = 1e-15;
+  const double eps = GEAR_FVPM_DIFF_NOISE_GATE;
   if (fabs(metal_mass_interface) < mZ_source * eps) {
     /* Set to 0 to kill noise */
     for (int k = 0; k < 4; k++) fluxes[k] = 0.0;
@@ -136,9 +136,9 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
    * stalling the PDE front. We use a 'startup_fraction' of the source mass to
    * kick-start diffusion into the vacuum.
    */
-  const double safety_scale = 0.5;
-  const double relative_change_limit = 0.25;
-  const double startup_fraction = 0.1;
+  const double safety_scale = GEAR_FVPM_DIFF_LIMITER_SAFETY;
+  const double relative_change_limit = GEAR_FVPM_DIFF_LIMITER_SINK_STABILITY;
+  const double startup_fraction = GEAR_FVPM_DIFF_LIMITER_STARTUP;
   double effective_limit_mass = min(mZ_source, capacity);
 
   /* Select the tighter of the source/capacity limit and the sink stability
@@ -159,7 +159,7 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
   const double flux_init = fluxes[0];
   for (int k = 0; k < 4; k++) fluxes[k] *= factor;
 
-  if (GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY > 0 && factor < 1e-1) {
+  if (GEAR_FVPM_DIFF_FLUX_LIMITER_VERBOSITY > 0 && factor < 1e-1) {
     const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
     const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
     message(

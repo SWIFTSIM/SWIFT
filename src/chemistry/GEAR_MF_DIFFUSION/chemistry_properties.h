@@ -36,8 +36,22 @@
    when the wavespeeds are close */
 #define GEAR_FVMP_DIFFUSION_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE 1e-8
 
-/* Verbosity for the flux limiters */
-#define GEAR_FVPM_DIFFUSION_FLUX_LIMITER_VERBOSITY 0
+
+/* --- GEAR FVPM Diffusion Flux Limiter Constants --- */
+
+/** @Brief Verbosity for the flux limiters */
+#define GEAR_FVPM_DIFF_FLUX_LIMITER_VERBOSITY 0
+
+#define GEAR_FVPM_DIFF_NOISE_GATE 1e-15
+
+/** @brief Safety factor to ensure the flux stays below the physical limit. */
+#define GEAR_FVPM_DIFF_LIMITER_SAFETY 0.5f
+
+/** @brief Max fraction of the sink's current mass a neighbor can add per step. */
+#define GEAR_FVPM_DIFF_LIMITER_SINK_STABILITY 0.25f
+
+/** @brief Min fraction of the source mass allowed to seed pristine gas. */
+#define GEAR_FVPM_DIFF_LIMITER_STARTUP 0.1f
 
 /* Number of subsequent timesteps a particle's metal mass is negative before
    printing a warning.
