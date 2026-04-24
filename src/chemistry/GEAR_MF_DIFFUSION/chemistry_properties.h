@@ -21,51 +21,65 @@
 
 #include "const.h"
 
+/** @brief Size of the labels used for chemical species identifiers. */
 #define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
 
-/* Cell slope limiter beta factors. The default values come from Hopkins (2015)
- */
+/* --- Cell Slope Limiter (Hopkins 2015) --- */
+
+/** @brief Minimum slope limiter factor (Barth-Jespersen-like).
+ * Prevents the slope from being entirely zeroed out in smooth regions. */
 #define GIZMO_SLOPE_LIMITER_BETA_MIN 1.0
+
+/** @brief Maximum slope limiter factor.
+ * Limits the interface reconstruction to prevent new local extrema. */
 #define GIZMO_SLOPE_LIMITER_BETA_MAX 2.0
 
-/* Tolerance for the positivity preserving cell limiter. We allow a small
-   overshoot for diffusion */
+/* --- Positivity Preserving & Riemann Solvers --- */
+
+/** @brief Tolerance for the cell-wide positivity limiter.
+ * Allows a small fractional overshoot (20%) during diffusion to prevent
+ * the limiter from being too aggressive and stalling the solution. */
 #define GEAR_FVPM_DIFF_CELL_LIMITER_SHOOT_TOLERANGE 0.2
 
-/* Tolerance for the Riemann solver wavespeed estimate to avoid large numbers
-   when the wavespeeds are close */
+/** @brief Safety threshold for the Riemann solver wavespeed denominator.
+ * Prevents division by zero or numerical "explosions" when left and
+ * right wavespeeds are nearly identical. */
 #define GEAR_FVPM_DIFF_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE 1e-8
-
 
 /* --- GEAR FVPM Diffusion Flux Limiter Constants --- */
 
-/** @Brief Verbosity for the flux limiters */
+/** @brief Toggle for detailed logging of flux limiter events.
+ * 0: Silent, 1+: Detailed per-interaction reports (high I/O overhead). */
 #define GEAR_FVPM_DIFF_FLUX_LIMITER_VERBOSITY 0
 
+/** @brief The "Noise Gate" threshold.
+ * Fluxes smaller than 1e-15 relative to the source mass are treated as
+ * numerical noise and zeroed out to prevent the "ratchet effect." */
 #define GEAR_FVPM_DIFF_NOISE_GATE 1e-15
 
-/** @brief Safety factor to ensure the flux stays below the physical limit. */
+/** @brief Global safety factor for the rational flux limiter.
+ * Ensures the attenuated flux remains well within the physical bounds. */
 #define GEAR_FVPM_DIFF_LIMITER_SAFETY 0.5f
 
-/** @brief Max fraction of the sink's current mass a neighbor can add per step. */
+/** @brief Sink Capacity Constraint.
+ * Restricts a single neighbor interaction from changing the sink particle's
+ * metal mass by more than 25% to prevent neighbor-flooding oscillations. */
 #define GEAR_FVPM_DIFF_LIMITER_SINK_STABILITY 0.25f
 
-/** @brief Min fraction of the source mass allowed to seed pristine gas. */
+/** @brief Diffusion "Startup" Fraction.
+ * Ensures pristine gas (Z=0) can be enriched. Allows a flux of up to 10%
+ * of the source's mass to seed a metal-free neighbor. */
 #define GEAR_FVPM_DIFF_LIMITER_STARTUP 0.1f
 
-/* Number of subsequent timesteps a particle's metal mass is negative before
-   printing a warning.
-   In most cases, negative metal masses become positive within a few
-   timestep. If not, we prevent them from becoming more negative by preventing
-   outgoing metal mass fluxes.
-   For production runs, use a high value. For debugging, use small values
-   (~1-10) */
+/* --- Error Handling & Debugging --- */
+
+/** @brief Threshold for reporting persistent negative metal masses.
+ * Number of consecutive timesteps a particle stays negative before
+ * triggering a console warning. High values (200+) are for production. */
 #define GEAR_FVPM_DIFF_NEGATIVITY_COUNTER_PRINT_LIMIT 200
 
-/* DEBUG ONLY: During the force loop, if both pi and pj are active, enforce
-   only one of them to update both particles.
-   WARNING: This is not MPI compatible. It is only intended for non-MPI mode.
-*/
+/** @note DEBUG ONLY: Enforces one-sided updates for active pairs.
+ * NOT MPI-compatible. Use only for serial/thread-testing of symmetry. */
 /* #define GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE */
 
 /**
