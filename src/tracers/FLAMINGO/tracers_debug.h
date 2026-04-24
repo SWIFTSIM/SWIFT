@@ -16,18 +16,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TRACERS_NONE_DEBUG_H
-#define SWIFT_TRACERS_NONE_DEBUG_H
+#ifndef SWIFT_TRACERS_FLAMINGO_DEBUG_H
+#define SWIFT_TRACERS_FLAMINGO_DEBUG_H
 
 /**
  * @brief Write the particle-carried tracers field for debugging
- *
- * Nothing to do here.
  *
  * @param p the #part.
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static void tracers_debug_particle(
-    const struct part *p, const struct xpart *xp) {}
+    const struct part *p, const struct xpart *xp) {
 
-#endif /* SWIFT_TRACERS_NONE_DEBUG_H */
+  if (xp != NULL) {
+    warning("[PID%lld] tracers_xpart_data:", p->id);
+    warning(
+        "[PID%lld] maximum_temperature = %.3e, "
+        "maximum_temperature_scale_factor/time = %.3e, "
+        "last_AGN_injection_scale_factor/time = %.3e, "
+        "AGN_feedback_energy = "
+        "%.3e, ",
+        p->id, xp->tracers_data.maximum_temperature,
+        xp->tracers_data.maximum_temperature_scale_factor,
+        xp->tracers_data.last_AGN_injection_scale_factor,
+        xp->tracers_data.AGN_feedback_energy);
+  }
+}
+
+#endif /* SWIFT_TRACERS_FLAMINGO_DEBUG_H */
