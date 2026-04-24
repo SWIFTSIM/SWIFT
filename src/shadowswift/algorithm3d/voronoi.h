@@ -603,6 +603,11 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
                             center_of_mass[2] * center_of_mass[2];
     if (r2_com > r2) {
       warning("hey buddy you fucked the cow");
+
+      /* Something went catastrophically wrong, reset to centroid */
+      p->geometry.center_of_mass[0] = (float)(centroid[0] - generator_pos[0]);
+      p->geometry.center_of_mass[1] = (float)(centroid[1] - generator_pos[1]);
+      p->geometry.center_of_mass[2] = (float)(centroid[2] - generator_pos[2]);
     }
 #endif
 
