@@ -1227,18 +1227,34 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef EXTRA_STAR_LOOPS_1
     /* Prep1: 1 self + 26/2 pairs + 2 ghosts */
     n1 += 16;
+#ifdef WITH_MPI
+    /* 2 send/recv */
+    n1 += 2;
+#endif
 #endif
 #ifdef EXTRA_STAR_LOOPS_2
     /* Prep2: 1 self + 26/2 pairs + 1 ghost */
     n1 += 15;
+#ifdef WITH_MPI
+    /* 1 send/recv */
+    n1 += 1;
+#endif
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
     /* Prep3: 1 self + 26/2 pairs + 1 ghost */
     n1 += 15;
+#ifdef WITH_MPI
+    /* 1 send/recv */
+    n1 += 1;
+#endif
 #endif
 #ifdef EXTRA_STAR_LOOPS_4
     /* Prep3: 1 self + 26/2 pairs + 1 ghost */
     n1 += 15;
+#ifdef WITH_MPI
+    /* 1 send/recv */
+    n1 += 1;
+#endif
 #endif
   }
   if (e->policy & engine_policy_sinks) {
