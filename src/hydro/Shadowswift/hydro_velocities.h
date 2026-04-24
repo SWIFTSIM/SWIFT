@@ -200,6 +200,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     float f_shaping_speed = 0.5; // Steering aggressiveness factor. AREPO 0.5
     const float vchar_dt = dt > 0. ? d / dt : 0.;// Timestep based correction
     float vchar = soundspeed; // Determines cold steering corrective velocity. Default is soundspeed.
+    float prefac = 1.; // Needed for options later
+
 
     /* Additionally impose that we use the timestep based steering if it is less aggressive than soundspeed steering,
      * and if the cell is very deformed
@@ -242,26 +244,29 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
 #else
             /* Default cold steering */
-              vchar = vchar_dt;
+            vchar = vchar_dt;
 #endif
             }
       }
+        }
 #endif
-        float fac = f_shaping_speed * vchar / d;
 
         if (max_angle < beta) {
           /* Enter second option of Weinberger 2020 Eq. 39
            * and apply correction*/
-          fac *= (max_angle - 0.75 * beta) / (0.25 * beta);
+          prefac = (max_angle - 0.75 * beta) / (0.25 * beta);
 
-        } // Else, no further factors needed to apply third option
+        }
+      }
+    }// Else, no further factors needed to apply third option
+
+        float fac = prefac * f_shaping_speed * vchar / d;
 
         /* Apply velocity corrections */
         v[0] += ds[0] * fac;
         v[1] += ds[1] * fac;
         v[2] += ds[2] * fac;
-      }
-    } // End vchar_dt > vchar
+
 /* Enter else correspondning strictly to SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
  * being off, but SHADOWSWIFT_STEER_MOTION being on*/
 #else
