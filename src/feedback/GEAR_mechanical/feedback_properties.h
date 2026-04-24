@@ -144,13 +144,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
 
   /* Activate the stellar wind feedback */
-  fp->with_stellar_wind_feedback = (char)parser_get_param_int(params, "GEARFeedback:with_stellar_wind_feedback");
+  fp->with_stellar_wind_feedback = (char)parser_get_param_int(
+      params, "GEARFeedback:with_stellar_wind_feedback");
 
   /* Pre-Supernovae energy efficiency */
   double w_efficiency = 0.0;
   if (fp->with_stellar_wind_feedback) {
     w_efficiency = parser_get_param_double(
-	params, "GEARFeedback:pre_supernovae_efficiency");
+        params, "GEARFeedback:pre_supernovae_efficiency");
   }
 
   fp->preSN_efficiency = w_efficiency;
@@ -161,7 +162,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* Initialize the stellar models. */
   stellar_evolution_props_init(&fp->stellar_model, phys_const, us, params,
-			       cosmo, fp->with_stellar_wind_feedback);
+                               cosmo, fp->with_stellar_wind_feedback);
 
   /* Read the metallicity threshold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
@@ -194,7 +195,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     parser_get_param_string(params, "GEARFeedback:yields_table_first_stars",
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
-				 params, cosmo, fp->with_stellar_wind_feedback);
+                                 params, cosmo, fp->with_stellar_wind_feedback);
   }
 
   /*****************************************/
@@ -217,11 +218,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 #endif
 
   /* Get the terminal momentum normalisation */
-  fp->p_terminal_0 = parser_get_opt_param_float(params, "GEARFeedback:terminal_momentum_normalisation_Msun_km_per_s", DEFAULT_P_TERMINAL_0_MSUN_KM_PER_S);
+  fp->p_terminal_0 = parser_get_opt_param_float(
+      params, "GEARFeedback:terminal_momentum_normalisation_Msun_km_per_s",
+      DEFAULT_P_TERMINAL_0_MSUN_KM_PER_S);
 
   /* Convert to internal units. Note the 1e-5 term since we read it in km and
    * not cm. */
-  fp->p_terminal_0 *= phys_const->const_solar_mass * 1e-5 * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+  fp->p_terminal_0 *= phys_const->const_solar_mass * 1e-5 *
+                      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* Do we want to correct the total momentum of the gas particles after
      multiple SN ? */

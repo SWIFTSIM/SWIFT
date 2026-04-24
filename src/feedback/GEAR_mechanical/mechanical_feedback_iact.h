@@ -87,7 +87,6 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
-
 }
 
 /**
@@ -129,7 +128,7 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
   /* ... physical momentum */
   const double p_ej = sqrt(2 * m_ej * E_ej);
   const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-			w_j_bar[2] * p_ej};
+                        w_j_bar[2] * p_ej};
   const double dE = w_j_bar_norm * E_ej;
 
   /* Now boost to the 'laboratory' frame */
@@ -140,8 +139,8 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
   /* ... physical total energy */
   const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
-				 dp_prime[1] * dp_prime[1] +
-				 dp_prime[2] * dp_prime[2];
+                                 dp_prime[1] * dp_prime[1] +
+                                 dp_prime[2] * dp_prime[2];
   const double dE_prime = dE + 1.0 / (2.0 * dm) * (dp_prime_norm_2 - dp_norm_2);
 
   /* Now, we take into account for potentially unresolved energy-conserving
@@ -176,8 +175,8 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
       mj * mj *
       (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
   const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
-			   mj * v_j_p[1] + dp_prime[1],
-			   mj * v_j_p[2] + dp_prime[2]};
+                           mj * v_j_p[1] + dp_prime[1],
+                           mj * v_j_p[2] + dp_prime[2]};
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
@@ -199,14 +198,13 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
       "E_new = %e, U_new = %e, E_kin_new = %e, "
       "E_old = %e, U_old = %e, E_kin_old = %e, "
       "dE_prime = %e, dU = %e",
-      E_ej, p_ej, p_terminal, p_factor,
-      E_new, U_new, E_kin_new, E_old, U_old, E_kin_old,
-      dE_prime, *dU);
+      E_ej, p_ej, p_terminal, p_factor, E_new, U_new, E_kin_new, E_old, U_old,
+      E_kin_old, dE_prime, *dU);
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 
   /* Compute the comoving cooling radius */
   const float r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(
-					  si, p_ej, p_terminal, cosmo);
+                                          si, p_ej, p_terminal, cosmo);
   const float r_cool_2 = r_cool * r_cool;
 
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
@@ -215,12 +213,12 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
     *dU *= pow(r / r_cool, internal_energy_snowplow_exponent);
 #ifdef SWIFT_DEBUG_CHECKS
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.",
-	    r_cool);
+            r_cool);
 #endif /* SWIFT_DEBUG_CHECKS */
   } /* else we do not change dU */
 
   mechanical_feedback_accumulate_fluxes_for_conservation_check(si, dm, dp, m_ej,
-							       p_ej, E_ej);
+                                                               p_ej, E_ej);
 }
 
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
@@ -260,7 +258,6 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
     const double dm, const double new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
-
 
 }
 
@@ -319,7 +316,7 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
      cooling. */
   const double p_available = sqrt(2.0 * epsilon * m_ej);
   const double p_terminal = feedback_get_physical_SN_terminal_momentum(
-								       si, pj, xpj, phys_const, us, fb_props, cosmo);
+      si, pj, xpj, phys_const, us, fb_props, cosmo);
   const double xsi = min(1, p_terminal / (psi * p_available));
 
   /* Finally, the ejected velocity is */

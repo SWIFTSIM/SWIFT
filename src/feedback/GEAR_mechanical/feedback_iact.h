@@ -381,20 +381,20 @@ runner_iact_nonsym_feedback_apply(
   const float H = cosmo->H;
   const float a2H = a * a * H;
   const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0],
-				   a2H * si->x[1] + si->v[1],
-				   a2H * si->x[2] + si->v[2]};
+                                   a2H * si->x[1] + si->v[1],
+                                   a2H * si->x[2] + si->v[2]};
   const float vj_plus_H_flow[3] = {a2H * pj->x[0] + xpj->v_full[0],
-				   a2H * pj->x[1] + xpj->v_full[1],
-				   a2H * pj->x[2] + xpj->v_full[2]};
+                                   a2H * pj->x[1] + xpj->v_full[1],
+                                   a2H * pj->x[2] + xpj->v_full[2]};
 
   /* Compute the _physical_ relative velocity between the particles */
   const float v_i_p[3] = {vi_plus_H_flow[0] * cosmo->a_inv,
-			  vi_plus_H_flow[1] * cosmo->a_inv,
-			  vi_plus_H_flow[2] * cosmo->a_inv};
+                          vi_plus_H_flow[1] * cosmo->a_inv,
+                          vi_plus_H_flow[2] * cosmo->a_inv};
 
   const float v_j_p[3] = {vj_plus_H_flow[0] * cosmo->a_inv,
-			  vj_plus_H_flow[1] * cosmo->a_inv,
-			  vj_plus_H_flow[2] * cosmo->a_inv};
+                          vj_plus_H_flow[1] * cosmo->a_inv,
+                          vj_plus_H_flow[2] * cosmo->a_inv};
 
   /*****************************************/
   /* Do we have stellar winds */

@@ -38,8 +38,8 @@
 #define EXTRA_STAR_LOOPS_2
 #define EXTRA_STAR_LOOPS_3
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
-#define EXTRA_STAR_LOOPS_4  /* Define the fourth loop */
-#endif /* FEEDBACK_GEAR_MECHANICAL_MODE */
+#define EXTRA_STAR_LOOPS_4 /* Define the fourth loop */
+#endif                     /* FEEDBACK_GEAR_MECHANICAL_MODE */
 #elif defined(FEEDBACK_AGORA)
 #include "./feedback/AGORA/feedback.h"
 #else

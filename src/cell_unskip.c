@@ -2272,16 +2272,16 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_density,
                                   ci_nodeID);
 #ifdef EXTRA_STAR_LOOPS_2
-	  scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
-				  ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
+                                  ci_nodeID);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
-	  scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep3,
-				  ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep3,
+                                  ci_nodeID);
 #endif
 #ifdef EXTRA_STAR_LOOPS_4
-	  scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep4,
-				  ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep4,
+                                  ci_nodeID);
 #endif
           cell_activate_drift_spart(cj, s);
         }
@@ -2292,10 +2292,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep2);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
-	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep3);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep3);
 #endif
 #ifdef EXTRA_STAR_LOOPS_4
-	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep4);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep4);
 #endif
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
@@ -2325,12 +2325,12 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                                   cj_nodeID);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
-	  scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep3,
-				  cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep3,
+                                  cj_nodeID);
 #endif
 #ifdef EXTRA_STAR_LOOPS_4
-	  scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep4,
-				  cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep4,
+                                  cj_nodeID);
 #endif
           cell_activate_drift_spart(ci, s);
         }
@@ -2341,10 +2341,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep2);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
-	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep3);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep3);
 #endif
 #ifdef EXTRA_STAR_LOOPS_4
-	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep4);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep4);
 #endif
 
           /* Is the foreign cell active and will need stuff from us? */

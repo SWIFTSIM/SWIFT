@@ -178,7 +178,8 @@ int feedback_should_inject_wind_feedback(const struct spart *sp) {
  * @param sp The #spart.
  */
 int feedback_should_inject_feedback(const struct spart *sp) {
-  return feedback_should_inject_SN_feedback(sp) || feedback_should_inject_wind_feedback(sp);
+  return feedback_should_inject_SN_feedback(sp) ||
+         feedback_should_inject_wind_feedback(sp);
 }
 
 /**
@@ -234,35 +235,36 @@ void feedback_reset_feedback(struct spart *sp,
      this is called when a particle is not active, it should not alter
      anything. We'll see.
   */
-  /* message("Reset feedback for %lld (is_dead = %d)", sp->id, sp->feedback_data.is_dead); */
+  /* message("Reset feedback for %lld (is_dead = %d)", sp->id,
+   * sp->feedback_data.is_dead); */
 
-/*   sp->feedback_data.energy_ejected = 0.0; */
-/*   sp->feedback_data.enrichment_weight = 0.0; */
-/*   sp->feedback_data.weighted_gas_density = 0.0; */
-/*   sp->feedback_data.weighted_gas_metallicity = 0.0; */
+  /*   sp->feedback_data.energy_ejected = 0.0; */
+  /*   sp->feedback_data.enrichment_weight = 0.0; */
+  /*   sp->feedback_data.weighted_gas_density = 0.0; */
+  /*   sp->feedback_data.weighted_gas_metallicity = 0.0; */
 
-/*   sp->feedback_data.f_sum_minus_term[0] = 0.0; */
-/*   sp->feedback_data.f_sum_minus_term[1] = 0.0; */
-/*   sp->feedback_data.f_sum_minus_term[2] = 0.0; */
+  /*   sp->feedback_data.f_sum_minus_term[0] = 0.0; */
+  /*   sp->feedback_data.f_sum_minus_term[1] = 0.0; */
+  /*   sp->feedback_data.f_sum_minus_term[2] = 0.0; */
 
-/*   sp->feedback_data.f_sum_plus_term[0] = 0.0; */
-/*   sp->feedback_data.f_sum_plus_term[1] = 0.0; */
-/*   sp->feedback_data.f_sum_plus_term[2] = 0.0; */
+  /*   sp->feedback_data.f_sum_plus_term[0] = 0.0; */
+  /*   sp->feedback_data.f_sum_plus_term[1] = 0.0; */
+  /*   sp->feedback_data.f_sum_plus_term[2] = 0.0; */
 
-/* #if FEEDBACK_GEAR_MECHANICAL_MODE == 2     */
-/*   sp->feedback_data.accumulator.E_total = 0.0; */
-/*   sp->feedback_data.accumulator.beta_1 = 0.0; */
-/*   sp->feedback_data.accumulator.beta_2 = 0.0; */
-/* #endif */
+  /* #if FEEDBACK_GEAR_MECHANICAL_MODE == 2     */
+  /*   sp->feedback_data.accumulator.E_total = 0.0; */
+  /*   sp->feedback_data.accumulator.beta_1 = 0.0; */
+  /*   sp->feedback_data.accumulator.beta_2 = 0.0; */
+  /* #endif */
 
-/* #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS */
-/*   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0; */
-/*   sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0; */
+  /* #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS */
+  /*   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0; */
+  /*   sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0; */
 
-/*   sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0.0; */
-/*   sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0.0; */
-/*   sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0.0; */
-/* #endif /\* SWIFT_FEEDBACK_DEBUG_CHECKS *\/ */
+  /*   sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0.0; */
+  /*   sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0.0; */
+  /*   sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0.0; */
+  /* #endif /\* SWIFT_FEEDBACK_DEBUG_CHECKS *\/ */
 }
 
 /**
@@ -430,29 +432,29 @@ feedback_compute_vector_weight_non_normalized(
     /* Compute f_plus */
     const double sum_plus = si->feedback_data.f_sum_plus_term[i];
     const double sum_minus = si->feedback_data.f_sum_minus_term[i];
-    const double num_plus = sum_minus*sum_minus;
-    const double denom_plus = sum_plus*sum_plus;
+    const double num_plus = sum_minus * sum_minus;
+    const double denom_plus = sum_plus * sum_plus;
 
     /* In rare cases, f_sum_plus_term can have a component that is 0. Since
        division by 0 will give inf and further operations will give NaNs, give a
        large number to represent inf, but not the maximal double number to
        avoid overflow in later operations. */
     const double value_plus =
-	(denom_plus == 0.0) ? FLT_MAX : 1.0 + num_plus / denom_plus;
+        (denom_plus == 0.0) ? FLT_MAX : 1.0 + num_plus / denom_plus;
     f_plus_i[i] = sqrt(0.5 * value_plus);
 
     /* Compute f_minus */
-    const double num_minus = sum_plus*sum_plus;
-    const double denom_minus = sum_minus*sum_minus;
+    const double num_minus = sum_plus * sum_plus;
+    const double denom_minus = sum_minus * sum_minus;
 
     /* Same comment as above */
     const double value_minus =
-	(denom_minus == 0.0) ? FLT_MAX : 1.0 + num_minus / denom_minus;
+        (denom_minus == 0.0) ? FLT_MAX : 1.0 + num_minus / denom_minus;
     f_minus_i[i] = sqrt(0.5 * value_minus);
 
     /* Now compute the vector weight (non-normalized) */
     w_j[i] = scalar_weight_j *
-      (dx_ij_plus[i] * f_plus_i[i] + dx_ij_minus[i] * f_minus_i[i]);
+             (dx_ij_plus[i] * f_plus_i[i] + dx_ij_minus[i] * f_minus_i[i]);
   }
 }
 
@@ -489,7 +491,7 @@ feedback_compute_vector_weight_normalized(const float r2, const float *dx,
 
   /* The normalized vector weight */
   double enrichement_weight_inv = 1.0 / si->feedback_data.enrichment_weight;
-  for (int i = 0; i < 3; i++)  {
+  for (int i = 0; i < 3; i++) {
     w_j_bar[i] = w_j[i] * enrichement_weight_inv;
   }
 }
@@ -511,13 +513,11 @@ feedback_compute_vector_weight_normalized(const float r2, const float *dx,
  * @param us The #unit_system.
  */
 __attribute__((always_inline)) INLINE double
-feedback_get_physical_SN_terminal_momentum(const struct spart *restrict sp,
-                                           const struct part *restrict p,
-                                           const struct xpart *restrict xp,
-                                           const struct phys_const *phys_const,
-                                           const struct unit_system *us,
-					   const struct feedback_props *feedback_props,
-                                           const struct cosmology *cosmo) {
+feedback_get_physical_SN_terminal_momentum(
+    const struct spart *restrict sp, const struct part *restrict p,
+    const struct xpart *restrict xp, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct feedback_props *feedback_props,
+    const struct cosmology *cosmo) {
 
   /* Terminal momentum 0 (in internal units). */
   const double p_terminal_0 = feedback_props->p_terminal_0;
@@ -533,7 +533,7 @@ feedback_get_physical_SN_terminal_momentum(const struct spart *restrict sp,
   /* Get metallicity factor */
   const double Z_mean = sp->feedback_data.weighted_gas_metallicity;
   const double Z_sun = 0.0134;
-  const double Z_mean_over_Z_sun = Z_mean/Z_sun;
+  const double Z_mean_over_Z_sun = Z_mean / Z_sun;
   double metallicity_factor = 0.0;
 
   if (Z_mean_over_Z_sun < 0.01) {
