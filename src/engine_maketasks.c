@@ -259,7 +259,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
         scheduler_addunlock(s, t_pack_limiter, t_limiter);
       }
 
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_1
       if (with_feedback) {
         t_prep1 = scheduler_addtask(s, task_type_send, task_subtype_part_prep1,
                                     ci->mpi.tag, 0, ci, cj);
@@ -313,14 +313,16 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       if (with_limiter)
         scheduler_addunlock(s, ci->super->timestep, t_pack_limiter);
 
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_1
       /* In stellar feedback, send gas parts only after they have finished their
        * hydro ghosts */
       if (with_feedback) {
         scheduler_addunlock(s, ci->hydro.super->hydro.prep1_ghost, t_prep1);
+#ifdef EXTRA_STAR_LOOPS_2
         scheduler_addunlock(s, t_prep1, ci->hydro.super->stars.prep2_ghost);
-      }
 #endif
+      }
+#endif /* EXTRA_STAR_LOOPS_1 */
 
       if (with_rt) {
         /* Don't send the transport stuff before the gradient stuff */
@@ -365,7 +367,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       engine_addlink(e, &ci->mpi.send, t_limiter);
       engine_addlink(e, &ci->mpi.pack, t_pack_limiter);
     }
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_1
     if (with_feedback) engine_addlink(e, &ci->mpi.send, t_prep1);
 #endif
 
@@ -457,7 +459,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
           scheduler_addtask(s, task_type_send, task_subtype_spart_density,
                             ci->mpi.tag, 0, ci, cj);
 
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_2
       t_prep2 = scheduler_addtask(s, task_type_send, task_subtype_spart_prep2,
                                   ci->mpi.tag, 0, ci, cj);
 #endif
@@ -470,64 +472,57 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                   ci->mpi.tag, 0, ci, cj);
 #endif
 
-#ifdef EXTRA_STAR_LOOPS
-      /* The first send_stars task should unlock prep1 ghost */
-      scheduler_addunlock(s, t_density, ci->hydro.super->stars.prep1_ghost);
-
-      /* Prep2 ghost before second send */
-      scheduler_addunlock(s, ci->hydro.super->stars.prep2_ghost, t_prep2);
-
-
-#ifdef EXTRA_STAR_LOOPS_3
-
-      /* Prep2 unlocks prep3 ghost before third send */
-      scheduler_addunlock(s, t_prep2, ci->hydro.super->stars.prep3_ghost);
-
-      /* Prep3 ghost before third send */
-      scheduler_addunlock(s, ci->hydro.super->stars.prep3_ghost, t_prep3);
-
-
-#ifdef EXTRA_STAR_LOOPS_4
-
-      /* Prep3 unlocks prep4 ghost before fourth send */
-      scheduler_addunlock(s, t_prep3, ci->hydro.super->stars.prep4_ghost);
-
-      /* Prep4 ghost before fourth send */
-      scheduler_addunlock(s, ci->hydro.super->stars.prep4_ghost, t_prep4);
-
-      /* The fourth send_stars task should unlock the super_cell's "end of star
-       * block" task. */
-      scheduler_addunlock(s, t_prep4, ci->hydro.super->stars.stars_out);
-#else /* Without EXTRA_STAR_LOOPS_4 */
-      /* The third send_stars task should unlock the super_cell's "end of star
-       * block" task. */
-      scheduler_addunlock(s, t_prep3, ci->hydro.super->stars.stars_out);
-#endif /* EXTRA_STAR_LOOPS_4 */
-
-
-#else /* Without EXTRA_STAR_LOOPS_3 */
-
-      /* The second send_stars task should unlock the super_cell's "end of star
-       * block" task. */
-      scheduler_addunlock(s, t_prep2, ci->hydro.super->stars.stars_out);
-#endif /* EXTRA_STAR_LOOPS_3 */
-
-
-#else
-      /* The send_stars task should unlock the super_cell's "end of star block"
-       * task. */
-      scheduler_addunlock(s, t_density, ci->hydro.super->stars.stars_out);
-#endif
-
       /* Density ghost before first send */
       scheduler_addunlock(s, ci->hydro.super->stars.ghost_out, t_density);
 
       /* Drift before first send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_density);
 
+      /* Track the tail of the send-chain to eventually unlock stars_out */
+      struct task *last_send = t_density;
+
+#ifdef EXTRA_STAR_LOOPS_1
+      /* The first send_stars task should unlock prep1 ghost */
+      scheduler_addunlock(s, t_density, ci->hydro.super->stars.prep1_ghost);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+      /* Ensure physical MPI ordering: Loop 2 send must follow Loop 1 send */
+      scheduler_addunlock(s, t_density, t_prep2);
+
+      /* Local ghost must finish before we send its results */
+      scheduler_addunlock(s, ci->hydro.super->stars.prep2_ghost, t_prep2);
+      last_send = t_prep2;
+#endif
+
+#ifdef EXTRA_STAR_LOOPS_3
+      /* Previous send unlocks the next ghost */
+      scheduler_addunlock(s, last_send, ci->hydro.super->stars.prep3_ghost);
+
+      /* Local ghost must finish before we send its results */
+      scheduler_addunlock(s, ci->hydro.super->stars.prep3_ghost, t_prep3);
+
+      /* Ensure physical MPI ordering */
+      scheduler_addunlock(s, last_send, t_prep3);
+      last_send = t_prep3;
+#endif
+
+#ifdef EXTRA_STAR_LOOPS_4
+      /* Previous send unlocks the next ghost */
+      scheduler_addunlock(s, last_send, ci->hydro.super->stars.prep4_ghost);
+
+      /* Local ghost must finish before we send its results */
+      scheduler_addunlock(s, ci->hydro.super->stars.prep4_ghost, t_prep4);
+
+      /* Ensure physical MPI ordering */
+      scheduler_addunlock(s, last_send, t_prep4);
+      last_send = t_prep4;
+#endif
+      /* The last active send unlocks the end of the star block */
+      scheduler_addunlock(s, last_send, ci->hydro.super->stars.stars_out);
+
       if (with_star_formation && ci->hydro.count > 0) {
-        scheduler_addunlock(s, t_sf_counts, t_density);
-#ifdef EXTRA_STAR_LOOPS
+	scheduler_addunlock(s, t_sf_counts, t_density);
+#ifdef EXTRA_STAR_LOOPS_2
 	scheduler_addunlock(s, t_sf_counts, t_prep2);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
@@ -540,7 +535,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
     }
 
     engine_addlink(e, &ci->mpi.send, t_density);
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_2
     engine_addlink(e, &ci->mpi.send, t_prep2);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
@@ -786,7 +781,7 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, t_limiter, t_unpack_limiter);
     }
 
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_1
     if (with_feedback) {
       t_prep1 = scheduler_addtask(s, task_type_recv, task_subtype_part_prep1,
                                   c->mpi.tag, 0, c, NULL);
@@ -865,7 +860,7 @@ void engine_addtasks_recv_hydro(
       engine_addlink(e, &c->mpi.recv, t_limiter);
       engine_addlink(e, &c->mpi.unpack, t_unpack_limiter);
     }
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_1
     if (with_feedback) engine_addlink(e, &c->mpi.recv, t_prep1);
 #endif
 
@@ -910,21 +905,23 @@ void engine_addtasks_recv_hydro(
       for (struct link *l = c->stars.density; l != NULL; l = l->next) {
         scheduler_addunlock(s, t_rho, l->t);
       }
-    }
-#ifdef EXTRA_STAR_LOOPS
-    if (with_feedback) {
+
+#ifdef EXTRA_STAR_LOOPS_1
       /* Receive gas parts after everything is finished in prep1 loop */
       for (struct link *l = c->stars.prepare1; l != NULL; l = l->next) {
-        scheduler_addunlock(s, l->t, t_prep1);
+	scheduler_addunlock(s, l->t, t_prep1);
       }
 
       /* Start updating stars in prep2 only after the updated gas parts have
        * been received */
+#ifdef EXTRA_STAR_LOOPS_2
       for (struct link *l = c->stars.prepare2; l != NULL; l = l->next) {
-        scheduler_addunlock(s, t_prep1, l->t);
+	scheduler_addunlock(s, t_prep1, l->t);
       }
-    }
 #endif
+#endif /* EXTRA_STAR_LOOPS_1 */
+    }
+
     /* Make sure the part have been received before the BHs compute their
      * accretion rates (depends on particles' rho). */
     if (with_black_holes) {
@@ -1106,7 +1103,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_density = scheduler_addtask(s, task_type_recv, task_subtype_spart_density,
                                   c->mpi.tag, 0, c, NULL);
 
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_2
     t_prep2 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep2,
                                 c->mpi.tag, 0, c, NULL);
 #endif
@@ -1123,7 +1120,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, c->stars.sorts);
       scheduler_addunlock(s, t_sf_counts, t_density);
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_2
       scheduler_addunlock(s, t_sf_counts, t_prep2);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
@@ -1137,7 +1134,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 
   if (t_density != NULL) {
     engine_addlink(e, &c->mpi.recv, t_density);
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_2
     engine_addlink(e, &c->mpi.recv, t_prep2);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
@@ -1155,7 +1152,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #endif
     if (c->stars.sorts != NULL) {
       scheduler_addunlock(s, t_density, c->stars.sorts);
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_2
       scheduler_addunlock(s, c->stars.sorts, t_prep2);
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
@@ -1171,60 +1168,51 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
       scheduler_addunlock(s, l->t, t_density);
     }
 
-#ifdef EXTRA_STAR_LOOPS
-    /* Start updating local gas only after sparts have been received */
+    /* Track the current receive task to anchor the next interaction loop */
+    struct task *last_recv = t_density;
+
+#ifdef EXTRA_STAR_LOOPS_1
+    /* Local Prepare1 interacts using data from t_density */
     for (struct link *l = c->stars.prepare1; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_density, l->t);
+#ifdef EXTRA_STAR_LOOPS_2
       scheduler_addunlock(s, l->t, t_prep2);
+#endif
     }
+#endif
 
-    /* Receive stars for the second time after the prep2 loop */
+#ifdef EXTRA_STAR_LOOPS_2
+    /* Local Prepare2 interacts using data from t_prep2 */
     for (struct link *l = c->stars.prepare2; l != NULL; l = l->next) {
       scheduler_addunlock(s, l->t, t_prep2);
+      scheduler_addunlock(s, last_recv, l->t);
     }
+    last_recv = t_prep2;
+#endif
 
 #ifdef EXTRA_STAR_LOOPS_3
-    /* Receive stars for the third time after the prep3 loop */
+    /* Local Prepare3 interacts using data from t_prep3 */
     for (struct link *l = c->stars.prepare3; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_prep2, l->t);
       scheduler_addunlock(s, l->t, t_prep3);
+      scheduler_addunlock(s, last_recv, l->t);
     }
+    last_recv = t_prep3;
+#endif
 
 #ifdef EXTRA_STAR_LOOPS_4
-    /* Receive stars for the fourth time after the prep4 loop */
+    /* prepare4 starts ONLY after t_prep3 is received */
     for (struct link *l = c->stars.prepare4; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_prep3, l->t);
       scheduler_addunlock(s, l->t, t_prep4);
+      scheduler_addunlock(s, last_recv, l->t);
     }
+    last_recv = t_prep4;
+#endif
 
-    /* Start updating local gas only after sparts have been received */
+    /* Feedback loop starts only after the very last MPI receive is in */
     for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_prep4, l->t);
+      scheduler_addunlock(s, last_recv, l->t);
       scheduler_addunlock(s, l->t, tend);
     }
-#else /* Without EXTRA_STAR_LOOPS_4 */
-    /* Start updating local gas only after sparts have been received */
-    for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_prep3, l->t);
-      scheduler_addunlock(s, l->t, tend);
-    }
-#endif /* EXTRA_STAR_LOOPS_4 */
-
-#else /* Without EXTRA_STAR_LOOPS_3 */
-    /* Start updating local gas only after sparts have been received */
-    for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_prep2, l->t);
-      scheduler_addunlock(s, l->t, tend);
-    }
-#endif /* EXTRA_STAR_LOOPS_3 */
-
-#else /* Without EXTRA_STAR_LOOPS */
-    /* Start updating local gas only after sparts have been received */
-    for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_density, l->t);
-      scheduler_addunlock(s, l->t, tend);
-    }
-#endif /* EXTRA_STAR_LOOPS */
   }
 
   /* Recurse? */
