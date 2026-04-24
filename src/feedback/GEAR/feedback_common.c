@@ -81,8 +81,8 @@ void feedback_will_do_feedback(
     const integertime_t ti_current, const double time_base) {
 
   /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
-  sp->feedback_data.preSN.energy_ejected = 0;
+  sp->feedback_data.supernovae.energy_ejected = 0;
+  sp->feedback_data.winds.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
   /* Quit if the birth_scale_factor or birth_time is negative.
@@ -159,15 +159,16 @@ void feedback_will_do_feedback(
   }
 
   /* Apply the energy efficiency factor */
-  sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
+  sp->feedback_data.supernovae.energy_ejected *=
+      feedback_props->supernovae_efficiency;
 
   /* Multiply pre-SN energy by the efficiency */
-  sp->feedback_data.preSN.energy_ejected *= feedback_props->preSN_efficiency;
+  sp->feedback_data.winds.energy_ejected *= feedback_props->winds_efficiency;
 
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback =
-      sp->feedback_data.energy_ejected != 0. ||
-      sp->feedback_data.preSN.energy_ejected != 0. ||
+      sp->feedback_data.supernovae.energy_ejected != 0. ||
+      sp->feedback_data.winds.energy_ejected != 0. ||
       !sp->feedback_data.is_dead;
 }
 
@@ -277,7 +278,7 @@ void feedback_init_after_star_formation(
   feedback_init_spart(sp);
 
   /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.supernovae.energy_ejected = 0;
 
   /* The star has nothing useful to do in this loop. Note that in GEAR, the
   order of operations are:
@@ -311,8 +312,11 @@ void feedback_first_init_spart(struct spart *sp,
   /* Initialize the feedback struct for the first time */
   feedback_init_spart(sp);
 
-  /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
+  /* Zero energies and masses */
+  sp->feedback_data.supernovae.energy_ejected = 0.0;
+  sp->feedback_data.supernovae.mass_ejected = 0.0;
+  sp->feedback_data.winds.energy_ejected = 0.0;
+  sp->feedback_data.winds.mass_ejected = 0.0;
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;
