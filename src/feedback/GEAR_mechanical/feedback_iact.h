@@ -438,8 +438,10 @@ runner_iact_nonsym_feedback_apply(
     xpj->feedback_data.delta_u += dU_SW / new_mass;
 
     /* TODO: Determine if we need that or if we want that */
-    /* xpj->feedback_data.delta_E_kin += dKE; */
-    /* xpj->feedback_data.number_SN += 1; */
+    xpj->feedback_data.delta_E_kin += dKE_SW;
+
+    /* TODO: Rename to number of events */
+    xpj->feedback_data.number_SN += 1;
 
     /* Flag this particle that it received stellar wind feedback */
     xpj->feedback_data.hit_by_preSN = 1;
