@@ -25,6 +25,7 @@ Scheduler:
   cell_extra_sinks:  10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sparts: 10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 3
+  links_per_tasks:    100
 
 # Parameters governing the conserved quantities statistics
 Statistics:
