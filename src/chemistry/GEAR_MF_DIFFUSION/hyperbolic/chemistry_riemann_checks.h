@@ -22,7 +22,7 @@
 #include "error.h"
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_riemann_checks.h
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/hyperbolic/chemistry_riemann_checks.h
  * @brief File containing functions to check that in/output of the Riemann
  * solver are meaningful, e.g. no NaNs or negative densities.
  * */

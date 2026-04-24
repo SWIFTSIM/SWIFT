@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GRADIENTS_EXTRAPOLATE_GEAR_MF_DIFFUSION_H
-#define SWIFT_CHEMISTRY_GRADIENTS_EXTRAPOLATE_GEAR_MF_DIFFUSION_H
+#ifndef SWIFT_CHEMISTRY_GRADIENTS_EXTRAPOLATE_GEAR_FVPM_DIFFUSION_H
+#define SWIFT_CHEMISTRY_GRADIENTS_EXTRAPOLATE_GEAR_FVPM_DIFFUSION_H
 
 /**
  * @file src/chemistry/GEAR_MFM_diffusion/chemistry_gradients.h
@@ -26,7 +26,7 @@
 
 /**
  * @brief Extrapolate the given gradient over the given distance. Double
- * version.SWIFT_CHEMISTRY_GRADIENTS_EXTRAPOLATE_GEAR_MF_DIFFUSION_H
+ * version.
  *
  * @param gradient Gradient of a quantity.
  * @param dx Distance vector.
@@ -53,4 +53,4 @@ chemistry_gradients_extrapolate_float(const float gradient[3],
   return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
 }
 
-#endif /* SWIFT_CHEMISTRY_GRADIENTS_EXTRAPOLATE_GEAR_MF_DIFFUSION_H */
+#endif /* SWIFT_CHEMISTRY_GRADIENTS_EXTRAPOLATE_GEAR_FVPM_DIFFUSION_H */

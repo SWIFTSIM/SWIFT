@@ -21,7 +21,7 @@
 
 /**
  * @file
- *src/chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_slope_limiters_face.h
+ *src/chemistry/GEAR_FVPM_DIFFUSION/hyperbolic/chemistry_slope_limiters_face.h
  * @brief Face slope limiter for the hyperbolic diffusion scheme.
  **/
 

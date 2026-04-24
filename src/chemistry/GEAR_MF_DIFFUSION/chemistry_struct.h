@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_MF_DIFFUSION_H
-#define SWIFT_CHEMISTRY_STRUCT_GEAR_MF_DIFFUSION_H
+#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_FVPM_DIFFUSION_H
+#define SWIFT_CHEMISTRY_STRUCT_GEAR_FVPM_DIFFUSION_H
 
 #include "chemistry_properties.h"
 
@@ -51,4 +51,4 @@ struct chemistry_sink_data {
   double metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
 };
 
-#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_MF_DIFFUSION_H */
+#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_FVPM_DIFFUSION_H */

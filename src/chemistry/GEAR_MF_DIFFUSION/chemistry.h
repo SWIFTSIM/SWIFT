@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_H
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry.h
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/chemistry.h
  */
 
 /* Some standard headers. */
@@ -895,4 +895,4 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   chd->kappa = chemistry_get_diffusion_coefficient(p, chem_data, cosmo);
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_H */

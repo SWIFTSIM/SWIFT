@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_CHECKS_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_CHECKS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_RIEMANN_CHECKS_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_RIEMANN_CHECKS_H
 
 #include "error.h"
 
@@ -28,4 +28,4 @@
 #include "parabolic/chemistry_riemann_checks.h"
 #endif
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_CHECKS_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_RIEMANN_CHECKS_H */

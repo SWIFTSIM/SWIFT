@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_GETTERS_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_GETTERS_H
 
 #include "chemistry_struct.h"
 #include "const.h"
@@ -633,4 +633,4 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
 #include "hyperbolic/chemistry_getters.h"
 #endif
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H  */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_GETTERS_H  */

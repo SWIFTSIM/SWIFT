@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UNPHYSICAL_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UNPHYSICAL_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_UNPHYSICAL_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_UNPHYSICAL_H
 
 #include "chemistry_properties.h"
 #include "error.h"
@@ -270,4 +270,4 @@ chemistry_check_unphysical_hyperbolic_flux(double flux[4][3]) {
 #endif
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UNPHYSICAL_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_UNPHYSICAL_H */

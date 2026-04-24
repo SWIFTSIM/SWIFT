@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_TIMESTEPS_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_TIMESTEPS_H
 
 #include "chemistry_getters.h"
 #include "chemistry_struct.h"
@@ -125,4 +125,4 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
   return dt;
 #endif
 }
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H  */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_TIMESTEPS_H  */

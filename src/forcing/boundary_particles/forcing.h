@@ -94,7 +94,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     rt_prepare_force(p);
 #endif
     /* TODO: Do we want to add these? */
-    /* #if defined(CHEMISTRY_GEAR_MF_DIFFUSION) || \ */
+    /* #if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \ */
     /*     defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION) */
 
     /*           /\* Some values need to be reset in the Gizmo case. *\/ */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UTILS_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UTILS_H
+#ifndef SWIFT_SYMMETRIX_MATRIX_DIAGONALISATION_H
+#define SWIFT_SYMMETRIX_MATRIX_DIAGONALISATION_H
 
 #include "inline.h"
 #include "minmax.h"
@@ -454,4 +454,4 @@ __attribute__((always_inline)) INLINE static void sym_matrix_diagonalise_3x3_d(
   eigenvalues[2] *= maxAbsElement;
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_UTILS_H */
+#endif /* SYMMETRIX_MATRIX_DIAGONALISATION */

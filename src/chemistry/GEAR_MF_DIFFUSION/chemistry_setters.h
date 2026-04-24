@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SETTERS_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SETTERS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SETTERS_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SETTERS_H
 
 #include "chemistry_getters.h"
 #include "chemistry_struct.h"
@@ -302,4 +302,4 @@ chemistry_set_star_supernovae_ejected_yields(
 #include "hyperbolic/chemistry_setters.h"
 #endif
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SETTERS_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SETTERS_H */

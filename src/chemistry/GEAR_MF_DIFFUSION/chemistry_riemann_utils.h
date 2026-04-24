@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_UTILS_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_UTILS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_RIEMANN_UTILS_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_RIEMANN_UTILS_H
 
 /* Config parameters. */
 #include <config.h>
@@ -28,7 +28,7 @@
 #include "part.h"
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_riemann_utils.h
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/chemistry_riemann_utils.h
  * @brief File containing functions to modularise the Riemann solver
  * computations.
  *
@@ -265,4 +265,4 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_is_vacuum(
     return 0;
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_UTILS_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_RIEMANN_UTILS_H */

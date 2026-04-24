@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_PROPERTIES_GEAR_MF_DIFFUSION_H
-#define SWIFT_CHEMISTRY_PROPERTIES_GEAR_MF_DIFFUSION_H
+#ifndef SWIFT_CHEMISTRY_PROPERTIES_GEAR_FVPM_DIFFUSION_H
+#define SWIFT_CHEMISTRY_PROPERTIES_GEAR_FVPM_DIFFUSION_H
 
 #include "const.h"
 
@@ -150,4 +150,4 @@ struct chemistry_global_data {
   float C_CFL_chemistry;
 };
 
-#endif /* SWIFT_CHEMISTRY_PROPERTIES_GEAR_MF_DIFFUSION_H */
+#endif /* SWIFT_CHEMISTRY_PROPERTIES_GEAR_FVPM_DIFFUSION_H */

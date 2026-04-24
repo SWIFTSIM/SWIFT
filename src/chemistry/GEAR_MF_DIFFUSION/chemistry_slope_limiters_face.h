@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_FACE_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_FACE_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SLOPE_LIMITERS_FACE_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SLOPE_LIMITERS_FACE_H
 
 /* Some standard headers. */
 #include <float.h>
@@ -27,7 +27,7 @@
 #include "sign.h"
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_face.h
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/chemistry_slope_limiters_face.h
  * @brief File containing routines concerning the face slope limiter for the
  * GEAR MFM diffusion scheme, i.e. limiting the actual interparticle flux.
  * */
@@ -289,4 +289,4 @@ chemistry_slope_limit_face_hydro(float Wi[5], float Wj[5], float dvi[3],
 #include "parabolic/chemistry_slope_limiter_face.h"
 #endif
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_FACE_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SLOPE_LIMITERS_FACE_H */

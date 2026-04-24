@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SLOPE_LIMITERS_CELL_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SLOPE_LIMITERS_CELL_H
 
 #include "chemistry_getters.h"
 #include "hydro.h"
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_cell.h
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/chemistry_slope_limiters_cell.h
  * @brief File containing routines concerning the cell slope limiter for the
  * GEAR MF diffusion scheme. (= fist slope limiting step that limits gradients
  * such that they don't predict new extrema at neighbour particle's positions)
@@ -297,4 +297,4 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   chd->gradients.v[2][2] = gradvz[2];
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_SLOPE_LIMITERS_CELL_H */

@@ -29,7 +29,7 @@
 #include "sign.h"
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_riemann_HLL.h
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/chemistry_riemann_HLL.h
  * @brief File containing functions concerning HLL riemann solver for the
  * anisotropic parabolic diffusion equation.
  */

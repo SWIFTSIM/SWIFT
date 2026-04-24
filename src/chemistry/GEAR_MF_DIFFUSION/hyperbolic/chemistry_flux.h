@@ -23,7 +23,7 @@
 #include "../chemistry_unphysical.h"
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/hyperbolic/chemistry_flux.h
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/hyperbolic/chemistry_flux.h
  * @brief Header dealing with hyperbolic diffusion fluxes.
  */
 

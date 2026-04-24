@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_RIEMANN_HLL_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_RIEMANN_HLL_H
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_riemann_HLL.h
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/chemistry_riemann_HLL.h
  * @brief File containing functions concerning HLL riemann solver for the
  * anisotropic parabiolic/hpyerbolic diffusion equation.
  * */
@@ -32,4 +32,4 @@
 #include "parabolic/chemistry_riemann_HLL.h"
 #endif
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_RIEMANN_HLL_H */

@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_ADDITIONS_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_ADDITIONS_H
 
 #include "chemistry_flux.h"
 #include "chemistry_struct.h"
@@ -242,4 +242,4 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
 #endif
 }
 
-#endif  // SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
+#endif  // SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_ADDITIONS_H

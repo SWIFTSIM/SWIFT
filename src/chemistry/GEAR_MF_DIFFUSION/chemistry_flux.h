@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H
-#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_FLUX_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_FLUX_H
 
 #include "chemistry_getters.h"
 #include "chemistry_properties.h"
@@ -30,7 +30,7 @@
 #endif
 
 /**
- * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_flux.h
+ * @file src/chemistry/GEAR_FVPM_DIFFUSION/chemistry_flux.h
  * @brief Main header dealing with fluxes.
  *
  * */
@@ -174,4 +174,4 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
   }
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_FLUX_H  */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_FLUX_H  */
