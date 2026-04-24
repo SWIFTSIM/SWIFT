@@ -120,4 +120,5 @@ chemistry_slope_limit_face_scalar(double *Ui, double *Uj, double *dUi,
       Uj[0], Ui[0], Uj[0] + dUj[0], xij_j_norm, r_inv, 0);
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_SLOPE_LIMITER_FACE_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_SLOPE_LIMITER_FACE_H \
+        */

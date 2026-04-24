@@ -25,7 +25,7 @@
 #endif
 
 #if defined(GIZMO_MFV_SPH) || defined(RT_GEAR) || \
-    defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) ||       \
+    defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) ||     \
     defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 #include "./MFV/fvpm_geometry.h"
 #elif defined(GIZMO_MFM_SPH)
@@ -331,7 +331,8 @@ fvpm_check_total_face_area_vector_sum(const struct part *p) {
   /*     p->geometry.area_sum[1] > threshold || */
   /*     p->geometry.area_sum[2] > threshold) { */
   /*   warning( */
-  /*       "[%lld] Sum A_ij strongly deviating from 0! A_tot = %e, Sum_j A_ij = ( " */
+  /*       "[%lld] Sum A_ij strongly deviating from 0! A_tot = %e, Sum_j A_ij =
+   * ( " */
   /*       "%e %e %e ).", */
   /*       p->id, p->geometry.area, p->geometry.area_sum[0], */
   /*       p->geometry.area_sum[1], p->geometry.area_sum[2]); */
