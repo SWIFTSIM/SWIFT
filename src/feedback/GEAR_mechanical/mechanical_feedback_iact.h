@@ -370,6 +370,9 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
+  const double mj_2 = mj*mj;
+  const double mj_inv = 1.0 / mj;
+  const double new_mass_inv = 1.0 / new_mass;
   const double f_kin_0 = fb_props->f_kin_0;
 
   /* Compute the relevant variables from the accumulators. */
@@ -377,7 +380,7 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
       E_ej + 0.5 * m_ej * si->feedback_data.accumulator_sn.E_total;
   const double epsilon = f_kin_0 * E_tot; /* coupled kinetic energy */
   const double beta_1 =
-      sqrt(m_ej / (2.0 * epsilon)) * si->feedback_data.accumulator_sn.beta_1;
+      sqrt(0.5 * m_ej / epsilon) * si->feedback_data.accumulator_sn.beta_1;
   const double beta_2 = m_ej * si->feedback_data.accumulator_sn.beta_2;
 
   /* Compute the PdV work, taking into account gas in/outflows */
@@ -413,16 +416,15 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
 
   /* Compute kinetic energy difference before and after SN */
   const double p_old_norm_2 =
-      mj * mj *
-      (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
+      mj_2 * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
   const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
                            mj * v_j_p[1] + dp_prime[1],
                            mj * v_j_p[2] + dp_prime[2]};
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
-  const double E_kin_old = p_old_norm_2 / (2.0 * mj);
-  const double E_kin_new = p_new_norm_2 / (2.0 * new_mass);
+  const double E_kin_old = 0.5 * p_old_norm_2 * mj_inv;
+  const double E_kin_new = 0.5 * p_new_norm_2 * new_mass_inv;
   *dKE = E_kin_new - E_kin_old;
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
