@@ -104,9 +104,6 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
   const float norm2_v_p =
     v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
 
-  /* This is named "dp_prime" */
-  /* double delta_p_lab_frame[3]; */
-
   /* ----- Calculate physical Energy and internal Energy received ------ */
   const double norm2_delta_p_lab_frame = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   const double norm2_delta_p = w_j_bar_norm * w_j_bar_norm * p_ej * p_ej;
