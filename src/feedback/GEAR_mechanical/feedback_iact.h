@@ -298,14 +298,14 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
   const double w_prime_ij = w_j_bar_norm / (1 + dm / mj);
 
   /* Notice that we will multiply by 0.5*m_ej later on */
-  si->feedback_data.accumulator.E_total += w_prime_ij * v_ij_p_norm_2;
+  si->feedback_data.accumulator_sn.E_total += w_prime_ij * v_ij_p_norm_2;
 
   /* Notice that we need the small epsilon (total available kinetic energy) to
      finish the computation of this. The small epsilon is determined by E_tot */
-  si->feedback_data.accumulator.beta_1 += w_prime_ij * v_ij_p_times_w_j_bar_hat;
+  si->feedback_data.accumulator_sn.beta_1 += w_prime_ij * v_ij_p_times_w_j_bar_hat;
 
   /* Notice that we will multiply by m_ej later on */
-  si->feedback_data.accumulator.beta_2 += w_prime_ij * w_j_bar_norm / mj;
+  si->feedback_data.accumulator_sn.beta_2 += w_prime_ij * w_j_bar_norm / mj;
 
   /* Compute the comoving weigthed average of the gas properties around the star
      with our isotropic weighting scheme. */

@@ -201,9 +201,13 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.f_sum_plus_term[2] = 0.0;
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
-  sp->feedback_data.accumulator.E_total = 0.0;
-  sp->feedback_data.accumulator.beta_1 = 0.0;
-  sp->feedback_data.accumulator.beta_2 = 0.0;
+  sp->feedback_data.accumulator_sn.E_total = 0.0;
+  sp->feedback_data.accumulator_sn.beta_1 = 0.0;
+  sp->feedback_data.accumulator_sn.beta_2 = 0.0;
+
+  sp->feedback_data.accumulator_winds.E_total = 0.0;
+  sp->feedback_data.accumulator_winds.beta_1 = 0.0;
+  sp->feedback_data.accumulator_winds.beta_2 = 0.0;
 #endif
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
@@ -252,9 +256,13 @@ void feedback_reset_feedback(struct spart *sp,
   /*   sp->feedback_data.f_sum_plus_term[2] = 0.0; */
 
   /* #if FEEDBACK_GEAR_MECHANICAL_MODE == 2     */
-  /*   sp->feedback_data.accumulator.E_total = 0.0; */
-  /*   sp->feedback_data.accumulator.beta_1 = 0.0; */
-  /*   sp->feedback_data.accumulator.beta_2 = 0.0; */
+  /* sp->feedback_data.accumulator_sn.E_total = 0.0; */
+  /* sp->feedback_data.accumulator_sn.beta_1 = 0.0; */
+  /* sp->feedback_data.accumulator_sn.beta_2 = 0.0; */
+
+  /* sp->feedback_data.accumulator_winds.E_total = 0.0; */
+  /* sp->feedback_data.accumulator_winds.beta_1 = 0.0; */
+  /* sp->feedback_data.accumulator_winds.beta_2 = 0.0; */
   /* #endif */
 
   /* #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS */

@@ -116,13 +116,25 @@ struct feedback_spart_data {
     /*! Accumulated value for the total energy available in the SN, taking into
        account gas-star motion. This is eq (A4) (lower formula) sum terms in
        https://arxiv.org/abs/2404.16987, without the 0.5*m_ej. */
-    double E_total;
+    float E_total;
 
     /*! Parameters to determine the coupled energy, momentum and internal energy
        of the SN */
-    double beta_1; /* Accumulated value for beta_1 */
-    double beta_2; /* Accumulated value for beta_2 */
-  } accumulator;
+    float beta_1; /* Accumulated value for beta_1 */
+    float beta_2; /* Accumulated value for beta_2 */
+  } accumulator_sn;
+
+  struct {
+    /*! Accumulated value for the total energy available in the SN, taking into
+       account gas-star motion. This is eq (A4) (lower formula) sum terms in
+       https://arxiv.org/abs/2404.16987, without the 0.5*m_ej. */
+    float E_total;
+
+    /*! Parameters to determine the coupled energy, momentum and internal energy
+       of the SN */
+    float beta_1; /* Accumulated value for beta_1 */
+    float beta_2; /* Accumulated value for beta_2 */
+  } accumulator_winds;
 #endif
 
   /*! Checks that the sum of the fluxes is 0. These ensures the weights are

@@ -352,11 +352,11 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
 
   /* Compute the relevant variables from the accumulators. */
   const double E_tot =
-      E_ej + 0.5 * m_ej * si->feedback_data.accumulator.E_total;
+      E_ej + 0.5 * m_ej * si->feedback_data.accumulator_sn.E_total;
   const double epsilon = f_kin_0 * E_tot; /* coupled kinetic energy */
   const double beta_1 =
-      sqrt(m_ej / (2.0 * epsilon)) * si->feedback_data.accumulator.beta_1;
-  const double beta_2 = m_ej * si->feedback_data.accumulator.beta_2;
+      sqrt(m_ej / (2.0 * epsilon)) * si->feedback_data.accumulator_sn.beta_1;
+  const double beta_2 = m_ej * si->feedback_data.accumulator_sn.beta_2;
 
   /* Compute the PdV work, taking into account gas in/outflows */
   const double psi = (sqrt(fabs(beta_2 + beta_1 * beta_1)) - beta_1) / beta_2;
