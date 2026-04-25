@@ -275,6 +275,11 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
   const float dm_SN = max(w_j_bar_norm * m_ej_SN, FLT_MIN);
   const float dm_SW = max(w_j_bar_norm * m_ej_SW, FLT_MIN);
 
+  /* Stellar winds occur before SN. Therefore, SN must take into account that
+     winds had already changed the gas mass */
+  const float mj_new = mj + dm_SW;
+  const float mj_new_inv = 1.0 / mj_new;
+
   /* Accumulate (pay attention to the conversions to physical units) */
   const float v_ij[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
                          pj->v[2] - si->v[2]};
@@ -298,21 +303,21 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
   const float v_ij_p_times_w_j_bar_hat =
       (v_ij_p[0] * w_j_bar[0] + v_ij_p[1] * w_j_bar[1] +
        v_ij_p[2] * w_j_bar[2]) * w_j_bar_norm_inv;
-  const float w_prime_ij_SN = w_j_bar_norm / (1.0 + dm_SN * mj_inv);
   const float w_prime_ij_SW = w_j_bar_norm / (1.0 + dm_SW * mj_inv);
+  const float w_prime_ij_SN = w_j_bar_norm / (1.0 + dm_SN * mj_new_inv);
 
   /* Notice that we will multiply by 0.5*m_ej later on */
-  si->feedback_data.accumulator_sn.E_total += w_prime_ij_SN * v_ij_p_norm_2;
   si->feedback_data.accumulator_winds.E_total += w_prime_ij_SW * v_ij_p_norm_2;
+  si->feedback_data.accumulator_sn.E_total += w_prime_ij_SN * v_ij_p_norm_2;
 
   /* Notice that we need the small epsilon (total available kinetic energy) to
      finish the computation of this. The small epsilon is determined by E_tot */
-  si->feedback_data.accumulator_sn.beta_1 += w_prime_ij_SN * v_ij_p_times_w_j_bar_hat;
   si->feedback_data.accumulator_winds.beta_1 += w_prime_ij_SW * v_ij_p_times_w_j_bar_hat;
+  si->feedback_data.accumulator_sn.beta_1 += w_prime_ij_SN * v_ij_p_times_w_j_bar_hat;
 
   /* Notice that we will multiply by m_ej later on */
-  si->feedback_data.accumulator_sn.beta_2 += w_prime_ij_SN * w_j_bar_norm * mj_inv;
   si->feedback_data.accumulator_winds.beta_2 += w_prime_ij_SW * w_j_bar_norm * mj_inv;
+  si->feedback_data.accumulator_sn.beta_2 += w_prime_ij_SN * w_j_bar_norm * mj_new_inv;
 
   /* Compute the comoving weigthed average of the gas properties around the star
      with our isotropic weighting scheme. */
