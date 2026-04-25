@@ -133,7 +133,7 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
 			      p_new[2] * p_new[2]};
 
   /* The new and old kinetic energy of the gas particle j */
-  const double  E_kin_old = 0.5 * mj * norm2_v_p;
+  const double E_kin_old = 0.5 * mj * norm2_v_p;
   const double E_kin_new = 0.5 * norm2_p_new / new_mass;
   *dKE = E_kin_new - E_kin_old;
 
@@ -141,6 +141,15 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
      Ekin_new + U_new = Ekin_old + U_old + dEtot
      -> dU = (U_new - U_old) = (Ekin_old + dEtot - Ekin_new) */
   *dU = E_kin_old + dE_lab_frame - E_kin_new;
+
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  const double U_old = hydro_get_physical_internal_energy(pj, xpj, cosmo);
+  message(
+      "E_ej = %e, p_ej = %e, E_new = %e, U_new = %e, E_kin_new = %e, "
+      "E_old = %e, U_old = %e, E_kin_old = %e, dE_prime = %e, dU = %e",
+      E_ej, p_ej, E_new, U_new, E_kin_new, E_old, U_old, E_kin_old,
+      dE_change_lab_frame, *dU);
+#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 }
 
 /**
