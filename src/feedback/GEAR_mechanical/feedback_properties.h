@@ -68,7 +68,7 @@ struct feedback_props {
   int enable_multiple_SN_momentum_correction_factor;
 
   /*! Pre-supernova feedback energy effectively deposited */
-  float preSN_efficiency;
+  float winds_efficiency;
 
   /*! Do stellar wind feedback? */
   char with_stellar_wind_feedback;
@@ -106,7 +106,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           feedback_props->supernovae_efficiency);
   message("Stellar wind feedback = %s",
           feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
-  message("Pre-Supernovae efficiency = %.2g", feedback_props->preSN_efficiency);
+  message("Stellar winds efficiency = %.2g", feedback_props->winds_efficiency);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
@@ -151,10 +151,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   double w_efficiency = 0.0;
   if (fp->with_stellar_wind_feedback) {
     w_efficiency = parser_get_param_double(
-        params, "GEARFeedback:pre_supernovae_efficiency");
+        params, "GEARFeedback:stellar_winds_efficiency");
   }
 
-  fp->preSN_efficiency = w_efficiency;
+  fp->winds_efficiency = w_efficiency;
 
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",

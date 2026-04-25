@@ -265,9 +265,10 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
     return;
   }
 
+  /* TODO: Winds + SN ejected mass ? Or should I split into two variables? */
   /* Get some properties for our computations */
   const float mj = hydro_get_mass(pj);
-  const float m_ej = si->feedback_data.mass_ejected;
+  const float m_ej = si->feedback_data.supernovae.mass_ejected;
   const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
 
   /* Accumulate (pay attention to the conversions to physical units) */
@@ -399,7 +400,7 @@ runner_iact_nonsym_feedback_apply(
   /*****************************************/
   /* Do we have stellar winds */
   if (feedback_should_inject_wind_feedback(si)) {
-    const double E_ej_SW = si->feedback_data.preSN.energy_ejected;
+    const double E_ej_SW = si->feedback_data.winds.energy_ejected;
 
     /* Mass received by Stellar Winds */
     /* For physical consistency, we consider that the pre-SN feedback occurs
@@ -408,7 +409,7 @@ runner_iact_nonsym_feedback_apply(
        effects of the winds would be artificially boosted by the SNe ! (It is
        similar to not do the pre-SN feedback in the same step as SN. In that
        case the mass of the gas is not impacted by the mass ejected by SNe.) */
-    m_ej = si->feedback_data.preSN.mass_ejected;
+    m_ej = si->feedback_data.winds.mass_ejected;
 
     /* The max avoids to have dm=0 and 1/0 divisions */
     dm_SW = max(w_j_bar_norm * m_ej, FLT_MIN);
@@ -440,11 +441,8 @@ runner_iact_nonsym_feedback_apply(
     /* TODO: Determine if we need that or if we want that */
     xpj->feedback_data.delta_E_kin += dKE_SW;
 
-    /* TODO: Rename to number of events */
-    xpj->feedback_data.number_SN += 1;
-
     /* Flag this particle that it received stellar wind feedback */
-    xpj->feedback_data.hit_by_preSN = 1;
+    xpj->feedback_data.number_winds += 1;
 
     /* TODO: Handle this. Should we update here for winds or take the
        cumulative wind+SN momentum? Have a look into EAGLE kinetic... */    
@@ -489,7 +487,7 @@ runner_iact_nonsym_feedback_apply(
        For the conservation of mass and energy, we perform the calculation only
      * with the mass actually ejected by the SN (not the combination of pre-SN
      * and SN) */
-    m_ej = si->feedback_data.mass_ejected;
+    m_ej = si->feedback_data.supernovae.mass_ejected;
 
     /* The max avoids to have dm=0 and 1/0 divisions */
     dm_SN = max(w_j_bar_norm * m_ej, FLT_MIN);
@@ -503,7 +501,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* Here just get the feedback properties we want to distribute (in physical
        units) */
-    const float E_ej = si->feedback_data.energy_ejected;
+    const float E_ej = si->feedback_data.supernovae.energy_ejected;
 
     /* ... metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -533,10 +531,9 @@ runner_iact_nonsym_feedback_apply(
     /* Note: This is physical internal energy. See feedback_update_part(). */
     xpj->feedback_data.delta_u += dU / new_mass;
     xpj->feedback_data.delta_E_kin += dKE;
-    xpj->feedback_data.number_SN += 1;
 
     /* Flag this particle that it received SN feedback */
-    xpj->feedback_data.hit_by_SN = 1;
+    xpj->feedback_data.number_SN += 1;
 
     /* Only use this for non-cosmological simulations. In cosmological
        simulations, this suppresses the momentum effects (to be investigated

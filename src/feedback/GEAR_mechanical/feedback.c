@@ -41,8 +41,9 @@
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
+  /* TODO: CHeck this works */
   /* Did the particle receive a feedback event? */
-  if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_preSN) return;
+  if (!xp->feedback_data.number_SN && !xp->feedback_data.number_winds) return;
 
   const struct cosmology *cosmo = e->cosmology;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
@@ -99,12 +100,11 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   }
 
   /* Reset the values */
-  xp->feedback_data.hit_by_SN = 0;
-  xp->feedback_data.hit_by_preSN = 0;
   xp->feedback_data.delta_u = 0.0;
   xp->feedback_data.delta_E_kin = 0.0;
   xp->feedback_data.delta_mass = 0.0;
-  xp->feedback_data.number_SN = 0.0;
+  xp->feedback_data.number_SN = 0;
+  xp->feedback_data.number_winds = 0;
 }
 
 /**
@@ -154,7 +154,7 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
  * @param sp The #spart.
  */
 int feedback_should_inject_SN_feedback(const struct spart *sp) {
-  return sp->feedback_data.energy_ejected != 0;
+  return sp->feedback_data.supernovae.energy_ejected != 0;
 }
 
 /**
@@ -166,7 +166,7 @@ int feedback_should_inject_SN_feedback(const struct spart *sp) {
  * @param sp The #spart.
  */
 int feedback_should_inject_wind_feedback(const struct spart *sp) {
-  return sp->feedback_data.preSN.energy_ejected != 0;
+  return sp->feedback_data.winds.energy_ejected != 0;
 }
 
 /**
@@ -238,7 +238,7 @@ void feedback_reset_feedback(struct spart *sp,
   /* message("Reset feedback for %lld (is_dead = %d)", sp->id,
    * sp->feedback_data.is_dead); */
 
-  /*   sp->feedback_data.energy_ejected = 0.0; */
+  /*   sp->feedback_data.supernovae.energy_ejected = 0.0; */
   /*   sp->feedback_data.enrichment_weight = 0.0; */
   /*   sp->feedback_data.weighted_gas_density = 0.0; */
   /*   sp->feedback_data.weighted_gas_metallicity = 0.0; */
@@ -523,7 +523,7 @@ feedback_get_physical_SN_terminal_momentum(
   const double p_terminal_0 = feedback_props->p_terminal_0;
 
   /* In erg */
-  const double E_ej = sp->feedback_data.energy_ejected *
+  const double E_ej = sp->feedback_data.supernovae.energy_ejected *
                       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   const double ten_to_51 = 1e51;
 
@@ -583,7 +583,7 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
                                         float p_SN_initial, float p_terminal,
                                         const struct cosmology *cosmo) {
 
-  const float m_ej = sp->feedback_data.mass_ejected;
+  const float m_ej = sp->feedback_data.supernovae.mass_ejected;
 
   /* Convert to physical units */
   const float mean_density =

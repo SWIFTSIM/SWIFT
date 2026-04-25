@@ -52,11 +52,8 @@ struct feedback_xpart_data {
   /*! Number of supernovae affecting this particle */
   int number_SN;
 
-  /*! Indicator if the particle receives energy from SN specifically */
-  char hit_by_SN;
-
-  /*! Indicator if the particle receives energy from SW specifically */
-  char hit_by_preSN;
+  /*! Number of supernovae affecting this particle */
+  int number_winds;
 };
 
 /**
@@ -70,6 +67,9 @@ struct feedback_spart_data {
   /*! Normalisation factor used for the enrichment. Corresponds to the
      denominator in eq (9) in https://arxiv.org/abs/1707.07010  */
   float enrichment_weight;
+
+  /*! Does the particle needs the feedback loop? */
+  char will_do_feedback;
 
   /*! Parameters to be accumulated in the feedback loops. Used to compute the
      vector weights (isotropic distribution) */
@@ -86,16 +86,21 @@ struct feedback_spart_data {
   /*! Number of II supernovae */
   float number_snii;
 
-  /*! Energy injected in the surrounding particles */
-  float energy_ejected;
+  /* Supernovae data struct */
+  struct {
 
-  /*! Total mass ejected by the supernovae */
-  float mass_ejected;
+    /*! Energy injected in the surrounding particles */
+    float energy_ejected;
+
+    /*! Total mass ejected by the supernovae */
+    float mass_ejected;
+
+  } supernovae;
 
   /*! Chemical composition of the mass ejected */
   double metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
-  /*! Pre-SN data struct */
+  /*! Stellar winds data struct */
   struct {
 
     /*! Energy injected in the surrounding particles */
@@ -104,10 +109,7 @@ struct feedback_spart_data {
     /*! Mass injected in the surrounding particles */
     float mass_ejected;
 
-  } preSN; /* TODO: Rename to stellar winds */
-
-  /*! Does the particle needs the feedback loop? */
-  char will_do_feedback;
+  } winds;
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
   struct {
