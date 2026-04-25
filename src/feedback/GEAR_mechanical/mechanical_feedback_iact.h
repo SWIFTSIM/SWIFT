@@ -55,6 +55,10 @@ mechanical_feedback_accumulate_fluxes_for_conservation_check(
  @brief Stellar wind feedback interaction between two particles (non-symmetric)
  * for the mechanical feedback mode 2.
  *
+ * Note that contrary to SN feedback, we do not assume winds do PdV work or end
+ * with a terminal momentum.
+ * Reference: https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param si First (star) particle (not updated).
  * @param pj Second (gas) particle.
@@ -75,8 +79,7 @@ mechanical_feedback_accumulate_fluxes_for_conservation_check(
  * @param dU (return) Internal energy to distribute to gas particle j.
  * @param dKE (return) Kinetic energy variation before and after the SN
  * feedback.
- * @param dp_prime (return) Momemtum to distribute to gas particle j.
-
+ * @param dp_prime (return) Momentum to distribute to gas particle j.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_1_stellar_winds_apply(
@@ -134,7 +137,7 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
   const double E_kin_new = 0.5 * norm2_p_new / new_mass;
   *dKE = E_kin_new - E_kin_old;
 
-  /* The additional specific internal energy of the gas particle j.
+  /* The additional internal energy of the gas particle j.
      Ekin_new + U_new = Ekin_old + U_old + dEtot
      -> dU = (U_new - U_old) = (Ekin_old + dEtot - Ekin_new) */
   *dU = E_kin_old + dE_lab_frame - E_kin_new;
@@ -143,6 +146,8 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
 /**
  @brief Supernovae feedback interaction between two particles (non-symmetric)
  * for the mechanical feedback mode 1.
+ *
+ * Reference: https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H
  *
  * @param r2 Comoving square distance between the two particles.
  * @param si First (star) particle (not updated).
@@ -164,8 +169,7 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
  * @param dU (return) Internal energy to distribute to gas particle j.
  * @param dKE (return) Kinetic energy variation before and after the SN
  * feedback.
- * @param dp_prime (return) Momemtum to distribute to gas particle j.
-
+ * @param dp_prime (return) Momentum to distribute to gas particle j.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_1_supernovae_apply(
@@ -278,43 +282,13 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
  @brief Stellar wind feedback interaction between two particles (non-symmetric)
  * for the mechanical feedback mode 2.
  *
- * @param r2 Comoving square distance between the two particles.
- * @param si First (star) particle (not updated).
- * @param pj Second (gas) particle.
- * @param xpj Extra particle data
- * @param w_j_bar Normalized vector weight.
- * @param w_j_bar_norm Norm of the normalized vector weight.
- * @param v_i_p Physical velocity of particle i (star).
- * @param v_j_p Physical velocity of particle j (gas).
- * @param E_ej Physical ejected energy by the supernova.
- * @param m_ej Ejected mass by the supernova.
- * @param mj Mass of particle j.
- * @param dm Distributed mass from the SN to gas particle j.
- * @param new_mass Mass of particle j after the SN feedback.
- * @param cosmo The cosmological model.
- * @param fb_props Properties of the feedback scheme.
- * @param constants The physical constants (in internal units).
- * @param us The internal system of units.
- * @param dU (return) Internal energy to distribute to gas particle j.
- * @param dKE (return) Kinetic energy variation before and after the SN
- * feedback.
- * @param dp_prime (return) Momemtum to distribute to gas particle j.
-
- */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_mechanical_2_stellar_winds_apply(
-    const float r2, struct spart *si, struct part *pj, struct xpart *xpj,
-    const double w_j_bar[3], const double w_j_bar_norm, const float v_i_p[3],
-    const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
-    const double dm, const double new_mass, const struct cosmology *cosmo,
-    const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
-
-}
-
-/**
- @brief Supernovae feedback interaction between two particles (non-symmetric)
- * for the mechanical feedback mode 2.
+ * Note that contrary to SN feedback, we do not assume winds do PdV work or end
+ * with a terminal momentum. Hence, we have psi = xsi = 1.0. The coupled
+ * kinetic energy is thus assumed to be the wind energy:
+ *               epsilon = E_ej = 0.5 * m_winds * v_winds^2.
+ * From these assumptions, we can derive the internal energy using the
+ * equations in appendix A from
+ * https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H
  *
  * @param r2 Comoving square distance between the two particles.
  * @param si First (star) particle (not updated).
@@ -336,8 +310,47 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
  * @param dU (return) Internal energy to distribute to gas particle j.
  * @param dKE (return) Kinetic energy variation before and after the SN
  * feedback.
- * @param dp_prime (return) Momemtum to distribute to gas particle j.
+ * @param dp_prime (return) Momentum to distribute to gas particle j.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_mechanical_2_stellar_winds_apply(
+    const float r2, struct spart *si, struct part *pj, struct xpart *xpj,
+    const double w_j_bar[3], const double w_j_bar_norm, const float v_i_p[3],
+    const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
+    const double dm, const double new_mass, const struct cosmology *cosmo,
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
+}
+
+/**
+ @brief Supernovae feedback interaction between two particles (non-symmetric)
+ * for the mechanical feedback mode 2.
+ *
+ * Reference: Appendix A in
+ * https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param si First (star) particle (not updated).
+ * @param pj Second (gas) particle.
+ * @param xpj Extra particle data
+ * @param w_j_bar Normalized vector weight.
+ * @param w_j_bar_norm Norm of the normalized vector weight.
+ * @param v_i_p Physical velocity of particle i (star).
+ * @param v_j_p Physical velocity of particle j (gas).
+ * @param E_ej Physical ejected energy by the supernova.
+ * @param m_ej Ejected mass by the supernova.
+ * @param mj Mass of particle j.
+ * @param dm Distributed mass from the SN to gas particle j.
+ * @param new_mass Mass of particle j after the SN feedback.
+ * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
+ * @param constants The physical constants (in internal units).
+ * @param us The internal system of units.
+ * @param dU (return) Internal energy to distribute to gas particle j.
+ * @param dKE (return) Kinetic energy variation before and after the SN
+ * feedback.
+ * @param dp_prime (return) Momentum to distribute to gas particle j.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_2_supernovae_apply(
