@@ -413,6 +413,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* The max avoids to have dm=0 and 1/0 divisions */
     dm_SW = max(w_j_bar_norm * m_ej, FLT_MIN);
+    xpj->feedback_data.delta_mass += dm_SW;
     new_mass += dm_SW;
 
     /* Now we treat the fluxes distribution differently for each mode */
@@ -484,13 +485,14 @@ runner_iact_nonsym_feedback_apply(
   if (feedback_should_inject_SN_feedback(si)) {
 
     /* Distribute mass from the SN...
-       For the conservation of mass and energy, we perform the calculation only
+     * For the conservation of mass and energy, we perform the calculation only
      * with the mass actually ejected by the SN (not the combination of pre-SN
      * and SN) */
     m_ej = si->feedback_data.supernovae.mass_ejected;
 
     /* The max avoids to have dm=0 and 1/0 divisions */
     dm_SN = max(w_j_bar_norm * m_ej, FLT_MIN);
+    xpj->feedback_data.delta_mass += dm_SN;
 
     /* But we are considering that the stellar wind occurs before the SN, so the
        total new mass to take into account is the combination of both. It is
