@@ -2703,7 +2703,12 @@ int engine_step(struct engine *e) {
 #endif
 
     /* Write the star formation information to the file */
-    if (e->policy & engine_policy_star_formation) {
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
 
       star_formation_logger_write_to_log_file(e->sfh_logger, e->time,
                                               e->cosmology->a, e->cosmology->z,
@@ -3777,7 +3782,12 @@ void engine_init(
   }
 
   /* Initialize the star formation history structure */
-  if (e->policy & engine_policy_star_formation) {
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_star_formation_sink = with_sinks && with_stars;
+
+  if (with_star_formation || with_star_formation_sink) {
     star_formation_logger_accumulator_init(&e->sfh);
   }
 
@@ -4091,7 +4101,12 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     fclose(e->file_timesteps);
     fclose(e->file_stats);
 
-    if (e->policy & engine_policy_star_formation) {
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
       fclose(e->sfh_logger);
     }
 
