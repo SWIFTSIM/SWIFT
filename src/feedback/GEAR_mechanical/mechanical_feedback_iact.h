@@ -330,6 +330,55 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
+  const double mj_2 = mj*mj;
+  const double mj_inv = 1.0 / mj;
+  const double new_mass_inv = 1.0 / new_mass;
+
+  /* Compute the relevant variables from the accumulators. */
+  const double E_tot =
+      E_ej + 0.5 * m_ej * si->feedback_data.accumulator_winds.E_total;
+  const double epsilon = E_ej; /* coupled kinetic energy */
+  const double beta_1 =
+      sqrt(0.5 * m_ej / epsilon) * si->feedback_data.accumulator_winds.beta_1;
+  const double beta_2 = m_ej * si->feedback_data.accumulator_winds.beta_2;
+
+  /* Winds do not assume any PdV work or terminal momentum. Therefore,
+     the ejected velocity is */
+  const double p_ej = sqrt(2.0 * epsilon * m_ej);
+
+  /* Now, we can compute dp */
+  const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
+                        w_j_bar[2] * p_ej};
+
+  /* Now boost to the 'laboratory' frame */
+  dp_prime[0] = dp[0] + dm * v_i_p[0];
+  dp_prime[1] = dp[1] + dm * v_i_p[1];
+  dp_prime[2] = dp[2] + dm * v_i_p[2];
+
+  /* ... physical internal energy */
+  const double U_tot = E_tot - epsilon*(beta_2 + 2.0*beta_1);
+  *dU = w_j_bar_norm * U_tot;
+
+  /* Compute kinetic energy difference before and after SN */
+  const double p_old_norm_2 =
+      mj_2 * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
+  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
+                           mj * v_j_p[1] + dp_prime[1],
+                           mj * v_j_p[2] + dp_prime[2]};
+  const double p_new_norm_2 =
+      p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
+
+  const double E_kin_old = 0.5 * p_old_norm_2 * mj_inv;
+  const double E_kin_new = 0.5 * p_new_norm_2 * new_mass_inv;
+  *dKE = E_kin_new - E_kin_old;
+
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  message(
+      "beta_1 = %e, beta_2 = %e, E_ej = %e, E_tot = %e, U_tot = %e, "
+      "E_kin_tot = %e, p_ej = %e, dU = %e",
+      beta_1, beta_2, E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, *dU);
+#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
+
 }
 
 /**
