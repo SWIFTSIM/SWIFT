@@ -94,9 +94,9 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
   /* Total momentum ejected by the winds during the timestep from the star
    * particle i */
   const float p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected *
-			  si->feedback_data.preSN.energy_ejected);
+                          si->feedback_data.preSN.energy_ejected);
   const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-			w_j_bar[2] * p_ej};
+                        w_j_bar[2] * p_ej};
 
   /* Now boost to the 'laboratory' frame */
   for (int i = 0; i < 3; i++) {
@@ -105,10 +105,11 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
 
   /* Norm of physical velocities of the gas particle j */
   const float norm2_v_p =
-    v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
+      v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
 
   /* ----- Calculate physical Energy and internal Energy received ------ */
-  const double norm2_delta_p_lab_frame = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+  const double norm2_delta_p_lab_frame =
+      dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   const double norm2_delta_p = w_j_bar_norm * w_j_bar_norm * p_ej * p_ej;
 
   /* The energy ejected from the star particle i by stellar wind that is
@@ -126,11 +127,10 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
 
   /* The momentum of the gas particle j after receiving the momentum from
    * stellar wind */
-  const double p_new[3] = {mj * v_j_p[0] + dp[0],
-			   mj * v_j_p[1] + dp[1],
-			   mj * v_j_p[2] + dp[2]};
+  const double p_new[3] = {mj * v_j_p[0] + dp[0], mj * v_j_p[1] + dp[1],
+                           mj * v_j_p[2] + dp[2]};
   const double norm2_p_new = {p_new[0] * p_new[0] + p_new[1] * p_new[1] +
-			      p_new[2] * p_new[2]};
+                              p_new[2] * p_new[2]};
 
   /* The new and old kinetic energy of the gas particle j */
   const double E_kin_old = 0.5 * mj * norm2_v_p;
@@ -330,7 +330,7 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
-  const double mj_2 = mj*mj;
+  const double mj_2 = mj * mj;
   const double mj_inv = 1.0 / mj;
   const double new_mass_inv = 1.0 / new_mass;
 
@@ -356,7 +356,7 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
   dp_prime[2] = dp[2] + dm * v_i_p[2];
 
   /* ... physical internal energy */
-  const double U_tot = E_tot - epsilon*(beta_2 + 2.0*beta_1);
+  const double U_tot = E_tot - epsilon * (beta_2 + 2.0 * beta_1);
   *dU = w_j_bar_norm * U_tot;
 
   /* Compute kinetic energy difference before and after SN */
@@ -378,7 +378,6 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
       "E_kin_tot = %e, p_ej = %e, dU = %e",
       beta_1, beta_2, E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, *dU);
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
-
 }
 
 /**
@@ -419,7 +418,7 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
-  const double mj_2 = mj*mj;
+  const double mj_2 = mj * mj;
   const double mj_inv = 1.0 / mj;
   const double new_mass_inv = 1.0 / new_mass;
   const double f_kin_0 = fb_props->f_kin_0;

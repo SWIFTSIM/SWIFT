@@ -259,7 +259,7 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
                                 w_j_bar[1] * w_j_bar[1] +
                                 w_j_bar[2] * w_j_bar[2];
   const double w_j_bar_norm = sqrt(w_j_bar_norm_2);
-  const double w_j_bar_norm_inv = 1.0/w_j_bar_norm;
+  const double w_j_bar_norm_inv = 1.0 / w_j_bar_norm;
 
   /* If p does not contribute, skip the computations to avoid NaN */
   if (w_j_bar_norm == 0.0) {
@@ -269,7 +269,7 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
   /* TODO: Winds + SN ejected mass ? Or should I split into two variables? */
   /* Get some properties for our computations */
   const float mj = hydro_get_mass(pj);
-  const float mj_inv  = 1.0 / mj;
+  const float mj_inv = 1.0 / mj;
   const float m_ej_SN = si->feedback_data.supernovae.mass_ejected;
   const float m_ej_SW = si->feedback_data.supernovae.mass_ejected;
   const float dm_SN = max(w_j_bar_norm * m_ej_SN, FLT_MIN);
@@ -302,7 +302,8 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
   /* w_j_bar_hat refers to w_j_bar/|w_j_bar| */
   const float v_ij_p_times_w_j_bar_hat =
       (v_ij_p[0] * w_j_bar[0] + v_ij_p[1] * w_j_bar[1] +
-       v_ij_p[2] * w_j_bar[2]) * w_j_bar_norm_inv;
+       v_ij_p[2] * w_j_bar[2]) *
+      w_j_bar_norm_inv;
   const float w_prime_ij_SW = w_j_bar_norm / (1.0 + dm_SW * mj_inv);
   const float w_prime_ij_SN = w_j_bar_norm / (1.0 + dm_SN * mj_new_inv);
 
@@ -312,12 +313,16 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
 
   /* Notice that we need the small epsilon (total available kinetic energy) to
      finish the computation of this. The small epsilon is determined by E_tot */
-  si->feedback_data.accumulator_winds.beta_1 += w_prime_ij_SW * v_ij_p_times_w_j_bar_hat;
-  si->feedback_data.accumulator_sn.beta_1 += w_prime_ij_SN * v_ij_p_times_w_j_bar_hat;
+  si->feedback_data.accumulator_winds.beta_1 +=
+      w_prime_ij_SW * v_ij_p_times_w_j_bar_hat;
+  si->feedback_data.accumulator_sn.beta_1 +=
+      w_prime_ij_SN * v_ij_p_times_w_j_bar_hat;
 
   /* Notice that we will multiply by m_ej later on */
-  si->feedback_data.accumulator_winds.beta_2 += w_prime_ij_SW * w_j_bar_norm * mj_inv;
-  si->feedback_data.accumulator_sn.beta_2 += w_prime_ij_SN * w_j_bar_norm * mj_new_inv;
+  si->feedback_data.accumulator_winds.beta_2 +=
+      w_prime_ij_SW * w_j_bar_norm * mj_inv;
+  si->feedback_data.accumulator_sn.beta_2 +=
+      w_prime_ij_SN * w_j_bar_norm * mj_new_inv;
 
   /* Compute the comoving weigthed average of the gas properties around the star
      with our isotropic weighting scheme. */
@@ -458,11 +463,12 @@ runner_iact_nonsym_feedback_apply(
     xpj->feedback_data.number_winds += 1;
 
     /* TODO: Handle this. Should we update here for winds or take the
-       cumulative wind+SN momentum? Have a look into EAGLE kinetic... */    
+       cumulative wind+SN momentum? Have a look into EAGLE kinetic... */
     /* Only used in non-cosmological simulations. Has to be
        investigated in cosmological simulations*/
     /* if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0) { */
-    /*   /\* Calculate the velocity without Hubble flow for signal velocity *\/ */
+    /*   /\* Calculate the velocity without Hubble flow for signal velocity *\/
+     */
     /*   const float v_i_without_Hubble_flow[3] = { */
     /* 	si->v[0] * a_inv, si->v[1] * a_inv, si->v[2] * a_inv}; */
     /*   float delta_p_without_Hubble[3]; */
@@ -478,7 +484,8 @@ runner_iact_nonsym_feedback_apply(
     /* 	delta_p_without_Hubble[i] = */
     /* 	  weight * (p_ej + change_of_frame_without_Hubble) * unit_direction; */
     /*   } */
-    /*   /\* The norm of the momentum without the Hubble flow participation *\/ */
+    /*   /\* The norm of the momentum without the Hubble flow participation *\/
+     */
     /*   const float norm2_delta_p_without_Hubble = { */
     /* 	delta_p_without_Hubble[0] * delta_p_without_Hubble[0] + */
     /* 	delta_p_without_Hubble[1] * delta_p_without_Hubble[1] + */
@@ -487,7 +494,8 @@ runner_iact_nonsym_feedback_apply(
     /*   /\* Update the signal velocity of the gas particle receiving a kick. */
     /* 	 We want to subtract the Hubble flow participation in the signal */
     /* 	 velocity.*\/ */
-    /*   const float dv_phys = sqrtf(norm2_delta_p_without_Hubble) / new_mass; */
+    /*   const float dv_phys = sqrtf(norm2_delta_p_without_Hubble) / new_mass;
+     */
     /*   hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys); */
     /* }     */
   }
