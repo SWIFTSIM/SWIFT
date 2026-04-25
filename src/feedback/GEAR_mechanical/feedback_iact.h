@@ -247,7 +247,7 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have SN or winds? */
+  /* Do we have any SN or wind event? */
   if (!feedback_should_inject_feedback(si)) {
     return;
   }
@@ -259,17 +259,21 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
                                 w_j_bar[1] * w_j_bar[1] +
                                 w_j_bar[2] * w_j_bar[2];
   const double w_j_bar_norm = sqrt(w_j_bar_norm_2);
+  const double w_j_bar_norm_inv = 1.0/w_j_bar_norm;
 
   /* If p does not contribute, skip the computations to avoid NaN */
-  if (w_j_bar_norm == 0) {
+  if (w_j_bar_norm == 0.0) {
     return;
   }
 
   /* TODO: Winds + SN ejected mass ? Or should I split into two variables? */
   /* Get some properties for our computations */
   const float mj = hydro_get_mass(pj);
-  const float m_ej = si->feedback_data.supernovae.mass_ejected;
-  const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
+  const float mj_inv  = 1.0 / mj;
+  const float m_ej_SN = si->feedback_data.supernovae.mass_ejected;
+  const float m_ej_SW = si->feedback_data.supernovae.mass_ejected;
+  const float dm_SN = max(w_j_bar_norm * m_ej_SN, FLT_MIN);
+  const float dm_SW = max(w_j_bar_norm * m_ej_SW, FLT_MIN);
 
   /* Accumulate (pay attention to the conversions to physical units) */
   const float v_ij[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
@@ -291,21 +295,24 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
       v_ij_p[0] * v_ij_p[0] + v_ij_p[1] * v_ij_p[1] + v_ij_p[2] * v_ij_p[2];
 
   /* w_j_bar_hat refers to w_j_bar/|w_j_bar| */
-  const double v_ij_p_times_w_j_bar_hat =
+  const float v_ij_p_times_w_j_bar_hat =
       (v_ij_p[0] * w_j_bar[0] + v_ij_p[1] * w_j_bar[1] +
-       v_ij_p[2] * w_j_bar[2]) /
-      w_j_bar_norm;
-  const double w_prime_ij = w_j_bar_norm / (1 + dm / mj);
+       v_ij_p[2] * w_j_bar[2]) * w_j_bar_norm_inv;
+  const float w_prime_ij_SN = w_j_bar_norm / (1.0 + dm_SN * mj_inv);
+  const float w_prime_ij_SW = w_j_bar_norm / (1.0 + dm_SW * mj_inv);
 
   /* Notice that we will multiply by 0.5*m_ej later on */
-  si->feedback_data.accumulator_sn.E_total += w_prime_ij * v_ij_p_norm_2;
+  si->feedback_data.accumulator_sn.E_total += w_prime_ij_SN * v_ij_p_norm_2;
+  si->feedback_data.accumulator_winds.E_total += w_prime_ij_SW * v_ij_p_norm_2;
 
   /* Notice that we need the small epsilon (total available kinetic energy) to
      finish the computation of this. The small epsilon is determined by E_tot */
-  si->feedback_data.accumulator_sn.beta_1 += w_prime_ij * v_ij_p_times_w_j_bar_hat;
+  si->feedback_data.accumulator_sn.beta_1 += w_prime_ij_SN * v_ij_p_times_w_j_bar_hat;
+  si->feedback_data.accumulator_winds.beta_1 += w_prime_ij_SW * v_ij_p_times_w_j_bar_hat;
 
   /* Notice that we will multiply by m_ej later on */
-  si->feedback_data.accumulator_sn.beta_2 += w_prime_ij * w_j_bar_norm / mj;
+  si->feedback_data.accumulator_sn.beta_2 += w_prime_ij_SN * w_j_bar_norm * mj_inv;
+  si->feedback_data.accumulator_winds.beta_2 += w_prime_ij_SW * w_j_bar_norm * mj_inv;
 
   /* Compute the comoving weigthed average of the gas properties around the star
      with our isotropic weighting scheme. */
