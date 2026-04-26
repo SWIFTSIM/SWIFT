@@ -3,7 +3,6 @@
 
 .. _stellar_feedback_loops:
 
-
 Stellar feedback loops
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -61,8 +60,39 @@ Several tasks in the feedback graph are "implicit", i.e. they exist in the sched
 * **Stars Prep Ghosts (1-4)**: Ensure that all neighbour interactions in a given Prep loop are finished globally before the next loop begins.
 * **Hydro Prep Ghost 1**: Synchronizes gas particle states if they were modified during a ``prep`` loop.
 
+Extra Star Loops Activation
+---------------------------
 
-How to activate the neighbour loops
------------------------------------
+To support complex sub-grid models, the stellar feedback module supports up to four distinct preparation interaction loops. These loops enable multi-stage physics where properties are calculated and communicated across MPI ranks before the final feedback is applied to the gas.
 
-TODO (define the ``EXTRA_STARS_LOOP`` preprocessor directives at compile time)
+Activating the Loops
+++++++++++++++++++++
+
+The number of interaction loops is controlled by pre-processor macros defined in the ``src/feedback.h`` header for each specific scheme. These loops must be activated to match the specific requirements of the sub-grid physics.
+
+To activate the loops, define the following macros:
+
+.. code-block:: c
+
+   #define EXTRA_STAR_LOOPS_1
+   #define EXTRA_STAR_LOOPS_2
+   #define EXTRA_STAR_LOOPS_3
+   #define EXTRA_STAR_LOOPS_4
+
+Implementation Constraints
+++++++++++++++++++++++++++
+
+When configuring a scheme, the following rules must be observed:
+
+* **Entry Point**: The first extra loop in the sequence must always be either ``EXTRA_STAR_LOOPS_1`` or ``EXTRA_STAR_LOOPS_2``.
+* **Sequential Activation**: To maintain a coherent dependency chain in the task scheduler and MPI communication, the loops are defined in sequential order: ``prep1``, ``prep2``, ``prep3`` and ``prep4``. In the current implementation, this order cannot be changed.
+
+Examples of Use Cases
++++++++++++++++++++++
+
+Different models utilise these loops to handle their specific feedback mechanisms:
+
+* **EAGLE Kinetic**: This scheme defines the first two loops (``EXTRA_STAR_LOOPS_1`` and ``EXTRA_STAR_LOOPS_2``).
+* **GEAR Mechanical Feedback**:
+    * **Mode 1**: Activates ``EXTRA_STAR_LOOPS_2`` and ``EXTRA_STAR_LOOPS_3``.
+    * **Mode 2**: Activates ``EXTRA_STAR_LOOPS_2``, ``EXTRA_STAR_LOOPS_3``, and ``EXTRA_STAR_LOOPS_4``.
