@@ -194,9 +194,9 @@ To properly determine the number of supernovae and the mass of the ejected yield
 Feedback energy, metals and momentum injection
 ----------------------------------------------
 
-When a star goes into a supernova (type II and Ia), the stellar evolution determines how much energy, mass and metals are released during the explosion. For the SNII, the tables contain the value of the energy released for different stars' masses (usually :math:`10^{51}` erg, but can vary by model). For the SNIa, the energy is specified by the parameter ``GEARFeedback:supernovae_Ia_energy_erg``. In both cases, these are the energies *before* any supernova efficiency is applied.
+When a star goes into a supernova (type II and Ia) or ejects stellar winds, the stellar evolution determines how much energy, mass and metals are released during the explosion. For the SNII, the tables contain the value of the energy released for different stars' masses (usually :math:`10^{51}` erg, but can vary by model). For the SNIa, the energy is specified by the parameter ``GEARFeedback:supernovae_Ia_energy_erg``. In both cases, these are the energies *before* any supernova efficiency is applied.
 
-The energy can be distributed as internal/thermal energy or as momentum. Thus, we need to distribute internal energy, momentum, mass and metals to the gas particles. We will group all these in the “fluxes” term. We have two models for the distribution of these fluxes and the subgrid modelling of the supernovae: GEAR model and GEAR mechanical model. We describe the two schemes in the  :ref:`gear_sn_feedback_models` page.
+The energy can be distributed as internal/thermal energy or as momentum. Thus, we need to distribute internal energy, momentum, mass and metals to the gas particles. We will group all these in the “fluxes” term. We have two models for the distribution of these fluxes and the subgrid modelling of the supernovae and stellar winds: GEAR model and GEAR mechanical model. We describe the two schemes in the  :ref:`gear_feedback_injection_models` page.
 
 
 Model parameters

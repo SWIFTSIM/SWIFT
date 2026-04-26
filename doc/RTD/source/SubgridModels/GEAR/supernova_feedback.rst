@@ -1,24 +1,33 @@
-.. Supernova feedback in GEAR model
+.. Feedback injection in GEAR model
    Darwin Roduit, 30 March 2025
 
-.. gear_sn_feedback_models:
+.. _gear_feedback_injection_models:
 
-.. _gear_sn_feedback_models:
+GEAR feedback injection models
+==============================
 
-GEAR supernova feedback
-=======================
-
-When a star goes into a supernova, we compute the amount of internal energy, mass and metals the explosion transfers to the star's neighbouring gas particles. We will group all these in the “fluxes” term.
-We have two models for the distribution of these fluxes and the subgrid modelling of the supernovae: GEAR model and GEAR mechanical model.
+When a star goes into a supernova or ejects winds, we compute the amount of internal energy, mass and metals the explosion transfers to the star's neighbouring gas particles. We will group all these in the “fluxes” term.
+We have two models for the distribution of these fluxes and the subgrid modelling of the supernovae and stellar winds: GEAR model and GEAR mechanical model.
 
 .. note::
    We may sometimes refer to GEAR feedback as GEAR thermal feedback to clearly distinguish it from GEAR mechanical feedback.
 
 
+.. note::
+   This page only describes the fluxes injection schemes and the related subgrid model assumptions. The stellar evolution are the same for all feedback injection schemes and are described in :ref:`gear_stellar_evolution_and_feedback`. We will distinguish between the injections of supernovae and stellar winds as the subgrid models differ.
+
+.. _gear_sn_feedback_models:
+
+Supernovae feedback injection
+-----------------------------
+
 .. _gear_sn_feedback_gear_thermal:
 
 GEAR model
-----------
+~~~~~~~~~~
+
+.. note::
+   To use GEAR thermal mode, you need to configure with ``--with-feedback=GEAR``
 
 In the GEAR (thermal) model, the fluxes are distributed by weighing with the SPH kernel:
 
@@ -40,7 +49,7 @@ To understand why this happens, let us remind the main phases of an SN explosion
 Now, we better understand why the internal energy is radiated away. It is a consequence of efficient cooling in the snowplough phase. When this happens, the feedback is unresolved and its energy does not affect the ISM, apart from the mass and metal injection. To circumvent this problem, GEAR thermal feedback implements a **fixed delayed cooling mechanism**. The cooling of the particles affected by feedback is deactivated during some mega year, usually 5 Myr in our simulations. The time is controlled by the ``GrackleCooling:thermal_time_myr`` parameter. This mechanism allows the internal energy to transform into kinetic energy without immediately being radiated away. However, such an approach poses the question of the time required to prevent gas from cooling in the simulations.
 
 GEAR mechanical model
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 We implemented two mechanical feedback schemes to better model the blast wave expansion by considering the most critical phases of the SN explosion. These two new models are called GEAR mechanical 1 and GEAR mechanical 2.
 
@@ -191,6 +200,9 @@ where :math:`p_{0, s}` depends on the particular treatment of the star-gas motio
 GEAR mechanical 1
 +++++++++++++++++
 
+.. note::
+   To use GEAR mechanical mode 1, you need to configure with ``--with-feedback=GEAR-mechanical_1``
+
 In GEAR mechanical 1, we have the following fluxes to distribute: :math:`m_{\text{ej}}`, :math:`m_{Z, \text{ej}}` and :math:`E_{\text{ej}}`. The momentum flux is :math:`p_{\text{ej}} = \sqrt{2 m_{\text{ej}} E_{\text{ej}}}`. The fluxes are given to the gas particle :math:`j` as:
 
 .. math::
@@ -275,6 +287,9 @@ As the internal energy outside :math:`R_{\text{cool}}` decays :math:`\propto (r/
 GEAR mechanical 2
 +++++++++++++++++
 
+.. note::
+   To use GEAR mechanical mode 2, you need to configure with ``--with-feedback=GEAR-mechanical_2``
+
 In GEAR mechanical 2, we have the following fluxes to distribute: :math:`m_{\text{ej}}`, :math:`m_{Z, \text{ej}}` and :math:`E_{\text{ej}}`. These fluxes are the same as in GEAR mechanical 1. However, the differences come from how we couple energy and momentum as we now consider the star-gas motion.
 
 The reason for considering the star-gas motion is that once the first supernova explodes, the gas moves outwards. In clustered star formation locations, multiple SN will occur at close times, provoking a motion of the surrounding gas relative to the stars and thus justifying the inclusion of the star-gas motion.
@@ -282,22 +297,18 @@ The reason for considering the star-gas motion is that once the first supernova 
 Thus, the fluxes are given to the gas particle :math:`j` as:
 
 .. math::
-   \begin{align}
    m_j^{\text{new}} &= m_j +  \Delta m_j' = m_j +  \lVert \vec{\bar{w}}_j \rVert m_{\text{ej}} \\
    m_{Z, j}^{\text{new}} &= m_{Z, j} +  \Delta m_{Z, j}' = m_{Z, j} + \lVert \vec{\bar{w}}_j \rVert m_{\text{ej}} \\
    U_{\text{int}}^{\text{new}} &= U_{\text{int}} + \Delta U = U_{\text{int}} + \lVert \vec{\bar{w}}_{j} \rVert \mathcal{U}_s \\
    \vec{p}_j^{\text{new}} &= \vec{p}_j + \Delta m_j \vec{v}_s +  \vec{\bar{w}}_{j} p_{0, s} \; .
-  \end{align}
 
 In these equations, we have to define :math:`p_{0,s}` and :math:`\mathcal{U}_s`, which depend on the star-gas motion. In the following, we will define :math:`p_{0,s}` through :math:`\mathcal{E}_s` the total energy available at the SN explosion and deal with the star-gas motion. The subtle detail is that the gas can recede towards or away from the star, changing :math:`\mathcal{E}_s` and thus the coupled momentum and internal energy.
 
 The total available energy :math:`\mathcal{E}_s` is:
 
 .. math::
-   \begin{align}
    & \mathcal{E}_s \equiv E_{\text{ej}} + \frac{1}{2} \sum_j m_{\text{ej}} w_{j}' \lVert\vec{v}_{js} \rVert^2 \\
    & w_{j}' \equiv \frac{\lVert \vec{\bar{w}}_{j} \rVert}{1 + \Delta m_j / m_j} \; .
-  \end{align}
 
 
 Now, we define the effective kinetic energy:
@@ -311,27 +322,21 @@ The parameter :math:`f_{\text{U}}^0` is used to define an effective unit of kine
 Then, we define the coupled momentum :math:`p_{0, s}` as:
 
 .. math::
-   \begin{equation}
    p_{0, s} \equiv \psi_s \chi_s \sqrt{2 m_{\text{ej}} \varepsilon_s} \; ,
-   \end{equation}
 
 where :math:`\psi_s` takes into account the star-gas motion and :math:`\chi_s` accounts for the unresolved Taylor-Sedov phase. Notice the difference with GEAR mechanical 1 definition of :math:`p_{\text{ej}} = \sqrt{2 m_{\text{ej}} E_{\text{ej}}}`. If the :math:`\lVert \vec{v}_{js} \rVert = 0`, i.e. the gas is at rest with respect to the star, we have the same :math:`p_{\text{ej}}` than GEAR mechanical 1. 
 
 Let us define :math:`\psi_s`:
 
 .. math::
-   \begin{align}
-   &\beta_{1, s} \equiv \left( \frac{m_{\text{ej}}}{2 \varepsilon_s} \right)^{1/2}   \sum_j w_{j}' \, \vec{v}_{js} \cdot \hat{w}_{j}
+   &\beta_{1, s} \equiv \left( \frac{m_{\text{ej}}}{2 \varepsilon_s} \right)^{1/2}   \sum_j w_{j}' \, \vec{v}_{js} \cdot \hat{w}_{j} \\
    &\beta_{2, s} \equiv m_{\text{ej}} \, \sum_j \frac{w_{j}' \lVert \vec{\bar{w}}_{j} \rVert}{m_j} \\
    &\psi_s \equiv \frac{\sqrt{\beta_{2, s} + \beta_{1, s}^2} - \beta_{1, s}}{\beta_{2, s}} \;.
-   \end{align}
 
 Then, :math:`\chi_s` is simply defined by:
 
 .. math::
-   \begin{equation}
    \chi_s \equiv \min \left(  1  , \; \frac{p_t}{\psi_s \sqrt{2 m_{\text{ej}} \varepsilon_s}}\right)\; ,
-   \end{equation}
 
 where :math:`p_t` is the terminal momentum, where we use the same equation as GEAR mechanical 1. 
 :math:`\chi_s` represents the cases with less momentum coupled and thus more energy going to thermal form.
@@ -339,10 +344,8 @@ where :math:`p_t` is the terminal momentum, where we use the same equation as GE
 Finally, we can define :math:`f_U` the fraction of energy in non-kinetic form and :math:`\mathcal{U}_s` the internal energy associated to the SN:
 
 .. math::
-   \begin{align}
    &f_U \equiv 1 - \left((\psi_s \chi_s)^2\beta_{2, s} + 2 (\psi_s \chi_s) \beta_{1, s} \right) \cdot \frac{\varepsilon_s}{\mathcal{E}_s} \\
    & \mathcal{U}_s \equiv f_U \mathcal{E}_s \; .
-   \end{align}
 
 Those formulas are demonstrated in `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_ appendix A and in `Hopkins et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.477.1578H/abstract>`_ appendix E. To get a better physical interpretation, we kindly ask the reader to refer to `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_ appendix A.3 since rewriting the same interpretations would provide little to this documentation.
 
@@ -364,8 +367,43 @@ Since the mechanical feedback kicks the gas particles, we update the gas signal 
 
 where :math:`v_\text{sig, new, j}` and :math:`v_\text{sig, old, j}` are the particle's signal velocity immediately before and after the kick, :math:`c_{s, j}` is the particle's speed of sound, :math:`\Delta v` is the norm of the momentum kick and :math:`\beta_V` is a dimensionless constant which in `Borrow et al. (2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.2367B/abstract>`_ is equal to 3.
 
-Multiple SN Momentum Correction
--------------------------------
+
+
+.. _gear_winds_feedback_injection:
+
+Stellar winds feedback injection
+--------------------------------
+
+GEAR model and GEAR mechanical mode 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In these feedback injection prescirptions, the stellar winds are always injected as in the mechanical mode 1 of supernovae. However, contrary to supernovae, we do not assume that stellar winds perform any :math:`P \mathrm{d}V` work or end up with a terminal momentum. Therefore, the injected momentum is always the coupled momentum.
+
+These assumptions do not change the mathematical description. So, the implemented equations are the same as the supernovae case, where we now take :math:`p_{0, s} = p_\text{ej}` and :math:`E_\text{ej}`, :math:`p_\text{ej}` and :math:`m_\text{ej}` are the wind ejected quantities that we get from the stellar evolution model.
+
+GEAR mechanical mode 2
+~~~~~~~~~~~~~~~~~~~~~~
+
+
+This feedback injection scheme differs from the two others as we now consider the relative star-gas motion before coupling energy and momentum. Similarly to the stellar winds in the mechanical mode 1, we do not assume that stellar winds perform any :math:`P \mathrm{d}V` work or end up with a terminal momentum. Therefore, the injected momentum is always the coupled momentum. 
+
+These assumptions lead to the following equations:
+
+.. math::
+   & p_{0, s} \equiv \sqrt{2 m_{\text{ej}} \varepsilon_s} \\
+   & \chi_s \equiv \psi_s \equiv 1 \\
+   & \epsilon_s \equiv E_\text{ej} = \frac{p_\text{ej}}{2 m_\text{ej}}
+
+The quantities :math:`\beta_{1, s}` and :math:`\beta_{2, s}` have the same form as the supernovae case, where we use the stellar winds ejected mass and energy. With these assumptions and from equation (A6) in `Hopkins 2024 <https://ui.adsabs.harvard.edu/abs/2024arXiv240416987H/abstract>`_, we can now write the total internal energy as:
+
+.. math::
+   \mathcal{U}_s = \mathcal{E}_s - \epsilon_s (\beta_{1, s} + 2 \beta_{2, s}) \; .
+
+.. note::
+   Contrary to the supernovae case, the stellar winds do not assume an energy conserving phase with a fixed ratio :math:`f_{\text{kin}}^0` of kinetic energy over total energy.
+
+Multiple events Momentum Correction
+-----------------------------------
 
 Multiple supernovae can occur near a gas cell within a single time step, leading to a complex momentum and energy update. Simply adding the momentum from each event would incorrectly sum the kinetic energies due to non-linear cross-terms, potentially violating energy conservation.
 
