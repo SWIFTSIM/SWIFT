@@ -409,12 +409,10 @@ runner_iact_nonsym_feedback_apply(
                                    a2H * pj->x[2] + xpj->v_full[2]};
 
   /* Compute the _physical_ relative velocity between the particles */
-  const float v_i_p[3] = {vi_plus_H_flow[0] * a_inv,
-                          vi_plus_H_flow[1] * a_inv,
+  const float v_i_p[3] = {vi_plus_H_flow[0] * a_inv, vi_plus_H_flow[1] * a_inv,
                           vi_plus_H_flow[2] * a_inv};
 
-  const float v_j_p[3] = {vj_plus_H_flow[0] * a_inv,
-                          vj_plus_H_flow[1] * a_inv,
+  const float v_j_p[3] = {vj_plus_H_flow[0] * a_inv, vj_plus_H_flow[1] * a_inv,
                           vj_plus_H_flow[2] * a_inv};
 
   /* Calculate the velocity without Hubble flow for signal velocity */
@@ -471,7 +469,8 @@ runner_iact_nonsym_feedback_apply(
     /* Signal velocity update: Get the momentum in lab frame, without the Hubble
      * flow term. */
     const float p_ej_SW = sqrt(2.0 * m_ej * E_ej_SW);
-    const float dp[3] = {w_j_bar[0] * p_ej_SW, w_j_bar[1] * p_ej_SW, w_j_bar[2] * p_ej_SW};
+    const float dp[3] = {w_j_bar[0] * p_ej_SW, w_j_bar[1] * p_ej_SW,
+                         w_j_bar[2] * p_ej_SW};
     for (int i = 0; i < 3; i++) {
       total_momentum_kick_p[i] += dp[i] + dm_SW * v_i_without_Hubble_flow[i];
     }
@@ -537,7 +536,8 @@ runner_iact_nonsym_feedback_apply(
     /* Signal velocity update: Get the momentum in lab frame, without the Hubble
      * flow term. */
     const float p_ej_SN = sqrt(2.0 * m_ej * E_ej_SN);
-    const float dp[3] = {w_j_bar[0] * p_ej_SN, w_j_bar[1] * p_ej_SN, w_j_bar[2] * p_ej_SN};
+    const float dp[3] = {w_j_bar[0] * p_ej_SN, w_j_bar[1] * p_ej_SN,
+                         w_j_bar[2] * p_ej_SN};
     for (int i = 0; i < 3; i++) {
       /* Momentum in lab frame due to the ejecta */
       total_momentum_kick_p[i] += dp[i] + dm_SN * v_i_without_Hubble_flow[i];
@@ -550,17 +550,18 @@ runner_iact_nonsym_feedback_apply(
       feedback_should_inject_SN_feedback(si)) {
 
     const float tot_momentum_norm_2 =
-      total_momentum_kick_p[0] * total_momentum_kick_p[0] +
-      total_momentum_kick_p[1] * total_momentum_kick_p[1] +
-      total_momentum_kick_p[2] * total_momentum_kick_p[2];
+        total_momentum_kick_p[0] * total_momentum_kick_p[0] +
+        total_momentum_kick_p[1] * total_momentum_kick_p[1] +
+        total_momentum_kick_p[2] * total_momentum_kick_p[2];
     const float tot_momentum_norm = sqrt(tot_momentum_norm_2);
 
     /* Only use this for non-cosmological simulations. In cosmological
        simulations, this suppresses the momentum effects (to be investigated
        why). */
-    if (tot_momentum_norm > 0.0 && a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0) {
+    if (tot_momentum_norm > 0.0 && a == 1.0 && a_inv == 1.0 &&
+        cosmo->z == 0.0) {
       /* Update the signal velocity of gas particles that receive a kick. From
-	 Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
+         Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
       const float dv_phys = tot_momentum_norm / new_mass;
       hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
     }
