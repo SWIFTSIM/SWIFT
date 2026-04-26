@@ -69,26 +69,26 @@ As the hydrodynamics are described in :ref:`hydro`, we are only showing the grav
     They are only activated when running with ``swift_mpi``.
     This was done with SWIFT v2025.10.
 
-.. figure:: stars_loop_1_to_3.png
+.. figure:: stars_loop_2_to_3.png
     :width: 400px
     :align: center
     :figclass: align-center
-    :alt: Task dependencies for the stellar feedback with the loops ``prep1``, ``prep2`` and  ``prep3``.
+    :alt: Task dependencies for the stellar feedback with the loops ``prep2`` and  ``prep3``.
 
-    This figure shows the task dependencies for the stellar feedback when activating the ``prep1``, ``prep2`` and  ``prep3`` loops.
-    The ``prep1`` acts on the gas only, ``prep2`` and ``prep3`` act on the stars only.
+    This figure shows the task dependencies for the stellar feedback when activating the ``prep2`` and  ``prep3`` loops.
+    The ``prep2`` and ``prep3`` act on the stars only.
     The diamond shapes show the MPI communication that send or receive the data from other ranks.
     They are only activated when running with ``swift_mpi``.
     This was done with SWIFT v2025.10.
 
-.. figure:: stars_loop_1_to_4.png
+.. figure:: stars_loop_2_to_4.png
     :width: 400px
     :align: center
     :figclass: align-center
-    :alt: Task dependencies for the stellar feedback with the loops ``prep1``, ``prep2``, ``prep3`` and  ``prep4``.
+    :alt: Task dependencies for the stellar feedback with the loops ``prep2``, ``prep3`` and  ``prep4``.
 
-    This figure shows the task dependencies for the stellar feedback when activating the ``prep1``, ``prep2``, ``prep3`` and  ``prep4`` loops.
-    The ``prep1`` acts on the gas only, ``prep2`` to ``prep4`` act on the stars only.
+    This figure shows the task dependencies for the stellar feedback when activating the ``prep2``, ``prep3`` and  ``prep4`` loops.
+    The ``prep2``, ``prep3`` and ``prep4`` act on the stars only.
     The diamond shapes show the MPI communication that send or receive the data from other ranks.
     They are only activated when running with ``swift_mpi``.
     This was done with SWIFT v2025.10.
