@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_GEAR_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void chemistry_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+    const struct part *p, const struct xpart *xp) {
 
   warning("[PID%lld] chemistry_part_data:", p->id);
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {

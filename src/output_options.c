@@ -44,15 +44,15 @@
  * @param mpi_rank the MPI rank of this node.
  * @param output_options the empty output_options struct (return).
  **/
-void output_options_init(struct swift_params* parameter_file, int mpi_rank,
-                         struct output_options* output_options) {
+void output_options_init(struct swift_params *parameter_file, int mpi_rank,
+                         struct output_options *output_options) {
 
   /* Start by zero-ing everything */
   bzero(output_options, sizeof(struct output_options));
 
   /* Load select_output */
-  struct swift_params* select_output =
-      (struct swift_params*)malloc(sizeof(struct swift_params));
+  struct swift_params *select_output =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
   if (select_output == NULL) {
     error("Error allocating memory for select output options.");
   }
@@ -85,7 +85,7 @@ void output_options_init(struct swift_params* parameter_file, int mpi_rank,
  *
  * @param output_options the output_options struct to free the contents of.
  **/
-void output_options_clean(struct output_options* output_options) {
+void output_options_clean(struct output_options *output_options) {
   if (output_options) {
     free(output_options->select_output);
   }
@@ -97,8 +97,8 @@ void output_options_clean(struct output_options* output_options) {
  * @param output_options pointer to output options struct
  * @param stream bytestream to write to
  **/
-void output_options_struct_dump(struct output_options* output_options,
-                                FILE* stream) {
+void output_options_struct_dump(struct output_options *output_options,
+                                FILE *stream) {
   parser_struct_dump(output_options->select_output, stream);
 
   const size_t count_fields =
@@ -130,10 +130,10 @@ void output_options_struct_dump(struct output_options* output_options,
  * @param output_options pointer to the output options struct
  * @param stream bytestream to read from
  **/
-void output_options_struct_restore(struct output_options* output_options,
-                                   FILE* stream) {
-  struct swift_params* select_output =
-      (struct swift_params*)malloc(sizeof(struct swift_params));
+void output_options_struct_restore(struct output_options *output_options,
+                                   FILE *stream) {
+  struct swift_params *select_output =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
   bzero(select_output, sizeof(struct swift_params));
   parser_struct_restore(select_output, stream);
 
@@ -179,8 +179,8 @@ void output_options_struct_restore(struct output_options* output_options,
  *         written
  **/
 enum lossy_compression_schemes output_options_get_field_compression(
-    const struct output_options* output_options, const char* snapshot_type,
-    const char* field_name, const enum part_type ptype,
+    const struct output_options *output_options, const char *snapshot_type,
+    const char *field_name, const enum part_type ptype,
     const enum lossy_compression_schemes compression_level_current_default,
     const int verbose) {
 
@@ -221,7 +221,7 @@ enum lossy_compression_schemes output_options_get_field_compression(
  * @param verbose The verbose level.
  */
 enum lossy_compression_schemes output_options_get_ptype_default_compression(
-    struct swift_params* output_params, const char* snapshot_type,
+    struct swift_params *output_params, const char *snapshot_type,
     const enum part_type ptype, const int verbose) {
 
   /* Full name for the default path */
@@ -281,7 +281,7 @@ enum lossy_compression_schemes output_options_get_ptype_default_compression(
  * @param ptype The particle type index.
  */
 int output_options_get_num_fields_to_write(
-    const struct output_options* output_options, const char* selection_name,
+    const struct output_options *output_options, const char *selection_name,
     const int ptype) {
 
   /* Get the ID of the output selection in the structure */
@@ -327,10 +327,10 @@ int output_options_get_num_fields_to_write(
  * @param subdir_name (return) The sub-directory name to use for this dump.
  * @param basename (return) The snapshot base name to use for this dump.
  */
-void output_options_get_basename(const struct output_options* output_options,
-                                 const char* selection_name,
-                                 const char* default_subdirname,
-                                 const char* default_basename,
+void output_options_get_basename(const struct output_options *output_options,
+                                 const char *selection_name,
+                                 const char *default_subdirname,
+                                 const char *default_basename,
                                  char subdir_name[FILENAME_BUFFER_SIZE],
                                  char basename[FILENAME_BUFFER_SIZE]) {
 
@@ -376,7 +376,7 @@ void output_options_get_basename(const struct output_options* output_options,
  * dump.
  */
 void output_options_get_subsampling(
-    const struct output_options* output_options, const char* selection_name,
+    const struct output_options *output_options, const char *selection_name,
     const int default_subsample[swift_type_count],
     const float default_subsample_fraction[swift_type_count],
     int subsample[swift_type_count],

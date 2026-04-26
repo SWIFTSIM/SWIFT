@@ -18,4 +18,6 @@ This model can be selected with the configuration option ``--with-subgrid=GEAR``
    supernova_feedback
    sinks/index
    output
+   tracers
+   dev_notes
 

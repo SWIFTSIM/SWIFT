@@ -114,6 +114,15 @@ struct fof_props {
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
 
+  /*! Gas mass of the group a given gpart belongs to. */
+  float *group_gas_mass;
+
+  /*! Stellar mass of the group a given gpart belongs to. */
+  float *group_stellar_mass;
+
+  /*! SFR of the group a given gpart belongs to. */
+  float *group_star_formation_rate;
+
   /*! Does the group have a black hole? */
   char *has_black_hole;
 
@@ -124,8 +133,8 @@ struct fof_props {
    * the group a given gpart belongs to. */
   float *group_radii;
 
-  /*! Maximal density of all parts of each group. */
-  float *max_part_density;
+  /*! ID of the gas particle in a group to convert to BH */
+  long long *id_gas_particle_to_convert;
 
   /* Number of groups on each node */
   size_t *num_on_node;

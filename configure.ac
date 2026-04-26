@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[2025.04],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[2026.04],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -319,6 +319,18 @@ if test "$enable_timers" = "yes"; then
    AC_DEFINE([SWIFT_USE_TIMERS],1,[Enable individual timers])
 fi
 
+AC_ARG_ENABLE([likwid],
+   [AS_HELP_STRING([--enable-likwid],
+      [Enable LIKWID performance monitoring])],
+   [enable_likwid="$enableval"],
+   [enable_likwid="no"]
+)
+
+if test "$enable_likwid" = "yes"; then
+   AC_DEFINE([WITH_LIKWID], 1, [Enable LIKWID performance monitoring])
+   LIBS="$LIBS -llikwid"
+fi
+
 # Check if expensive debugging is on.
 AC_ARG_ENABLE([debugging-checks],
    [AS_HELP_STRING([--enable-debugging-checks],
@@ -485,37 +497,6 @@ if test "$no_gravity_below_id" = "yes"; then
    AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-no-gravity-below-id!)
 elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
-fi
-
-# Check if we want to use boundary particles.
-AC_ARG_ENABLE([boundary-particles],
-   [AS_HELP_STRING([--enable-boundary-particles=<N>],
-     [Set all particles with an ID smaller than @<:@N@:>@ as boundary particles (i.e. receive zero gravity + hydro forces).]
-   )],
-   [boundary_particles="$enableval"],
-   [boundary_particles="no"]
-)
-if test "$boundary_particles" = "yes"; then
-   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
-elif test "$boundary_particles" != "no"; then
-   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
-   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
-fi
-
-# Check if we want to use fixed boundary particles.
-AC_ARG_ENABLE([fixed-boundary-particles],
-   [AS_HELP_STRING([--enable-fixed-boundary-particles=<N>],
-     [Set all particles with an ID smaller than @<:@N@:>@ as fixed boundary particles (i.e. receive zero gravity + hydro forces + zero velocity), this mode enables also --enable-boundary-particles and --enable-no-gravity-below-id.]
-   )],
-   [fixed_boundary_particles="$enableval"],
-   [fixed_boundary_particles="no"]
-)
-if test "$fixed_boundary_particles" = "yes"; then
-   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
-elif test "$fixed_boundary_particles" != "no"; then
-   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
-   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
-   AC_DEFINE_UNQUOTED([SWIFT_FIXED_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
 # Check if fixed entropy is on for settling planetary initial conditions
@@ -2016,7 +1997,7 @@ AC_SUBST([SUNDIALS_INCS])
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
 		[Master switch for subgrid methods. Inexperienced user should
-		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
+		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE, FLAMINGO, SPIN_JET_FLAMINGO default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -2043,6 +2024,7 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=GEAR
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2055,6 +2037,7 @@ case "$with_subgrid" in
    GEAR-G3)
 	with_subgrid_cooling=grackle_3
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2067,6 +2050,7 @@ case "$with_subgrid" in
    AGORA)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=AGORA
+	with_subgrid_tracers=none
 	with_subgrid_pressure_floor=GEAR
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2140,7 +2124,7 @@ case "$with_subgrid" in
 	with_subgrid_extra_io=none
 	enable_fof=yes
    ;;
-  SPIN_JET_EAGLE-XL)
+   SPIN_JET_EAGLE-XL)
 	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
@@ -2152,6 +2136,32 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
+   ;;
+   FLAMINGO)
+        with_subgrid_cooling=PS2020
+     	with_subgrid_chemistry=EAGLE
+        with_subgrid_tracers=FLAMINGO
+        with_subgrid_entropy_floor=EAGLE
+        with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+        with_subgrid_feedback=EAGLE-kinetic
+        with_subgrid_black_holes=EAGLE
+        with_subgrid_sink=none
+        with_subgrid_extra_io=EAGLE
+        enable_fof=yes
+   ;;
+   SPIN_JET_FLAMINGO)
+        with_subgrid_cooling=PS2020
+        with_subgrid_chemistry=EAGLE
+        with_subgrid_tracers=FLAMINGO
+        with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+        with_subgrid_star_formation=EAGLE
+        with_subgrid_feedback=EAGLE-kinetic
+        with_subgrid_black_holes=SPIN_JET
+        with_subgrid_sink=none
+        with_subgrid_extra_io=EAGLE
+        enable_fof=yes
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -2708,7 +2718,7 @@ fi
 #  Particle tracers
 AC_ARG_WITH([tracers],
    [AS_HELP_STRING([--with-tracers=<function>],
-      [chemistry function @<:@none, EAGLE default: none@:>@]
+      [Tracer functions @<:@none, EAGLE, FLAMINGO, GEAR default: none@:>@]
    )],
    [with_tracers="$withval"],
    [with_tracers="none"]
@@ -2728,6 +2738,12 @@ case "$with_tracers" in
    ;;
    EAGLE)
       AC_DEFINE([TRACERS_EAGLE], [1], [Tracers taken from the EAGLE model])
+   ;;
+   FLAMINGO)
+      AC_DEFINE([TRACERS_FLAMINGO], [1], [Tracers taken from the FLAMINGO model])
+   ;;
+   GEAR)
+      AC_DEFINE([TRACERS_GEAR], [1], [Tracers taken from the GEAR model])
    ;;
    *)
       AC_MSG_ERROR([Unknown tracers choice: $with_tracers])
@@ -2934,7 +2950,7 @@ esac
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
-      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration , abc-flowdefault: none@:>@]
+      [Hydrodynamics forcing terms @<:@none, boundary-particles, roberts-flow, roberts-flow-acceleration, abc-flow, idealized-agn-jet, balsarakim default: none@:>@]
    )],
    [with_forcing="$withval"],
    [with_forcing="none"]
@@ -2942,6 +2958,9 @@ AC_ARG_WITH([forcing],
 case "$with_forcing" in
    none)
       AC_DEFINE([FORCING_NONE], [1], [No external forcing terms])
+   ;;
+   boundary-particles)
+      AC_DEFINE([FORCING_BOUNDARY_PARTICLES], [1], [Boundary particles])
    ;;
    roberts-flow)
       AC_DEFINE([FORCING_ROBERTS_FLOW], [1], [Roberts' flow external forcing terms])
@@ -2951,6 +2970,12 @@ case "$with_forcing" in
    ;;
    abc-flow)
       AC_DEFINE([FORCING_ABC_FLOW], [1], [ABC flow external forcing terms])
+   ;;
+   balsarakim)
+      AC_DEFINE([FORCING_BALSARAKIM], [1], [BalsaraKim internal energy injections])
+   ;;
+   idealized-agn-jet)
+      AC_DEFINE([FORCING_IDEALIZED_AGN_JET], [1], [Launch AGN jets and treats particles in jet reservoir as fixed boundary particles])
    ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
@@ -3230,6 +3255,47 @@ case "$with_rt" in
    ;;
 esac
 
+# Task-multiplexing
+
+#  Number of hydro cooling tasks per cell
+AC_ARG_WITH([hydro-cooling-ntask],
+   [AS_HELP_STRING([--with-hydro-cooling-ntask=<ntask>],
+      [number of hydro cooling tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_hydro_cooling_ntask="$withval"],
+   [with_hydro_cooling_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([HYDRO_COOLING_NTASK], [$with_hydro_cooling_ntask], [Number of hydro cooling tasks per cell])
+
+#  Number of stars density ghost tasks per cell
+AC_ARG_WITH([hydro-ghost-ntask],
+   [AS_HELP_STRING([--with-hydro-ghost-ntask=<ntask>],
+      [number of hydro density ghost tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_hydro_ghost_ntask="$withval"],
+   [with_hydro_ghost_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([HYDRO_GHOST_NTASK], [$with_hydro_ghost_ntask], [Number of hydro density ghost tasks per cell])
+
+#  Number of stars density ghost tasks per cell
+AC_ARG_WITH([stars-ghost-ntask],
+   [AS_HELP_STRING([--with-stars-ghost-ntask=<ntask>],
+      [number of stars density ghost tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_stars_ghost_ntask="$withval"],
+   [with_stars_ghost_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([STARS_GHOST_NTASK], [$with_stars_ghost_ntask], [Number of stars density ghost tasks per cell])
+
+#  Number of stars density self tasks per cell
+AC_ARG_WITH([stars-self-ntask],
+   [AS_HELP_STRING([--with-stars-self-ntask=<ntask>],
+      [number of stars density self tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_stars_self_ntask="$withval"],
+   [with_stars_self_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([STARS_SELF_NTASK], [$with_stars_self_ntask], [Number of stars density self tasks per cell])
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
@@ -3265,6 +3331,13 @@ AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
+
+# Check for GEAR and GEAR_MECHANICAL feedback flags to set the common files
+# variable
+AS_IF([test "$with_feedback" = "GEAR"],
+  [common_gear_needed=yes],
+  [common_gear_needed=no])
+AM_CONDITIONAL([COMMON_GEAR_NEEDED], [test "x$common_gear_needed" = "xyes"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEAGORAFEEDBACK], [test "$with_feedback" = "AGORA"])
@@ -3408,6 +3481,11 @@ AC_MSG_RESULT([
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
+   Hydro cooling ntask  : $with_hydro_cooling_ntask
+   Hydro ghost ntask    : $with_hydro_ghost_ntask
+   Stars ghost ntask    : $with_stars_ghost_ntask
+   Stars self ntask     : $with_stars_self_ntask
+
 
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
@@ -3420,8 +3498,6 @@ AC_MSG_RESULT([
    Naive stars interactions    : $enable_naive_interactions_stars
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
-   Boundary particles          : $boundary_particles
-   Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
    Ghost statistics            : $ghost_stats
 

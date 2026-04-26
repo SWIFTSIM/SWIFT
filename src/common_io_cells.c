@@ -45,11 +45,11 @@
  */
 #define CELL_COUNT_NON_INHIBITED_PARTICLES(TYPE, CELL_TYPE)                   \
   cell_count_non_inhibited_##TYPE(                                            \
-      const struct cell* c, const int subsample, const float subsample_ratio, \
+      const struct cell *c, const int subsample, const float subsample_ratio, \
       const int snap_num, double min_pos[3], double max_pos[3]) {             \
                                                                               \
     const int total_count = c->CELL_TYPE.count;                               \
-    const struct TYPE* parts = c->CELL_TYPE.parts;                            \
+    const struct TYPE *parts = c->CELL_TYPE.parts;                            \
     long long count = 0;                                                      \
     min_pos[0] = min_pos[1] = min_pos[2] = DBL_MAX;                           \
     max_pos[0] = max_pos[1] = max_pos[2] = -DBL_MAX;                          \
@@ -97,11 +97,11 @@ static long long CELL_COUNT_NON_INHIBITED_PARTICLES(sink, sinks);
  */
 #define CELL_COUNT_NON_INHIBITED_GPARTICLES(TYPE, PART_TYPE)                  \
   cell_count_non_inhibited_##TYPE(                                            \
-      const struct cell* c, const int subsample, const float subsample_ratio, \
+      const struct cell *c, const int subsample, const float subsample_ratio, \
       const int snap_num, double min_pos[3], double max_pos[3]) {             \
                                                                               \
     const int total_count = c->grav.count;                                    \
-    const struct gpart* gparts = c->grav.parts;                               \
+    const struct gpart *gparts = c->grav.parts;                               \
     long long count = 0;                                                      \
     min_pos[0] = min_pos[1] = min_pos[2] = DBL_MAX;                           \
     max_pos[0] = max_pos[1] = max_pos[2] = -DBL_MAX;                          \
@@ -151,13 +151,13 @@ static long long CELL_COUNT_NON_INHIBITED_GPARTICLES(neutrinos,
  * @param snap_num The snapshot number to use as random seed.
  */
 #define IO_COUNT_PARTICLES_TO_WRITE(NAME, TYPE)                               \
-  io_count_##NAME##_to_write(const struct space* s, const int subsample,      \
+  io_count_##NAME##_to_write(const struct space *s, const int subsample,      \
                              const float subsample_ratio,                     \
                              const int snap_num) {                            \
     long long count = 0;                                                      \
     for (int i = 0; i < s->nr_local_cells; ++i) {                             \
       double dummy1[3], dummy2[3];                                            \
-      const struct cell* c = &s->cells_top[s->local_cells_top[i]];            \
+      const struct cell *c = &s->cells_top[s->local_cells_top[i]];            \
       count += cell_count_non_inhibited_##TYPE(c, subsample, subsample_ratio, \
                                                snap_num, dummy1, dummy2);     \
     }                                                                         \
@@ -197,9 +197,9 @@ long long IO_COUNT_PARTICLES_TO_WRITE(neutrinos, neutrinos);
  * @param array_content The name of the parent group (only used for error
  * messages).
  */
-void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
-                    const enum IO_DATA_TYPE type, const char* name,
-                    const char* array_content) {
+void io_write_array(hid_t h_grp, const int n, const int dim, const void *array,
+                    const enum IO_DATA_TYPE type, const char *name,
+                    const char *array_content) {
 
   /* Create memory space */
   const hsize_t shape[2] = {(hsize_t)n, dim};
@@ -273,7 +273,7 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
  * @param snapshot_units The snapshot unit system.
  */
 void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
-                           const struct cell* cells_top, const int nr_cells,
+                           const struct cell *cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const int distributed,
                            const int subsample[swift_type_count],
@@ -283,8 +283,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const long long global_offsets[swift_type_count],
                            const int to_write[swift_type_count],
                            const int num_fields[swift_type_count],
-                           const struct unit_system* internal_units,
-                           const struct unit_system* snapshot_units) {
+                           const struct unit_system *internal_units,
+                           const struct unit_system *snapshot_units) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (distributed) {
@@ -303,60 +303,60 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   double cell_width[3] = {width[0], width[1], width[2]};
 
   /* Temporary memory for the cell-by-cell information */
-  double* centres = NULL;
-  centres = (double*)malloc(3 * nr_cells * sizeof(double));
+  double *centres = NULL;
+  centres = (double *)malloc(3 * nr_cells * sizeof(double));
 
   /* Temporary memory for the cell files ID */
-  int* files = NULL;
-  files = (int*)malloc(nr_cells * sizeof(int));
+  int *files = NULL;
+  files = (int *)malloc(nr_cells * sizeof(int));
 
   /* Temporary memory for the min position of particles in the cells */
   double *min_part_pos = NULL, *min_gpart_pos = NULL,
          *min_gpart_background_pos = NULL, *min_spart_pos = NULL,
          *min_bpart_pos = NULL, *min_sink_pos = NULL, *min_nupart_pos = NULL;
-  min_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  min_part_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_gpart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_gpart_background_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_spart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_bpart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_sink_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_nupart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
 
   /* Temporary memory for the max position of particles in the cells */
   double *max_part_pos = NULL, *max_gpart_pos = NULL,
          *max_gpart_background_pos = NULL, *max_spart_pos = NULL,
          *max_bpart_pos = NULL, *max_sink_pos = NULL, *max_nupart_pos = NULL;
-  max_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  max_part_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_gpart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_gpart_background_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_spart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_bpart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_sink_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_nupart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
 
   /* Count of particles in each cell */
   long long *count_part = NULL, *count_gpart = NULL,
             *count_background_gpart = NULL, *count_spart = NULL,
             *count_bpart = NULL, *count_sink = NULL, *count_nupart = NULL;
-  count_part = (long long*)malloc(nr_cells * sizeof(long long));
-  count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  count_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  count_spart = (long long*)malloc(nr_cells * sizeof(long long));
-  count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
-  count_sink = (long long*)malloc(nr_cells * sizeof(long long));
-  count_nupart = (long long*)malloc(nr_cells * sizeof(long long));
+  count_part = (long long *)malloc(nr_cells * sizeof(long long));
+  count_gpart = (long long *)malloc(nr_cells * sizeof(long long));
+  count_background_gpart = (long long *)malloc(nr_cells * sizeof(long long));
+  count_spart = (long long *)malloc(nr_cells * sizeof(long long));
+  count_bpart = (long long *)malloc(nr_cells * sizeof(long long));
+  count_sink = (long long *)malloc(nr_cells * sizeof(long long));
+  count_nupart = (long long *)malloc(nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
   long long *offset_part = NULL, *offset_gpart = NULL,
             *offset_background_gpart = NULL, *offset_spart = NULL,
             *offset_bpart = NULL, *offset_sink = NULL, *offset_nupart = NULL;
-  offset_part = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_sink = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_nupart = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_part = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_gpart = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_background_gpart = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_spart = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_bpart = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_sink = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_nupart = (long long *)malloc(nr_cells * sizeof(long long));
 
   /* Offsets of the 0^th element */
   offset_part[0] = 0;

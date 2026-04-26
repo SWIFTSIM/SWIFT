@@ -55,17 +55,17 @@ enum lossy_compression_schemes {
  * @brief Names of the compression levels, used in the select_output.yml
  *        parameter file.
  **/
-extern const char* lossy_compression_schemes_names[];
+extern const char *lossy_compression_schemes_names[];
 
-enum lossy_compression_schemes compression_scheme_from_name(const char* name);
+enum lossy_compression_schemes compression_scheme_from_name(const char *name);
 
 #ifdef HAVE_HDF5
 
 #include <hdf5.h>
 
-void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
+void set_hdf5_lossy_compression(hid_t *h_prop, hid_t *h_type,
                                 const enum lossy_compression_schemes comp,
-                                const char* field_name, char filter_name[32]);
+                                const char *field_name, char filter_name[32]);
 
 #endif /* HAVE_HDF5 */
 

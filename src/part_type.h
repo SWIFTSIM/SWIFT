@@ -35,6 +35,6 @@ enum part_type {
   swift_type_count
 } __attribute__((packed));
 
-extern const char* part_type_names[];
+extern const char *part_type_names[];
 
 #endif /* SWIFT_PART_TYPES_H */

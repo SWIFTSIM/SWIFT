@@ -44,11 +44,11 @@
  * @param internal_units struct holding internal units
  */
 __attribute__((always_inline)) INLINE static void
-rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
+rt_compute_stellar_emission_rate(struct spart *restrict sp, double time,
                                  double star_age, double dt,
-                                 const struct rt_props* rt_props,
-                                 const struct phys_const* phys_const,
-                                 const struct unit_system* internal_units) {}
+                                 const struct rt_props *rt_props,
+                                 const struct phys_const *phys_const,
+                                 const struct unit_system *internal_units) {}
 
 /**
  * @brief Initialisation of the RT density loop related particle data.
@@ -58,7 +58,7 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
  * @param p Particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_part(
-    struct part* restrict p) {}
+    struct part *restrict p) {}
 
 /**
  * @brief Reset the RT hydro particle data not related to the hydro density.
@@ -70,7 +70,7 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p, const struct cosmology* cosmo) {}
+    struct part *restrict p, const struct cosmology *cosmo) {}
 
 /**
  * @brief Reset RT particle data which needs to be reset each sub-cycle.
@@ -80,7 +80,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @param dt the current particle RT time step
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p, const struct cosmology* cosmo, double dt) {}
+    struct part *restrict p, const struct cosmology *cosmo, double dt) {}
 
 /**
  * @brief First initialisation of the RT hydro particle data.
@@ -90,8 +90,8 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
  * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p, const struct cosmology* cosmo,
-    const struct rt_props* restrict rt_props) {}
+    struct part *restrict p, const struct cosmology *cosmo,
+    const struct rt_props *restrict rt_props) {}
 
 /**
  * @brief Initialisation of the RT density loop related star particle data.
@@ -101,7 +101,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
  * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
+    struct spart *restrict sp) {}
 
 /**
  * @brief Reset of the RT star particle data not related to the density.
@@ -111,7 +111,7 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
  * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_reset_spart(
-    struct spart* restrict sp) {}
+    struct spart *restrict sp) {}
 
 /**
  * @brief First initialisation of the RT star particle data.
@@ -119,7 +119,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
  * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
-    struct spart* restrict sp) {}
+    struct spart *restrict sp) {}
 
 /**
  * @brief Split the RT data of a particle into n pieces
@@ -127,7 +127,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
  * @param p The #part.
  * @param n The number of pieces to split into.
  */
-__attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
+__attribute__((always_inline)) INLINE static void rt_split_part(struct part *p,
                                                                 double n) {}
 
 /**
@@ -136,7 +136,7 @@ __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
  * @param p The #part.
  */
 __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
-    struct part* p) {}
+    struct part *p) {}
 
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
@@ -144,7 +144,7 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
  * @param sp The #spart.
  */
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
-    struct spart* sp) {}
+    struct spart *sp) {}
 
 /**
  * @brief Do checks/conversions on particles on startup.
@@ -157,11 +157,11 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
-    struct part* restrict p, const struct rt_props* rt_props,
-    const struct hydro_props* hydro_props,
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo) {}
+    struct part *restrict p, const struct rt_props *rt_props,
+    const struct hydro_props *hydro_props,
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct cosmology *restrict cosmo) {}
 
 /**
  * @brief Computes the next radiative transfer time step size
@@ -176,11 +176,11 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static float rt_compute_timestep(
-    const struct part* restrict p, const struct xpart* restrict xp,
-    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
-    const struct hydro_props* hydro_props,
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us) {
+    const struct part *restrict p, const struct xpart *restrict xp,
+    struct rt_props *rt_props, const struct cosmology *restrict cosmo,
+    const struct hydro_props *hydro_props,
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us) {
 
   return FLT_MAX;
 }
@@ -194,8 +194,8 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
  * @param cosmo the cosmology
  */
 __attribute__((always_inline)) INLINE static float rt_compute_spart_timestep(
-    const struct spart* restrict sp, const struct rt_props* restrict rt_props,
-    const struct cosmology* restrict cosmo) {
+    const struct spart *restrict sp, const struct rt_props *restrict rt_props,
+    const struct cosmology *restrict cosmo) {
 
   return FLT_MAX;
 }
@@ -218,7 +218,7 @@ __attribute__((always_inline)) INLINE static float rt_compute_spart_timestep(
 __attribute__((always_inline)) INLINE static double rt_part_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
-    const struct cosmology* cosmo) {
+    const struct cosmology *cosmo) {
   return 0.0;
 }
 
@@ -229,7 +229,7 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
  * @param props struct #rt_props that contains global RT properties
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_injection(
-    struct part* restrict p, struct rt_props* props) {}
+    struct part *restrict p, struct rt_props *props) {}
 
 /**
  * @brief finishes up the gradient computation
@@ -238,7 +238,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
  * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
-    struct part* restrict p, const struct cosmology* cosmo) {}
+    struct part *restrict p, const struct cosmology *cosmo) {}
 
 /**
  * @brief finishes up the transport step
@@ -248,8 +248,8 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, struct rt_props* rtp, const double dt,
-    const struct cosmology* restrict cosmo) {}
+    struct part *restrict p, struct rt_props *rtp, const double dt,
+    const struct cosmology *restrict cosmo) {}
 /**
  * @brief Do the thermochemistry on a particle.
  *
@@ -263,11 +263,11 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p, struct xpart* restrict xp,
-    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
-    const struct hydro_props* hydro_props,
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us, const double dt) {}
+    struct part *restrict p, struct xpart *restrict xp,
+    struct rt_props *rt_props, const struct cosmology *restrict cosmo,
+    const struct hydro_props *hydro_props,
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us, const double dt) {}
 
 /**
  * @brief Extra operations done during the kick.
@@ -282,9 +282,9 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
  * @param hydro_props Additional hydro properties.
  */
 __attribute__((always_inline)) INLINE static void rt_kick_extra(
-    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {}
+    struct part *p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props) {}
 
 /**
  * @brief Prepare a particle for the !HYDRO! force calculation.
@@ -296,7 +296,7 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
  * @param p particle to work on
  **/
 __attribute__((always_inline)) INLINE static void rt_prepare_force(
-    struct part* p) {}
+    struct part *p) {}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -306,7 +306,7 @@ __attribute__((always_inline)) INLINE static void rt_prepare_force(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void rt_predict_extra(
-    struct part* p, struct xpart* xp, float dt_drift) {}
+    struct part *p, struct xpart *xp, float dt_drift) {}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.
@@ -315,6 +315,6 @@ __attribute__((always_inline)) INLINE static void rt_predict_extra(
  * @param restart did we restart?
  */
 __attribute__((always_inline)) INLINE static void rt_clean(
-    struct rt_props* props, int restart) {}
+    struct rt_props *props, int restart) {}
 
 #endif /* SWIFT_RT_NONE_H */

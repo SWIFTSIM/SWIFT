@@ -86,6 +86,9 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
     pc->grav.CoM_rebuild[2] = mp->CoM_rebuild[2];
     pc->grav.r_max = mp->r_max;
     pc->grav.r_max_rebuild = mp->r_max_rebuild;
+    pc->grav.dx_max[0] = mp->dx_max[0];
+    pc->grav.dx_max[1] = mp->dx_max[1];
+    pc->grav.dx_max[2] = mp->dx_max[2];
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -292,6 +295,9 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
     mp->CoM_rebuild[2] = pc->grav.CoM_rebuild[2];
     mp->r_max = pc->grav.r_max;
     mp->r_max_rebuild = pc->grav.r_max_rebuild;
+    mp->dx_max[0] = pc->grav.dx_max[0];
+    mp->dx_max[1] = pc->grav.dx_max[1];
+    mp->dx_max[2] = pc->grav.dx_max[2];
   }
 
   /* Number of new cells created. */
@@ -829,13 +835,14 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->stars.parts_rebuild == NULL)
-    error("Star particles array at rebuild is NULL!");
+  if (c->grav.parts_rebuild == NULL)
+    error("Grav. particles array at rebuild is NULL!");
 #endif
 
   /* Unpack this cell's data. */
   c->grav.count = pcells[0].count;
-  c->grav.parts = c->grav.parts_rebuild + pcells[0].delta_from_rebuild;
+  c->grav.parts_foreign =
+      c->grav.parts_foreign_rebuild + pcells[0].delta_from_rebuild;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;

@@ -46,30 +46,38 @@ in the sampling of the halo is reduced.
 Note also that this does not affect the hydrodynamic forces. This mode is
 purely designed for gravity-only accuracy tests.
 
-Besides the pure gravity mode, swift also has the boundary particle mode,
-this mode turns off both the gravity forces and hydro forces for all
-particles. Because gas particles only receive hydro this mode only impacts
-gas particles more strictly than other particles. This mode can be
-activated using ``--enable-boundary-particles=N``. This will zero the
-gravitational and hydrodynamic *accelerations* of all particles with ``id``
-(strictly) lower than ``N`` at every time-step. Still if particles have an
-initial velocity they will keep moving at that speed. This compilation
-option also activates ``--enable-no-gravity-below-id=N``. 
+SWIFT also includes functionality for boundary particles, which can be activated
+by configuring with the flag ``--with-forcing=boundary-particles``. By default,
+this disables both gravitational and hydrodynamic forces for particles with IDs
+less than or equal to a specified maximum ID. This value, along with additional
+parameters to enable alternative modes (the default options for which are listed
+below), is set in the simulation parameter file using:
 
-Typical use cases are hydrodynamical experiments that have boundaries. 
+.. code-block:: yaml
 
-Both options discussed above only cancel accelerations and have no impact
-on what can happen in any code module that directly changes the velocity of
-the boundary or no gravity particles. An example of this is momentum
-injection of stellar winds for example. If we additionally want to keep the
-boundary particles fixed at the same position for the whole simulation we can
-use the ``--enable-fixed-boundary-particles=N`` compile option, this option
-explicitly sets the velocity of the boundary particles to zero every time
-step on top of also zeroing the accelerations.
+   BoundaryParticles:
+     boundary_particle_max_id:        N
+     enable_fixed_position:           0
+     enable_hydro_acceleration:       0
+     enable_grav_acceleration:        0
 
-A typical use cases is an idealized setup in which we have a black hole in
-the centre of a galaxy that accretes gas but is not allowed to move from
-the momentum recoil of the gas it swallows.
+where ``N`` would be replaced by an integer particle ID. With these options, if
+boundary particles have an initial velocity, they will continue to move with
+that velocity for the duration of the simulation.
+
+Additional modes can be enabled:
+
+- ``enable_fixed_position: 1`` sets boundary particle velocities to zero, in addition to
+  accelerations, at each time step, fully fixing them in place, even if they had an
+  initial velocity.
+- ``enable_hydro_acceleration: 1`` allows hydrodynamic forces to act on boundary particles.
+- ``enable_grav_acceleration: 1`` allows gravitational forces to act on boundary particles.
+
+Typical use cases for boundary particles include: experiments with fixed
+boundaries; hydrodynamic test scenarios, such as the Rayleigh--Taylor instability
+examples provided in SWIFT; idealised setups with a black hole at the centre of
+a galaxy that accretes gas, but is fixed in place despite the momentum recoil
+that would be caused by the accreted material.
 
 Gravity glasses
 ~~~~~~~~~~~~~~~

@@ -36,6 +36,7 @@ InitialConditions:
   
 # External potential parameters
 PointMassPotential:
+  useabspos:       1
   position:        [5.,5.,5.]  # location of external point mass in internal units
   mass:            1.498351e7  # mass of external point mass in internal units
   timestep_mult:   0.03        # controls time step
