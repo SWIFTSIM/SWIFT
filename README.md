@@ -99,7 +99,7 @@ are highly encouraged.
  /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
- Version : 2026.01
+ Version : 2026.04
  Website: www.swiftsim.com
  Twitter: @SwiftSimulation
 
@@ -155,6 +155,11 @@ Parameters:
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback
                                       --black-holes --fof.
+    --flamingo                        Run with all the options needed for the 
+                                      FLAMINGO model. This is equivalent to 
+                                      --hydro --limiter --sync --self-gravity 
+                                      --stars --star-formation --cooling 
+                                      --feedback --black-holes --fof.
     --gear                            Run with all the options needed for the
                                       GEAR model. This is equivalent to --hydro
                                       --limiter --sync --self-gravity --stars
