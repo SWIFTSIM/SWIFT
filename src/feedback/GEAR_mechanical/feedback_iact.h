@@ -286,15 +286,16 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
 
   /* Calculate the velocity with the Hubble flow */
   const float a = cosmo->a;
+  const float a_inv = cosmo->a_inv;
   const float H = cosmo->H;
   const float a2H = a * a * H;
   const float v_ij_plus_H_flow[3] = {
       a2H * dx[0] + v_ij[0], a2H * dx[1] + v_ij[1], a2H * dx[2] + v_ij[2]};
 
   /* Compute the _physical_ relative velocity between the particles */
-  const float v_ij_p[3] = {v_ij_plus_H_flow[0] * cosmo->a_inv,
-                           v_ij_plus_H_flow[1] * cosmo->a_inv,
-                           v_ij_plus_H_flow[2] * cosmo->a_inv};
+  const float v_ij_p[3] = {v_ij_plus_H_flow[0] * a_inv,
+                           v_ij_plus_H_flow[1] * a_inv,
+                           v_ij_plus_H_flow[2] * a_inv};
 
   const float v_ij_p_norm_2 =
       v_ij_p[0] * v_ij_p[0] + v_ij_p[1] * v_ij_p[1] + v_ij_p[2] * v_ij_p[2];
@@ -393,6 +394,7 @@ runner_iact_nonsym_feedback_apply(
   double new_mass = mj;
   double dm_SW = 0.0;
   double dm_SN = 0.0;
+  double total_momentum_kick_p[3] = {0.0, 0.0, 0.0};
 
   /* Calculate the velocity with the Hubble flow */
   const float a = cosmo->a;
@@ -407,13 +409,17 @@ runner_iact_nonsym_feedback_apply(
                                    a2H * pj->x[2] + xpj->v_full[2]};
 
   /* Compute the _physical_ relative velocity between the particles */
-  const float v_i_p[3] = {vi_plus_H_flow[0] * cosmo->a_inv,
-                          vi_plus_H_flow[1] * cosmo->a_inv,
-                          vi_plus_H_flow[2] * cosmo->a_inv};
+  const float v_i_p[3] = {vi_plus_H_flow[0] * a_inv,
+                          vi_plus_H_flow[1] * a_inv,
+                          vi_plus_H_flow[2] * a_inv};
 
-  const float v_j_p[3] = {vj_plus_H_flow[0] * cosmo->a_inv,
-                          vj_plus_H_flow[1] * cosmo->a_inv,
-                          vj_plus_H_flow[2] * cosmo->a_inv};
+  const float v_j_p[3] = {vj_plus_H_flow[0] * a_inv,
+                          vj_plus_H_flow[1] * a_inv,
+                          vj_plus_H_flow[2] * a_inv};
+
+  /* Calculate the velocity without Hubble flow for signal velocity */
+  const float v_i_without_Hubble_flow[3] = {si->v[0] * a_inv, si->v[1] * a_inv,
+                                            si->v[2] * a_inv};
 
   /*****************************************/
   /* Do we have stellar winds */
@@ -450,49 +456,24 @@ runner_iact_nonsym_feedback_apply(
 #if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
     /* Convert to comoving units */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dp_prime_SW[i] * cosmo->a;
+      xpj->feedback_data.delta_p[i] += dp_prime_SW[i] * a;
     }
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
     /* Note: This is physical internal energy. See feedback_update_part(). */
     xpj->feedback_data.delta_u += dU_SW / new_mass;
 
-    /* TODO: Determine if we need that or if we want that */
     xpj->feedback_data.delta_E_kin += dKE_SW;
 
     /* Flag this particle that it received stellar wind feedback */
     xpj->feedback_data.number_winds += 1;
 
-    /* TODO: Handle this. Should we update here for winds or take the
-       cumulative wind+SN momentum? Have a look into EAGLE kinetic... */
-    /* Only used in non-cosmological simulations. Has to be
-       investigated in cosmological simulations*/
-    if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0) {
-
-      /* Calculate the velocity without Hubble flow for signal velocity */
-      const float v_i_without_Hubble_flow[3] = {
-	  si->v[0] * a_inv, si->v[1] * a_inv, si->v[2] * a_inv};
-
-      const float p_ej_SW = sqrt(2.0 * m_ej * E_ej_SW);
-      const float dp[3] = {w_j_bar[0] * p_ej_SW, w_j_bar[1] * p_ej_SW, w_j_bar[2] * p_ej_SW};
-      float delta_p_without_Hubble[3];
-
-      for (int i = 0; i < 3; i++) {
-	/* Momentum in lab frame due to the ejecta */
-	delta_p_without_Hubble[i] = dp[i] + dm_SW * v_i_without_Hubble_flow[i];
-      }
-
-      /* The norm of the momentum without the Hubble flow contribution */
-      const float norm2_delta_p_without_Hubble = {
-	delta_p_without_Hubble[0] * delta_p_without_Hubble[0] +
-	delta_p_without_Hubble[1] * delta_p_without_Hubble[1] +
-	delta_p_without_Hubble[2] * delta_p_without_Hubble[2]};
-
-      /* Update the signal velocity of the gas particle receiving a kick.
-	 We want to subtract the Hubble flow participation in the signal
-	 velocity.*/
-      const float dv_phys = sqrtf(norm2_delta_p_without_Hubble) / new_mass;
-      hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+    /* Signal velocity update: Get the momentum in lab frame, without the Hubble
+     * flow term. */
+    const float p_ej_SW = sqrt(2.0 * m_ej * E_ej_SW);
+    const float dp[3] = {w_j_bar[0] * p_ej_SW, w_j_bar[1] * p_ej_SW, w_j_bar[2] * p_ej_SW};
+    for (int i = 0; i < 3; i++) {
+      total_momentum_kick_p[i] += dp[i] + dm_SW * v_i_without_Hubble_flow[i];
     }
   }
 
@@ -519,7 +500,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* Here just get the feedback properties we want to distribute (in physical
        units) */
-    const float E_ej = si->feedback_data.supernovae.energy_ejected;
+    const float E_ej_SN = si->feedback_data.supernovae.energy_ejected;
 
     /* ... metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -532,7 +513,7 @@ runner_iact_nonsym_feedback_apply(
     double dKE = 0.0;
     double dp_prime[3] = {0.0, 0.0, 0.0};
     runner_iact_nonsym_mechanical_feedback_apply(
-        r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj,
+        r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SN, m_ej, mj,
         dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_prime);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
@@ -542,7 +523,7 @@ runner_iact_nonsym_feedback_apply(
 #if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
     /* Convert to comoving units */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dp_prime[i] * cosmo->a;
+      xpj->feedback_data.delta_p[i] += dp_prime[i] * a;
     }
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
@@ -553,23 +534,42 @@ runner_iact_nonsym_feedback_apply(
     /* Flag this particle that it received SN feedback */
     xpj->feedback_data.number_SN += 1;
 
-    /* Only use this for non-cosmological simulations. In cosmological
-       simulations, this suppresses the momentum effects (to be investigated
-       why). */
-    if (cosmo->a == 1.0 && cosmo->a_inv == 1.0 && cosmo->z == 0.0) {
-      /* Update the signal velocity of gas particles that receive a kick. From
-         Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
-      const float dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
-                                     dp_prime[1] * dp_prime[1] +
-                                     dp_prime[2] * dp_prime[2];
-      const float dp_prime_norm = sqrt(dp_prime_norm_2);
-      const float dv_phys = dp_prime_norm / new_mass;
-      hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+    /* Signal velocity update: Get the momentum in lab frame, without the Hubble
+     * flow term. */
+    const float p_ej_SN = sqrt(2.0 * m_ej * E_ej_SN);
+    const float dp[3] = {w_j_bar[0] * p_ej_SN, w_j_bar[1] * p_ej_SN, w_j_bar[2] * p_ej_SN};
+    for (int i = 0; i < 3; i++) {
+      /* Momentum in lab frame due to the ejecta */
+      total_momentum_kick_p[i] += dp[i] + dm_SN * v_i_without_Hubble_flow[i];
     }
   }
 
-  /* Synchronize the particle on the timeline */
-  timestep_sync_part(pj);
+  /*-------------------------------------------------------------------------*/
+  /* Final feedback considerations */
+  if (feedback_should_inject_wind_feedback(si) ||
+      feedback_should_inject_SN_feedback(si)) {
+
+    const float tot_momentum_norm_2 =
+      total_momentum_kick_p[0] * total_momentum_kick_p[0] +
+      total_momentum_kick_p[1] * total_momentum_kick_p[1] +
+      total_momentum_kick_p[2] * total_momentum_kick_p[2];
+    const float tot_momentum_norm = sqrt(tot_momentum_norm_2);
+
+    /* Only use this for non-cosmological simulations. In cosmological
+       simulations, this suppresses the momentum effects (to be investigated
+       why). */
+    if (tot_momentum_norm > 0.0 && a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0) {
+      /* Update the signal velocity of gas particles that receive a kick. From
+	 Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
+      const float dv_phys = tot_momentum_norm / new_mass;
+      hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+    }
+
+    /* Note: We do not impose maximal viscosity as GEAR_thermal */
+
+    /* Synchronize the particle on the timeline */
+    timestep_sync_part(pj);
+  }
 }
 
 #endif /* SWIFT_GEAR_MECHANICAL_FEEDBACK_IACT_H */
