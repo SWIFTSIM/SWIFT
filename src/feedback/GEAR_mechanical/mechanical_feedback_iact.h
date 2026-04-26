@@ -93,8 +93,7 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
   /* --------------- Compute physical momentum received ---------------- */
   /* Total momentum ejected by the winds during the timestep from the star
    * particle i */
-  const float p_ej = sqrt(2.0 * si->feedback_data.winds.mass_ejected *
-                          si->feedback_data.winds.energy_ejected);
+  const float p_ej = sqrt(2.0 * m_ej * E_ej);
   const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
                         w_j_bar[2] * p_ej};
 
