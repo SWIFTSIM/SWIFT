@@ -396,6 +396,7 @@ runner_iact_nonsym_feedback_apply(
 
   /* Calculate the velocity with the Hubble flow */
   const float a = cosmo->a;
+  const float a_inv = cosmo->a_inv;
   const float H = cosmo->H;
   const float a2H = a * a * H;
   const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0],
@@ -466,38 +467,33 @@ runner_iact_nonsym_feedback_apply(
        cumulative wind+SN momentum? Have a look into EAGLE kinetic... */
     /* Only used in non-cosmological simulations. Has to be
        investigated in cosmological simulations*/
-    /* if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0) { */
-    /*   /\* Calculate the velocity without Hubble flow for signal velocity *\/
-     */
-    /*   const float v_i_without_Hubble_flow[3] = { */
-    /* 	si->v[0] * a_inv, si->v[1] * a_inv, si->v[2] * a_inv}; */
-    /*   float delta_p_without_Hubble[3]; */
-    /*   for (int i = 0; i < 3; i++) { */
-    /* 	/\* the unit direction from the gas particle j to the star particle i */
-    /* 	 *\/ */
-    /* 	const float unit_direction = dx_p[i] / r_p; */
-    /* 	/\* the additional momentum due to change of frame of reference (from */
-    /* 	 * star particle frame to lab frame) *\/ */
-    /* 	const float change_of_frame_without_Hubble = */
-    /* 	  si->feedback_data.winds.mass_ejected * v_i_without_Hubble_flow[i]; */
-    /* 	/\* momentum in lab frame due to the ejecta *\/ */
-    /* 	delta_p_without_Hubble[i] = */
-    /* 	  weight * (p_ej + change_of_frame_without_Hubble) * unit_direction; */
-    /*   } */
-    /*   /\* The norm of the momentum without the Hubble flow participation *\/
-     */
-    /*   const float norm2_delta_p_without_Hubble = { */
-    /* 	delta_p_without_Hubble[0] * delta_p_without_Hubble[0] + */
-    /* 	delta_p_without_Hubble[1] * delta_p_without_Hubble[1] + */
-    /* 	delta_p_without_Hubble[2] * delta_p_without_Hubble[2]}; */
+    if (a == 1.0 && a_inv == 1.0 && cosmo->z == 0.0) {
 
-    /*   /\* Update the signal velocity of the gas particle receiving a kick. */
-    /* 	 We want to subtract the Hubble flow participation in the signal */
-    /* 	 velocity.*\/ */
-    /*   const float dv_phys = sqrtf(norm2_delta_p_without_Hubble) / new_mass;
-     */
-    /*   hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys); */
-    /* }     */
+      /* Calculate the velocity without Hubble flow for signal velocity */
+      const float v_i_without_Hubble_flow[3] = {
+	  si->v[0] * a_inv, si->v[1] * a_inv, si->v[2] * a_inv};
+
+      const float p_ej_SW = sqrt(2.0 * m_ej * E_ej_SW);
+      const float dp[3] = {w_j_bar[0] * p_ej_SW, w_j_bar[1] * p_ej_SW, w_j_bar[2] * p_ej_SW};
+      float delta_p_without_Hubble[3];
+
+      for (int i = 0; i < 3; i++) {
+	/* Momentum in lab frame due to the ejecta */
+	delta_p_without_Hubble[i] = dp[i] + dm_SW * v_i_without_Hubble_flow[i];
+      }
+
+      /* The norm of the momentum without the Hubble flow contribution */
+      const float norm2_delta_p_without_Hubble = {
+	delta_p_without_Hubble[0] * delta_p_without_Hubble[0] +
+	delta_p_without_Hubble[1] * delta_p_without_Hubble[1] +
+	delta_p_without_Hubble[2] * delta_p_without_Hubble[2]};
+
+      /* Update the signal velocity of the gas particle receiving a kick.
+	 We want to subtract the Hubble flow participation in the signal
+	 velocity.*/
+      const float dv_phys = sqrtf(norm2_delta_p_without_Hubble) / new_mass;
+      hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+    }
   }
 
   /*****************************************/
@@ -563,7 +559,7 @@ runner_iact_nonsym_feedback_apply(
     if (cosmo->a == 1.0 && cosmo->a_inv == 1.0 && cosmo->z == 0.0) {
       /* Update the signal velocity of gas particles that receive a kick. From
          Chaikin et al. (2023) (also implemented in EAGLE_kinetic) */
-      const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
+      const float dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
                                      dp_prime[1] * dp_prime[1] +
                                      dp_prime[2] * dp_prime[2];
       const float dp_prime_norm = sqrt(dp_prime_norm_2);
