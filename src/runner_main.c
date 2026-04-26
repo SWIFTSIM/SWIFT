@@ -72,7 +72,7 @@
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
 
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_1
 
 /* Import the stars prepare1 loop functions. */
 #define FUNCTION prep1
@@ -80,19 +80,24 @@
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
 
+#endif /* EXTRA_STAR_LOOPS_1 */
+
+#ifdef EXTRA_STAR_LOOPS_2
+
 /* Import the stars prepare2 loop functions. */
 #define FUNCTION prep2
 #define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP2
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
 
-#endif /* EXTRA_STAR_LOOPS */
+#endif /* EXTRA_STAR_LOOPS_2 */
 
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
 
 /* Check that we have enabled the first two loops */
-#if !defined(EXTRA_STAR_LOOPS)
-#error "Third-star neighbour loops require first and second-star neighbour loops. Enable EXTRA_STAR_LOOPS in src/feedback.h."
+#if !defined(EXTRA_STAR_LOOPS_1) && !defined(EXTRA_STAR_LOOPS_2)
+#error \
+    "Third-star neighbour loops require first and second-star neighbour loops. Enable EXTRA_STAR_LOOPS_1, EXTRA_STAR_LOOPS_2  in src/feedback.h."
 #endif
 
 /* Import the stars prepare3 loop functions. */
@@ -101,13 +106,16 @@
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
 
-#endif /* EXTRA_STAR_LOOPS_2 */
+#endif /* EXTRA_STAR_LOOPS_3 */
 
-#ifdef EXTRA_STAR_LOOPS_3
+#ifdef EXTRA_STAR_LOOPS_4
 
+/* TODO: This and the one below need to be checked again */
 /* Check that we have enabled the first three loops */
-#if !defined(EXTRA_STAR_LOOPS) || !defined(EXTRA_STAR_LOOPS_2)
-#error "Fourth-star neighbour loops require the first three neighbour loops. Enable EXTRA_STAR_LOOPS and EXTRA_STAR_LOOPS_2 in src/feedback.h."
+#if !defined(EXTRA_STAR_LOOPS_1) && !defined(EXTRA_STAR_LOOPS_2) || \
+    !defined(EXTRA_STAR_LOOPS_3)
+#error \
+    "Fourth-star neighbour loops require the first three neighbour loops. Enable EXTRA_STAR_LOOPS_1, EXTRA_STAR_LOOPS_2 and EXTRA_STAR_LOOPS_3 in src/feedback.h."
 #endif
 
 /* Import the stars prepare4 loop functions. */
@@ -116,7 +124,7 @@
 #include "runner_doiact_stars.h"
 #include "runner_doiact_undef.h"
 
-#endif /* EXTRA_STAR_LOOPS_3 */
+#endif /* EXTRA_STAR_LOOPS_4 */
 
 /* Import the stars feedback loop functions. */
 #define FUNCTION feedback
@@ -266,20 +274,22 @@ void *runner_main(void *data) {
             runner_dosub_self_stars_density(r, ci, /*offset=*/t->flags,
                                             /*ntasks=*/STARS_SELF_NTASK,
                                             /*below_h_max=*/0, 1);
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_1
           else if (t->subtype == task_subtype_stars_prep1)
             runner_dosub_self_stars_prep1(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
           else if (t->subtype == task_subtype_stars_prep2)
             runner_dosub_self_stars_prep2(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
           else if (t->subtype == task_subtype_stars_prep3)
             runner_dosub_self_stars_prep3(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
-#ifdef EXTRA_STAR_LOOPS_3
+#ifdef EXTRA_STAR_LOOPS_4
           else if (t->subtype == task_subtype_stars_prep4)
             runner_dosub_self_stars_prep4(r, ci, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
@@ -334,20 +344,22 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj, /*offset=*/0,
                                             /*ntasks=*/1, /*below_h_max=*/0, 1);
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_1
           else if (t->subtype == task_subtype_stars_prep1)
             runner_dosub_pair_stars_prep1(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
           else if (t->subtype == task_subtype_stars_prep2)
             runner_dosub_pair_stars_prep2(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
-#ifdef EXTRA_STAR_LOOPS_2
+#ifdef EXTRA_STAR_LOOPS_3
           else if (t->subtype == task_subtype_stars_prep3)
             runner_dosub_pair_stars_prep3(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);
 #endif
-#ifdef EXTRA_STAR_LOOPS_3
+#ifdef EXTRA_STAR_LOOPS_4
           else if (t->subtype == task_subtype_stars_prep4)
             runner_dosub_pair_stars_prep4(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
                                           /*below_h_max=*/0, 1);

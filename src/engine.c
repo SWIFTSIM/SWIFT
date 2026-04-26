@@ -1223,19 +1223,38 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef WITH_MPI
     n1 += 6;
 #endif
-#ifdef EXTRA_STAR_LOOPS
-    /* Prep1: 1 self + 26/2 pairs + 2 ghosts
-       Prep2 1 self + 26/2 pairs + 1 ghost
-    */
-    n1 += 31;
+    /* TODO: Add MPI: 1 for the send/recv per prep loop */
+#ifdef EXTRA_STAR_LOOPS_1
+    /* Prep1: 1 self + 26/2 pairs + 2 ghosts */
+    n1 += 16;
+#ifdef WITH_MPI
+    /* 2 send/recv */
+    n1 += 2;
+#endif
 #endif
 #ifdef EXTRA_STAR_LOOPS_2
-    /* Prep3: 1 self + 26/2 + 1 ghost */
+    /* Prep2: 1 self + 26/2 pairs + 1 ghost */
     n1 += 15;
+#ifdef WITH_MPI
+    /* 1 send/recv */
+    n1 += 1;
+#endif
 #endif
 #ifdef EXTRA_STAR_LOOPS_3
     /* Prep3: 1 self + 26/2 pairs + 1 ghost */
     n1 += 15;
+#ifdef WITH_MPI
+    /* 1 send/recv */
+    n1 += 1;
+#endif
+#endif
+#ifdef EXTRA_STAR_LOOPS_4
+    /* Prep3: 1 self + 26/2 pairs + 1 ghost */
+    n1 += 15;
+#ifdef WITH_MPI
+    /* 1 send/recv */
+    n1 += 1;
+#endif
 #endif
   }
   if (e->policy & engine_policy_sinks) {
@@ -1856,8 +1875,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
         t->subtype == task_subtype_spart_prep2 ||
-	t->subtype == task_subtype_spart_prep3 ||
-	t->subtype == task_subtype_spart_prep4 ||
+        t->subtype == task_subtype_spart_prep3 ||
+        t->subtype == task_subtype_spart_prep4 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_grav_counts ||
         t->subtype == task_subtype_rt_gradient ||
