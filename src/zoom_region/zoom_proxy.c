@@ -166,8 +166,10 @@ void zoom_engine_makeproxies(struct engine *e) {
                 continue;
 
               /* Get the proxy type */
+              const int is_direct_neighbour =
+                  abs(i - iii) <= 1 && abs(j - jjj) <= 1 && abs(k - kkk) <= 1;
               const int proxy_type = engine_get_proxy_type(
-                  e, zi, i, j, k, zj, iii, jjj, kkk, zoom_r_max);
+                  e, zi, zj, is_direct_neighbour, zoom_r_max);
 
               /* No proxy needed? No problem, move on */
               if (proxy_type == proxy_cell_type_none) continue;
@@ -217,8 +219,18 @@ void zoom_engine_makeproxies(struct engine *e) {
                 continue;
 
               /* Get the proxy type */
+              const int is_direct_neighbour =
+                  ((abs(bkg_i - iii) <= 1 ||
+                    abs(bkg_i - iii - bkg_cdim[0]) <= 1 ||
+                    abs(bkg_i - iii + bkg_cdim[0]) <= 1) &&
+                   (abs(bkg_j - jjj) <= 1 ||
+                    abs(bkg_j - jjj - bkg_cdim[1]) <= 1 ||
+                    abs(bkg_j - jjj + bkg_cdim[1]) <= 1) &&
+                   (abs(bkg_k - kkk) <= 1 ||
+                    abs(bkg_k - kkk - bkg_cdim[2]) <= 1 ||
+                    abs(bkg_k - kkk + bkg_cdim[2]) <= 1));
               const int proxy_type = engine_get_proxy_type(
-                  e, vi, bkg_i, bkg_j, bkg_k, cj, iii, jjj, kkk, bkg_r_max);
+                  e, vi, cj, is_direct_neighbour, bkg_r_max);
 
               /* No proxy needed? No problem, move on */
               if (proxy_type == proxy_cell_type_none) continue;
@@ -277,8 +289,15 @@ void zoom_engine_makeproxies(struct engine *e) {
                 continue;
 
               /* Get the proxy type */
+              const int is_direct_neighbour =
+                  ((abs(i - iii) <= 1 || abs(i - iii - bkg_cdim[0]) <= 1 ||
+                    abs(i - iii + bkg_cdim[0]) <= 1) &&
+                   (abs(j - jjj) <= 1 || abs(j - jjj - bkg_cdim[1]) <= 1 ||
+                    abs(j - jjj + bkg_cdim[1]) <= 1) &&
+                   (abs(k - kkk) <= 1 || abs(k - kkk - bkg_cdim[2]) <= 1 ||
+                    abs(k - kkk + bkg_cdim[2]) <= 1));
               const int proxy_type = engine_get_proxy_type(
-                  e, ci, i, j, k, cj, iii, jjj, kkk, bkg_r_max);
+                  e, ci, cj, is_direct_neighbour, bkg_r_max);
 
               /* No proxy needed? No problem, move on */
               if (proxy_type == proxy_cell_type_none) continue;
