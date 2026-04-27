@@ -545,11 +545,12 @@ struct zoom_region_properties {
   /*! Are we truncating the background volume? */
   int truncate_background;
 
-  /*! The target tolerence for force errors in the background truncation. (Only
-   * applicable if truncate_background is true). */
+  /*! The tolerated fractional tidal error across the protected high-resolution
+   * region in the background truncation. (Only applicable if
+   * truncate_background is true). */
   float truncate_epsilon;
 
-  /*! The tidal factor accounting for anisotropies etc. in the background
+  /*! The safety factor accounting for anisotropies etc. in the background
    * potential. (Only applicable if truncate_background is true). */
   float tidal_factor;
 
