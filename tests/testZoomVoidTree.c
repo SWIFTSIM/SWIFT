@@ -217,10 +217,8 @@ int main(int argc, char *argv[]) {
   free(s->zoom_props->void_cell_indices);
   free(s->zoom_props->neighbour_cells_top);
   free(s->zoom_props->local_bkg_cells_top);
-  free(s->zoom_props->local_buffer_cells_top);
   free(s->zoom_props->local_zoom_cells_with_particles_top);
   free(s->zoom_props->local_bkg_cells_with_particles_top);
-  free(s->zoom_props->local_buffer_cells_with_particles_top);
   free(s->cells_top);
   free(s->gparts);
   free(s->zoom_props);

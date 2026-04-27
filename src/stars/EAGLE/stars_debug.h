@@ -20,7 +20,7 @@
 #define SWIFT_EAGLE_STARS_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void stars_debug_particle(
-    const struct spart* p) {
+    const struct spart *p) {
   printf(
       "x=[%.3e,%.3e,%.3e], "
       "v_full=[%.3e,%.3e,%.3e] p->mass=%.3e \n t_begin=%d, t_end=%d\n",

@@ -559,6 +559,21 @@ void space_free_buff_sort_indices(struct space *s) {
 }
 
 /**
+ * @brief Free the sort arrays and grid arrays for all local
+ * and foreign cells.
+ *
+ * @brief s The #space.
+ */
+void space_free_sort_indices(struct space *s) {
+
+  for (int i = 0; i < s->nr_local_cells_with_tasks; ++i) {
+
+    struct cell *c = &s->cells_top[s->local_cells_with_tasks_top[i]];
+    cell_clean(c);
+  }
+}
+
+/**
  * @brief Construct the list of top-level cells that have any tasks in
  * their hierarchy on this MPI rank. Also construct the list of top-level
  * cells on any rank that have > 0 particles (of any kind).
@@ -579,10 +594,11 @@ void space_list_useful_top_level_cells(struct space *s) {
 
     /* Record local cells with tasks. */
     /* Note that void cells are always local and will almost always have tasks
-     * somewhere in their hierarchy, though if they don't this is not harmful.
-     * Void cell inclusion in this set of pointers is mainly to ensure the void
-     * tasks get activated. */
-    if (cell_has_tasks(c) || c->subtype == cell_subtype_void) {
+     * somewhere in their hierarchy, this is dictated by the contains_zoom_cells
+     * flag. Void cell inclusion in this set of pointers is mainly to ensure the
+     * void tasks get activated. */
+    if (cell_has_tasks(c) ||
+        (c->subtype == cell_subtype_void && c->contains_zoom_cells)) {
       s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
       s->nr_local_cells_with_tasks++;
     }
@@ -1176,6 +1192,8 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
+  s->with_hydro_splitting = 0;
+  s->splitting_need_unique_id = 0;
 
   /* do a quick check that the box size has valid values */
 #if defined HYDRO_DIMENSION_1D
@@ -1510,8 +1528,10 @@ void space_init(struct space *s, struct swift_params *params,
   if (!(star_formation || with_sink) ||
       !swift_star_formation_model_creates_stars) {
     space_extra_sparts = 0;
-    space_extra_gparts = 0;
     space_extra_sinks = 0;
+    if (!s->with_hydro_splitting) {
+      space_extra_gparts = 0;
+    }
   }
 
   const int create_sparts =
@@ -1538,7 +1558,7 @@ void space_init(struct space *s, struct swift_params *params,
   if (!dry_run) space_regrid(s, verbose);
 
   /* Compute the max id for the generation of unique id. */
-  if (create_sparts) {
+  if (create_sparts || s->splitting_need_unique_id) {
     space_init_unique_id(s, nr_nodes);
   }
 }
@@ -2554,6 +2574,9 @@ void space_after_snap_tracer(struct space *s, int verbose) {
   for (size_t i = 0; i < s->nr_bparts; ++i) {
     tracers_after_snapshot_bpart(&s->bparts[i]);
   }
+  for (size_t i = 0; i < s->nr_sinks; ++i) {
+    tracers_after_snapshot_sink(&s->sinks[i]);
+  }
 }
 
 /**
@@ -2610,8 +2633,6 @@ void space_clean(struct space *s) {
                s->zoom_props->local_zoom_cells_with_particles_top);
     swift_free("local_bkg_cell_with_particless_top",
                s->zoom_props->local_bkg_cells_with_particles_top);
-    swift_free("local_buffer_cell_with_particless_top",
-               s->zoom_props->local_buffer_cells_with_particles_top);
     swift_free("void_cell_indices", s->zoom_props->void_cell_indices);
     swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
     free(s->zoom_props);
@@ -2935,16 +2956,12 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         stream, NULL, "zoom_props");
     s->zoom_props->nr_local_zoom_cells = 0;
     s->zoom_props->nr_local_bkg_cells = 0;
-    s->zoom_props->nr_local_buffer_cells = 0;
     s->zoom_props->nr_local_zoom_cells_with_particles = 0;
     s->zoom_props->nr_local_bkg_cells_with_particles = 0;
-    s->zoom_props->nr_local_buffer_cells_with_particles = 0;
     s->zoom_props->local_zoom_cells_top = NULL;
     s->zoom_props->local_bkg_cells_top = NULL;
-    s->zoom_props->local_buffer_cells_top = NULL;
     s->zoom_props->local_zoom_cells_with_particles_top = NULL;
     s->zoom_props->local_bkg_cells_with_particles_top = NULL;
-    s->zoom_props->local_buffer_cells_with_particles_top = NULL;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

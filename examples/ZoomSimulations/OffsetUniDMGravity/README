@@ -1,0 +1,10 @@
+Offset uniform dark-matter zoom example.
+
+This example is identical to UniformDMGravity except the high-resolution
+particle region is shifted by +1/4 of the box along each axis (from the box
+centre to [0.75, 0.75, 0.75]).
+
+The setup keeps the zoom region fully away from periodic boundaries, so no
+high-resolution particles straddle box edges in the IC file.
+
+Run with the --zoom runtime option.

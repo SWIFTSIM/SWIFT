@@ -89,11 +89,8 @@ void make_mock_cells(struct space *s) {
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
   /* Calculate the number of cells. */
-  s->nr_cells =
-      s->cdim[0] * s->cdim[1] * s->cdim[2] +
-      zoom_props->cdim[0] * zoom_props->cdim[1] * zoom_props->cdim[2] +
-      zoom_props->buffer_cdim[0] * zoom_props->buffer_cdim[1] *
-          zoom_props->buffer_cdim[2];
+  s->nr_cells = s->cdim[0] * s->cdim[1] * s->cdim[2] +
+                zoom_props->cdim[0] * zoom_props->cdim[1] * zoom_props->cdim[2];
 
   /* Allocate cells. */
   if (posix_memalign((void **)&s->cells_top, cell_align,
@@ -197,7 +194,7 @@ int main(int argc, char *argv[]) {
 
   /* Run the zoom_init function. */
   zoom_props_init(&param_file, &s, 0);
-  zoom_region_init(&s, 0);
+  zoom_region_init(&s, /*regridding*/ 0, /*verbose*/ 0);
 
   /* Make the cells. */
   make_mock_cells(&s);

@@ -19,9 +19,39 @@
 #ifndef SWIFT_PARTITION_H
 #define SWIFT_PARTITION_H
 
+/* Config parameters. */
+#include <config.h>
+
+/* Standard headers. */
+#include <limits.h>
+
+/* Local headers. */
 #include "parser.h"
 #include "space.h"
 #include "task.h"
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+
+/* METIS/ParMETIS headers only used when MPI is also available. */
+#ifdef HAVE_PARMETIS
+#include <parmetis.h>
+#endif
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
+
+#endif
+
+#if !defined(HAVE_METIS) && !defined(HAVE_PARMETIS)
+/* When compiled without METIS/ParMETIS support, we need to define IDX_MAX
+ * for accumulate_sizes which can be used by the wedge decomposition. */
+#define IDX_MAX LLONG_MAX
+#endif
+
+/* Forward declarations. */
+struct cell;
 
 /* Initial partitioning types. */
 enum partition_type {
@@ -29,7 +59,8 @@ enum partition_type {
   INITPART_VECTORIZE,
   INITPART_METIS_WEIGHT,
   INITPART_METIS_NOWEIGHT,
-  INITPART_METIS_WEIGHT_EDGE
+  INITPART_METIS_WEIGHT_EDGE,
+  INITPART_WEDGE,
 };
 
 /* Simple descriptions of types for reports. */
@@ -40,6 +71,11 @@ struct partition {
   enum partition_type type;
   int grid[3];
   int usemetis;
+  int nr_wedges;
+  int nr_theta_slices;
+  int nr_phi_slices;
+  double theta_width;
+  double phi_width;
 };
 
 /* Repartition type to use. */
@@ -86,11 +122,64 @@ void partition_init(struct partition *partition,
 void partition_clean(struct partition *partition,
                      struct repartition *repartition);
 
+/* Partition helper functions shared by the uniform and zoom partitioners. */
+void pick_vector(const int cdim[3], const int nregions, int *samplecells);
+void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
+                  int *samplecells);
+
+/* Accumulate the total particle counts in each cell for weighting. */
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
+
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);
 void partition_restore_celllist(struct space *s,
                                 struct repartition *reparttype);
 void partition_struct_dump(struct repartition *reparttype, FILE *stream);
 void partition_struct_restore(struct repartition *reparttype, FILE *stream);
+
+/* Metis/ParMetis support. */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+struct weights_mapper_data {
+  double *weights_e;
+  double *weights_v;
+  idx_t *inds;
+  idx_t *xadj;
+  int eweights;
+  int nodeID;
+  int timebins;
+  int vweights;
+  int nr_cells;
+  int use_ticks;
+  struct cell *cells;
+};
+
+extern double repartition_costs[task_type_count][task_subtype_count];
+
+void partition_accumulate_sizes(struct space *s, int verbose, double *counts);
+void partition_sizes_to_edges(struct space *s, double *counts, double *edges,
+                              const int *cell_edge_offsets);
+int partition_count_edges(struct space *s, int periodic, int verbose,
+                          int *cell_edge_offsets);
+void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
+                          int *nadjcny, idx_t *xadj, int *nxadj,
+                          const int *cell_edge_offsets);
+void partition_pick_metis(int nodeID, struct space *s, int nregions,
+                          double *vertexw, double *edgew, int *celllist,
+                          const int *cell_edge_offsets, int nedges);
+void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
+                             double *vertexw, double *edgew, int refine,
+                             int adaptive, float itr, int *celllist,
+                             const int *cell_edge_offsets, int nedges);
+void partition_split_metis(struct space *s, int nregions, int *celllist);
+#endif
+
+/* Debugging. */
+#ifdef SWIFT_DEBUG_CHECKS
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+void partition_check_weights(struct task *tasks, int nr_tasks,
+                             struct weights_mapper_data *mydata,
+                             double *ref_weights_v, double *ref_weights_e);
+#endif
+#endif
 
 #endif /* SWIFT_PARTITION_H */

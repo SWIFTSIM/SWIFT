@@ -1,0 +1,38 @@
+Zoom simulation examples.
+
+These are simulations with high resolution particles isolated to a single
+region of the box and low resolution background particles (PartType2)
+elsewhere. These examples should be run including the --zoom runtime option.
+
+These examples are not CI-only assets. They are intended to remain useful as
+general zoom-region examples for local testing, debugging, and documentation,
+with CI simply reusing them as lightweight runtime checks.
+
+Current examples:
+
+- UniformDMGravity:
+  Uniform high-resolution dark matter in a central zoom region, with
+  lower-resolution uniform dark matter in the background. Uniform here means 
+  uniform at the top level cell level, i.e. the particles are placed with 64 
+  particles randomly distributed in each background and zoom top-level cell.
+
+- UniformDMGravityWithHoles:
+  As above, but with carved holes near the outskirts of the high-resolution
+  region to exercise empty zoom-cell edge cases.
+
+- UniformDMHydro:
+  Reuses the UniformDMGravity DM-only IC layout, then generates gas in SWIFT
+  and evolves with hydro + gravity in zoom mode.
+
+- UniformDMEAGLE:
+  Uses a standalone DM-only IC layout tuned for EAGLE-like mass scales, then
+  generates gas in SWIFT and evolves with the EAGLE model stack in zoom mode.
+
+- OffsetUniDMGravity:
+  Same as UniformDMGravity but with the high-resolution IC region offset by
+  +1/4 box in each axis, testing startup recentring without boundary wrapping.
+
+- BoundaryOffsetUniDMGrav:
+  Starts from the same offset ICs as OffsetUniDMGravity and applies
+  InitialConditions:shift=[0.25,0.25,0.25] so the high-resolution distribution
+  straddles all box corners, testing periodic-boundary startup shifting.

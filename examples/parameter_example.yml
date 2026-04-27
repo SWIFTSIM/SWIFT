@@ -109,6 +109,7 @@ Gravity:
 ForceChecks:
   only_when_all_active: 1  # (Optional) Only compute exact forces during timesteps when all gparts are active (default: 0).
   only_at_snapshots:    1  # (Optional) Only compute exact forces during timesteps when a snapshot is being dumped (default: 0).
+  exact_gravity_check_types:     [0, 1, 0, 0, 0, 0, 0] # (Optional) What particle types to check for in the exact gravity N^2 algorithm. (defaults to all types)
 
 # Parameters related to the Friends-Of-Friends halo finding
 FOF:
@@ -199,9 +200,11 @@ Snapshots:
   select_output:       selectoutput.yml # (Optional) File containing information to select outputs with (see documentation in the "Output Selection" section)
   run_on_dump:         0 # (Optional) Run the dump_command each time that a snapshot is dumped?
   dump_command:        ./submit_velociraptor.sh # (Optional) Command to run each time that a snapshot is dumped.
-  recording_triggers_part:   [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for gas particle tracers start (in internal units).
-  recording_triggers_spart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for star particle tracers start (in internal units).
-  recording_triggers_bpart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units).
+  recording_triggers_part:   [1e-3, 1e-2]        # (Optional) Time before the snapshots where the trigger for gas particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
+  recording_triggers_spart:  [1e-3, 1e-2]        # (Optional) Time before the snapshots where the trigger for star particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
+  recording_triggers_bpart:  [1e-3, 1e-2]        # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
+  recording_triggers_sink:   [1e-2, 1e-3, 1e-4]  # (Optional) Time before the snapshots where the trigger for sink particle tracers start (in internal units). A negative value disables the recording of the corresponding array index.
+
 
 # Parameters governing the CSDS snapshot system
 CSDS:
@@ -256,7 +259,7 @@ Restarts:
 # Parameters governing domain decomposition
 DomainDecomposition:
   initial_type:     memory    # (Optional) The initial decomposition strategy: "grid",
-                              #            "region", "memory", or "vectorized".
+                              #            "region", "memory", "edgememory", "wedge" or "vectorized".
   initial_grid: [10,10,10]    # (Optional) Grid sizes if the "grid" strategy is chosen.
 
   synchronous:      0         # (Optional) Use synchronous MPI requests to redistribute, uses less system memory, but slower.
@@ -274,6 +277,7 @@ DomainDecomposition:
   use_fixed_costs:  0         # If 1 then use any compiled in fixed costs for
                               # task weights in first repartition, if 0 only use task timings, if > 1 only use
                               # fixed costs, unless none are available.
+  wedges_per_rank:  8         # (Optional) Number of wedges per MPI rank when using the "wedge" initial decomposition strategy.
 
 # Structure finding options (requires velociraptor)
 StructureFinding:
@@ -300,9 +304,9 @@ LineOfSight:
   allowed_los_range_x: [0, 100.]   # (Optional) Range along the x-axis where LoS along Y or Z are allowed (Defaults to the box size).
   allowed_los_range_y: [0, 100.]   # (Optional) Range along the y-axis where LoS along X or Z are allowed (Defaults to the box size).
   allowed_los_range_z: [0, 100.]   # (Optional) Range along the z-axis where LoS along X or Y are allowed (Defaults to the box size).
-  range_when_shooting_down_x: 100. # (Optional) Range along the x-axis of LoS along x (Defaults to the box size).
-  range_when_shooting_down_y: 100. # (Optional) Range along the y-axis of LoS along y (Defaults to the box size).
-  range_when_shooting_down_z: 100. # (Optional) Range along the z-axis of LoS along z (Defaults to the box size).
+  range_when_shooting_down_x: [0., 100.] # (Optional) Range along the x-axis of LoS along x (Defaults to the box size).
+  range_when_shooting_down_y: [0., 100.] # (Optional) Range along the y-axis of LoS along y (Defaults to the box size).
+  range_when_shooting_down_z: [0., 100.] # (Optional) Range along the z-axis of LoS along z (Defaults to the box size).
 
 # Parameters related to the equation of state ------------------------------------------
 
@@ -503,6 +507,13 @@ MWPotential2014Potential:
 
 # Parameters related to forcing terms     ----------------------------------------------
 
+# Boundary particles
+BoundaryParticles:
+    boundary_particle_max_id:        10000 # Particles with ID <= boundary_particle_max_id are treated as boundary particles.
+    enable_fixed_position:           0     # (optional) Whether or not boundary particles are fixed in place.
+    enable_hydro_acceleration:       0     # (optional) Whether or not boundary particles have hydrodynamic accelerations enabled.
+    enable_grav_acceleration:        0     # (optional) Whether or not boundary particles have gravitational accelerations enabled.
+
 # Roberts' flow (Tilgner & Brandenburg, 2008, MNRAS, 391, 1477) where the velocity is imposed
 RobertsFlowForcing:
   u0:              1.5      # Forcing velocity (internal units)
@@ -513,7 +524,16 @@ RobertsFlowAccelerationForcing:
   u0:              1.5      # Forcing velocity (internal units)
   nu:              1.0      # Viscosity (internal units) to convert velocities to accelerations.
   Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
-  
+
+# Balsara-Kim energy injections 
+BalsaraKimForcing:
+  coords:        ./injection_coords.txt  # File containing times and locations of energy injections
+  inj_model:     set_u                   # what injection model to use options: set_u, set_const_u, set_v, set_const_v
+  r_inj_pc:      5.                      # Injection radius in parsec (comoving)
+  E_inj_cgs:     1.e53                   # (required if inj_model=set_u/set_v) Injection energy in erg (physical)
+  u_inj_cgs:     3.0298e15               # (required if inj_model=set_const_u) Specific energy to inject in the particles (physical)
+  v_inj_kms:     200.                    # (required if inj_model=set_const_v) Injection velocity in km/s (physical)
+
 # Parameters related to entropy floors    ----------------------------------------------
 
 EAGLEEntropyFloor:
@@ -563,7 +583,7 @@ EAGLECooling:
   Ca_over_Si_in_solar:       1.                # (Optional) Ratio of Ca/Si to use in units of solar. If set to 1, the code uses [Ca/Si] = 0, i.e. Ca/Si = 0.0941736.
   S_over_Si_in_solar:        1.                # (Optional) Ratio of S/Si to use in units of solar. If set to 1, the code uses [S/Si] = 0, i.e. S/Si = 0.6054160.
 
-# Quick Lyman-alpha cooling (EAGLE-XL with fixed primoridal Z)
+# Quick Lyman-alpha cooling (PS2020 with fixed primoridal Z)
 QLACooling:
   dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the Ploeckinger+20 cooling tables
   H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
@@ -746,8 +766,10 @@ EAGLEFeedback:
 
 # GEAR feedback model
 GEARFeedback:
-  supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+  supernovae_Ia_energy_erg: 1e51                           # Energy released by a single supernovae of type Ia.
   supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
+  with_stellar_wind_feedback: 1                            # activate the stellar wind feedback
+  pre_supernovae_efficiency: 1.0                           # Pre-supernovae energy efficiency, used for Stellar Winds. The energy released effectively is E_pre_sn = pre_supernovae_efficiency*E_pre_sn
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
   yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars.
   metallicity_max_first_stars: -1                          # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
@@ -755,6 +777,13 @@ GEARFeedback:
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
   discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
+
+GEARSupernovaeII:
+    interpolation_size:  200                               # Number of elements to keep in the interpolation of the data. (Default: 200)
+
+GEARStellarWind:
+  interpolation_size_mass:        200       # Number of elements to keep in the mass interpolation of the data. (Default: 200).
+  interpolation_size_metallicity: 110       # Number of elements to keep in the metallicity interpolation of the data. (Default: 110).
 
 # AGORA feedback model
 AGORAFeedback:
@@ -952,7 +981,8 @@ GEARSink:
   sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
   sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
   sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
-  disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
+  disable_sink_formation: 0                       # (Optional) Disable sink formation. May only be used for debugging. (Default: 0)
+  disable_star_formation: 0                       # (Optional) Disable star formation. May only be used for debugging. (Default: 0)
   CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
   timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks no longer have time-step restrictions, except for 2-body encounters involving another young/old sink and gravity (in Mega-years). (Default: FLT_MAX)
   timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). (Default: FLT_MAX)
@@ -1024,7 +1054,6 @@ SPHM1RT:
   beta:                   1.245e-15                   # (Conditional) (if useparams=1) The collisional ionization coefficient for hydrogen (cgs)
   reinject:               1                           # (Optional) gather energy around injection radius and re-inject the energy
 
-
 # Parameters related to power spectra --------------------------------------------
 
 PowerSpectrum:
@@ -1089,7 +1118,7 @@ Lightcone1:
 ZoomRegion:
   region_pad_factor:          1.1    # How much larger the zoom region will be than the high res particle distribution in the ICs?
   zoom_top_level_depth:       2     # The depth of the zoom top level cells in a single background cell.
-  bkg_top_level_cells:        16     # How many cells should the background be resolved with? (This is treated as gospel)
+  bkg_top_level_cells:        -1     # How many cells should the background be resolved with? (This is treated as gospel, but if it is set to -1 we will try and find the optimal value to minimise the padding around the zoom region)
   buffer_cell_depth:          0      # (Optional, only used when buffer cells are needed) The depth of the top level buffer cells in a single background cell. (default: 0)
   neighbour_max_tree_depth:   2      # (Optional) The depth of the cell trees neighbouring the zoom region (default: -1)
   bkg_subdepth_diff_grav:     3      # The minimum difference between the leaf depth and the task depth for background cells.

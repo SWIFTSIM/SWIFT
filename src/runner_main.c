@@ -136,6 +136,11 @@
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
 
+/* likwid markers. */
+#ifdef WITH_LIKWID
+#include "likwid_wrapper.h"
+#endif
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -147,6 +152,9 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
 
+#ifdef WITH_LIKWID
+  swift_likwid_marker_start_region("runner_main");
+#endif
   /* Main loop. */
   while (1) {
 
@@ -234,15 +242,20 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dosub_self_stars_density(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_density(r, ci, /*offset=*/t->flags,
+                                            /*ntasks=*/STARS_SELF_NTASK,
+                                            /*below_h_max=*/0, 1);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
-            runner_dosub_self_stars_prep1(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_prep1(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
-            runner_dosub_self_stars_prep2(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_prep2(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_self_stars_feedback(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self_stars_feedback(r, ci, /*offset=*/0, /*ntasks=*/1,
+                                             /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -288,15 +301,19 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dosub_pair_stars_density(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_density(r, ci, cj, /*offset=*/0,
+                                            /*ntasks=*/1, /*below_h_max=*/0, 1);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
-            runner_dosub_pair_stars_prep1(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_prep1(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
-            runner_dosub_pair_stars_prep2(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_prep2(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
+                                          /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_pair_stars_feedback(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_feedback(
+                r, ci, cj, /*offset=*/0, /*ntasks=*/1, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -358,7 +375,7 @@ void *runner_main(void *data) {
           runner_do_init_grav(r, ci, 1);
           break;
         case task_type_ghost:
-          runner_do_ghost(r, ci, 1);
+          runner_do_ghost(r, ci, t->flags, HYDRO_GHOST_NTASK, 1);
           break;
 #ifdef EXTRA_HYDRO_LOOP
         case task_type_extra_ghost:
@@ -366,7 +383,7 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_stars_ghost:
-          runner_do_stars_ghost(r, ci, 1);
+          runner_do_stars_ghost(r, ci, t->flags, STARS_GHOST_NTASK, 1);
           break;
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);
@@ -521,20 +538,10 @@ void *runner_main(void *data) {
           runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_grav_mm:
-          /* Use the appropriate MM function, either between a pair (direct),
-           * or between multiple pairs of progeny. */
-          if (t->subtype == task_subtype_direct) {
-            error("Direct MM tasks should not be scheduled.");
-            runner_dopair_grav_mm(r, t->ci, t->cj);
-          } else if (t->subtype == task_subtype_progeny) {
-            runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
-          } else {
-            error("Unknown/invalid task subtype (%s).",
-                  subtaskID_names[t->subtype]);
-          }
+          runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
           break;
         case task_type_cooling:
-          runner_do_cooling(r, t->ci, 1);
+          runner_do_cooling(r, t->ci, t->flags, HYDRO_COOLING_NTASK, 1);
           break;
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
@@ -601,6 +608,9 @@ void *runner_main(void *data) {
 
     } /* main loop. */
   }
+#ifdef WITH_LIKWID
+  swift_likwid_marker_stop_region("runner_main");
+#endif
 
   /* Be kind, rewind. */
   return NULL;

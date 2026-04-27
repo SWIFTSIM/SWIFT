@@ -37,7 +37,7 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void rt_slope_limit_cell_init(
-    struct part* p) {
+    struct part *p) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.limiter[g].energy_density[0] = FLT_MAX;
@@ -64,10 +64,10 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_cell_init(
  * @param g index of photon group
  */
 __attribute__((always_inline)) INLINE static void rt_slope_limit_cell_collect(
-    struct part* restrict pi, struct part* restrict pj, int g) {
+    struct part *restrict pi, struct part *restrict pj, int g) {
 
-  struct rt_part_data* rtdi = &pi->rt_data;
-  struct rt_part_data* rtdj = &pj->rt_data;
+  struct rt_part_data *rtdi = &pi->rt_data;
+  struct rt_part_data *rtdj = &pj->rt_data;
 
   /* basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
@@ -131,10 +131,10 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_quantity(
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void rt_slope_limit_cell(
-    struct part* p) {
+    struct part *p) {
 
   const float maxr = p->limiter.maxr;
-  struct rt_part_data* rtd = &p->rt_data;
+  struct rt_part_data *rtd = &p->rt_data;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].energy_density,

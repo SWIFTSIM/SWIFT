@@ -62,8 +62,47 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     const float H) {}
 
 /**
- * @brief do metal diffusion computation in the force loop
+ * @brief do metal diffusion computation in the <GRADIENT LOOP>
  * (symmetric version)
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_gradient_diffusion(const float r2, const float dx[3],
+                               const float hi, const float hj,
+                               struct part *restrict pi,
+                               struct part *restrict pj, const float a,
+                               const float H) {}
+
+/**
+ * @brief do metal diffusion computation in the <GRADIENT LOOP>
+ * (nonsymmetric version)
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
+                                      const float hi, const float hj,
+                                      struct part *restrict pi,
+                                      struct part *restrict pj, const float a,
+                                      const float H) {}
+
+/**
+ * @brief Do metal diffusion computation in the <FORCE LOOP> (symmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -78,13 +117,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
  * @param ti_current The current time (in integer)
  * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  *
  */
 __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
-    const struct cosmology *cosmo, const int with_cosmology) {}
+    const struct cosmology *cosmo, const int with_cosmology,
+    const struct chemistry_global_data *chem_data) {}
 
 /**
  * @brief do metal diffusion computation in the force loop
@@ -103,12 +144,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
  * @param ti_current The current time (in integer)
  * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  *
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
-    const struct cosmology *cosmo, const int with_cosmology) {}
+    const struct cosmology *cosmo, const int with_cosmology,
+    const struct chemistry_global_data *chem_data) {}
 
 #endif /* SWIFT_NONE_CHEMISTRY_IACT_H */

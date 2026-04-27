@@ -31,7 +31,7 @@
  * @return comoving reduced speed of light
  */
 __attribute__((always_inline)) INLINE static float rt_get_comoving_cred(
-    const struct part* restrict p, float a) {
+    const struct part *restrict p, float a) {
   return p->rt_data.params.cred_phys / a;
 }
 
@@ -44,7 +44,7 @@ __attribute__((always_inline)) INLINE static float rt_get_comoving_cred(
  *
  */
 __attribute__((always_inline)) INLINE static float rt_get_physical_cred(
-    const struct part* restrict p, float a) {
+    const struct part *restrict p, float a) {
   return p->rt_data.params.cred_phys;
 }
 
@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE static float rt_get_physical_cred(
  *
  */
 __attribute__((always_inline)) INLINE static void
-rt_get_comoving_urad_multifrequency(const struct part* restrict p,
+rt_get_comoving_urad_multifrequency(const struct part *restrict p,
                                     float urad[RT_NGROUPS]) {
   for (int g = 0; g < RT_NGROUPS; g++) {
     urad[g] = p->rt_data.conserved[g].urad;
@@ -76,8 +76,8 @@ rt_get_comoving_urad_multifrequency(const struct part* restrict p,
  *
  */
 __attribute__((always_inline)) INLINE static void
-rt_get_physical_urad_multifrequency(const struct part* restrict p,
-                                    const struct cosmology* cosmo,
+rt_get_physical_urad_multifrequency(const struct part *restrict p,
+                                    const struct cosmology *cosmo,
                                     float urad[RT_NGROUPS]) {
   for (int g = 0; g < RT_NGROUPS; g++) {
     urad[g] = p->rt_data.conserved[g].urad;
@@ -93,7 +93,7 @@ rt_get_physical_urad_multifrequency(const struct part* restrict p,
  * @param fradtemp The comoving radiation flux per gas density
  */
 __attribute__((always_inline)) INLINE static void
-rt_get_comoving_frad_multifrequency(const struct part* restrict p,
+rt_get_comoving_frad_multifrequency(const struct part *restrict p,
                                     float fradtemp[RT_NGROUPS][3]) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -113,8 +113,8 @@ rt_get_comoving_frad_multifrequency(const struct part* restrict p,
  * @param fradtemp The comoving radiation flux per gas density
  */
 __attribute__((always_inline)) INLINE static void
-rt_get_physical_frad_multifrequency(const struct part* restrict p,
-                                    const struct cosmology* cosmo,
+rt_get_physical_frad_multifrequency(const struct part *restrict p,
+                                    const struct cosmology *cosmo,
                                     float fradtemp[RT_NGROUPS][3]) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {

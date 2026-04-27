@@ -1071,9 +1071,9 @@ be processed by the ``SpecWizard`` tool
      allowed_los_range_x: [0, 100.]   # Range along the x-axis where LoS along Y or Z are allowed
      allowed_los_range_y: [0, 100.]   # Range along the y-axis where LoS along X or Z are allowed
      allowed_los_range_z: [0, 100.]   # Range along the z-axis where LoS along X or Y are allowed
-     range_when_shooting_down_x: 100. # Range along the x-axis of LoS along x
-     range_when_shooting_down_y: 100. # Range along the y-axis of LoS along y
-     range_when_shooting_down_z: 100. # Range along the z-axis of LoS along z
+     range_when_shooting_down_x: [0., 100.] # Range along the x-axis of LoS along x
+     range_when_shooting_down_y: [0., 100.] # Range along the y-axis of LoS along y
+     range_when_shooting_down_z: [0., 100.] # Range along the z-axis of LoS along z
 
 
 .. _Parameters_light_cone:
@@ -1674,8 +1674,8 @@ should contain. The type of partitioning attempted is controlled by the::
   DomainDecomposition:
     initial_type:
 
-parameter. Which can have the values *memory*, *edgememory*, *region*, *grid* or
-*vectorized*:
+parameter. Which can have the values *memory*, *edgememory*, *region*, *grid*,
+*wedge* or *vectorized*:
 
     * *edgememory*
 
@@ -1715,6 +1715,16 @@ will give a poorer partition:
 
     parameter. It takes an array of three values. The product of these values
     must equal the number of MPI ranks. If not set a suitable default will be used.
+
+    * *wedge*
+
+    Split the cells over the solid angle into box-centred angular wedges and 
+    assign the wedges to ranks, aiming for roughly equal particle weight per 
+    rank. The number of wedges is controlled by the::
+
+       wedges_per_rank
+
+    parameter, which sets the number of wedges created for each MPI rank.
 
     * *vectorized*
 
@@ -1944,13 +1954,15 @@ the "exact" forces of all active gparts are computed during each timestep.
 
 To give a bit more control over this, you can select to only perform the exact
 force computation during the timesteps that all gparts are active, and/or only
-at the timesteps when a snapshot is being dumped, i.e.,
+at the timesteps when a snapshot is being dumped, and/or limit to a subset 
+of particle types, i.e.,
 
 .. code:: YAML
 
   ForceChecks:
     only_when_all_active:   1    # Only compute exact forces during timesteps when all gparts are active.
     only_at_snapshots:      1    # Only compute exact forces during timesteps when a snapshot is being dumped.
+    exact_gravity_check_types:     [0, 1, 0, 0, 0, 0, 0] # Only compute exact forces for PartType1 (dark matter) particles.
 
 If ``only_when_all_active:1`` and ``only_at_snapshots:1`` are enabled together,
 and all the gparts are not active during the timestep of the snapshot dump, the
@@ -2018,6 +2030,8 @@ This value behaves differently in different scenarios:
 - For large zoom regions: This value is treated as a target to aim for.
 - For intermediate zoom regions: This value is ignored entirely and the number of background cells is the number of zoom regions which tesselate the parent volume along each axis.
 - For small zoom regions: This value is respected and never modified.
+
+You can set this to ``-1`` to enable automatic optimization, which will search for the optimal value that minimizes both padding waste and total cell count. To diagnose and optimize your zoom setup, see :ref:`zoom-diagnostics`.
 
 
 ``region_buffer_cell_ratio``

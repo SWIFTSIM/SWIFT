@@ -166,7 +166,7 @@ void stars_exact_density_compute(struct space *s, const struct engine *e) {
                  s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
 
   if (e->verbose)
-    message("Computed exact densities for %d parts (took %.3f %s). ",
+    message("Computed exact densities for %d sparts (took %.3f %s). ",
             data.counter_global, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 #else
@@ -292,6 +292,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
       if (!found_inhibited && spi->N_density_exact != spi->N_density &&
+          spi->birth_time > -1 &&
           (fabsf(spi->rho / spi->rho_exact - 1.f) > rel_tol ||
            fabsf(spi->rho_exact / spi->rho - 1.f) > rel_tol)) {
         message("RHO: id=%lld swift=%e exact=%e N_true=%d N_swift=%d %d %e", id,
@@ -300,7 +301,8 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
         wrong_rho++;
       }
 
-      if (!found_inhibited && (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
+      if (!found_inhibited && spi->birth_time > -1 &&
+          (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
 
         message("N_NGB: id=%lld exact=%f N_true=%d N_swift=%d %d %e", id, N_ngb,
                 spi->N_density_exact, spi->N_density,

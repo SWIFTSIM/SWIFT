@@ -1,0 +1,8 @@
+Boundary-offset uniform dark-matter zoom example.
+
+This example starts from the UniformDMGravity ICs, applies a half-box offset
+to all particle coordinates in the IC file so the high-resolution distribution
+straddles all periodic corners, then uses ``InitialConditions:shift`` to move
+particles by +0.5 in each axis before zoom-region recentring is applied.
+
+Run with the --zoom runtime option.

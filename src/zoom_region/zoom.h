@@ -20,17 +20,29 @@
 #ifndef SWIFT_ZOOM_H
 #define SWIFT_ZOOM_H
 
+/* Config parameters. */
+#include <config.h>
+
 /* HDF5 header. */
 #include <hdf5.h>
 
 /* Local includes */
 #include "timeline.h"
 
+/* METIS/ParMETIS headers only used when MPI is also available. */
+#ifdef HAVE_PARMETIS
+#include <parmetis.h>
+#endif
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
+
 /* Avoid cyclic inclusions. */
 struct swift_params;
 struct space;
 struct cell;
 struct engine;
+struct partition;
 
 /* Define a constant for the background task depth. */
 #define zoom_bkg_subdepth_diff_grav_default 4
@@ -43,6 +55,7 @@ void zoom_region_init(struct space *s, const int regridding, const int verbose);
 void zoom_get_region_dim_and_shift(struct space *s, const int verbose);
 void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose);
 void zoom_report_cell_properties(const struct space *s);
+void zoom_dump_geometry(const struct engine *e);
 
 /* Construct top level cells with a zoom region. */
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
@@ -64,12 +77,35 @@ void zoom_void_space_split(struct space *s, int verbose);
 /* Task creation functions. */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 
+/* Void cell super mapper. */
+void zoom_cell_set_void_super_mapper(void *map_data, int num_elements,
+                                     void *extra_data);
+
 /* Void cell gravity task creation. */
 void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
 
 /* Update the void cell gravity timesteps. */
 void zoom_void_timestep_collect(struct engine *e);
 
+/* Zoom proxy creation functions. */
+void zoom_engine_makeproxies(struct engine *e);
+
+/* Zoom partitioning functions. */
+void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
+                         struct space *s);
+void partition_zoom_vector(int nr_nodes, struct space *s);
+void zoom_partition_voids(struct space *s, int nodeID);
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+/* Zoom metis-specific partitioning functions. */
+int zoom_partition_count_vertex_edges(struct space *s, int periodic,
+                                      int *cell_edge_offsets);
+void zoom_partition_sizes_to_edges(struct space *s, double *counts,
+                                   double *edges, const int *cell_edge_offsets);
+void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
+                               int *nadjcny, idx_t *xadj, int *nxadj,
+                               const int *cell_edge_offsets);
+#endif
 /* Zoom specific IO. */
 void zoom_write_metadata(hid_t root_grp, hid_t head_grp, const struct space *s);
 void zoom_unshift_pos(const struct space *s, double pos[3]);

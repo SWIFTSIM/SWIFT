@@ -65,7 +65,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   space_regrid(s, verbose);
 
   /* Allocate extra space for particles that will be created */
-  if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
+  if (s->with_star_formation || s->with_sink || s->with_hydro_splitting)
+    space_allocate_extras(s, verbose);
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
@@ -915,7 +916,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Define variables to count particles in cell types */
   size_t bkg_cell_particles = 0;
-  size_t buffer_cell_particles = 0;
   size_t zoom_cell_particles = 0;
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
@@ -933,10 +933,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   if (s->with_zoom_region) {
     s->zoom_props->nr_local_zoom_cells = 0;
     s->zoom_props->nr_local_bkg_cells = 0;
-    s->zoom_props->nr_local_buffer_cells = 0;
     s->zoom_props->nr_local_zoom_cells_with_particles = 0;
     s->zoom_props->nr_local_bkg_cells_with_particles = 0;
-    s->zoom_props->nr_local_buffer_cells_with_particles = 0;
   }
 
   for (int k = 0; k < s->nr_cells; k++) {
@@ -983,9 +981,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           zoom_cell_particles += c->grav.count;
           if (c->grav.count == 0) empty_tl_zooms++;
           break;
-        case cell_type_buffer:
-          buffer_cell_particles += c->grav.count;
-          break;
         case cell_type_bkg:
           bkg_cell_particles += c->grav.count;
           break;
@@ -995,7 +990,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           if (s->with_zoom_region) {
             error(
                 "When running with a zoom region, all cells should be of type "
-                "Zoom, Buffer or Background, not %s",
+                "Zoom or Background, not %s",
                 cellID_names[c->type]);
           }
           break;
@@ -1031,12 +1026,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                 ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
             s->zoom_props->nr_local_zoom_cells++;
             break;
-          case cell_type_buffer:
-            s->zoom_props
-                ->local_buffer_cells_top[s->zoom_props->nr_local_buffer_cells] =
-                k;
-            s->zoom_props->nr_local_buffer_cells++;
-            break;
           case cell_type_bkg:
             s->zoom_props
                 ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
@@ -1060,11 +1049,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                 [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
             s->zoom_props->nr_local_zoom_cells_with_particles++;
             break;
-          case cell_type_buffer:
-            s->zoom_props->local_buffer_cells_with_particles_top
-                [s->zoom_props->nr_local_buffer_cells_with_particles] = k;
-            s->zoom_props->nr_local_buffer_cells_with_particles++;
-            break;
           case cell_type_bkg:
             s->zoom_props->local_bkg_cells_with_particles_top
                 [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
@@ -1087,8 +1071,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if (s->with_zoom_region) {
       message("Have %zd local particles in background cells",
               bkg_cell_particles);
-      message("Have %zd local particles in buffer cells",
-              buffer_cell_particles);
       message("Have %zd local particles in zoom cells", zoom_cell_particles);
       s->zoom_props->nr_bkg_cell_particles = bkg_cell_particles;
       s->zoom_props->nr_zoom_cell_particles = zoom_cell_particles;
@@ -1110,7 +1092,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
-  if (s->with_star_formation || s->with_sink) space_reorder_extras(s, verbose);
+  if (s->with_star_formation || s->with_sink || s->with_hydro_splitting)
+    space_reorder_extras(s, verbose);
 
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */

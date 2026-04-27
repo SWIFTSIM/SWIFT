@@ -43,8 +43,8 @@
  * - All pairs within range according to the multipole acceptance
  *   criterion get a pair task.
  *
- * This will create pair tasks between void cells and background cells (if
- * running without buffer cells). These pair tasks will be split into smaller
+ * This will create pair tasks between void cells and background cells. These
+ * pair tasks will be split into smaller
  * tasks during task splitting to make the most of any possible void mm
  * interactions above the zoom level in the cell tree.
  *
@@ -64,8 +64,8 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
   /* We always use the mesh if the volume is periodic. */
   const int use_mesh = s->periodic;
 
-  /* Unlike buffer or zoom cells, background cells are periodic at the box
-   * boundaries if the space is periodic. */
+  /* Unlike zoom cells, background cells are periodic at the box boundaries if
+   * the space is periodic. */
   const int periodic = s->periodic;
 
   /* Compute maximal distance where we can expect a direct interaction */
@@ -102,10 +102,17 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
+    const int cid = (size_t)(map_data) + ind;
+    struct cell *c = &cells[cid];
+
+    /* Skip void cells that do not contain any zoom cells. We do not want
+     * to generate self/pair gravity tasks for these top-level cells. */
+    if (c->subtype == cell_subtype_void && !c->contains_zoom_cells) continue;
+
     /* Create a self task, and loop over neighbouring cells making pair tasks
      * where appropriate. */
-    engine_gravity_make_task_loop(e, (size_t)(map_data) + ind, cdim, cells,
-                                  periodic, use_mesh, delta_m, delta_p);
+    engine_gravity_make_task_loop(e, cid, cdim, cells, periodic, use_mesh,
+                                  delta_m, delta_p);
   }
 }
 
@@ -198,7 +205,8 @@ void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
 
   /* Recurse but only in void cells. */
   for (int k = 0; k < 8; k++) {
-    if (c->progeny[k] != NULL && c->progeny[k]->subtype == cell_subtype_void) {
+    if (c->progeny[k] != NULL && c->progeny[k]->subtype == cell_subtype_void &&
+        c->progeny[k]->contains_zoom_cells) {
       zoom_engine_make_hierarchical_void_tasks_recursive(e, c->progeny[k]);
     }
   }
@@ -238,8 +246,14 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e) {
     }
 #endif
 
-    zoom_engine_make_hierarchical_void_tasks_recursive(e,
-                                                       &cells[void_cells[i]]);
+    /* Get the void cell. */
+    struct cell *c = &cells[void_cells[i]];
+
+    /* Skip "non-useful" void cells that do not contain any zoom cells.
+     * We don't want, nor need, tasks for these. */
+    if (c->contains_zoom_cells == 0) continue;
+
+    zoom_engine_make_hierarchical_void_tasks_recursive(e, c);
   }
 
   if (e->verbose)

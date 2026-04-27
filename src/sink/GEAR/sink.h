@@ -53,13 +53,13 @@
  * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static float sink_compute_timestep(
-    const struct sink* const sink, const struct sink_props* sink_properties,
-    const int with_cosmology, const struct cosmology* cosmo,
-    const struct gravity_props* grav_props, const double time,
+    const struct sink *const sink, const struct sink_props *sink_properties,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props, const double time,
     const double time_base) {
 
   /* Background sink particles have no time-step limits */
-  if (sink->birth_time == -1.) {
+  if (sink->birth_data.time == -1.) {
     return FLT_MAX;
   }
 
@@ -163,8 +163,8 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
  * @param e The #engine
  */
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
-    struct sink* sp, const struct sink_props* sink_props,
-    const struct engine* e) {
+    struct sink *sp, const struct sink_props *sink_props,
+    const struct engine *e) {
 
   /* Set the smoothing length if it is fixed. Note that, otherwise, the
      smoothing lengths were read from the ICs. */
@@ -181,6 +181,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[0] = 0.f;
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
+  sp->accretion_rate = 0.f;
+  sp->SFR = 0.f;
   sp->n_stars = 0;
 
   sp->has_IMF_changed_from_popIII_to_popII = 0;
@@ -216,9 +218,9 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  * @param sink_props The properties of the sink particles scheme.
  */
 __attribute__((always_inline)) INLINE static void sink_init_part(
-    struct part* restrict p, const struct sink_props* sink_props) {
+    struct part *restrict p, const struct sink_props *sink_props) {
 
-  struct sink_part_data* cpd = &p->sink_data;
+  struct sink_part_data *cpd = &p->sink_data;
 
   if (sink_props->disable_sink_formation) {
     cpd->can_form_sink = 0;
@@ -257,7 +259,7 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
  * @param sp The #sink particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void sink_init_sink(
-    struct sink* sp) {
+    struct sink *sp) {
 
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
@@ -276,6 +278,9 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   sp->to_collect.minimal_sink_t_dyn = FLT_MAX;
   sp->to_collect.mass_eligible_swallow = 0.0;
   sp->to_collect.mass_swallowed = sp->mass;
+  sp->accretion_rate = 0.f;
+  /* Do not reset the SFR! It stores the last timestep the sink was
+     star-forming */
   sp->num_ngbs = 0;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
@@ -310,7 +315,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void sink_predict_extra(
-    struct sink* restrict sp, float dt_drift) {}
+    struct sink *restrict sp, float dt_drift) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -319,7 +324,7 @@ __attribute__((always_inline)) INLINE static void sink_predict_extra(
  * @param sp The #sink particle.
  */
 __attribute__((always_inline)) INLINE static void sink_reset_predicted_values(
-    struct sink* restrict sp) {}
+    struct sink *restrict sp) {}
 
 /**
  * @brief Kick the additional variables
@@ -328,7 +333,7 @@ __attribute__((always_inline)) INLINE static void sink_reset_predicted_values(
  * @param dt The time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void sink_kick_extra(
-    struct sink* sp, float dt) {}
+    struct sink *sp, float dt) {}
 
 /**
  * @brief Finishes the calculation of density on sinks
@@ -337,7 +342,7 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sink_end_density(
-    struct sink* si, const struct cosmology* cosmo) {
+    struct sink *si, const struct cosmology *cosmo) {
 
   const float h = si->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
@@ -373,7 +378,7 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
-    struct sink* restrict sp, const struct cosmology* cosmo) {
+    struct sink *restrict sp, const struct cosmology *cosmo) {
 
   warning(
       "Sink particle with ID %lld treated as having no neighbours (h: %g, "
@@ -412,10 +417,10 @@ __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
  * @param ti_begin Integer time value at the beginning of timestep
  */
 __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
-    struct sink* restrict si, const struct sink_props* props,
-    const struct phys_const* constants, const struct cosmology* cosmo,
-    const struct cooling_function_data* cooling,
-    const struct entropy_floor_properties* floor_props, const double time,
+    struct sink *restrict si, const struct sink_props *props,
+    const struct phys_const *constants, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling,
+    const struct entropy_floor_properties *floor_props, const double time,
     const int with_cosmology, const double dt, const integertime_t ti_begin) {}
 
 /**
@@ -437,18 +442,18 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
  *
  */
 INLINE static int sink_is_forming(
-    const struct part* restrict p, const struct xpart* restrict xp,
-    const struct sink_props* sink_props, const struct phys_const* phys_const,
-    const struct cosmology* cosmo,
-    const struct hydro_props* restrict hydro_props,
-    const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling,
-    const struct entropy_floor_properties* restrict entropy_floor) {
+    const struct part *restrict p, const struct xpart *restrict xp,
+    const struct sink_props *sink_props, const struct phys_const *phys_const,
+    const struct cosmology *cosmo,
+    const struct hydro_props *restrict hydro_props,
+    const struct unit_system *restrict us,
+    const struct cooling_function_data *restrict cooling,
+    const struct entropy_floor_properties *restrict entropy_floor) {
 
   /* the particle is not elligible */
   if (!p->sink_data.can_form_sink) return 0;
 
-  const struct sink_part_data* sink_data = &p->sink_data;
+  const struct sink_part_data *sink_data = &p->sink_data;
 
   const float temperature_threshold = sink_props->temperature_threshold;
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
@@ -458,7 +463,7 @@ INLINE static int sink_is_forming(
   const float maximal_density_threshold = sink_props->maximal_density_threshold;
   const float density = hydro_get_physical_density(p, cosmo);
 
-  const float div_v = sink_get_physical_div_v_from_part(p);
+  const float div_v = sink_get_physical_div_v_from_part(p, cosmo);
 
   const float h = p->h;
   const float sink_cut_off_radius = sink_props->cut_off_radius;
@@ -543,8 +548,8 @@ INLINE static int sink_is_forming(
  * @return 1 if a conversion should be done, 0 otherwise.
  */
 INLINE static int sink_should_convert_to_sink(
-    const struct part* p, const struct xpart* xp,
-    const struct sink_props* sink_props, const struct engine* e,
+    const struct part *p, const struct xpart *xp,
+    const struct sink_props *sink_props, const struct engine *e,
     const double dt_sink) {
 
   /* We do not use a stockastic approach.
@@ -570,13 +575,13 @@ INLINE static int sink_should_convert_to_sink(
  * @param cooling The cooling function to use.
  */
 INLINE static void sink_copy_properties(
-    const struct part* p, const struct xpart* xp, struct sink* sink,
-    const struct engine* e, const struct sink_props* sink_props,
-    const struct cosmology* cosmo, const int with_cosmology,
-    const struct phys_const* phys_const,
-    const struct hydro_props* restrict hydro_props,
-    const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {
+    const struct part *p, const struct xpart *xp, struct sink *sink,
+    const struct engine *e, const struct sink_props *sink_props,
+    const struct cosmology *cosmo, const int with_cosmology,
+    const struct phys_const *phys_const,
+    const struct hydro_props *restrict hydro_props,
+    const struct unit_system *restrict us,
+    const struct cooling_function_data *restrict cooling) {
 
   /* First initialisation */
   sink_init_sink(sink);
@@ -602,6 +607,9 @@ INLINE static void sink_copy_properties(
   sink->n_stars = 0;
   sink->has_IMF_changed_from_popIII_to_popII = 0;
 
+  /* The sink has just been converted. Hence it is not star-forming */
+  sink->SFR = 0.0;
+
   /* setup the target mass for sink star formation */
   sink_update_target_mass(sink, sink_props, e, 0);
 
@@ -611,7 +619,13 @@ INLINE static void sink_copy_properties(
   /* Note, we do not need to update sp->mass_tot_before_star_spawning because
      it is performed within the 'sink_init_sink()' function. */
 
-  /* Set the birth time of the sink */
+  /* Set the birth properties of the sink */
+  const float birth_density = hydro_get_physical_density(p, cosmo);
+  const float birth_temperature = cooling_get_temperature(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
+  sink_set_sink_birth_density(sink, birth_density);
+  sink_set_sink_birth_temperature(sink, birth_temperature);
   sink_set_sink_birth_time_or_scale_factor(sink, e->time, cosmo->a,
                                            with_cosmology);
 }
@@ -626,8 +640,8 @@ INLINE static void sink_copy_properties(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sink_swallow_part(
-    struct sink* sp, const struct part* p, const struct xpart* xp,
-    const struct cosmology* cosmo) {
+    struct sink *sp, const struct part *p, const struct xpart *xp,
+    const struct cosmology *cosmo) {
 
   /* Get the current dynamical masses */
   const float gas_mass = hydro_get_mass(p);
@@ -718,7 +732,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sink_swallow_sink(
-    struct sink* spi, const struct sink* spj, const struct cosmology* cosmo) {
+    struct sink *spi, const struct sink *spj, const struct cosmology *cosmo) {
 
   /* Get the current dynamical masses */
   const float spi_dyn_mass = spi->mass;
@@ -784,12 +798,18 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
  * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
  */
-INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
-                                  const struct sink_props* sink_props,
-                                  const struct cosmology* cosmo,
+INLINE static int sink_spawn_star(struct sink *sink, const struct engine *e,
+                                  const struct sink_props *sink_props,
+                                  const struct cosmology *cosmo,
                                   const int with_cosmology,
-                                  const struct phys_const* phys_const,
-                                  const struct unit_system* restrict us) {
+                                  const struct phys_const *phys_const,
+                                  const struct unit_system *restrict us) {
+
+  /* Exit if we have disabled SF */
+  if (sink_props->disable_star_formation) {
+    return 0;
+  }
+
   /* Convenient variables in internal units */
   const float target_mass =
       sink->target_mass_Msun * phys_const->const_solar_mass;
@@ -819,10 +839,12 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
  * @param e The #engine.
  * @param si The #sink generating a star.
  * @param sp The #spart generated.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
-INLINE static void sink_star_formation_give_new_position(const struct engine* e,
-                                                         struct sink* si,
-                                                         struct spart* sp) {
+INLINE static void sink_star_formation_give_new_position(
+    const struct engine *e, struct sink *si, struct spart *sp,
+    float displacement[3]) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->x[0] != sp->x[0] || si->x[1] != sp->x[1] || si->x[2] != sp->x[2]) {
     error(
@@ -832,25 +854,27 @@ INLINE static void sink_star_formation_give_new_position(const struct engine* e,
   }
 #endif
 
-  /* Put the star randomly within the accretion radius of the sink */
+  /* Put the star randomly within the sink's smoothing length */
+  const float max_displacement = 1.0;
+  const float rmax = si->h * max_displacement;
+  const double r = rmax * random_unit_interval(sp->id, e->ti_current,
+                                               (enum random_number_type)4);
   const double phi =
       2 * M_PI *
       random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
-  const float rmax = si->h * kernel_gamma;
-  const double r = rmax * random_unit_interval(sp->id, e->ti_current,
-                                               (enum random_number_type)4);
   const double cos_theta =
       1.0 - 2.0 * random_unit_interval(sp->id, e->ti_current,
                                        (enum random_number_type)5);
   const double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-  double new_pos[3] = {r * sin_theta * cos(phi), r * sin_theta * sin(phi),
-                       r * cos_theta};
+  displacement[0] = r * sin_theta * cos(phi);
+  displacement[1] = r * sin_theta * sin(phi);
+  displacement[2] = r * cos_theta;
 
   /* Assign this new position to the star and its gpart */
-  sp->x[0] += new_pos[0];
-  sp->x[1] += new_pos[1];
-  sp->x[2] += new_pos[2];
+  sp->x[0] += displacement[0];
+  sp->x[1] += displacement[1];
+  sp->x[2] += displacement[2];
   sp->gpart->x[0] = sp->x[0];
   sp->gpart->x[1] = sp->x[1];
   sp->gpart->x[2] = sp->x[2];
@@ -868,8 +892,8 @@ INLINE static void sink_star_formation_give_new_position(const struct engine* e,
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_star_formation_give_new_velocity(
-    const struct engine* e, struct sink* si, struct spart* sp,
-    const struct sink_props* sink_props) {
+    const struct engine *e, struct sink *si, struct spart *sp,
+    const struct sink_props *sink_props) {
 
 #ifdef HAVE_LIBGSL
   /* Those intermediate variables are the values that will be given to the star
@@ -921,15 +945,17 @@ INLINE static void sink_star_formation_give_new_velocity(
  * @param with_cosmology If we run with cosmology.
  * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
+ * @param (return) displacement The 3D displacement vector of the star with
+ * respect to the sink position.
  */
 INLINE static void sink_copy_properties_to_star(
-    struct sink* sink, struct spart* sp, const struct engine* e,
-    const struct sink_props* sink_props, const struct cosmology* cosmo,
-    const int with_cosmology, const struct phys_const* phys_const,
-    const struct unit_system* restrict us) {
+    struct sink *sink, struct spart *sp, const struct engine *e,
+    const struct sink_props *sink_props, const struct cosmology *cosmo,
+    const int with_cosmology, const struct phys_const *phys_const,
+    const struct unit_system *restrict us, float displacement[3]) {
 
   /* Give the stars a new position */
-  sink_star_formation_give_new_position(e, sink, sp);
+  sink_star_formation_give_new_position(e, sink, sp, displacement);
 
   /* Set the mass (do not forget the sink's gpart friend!) */
   sp->mass = sink->target_mass_Msun * phys_const->const_solar_mass;
@@ -953,14 +979,13 @@ INLINE static void sink_copy_properties_to_star(
   /* Note: The sink module need to be compiled with GEAR SF as we store data
      in the SF struct. However, we do not need to run with --star-formation */
 
-  /* Mass at birth */
+  /* Birth properties. For density and temperature, we simply propagate the
+     sink's value. */
+  star_formation_set_spart_birth_density(sp, sink->birth_data.density);
+  star_formation_set_spart_birth_temperature(sp, sink->birth_data.temperature);
   star_formation_set_spart_birth_mass(sp, sp->mass);
-
-  /* Store either the birth_scale_factor or birth_time */
   star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a,
                                                       with_cosmology);
-
-  /* Copy the progenitor id */
   star_formation_set_spart_progenitor_id(sp, sink->id);
 
   /* Copy the chemistry properties */
@@ -982,8 +1007,8 @@ INLINE static void sink_copy_properties_to_star(
  * @param phys_const The physical constants in internal units.
  */
 INLINE static void sink_update_sink_properties_before_star_formation(
-    struct sink* sink, const struct engine* e,
-    const struct sink_props* sink_props, const struct phys_const* phys_const) {
+    struct sink *sink, const struct engine *e,
+    const struct sink_props *sink_props, const struct phys_const *phys_const) {
 
   /* Has the sink accumulated enough metallicity so that the target mass
      should be updated before spawning stars?
@@ -992,7 +1017,7 @@ INLINE static void sink_update_sink_properties_before_star_formation(
      stars. However, the target mass was set with the pop
      III IMF. */
 
-  const struct feedback_props* feedback_props = e->feedback_props;
+  const struct feedback_props *feedback_props = e->feedback_props;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metal =
@@ -1032,8 +1057,8 @@ INLINE static void sink_update_sink_properties_before_star_formation(
  * @param star_counter The star loop counter.
  */
 INLINE static void sink_update_sink_properties_during_star_formation(
-    struct sink* sink, const struct spart* sp, const struct engine* e,
-    const struct sink_props* sink_props, const struct phys_const* phys_const,
+    struct sink *sink, const struct spart *sp, const struct engine *e,
+    const struct sink_props *sink_props, const struct phys_const *phys_const,
     int star_counter) {
 
   /* count the number of stars spawned by this particle */
@@ -1062,17 +1087,52 @@ INLINE static void sink_update_sink_properties_during_star_formation(
 /**
  * @brief Update the #sink particle properties after star formation.
  *
- * In GEAR, this is unused.
+ * In GEAR, we compute the sink SFR after we finished creating stars.
  *
  * @param sink The #sink particle.
- * @param e The #engine
+ * @param with_cosmology if we run with cosmology.
+ * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  * @param phys_const The physical constants in internal units.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation.
+ * @param time_base The time base.
  */
 INLINE static void sink_update_sink_properties_after_star_formation(
-    struct sink* sink, const struct engine* e,
-    const struct sink_props* sink_props, const struct phys_const* phys_const) {}
+    struct sink *sink, const int with_cosmology, const struct cosmology *cosmo,
+    const struct sink_props *sink_props, const struct phys_const *phys_const,
+    const integertime_t ti_current, const double time, const double time_base) {
 
+  /* At this stage in the code (See runner_others.c:
+     runner_do_star_formation_sink), sink->mass is what remains after spawning
+     stars. */
+  const float mass_stars = sink->mass_tot_before_star_spawning - sink->mass;
+
+  if (mass_stars > 0.0) {
+    /* Compute the instantaneous star formation rate */
+    double delta_t = 0.0;
+    if (with_cosmology) {
+      const integertime_t ti_step = get_integer_timestep(sink->time_bin);
+      const integertime_t ti_begin =
+          get_integer_time_begin(ti_current - 1, sink->time_bin);
+      delta_t = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+    } else {
+      delta_t = get_timestep(sink->time_bin, time_base);
+    }
+
+    sink->SFR = (delta_t == 0.0) ? 0.0 : mass_stars / delta_t;
+
+    /* Check if it is the first time steps after star formation. */
+  } else if (sink->SFR > 0.0) {
+    /* Record the current time as an indicator of when this particle was last
+       star-forming. */
+    if (with_cosmology) {
+      sink->SFR = -cosmo->a;
+    } else {
+      sink->SFR = -time;
+    }
+  }
+}
 /**
  * @brief Store the gravitational potential of a particle by copying it from
  * its #gpart friend.
@@ -1081,7 +1141,7 @@ INLINE static void sink_update_sink_properties_after_star_formation(
  * @param gp The part's #gpart.
  */
 __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
-    struct sink_part_data* p_data, const struct gpart* gp) {
+    struct sink_part_data *p_data, const struct gpart *gp) {
   p_data->potential = gp->potential;
 }
 
@@ -1099,9 +1159,9 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct engine* e, struct part* restrict p, struct xpart* restrict xp,
-    struct part* restrict pi, struct xpart* restrict xpi,
-    const struct cosmology* cosmo, const struct sink_props* sink_props) {
+    struct engine *e, struct part *restrict p, struct xpart *restrict xp,
+    struct part *restrict pi, struct xpart *restrict xpi,
+    const struct cosmology *cosmo, const struct sink_props *sink_props) {
 
   /* If for some reason the particle has been flagged to not form sink,
      do not continue and save some computationnal ressources. */
@@ -1220,9 +1280,9 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
-    struct engine* e, struct part* restrict p, struct xpart* restrict xp,
-    struct sink* restrict si, const int with_cosmology,
-    const struct cosmology* cosmo, const struct sink_props* sink_props,
+    struct engine *e, struct part *restrict p, struct xpart *restrict xp,
+    struct sink *restrict si, const int with_cosmology,
+    const struct cosmology *cosmo, const struct sink_props *sink_props,
     const double time) {
 
   /* Do not continue if the gas cannot form sink for any reason */

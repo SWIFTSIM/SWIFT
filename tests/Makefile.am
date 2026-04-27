@@ -28,14 +28,16 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
-        testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
+        testThreadpool testDump testCSDS testInteractions.sh \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-	testLog testDistance testTimeline testZoomInit.sh testGetZoomIJKFunc.sh \
-    testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh
+        testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
+        testNeutrinoFermiDirac \
+        testLog testDistance testTimeline testZoomInit.sh testGetZoomIJKFunc.sh \
+        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testMeshGravityRebuildCheck
+        # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -49,7 +51,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
                  test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
                  testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testZoomInit testGetZoomIJKFunc \
-                 testZoomRegrid testSpaceSplit testZoomVoidTree
+                 testZoomRegrid testSpaceSplit testZoomVoidTree testMeshGravityRebuildCheck
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -58,6 +60,8 @@ $(check_PROGRAMS): ../src/.libs/libswiftsim.a
 testGreetings_SOURCES = testGreetings.c
 
 testMaths_SOURCES = testMaths.c
+
+testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 
 testAtomic_SOURCES = testAtomic.c
 

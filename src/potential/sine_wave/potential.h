@@ -59,9 +59,9 @@ struct external_potential {
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float external_gravity_timestep(
-    double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const,
-    const struct gpart* restrict g) {
+    double time, const struct external_potential *restrict potential,
+    const struct phys_const *restrict phys_const,
+    const struct gpart *restrict g) {
 
   return potential->timestep_limit;
 }
@@ -76,8 +76,8 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
-    double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const, struct gpart* restrict g) {
+    double time, const struct external_potential *restrict potential,
+    const struct phys_const *restrict phys_const, struct gpart *restrict g) {
 
   float Acorr = 1.;
   if (time < potential->growth_time) Acorr = time / potential->growth_time;
@@ -102,8 +102,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    double time, const struct external_potential* potential,
-    const struct phys_const* const phys_const, const struct gpart* gp) {
+    double time, const struct external_potential *potential,
+    const struct phys_const *const phys_const, const struct gpart *gp) {
 
   float Acorr = 1.;
   if (time < potential->growth_time) Acorr = time / potential->growth_time;
@@ -122,9 +122,9 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    struct swift_params* parameter_file, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct space* s,
-    struct external_potential* potential) {
+    struct swift_params *parameter_file, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct space *s,
+    struct external_potential *potential) {
 
   potential->amplitude =
       parser_get_param_double(parameter_file, "SineWavePotential:amplitude");
@@ -140,7 +140,7 @@ static INLINE void potential_init_backend(
  * @param  potential The external potential properties.
  */
 static INLINE void potential_print_backend(
-    const struct external_potential* potential) {
+    const struct external_potential *potential) {
 
   message("External potential is a sine wave with amplitude %g",
           potential->amplitude);

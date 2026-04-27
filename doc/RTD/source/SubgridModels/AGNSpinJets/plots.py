@@ -770,7 +770,9 @@ plt.plot(
 plt.plot(a, [0 for x in a], linewidth=1.0, color="black", linestyle="--")
 plt.plot([-0.0001, 0.0001], [-200, 200], linewidth=1.0, color="black", linestyle="--")
 plt.ylabel(
-    r"$\mathrm{d}a/(\mathrm{d} M_\mathrm{BH,0}/M_\mathrm{BH})$", fontsize=24, usetex=True
+    r"$\mathrm{d}a/(\mathrm{d} M_\mathrm{BH,0}/M_\mathrm{BH})$",
+    fontsize=24,
+    usetex=True,
 )
 plt.xlabel("$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")

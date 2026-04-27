@@ -191,37 +191,22 @@ int main(int argc, char *argv[]) {
    * and void cells make sense too.)*/
   int zoom_count = 0;
   int bkg_count = 0;
-  int buffer_count = 0;
   for (int i = 0; i < s->nr_cells; i++) {
     struct cell *c = &s->cells_top[i];
     if (c->type == cell_type_zoom) {
       zoom_count += c->grav.count;
     } else if (c->type == cell_type_bkg) {
       bkg_count += c->grav.count;
-    } else if (c->type == cell_type_buffer) {
-      buffer_count += c->grav.count;
     } else {
       error("Cell %d has unexpected type %s", i, cellID_names[c->type]);
     }
   }
 
-  /* Because we are doing things randomly we need to check for both the buffer
-   * cell case and no buffer cell case. */
-  if (s->zoom_props->with_buffer_cells) {
-    /* Zoom region has 100 high res particles and any low res interlopers. */
-    assert(zoom_count == 100 + 100 - bkg_count - buffer_count);
+  /* Zoom region has 100 high res particles and any low res interlopers. */
+  assert(zoom_count == 100 + 100 - bkg_count);
 
-    /* Buffer region + background region + zoom interlopers == 100 background
-     * particles. */
-    assert(bkg_count + buffer_count + zoom_count - 100 == 100);
-
-  } else {
-    /* Zoom region has 100 high res particles and any low res interlopers. */
-    assert(zoom_count == 100 + 100 - bkg_count);
-
-    /* Background region + zoom interlopers == 100 background particles. */
-    assert(bkg_count + zoom_count - 100 == 100);
-  }
+  /* Background region + zoom interlopers == 100 background particles. */
+  assert(bkg_count + zoom_count - 100 == 100);
 
   /* Free the space. */
   free(s->local_cells_top);
@@ -233,10 +218,8 @@ int main(int argc, char *argv[]) {
   free(s->zoom_props->void_cell_indices);
   free(s->zoom_props->neighbour_cells_top);
   free(s->zoom_props->local_bkg_cells_top);
-  free(s->zoom_props->local_buffer_cells_top);
   free(s->zoom_props->local_zoom_cells_with_particles_top);
   free(s->zoom_props->local_bkg_cells_with_particles_top);
-  free(s->zoom_props->local_buffer_cells_with_particles_top);
   free(s->cells_top);
   free(s->gparts);
   free(s->zoom_props);

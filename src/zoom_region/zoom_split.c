@@ -32,7 +32,7 @@
  *
  * The leaves of the void cell hierarchy are top level cells in the nested grid.
  * This function sets the progeny of the highest res void cell to be the top
- * level cell it contains (either zoom or buffer cells).
+ * level cell it contains (zoom cells).
  *
  * NOTE: The void cells with top level progeny are not treated as split cells
  * since they are linked into the top level "progeny". We don't want to
@@ -85,10 +85,10 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
 
-    /* If this top level cell is empty, don't link it in. */
-    if (zoom_cell->grav.count == 0 && zoom_cell->hydro.count == 0 &&
-        zoom_cell->stars.count == 0 && zoom_cell->sinks.count == 0 &&
-        zoom_cell->black_holes.count == 0) {
+    /* If this top-level zoom cell is empty, don't link it in. We must allow
+     * foreign shared multipoles to count here because top-level gravity
+     * multipoles are available on every rank. */
+    if (cell_is_empty(zoom_cell)) {
       c->progeny[k] = NULL;
       continue;
     }
@@ -98,73 +98,13 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
 
     /* Flag this void cell "progeny" as the cell's void cell parent. */
     zoom_cell->void_parent = c;
-  }
-}
 
-/**
- * @brief Link the top level cells in buffer grid to a void parent cell.
- *
- * The leaves of the void cell hierarchy are top level cells in the nested grid.
- * This function sets the progeny of the highest res void cell to be the top
- * level cell it contains (either zoom or buffer cells).
- *
- * @param s The space.
- * @param c The void cell progeny to link
- */
-void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we have the right kind of cell. */
-  if (c->subtype != cell_subtype_void) {
-    error(
-        "Trying to split cell which isn't a void cell! (c->type=%s, "
-        "c->subtype=%s)",
-        cellID_names[c->type], subcellID_names[c->subtype]);
-  }
-
-  /* Check that the widths are right. */
-  if (fabs((c->width[0] / 2) - s->zoom_props->buffer_width[0]) >
-      (0.001 * s->zoom_props->buffer_width[0]))
-    error(
-        "The width of the buffer cell is not half the width of the void "
-        "cell were about to link to! (c->width[0]=%f, "
-        "s->zoom_props->buffer_width[0]=%f)",
-        c->width[0] / 2, s->zoom_props->buffer_width[0]);
-
-#endif
-
-  /* Loop over the 8 progeny cells which are now the nested top level cells. */
-  for (int k = 0; k < 8; k++) {
-
-    /* Establish the location of the fake progeny cell. */
-    double loc[3] = {c->loc[0] + (c->width[0] / 4),
-                     c->loc[1] + (c->width[1] / 4),
-                     c->loc[2] + (c->width[2] / 4)};
-    if (k & 4) loc[0] += c->width[0] / 2;
-    if (k & 2) loc[1] += c->width[1] / 2;
-    if (k & 1) loc[2] += c->width[2] / 2;
-
-    /* Which cell are we in? */
-    int cid = cell_getid_below_bkg(s->zoom_props->buffer_cdim,
-                                   s->zoom_props->buffer_lower_bounds, loc[0],
-                                   loc[1], loc[2], s->zoom_props->buffer_iwidth,
-                                   s->zoom_props->buffer_cell_offset);
-
-    /* Get the zoom cell. */
-    struct cell *buffer_cell = &s->cells_top[cid];
-
-    /* Link this nested cell into the void cell hierarchy. */
-    c->progeny[k] = buffer_cell;
-
-    /* Flag this void cell "progeny" as the cell's void cell parent. */
-    buffer_cell->void_parent = c;
-
-    /* Set the parent of the buffer cell to be the void cell. */
-    buffer_cell->parent = c;
-
-    /* If we're in a void cell continue the void tree depth. */
-    if (buffer_cell->subtype == cell_subtype_void) {
-      buffer_cell->depth = c->depth + 1;
+    /* Flag all void cell parents as containing zoom cells. */
+    struct cell *parent = c;
+    while (parent != NULL) {
+      if (parent->contains_zoom_cells) break; /* "ancestors" already flagged */
+      parent->contains_zoom_cells = 1;
+      parent = parent->parent;
     }
   }
 }
@@ -210,8 +150,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     error(
         "Exceeded maximum depth (%d) when splitting the void cells, aborting. "
         "This is most likely due to having the zoom region too deep within the "
-        "background cells. Try using buffer cells or increasing "
-        "region_buffer_cell_ratio (depth=%d)",
+        "background cells. Try increasing region_buffer_cell_ratio (depth=%d)",
         space_cell_maxdepth, depth);
   }
 
@@ -222,11 +161,6 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   /* If we're above the zoom level we need to link in the zoom cells. */
   if (c->depth == s->zoom_props->zoom_cell_depth - 1) {
     zoom_link_void_zoom_leaves(s, c);
-  }
-
-  /* If we're above the buffer level we need to link in the buffer cells. */
-  else if (c->depth == s->zoom_props->buffer_cell_depth - 1) {
-    zoom_link_void_buffer_leaves(s, c);
   }
 
   /* Otherwise, we're in the void tree and need to construct new progeny. */
@@ -252,12 +186,15 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
       maxdepth = max(maxdepth, cp->maxdepth);
     }
 
-    /* If we have an empty non-void progeny cell, skip it, we don't want to
-     * include it in the timestep calculation. */
-    if (cp->subtype != cell_subtype_void &&
-        (cp->grav.count == 0 && cp->hydro.count == 0 && cp->stars.count == 0 &&
-         cp->sinks.count == 0 && cp->black_holes.count == 0))
+    /* If the progeny is a non-local non-void cell we're done. */
+    else if (cp->nodeID != engine_rank) {
       continue;
+    }
+
+    /* If the zoom progeny is empty there's nothing to do. */
+    else if (cell_is_empty(cp)) {
+      continue;
+    }
 
     /* Update the timestep information. */
     ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
@@ -330,31 +267,30 @@ void zoom_void_space_split(struct space *s, int verbose) {
    * a handful of cells so no threadpool. */
 
   /* Loop over the void cells */
+  int nr_useful_voids = 0;
   for (int ind = 0; ind < nr_void_cells; ind++) {
     struct cell *c = &cells_top[void_cell_indices[ind]];
+
+    /* Reset the contains zoom cells flag, we're about to recompute it. */
+    c->contains_zoom_cells = 0;
+
     zoom_void_split_recursive(s, c, /*tpid*/ 0);
+
+    /* Count useful void cells. */
+    if (c->contains_zoom_cells) nr_useful_voids++;
   }
 
-  if (verbose)
+  if (verbose) {
+    message("Found %d void cells with zoom cells out of %d total void cells.",
+            nr_useful_voids, nr_void_cells);
     message("Void cell tree and multipole construction took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  /* Ensure all buffer cells are linked into the tree. */
-  int notlinked = 0;
-  if (s->zoom_props->with_buffer_cells) {
-    for (int k = s->zoom_props->buffer_cell_offset;
-         k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
-         k++) {
-      if (cells_top[k].void_parent == NULL) notlinked++;
-    }
-    if (notlinked > 0)
-      error("%d buffer cells are not linked into a void cell tree!", notlinked);
-  }
-
   /* Ensure all zoom cells are linked into the tree. */
-  notlinked = 0;
+  int notlinked = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
     if (cells_top[k].void_parent == NULL && cells_top[k].grav.count > 0)
       notlinked++;
@@ -371,31 +307,15 @@ void zoom_void_space_split(struct space *s, int verbose) {
               .m_pole.num_gpart;
     }
 
-    /* Collect the number of particles in the buffer multipoles. */
+    /* Collect the number of particles in the zoom multipoles. */
     int nr_gparts = 0;
-    if (s->zoom_props->with_buffer_cells) {
-      for (int k = s->zoom_props->buffer_cell_offset;
-           k <
-           s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
-           k++) {
-        nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
-      }
-    }
-
-    /* Check the number of gparts is consistent. */
-    if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
-      error(
-          "Number of gparts is inconsistent between buffer cells and "
-          "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
-          nr_gparts_in_void, nr_gparts);
-
     /* Collect the number of particles in the zoom multipoles. */
     for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
       nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
     }
 
     /* Check the number of particles in the void cells. */
-    if (!s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
+    if (nr_gparts_in_void != nr_gparts)
       error(
           "Number of gparts is inconsistent between zoom cells and "
           "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",

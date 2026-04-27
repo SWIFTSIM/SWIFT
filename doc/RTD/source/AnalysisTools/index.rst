@@ -316,3 +316,79 @@ different files could represent different MPI ranks, but also different
 time steps or even different simulations (which would make little
 sense). It is up to the user to make sure that the input is actually
 relevant.
+
+
+.. _zoom-diagnostics:
+
+Zoom Geometry Diagnostics
+--------------------------
+
+When running zoom simulations, it is critical to optimize the zoom region setup to get the best computational efficiency. SWIFT provides comprehensive diagnostic tools to help analyze and optimize the zoom geometry.
+
+Running Zoom Diagnostics
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To generate zoom geometry diagnostics, run SWIFT with the ``--dump-zoom-geometry`` command-line flag (with or without MPI):
+
+.. code-block:: bash
+
+   mpirun -n <N> ./swift --dump-zoom-geometry params.yml
+
+**Resource Requirements**: Unlike ``--dry-run``, the ``--dump-zoom-geometry`` option loads all particles and builds the complete space struct (including all cell hierarchies and MPI domain decomposition). Therefore, you **must** run it with the same computational resources (number of MPI ranks, memory) you woudl need for the full simulation. This is necessary because the zoom geometry depends on how particles are distributed across MPI ranks when running with MPI.
+
+When run with this flag, SWIFT will:
+
+1. Load all initial condition particles
+2. Construct the full cell hierarchy (zoom, buffer, background, and neighbour cells)
+3. Perform MPI domain decomposition
+4. Analyze the zoom geometry and cell occupancy
+5. Write diagnostic files and exit (without running any time steps)
+
+Output Files
+~~~~~~~~~~~~
+
+SWIFT generates two diagnostic files:
+
+**zoom_metadata.yml**
+    Contains global zoom geometry metadata including:
+    
+    - Box size and cell grid dimensions
+    - Zoom region extent and padding factors (requested vs. actual)
+    - Cell counts broken down by type (void, neighbour, background, buffer, zoom)
+    - Particle counts and statistics (high-res, low-res, total)
+    - DM contamination statistics
+    - Particle extent in each dimension
+
+**zoom_cell_data.hdf5**
+    Contains detailed per-cell diagnostic data:
+    
+    - Cell positions (centers) for all cells
+    - Cell types (0=background, 1=buffer, 2=zoom, 3=neighbour, 4=void)
+    - Particle occupancy per cell (number of particles)
+    - DM contamination levels per cell
+    - MPI rank assignments
+
+Analysis and Visualization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Python tool ``tools/zooms/plot_zoom_geometry.py`` analyzes these diagnostic files and generates comprehensive plots and optimization recommendations:
+
+.. code-block:: bash
+
+   python3 tools/zooms/plot_zoom_geometry.py
+
+This script will automatically find the diagnostic files in the current directory and generate:
+
+**Terminal Output:**
+    - Summary table with cell grid configuration
+    - Zoom region geometry and padding analysis
+    - Particle counts and contamination statistics
+    - Occupancy and resolution quality metrics
+    - Optimization recommendations for ``bkg_top_level_cells``
+
+**Diagnostic Plots:**
+    - ``zoom_cell_types.png``: 3D visualization of cell types showing the zoom region structure
+    - ``zoom_padding_analysis.png``: Multi-panel view showing particle extent vs. zoom region in all projections
+    - ``zoom_radial_distributions.png``: Radial profiles of cell occupancy and contamination vs. distance from zoom center
+    - ``zoom_dm_split.png``: Scatter plot of DM particles colored by type (high-res vs. contamination)
+
