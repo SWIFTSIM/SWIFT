@@ -60,6 +60,11 @@ can be found by typing ``./swift -h``:
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback
                                       --black-holes --fof.
+    --flamingo                        Run with all the options needed for the 
+                                      FLAMINGO model. This is equivalent to 
+                                      --hydro --limiter --sync --self-gravity 
+                                      --stars --star-formation --cooling 
+                                      --feedback --black-holes --fof.
     --gear                            Run with all the options needed for the
                                       GEAR model. This is equivalent to --hydro
                                       --limiter --sync --self-gravity --stars
