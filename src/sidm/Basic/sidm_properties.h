@@ -144,7 +144,7 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
 
   /* Interaction properties */
   const int with_constant_cross_section =
-      parser_get_opt_param_int(params, "BasicSIDM:constant_cross_section", 0);
+      parser_get_param_int(params, "BasicSIDM:constant_cross_section");
 
   if (with_constant_cross_section)
     sip->sigma_over_m =

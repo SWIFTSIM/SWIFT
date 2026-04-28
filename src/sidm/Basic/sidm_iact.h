@@ -177,8 +177,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
     const struct sidm_props *sidm_props, const integertime_t ti_current,
     const double time_base) {
 
-  message("running sym SIDM force");
-
   /* Pair separation. */
   const float r = sqrtf(r2);
 

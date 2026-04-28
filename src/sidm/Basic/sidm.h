@@ -109,6 +109,24 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
 }
 
 /**
+ * @brief Finishes the force calculation.
+ *
+ * Multiplies the force and accelerations by the appropiate constants
+ * and add the self-contribution term. In most cases, there is little
+ * to do here.
+ *
+ * Cosmological terms are also added/multiplied here.
+ *
+ * @param sip The si-particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sidm_end_force(
+    struct sipart *restrict sip, const struct cosmology *cosmo) {
+
+  //TODO
+}
+
+/**
  * @brief Sets all particle fields to sensible values when the #sipart has 0
  * ngbs.
  *

@@ -549,7 +549,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    t->subtype == task_subtype_force ||
                    t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
-        } else if (t->subtype == task_subtype_sidm_density) {
+        } else if (t->subtype == task_subtype_sidm_density ||
+                   t->subtype == task_subtype_sidm_force) {
           cost = 1.f * (wscale * sicount_i) * sicount_i;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * scount_i * count_i;
@@ -621,7 +622,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
                    sid_scale[t->flags];
           }
-        } else if (t->subtype == task_subtype_sidm_density) {
+        } else if (t->subtype == task_subtype_sidm_density ||
+                   t->subtype == task_subtype_sidm_force) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
             cost = 3.f * (wscale * sicount_i) * sicount_j * sid_scale[t->flags];
           } else {
@@ -708,6 +710,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_end_grav_force:
         cost = wscale * gcount_i;
+        break;
+      case task_type_sidm_end_force:
+        cost = wscale * sicount_i;
         break;
       case task_type_cooling:
         cost = wscale * count_i;

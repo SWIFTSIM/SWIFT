@@ -131,7 +131,7 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 6;
+  *num_fields = 7;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sipart(
@@ -160,7 +160,7 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
 
   list[6] = io_make_output_field("Rates", FLOAT, 1, UNIT_CONV_FREQUENCY, -1.f,
                                  siparts, SIDM_rate,
-                                 "SIDM scattering rate of the particles");
+                                 "SIDM scattering rate of the particles"); //TODO:check cosmo factor
 }
 
 #endif /* SWIFT_BASIC_SIDM_IO_H */

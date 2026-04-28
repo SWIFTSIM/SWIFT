@@ -55,6 +55,7 @@
 #include "pressure_floor.h"
 #include "rt.h"
 #include "runner_doiact_sinks.h"
+#include "sidm.h"
 #include "space.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
@@ -1019,6 +1020,53 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
   }
   if (timer) TIMER_TOC(timer_end_grav_force);
 }
+
+
+/**
+ * @brief End the SIDM force calculation of all active particles in a cell
+ * by multiplying the acccelerations by the relevant constants
+ *
+ * @param r The #runner thread.
+ * @param c The #cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_end_sidm_force(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_sidm(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_end_sidm_force(r, c->progeny[k], 0);
+  } else {
+
+    const struct cosmology *cosmo = e->cosmology;
+    const int count = c->sidm.count;
+    struct sipart *restrict siparts = c->sidm.parts;
+
+    /* Loop over the SIDM particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct sipart *restrict sip = &siparts[k];
+
+      double dt = 0;
+      if (sipart_is_active(sip, e)) {
+        /* Finish the force loop */
+        sidm_end_force(sip, cosmo);
+      }
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_end_sidm_force);
+}
+
 
 /**
  * @brief Write the required particles through the csds.
