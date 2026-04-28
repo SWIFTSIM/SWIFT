@@ -159,9 +159,10 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
         /* Index of the jth cell. */
         int cjd = cj - cells;
 
-        /* Local cells add weight to vertices. */
-        if (vweights && ci->nodeID == nodeID) {
-          weights_v[cid] += 0.5 * w;
+        /* Local cells add weight to vertices. Test each cell independently -
+         * add to ci's vertex if ci is local, add to cj's vertex if cj is local. */
+        if (vweights) {
+          if (ci->nodeID == nodeID) weights_v[cid] += 0.5 * w;
           if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
         }
 
@@ -206,6 +207,16 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
               /* Add weights from task costs to the edge. */
               weights_e[ik] += w;
               weights_e[jk] += w;
+            }
+
+          } else {
+
+            /* Cells not neighbours in the partition graph. If either cell
+             * is local, add weight to its vertex as fallback - ensures
+             * pair-task cost isn't completely lost. */
+            if (vweights) {
+              if (ci->nodeID == nodeID) weights_v[cid] += w;
+              if (cj->nodeID == nodeID) weights_v[cjd] += w;
             }
           }
         }
