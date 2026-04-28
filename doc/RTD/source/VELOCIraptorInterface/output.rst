@@ -337,10 +337,6 @@ Most Bound Particle (MBP):
    this is not guaranteed for larger simulations. The order of the groups is 
    more a matter of the way that VELOCIraptor searches instead of a physical 
    reason.
-.. [#center] This is not the average positions of the halos particles, but
-   the halo position found by the VELOCIraptor algorithm. This includes a 
-   fit for all the parameters including the gas particles or other types of
-   particles.
 .. [#velodisp] In the velocity dispersion tensor ( :math:`\sigma_{ij}` )  
    the following relations are satisfied between components:
 
