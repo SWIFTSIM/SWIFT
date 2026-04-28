@@ -645,7 +645,8 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
-      } else if (subtype == task_subtype_sidm_density) {
+      } else if (subtype == task_subtype_sidm_density ||
+		 subtype == task_subtype_sidm_force) {
         cell_siunlocktree(ci);
       } else if (subtype == task_subtype_limiter) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -914,7 +915,8 @@ int task_lock(struct task *t) {
       } else if (subtype == task_subtype_do_bh_swallow) {
         if (ci->black_holes.hold) return 0;
         if (cell_blocktree(ci) != 0) return 0;
-      } else if (subtype == task_subtype_sidm_density) {
+      } else if (subtype == task_subtype_sidm_density ||
+		 subtype == task_subtype_sidm_force) {
         if (ci->sidm.hold) return 0;
         if (cell_silocktree(ci) != 0) return 0;
       } else if (subtype == task_subtype_limiter) {
