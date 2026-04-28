@@ -34,7 +34,9 @@
 __attribute__((always_inline)) INLINE static void runner_iact_sidm_density(
     const float r2, const float dx[3], const float hi, const float hj,
     struct sipart *restrict sipi, struct sipart *restrict sipj, const float a,
-    const float H) {}
+    const float H, const int with_cosmology, const struct cosmology *cosmo,
+    const struct sidm_props *sidm_props, const integertime_t ti_current,
+    const double time_base) {}
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -49,10 +51,49 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sidm_density(const float r2, const float dx[3],
-                                const float hi, const float hj,
-                                struct sipart *restrict sipi,
-                                const struct sipart *restrict sipj,
-                                const float a, const float H) {}
+runner_iact_nonsym_sidm_density(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct sipart *restrict sipi, const struct sipart *restrict sipj,
+    const float a, const float H, const int with_cosmology,
+    const struct cosmology *cosmo, const struct sidm_props *sidm_props,
+    const integertime_t ti_current, const double time_base) {}
+
+/**
+ * @brief Force interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (sipi - sipj).
+ * @param hi Comoving smoothing-length of part*icle i.
+ * @param hj Comoving smoothing-length of part*icle j.
+ * @param sipi First part*icle.
+ * @param sipj Second part*icle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct sipart *restrict sipi, struct sipart *restrict sipj, const float a,
+    const float H, const int with_cosmology, const struct cosmology *cosmo,
+    const struct sidm_props *sidm_props, const integertime_t ti_current,
+    const double time_base) {}
+
+/**
+ * @brief Force interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (sipi - sipj).
+ * @param hi Comoving smoothing-length of part*icle i.
+ * @param hj Comoving smoothing-length of part*icle j.
+ * @param sipi First part*icle.
+ * @param sipj Second part*icle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct sipart *restrict sipi, struct sipart *restrict sipj, const float a,
+    const float H, const int with_cosmology, const struct cosmology *cosmo,
+    const struct sidm_props *sidm_props, const integertime_t ti_current,
+    const double time_base) {}
 
 #endif /* SWIFT_NONE_SIDM_IACT_H */

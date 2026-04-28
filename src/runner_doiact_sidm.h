@@ -28,6 +28,9 @@
 #define _DOSELF1_SIDM(f) PASTE(runner_doself1_sidm, f)
 #define DOSELF1_SIDM _DOSELF1_SIDM(FUNCTION)
 
+#define _DOSELF1_SIDM_NAIVE(f) PASTE(runner_doself1_sidm_naive, f)
+#define DOSELF1_SIDM_NAIVE _DOSELF1_SIDM_NAIVE(FUNCTION)
+
 #define _DOPAIR1_SIDM_NAIVE(f) PASTE(runner_dopair1_sidm_naive, f)
 #define DOPAIR1_SIDM_NAIVE _DOPAIR1_SIDM_NAIVE(FUNCTION)
 

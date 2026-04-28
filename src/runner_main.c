@@ -142,6 +142,12 @@
 #include "runner_doiact_sidm.h"
 #include "runner_doiact_undef.h"
 
+/* Import the SIDM force loop functions. */
+#define FUNCTION force
+#define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
+#include "runner_doiact_sidm.h"
+#include "runner_doiact_undef.h"
+
 /* likwid markers. */
 #ifdef WITH_LIKWID
 #include "likwid_wrapper.h"
@@ -277,6 +283,8 @@ void *runner_main(void *data) {
             runner_do_sinks_sink_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_sidm_density)
             runner_dosub_self_sidm_density(r, ci, /*below_h_max=*/0, 1);
+          else if (t->subtype == task_subtype_sidm_force)
+            runner_dosub_self_sidm_force(r, ci, /*below_h_max=*/0, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -337,6 +345,8 @@ void *runner_main(void *data) {
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sidm_density)
             runner_dosub_pair_sidm_density(r, ci, cj, /*below_h_max=*/0, 1);
+          else if (t->subtype == task_subtype_sidm_force)
+            runner_dosub_pair_sidm_force(r, ci, cj, /*below_h_max=*/0, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);

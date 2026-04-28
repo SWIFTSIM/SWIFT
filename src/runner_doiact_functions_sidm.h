@@ -39,6 +39,7 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   TIMER_TIC;
 
@@ -136,7 +137,9 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
             error("Inappropriate h for this level!");
 #endif
 
-          IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H);
+          IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology,
+                           cosmo, e->sidm_properties, e->ti_current,
+                           e->time_base);
         }
       } /* loop over all the particles we want to update. */
     }
@@ -203,7 +206,8 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 #endif
           /* Update both sipi and sipj */
 
-          IACT_SIDM(r2, dx, hi, hj, sipi, sipj, a, H);
+          IACT_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology, cosmo,
+                    e->sidm_properties, e->ti_current, e->time_base);
         } else if (doi) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -212,7 +216,9 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 #endif
           /* Update only sipi */
 
-          IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H);
+          IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
+                           cosmo, e->sidm_properties, e->ti_current,
+                           e->time_base);
         } else if (doj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -225,7 +231,9 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
           dx[0] = -dx[0];
           dx[1] = -dx[1];
           dx[2] = -dx[2];
-          IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H);
+          IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology,
+                           cosmo, e->sidm_properties, e->ti_current,
+                           e->time_base);
         } /* Hit or miss */
       } /* loop over all other particles. */
     } /* pi is active */
@@ -253,6 +261,7 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   TIMER_TIC;
 
@@ -350,7 +359,9 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
         if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
 #endif
 
-        IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H);
+        IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
+                         cosmo, e->sidm_properties, e->ti_current,
+                         e->time_base);
       }
       if (doj) {
 
@@ -362,7 +373,9 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H);
+        IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology,
+                         cosmo, e->sidm_properties, e->ti_current,
+                         e->time_base);
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -385,6 +398,7 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   TIMER_TIC;
 
@@ -468,7 +482,8 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
         if (hj < h_min || hj >= h_max) error("Inappropriate h for this level!");
 #endif
 
-        IACT_SIDM(r2, dx, hi, hj, sipi, sipj, a, H);
+        IACT_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology, cosmo,
+                  e->sidm_properties, e->ti_current, e->time_base);
 
       } else if (doi) {
 
@@ -476,7 +491,9 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
         if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
 #endif
 
-        IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H);
+        IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
+                         cosmo, e->sidm_properties, e->ti_current,
+                         e->time_base);
 
       } else if (doj) {
 
@@ -488,7 +505,9 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H);
+        IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology,
+                         cosmo, e->sidm_properties, e->ti_current,
+                         e->time_base);
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -518,6 +537,7 @@ void DOPAIR1_SUBSET_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   const int sicount_j = cj->sidm.count;
   struct sipart *restrict siparts_j = cj->sidm.parts;
@@ -568,7 +588,9 @@ void DOPAIR1_SUBSET_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-        IACT_NONSYM_SIDM(r2, dx, hi, sipj->h, sipi, sipj, a, H);
+        IACT_NONSYM_SIDM(r2, dx, hi, sipj->h, sipi, sipj, a, H, with_cosmology,
+                         cosmo, e->sidm_properties, e->ti_current,
+                         e->time_base);
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -625,6 +647,7 @@ void DOSELF1_SUBSET_SIDM(struct runner *r, const struct cell *c,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Cosmological terms and physical constants */
   const float a = cosmo->a;
@@ -677,7 +700,9 @@ void DOSELF1_SUBSET_SIDM(struct runner *r, const struct cell *c,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-        IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H);
+        IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
+                         cosmo, e->sidm_properties, e->ti_current,
+                         e->time_base);
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */

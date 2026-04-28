@@ -815,6 +815,7 @@ void pairs_all_sidm_density(struct runner *r, struct cell *ci,
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
   double shift[3] = {0.0, 0.0, 0.0};
@@ -855,7 +856,9 @@ void pairs_all_sidm_density(struct runner *r, struct cell *ci,
       if (r2 < hig2 && !sipart_is_inhibited(sipj, e)) {
 
         /* Interact */
-        runner_iact_nonsym_sidm_density(r2, dx, hi, sipj->h, sipi, sipj, a, H);
+        runner_iact_nonsym_sidm_density(
+            r2, dx, hi, sipj->h, sipi, sipj, a, H, with_cosmology, cosmo,
+            e->sidm_properties, e->ti_current, e->time_base);
       }
     }
   }
@@ -892,7 +895,9 @@ void pairs_all_sidm_density(struct runner *r, struct cell *ci,
       if (r2 < hjg2 && !sipart_is_inhibited(sipi, e)) {
 
         /* Interact */
-        runner_iact_nonsym_sidm_density(r2, dx, hj, sipi->h, sipj, sipi, a, H);
+        runner_iact_nonsym_sidm_density(
+            r2, dx, hj, sipi->h, sipj, sipi, a, H, with_cosmology, cosmo,
+            e->sidm_properties, e->ti_current, e->time_base);
       }
     }
   }
@@ -904,6 +909,7 @@ void self_all_sidm_density(struct runner *r, struct cell *ci) {
   struct sipart *sipi, *sipj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -936,7 +942,9 @@ void self_all_sidm_density(struct runner *r, struct cell *ci) {
           !sipart_is_inhibited(sipj, e)) {
 
         /* Interact */
-        runner_iact_nonsym_sidm_density(r2, dx, hi, hj, sipi, sipj, a, H);
+        runner_iact_nonsym_sidm_density(
+            r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology, cosmo,
+            e->sidm_properties, e->ti_current, e->time_base);
       }
 
       /* Hit or miss? */
@@ -948,7 +956,9 @@ void self_all_sidm_density(struct runner *r, struct cell *ci) {
         dx[2] = -dx[2];
 
         /* Interact */
-        runner_iact_nonsym_sidm_density(r2, dx, hj, hi, sipj, sipi, a, H);
+        runner_iact_nonsym_sidm_density(
+            r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology, cosmo,
+            e->sidm_properties, e->ti_current, e->time_base);
       }
     }
   }

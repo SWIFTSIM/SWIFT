@@ -36,3 +36,9 @@
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_functions_sidm.h"
 #include "runner_doiact_undef.h"
+
+/* Import the SIDM force loop functions. */
+#define FUNCTION force
+#define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
+#include "runner_doiact_functions_sidm.h"
+#include "runner_doiact_undef.h"

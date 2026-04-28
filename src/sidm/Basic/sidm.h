@@ -44,6 +44,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
   sip->density.wcount_dh = 0.f;
   sip->rho = 0.f;
   sip->density.rho_dh = 0.f;
+  sip->SIDM_rate = 0.f;
 
 #ifdef SWIFT_SIDM_DENSITY_CHECKS
   sip->N_density = 0;
