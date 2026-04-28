@@ -157,9 +157,9 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
  * @brief Return the directional edge weight for a neighbour offset.
  *
  * The uniform-grid implementation normalised these weights by the fixed
- * 26-neighbour stencil. In the zoom graph the emitted CSR row length is no longer
- * fixed, so we normalise by the actual number of outgoing edges for each cell
- * to avoid over-weighting interface cells.
+ * 26-neighbour stencil. In the zoom graph the emitted CSR row length is no
+ * longer fixed, so we normalise by the actual number of outgoing edges for each
+ * cell to avoid over-weighting interface cells.
  */
 __attribute__((always_inline)) INLINE static double zoom_partition_edge_weight(
     const double count, const int cid, const int *cell_edge_offsets,
@@ -428,11 +428,10 @@ void zoom_partition_sizes_to_edges(struct space *s, double *counts,
 
               /* We have a neighbour: symmetrically assign the weights. */
               edges[edge_pos[cid]] = zoom_partition_edge_weight(
-                  counts[cid], cid, cell_edge_offsets, bkg_ii, bkg_jj,
-                  bkg_kk);
+                  counts[cid], cid, cell_edge_offsets, bkg_ii, bkg_jj, bkg_kk);
               edges[edge_pos[bkg_cjd]] = zoom_partition_edge_weight(
-                  counts[bkg_cjd], bkg_cjd, cell_edge_offsets, -bkg_ii,
-                  -bkg_jj, -bkg_kk);
+                  counts[bkg_cjd], bkg_cjd, cell_edge_offsets, -bkg_ii, -bkg_jj,
+                  -bkg_kk);
               edge_pos[cid]++;
               edge_pos[bkg_cjd]++;
             }
