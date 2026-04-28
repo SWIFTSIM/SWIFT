@@ -210,15 +210,20 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
   }
 
-  int err = MPI_Alltoall(send_count_by_node, 1, MPI_INT, peer_send_count, 1,
-                         MPI_INT, MPI_COMM_WORLD);
-  if (err != MPI_SUCCESS) mpi_error(err, "Failed to alltoall tag counts.");
-  err = MPI_Alltoall(send_sum_by_node, 1, MPI_UNSIGNED_LONG_LONG,
-                     peer_send_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
-  if (err != MPI_SUCCESS) mpi_error(err, "Failed to alltoall tag sums.");
-  err = MPI_Alltoall(send_xor_by_node, 1, MPI_UNSIGNED_LONG_LONG,
-                     peer_send_xor, 1, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
-  if (err != MPI_SUCCESS) mpi_error(err, "Failed to alltoall tag xors.");
+  int mpi_err = MPI_Alltoall(send_count_by_node, 1, MPI_INT, peer_send_count,
+                             1, MPI_INT, MPI_COMM_WORLD);
+  if (mpi_err != MPI_SUCCESS)
+    mpi_error(mpi_err, "Failed to alltoall tag counts.");
+  mpi_err = MPI_Alltoall(send_sum_by_node, 1, MPI_UNSIGNED_LONG_LONG,
+                         peer_send_sum, 1, MPI_UNSIGNED_LONG_LONG,
+                         MPI_COMM_WORLD);
+  if (mpi_err != MPI_SUCCESS)
+    mpi_error(mpi_err, "Failed to alltoall tag sums.");
+  mpi_err = MPI_Alltoall(send_xor_by_node, 1, MPI_UNSIGNED_LONG_LONG,
+                         peer_send_xor, 1, MPI_UNSIGNED_LONG_LONG,
+                         MPI_COMM_WORLD);
+  if (mpi_err != MPI_SUCCESS)
+    mpi_error(mpi_err, "Failed to alltoall tag xors.");
 
   for (int k = 0; k < nr_nodes; k++) {
     if (recv_count_by_node[k] != peer_send_count[k] ||
