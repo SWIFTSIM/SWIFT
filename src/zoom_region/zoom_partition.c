@@ -160,6 +160,21 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
  * 26-neighbour stencil. In the zoom graph the emitted CSR row length is no
  * longer fixed, so we normalise by the actual number of outgoing edges for each
  * cell to avoid over-weighting interface cells.
+ *
+ * @param count The number of particles in the source cell.
+ * @param cid The source cell index.
+ * @param cell_edge_offsets The cumulative edge offsets for each cell, i.e.
+ * cell_edge_offsets[cid+1] - cell_edge_offsets[cid] gives the number of
+ * outgoing edges for this cell.
+ * @param di The i-offset of the neighbour within the local adjacent cells
+ * around cid (-1, 0, or 1).
+ * @param dj The j-offset of the neighbour within the local adjacent cells
+ * around cid (-1, 0, or 1).
+ * @param dk The k-offset of the neighbour within the local adjacent cells
+ * around cid (-1, 0, or 1).
+ *
+ * @return The edge weight for the neighbour at the given offset, normalised by
+ * the number of outgoing edges for the source cell.
  */
 __attribute__((always_inline)) INLINE static double zoom_partition_edge_weight(
     const double count, const int cid, const int *cell_edge_offsets,
