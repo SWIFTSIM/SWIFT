@@ -1548,7 +1548,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   engine_unskip(e);
   if (e->forcerebuild) {
     message("break");
-    error("engine_unskip faled after a rebuild!");
+    error("engine_unskip failed after a rebuild!");
   }
 
   /* Print the status of the system */
