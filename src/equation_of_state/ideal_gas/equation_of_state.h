@@ -49,7 +49,8 @@ __attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_entropy(const float density, const float entropy) {
 
   if (density <= 0.0) {
-    warning("density must be positive");
+    warning("Internal Energy from Entropy has <= 0 density, resetting to 0!");
+    return 0.0;
   }
 
   return entropy * pow_gamma_minus_one(density) *
