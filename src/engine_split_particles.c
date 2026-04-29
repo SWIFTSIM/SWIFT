@@ -93,7 +93,7 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
 #if defined(SHADOWSWIFT_STEERING_FACEANGLE_FLOWS) && defined(MOVING_MESH_HYDRO)
     /* Also seen in engine_split_gas_particle_split_mapper() and explained
      * in more detail there. TLDR: Do Not split cells with irregular geometry */
-    if (p->geometry.max_face_angle > 1.5 * 2.) {
+    if (p->geometry.max_face_angle > 2.) {
       continue;
     }
 #endif
@@ -160,7 +160,7 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
 
     /* Here we set angle > beta from Weinberger 2020 Eq. 39, where beta is
      * usually 2  or 2.25, the same as the velocity steering criteria */
-    if (p->geometry.max_face_angle > 1.5 * 2.) {
+    if (p->geometry.max_face_angle > 2.) {
       continue;
     }
 #endif
