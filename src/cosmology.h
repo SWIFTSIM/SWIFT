@@ -45,6 +45,9 @@ struct cosmology {
   /*! Inverse cube of the current expansion factor of the Universe */
   double a3_inv;
 
+  /* Scale factor to the power 4*/
+  double a4;
+
   /*! Power of the scale-factor used for internal energy conversion to physical
    */
   double a_factor_internal_energy;
@@ -57,6 +60,9 @@ struct cosmology {
 
   /*! Power of the scale-factor used for relative velocities in visc. terms */
   double a_factor_mu;
+
+  /* Power of the scale-factor used for the artificial pressure terms in REMIX*/
+  double a_factor_Qij;
 
   /*! Power of the scale-factor used for epsilon term in the Balsara switch */
   double a_factor_Balsara_eps;

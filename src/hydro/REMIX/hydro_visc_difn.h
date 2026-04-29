@@ -25,7 +25,9 @@
  * @brief Utilities for REMIX artificial viscosity and diffusion calculations.
  */
 
+#include "adiabatic_index.h"
 #include "const.h"
+#include "cosmology.h"
 #include "hydro_parameters.h"
 #include "math.h"
 
@@ -197,7 +199,9 @@ hydro_end_gradient_extra_visc_difn(struct part *restrict p) {}
 __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     float *Qi, float *Qj, float *visc_signal_velocity,
     float *difn_signal_velocity, const struct part *restrict pi,
-    const struct part *restrict pj, const float dx[3]) {
+    const struct part *restrict pj, const float dx[3], 
+    const float a,
+    const float H) {
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float r = sqrtf(r2);
@@ -279,12 +283,14 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
                       slope_limiter_exp_denom);
     }
 
+    /*Add scale factors here (eq 78 SPH eqs paper + eq 74-76 for the reconstructed velocities)*/
+    const float hubble_flow_times_a2 = H * a * a;
     for (int i = 0; i < 3; i++) {
       /* Assemble the reconstructed velocity (Sandnes+2025 Eqn. 36) */
-      vtilde_i[i] =
-          pi->v[i] + (1.f - pi->force.balsara) * phi_i_v * v_reconst_i[i];
-      vtilde_j[i] =
-          pj->v[i] + (1.f - pj->force.balsara) * phi_j_v * v_reconst_j[i];
+      vtilde_i[i] = hubble_flow_times_a2 * pi->x[i] +
+          pi->v[i] + (1.f - pi->force.balsara) * phi_i_v * (v_reconst_i[i] + 3*hubble_flow_times_a2);
+      vtilde_j[i] = hubble_flow_times_a2 * pi->x[i] +
+          pj->v[i] + (1.f - pj->force.balsara) * phi_j_v * (v_reconst_j[i] + 3*hubble_flow_times_a2);
     }
   }
 
@@ -303,11 +309,15 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
+  /*Add scale factors here! (eq 84 SPH eqs paper)*/
+  const float cosmo_factor_Qij = pow_three_gamma_minus_seven_over_two(a);
+  const float cosmo_a4 = a * a * a * a;
+
   /* Finally assemble viscous pressure terms (Sandnes+2025 41) */
-  *Qi = (a_visc + b_visc * pi->force.balsara) * 0.5f * pi->rho *
-        (-alpha * ci * mu_i + beta * mu_i * mu_i);
-  *Qj = (a_visc + b_visc * pj->force.balsara) * 0.5f * pj->rho *
-        (-alpha * cj * mu_j + beta * mu_j * mu_j);
+  *Qi = cosmo_factor_Qij * (a_visc + b_visc * pi->force.balsara) * 0.5f * pi->rho *
+        (-alpha * ci * mu_i + cosmo_a4* beta * mu_i * mu_i);
+  *Qj = cosmo_factor_Qij* (a_visc + b_visc * pj->force.balsara) * 0.5f * pj->rho *
+        (-alpha * cj * mu_j + cosmo_a4 * beta * mu_j * mu_j);
 
   /* Account for alpha being outside brackets in timestep code */
   const float viscosity_parameter_factor = (alpha == 0.f) ? 0.f : beta / alpha;

@@ -235,6 +235,7 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
   c->a_inv = a_inv;
   c->a2_inv = a_inv * a_inv;
   c->a3_inv = a_inv * a_inv * a_inv;
+  c->a4 = a * a * a * a;
   c->a_factor_internal_energy =
       pow(a, -3. * hydro_gamma_minus_one);          /* a^{3*(1-gamma)} */
   c->a_factor_pressure = pow(a, -3. * hydro_gamma); /* a^{-3*gamma} */
@@ -245,6 +246,8 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
       pow(a, -3. * hydro_gamma + 2.); /* 1 / a^(3*gamma - 2) */
   c->a_factor_mu =
       pow(a, 0.5 * (3. * hydro_gamma - 5.)); /* a^{(3*gamma - 5) / 2} */
+  c->a_factor_Qij =
+      pow(a, 0.5 * (3. * hydro_gamma - 7.)); /* a^{(3*gamma - 7) / 2} */
   c->a_factor_Balsara_eps =
       pow(a, 0.5 * (1. - 3. * hydro_gamma)); /* a^{(1 - 3*gamma) / 2} */
 
@@ -1089,10 +1092,12 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_inv = 1.;
   c->a2_inv = 1.;
   c->a3_inv = 1.;
+  c->a4 = 1.;
   c->a_factor_internal_energy = 1.;
   c->a_factor_pressure = 1.;
   c->a_factor_sound_speed = 1.;
   c->a_factor_mu = 1.;
+  c->a_factor_Qij = 1.;
   c->a_factor_Balsara_eps = 1.;
   c->a_factor_hydro_accel = 1.;
   c->a_factor_grav_accel = 1.;
