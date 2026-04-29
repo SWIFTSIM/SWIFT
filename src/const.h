@@ -149,15 +149,18 @@
  * regular by adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
 #define SHADOWSWIFT_STEER_MOTION
+
 #ifdef SHADOWSWIFT_STEER_MOTION
 /*! @brief More agressive cell steering for cold flows, where the other
- * criterion might become ineffective. */
-#define SHADOWSWIFT_STEERING_COLD_FLOWS
+ * criterion might become ineffective. Mach Based Criterion. */
+//#define SHADOWSWIFT_STEERING_COLD_FLOWS
+
 #ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
 /*! @brief Enable smoother gradient of cold steering */
-#define SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
+//#define SHADOWSWIFT_STEERING_COLD_FLOWS_GRADIENT
 #endif
-/*! @brief Uses a geometric argument for enabling steering, see Vogelsberger 2012 */
+
+/*! @brief Use a geometric argument for steering, see Vogelsberger 2012 */
 #define SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
 #endif
 #endif
@@ -167,6 +170,7 @@
 #define THERMAL_ENERGY_SWITCH_SPRINGEL 1
 #define THERMAL_ENERGY_SWITCH_SPRINGEL_MACH 2
 #define THERMAL_ENERGY_SWITCH_ASENSIO 3
+#define THERMAL_ENERGY_SWITCH_ASENSIO_COSMO 4 // Excludes entropy switch (Asensio, private communication)
 #define SHADOWSWIFT_THERMAL_ENERGY_SWITCH THERMAL_ENERGY_SWITCH_ASENSIO
 
 /* Options controlling derefinement of particles */
@@ -176,9 +180,11 @@
 #define SHADOWSWIFT_DEREFINEMENT_FACE_WEIGHTS \
   SHADOWSWIFT_DEREFINEMENT_WEIGHTS_AREA
 
-/*! @brief This option enables a (more) exact gravitational work term */
+/*! @brief This option enables a (more) exact gravitational work term
+ * NOTE: This is largely untested, and tests that have been done indicate this
+ * is not a great solution. Left disabled until further notice */
 #ifndef RIEMANN_SOLVER_HLLC
-#define SHADOWSWIFT_EXACT_GRAV_WORK
+//#define SHADOWSWIFT_EXACT_GRAV_WORK
 #endif
 
 /*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT
