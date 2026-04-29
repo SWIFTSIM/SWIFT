@@ -377,6 +377,26 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   MPI_Request *reqs_out = &reqs_in[num_reqs_in];
   int *cids_out = &cids_in[num_reqs_in];
 
+  /* Check for void cells in proxy lists (should not happen after repartition). */
+  for (int k = 0; k < num_proxies; k++) {
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      if (proxies[k].cells_in[j]->subtype == cell_subtype_void) {
+        error(
+            "Void cell in proxy %d cells_in[%d] (node=%d) during tag "
+            "exchange. This should not happen after repartition!",
+            k, j, proxies[k].nodeID);
+      }
+    }
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      if (proxies[k].cells_out[j]->subtype == cell_subtype_void) {
+        error(
+            "Void cell in proxy %d cells_out[%d] (node=%d) during tag "
+            "exchange. This should not happen after repartition!",
+            k, j, proxies[k].nodeID);
+      }
+    }
+  }
+
   /* Emit the sends and recvs. */
   message("Proxy tag exchange emitting sends and recvs.");
 
