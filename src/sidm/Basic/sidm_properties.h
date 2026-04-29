@@ -21,6 +21,7 @@
 
 /* Local header */
 #include "parser.h"
+#include "units.h"
 
 #define sidm_props_default_max_iterations 30
 #define sidm_props_default_volume_change 1.4f
@@ -32,6 +33,12 @@
  * @brief Properties of SIDM in the Basic model.
  */
 struct sidm_props {
+
+  /* ----- SIDM scheme ------ */
+  int with_constant_cross_section;
+
+  /*! SIDM scattering cross-section per unit mass */
+  float sigma_over_m;
 
   /* ----- Basic neighbour search properties ------ */
 
@@ -134,6 +141,17 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
     sip->log_max_h_change = hydro_props->log_max_h_change;
   else
     sip->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+  /* Interaction properties */
+  const int with_constant_cross_section =
+      parser_get_param_int(params, "BasicSIDM:constant_cross_section");
+
+  if (with_constant_cross_section)
+    sip->sigma_over_m =
+        parser_get_param_float(params, "BasicSIDM:sigma_over_m_cgs") /
+        units_cgs_conversion_factor(us, UNIT_CONV_AREA_PER_UNIT_MASS);
+  else
+    sip->sigma_over_m = 0.f;  // TODO: deal with velocity-dependent models later
 }
 
 /**

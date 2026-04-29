@@ -3506,11 +3506,12 @@ int cell_unskip_sidm_tasks(struct cell *c, struct scheduler *s) {
 
   /* Unskip all the other task types. */
   int c_active = cell_is_active_sidm(c, e);
-  // if (c_active) {
-  //   if (c->sidm.density_ghost != NULL)
-  //     scheduler_activate(s, c->sidm.density_ghost);
-  // }
   if (c->nodeID == nodeID && c_active) {
+
+    for (struct link *l = c->sidm.force; l != NULL; l = l->next) {
+      scheduler_activate(s, l->t);
+    }
+
     if (c->sidm.super->sidm.density_ghost != NULL)
       scheduler_activate(s, c->sidm.super->sidm.density_ghost);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
@@ -3518,6 +3519,7 @@ int cell_unskip_sidm_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->top->timestep_collect != NULL)
       scheduler_activate(s, c->top->timestep_collect);
+    if (c->sidm.end_force != NULL) scheduler_activate(s, c->sidm.end_force);
 #ifdef WITH_CSDS
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif

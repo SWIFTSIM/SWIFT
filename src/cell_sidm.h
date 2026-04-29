@@ -61,6 +61,12 @@ struct cell_sidm {
     /*! The SIDM ghost task itself */
     struct task *density_ghost;
 
+    /*! The task to end the force calculation */
+    struct task *end_force;
+
+    /*! The SIDM force task itself */
+    struct link *force;
+
     /*! Linked list of the tasks computing this cell's SIDM density. */
     struct link *density;
 

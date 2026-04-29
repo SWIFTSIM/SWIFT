@@ -20,6 +20,7 @@ task_colours = {
     "gravity": "red3",
     "RT": "springgreen",
     "sink": "lightseagreen",
+    "sidm": "DarkOrchid2",
 }
 
 
@@ -149,6 +150,8 @@ def get_task_colour(taskname):
         colour = task_colours["black_holes"]
     elif task_is_stars(taskname):
         colour = task_colours["stars"]
+    elif task_is_sidm(taskname):
+        colour = task_colours["sidm"]
     elif task_is_hydro(taskname):
         colour = task_colours["hydro"]
     elif task_is_gravity(taskname):
@@ -189,6 +192,22 @@ def task_is_stars(name):
     if "stars" in name or "spart" in name:
         return True
     if "sf_count" in name:
+        return True
+
+    return False
+
+
+def task_is_sidm(name):
+    """
+    Does the task concern SIDM?
+
+    Parameters
+    ----------
+
+    name: str
+        Task name
+    """
+    if "SIDM" in name or "sidm" in name or "sipart" in name:
         return True
 
     return False

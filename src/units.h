@@ -132,6 +132,7 @@ enum unit_conversion_factor {
   UNIT_CONV_PHOTONS_PER_TIME,
   UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
   UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA,
+  UNIT_CONV_AREA_PER_UNIT_MASS,
 };
 
 void units_init_cgs(struct unit_system *);
