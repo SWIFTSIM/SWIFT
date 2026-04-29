@@ -179,6 +179,20 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   message("Proxy tag exchange requests: num_reqs_in=%d num_reqs_out=%d.",
           num_reqs_in, num_reqs_out);
 
+  for (int k = 0; k < num_proxies; k++) {
+    int pcells_in = 0;
+    int pcells_out = 0;
+    for (int j = 0; j < proxies[k].nr_cells_in; j++)
+      pcells_in += proxies[k].cells_in[j]->mpi.pcell_size;
+    for (int j = 0; j < proxies[k].nr_cells_out; j++)
+      pcells_out += proxies[k].cells_out[j]->mpi.pcell_size;
+    message(
+        "Proxy tag exchange proxy %d node=%d cells_in=%d cells_out=%d "
+        "pcells_in=%d pcells_out=%d.",
+        k, proxies[k].nodeID, proxies[k].nr_cells_in, proxies[k].nr_cells_out,
+        pcells_in, pcells_out);
+  }
+
   /* Catch asymmetric proxy tag exchanges before entering MPI_Waitall(). */
   const int nr_nodes = s->e->nr_nodes;
   int *send_count_by_node = (int *)calloc(nr_nodes, sizeof(int));
