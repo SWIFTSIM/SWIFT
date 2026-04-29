@@ -236,6 +236,18 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
   unsigned long long *peer_send_size =
       (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
+  unsigned long long *send_pair_sum_by_node =
+      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
+  unsigned long long *recv_pair_sum_by_node =
+      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
+  unsigned long long *peer_send_pair_sum =
+      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
+  unsigned long long *send_pair_xor_by_node =
+      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
+  unsigned long long *recv_pair_xor_by_node =
+      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
+  unsigned long long *peer_send_pair_xor =
+      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
   unsigned long long *send_xor_by_node =
       (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
   unsigned long long *recv_xor_by_node =
@@ -247,6 +259,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       recv_sum_by_node == NULL || peer_send_sum == NULL ||
       send_size_by_node == NULL || recv_size_by_node == NULL ||
       peer_send_size == NULL ||
+      send_pair_sum_by_node == NULL || recv_pair_sum_by_node == NULL ||
+      peer_send_pair_sum == NULL || send_pair_xor_by_node == NULL ||
+      recv_pair_xor_by_node == NULL || peer_send_pair_xor == NULL ||
       send_xor_by_node == NULL || recv_xor_by_node == NULL ||
       peer_send_xor == NULL)
     error("Failed to allocate proxy tag exchange debug buffers.");
@@ -255,16 +270,26 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     const int nodeID = proxies[k].nodeID;
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
       const unsigned long long cid = proxies[k].cells_in[j] - s->cells_top;
+      const unsigned long long size = proxies[k].cells_in[j]->mpi.pcell_size;
+      const unsigned long long pair_hash =
+          (cid + 0x9e3779b97f4a7c15ULL) ^ (size * 0xbf58476d1ce4e5b9ULL);
       recv_count_by_node[nodeID] += 1;
       recv_sum_by_node[nodeID] += cid;
-      recv_size_by_node[nodeID] += proxies[k].cells_in[j]->mpi.pcell_size;
+      recv_size_by_node[nodeID] += size;
+      recv_pair_sum_by_node[nodeID] += pair_hash;
+      recv_pair_xor_by_node[nodeID] ^= pair_hash;
       recv_xor_by_node[nodeID] ^= cid;
     }
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
       const unsigned long long cid = proxies[k].cells_out[j] - s->cells_top;
+      const unsigned long long size = proxies[k].cells_out[j]->mpi.pcell_size;
+      const unsigned long long pair_hash =
+          (cid + 0x9e3779b97f4a7c15ULL) ^ (size * 0xbf58476d1ce4e5b9ULL);
       send_count_by_node[nodeID] += 1;
       send_sum_by_node[nodeID] += cid;
-      send_size_by_node[nodeID] += proxies[k].cells_out[j]->mpi.pcell_size;
+      send_size_by_node[nodeID] += size;
+      send_pair_sum_by_node[nodeID] += pair_hash;
+      send_pair_xor_by_node[nodeID] ^= pair_hash;
       send_xor_by_node[nodeID] ^= cid;
     }
   }
@@ -285,6 +310,16 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                          MPI_COMM_WORLD);
   if (mpi_err != MPI_SUCCESS)
     mpi_error(mpi_err, "Failed to alltoall tag sizes.");
+  mpi_err = MPI_Alltoall(send_pair_sum_by_node, 1, MPI_UNSIGNED_LONG_LONG,
+                         peer_send_pair_sum, 1, MPI_UNSIGNED_LONG_LONG,
+                         MPI_COMM_WORLD);
+  if (mpi_err != MPI_SUCCESS)
+    mpi_error(mpi_err, "Failed to alltoall tag pair sums.");
+  mpi_err = MPI_Alltoall(send_pair_xor_by_node, 1, MPI_UNSIGNED_LONG_LONG,
+                         peer_send_pair_xor, 1, MPI_UNSIGNED_LONG_LONG,
+                         MPI_COMM_WORLD);
+  if (mpi_err != MPI_SUCCESS)
+    mpi_error(mpi_err, "Failed to alltoall tag pair xors.");
   mpi_err = MPI_Alltoall(send_xor_by_node, 1, MPI_UNSIGNED_LONG_LONG,
                          peer_send_xor, 1, MPI_UNSIGNED_LONG_LONG,
                          MPI_COMM_WORLD);
@@ -297,14 +332,19 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     if (recv_count_by_node[k] != peer_send_count[k] ||
         recv_sum_by_node[k] != peer_send_sum[k] ||
         recv_size_by_node[k] != peer_send_size[k] ||
+        recv_pair_sum_by_node[k] != peer_send_pair_sum[k] ||
+        recv_pair_xor_by_node[k] != peer_send_pair_xor[k] ||
         recv_xor_by_node[k] != peer_send_xor[k]) {
       error(
           "Asymmetric proxy tag exchange with node %d: expecting %d tags "
-          "(sum=%llu size=%llu xor=%llu), peer sends %d tags (sum=%llu "
-          "size=%llu xor=%llu).",
+          "(sum=%llu size=%llu pair_sum=%llu pair_xor=%llu xor=%llu), peer "
+          "sends %d tags (sum=%llu size=%llu pair_sum=%llu pair_xor=%llu "
+          "xor=%llu).",
           k, recv_count_by_node[k], recv_sum_by_node[k], recv_size_by_node[k],
+          recv_pair_sum_by_node[k], recv_pair_xor_by_node[k],
           recv_xor_by_node[k], peer_send_count[k], peer_send_sum[k],
-          peer_send_size[k], peer_send_xor[k]);
+          peer_send_size[k], peer_send_pair_sum[k], peer_send_pair_xor[k],
+          peer_send_xor[k]);
     }
   }
 
@@ -317,6 +357,12 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   free(send_size_by_node);
   free(recv_size_by_node);
   free(peer_send_size);
+  free(send_pair_sum_by_node);
+  free(recv_pair_sum_by_node);
+  free(peer_send_pair_sum);
+  free(send_pair_xor_by_node);
+  free(recv_pair_xor_by_node);
+  free(peer_send_pair_xor);
   free(send_xor_by_node);
   free(recv_xor_by_node);
   free(peer_send_xor);
