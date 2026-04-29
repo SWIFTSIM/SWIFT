@@ -379,10 +379,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   new_internal_energy = fmax(new_internal_energy,
     gas_internal_energy_from_entropy(W[0], floor_entropy));
 
-  /* Limit internal energy decrease to max 1/2 of internal energy */
-  /* Is this still relevant? */
-  //new_internal_energy = fmax(new_internal_energy, 0.5 * old_internal_energy);
-
   /* Apply internal energy floor */
   new_internal_energy = fmax(new_internal_energy,
     hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy);
