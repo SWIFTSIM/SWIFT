@@ -158,9 +158,9 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
                                  siparts, rho,
                                  "Co-moving mass densities of the particles");
 
-  list[6] = io_make_output_field("Rates", FLOAT, 1, UNIT_CONV_FREQUENCY, -1.f,
-                                 siparts, SIDM_rate,
-                                 "SIDM scattering rate of the particles"); //TODO:check cosmo factor
+  list[6] = io_make_output_field(
+      "Rates", FLOAT, 1, UNIT_CONV_FREQUENCY, -1.f, siparts, SIDM_rate,
+      "SIDM scattering rate of the particles");  // TODO:check cosmo factor
 }
 
 #endif /* SWIFT_BASIC_SIDM_IO_H */

@@ -2119,8 +2119,8 @@ void engine_make_hierarchical_tasks_sidm(struct engine *e, struct cell *c) {
                                         task_subtype_none, 0, 0, c, NULL);
 
       /* Add the task finishing the force calculation */
-      c->sidm.end_force = scheduler_addtask(
-          s, task_type_sidm_end_force, task_subtype_none, 0, 0, c, NULL);
+      c->sidm.end_force = scheduler_addtask(s, task_type_sidm_end_force,
+                                            task_subtype_none, 0, 0, c, NULL);
 
       /* Generate the ghost tasks. */
       c->sidm.density_ghost = scheduler_addtask(
@@ -2380,7 +2380,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_sidm_density) {
         engine_addlink(e, &ci->sidm.density, t);
       } else if (t_subtype == task_subtype_sidm_force) {
-      engine_addlink(e, &ci->sidm.force, t);  
+        engine_addlink(e, &ci->sidm.force, t);
       }
 
       /* Link pair tasks to cells. */
@@ -3702,9 +3702,10 @@ struct cell_type_pair {
  * @param force The force task to link.
  * @param c The cell.
  */
-static inline void engine_make_sidm_loops_dependencies(
-    struct scheduler *sched, struct task *density,
-    struct task *force, struct cell *c) {
+static inline void engine_make_sidm_loops_dependencies(struct scheduler *sched,
+                                                       struct task *density,
+                                                       struct task *force,
+                                                       struct cell *c) {
 
   /* density loop --> ghost --> force loop  */
   scheduler_addunlock(sched, density, c->sidm.super->sidm.density_ghost);
@@ -3882,10 +3883,9 @@ void engine_make_extra_sidmloop_tasks_mapper(void *map_data, int num_elements,
       // scheduler_addunlock(sched, ci->sidm.super->sidm.sorts, t);
 
       /* Start by constructing the task for the second SIDM loop */
-      t_sidm_force =
-          scheduler_addtask(sched, task_type_self, task_subtype_sidm_force,
-                            flags, 0, ci, NULL);
-      
+      t_sidm_force = scheduler_addtask(
+          sched, task_type_self, task_subtype_sidm_force, flags, 0, ci, NULL);
+
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->sidm.force, t_sidm_force);
 
@@ -3897,10 +3897,10 @@ void engine_make_extra_sidmloop_tasks_mapper(void *map_data, int num_elements,
       scheduler_addunlock(sched, t_sidm_force, ci->sidm.super->sidm.end_force);
 
     }
-    
+
     /* Otherwise, pair interaction? */
     else if (t_type == task_type_pair &&
-               t_subtype == task_subtype_sidm_density) {
+             t_subtype == task_subtype_sidm_density) {
 
       /* Make all density tasks depend on the drift */
       if (ci->nodeID == nodeID) {
@@ -3917,9 +3917,8 @@ void engine_make_extra_sidmloop_tasks_mapper(void *map_data, int num_elements,
       // }
 
       /* New task for the force */
-      t_sidm_force =
-          scheduler_addtask(sched, task_type_pair, task_subtype_sidm_force,
-                            flags, 0, ci, cj);
+      t_sidm_force = scheduler_addtask(
+          sched, task_type_pair, task_subtype_sidm_force, flags, 0, ci, cj);
 
       engine_addlink(e, &ci->sidm.force, t_sidm_force);
       engine_addlink(e, &cj->sidm.force, t_sidm_force);
@@ -3928,11 +3927,13 @@ void engine_make_extra_sidmloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (ci->nodeID == nodeID) {
         engine_make_sidm_loops_dependencies(sched, t, t_sidm_force, ci);
-        scheduler_addunlock(sched, t_sidm_force, ci->sidm.super->sidm.end_force);
+        scheduler_addunlock(sched, t_sidm_force,
+                            ci->sidm.super->sidm.end_force);
       }
       if ((cj->nodeID == nodeID) && (ci->sidm.super != cj->sidm.super)) {
         engine_make_sidm_loops_dependencies(sched, t, t_sidm_force, cj);
-        scheduler_addunlock(sched, t_sidm_force, cj->sidm.super->sidm.end_force);
+        scheduler_addunlock(sched, t_sidm_force,
+                            cj->sidm.super->sidm.end_force);
       }
     }
   }

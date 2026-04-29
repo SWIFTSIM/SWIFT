@@ -1021,7 +1021,6 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_end_grav_force);
 }
 
-
 /**
  * @brief End the SIDM force calculation of all active particles in a cell
  * by multiplying the acccelerations by the relevant constants
@@ -1066,7 +1065,6 @@ void runner_do_end_sidm_force(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_end_sidm_force);
 }
-
 
 /**
  * @brief Write the required particles through the csds.

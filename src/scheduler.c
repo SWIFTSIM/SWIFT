@@ -942,7 +942,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           qid = t->ci->grav.super->owner;
           owner = &t->ci->grav.super->owner;
         } else if (t->subtype == task_subtype_sidm_density ||
-		   t->subtype == task_subtype_sidm_force) {
+                   t->subtype == task_subtype_sidm_force) {
           qid = t->ci->sidm.super->owner;
           owner = &t->ci->sidm.super->owner;
         } else {
@@ -976,7 +976,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_pair:
         if (t->subtype == task_subtype_sidm_density ||
-	    t->subtype == task_subtype_sidm_force) {
+            t->subtype == task_subtype_sidm_force) {
           qid = t->ci->sidm.super->owner;
           owner = &t->ci->sidm.super->owner;
           if ((qid < 0) || ((t->cj->sidm.super->owner > -1) &&

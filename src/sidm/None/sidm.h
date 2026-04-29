@@ -101,8 +101,7 @@ __attribute__((always_inline)) INLINE static float sidm_get_comoving_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sidm_end_force(
-    struct sipart *restrict sip, const struct cosmology *cosmo) {
-}
+    struct sipart *restrict sip, const struct cosmology *cosmo) {}
 
 /**
  * @brief Kick the additional variables

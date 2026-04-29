@@ -123,7 +123,7 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
 __attribute__((always_inline)) INLINE static void sidm_end_force(
     struct sipart *restrict sip, const struct cosmology *cosmo) {
 
-  //TODO
+  // TODO
 }
 
 /**
