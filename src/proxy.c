@@ -182,10 +182,36 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   for (int k = 0; k < num_proxies; k++) {
     int pcells_in = 0;
     int pcells_out = 0;
-    for (int j = 0; j < proxies[k].nr_cells_in; j++)
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      const ptrdiff_t cid = proxies[k].cells_in[j] - s->cells_top;
+      if (cid < 0 || cid >= s->nr_cells)
+        error(
+            "Invalid proxy input cell pointer in proxy %d node=%d cell=%d "
+            "cid=%td nr_cells=%d.",
+            k, proxies[k].nodeID, j, cid, s->nr_cells);
+      if (proxies[k].cells_in[j]->mpi.pcell_size < 0)
+        error(
+            "Invalid negative input pcell_size in proxy %d node=%d cell=%d "
+            "cid=%td pcell_size=%d.",
+            k, proxies[k].nodeID, j, cid,
+            proxies[k].cells_in[j]->mpi.pcell_size);
       pcells_in += proxies[k].cells_in[j]->mpi.pcell_size;
-    for (int j = 0; j < proxies[k].nr_cells_out; j++)
+    }
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      const ptrdiff_t cid = proxies[k].cells_out[j] - s->cells_top;
+      if (cid < 0 || cid >= s->nr_cells)
+        error(
+            "Invalid proxy output cell pointer in proxy %d node=%d cell=%d "
+            "cid=%td nr_cells=%d.",
+            k, proxies[k].nodeID, j, cid, s->nr_cells);
+      if (proxies[k].cells_out[j]->mpi.pcell_size < 0)
+        error(
+            "Invalid negative output pcell_size in proxy %d node=%d cell=%d "
+            "cid=%td pcell_size=%d.",
+            k, proxies[k].nodeID, j, cid,
+            proxies[k].cells_out[j]->mpi.pcell_size);
       pcells_out += proxies[k].cells_out[j]->mpi.pcell_size;
+    }
     message(
         "Proxy tag exchange proxy %d node=%d cells_in=%d cells_out=%d "
         "pcells_in=%d pcells_out=%d.",
@@ -204,6 +230,12 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
   unsigned long long *peer_send_sum =
       (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
+  unsigned long long *send_size_by_node =
+      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
+  unsigned long long *recv_size_by_node =
+      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
+  unsigned long long *peer_send_size =
+      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
   unsigned long long *send_xor_by_node =
       (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
   unsigned long long *recv_xor_by_node =
@@ -213,6 +245,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   if (send_count_by_node == NULL || recv_count_by_node == NULL ||
       peer_send_count == NULL || send_sum_by_node == NULL ||
       recv_sum_by_node == NULL || peer_send_sum == NULL ||
+      send_size_by_node == NULL || recv_size_by_node == NULL ||
+      peer_send_size == NULL ||
       send_xor_by_node == NULL || recv_xor_by_node == NULL ||
       peer_send_xor == NULL)
     error("Failed to allocate proxy tag exchange debug buffers.");
@@ -223,12 +257,14 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       const unsigned long long cid = proxies[k].cells_in[j] - s->cells_top;
       recv_count_by_node[nodeID] += 1;
       recv_sum_by_node[nodeID] += cid;
+      recv_size_by_node[nodeID] += proxies[k].cells_in[j]->mpi.pcell_size;
       recv_xor_by_node[nodeID] ^= cid;
     }
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
       const unsigned long long cid = proxies[k].cells_out[j] - s->cells_top;
       send_count_by_node[nodeID] += 1;
       send_sum_by_node[nodeID] += cid;
+      send_size_by_node[nodeID] += proxies[k].cells_out[j]->mpi.pcell_size;
       send_xor_by_node[nodeID] ^= cid;
     }
   }
@@ -244,6 +280,11 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                          MPI_COMM_WORLD);
   if (mpi_err != MPI_SUCCESS)
     mpi_error(mpi_err, "Failed to alltoall tag sums.");
+  mpi_err = MPI_Alltoall(send_size_by_node, 1, MPI_UNSIGNED_LONG_LONG,
+                         peer_send_size, 1, MPI_UNSIGNED_LONG_LONG,
+                         MPI_COMM_WORLD);
+  if (mpi_err != MPI_SUCCESS)
+    mpi_error(mpi_err, "Failed to alltoall tag sizes.");
   mpi_err = MPI_Alltoall(send_xor_by_node, 1, MPI_UNSIGNED_LONG_LONG,
                          peer_send_xor, 1, MPI_UNSIGNED_LONG_LONG,
                          MPI_COMM_WORLD);
@@ -255,12 +296,15 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   for (int k = 0; k < nr_nodes; k++) {
     if (recv_count_by_node[k] != peer_send_count[k] ||
         recv_sum_by_node[k] != peer_send_sum[k] ||
+        recv_size_by_node[k] != peer_send_size[k] ||
         recv_xor_by_node[k] != peer_send_xor[k]) {
       error(
           "Asymmetric proxy tag exchange with node %d: expecting %d tags "
-          "(sum=%llu xor=%llu), peer sends %d tags (sum=%llu xor=%llu).",
-          k, recv_count_by_node[k], recv_sum_by_node[k], recv_xor_by_node[k],
-          peer_send_count[k], peer_send_sum[k], peer_send_xor[k]);
+          "(sum=%llu size=%llu xor=%llu), peer sends %d tags (sum=%llu "
+          "size=%llu xor=%llu).",
+          k, recv_count_by_node[k], recv_sum_by_node[k], recv_size_by_node[k],
+          recv_xor_by_node[k], peer_send_count[k], peer_send_sum[k],
+          peer_send_size[k], peer_send_xor[k]);
     }
   }
 
@@ -270,6 +314,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   free(send_sum_by_node);
   free(recv_sum_by_node);
   free(peer_send_sum);
+  free(send_size_by_node);
+  free(recv_size_by_node);
+  free(peer_send_size);
   free(send_xor_by_node);
   free(recv_xor_by_node);
   free(peer_send_xor);
@@ -288,8 +335,17 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   message("Proxy tag exchange emitting sends and recvs.");
 
   for (int send_rid = 0, recv_rid = 0, k = 0; k < num_proxies; k++) {
+    message("Proxy tag exchange emitting recvs for proxy %d node=%d.", k,
+            proxies[k].nodeID);
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
       const int cid = proxies[k].cells_in[j] - s->cells_top;
+      if (offset_in[cid] < 0 ||
+          offset_in[cid] + proxies[k].cells_in[j]->mpi.pcell_size > count_in)
+        error(
+            "Invalid tag receive buffer bounds in proxy %d node=%d cell=%d "
+            "cid=%d offset=%d pcell_size=%d count_in=%d.",
+            k, proxies[k].nodeID, j, cid, offset_in[cid],
+            proxies[k].cells_in[j]->mpi.pcell_size, count_in);
       cids_in[recv_rid] = cid;
       int err = MPI_Irecv(
           &tags_in[offset_in[cid]], proxies[k].cells_in[j]->mpi.pcell_size,
@@ -297,8 +353,17 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv tags.");
       recv_rid += 1;
     }
+    message("Proxy tag exchange emitting sends for proxy %d node=%d.", k,
+            proxies[k].nodeID);
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
       const int cid = proxies[k].cells_out[j] - s->cells_top;
+      if (offset_out[cid] < 0 ||
+          offset_out[cid] + proxies[k].cells_out[j]->mpi.pcell_size > count_out)
+        error(
+            "Invalid tag send buffer bounds in proxy %d node=%d cell=%d "
+            "cid=%d offset=%d pcell_size=%d count_out=%d.",
+            k, proxies[k].nodeID, j, cid, offset_out[cid],
+            proxies[k].cells_out[j]->mpi.pcell_size, count_out);
       cids_out[send_rid] = cid;
       int err = MPI_Isend(
           &tags_out[offset_out[cid]], proxies[k].cells_out[j]->mpi.pcell_size,
@@ -306,6 +371,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
       send_rid += 1;
     }
+    message("Proxy tag exchange emitted proxy %d node=%d.", k,
+            proxies[k].nodeID);
   }
 
   /* if (s->e->verbose) */
