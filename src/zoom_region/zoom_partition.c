@@ -154,12 +154,34 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
 /**
- * @brief Return the legacy directional edge weight for a neighbour offset.
+ * @brief Return the directional edge weight for a neighbour offset.
+ *
+ * The uniform-grid implementation normalised these weights by the fixed
+ * 26-neighbour stencil. In the zoom graph the emitted CSR row length is no
+ * longer fixed, so we normalise by the actual number of outgoing edges for each
+ * cell to avoid over-weighting interface cells.
+ *
+ * @param count The number of particles in the source cell.
+ * @param cid The source cell index.
+ * @param cell_edge_offsets The cumulative edge offsets for each cell, i.e.
+ * cell_edge_offsets[cid+1] - cell_edge_offsets[cid] gives the number of
+ * outgoing edges for this cell.
+ * @param di The i-offset of the neighbour within the local adjacent cells
+ * around cid (-1, 0, or 1).
+ * @param dj The j-offset of the neighbour within the local adjacent cells
+ * around cid (-1, 0, or 1).
+ * @param dk The k-offset of the neighbour within the local adjacent cells
+ * around cid (-1, 0, or 1).
+ *
+ * @return The edge weight for the neighbour at the given offset, normalised by
+ * the number of outgoing edges for the source cell.
  */
 __attribute__((always_inline)) INLINE static double zoom_partition_edge_weight(
-    const double count, const int di, const int dj, const int dk) {
+    const double count, const int cid, const int *cell_edge_offsets,
+    const int di, const int dj, const int dk) {
   const int sid = ((di + 1) * 9 + (dj + 1) * 3 + (dk + 1));
-  return count * sid_scale[sortlistID[sid]] / 26.0;
+  const int nr_edges = cell_edge_offsets[cid + 1] - cell_edge_offsets[cid];
+  return count * sid_scale[sortlistID[sid]] / nr_edges;
 }
 
 /**
@@ -362,7 +384,6 @@ void zoom_partition_sizes_to_edges(struct space *s, double *counts,
         /* Get the cell. */
         const int cid = cell_getid(zoom_cdim, i, j, k);
         struct cell *ci = &zoom_cells[cid];
-
         /* Loop over the immediate neighbours in the zoom grid. */
         for (int ii = -1; ii <= 1; ii++) {
           const int iii = i + ii;
@@ -381,10 +402,10 @@ void zoom_partition_sizes_to_edges(struct space *s, double *counts,
               if (cid >= cjd) continue;
 
               /* We have a neighbour: symmetrically assign the weights. */
-              edges[edge_pos[cid]] =
-                  zoom_partition_edge_weight(counts[cid], ii, jj, kk);
-              edges[edge_pos[cjd]] =
-                  zoom_partition_edge_weight(counts[cjd], -ii, -jj, -kk);
+              edges[edge_pos[cid]] = zoom_partition_edge_weight(
+                  counts[cid], cid, cell_edge_offsets, ii, jj, kk);
+              edges[edge_pos[cjd]] = zoom_partition_edge_weight(
+                  counts[cjd], cjd, cell_edge_offsets, -ii, -jj, -kk);
               edge_pos[cid]++;
               edge_pos[cjd]++;
             }
@@ -422,9 +443,10 @@ void zoom_partition_sizes_to_edges(struct space *s, double *counts,
 
               /* We have a neighbour: symmetrically assign the weights. */
               edges[edge_pos[cid]] = zoom_partition_edge_weight(
-                  counts[cid], bkg_ii, bkg_jj, bkg_kk);
+                  counts[cid], cid, cell_edge_offsets, bkg_ii, bkg_jj, bkg_kk);
               edges[edge_pos[bkg_cjd]] = zoom_partition_edge_weight(
-                  counts[bkg_cjd], -bkg_ii, -bkg_jj, -bkg_kk);
+                  counts[bkg_cjd], bkg_cjd, cell_edge_offsets, -bkg_ii, -bkg_jj,
+                  -bkg_kk);
               edge_pos[cid]++;
               edge_pos[bkg_cjd]++;
             }
@@ -441,7 +463,6 @@ void zoom_partition_sizes_to_edges(struct space *s, double *counts,
 
         /* Get the cell index */
         const int cid = cell_getid_offset(bkg_cdim, bkg_offset, i, j, k);
-
         /* Loop over the immediate neighbours in the background grid. */
         for (int ii = -1; ii <= 1; ii++) {
           int iii = i + ii;
@@ -464,10 +485,10 @@ void zoom_partition_sizes_to_edges(struct space *s, double *counts,
               if (cid >= cjd) continue;
 
               /* We have a neighbour: symmetrically assign the weights. */
-              edges[edge_pos[cid]] =
-                  zoom_partition_edge_weight(counts[cid], ii, jj, kk);
-              edges[edge_pos[cjd]] =
-                  zoom_partition_edge_weight(counts[cjd], -ii, -jj, -kk);
+              edges[edge_pos[cid]] = zoom_partition_edge_weight(
+                  counts[cid], cid, cell_edge_offsets, ii, jj, kk);
+              edges[edge_pos[cjd]] = zoom_partition_edge_weight(
+                  counts[cjd], cjd, cell_edge_offsets, -ii, -jj, -kk);
               edge_pos[cid]++;
               edge_pos[cjd]++;
             }
