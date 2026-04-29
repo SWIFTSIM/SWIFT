@@ -35,59 +35,38 @@ __attribute__((always_inline)) INLINE static float
 hydro_gravity_energy_update_term(const float dt_kick_corr1,
                                  const float dt_kick_corr2,
                                  const float* a_grav1, const float* a_grav2,
-                                 const float* mflux, const float* v_full,
-                                 const float* grav_kick,
-                                 const float* conserved_momentum_grav_kicked,
-                                 const float* fluxes,
-                                 const float conserved_energy) {
+                                 const float* mflux1, const float* mflux2,
+                                 const float* v_full, const float* grav_kick) {
 
-//   /* Gravitational work term due to mass fluxes */
-//   float grav_work[3] = {
-//     dt_kick_corr1 * a_grav1[0] + dt_kick_corr2 * a_grav2[0],
-//     dt_kick_corr1 * a_grav1[1] + dt_kick_corr2 * a_grav2[1],
-//     dt_kick_corr1 * a_grav1[2] + dt_kick_corr2 * a_grav2[2],
-// };
-//   float dE = mflux[0] * grav_work[0] + mflux[1] * grav_work[1] +
-//              mflux[2] * grav_work[2];
-//
-//   /* Gravitational kick at generator */
-//   dE += v_full[0] * grav_kick[0] + v_full[1] * grav_kick[1] +
-//         v_full[2] * grav_kick[2];
+  /* Developers note: this is follows the springel 2010 Eq 94 and all following
+   * equations that are based from it. In some cases, you will see a 1/2
+   * prefactor for the contributions. This is a result of averaging over the
+   * two timestep contributions. However, if dt_kick_corr is the actual
+   * half-timestep, this eliminates the need for an average, and the sum of the
+   * two time integrations is one full timestep */
 
-  /* Default onto simpler calculation if dE springel fails.
-   * Seen in Uttenhove PhD thesis Eq 230 */
- float dE;
+  /* Solve as in Springel 2010 Eq 94. Carry out as in Hopkins 2015 Eq H2.
+   * This is a slightly modified method of Springel, but we do both kicks
+   * at the same time, but as an average of n and n+1. */
 
-  /* Corresponds to momentum p_n*/
-  float conserved_momentum1[3] = {
-  conserved_momentum_grav_kicked[0] - grav_kick[0],
-  conserved_momentum_grav_kicked[1] - grav_kick[1],
-  conserved_momentum_grav_kicked[2] - grav_kick[2],
-  };
+  /* Start with momentum kicks */
+  float dE_momentum = v_full[0] * grav_kick[0] + v_full[1] * grav_kick[1] +
+        v_full[2] * grav_kick[2];
 
-  /* Naive guess at updated momentum p_n+1, since dE is added which will
-   * update fluxes, we must make a guess at p_n+1. It should be a reasonable
-   * guess
-   * corresponds to p_n + grav_kick + momentum_flux */
-  float conserved_momentum2[3] = {
-  conserved_momentum_grav_kicked[0] + fluxes[1],
-  conserved_momentum_grav_kicked[1] + fluxes[2],
-  conserved_momentum_grav_kicked[2] + fluxes[3],
-    };
+  /* Contribution from timestep n */
+  float grav_work1 = dt_kick_corr1 *
+    (a_grav1[0] * mflux1[0] +
+      a_grav1[1] * mflux1[1] +
+        a_grav1[2] * mflux1[2]);
 
-  float grav_work_simple[3] = {
-    dt_kick_corr1 * conserved_momentum1[0] * a_grav1[0] +
-      dt_kick_corr2 * conserved_momentum2[0] * a_grav2[0],
-    dt_kick_corr1 * conserved_momentum1[1] * a_grav1[1] +
-     dt_kick_corr2 * conserved_momentum2[1] * a_grav2[1],
-    dt_kick_corr1 * conserved_momentum1[2] * a_grav1[2] +
-      dt_kick_corr2 * conserved_momentum2[2] * a_grav2[2],
-  };
+  /* Contribution from timestep n+1 */
+  float grav_work2 = dt_kick_corr2 *
+    (a_grav2[0] * mflux2[0] +
+      a_grav2[1] * mflux2[1] +
+        a_grav2[2] * mflux2[2]);
 
-  /* We do not add energy flux, it is added after dE in hydro.h */
-  /* Notice signs, factor -1 accounted for later */
-  dE = grav_work_simple[0] +
-    grav_work_simple[1] * grav_work_simple[2];
+  /* Sum contributions */
+  const float dE = dE_momentum + grav_work1 + grav_work2;
 
   return dE;
 }
@@ -167,7 +146,7 @@ __attribute__((always_inline)) INLINE static void
 hydro_grav_work_from_mass_flux(struct part* pi, struct part* pj, float* dx,
                                float mass_flux, const float dt) {
   for (int i = 0; i < 3; i++) {
-    pi->gravity.mflux[i] -= 0.5f * mass_flux * dx[i];
+    pi->gravity.mflux[i] += 0.5f * mass_flux * dx[i]; // Used to be -= ????
     pj->gravity.mflux[i] -= 0.5f * mass_flux * dx[i];
   }
 }

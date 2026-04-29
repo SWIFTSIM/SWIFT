@@ -587,7 +587,7 @@ if (is_nan_float(Q[4])) {
 
     /* Include ONLY hydrodynamical effects (Asensio, private communication)
      * This term is Asensio 2023 Equation 24,
-     * dE - v . dp + 0.5 * v**2 * dM
+     * dE - v . dp + 0.5 * v**2 * dM - energy flux minus kinetic energy change
      */
     double dE_therm = flux[4] - (p->v[0] * flux[1] +
                           p->v[1] * flux[2] +
@@ -601,14 +601,20 @@ if (is_nan_float(Q[4])) {
     u = thermal_energy * m_inv;
 
     if (u <= 0.) {
+      /* Sometimes even a more sophisticated approach fails. This usually
+       * happens in cold flows, this is the best solution I could find
+       * // Eric Muires */
       double A = Q[5] * m_inv;
       u = gas_internal_energy_from_entropy(W[0], A);
-
     }
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_ASENSIO_COSMO
   /* Here we enter the default cosmological setup. This is noticably different
-   * from the above, since it does not include the entropy switch. */
+   * from the above, since it does not include the entropy switch unless we hit
+   * a catastrophic failure of both methods here.
+   * It is recommended to use this only in cosmological runs with a UV
+   * background. Otherwise, default to above */
+   */
   const float *g = xp->a_grav;
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
@@ -616,25 +622,25 @@ if (is_nan_float(Q[4])) {
   /* This is complicated. Alonso Asensio et. al. 2023 2.3.7 for more details
    * We also ignore any mach criteria (Hopkins 2015, appendix D, Springel
    * comment) */
-
   if (thermal_energy > 1e-2 * (Egrav + Ekin)) {
     /* Thermal Energy and Kinetic are roughly same order, it should be safe
      * to recover thermal energy from total energy, so we proceed as normal
      *
      * Recall: Cooling is already included in Q[4] */
     u = thermal_energy * m_inv;
-  }
-  else {
+  } else {
     /* Employ Gaburov 2011 method (Also used in Hopkins 2015, Asensio 2023)
      *
-     * Note that we exclude dE from Gravity interactions
+     * Note that we exclude dE and dp from Gravity interactions
      *
      * Recall: Cooling is stripped here. Manually re-add.
      */
 
     /* Include ONLY hydrodynamical effects (Asensio, private communication)
      * This term is Asensio 2023 Equation 24,
-     * dE - v . dp + 0.5 * v**2 * dM
+     * dE - v . dp + 0.5 * v**2 * dM - energy flux minus kinetic energy change
+     *
+     * Recover from entropy if this fails (u < 0)
      */
     double dE_therm = flux[4] - (p->v[0] * flux[1] +
                           p->v[1] * flux[2] +
@@ -643,11 +649,19 @@ if (is_nan_float(Q[4])) {
                                    p->v[1] * p->v[1] +
                                    p->v[2] * p->v[2]) * flux[0];
 
+
     thermal_energy = xp->u_full * p->conserved.mass + dE_therm;
     thermal_energy += p->cool_du_dt_prev * Q[0] * dt_therm; // Re-add cooling
     u = thermal_energy * m_inv;
-  }
 
+    if (u <= 0.) {
+      /* Sometimes even a more sophisticated approach fails. This usually
+       * happens in cold flows, this is the best solution I could find
+       * // Eric Muires */
+      double A = Q[5] * m_inv;
+      u = gas_internal_energy_from_entropy(W[0], A);
+    }
+  }
 #else
   error("Unknown thermal energy switch!");
 #endif
@@ -833,12 +847,24 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   if (p->timestepvars.last_kick == KICK1) {
     /* I.e. we are in kick2 (end of timestep), since the dt_therm > 0. */
 
+    /* Kick2 follows a new and improved flow from before:
+     * 1. All hydro and subgrid contributions are added
+     * 2. Convert conserved to primitive, activating thermal switch and
+     *    applying the entropy, pressure, temperature floors.
+     * 3. All gravity contributions are added and velocities are set.
+     * 4. Set primitive and conserved variables
+     * 5. Tidy up some final values before exiting kick2
+     *
+     * It is important that it is done in this order, to prevent us using
+     * the gravity kicked momentum for kinetic energy in the thermal switch
+     * while converting to primitive, otherwise the additions by gravity can be
+     * erroneously applied with catastrophic results for energy conservation */
+
     float Q[6];
     hydro_part_get_conserved_variables(p, Q);
 
-    // if (p->id == 33361223) {
-    //   message("Pre_springel = ", Q[4]);
-    // }
+    float W[6]; // Primitive variables, used later
+    hydro_part_get_primitive_variables(p, W);
 
     // /* Add gravity. We only do this if we have gravity activated. */
     // if (p->gpart) {
@@ -991,119 +1017,104 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         p->cool_du_dt_prev);
       Q[5] += Q[0] * entropy_dt * dt_therm;
 
-        /* Add gravity. We only do this if we have gravity activated. */
-    if (p->gpart) {
-      /* Retrieve the current value of the gravitational acceleration from the
-         gpart. We are only allowed to do this because this is the kick. We
-         still need to check whether gpart exists though.*/
-      float a_grav[3], grav_kick[3];
 
-      a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
-      a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
-      a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
+      /* Compute primitive quantities. Note that this may also modify the vector
+       * of conserved quantities (e.g. for cold flows).
+       * This also applies entropy floor/minimal internal energy limit. */
+      hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
+                                           Q, W, dt_therm);
 
-      float mdt1 = p->gravity.dt * p->conserved.mass;
-      float mdt2 = dt_grav * (p->conserved.mass + p->flux.mass);
-      grav_kick[0] = mdt2 * a_grav[0] + mdt1 * xp->a_grav[0];
-      grav_kick[1] = mdt2 * a_grav[1] + mdt1 * xp->a_grav[1];
-      grav_kick[2] = mdt2 * a_grav[2] + mdt1 * xp->a_grav[2];
+      /* Add gravity. We only do this if we have gravity activated. */
+      if (p->gpart) {
+        /* Retrieve the current value of the gravitational acceleration from the
+           gpart. We are only allowed to do this because this is the kick. We
+           still need to check whether gpart exists though.*/
+        float a_grav[3], grav_kick[3];
 
-      /* apply both half kicks to the momentum */
-      /* Note that this also affects the particle movement, as the velocity for
-         the particles is set after this. */
-      Q[1] += grav_kick[0];
-      Q[2] += grav_kick[1];
-      Q[3] += grav_kick[2];
+        a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
+        a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
+        a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
 
-      /* Extra hydrodynamic energy due to gravity kick, see eq. 94 in Springel
-       * (2010) or eq. 62 in theory/Cosmology/cosmology.pdf. */
-      /* Divide total integrated mass flux by the timestep for hydrodynamical
-       * quantities. We will later multiply with the correct timestep (these
-       * differ for cosmological simulations). */
-      float dt_grav_corr1 = 0.f;
-      float dt_grav_corr2 = 0.f;
-      float flux_for_gravity[6];
+        float mdt1 = p->gravity.dt * p->conserved.mass;
+        float mdt2 = dt_grav * (p->conserved.mass + p->flux.mass);
 
-      if (p->flux.dt > 0.) {
-        dt_grav_corr1 = p->gravity.dt;
-        dt_grav_corr2 = dt_grav;
+        /* I think its mdt2 that's off, it should use the gravity fluxes here
+         * not the standard mass flux as these are indeed different (with exact
+         * grav work), its likely fine for momentum but NOT for dE springel
+         * So we should rescale grav kick mass fluxes for dE springel!
+         *
+         * Note: The above is wrong because the timesteps are not the same in
+         * cosmo runs. grav dt has 1/a and hydro has 1/a**2. See thesis.
+         * However, this is something to seriously consider. But it seems...
+         * idk, the mass flux is hydro dt integrated, surely this cannot be the
+         * right value... and must be gravity dt integrated.
+         */
+        grav_kick[0] = mdt2 * a_grav[0] + mdt1 * xp->a_grav[0];
+        grav_kick[1] = mdt2 * a_grav[1] + mdt1 * xp->a_grav[1];
+        grav_kick[2] = mdt2 * a_grav[2] + mdt1 * xp->a_grav[2];
 
-        /* Grab current fluxes */
-        hydro_part_get_fluxes(p, flux_for_gravity);
-      } else {
-        /* If no flux exchange set to 0 */
-        for (int k = 0; k < 6; ++k) {
-          flux_for_gravity[k] = 0.f;
+        /* apply both half kicks to the momentum */
+        /* Note that this also affects the particle movement, as the velocity for
+           the particles is set after this. */
+        Q[1] += grav_kick[0];
+        Q[2] += grav_kick[1];
+        Q[3] += grav_kick[2];
+
+        /* Extra hydrodynamic energy due to gravity kick, see eq. 94 in Springel
+         * (2010) or eq. 62 in theory/Cosmology/cosmology.pdf. */
+        /* Divide total integrated mass flux by the timestep for hydrodynamical
+         * quantities. We will later multiply with the correct timestep (these
+         * differ for cosmological simulations). */
+        float dt_grav_corr1 = p->gravity.dt;
+        float dt_grav_corr2 = dt_grav;
+
+        /* Find the total change in total (kinetic) energy from gravity kick
+         * and infalling/departing mass */
+        dE_springel = hydro_gravity_energy_update_term(
+            dt_grav_corr1, dt_grav_corr2, xp->a_grav,
+            a_grav, xp->mflux, p->gravity.mflux, p->v_part_full,
+            grav_kick);
+
+        /* Store for debugging, testing, alternative implementations etc */
+        p->gravity.dE_prev = dE_springel;
+
+        /* Add correction for energy change from gravity */
+        Q[4] += dE_springel;
+
+        /* Set the velocities from the updated gravity kicked momentum */
+        const float m_inv = (Q[0] != 0.0f) ? 1.0 / Q[0] : 0.0f;
+        hydro_set_velocity_from_momentum(&Q[1], m_inv, W[0],
+          hydro_props, &W[1]);
+
+        if (Q[4] < 0.0f) {
+          warning("Q4 negative after dE Springel -- Q4 = %e, dE_springel = %e",
+            Q[4], dE_springel);
+
+          /* If the dE_springel failed, we just reset to the most simple case */
+          Q[4] = xp->u_full * Q[0] + 0.5f * (Q[1] * Q[1] +
+                                              Q[2] * Q[2] +
+                                                Q[3] * Q[3]) * m_inv;
         }
+
+        /* Update xp->mflux[3] to be current p->gravity.mflux so that we can
+         * access mflux^n in next timestep. See Hopkins 2015 Appendix H2 for use */
+        hydro_gravity_xp_mflux(p, xp);
       }
-
-      // /* Set to 0 in case of 0 mass */
-      // const double m_inv_final = (Q[0] != 0.0f) ? 1.0 / Q[0] : 0.0f;
-
-      /* Try strictly enforcing thermal energy via Etherm */
-      /* See theory notebook option 2 */
-
-      // if (p->id == 33361223) {
-      //   message("Before thermal cons");
-      // }
-      //
-      // /* Current n+1 kinetic energy */
-      // const float kinetic_energy_final = 0.5 * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv_final;
-      //
-      // const float thermal_energy_final = Q[4] - kinetic_energy_initial;
-      //
-      // /* Enforce new total energy */
-      // Q[4] = kinetic_energy_final + thermal_energy_final;
-      //
-      //
-      // if (p->id == 33361223) {
-      //   message("AFTER thermal cons");
-      // }
-
-      //
-      // /* STRICTLY enforce Q4 by keeping thermla energy density the same*/
-      // Q[4] = kinetic_energy_final + thermal_energy_density_initial * (Q[0] + p->flux.mass);
-      // if (p->id == 33361223) {
-      //   message("AFter thermal cons");
-      // }
-      /* Corresponds to change in p->conserved.energy from momentum kick */
-      //float delta_Ekin = kinetic_energy_final - kinetic_energy_initial;
-
-      /* Apply change in kinetic energy directly to Q[4] energy variable to preserve thermal energy conservation
-       * since the change in kinetic energy can drive the derived thermal energies negative. This enforces strictly
-       * that all changes from momentum kicking go towards the kinetic energy component
+    } else {
+      /* Compute primitive quantities. Note that this may also modify the vector
+       * of conserved quantities (e.g. for cold flows).
+       * This also applies entropy floor/minimal internal energy limit.
+       *
+       * This still has to be done if dt = 0 unfortunately
        */
-      //Q[4] += delta_Ekin;
+      hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
+                                           Q, W, dt_therm);
 
-      // if (p->id == 33361223) {
-      //   message("Step into springel");
-      //
-      //
-      //
-      dE_springel = hydro_gravity_energy_update_term(
-          dt_grav_corr1, dt_grav_corr2, xp->a_grav,
-          a_grav, p->gravity.mflux, p->v_part_full,
-          grav_kick, p->conserved.momentum, flux_for_gravity,
-          p->conserved.energy);
-
-
-      /* Store for use in flux limiter */
-      p->gravity.dE_prev = dE_springel;
-
-      /* Add correction for energy change from gravity */
-      Q[4] += dE_springel;
-
+      /* Also ensure mflux vector is zero */
+      for (int i = 0; i < 3; i++) {
+        xp->mflux[i] = 0.;
+      }
     }
-
-       }
-    }
-
-    /* Compute primitive quantities. Note that this may also modify the vector
-     * of conserved quantities (e.g. for cold flows).
-     * This also applies entropy floor/minimal internal energy limit. */
-    float W[6];
-    hydro_convert_conserved_to_primitive(p, xp, cosmo, hydro_props, floor_props,
-                                         Q, W, dt_therm);
 
     /* Set density at the particle (generator) position */
     hydro_extrapolate_density_to_generator(p);
@@ -1111,16 +1122,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Update the particle */
     hydro_part_set_conserved_variables(p, Q);
     hydro_part_set_primitive_variables(p, W);
-
-    /* Update xp->mflux[3] to be current p->gravity.mflux so that we can
-     * access mflux^n in next timestep. See Hopkins 2015 Appendix H2 for use */
-    if (p->flux.dt > 0.0f) {
-      hydro_gravity_xp_mflux(p, xp);
-    } else {
-      for (int i = 0; i < 3; i++) {
-        xp->mflux[i] = 0.;
-      }
-    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (p->conserved.mass < 0.) {
