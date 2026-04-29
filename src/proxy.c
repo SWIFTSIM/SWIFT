@@ -107,6 +107,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
 #ifdef WITH_MPI
 
+  message("Entering proxy tag exchange with %d proxies.", num_proxies);
+
   /* ticks tic2 = getticks(); */
 
   /* Run through the cells and get the size of the tags that will be sent off.
@@ -136,6 +138,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
   }
 
+  message("Proxy tag exchange counts: count_in=%d count_out=%d.", count_in,
+          count_out);
+
   /* Allocate the tags. */
   int *tags_in = NULL;
   int *tags_out = NULL;
@@ -155,6 +160,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                  s->cells_top, s->nr_cells, sizeof(struct cell),
                  threadpool_auto_chunk_size, &extra_data);
 
+  message("Proxy tag exchange packed local tags.");
+
   /* if (s->e->verbose) */
   /*   message("Cell pack tags took %.3f %s.", */
   /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
@@ -169,7 +176,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     num_reqs_out += proxies[k].nr_cells_out;
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
+  message("Proxy tag exchange requests: num_reqs_in=%d num_reqs_out=%d.",
+          num_reqs_in, num_reqs_out);
+
   /* Catch asymmetric proxy tag exchanges before entering MPI_Waitall(). */
   const int nr_nodes = s->e->nr_nodes;
   int *send_count_by_node = (int *)calloc(nr_nodes, sizeof(int));
@@ -210,6 +219,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
   }
 
+  message("Proxy tag exchange checking peer symmetry.");
+
   int mpi_err = MPI_Alltoall(send_count_by_node, 1, MPI_INT, peer_send_count,
                              1, MPI_INT, MPI_COMM_WORLD);
   if (mpi_err != MPI_SUCCESS)
@@ -224,6 +235,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                          MPI_COMM_WORLD);
   if (mpi_err != MPI_SUCCESS)
     mpi_error(mpi_err, "Failed to alltoall tag xors.");
+
+  message("Proxy tag exchange peer symmetry check completed.");
 
   for (int k = 0; k < nr_nodes; k++) {
     if (recv_count_by_node[k] != peer_send_count[k] ||
@@ -246,7 +259,6 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   free(send_xor_by_node);
   free(recv_xor_by_node);
   free(peer_send_xor);
-#endif
 
   MPI_Request *reqs_in = NULL;
   int *cids_in = NULL;
@@ -259,6 +271,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   int *cids_out = &cids_in[num_reqs_in];
 
   /* Emit the sends and recvs. */
+  message("Proxy tag exchange emitting sends and recvs.");
+
   for (int send_rid = 0, recv_rid = 0, k = 0; k < num_proxies; k++) {
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
       const int cid = proxies[k].cells_in[j] - s->cells_top;
@@ -287,8 +301,12 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* tic2 = getticks(); */
 
   /* Wait for all the sends to have completed. */
+  message("Proxy tag exchange waiting for receives.");
+
   if (MPI_Waitall(num_reqs_in, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
+
+  message("Proxy tag exchange receives completed.");
 
   /* if (s->e->verbose) */
   /*   message("WaitAll on tags took %.3f %s.", */
@@ -309,8 +327,12 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
 
   /* Wait for all the sends to have completed. */
+  message("Proxy tag exchange waiting for sends.");
+
   if (MPI_Waitall(num_reqs_out, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
+
+  message("Proxy tag exchange sends completed.");
 
   /* Clean up. */
   swift_free("tags_in", tags_in);
