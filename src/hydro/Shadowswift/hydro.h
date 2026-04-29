@@ -1228,6 +1228,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
    * inside the particles new Voronoi cell.
    * NOTE: In shadowswift, the centroid field stores an offset of the particle's
    * position */
+  /* Do not use CoM, use Centroid, as CoM less strictly defined */
   p->geometry.centroid[0] = 0.f;
   p->geometry.centroid[1] = 0.f;
   p->geometry.centroid[2] = 0.f;
