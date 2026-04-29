@@ -1630,10 +1630,14 @@ int main(int argc, char *argv[]) {
 
     //message("The relevant parameters are Omega_m = Omega_cdm + Omega_b = %lf + %lf and Omega_lambda = %lf", cosmo.Omega_cdm, cosmo.Omega_b, cosmo.Omega_lambda);
     //sleep(10);
-    pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1);
+    pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1, /*power=*/0);
+    //sleep(5);
+    if (with_power)
+        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
     /* Set the desired gridsize for Gauss-Seidel and perform the calculation */
     //int N = 64;
-    //space_get_density(&e, N, /*apply multigrid=*/1);
+    //space_get_density(&e, N, /*apply multigrid=*/0);
+    //sleep(10);
     //int N_min = 16;
     //int N_max = 64;
     //space_apply_FMG(&e, N_min, N_max, /*FAS=*/0);
@@ -1746,6 +1750,15 @@ int main(int argc, char *argv[]) {
     mpiuse_log_dump(dumpfile, clocks_start_ticks);
   }
 #endif
+
+/*FILE *export_acc;
+export_acc = fopen("/data1/vandervlugt/PythonFiles/MG_acceleration/regular_acc.txt", "w");
+for (size_t i=0; i<s.nr_gparts; i++) {
+  double acc = sqrt(s.gparts[i].a_grav[0]*s.gparts[i].a_grav[0] + s.gparts[i].a_grav[1]*s.gparts[i].a_grav[1] + s.gparts[i].a_grav[2] * s.gparts[i].a_grav[2]);
+  fprintf(export_acc, "%E %.15g %.15g %.15g \n", acc, s.gparts[i].x[0], s.gparts[i].x[1], s.gparts[i].x[2]);
+}
+fclose(export_acc);
+message("Exported acceleration");*/
 
 //error("We don't want to do any time integration now");
 

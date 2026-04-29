@@ -6623,7 +6623,7 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
   message("The number of cells is %d", N);
   data.N = N;
   data.rho = density_array;
-  data.fac = N/box_size;
+  data.fac = fac;
   data.dim[0] = dim[0];
   data.dim[1] = dim[1];
   data.dim[2] = dim[2];
@@ -6652,6 +6652,21 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
     apply_GS(density_array, potential_array, cdim, mean_density, box_size);
   }
 
+  double delta = box_size/N;
+  FILE *pot_export;
+  pot_export = fopen("/data1/vandervlugt/PythonFiles/final_plots/convergence_tests/GS_64", "w");
+  for (int k=0; k<N; k++) {
+    for (int j=0; j<N; j++) {
+      for (int i=0; i<N; i++) {
+        double x = (double)i * delta;
+        double y = (double)j * delta;
+        double z = (double)k * delta;
+        fprintf(pot_export, "%lf %.15g %.15g %.15g \n", potential_array[cell_getid(cdim, i, j, k)], x, y, z);
+      }
+    }
+  }
+  fclose(pot_export);
+  
   /* Pass the potential back to the particles! */
   //Add code to do this
 
@@ -6781,6 +6796,7 @@ void apply_GS(const double *rho, double *pot, int cdim[3], double mean_density, 
     perform_red_black_sweep(pot, rho, cdim, mean_density, delta);
     residual = get_residual(pot, rho, cdim, mean_density, delta);
     counter +=1;
+    if (counter %50 == 0) message("Did %d steps and the residual is %E", counter, residual);
   }
   message("We needed %d steps to converge", counter);
 
@@ -7280,7 +7296,7 @@ void set_initial_guess(double *pot, const int cdim[3], int MG) {
   for (int i = 0; i<N*N*N; i++){
     //pot[i] += (fmod(rand(),5.) - 10.);
     pot[i] += fmod(rand(),2000.) - 1000.;
-    if (MG) pot[i] = 1.; //Corresponds to fR = mean(fR) everywhere.
+    if (MG) pot[i] = 1.*1e-5; //Corresponds to fR = mean(fR) everywhere.
   }
 }
 
@@ -7441,7 +7457,8 @@ double get_mean_density(double *rho, const int N) {
  * @param N_max 1D size of the largest grid on which to solve for the potential.
  */
 void space_get_fR_contribution(const struct space *s, double *rho, double *u, struct MG_variables *MG, int N_min, const int N_max) {
-  int test = 2; //1 = uniform density 2 = point mass  3 = sine wave
+  int test = 0; //1 = uniform density 2 = point mass  3 = sine wave
+  message("Doing test case %d", test);
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double fac = ((double) N_max)/box_size;
@@ -7475,12 +7492,12 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
   /* Decide if we need to calculate the mean density */
   if (!MG->overdensity) {
     mean_density[N_levels-1] = get_mean_density(rho_levels[N_levels-1], grid_sizes[N_levels-1]);
-    mean_density[N_levels-1] *= fac*fac*fac;
+    if (test != 2) mean_density[N_levels-1] *= fac*fac*fac;
     message("The mean density is %lf", mean_density[N_levels-1]);
   }
   else {
     for (int i=0; i<N_max*N_max*N_max; i++) {
-      rho_levels[N_levels-1][i] *= fac*fac*fac;
+      //rho_levels[N_levels-1][i] *= fac*fac*fac;
     }
     mean_density[N_levels-1] = 0.;
   }
@@ -7509,7 +7526,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
         break;
       case 2:
         /* Change the density field to represent a single particle at the centre of the box */
-        double mean_density_set = 1000;
+        double mean_density_set = 50.;
         for (int i2=0; i2<N; i2++) {
           for (int j=0; j<N; j++) {
             for (int k=0; k<N; k++) {
@@ -7544,12 +7561,12 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     /* Decide if we need to calculate the mean density */
     if (!MG->overdensity) {
       mean_density[i] = get_mean_density(rho_levels[i], grid_sizes[i]);
-      mean_density[i] *= fac_level*fac_level*fac_level;
+      if (test != 2) mean_density[i] *= fac_level*fac_level*fac_level;
       message("The mean density on the level with size %d is %lf", grid_sizes[i], mean_density[i]);
     }
     else {
       for (int j=0; j<grid_sizes[i]*grid_sizes[i]*grid_sizes[i]; j++) {
-        rho_levels[i][j] *= fac_level*fac_level*fac_level;
+        //rho_levels[i][j] *= fac_level*fac_level*fac_level;
       }
       mean_density[i] = 0.;
     }
@@ -7575,6 +7592,26 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     cdim[1] = N;
     cdim[2] = N;
     apply_multigrid_fR(rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, 15);
+
+    /*if (i==N_levels-1) {
+      FILE *fR_test;
+      fR_test = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/test_fR_128.txt", "w");
+      for (int i2=0; i2<N; i2++) {
+        for (int j=0; j<N; j++) {
+          for (int k=0; k<N; k++) {
+            double dx = ((double)(i2-N/2)) * box_size/N;
+            double dy = ((double)(j-N/2)) * box_size/N;
+            double dz = ((double)(k-N/2)) * box_size/N;
+            double r = sqrt(dx*dx + dy*dy + dz*dz);
+
+            if (r<13) fprintf(fR_test, "%E %.15g \n", MG->fR0*exp(u_levels[i][cell_getid(cdim, i2, j, k)]), r);
+          }
+        }
+      }
+      fclose(fR_test);
+      message("Exported the fR values for N=%d", N);
+      sleep(10);
+    }*/
   }
 }
 
@@ -7611,6 +7648,7 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
   while (residual >= tolerance) {
     perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density, delta);
     residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
+    message("The residual is %E", residual);
     counter +=1;
   }
   message("We needed %d steps to converge", counter);
@@ -7888,6 +7926,16 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
     for (int i=0; i<fine_steps; i++) {
       perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density[0], delta);
       residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+      double mean = 0.;
+      for (int j=0; j<N_max*N_max*N_max; j++) {
+        mean += exp(MG->normalisation*u[i]);
+      }
+      message("The mean is %E and the residual %E", mean/(N_max*N_max*N_max), residual);
+      /*if (mean/(N_max*N_max*N_max) != 1.) {
+        for (int j=0; j<N_max*N_max*N_max; j++) {
+          u[i] -= log(mean/(N_max*N_max*N_max));
+        }
+      }*/
     }
     residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
     get_residual_array_fR(u, rho, MG, cdim, mean_density[0], residual_array, delta);
@@ -8031,7 +8079,7 @@ void FAS_recursive(double *u, const double *residual, struct MG_variables *MG, i
   /* Do some smoothing and proceed to coarser grids */
   else { 
     counter = 0;
-    int coarse_steps = 50;
+    int coarse_steps = 25;
     for (int i=0; i<coarse_steps; i++) {
       perform_red_black_sweep_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH,delta); 
       coarser_residual_abs =  get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
