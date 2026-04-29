@@ -121,6 +121,7 @@ enum task_types {
   task_type_rt_sort,
   task_type_rt_collect_times,
   task_type_sidm_density_ghost,
+  task_type_sidm_end_force,
   task_type_count
 } __attribute__((packed));
 

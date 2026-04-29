@@ -122,6 +122,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer);
 void runner_do_timestep_collect(struct runner *r, struct cell *c, int timer);
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer);
 void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer);
+void runner_do_end_sidm_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, const int offset,
                        const int ntasks, const int timer);

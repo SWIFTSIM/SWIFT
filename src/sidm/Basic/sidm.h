@@ -44,6 +44,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
   sip->density.wcount_dh = 0.f;
   sip->rho = 0.f;
   sip->density.rho_dh = 0.f;
+  sip->SIDM_rate = 0.f;
 
 #ifdef SWIFT_SIDM_DENSITY_CHECKS
   sip->N_density = 0;
@@ -105,6 +106,24 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
   sip->n += kernel_root;
   sip->n *= h_inv_dim;
 #endif
+}
+
+/**
+ * @brief Finishes the force calculation.
+ *
+ * Multiplies the force and accelerations by the appropiate constants
+ * and add the self-contribution term. In most cases, there is little
+ * to do here.
+ *
+ * Cosmological terms are also added/multiplied here.
+ *
+ * @param sip The si-particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sidm_end_force(
+    struct sipart *restrict sip, const struct cosmology *cosmo) {
+
+  // TODO
 }
 
 /**

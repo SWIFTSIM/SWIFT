@@ -128,6 +128,7 @@ const char *taskID_names[task_type_count] = {
     "rt_sorts",
     "rt_collect_times",
     "sidm_density_ghost",
+    "sidm_end_force",
 };
 
 /* Sub-task type names. */
@@ -272,6 +273,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_drift_sipart:
     case task_type_sidm_density_ghost:
+    case task_type_sidm_end_force:
       return task_action_sipart;
       break;
 
@@ -309,6 +311,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           return task_action_all;
 
         case task_subtype_sidm_density:
+        case task_subtype_sidm_force:
           return task_action_sipart;
           break;
 
@@ -609,6 +612,7 @@ void task_unlock(struct task *t) {
 
     case task_type_drift_sipart:
     case task_type_sidm_density_ghost:
+    case task_type_sidm_end_force:
       cell_siunlocktree(ci);
       break;
 
@@ -641,7 +645,8 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
-      } else if (subtype == task_subtype_sidm_density) {
+      } else if (subtype == task_subtype_sidm_density ||
+                 subtype == task_subtype_sidm_force) {
         cell_siunlocktree(ci);
       } else if (subtype == task_subtype_limiter) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -847,6 +852,7 @@ int task_lock(struct task *t) {
 
     case task_type_drift_sipart:
     case task_type_sidm_density_ghost:
+    case task_type_sidm_end_force:
       if (ci->sidm.hold) return 0;
       if (cell_silocktree(ci) != 0) return 0;
       break;
@@ -909,7 +915,8 @@ int task_lock(struct task *t) {
       } else if (subtype == task_subtype_do_bh_swallow) {
         if (ci->black_holes.hold) return 0;
         if (cell_blocktree(ci) != 0) return 0;
-      } else if (subtype == task_subtype_sidm_density) {
+      } else if (subtype == task_subtype_sidm_density ||
+                 subtype == task_subtype_sidm_force) {
         if (ci->sidm.hold) return 0;
         if (cell_silocktree(ci) != 0) return 0;
       } else if (subtype == task_subtype_limiter) {
@@ -1246,6 +1253,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_sidm_density:
       strcpy(cluster, "SIDMDensity");
+      break;
+    case task_subtype_sidm_force:
+      strcpy(cluster, "SIDMForce");
       break;
     case task_subtype_do_gas_swallow:
       strcpy(cluster, "DoGasSwallow");
@@ -1755,6 +1765,7 @@ enum task_categories task_get_category(const struct task *t) {
       return task_category_sink;
 
     case task_type_sidm_density_ghost:
+    case task_type_sidm_end_force:
       return task_category_sidm;
 
     case task_type_drift_part:
@@ -1873,6 +1884,7 @@ enum task_categories task_get_category(const struct task *t) {
           return task_category_rt;
 
         case task_subtype_sidm_density:
+        case task_subtype_sidm_force:
           return task_category_sidm;
 
         default:

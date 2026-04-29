@@ -22,3 +22,5 @@ Statistics:
 # Parameters for the SIDM scheme
 BasicSIDM:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  constant_cross_section: 1
+  sigma_over_m_cgs: 100

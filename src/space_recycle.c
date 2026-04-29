@@ -192,7 +192,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.drift_out = NULL;
     c->sidm.drift = NULL;
     c->sidm.density_ghost = NULL;
+    c->sidm.end_force = NULL;
     c->sidm.density = NULL;
+    c->sidm.force = NULL;
     c->hydro.cooling_in = NULL;
     c->hydro.cooling_out = NULL;
     for (int i = 0; i < HYDRO_COOLING_NTASK; i++) {
