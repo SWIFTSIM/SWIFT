@@ -193,24 +193,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
   const double vij = sqrt(v2) * cosmo->a_inv;
 
   /* Get time-step for sipi and sipj */
-  double dt_sipi, dt_sipj;
+  /* double dt_sipi, dt_sipj; */
 
-  if (with_cosmology) {
+  /* if (with_cosmology) { */
 
-    const integertime_t ti_begin =
-        get_integer_time_begin(ti_current - 1, sipi->time_bin);
-    const integertime_t ti_step = get_integer_timestep(sipi->time_bin);
-    dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+  /*   const integertime_t ti_begin = */
+  /*       get_integer_time_begin(ti_current - 1, sipi->time_bin); */
+  /*   const integertime_t ti_step = get_integer_timestep(sipi->time_bin); */
+  /*   dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+   */
 
-    const integertime_t tj_begin =
-        get_integer_time_begin(ti_current - 1, sipj->time_bin);
-    const integertime_t tj_step = get_integer_timestep(sipj->time_bin);
-    dt_sipj = cosmology_get_delta_time(cosmo, tj_begin, tj_begin + tj_step);
+  /*   const integertime_t tj_begin = */
+  /*       get_integer_time_begin(ti_current - 1, sipj->time_bin); */
+  /*   const integertime_t tj_step = get_integer_timestep(sipj->time_bin); */
+  /*   dt_sipj = cosmology_get_delta_time(cosmo, tj_begin, tj_begin + tj_step);
+   */
 
-  } else {
-    dt_sipi = get_timestep(sipi->time_bin, time_base);
-    dt_sipj = get_timestep(sipj->time_bin, time_base);
-  }
+  /* } else { */
+  /*   dt_sipi = get_timestep(sipi->time_bin, time_base); */
+  /*   dt_sipj = get_timestep(sipj->time_bin, time_base); */
+  /* } */
 
   float lambda_ij = sidm_kernel_overlap_tophat(r, hi, hj) * cosmo->a3_inv;
 
@@ -256,18 +258,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
   const double vij = sqrt(v2) * cosmo->a_inv;
 
   /* Get time-step for sipi and sipj */
-  double dt_sipi;
+  /* double dt_sipi; */
 
-  if (with_cosmology) {
+  /* if (with_cosmology) { */
 
-    const integertime_t ti_begin =
-        get_integer_time_begin(ti_current - 1, sipi->time_bin);
-    const integertime_t ti_step = get_integer_timestep(sipi->time_bin);
-    dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+  /*   const integertime_t ti_begin = */
+  /*       get_integer_time_begin(ti_current - 1, sipi->time_bin); */
+  /*   const integertime_t ti_step = get_integer_timestep(sipi->time_bin); */
+  /*   dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+   */
 
-  } else {
-    dt_sipi = get_timestep(sipi->time_bin, time_base);
-  }
+  /* } else { */
+  /*   dt_sipi = get_timestep(sipi->time_bin, time_base); */
+  /* } */
 
   float lambda_ij = sidm_kernel_overlap_tophat(r, hi, hj) * cosmo->a3_inv;
 
