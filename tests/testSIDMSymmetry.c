@@ -39,9 +39,15 @@ void print_bytes(void *p, size_t len) {
 
 void test(void) {
 
-  /* Start with some values for the cosmological parameters */
+  /* Start with some values for the cosmological parameters and unused variables
+   */
   const float a = (float)random_uniform(0.8, 1.);
   const float H = 1.f;
+  const struct sidm_props *sidm_props = NULL;
+  const struct cosmology *cosmo = NULL;
+  const int with_cosmology = 0;
+  const float ti_current = 0;
+  const float time_base = 0;
 
   /* Create two random particles (don't do this at home !) */
   struct sipart pi, pj;
@@ -84,14 +90,19 @@ void test(void) {
   /* --- Test the density loop --- */
 
   /* Call the symmetric version */
-  runner_iact_sidm_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_sidm_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H, with_cosmology,
+                           cosmo, sidm_props, ti_current, time_base);
 
   /* Call the non-symmetric version */
-  runner_iact_nonsym_sidm_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
+  runner_iact_nonsym_sidm_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H,
+                                  with_cosmology, cosmo, sidm_props, ti_current,
+                                  time_base);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
-  runner_iact_nonsym_sidm_density(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
+  runner_iact_nonsym_sidm_density(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H,
+                                  with_cosmology, cosmo, sidm_props, ti_current,
+                                  time_base);
 
   /* Check that the particles are the same */
   i_not_ok = memcmp(&pi, &pi2, sizeof(struct sipart));
