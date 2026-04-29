@@ -1032,7 +1032,6 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 void runner_do_end_sidm_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   TIMER_TIC;
 
@@ -1055,7 +1054,6 @@ void runner_do_end_sidm_force(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct sipart *restrict sip = &siparts[k];
 
-      double dt = 0;
       if (sipart_is_active(sip, e)) {
         /* Finish the force loop */
         sidm_end_force(sip, cosmo);
