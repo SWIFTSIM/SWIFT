@@ -1,0 +1,17 @@
+This example generates a gas cloud which follows a Hernquist profile
+and tests whether the tidal tensor of these particles matches
+the expected profile.
+
+rho = 
+
+(Default profile paramters:
+  total mass M: 1e10  [Msun]
+  characterstic radius a: 10    [kpc]
+  particle resolution mres: 1e5 [Msun]
+)
+
+Configure with:
+
+./configure --disable-hand-vec --with-kernel=wendland-C2 --with-adaptive-softening=tidal --enable-gravitational-tidal-tensors=yes
+
+Then run run.sh
