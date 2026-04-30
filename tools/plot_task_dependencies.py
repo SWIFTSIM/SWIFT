@@ -725,6 +725,7 @@ def set_task_colours(data):
 
     return data
 
+
 def filter_star_dependencies(row):
     """
     Filter for star-centric tasks and the SF backbone.
@@ -752,6 +753,7 @@ def filter_star_dependencies(row):
         return True
 
     return False
+
 
 if __name__ == "__main__":
 
