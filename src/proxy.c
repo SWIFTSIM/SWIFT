@@ -402,88 +402,151 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   extra_data.space_cells = s->cells_top;
 
   /* Test split exchange: finish all background cells before zoom cells. */
-  const enum cell_type cell_type_passes[2] = {cell_type_bkg, cell_type_zoom};
-  const char *cell_type_pass_names[2] = {"background", "zoom"};
+  int recv_rid = 0;
+  int send_rid = 0;
 
-  for (int pass = 0; pass < 2; pass++) {
-    const enum cell_type pass_type = cell_type_passes[pass];
-    const char *pass_name = cell_type_pass_names[pass];
-    int recv_rid = 0;
-    int send_rid = 0;
+  message("Proxy tag exchange starting background pass.");
 
-    message("Proxy tag exchange starting %s pass.", pass_name);
+  for (int k = 0; k < num_proxies; k++) {
+    message("Proxy tag exchange emitting background recvs for proxy %d node=%d.",
+            k, proxies[k].nodeID);
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      if (proxies[k].cells_in[j]->type != cell_type_bkg) continue;
 
-    for (int k = 0; k < num_proxies; k++) {
-      message("Proxy tag exchange emitting %s recvs for proxy %d node=%d.",
-              pass_name, k, proxies[k].nodeID);
-      for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-        if (proxies[k].cells_in[j]->type != pass_type) continue;
-
-        const int cid = proxies[k].cells_in[j] - s->cells_top;
-        if (offset_in[cid] < 0 ||
-            offset_in[cid] + proxies[k].cells_in[j]->mpi.pcell_size > count_in)
-          error(
-              "Invalid tag receive buffer bounds in proxy %d node=%d cell=%d "
-              "cid=%d offset=%d pcell_size=%d count_in=%d.",
-              k, proxies[k].nodeID, j, cid, offset_in[cid],
-              proxies[k].cells_in[j]->mpi.pcell_size, count_in);
-        cids_in[recv_rid] = cid;
-        int err = MPI_Irecv(&tags_in[offset_in[cid]],
-                            proxies[k].cells_in[j]->mpi.pcell_size, MPI_INT,
-                            proxies[k].nodeID, cid, MPI_COMM_WORLD,
-                            &reqs_in[recv_rid]);
-        if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv tags.");
-        recv_rid += 1;
-      }
-
-      message("Proxy tag exchange emitting %s sends for proxy %d node=%d.",
-              pass_name, k, proxies[k].nodeID);
-      for (int j = 0; j < proxies[k].nr_cells_out; j++) {
-        if (proxies[k].cells_out[j]->type != pass_type) continue;
-
-        const int cid = proxies[k].cells_out[j] - s->cells_top;
-        if (offset_out[cid] < 0 || offset_out[cid] +
-                                        proxies[k].cells_out[j]->mpi.pcell_size >
-                                    count_out)
-          error(
-              "Invalid tag send buffer bounds in proxy %d node=%d cell=%d "
-              "cid=%d offset=%d pcell_size=%d count_out=%d.",
-              k, proxies[k].nodeID, j, cid, offset_out[cid],
-              proxies[k].cells_out[j]->mpi.pcell_size, count_out);
-        cids_out[send_rid] = cid;
-        int err = MPI_Isend(&tags_out[offset_out[cid]],
-                            proxies[k].cells_out[j]->mpi.pcell_size, MPI_INT,
-                            proxies[k].nodeID, cid, MPI_COMM_WORLD,
-                            &reqs_out[send_rid]);
-        if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
-        send_rid += 1;
-      }
-      message("Proxy tag exchange emitted %s proxy %d node=%d.", pass_name, k,
-              proxies[k].nodeID);
+      const int cid = proxies[k].cells_in[j] - s->cells_top;
+      if (offset_in[cid] < 0 ||
+          offset_in[cid] + proxies[k].cells_in[j]->mpi.pcell_size > count_in)
+        error(
+            "Invalid tag receive buffer bounds in proxy %d node=%d cell=%d "
+            "cid=%d offset=%d pcell_size=%d count_in=%d.",
+            k, proxies[k].nodeID, j, cid, offset_in[cid],
+            proxies[k].cells_in[j]->mpi.pcell_size, count_in);
+      cids_in[recv_rid] = cid;
+      int err = MPI_Irecv(&tags_in[offset_in[cid]],
+                          proxies[k].cells_in[j]->mpi.pcell_size, MPI_INT,
+                          proxies[k].nodeID, cid, MPI_COMM_WORLD,
+                          &reqs_in[recv_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv tags.");
+      recv_rid += 1;
     }
 
-    message("Proxy tag exchange waiting for %s receives (%d).", pass_name,
-            recv_rid);
-    if (recv_rid > 0 &&
-        MPI_Waitall(recv_rid, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-      error("MPI_Waitall on tag receives failed.");
+    message("Proxy tag exchange emitting background sends for proxy %d node=%d.",
+            k, proxies[k].nodeID);
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      if (proxies[k].cells_out[j]->type != cell_type_bkg) continue;
 
-    message("Proxy tag exchange %s receives completed.", pass_name);
-
-    if (recv_rid > 0) {
-      threadpool_map(&s->e->threadpool, proxy_tags_exchange_unpack_mapper,
-                     cids_in, recv_rid, sizeof(int), threadpool_auto_chunk_size,
-                     &extra_data);
+      const int cid = proxies[k].cells_out[j] - s->cells_top;
+      if (offset_out[cid] < 0 ||
+          offset_out[cid] + proxies[k].cells_out[j]->mpi.pcell_size > count_out)
+        error(
+            "Invalid tag send buffer bounds in proxy %d node=%d cell=%d "
+            "cid=%d offset=%d pcell_size=%d count_out=%d.",
+            k, proxies[k].nodeID, j, cid, offset_out[cid],
+            proxies[k].cells_out[j]->mpi.pcell_size, count_out);
+      cids_out[send_rid] = cid;
+      int err = MPI_Isend(&tags_out[offset_out[cid]],
+                          proxies[k].cells_out[j]->mpi.pcell_size, MPI_INT,
+                          proxies[k].nodeID, cid, MPI_COMM_WORLD,
+                          &reqs_out[send_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
+      send_rid += 1;
     }
-
-    message("Proxy tag exchange waiting for %s sends (%d).", pass_name,
-            send_rid);
-    if (send_rid > 0 &&
-        MPI_Waitall(send_rid, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-      error("MPI_Waitall on tag sends failed.");
-
-    message("Proxy tag exchange %s sends completed.", pass_name);
+    message("Proxy tag exchange emitted background proxy %d node=%d.", k,
+            proxies[k].nodeID);
   }
+
+  message("Proxy tag exchange waiting for background receives (%d).", recv_rid);
+  if (recv_rid > 0 &&
+      MPI_Waitall(recv_rid, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on tag receives failed.");
+
+  message("Proxy tag exchange background receives completed.");
+
+  if (recv_rid > 0) {
+    threadpool_map(&s->e->threadpool, proxy_tags_exchange_unpack_mapper,
+                   cids_in, recv_rid, sizeof(int), threadpool_auto_chunk_size,
+                   &extra_data);
+  }
+
+  message("Proxy tag exchange waiting for background sends (%d).", send_rid);
+  if (send_rid > 0 &&
+      MPI_Waitall(send_rid, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on tag sends failed.");
+
+  message("Proxy tag exchange background sends completed.");
+
+  recv_rid = 0;
+  send_rid = 0;
+
+  message("Proxy tag exchange starting zoom pass.");
+
+  for (int k = 0; k < num_proxies; k++) {
+    message("Proxy tag exchange emitting zoom recvs for proxy %d node=%d.", k,
+            proxies[k].nodeID);
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      if (proxies[k].cells_in[j]->type != cell_type_zoom) continue;
+
+      const int cid = proxies[k].cells_in[j] - s->cells_top;
+      if (offset_in[cid] < 0 ||
+          offset_in[cid] + proxies[k].cells_in[j]->mpi.pcell_size > count_in)
+        error(
+            "Invalid tag receive buffer bounds in proxy %d node=%d cell=%d "
+            "cid=%d offset=%d pcell_size=%d count_in=%d.",
+            k, proxies[k].nodeID, j, cid, offset_in[cid],
+            proxies[k].cells_in[j]->mpi.pcell_size, count_in);
+      cids_in[recv_rid] = cid;
+      int err = MPI_Irecv(&tags_in[offset_in[cid]],
+                          proxies[k].cells_in[j]->mpi.pcell_size, MPI_INT,
+                          proxies[k].nodeID, cid, MPI_COMM_WORLD,
+                          &reqs_in[recv_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv tags.");
+      recv_rid += 1;
+    }
+
+    message("Proxy tag exchange emitting zoom sends for proxy %d node=%d.", k,
+            proxies[k].nodeID);
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      if (proxies[k].cells_out[j]->type != cell_type_zoom) continue;
+
+      const int cid = proxies[k].cells_out[j] - s->cells_top;
+      if (offset_out[cid] < 0 ||
+          offset_out[cid] + proxies[k].cells_out[j]->mpi.pcell_size > count_out)
+        error(
+            "Invalid tag send buffer bounds in proxy %d node=%d cell=%d "
+            "cid=%d offset=%d pcell_size=%d count_out=%d.",
+            k, proxies[k].nodeID, j, cid, offset_out[cid],
+            proxies[k].cells_out[j]->mpi.pcell_size, count_out);
+      cids_out[send_rid] = cid;
+      int err = MPI_Isend(&tags_out[offset_out[cid]],
+                          proxies[k].cells_out[j]->mpi.pcell_size, MPI_INT,
+                          proxies[k].nodeID, cid, MPI_COMM_WORLD,
+                          &reqs_out[send_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
+      send_rid += 1;
+    }
+    message("Proxy tag exchange emitted zoom proxy %d node=%d.", k,
+            proxies[k].nodeID);
+  }
+
+  message("Proxy tag exchange waiting for zoom receives (%d).", recv_rid);
+  if (recv_rid > 0 &&
+      MPI_Waitall(recv_rid, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on tag receives failed.");
+
+  message("Proxy tag exchange zoom receives completed.");
+
+  if (recv_rid > 0) {
+    threadpool_map(&s->e->threadpool, proxy_tags_exchange_unpack_mapper,
+                   cids_in, recv_rid, sizeof(int), threadpool_auto_chunk_size,
+                   &extra_data);
+  }
+
+  message("Proxy tag exchange waiting for zoom sends (%d).", send_rid);
+  if (send_rid > 0 &&
+      MPI_Waitall(send_rid, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on tag sends failed.");
+
+  message("Proxy tag exchange zoom sends completed.");
 
   /* Clean up. */
   swift_free("tags_in", tags_in);
