@@ -20,44 +20,10 @@
 #define SWIFT_BASIC_SIDM_IACT_H
 
 /* Local headers. */
+#include "random.h"
+#include "sidm_kernel.h"
 #include "sidm_properties.h"
 #include "timeline.h"
-
-/**
- * @brief Kernel overlap assuming top-hat kernel. Equation 2 of Fisher et al
- * 2026.
- *
- * @param r Comoving distance between the two particles.
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- */
-INLINE static float sidm_kernel_overlap_tophat(const float r, const float hi,
-                                               const float hj) {
-
-  const float Vconst = (4.f / 3.f) * M_PI;
-  const float Vi = Vconst * hi * hi * hi;
-  const float Vj = Vconst * hj * hj * hj;
-
-  float V_overlap;
-
-  if (r >= hi + hj) {
-    return 0.f;
-  }
-
-  // sphere within sphere case
-  if (r <= fabsf(hi - hj)) {
-    const float hmin = hi < hj ? hi : hj;
-    V_overlap = Vconst * hmin * hmin * hmin;
-  } else {
-    // usual case
-    const float term = hi + hj - r;
-    V_overlap = M_PI * term * term *
-                (r * r + 2 * r * (hi + hj) - 3 * (hi - hj) * (hi - hj)) /
-                (12.f * r);
-  }
-
-  return V_overlap / (Vi * Vj);
-}
 
 /**
  * @brief Density interaction between two particles.
@@ -159,6 +125,59 @@ runner_iact_nonsym_sidm_density(
 }
 
 /**
+ * @brief Apply SIDM velocity kick to particles (elastic, isotropic scattering).
+ *
+ * @param sipi First part*icle.
+ * @param sipj Second part*icle.
+ * @param a Current scale factor.
+ * @param vij Relative speed.
+ */
+__attribute__((always_inline)) INLINE static void kick_siparts(
+    struct sipart *restrict sipi, struct sipart *restrict sipj, const float a,
+    const double vij, const integertime_t ti_current) {
+
+  /* Get COM velocity. */
+  const float mi = sipi->mass;
+  const float mj = sipj->mass;
+  const float mi_plus_mj = mi + mj;
+
+  const float v_com[3] = {(mi * sipi->v[0] + mj * sipj->v[0]) / mi_plus_mj,
+                          (mi * sipi->v[1] + mj * sipj->v[1]) / mi_plus_mj,
+                          (mi * sipi->v[2] + mj * sipj->v[2]) / mi_plus_mj};
+
+  /* Get scattering direction. */
+  /* For isotropic sampling:
+   * Draw cos(theta) uniformly in [-1, 1] and phi uniformly in [0, 2*pi). */
+  const float cos_theta =
+      2.f * random_unit_interval_two_IDs(sipi->id, sipj->id, ti_current,
+                                         random_number_sidm_polar_angle) -
+      1.f;
+  const float sin_theta = sqrtf(max(0.f, 1.f - cos_theta * cos_theta));
+  const float phi =
+      2.f * M_PI *
+      random_unit_interval_two_IDs(sipi->id, sipj->id, ti_current,
+                                   random_number_sidm_azimuthal_angle);
+
+  /* New velocity direction, magnitude of relative veolcity is conserved. */
+  const float v_new[3] = {vij * sin_theta * cosf(phi),
+                          vij * sin_theta * sinf(phi), vij * cos_theta};
+
+  /* Transform back to original reference frame. */
+  /* Mass fractions that distribute new velocity kick. */
+  const float fi = mj / mi_plus_mj;
+  const float fj = mi / mi_plus_mj;
+
+  /* By momentum conservation sipj gets the opposite COM-frame kick. */
+  sipi->v[0] = v_com[0] + fi * v_new[0];
+  sipi->v[1] = v_com[1] + fi * v_new[1];
+  sipi->v[2] = v_com[2] + fi * v_new[2];
+
+  sipj->v[0] = v_com[0] - fj * v_new[0];
+  sipj->v[1] = v_com[1] - fj * v_new[1];
+  sipj->v[2] = v_com[2] - fj * v_new[2];
+}
+
+/**
  * @brief Force interaction between two particles (symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
@@ -190,29 +209,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
   dv[1] = sipi->v[1] - sipj->v[1];
   dv[2] = sipi->v[2] - sipj->v[2];
   const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-  const double vij = sqrt(v2) * cosmo->a_inv;
+
+  const double hubble_flow = cosmo->a * cosmo->H * r;
+  const double vij = sqrt(v2) * cosmo->a_inv + hubble_flow;
 
   /* Get time-step for sipi and sipj */
-  /* double dt_sipi, dt_sipj; */
+  double dt_sipi, dt_sipj;
 
-  /* if (with_cosmology) { */
+  if (with_cosmology) {
 
-  /*   const integertime_t ti_begin = */
-  /*       get_integer_time_begin(ti_current - 1, sipi->time_bin); */
-  /*   const integertime_t ti_step = get_integer_timestep(sipi->time_bin); */
-  /*   dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-   */
+    const integertime_t ti_begin =
+        get_integer_time_begin(ti_current - 1, sipi->time_bin);
+    const integertime_t ti_step = get_integer_timestep(sipi->time_bin);
+    dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
 
-  /*   const integertime_t tj_begin = */
-  /*       get_integer_time_begin(ti_current - 1, sipj->time_bin); */
-  /*   const integertime_t tj_step = get_integer_timestep(sipj->time_bin); */
-  /*   dt_sipj = cosmology_get_delta_time(cosmo, tj_begin, tj_begin + tj_step);
-   */
+    const integertime_t tj_begin =
+        get_integer_time_begin(ti_current - 1, sipj->time_bin);
+    const integertime_t tj_step = get_integer_timestep(sipj->time_bin);
+    dt_sipj = cosmology_get_delta_time(cosmo, tj_begin, tj_begin + tj_step);
 
-  /* } else { */
-  /*   dt_sipi = get_timestep(sipi->time_bin, time_base); */
-  /*   dt_sipj = get_timestep(sipj->time_bin, time_base); */
-  /* } */
+  } else {
+    dt_sipi = get_timestep(sipi->time_bin, time_base);
+    dt_sipj = get_timestep(sipj->time_bin, time_base);
+  }
 
   float lambda_ij = sidm_kernel_overlap_tophat(r, hi, hj) * cosmo->a3_inv;
 
@@ -222,6 +241,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
 
   sipi->SIDM_rate += SIDM_rate_i;
   sipj->SIDM_rate += SIDM_rate_j;
+
+  /* Interaction probability for sipi and sipj */
+  float pij = SIDM_rate_i * dt_sipi;
+  float pji = SIDM_rate_j * dt_sipj;
+  float p = (pij + pji) * 0.5;
+
+  /* Pair interaction? */  // need two ids here
+  const float x = random_unit_interval_two_IDs(sipi->id, sipj->id, ti_current,
+                                               random_number_sidm_scattering);
+
+  if (x < p) {
+    kick_siparts(sipi, sipj, a, vij, ti_current);
+  }
 }
 
 /**
@@ -258,25 +290,35 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
   const double vij = sqrt(v2) * cosmo->a_inv;
 
   /* Get time-step for sipi and sipj */
-  /* double dt_sipi; */
+  double dt_sipi;
 
-  /* if (with_cosmology) { */
+  if (with_cosmology) {
 
-  /*   const integertime_t ti_begin = */
-  /*       get_integer_time_begin(ti_current - 1, sipi->time_bin); */
-  /*   const integertime_t ti_step = get_integer_timestep(sipi->time_bin); */
-  /*   dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-   */
+    const integertime_t ti_begin =
+        get_integer_time_begin(ti_current - 1, sipi->time_bin);
+    const integertime_t ti_step = get_integer_timestep(sipi->time_bin);
+    dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
 
-  /* } else { */
-  /*   dt_sipi = get_timestep(sipi->time_bin, time_base); */
-  /* } */
+  } else {
+    dt_sipi = get_timestep(sipi->time_bin, time_base);
+  }
 
   float lambda_ij = sidm_kernel_overlap_tophat(r, hi, hj) * cosmo->a3_inv;
 
   /* Scattering rates */
   float SIDM_rate_i = mj * sidm_props->sigma_over_m * vij * lambda_ij;
   sipi->SIDM_rate += SIDM_rate_i;
+
+  /* Interaction probability */
+  float pij = SIDM_rate_i * dt_sipi;
+
+  /* Pair interaction? */
+  const float x = random_unit_interval_two_IDs(sipi->id, sipj->id, ti_current,
+                                               random_number_sidm_scattering);
+
+  if (x < pij) {
+    kick_siparts(sipi, sipj, a, vij, ti_current);
+  }
 }
 
 #endif /* SWIFT_BASIC_SIDM_IACT_H */
