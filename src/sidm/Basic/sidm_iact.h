@@ -141,9 +141,9 @@ __attribute__((always_inline)) INLINE static void kick_siparts(
   const float mj = sipj->mass;
   const float mi_plus_mj = mi + mj;
 
-  const float v_com[3] = {(mi * sipi->v[0] + mj * sipj->v[0]) / mi_plus_mj,
-                          (mi * sipi->v[1] + mj * sipj->v[1]) / mi_plus_mj,
-                          (mi * sipi->v[2] + mj * sipj->v[2]) / mi_plus_mj};
+  const float v_com[3] = {cosmo->a_inv*(mi * sipi->v[0] + mj * sipj->v[0]) / mi_plus_mj,
+                          cosmo->a_inv*(mi * sipi->v[1] + mj * sipj->v[1]) / mi_plus_mj,
+                          cosmo->a_inv*(mi * sipi->v[2] + mj * sipj->v[2]) / mi_plus_mj};
 
   /* Get scattering direction. */
   /* For isotropic sampling:
@@ -167,14 +167,15 @@ __attribute__((always_inline)) INLINE static void kick_siparts(
   const float fi = mj / mi_plus_mj;
   const float fj = mi / mi_plus_mj;
 
-  /* By momentum conservation sipj gets the opposite COM-frame kick. */
-  sipi->v[0] = v_com[0] + fi * v_new[0];
-  sipi->v[1] = v_com[1] + fi * v_new[1];
-  sipi->v[2] = v_com[2] + fi * v_new[2];
+  /* By momentum conservation sipj gets the opposite COM-frame kick.
+  Also convert velocities back to comoving. */
+  sipi->v[0] = a * (v_com[0] + fi * v_new[0]);
+  sipi->v[1] = a * (v_com[1] + fi * v_new[1]);
+  sipi->v[2] = a * (v_com[2] + fi * v_new[2]);
 
-  sipj->v[0] = v_com[0] - fj * v_new[0];
-  sipj->v[1] = v_com[1] - fj * v_new[1];
-  sipj->v[2] = v_com[2] - fj * v_new[2];
+  sipj->v[0] = a * (v_com[0] - fj * v_new[0]);
+  sipj->v[1] = a * (v_com[1] - fj * v_new[1]);
+  sipj->v[2] = a * (v_com[2] - fj * v_new[2]);
 }
 
 /**
