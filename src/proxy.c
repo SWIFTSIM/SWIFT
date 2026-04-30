@@ -502,9 +502,14 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv tags.");
       recv_rid += 1;
     }
+  }
 
+  message("Proxy tag exchange emitted all zoom receives (%d).", recv_rid);
+
+  for (int k = 0; k < num_proxies; k++) {
     message("Proxy tag exchange emitting zoom sends for proxy %d node=%d.", k,
             proxies[k].nodeID);
+
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
       if (proxies[k].cells_out[j]->type != cell_type_zoom) continue;
 
@@ -517,23 +522,14 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
             k, proxies[k].nodeID, j, cid, offset_out[cid],
             proxies[k].cells_out[j]->mpi.pcell_size, count_out);
       cids_out[send_rid] = cid;
-      message(
-          "Proxy tag exchange zoom send posting proxy %d node=%d cell=%d "
-          "send_rid=%d cid=%d offset=%d pcell_size=%d.",
-          k, proxies[k].nodeID, j, send_rid, cid, offset_out[cid],
-          proxies[k].cells_out[j]->mpi.pcell_size);
       int err = MPI_Isend(&tags_out[offset_out[cid]],
                           proxies[k].cells_out[j]->mpi.pcell_size, MPI_INT,
                           proxies[k].nodeID, cid, MPI_COMM_WORLD,
                           &reqs_out[send_rid]);
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
-      message(
-          "Proxy tag exchange zoom send posted proxy %d node=%d cell=%d "
-          "send_rid=%d cid=%d.",
-          k, proxies[k].nodeID, j, send_rid, cid);
       send_rid += 1;
     }
-    message("Proxy tag exchange emitted zoom proxy %d node=%d.", k,
+    message("Proxy tag exchange emitted zoom sends for proxy %d node=%d.", k,
             proxies[k].nodeID);
   }
 
