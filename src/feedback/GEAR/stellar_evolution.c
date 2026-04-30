@@ -1377,10 +1377,6 @@ void stellar_evolution_compute_preSN_feedback_spart(
   const double dot_N_ion = radiation_get_ionization_rate_from_integral(
       &sm->rad, log10f(m_min), log10f(m_end_step));
 
-  /* TODO: Should we multiply by birth_mass or m_init ?
-     For the SN feedback, we use birth_mass... maybe it's wrong there as well.
-     Or by the current particle mass (sp->mass) ?*/
-
   /* Convert to total luminosities */
   sp->feedback_data.radiation.L_bol =
       L_bol * sp->sf_data.birth_mass / phys_const->const_solar_mass;

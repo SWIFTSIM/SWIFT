@@ -115,7 +115,7 @@ struct feedback_spart_data {
 
   } winds;
 
-  /*! Pre-SN data structs */
+  /*! Radiation data structs */
   struct {
 
     /*! Bolometric luminosity (physical units) */
