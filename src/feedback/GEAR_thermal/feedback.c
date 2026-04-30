@@ -50,7 +50,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
   /* TODO: Add hit by radiation */
   /* Did the particle receive a supernovae */
-  if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_preSN) return;
+  if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds) return;
 
   const struct cosmology *cosmo = e->cosmology;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
@@ -101,7 +101,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
   /* Update the wind fields */
   xp->feedback_data.hit_by_SN = 0;
-  xp->feedback_data.hit_by_preSN = 0;
+  xp->feedback_data.hit_by_winds = 0;
 }
 
 /**

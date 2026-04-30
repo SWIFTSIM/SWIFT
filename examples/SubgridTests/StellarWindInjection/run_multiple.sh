@@ -110,9 +110,9 @@ for ((index=0; index<total_combinations; index++)); do
     # Start the simulation
     echo "Starting simulation"
     if [[ "$2" == "SN" ]]; then
-        ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$z" --param="GEARFeedback:supernovae_efficiency:0.1" --param="GEARFeedback:pre_supernovae_efficiency:$coeff_value" ../params.yml 2>&1 | tee output.log
+        ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$z" --param="GEARFeedback:supernovae_efficiency:0.1" --param="GEARFeedback:stellar_winds_efficiency:$coeff_value" ../params.yml 2>&1 | tee output.log
     else 
-        ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$z" --param="GEARFeedback:pre_supernovae_efficiency:$coeff_value" ../params.yml 2>&1 | tee output.log
+        ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$z" --param="GEARFeedback:stellar_winds_efficiency:$coeff_value" ../params.yml 2>&1 | tee output.log
     fi
     cd ..
 done

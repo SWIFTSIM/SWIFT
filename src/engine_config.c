@@ -583,8 +583,14 @@ void engine_config(int restart, int fof, struct engine *e,
 #endif  // compiled with RT
     }
 
-    /* Initialize the SFH logger if running with star formation */
-    if (e->policy & engine_policy_star_formation) {
+    /* Initialize the SFH logger if running with star formation or star
+       formation sink */
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
       e->sfh_logger = fopen("SFR.txt", mode);
       if (e->sfh_logger == NULL)
         error("Could not open the file 'SFR.txt' with mode '%s'.", mode);

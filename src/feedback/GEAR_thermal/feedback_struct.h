@@ -55,7 +55,7 @@ struct feedback_xpart_data {
   char hit_by_SN;
 
   /*! Indicator if the particle receives energy from SW specifically */
-  char hit_by_preSN;
+  char hit_by_winds;
 };
 
 /**
@@ -68,21 +68,6 @@ struct feedback_spart_data {
 
   /*! Inverse of normalisation factor used for the enrichment. */
   float enrichment_weight;
-
-  /*! Number of Ia supernovae */
-  float number_snia;
-
-  /*! Number of II supernovae */
-  float number_snii;
-
-  /*! Energy injected in the surrounding particles */
-  float energy_ejected;
-
-  /*! Total mass ejected by the supernovae */
-  float mass_ejected;
-
-  /*! Chemical composition of the mass ejected */
-  double metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
@@ -97,7 +82,38 @@ struct feedback_spart_data {
   float grad_rho_star[3];
 
   /*! Gas metallicity at the star location */
-  float Z_star;
+  float Z_star;  
+
+  /*! Number of Ia supernovae */
+  float number_snia;
+
+  /*! Number of II supernovae */
+  float number_snii;
+
+  /* Supernovae data struct */
+  struct {
+
+    /*! Energy injected in the surrounding particles */
+    float energy_ejected;
+
+    /*! Total mass ejected by the supernovae */
+    float mass_ejected;
+
+  } supernovae;
+
+  /*! Chemical composition of the mass ejected */
+  double metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Stellar winds data struct */
+  struct {
+
+    /*! Energy injected in the surrounding particles */
+    float energy_ejected;
+
+    /*! Mass injected in the surrounding particles */
+    float mass_ejected;
+
+  } winds;
 
   /*! Pre-SN data structs */
   struct {
@@ -116,18 +132,7 @@ struct feedback_spart_data {
     struct stromgren_shell_data
         stromgren_sphere[GEAR_STROMGREN_NUMBER_NEIGHBOURS];
 
-  } radiation;
-
-  /*! Pre-SN data struct */
-  struct {
-
-    /*! Energy injected in the surrounding particles */
-    float energy_ejected;
-
-    /*! Mass injected in the surrounding particles */
-    float mass_ejected;
-
-  } preSN;
+  } radiation;  
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */
