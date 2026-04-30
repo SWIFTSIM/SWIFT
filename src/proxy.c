@@ -429,6 +429,27 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     qsort(expected_entries, recv_count, sizeof(struct proxy_tag_exchange_entry),
           proxy_tag_exchange_entry_cmp);
 
+    for (int j = 1; j < send_count; j++) {
+      if (send_entries[j - 1].cid == send_entries[j].cid &&
+          send_entries[j - 1].type == send_entries[j].type)
+        error(
+            "Duplicate proxy tag send to peer %d for cid=%d type=%d: "
+            "pcell_size entries are %d and %d. MPI tag matching uses only cid.",
+            peer, send_entries[j].cid, send_entries[j].type,
+            send_entries[j - 1].pcell_size, send_entries[j].pcell_size);
+    }
+
+    for (int j = 1; j < recv_count; j++) {
+      if (expected_entries[j - 1].cid == expected_entries[j].cid &&
+          expected_entries[j - 1].type == expected_entries[j].type)
+        error(
+            "Duplicate proxy tag receive from peer %d for cid=%d type=%d: "
+            "pcell_size entries are %d and %d. MPI tag matching uses only cid.",
+            peer, expected_entries[j].cid, expected_entries[j].type,
+            expected_entries[j - 1].pcell_size,
+            expected_entries[j].pcell_size);
+    }
+
     mpi_err = MPI_Sendrecv(send_entries,
                            sizeof(struct proxy_tag_exchange_entry) * send_count,
                            MPI_BYTE, peer, 31415, peer_entries,
