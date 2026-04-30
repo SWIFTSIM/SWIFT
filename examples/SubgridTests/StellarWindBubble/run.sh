@@ -61,7 +61,7 @@ python3 ../makeIC.py --level $level --lJ $jeans_length --rho $gas_density \
 mkdir noCooling
 cd noCooling
 # Start the simulation
-../../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback  --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:pre_supernovae_efficiency:$coeff" ../../params.yml 2>&1 | tee output.log
+../../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback  --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../../params.yml 2>&1 | tee output.log
 
 # Generate the plots
 python3 ../../gas_profile_analysis.py "./" | tee gas_profile_analysis.txt
@@ -72,7 +72,7 @@ cd ..
 mkdir withCooling
 cd withCooling
 # Start the simulation
-../../../../../swift --hydro --sync --limiter --external-gravity --cooling --stars --sinks --feedback  --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:pre_supernovae_efficiency:$coeff" ../../params.yml 2>&1 | tee output.log 
+../../../../../swift --hydro --sync --limiter --external-gravity --cooling --stars --sinks --feedback  --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../../params.yml 2>&1 | tee output.log 
 # Generate the plots
 python3 ../../gas_profile_analysis.py "./" | tee gas_profile_analysis.txt 
 python3 ../../bubble_evolution.py --log "radial_peak_positions.txt"
