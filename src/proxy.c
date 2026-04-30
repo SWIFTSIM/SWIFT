@@ -56,6 +56,12 @@ struct tag_mapper_data {
   struct cell *space_cells;
 };
 
+struct proxy_tag_exchange_entry {
+  int cid;
+  int pcell_size;
+  int type;
+};
+
 #ifdef WITH_MPI
 
 void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
@@ -88,6 +94,19 @@ void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
     const int cid = cids_in[k];
     cell_unpack_tags(&tags_in[offset_in[cid]], &space_cells[cid]);
   }
+}
+
+static int proxy_tag_exchange_entry_cmp(const void *a, const void *b) {
+
+  const struct proxy_tag_exchange_entry *entry_a =
+      (const struct proxy_tag_exchange_entry *)a;
+  const struct proxy_tag_exchange_entry *entry_b =
+      (const struct proxy_tag_exchange_entry *)b;
+
+  if (entry_a->cid != entry_b->cid) return entry_a->cid - entry_b->cid;
+  if (entry_a->pcell_size != entry_b->pcell_size)
+    return entry_a->pcell_size - entry_b->pcell_size;
+  return entry_a->type - entry_b->type;
 }
 
 #endif
@@ -347,6 +366,101 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
           peer_send_xor[k]);
     }
   }
+
+  message("Proxy tag exchange checking exact peer tag/size lists.");
+
+  for (int peer = 0; peer < nr_nodes; peer++) {
+
+    if (peer == s->e->nodeID) continue;
+    if (send_count_by_node[peer] == 0 && recv_count_by_node[peer] == 0 &&
+        peer_send_count[peer] == 0)
+      continue;
+
+    const int send_count = send_count_by_node[peer];
+    const int recv_count = recv_count_by_node[peer];
+    const int peer_count = peer_send_count[peer];
+
+    struct proxy_tag_exchange_entry *send_entries = NULL;
+    struct proxy_tag_exchange_entry *expected_entries = NULL;
+    struct proxy_tag_exchange_entry *peer_entries = NULL;
+
+    if ((send_count > 0 &&
+         (send_entries = (struct proxy_tag_exchange_entry *)malloc(
+              sizeof(struct proxy_tag_exchange_entry) * send_count)) == NULL) ||
+        (recv_count > 0 &&
+         (expected_entries = (struct proxy_tag_exchange_entry *)malloc(
+              sizeof(struct proxy_tag_exchange_entry) * recv_count)) == NULL) ||
+        (peer_count > 0 &&
+         (peer_entries = (struct proxy_tag_exchange_entry *)malloc(
+              sizeof(struct proxy_tag_exchange_entry) * peer_count)) == NULL))
+      error("Failed to allocate exact proxy tag exchange check buffers.");
+
+    int send_index = 0;
+    int recv_index = 0;
+    for (int p = 0; p < num_proxies; p++) {
+      if (proxies[p].nodeID != peer) continue;
+
+      for (int j = 0; j < proxies[p].nr_cells_out; j++) {
+        send_entries[send_index].cid = proxies[p].cells_out[j] - s->cells_top;
+        send_entries[send_index].pcell_size =
+            proxies[p].cells_out[j]->mpi.pcell_size;
+        send_entries[send_index].type = proxies[p].cells_out[j]->type;
+        send_index += 1;
+      }
+
+      for (int j = 0; j < proxies[p].nr_cells_in; j++) {
+        expected_entries[recv_index].cid =
+            proxies[p].cells_in[j] - s->cells_top;
+        expected_entries[recv_index].pcell_size =
+            proxies[p].cells_in[j]->mpi.pcell_size;
+        expected_entries[recv_index].type = proxies[p].cells_in[j]->type;
+        recv_index += 1;
+      }
+    }
+
+    if (send_index != send_count || recv_index != recv_count)
+      error(
+          "Exact proxy tag exchange check internal count mismatch for peer %d: "
+          "send_index=%d send_count=%d recv_index=%d recv_count=%d.",
+          peer, send_index, send_count, recv_index, recv_count);
+
+    qsort(send_entries, send_count, sizeof(struct proxy_tag_exchange_entry),
+          proxy_tag_exchange_entry_cmp);
+    qsort(expected_entries, recv_count, sizeof(struct proxy_tag_exchange_entry),
+          proxy_tag_exchange_entry_cmp);
+
+    mpi_err = MPI_Sendrecv(send_entries,
+                           sizeof(struct proxy_tag_exchange_entry) * send_count,
+                           MPI_BYTE, peer, 31415, peer_entries,
+                           sizeof(struct proxy_tag_exchange_entry) * peer_count,
+                           MPI_BYTE, peer, 31415,
+                           MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    if (mpi_err != MPI_SUCCESS)
+      mpi_error(mpi_err, "Failed to sendrecv exact tag exchange lists.");
+
+    qsort(peer_entries, peer_count, sizeof(struct proxy_tag_exchange_entry),
+          proxy_tag_exchange_entry_cmp);
+
+    for (int j = 0; j < recv_count; j++) {
+      if (expected_entries[j].cid != peer_entries[j].cid ||
+          expected_entries[j].pcell_size != peer_entries[j].pcell_size ||
+          expected_entries[j].type != peer_entries[j].type)
+        error(
+            "Exact proxy tag exchange mismatch with peer %d at sorted entry %d "
+            "of %d: expecting cid=%d pcell_size=%d type=%d, peer sends "
+            "cid=%d pcell_size=%d type=%d.",
+            peer, j, recv_count, expected_entries[j].cid,
+            expected_entries[j].pcell_size, expected_entries[j].type,
+            peer_entries[j].cid, peer_entries[j].pcell_size,
+            peer_entries[j].type);
+    }
+
+    free(send_entries);
+    free(expected_entries);
+    free(peer_entries);
+  }
+
+  message("Proxy tag exchange exact peer tag/size lists matched.");
 
   free(send_count_by_node);
   free(recv_count_by_node);
