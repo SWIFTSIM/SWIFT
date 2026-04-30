@@ -48,9 +48,12 @@
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
-  /* TODO: Add hit by radiation */
-  /* Did the particle receive a supernovae */
-  if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds) return;
+  /* Did the particle receive an event? */
+  /* TODO: Remove the ionization part from here and move it to cooling */
+  if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds &&
+      !xp->feedback_data.hit_by_radiation &&
+      !radiation_is_part_tagged_as_ionized(p, xp))
+    return;
 
   const struct cosmology *cosmo = e->cosmology;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;

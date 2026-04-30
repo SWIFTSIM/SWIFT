@@ -51,11 +51,13 @@ struct feedback_xpart_data {
   } radiation;
 
   /*! Indicator if the particule receive energy from SN specifically */
-  /*! Indicator if the particle receives energy from SN specifically */
   char hit_by_SN;
 
   /*! Indicator if the particle receives energy from SW specifically */
   char hit_by_winds;
+
+  /*! Indicator if the particle receives energy from radiation pressure specifically */
+  char hit_by_radiation;
 };
 
 /**

@@ -351,6 +351,7 @@ feedback_update_part_radiation(struct part *p, struct xpart *xp,
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
 
   /*----------------------------------------*/
+  /* TODO: Move that to cooling. We will do that before the cooling */
   /* Treat ionisation */
   if (radiation_is_part_tagged_as_ionized(p, xp)) {
     const double m_p = phys_const->const_proton_mass;
@@ -409,7 +410,7 @@ feedback_update_part_radiation(struct part *p, struct xpart *xp,
   /*----------------------------------------*/
   /* Radiation pressure */
 
-  if (e->feedback_props->radiation_pressure_efficiency != 0.0) {
+  if (xp->feedback_data.hit_by_radiation) {
     for (int i = 0; i < 3; i++) {
       /* We use the initial mass of the gas, i.e. before any winds or SN */
       const float dv =
@@ -420,6 +421,7 @@ feedback_update_part_radiation(struct part *p, struct xpart *xp,
       /* Reset */
       xp->feedback_data.radiation.delta_p[i] = 0;
     }
+    xp->feedback_data.hit_by_radiation = 0;
   }
 }
 
