@@ -456,16 +456,20 @@ __attribute__((always_inline)) INLINE static void gravity_predict_extra(
 
   switch (gp->type) {
     case swift_type_dark_matter:
+#if !defined(ADAPTIVE_SOFTENING_TIDAL)
       gp->epsilon = grav_props->epsilon_DM_cur;
+#endif
       break;
     case swift_type_sink:
       gp->epsilon = grav_props->epsilon_baryon_cur;
       break;
     case swift_type_stars:
+#if !defined(ADAPTIVE_SOFTENING_TIDAL)
       gp->epsilon = grav_props->epsilon_baryon_cur;
+#endif
       break;
     case swift_type_gas:
-#ifndef ADAPTIVE_SOFTENING
+#if !defined(ADAPTIVE_SOFTENING) && !defined(ADAPTIVE_SOFTENING_TIDAL)
       gp->epsilon = grav_props->epsilon_baryon_cur;
 #endif
       break;
@@ -524,16 +528,20 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
 
   switch (gp->type) {
     case swift_type_dark_matter:
+#if !defined(ADAPTIVE_SOFTENING_TIDAL)
       gp->epsilon = grav_props->epsilon_DM_cur;
+#endif
       break;
     case swift_type_stars:
+#if !defined(ADAPTIVE_SOFTENING_TIDAL)
       gp->epsilon = grav_props->epsilon_baryon_cur;
+#endif
       break;
     case swift_type_sink:
       gp->epsilon = grav_props->epsilon_baryon_cur;
       break;
     case swift_type_gas:
-#ifndef ADAPTIVE_SOFTENING
+#if !defined(ADAPTIVE_SOFTENING) && !defined(ADAPTIVE_SOFTENING_TIDAL)
       gp->epsilon = grav_props->epsilon_baryon_cur;
 #endif
       break;

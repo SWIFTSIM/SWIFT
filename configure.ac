@@ -2482,8 +2482,8 @@ esac
 
 # Adaptive softening
 AC_ARG_WITH([adaptive-softening],
-   [AS_HELP_STRING([--with-adaptive-softening=<yes/no>],
-      [Adaptive softening @<:@no, yes, default: no@:>@]
+   [AS_HELP_STRING([--with-adaptive-softening=<yes/no/tidal>],
+      [Adaptive softening @<:@no, yes, tidal, default: no@:>@]
    )],
    [with_adaptive_softening="$withval"],
    [with_adaptive_softening="no"]
@@ -2493,7 +2493,10 @@ case "$with_adaptive_softening" in
       AC_DEFINE([FIXED_SOFTENING], [1], [No adaptive softening])
    ;;
    yes)
-      AC_DEFINE([ADAPTIVE_SOFTENING], [1], [Adaptive softening])
+      AC_DEFINE([ADAPTIVE_SOFTENING], [1], [Adaptive softening with smoothing length])
+   ;;
+   tidal)
+      AC_DEFINE([ADAPTIVE_SOFTENING_TIDAL], [1], [Adaptive softening with tidal tensor])
    ;;
    *)
       AC_MSG_ERROR([Unknown adaptive softening: $with_adaptive_softening])
@@ -2503,10 +2506,12 @@ esac
 if test "x$with_adaptive_softening" = "xyes" -a "$with_kernel" != "wendland-C2"; then
   AC_MSG_ERROR([Adaptive softening scheme requires the usage of the Wendland-C2 kernel!])
 fi
-if test "x$with_adaptive_softening" = "xyes" -a "$with_gravity" != "with-multi-softening"; then
+if test "x$with_adaptive_softening" != "xno" -a "$with_gravity" != "with-multi-softening"; then
   AC_MSG_ERROR([Adaptive softening scheme requires the usage of the multi-softening gravity scheme!])
 fi
-
+if test "x$with_adaptive_softening" = "xtidal" -a "$enable_gravitational_tidal_tensors" != "yes"; then
+  AC_MSG_ERROR([Adaptive softening with tidal tensors scheme requires gravitational tensors to be enabled!])
+fi
 
 #  Riemann solver
 AC_ARG_WITH([riemann-solver],
