@@ -620,6 +620,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
   message("Proxy tag exchange emitted all zoom receives (%d).", recv_rid);
 
+  int zoom_send_wait_rid = 0;
+  const int zoom_send_batch_size = 64;
+
   for (int k = 0; k < num_proxies; k++) {
     message("Proxy tag exchange emitting zoom sends for proxy %d node=%d.", k,
             proxies[k].nodeID);
@@ -639,9 +642,19 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       int err = MPI_Isend(&tags_out[offset_out[cid]],
                           proxies[k].cells_out[j]->mpi.pcell_size, MPI_INT,
                           proxies[k].nodeID, cid, MPI_COMM_WORLD,
-                          &reqs_out[send_rid]);
+                          &reqs_out[zoom_send_wait_rid]);
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
+      zoom_send_wait_rid += 1;
       send_rid += 1;
+
+      if (zoom_send_wait_rid == zoom_send_batch_size) {
+        message("Proxy tag exchange waiting for zoom send batch (%d/%d).",
+                zoom_send_wait_rid, send_rid);
+        if (MPI_Waitall(zoom_send_wait_rid, reqs_out, MPI_STATUSES_IGNORE) !=
+            MPI_SUCCESS)
+          error("MPI_Waitall on tag sends failed.");
+        zoom_send_wait_rid = 0;
+      }
     }
     message("Proxy tag exchange emitted zoom sends for proxy %d node=%d.", k,
             proxies[k].nodeID);
@@ -660,9 +673,11 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                    &extra_data);
   }
 
-  message("Proxy tag exchange waiting for zoom sends (%d).", send_rid);
-  if (send_rid > 0 &&
-      MPI_Waitall(send_rid, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+  message("Proxy tag exchange waiting for remaining zoom sends (%d/%d).",
+          zoom_send_wait_rid, send_rid);
+  if (zoom_send_wait_rid > 0 &&
+      MPI_Waitall(zoom_send_wait_rid, reqs_out, MPI_STATUSES_IGNORE) !=
+          MPI_SUCCESS)
     error("MPI_Waitall on tag sends failed.");
 
   message("Proxy tag exchange zoom sends completed.");
