@@ -43,9 +43,8 @@ struct feedback_xpart_data {
   /*! Radiation struct */
   struct {
 
-    /* TODO: Convert to char */
     /*! Tag to ionize the part */
-    int is_ionized;
+    char is_ionized;
 
     /*! Momemtum received from a radiation_pressure */
     float delta_p[3];
