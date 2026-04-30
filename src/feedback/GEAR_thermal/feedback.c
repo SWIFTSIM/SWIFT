@@ -97,7 +97,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
   /*----------------------------------------*/
   /* Update the radiation fields */
-  feedback_update_part_radiation(p, xp, e);
+  feedback_update_part_radiation(p, xp, e, old_mass);
 
   /* Update the wind fields */
   xp->feedback_data.hit_by_SN = 0;

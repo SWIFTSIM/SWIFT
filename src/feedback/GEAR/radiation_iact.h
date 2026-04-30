@@ -311,10 +311,9 @@ radiation_iact_nonsym_feedback_apply(
   }
 
   /* Compute radiation pressure */
-  if (fb_props->radiation_pressure_efficiency != 0) {
+  if (si->feedback_data.radiation.L_bol != 0.0) {
     const float Delta_t = get_timestep(si->time_bin, time_base);
-    const float p_rad = fb_props->radiation_pressure_efficiency *
-                        radiation_get_star_physical_radiation_pressure(
+    const float p_rad = radiation_get_star_physical_radiation_pressure(
                             si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
 
@@ -342,7 +341,7 @@ radiation_iact_nonsym_feedback_apply(
  */
 __attribute__((always_inline)) INLINE static void
 feedback_update_part_radiation(struct part *p, struct xpart *xp,
-                               const struct engine *e) {
+                               const struct engine *e, const float initial_mass) {
 
   const struct cosmology *cosmo = e->cosmology;
   const struct unit_system *us = e->internal_units;
@@ -412,8 +411,9 @@ feedback_update_part_radiation(struct part *p, struct xpart *xp,
 
   if (e->feedback_props->radiation_pressure_efficiency != 0.0) {
     for (int i = 0; i < 3; i++) {
+      /* We use the initial mass of the gas, i.e. before any winds or SN */
       const float dv =
-          xp->feedback_data.radiation.delta_p[i] / hydro_get_mass(p);
+          xp->feedback_data.radiation.delta_p[i] / initial_mass;
       xp->v_full[i] += dv;
       p->v[i] += dv;
 

@@ -221,6 +221,9 @@ void feedback_will_do_feedback(
   /* Multiply pre-SN energy by the efficiency */
   sp->feedback_data.preSN.energy_ejected *= feedback_props->preSN_efficiency;
 
+  /* Apply the radiation pressure efficiency factor */
+  sp->feedback_data.radiation.L_bol *= feedback_props->radiation_pressure_efficiency;
+
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback =
       sp->feedback_data.energy_ejected != 0. ||
