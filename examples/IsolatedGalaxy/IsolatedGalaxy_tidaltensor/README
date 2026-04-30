@@ -1,0 +1,17 @@
+
+This example checks whether the background DM halo contributes
+to the particle tidal tensor. Dark matter and star particles are 
+placed in an external Hernquist halo and evolved for one step 
+without self-gravity.  
+
+(Hernquist IC profile paramters:
+  total mass M: 1.99e12  [Msun]
+  characterstic radius a: 52.19    [kpc]
+  particle resolution mres: 1.42e6 [Msun]
+)
+
+configure with:
+
+./configure --with-kernel=wendland-C2 --enable-gravitational-tidal-tensors=yes --with-ext-potential=hernquist
+
+Then run run.sh
