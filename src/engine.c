@@ -1632,6 +1632,98 @@ int engine_estimate_nr_tasks(const struct engine *e) {
  * @param clean_smoothing_length_values Are we cleaning up the values of
  * the smoothing lengths before building the tasks ?
  */
+#ifdef WITH_MPI
+struct engine_proxy_signature {
+  int count;
+  unsigned long long sum;
+  unsigned long long xor;
+};
+
+static unsigned long long engine_proxy_cell_hash(const struct space *s,
+                                                 const struct cell *c,
+                                                 const int type) {
+  const ptrdiff_t cid = c - s->cells_top;
+
+  if (cid < 0 || cid >= s->nr_cells)
+    error("Proxy cell pointer does not point into the current cells_top.");
+
+  const unsigned long long size = cell_get_tree_size((struct cell *)c);
+  return ((unsigned long long)cid + 0x9e3779b97f4a7c15ULL) ^
+         (size * 0xbf58476d1ce4e5b9ULL) ^
+         ((unsigned long long)type * 0x94d049bb133111ebULL);
+}
+
+static void engine_collect_proxy_signature(
+    const struct engine *e, struct engine_proxy_signature *cells_in,
+    struct engine_proxy_signature *cells_out) {
+
+  for (int pid = 0; pid < e->nr_proxies; pid++) {
+    const struct proxy *p = &e->proxies[pid];
+    const int nodeID = p->nodeID;
+
+    for (int k = 0; k < p->nr_cells_in; k++) {
+      const unsigned long long hash =
+          engine_proxy_cell_hash(e->s, p->cells_in[k], p->cells_in_type[k]);
+      cells_in[nodeID].count += 1;
+      cells_in[nodeID].sum += hash;
+      cells_in[nodeID].xor ^= hash;
+    }
+
+    for (int k = 0; k < p->nr_cells_out; k++) {
+      const unsigned long long hash =
+          engine_proxy_cell_hash(e->s, p->cells_out[k], p->cells_out_type[k]);
+      cells_out[nodeID].count += 1;
+      cells_out[nodeID].sum += hash;
+      cells_out[nodeID].xor ^= hash;
+    }
+  }
+}
+
+static void engine_check_zoom_repartition_proxies(struct engine *e) {
+
+  const int nr_nodes = e->nr_nodes;
+  struct engine_proxy_signature *old_in =
+      (struct engine_proxy_signature *)calloc(nr_nodes, sizeof(*old_in));
+  struct engine_proxy_signature *old_out =
+      (struct engine_proxy_signature *)calloc(nr_nodes, sizeof(*old_out));
+  struct engine_proxy_signature *new_in =
+      (struct engine_proxy_signature *)calloc(nr_nodes, sizeof(*new_in));
+  struct engine_proxy_signature *new_out =
+      (struct engine_proxy_signature *)calloc(nr_nodes, sizeof(*new_out));
+
+  if (old_in == NULL || old_out == NULL || new_in == NULL || new_out == NULL)
+    error("Failed to allocate proxy signature buffers.");
+
+  engine_collect_proxy_signature(e, old_in, old_out);
+
+  const int old_nr_proxies = e->nr_proxies;
+  engine_makeproxies(e);
+  const int new_nr_proxies = e->nr_proxies;
+
+  engine_collect_proxy_signature(e, new_in, new_out);
+
+  for (int k = 0; k < nr_nodes; k++) {
+    if (old_in[k].count != new_in[k].count || old_in[k].sum != new_in[k].sum ||
+        old_in[k].xor != new_in[k].xor || old_out[k].count != new_out[k].count ||
+        old_out[k].sum != new_out[k].sum || old_out[k].xor != new_out[k].xor) {
+      error(
+          "Zoom repartition proxy set changed during rebuild for node %d "
+          "(nr_proxies %d -> %d): in count/sum/xor %d/%llu/%llu -> "
+          "%d/%llu/%llu, out count/sum/xor %d/%llu/%llu -> %d/%llu/%llu.",
+          k, old_nr_proxies, new_nr_proxies, old_in[k].count, old_in[k].sum,
+          old_in[k].xor, new_in[k].count, new_in[k].sum, new_in[k].xor,
+          old_out[k].count, old_out[k].sum, old_out[k].xor, new_out[k].count,
+          new_out[k].sum, new_out[k].xor);
+    }
+  }
+
+  free(old_in);
+  free(old_out);
+  free(new_in);
+  free(new_out);
+}
+#endif
+
 void engine_rebuild(struct engine *e, const int repartitioned,
                     const int clean_smoothing_length_values) {
 
@@ -1656,6 +1748,12 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
+
+#ifdef WITH_MPI
+  if (repartitioned && e->s->with_zoom_region) {
+    engine_check_zoom_repartition_proxies(e);
+  }
+#endif
 
   /* Report the number of cells and memory */
   if (e->verbose)
