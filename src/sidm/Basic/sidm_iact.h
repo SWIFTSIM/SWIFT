@@ -23,6 +23,7 @@
 #include "random.h"
 #include "sidm_kernel.h"
 #include "sidm_properties.h"
+#include "sidm_debug.h"
 #include "timeline.h"
 
 /**
@@ -141,9 +142,9 @@ __attribute__((always_inline)) INLINE static void kick_siparts(
   const float mj = sipj->mass;
   const float mi_plus_mj = mi + mj;
 
-  const float v_com[3] = {cosmo->a_inv*(mi * sipi->v[0] + mj * sipj->v[0]) / mi_plus_mj,
-                          cosmo->a_inv*(mi * sipi->v[1] + mj * sipj->v[1]) / mi_plus_mj,
-                          cosmo->a_inv*(mi * sipi->v[2] + mj * sipj->v[2]) / mi_plus_mj};
+  const float v_com[3] = {(mi * sipi->v[0] + mj * sipj->v[0]) / (mi_plus_mj * a),
+                          (mi * sipi->v[1] + mj * sipj->v[1]) / (mi_plus_mj * a),
+                          (mi * sipi->v[2] + mj * sipj->v[2]) / (mi_plus_mj * a)};
 
   /* Get scattering direction. */
   /* For isotropic sampling:
@@ -253,7 +254,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
                                                random_number_sidm_scattering);
 
   if (x < p) {
+    sidm_debug_interaction(sipi, sipj);
     kick_siparts(sipi, sipj, a, vij, ti_current);
+    sidm_debug_interaction(sipi, sipj);
   }
 }
 
@@ -318,7 +321,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
                                                random_number_sidm_scattering);
 
   if (x < pij) {
+    sidm_debug_interaction(sipi, sipj);
     kick_siparts(sipi, sipj, a, vij, ti_current);
+    sidm_debug_interaction(sipi, sipj);
   }
 }
 
