@@ -64,9 +64,9 @@ StructureFinding:
 
 # Power spectrum calculation options
 PowerSpectrum:
-  grid_side_length: 256
-  num_folds: 4
-  fold_factor: 2
+  grid_side_length: 64
+  num_folds: 1
+  fold_factor: 1
   window_order: 2
   requested_spectra: ["matter-matter"]
 

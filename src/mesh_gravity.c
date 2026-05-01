@@ -925,13 +925,13 @@ void overdensity_to_gparts(struct space *s, double *rho, double mean_density, in
 }
 
 void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, double normalisation) {
-  MG->a = cosmo->a;
-  //MG->a = 1.;
+  //MG->a = cosmo->a;
+  MG->a = 1.;
   MG->fR0 = fR0;
   MG->n = n;
   MG->a3_inv = (1./(MG->a*MG->a*MG->a));
-  MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
-  //MG->Omega_ratio = 0.;
+  //MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
+  MG->Omega_ratio = 0.;
   MG->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
   MG->R = (3.*MG->m*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
   MG->c = s->e->physical_constants->const_speed_light_c;
@@ -951,7 +951,7 @@ void get_rho_eff(double *rho, double *u, struct MG_variables *MG, double delta, 
     rho[i] -= mean_density;
     rho[i] *= (1./3.);
     rho[i] += (MG->R*MG->a*MG->a*MG->a)/(24.*M_PI*MG->G) * (delta*delta*delta)*(1. - exp(-(1./2.)*MG->normalisation*u[i]));
-    rho[i] += mean_density;
+    //rho[i] += mean_density;
   }
 }
 
@@ -1008,10 +1008,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
                               struct threadpool* tp, const struct cosmology *cosmo, const int verbose, const int MG, const int power) {
 
 #ifdef HAVE_FFTW
-
-  //int get_MG_acc = 0;
-  //int cell_acc = 1;
-  int get_power_spectrum = 0;
   //const double r_s = mesh->r_s;
   const double r_s = 0.;
   const double box_size = s->dim[0];
@@ -1091,6 +1087,10 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
                    (void*)&data);
   }
 
+  /* MG part from here! */
+  //int get_MG_acc = 1;
+  int cell_acc = 1;
+
   double *field_contribution = NULL;
   field_contribution = (double*)calloc(N * N * N, sizeof(double));
   if (field_contribution == NULL)
@@ -1105,7 +1105,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
 
   if (MG) { //Assume n=1 for now
-    int test = 0; //1 = uniform density 2 = point mass  3 = sine wave
+    int test = 4; //1 = uniform density 2 = point mass  3 = sine wave 4 = two point masses
     if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
 
     struct MG_variables MG_var;
@@ -1113,11 +1113,11 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     double normalisation = 1.;
     int n = 1;
     initialise_MG_variables(s, cosmo, &MG_var, fR0, n, normalisation);
-    message("The relevant parameters are G = %E, c = %E, R = %E and L_cell = %E", MG_var.G, MG_var.c, MG_var.R, s->dim[0]/128.);
 
     double fR_evo = ((MG_var.a3_inv + 4. * MG_var.Omega_ratio)/(1. + 4. * MG_var.Omega_ratio));
     MG_var.fR_correction = fR_evo * fR_evo;
     int cdim[3] = {N,N,N};
+    double mean_density = 50.;
     /* Are we testing? */
     switch (test) {
       case 1:
@@ -1136,7 +1136,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
       case 2:
         /* Change the density field to represent a single particle at the centre of the box */
         message("Testing the f(R) calculation with a point mass.");
-        double mean_density = 50.;
         for (int i=0; i<N; i++) {
           for (int j=0; j<N; j++) {
             for (int k=0; k<N; k++) {
@@ -1151,7 +1150,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
       case 3:
         /* Change the density field to represent a 1D sinusoid in the box */
         message("Testing the f(R) calculation with a 1D sine wave.");
-        double fR_mod = -1e-6;
+        double fR_mod = -1e-4;
         double fac = s->dim[0]/N;
         for (int i=0; i<N; i++) {
           for (int j=0; j<N; j++) {
@@ -1163,6 +1162,23 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
         }
         MG_var.fR0 = 2. * fR_mod;
         MG_var.overdensity = 1;
+        break;
+      case 4: 
+        /* Change the density field to represent a two particles aligned at the x-axis of the box */
+        message("Testing the f(R) calculation with a two point masses.");
+        for (int i=0; i<N; i++) {
+          for (int j=0; j<N; j++) {
+            for (int k=0; k<N; k++) {
+              if (i==N/2+32 && j==N/2 && k==N/2) continue;
+              if (i==N/2-32 && j==N/2 && k==N/2) continue;
+              rho[cell_getid(cdim, i, j, k)] = mean_density * (1. - 1e-4);
+            }
+          }
+        }
+        rho[cell_getid(cdim, N/2+32, N/2, N/2)] = mean_density * (1. + 1e-4*(N*N*N-2.));
+        rho[cell_getid(cdim, N/2-32, N/2, N/2)] = mean_density * (1. + 1e-4*(N*N*N-2.));
+        MG_var.overdensity = 0;
+        break;
     }
     
     message("Going to compute f(R)");
@@ -1171,7 +1187,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     
     double *rho_copy = malloc(N*N*N *sizeof(double));
     memcpy(rho_copy, rho, N*N*N*sizeof(double));
-    //double *fR_array = malloc(N*N*N *sizeof(double));
     space_get_fR_contribution(s, rho_copy, field_contribution, &MG_var, N_min, N); 
 
     if (export) {
@@ -1192,31 +1207,32 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     }
 
     /*if (get_MG_acc && cell_acc) {
+      message("The value of the fR correction is %lf", MG_var.fR_correction);
+      double *fR_array = malloc(N*N*N *sizeof(double));
       for (int i=0; i<N*N*N; i++) {
-        fR_array[i] = (MG_var.c * MG_var.c*fR0)/(2.*MG_var.a) * exp(MG_var.normalisation*field_contribution[i]);
+        fR_array[i] = (MG_var.c * MG_var.c*fR0)/(2.*MG_var.a*MG_var.fR_correction) * exp(MG_var.normalisation*field_contribution[i]);
       }
       get_cell_acc(acc, fR_array, N, cell_fac);
       double delta = box_size/N;
       FILE *fR_test;
-      fR_test = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/MG_acc.txt", "w");
+      fR_test = fopen("/data1/vandervlugt/PythonFiles/MG_consistency/z05/MG_acc.txt", "w");
       for (int i2=0; i2<N; i2++) {
         for (int j=0; j<N; j++) {
           for (int k=0; k<N; k++) {
-            double dx = ((double)(i2-N/2)) * delta;
-            double dy = ((double)(j-N/2)) * delta;
-            double dz = ((double)(k-N/2)) * delta;
-            double r = sqrt(dx*dx + dy*dy + dz*dz);
+            double dx = (double)i2 * delta;
+            double dy = (double)j * delta;
+            double dz = (double)k * delta;
             double accx = acc[0][cell_getid(cdim, i2, j, k)];
             double accy = acc[1][cell_getid(cdim, i2, j, k)];
             double accz = acc[2][cell_getid(cdim, i2, j, k)];
             double acc_sq = sqrt(accx*accx + accy*accy + accz*accz);
 
-            if (r<13) fprintf(fR_test, "%E %.15g \n", acc_sq, r);
+            if (k<4) fprintf(fR_test, "%E %.15g %.15g %.15g \n", acc_sq, dx, dy, dz);
           }
         }
       }
       fclose(fR_test);
-      message("Exported the fR values for N=%d", N);
+      message("Exported the MG acceleration for N=%d", N);
       sleep(10);
     }*/
 
@@ -1240,49 +1256,18 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
   fclose(export_delta_fR);
   free(delta_fR);*/
+    double *rho_mod = malloc(N*N*N *sizeof(double));
+    memcpy(rho_mod, rho, N*N*N*sizeof(double));
+  
     double delta = box_size/N;
     get_rho_eff(rho, field_contribution, &MG_var, delta, N);
 
-    /*FILE *fR_test;
-    fR_test = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/eff_dens_128_flipped.txt", "w");
-    for (int i2=0; i2<N; i2++) {
-      for (int j=0; j<N; j++) {
-        for (int k=0; k<N; k++) {
-          double dx = ((double)(i2-N/2)) * delta;
-          double dy = ((double)(j-N/2)) * delta;
-          double dz = ((double)(k-N/2)) * delta;
-          double r = sqrt(dx*dx + dy*dy + dz*dz);
-
-          if (r<13) fprintf(fR_test, "%E %.15g \n", rho[cell_getid(cdim, i2, j, k)], r);
-        }
-      }
+    FILE *rho_mod_exp;
+    rho_mod_exp = fopen("/data1/vandervlugt/PythonFiles/power_spectra/rho_rhoeff_128_uniform_modres.txt", "w");
+    for (int i=0; i<N*N*N; i++) {
+      fprintf(rho_mod_exp, "%E %E \n", rho_mod[i], rho[i]);
     }
-    fclose(fR_test);
-    message("Exported the fR values for N=%d", N);
-    sleep(10);*/
-
-    double *rho_mod = malloc(N*N*N *sizeof(double));
-    memcpy(rho_mod, rho, N*N*N*sizeof(double));
-
-    //FILE *export_density_fR;
-    //export_density_fR = fopen("/data1/vandervlugt/PythonFiles/MG_acceleration/new_tests2/rho_deltaR_e-4.txt", "w");
-    //double sum = 0.;
-    //int negative_count = 0;
-    //for (int i=0; i<N*N*N; i++) {
-      //fprintf(export_density_fR, "%E %E \n", rho[i]/3., ((box_size*box_size*box_size)/(N*N*N))*((cosmo->a*cosmo->a*cosmo->a)/(24.*M_PI*MG_var.G))*MG_var.R*(exp(-(1./2.)*MG_var.normalisation*field_contribution[i])-1.));
-      //fprintf(export_density_fR, "%E %E \n", rho[i]/3., -((box_size*box_size*box_size)/(N*N*N))*((cosmo->a*cosmo->a*cosmo->a)/(24.*M_PI*MG_var.G))*MG_var.R*(exp(-(1./2.)*MG_var.normalisation*field_contribution[i])-1.));
-      //rho_mod[i] *= (4./3.);
-      //rho_mod[i] += (MG_var.R*cosmo->a*cosmo->a*cosmo->a)/(24.*M_PI*MG_var.G) * ((box_size*box_size*box_size)/(N*N*N))*(1. - exp(-(1./2.)*MG_var.normalisation*field_contribution[i]));
-      //sum += fabs(MG_var.R/(24.*M_PI*MG_var.G) *((box_size*box_size*box_size)/(N*N*N))*(1. - exp(-(1./2.)*MG_var.normalisation*field_contribution[i])));
-    //}
-    //message("The mean added effective density is %E and we had %d negative entries", sum/(N*N*N), negative_count);
-    //fclose(export_density_fR);
-
-    //double mean_overdensity = 0.;
-    //for (int i=0; i<N*N*N; i++) {
-      //mean_overdensity += rho_mod[i]/(N*N*N);
-    //}
-    //message("The mean overdensity is %E", mean_overdensity);
+    fclose(rho_mod_exp);
 
     for (int i=0; i<N*N*N; i++) {
       //rho_mod[i] += mean_density;
@@ -1290,14 +1275,18 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     }
     //message("The negative count is %d", negative_count);
 
-    if (get_power_spectrum) {
-      //power_spectrum_stripped(s, tp, rho_mod, N, verbose);
-      //overdensity_to_gparts(s, rho_mod, mean_density, N);
-    }
+  }
+
+  if (power) {
+    //if (e->power_data->Ngrid != N) error("Mesh sizes of FFT and power spectrum do not match");
+    //e->power_data->MG_dens = rho;
+    //calc_all_power_spectra(e->power_data, s, tp, 0, 1);
+    //sleep(10);
+    overdensity_to_gparts(s, rho, 0, N);
   }
   
-  if (verbose) message("Attempting to compute a power spectrum");
-  if (N<=128 && power) power_spectrum_stripped(s, tp, rho, N, verbose);
+  //if (verbose) message("Attempting to compute a power spectrum");
+  //if (N<=128 && power) power_spectrum_stripped(s, tp, rho, N, verbose);
 
   if (verbose)
     message("Gpart assignment took %.3f %s.",
@@ -1374,32 +1363,10 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     message("Reverse Fourier transform took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  /*(if (MG && get_MG_acc) {
-    double m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
-    //double fR0 = -1e-3;
-    double Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
-    double a3_inv = (1./(cosmo->a*cosmo->a*cosmo->a));
-    //double fR_evo_new = ((1.+4.*Omega_ratio)/(a3_inv + 4.*Omega_ratio));
-    //double c = s->e->physical_constants->const_speed_light_c;
-    double G = s->e->physical_constants->const_newton_G;
-    double normalisation = 1e-2;
-    double R = (3.*m*m*(a3_inv + 4.*(Omega_ratio)));
-    for (int i=0; i<N*N*N; i++) {
-      //rho[i] = ((c*c)/(2.*G)) *fR_evo_new *fR_evo_new*fR0*exp(normalisation*field_contribution[i]);
-      //rho[i] = (1./G)*fR_evo_new *fR_evo_new*fR0*exp(normalisation*field_contribution[i]);
-      rho[i] = (((4.*rho[i])/3.)-((box_size*box_size*box_size)/(N*N*N))*((cosmo->a*cosmo->a*cosmo->a)/(24.*M_PI*G))*R*(exp(-(1./2.)*normalisation*field_contribution[i])-1.))/G;
-    }
-    //double sum = 0.;
-    //for (int i=0; i<N*N*N; i++) {
-      //sum += rho[i]/(N*N*N);
-    //}
-    //message("The mean field is now %E", sum*G);
-  }*/
-
   /* rho now contains the potential */
   /* This array is now again NxNxN real numbers */
 
-  /*if (MG && cell_acc) {
+  if (MG && cell_acc) {
     int cdim3[3] = {N, N, N};
     double *acc2[3];
     for (int j=0; j<3; j++) {
@@ -1414,14 +1381,13 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     }
     double delta = box_size/N;
     FILE *fR_test;
-    fR_test = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/combined_acc_via_deltarho.txt", "w");
+    fR_test = fopen("/data1/vandervlugt/PythonFiles/MG_consistency/z05/combined_acc_via_deltarho.txt", "w");
     for (int i2=0; i2<N; i2++) {
       for (int j=0; j<N; j++) {
         for (int k=0; k<N; k++) {
-          double dx = ((double)(i2-N/2)) * delta;
-          double dy = ((double)(j-N/2)) * delta;
-          double dz = ((double)(k-N/2)) * delta;
-          double r = sqrt(dx*dx + dy*dy + dz*dz);
+          double dx = (double)i2 * delta;
+          double dy = (double)j * delta;
+          double dz = (double)k * delta;
           double accx = acc2[0][cell_getid(cdim3, i2, j, k)];
           double accy = acc2[1][cell_getid(cdim3, i2, j, k)];
           double accz = acc2[2][cell_getid(cdim3, i2, j, k)];
@@ -1430,18 +1396,18 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
           //double accz = acc2[2][cell_getid(cdim3, i2, j, k)]+acc[2][cell_getid(cdim3, i2, j, k)];
           double acc_sq = sqrt(accx*accx + accy*accy + accz*accz);
 
-          if (r<13) fprintf(fR_test, "%E %.15g \n", acc_sq, r);
+          if (k<4) fprintf(fR_test, "%E %.15g %.15g %.15g \n", acc_sq, dx, dy, dz);
         }
       }
     }
     fclose(fR_test);
-    message("Exported the acceleration values for N=%d", N);
+    message("Exported the combined acceleration values for N=%d", N);
     sleep(10);
     for (int j=0; j<3; j++) {
       free(acc2[j]);
       acc2[j] = NULL;
     }
-  }*/
+  }
 
   for (int j=0; j<3; j++) {
     free(acc[j]);

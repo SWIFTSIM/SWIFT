@@ -7296,7 +7296,7 @@ void set_initial_guess(double *pot, const int cdim[3], int MG) {
   for (int i = 0; i<N*N*N; i++){
     //pot[i] += (fmod(rand(),5.) - 10.);
     pot[i] += fmod(rand(),2000.) - 1000.;
-    if (MG) pot[i] = 1.*1e-5; //Corresponds to fR = mean(fR) everywhere.
+    if (MG) pot[i] = 1.*1e-5 + fmod(rand(),100)*(1e-5); //Corresponds to fR = mean(fR) everywhere.
   }
 }
 
@@ -7430,6 +7430,7 @@ void get_pm_potential(struct cic_mapper_data* data, const int N, const double bo
 double get_mean_density(double *rho, const int N) {
   double sum = 0.;
   double mean_density = 0.;
+  double sum2 = 0.;
 
   for (int i = 0; i < N*N*N; i++) {
       sum += rho[i];
@@ -7438,6 +7439,10 @@ double get_mean_density(double *rho, const int N) {
   for (int i = 0; i < N*N*N; i++) {
       rho[i] = rho[i] / mean_density;
   }
+  for (int i = 0; i < N*N*N; i++) {
+    sum2 += rho[i]/(N*N*N);
+  }
+  message("The mean overdensity is %lf", sum2);
   message("We found the mean density %lf",mean_density);
   return mean_density;
 }
@@ -7457,7 +7462,7 @@ double get_mean_density(double *rho, const int N) {
  * @param N_max 1D size of the largest grid on which to solve for the potential.
  */
 void space_get_fR_contribution(const struct space *s, double *rho, double *u, struct MG_variables *MG, int N_min, const int N_max) {
-  int test = 0; //1 = uniform density 2 = point mass  3 = sine wave
+  int test = 4; //1 = uniform density 2 = point mass  3 = sine wave 4 = two point masses
   message("Doing test case %d", test);
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -7492,7 +7497,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
   /* Decide if we need to calculate the mean density */
   if (!MG->overdensity) {
     mean_density[N_levels-1] = get_mean_density(rho_levels[N_levels-1], grid_sizes[N_levels-1]);
-    if (test != 2) mean_density[N_levels-1] *= fac*fac*fac;
+    if (test != 2 && test != 4) mean_density[N_levels-1] *= fac*fac*fac;
     message("The mean density is %lf", mean_density[N_levels-1]);
   }
   else {
@@ -7515,6 +7520,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     int N = grid_sizes[i];
     int cdim[3] = {N,N,N};
     double fac_level = grid_sizes[i]/box_size;
+    double mean_density_set = 50.;
 
     /* Decide on density assignment based on the test */
     switch (test) {
@@ -7526,7 +7532,6 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
         break;
       case 2:
         /* Change the density field to represent a single particle at the centre of the box */
-        double mean_density_set = 50.;
         for (int i2=0; i2<N; i2++) {
           for (int j=0; j<N; j++) {
             for (int k=0; k<N; k++) {
@@ -7535,7 +7540,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
             }
           }
         }
-        rho_levels[i][cell_getid(cdim, N/2, N/2, N/2)] = mean_density_set * (1. + 1e-4*(N*N*N-1.));
+        rho_levels[i][cell_getid(cdim, 18*(i+1), 18*(i+1), N/2)] = mean_density_set * (1. + 1e-4*(N*N*N-1.));
         break;
       case 3:
         /* Change the density field to represent a 1D sinusoid in the box */
@@ -7550,6 +7555,20 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
           }
         }
         break;
+      case 4:
+        /* Change the density field to represent two particles aligned along the x-axis of the box */
+        for (int i2=0; i2<N; i2++) {
+          for (int j=0; j<N; j++) {
+            for (int k=0; k<N; k++) {
+              if (i2==N/2 + 8*(i+1) && j==N/2 && k==N/2) continue;
+              if (i2==N/2 - 8*(i+1) && j==N/2 && k==N/2) continue;
+              rho_levels[i][cell_getid(cdim, i2, j, k)] = mean_density_set * (1. - 1e-4);
+            }
+          }
+        }
+        rho_levels[i][cell_getid(cdim, N/2 + 8*(i+1), N/2, N/2)] = mean_density_set * (1. + 1e-4*(N*N*N-2.));
+        rho_levels[i][cell_getid(cdim, N/2 - 8*(i+1), N/2, N/2)] = mean_density_set * (1. + 1e-4*(N*N*N-2.));
+        break;
       default:
         /* CIC assignment based on the particles */
         data.N = N;
@@ -7561,7 +7580,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     /* Decide if we need to calculate the mean density */
     if (!MG->overdensity) {
       mean_density[i] = get_mean_density(rho_levels[i], grid_sizes[i]);
-      if (test != 2) mean_density[i] *= fac_level*fac_level*fac_level;
+      if (test != 2 && test != 4) mean_density[i] *= fac_level*fac_level*fac_level;
       message("The mean density on the level with size %d is %lf", grid_sizes[i], mean_density[i]);
     }
     else {
@@ -7571,6 +7590,12 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
       mean_density[i] = 0.;
     }
   }
+
+  double sum = 0.;
+  for (int i=0; i<N_max*N_max*N_max; i++) {
+    sum += (rho_levels[N_levels-1][i]-1.) * mean_density[N_levels-1];
+  }
+  message("The mean of delta rho is %E", sum);
   
   /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
@@ -7593,25 +7618,23 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     cdim[2] = N;
     apply_multigrid_fR(rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, 15);
 
-    /*if (i==N_levels-1) {
+    if (i==N_levels-1) {
       FILE *fR_test;
-      fR_test = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/test_fR_128.txt", "w");
+      fR_test = fopen("/data1/vandervlugt/PythonFiles/FAS_test/two_particles/test_fR_128.txt", "w");
       for (int i2=0; i2<N; i2++) {
-        for (int j=0; j<N; j++) {
-          for (int k=0; k<N; k++) {
-            double dx = ((double)(i2-N/2)) * box_size/N;
-            double dy = ((double)(j-N/2)) * box_size/N;
-            double dz = ((double)(k-N/2)) * box_size/N;
-            double r = sqrt(dx*dx + dy*dy + dz*dz);
+        //for (int j=0; j<N; j++) {
+          //for (int k=0; k<N; k++) {
+            double dx1 = fabs((double)(i2-(N/2+32))) * box_size/N;
+            double dx2 = fabs((double)(i2-(N/2-32))) * box_size/N;
 
-            if (r<13) fprintf(fR_test, "%E %.15g \n", MG->fR0*exp(u_levels[i][cell_getid(cdim, i2, j, k)]), r);
-          }
-        }
+            fprintf(fR_test, "%E %.15g %.15g \n", MG->fR0*(exp(u_levels[i][cell_getid(cdim, i2, N/2, N/2)])-1.), dx1, dx2);
+          //}
+        //}
       }
       fclose(fR_test);
       message("Exported the fR values for N=%d", N);
       sleep(10);
-    }*/
+    }
   }
 }
 
