@@ -1,0 +1,4 @@
+This directory contains initial conditions designed to compare the evolution of the SIDM simulations with CDM counterparts. 
+
+./run.sh runs an SIDM simulation for ~400Myr with an interaction cross section of 100 cm^2/g.
+./run_cdm.sh runs identical ICs with CDM particles.
