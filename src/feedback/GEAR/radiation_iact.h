@@ -31,6 +31,7 @@
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
+#include "feedback_properties.h"
 #include "radiation.h"
 #include "random.h"
 
@@ -56,6 +57,11 @@ radiation_iact_nonsym_feedback_density(
     const struct hydro_props *hydro_props, const struct phys_const *phys_const,
     const struct unit_system *us, const struct cooling_function_data *cooling,
     const integertime_t ti_current) {
+
+  /* Exit if no radiation policies are enabled */
+  if (fb_props->radiation_policy == radiation_policy_none) {
+    return;
+  }
 
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
@@ -91,27 +97,29 @@ radiation_iact_nonsym_feedback_density(
   si->feedback_data.Z_star +=
       pj->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] * wi;
 
-  /* Gather neighbours data for HII ionization */
-  if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling,
-                                 pj, xpj)) {
-    /* If a particle is already ionized, it won't be able to ionize again so do
-       not gather its data. */
-    const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
-        phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+  if (fb_props->radiation_policy & radiation_policy_photoionization) {
+    /* Gather neighbours data for HII ionization */
+    if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling,
+				   pj, xpj)) {
+      /* If a particle is already ionized, it won't be able to ionize again so do
+	 not gather its data. */
+      const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
+									     phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
 
-    /* Compute the size of the array that we want to sort. If the current
-     * function is called for the first time (at this time-step for this star),
-     * then si->num_ngbs = 1 and there is nothing to sort. Note that the
-     * maximum size of the sorted array cannot be larger then the maximum
-     * number of rays. */
-    const int arr_size =
+      /* Compute the size of the array that we want to sort. If the current
+       * function is called for the first time (at this time-step for this star),
+       * then si->num_ngbs = 1 and there is nothing to sort. Note that the
+       * maximum size of the sorted array cannot be larger then the maximum
+       * number of rays. */
+      const int arr_size =
         min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
 
-    /* Minimise separation between the gas particles and the BH. The rays
-     * structs with smaller ids in the ray array will refer to the particles
-     * with smaller distances to the BH. */
-    stromgren_sort_distance(r, si->feedback_data.radiation.stromgren_sphere,
-                            arr_size, Delta_dot_N_ion);
+      /* Minimise separation between the gas particles and the BH. The rays
+       * structs with smaller ids in the ray array will refer to the particles
+       * with smaller distances to the BH. */
+      stromgren_sort_distance(r, si->feedback_data.radiation.stromgren_sphere,
+			      arr_size, Delta_dot_N_ion);
+    }
   }
 }
 
@@ -172,7 +180,7 @@ feedback_prepare_radiation_feedback(
   /*----------------------------------------*/
   /* Do the HII ionization */
 
-  if (feedback_props->do_photoionization) {
+  if (feedback_props->radiation_policy & radiation_policy_photoionization) {
     const struct stromgren_shell_data *stromgren =
         sp->feedback_data.radiation.stromgren_sphere;
     const int num_ngb =
@@ -301,7 +309,7 @@ radiation_iact_nonsym_feedback_apply(
   */
 
   /* Photoionization */
-  if (fb_props->do_photoionization) {
+  if (fb_props->radiation_policy & radiation_policy_photoionization) {
     const float R_stromgren = si->feedback_data.radiation.R_stromgren;
     if (r <= R_stromgren) {
       /* message("Found particle to ionize ! r= %e, id = %lld", r, pj->id); */

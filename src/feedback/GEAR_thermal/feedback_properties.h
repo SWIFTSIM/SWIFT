@@ -25,6 +25,19 @@
 #include "hydro_properties.h"
 
 /**
+ * @brief The different subgrid radiation feedback processes GEAR models.
+ */
+enum radiation_policy {
+  radiation_policy_none = 0,
+  /*! Do we want the ionization effect (Strömgren sphere)? */
+  radiation_policy_photoionization = (1 << 0),
+  /*! Radiation pressure from the stars' bolometric luminosity */
+  radiation_policy_radiation_pressure = (1 << 1),
+  /* Photoelectric (PE) heating by FUV radiation on dust */
+  radiation_policy_photoelectric_heating = (1 << 2),
+};
+
+/**
  * @brief Properties of the GEAR feedback model.
  */
 struct feedback_props {
@@ -44,9 +57,8 @@ struct feedback_props {
   /*! Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
 
-  /* TODO: Update this and add a with_stellar_radiation flag */
-  /*! Do we want the ionization effect (Strömgren sphere)? */
-  int do_photoionization;
+  /* The radiation processes enabled */
+  int radiation_policy;
 
   /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
@@ -108,9 +120,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   }
 
   message("Photoionization                    =  %i",
-          feedback_props->do_photoionization);
+          feedback_props->radiation_policy & radiation_policy_photoionization);
+  message("Radiation pressure                 =  %i",
+          feedback_props->radiation_policy & radiation_policy_radiation_pressure);
   message("Radiation pressure efficiency:     =  %.2g",
           feedback_props->radiation_pressure_efficiency);
+  message("Photo-electric heating              =  %i",
+          feedback_props->radiation_policy & radiation_policy_photoelectric_heating);
 }
 
 /**
@@ -191,12 +207,35 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                  params, cosmo, fp->with_stellar_wind_feedback);
   }
 
+  /* -------------------------------------------- */
   /* Radiation fields */
-  fp->do_photoionization =
-      parser_get_opt_param_int(params, "GEARFeedback:do_photoionization", 0);
+  fp->radiation_policy = 0;
+
+  /* TODO: For the future, enforce these to have a non-zero value */
+
+  /* Are we running with photoionization? */
+  const int do_photoionization =
+    parser_get_opt_param_int(params, "GEARFeedback:do_photoionization", 0);
+
+  if (do_photoionization) {
+    fp->radiation_policy |= radiation_policy_photoionization;
+  }
+
+  /* Radiation pressure */
   fp->radiation_pressure_efficiency = parser_get_opt_param_float(
       params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
 
+  if (fp->radiation_pressure_efficiency > 0.0) {
+    fp->radiation_policy |= radiation_policy_radiation_pressure ;
+  }
+
+  const int do_photoelectric_heating =  parser_get_opt_param_int(params, "GEARFeedback:do_photoelectric_heating", 0);
+
+  if (do_photoelectric_heating) {
+    fp->radiation_policy |= radiation_policy_photoelectric_heating;
+  }
+
+  /* -------------------------------------------- */
   /* Print the stellar properties */
   feedback_props_print(fp);
 
