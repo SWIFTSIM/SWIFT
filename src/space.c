@@ -3340,25 +3340,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
 
   perform_nonuniform_calculation(s, min_depth, max_depth, levels, max_gridsize, box_size);
 
-  //FILE *fptr;
-  //fptr = fopen("/data1/vandervlugt/PythonFiles/AMR_routine_tests/nonuniform_routine_uniform_grid/AMR_16m_50s.txt", "w");
-  //for (int j=0; j<16*16*16; j++) {
-    //fprintf(fptr, "%lf \n", levels[1].cells[j]->CIC_potential);
-  //}
-  //fclose(fptr);
-  //message("Exported the AMR solution");
-
   //perform_nonuniform_calculation(s, cells_top, min_depth, max_depth, max_gridsize, box_size);
-
-  //test_density_assignment(cells_top, s->nr_cells, box_size, nr_gparts, s);
-  //message("Exporting AMR potential particle data");
-  //FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/missing_cell_check/missing_1stoct_16.txt", "w");
-  //for (int i=0; i<levels[1].cell_count; i++) {
-    //fprintf(file_swift_density, "%.15g %.15g %.15g %.15g \n", levels[1].cells[i]->CIC_potential, levels[1].cells[i]->loc[0], levels[1].cells[i]->loc[1], levels[1].cells[i]->loc[2]);
-  //}
-  //fclose(file_swift_density);
-  //message("Exported the cell potential data.");
-  //sleep(5);
 
   message("The minimum depth is %d", min_depth);
   get_cell_accelerations(s, min_depth, max_depth, levels);
@@ -3367,21 +3349,6 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   
   message("Passing potential to the particles");
   potential_to_gparts(s, min_depth, max_depth, levels);
-  
-  /*message("Writing accelerations to file");
-  FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered_check/acceleration_parts_top_32_full.txt", "w");
-  for (size_t i=0; i<s->nr_gparts; ++i) {
-  //for (int i=0; i<levels[0].cell_count; ++i) {
-    struct gpart part = s->gparts[i];
-    //struct cell *c = levels[0].cells[i];
-    //message("Going to write %d", i);
-    //fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", c->CIC_acc[0], c->CIC_acc[1], c->CIC_acc[2], c->loc[0] + c->width[0]/2, c->loc[1] + c->width[1]/2, c->loc[2] + c->width[2]/2);
-    //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
-    fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", part.a_grav_mesh[0], part.a_grav_mesh[1], part.a_grav_mesh[2], part.x[0], part.x[1], part.x[2]);
-  }
-  fclose(accelerations);
-  message("Done writing accelerations to file");*/
 
   /* Free memory of the pointer array to the cells */
   for (int i=0; i<max_depth+1; i++) {
@@ -3510,17 +3477,6 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
   /* Pass potential to the particles (real and fake ones) */
   potential_to_gparts(s, min_depth, max_depth, levels);
 
-  /*message("Writing accelerations to file");
-  FILE *accelerations;
-  accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/cell_centered_check/proper_cells/acceleration_parts_5_32_scaled_new.txt", "w");
-  for (int i=0; i<N_parts_old + N_parts_new; i++) {
-    struct gpart gpart = p_ref[i].cell->grav.parts[p_ref[i].index];
-    //message("Going to write %d", i);
-    fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", gpart.a_grav_mesh[0], gpart.a_grav_mesh[1], gpart.a_grav_mesh[2], gpart.x[0], gpart.x[1], gpart.x[2]);
-    //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
-  }
-  fclose(accelerations);
-  message("Done writing accelerations to file");*/
 }
 
 void particle_to_cells_recursive(double part_loc[3], struct cell **cells, int nr_cells, int *counter_added, int N_parts_old, int N_parts_new, struct gpart_ref p_ref[N_parts_old + N_parts_new], int *depth, int desired_depth) {
@@ -3602,14 +3558,6 @@ struct cic_mapper_data {
   float const_G;
   struct neutrino_model* nu_model;
 };
-/*
-struct cell_basic {
-  double loc[3];
-  double width;
-  double CIC_density; 
-  double CIC_potential;
-  double update_mask;
-};*/
 
 void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_index, int link_nr) {
   double fac = s->dim[0]/level->cdim;
@@ -3922,15 +3870,6 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
     //}
     //sleep(15);
     //nr_cells = levels[1].cell_count;
-    ///message("Exporting AMR density and potential data");
-      //FILE *file_swift_density2 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/missing_cell_check/FFT_16_initguess.txt", "w");
-      //for (int j = 0; j < nr_cells; j++) {
-        //fprintf(file_swift_density2, "%lf %.15g %.15g %.15g \n", levels[1].cells[j]->CIC_potential, levels[1].cells[j]->loc[0], levels[1].cells[j]->loc[1], levels[1].cells[j]->loc[2]);
-      //}
-      //fprintf(file_swift_density2, "%lf\n", 70.);
-      //fclose(file_swift_density2);
-      //message("Exported the AMR uniform potential data.");
-      //sleep(15);
 
     perform_multigrid_acceleration(s, min_depth, max_depth, levels, levels[i+1].depth);
     msq = 0.;
@@ -3945,41 +3884,6 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
       //message("The potential of cell %d at (%lf, %lf, %lf) is %lf", j, c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
     //}
   }
-
-  //int nr_cells = levels[1].cell_count;
-  //message("Exporting AMR density and potential data");
-  //FILE *file_swift_density2 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/missing_cell_check/AMR_16_nooct_prolongated_trilinear_converged.txt", "w");
-  //for (int j = 0; j < nr_cells; j++) {
-    //fprintf(file_swift_density2, "%lf %.15g %.15g %.15g \n", levels[1].cells[j]->CIC_potential, levels[1].cells[j]->loc[0], levels[1].cells[j]->loc[1], levels[1].cells[j]->loc[2]);
-  //}
-  //fclose(file_swift_density2);
-  //message("Exported the final AMR uniform potential data.");
-  //sleep(15);
-
-  //int nr_cells = levels[2].cell_count;
-  //double fac = box_size/levels[1].cdim;
-  //message("Exporting AMR density and potential data");
-  //FILE *file_swift_density2 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/uniform_check/AMR_32_uniform.txt", "w");
-  //for (int j = 0; j < nr_cells; j++) {
-    //if (!levels[2].cells[j]->ghost) {
-      //double search_loc_x = levels[2].cells[j]->loc[0];
-      //double search_loc_y = levels[2].cells[j]->loc[1];
-      //double search_loc_z = levels[2].cells[j]->loc[2];
-      //int cell_i = (int) ((search_loc_x+0.01)/fac);
-      //int cell_j = (int) ((search_loc_y+0.01)/fac);
-      //int cell_k = (int) ((search_loc_z+0.01)/fac);
-
-      //int cdim[3] = {levels[2].cdim, levels[2].cdim, levels[2].cdim};
-      //int loc_1d = cell_getid(cdim, cell_i, cell_j, cell_k);
-
-      //fprintf(file_swift_density, "cell %d at (%lf , %lf , %lf) has %lf and %lf \n", j, fine->cells[j]->loc[0], fine->cells[j]->loc[1], fine->cells[j]->loc[2], fine->cells[j]->CIC_density, fine->cells[j]->CIC_potential);
-      //fprintf(file_swift_density2, "%lf\n", levels[2].cells[j]->CIC_potential);
-      //fprintf(file_swift_density2, "%d\n", loc_1d);
-    //}
-  //}
-  //fclose(file_swift_density2);
-  //message("Exported the AMR potential data.");
-  //sleep(15);
 
   int export = 0;
   if (export) {
@@ -4005,19 +3909,6 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
         //}
       //}
     //}
-    //message("Exporting AMR potential data");
-    //FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/AMR_potential_test/converged_alllevels_new_interpolation", "w");
-    //for (int j = 0; j < levels[1].cell_count; j++) {
-      //if (levels[1].cells[j]->split) {
-        //fprintf(file_swift_density, "%lf\n", levels[1].cells[j]->CIC_potential);
-      //}
-      //else {
-        //fprintf(file_swift_density, "%lf\n", 30000.);
-      //}
-    //}
-    //fclose(file_swift_density);
-    //message("Exported the AMR potential data.");
-    //sleep(5);
   }
 }
 
@@ -4461,17 +4352,6 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
     //sleep(10);
 
     //int nr_cells = levels[1].cell_count;
-  //double fac = box_size/levels[1].cdim;
-    //if (V_cycles == 5) {
-      //message("Exporting AMR density and potential data");
-      //FILE *file_swift_density2 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/uniform_check/AMR_16_uniform_middle_result.txt", "w");
-      //for (int j = 0; j < nr_cells; j++) {
-        //  fprintf(file_swift_density2, "%lf\n", levels[1].cells[j]->CIC_potential);
-      //}
-      //fclose(file_swift_density2);
-      //message("Exported the AMR potential data.");
-      //sleep(5);
-    //}
 
     /* Initialise V-cycle recursion */
     transfer_residual_array(levels[current_depth], &levels[current_depth-1],delta);
@@ -4539,15 +4419,6 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
   //sleep(20);
  
   //int nr_cells = levels[1].cell_count;
-  //message("Exporting AMR density and potential data");
-      //FILE *file_swift_density2 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/missing_cell_check/AMR_16_nooct_ghosts_prolongated_init0.txt", "w");
-      //for (int j = 0; j < nr_cells; j++) {
-        //fprintf(file_swift_density2, "%lf %.15g %.15g %.15g \n", levels[1].cells[j]->CIC_potential, levels[1].cells[j]->loc[0], levels[1].cells[j]->loc[1], levels[1].cells[j]->loc[2]);
-      //}
-      //fprintf(file_swift_density2, "%lf\n", 70.);
-      //fclose(file_swift_density2);
-      //message("Exported the AMR uniform potential data.");
-      //sleep(15);
 }
 
 void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth, int max_depth, int active_depth) {
@@ -4979,9 +4850,6 @@ double get_patch_residual(struct AMR_levels level, double delta) {
   double residual = 0.;
   double mean_res = 0.;
 
-  //message("Exporting AMR nonuniform FFT residual");
-  //FILE *file_swift_density2 = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/missing_cell_check/AMR_16_nonuniform_residual.txt", "w");
-
   for (int i=0; i<level.cell_count; i++) {
     struct cell *current_cell = level.cells[i];
     if (current_cell->ghost) message("Found a stray ghost :(");
@@ -5002,7 +4870,6 @@ double get_patch_residual(struct AMR_levels level, double delta) {
       //message("Doing cell (%lf, %lf, %lf)", current_cell->loc[0], current_cell->loc[1], current_cell->loc[2]);
       //message("Calculating using %.5g %.5g %.5g %.5g %.5g %.5g %.5g %.5g %.5g", current_cell->neighbours[0]->CIC_potential, current_cell->neighbours[1]->CIC_potential, current_cell->neighbours[2]->CIC_potential, current_cell->neighbours[3]->CIC_potential, current_cell->neighbours[4]->CIC_potential, current_cell->neighbours[5]->CIC_potential, current_cell->CIC_potential, mean_density, current_cell->CIC_density);
     //}
-    //fprintf(file_swift_density2, "%lf %.15g %.15g %.15g \n", res, current_cell->loc[0], current_cell->loc[1], current_cell->loc[2]);
     //message("We just added %lf", temp);
     mean_res += res;
     residual += res*res;
@@ -5010,8 +4877,6 @@ double get_patch_residual(struct AMR_levels level, double delta) {
   double final_res = sqrt(residual/(level.cell_count));
   //message("The mean residual is %lf", mean_res/level.cell_count);
   //message("The residual is %lf", final_res);
-  //fclose(file_swift_density2);
-  //message("Exported the AMR nonuniform residual data.");
   //sleep(15);
   return final_res;
 }
@@ -5285,30 +5150,6 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
   
   nr_cells += fine->ghost_count;
   message("Done interpolating");
-
-  //if (fine->depth == 2) {
-    //message("Exporting AMR density and potential data");
-    //FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/optimised_ghost_test/location_onlyghosts_level2", "w");
-    //for (int j = 0; j < nr_cells; j++) {
-      //if (fine->cells[j]->ghost) {
-        //double search_loc_x = fine->cells[j]->loc[0];
-        //double search_loc_y = fine->cells[j]->loc[1];
-        //double search_loc_z = fine->cells[j]->loc[2];
-        //int cell_i = (int) ((search_loc_x+0.01)/fac);
-        //int cell_j = (int) ((search_loc_y+0.01)/fac);
-        //int cell_k = (int) ((search_loc_z+0.01)/fac);
-
-        //int cdim[3] = {fine->cdim, fine->cdim, fine->cdim};
-        //int loc_1d = cell_getid(cdim, cell_i, cell_j, cell_k);
-
-        //fprintf(file_swift_density, "cell %d at (%lf , %lf , %lf) has %lf and %lf \n", j, fine->cells[j]->loc[0], fine->cells[j]->loc[1], fine->cells[j]->loc[2], fine->cells[j]->CIC_density, fine->cells[j]->CIC_potential);
-        //fprintf(file_swift_density, "%d\n", loc_1d);
-      //}
-    //}
-    //fclose(file_swift_density);
-    //message("Exported the AMR density and potential data.");
-    //sleep(5);
-  //}
 }
 
 void check_diagonal1(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *c, int nr_neighbours, int neighbours[nr_neighbours], int min_depth, int double_diag) {
@@ -5726,14 +5567,6 @@ int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, s
       potential_sum += fabs(pot[i][j]);
     message("The mean absolute value of the potential is %lf", potential_sum/(grid_sizes[i]*grid_sizes[i]*grid_sizes[i]));
     
-    //Export the potential array to a .txt file to be read in Python
-    //FILE *fptr;
-    //fptr = fopen("/data1/vandervlugt/PythonFiles/smoothing_test/AMR_interpolated_potential_smooth_32.txt", "w");
-    //for (int j=0; j<grid_sizes[i]*grid_sizes[i]*grid_sizes[i]; j++) {
-      //fprintf(fptr, "%lf\n", pot[i][j]);
-    //}
-    //fclose(fptr);
-    //message("Done");
     //if (i==2) break;
     int N = grid_sizes[i];
     cdim[0] = N;
@@ -5914,15 +5747,6 @@ void assign_densities(struct cell *cells_top, struct threadpool *tp, int nr_cell
 
   /* Export information at a certain level for debugging */
   //export_grid_data(cells_top, nr_cells);
-
-  //message("Exporting AMR density data");
-  //FILE *file_swift_density = fopen("/data1/vandervlugt/PythonFiles/particle_acc_test/AMR_pot_to_cells/density_test_AMR8_testtest", "w");
-  //for (int j = 0; j < nr_cells; j++) {
-    //fprintf(file_swift_density, "%lf\n", cells_top[j].CIC_density);
-  //}
-  //fclose(file_swift_density);
-  //message("Exported the AMR density data.");
-  //sleep(5);
 }
 
 void cells_top_mapper(void* map_data, const int num, void* extra) {
@@ -6386,14 +6210,6 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
   if (!FAS) apply_GS(rho[0], pot[0], cdim, mean_density[0], box_size);
   else apply_NGS_Poisson(rho[0], pot[0], cdim, mean_density[0], box_size);
 
-  /*message("Exporting FMG potential data");
-  FILE *file_swift_pot = fopen("/data1/vandervlugt/PythonFiles/FAS_test/NGS_Poisson/GS_16_potential", "w");
-  for (int j = 0; j < N_min*N_min*N_min; j++) {
-    fprintf(file_swift_pot, "%lf \n", pot[0][j]);
-  }
-  fclose(file_swift_pot);
-  message("Exported the FMG acceleration data.");*/
-
   if (!FAS) {
     /* Solve on all finer grids by prolongating from the previous grid and performing the multigrid method */
     for (int i = 1; i<N_levels; i++) {
@@ -6418,7 +6234,7 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
     mesh_to_gpart_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
 
     /* Export acceleration data if we want to */
-    int export = 0;
+    /*int export = 0;
     if (export) {
       int num = s->nr_gparts;
       struct gpart* gp;
@@ -6431,7 +6247,7 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
       }
       fclose(file_swift_acc);
       message("Exported the FMG acceleration data.");
-    }
+    }*/
   }
 
   else {
@@ -6629,7 +6445,7 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
   data.dim[2] = dim[2];
   gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
  
-  /* Do something about this! */
+  /* Have to do something about this */
   //get_pm_potential(&data, N, box_size, &e->threadpool, cdim);  //PM method to get the potential is implemented here
  
   /* Rescale density to get overdensity and rescale mean density for consistency with FFT */
@@ -7268,35 +7084,17 @@ void perform_red_black_sweep(double *pot, const double *rho, int cdim[3], double
 /**
  * @brief Set initial guess for the potential
  *
- * Adds a value to half the grid and another value to the other
- * half of the grid. Then adds a random value to all grid points.
- *
  * @param pot Array of potential values on the grid.
  * @param cdim 3D size of the grid (equal in all dimensions).
+ * @param MG Are we solving the fR field equation?
  */
 void set_initial_guess(double *pot, const int cdim[3], int MG) {
   const int N = cdim[0];
-  /*for (int i = 0; i<N*N*N; i++) {
-    //if (MG) pot[i] = -1.;
-    //else pot[i] = -1000.;
-    pot[i] = -1000.;
-  }
-  for (int k=0; k<N; k++){
-    for (int j=0; j<N; j++){
-      for (int i=0; i<N; i++) {
-        if ((i+j+k)%2 != 0)
-          continue;
-        const size_t cid = cell_getid(cdim, i, j, k);
-        //if (MG) pot[cid] += 2.;
-        pot[cid] += 2000.;
-      }  
-    }
-  } */
   srand(time(NULL));
   for (int i = 0; i<N*N*N; i++){
     //pot[i] += (fmod(rand(),5.) - 10.);
     pot[i] += fmod(rand(),2000.) - 1000.;
-    if (MG) pot[i] = 1.*1e-5 + fmod(rand(),100)*(1e-5); //Corresponds to fR = mean(fR) everywhere.
+    if (MG) pot[i] = 1.*1e-5 + fmod(rand(),100)*(1e-5); //Corresponds to fR = mean(fR) everywhere plus some randomisation.
   }
 }
 
@@ -7617,24 +7415,6 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     cdim[1] = N;
     cdim[2] = N;
     apply_multigrid_fR(rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, 15);
-
-    if (i==N_levels-1) {
-      FILE *fR_test;
-      fR_test = fopen("/data1/vandervlugt/PythonFiles/FAS_test/two_particles/test_fR_128.txt", "w");
-      for (int i2=0; i2<N; i2++) {
-        //for (int j=0; j<N; j++) {
-          //for (int k=0; k<N; k++) {
-            double dx1 = fabs((double)(i2-(N/2+32))) * box_size/N;
-            double dx2 = fabs((double)(i2-(N/2-32))) * box_size/N;
-
-            fprintf(fR_test, "%E %.15g %.15g \n", MG->fR0*(exp(u_levels[i][cell_getid(cdim, i2, N/2, N/2)])-1.), dx1, dx2);
-          //}
-        //}
-      }
-      fclose(fR_test);
-      message("Exported the fR values for N=%d", N);
-      sleep(10);
-    }
   }
 }
 

@@ -1048,8 +1048,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   /* Zero everything */
   bzero(rho, N * N * N * sizeof(double));
 
-  //if (MG) N=32;
-
   /* Gather some neutrino constants if using delta-f weighting on the mesh */
   struct neutrino_model nu_model;
   bzero(&nu_model, sizeof(struct neutrino_model));
@@ -1105,7 +1103,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
 
   if (MG) { //Assume n=1 for now
-    int test = 4; //1 = uniform density 2 = point mass  3 = sine wave 4 = two point masses
+    int test = 4; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
     if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
 
     struct MG_variables MG_var;
@@ -1118,6 +1116,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     MG_var.fR_correction = fR_evo * fR_evo;
     int cdim[3] = {N,N,N};
     double mean_density = 50.;
+
     /* Are we testing? */
     switch (test) {
       case 1:
@@ -1128,7 +1127,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
           density_mean += rho[i]/(N*N*N);
         }
         message("The mean density is %lf", density_mean);
-        sleep(5);
         for (int i=0; i<N*N*N; i++) {
           rho[i] = density_mean;
         }
@@ -1182,111 +1180,26 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     }
     
     message("Going to compute f(R)");
-    int N_min = 32;
-    int export = 0; 
     
+    int N_min = 32; //Minimum gridsize to be used in multigrid acceleration
     double *rho_copy = malloc(N*N*N *sizeof(double));
     memcpy(rho_copy, rho, N*N*N*sizeof(double));
     space_get_fR_contribution(s, rho_copy, field_contribution, &MG_var, N_min, N); 
-
-    if (export) {
-      FILE *export_rho_eff;
-      export_rho_eff = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/pot_128.txt", "w");
-      double *rho_eff = NULL;
-      rho_eff = (double*)calloc(N * N * N, sizeof(double));
-      if (rho_eff == NULL)
-        error("Error allocating memory for the effective density mesh.");
-      memuse_log_allocation("mesh.fReff", rho_eff, 1,
-                            sizeof(double) * N * N * N);
-      for (int i=0; i<N*N*N; i++) {
-        rho_eff[i] = (1./3.) * rho[i] - (MG_var.R/(24.*M_PI*MG_var.G)) * (exp(-(1./2.)*MG_var.normalisation*field_contribution[i])-1.);
-        fprintf(export_rho_eff, "%E \n", rho_eff[i]);
-      }
-      fclose(export_rho_eff);
-      free(rho_eff);
-    }
-
-    /*if (get_MG_acc && cell_acc) {
-      message("The value of the fR correction is %lf", MG_var.fR_correction);
-      double *fR_array = malloc(N*N*N *sizeof(double));
-      for (int i=0; i<N*N*N; i++) {
-        fR_array[i] = (MG_var.c * MG_var.c*fR0)/(2.*MG_var.a*MG_var.fR_correction) * exp(MG_var.normalisation*field_contribution[i]);
-      }
-      get_cell_acc(acc, fR_array, N, cell_fac);
-      double delta = box_size/N;
-      FILE *fR_test;
-      fR_test = fopen("/data1/vandervlugt/PythonFiles/MG_consistency/z05/MG_acc.txt", "w");
-      for (int i2=0; i2<N; i2++) {
-        for (int j=0; j<N; j++) {
-          for (int k=0; k<N; k++) {
-            double dx = (double)i2 * delta;
-            double dy = (double)j * delta;
-            double dz = (double)k * delta;
-            double accx = acc[0][cell_getid(cdim, i2, j, k)];
-            double accy = acc[1][cell_getid(cdim, i2, j, k)];
-            double accz = acc[2][cell_getid(cdim, i2, j, k)];
-            double acc_sq = sqrt(accx*accx + accy*accy + accz*accz);
-
-            if (k<4) fprintf(fR_test, "%E %.15g %.15g %.15g \n", acc_sq, dx, dy, dz);
-          }
-        }
-      }
-      fclose(fR_test);
-      message("Exported the MG acceleration for N=%d", N);
-      sleep(10);
-    }*/
-
-  /*FILE *export_delta_fR;
-  export_delta_fR = fopen("/data1/vandervlugt/PythonFiles/FAS_test/sine_wave_new/fR_128_e-6", "w");
-  double fR_evo_new = ((1.+4.*MG_var.Omega_ratio)/(MG_var.a3_inv + 4.*MG_var.Omega_ratio));
-  double *delta_fR = NULL;
-  delta_fR = (double*)calloc(N * N * N, sizeof(double));
-  if (delta_fR == NULL)
-    error("Error allocating memory for the effective density mesh.");
-  memuse_log_allocation("mesh.fReff", delta_fR, 1,
-                        sizeof(double) * N * N * N);
-  for (int i=0; i<N; i++) {
-    for (int j=0; j<N; j++) {
-      for (int k=0; k<N; k++) {
-        double x = fabs((double) i) * (s->dim[0]/N);
-        delta_fR[cell_getid(cdim, i,j,k)] = MG_var.fR0 * fR_evo_new *fR_evo_new*exp(MG_var.normalisation*field_contribution[cell_getid(cdim, i,j,k)]);
-        if (j==0 && k==0) fprintf(export_delta_fR, "%E %lf \n", delta_fR[cell_getid(cdim, i,j,k)], x);
-      }
-    }
-  }
-  fclose(export_delta_fR);
-  free(delta_fR);*/
-    double *rho_mod = malloc(N*N*N *sizeof(double));
-    memcpy(rho_mod, rho, N*N*N*sizeof(double));
   
     double delta = box_size/N;
     get_rho_eff(rho, field_contribution, &MG_var, delta, N);
-
-    FILE *rho_mod_exp;
-    rho_mod_exp = fopen("/data1/vandervlugt/PythonFiles/power_spectra/rho_rhoeff_128_uniform_modres.txt", "w");
-    for (int i=0; i<N*N*N; i++) {
-      fprintf(rho_mod_exp, "%E %E \n", rho_mod[i], rho[i]);
-    }
-    fclose(rho_mod_exp);
-
-    for (int i=0; i<N*N*N; i++) {
-      //rho_mod[i] += mean_density;
-      //if (rho[i]<0) negative_count +=1;
-    }
-    //message("The negative count is %d", negative_count);
-
+    free(rho_copy);
   }
 
   if (power) {
-    //if (e->power_data->Ngrid != N) error("Mesh sizes of FFT and power spectrum do not match");
-    //e->power_data->MG_dens = rho;
-    //calc_all_power_spectra(e->power_data, s, tp, 0, 1);
-    //sleep(10);
-    overdensity_to_gparts(s, rho, 0, N);
+    int direct_mapping = 1;
+    if (direct_mapping) {
+      if (e->power_data->Ngrid != N) error("Mesh sizes of FFT and power spectrum do not match");
+      e->power_data->MG_dens = rho;
+      calc_all_power_spectra(e->power_data, s, tp, 0, 1);
+    }
+    else overdensity_to_gparts(s, rho, 0, N);
   }
-  
-  //if (verbose) message("Attempting to compute a power spectrum");
-  //if (N<=128 && power) power_spectrum_stripped(s, tp, rho, N, verbose);
 
   if (verbose)
     message("Gpart assignment took %.3f %s.",
@@ -1366,8 +1279,8 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   /* rho now contains the potential */
   /* This array is now again NxNxN real numbers */
 
+  /* Get the fR contribution to the acceleration at the cells */
   if (MG && cell_acc) {
-    int cdim3[3] = {N, N, N};
     double *acc2[3];
     for (int j=0; j<3; j++) {
       acc2[j] = NULL;
@@ -1379,30 +1292,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
         acc2[i][j] *= s->e->physical_constants->const_newton_G;
       }
     }
-    double delta = box_size/N;
-    FILE *fR_test;
-    fR_test = fopen("/data1/vandervlugt/PythonFiles/MG_consistency/z05/combined_acc_via_deltarho.txt", "w");
-    for (int i2=0; i2<N; i2++) {
-      for (int j=0; j<N; j++) {
-        for (int k=0; k<N; k++) {
-          double dx = (double)i2 * delta;
-          double dy = (double)j * delta;
-          double dz = (double)k * delta;
-          double accx = acc2[0][cell_getid(cdim3, i2, j, k)];
-          double accy = acc2[1][cell_getid(cdim3, i2, j, k)];
-          double accz = acc2[2][cell_getid(cdim3, i2, j, k)];
-          //double accx = acc2[0][cell_getid(cdim3, i2, j, k)]+acc[0][cell_getid(cdim3, i2, j, k)];
-          //double accy = acc2[1][cell_getid(cdim3, i2, j, k)]+acc[1][cell_getid(cdim3, i2, j, k)];
-          //double accz = acc2[2][cell_getid(cdim3, i2, j, k)]+acc[2][cell_getid(cdim3, i2, j, k)];
-          double acc_sq = sqrt(accx*accx + accy*accy + accz*accz);
-
-          if (k<4) fprintf(fR_test, "%E %.15g %.15g %.15g \n", acc_sq, dx, dy, dz);
-        }
-      }
-    }
-    fclose(fR_test);
-    message("Exported the combined acceleration values for N=%d", N);
-    sleep(10);
     for (int j=0; j<3; j++) {
       free(acc2[j]);
       acc2[j] = NULL;
@@ -1460,59 +1349,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     memuse_log_allocation("fftw_frho", frho, 0, 0);
     fftw_free(frho);
 
-    /*if (MG && get_MG_acc) {
-      FILE *export_acc;
-      export_acc = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/regular_acc.txt", "w");
-      for (size_t i=0; i<s->nr_gparts; i++) {
-        double acc = sqrt(s->gparts[i].a_grav_mesh[0]*s->gparts[i].a_grav_mesh[0] + s->gparts[i].a_grav_mesh[1]*s->gparts[i].a_grav_mesh[1] + s->gparts[i].a_grav_mesh[2] * s->gparts[i].a_grav_mesh[2]);
-        double dx = s->gparts[i].x[0] - box_size/2.;
-        double dy = s->gparts[i].x[1] - box_size/2.;
-        double dz = s->gparts[i].x[2] - box_size/2.;
-        double r = sqrt(dx*dx + dy*dy + dz*dz);
-        fprintf(export_acc, "%E %lf \n", acc, r);
-      }
-      fclose(export_acc);
-      message("Exported acceleration");
-    }*/
-
-    /*message("Writing accelerations to file");
-    FILE *accelerations;
-    accelerations = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/single_particle_test/acceleration_new/SWIFT_acc_64_parts.txt", "w");
-    for (int i=0; i<s->nr_cells; i++) {
-      for (int j=0; j<s->cells_top[i].grav.count; j++) {
-        struct gpart gpart = s->cells_top[i].grav.parts[j];
-        fprintf(accelerations, "%.15g %.15g %.15g %.15g %.15g %.15g \n", gpart.a_grav_mesh[0], gpart.a_grav_mesh[1], gpart.a_grav_mesh[2], gpart.x[0], gpart.x[1], gpart.x[2]);
-      }
-      //fprintf(accelerations, "%.15g %.15g %.15g %.15g \n", gpart.potential_mesh, gpart.x[0], gpart.x[1], gpart.x[2]);
-    }
-    fclose(accelerations);
-    message("Done writing accelerations to file");
-    sleep(15);*/
-  //}
-
-
-  //for (int i = 0; i<num; i++) {
-    //gp = &(s->gparts)[i];
-    //gp->a_grav_mesh[0] = 0.;
-    //gp->a_grav_mesh[1] = 0.;
-    //gp->a_grav_mesh[2] = 0.;
-  //}
-  //message("Eepy");
-  //sleep(5);
-  //int num = s->nr_gparts;
-  //struct gpart* gp;
-  //double acc;
-
-  //message("Exporting SWIFT acceleration data");
-  //FILE *file_swift_acc = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/FFT_64_particles.txt", "w");
-  //for (int j = 0; j < num; j++) {
-    //gp = &(s->gparts)[j];
-    //acc = gp->a_grav_mesh[0];
-    //fprintf(file_swift_acc, "%lf %.15g %.15g %.15g \n", gp->potential_mesh, gp->x[0], gp->x[1], gp->x[2]);
-  //}
-  //fclose(file_swift_acc);
-  //message("Exported the SWIFT acceleration data.");
-  //sleep(5);
     free(field_contribution);
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
