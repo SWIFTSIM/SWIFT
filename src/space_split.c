@@ -23,6 +23,10 @@
 /* Config parameters. */
 #include <config.h>
 
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
 /* This object's header. */
 #include "space.h"
 
@@ -1040,19 +1044,62 @@ void space_split(struct space *s, int verbose) {
   }
 
   if (verbose) {
-    if (!s->with_zoom_region) {
-      message("Max tree depth after split: %d", s->maxdepth);
-    } else {
-      message("Max zoom tree depth after split (from zoom top level): %d",
-              s->zoom_props->zoom_maxdepth);
-      message(
-          "Max zoom tree depth after split (from void top level): %d",
-          s->zoom_props->zoom_maxdepth + s->zoom_props->zoom_cell_depth + 1);
-      message("Max background tree depth after split: %d",
-              s->zoom_props->bkg_maxdepth);
+
+    /* Collect quantities so we can report both the local-rank value (which
+     * reflects this rank's tree depth and live cell count) and the global
+     * extreme across all ranks. The local values are useful for diagnosing
+     * partition imbalance; the global ones tell us the worst-case tree
+     * depth that any rank had to build. */
+    int local_maxdepth = s->maxdepth;
+    int local_zoom_maxdepth =
+        s->with_zoom_region ? s->zoom_props->zoom_maxdepth : 0;
+    int local_bkg_maxdepth =
+        s->with_zoom_region ? s->zoom_props->bkg_maxdepth : 0;
+    int local_tot_cells = s->tot_cells;
+
+    int global_maxdepth = local_maxdepth;
+    int global_zoom_maxdepth = local_zoom_maxdepth;
+    int global_bkg_maxdepth = local_bkg_maxdepth;
+    long long global_tot_cells = local_tot_cells;
+
+#ifdef WITH_MPI
+    MPI_Allreduce(&local_maxdepth, &global_maxdepth, 1, MPI_INT, MPI_MAX,
+                  MPI_COMM_WORLD);
+    if (s->with_zoom_region) {
+      MPI_Allreduce(&local_zoom_maxdepth, &global_zoom_maxdepth, 1, MPI_INT,
+                    MPI_MAX, MPI_COMM_WORLD);
+      MPI_Allreduce(&local_bkg_maxdepth, &global_bkg_maxdepth, 1, MPI_INT,
+                    MPI_MAX, MPI_COMM_WORLD);
     }
-    message("Have %d cells including subcells (cell footprint: %zd MB)",
-            s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
+    long long ll_tot_cells = local_tot_cells;
+    MPI_Allreduce(&ll_tot_cells, &global_tot_cells, 1, MPI_LONG_LONG, MPI_SUM,
+                  MPI_COMM_WORLD);
+#endif
+
+    if (!s->with_zoom_region) {
+      message("Max tree depth after split: %d (local), %d (global max)",
+              local_maxdepth, global_maxdepth);
+    } else {
+      message(
+          "Max zoom tree depth after split (from zoom top level): %d (local), "
+          "%d (global max)",
+          local_zoom_maxdepth, global_zoom_maxdepth);
+      message(
+          "Max zoom tree depth after split (from void top level): %d (local), "
+          "%d (global max)",
+          local_zoom_maxdepth + s->zoom_props->zoom_cell_depth + 1,
+          global_zoom_maxdepth + s->zoom_props->zoom_cell_depth + 1);
+      message(
+          "Max background tree depth after split: %d (local), %d (global max)",
+          local_bkg_maxdepth, global_bkg_maxdepth);
+    }
+    message(
+        "Have %d cells including subcells (local, footprint: %zd MB), %lld "
+        "cells globally (footprint: %lld MB)",
+        local_tot_cells,
+        (size_t)local_tot_cells * sizeof(struct cell) / (1024 * 1024),
+        global_tot_cells,
+        global_tot_cells * (long long)sizeof(struct cell) / (1024 * 1024));
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
   }

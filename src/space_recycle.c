@@ -364,6 +364,10 @@ void space_free_cells(struct space *s) {
                  s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
                  s);
   s->maxdepth = 0;
+  if (s->with_zoom_region) {
+    s->zoom_props->zoom_maxdepth = 0;
+    s->zoom_props->bkg_maxdepth = 0;
+  }
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
