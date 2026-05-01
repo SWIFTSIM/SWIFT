@@ -1664,12 +1664,12 @@ int main(int argc, char *argv[]) {
     message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
+    if (with_power)
+        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose, 0);
     //message("The relevant parameters are Omega_m = Omega_cdm + Omega_b = %lf + %lf and Omega_lambda = %lf", cosmo.Omega_cdm, cosmo.Omega_b, cosmo.Omega_lambda);
     //sleep(10);
     pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1, /*power=*/0);
     //sleep(5);
-    if (with_power)
-        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
     /* Set the desired gridsize for Gauss-Seidel and perform the calculation */
     //int N = 64;
     //space_get_density(&e, N, /*apply multigrid=*/0);
@@ -1708,7 +1708,7 @@ int main(int argc, char *argv[]) {
 
       /* If we want power spectra, output them now as well */
       if (with_power)
-        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
+        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose, 0);
 
       engine_dump_snapshot(&e, /*fof=*/0);
     }
@@ -1962,7 +1962,7 @@ message("Exported acceleration");*/
       }
 
       if (with_power) {
-        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
+        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose, 0);
       }
 
 #ifdef HAVE_VELOCIRAPTOR

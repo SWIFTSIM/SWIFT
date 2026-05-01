@@ -662,6 +662,17 @@ void cell_to_powgrid(const struct cell *c, double *rho, const int N,
   } /* Loop over particles */
 }
 
+void map_density_to_powgrid(double *MG_rho, double *dens, double fac, double kfac, int N) {
+  int cdim[3] = {N,N,N};
+  for (int i=0; i<N; i++) {
+    for (int j=0; j<N; j++) {
+      for (int k=0; k<N; k++) {
+        dens[row_major_id_periodic_with_padding(i, j, k, N, 2)] = MG_rho[cell_getid(cdim, i, j, k)];
+      }
+    }
+  }
+}
+
 /**
  * @brief Threadpool mapper function for the power grid assignment of a cell.
  *
@@ -1111,8 +1122,13 @@ void power_spectrum_stripped(const struct space *s, struct threadpool *tp, const
  * @param verbose Are we talkative?
  */
 void power_spectrum(const enum power_type type1, const enum power_type type2,
+<<<<<<< HEAD
                     struct power_spectrum_data *pow_data, const struct space *s,
                     struct threadpool *tp, const int verbose) {
+=======
+                    struct power_spectrum_data* pow_data, const struct space* s,
+                    struct threadpool* tp, const int verbose, int direct_mapping) {
+>>>>>>> 7556ec400 (Cleaning up a bit further)
 
   const int *local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
@@ -1290,7 +1306,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   char outputfileBase[200] = "";
   char outputfileName[256] = "";
 
-  sprintf(outputfileBase, "power_MG_256_e-5_%s", get_powtype_filename(type1));
+  sprintf(outputfileBase, "power_noMG_256_e-4_viaparts_%s", get_powtype_filename(type1));
   if (type1 != type2) {
     const int length = strlen(outputfileBase);
     sprintf(outputfileBase + length, "-%s", get_powtype_filename(type2));
@@ -1318,6 +1334,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       bzero(pow_data->powgrid2, Ngrid2 * (Ngrid + 2) * sizeof(double));
 
     /* Fill out the folded grid(s) */
+<<<<<<< HEAD
     threadpool_map(tp, cell_to_powgrid_mapper, (void *)local_cells,
                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
                    (void *)&densdata);
@@ -1325,6 +1342,21 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       threadpool_map(tp, cell_to_powgrid_mapper, (void *)local_cells,
                      nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
                      (void *)&densdata2);
+=======
+    if (direct_mapping) {
+      message("Mapping the MG density to the powgrid");
+      map_density_to_powgrid(pow_data->MG_dens, densdata.dens, densdata.fac, kfac, Ngrid);
+    }
+    else {
+      threadpool_map(tp, cell_to_powgrid_mapper, (void*)local_cells,
+                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                    (void*)&densdata);
+      if (type1 != type2)
+        threadpool_map(tp, cell_to_powgrid_mapper, (void*)local_cells,
+                      nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                      (void*)&densdata2);
+    }
+>>>>>>> 7556ec400 (Cleaning up a bit further)
 #ifdef WITH_MPI
     /* Merge everybody's share of the grid onto rank 0 */
     if (e->nodeID == 0)
@@ -1544,13 +1576,17 @@ void power_spectrum_init(struct power_spectrum_data *p,
       params, "PowerSpectrum:shift_centre_small_k_bins", 1);
 
   /* Make sensible choices for the k-cuts */
-  /*const int kcutn = (p->windoworder >= 3) ? 90 : 70;
+  const int kcutn = (p->windoworder >= 3) ? 90 : 70;
   const int kcutleft = (int)(p->Ngrid / 256.0 * kcutn);
   const int kcutright = (int)(p->Ngrid / 256.0 * (double)kcutn / p->foldfac);
+<<<<<<< HEAD
   if ((p->Nfold > 1) && (kcutright < 10 || (kcutleft - kcutright) < 30))
+=======
+  if (p->Nfold>1 && (kcutright < 10 || (kcutleft - kcutright) < 30))
+>>>>>>> 7556ec400 (Cleaning up a bit further)
     error(
         "Combination of power grid size and fold factor do not allow for "
-        "enough overlap between foldings!");*/
+        "enough overlap between foldings!");
 
   p->nr_threads = nr_threads;
 
@@ -1635,9 +1671,15 @@ void power_spectrum_init(struct power_spectrum_data *p,
 #endif
 }
 
+<<<<<<< HEAD
 void calc_all_power_spectra(struct power_spectrum_data *pow_data,
                             const struct space *s, struct threadpool *tp,
                             const int verbose) {
+=======
+void calc_all_power_spectra(struct power_spectrum_data* pow_data,
+                            const struct space* s, struct threadpool* tp,
+                            const int verbose, int direct_mapping) {
+>>>>>>> 7556ec400 (Cleaning up a bit further)
 #ifdef HAVE_FFTW
 
   const ticks tic = getticks();
@@ -1645,7 +1687,7 @@ void calc_all_power_spectra(struct power_spectrum_data *pow_data,
   /* Loop over all type combinations the user requested */
   for (int i = 0; i < pow_data->spectrumcount; ++i)
     power_spectrum(pow_data->types1[i], pow_data->types2[i], pow_data, s, tp,
-                   verbose);
+                   verbose, direct_mapping);
 
   /* Increment the PS output counter */
   s->e->ps_output_count++;
