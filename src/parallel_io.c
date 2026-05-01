@@ -1688,7 +1688,7 @@ void write_output_parallel(struct engine *e,
   /* Compute offset in the file and total number of particles */
   long long N[swift_type_count] = {
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
-      Nstars_written, Nblackholes_written, Ndm_neutrino};
+      Nstars_written, Nblackholes_written, Ndm_neutrino,   Nsidm_written};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(N, offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
@@ -1706,11 +1706,8 @@ void write_output_parallel(struct engine *e,
    * Note that we want to want to write a 0-size dataset for some species
    * in case future snapshots will contain them (e.g. star formation) */
   const int to_write[swift_type_count] = {
-      with_hydro,     with_DM,    with_DM_background,
-      with_sink,      with_stars, with_black_hole,
-      with_neutrinos, with_sidm
-
-  };
+      with_hydro, with_DM,         with_DM_background, with_sink,
+      with_stars, with_black_hole, with_neutrinos,     with_sidm};
 
   /* Rank 0 prepares the file */
   if (mpi_rank == 0)

@@ -524,6 +524,10 @@ void *runner_main(void *data) {
             runner_do_recv_bpart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_sidm_comm_xv) {
+            runner_do_recv_sipart(r, ci, 1, 1);
+          } else if (t->subtype == task_subtype_sidm_comm_rho) {
+            runner_do_recv_sipart(r, ci, 0, 1);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }

@@ -39,26 +39,37 @@
 struct mpicollectgroup1 {
   long long updated, g_updated, s_updated, sink_updated, b_updated;
   long long inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited;
+
   integertime_t ti_hydro_end_min;
   integertime_t ti_rt_end_min;
   integertime_t ti_gravity_end_min;
   integertime_t ti_stars_end_min;
   integertime_t ti_sinks_end_min;
   integertime_t ti_black_holes_end_min;
+  integertime_t ti_sidm_end_min;
+
   integertime_t ti_hydro_beg_max;
   integertime_t ti_rt_beg_max;
   integertime_t ti_gravity_beg_max;
   integertime_t ti_stars_beg_max;
   integertime_t ti_sinks_beg_max;
   integertime_t ti_black_holes_beg_max;
+  integertime_t ti_sidm_beg_max;
+
   int forcerebuild;
+
   long long total_nr_cells;
   long long total_nr_tasks;
+
   float tasks_per_cell_max;
+
   struct star_formation_history sfh;
+
   float runtime;
-  int flush_lightcone_maps;
   double deadtime;
+
+  int flush_lightcone_maps;
+
 #ifdef WITH_CSDS
   float csds_file_size_gb;
 #endif
@@ -282,31 +293,42 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.s_updated = grp1->s_updated;
   mpigrp11.sink_updated = grp1->sink_updated;
   mpigrp11.b_updated = grp1->b_updated;
+
   mpigrp11.inhibited = grp1->inhibited;
   mpigrp11.g_inhibited = grp1->g_inhibited;
   mpigrp11.s_inhibited = grp1->s_inhibited;
   mpigrp11.sink_inhibited = grp1->sink_inhibited;
   mpigrp11.b_inhibited = grp1->b_inhibited;
+
   mpigrp11.ti_hydro_end_min = grp1->ti_hydro_end_min;
   mpigrp11.ti_rt_end_min = grp1->ti_rt_end_min;
   mpigrp11.ti_gravity_end_min = grp1->ti_gravity_end_min;
   mpigrp11.ti_stars_end_min = grp1->ti_stars_end_min;
   mpigrp11.ti_sinks_end_min = grp1->ti_sinks_end_min;
   mpigrp11.ti_black_holes_end_min = grp1->ti_black_holes_end_min;
+  mpigrp11.ti_sidm_end_min = grp1->ti_sidm_end_min;
+
   mpigrp11.ti_hydro_beg_max = grp1->ti_hydro_beg_max;
   mpigrp11.ti_rt_beg_max = grp1->ti_rt_beg_max;
   mpigrp11.ti_gravity_beg_max = grp1->ti_gravity_beg_max;
   mpigrp11.ti_stars_beg_max = grp1->ti_stars_beg_max;
   mpigrp11.ti_sinks_beg_max = grp1->ti_sinks_beg_max;
   mpigrp11.ti_black_holes_beg_max = grp1->ti_black_holes_beg_max;
+  mpigrp11.ti_sidm_beg_max = grp1->ti_sidm_beg_max;
+
   mpigrp11.forcerebuild = grp1->forcerebuild;
+
   mpigrp11.total_nr_cells = grp1->total_nr_cells;
   mpigrp11.total_nr_tasks = grp1->total_nr_tasks;
   mpigrp11.tasks_per_cell_max = grp1->tasks_per_cell_max;
+
   mpigrp11.sfh = grp1->sfh;
+
   mpigrp11.runtime = grp1->runtime;
-  mpigrp11.flush_lightcone_maps = grp1->flush_lightcone_maps;
   mpigrp11.deadtime = grp1->deadtime;
+
+  mpigrp11.flush_lightcone_maps = grp1->flush_lightcone_maps;
+
 #ifdef WITH_CSDS
   mpigrp11.csds_file_size_gb = grp1->csds_file_size_gb;
 #endif
@@ -322,32 +344,42 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->sink_updated = mpigrp12.sink_updated;
   grp1->s_updated = mpigrp12.s_updated;
   grp1->b_updated = mpigrp12.b_updated;
+
   grp1->inhibited = mpigrp12.inhibited;
   grp1->g_inhibited = mpigrp12.g_inhibited;
   grp1->s_inhibited = mpigrp12.s_inhibited;
   grp1->sink_inhibited = mpigrp12.sink_inhibited;
   grp1->b_inhibited = mpigrp12.b_inhibited;
+
   grp1->ti_hydro_end_min = mpigrp12.ti_hydro_end_min;
   grp1->ti_rt_end_min = mpigrp12.ti_rt_end_min;
   grp1->ti_gravity_end_min = mpigrp12.ti_gravity_end_min;
   grp1->ti_stars_end_min = mpigrp12.ti_stars_end_min;
   grp1->ti_sinks_end_min = mpigrp12.ti_sinks_end_min;
   grp1->ti_black_holes_end_min = mpigrp12.ti_black_holes_end_min;
+  grp1->ti_sidm_end_min = mpigrp12.ti_sidm_end_min;
+
   grp1->ti_hydro_beg_max = mpigrp12.ti_hydro_beg_max;
   grp1->ti_rt_beg_max = mpigrp12.ti_rt_beg_max;
   grp1->ti_gravity_beg_max = mpigrp12.ti_gravity_beg_max;
   grp1->ti_stars_beg_max = mpigrp12.ti_stars_beg_max;
   grp1->ti_sinks_beg_max = mpigrp12.ti_sinks_beg_max;
   grp1->ti_black_holes_beg_max = mpigrp12.ti_black_holes_beg_max;
+  grp1->ti_sidm_beg_max = mpigrp12.ti_sidm_beg_max;
+
   grp1->forcerebuild = mpigrp12.forcerebuild;
+
   grp1->total_nr_cells = mpigrp12.total_nr_cells;
   grp1->total_nr_tasks = mpigrp12.total_nr_tasks;
   grp1->tasks_per_cell_max = mpigrp12.tasks_per_cell_max;
+
   grp1->sfh = mpigrp12.sfh;
+
   grp1->runtime = mpigrp12.runtime;
+  grp1->deadtime = mpigrp12.deadtime;
+
   grp1->flush_lightcone_maps = mpigrp12.flush_lightcone_maps;
 
-  grp1->deadtime = mpigrp12.deadtime;
 #ifdef WITH_CSDS
   grp1->csds_file_size_gb = mpigrp12.csds_file_size_gb;
 #endif
@@ -393,6 +425,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
       min(mpigrp11->ti_sinks_end_min, mpigrp12->ti_sinks_end_min);
   mpigrp11->ti_black_holes_end_min =
       min(mpigrp11->ti_black_holes_end_min, mpigrp12->ti_black_holes_end_min);
+  mpigrp11->ti_sidm_end_min =
+      min(mpigrp11->ti_sidm_end_min, mpigrp12->ti_sidm_end_min);
 
   /* Maximum beg time. */
   mpigrp11->ti_hydro_beg_max =
@@ -407,6 +441,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
       max(mpigrp11->ti_sinks_beg_max, mpigrp12->ti_sinks_beg_max);
   mpigrp11->ti_black_holes_beg_max =
       max(mpigrp11->ti_black_holes_beg_max, mpigrp12->ti_black_holes_beg_max);
+  mpigrp11->ti_sidm_beg_max =
+      max(mpigrp11->ti_sidm_beg_max, mpigrp12->ti_sidm_beg_max);
 
   /* Everyone must agree to not rebuild. */
   if (mpigrp11->forcerebuild || mpigrp12->forcerebuild)

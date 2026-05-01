@@ -168,8 +168,9 @@ const char *subtaskID_names[task_subtype_count] = {"none",
                                                    "sink_do_gas_swallow",
                                                    "rt_gradient",
                                                    "rt_transport",
+                                                   "sidm_comm_xv",
+                                                   "sidm_comm_rho",
                                                    "sidm_density",
-                                                   "sipart",
                                                    "sidm_force"};
 
 const char *task_category_names[task_category_count] = {

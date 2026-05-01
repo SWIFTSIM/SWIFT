@@ -499,19 +499,25 @@ __attribute__((always_inline)) INLINE static void kick_sipart(
 #endif
 
   /* Kick particles in momentum space */
-  sip->v[0] += sip->gpart->a_grav[0] * dt_kick_grav;
-  sip->v[1] += sip->gpart->a_grav[1] * dt_kick_grav;
-  sip->v[2] += sip->gpart->a_grav[2] * dt_kick_grav;
+  if (sip->gpart != NULL) {
+    sip->v[0] += sip->gpart->a_grav[0] * dt_kick_grav;
+    sip->v[1] += sip->gpart->a_grav[1] * dt_kick_grav;
+    sip->v[2] += sip->gpart->a_grav[2] * dt_kick_grav;
+  }
 
   /* Kick particles in momentum space (mesh forces) */
-  sip->v[0] += sip->gpart->a_grav_mesh[0] * dt_kick_mesh_grav;
-  sip->v[1] += sip->gpart->a_grav_mesh[1] * dt_kick_mesh_grav;
-  sip->v[2] += sip->gpart->a_grav_mesh[2] * dt_kick_mesh_grav;
+  if (sip->gpart != NULL) {
+    sip->v[0] += sip->gpart->a_grav_mesh[0] * dt_kick_mesh_grav;
+    sip->v[1] += sip->gpart->a_grav_mesh[1] * dt_kick_mesh_grav;
+    sip->v[2] += sip->gpart->a_grav_mesh[2] * dt_kick_mesh_grav;
+  }
 
   /* Give the gpart friend the same velocity */
-  sip->gpart->v_full[0] = sip->v[0];
-  sip->gpart->v_full[1] = sip->v[1];
-  sip->gpart->v_full[2] = sip->v[2];
+  if (sip->gpart != NULL) {
+    sip->gpart->v_full[0] = sip->v[0];
+    sip->gpart->v_full[1] = sip->v[1];
+    sip->gpart->v_full[2] = sip->v[2];
+  }
 
   /* Kick extra variables */
   sidm_kick_extra(sip, dt_kick_grav);

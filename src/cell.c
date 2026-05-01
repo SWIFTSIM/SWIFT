@@ -330,6 +330,38 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts) {
 }
 
 /**
+ * @brief Link the cells recursively to the given #sipart array.
+ *
+ * @param c The #cell.
+ * @param siparts The #part array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_siparts(struct cell *c, struct sipart *siparts) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->sidm.parts != NULL)
+    error("Linking parts into a cell that was already linked");
+#endif
+
+  c->sidm.parts = siparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_siparts(c->progeny[k], &siparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->sidm.count;
+}
+
+/**
  * @brief Link the cells recursively to the given #sink array.
  *
  * @param c The #cell.
@@ -517,6 +549,54 @@ int cell_link_foreign_fof_gparts(struct cell *c,
 }
 
 /**
+ * @brief Recurse down foreign cells until reaching one with hydro
+ * tasks; then trigger the linking of the #sipart array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param siparts The #sipart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_siparts(struct cell *c, struct sipart *siparts) {
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (cell_get_recv(c, task_subtype_sidm_comm_xv) != NULL) {
+
+    /* Recursively attach the parts */
+    const int counts = cell_link_siparts(c, siparts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->sidm.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_siparts(c->progeny[k], &siparts[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
  * @brief Recursively nullify all the particle pointers in a cell hierarchy.
  *
  * Should only be used on foreign cells!
@@ -537,6 +617,7 @@ void cell_unlink_foreign_particles(struct cell *c) {
   c->hydro.parts = NULL;
   c->stars.parts = NULL;
   c->black_holes.parts = NULL;
+  c->sidm.parts = NULL;
   c->sinks.parts = NULL;
 
   if (c->split) {
@@ -612,6 +693,44 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
         count += cell_count_gparts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #sipart in foreign cells that
+ * are in cells with sidm-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_siparts_for_tasks(const struct cell *c) {
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a gravity task at this level? */
+  if (cell_get_recv(c, task_subtype_sidm_comm_xv) != NULL) {
+    return c->sidm.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_siparts_for_tasks(c->progeny[k]);
       }
     }
     return count;

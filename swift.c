@@ -591,12 +591,13 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (!with_self_gravity && !with_hydro && !with_external_gravity) {
+  if (!with_self_gravity && !with_hydro && !with_external_gravity &&
+      !with_sidm) {
     if (myrank == 0) {
       argparse_usage(&argparse);
       pretime_message(
-          "\nError: At least one of --hydro, --external-gravity"
-          " or --self-gravity must be chosen.");
+          "\nError: At least one of --hydro, --external-gravity, "
+          " --self-gravity, or --sidm must be chosen.");
     }
     return 1;
   }
@@ -1406,7 +1407,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_dark_matter_background] = Ngpart_background;
     N_long[swift_type_sink] = Nsink;
     N_long[swift_type_stars] = Nspart;
-    N_total[swift_type_sidm] = Nsipart;
+    N_long[swift_type_sidm] = Nsipart;
     N_long[swift_type_black_hole] = Nbpart;
     N_long[swift_type_neutrino] = Nnupart;
     N_long[swift_type_count] = Ngpart;
