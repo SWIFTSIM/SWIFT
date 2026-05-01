@@ -36,9 +36,9 @@
  */
 struct end_of_step_data {
 
-  size_t updated, g_updated, s_updated, sink_updated, b_updated, si_updated;
+  size_t updated, g_updated, s_updated, sink_updated, b_updated, sidm_updated;
   size_t inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited,
-      si_inhibited;
+      sidm_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_beg_max;
   integertime_t ti_rt_end_min, ti_rt_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_beg_max;
@@ -76,7 +76,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
   /* Local collectible */
   size_t updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
-         b_updated = 0;
+         b_updated = 0, sidm_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
@@ -84,6 +84,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_beg_max = 0;
+  integertime_t ti_sidm_end_min = max_nr_timesteps, ti_sidm_beg_max = 0;
 
   /* Local Star formation history properties */
   struct star_formation_history sfh_updated;
@@ -95,40 +96,52 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     struct cell *c = &s->cells_top[local_cells[ind]];
 
     if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
-        c->black_holes.count > 0 || c->sinks.count > 0) {
+        c->black_holes.count > 0 || c->sinks.count > 0 || c->sidm.count > 0) {
 
       /* Aggregate data */
-      if (c->hydro.ti_end_min > e->ti_current)
+      if (c->hydro.ti_end_min > e->ti_current) {
         ti_hydro_end_min = min(ti_hydro_end_min, c->hydro.ti_end_min);
+      }
       ti_hydro_beg_max = max(ti_hydro_beg_max, c->hydro.ti_beg_max);
 
-      if (c->rt.ti_rt_end_min > e->ti_current)
+      if (c->rt.ti_rt_end_min > e->ti_current) {
         ti_rt_end_min = min(c->rt.ti_rt_end_min, ti_rt_end_min);
+      }
       ti_rt_beg_max = max(c->rt.ti_rt_beg_max, ti_rt_beg_max);
 
-      if (c->grav.ti_end_min > e->ti_current)
+      if (c->grav.ti_end_min > e->ti_current) {
         ti_gravity_end_min = min(ti_gravity_end_min, c->grav.ti_end_min);
+      }
       ti_gravity_beg_max = max(ti_gravity_beg_max, c->grav.ti_beg_max);
 
-      if (c->stars.ti_end_min > e->ti_current)
+      if (c->stars.ti_end_min > e->ti_current) {
         ti_stars_end_min = min(ti_stars_end_min, c->stars.ti_end_min);
+      }
       ti_stars_beg_max = max(ti_stars_beg_max, c->stars.ti_beg_max);
 
-      if (c->sinks.ti_end_min > e->ti_current)
+      if (c->sinks.ti_end_min > e->ti_current) {
         ti_sinks_end_min = min(ti_sinks_end_min, c->sinks.ti_end_min);
+      }
       ti_sinks_beg_max = max(ti_sinks_beg_max, c->sinks.ti_beg_max);
 
-      if (c->black_holes.ti_end_min > e->ti_current)
+      if (c->black_holes.ti_end_min > e->ti_current) {
         ti_black_holes_end_min =
             min(ti_black_holes_end_min, c->black_holes.ti_end_min);
+      }
       ti_black_holes_beg_max =
           max(ti_black_holes_beg_max, c->black_holes.ti_beg_max);
+
+      if (c->sidm.ti_end_min > e->ti_current) {
+        ti_sidm_end_min = min(ti_sidm_end_min, c->sidm.ti_end_min);
+      }
+      ti_sidm_beg_max = max(ti_sidm_beg_max, c->sidm.ti_beg_max);
 
       updated += c->hydro.updated;
       g_updated += c->grav.updated;
       s_updated += c->stars.updated;
       sink_updated += c->sinks.updated;
       b_updated += c->black_holes.updated;
+      sidm_updated += c->sidm.updated;
 
       /* Check if the cell was inactive and in that case reorder the SFH */
       if (!cell_is_starting_hydro(c, e) || !cell_is_starting_sinks(c, e)) {
@@ -145,6 +158,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       c->stars.updated = 0;
       c->sinks.updated = 0;
       c->black_holes.updated = 0;
+      c->sidm.updated = 0;
     }
   }
 
@@ -156,37 +170,49 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->s_updated += s_updated;
     data->sink_updated += sink_updated;
     data->b_updated += b_updated;
+    data->sidm_updated += sidm_updated;
 
     /* Add the SFH information from this engine to the global data */
     star_formation_logger_add(sfh_top, &sfh_updated);
 
-    if (ti_hydro_end_min > e->ti_current)
+    if (ti_hydro_end_min > e->ti_current) {
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
+    }
     data->ti_hydro_beg_max = max(ti_hydro_beg_max, data->ti_hydro_beg_max);
 
-    if (ti_rt_end_min > e->ti_current)
+    if (ti_rt_end_min > e->ti_current) {
       data->ti_rt_end_min = min(ti_rt_end_min, data->ti_rt_end_min);
+    }
     data->ti_rt_beg_max = max(ti_rt_beg_max, data->ti_rt_beg_max);
 
-    if (ti_gravity_end_min > e->ti_current)
+    if (ti_gravity_end_min > e->ti_current) {
       data->ti_gravity_end_min =
           min(ti_gravity_end_min, data->ti_gravity_end_min);
+    }
     data->ti_gravity_beg_max =
         max(ti_gravity_beg_max, data->ti_gravity_beg_max);
 
-    if (ti_stars_end_min > e->ti_current)
+    if (ti_stars_end_min > e->ti_current) {
       data->ti_stars_end_min = min(ti_stars_end_min, data->ti_stars_end_min);
+    }
     data->ti_stars_beg_max = max(ti_stars_beg_max, data->ti_stars_beg_max);
 
-    if (ti_sinks_end_min > e->ti_current)
+    if (ti_sinks_end_min > e->ti_current) {
       data->ti_sinks_end_min = min(ti_sinks_end_min, data->ti_sinks_end_min);
+    }
     data->ti_sinks_beg_max = max(ti_sinks_beg_max, data->ti_sinks_beg_max);
 
-    if (ti_black_holes_end_min > e->ti_current)
+    if (ti_black_holes_end_min > e->ti_current) {
       data->ti_black_holes_end_min =
           min(ti_black_holes_end_min, data->ti_black_holes_end_min);
+    }
     data->ti_black_holes_beg_max =
         max(ti_black_holes_beg_max, data->ti_black_holes_beg_max);
+
+    if (ti_sidm_end_min > e->ti_current) {
+      data->ti_sidm_end_min = min(ti_sidm_end_min, data->ti_sidm_end_min);
+    }
+    data->ti_sidm_beg_max = max(ti_sidm_beg_max, data->ti_sidm_beg_max);
   }
 
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
@@ -214,9 +240,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   const ticks tic = getticks();
   struct space *s = e->s;
   struct end_of_step_data data;
-  data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
-  data.sink_updated = 0;
-  data.si_updated = 0;
+  data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0,
+  data.sink_updated = 0, data.sidm_updated = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_beg_max = 0;
   data.ti_rt_end_min = max_nr_timesteps, data.ti_rt_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_beg_max = 0;
@@ -258,14 +283,14 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.s_inhibited = s->nr_inhibited_sparts;
   data.sink_inhibited = s->nr_inhibited_sinks;
   data.b_inhibited = s->nr_inhibited_bparts;
-  data.si_inhibited = s->nr_inhibited_siparts;
+  data.sidm_inhibited = s->nr_inhibited_siparts;
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
-      data.sink_updated, data.b_updated, data.si_updated, data.inhibited,
+      data.sink_updated, data.b_updated, data.sidm_updated, data.inhibited,
       data.g_inhibited, data.s_inhibited, data.sink_inhibited, data.b_inhibited,
-      data.si_inhibited, data.ti_hydro_end_min, data.ti_hydro_beg_max,
+      data.sidm_inhibited, data.ti_hydro_end_min, data.ti_hydro_beg_max,
       data.ti_rt_end_min, data.ti_rt_beg_max, data.ti_gravity_end_min,
       data.ti_gravity_beg_max, data.ti_stars_end_min, data.ti_stars_beg_max,
       data.ti_sinks_end_min, data.ti_sinks_beg_max, data.ti_black_holes_end_min,

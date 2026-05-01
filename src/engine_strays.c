@@ -37,7 +37,7 @@
 /* Number of particle types to wait for after launching the proxies. We have
    parts, xparts, gparts, sparts, bparts and sinks to exchange, hence 6 types.
  */
-#define MPI_REQUEST_NUMBER_PARTICLE_TYPES 6
+#define MPI_REQUEST_NUMBER_PARTICLE_TYPES 7
 #endif
 
 /**
@@ -392,9 +392,7 @@ void engine_exchange_strays(
   if (e->verbose) {
     message(
         "sent out %zu/%zu/%zu/%zu/%zu/%zu "
-        "parts/gparts/sparts/bparts/sinks/siparts, got "
-        "%i/%i/%i/%i/%i/%i "
-        "back.",
+        "parts/gparts/sparts/bparts/sinks/siparts, got %i/%i/%i/%i/%i/%i back.",
         *Npart, *Ngpart, *Nspart, *Nbpart, *Nsink, *Nsipart, count_parts_in,
         count_gparts_in, count_sparts_in, count_bparts_in, count_sinks_in,
         count_siparts_in);

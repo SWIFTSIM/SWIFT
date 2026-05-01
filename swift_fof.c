@@ -92,6 +92,7 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct fof_props fof_properties;
+  struct sidm_props sidm_properties;
   struct neutrino_props neutrino_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
@@ -448,6 +449,13 @@ int main(int argc, char *argv[]) {
   else
     bzero(&hydro_properties, sizeof(struct hydro_props));
 
+  /* Initialise the SIDM properties */
+  if (with_sidm) {
+    sidm_props_init(&sidm_properties, &prog_const, &us, params,
+                    &hydro_properties, &cosmo);
+  } else
+    bzero(&sidm_properties, sizeof(struct sidm_props));
+
   /* Initialise the equation of state */
   if (with_hydro)
     eos_init(&eos, &prog_const, &us, params);
@@ -526,36 +534,41 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
   long long N_long[swift_type_count + 1] = {0};
   N_long[swift_type_gas] = Ngas;
-  N_long[swift_type_dark_matter] =
-      Ngpart - Ngpart_background - Nnupart - Nbaryons;
   N_long[swift_type_dark_matter_background] = Ngpart_background;
   N_long[swift_type_sink] = Nsink;
   N_long[swift_type_stars] = Nspart;
+  N_long[swift_type_sidm] = Nsipart;
   N_long[swift_type_black_hole] = Nbpart;
   N_long[swift_type_neutrino] = Nnupart;
   N_long[swift_type_count] = Ngpart;
+  N_long[swift_type_dark_matter] =
+      Ngpart - Ngpart_background - Nbaryons - Nnupart - Nsipart;
+
   MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                 MPI_SUM, MPI_COMM_WORLD);
 #else
   N_total[swift_type_gas] = Ngas;
-  N_total[swift_type_dark_matter] =
-      Ngpart - Ngpart_background - Nnupart - Nbaryons;
   N_total[swift_type_dark_matter_background] = Ngpart_background;
   N_total[swift_type_sink] = Nsink;
   N_total[swift_type_stars] = Nspart;
+  N_total[swift_type_sidm] = Nsipart;
   N_total[swift_type_black_hole] = Nbpart;
   N_total[swift_type_neutrino] = Nnupart;
   N_total[swift_type_count] = Ngpart;
+  N_total[swift_type_dark_matter] =
+      Ngpart - Ngpart_background - Nbaryons - Nnupart - Nsipart;
+
 #endif
 
   if (myrank == 0)
     message(
         "Read %lld gas particles, %lld sink particles, %lld star particles, "
+        "%lld SIDM particles,"
         "%lld black hole particles, %lld DM particles, %lld DM background "
         "particles, and %lld neutrino DM particles from the ICs.",
         N_total[swift_type_gas], N_total[swift_type_sink],
-        N_total[swift_type_stars], N_total[swift_type_black_hole],
-        N_total[swift_type_dark_matter],
+        N_total[swift_type_stars], N_total[swift_type_sidm],
+        N_total[swift_type_black_hole], N_total[swift_type_dark_matter],
         N_total[swift_type_dark_matter_background],
         N_total[swift_type_neutrino]);
 
@@ -671,7 +684,7 @@ int main(int argc, char *argv[]) {
       /*entropy_floor=*/NULL, &gravity_properties,
       /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
       /*sink_properties=*/NULL, &neutrino_properties,
-      /*neutrino_response=*/NULL, /*sidm_properties=*/NULL,
+      /*neutrino_response=*/NULL, &sidm_properties,
       /*feedback_properties=*/NULL,
       /*pressure_floor_properties=*/NULL,
       /*rt_properties=*/NULL, &mesh, /*pow_data=*/NULL, /*potential=*/NULL,
@@ -733,6 +746,7 @@ int main(int argc, char *argv[]) {
   if (with_stars) e.policy |= engine_policy_stars;
   if (with_black_holes) e.policy |= engine_policy_black_holes;
   if (with_sinks) e.policy |= engine_policy_sinks;
+  if (with_sidm) e.policy |= engine_policy_sidm;
 
   /* Write output. */
   engine_dump_snapshot(&e, /*fof=*/1);

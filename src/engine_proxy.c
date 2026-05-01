@@ -62,6 +62,7 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
 
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_sidm = (e->policy & engine_policy_sidm);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_mesh_dist2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
@@ -79,6 +80,9 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
   /* In the hydro case, only care about direct neighbours */
   if (with_hydro && is_direct_neighbour)
     proxy_type |= (int)proxy_cell_type_hydro;
+
+  /* In the SIDM case, only care about direct neighbours */
+  if (with_sidm && is_direct_neighbour) proxy_type |= (int)proxy_cell_type_sidm;
 
   /* In the gravity case, check distances using the MAC. */
   if (with_gravity) {
