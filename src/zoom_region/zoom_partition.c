@@ -2140,8 +2140,13 @@ void zoom_partition_pick_parmetis(int nodeID, struct space *s, int nregions,
   int *zoom_part = (int *)malloc(sizeof(int) * nr_zoom_cells);
   if (zoom_part == NULL) error("Failed to allocate zoom subgraph celllist");
 
-  /* Seed sub_celllist from caller's input (for refine and permute). */
-  for (int k = 0; k < nr_zoom_cells; k++) zoom_part[k] = celllist[k];
+  /* Seed sub_celllist from the existing cell nodeIDs. On the first ever
+   * partition these are all 0 (causing the helper's permute-skip path to
+   * trigger), and on a refine they hold the previous assignment. Reading
+   * from the uninitialised input celllist would feed garbage into
+   * permute_regions() and segfault. */
+  for (int k = 0; k < nr_zoom_cells; k++)
+    zoom_part[k] = s->zoom_props->zoom_cells_top[k].nodeID;
 
   zoom_partition_parmetis_subgraph(nodeID, nregions, nr_zoom_cells,
                                    zoom_nedges, vertexw, zoom_edgew,
@@ -2191,9 +2196,10 @@ void zoom_partition_pick_parmetis(int nodeID, struct space *s, int nregions,
   int *bkg_part = (int *)malloc(sizeof(int) * nr_bkg_cells);
   if (bkg_part == NULL) error("Failed to allocate bkg subgraph celllist");
 
-  /* Seed sub_celllist from caller's input (for refine and permute). */
+  /* Seed sub_celllist from the existing cell nodeIDs. See the matching
+   * comment above for the zoom subgraph. */
   for (int k = 0; k < nr_bkg_cells; k++)
-    bkg_part[k] = celllist[k + bkg_offset];
+    bkg_part[k] = s->cells_top[k + bkg_offset].nodeID;
 
   zoom_partition_parmetis_subgraph(nodeID, nregions, nr_bkg_cells, bkg_nedges,
                                    bkg_vertexw, bkg_edgew, bkg_xadj,
