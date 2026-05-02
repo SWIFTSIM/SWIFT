@@ -560,6 +560,13 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
                              int adaptive, float itr, int *celllist,
                              const int *cell_edge_offsets, int nedges) {
 
+  /* Zoom region: partition the zoom and background grids independently. */
+  if (s->with_zoom_region) {
+    zoom_partition_pick_parmetis(nodeID, s, nregions, vertexw, edgew, refine,
+                                 adaptive, itr, celllist);
+    return;
+  }
+
   int res;
   MPI_Comm comm;
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
@@ -1074,6 +1081,12 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
 void partition_pick_metis(int nodeID, struct space *s, int nregions,
                           double *vertexw, double *edgew, int *celllist,
                           const int *cell_edge_offsets, int nedges) {
+
+  /* Zoom region: partition the zoom and background grids independently. */
+  if (s->with_zoom_region) {
+    zoom_partition_pick_metis(nodeID, s, nregions, vertexw, edgew, celllist);
+    return;
+  }
 
   /* Total number of cells. */
   int ncells = s->nr_cells;

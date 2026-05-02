@@ -105,6 +105,13 @@ void zoom_partition_sizes_to_edges(struct space *s, double *counts,
 void zoom_partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
                                int *nadjcny, idx_t *xadj, int *nxadj,
                                const int *cell_edge_offsets);
+void zoom_partition_pick_metis(int nodeID, struct space *s, int nregions,
+                               double *vertexw, double *edgew, int *celllist);
+#ifdef HAVE_PARMETIS
+void zoom_partition_pick_parmetis(int nodeID, struct space *s, int nregions,
+                                  double *vertexw, double *edgew, int refine,
+                                  int adaptive, float itr, int *celllist);
+#endif
 #endif
 /* Zoom specific IO. */
 void zoom_write_metadata(hid_t root_grp, hid_t head_grp, const struct space *s);
