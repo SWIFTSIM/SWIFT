@@ -168,6 +168,16 @@ struct gravity_props {
   /*! Gravitational constant (in internal units, copied from the physical
    * constants) */
   float G_Newton;
+
+  /* ------------- Outreach / pedagogical knobs ------------------------ */
+
+  /*! Dimensionless multiplier applied to all self-gravity accelerations
+   * (and the gravitational potential) at the end of the force calculation.
+   * Defaults to 1.0 (no effect). Values != 1 are intended for outreach /
+   * "what if gravity were stronger/weaker?" demonstrations and will produce
+   * unphysical results. Negative values are permitted (repulsive gravity)
+   * and zero disables self-gravity forces entirely. */
+  float gravity_multiplier;
 };
 
 void gravity_props_print(const struct gravity_props *p);

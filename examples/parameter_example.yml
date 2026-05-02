@@ -102,6 +102,7 @@ Gravity:
   a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut_max:                     4.5       # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
   r_cut_min:                     0.1       # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
+  gravity_multiplier:            1.0       # (Optional) Dimensionless multiplier applied to all self-gravity accelerations and potentials. Default is 1.0 (no effect). Intended for outreach/pedagogical use only: values != 1 produce unphysical results. Negative values give repulsive gravity; 0 disables self-gravity forces.
 
 # Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS 
 ForceChecks:

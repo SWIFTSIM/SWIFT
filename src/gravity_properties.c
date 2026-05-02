@@ -266,6 +266,14 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Copy over the gravitational constant */
   p->G_Newton = phys_const->const_newton_G;
 
+  /* Outreach knob: dimensionless multiplier applied to all self-gravity
+   * accelerations and the potential. Defaults to 1.0 (no effect). We do
+   * NOT validate the sign or magnitude: negative values give repulsive
+   * gravity and zero turns off self-gravity, both of which are useful
+   * for pedagogical demonstrations. */
+  p->gravity_multiplier =
+      parser_get_opt_param_float(params, "Gravity:gravity_multiplier", 1.f);
+
   /* Set the softening to the current time */
   gravity_props_update(p, cosmo);
 }
@@ -388,6 +396,14 @@ void gravity_props_print(const struct gravity_props *p) {
           kernel_long_gravity_truncation_name);
 
   message("Self-gravity tree update frequency: f=%f", p->rebuild_frequency);
+
+  if (p->gravity_multiplier != 1.f)
+    message(
+        "WARNING: Self-gravity multiplier is set to %.6f -- all self-gravity "
+        "accelerations and potentials will be scaled by this factor. This is "
+        "intended for outreach/pedagogical use and produces unphysical "
+        "results.",
+        p->gravity_multiplier);
 }
 
 #if defined(HAVE_HDF5)
@@ -457,6 +473,8 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
                        p->rebuild_frequency);
   io_write_attribute_s(h_grpgrav, "Mesh truncation function",
                        kernel_long_gravity_truncation_name);
+  io_write_attribute_f(h_grpgrav, "Gravity multiplier",
+                       p->gravity_multiplier);
 }
 #endif
 
