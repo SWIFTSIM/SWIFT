@@ -57,6 +57,7 @@ INLINE static void cooling_ionize_part_subgrid(
      2. Use a fixed time-interval, like Colibre.
      Then, ionise during t_part + delta t
   */
+  /* TODO: Check temperature formula */
   if (!radiation_is_part_tagged_as_ionized(p, xp)) {
     return;
   }
@@ -140,6 +141,8 @@ INLINE static void cooling_update_part_subgrid(
     struct xpart *xp, double dt, double dt_therm) {
   
   /* Apply ionization */
+  cooling_ionize_part_subgrid(phys_const, us, cosmo, hydro_props,
+                              pressure_floor, cooling, p, xp, dt, dt_therm);
 
   /* TODO (future plan): Apply space-time varying UV background */
 
