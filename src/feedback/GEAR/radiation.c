@@ -157,7 +157,7 @@ __attribute__((always_inline)) INLINE void radiation_reset_part_ionized_tag(
  * @return Is the particle *tagged* ionized?
  */
 __attribute__((always_inline)) INLINE int radiation_is_part_tagged_as_ionized(
-    struct part *p, struct xpart *xp) {
+    const struct part *p, const struct xpart *xp) {
   return xp->feedback_data.radiation.is_ionized;
 }
 
