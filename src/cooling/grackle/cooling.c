@@ -950,7 +950,7 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   data.grid_end = grid_end;
 
   /* Do subgrid physics before feeding grackle with the gas properties. */
-  cooling_update_part_subgrid(phys_const, us, cosmo, hydro_props, cooling, p,
+  cooling_update_part_subgrid(phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p,
                               xp, dt, dt_therm);
 
   /* general particle data */

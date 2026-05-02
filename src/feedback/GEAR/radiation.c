@@ -25,6 +25,7 @@
 /* Include header */
 #include "radiation.h"
 
+#include "cooling.h"
 #include "interpolation.h"
 #include "kernel_hydro.h"
 #include "stellar_evolution.h"

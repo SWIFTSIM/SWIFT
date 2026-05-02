@@ -25,7 +25,7 @@
  * compute quantities for the radiation feedback.
  */
 
-#include "cooling.h"
+#include "cooling_properties.h"
 #include "hydro.h"
 #include "part.h"
 #include "physical_constants.h"
