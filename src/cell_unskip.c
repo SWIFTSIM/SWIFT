@@ -29,6 +29,7 @@
 #include "active.h"
 #include "engine.h"
 #include "feedback.h"
+#include "scheduler.h"
 #include "space_getsid.h"
 
 extern int engine_star_resort_task_depth;
@@ -2519,6 +2520,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (c->timestep != NULL) scheduler_activate(s, c->timestep);
       if (c->top->timestep_collect != NULL)
         scheduler_activate(s, c->top->timestep_collect);
+      if (c->stars.hii_ionization_feedback != NULL)
+        scheduler_activate(s, c->stars.hii_ionization_feedback);
 #ifdef WITH_CSDS
       if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif

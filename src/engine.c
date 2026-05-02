@@ -1220,6 +1220,13 @@ int engine_estimate_nr_tasks(const struct engine *e) {
      */
     n1 += 37;
     n2 += 2;
+
+    const int with_feedback = (e->policy & engine_policy_feedback);
+    const int with_HII_ionization_feedback = with_feedback;
+    if (with_HII_ionization_feedback) {
+      n1 += 1;
+    }
+
 #ifdef WITH_MPI
     n1 += 6;
 #endif
@@ -1801,6 +1808,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
         t->type == task_type_star_formation_sink ||
+        t->type == task_type_stars_hii_ionization_feedback ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
         t->type == task_type_stars_ghost ||
         t->type == task_type_stars_ghost_in ||

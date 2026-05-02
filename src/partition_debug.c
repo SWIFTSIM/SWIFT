@@ -50,6 +50,8 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
                              struct weights_mapper_data *mydata,
                              double *ref_weights_v, double *ref_weights_e) {
 
+  /* TODO: Should I add the HII ionization task? */
+
   idx_t *inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;

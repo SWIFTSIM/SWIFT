@@ -78,6 +78,9 @@ struct cell_stars {
     /*! The task computing this cell's sorts before the density. */
     struct task *sorts;
 
+    /*! The task for subgrid HII ionization */
+    struct task *hii_ionization_feedback;
+
     /*! The drift task for sparts */
     struct task *drift;
 

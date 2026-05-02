@@ -100,6 +100,7 @@ const char *taskID_names[task_type_count] = {
     "stars_prep_ghost2",
     "stars_sort",
     "stars_resort",
+    "stars_hii_ionization_feedback",
     "bh_in",
     "bh_out",
     "bh_density_ghost",

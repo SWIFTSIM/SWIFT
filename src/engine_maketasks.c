@@ -23,6 +23,9 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "scheduler.h"
+#include "task.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -1386,6 +1389,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 #ifdef WITH_CSDS
   const int with_csds = e->policy & engine_policy_csds;
 #endif
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_HII_ionization_feedback = with_stars && with_feedback;
 
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
@@ -1484,6 +1489,18 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       /* Subgrid tasks: sinks formation */
       if (with_sinks) {
         scheduler_addunlock(s, c->kick2, c->top->sinks.sink_formation);
+      }
+
+      /* Subgrid tasks: HII ionization feedback */
+      if (with_HII_ionization_feedback && c->stars.count > 0 &&
+          c->hydro.count > 0) {
+        c->stars.hii_ionization_feedback =
+            scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
+                              task_subtype_none, 0, 0, c, NULL);
+
+        /* TODO: Do we want these dependencies? Are they needed? */
+        scheduler_addunlock(s, kick2_or_csds, c->stars.hii_ionization_feedback);
+        scheduler_addunlock(s, c->stars.hii_ionization_feedback, c->timestep);
       }
 
       /* Time-step limiter */
@@ -1756,6 +1773,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 #ifdef WITH_CSDS
   const int with_csds = (e->policy & engine_policy_csds);
 #endif
+  const int with_HII_ionization_feedback = with_stars && with_feedback;
 
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
@@ -1960,6 +1978,14 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
           scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
                               c->stars.stars_in);
         }
+      }
+
+      if (with_HII_ionization_feedback && c->stars.count > 0 &&
+          c->hydro.count > 0) {
+        /* Do HII ionization once we know the stars' smoothing length and have
+           computed properties from the gas */
+        scheduler_addunlock(s, c->stars.ghost_out,
+                            c->stars.hii_ionization_feedback);
       }
 
       /* Radiative Transfer */

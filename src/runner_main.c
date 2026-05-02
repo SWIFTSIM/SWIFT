@@ -573,6 +573,9 @@ void *runner_main(void *data) {
         case task_type_rt_advance_cell_time:
           runner_do_rt_advance_cell_time(r, t->ci, 1);
           break;
+        case task_type_stars_hii_ionization_feedback:
+          runner_do_stars_hii_ionization_feedback(r, t->ci, 1);
+          break;
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }

@@ -93,6 +93,7 @@ enum task_types {
   task_type_stars_prep_ghost2, /* Implicit */
   task_type_stars_sort,
   task_type_stars_resort,
+  task_type_stars_hii_ionization_feedback,
   task_type_bh_in,  /* Implicit */
   task_type_bh_out, /* Implicit */
   task_type_bh_density_ghost,
