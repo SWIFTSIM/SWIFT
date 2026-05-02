@@ -63,8 +63,7 @@ cooling_get_hydrogen_mass_fraction(const struct cooling_function_data *cooling,
  */
 __attribute__((always_inline)) INLINE static float
 cooling_get_helium_mass_fraction(const struct cooling_function_data *cooling,
-                                   const struct part *p,
-                                   const struct xpart *xp) {
+                                 const struct part *p, const struct xpart *xp) {
 
 #if COOLING_GRACKLE_MODE == 0
   const float Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
@@ -75,7 +74,8 @@ cooling_get_helium_mass_fraction(const struct cooling_function_data *cooling,
 #else
 
   const struct cooling_xpart_data *cool_data = &xp->cooling_data;
-  const float X_He = cool_data->HeI_frac + cool_data->HeII_frac + cool_data->HeIII_frac;
+  const float X_He =
+      cool_data->HeI_frac + cool_data->HeII_frac + cool_data->HeIII_frac;
   return X_He;
 #endif
 }

@@ -19,7 +19,6 @@
 #ifndef SWIFT_NONE_COOLING_SUBGRID_H
 #define SWIFT_NONE_COOLING_SUBGRID_H
 
-
 /**
  * @file src/cooling/grackle/cooling_none_subgrid.h
  * @brief Subgrid model for none cooling, independent from grackle.
@@ -38,12 +37,10 @@
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  */
-INLINE static void cooling_update_part_subgrid(const struct phys_const *phys_const,
-				 const struct unit_system *us,
-				 const struct cosmology *cosmo,
-				 const struct hydro_props *hydro_props,
-				 const struct cooling_function_data *cooling,
-				 struct part *p, struct xpart *xp, double dt,
-				 double dt_therm) {}
+INLINE static void cooling_update_part_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, double dt, double dt_therm) {}
 
 #endif /* SWIFT_NONE_COOLING_SUBGRID_H */

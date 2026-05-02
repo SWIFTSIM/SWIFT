@@ -223,7 +223,8 @@ void feedback_will_do_feedback(
   sp->feedback_data.winds.energy_ejected *= feedback_props->winds_efficiency;
 
   /* Apply the radiation pressure efficiency factor */
-  sp->feedback_data.radiation.L_bol *= feedback_props->radiation_pressure_efficiency;
+  sp->feedback_data.radiation.L_bol *=
+      feedback_props->radiation_pressure_efficiency;
 
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback =

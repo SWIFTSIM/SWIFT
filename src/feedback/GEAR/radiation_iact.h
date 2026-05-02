@@ -100,25 +100,25 @@ radiation_iact_nonsym_feedback_density(
   if (fb_props->radiation_policy & radiation_policy_photoionization) {
     /* Gather neighbours data for HII ionization */
     if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo, cooling,
-				   pj, xpj)) {
-      /* If a particle is already ionized, it won't be able to ionize again so do
-	 not gather its data. */
+                                   pj, xpj)) {
+      /* If a particle is already ionized, it won't be able to ionize again so
+         do not gather its data. */
       const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
-									     phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+          phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
 
       /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this star),
-       * then si->num_ngbs = 1 and there is nothing to sort. Note that the
-       * maximum size of the sorted array cannot be larger then the maximum
+       * function is called for the first time (at this time-step for this
+       * star), then si->num_ngbs = 1 and there is nothing to sort. Note that
+       * the maximum size of the sorted array cannot be larger then the maximum
        * number of rays. */
       const int arr_size =
-        min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
+          min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
 
       /* Minimise separation between the gas particles and the BH. The rays
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the BH. */
       stromgren_sort_distance(r, si->feedback_data.radiation.stromgren_sphere,
-			      arr_size, Delta_dot_N_ion);
+                              arr_size, Delta_dot_N_ion);
     }
   }
 }
@@ -322,7 +322,7 @@ radiation_iact_nonsym_feedback_apply(
   if (si->feedback_data.radiation.L_bol != 0.0) {
     const float Delta_t = get_timestep(si->time_bin, time_base);
     const float p_rad = radiation_get_star_physical_radiation_pressure(
-                            si, Delta_t, phys_const, us, cosmo);
+        si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;
 
     /* Add the radiation pressure radially outwards from the star. Notice the
@@ -349,15 +349,15 @@ radiation_iact_nonsym_feedback_apply(
  */
 __attribute__((always_inline)) INLINE static void
 feedback_update_part_radiation(struct part *p, struct xpart *xp,
-                               const struct engine *e, const float initial_mass) {
+                               const struct engine *e,
+                               const float initial_mass) {
 
   /* Here, wo only update radiation pressure. The gas cooling state is updated
      before cooling */
   if (xp->feedback_data.hit_by_radiation) {
     for (int i = 0; i < 3; i++) {
       /* We use the initial mass of the gas, i.e. before any winds or SN */
-      const float dv =
-          xp->feedback_data.radiation.delta_p[i] / initial_mass;
+      const float dv = xp->feedback_data.radiation.delta_p[i] / initial_mass;
       xp->v_full[i] += dv;
       p->v[i] += dv;
 

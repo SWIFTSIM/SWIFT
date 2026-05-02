@@ -855,8 +855,8 @@ void stellar_evolution_evolve_spart(
   /* Pre-SN feedback */
   /* TODO: Update to pass the with_stellar_winds down or rename the function */
   stellar_evolution_compute_preSN_feedback_spart(
-        sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
-        star_age_beg_step, dt);
+      sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
+      star_age_beg_step, dt);
 
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const,
@@ -1203,8 +1203,9 @@ void stellar_evolution_compute_SN_feedback_spart(
 void stellar_evolution_compute_preSN_feedback_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char with_stellar_winds, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const struct phys_const *phys_const, const char with_stellar_winds,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for individual stars */
   if (sp->star_type != single_star) {
@@ -1308,8 +1309,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 void stellar_evolution_compute_preSN_feedback_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char with_stellar_winds, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const struct phys_const *phys_const, const char with_stellar_winds,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for populations of stars and not
      individual stars. */

@@ -121,12 +121,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
 
   message("Photoionization                    =  %i",
           feedback_props->radiation_policy & radiation_policy_photoionization);
-  message("Radiation pressure                 =  %i",
-          feedback_props->radiation_policy & radiation_policy_radiation_pressure);
+  message(
+      "Radiation pressure                 =  %i",
+      feedback_props->radiation_policy & radiation_policy_radiation_pressure);
   message("Radiation pressure efficiency:     =  %.2g",
           feedback_props->radiation_pressure_efficiency);
   message("Photo-electric heating              =  %i",
-          feedback_props->radiation_policy & radiation_policy_photoelectric_heating);
+          feedback_props->radiation_policy &
+              radiation_policy_photoelectric_heating);
 }
 
 /**
@@ -215,7 +217,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* Are we running with photoionization? */
   const int do_photoionization =
-    parser_get_opt_param_int(params, "GEARFeedback:do_photoionization", 0);
+      parser_get_opt_param_int(params, "GEARFeedback:do_photoionization", 0);
 
   if (do_photoionization) {
     fp->radiation_policy |= radiation_policy_photoionization;
@@ -226,10 +228,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       params, "GEARFeedback:radiation_pressure_efficiency", 0.0);
 
   if (fp->radiation_pressure_efficiency > 0.0) {
-    fp->radiation_policy |= radiation_policy_radiation_pressure ;
+    fp->radiation_policy |= radiation_policy_radiation_pressure;
   }
 
-  const int do_photoelectric_heating =  parser_get_opt_param_int(params, "GEARFeedback:do_photoelectric_heating", 0);
+  const int do_photoelectric_heating = parser_get_opt_param_int(
+      params, "GEARFeedback:do_photoelectric_heating", 0);
 
   if (do_photoelectric_heating) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;

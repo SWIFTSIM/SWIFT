@@ -56,7 +56,8 @@ struct feedback_xpart_data {
   /*! Indicator if the particle receives energy from SW specifically */
   char hit_by_winds;
 
-  /*! Indicator if the particle receives energy from radiation pressure specifically */
+  /*! Indicator if the particle receives energy from radiation pressure
+   * specifically */
   char hit_by_radiation;
 };
 
@@ -84,7 +85,7 @@ struct feedback_spart_data {
   float grad_rho_star[3];
 
   /*! Gas metallicity at the star location */
-  float Z_star;  
+  float Z_star;
 
   /*! Number of Ia supernovae */
   float number_snia;
@@ -134,7 +135,7 @@ struct feedback_spart_data {
     struct stromgren_shell_data
         stromgren_sphere[GEAR_STROMGREN_NUMBER_NEIGHBOURS];
 
-  } radiation;  
+  } radiation;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */

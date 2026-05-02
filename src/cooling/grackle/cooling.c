@@ -54,9 +54,9 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
                             const struct unit_system *us,
                             const struct cosmology *cosmo,
                             const struct hydro_props *hydro_properties,
-			    const struct pressure_floor_props *pressure_floor,
+                            const struct pressure_floor_props *pressure_floor,
                             const struct cooling_function_data *cooling,
-			    struct part *p, struct xpart *xp, double dt,
+                            struct part *p, struct xpart *xp, double dt,
                             double dt_therm);
 
 gr_float cooling_time(const struct phys_const *phys_const,
@@ -924,9 +924,9 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
                             const struct unit_system *us,
                             const struct cosmology *cosmo,
                             const struct hydro_props *hydro_props,
-			    const struct pressure_floor_props *pressure_floor,
+                            const struct pressure_floor_props *pressure_floor,
                             const struct cooling_function_data *cooling,
-			    struct part *p, struct xpart *xp, double dt,
+                            struct part *p, struct xpart *xp, double dt,
                             double dt_therm) {
 
   /* set current time */
@@ -950,8 +950,8 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   data.grid_end = grid_end;
 
   /* Do subgrid physics before feeding grackle with the gas properties. */
-  cooling_update_part_subgrid(phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p,
-                              xp, dt, dt_therm);
+  cooling_update_part_subgrid(phys_const, us, cosmo, hydro_props,
+                              pressure_floor, cooling, p, xp, dt, dt_therm);
 
   /* general particle data */
   gr_float density = cooling_get_physical_density(p, cosmo, cooling);
