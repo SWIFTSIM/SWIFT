@@ -410,7 +410,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
-                         repartition->celllist, cell_edge_offsets, nadjcny);
+                         repartition->celllist, cell_edge_offsets, nadjcny,
+                         /*repartition=*/1);
   } else {
     partition_pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
                             repartition->adaptive, repartition->itr,
@@ -418,7 +419,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 #else
   partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
-                       repartition->celllist, cell_edge_offsets, nadjcny);
+                       repartition->celllist, cell_edge_offsets, nadjcny,
+                       /*repartition=*/1);
 #endif
 
   /* Clean up edge info */
@@ -518,7 +520,8 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     partition_pick_metis(nodeID, s, nr_nodes, weights, NULL,
-                         repartition->celllist, cell_edge_offsets, nadjcny);
+                         repartition->celllist, cell_edge_offsets, nadjcny,
+                         /*repartition=*/1);
   } else {
     partition_pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
                             repartition->adaptive, repartition->itr,
@@ -526,7 +529,8 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   }
 #else
   partition_pick_metis(nodeID, s, nr_nodes, weights, NULL,
-                       repartition->celllist, cell_edge_offsets, nadjcny);
+                       repartition->celllist, cell_edge_offsets, nadjcny,
+                       /*repartition=*/1);
 #endif
 
   /* Clean up edge info */

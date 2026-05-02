@@ -715,14 +715,14 @@ void partition_initial_partition(struct partition *initial_partition,
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
       partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
-                           cell_edge_offsets, nadjcny);
+                           cell_edge_offsets, nadjcny, /*repartition=*/0);
     } else {
       partition_pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0,
                               0.0f, celllist, cell_edge_offsets, nadjcny);
     }
 #else
     partition_pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
-                         cell_edge_offsets, nadjcny);
+                         cell_edge_offsets, nadjcny, /*repartition=*/0);
 #endif
 
     /* And apply to our cells */

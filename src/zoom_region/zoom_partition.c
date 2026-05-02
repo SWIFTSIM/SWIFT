@@ -1142,6 +1142,413 @@ static void zoom_partition_metis_subgraph(int nodeID, int nregions, int nverts,
     mpi_error(res, "Failed to broadcast subgraph celllist");
 }
 
+/*  Subgraph stitching */
+/*  ================== */
+
+/**
+ * @brief Greedy permutation of bkg-rank labels to maximise zoom<->bkg
+ *        in-rank pairing.
+ *
+ * Given an nregions x nregions overlap matrix O[z][b] (the total weight of
+ * zoom<->bkg pairs between zoom-rank z and bkg-rank b), find a permutation
+ * pi of bkg labels so that sum_z O[z][pi(z)] is maximised. Greedy: process
+ * zoom-ranks in descending order of total overlap mass; for each, claim the
+ * unassigned bkg-rank with the highest O[z][b].
+ *
+ * @param O Flat row-major overlap matrix of size nregions*nregions.
+ * @param nregions Number of MPI ranks.
+ * @param perm Output array of size nregions: bkg label b_old maps to new
+ *        label perm[b_old]. Apply with bkg_part[k] = perm[bkg_part[k]].
+ */
+static void zoom_partition_greedy_permute(const double *O, int nregions,
+                                          int *perm) {
+
+  /* Default identity in case all-zero overlap. */
+  for (int i = 0; i < nregions; i++) perm[i] = i;
+
+  /* Compute zoom-rank order: descending total overlap mass. */
+  double *row_mass = (double *)malloc(nregions * sizeof(double));
+  if (row_mass == NULL) error("Failed to allocate row_mass");
+  int *order = (int *)malloc(nregions * sizeof(int));
+  if (order == NULL) error("Failed to allocate order");
+
+  for (int z = 0; z < nregions; z++) {
+    double s = 0.0;
+    for (int b = 0; b < nregions; b++) s += O[z * nregions + b];
+    row_mass[z] = s;
+    order[z] = z;
+  }
+
+  /* Selection sort by descending row_mass. */
+  for (int i = 0; i < nregions - 1; i++) {
+    int best = i;
+    for (int j = i + 1; j < nregions; j++) {
+      if (row_mass[order[j]] > row_mass[order[best]]) best = j;
+    }
+    if (best != i) {
+      int tmp = order[i];
+      order[i] = order[best];
+      order[best] = tmp;
+    }
+  }
+
+  /* Track which bkg labels and which zoom labels are claimed. */
+  int *bkg_used = (int *)calloc(nregions, sizeof(int));
+  int *zoom_assigned = (int *)calloc(nregions, sizeof(int));
+  if (bkg_used == NULL || zoom_assigned == NULL)
+    error("Failed to allocate stitch bookkeeping");
+
+  /* perm[b_old] = z_new; we want each bkg label mapped to one zoom label.
+   * Using inverse mapping is easier: assign[z] = b_old means zoom-rank z
+   * keeps the bkg cells whose current label is b_old. Then the new bkg
+   * label of those cells should equal z, so perm[b_old] = z. */
+  int *assign = (int *)malloc(nregions * sizeof(int));
+  if (assign == NULL) error("Failed to allocate assign");
+  for (int i = 0; i < nregions; i++) assign[i] = -1;
+
+  /* Greedy: for each zoom-rank in mass order, pick the best unassigned bkg. */
+  for (int idx = 0; idx < nregions; idx++) {
+    const int z = order[idx];
+    int best_b = -1;
+    double best_w = -1.0;
+    for (int b = 0; b < nregions; b++) {
+      if (bkg_used[b]) continue;
+      const double w = O[z * nregions + b];
+      if (w > best_w) {
+        best_w = w;
+        best_b = b;
+      }
+    }
+    /* If all remaining overlaps are zero, just take the first unassigned. */
+    if (best_b < 0) {
+      for (int b = 0; b < nregions; b++) {
+        if (!bkg_used[b]) {
+          best_b = b;
+          break;
+        }
+      }
+    }
+    assign[z] = best_b;
+    bkg_used[best_b] = 1;
+    zoom_assigned[z] = 1;
+  }
+
+  /* Build perm: cells currently labelled b_old should be relabelled to the
+   * zoom-rank z that claimed them. */
+  for (int z = 0; z < nregions; z++) {
+    const int b_old = assign[z];
+    perm[b_old] = z;
+  }
+
+  free(row_mass);
+  free(order);
+  free(bkg_used);
+  free(zoom_assigned);
+  free(assign);
+}
+
+/**
+ * @brief Build the zoom<->bkg overlap matrix from naive geometric adjacency.
+ *
+ * For each zoom cell, enumerate its 26 background neighbours (using the bkg
+ * cell containing the zoom cell as origin, skipping the void parent itself)
+ * and accumulate sid_scale[sortlistID[sid]] into O[zoom_part[zid]]
+ * [bkg_part[bid_local]]. Used by the initial-partition stitch where no real
+ * task costs exist yet.
+ *
+ * @param s The #space.
+ * @param periodic Whether the background grid is periodic.
+ * @param zoom_part Per-zoom-cell partition labels, size nr_zoom_cells.
+ * @param bkg_part Per-bkg-cell partition labels, size nr_bkg_cells.
+ * @param nregions Number of MPI ranks.
+ * @param O Output row-major overlap matrix, size nregions*nregions.
+ */
+static void zoom_partition_build_overlap_geometric(struct space *s, int periodic,
+                                                   const int *zoom_part,
+                                                   const int *bkg_part,
+                                                   int nregions, double *O) {
+
+  const int *zoom_cdim = s->zoom_props->cdim;
+  const int *bkg_cdim = s->zoom_props->bkg_cdim;
+  const struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
+
+  bzero(O, sizeof(double) * nregions * nregions);
+
+  for (int i = 0; i < zoom_cdim[0]; i++) {
+    for (int j = 0; j < zoom_cdim[1]; j++) {
+      for (int k = 0; k < zoom_cdim[2]; k++) {
+
+        const int zid = cell_getid(zoom_cdim, i, j, k);
+        const struct cell *ci = &zoom_cells[zid];
+        const int z_rank = zoom_part[zid];
+
+        /* The bkg cell containing this zoom cell. */
+        const int bkg_i = (ci->loc[0] + (ci->width[0] / 2)) * s->iwidth[0];
+        const int bkg_j = (ci->loc[1] + (ci->width[1] / 2)) * s->iwidth[1];
+        const int bkg_k = (ci->loc[2] + (ci->width[2] / 2)) * s->iwidth[2];
+
+        /* Iterate the 26 bkg neighbours (excluding the void parent). */
+        for (int bii = -1; bii <= 1; bii++) {
+          int biii = bkg_i + bii;
+          if (!periodic && (biii < 0 || biii >= bkg_cdim[0])) continue;
+          if (periodic) biii = (biii + bkg_cdim[0]) % bkg_cdim[0];
+          for (int bjj = -1; bjj <= 1; bjj++) {
+            int bjjj = bkg_j + bjj;
+            if (!periodic && (bjjj < 0 || bjjj >= bkg_cdim[1])) continue;
+            if (periodic) bjjj = (bjjj + bkg_cdim[1]) % bkg_cdim[1];
+            for (int bkk = -1; bkk <= 1; bkk++) {
+              int bkkk = bkg_k + bkk;
+              if (!periodic && (bkkk < 0 || bkkk >= bkg_cdim[2])) continue;
+              if (periodic) bkkk = (bkkk + bkg_cdim[2]) % bkg_cdim[2];
+
+              /* Skip the void parent. */
+              if (bkg_i == biii && bkg_j == bjjj && bkg_k == bkkk) continue;
+
+              const int b_local = cell_getid(bkg_cdim, biii, bjjj, bkkk);
+              const int b_rank = bkg_part[b_local];
+
+              /* Geometric weight from the (bii,bjj,bkk) offset. */
+              const int sid = ((bii + 1) * 9 + (bjj + 1) * 3 + (bkk + 1));
+              const double w = sid_scale[sortlistID[sid]];
+
+              O[z_rank * nregions + b_rank] += w;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Build the zoom<->bkg overlap matrix from the combined-graph edge
+ *        weights.
+ *
+ * Walks the combined-graph CSR (xadj/adjncy is implicit through
+ * cell_edge_offsets and the same enumeration order used by
+ * zoom_partition_graph_init); for every edge that crosses between a zoom
+ * cell and a bkg cell, accumulates edgew[k] into the overlap matrix. Used
+ * by repartition where edgew encodes real measured task costs.
+ *
+ * Note: this reproduces the cross-grid edge enumeration from the existing
+ * zoom_partition_count_vertex_edges()/graph_init() so that the CSR position
+ * `k` matches edgew[k] exactly. Only the zoom side of the cross-grid edges
+ * needs to be walked because the cross edges are recorded once per side and
+ * each side's edge in the CSR maps to a single edgew entry; we accumulate
+ * both directions to match the symmetric weight in edgew.
+ *
+ * @param s The #space.
+ * @param periodic Whether the background grid is periodic.
+ * @param edgew Combined-graph edge weights (CSR-ordered).
+ * @param cell_edge_offsets Cumulative edge offsets array[nr_cells+1].
+ * @param zoom_part Per-zoom-cell partition labels.
+ * @param bkg_part Per-bkg-cell partition labels.
+ * @param nregions Number of MPI ranks.
+ * @param O Output row-major overlap matrix, size nregions*nregions.
+ */
+static void zoom_partition_build_overlap_from_edges(
+    struct space *s, int periodic, const double *edgew,
+    const int *cell_edge_offsets, const int *zoom_part, const int *bkg_part,
+    int nregions, double *O) {
+
+  const int *zoom_cdim = s->zoom_props->cdim;
+  const int *bkg_cdim = s->zoom_props->bkg_cdim;
+  const int bkg_offset = s->zoom_props->bkg_cell_offset;
+  const struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
+
+  bzero(O, sizeof(double) * nregions * nregions);
+
+  /* We need to find, for each cross-grid edge, its CSR index k in edgew. The
+   * edge enumeration in zoom_partition_graph_init is: for each cell cid,
+   * intra-grid neighbours first (zoom: 26 zoom; bkg: 26 bkg), then cross-grid
+   * neighbours (zoom: bkg neighbours of containing void; bkg: zoom children
+   * of any neighbouring void cells). To match, we replay the per-zoom-cell
+   * walk and, per zoom cell, count its position within its CSR row.
+   *
+   * Replay the same enumeration order as zoom_partition_graph_init: per zoom
+   * cell, iterate intra-zoom neighbours (in (-1..1)^3 order, skipping self
+   * and using cid<cjd dedup is NOT done in graph_init - both directions are
+   * recorded), then cross-grid bkg neighbours. We rely on cell_edge_offsets
+   * to know where each cell's CSR row starts.
+   *
+   * To sidestep replicating graph_init's full intra-zoom enumeration just to
+   * reach the cross-grid edges, we instead walk the bkg side: for each bkg
+   * cell, after its intra-bkg neighbours, the cross-grid edges are the zoom
+   * children of any neighbouring void cells. That is also order-sensitive.
+   *
+   * Cleanest: re-enumerate edges in the SAME order as graph_init and
+   * increment a running CSR cursor per source cell. */
+
+  /* Per-cell cursor pointing at the next CSR slot to consume. */
+  int *cursor = (int *)malloc(s->nr_cells * sizeof(int));
+  if (cursor == NULL) error("Failed to allocate edge cursor");
+  for (int i = 0; i < s->nr_cells; i++) cursor[i] = cell_edge_offsets[i];
+
+  /* --- Zoom cells: intra-zoom edges, then cross-grid edges. --- */
+  for (int i = 0; i < zoom_cdim[0]; i++) {
+    for (int j = 0; j < zoom_cdim[1]; j++) {
+      for (int k = 0; k < zoom_cdim[2]; k++) {
+
+        const int zid = cell_getid(zoom_cdim, i, j, k);
+        const struct cell *ci = &zoom_cells[zid];
+
+        /* Intra-zoom neighbours (consume CSR slots, but no overlap update). */
+        for (int ii = -1; ii <= 1; ii++) {
+          const int iii = i + ii;
+          if (iii < 0 || iii >= zoom_cdim[0]) continue;
+          for (int jj = -1; jj <= 1; jj++) {
+            const int jjj = j + jj;
+            if (jjj < 0 || jjj >= zoom_cdim[1]) continue;
+            for (int kk = -1; kk <= 1; kk++) {
+              const int kkk = k + kk;
+              if (kkk < 0 || kkk >= zoom_cdim[2]) continue;
+              const int cjd = cell_getid(zoom_cdim, iii, jjj, kkk);
+              if (zid >= cjd) continue;
+              cursor[zid]++;
+              cursor[cjd]++;
+            }
+          }
+        }
+
+        /* Cross-grid (zoom -> bkg) neighbours. */
+        const int bkg_i = (ci->loc[0] + (ci->width[0] / 2)) * s->iwidth[0];
+        const int bkg_j = (ci->loc[1] + (ci->width[1] / 2)) * s->iwidth[1];
+        const int bkg_k = (ci->loc[2] + (ci->width[2] / 2)) * s->iwidth[2];
+
+        for (int bii = -1; bii <= 1; bii++) {
+          int biii = bkg_i + bii;
+          if (!periodic && (biii < 0 || biii >= bkg_cdim[0])) continue;
+          if (periodic) biii = (biii + bkg_cdim[0]) % bkg_cdim[0];
+          for (int bjj = -1; bjj <= 1; bjj++) {
+            int bjjj = bkg_j + bjj;
+            if (!periodic && (bjjj < 0 || bjjj >= bkg_cdim[1])) continue;
+            if (periodic) bjjj = (bjjj + bkg_cdim[1]) % bkg_cdim[1];
+            for (int bkk = -1; bkk <= 1; bkk++) {
+              int bkkk = bkg_k + bkk;
+              if (!periodic && (bkkk < 0 || bkkk >= bkg_cdim[2])) continue;
+              if (periodic) bkkk = (bkkk + bkg_cdim[2]) % bkg_cdim[2];
+
+              if (bkg_i == biii && bkg_j == bjjj && bkg_k == bkkk) continue;
+
+              const int b_full = cell_getid_offset(bkg_cdim, bkg_offset, biii,
+                                                   bjjj, bkkk);
+              const int b_local = b_full - bkg_offset;
+
+              const int z_rank = zoom_part[zid];
+              const int b_rank = bkg_part[b_local];
+
+              /* edgew is symmetric, so use the zoom-side slot. */
+              const int slot = cursor[zid];
+              const double w = edgew[slot];
+
+              O[z_rank * nregions + b_rank] += w;
+
+              cursor[zid]++;
+              cursor[b_full]++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  free(cursor);
+}
+
+/**
+ * @brief Stitch zoom and bkg subgraph partitions for the initial partition.
+ *
+ * Permutes bkg labels to maximise zoom<->bkg in-rank pairing using a
+ * geometric (sid_scale-weighted) overlap measure, then writes the stitched
+ * partition into celllist[s->nr_cells].
+ *
+ * @param s The #space.
+ * @param nregions Number of MPI ranks.
+ * @param zoom_part Zoom-grid partition (modified in-place: not changed here,
+ *        only read; only bkg_part is permuted).
+ * @param bkg_part Bkg-grid partition; on exit holds the permuted labels.
+ * @param celllist Output full-space partition array, size s->nr_cells.
+ */
+static void zoom_partition_stitch_initial(struct space *s, int nregions,
+                                          const int *zoom_part, int *bkg_part,
+                                          int *celllist) {
+
+  const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+  const int nr_bkg_cells = s->zoom_props->nr_bkg_cells;
+  const int bkg_offset = s->zoom_props->bkg_cell_offset;
+
+  double *O = (double *)malloc(sizeof(double) * nregions * nregions);
+  if (O == NULL) error("Failed to allocate overlap matrix");
+
+  zoom_partition_build_overlap_geometric(s, s->periodic, zoom_part, bkg_part,
+                                         nregions, O);
+
+  int *perm = (int *)malloc(sizeof(int) * nregions);
+  if (perm == NULL) error("Failed to allocate stitch perm");
+  zoom_partition_greedy_permute(O, nregions, perm);
+
+  /* Apply the permutation to bkg_part. */
+  for (int k = 0; k < nr_bkg_cells; k++) bkg_part[k] = perm[bkg_part[k]];
+
+  /* Stitch into celllist. */
+  for (int k = 0; k < nr_zoom_cells; k++) celllist[k] = zoom_part[k];
+  for (int k = 0; k < nr_bkg_cells; k++)
+    celllist[k + bkg_offset] = bkg_part[k];
+
+  free(O);
+  free(perm);
+}
+
+/**
+ * @brief Stitch zoom and bkg subgraph partitions for a repartition.
+ *
+ * As zoom_partition_stitch_initial() but uses the combined-graph edge weights
+ * (real measured task costs) to compute the zoom<->bkg overlap matrix.
+ *
+ * @param s The #space.
+ * @param nregions Number of MPI ranks.
+ * @param edgew Combined-graph edge weights, CSR-ordered, or NULL.
+ * @param cell_edge_offsets Cumulative edge offsets for the combined graph.
+ * @param zoom_part Zoom-grid partition.
+ * @param bkg_part Bkg-grid partition; on exit holds the permuted labels.
+ * @param celllist Output full-space partition array.
+ */
+static void zoom_partition_stitch_repartition(
+    struct space *s, int nregions, const double *edgew,
+    const int *cell_edge_offsets, const int *zoom_part, int *bkg_part,
+    int *celllist) {
+
+  /* Fall back to geometric stitching if no edge weights were supplied. */
+  if (edgew == NULL || cell_edge_offsets == NULL) {
+    zoom_partition_stitch_initial(s, nregions, zoom_part, bkg_part, celllist);
+    return;
+  }
+
+  const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+  const int nr_bkg_cells = s->zoom_props->nr_bkg_cells;
+  const int bkg_offset = s->zoom_props->bkg_cell_offset;
+
+  double *O = (double *)malloc(sizeof(double) * nregions * nregions);
+  if (O == NULL) error("Failed to allocate overlap matrix");
+
+  zoom_partition_build_overlap_from_edges(s, s->periodic, edgew,
+                                          cell_edge_offsets, zoom_part,
+                                          bkg_part, nregions, O);
+
+  int *perm = (int *)malloc(sizeof(int) * nregions);
+  if (perm == NULL) error("Failed to allocate stitch perm");
+  zoom_partition_greedy_permute(O, nregions, perm);
+
+  for (int k = 0; k < nr_bkg_cells; k++) bkg_part[k] = perm[bkg_part[k]];
+
+  for (int k = 0; k < nr_zoom_cells; k++) celllist[k] = zoom_part[k];
+  for (int k = 0; k < nr_bkg_cells; k++)
+    celllist[k + bkg_offset] = bkg_part[k];
+
+  free(O);
+  free(perm);
+}
+
 /**
  * @brief Partition the zoom and background grids independently with METIS.
  *
@@ -1159,22 +1566,31 @@ static void zoom_partition_metis_subgraph(int nodeID, int nregions, int nverts,
  * @param s The #space containing the zoom and background top-level cells.
  * @param nregions The number of partitions to produce.
  * @param vertexw Per-cell vertex weights, sizeof number of cells, or NULL.
- * @param edgew Combined-graph edge weights from the caller. Ignored by the
- *        separate-subgraph path; kept in the signature so the calling
- *        convention matches partition_pick_metis().
+ * @param edgew Combined-graph edge weights from the caller. Used only by the
+ *        repartition stitch step (when @c repartition is non-zero) to weight
+ *        the zoom<->bkg overlap matrix by real measured task costs. The
+ *        per-subgraph METIS calls always use freshly recomputed weights.
+ * @param cell_edge_offsets Cumulative combined-graph edge offsets, size
+ *        s->nr_cells+1. Required when @c repartition is non-zero. May be
+ *        NULL otherwise.
+ * @param repartition Non-zero if this is a repartition (use @c edgew for
+ *        stitching); zero for an initial partition (use geometric stitching).
  * @param celllist Output partition array, size s->nr_cells, indexed in the
  *        full-space frame.
  */
 void zoom_partition_pick_metis(int nodeID, struct space *s, int nregions,
-                               double *vertexw, double *edgew, int *celllist) {
+                               double *vertexw, double *edgew,
+                               int *cell_edge_offsets, int repartition,
+                               int *celllist) {
 
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
   const int nr_bkg_cells = s->zoom_props->nr_bkg_cells;
   const int bkg_offset = s->zoom_props->bkg_cell_offset;
 
-  /* The combined-graph edge weights (if any) are not used by the separate
-   * subgraph path; we recompute per-subgraph edge weights from vertexw. */
-  (void)edgew;
+  if (repartition && cell_edge_offsets == NULL && edgew != NULL)
+    error(
+        "zoom_partition_pick_metis: repartition stitch with non-NULL edgew "
+        "requires cell_edge_offsets to be non-NULL");
 
   /* --- Zoom subgraph --- */
 
@@ -1267,9 +1683,12 @@ void zoom_partition_pick_metis(int nodeID, struct space *s, int nregions,
 
   /* --- Stitch the two partitions into the full-space celllist. --- */
 
-  for (int k = 0; k < nr_zoom_cells; k++) celllist[k] = zoom_part[k];
-  for (int k = 0; k < nr_bkg_cells; k++)
-    celllist[k + bkg_offset] = bkg_part[k];
+  if (repartition) {
+    zoom_partition_stitch_repartition(s, nregions, edgew, cell_edge_offsets,
+                                      zoom_part, bkg_part, celllist);
+  } else {
+    zoom_partition_stitch_initial(s, nregions, zoom_part, bkg_part, celllist);
+  }
 
   free(zoom_part);
   free(bkg_part);
@@ -1663,24 +2082,32 @@ static void zoom_partition_parmetis_subgraph(
  * @param s The #space containing the zoom and background top-level cells.
  * @param nregions The number of partitions to produce.
  * @param vertexw Per-cell vertex weights, sizeof number of cells, or NULL.
- * @param edgew Combined-graph edge weights from the caller, ignored here.
- * @param refine Whether to refine an existing partition.
+ * @param edgew Combined-graph edge weights from the caller. Used only by the
+ *        repartition stitch step (when @c refine is non-zero) to weight the
+ *        zoom<->bkg overlap matrix by real measured task costs.
+ * @param cell_edge_offsets Cumulative combined-graph edge offsets, size
+ *        s->nr_cells+1. Required when @c refine is non-zero. May be NULL
+ *        otherwise.
+ * @param refine Whether to refine an existing partition. Also selects the
+ *        repartition stitch path (real edge weights instead of geometric).
  * @param adaptive Whether to use adaptive repartition (only with refine).
  * @param itr Inter-process communication / data redistribution ratio.
  * @param celllist In/out partition array, size s->nr_cells, indexed in the
  *        full-space frame.
  */
 void zoom_partition_pick_parmetis(int nodeID, struct space *s, int nregions,
-                                  double *vertexw, double *edgew, int refine,
+                                  double *vertexw, double *edgew,
+                                  int *cell_edge_offsets, int refine,
                                   int adaptive, float itr, int *celllist) {
 
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
   const int nr_bkg_cells = s->zoom_props->nr_bkg_cells;
   const int bkg_offset = s->zoom_props->bkg_cell_offset;
 
-  /* The combined-graph edge weights are not used; we recompute per-subgraph
-   * weights from vertexw inside each subgraph initialiser. */
-  (void)edgew;
+  if (refine && cell_edge_offsets == NULL && edgew != NULL)
+    error(
+        "zoom_partition_pick_parmetis: repartition stitch with non-NULL "
+        "edgew requires cell_edge_offsets to be non-NULL");
 
   /* --- Zoom subgraph --- */
 
@@ -1781,9 +2208,12 @@ void zoom_partition_pick_parmetis(int nodeID, struct space *s, int nregions,
 
   /* --- Stitch the two partitions into the full-space celllist. --- */
 
-  for (int k = 0; k < nr_zoom_cells; k++) celllist[k] = zoom_part[k];
-  for (int k = 0; k < nr_bkg_cells; k++)
-    celllist[k + bkg_offset] = bkg_part[k];
+  if (refine) {
+    zoom_partition_stitch_repartition(s, nregions, edgew, cell_edge_offsets,
+                                      zoom_part, bkg_part, celllist);
+  } else {
+    zoom_partition_stitch_initial(s, nregions, zoom_part, bkg_part, celllist);
+  }
 
   free(zoom_part);
   free(bkg_part);

@@ -562,8 +562,9 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
 
   /* Zoom region: partition the zoom and background grids independently. */
   if (s->with_zoom_region) {
-    zoom_partition_pick_parmetis(nodeID, s, nregions, vertexw, edgew, refine,
-                                 adaptive, itr, celllist);
+    zoom_partition_pick_parmetis(nodeID, s, nregions, vertexw, edgew,
+                                 (int *)cell_edge_offsets, refine, adaptive,
+                                 itr, celllist);
     return;
   }
 
@@ -1080,11 +1081,13 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
  */
 void partition_pick_metis(int nodeID, struct space *s, int nregions,
                           double *vertexw, double *edgew, int *celllist,
-                          const int *cell_edge_offsets, int nedges) {
+                          const int *cell_edge_offsets, int nedges,
+                          int repartition) {
 
   /* Zoom region: partition the zoom and background grids independently. */
   if (s->with_zoom_region) {
-    zoom_partition_pick_metis(nodeID, s, nregions, vertexw, edgew, celllist);
+    zoom_partition_pick_metis(nodeID, s, nregions, vertexw, edgew,
+                              (int *)cell_edge_offsets, repartition, celllist);
     return;
   }
 

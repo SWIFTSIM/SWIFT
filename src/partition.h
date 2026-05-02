@@ -165,7 +165,8 @@ void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
                           const int *cell_edge_offsets);
 void partition_pick_metis(int nodeID, struct space *s, int nregions,
                           double *vertexw, double *edgew, int *celllist,
-                          const int *cell_edge_offsets, int nedges);
+                          const int *cell_edge_offsets, int nedges,
+                          int repartition);
 void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
                              double *vertexw, double *edgew, int refine,
                              int adaptive, float itr, int *celllist,
