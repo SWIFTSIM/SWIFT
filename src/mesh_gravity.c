@@ -925,13 +925,13 @@ void overdensity_to_gparts(struct space *s, double *rho, double mean_density, in
 }
 
 void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, double normalisation) {
-  //MG->a = cosmo->a;
-  MG->a = 1.;
+  MG->a = cosmo->a;
+  //MG->a = 1.;
   MG->fR0 = fR0;
   MG->n = n;
   MG->a3_inv = (1./(MG->a*MG->a*MG->a));
-  //MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
-  MG->Omega_ratio = 0.;
+  MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
+  //MG->Omega_ratio = 0.;
   MG->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
   MG->R = (3.*MG->m*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
   MG->c = s->e->physical_constants->const_speed_light_c;
@@ -941,7 +941,7 @@ void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, str
   MG->overdensity = 0; //Do we know the overdensity instead of the density?
 }
 
-void get_rho_eff(double *rho, double *u, struct MG_variables *MG, double delta, int N) {
+void get_rho_mod(double *rho, double *u, struct MG_variables *MG, double delta, int N) {
   double mean_density = 0.;
   for (int i=0; i<N*N*N; i++) {
     mean_density += rho[i]/(N*N*N);
@@ -949,9 +949,9 @@ void get_rho_eff(double *rho, double *u, struct MG_variables *MG, double delta, 
   message("We found the mean density %E", mean_density);
   for (int i=0; i<N*N*N; i++) {
     rho[i] -= mean_density;
-    rho[i] *= (1./3.);
+    rho[i] *= (4./3.);
     rho[i] += (MG->R*MG->a*MG->a*MG->a)/(24.*M_PI*MG->G) * (delta*delta*delta)*(1. - exp(-(1./2.)*MG->normalisation*u[i]));
-    //rho[i] += mean_density;
+    rho[i] += mean_density;
   }
 }
 
@@ -1103,12 +1103,12 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
 
   if (MG) { //Assume n=1 for now
-    int test = 4; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
+    int test = 0; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
     if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
 
     struct MG_variables MG_var;
     double fR0 = -1e-5;
-    double normalisation = 1.;
+    double normalisation = 1.; //Can be used to prevent too-small residuals (but broken)
     int n = 1;
     initialise_MG_variables(s, cosmo, &MG_var, fR0, n, normalisation);
 
@@ -1184,11 +1184,11 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     int N_min = 32; //Minimum gridsize to be used in multigrid acceleration
     double *rho_copy = malloc(N*N*N *sizeof(double));
     memcpy(rho_copy, rho, N*N*N*sizeof(double));
-    space_get_fR_contribution(s, rho_copy, field_contribution, &MG_var, N_min, N); 
-  
-    double delta = box_size/N;
-    get_rho_eff(rho, field_contribution, &MG_var, delta, N);
+    space_get_fR_contribution(s, rho_copy, field_contribution, &MG_var, N_min, N, test); 
     free(rho_copy);
+
+    double delta = box_size/N;
+    get_rho_mod(rho, field_contribution, &MG_var, delta, N);
   }
 
   if (power) {

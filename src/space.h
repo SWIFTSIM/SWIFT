@@ -620,7 +620,7 @@ void get_patch_potential(struct space *s, struct AMR_levels *fine, struct AMR_le
 void mark_all_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);
 void check_diagonal1(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *c, int nr_neighbours, int neighbours[nr_neighbours], int min_depth, int double_diag);
 void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
-void space_get_fR_contribution(const struct space *s, double *rho, double *phi, struct MG_variables *MG, int N_min, const int N);
+void space_get_fR_contribution(const struct space *s, double *rho, double *phi, struct MG_variables *MG, int N_min, const int N, const int test);
 void apply_NGS(const double *rho, double *phi, struct MG_variables *MG, int cdim[3], double mean_density, double box_size);
 double get_Laplacian(struct MG_variables *MG, const double *phi, int cdim[3], int nbs[6], int i, int j, int k);
 double get_residual_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta, int verbose);

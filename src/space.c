@@ -6232,22 +6232,6 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
     data.dim[2] = s->dim[2];
     data.const_G = s->e->physical_constants->const_newton_G;
     mesh_to_gpart_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
-
-    /* Export acceleration data if we want to */
-    /*int export = 0;
-    if (export) {
-      int num = s->nr_gparts;
-      struct gpart* gp;
-
-      message("Exporting FMG acceleration data");
-      FILE *file_swift_acc = fopen("/data1/vandervlugt/PythonFiles/new_AMR_tests/FMG_check/FMG_64_particles", "w");
-      for (int j = 0; j < num; j++) {
-        gp = &(s->gparts)[j];
-        fprintf(file_swift_acc, "%lf %.15g %.15g %.15g \n", gp->potential_mesh, gp->x[0], gp->x[1], gp->x[2]);
-      }
-      fclose(file_swift_acc);
-      message("Exported the FMG acceleration data.");
-    }*/
   }
 
   else {
@@ -6467,21 +6451,6 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
   } else {
     apply_GS(density_array, potential_array, cdim, mean_density, box_size);
   }
-
-  double delta = box_size/N;
-  FILE *pot_export;
-  pot_export = fopen("/data1/vandervlugt/PythonFiles/final_plots/convergence_tests/GS_64", "w");
-  for (int k=0; k<N; k++) {
-    for (int j=0; j<N; j++) {
-      for (int i=0; i<N; i++) {
-        double x = (double)i * delta;
-        double y = (double)j * delta;
-        double z = (double)k * delta;
-        fprintf(pot_export, "%lf %.15g %.15g %.15g \n", potential_array[cell_getid(cdim, i, j, k)], x, y, z);
-      }
-    }
-  }
-  fclose(pot_export);
   
   /* Pass the potential back to the particles! */
   //Add code to do this
@@ -6521,14 +6490,14 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
   double residual; 
   residual = get_residual(pot, rho, cdim, mean_density, delta);
   message("The first residual is %lf", residual);
-  const double tolerance = 10e-12; //Choose reasonable value here
+  const double tolerance = 10e-11; //Choose reasonable value here
   int counter = 0;
   const int fine_steps = 10; //Choose reasonable value here
   double sum = 0;
 
   int V_cycles=0;
 
-  while (residual > tolerance && V_cycles < V_max) {
+  while (residual > tolerance) {
     message("Performing V-cycle %d", V_cycles);
     /* Pre-smoothing */
     for (int i=0; i<fine_steps; i++) {
@@ -6542,7 +6511,7 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
 
     /* Post-smoothing if needed */
     residual = get_residual(pot, rho, cdim, mean_density, delta);
-    message("Back on the finest grid the residual is %lf", residual);
+    message("Back on the finest grid the residual is %E", residual);
     if (residual > tolerance) {
       for (int i=0; i<fine_steps; i++) {
         perform_red_black_sweep(pot, rho, cdim, mean_density, delta); 
@@ -6550,7 +6519,7 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
     }
     residual = get_residual(pot, rho, cdim, mean_density, delta);   
     V_cycles +=1;
-    message("After %d V-cycle(s) the residual is %lf", V_cycles, residual);
+    message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
   }
 
   message("Performed %d V-cycle(s) in total", V_cycles);
@@ -6568,7 +6537,7 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
     }
   }
   residual = get_residual(pot, rho, cdim, mean_density, delta);
-  message("Needed to do %d step(s) in post-smoothing after which the residual was %lf", counter, residual);
+  message("Needed to do %d step(s) in post-smoothing after which the residual was %E", counter, residual);
   free(residual_array);
 
   /* Set mean of potential to zero */
@@ -7228,7 +7197,6 @@ void get_pm_potential(struct cic_mapper_data* data, const int N, const double bo
 double get_mean_density(double *rho, const int N) {
   double sum = 0.;
   double mean_density = 0.;
-  double sum2 = 0.;
 
   for (int i = 0; i < N*N*N; i++) {
       sum += rho[i];
@@ -7237,10 +7205,6 @@ double get_mean_density(double *rho, const int N) {
   for (int i = 0; i < N*N*N; i++) {
       rho[i] = rho[i] / mean_density;
   }
-  for (int i = 0; i < N*N*N; i++) {
-    sum2 += rho[i]/(N*N*N);
-  }
-  message("The mean overdensity is %lf", sum2);
   message("We found the mean density %lf",mean_density);
   return mean_density;
 }
@@ -7258,9 +7222,9 @@ double get_mean_density(double *rho, const int N) {
  * @param MG Contains variables relevant for the MG calculation. 
  * @param N_min 1D size of the smallest grid on which to solve for the potential.
  * @param N_max 1D size of the largest grid on which to solve for the potential.
+ * @param test Are we testing? (1 = uniform density, 2 = single particle, 3 = sine wave, 4 = two particles)
  */
-void space_get_fR_contribution(const struct space *s, double *rho, double *u, struct MG_variables *MG, int N_min, const int N_max) {
-  int test = 4; //1 = uniform density 2 = point mass  3 = sine wave 4 = two point masses
+void space_get_fR_contribution(const struct space *s, double *rho, double *u, struct MG_variables *MG, int N_min, const int N_max, const int test) {
   message("Doing test case %d", test);
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
