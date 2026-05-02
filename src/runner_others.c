@@ -897,6 +897,9 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
     const struct space *s = e->s;
     const int periodic = s->periodic;
     const float G_newton = e->physical_constants->const_newton_G;
+    const float gravity_multiplier =
+        e->gravity_properties->gravity_multiplier;
+    const int apply_gravity_multiplier = (gravity_multiplier != 1.f);
 
     /* Potential normalisation in the case of periodic gravity */
     float potential_normalisation = 0.;
@@ -920,6 +923,26 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
         /* Finish the force calculation */
         gravity_end_force(gp, G_newton, potential_normalisation, periodic,
                           with_self_gravity);
+
+        /* Apply the (outreach) self-gravity multiplier to the final
+         * accelerations and potential. At this point gp->a_grav contains
+         * the full physical self-gravity acceleration (tree + mesh, both
+         * including G) and gp->potential includes both tree and mesh
+         * contributions. The multiplier is applied here so that:
+         *  - both short-range (tree) and long-range (mesh) contributions
+         *    are scaled consistently,
+         *  - it is independent of the gravity flavour (Default,
+         *    MultiSoftening, ...),
+         *  - subsequent timestep computations see the scaled accelerations,
+         *  - external/forcing potentials applied below are NOT scaled. */
+        if (apply_gravity_multiplier) {
+          gp->a_grav[0] *= gravity_multiplier;
+          gp->a_grav[1] *= gravity_multiplier;
+          gp->a_grav[2] *= gravity_multiplier;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+          gp->potential *= gravity_multiplier;
+#endif
+        }
 
         /* Get the ID of the gpart */
         long long id = 0;
