@@ -24,11 +24,20 @@
  * @brief Cooling using the GRACKLE 3.1.1 library.
  */
 
+/* Config parameters. */
+#include <config.h>
+
 /* Local includes */
 #include "cooling_properties.h"
 #include "cooling_utils.h"
 #include "error.h"
 #include "inline.h"
+
+#if defined(GEAR_COOLING)
+#include "cooling_gear_subgrid.h"
+#else
+#include "cooling_none_subgrid.h"
+#endif
 
 struct part;
 struct xpart;

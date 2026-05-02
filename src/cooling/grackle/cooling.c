@@ -945,6 +945,10 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   data.grid_start = grid_start;
   data.grid_end = grid_end;
 
+  /* Do subgrid physics before feeding grackle with the gas properties. */
+  cooling_update_part_subgrid(phys_const, us, cosmo, hydro_props, cooling, p,
+                              xp, dt, dt_therm);
+
   /* general particle data */
   gr_float density = cooling_get_physical_density(p, cosmo, cooling);
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo) +

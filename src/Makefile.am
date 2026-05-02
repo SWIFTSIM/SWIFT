@@ -415,6 +415,7 @@ nobase_noinst_HEADERS += cooling/const_lambda/cooling_io.h cooling/const_lambda/
 nobase_noinst_HEADERS += cooling/grackle/cooling.h cooling/grackle/cooling_struct.h
 nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h
 nobase_noinst_HEADERS += cooling/grackle/cooling_debug.h cooling/grackle/cooling_utils.h
+nobase_noinst_HEADERS += cooling/grackle/cooling_gear_subgrid.h cooling/grackle/cooling_none_subgrid.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_properties.h cooling/EAGLE/cooling_debug.h
