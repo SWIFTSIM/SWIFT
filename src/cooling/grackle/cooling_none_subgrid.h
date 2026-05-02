@@ -43,7 +43,7 @@ INLINE static void cooling_update_part_subgrid(const struct phys_const *phys_con
 				 const struct cosmology *cosmo,
 				 const struct hydro_props *hydro_props,
 				 const struct cooling_function_data *cooling,
-				 const struct part *p, struct xpart *xp, double dt,
+				 struct part *p, struct xpart *xp, double dt,
 				 double dt_therm) {}
 
 #endif /* SWIFT_NONE_COOLING_SUBGRID_H */

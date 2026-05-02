@@ -49,12 +49,14 @@
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
 
+/* TODO: Move these to cooling.h */
 gr_float cooling_new_energy(const struct phys_const *phys_const,
                             const struct unit_system *us,
                             const struct cosmology *cosmo,
                             const struct hydro_props *hydro_properties,
+			    const struct pressure_floor_props *pressure_floor,
                             const struct cooling_function_data *cooling,
-                            const struct part *p, struct xpart *xp, double dt,
+			    struct part *p, struct xpart *xp, double dt,
                             double dt_therm);
 
 gr_float cooling_time(const struct phys_const *phys_const,
@@ -909,6 +911,7 @@ void cooling_apply_self_shielding(
  * @param us The internal system of units.
  * @param cosmo The #cosmology.
  * @param hydro_props The #hydro_props.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
@@ -921,8 +924,9 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
                             const struct unit_system *us,
                             const struct cosmology *cosmo,
                             const struct hydro_props *hydro_props,
+			    const struct pressure_floor_props *pressure_floor,
                             const struct cooling_function_data *cooling,
-                            const struct part *p, struct xpart *xp, double dt,
+			    struct part *p, struct xpart *xp, double dt,
                             double dt_therm) {
 
   /* set current time */
@@ -1117,8 +1121,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
     u_new = u_ad_before;
   } else {
-    u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props, cooling, p,
-                               xp, dt, dt_therm);
+    u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props,
+                               pressure_floor, cooling, p, xp, dt, dt_therm);
   }
 
   /* Get the change in internal energy due to hydro forces */

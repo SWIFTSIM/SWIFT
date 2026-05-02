@@ -35,19 +35,20 @@
  * @param us The internal system of units.
  * @param cosmo The #cosmology.
  * @param hydro_props The #hydro_props.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  */
-INLINE static void cooling_update_part_subgrid(const struct phys_const *phys_const,
-				 const struct unit_system *us,
-				 const struct cosmology *cosmo,
-				 const struct hydro_props *hydro_props,
-				 const struct cooling_function_data *cooling,
-				 const struct part *p, struct xpart *xp, double dt,
-				 double dt_therm) {
+INLINE static void cooling_update_part_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, double dt, double dt_therm) {
+  
   /* Apply ionization */
 
   /* TODO (future plan): Apply space-time varying UV background */
