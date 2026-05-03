@@ -1505,6 +1505,16 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         /* TODO: Do we want these dependencies? Are they needed? */
         scheduler_addunlock(s, kick2_or_csds, c->stars.hii_ionization_feedback);
         scheduler_addunlock(s, c->stars.hii_ionization_feedback, c->timestep);
+
+        if (with_star_formation_sink &&
+            (c->hydro.count > 0 || c->sinks.count > 0)) {
+          scheduler_addunlock(s, c->top->sinks.star_formation_sink,
+                              c->stars.hii_ionization_feedback);
+        }
+        if (with_star_formation && c->hydro.count > 0) {
+          scheduler_addunlock(s, c->top->hydro.star_formation,
+                              c->stars.hii_ionization_feedback);
+        }
       }
 
       /* Time-step limiter */
@@ -1990,10 +2000,15 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
       if (with_HII_ionization_feedback && c->stars.count > 0 &&
           c->hydro.count > 0) {
+        scheduler_addunlock(s, c->hydro.super->hydro.drift,
+                            c->stars.hii_ionization_feedback);
+
         /* Do HII ionization once we know the stars' smoothing length and have
            computed properties from the gas */
         scheduler_addunlock(s, c->stars.ghost_out,
                             c->stars.hii_ionization_feedback);
+        scheduler_addunlock(s, c->stars.hii_ionization_feedback,
+                            c->stars.stars_out);
       }
 
       /* Radiative Transfer */
