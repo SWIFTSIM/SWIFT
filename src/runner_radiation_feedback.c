@@ -51,12 +51,16 @@
 #include "tracers.h"
 
 /**
- * @brief Recurse to find the appropriate level to ionize gas particles due to
- * stellar radiation around stars.
+ * @brief Top-level function for HII ionization feedback.
+ *
+ * This function recurses down the cell hierarchy until it reaches a level
+ * where the cell size is comparable to the maximum HII radius of the stars
+ * within it. At that point, it calls the 'branch' function to handle the
+ * actual neighbor gathering.
  *
  * @param r The #runner thread.
- * @param c The #cell.
- * @param timer Are we timing this ?
+ * @param c The #cell to process.
+ * @param timer If true, records the timing of this operation.
  */
 void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                              int timer) {
@@ -105,10 +109,15 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 }
 
 /**
- * @brief Ionize gas particles due to stellar radiation around stars.
+ * @brief Branching point to coordinate HII ionization for stars in a cell.
+ *
+ * This function manages the neighbor gathering for all active stars in the
+ * cell. It allocates a temporary buffer, gathers neighbors from the cell itself
+ * (self) and its neighbors (pair) by climbing the cell hierarchy, and
+ * prepares the gathered particles for sorting and ionization.
  *
  * @param r The #runner thread.
- * @param c The #cell.
+ * @param c The #cell containing the stars to process.
  */
 void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
                                                     struct cell *c) {
@@ -134,6 +143,10 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
   message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e",
           c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin);
 
+  const int max_ngbs = 512;
+  struct hii_neighbor *ngb_buffer =
+      malloc(max_ngbs * sizeof(struct hii_neighbor));
+
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith spart in ci. */
@@ -144,9 +157,12 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
         feedback_is_HII_ionization_active(si, e))
       return;
 
+    int count_found = 0;
+
     /***************************************************/
     /* First loop over particles in the current cell */
-    runner_do_stars_hii_ionization_feedback_self(r, c, si);
+    runner_do_stars_hii_ionization_feedback_self(r, c, si, ngb_buffer, max_ngbs,
+                                                 &count_found);
 
     /***************************************************/
     /* Now loop over particles in the neighboring cells */
@@ -170,26 +186,60 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
           for (int k = 0; k < 8; k++)
             if (c_in->progeny[k] != NULL)
               runner_do_stars_hii_ionization_feedback_pair(
-                  r, c, c_in->progeny[k], si);
+                  r, c, c_in->progeny[k], si, ngb_buffer, max_ngbs,
+                  &count_found);
         } else {
           /* We have reached the 'Working Level' */
-          runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si);
+          runner_do_stars_hii_ionization_feedback_pair(
+              r, c, c_in, si, ngb_buffer, max_ngbs, &count_found);
         } /* Recurse */
       } /* Neighbour search */
     } /* Climb up in the cell hierarchy */
 
     /***************************************************/
-    /* Now sort the gas particles */
+    /* It's time to sort the gas particles */
+    /* if (count_found > 0) { */
+    /*   runner_sort_hii_neighbors(ngb_buffer, count_found);       */
 
-    /***************************************************/
-    /* Now let's ionize the gas particles! */
+    /*   /\* Now let's ionize the gas particles! *\/ */
+    /*   for (int k = 0; k < count_found; k++) { */
+    /*     struct part *pj = ngb_buffer[k].p; */
+    /*     struct xpart *xpj = ngb_buffer[k].xp; */
+
+    /*     /\* Do the ionization *\/ */
+    /*     /\* 1. Tag gas as ionized (atomics) */
+    /*        2. Flag to be synchronized (atomics) */
+    /*        3. Consume photons from the star */
+    /*        4. Compute M_HII and r_HII for the star */
+    /*        5. Update the stars r_HII. */
+    /*        6. Update the cell max r_HII? */
+    /* 	*\/ */
+    /*     /\* feedback_do_HII_ionization(p, xp); *\/ */
+    /*   } */
+
+    /* } /\* Loop over the sorted particles *\/ */
 
   } /* Loop over sparts */
+  free(ngb_buffer);
 }
 
-void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
-                                                  struct cell *c,
-                                                  struct spart *si) {
+/**
+ * @brief Gather gas particles within the HII radius from the star's own cell.
+ *
+ * Performs a brute-force search over all hydro particles in cell @p c that
+ * fall within the HII smoothing length of the star @p si. Candidates are
+ * added to the @p buffer if they are not already inhibited or ionized.
+ *
+ * @param r The #runner thread.
+ * @param c The #cell containing the gas particles.
+ * @param si The #spart (star) performing the feedback.
+ * @param buffer The #hii_neighbor array to store found candidates.
+ * @param max_size The maximum capacity of the neighbor buffer.
+ * @param count_found (return) The number of neighbors successfully gathered.
+ */
+void runner_do_stars_hii_ionization_feedback_self(
+    struct runner *r, struct cell *c, struct spart *si,
+    struct hii_neighbor *buffer, int max_size, int *count_found) {
 
   struct engine *e = r->e;
   struct part *restrict parts = c->hydro.parts;
@@ -222,17 +272,37 @@ void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (r2 < hig2) {
+    if (r2 < hig2 && *count_found < max_size) {
       /* Gather */
-
+      buffer[*count_found].r2 = r2;
+      buffer[*count_found].p = pj;
+      buffer[*count_found].xp = xpj;
+      (*count_found)++;
     }
+    /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
+       flag to increase the stack size? Or to iterate again later by discarding
+       these particles, since they will be tagged as ionized */
   } /* Loop in current cell */
 }
 
-void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
-                                                  struct cell *ci,
-                                                  struct cell *cj,
-                                                  struct spart *si) {
+/**
+ * @brief Gather gas particles within the HII radius from a neighboring cell.
+ *
+ * Similar to the 'self' version, but handles the distance calculations between
+ * two different cells (@p ci and @p cj), including periodic boundary
+ * conditions/wrapping.
+ *
+ * @param r The #runner thread.
+ * @param ci The #cell containing the star.
+ * @param cj The #cell containing the gas particles.
+ * @param si The #spart (star) performing the feedback.
+ * @param buffer The #hii_neighbor array to store found candidates.
+ * @param max_size The maximum capacity of the neighbor buffer.
+ * @param count_found (return) The number of neighbors successfully gathered.
+ */
+void runner_do_stars_hii_ionization_feedback_pair(
+    struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
+    struct hii_neighbor *buffer, int max_size, int *count_found) {
 
   struct engine *e = r->e;
   struct part *restrict parts_j = cj->hydro.parts;
@@ -295,8 +365,37 @@ void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (r2 < hig2) {
+    if (r2 < hig2 && *count_found < max_size) {
       /* Gather */
+      buffer[*count_found].r2 = r2;
+      buffer[*count_found].p = pj;
+      buffer[*count_found].xp = xpj;
+      (*count_found)++;
     }
+    /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
+       flag to increase the stack size? Or to iterate again later by discarding
+       these particles, since they will be tagged as ionized */
+  }
+}
+
+/**
+ * @brief Sort the gathered HII neighbors by distance (ascending).
+ *
+ * Uses an insertion sort to order the gas particle candidates stored in the
+ * buffer based on their squared distance from the star. This is necessary
+ * to ionize gas particles from the inside out.
+ *
+ * @param buffer The array of #hii_neighbor structures to sort.
+ * @param N The number of elements in the buffer.
+ */
+void runner_sort_hii_neighbors(struct hii_neighbor *buffer, int N) {
+  for (int i = 1; i < N; i++) {
+    struct hii_neighbor key = buffer[i];
+    int j = i - 1;
+    while (j >= 0 && buffer[j].r2 > key.r2) {
+      buffer[j + 1] = buffer[j];
+      j--;
+    }
+    buffer[j + 1] = key;
   }
 }

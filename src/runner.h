@@ -90,6 +90,25 @@ struct runner {
 #endif
 };
 
+/**
+ * @brief Temporary structure to store gas particles found within the HII
+ * interaction radius of a star.
+ *
+ * This is used to gather and sort potential ionization candidates before
+ * performing the feedback.
+ */
+struct hii_neighbor {
+
+  /*! Squared distance between the star and the gas particle. */
+  float r2;
+
+  /*! Pointer to the gas particle data. */
+  struct part *p;
+
+  /*! Pointer to the gas particle extra data. */
+  struct xpart *xp;
+};
+
 /* Function prototypes. */
 void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
                      const int ntasks, const int timer);
@@ -163,13 +182,13 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                              int timer);
 void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
                                                     struct cell *c);
-void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
-                                                  struct cell *c,
-                                                  struct spart *si);
-void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
-                                                  struct cell *ci,
-                                                  struct cell *cj,
-                                                  struct spart *si);
+void runner_do_stars_hii_ionization_feedback_self(
+    struct runner *r, struct cell *c, struct spart *si,
+    struct hii_neighbor *buffer, int max_size, int *count_found);
+void runner_do_stars_hii_ionization_feedback_pair(
+    struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
+    struct hii_neighbor *buffer, int max_size, int *count_found);
+void runner_sort_hii_neighbors(struct hii_neighbor *buffer, int N);
 void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
                          int timer);

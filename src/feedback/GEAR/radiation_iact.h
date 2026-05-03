@@ -135,7 +135,7 @@ radiation_iact_nonsym_feedback_density(
 
 /**
  * @brief Prepare a #spart for the radiation feedback task. Here we perform the
- * photoionization of HII refions.
+ * photoionization of HII regions.
  *
  * This is called in the feedback_prepare_feedback(), which is called in the
  * stars ghost task.
