@@ -1389,8 +1389,12 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 #ifdef WITH_CSDS
   const int with_csds = e->policy & engine_policy_csds;
 #endif
+#ifdef IONIZATION_FEEDBACK_LOOP
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_HII_ionization_feedback = with_stars && with_feedback;
+#else
+  const int with_HII_ionization_feedback = 0;
+#endif
 
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
@@ -1773,7 +1777,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 #ifdef WITH_CSDS
   const int with_csds = (e->policy & engine_policy_csds);
 #endif
+#ifdef IONIZATION_FEEDBACK_LOOP
   const int with_HII_ionization_feedback = with_stars && with_feedback;
+#else
+  const int with_HII_ionization_feedback = 0;
+#endif
 
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
