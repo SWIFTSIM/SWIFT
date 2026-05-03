@@ -1401,13 +1401,11 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
  * @param c The #cell.
  */
 void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
-                                                    struct cell *c) {
+						    struct cell *c) {
 
   struct engine *e = r->e;
   struct spart *restrict sparts = c->stars.parts;
-  struct part *restrict parts = c->hydro.parts;
   const int scount = c->stars.count;
-  const int count = c->hydro.count;  
 
   /* OR h_max_old? */
   const float r_hii_max = c->stars.h_hii_max_active * kernel_gamma;
@@ -1424,7 +1422,7 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 #endif
 
   message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e",
-          c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin);
+	  c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin);
 
   for (int sid = 0; sid < scount; sid++) {
 
@@ -1436,42 +1434,169 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 	feedback_is_HII_ionization_active(si, e))
       return;
 
-
-    const float hi = si->h_hii;
-    const float hig2 = hi * hi * kernel_gamma2;
-    const float six[3] = {(float)(si->x[0] - c->loc[0]),
-			  (float)(si->x[1] - c->loc[1]),
-			  (float)(si->x[2] - c->loc[2])};
-
     /***************************************************/
     /* First loop over particles in the current cell */
-    /* Loop over the parts in c. */
-    for (int pjd = 0; pjd < count; pjd++) {
-
-      /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts[pjd];
-      /* struct xpart *restrict xpj = &xparts[pjd]; */
-
-      /* const float hj = pj->h; */
-
-      /* Early abort? */
-      if (part_is_inhibited(pj, e)) continue;
-
-      /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
-			    (float)(pj->x[1] - c->loc[1]),
-			    (float)(pj->x[2] - c->loc[2])};
-      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-      if (r2 < hig2) {
-	/* Gather */
-	message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id, pj->id, r2, hig2);
-      }
-    } /* Loop in current cell */
+    runner_do_stars_hii_ionization_feedback_self(r, c, si);
 
     /***************************************************/
     /* Now loop over particles in the neighboring cells */
 
+    /* Add ghost particles from this cell */
+    /* cell_add_ghost_parts_grid_self(d, c, e, parts, bvh, pid_ghost_candidate, */
+    /*                                count_ghost, pid_unconverged, */
+    /*                                count_unconverged); */
+
+    /* Climb up the cell hierarchy. */
+    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+
+      /* These are defined at the super level... When we reach the progeny,
+	 these will be NULL... So we need to grab the finger first */
+      for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
+	/* We have already handled the self case */
+	if (l->t->type == task_type_self) continue;
+
+	struct cell *c_in = l->t->cj;
+
+	/* Now, find the correct level... */
+	const int can_recurse_j = c_in->split && (interaction_limit < 0.5f * c_in->dmin);
+	if (can_recurse_j) {
+	  /* Keep recursing deeper into the super-cell hierarchy. */
+	  for (int k = 0; k < 8; k++)
+	    if (c_in->progeny[k] != NULL)
+	      runner_do_stars_hii_ionization_feedback_pair(r, c, c_in->progeny[k], si);
+	} else {
+	  /* We have reached the 'Working Level' */
+	  runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si);
+	} /* Recurse */
+      } /* Neighbour search */
+    } /* Climb up in the cell hierarchy */
+
+    /***************************************************/
+    /* Now sort the gas particles */
+
+    /***************************************************/
+    /* Now let's ionize the gas particles! */
+
+
   } /* Loop over sparts */
+}
+
+
+void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
+						    struct cell *c, struct spart *si) {
+
+  struct engine *e = r->e;
+  struct part *restrict parts = c->hydro.parts;
+  const int count = c->hydro.count;
+
+  const float hi = si->h_hii;
+  const float hig2 = hi * hi * kernel_gamma2;
+  const float six[3] = {(float)(si->x[0] - c->loc[0]),
+			(float)(si->x[1] - c->loc[1]),
+			(float)(si->x[2] - c->loc[2])};
+
+  /* Loop over the parts in c. */
+  for (int pjd = 0; pjd < count; pjd++) {
+
+    /* Get a pointer to the jth particle. */
+    struct part *restrict pj = &parts[pjd];
+    /* struct xpart *restrict xpj = &xparts[pjd]; */
+
+    /* const float hj = pj->h; */
+
+    /* Early abort? */
+    if (part_is_inhibited(pj, e)) continue;
+
+    /* Compute the pairwise distance. */
+    const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+			  (float)(pj->x[1] - c->loc[1]),
+			  (float)(pj->x[2] - c->loc[2])};
+    const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+    if (r2 < hig2) {
+      /* Gather */
+      /* message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id, pj->id, r2, hig2); */
+    }
+  } /* Loop in current cell */
+}
+
+void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
+						    struct cell *ci, struct cell *cj, struct spart *si) {
+
+  struct engine *e = r->e;
+  struct part *restrict parts_j = cj->hydro.parts;
+  const int count_j = cj->hydro.count;
+
+  /* OR h_max_old? */
+  const float r_hii_max = ci->stars.h_hii_max_active * kernel_gamma;
+  const float interaction_limit = 1.2f * r_hii_max;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Did we mess up the recursion? */
+  if (interaction_limit > cj->dmin)
+    error("Cell smaller than HII interaction length");
+#endif
+
+  /* Call the function that will do the work */
+  if (interaction_limit > cj->dmin) {
+    warning("[c = %lld, cj = %lld, star = %lld] cj size is too small. We need to go up in the cell hierarchy!", ci->cellID, cj->cellID, si->id);
+  }
+
+  message(
+	  "[c = %lld, cj = %lld, cj->super = %lld, star = %lld] Neighbour search, "
+	  "interaction_limit = %e, cell_dmin = %e",
+	  ci->cellID, cj->cellID, cj->hydro.super->cellID, si->id, interaction_limit, cj->dmin);
+
+
+  /* Rename these functions   */
+  /* Add ghost particles from cj */
+  /* cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, bvh, pid_unconverged, */
+  /* r_max_unconverged, count_unconverged); */
+
+  /* if (!e->s->periodic) { */
+  /* Add boundary particles */
+  /* cell_add_boundary_parts_grid(d, c, parts, pid_unconverged, */
+  /* count_unconverged); */
+  /* }     */
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  for (int k = 0; k < 3; k++) {
+    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+      shift[k] = e->s->dim[k];
+    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+      shift[k] = -e->s->dim[k];
+  }
+
+
+  const float hi = si->h_hii;
+  const float hig2 = hi * hi * kernel_gamma2;
+  const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+			(float)(si->x[1] - (cj->loc[1] + shift[1])),
+			(float)(si->x[2] - (cj->loc[2] + shift[2]))};
+
+  for (int pjd = 0; pjd < count_j; pjd++) {
+
+    /* Get a pointer to the jth particle. */
+    struct part *restrict pj = &parts_j[pjd];
+    /* struct xpart *restrict xpj = &xparts[pjd]; */
+
+    /* const float hj = pj->h; */
+
+    /* Early abort? */
+    if (part_is_inhibited(pj, e)) continue;
+
+    /* Compute the pairwise distance. */
+    const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
+			  (float)(pj->x[1] - cj->loc[1]),
+			  (float)(pj->x[2] - cj->loc[2])};
+    const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+    if (r2 < hig2) {
+      /* Gather */
+      /* message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id, pj->id, r2, hig2); */
+    }
+  }
 }

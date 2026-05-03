@@ -163,6 +163,10 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                              int timer);
 void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
                                                     struct cell *c);
+void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
+                                                    struct cell *c, struct spart *si);
+void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
+                                                    struct cell *ci, struct cell *cj, struct spart *si);
 void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
                          int timer);
