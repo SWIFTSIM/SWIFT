@@ -72,9 +72,6 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   const float interaction_limit = 1.2f * r_hii_max;
   const int can_recurse = c->split && (interaction_limit < 0.5f * c->dmin);
 
-  /* if (c->hydro.super != c) */
-  /* error("Trying to do HII ionization, but not on hydro super level!"); */
-
   if (c->stars.count == 0 || c->hydro.count == 0 || r_hii_max <= 0.f ||
       !cell_is_active_stars(c, e))
     return;
@@ -91,7 +88,6 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
    *    interaction radius further (similar to Mosaics logic).
    * 3. The R_HII_max covers a significant fraction of the cell.
    */
-
   /* Is the cell split and not smaller than the smoothing length? */
   if (can_recurse) {
     /* Keep recursing deeper into the super-cell hierarchy. */
@@ -154,12 +150,6 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
     /***************************************************/
     /* Now loop over particles in the neighboring cells */
-
-    /* Add ghost particles from this cell */
-    /* cell_add_ghost_parts_grid_self(d, c, e, parts, bvh, pid_ghost_candidate,
-     */
-    /*                                count_ghost, pid_unconverged, */
-    /*                                count_unconverged); */
 
     /* Climb up the cell hierarchy. */
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
@@ -232,8 +222,7 @@ void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
 
     if (r2 < hig2) {
       /* Gather */
-      /* message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id,
-       * pj->id, r2, hig2); */
+
     }
   } /* Loop in current cell */
 }
@@ -255,7 +244,6 @@ void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
   /* Did we mess up the recursion? */
   if (interaction_limit > cj->dmin)
     error("Cell smaller than HII interaction length");
-#endif
 
   /* Call the function that will do the work */
   if (interaction_limit > cj->dmin) {
@@ -270,18 +258,7 @@ void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
       "interaction_limit = %e, cell_dmin = %e",
       ci->cellID, cj->cellID, cj->hydro.super->cellID, si->id,
       interaction_limit, cj->dmin);
-
-  /* Rename these functions   */
-  /* Add ghost particles from cj */
-  /* cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, bvh, pid_unconverged,
-   */
-  /* r_max_unconverged, count_unconverged); */
-
-  /* if (!e->s->periodic) { */
-  /* Add boundary particles */
-  /* cell_add_boundary_parts_grid(d, c, parts, pid_unconverged, */
-  /* count_unconverged); */
-  /* }     */
+#endif
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -318,8 +295,6 @@ void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
 
     if (r2 < hig2) {
       /* Gather */
-      /* message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id,
-       * pj->id, r2, hig2); */
     }
   }
 }
