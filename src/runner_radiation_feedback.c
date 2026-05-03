@@ -50,10 +50,9 @@
 #include "timestep_limiter.h"
 #include "tracers.h"
 
-
-
 /**
- * @brief TODO
+ * @brief Recurse to find the appropriate level to ionize gas particles due to
+ * stellar radiation around stars.
  *
  * @param r The #runner thread.
  * @param c The #cell.
@@ -61,10 +60,14 @@
  */
 void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                              int timer) {
-#ifdef IONIZATION_FEEDBACK_LOOP  
+#ifdef IONIZATION_FEEDBACK_LOOP
   struct engine *e = r->e;
 
-  /* OR h_max_old? */
+  /* TODO: Or h_max_old? */
+  /* TODO: Which cell h_hii_max shall I look at? The current code changes the
+     value as we do deeper in the cell hierarchy. Ideally, we want to use the
+     smallest hmax for a cell, process the stars and parts at this level for
+     this cell, and go higher for cells/stars with higher h_hii */
   const float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;
   const float interaction_limit = 1.2f * r_hii_max;
   const int can_recurse = c->split && (interaction_limit < 0.5f * c->dmin);
@@ -106,13 +109,13 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 }
 
 /**
- * @brief TODO
+ * @brief Ionize gas particles due to stellar radiation around stars.
  *
  * @param r The #runner thread.
  * @param c The #cell.
  */
 void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
-						    struct cell *c) {
+                                                    struct cell *c) {
 
   struct engine *e = r->e;
   struct spart *restrict sparts = c->stars.parts;
