@@ -136,7 +136,7 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 #endif
 
   message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e",
-	  c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin);
+          c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin);
 
   for (int sid = 0; sid < scount; sid++) {
 
@@ -145,7 +145,7 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
     /* Is this part within the timestep? */
     if (!spart_is_active(si, e) && !feedback_is_active(si, e) &&
-	feedback_is_HII_ionization_active(si, e))
+        feedback_is_HII_ionization_active(si, e))
       return;
 
     /***************************************************/
@@ -156,7 +156,8 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
     /* Now loop over particles in the neighboring cells */
 
     /* Add ghost particles from this cell */
-    /* cell_add_ghost_parts_grid_self(d, c, e, parts, bvh, pid_ghost_candidate, */
+    /* cell_add_ghost_parts_grid_self(d, c, e, parts, bvh, pid_ghost_candidate,
+     */
     /*                                count_ghost, pid_unconverged, */
     /*                                count_unconverged); */
 
@@ -164,24 +165,26 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
       /* These are defined at the super level... When we reach the progeny,
-	 these will be NULL... So we need to grab the finger first */
+         these will be NULL... So we need to grab the finger first */
       for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
-	/* We have already handled the self case */
-	if (l->t->type == task_type_self) continue;
+        /* We have already handled the self case */
+        if (l->t->type == task_type_self) continue;
 
-	struct cell *c_in = l->t->cj;
+        struct cell *c_in = l->t->cj;
 
-	/* Now, find the correct level... */
-	const int can_recurse_j = c_in->split && (interaction_limit < 0.5f * c_in->dmin);
-	if (can_recurse_j) {
-	  /* Keep recursing deeper into the super-cell hierarchy. */
-	  for (int k = 0; k < 8; k++)
-	    if (c_in->progeny[k] != NULL)
-	      runner_do_stars_hii_ionization_feedback_pair(r, c, c_in->progeny[k], si);
-	} else {
-	  /* We have reached the 'Working Level' */
-	  runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si);
-	} /* Recurse */
+        /* Now, find the correct level... */
+        const int can_recurse_j =
+            c_in->split && (interaction_limit < 0.5f * c_in->dmin);
+        if (can_recurse_j) {
+          /* Keep recursing deeper into the super-cell hierarchy. */
+          for (int k = 0; k < 8; k++)
+            if (c_in->progeny[k] != NULL)
+              runner_do_stars_hii_ionization_feedback_pair(
+                  r, c, c_in->progeny[k], si);
+        } else {
+          /* We have reached the 'Working Level' */
+          runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si);
+        } /* Recurse */
       } /* Neighbour search */
     } /* Climb up in the cell hierarchy */
 
@@ -191,13 +194,12 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
     /***************************************************/
     /* Now let's ionize the gas particles! */
 
-
-  } /* Loop over sparts */  
+  } /* Loop over sparts */
 }
 
-
 void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
-						    struct cell *c, struct spart *si) {
+                                                  struct cell *c,
+                                                  struct spart *si) {
 
   struct engine *e = r->e;
   struct part *restrict parts = c->hydro.parts;
@@ -206,8 +208,8 @@ void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
   const float hi = si->h_hii;
   const float hig2 = hi * hi * kernel_gamma2;
   const float six[3] = {(float)(si->x[0] - c->loc[0]),
-			(float)(si->x[1] - c->loc[1]),
-			(float)(si->x[2] - c->loc[2])};
+                        (float)(si->x[1] - c->loc[1]),
+                        (float)(si->x[2] - c->loc[2])};
 
   /* Loop over the parts in c. */
   for (int pjd = 0; pjd < count; pjd++) {
@@ -223,20 +225,23 @@ void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
 
     /* Compute the pairwise distance. */
     const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
-			  (float)(pj->x[1] - c->loc[1]),
-			  (float)(pj->x[2] - c->loc[2])};
+                          (float)(pj->x[1] - c->loc[1]),
+                          (float)(pj->x[2] - c->loc[2])};
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     if (r2 < hig2) {
       /* Gather */
-      /* message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id, pj->id, r2, hig2); */
+      /* message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id,
+       * pj->id, r2, hig2); */
     }
   } /* Loop in current cell */
 }
 
 void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
-						    struct cell *ci, struct cell *cj, struct spart *si) {
+                                                  struct cell *ci,
+                                                  struct cell *cj,
+                                                  struct spart *si) {
 
   struct engine *e = r->e;
   struct part *restrict parts_j = cj->hydro.parts;
@@ -254,18 +259,22 @@ void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
 
   /* Call the function that will do the work */
   if (interaction_limit > cj->dmin) {
-    warning("[c = %lld, cj = %lld, star = %lld] cj size is too small. We need to go up in the cell hierarchy!", ci->cellID, cj->cellID, si->id);
+    warning(
+        "[c = %lld, cj = %lld, star = %lld] cj size is too small. We need to "
+        "go up in the cell hierarchy!",
+        ci->cellID, cj->cellID, si->id);
   }
 
   message(
-	  "[c = %lld, cj = %lld, cj->super = %lld, star = %lld] Neighbour search, "
-	  "interaction_limit = %e, cell_dmin = %e",
-	  ci->cellID, cj->cellID, cj->hydro.super->cellID, si->id, interaction_limit, cj->dmin);
-
+      "[c = %lld, cj = %lld, cj->super = %lld, star = %lld] Neighbour search, "
+      "interaction_limit = %e, cell_dmin = %e",
+      ci->cellID, cj->cellID, cj->hydro.super->cellID, si->id,
+      interaction_limit, cj->dmin);
 
   /* Rename these functions   */
   /* Add ghost particles from cj */
-  /* cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, bvh, pid_unconverged, */
+  /* cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, bvh, pid_unconverged,
+   */
   /* r_max_unconverged, count_unconverged); */
 
   /* if (!e->s->periodic) { */
@@ -283,12 +292,11 @@ void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
       shift[k] = -e->s->dim[k];
   }
 
-
   const float hi = si->h_hii;
   const float hig2 = hi * hi * kernel_gamma2;
   const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
-			(float)(si->x[1] - (cj->loc[1] + shift[1])),
-			(float)(si->x[2] - (cj->loc[2] + shift[2]))};
+                        (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                        (float)(si->x[2] - (cj->loc[2] + shift[2]))};
 
   for (int pjd = 0; pjd < count_j; pjd++) {
 
@@ -303,14 +311,15 @@ void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
 
     /* Compute the pairwise distance. */
     const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-			  (float)(pj->x[1] - cj->loc[1]),
-			  (float)(pj->x[2] - cj->loc[2])};
+                          (float)(pj->x[1] - cj->loc[1]),
+                          (float)(pj->x[2] - cj->loc[2])};
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     if (r2 < hig2) {
       /* Gather */
-      /* message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id, pj->id, r2, hig2); */
+      /* message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id,
+       * pj->id, r2, hig2); */
     }
   }
 }
