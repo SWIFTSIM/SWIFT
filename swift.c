@@ -207,6 +207,7 @@ int main(int argc, char *argv[]) {
   int with_sinks = 0;
   int with_qla = 0;
   int with_eagle = 0;
+  int with_flamingo = 0;
   int with_gear = 0;
   int with_agora = 0;
   int with_line_of_sight = 0;
@@ -295,6 +296,12 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN(
           0, "eagle", &with_eagle,
           "Run with all the options needed for the EAGLE model. This is "
+          "equivalent to --hydro --limiter --sync --self-gravity --stars "
+          "--star-formation --cooling --feedback --black-holes --fof.",
+          NULL, 0, 0),
+      OPT_BOOLEAN(
+          0, "flamingo", &with_flamingo,
+          "Run with all the options needed for the FLAMINGO model. This is "
           "equivalent to --hydro --limiter --sync --self-gravity --stars "
           "--star-formation --cooling --feedback --black-holes --fof.",
           NULL, 0, 0),
@@ -394,6 +401,18 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
   }
   if (with_eagle) {
+    with_hydro = 1;
+    with_timestep_limiter = 1;
+    with_timestep_sync = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
+    with_feedback = 1;
+    with_black_holes = 1;
+    with_fof = 1;
+  }
+  if (with_flamingo) {
     with_hydro = 1;
     with_timestep_limiter = 1;
     with_timestep_sync = 1;
@@ -705,10 +724,11 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-#ifdef TRACERS_EAGLE
+#if defined(TRACERS_EAGLE) || defined(TRACERS_FLAMINGO)
   if (!with_cooling && !with_temperature)
     error(
-        "Error: Cannot use EAGLE tracers without --cooling or --temperature.");
+        "Error: Cannot use EAGLE or FLAMINGO tracers without --cooling or "
+        "--temperature.");
 #endif
 
 /* Let's pin the main thread, now we know if affinity will be used. */
@@ -1969,6 +1989,7 @@ int main(int argc, char *argv[]) {
   if (with_rt) rt_clean(e.rt_props, restart);
   if (with_power) power_clean(e.power_data);
   if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
+  forcing_terms_clean(e.forcing_terms);
   extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);

@@ -135,6 +135,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.sink_formation = NULL;
     c->sinks.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
+    c->stars.ghost_in = NULL;
+    c->stars.ghost_out = NULL;
     for (int i = 0; i < STARS_GHOST_NTASK; i++) {
       c->stars.density_ghost[i] = NULL;
     }

@@ -8,6 +8,7 @@ Snapshots ouputs
 
 Here, we provide a summary of the quantities written in the snapshots, in addition to positions, velocities, masses, smoothing lengths and particle IDs.
 
+The tracer outputs are summarised on the :ref:`gear_tracers` page.
 
 Sink particles
 ~~~~~~~~~~~~~~
@@ -38,8 +39,15 @@ Sink particles
 +---------------------------------------+---------------------------------------------+------------------------+---------------------------------------------------+
 | ``BirthTimes``                        | | Time when the sink was created            | [U_T]                  | | Only used in *non-cosmological* runs.           |
 +---------------------------------------+---------------------------------------------+------------------------+---------------------------------------------------+
-
-
+| ``BirthDensities``                    | | Physical densities at the time of birth   | [U_M U_L^{-3}]         | | Stored at birth time/redshift.                  |
++---------------------------------------+---------------------------------------------+------------------------+---------------------------------------------------+
+| ``BirthTemperatures``                 | | Temperatures at the time of birth         | [U_K]                  | | Stored at birth time/redshift.                  |
++---------------------------------------+---------------------------------------------+------------------------+---------------------------------------------------+
+| ``AccretionRates``                    | | Physical instantaneous accretion rates    | [U_M U_T^{-1}]         | | At the current step                             |
++---------------------------------------+---------------------------------------------+------------------------+---------------------------------------------------+
+| ``StarFormationRates``                | | Star formation rates of the particles     | [U_M U_T^{-1}]         | | If negative, stores last time/scale-factor      |
+|                                       |                                             |                        | | at which gas was star-forming.                  |
++---------------------------------------+---------------------------------------------+------------------------+---------------------------------------------------+
 
 Stars
 ~~~~~

@@ -134,6 +134,7 @@ __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
 #endif
 #if defined(HYDRO_DIMENSION_3D)
   out->zz = in[2][2];
+  out->xy = in[0][1];
   out->xz = in[0][2];
   out->yz = in[1][2];
 #endif
@@ -213,14 +214,14 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiplication_ABA(
 __attribute__((always_inline)) INLINE static void sym_matrix_print(
     const struct sym_matrix *M) {
 #if defined(HYDRO_DIMENSION_3D)
-  message("|%.4f %.4f %.4f|", M->xx, M->xy, M->xz);
-  message("|%.4f %.4f %.4f|", M->xy, M->yy, M->yz);
-  message("|%.4f %.4f %.4f|", M->xz, M->yz, M->zz);
+  message("|%.7f %.7f %.7f|", M->xx, M->xy, M->xz);
+  message("|%.7f %.7f %.7f|", M->xy, M->yy, M->yz);
+  message("|%.7f %.7f %.7f|", M->xz, M->yz, M->zz);
 #elif defined(HYDRO_DIMENSION_2D)
-  message("|%.4f %.4f|", M->xx, M->xy);
-  message("|%.4f %.4f|", M->xy, M->yy);
+  message("|%.7f %.7f|", M->xx, M->xy);
+  message("|%.7f %.7f|", M->xy, M->yy);
 #elif defined(HYDRO_DIMENSION_1D)
-  message("|%.4f|", M->xx);
+  message("|%.7f|", M->xx);
 #else
 #error "A problem dimensionality must be chosen in config.h !"
 #endif
