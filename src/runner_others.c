@@ -1405,8 +1405,9 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
   struct engine *e = r->e;
   struct spart *restrict sparts = c->stars.parts;
-  /* struct part *restrict parts = c->hydro.parts;   */
+  struct part *restrict parts = c->hydro.parts;
   const int scount = c->stars.count;
+  const int count = c->hydro.count;  
 
   /* OR h_max_old? */
   const float r_hii_max = c->stars.h_hii_max_active * kernel_gamma;
@@ -1432,7 +1433,45 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
     /* Is this part within the timestep? */
     if (!spart_is_active(si, e) && !feedback_is_active(si, e) &&
-        feedback_is_HII_ionization_active(si, e))
+	feedback_is_HII_ionization_active(si, e))
       return;
-  }
+
+
+    const float hi = si->h_hii;
+    const float hig2 = hi * hi * kernel_gamma2;
+    const float six[3] = {(float)(si->x[0] - c->loc[0]),
+			  (float)(si->x[1] - c->loc[1]),
+			  (float)(si->x[2] - c->loc[2])};
+
+    /***************************************************/
+    /* First loop over particles in the current cell */
+    /* Loop over the parts in c. */
+    for (int pjd = 0; pjd < count; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts[pjd];
+      /* struct xpart *restrict xpj = &xparts[pjd]; */
+
+      /* const float hj = pj->h; */
+
+      /* Early abort? */
+      if (part_is_inhibited(pj, e)) continue;
+
+      /* Compute the pairwise distance. */
+      const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+			    (float)(pj->x[1] - c->loc[1]),
+			    (float)(pj->x[2] - c->loc[2])};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      if (r2 < hig2) {
+	/* Gather */
+	message("[star: %lld, part: %lld] r2 = %e, h_hii^2 = %e", si->id, pj->id, r2, hig2);
+      }
+    } /* Loop in current cell */
+
+    /***************************************************/
+    /* Now loop over particles in the neighboring cells */
+
+  } /* Loop over sparts */
 }
