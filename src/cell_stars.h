@@ -113,7 +113,7 @@ struct cell_stars {
     float h_hii_max_active;
 
     /*! Values of h_hii_max before the drifts, used for sub-cell tasks. */
-    float h_hii_max_old;    
+    float h_hii_max_old;
 
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
@@ -165,7 +165,7 @@ struct cell_stars {
   float h_max;
 
   /*! Max HII radius / gamma_k in this cell. */
-  float h_hii_max;  
+  float h_hii_max;
 
   /*! Number of #spart updated in this cell. */
   int updated;

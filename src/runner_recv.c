@@ -241,7 +241,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   float h_max = 0.f;
   float h_max_active = 0.f;
   float h_hii_max = 0.f;
-  float h_hii_max_active = 0.f;  
+  float h_hii_max_active = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank) error("Updating a local cell!");
@@ -267,7 +267,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
       if (spart_is_active(&sparts[k], e) &&
           (feedback_is_active(&sparts[k], e) || with_rt)) {
         h_max_active = max(h_max_active, sparts[k].h);
-	h_hii_max_active = max(h_hii_max_active, sparts[k].h_hii);
+        h_hii_max_active = max(h_hii_max_active, sparts[k].h_hii);
       }
     }
 
@@ -285,8 +285,9 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
         h_max = max(h_max, c->progeny[k]->stars.h_max);
         h_max_active = max(h_max_active, c->progeny[k]->stars.h_max_active);
 
-	h_hii_max = max(h_hii_max, c->progeny[k]->stars.h_hii_max);
-        h_hii_max_active = max(h_hii_max_active, c->progeny[k]->stars.h_hii_max_active);
+        h_hii_max = max(h_hii_max, c->progeny[k]->stars.h_hii_max);
+        h_hii_max_active =
+            max(h_hii_max_active, c->progeny[k]->stars.h_hii_max_active);
       }
     }
   }
@@ -304,9 +305,9 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   // c->grav.ti_end_min = ti_gravity_end_min;
   c->stars.ti_old_part = ti_current;
   c->stars.h_max = h_max;
-  c->stars.h_max_active = h_max_active;  
+  c->stars.h_max_active = h_max_active;
   c->stars.h_hii_max = h_hii_max;
-  c->stars.h_hii_max_active = h_hii_max_active;  
+  c->stars.h_hii_max_active = h_hii_max_active;
 
   if (timer) TIMER_TOC(timer_dorecv_spart);
 

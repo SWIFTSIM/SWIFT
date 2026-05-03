@@ -174,7 +174,7 @@ struct pcell {
     float h_max;
 
     /*! Maximal HII ionization radius / gamma_k. */
-    float h_hii_max;    
+    float h_hii_max;
 
     /*! Minimal integer end-of-timestep in this cell for stars tasks */
     integertime_t ti_end_min;

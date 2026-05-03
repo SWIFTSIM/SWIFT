@@ -1358,16 +1358,16 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   const float r_hii_max = c->stars.h_hii_max_active * kernel_gamma;
   const float interaction_limit = 1.2f * r_hii_max;
   const int can_recurse = c->split && (interaction_limit < 0.5f * c->dmin);
-  
+
   /* if (c->hydro.super != c) */
-    /* error("Trying to do HII ionization, but not on hydro super level!"); */
+  /* error("Trying to do HII ionization, but not on hydro super level!"); */
 
   if (c->stars.count == 0 || c->hydro.count == 0 || r_hii_max <= 0.f ||
       !cell_is_active_stars(c, e))
     return;
 
   message("[%lld], hydro super = %lld", c->cellID, c->hydro.super->cellID);
- 
+
   TIMER_TIC;
 
   /*
@@ -1394,14 +1394,14 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   if (timer) TIMER_TOC(timer_stars_hii_ionization_feedback);
 }
 
-
 /**
  * @brief TODO
  *
  * @param r The #runner thread.
  * @param c The #cell.
  */
-void runner_do_stars_hii_ionization_feedback_branch(struct runner *r, struct cell *c) {
+void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
+                                                    struct cell *c) {
 
   struct engine *e = r->e;
   struct spart *restrict sparts = c->stars.parts;
@@ -1419,19 +1419,20 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r, struct cel
 #ifdef SWIFT_DEBUG_CHECKS
   /* Did we mess up the recursion? */
   if (interaction_limit > c->dmin)
-      error("Cell smaller than HII interaction length");
+    error("Cell smaller than HII interaction length");
 #endif
 
-  message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e", c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin);
+  message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e",
+          c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin);
 
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith spart in ci. */
     struct spart *si = &sparts[sid];
-    
-    /* Is this part within the timestep? */
-    if (!spart_is_active(si, e) && !feedback_is_active(si, e) && feedback_is_HII_ionization_active(si, e))
-      return;
 
-  }  
+    /* Is this part within the timestep? */
+    if (!spart_is_active(si, e) && !feedback_is_active(si, e) &&
+        feedback_is_HII_ionization_active(si, e))
+      return;
+  }
 }

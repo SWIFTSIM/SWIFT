@@ -396,7 +396,7 @@ INLINE static void star_formation_copy_properties(
   /* Move over the splitting data */
   sp->split_data = xp->split_data;
 
-  sp->h_hii = 1.2*sp->h;
+  sp->h_hii = 1.2 * sp->h;
 
   /* Store the birth density and temperature in the star particle */
   const float birth_density = hydro_get_physical_density(p, cosmo);

@@ -155,7 +155,8 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
  * @param sp The #spart.
  * @param e The #engine.
  */
-int feedback_is_HII_ionization_active(const struct spart *sp, const struct engine *e) {
+int feedback_is_HII_ionization_active(const struct spart *sp,
+                                      const struct engine *e) {
 
   /* the particle is inactive if its birth_scale_factor or birth_time is
    * negative */

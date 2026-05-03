@@ -63,7 +63,7 @@ struct spart {
   float h;
 
   /*! Particle ionization radius / gamma_k. */
-  float h_hii;  
+  float h_hii;
 
   struct {
 

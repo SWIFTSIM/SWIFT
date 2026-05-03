@@ -36,7 +36,7 @@ void feedback_end_density(struct part *p, struct xpart *xp);
 void feedback_reset_part(struct part *p, struct xpart *xp);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
 int feedback_is_HII_ionization_active(const struct spart *sp,
-                                               const struct engine *e);
+                                      const struct engine *e);
 void feedback_init_spart(struct spart *sp);
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props);
