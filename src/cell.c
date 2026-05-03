@@ -643,7 +643,9 @@ void cell_sanitize(struct cell *c, int treated) {
   float h_max_active = 0.f;
   float stars_h_max = 0.f;
   float stars_h_max_active = 0.f;
-
+  float stars_h_hii_max = 0.f;
+  float stars_h_hii_max_active = 0.f;
+  
   /* Treat cells will <1000 particles */
   if (count < 1000 && !treated) {
     /* Get an upper bound on h */
@@ -657,6 +659,8 @@ void cell_sanitize(struct cell *c, int treated) {
     for (int i = 0; i < scount; ++i) {
       if (sparts[i].h == 0.f || sparts[i].h > upper_h_max)
         sparts[i].h = upper_h_max;
+      if (sparts[i].h_hii == 0.f || sparts[i].h_hii > upper_h_max)
+	sparts[i].h_hii = upper_h_max;
     }
   }
 
@@ -673,6 +677,9 @@ void cell_sanitize(struct cell *c, int treated) {
         stars_h_max = max(stars_h_max, c->progeny[k]->stars.h_max);
         stars_h_max_active =
             max(stars_h_max_active, c->progeny[k]->stars.h_max_active);
+        stars_h_hii_max = max(stars_h_hii_max, c->progeny[k]->stars.h_hii_max);
+        stars_h_hii_max_active =
+            max(stars_h_hii_max_active, c->progeny[k]->stars.h_hii_max_active);        
       }
     }
   } else {
@@ -684,6 +691,10 @@ void cell_sanitize(struct cell *c, int treated) {
       stars_h_max = max(stars_h_max, sparts[i].h);
     for (int i = 0; i < scount; ++i)
       stars_h_max_active = max(stars_h_max_active, sparts[i].h);
+    for (int i = 0; i < scount; ++i)
+      stars_h_hii_max = max(stars_h_hii_max, sparts[i].h_hii);
+    for (int i = 0; i < scount; ++i)
+      stars_h_hii_max_active = max(stars_h_hii_max_active, sparts[i].h_hii);
   }
 
   /* Record the change */
@@ -691,6 +702,8 @@ void cell_sanitize(struct cell *c, int treated) {
   c->hydro.h_max_active = h_max_active;
   c->stars.h_max = stars_h_max;
   c->stars.h_max_active = stars_h_max_active;
+  c->stars.h_hii_max = stars_h_hii_max;
+  c->stars.h_hii_max_active = stars_h_hii_max_active;
 }
 
 /**

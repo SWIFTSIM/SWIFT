@@ -598,6 +598,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
+  float cell_h_hii_max = 0.f;
+  float cell_h_hii_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_stars_drift));
@@ -647,12 +649,16 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
         dx_max_sort = max(dx_max_sort, cp->stars.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->stars.h_max);
         cell_h_max_active = max(cell_h_max_active, cp->stars.h_max_active);
+	cell_h_hii_max = max(cell_h_hii_max, cp->stars.h_hii_max);
+	cell_h_hii_max_active = max(cell_h_hii_max_active, cp->stars.h_hii_max_active);
       }
     }
 
     /* Store the values */
     c->stars.h_max = cell_h_max;
     c->stars.h_max_active = cell_h_max_active;
+    c->stars.h_hii_max = cell_h_hii_max;
+    c->stars.h_hii_max_active = cell_h_hii_max_active;
     c->stars.dx_max_part = dx_max;
     c->stars.dx_max_sort = dx_max_sort;
 
@@ -745,6 +751,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, sp->h);
+      cell_h_hii_max = max(cell_h_hii_max, sp->h_hii);
 
       /* Get ready for a density calculation */
       if (init_particles && spart_is_active(sp, e)) {
@@ -753,8 +760,10 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 
       if (spart_is_active(sp, e)) {
         /* Update the maximal active smoothing length in the cell */
-        if (feedback_is_active(sp, e) || with_rt)
+        if (feedback_is_active(sp, e) || with_rt) {
           cell_h_max_active = max(cell_h_max_active, sp->h);
+          cell_h_hii_max_active = max(cell_h_hii_max_active, sp->h);
+	}
       }
     }
 
@@ -765,6 +774,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
     /* Store the values */
     c->stars.h_max = cell_h_max;
     c->stars.h_max_active = cell_h_max_active;
+    c->stars.h_hii_max = cell_h_hii_max;
+    c->stars.h_hii_max_active = cell_h_hii_max_active;    
     c->stars.dx_max_part = dx_max;
     c->stars.dx_max_sort = dx_max_sort;
 

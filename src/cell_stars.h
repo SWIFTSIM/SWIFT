@@ -109,6 +109,12 @@ struct cell_stars {
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
 
+    /*! Max HII radius / gamma_k of active particles in this cell. */
+    float h_hii_max_active;
+
+    /*! Values of h_hii_max before the drifts, used for sub-cell tasks. */
+    float h_hii_max_old;    
+
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
 
@@ -157,6 +163,9 @@ struct cell_stars {
 
   /*! Max smoothing length in this cell. */
   float h_max;
+
+  /*! Max HII radius / gamma_k in this cell. */
+  float h_hii_max;  
 
   /*! Number of #spart updated in this cell. */
   int updated;

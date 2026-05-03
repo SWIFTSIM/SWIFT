@@ -62,6 +62,9 @@ struct spart {
   /*! Particle smoothing length. */
   float h;
 
+  /*! Particle ionization radius / gamma_k. */
+  float h_hii;  
+
   struct {
 
     /* Number of neighbours. */

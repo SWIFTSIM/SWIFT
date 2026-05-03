@@ -46,6 +46,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   /* Start by packing the data of the current cell. */
   pc->hydro.h_max = c->hydro.h_max;
   pc->stars.h_max = c->stars.h_max;
+  pc->stars.h_hii_max = c->stars.h_hii_max;
   pc->black_holes.h_max = c->black_holes.h_max;
   pc->sinks.h_max = c->sinks.h_max;
 
@@ -251,6 +252,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   /* Unpack the current pcell. */
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
+  pc->stars.h_hii_max = c->stars.h_hii_max;
   c->black_holes.h_max = pc->black_holes.h_max;
   c->sinks.h_max = pc->sinks.h_max;
 
