@@ -976,12 +976,14 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Store the current dx_max and h_max values. */
   ci->stars.dx_max_part_old = ci->stars.dx_max_part;
   ci->stars.h_max_old = ci->stars.h_max;
+  ci->stars.h_hii_max_old = ci->stars.h_hii_max;
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
   ci->hydro.h_max_old = ci->hydro.h_max;
 
   if (cj != NULL) {
     cj->stars.dx_max_part_old = cj->stars.dx_max_part;
     cj->stars.h_max_old = cj->stars.h_max;
+    cj->stars.h_hii_max_old = cj->stars.h_hii_max;
     cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
     cj->hydro.h_max_old = cj->hydro.h_max;
   }
