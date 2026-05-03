@@ -123,6 +123,12 @@ INLINE static void convert_spart_potential(const struct engine *e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_spart_HII_radius(const struct engine *e,
+                                            const struct spart *sp,
+                                            float *ret) {
+  ret[0] = sp->h_hii * kernel_gamma;
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -136,7 +142,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 8;
+  *num_fields = 9;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -179,6 +185,20 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                            0.f, sparts, star_type,
                            "Type of stellar particle: 0=single star ; 1=stellar"
                            " cont. IMF part.  ; 2=normal");
+
+  list[8] = io_make_output_field_convert_spart(
+      "HIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts,
+      convert_spart_HII_radius,
+      "Co-moving HII region radius of the star particles when the HII was last "
+      "rebuilt");
+
+  /* TODO: Add HII mass */
+  /* list[9] = io_make_output_field_convert_spart( */
+  /*     "HIIRegionMasses", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, mass_HII,
+   */
+  /*     "Co-moving HII region mass of the star particles  when the HII was last
+   * " */
+  /*     "rebuilt");   */
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
