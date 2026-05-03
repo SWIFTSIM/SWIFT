@@ -1353,37 +1353,85 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                              int timer) {
 
   struct engine *e = r->e;
-  /* struct spart *restrict sparts = c->stars.parts; */
-  /* struct part *restrict parts = c->hydro.parts;   */
-  const int scount = c->stars.count;
-  const int count =
-      c->hydro.count
 
-      if (scount == 0 || count == 0 || !cell_is_active_stars(c, e)) return;
+  /* OR h_max_old? */
+  const float r_hii_max = c->stars.h_hii_max_active * kernel_gamma;
+  const float interaction_limit = 1.2f * r_hii_max;
+  const int can_recurse = c->split && (interaction_limit < 0.5f * c->dmin);
+  
+  /* if (c->hydro.super != c) */
+    /* error("Trying to do HII ionization, but not on hydro super level!"); */
 
-  TIMER_TIC;
+  if (c->stars.count == 0 || c->hydro.count == 0 || r_hii_max <= 0.f ||
+      !cell_is_active_stars(c, e))
+    return;
+
   message("[%lld], hydro super = %lld", c->cellID, c->hydro.super->cellID);
+ 
+  TIMER_TIC;
 
-  /* Loop over stars in the super-cell */
-  /* for (int i = 0; i < scount; i++) { */
-  /*   struct spart *si = &sparts[i]; */
-
-  /*   if (spart_is_active(si, e) && star_generates_ionizing_radiation(si)) { */
-
-  /*     /\* 1. Calculate budget (e.g., from FIRE 2/3 tables) *\/ */
-  /*     si->m_ion_budget = calculate_ionizing_mass(si, e); */
-
-  /*     /\* 2. Educated Guess: max of smoothing length and previous r_hii *\/
+  /*
+   * Decision: Should we process this cell or go deeper?
+   * We stop recursing if:
+   * 1. The cell is a leaf (!c->split).
+   * 2. The cell is small enough that we can't efficiently split the
+   *    interaction radius further (similar to Mosaics logic).
+   * 3. The R_HII_max covers a significant fraction of the cell.
    */
-  /*     float r_guess = max(si->h * kernel_gamma, si->r_hii); */
 
-  /*     /\* 3. Recursive Walk *\/ */
-  /*     runner_do_hii_recursion(r, c, si, r_guess * r_guess); */
-
-  /*     /\* 4. Post-check: If budget is still high, we might need a  */
-  /*      * second pass or an expansion, but for now, we trust the guess. *\/ */
-  /*   } */
-  /* } */
+  /* Is the cell split and not smaller than the smoothing length? */
+  if (can_recurse) {
+    /* Keep recursing deeper into the super-cell hierarchy. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        runner_do_stars_hii_ionization_feedback(r, c->progeny[k], 0);
+    }
+  } else {
+    /* We have reached the 'Working Level' */
+    runner_do_stars_hii_ionization_feedback_branch(r, c);
+  }
 
   if (timer) TIMER_TOC(timer_stars_hii_ionization_feedback);
+}
+
+
+/**
+ * @brief TODO
+ *
+ * @param r The #runner thread.
+ * @param c The #cell.
+ */
+void runner_do_stars_hii_ionization_feedback_branch(struct runner *r, struct cell *c) {
+
+  struct engine *e = r->e;
+  struct spart *restrict sparts = c->stars.parts;
+  /* struct part *restrict parts = c->hydro.parts;   */
+  const int scount = c->stars.count;
+
+  /* OR h_max_old? */
+  const float r_hii_max = c->stars.h_hii_max_active * kernel_gamma;
+  const float interaction_limit = 1.2f * r_hii_max;
+
+  if (c->stars.count == 0 || c->hydro.count == 0 || r_hii_max <= 0.f ||
+      !cell_is_active_stars(c, e))
+    return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Did we mess up the recursion? */
+  if (interaction_limit > c->dmin)
+      error("Cell smaller than HII interaction length");
+#endif
+
+  message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e", c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin);
+
+  for (int sid = 0; sid < scount; sid++) {
+
+    /* Get a hold of the ith spart in ci. */
+    struct spart *si = &sparts[sid];
+    
+    /* Is this part within the timestep? */
+    if (!spart_is_active(si, e) && !feedback_is_active(si, e) && feedback_is_HII_ionization_active(si, e))
+      return;
+
+  }  
 }

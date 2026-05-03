@@ -147,6 +147,26 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
 }
 
 /**
+ * @brief Should this particle be doing any HII ionization feedback-related
+ * operation?
+ *
+ * TODO: Add a condition
+ *
+ * @param sp The #spart.
+ * @param e The #engine.
+ */
+int feedback_is_HII_ionization_active(const struct spart *sp, const struct engine *e) {
+
+  /* the particle is inactive if its birth_scale_factor or birth_time is
+   * negative */
+
+  /* If the spart is dead, don't do anything */
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
+
+  return sp->feedback_data.will_do_feedback;
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * Note: In GEAR, this function must not reset the data as the are computed
