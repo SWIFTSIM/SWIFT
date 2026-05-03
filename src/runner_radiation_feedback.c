@@ -80,7 +80,8 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
       !cell_is_active_stars(c, e))
     return;
 
-  message("[%lld], hydro super = %lld", c->cellID, c->hydro.super->cellID);
+  /* message("[%lld], hydro super = %lld", c->cellID, c->hydro.super->cellID);
+   */
 
   TIMER_TIC;
 
@@ -123,6 +124,13 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
                                                     struct cell *c) {
 
   struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  /* const struct feedback_props *fb_props = e->feedback_props; */
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct unit_system *us = e->internal_units;
+  const struct cooling_function_data *cooling = e->cooling_func;
+
   struct spart *restrict sparts = c->stars.parts;
   const int scount = c->stars.count;
 
@@ -140,10 +148,13 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
     error("Cell smaller than HII interaction length");
 #endif
 
-  message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e",
-          c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin);
+  /* message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e",
+   */
+  /*         c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin); */
 
-  const int max_ngbs = 512;
+  /* TODO: Handle the case where this value is too small. */
+  /* TODO: Add multiple tries if the star has not exhausted its photons */
+  const int max_ngbs = 1024;
   struct hii_neighbor *ngb_buffer =
       malloc(max_ngbs * sizeof(struct hii_neighbor));
 
@@ -198,26 +209,60 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
     /***************************************************/
     /* It's time to sort the gas particles */
-    /* if (count_found > 0) { */
-    /*   runner_sort_hii_neighbors(ngb_buffer, count_found);       */
+    if (count_found > 0) {
+      runner_sort_hii_neighbors(ngb_buffer, count_found);
 
-    /*   /\* Now let's ionize the gas particles! *\/ */
-    /*   for (int k = 0; k < count_found; k++) { */
-    /*     struct part *pj = ngb_buffer[k].p; */
-    /*     struct xpart *xpj = ngb_buffer[k].xp; */
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that the neighbors are properly sorted by distance */
+      for (int k = 0; k < count_found - 1; k++) {
+        if (ngb_buffer[k].r2 > ngb_buffer[k + 1].r2) {
+          error(
+              "HII neighbor buffer not properly sorted! "
+              "Index %d (r2=%e) is larger than index %d (r2=%e).",
+              k, ngb_buffer[k].r2, k + 1, ngb_buffer[k + 1].r2);
+        }
+      }
+#endif
 
-    /*     /\* Do the ionization *\/ */
-    /*     /\* 1. Tag gas as ionized (atomics) */
-    /*        2. Flag to be synchronized (atomics) */
-    /*        3. Consume photons from the star */
-    /*        4. Compute M_HII and r_HII for the star */
-    /*        5. Update the stars r_HII. */
-    /*        6. Update the cell max r_HII? */
-    /* 	*\/ */
-    /*     /\* feedback_do_HII_ionization(p, xp); *\/ */
-    /*   } */
+      /* Now let's ionize the gas particles! */
+      for (int k = 0; k < count_found; k++) {
+        struct part *pj = ngb_buffer[k].p;
+        struct xpart *xpj = ngb_buffer[k].xp;
 
-    /* } /\* Loop over the sorted particles *\/ */
+        /* Do the ionization */
+        /* 1. Tag gas as ionized (atomics)
+           2. Flag to be synchronized (atomics)
+           3. Consume photons from the star
+           4. Compute M_HII and r_HII for the star
+           5. Update the stars r_HII.
+           6. Update the cell max r_HII after finising processing all star
+           particles
+        */
+        /* feedback_do_HII_ionization(p, xp); */
+        const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
+            phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+
+        if (Delta_dot_N_ion <= radiation_get_star_ionization_rate(si) &&
+            atomic_cas(&xpj->feedback_data.radiation.is_ionized, 0, 1) == 0) {
+
+          /* Flag the particle to be synchronized on the timeline. */
+          atomic_or(&pj->limiter_data.to_be_synchronized, 1);
+
+          /* Consume photons from the star */
+          radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+
+          /* Update the star's HII mass */
+          /* si->feedback_data.mass_HII += hydro_get_mass(pj); */
+
+          /* Update the star's r_HII to the distance of this particle */
+          si->h_hii = sqrtf(ngb_buffer[k].r2) * kernel_gamma_inv;
+        } else {
+          /* Particle was already ionized by another star in this sub-cycle.
+           * We skip it and move to the next nearest neighbor. */
+          continue;
+        }
+      }
+    } /* Loop over the sorted particles */
 
   } /* Loop over sparts */
   free(ngb_buffer);
@@ -326,11 +371,12 @@ void runner_do_stars_hii_ionization_feedback_pair(
         ci->cellID, cj->cellID, si->id);
   }
 
-  message(
-      "[c = %lld, cj = %lld, cj->super = %lld, star = %lld] Neighbour search, "
-      "interaction_limit = %e, cell_dmin = %e",
-      ci->cellID, cj->cellID, cj->hydro.super->cellID, si->id,
-      interaction_limit, cj->dmin);
+  /* message( */
+  /*     "[c = %lld, cj = %lld, cj->super = %lld, star = %lld] Neighbour search,
+   * " */
+  /*     "interaction_limit = %e, cell_dmin = %e", */
+  /*     ci->cellID, cj->cellID, cj->hydro.super->cellID, si->id, */
+  /*     interaction_limit, cj->dmin); */
 #endif
 
   /* Get the relative distance between the pairs, wrapping. */

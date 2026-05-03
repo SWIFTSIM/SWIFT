@@ -164,7 +164,7 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
   /* If the spart is dead, don't do anything */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
-  return sp->feedback_data.will_do_feedback;
+  return radiation_get_star_ionization_rate(sp) > 0.0;
 }
 
 /**
