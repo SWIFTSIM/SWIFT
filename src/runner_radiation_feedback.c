@@ -193,6 +193,7 @@ void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
 
   struct engine *e = r->e;
   struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
 
   const float hi = si->h_hii;
@@ -206,12 +207,13 @@ void runner_do_stars_hii_ionization_feedback_self(struct runner *r,
 
     /* Get a pointer to the jth particle. */
     struct part *restrict pj = &parts[pjd];
-    /* struct xpart *restrict xpj = &xparts[pjd]; */
+    struct xpart *restrict xpj = &xparts[pjd];
 
     /* const float hj = pj->h; */
 
     /* Early abort? */
     if (part_is_inhibited(pj, e)) continue;
+    if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
 
     /* Compute the pairwise distance. */
     const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -234,6 +236,7 @@ void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
 
   struct engine *e = r->e;
   struct part *restrict parts_j = cj->hydro.parts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
   const int count_j = cj->hydro.count;
 
   /* OR h_max_old? */
@@ -279,12 +282,11 @@ void runner_do_stars_hii_ionization_feedback_pair(struct runner *r,
 
     /* Get a pointer to the jth particle. */
     struct part *restrict pj = &parts_j[pjd];
-    /* struct xpart *restrict xpj = &xparts[pjd]; */
-
-    /* const float hj = pj->h; */
+    struct xpart *restrict xpj = &xparts_j[pjd];
 
     /* Early abort? */
     if (part_is_inhibited(pj, e)) continue;
+    if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
 
     /* Compute the pairwise distance. */
     const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
