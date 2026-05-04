@@ -1391,7 +1391,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 #endif
 #ifdef IONIZATION_FEEDBACK_LOOP
   const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_HII_ionization_feedback = with_stars && with_feedback;
+  const int with_HII_ionization_feedback =
+      with_stars && with_feedback && c->stars.count > 0 && c->hydro.count > 0;
 #else
   const int with_HII_ionization_feedback = 0;
 #endif
@@ -1496,8 +1497,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       }
 
       /* Subgrid tasks: HII ionization feedback */
-      if (with_HII_ionization_feedback && c->stars.count > 0 &&
-          c->hydro.count > 0) {
+      if (with_HII_ionization_feedback) {
         c->stars.hii_ionization_feedback =
             scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
                               task_subtype_none, 0, 0, c, NULL);
@@ -1788,7 +1788,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_csds = (e->policy & engine_policy_csds);
 #endif
 #ifdef IONIZATION_FEEDBACK_LOOP
-  const int with_HII_ionization_feedback = with_stars && with_feedback;
+  const int with_HII_ionization_feedback =
+      with_stars && with_feedback && c->stars.count > 0 && c->hydro.count > 0;
 #else
   const int with_HII_ionization_feedback = 0;
 #endif
