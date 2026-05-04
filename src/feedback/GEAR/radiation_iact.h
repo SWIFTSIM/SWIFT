@@ -96,41 +96,6 @@ radiation_iact_nonsym_feedback_density(
   /* Metallicity at the star location */
   si->feedback_data.Z_star +=
       pj->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] * wi;
-
-  /* if (fb_props->radiation_policy & radiation_policy_photoionization) { */
-  /*   /\* Gather neighbours data for HII ionization *\/ */
-  /*   if (!radiation_is_part_ionized(phys_const, hydro_props, us, cosmo,
-   * cooling, */
-  /*                                  pj, xpj)) { */
-  /*     /\* If a particle is already ionized, it won't be able to ionize again
-   * so */
-  /*        do not gather its data. *\/ */
-  /*     const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
-   */
-  /*         phys_const, hydro_props, us, cosmo, cooling, pj, xpj); */
-
-  /*     /\* Compute the size of the array that we want to sort. If the current
-   */
-  /*      * function is called for the first time (at this time-step for this */
-  /*      * star), then si->num_ngbs = 1 and there is nothing to sort. Note that
-   */
-  /*      * the maximum size of the sorted array cannot be larger then the
-   * maximum */
-  /*      * number of rays. *\/ */
-  /*     const int arr_size = */
-  /*         min(si->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS);
-   */
-
-  /*     /\* Minimise separation between the gas particles and the BH. The rays
-   */
-  /*      * structs with smaller ids in the ray array will refer to the
-   * particles */
-  /*      * with smaller distances to the BH. *\/ */
-  /*     stromgren_sort_distance(r,
-   * si->feedback_data.radiation.stromgren_sphere, */
-  /*                             arr_size, Delta_dot_N_ion); */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -186,56 +151,6 @@ feedback_prepare_radiation_feedback(
   /*     sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2],
    */
   /*     sp->feedback_data.Z_star, Sigma_gas, kappa_IR, tau_IR); */
-
-  /*----------------------------------------*/
-  /* Do the HII ionization */
-
-  /* if (feedback_props->radiation_policy & radiation_policy_photoionization) {
-   */
-  /*   const struct stromgren_shell_data *stromgren = */
-  /*       sp->feedback_data.radiation.stromgren_sphere; */
-  /*   const int num_ngb = */
-  /*       min(sp->feedback_data.num_ngbs, GEAR_STROMGREN_NUMBER_NEIGHBOURS); */
-
-  /*   /\* Loop over the sorted gas neighbours *\/ */
-  /*   for (int i = 0; i < num_ngb; i++) { */
-  /*     /\* This is recomputed at each iteration *\/ */
-  /*     const double dot_N_ion = radiation_get_star_ionization_rate(sp); */
-
-  /*     if (dot_N_ion <= 0.0) { */
-  /*       sp->feedback_data.radiation.dot_N_ion = 0.0; */
-  /*       break; */
-  /*     } */
-
-  /*     const double Delta_dot_N_ion = stromgren[i].Delta_N_dot; */
-
-  /*     if (Delta_dot_N_ion <= dot_N_ion) { */
-  /*       /\* We can fully ionize this particle *\/ */
-  /*       /\* Update the Stromgren sphere radius *\/ */
-  /*       sp->feedback_data.radiation.R_stromgren = stromgren[i].distance; */
-
-  /*       /\* Consume the photons *\/ */
-  /*       radiation_consume_ionizing_photons(sp, Delta_dot_N_ion); */
-  /*     } else { */
-  /*       /\* If we cannot fully ionize, compute a probability to determine if
-   * we */
-  /*          fully ionize pj or not and draw the random number.  *\/ */
-  /*       const float proba = dot_N_ion / Delta_dot_N_ion; */
-  /*       const float random_number = */
-  /*           random_unit_interval(sp->id, ti_begin,
-   * random_number_HII_regions); */
-
-  /*       /\* If we are lucky, do the ionization *\/ */
-  /*       if (random_number <= proba) { */
-  /*         /\* Update the Stromgren sphere radius *\/ */
-  /*         sp->feedback_data.radiation.R_stromgren = stromgren[i].distance; */
-  /*       } */
-
-  /*       /\* Consume the photons in all cases *\/ */
-  /*       radiation_consume_ionizing_photons(sp, Delta_dot_N_ion); */
-  /*     } */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -282,55 +197,6 @@ radiation_iact_nonsym_feedback_apply(
                                    ? 0.
                                    : 1. / si->feedback_data.enrichment_weight;
   const double weight = mj * wi * si_inv_weight;
-
-  /* 3. Photoionization - HII region:
-     From step 1 we know N_dot_ion = L_ion / (h nu_ion) . We will use a
-     simple stromgren sphere approximation. For each particle:
-     a) Test if the particle is already ionized : T > 10^4 or particle was
-     flagged to be in an ionized region.
-     b) If it is not ionized, compute the ioninzing rate needed to fully
-     ionize:
-     \Delta N_dot_j = N(H)_j beta n_e_j
-     N(H)_j = X_H m_part / (mu m_proton) (the number of H atoms)
-     with beta = 3e-13 cm^3 / s is the recombination coefficient, n_e_j the
-     electron number density assuming full ionization, X_H is the hydrogen
-     mass fraction and mu the molecular weight.
-     c) If \Delta N_dot_j <= N_dot_ion:
-     tag the particle as being in a HII region
-     consume the photons: N_ion -= Delta N_dot_j
-
-     else:
-     determine randomly if the particle is ionized by computing the
-     proba p = N_dot_io / \Delta N_dot_j
-     If rand_number <= proba :
-     tag the particle as being in a HII region
-     consume the photons: N_ion -= Delta N_dot_j
-
-     d) For the particles tagged as ionized:
-     set the temperature (internal energy) to the
-     min(current temperature + heat added from the energy of the ionisation,
-     equilibrium HII region tem from collisional cooling)
-     Set the incident rad and FUV flux to the stromgren value --> to
-     compute the inonizing
-
-     Concretely,
-     u_new = min(u + delta U, U_collisional),
-     delta U = N_H * E_ion / m_gas,
-     E_ion = 13.6 eV = 2.18e-11 erg
-     Gamma = \Delta N_dot_j / N_H.
-
-  */
-
-  /* Photoionization */
-  /* if (fb_props->radiation_policy & radiation_policy_photoionization) { */
-  /*   const float R_stromgren = si->feedback_data.radiation.R_stromgren; */
-  /*   if (r <= R_stromgren) { */
-  /*     /\* message("Found particle to ionize ! r= %e, id = %lld", r, pj->id);
-   * *\/ */
-  /*     /\* Tag the particle *\/ */
-  /*     radiation_tag_part_as_ionized(pj, xpj); */
-  /*   } */
-  /* } */
 
   /* Compute radiation pressure */
   if (si->feedback_data.radiation.L_bol != 0.0) {

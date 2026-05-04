@@ -19,7 +19,6 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_GEAR_H
 #define SWIFT_FEEDBACK_STRUCT_GEAR_H
 
-#include "../GEAR/stromgren_sphere.h"
 #include "chemistry_struct.h"
 
 /**
@@ -127,13 +126,6 @@ struct feedback_spart_data {
     /*! Number of ionizing photons per unit time (this is a HUGE number, so
         must be a double) (physical units) */
     double dot_N_ion;
-
-    /*! Strömgren sphere radius (comoving units) */
-    float R_stromgren;
-
-    /*! Strömgren sphere data */
-    struct stromgren_shell_data
-        stromgren_sphere[GEAR_STROMGREN_NUMBER_NEIGHBOURS];
 
   } radiation;
 };

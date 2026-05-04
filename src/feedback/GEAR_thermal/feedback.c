@@ -24,7 +24,6 @@
 #include "../GEAR/radiation.h"
 #include "../GEAR/radiation_iact.h"
 #include "../GEAR/stellar_evolution.h"
-#include "../GEAR/stromgren_sphere.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
@@ -178,6 +177,7 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
 void feedback_init_spart(struct spart *sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
+  sp->feedback_data.num_ngbs = 0;
 
   sp->feedback_data.rho_star = 0.0;
   sp->feedback_data.grad_rho_star[0] = 0.0;
@@ -185,11 +185,6 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.grad_rho_star[2] = 0.0;
 
   sp->feedback_data.Z_star = 0.0;
-
-  /* Radiation fields */
-  sp->feedback_data.num_ngbs = 0;
-  stromgren_shell_init(sp->feedback_data.radiation.stromgren_sphere,
-                       GEAR_STROMGREN_NUMBER_NEIGHBOURS);
 }
 
 /**
