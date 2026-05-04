@@ -107,6 +107,11 @@ struct hii_neighbor {
 
   /*! Pointer to the gas particle extra data. */
   struct xpart *xp;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! Pointer to the cell this particle belongs to */
+  struct cell *c;
+#endif
 };
 
 /* Function prototypes. */

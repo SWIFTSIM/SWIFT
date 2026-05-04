@@ -168,6 +168,14 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
         feedback_is_HII_ionization_active(si, e))
       return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that particles have been drifted to the current time */
+    if (si->ti_drift != e->ti_current)
+      error("Particle si (%lld) not drifted to current time c = %lld, "
+              "c->super = %lld", si->id, c->cellID, c->super->cellID);
+
+#endif
+
     int count_found = 0;
 
     /***************************************************/
@@ -365,6 +373,15 @@ void runner_do_stars_hii_ionization_feedback_self(
     if (part_is_inhibited(pj, e)) continue;
     if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pj->ti_drift != e->ti_current)
+          error(
+              "Particle pj (%lld) not drifted to current time. c = %lld, "
+              "c->super = %lld",
+              pj->id, c->cellID, c->super->cellID);
+#endif
+
     /* Compute the pairwise distance. */
     const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                           (float)(pj->x[1] - c->loc[1]),
@@ -377,6 +394,7 @@ void runner_do_stars_hii_ionization_feedback_self(
       buffer[*count_found].r2 = r2;
       buffer[*count_found].p = pj;
       buffer[*count_found].xp = xpj;
+      buffer[*count_found].c = c;
       (*count_found)++;
     }
     /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
@@ -459,6 +477,15 @@ void runner_do_stars_hii_ionization_feedback_pair(
     if (part_is_inhibited(pj, e)) continue;
     if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pj->ti_drift != e->ti_current)
+          error(
+              "Particle pj (%lld) not drifted to current time. c = %lld, "
+              "c->super = %lld",
+              pj->id, cj->cellID, cj->super->cellID);
+#endif
+
     /* Compute the pairwise distance. */
     const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                           (float)(pj->x[1] - cj->loc[1]),
@@ -471,6 +498,7 @@ void runner_do_stars_hii_ionization_feedback_pair(
       buffer[*count_found].r2 = r2;
       buffer[*count_found].p = pj;
       buffer[*count_found].xp = xpj;
+      buffer[*count_found].c = cj;
       (*count_found)++;
     }
     /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
