@@ -67,6 +67,12 @@ struct forcing_terms {
 
   /* How long the jet should be on */
   float jet_duration;
+
+  /* set magnetic field at jet kick? */
+  int set_B_at_kick;
+
+  /* magnetic field at jet kick */
+  float B_kick[3];
 };
 
 /**
@@ -151,6 +157,14 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
     xp->v_full[0] = vel_kick_vec[0];
     xp->v_full[1] = vel_kick_vec[1];
     xp->v_full[2] = vel_kick_vec[2];
+
+    if (terms->set_B_at_kick) {
+      float rho = hydro_get_comoving_density(p);
+
+      xp->mhd_data.B_over_rho_full[0] = terms->B_kick[0] / rho;
+      xp->mhd_data.B_over_rho_full[1] = terms->B_kick[1] / rho;
+      xp->mhd_data.B_over_rho_full[2] = terms->B_kick[2] / rho;
+    }
 
     /* Reset some hydro quantities */
     hydro_diffusive_feedback_reset(p);
@@ -361,6 +375,13 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
       parser_get_param_float(parameter_file, "BoundaryParticles:jet_velocity");
   terms->jet_duration =
       parser_get_param_float(parameter_file, "BoundaryParticles:jet_duration");
+
+  terms->set_B_at_kick = 
+      parser_get_opt_param_int(parameter_file, "BoundaryParticles:set_B_at_kick", 0);
+  
+  if (terms->set_B_at_kick)
+    parser_get_param_float_array(parameter_file, "BoundaryParticles:B_kick",
+      3, terms->B_kick);
 }
 
 /**
