@@ -213,41 +213,37 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
       /* Now loop over particles in the neighboring cells */
 
       /* Climb up the cell hierarchy. */
-      for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
-        /* These are defined at the super level... When we reach the progeny,
-           these will be NULL... So we need to grab the finger first */
-        for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
-          /* We have already handled the self case */
-          if (l->t->type == task_type_self) continue;
+      for (struct link *l = c->hydro.super->stars.density; l != NULL; l = l->next) {
+	/* We have already handled the self case */
+	if (l->t->type == task_type_self) continue;
 
-          struct cell *c_in = (l->t->cj->hydro.super == c->hydro.super)
-                                  ? l->t->ci->hydro.super
-                                  : l->t->cj->hydro.super;
+	struct cell *c_in = (l->t->cj->hydro.super == c->hydro.super)
+	  ? l->t->ci->hydro.super
+	  : l->t->cj->hydro.super;
 
 #ifdef SWIFT_DEBUG_CHECKS
-          if (c_in->hydro.super->cellID == c->hydro.super->cellID) {
-            warning("cj (%lld) has the same hydro super (%lld) than me (%lld)!",
-                    c_in->cellID, c->hydro.super->cellID, c->cellID);
-          }
+	if (c_in->hydro.super->cellID == c->hydro.super->cellID) {
+	  warning("cj (%lld) has the same hydro super (%lld) than me (%lld)!",
+		  c_in->cellID, c->hydro.super->cellID, c->cellID);
+	}
 #endif
 
-          /* Now, find the correct level... */
-          const int can_recurse_j =
-              c_in->split && (interaction_limit < 0.5f * c_in->dmin);
-          if (can_recurse_j) {
-            /* Keep recursing deeper into the super-cell hierarchy. */
-            for (int k = 0; k < 8; k++)
-              if (c_in->progeny[k] != NULL)
-                runner_do_stars_hii_ionization_feedback_pair(
-                    r, c, c_in->progeny[k], si, ngb_buffer, max_ngbs,
-                    &count_found);
-          } else {
-            /* We have reached the 'Working Level' */
-            runner_do_stars_hii_ionization_feedback_pair(
-                r, c, c_in, si, ngb_buffer, max_ngbs, &count_found);
-          } /* Recurse */
-        } /* Neighbour search */
-      } /* Climb up in the cell hierarchy */
+	/* Now, find the correct level... */
+	const int can_recurse_j =
+	  c_in->split && (interaction_limit < 0.5f * c_in->dmin);
+	if (can_recurse_j) {
+	  /* Keep recursing deeper into the super-cell hierarchy. */
+	  for (int k = 0; k < 8; k++)
+	    if (c_in->progeny[k] != NULL)
+	      runner_do_stars_hii_ionization_feedback_pair(
+							   r, c, c_in->progeny[k], si, ngb_buffer, max_ngbs,
+							   &count_found);
+	} else {
+	  /* We have reached the 'Working Level' */
+	  runner_do_stars_hii_ionization_feedback_pair(
+						       r, c, c_in, si, ngb_buffer, max_ngbs, &count_found);
+	} /* Recurse */
+      } /* Neighbour search */
 
       /* Flag if we hit the limit */
       if (count_found == max_ngbs) buffer_was_full = 1;
