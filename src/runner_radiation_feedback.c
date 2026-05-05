@@ -80,8 +80,11 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
       !cell_is_active_stars(c, e))
     return;
 
-  /* message("[%lld], hydro super = %lld", c->cellID, c->hydro.super->cellID);
-   */
+#ifdef SWIFT_DEBUG_CHECKS
+	if (c->cellID != c->hydro.super->cellID && timer == 1) {
+	  warning("Not running the HII reionization task on the hydro super (c = %lld, c->hydro.super = %lld)!", c->cellID, c->hydro.super->cellID);
+	}
+#endif
 
   TIMER_TIC;
 
@@ -188,7 +191,6 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
     /* Climb up the cell hierarchy. */
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
-
       /* These are defined at the super level... When we reach the progeny,
          these will be NULL... So we need to grab the finger first */
       for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
