@@ -166,7 +166,7 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
   /* TODO: Handle the case where this value is too small. */
   /* TODO: Add multiple tries if the star has not exhausted its photons */
-  const int max_ngbs = 1024;
+  const int max_ngbs = 128;
   struct hii_neighbor *ngb_buffer =
       malloc(max_ngbs * sizeof(struct hii_neighbor));
 
@@ -176,9 +176,8 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
     struct spart *si = &sparts[sid];
 
     /* Is this part within the timestep? */
-    if (!spart_is_active(si, e) && !feedback_is_active(si, e) &&
-        feedback_is_HII_ionization_active(si, e))
-      return;
+    if (!spart_is_active(si, e) && !feedback_is_active(si, e) && !feedback_is_HII_ionization_active(si, e))
+      continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
@@ -188,141 +187,165 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
 #endif
 
-    int count_found = 0;
+    /* Logic: If the buffer was full, there might be more neighbors just 
+     * outside the current R_max of the buffer. We retry until the buffer 
+     * is no longer maxed out OR the star runs out of photons. */
+    int buffer_was_full = 0;
+    do {
+      int count_found = 0;
+      buffer_was_full = 0;
 
-    /***************************************************/
-    /* First loop over particles in the current cell */
-    runner_do_stars_hii_ionization_feedback_self(r, c, si, ngb_buffer, max_ngbs,
-                                                 &count_found);
+      /***************************************************/
+      /* First loop over particles in the current cell */
+      runner_do_stars_hii_ionization_feedback_self(r, c, si, ngb_buffer, max_ngbs,
+						   &count_found);
 
-    /***************************************************/
-    /* Now loop over particles in the neighboring cells */
+      /***************************************************/
+      /* Now loop over particles in the neighboring cells */
 
-    /* Climb up the cell hierarchy. */
-    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
-      /* These are defined at the super level... When we reach the progeny,
-         these will be NULL... So we need to grab the finger first */
-      for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
-        /* We have already handled the self case */
-        if (l->t->type == task_type_self) continue;
+      /* Climb up the cell hierarchy. */
+      for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+	/* These are defined at the super level... When we reach the progeny,
+	   these will be NULL... So we need to grab the finger first */
+	for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
+	  /* We have already handled the self case */
+	  if (l->t->type == task_type_self) continue;
 
-	struct cell *c_in = (l->t->cj->hydro.super == c->hydro.super) ? l->t->ci->hydro.super : l->t->cj->hydro.super;
+	  struct cell *c_in = (l->t->cj->hydro.super == c->hydro.super) ? l->t->ci->hydro.super : l->t->cj->hydro.super;
 
 #ifdef SWIFT_DEBUG_CHECKS
-	if (c_in->hydro.super->cellID == c->hydro.super->cellID) {
-	  warning("cj (%lld) has the same hydro super (%lld) than me (%lld)!", c_in->cellID, c->hydro.super->cellID, c->cellID);
+	  if (c_in->hydro.super->cellID == c->hydro.super->cellID) {
+	    warning("cj (%lld) has the same hydro super (%lld) than me (%lld)!", c_in->cellID, c->hydro.super->cellID, c->cellID);
+	  }
+#endif
+
+	  struct cell *cj = l->t->cj;
+	  struct cell *ci = l->t->ci;
+	  message("[%lld, %lld], hydro super = %lld , %lld", ci->cellID, cj->cellID, ci->hydro.super->cellID, cj->hydro.super->cellID);
+
+	  /* Now, find the correct level... */
+	  const int can_recurse_j =
+            c_in->split && (interaction_limit < 0.5f * c_in->dmin);
+	  if (can_recurse_j) {
+	    /* Keep recursing deeper into the super-cell hierarchy. */
+	    for (int k = 0; k < 8; k++)
+	      if (c_in->progeny[k] != NULL)
+		runner_do_stars_hii_ionization_feedback_pair(r, c, c_in->progeny[k], si, ngb_buffer, max_ngbs,
+							     &count_found);
+	  } else {
+	    /* We have reached the 'Working Level' */
+	    runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si, ngb_buffer, max_ngbs, &count_found);
+	  } /* Recurse */
+	} /* Neighbour search */
+      } /* Climb up in the cell hierarchy */
+
+      /* Flag if we hit the limit */
+      if (count_found == max_ngbs) buffer_was_full = 1;    
+
+      /***************************************************/
+      /* It's time to sort the gas particles */
+      if (count_found > 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+	/* Verify that the neighbors are properly sorted by distance */
+	for (int k = 0; k < count_found - 1; k++) {
+	  if (ngb_buffer[k].r2 > ngb_buffer[k + 1].r2) {
+	    error(
+		  "HII neighbor buffer not properly sorted! "
+		  "Index %d (r2=%e) is larger than index %d (r2=%e).",
+		  k, ngb_buffer[k].r2, k + 1, ngb_buffer[k + 1].r2);
+	  }
 	}
 #endif
+	const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, si->time_bin);
 
-        /* Now, find the correct level... */
-        const int can_recurse_j =
-            c_in->split && (interaction_limit < 0.5f * c_in->dmin);
-        if (can_recurse_j) {
-          /* Keep recursing deeper into the super-cell hierarchy. */
-          for (int k = 0; k < 8; k++)
-            if (c_in->progeny[k] != NULL)
-              runner_do_stars_hii_ionization_feedback_pair(
-                  r, c, c_in->progeny[k], si, ngb_buffer, max_ngbs,
-                  &count_found);
-        } else {
-          /* We have reached the 'Working Level' */
-          runner_do_stars_hii_ionization_feedback_pair(
-              r, c, c_in, si, ngb_buffer, max_ngbs, &count_found);
-        } /* Recurse */
-      } /* Neighbour search */
-    } /* Climb up in the cell hierarchy */
+	/* Now let's ionize the gas particles! */
+	for (int k = 0; k < count_found; k++) {
 
-    /***************************************************/
-    /* It's time to sort the gas particles */
-    if (count_found > 0) {
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Verify that the neighbors are properly sorted by distance */
-      for (int k = 0; k < count_found - 1; k++) {
-        if (ngb_buffer[k].r2 > ngb_buffer[k + 1].r2) {
-          error(
-              "HII neighbor buffer not properly sorted! "
-              "Index %d (r2=%e) is larger than index %d (r2=%e).",
-              k, ngb_buffer[k].r2, k + 1, ngb_buffer[k + 1].r2);
-        }
-      }
-#endif
-
-      const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, si->time_bin);
-      const double dot_N_ion = si->feedback_data.radiation.dot_N_ion;
-
-      /* Now let's ionize the gas particles! */
-      for (int k = 0; k < count_found; k++) {
-	struct part *pj = ngb_buffer[k].p;
-	struct xpart *xpj = ngb_buffer[k].xp;
-
-	/* Do the ionization */
-	/* 1. Tag gas as ionized (atomics)
-	   2. Flag to be synchronized (atomics)
-	   3. Consume photons from the star
-	   4. Compute M_HII and r_HII for the star
-	   5. Update the stars r_HII.
-	   6. Update the cell max r_HII after finising processing all star
-	   particles
-	*/
-	/* feedback_do_HII_ionization(p, xp); */
-
-	/* Fast non-atomic check: if already ionized, just move on. */
-	if (xpj->tracers_data.HII_region.is_ionized) continue;
-
-	const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
-
-	/* Case 1: Ionization is guaranteed */
-	if (Delta_dot_N_ion <= radiation_get_star_ionization_rate(si)) {
-	  if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) == 0) {
-
-	    /* Flag the particle to be synchronized on the timeline.
-	       We still use atomic_or here because other stars might be
-	       tripping the limiter in feedback loop. */
-	    atomic_or(&pj->limiter_data.to_be_synchronized, 1);
-
-	    /* Add the star ID */
-	    xpj->tracers_data.HII_region.star_id = si->id;
-
-	    /* Consume photons from the star */
-	    radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
-
-	    /* Update HII region properties */
-	    si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
-	    si->h_hii = max(si->h_hii, sqrtf(ngb_buffer[k].r2) * kernel_gamma_inv);
+	  /* No more photons to consume */
+	  if (si->feedback_data.radiation.dot_N_ion <= 0) {
+	    message("Star has exhausted all its ionizing photons!");
+            break;
 	  }
-	  /* If CAS failed, someone else grabbed it; just continue. */
-	} else {
+        
+	  struct part *pj = ngb_buffer[k].p;
+	  struct xpart *xpj = ngb_buffer[k].xp;
 
-	  /* If we cannot fully ionize, compute a probability to determine if
-	     we fully ionize pj or not and draw the random number.  */
-	  const float proba = dot_N_ion / Delta_dot_N_ion;
-	  const float random_number = random_unit_interval(si->id, ti_begin, random_number_HII_regions);
+	  /* Do the ionization */
+	  /* 1. Tag gas as ionized (atomics)
+	     2. Flag to be synchronized (atomics)
+	     3. Consume photons from the star
+	     4. Compute M_HII and r_HII for the star
+	     5. Update the stars r_HII.
+	     6. Update the cell max r_HII after finising processing all star
+	     particles
+	  */
+	  /* feedback_do_HII_ionization(p, xp); */
 
-	  /* If we are lucky, do the ionization */
-	  if (random_number <= proba) {
-	    /* We won the roll! Now try to claim the particle. */
+	  /* Fast non-atomic check: if already ionized, just move on. */
+          if (xpj->tracers_data.HII_region.is_ionized) continue;
+
+	  message("Ionize %lld (budget = %e)!", pj->id, radiation_get_star_ionization_rate(si));
+
+	  const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+
+	  /* Case 1: Ionization is guaranteed */
+	  if (Delta_dot_N_ion <= radiation_get_star_ionization_rate(si)) {
 	    if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) == 0) {
+
+	      /* Flag the particle to be synchronized on the timeline.
+		 We still use atomic_or here because other stars might be
+		 tripping the limiter in feedback loop. */
 	      atomic_or(&pj->limiter_data.to_be_synchronized, 1);
 
+	      /* Add the star ID */
 	      xpj->tracers_data.HII_region.star_id = si->id;
 
-	      /* The star is now empty of photons */
+	      /* Consume photons from the star */
 	      radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+
+	      /* Update HII region properties */
 	      si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
 	      si->h_hii = max(si->h_hii, sqrtf(ngb_buffer[k].r2) * kernel_gamma_inv);
+	    }
+	    /* If CAS failed, someone else grabbed it; just continue. */
+	  } else {
 
-	      /* We are out of photons, stop looking for neighbors for this star */
+	    /* If we cannot fully ionize, compute a probability to determine if
+	       we fully ionize pj or not and draw the random number.  */
+	    const double dot_N_ion = radiation_get_star_ionization_rate(si);
+	    const float proba = dot_N_ion / Delta_dot_N_ion;
+	    const float random_number = random_unit_interval(si->id, ti_begin, random_number_HII_regions);
+
+	    /* If we are lucky, do the ionization */
+	    if (random_number <= proba) {
+	      /* We won the roll! Now try to claim the particle. */
+	      if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) == 0) {
+		atomic_or(&pj->limiter_data.to_be_synchronized, 1);
+
+		xpj->tracers_data.HII_region.star_id = si->id;
+
+		/* The star is now empty of photons */
+		radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+		si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
+		si->h_hii = max(si->h_hii, sqrtf(ngb_buffer[k].r2) * kernel_gamma_inv);
+
+		/* We are out of photons, stop looking for neighbors for this star */
+		break;
+	      }
+	    } else {
+	      /* We lost the roll. We still consume the remaining photons. */
+	      radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+	      /* Star is empty, stop. */
 	      break;
 	    }
-	  } else {
-	    /* We lost the roll. We still consume the remaining photons. */
-	    radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
-	    /* Star is empty, stop. */
-	    break;
-	  }
-	} /* End of probability handling */
-      } /* Loop over the sorted particles */
-    }
+	  } /* End of probability handling */
+	} /* Loop over the sorted particles */
+      }
+      /* If the star still has photons and we previously filled the buffer, 
+       * we must go again to find the neighbors that were 'bumped out'. */
+    } while (buffer_was_full && radiation_get_star_ionization_rate(si) > 0);
+
+    c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
   } /* Loop over sparts */
   free(ngb_buffer);
 }
