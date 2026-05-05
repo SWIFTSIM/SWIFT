@@ -244,43 +244,6 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
         struct xpart *xpj = ngb_buffer[k].xp;
 
         /* Do the ionization */
-	/* Photoionization - HII region:
-	   From step 1 we know N_dot_ion = L_ion / (h nu_ion) . We will use a
-	   simple stromgren sphere approximation. For each particle:
-	   a) Test if the particle is already ionized : T > 10^4 or particle was
-	   flagged to be in an ionized region.
-	   b) If it is not ionized, compute the ioninzing rate needed to fully
-	   ionize:
-	   \Delta N_dot_j = N(H)_j beta n_e_j
-	   N(H)_j = X_H m_part / (mu m_proton) (the number of H atoms)
-	   with beta = 3e-13 cm^3 / s is the recombination coefficient, n_e_j the
-	   electron number density assuming full ionization, X_H is the hydrogen
-	   mass fraction and mu the molecular weight.
-	   c) If \Delta N_dot_j <= N_dot_ion:
-	   tag the particle as being in a HII region
-	   consume the photons: N_ion -= Delta N_dot_j
-
-	   else:
-	   determine randomly if the particle is ionized by computing the
-	   proba p = N_dot_io / \Delta N_dot_j
-	   If rand_number <= proba :
-	   tag the particle as being in a HII region
-	   consume the photons: N_ion -= Delta N_dot_j
-
-	   d) For the particles tagged as ionized:
-	   set the temperature (internal energy) to the
-	   min(current temperature + heat added from the energy of the ionisation,
-	   equilibrium HII region tem from collisional cooling)
-	   Set the incident rad and FUV flux to the stromgren value --> to
-	   compute the inonizing
-
-	   Concretely,
-	   u_new = min(u + delta U, U_collisional),
-	   delta U = N_H * E_ion / m_gas,
-	   E_ion = 13.6 eV = 2.18e-11 erg
-	   Gamma = \Delta N_dot_j / N_H.
-
-	*/
         /* 1. Tag gas as ionized (atomics)
            2. Flag to be synchronized (atomics)
            3. Consume photons from the star
