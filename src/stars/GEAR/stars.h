@@ -166,8 +166,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   if (stars_properties->overwrite_birth_time)
     sp->birth_time = stars_properties->spart_first_init_birth_time;
 
-  sp->h_hii = 1.2 * sp->h;
-
+  sp->h_hii = 0.0;
   stars_init_spart(sp);
 }
 
