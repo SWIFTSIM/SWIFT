@@ -378,47 +378,59 @@ void runner_do_stars_hii_ionization_feedback_self(
     struct hii_neighbor *buffer, int max_size, int *count_found) {
 
   struct engine *e = r->e;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
-  const float six[3] = {(float)(si->x[0] - c->loc[0]),
-                        (float)(si->x[1] - c->loc[1]),
-                        (float)(si->x[2] - c->loc[2])};
 
-  /* Loop over the parts in c. */
-  for (int pjd = 0; pjd < count; pjd++) {
+  /* If this cell has no hydro particles, skip */
+  if (count == 0) return;
 
-    /* Get a pointer to the jth particle. */
-    struct part *restrict pj = &parts[pjd];
-    struct xpart *restrict xpj = &xparts[pjd];
+  /* If cell is leaf, do the brute force search */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+	runner_do_stars_hii_ionization_feedback_self(r, c->progeny[k], si, buffer,
+						     max_size, count_found);
+      }
+    }
+  } else {
+    struct part *restrict parts = c->hydro.parts;
+    struct xpart *restrict xparts = c->hydro.xparts;
+    const float six[3] = {si->x[0], si->x[1], si->x[2]};
 
-    /* const float hj = pj->h; */
+    /* TODO: Use sorted cells to check that the particles/the cell are/is
+       within the star's h_hii (or h if h_hii == 0) */
 
-    /* Early abort? */
-    if (part_is_inhibited(pj, e)) continue;
-    if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
+    /* Loop over the parts in c. */
+    for (int pjd = 0; pjd < count; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts[pjd];
+      struct xpart *restrict xpj = &xparts[pjd];
+
+      /* Early abort? */
+      if (part_is_inhibited(pj, e)) continue;
+      if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
+
+      /* message("[self] Found %lld!", pj->id); */
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Check that particles have been drifted to the current time */
-    if (pj->ti_drift != e->ti_current)
-      error(
-          "Particle pj (%lld) not drifted to current time. c = %lld, "
-          "c->super = %lld",
-          pj->id, c->cellID, c->super->cellID);
+      /* Check that particles have been drifted to the current time */
+      if (pj->ti_drift != e->ti_current)
+	error(
+	      "Particle pj (%lld) not drifted to current time. c = %lld, "
+	      "c->super = %lld",
+	      pj->id, c->cellID, c->super->cellID);
 #endif
 
-    /* Compute the pairwise distance. */
-    const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
-                          (float)(pj->x[1] - c->loc[1]),
-                          (float)(pj->x[2] - c->loc[2])};
-    const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
-    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      /* Compute the pairwise distance. */
+      const float pjx[3] = {(float)(pj->x[0]),
+			    (float)(pj->x[1]),
+			    (float)(pj->x[2])};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c);
-    /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
-       flag to increase the stack size? Or to iterate again later by discarding
-       these particles, since they will be tagged as ionized */
-  } /* Loop in current cell */
+      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c);
+    } /* Loop in current cell */
+  }
 }
 
 /**
