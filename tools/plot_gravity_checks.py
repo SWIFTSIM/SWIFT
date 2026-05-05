@@ -319,21 +319,17 @@ for i in range(num_order):
     error_pot = abs(diff_pot) / abs(exact_pot)
 
     # Bin the error
-    norm_error_hist, _ = np.histogram(norm_error, bins=bin_edges, density=False) / (
-        np.size(norm_error) * bin_size
-    )
-    error_x_hist, _ = np.histogram(error_x, bins=bin_edges, density=False) / (
-        np.size(norm_error) * bin_size
-    )
-    error_y_hist, _ = np.histogram(error_y, bins=bin_edges, density=False) / (
-        np.size(norm_error) * bin_size
-    )
-    error_z_hist, _ = np.histogram(error_z, bins=bin_edges, density=False) / (
-        np.size(norm_error) * bin_size
-    )
-    error_pot_hist, _ = np.histogram(error_pot, bins=bin_edges, density=False) / (
-        np.size(norm_error) * bin_size
-    )
+    norm_error_hist, _ = np.histogram(norm_error, bins=bin_edges, density=False)
+    error_x_hist, _ = np.histogram(error_x, bins=bin_edges, density=False)
+    error_y_hist, _ = np.histogram(error_y, bins=bin_edges, density=False)
+    error_z_hist, _ = np.histogram(error_z, bins=bin_edges, density=False)
+    error_pot_hist, _ = np.histogram(error_pot, bins=bin_edges, density=False)
+
+    norm_error_hist = norm_error_hist.astype("f8") / (np.size(norm_error) * bin_size)
+    error_x_hist = error_x_hist.astype("f8") / (np.size(norm_error) * bin_size)
+    error_y_hist = error_y_hist.astype("f8") / (np.size(norm_error) * bin_size)
+    error_z_hist = error_z_hist.astype("f8") / (np.size(norm_error) * bin_size)
+    error_pot_hist = error_pot_hist.astype("f8") / (np.size(norm_error) * bin_size)
 
     norm_median = np.median(norm_error)
     median_x = np.median(error_x)
@@ -420,30 +416,30 @@ for i in range(num_order):
     count += 1
 
 
-ax1.set_xlabel("$\delta a_x/|\overrightarrow{a}_{exact}|$")
+ax1.set_xlabel("$\\delta a_x/|\\overrightarrow{a}_{exact}|$")
 # plt.ylabel("Density")
 ax1.set_xlim(min_error, max_error)
 ax1.set_ylim(0, 1.75)
 # plt.legend(loc="center left")
 
-ax2.set_xlabel("$\delta a_y/|\overrightarrow{a}_{exact}|$")
+ax2.set_xlabel("$\\delta a_y/|\\overrightarrow{a}_{exact}|$")
 # plt.ylabel("Density")
 ax2.set_xlim(min_error, max_error)
 ax2.set_ylim(0, 1.75)
 # plt.legend(loc="center left")
 
-ax3.set_xlabel("$\delta a_z/|\overrightarrow{a}_{exact}|$")
+ax3.set_xlabel("$\\delta a_z/|\\overrightarrow{a}_{exact}|$")
 # plt.ylabel("Density")
 ax3.set_xlim(min_error, max_error)
 ax3.set_ylim(0, 1.75)
 
-ax4.set_xlabel("$|\delta \overrightarrow{a}|/|\overrightarrow{a}_{exact}|$")
+ax4.set_xlabel("$|\\delta \\overrightarrow{a}|/|\\overrightarrow{a}_{exact}|$")
 # plt.ylabel("Density")
 ax4.set_xlim(min_error, max_error)
 ax4.set_ylim(0, 2.5)
 ax4.legend(loc="upper left", fontsize=8)
 
-ax5.set_xlabel("$\delta \phi/\phi_{exact}$")
+ax5.set_xlabel("$\\delta \\phi/\\phi_{exact}$")
 # plt.ylabel("Density")
 ax5.set_xlim(min_error, max_error)
 ax5.set_ylim(0, 1.75)

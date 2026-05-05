@@ -25,14 +25,15 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:   output      # Common part of the name of output files
-  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
+  basename:   output                             # Common part of the name of output files
+  time_first: 0.                                 # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 0.01                               # Time difference between consecutive outputs (in internal units)
+  recording_triggers_sink:   [1e-2, 1e-3, 1e-4]  # Recording starts 10M, 1M and 0.1M years before a snapshot
 
 Scheduler:
-  cell_extra_gparts: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts: 100                         # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks: 100                          # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 100                         # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -117,6 +118,7 @@ GEARSink:
 GEARFeedback:
   supernovae_Ia_energy_erg: 1e51           # Energy released by a single supernova.
   supernovae_efficiency: 0.1               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
+  with_stellar_wind_feedback: 0            # Deactivate the stellar wind feedback
   yields_table: POPIIsw.h5                 # Table containing the yields.
   discrete_yields: 1                       # Should we use discrete yields or the IMF integrated one?
   imf_transition_metallicity: 0            # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).

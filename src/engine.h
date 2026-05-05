@@ -376,6 +376,10 @@ struct engine {
   double snapshot_recording_triggers_desired_bpart[num_snapshot_triggers_bpart];
   int snapshot_recording_triggers_started_bpart[num_snapshot_triggers_bpart];
 
+  double snapshot_recording_triggers_sink[num_snapshot_triggers_sink];
+  double snapshot_recording_triggers_desired_sink[num_snapshot_triggers_sink];
+  int snapshot_recording_triggers_started_sink[num_snapshot_triggers_sink];
+
   /* Metadata from the ICs */
   struct ic_info *ics_metadata;
 
@@ -547,7 +551,7 @@ struct engine {
   const struct external_potential *external_potential;
 
   /* Properties of the hydrodynamics forcing terms */
-  const struct forcing_terms *forcing_terms;
+  struct forcing_terms *forcing_terms;
 
   /* Properties of the cooling scheme */
   struct cooling_function_data *cooling_func;
@@ -737,7 +741,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
-    const struct forcing_terms *forcing_terms,
+    struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -769,6 +773,14 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
+void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
+                      const int proxy_type);
+void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
+                               const struct cell *cj, const int nodeID);
+int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
+                          const int i, const int j, const int k,
+                          const struct cell *cj, const int ii, const int jj,
+                          const int kk, const double r_max);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);

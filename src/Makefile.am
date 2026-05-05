@@ -79,7 +79,7 @@ include_HEADERS += lightcone/lightcone_crossing.h lightcone/lightcone_array.h li
 include_HEADERS += lightcone/lightcone_map_types.h lightcone/projected_kernel.h lightcone/lightcone_shell.h
 include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
 include_HEADERS += adaptive_softening.h adaptive_softening_iact.h adaptive_softening_struct.h
-include_HEADERS += forcing.h
+include_HEADERS += forcing.h forcing_io.h forcing_struct.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
 include_HEADERS += swift_lustre_api.h
@@ -143,13 +143,13 @@ if COMMON_GEAR_NEEDED
 COMMON_GEAR_SOURCES = \
     feedback/GEAR/stellar_evolution.c feedback/GEAR/initial_mass_function.c \
     feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c \
-    feedback/GEAR/feedback_common.c
+    feedback/GEAR/feedback_common.c feedback/GEAR/stellar_wind.c
 
 GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
 endif
 
 if HAVEGEARFEEDBACK
-GEAR_FEEDBACK_SOURCES += feedback/GEAR/feedback.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR_thermal/feedback.c
 endif
 
 # source files for AGORA feedback
@@ -186,11 +186,11 @@ AM_SOURCES += cell_unskip.c cell_grid.c cell_init.c
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c
 AM_SOURCES += engine_drift.c engine_unskip.c engine_collect_end_of_step.c
 AM_SOURCES += engine_redistribute.c engine_fof.c engine_proxy.c engine_io.c engine_config.c
-AM_SOURCES += queue.c task.c timers.c debug.c scheduler.c proxy.c version.c
+AM_SOURCES += queue.c task.c timers.c debug.c scheduler.c scheduler_io.c scheduler_splittasks.c proxy.c version.c
 AM_SOURCES += common_io.c common_io_copy.c common_io_cells.c common_io_fields.c
 AM_SOURCES += single_io.c serial_io.c distributed_io.c parallel_io.c
 AM_SOURCES += output_options.c line_of_sight.c restart.c parser.c xmf.c
-AM_SOURCES += kernel_hydro.c tools.c map.c part.c partition.c clocks.c
+AM_SOURCES += kernel_hydro.c tools.c map.c part.c partition.c partition_debug.c partition_metis.c partition_repartition_metis.c clocks.c
 AM_SOURCES += physical_constants.c units.c potential.c hydro_properties.c
 AM_SOURCES += threadpool.c cooling.c star_formation.c
 AM_SOURCES += hydro.c stars.c sink.c
@@ -380,8 +380,10 @@ nobase_noinst_HEADERS += stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h
 nobase_noinst_HEADERS += stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h
 nobase_noinst_HEADERS += stars/GEAR/stars_debug.h stars/GEAR/stars_csds.h stars/GEAR/stars_part.h
 nobase_noinst_HEADERS += stars/GEAR/stars_stellar_type.h
-nobase_noinst_HEADERS += forcing/none/forcing.h forcing/roberts_flow/forcing.h forcing/roberts_flow_acceleration/forcing.h
-nobase_noinst_HEADERS += forcing/ABC_flow/forcing.h forcing/idealized_agn_jet/forcing.h
+nobase_noinst_HEADERS += forcing/none/forcing.h forcing/none/forcing_io.h forcing/none/forcing_struct.h
+nobase_noinst_HEADERS += forcing/roberts_flow/forcing.h forcing/roberts_flow_acceleration/forcing.h
+nobase_noinst_HEADERS += forcing/ABC_flow/forcing.h forcing/BalsaraKim/forcing.h forcing/BalsaraKim/forcing_io.h 
+nobase_noinst_HEADERS += forcing/BalsaraKim/forcing_struct.h forcing/idealized_agn_jet/forcing.h
 nobase_noinst_HEADERS += potential/none/potential.h potential/point_mass/potential.h
 nobase_noinst_HEADERS += potential/isothermal/potential.h potential/disc_patch/potential.h
 nobase_noinst_HEADERS += potential/sine_wave/potential.h potential/constant/potential.h
@@ -466,6 +468,10 @@ nobase_noinst_HEADERS += tracers/none/tracers.h tracers/none/tracers_struct.h
 nobase_noinst_HEADERS += tracers/none/tracers_io.h tracers/none/tracers_debug.h
 nobase_noinst_HEADERS += tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h
 nobase_noinst_HEADERS += tracers/EAGLE/tracers_io.h tracers/EAGLE/tracers_debug.h
+nobase_noinst_HEADERS += tracers/FLAMINGO/tracers.h tracers/FLAMINGO/tracers_struct.h
+nobase_noinst_HEADERS += tracers/FLAMINGO/tracers_io.h tracers/FLAMINGO/tracers_debug.h
+nobase_noinst_HEADERS += tracers/GEAR/tracers.h tracers/GEAR/tracers_struct.h
+nobase_noinst_HEADERS += tracers/GEAR/tracers_io.h tracers/GEAR/tracers_debug.h
 nobase_noinst_HEADERS += extra_io/EAGLE/extra_io.h extra_io/EAGLE/extra.h
 nobase_noinst_HEADERS += feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h
 nobase_noinst_HEADERS += feedback/none/feedback_properties.h feedback/none/feedback.h
@@ -482,11 +488,12 @@ nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback_debug.h
 nobase_noinst_HEADERS += feedback/EAGLE/yield_tables.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h
 nobase_noinst_HEADERS += feedback/EAGLE/enrichment.h
 nobase_noinst_HEADERS += feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h feedback/GEAR/feedback_common.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
-nobase_noinst_HEADERS += feedback/GEAR/feedback_debug.h
+nobase_noinst_HEADERS += feedback/GEAR/feedback_common.h feedback/GEAR/stellar_wind.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback.h feedback/GEAR_thermal/feedback_iact.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_properties.h feedback/GEAR_thermal/feedback_struct.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_debug.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes_properties.h
@@ -529,7 +536,7 @@ libgrav_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
 
 # Sources and special flags for the gravity MPI library
 libgrav_mpi_la_SOURCES = runner_doiact_grav.c runner_doiact_long_range_grav.c
-libgrav_mpi_la_CFLAGS = $(AM_CFLAGS) $(GRAVITY_CFLAGS) -DWITH_MPI
+libgrav_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) $(GRAVITY_CFLAGS) -DWITH_MPI
 libgrav_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Sources and flags for regular library

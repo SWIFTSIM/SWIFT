@@ -1,0 +1,62 @@
+This directory contains the full run setup used for the FLAMINGO simulations.
+The simulations are introduced in Schaye et al. (2023) with the strategy for
+calibration of the free parameters introduced in Kugel et al. (2023).
+
+More information about the FLAMINGO project can be found on the project's
+webpage: https://flamingo.strw.leidenuniv.nl/
+
+For standard runs, the code should be configured with:
+
+--with-subgrid=FLAMINGO --with-hydro=sphenix --with-kernel=wendland-C2 --enable-lightcone
+
+OR for the models with collimated jet feedback:
+
+--with-subgrid=SPIN_JET_FLAMINGO --with-hydro=sphenix --with-kernel=wendland-C2 --enable-lightcone
+
+(and any other optimization, library or compiler parameters specific
+to your system. Note that the lightcone module requires the Healpix library.)
+
+The scripts in the L1_m9 directory download the tables equired to run the
+fiducial FLAMINGO model. The ICs are a (100 Mpc)^3 volume at the same resolution
+as the large FLAMINGO runs but in a volume 1000x smaller.  Information about how
+to generate the exact ICs used in the official FLAMINGO simulations can be found
+on the project webpage (see above).
+
+Note that the example runs with the particle-lightcone and a set of healpix
+shells switched on. In a 100 Mpc volume, this will lead to a large number of
+replications and is thus not advised. We nevertheless include the parameters
+here for completeness.
+
+The feedback parameters in the L1_m9/flamingo.yml parameter file are the
+parameters running the L1_m9 model of Schaye et al. (2023).
+
+The feedback parameters in the L1_m9/flamingo_jet.yml parameter file are the
+parameters running the Jet model of Schaye et al. (2023).
+
+To run the feedback variations, the following parameters have to be changed
+in L1_m9/flamingo.yml (Table 8 of Kugel et al. 2023):
+
+Parameter                              | fgas+2σ | L1_m9   | fgas-2σ | fgas-4σ | fgas-8σ |  M*-σ   | M*-σ+fgas-4σ |
+---------------------------------------+---------+---------+---------+---------+---------+---------+--------------+
+EAGLEFeedback:SNII_energy_fraction_min | 0.219   | 0.238   | 0.206   | 0.191   | 0.145   | 0.322   |      0.261   |
+EAGLEFeedback:SNII_energy_fraction_max | 0.219   | 0.238   | 0.206   | 0.191   | 0.145   | 0.322   |      0.261   |
+EAGLEFeedback:SNII_delta_v_km_p_s      |   577   |   562   |   552   |   532   |   483   |   608   |        557   |
+EAGLEAGN:AGN_delta_T_K                 | 5.143e7 | 8.801e7 | 1.202e8 | 1.619e8 | 2.514e8 | 1.135e8 |      1.888e8 |
+EAGLEAGN:boost_beta                    | 0.554   | 0.514   | 0.497   | 0.482   | 0.462   | 0.626   |      0.620   |
+---------------------------------------+---------+---------+---------+---------+---------+---------+--------------+
+
+For jet models, the following parameters have to be changed in L1_m9/flamingo_jet.yml
+(Table 8 of Kugel et al. 2023):
+
+Parameter                              |  Jet     | Jet+fgas-4σ |
+---------------------------------------+----------+-------------+
+EAGLEFeedback:SNII_energy_fraction_min |  0.166   |     0.176   |
+EAGLEFeedback:SNII_energy_fraction_max |  0.166   |     0.176   |
+EAGLEFeedback:SNII_delta_v_km_p_s      |    477   |       527   |
+SPINJETAGN:v_jet_km_p_s                |    836   |      1995   |
+SPINJETAGN:boost_beta                  |  0.597   |     0.482   |
+---------------------------------------+----------+-------------+
+
+
+
+

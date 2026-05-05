@@ -38,6 +38,12 @@ struct feedback_xpart_data {
 
   /*! Momemtum received from a supernovae */
   float delta_p[3];
+
+  /*! Indicator if the particle receives energy from SN specifically */
+  char hit_by_SN;
+
+  /*! Indicator if the particle receives energy from SW specifically */
+  char hit_by_winds;
 };
 
 /**
@@ -51,23 +57,39 @@ struct feedback_spart_data {
   /*! Inverse of normalisation factor used for the enrichment. */
   float enrichment_weight;
 
+  /*! Does the particle needs the feedback loop? */
+  char will_do_feedback;
+
   /*! Number of Ia supernovae */
   float number_snia;
 
   /*! Number of II supernovae */
   float number_snii;
 
-  /*! Energy injected in the surrounding particles */
-  float energy_ejected;
+  /* Supernovae data struct */
+  struct {
 
-  /*! Total mass ejected by the supernovae */
-  float mass_ejected;
+    /*! Energy injected in the surrounding particles */
+    float energy_ejected;
+
+    /*! Total mass ejected by the supernovae */
+    float mass_ejected;
+
+  } supernovae;
 
   /*! Chemical composition of the mass ejected */
   double metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
-  /*! Does the particle needs the feedback loop? */
-  char will_do_feedback;
+  /*! Stellar winds data struct */
+  struct {
+
+    /*! Energy injected in the surrounding particles */
+    float energy_ejected;
+
+    /*! Mass injected in the surrounding particles */
+    float mass_ejected;
+
+  } winds;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */
