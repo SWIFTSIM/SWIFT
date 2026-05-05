@@ -226,8 +226,6 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
     /***************************************************/
     /* It's time to sort the gas particles */
     if (count_found > 0) {
-      runner_sort_hii_neighbors(ngb_buffer, count_found);
-
 #ifdef SWIFT_DEBUG_CHECKS
       /* Verify that the neighbors are properly sorted by distance */
       for (int k = 0; k < count_found - 1; k++) {
@@ -397,15 +395,8 @@ void runner_do_stars_hii_ionization_feedback_self(
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (r2 < hig2 && *count_found < max_size) {
-      /* Gather */
-      buffer[*count_found].r2 = r2;
-      buffer[*count_found].p = pj;
-      buffer[*count_found].xp = xpj;
-#ifdef SWIFT_DEBUG_CHECKS
-      buffer[*count_found].c = c;
-#endif
-      (*count_found)++;
+    if (r2 < hig2) {
+      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c);
     }
     /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
        flag to increase the stack size? Or to iterate again later by discarding
@@ -503,15 +494,8 @@ void runner_do_stars_hii_ionization_feedback_pair(
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (r2 < hig2 && *count_found < max_size) {
-      /* Gather */
-      buffer[*count_found].r2 = r2;
-      buffer[*count_found].p = pj;
-      buffer[*count_found].xp = xpj;
-#ifdef SWIFT_DEBUG_CHECKS
-      buffer[*count_found].c = cj;
-#endif
-      (*count_found)++;
+    if (r2 < hig2) {
+      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
     }
     /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
        flag to increase the stack size? Or to iterate again later by discarding
@@ -519,24 +503,45 @@ void runner_do_stars_hii_ionization_feedback_pair(
   }
 }
 
+
 /**
- * @brief Sort the gathered HII neighbors by distance (ascending).
- *
- * Uses an insertion sort to order the gas particle candidates stored in the
- * buffer based on their squared distance from the star. This is necessary
- * to ionize gas particles from the inside out.
- *
- * @param buffer The array of #hii_neighbor structures to sort.
- * @param N The number of elements in the buffer.
+ * @brief Maintain a sorted buffer by inserting a new neighbor at the correct position.
+ * 
+ * If the buffer is full, it replaces the furthest element if the new one is closer.
  */
-void runner_sort_hii_neighbors(struct hii_neighbor *buffer, int N) {
-  for (int i = 1; i < N; i++) {
-    struct hii_neighbor key = buffer[i];
-    int j = i - 1;
-    while (j >= 0 && buffer[j].r2 > key.r2) {
-      buffer[j + 1] = buffer[j];
-      j--;
+__attribute__((always_inline)) INLINE void runner_hii_buffer_insert(struct hii_neighbor *buffer, int max_size,
+                                     int *count_found, float r2, struct part *p,
+                                     struct xpart *xp, struct cell *c) {
+  
+  /* Case A: Buffer is not yet full */
+  if (*count_found < max_size) {
+    int i = *count_found - 1;
+    /* Shift elements to make room (standard insertion) */
+    while (i >= 0 && buffer[i].r2 > r2) {
+      buffer[i + 1] = buffer[i];
+      i--;
     }
-    buffer[j + 1] = key;
+    buffer[i + 1].r2 = r2;
+    buffer[i + 1].p = p;
+    buffer[i + 1].xp = xp;
+#ifdef SWIFT_DEBUG_CHECKS
+    buffer[i + 1].c = c;
+#endif
+    (*count_found)++;
+  } 
+  /* Case B: Buffer is full, check if new particle is closer than the furthest */
+  else if (r2 < buffer[max_size - 1].r2) {
+    int i = max_size - 2;
+    /* Shift elements to replace the furthest */
+    while (i >= 0 && buffer[i].r2 > r2) {
+      buffer[i + 1] = buffer[i];
+      i--;
+    }
+    buffer[i + 1].r2 = r2;
+    buffer[i + 1].p = p;
+    buffer[i + 1].xp = xp;
+#ifdef SWIFT_DEBUG_CHECKS
+    buffer[i + 1].c = c;
+#endif
   }
 }
