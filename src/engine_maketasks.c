@@ -1389,13 +1389,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 #ifdef WITH_CSDS
   const int with_csds = e->policy & engine_policy_csds;
 #endif
-#ifdef IONIZATION_FEEDBACK_LOOP
-  const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_HII_ionization_feedback =
-      with_stars && with_feedback && c->stars.count > 0 && c->hydro.count > 0;
-#else
-  const int with_HII_ionization_feedback = 0;
-#endif
 
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
@@ -1494,27 +1487,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       /* Subgrid tasks: sinks formation */
       if (with_sinks) {
         scheduler_addunlock(s, c->kick2, c->top->sinks.sink_formation);
-      }
-
-      /* Subgrid tasks: HII ionization feedback */
-      if (with_HII_ionization_feedback) {
-        c->stars.hii_ionization_feedback =
-            scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
-                              task_subtype_none, 0, 0, c, NULL);
-
-        /* TODO: Do we want these dependencies? Are they needed? */
-        scheduler_addunlock(s, kick2_or_csds, c->stars.hii_ionization_feedback);
-        scheduler_addunlock(s, c->stars.hii_ionization_feedback, c->timestep);
-
-        if (with_star_formation_sink &&
-            (c->hydro.count > 0 || c->sinks.count > 0)) {
-          scheduler_addunlock(s, c->top->sinks.star_formation_sink,
-                              c->stars.hii_ionization_feedback);
-        }
-        if (with_star_formation && c->hydro.count > 0) {
-          scheduler_addunlock(s, c->top->hydro.star_formation,
-                              c->stars.hii_ionization_feedback);
-        }
       }
 
       /* Time-step limiter */
@@ -1784,6 +1756,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_star_formation_sink = (with_sinks && with_stars);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
+  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
 #ifdef WITH_CSDS
   const int with_csds = (e->policy & engine_policy_csds);
 #endif
@@ -1834,6 +1807,13 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
     /* Add the sort task. */
     c->hydro.sorts =
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+
+    /* Subgrid tasks: HII ionization feedback */
+    if (with_HII_ionization_feedback) {
+      c->stars.hii_ionization_feedback =
+	scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
+			  task_subtype_none, 0, 0, c, NULL);
+    }
 
     if (with_feedback) {
       c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
@@ -1999,17 +1979,20 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         }
       }
 
-      if (with_HII_ionization_feedback && c->stars.count > 0 &&
-          c->hydro.count > 0) {
-        scheduler_addunlock(s, c->hydro.super->hydro.drift,
-                            c->stars.hii_ionization_feedback);
+      if (with_HII_ionization_feedback) {
+	/* Do HII ionization once we know the stars' smoothing length and have
+	   computed properties from the gas */
+	scheduler_addunlock(s, c->stars.ghost_out,
+			    c->stars.hii_ionization_feedback);
+	scheduler_addunlock(s, c->stars.hii_ionization_feedback,
+			    c->stars.stars_out);
 
-        /* Do HII ionization once we know the stars' smoothing length and have
-           computed properties from the gas */
-        scheduler_addunlock(s, c->stars.ghost_out,
-                            c->stars.hii_ionization_feedback);
-        scheduler_addunlock(s, c->stars.hii_ionization_feedback,
-                            c->stars.stars_out);
+	if (with_timestep_sync) {
+	  if (c->super->timestep_sync == NULL)
+	    warning("c->super.timestep_sync is NULL!");
+
+	  scheduler_addunlock(s, c->stars.hii_ionization_feedback, c->super->timestep_sync);
+	}
       }
 
       /* Radiative Transfer */
@@ -2696,6 +2679,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* Sort tasks depend on the drift of the cell (stars version). */
     else if (t_type == task_type_stars_sort && ci->nodeID == nodeID) {
+      scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
+    }
+
+    else if (t_type == task_type_stars_hii_ionization_feedback && ci->hydro.super != NULL) {
+      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
     }
 
