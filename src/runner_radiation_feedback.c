@@ -179,9 +179,9 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
     struct spart *si = &sparts[sid];
 
     /* Is this part within the timestep? */
-    if (!spart_is_active(si, e) && !feedback_is_active(si, e) &&
-        !feedback_is_HII_ionization_active(si, e))
-      continue;
+    if (!spart_is_active(si, e)) continue;
+    if (!feedback_is_active(si, e)) continue;
+    if (!feedback_is_HII_ionization_active(si, e)) continue;
 
     message("[%lld] Star can do ionization! (%e)", si->id,
             radiation_get_star_ionization_rate(si));
@@ -206,20 +206,16 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
       /***************************************************/
       /* First loop over particles in the current cell */
-      runner_do_stars_hii_ionization_feedback_self(r, c, si, ngb_buffer,
+      runner_do_stars_hii_ionization_feedback_self(r, c->hydro.super, si, ngb_buffer,
                                                    max_ngbs, &count_found);
 
       /***************************************************/
       /* Now loop over particles in the neighboring cells */
-
-      /* Climb up the cell hierarchy. */
       for (struct link *l = c->hydro.super->stars.density; l != NULL; l = l->next) {
 	/* We have already handled the self case */
 	if (l->t->type == task_type_self) continue;
 
-	struct cell *c_in = (l->t->cj->hydro.super == c->hydro.super)
-	  ? l->t->ci->hydro.super
-	  : l->t->cj->hydro.super;
+	struct cell *c_in = (l->t->cj == c->hydro.super) ? l->t->ci : l->t->cj;
 
 #ifdef SWIFT_DEBUG_CHECKS
 	if (c_in->hydro.super->cellID == c->hydro.super->cellID) {
@@ -227,22 +223,8 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 		  c_in->cellID, c->hydro.super->cellID, c->cellID);
 	}
 #endif
-
-	/* Now, find the correct level... */
-	const int can_recurse_j =
-	  c_in->split && (interaction_limit < 0.5f * c_in->dmin);
-	if (can_recurse_j) {
-	  /* Keep recursing deeper into the super-cell hierarchy. */
-	  for (int k = 0; k < 8; k++)
-	    if (c_in->progeny[k] != NULL)
-	      runner_do_stars_hii_ionization_feedback_pair(
-							   r, c, c_in->progeny[k], si, ngb_buffer, max_ngbs,
-							   &count_found);
-	} else {
-	  /* We have reached the 'Working Level' */
-	  runner_do_stars_hii_ionization_feedback_pair(
-						       r, c, c_in, si, ngb_buffer, max_ngbs, &count_found);
-	} /* Recurse */
+	
+	runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si, ngb_buffer, max_ngbs, &count_found);
       } /* Neighbour search */
 
       /* Flag if we hit the limit */
@@ -269,7 +251,7 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
         for (int k = 0; k < count_found; k++) {
 
           /* No more photons to consume */
-          if (si->feedback_data.radiation.dot_N_ion <= 0) {
+          if (radiation_get_star_ionization_rate(si) <= 0.0) {
             message("Star has exhausted all its ionizing photons!");
             break;
           }
@@ -278,7 +260,8 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
           struct xpart *xpj = ngb_buffer[k].xp;
 
           /* Do the ionization */
-          /* feedback_do_HII_ionization(p, xp); */
+          /* feedback_do_HII_ionization(sp, p, xp, r2, phys_const, hydro_props,
+             us, cosmo, cooling, ti_begin); */
 
           /* Fast non-atomic check: if already ionized, just move on. */
           if (xpj->tracers_data.HII_region.is_ionized) continue;
@@ -457,80 +440,62 @@ void runner_do_stars_hii_ionization_feedback_pair(
   struct xpart *restrict xparts_j = cj->hydro.xparts;
   const int count_j = cj->hydro.count;
 
-  /* OR h_max_old? */
-  float r_hii_max = ci->stars.h_hii_max_old * kernel_gamma;
-  if (ci->stars.h_hii_max_old <= 0.0) {
-    r_hii_max = ci->stars.h_max_old * kernel_gamma;
-  }
-  const float interaction_limit = 1.2f * r_hii_max;
+  /* If this cell has no hydro particles, skip */
+  if (count_j == 0) return;
+
+  if (cj->split) {
+    for (int k = 0; k < 8; k++) {
+      if (cj->progeny[k] != NULL) {
+        runner_do_stars_hii_ionization_feedback_pair(r, ci, cj->progeny[k], si, buffer, max_size, count_found);
+      }
+    }
+  } else {
+    /* Get the relative distance between the pairs, wrapping. */
+    double shift[3] = {0.0, 0.0, 0.0};
+    for (int k = 0; k < 3; k++) {
+      if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+	shift[k] = e->s->dim[k];
+      else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+	shift[k] = -e->s->dim[k];
+    }
+
+    const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+                          (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                          (float)(si->x[2] - (cj->loc[2] + shift[2]))};
+    
+    for (int pjd = 0; pjd < count_j; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts_j[pjd];
+      struct xpart *restrict xpj = &xparts_j[pjd];
+
+      /* Early abort? */
+      if (part_is_inhibited(pj, e)) continue;
+      if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
+
+      /* message("[pair] Found %lld!", pj->id); */
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* TODO: Reviser ces checks */
-  /* Did we mess up the recursion? */
-  if (interaction_limit > ci->dmin && ci != ci->hydro.super)
-    error("Cell (%lld) size (%e) smaller than HII interaction length (%e)", ci->cellID, ci->dmin, interaction_limit);  
-
-  /* Call the function that will do the work */
-  if (interaction_limit > cj->dmin && cj != cj->hydro.super) {
-    warning(
-        "[c = %lld, cj = %lld, star = %lld] cj size is too small. We need to "
-        "go up in the cell hierarchy!",
-        ci->cellID, cj->cellID, si->id);
-  }
-
-  /* message( */
-  /*     "[c = %lld, cj = %lld, cj->super = %lld, star = %lld] Neighbour search,
-   * " */
-  /*     "interaction_limit = %e, cell_dmin = %e", */
-  /*     ci->cellID, cj->cellID, cj->hydro.super->cellID, si->id, */
-  /*     interaction_limit, cj->dmin); */
+      /* Check that particles have been drifted to the current time */
+      if (pj->ti_drift != e->ti_current)
+	error(
+	      "Particle pj (%lld) not drifted to current time. c = %lld, "
+	      "c->super = %lld",
+	      pj->id, cj->cellID, cj->super->cellID);
 #endif
 
-  /* Get the relative distance between the pairs, wrapping. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  for (int k = 0; k < 3; k++) {
-    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-      shift[k] = e->s->dim[k];
-    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-      shift[k] = -e->s->dim[k];
-  }
+      /* Compute the pairwise distance. */
+      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
+			    (float)(pj->x[1] - cj->loc[1]),
+			    (float)(pj->x[2] - cj->loc[2])};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-  const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
-                        (float)(si->x[1] - (cj->loc[1] + shift[1])),
-                        (float)(si->x[2] - (cj->loc[2] + shift[2]))};
-
-  for (int pjd = 0; pjd < count_j; pjd++) {
-
-    /* Get a pointer to the jth particle. */
-    struct part *restrict pj = &parts_j[pjd];
-    struct xpart *restrict xpj = &xparts_j[pjd];
-
-    /* Early abort? */
-    if (part_is_inhibited(pj, e)) continue;
-    if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
-
-    /* message("[pair] Found %lld!", pj->id); */
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Check that particles have been drifted to the current time */
-    if (pj->ti_drift != e->ti_current)
-      error(
-          "Particle pj (%lld) not drifted to current time. c = %lld, "
-          "c->super = %lld",
-          pj->id, cj->cellID, cj->super->cellID);
-#endif
-
-    /* Compute the pairwise distance. */
-    const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-                          (float)(pj->x[1] - cj->loc[1]),
-                          (float)(pj->x[2] - cj->loc[2])};
-    const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
-    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-    runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
-    /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
-       flag to increase the stack size? Or to iterate again later by discarding
-       these particles, since they will be tagged as ionized */
+      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
+      /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
+	 flag to increase the stack size? Or to iterate again later by discarding
+	 these particles, since they will be tagged as ionized */
+    } /* Loop in current cell */
   }
 }
 
