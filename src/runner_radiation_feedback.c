@@ -67,7 +67,6 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 #ifdef IONIZATION_FEEDBACK_LOOP
   struct engine *e = r->e;
 
-  /* TODO: Or h_max_old? */
   /* TODO: Which cell h_hii_max shall I look at? The current code changes the
      value as we do deeper in the cell hierarchy. Ideally, we want to use the
      smallest hmax for a cell, process the stars and parts at this level for
@@ -163,11 +162,7 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
   if (interaction_limit > c->dmin && c != c->hydro.super)
     error("Cell (%lld) size (%e) smaller than HII interaction length (%e)", c->cellID, c->dmin,interaction_limit);
 #endif
-
-  /* message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e",
-   */
-  /*         c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin); */
-
+  
   /* TODO: Add multiple tries if the star has not exhausted its photons */
   const int max_ngbs = 128;
   struct hii_neighbor *ngb_buffer =
@@ -492,9 +487,6 @@ void runner_do_stars_hii_ionization_feedback_pair(
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
-      /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
-	 flag to increase the stack size? Or to iterate again later by discarding
-	 these particles, since they will be tagged as ionized */
     } /* Loop in current cell */
   }
 }
