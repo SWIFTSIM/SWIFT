@@ -34,7 +34,7 @@ InitialConditions:
   periodic:   1
   
 Scheduler:
-    max_top_level_cells:      50         # Maximal number of top-level cells in any dimension.
+    max_top_level_cells:      80         # Maximal number of top-level cells in any dimension.
     
 # Parameters related to the equation of state
 EoS:

@@ -322,11 +322,7 @@ int main(int argc, char **argv) {
 
 int main(int argc, char **argv) {
 
-  /* Initialize CPU frequency, this also starts time. */
-  unsigned long long cpufreq = 0;
-  clocks_set_cpufreq(cpufreq);
-
-  message(
+  printf(
       "This test is only defined for the EAGLE cooling model and with Gadget-2 "
       "SPH.");
   return 0;

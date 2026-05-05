@@ -49,6 +49,7 @@ In the following, we always refer to physical quantities. In non-cosmological si
 * :math:`\rho_p = \rho_c/a^3`
 * :math:`\Phi_p = \Phi_c/a + c(a)`
 * :math:`u_p = u_c/a^{3(\gamma -1)}`
+* :math:`\nabla_p = \frac{1}{a} \nabla_c`
 
 
 Here, :math:`H` is the Hubble constant at any redshift, :math:`c(a)` is the potential normalization constant and :math:`\gamma` the gas adiabatic index. Notice that the potential normalization constant has been chosen to be :math:`c(a) = 0`.
@@ -108,8 +109,11 @@ Some criteria are *optional* and can be *deactivated*. By default, they are all 
 
    The :math:`p` subscript is to recall that we are using physical quantities to compute energies.
 
-   Here, the potential is retrieved from the gravity solver. 
+   Here, the potential is retrieved from the gravity solver.
 
+.. note::
+   Currently, only the following hydro schemes are compatible: SPHENIX, Gadget2, minimal SPH, Gasoline-2, Pressure-Energy, GIZMO MFV and GIZMO MFM. These schemes are also the ones compatible with *GEAR star formation scheme*.
+   Implementing the other hydro schemes is not complicated but requires some careful thinking about the cosmological terms in the definition of the velocity divergence (comoving vs non comoving coordinates and if the Hubble flow is included or not).
 
 Some comments about the criteria:
 
@@ -226,7 +230,7 @@ As explained at the beginning of this section, GEAR uses two IMFs for the popula
 Star spawning
 ~~~~~~~~~~~~~
 
-Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. The star is placed randomly within the sink's accretion radius. We draw the star's velocity components from a Gaussian distribution with mean :math:`\mu = 0` and standard deviation :math:`\sigma` determined as follows:
+Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. The star is placed randomly within the sink's smoothing length. We draw the star's velocity components from a Gaussian distribution with mean :math:`\mu = 0` and standard deviation :math:`\sigma` determined as follows:
 
 .. math::
    \sigma = f \cdot \sqrt{\frac{G_N M_s}{r_{\text{acc}}}} \; ,
@@ -239,7 +243,7 @@ Stellar feedback
 
 Stellar feedback *per se* is not in the sink module but in the feedback one. However, if one uses sink particles with individual stars, the feedback implementation must be adapted. Here is a recap of the GEAR feedback with sink particles. 
 
-All details and explanations about GEAR stellar feedback are provided in the GEAR :ref:`gear_feedback` section. Here, we only provide the changes from the previous model. 
+All details and explanations about GEAR stellar feedback are provided in the GEAR :ref:`gear_stellar_evolution_and_feedback` section. Here, we only provide the changes from the previous model.
 
 In the previous model, star particles represented a population of stars with a defined IMF. Now, we have two kinds of star particles: particles representing a *continuous* portion of the IMF (see the image above) and particles representing a *single* (discrete) star. This new model requires updating the feedback model so that stars eligible for SN feedback can realise this feedback.
 

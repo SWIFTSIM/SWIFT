@@ -306,9 +306,12 @@ void print_los_info(const struct line_of_sight *Los, const int i) {
  * @param j Line of sight ID.
  * @param e The engine.
  * @param grp HDF5 group to write to.
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  */
 void write_los_hdf5_dataset(const struct io_props props, const size_t N,
-                            const int j, const struct engine *e, hid_t grp) {
+                            const int j, const struct engine *e, hid_t grp,
+                            const int is_named_column) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -316,18 +319,32 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = e->snapshot_compression > 0 ? 12 : 18;
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
 
   int rank = 0;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
-  if (props.dimension > 1) {
+
+  /* Set the chunking:
+   * Datasets > 3D are (likely) "named columns": Use Nx1 chunking
+   * Datasets in 1D are chunked Nx1
+   * Datasets in 2D and 3D are chunked NxM as the data is likely accessed as
+   * vectors.
+   * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
+   */
+  if (is_named_column) {
+    rank = 2;
+    shape[0] = N;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << log2_chunk_size;
+    chunk_shape[1] = 1;
+  } else if (props.dimension > 1) {
     rank = 2;
     shape[0] = N;
     shape[1] = props.dimension;
     chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
-  } else {
+  } else { /* props.dimension == 1 */
     rank = 1;
     shape[0] = N;
     shape[1] = 0;
@@ -483,10 +500,13 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
     /* Did the user cancel this field? */
     char field[PARSER_MAX_LINE_SIZE];
     sprintf(field, "SelectOutputLOS:%.*s", FIELD_BUFFER_SIZE, list[i].name);
-    int should_write = parser_get_opt_param_int(params, field, 1);
+    const int should_write = parser_get_opt_param_int(params, field, 1);
 
-    /* Write (if selected) */
-    if (should_write) write_los_hdf5_dataset(list[i], N, j, e, grp);
+    /* Write (if selected)
+     * Note: we don't bother with optimal chunking here
+     * given the dataset sizes */
+    if (should_write)
+      write_los_hdf5_dataset(list[i], N, j, e, grp, /*is_named_column=*/0);
   }
 }
 

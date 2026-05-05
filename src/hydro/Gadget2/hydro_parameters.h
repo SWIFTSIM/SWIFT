@@ -91,10 +91,10 @@ struct unit_system;
  * @param phys_const: pointer to the physical constants system
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
-static INLINE void viscosity_init(struct swift_params* params,
-                                  const struct unit_system* us,
-                                  const struct phys_const* phys_const,
-                                  struct viscosity_global_data* viscosity) {
+static INLINE void viscosity_init(struct swift_params *params,
+                                  const struct unit_system *us,
+                                  const struct phys_const *phys_const,
+                                  struct viscosity_global_data *viscosity) {
 
   /* Read the artificial viscosity parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
@@ -110,7 +110,7 @@ static INLINE void viscosity_init(struct swift_params* params,
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
 static INLINE void viscosity_init_no_hydro(
-    struct viscosity_global_data* viscosity) {
+    struct viscosity_global_data *viscosity) {
   viscosity->alpha = hydro_props_default_viscosity_alpha;
 }
 
@@ -121,7 +121,7 @@ static INLINE void viscosity_init_no_hydro(
  *                   hydro_properties
  **/
 static INLINE void viscosity_print(
-    const struct viscosity_global_data* viscosity) {
+    const struct viscosity_global_data *viscosity) {
   message("Artificial viscosity parameters set to alpha: %.3f",
           viscosity->alpha);
 }
@@ -134,7 +134,7 @@ static INLINE void viscosity_print(
  * @param viscosity: pointer to the viscosity_global_data struct.
  **/
 static INLINE void viscosity_print_snapshot(
-    hid_t h_grpsph, const struct viscosity_global_data* viscosity) {
+    hid_t h_grpsph, const struct viscosity_global_data *viscosity) {
 
   io_write_attribute_f(h_grpsph, "Alpha viscosity", viscosity->alpha);
   io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
@@ -152,10 +152,10 @@ static INLINE void viscosity_print_snapshot(
  * @param phys_const: pointer to the physical constants system
  * @param diffusion: pointer to the diffusion struct to be filled.
  **/
-static INLINE void diffusion_init(struct swift_params* params,
-                                  const struct unit_system* us,
-                                  const struct phys_const* phys_const,
-                                  struct diffusion_global_data* diffusion) {}
+static INLINE void diffusion_init(struct swift_params *params,
+                                  const struct unit_system *us,
+                                  const struct phys_const *phys_const,
+                                  struct diffusion_global_data *diffusion) {}
 
 /**
  * @brief Initialises a diffusion struct to sensible numbers for mocking
@@ -164,7 +164,7 @@ static INLINE void diffusion_init(struct swift_params* params,
  * @param diffusion: pointer to the diffusion_global_data struct to be filled.
  **/
 static INLINE void diffusion_init_no_hydro(
-    struct diffusion_global_data* diffusion) {}
+    struct diffusion_global_data *diffusion) {}
 
 /**
  * @brief Prints out the diffusion parameters at the start of a run.
@@ -173,7 +173,7 @@ static INLINE void diffusion_init_no_hydro(
  *                   hydro_properties
  **/
 static INLINE void diffusion_print(
-    const struct diffusion_global_data* diffusion) {}
+    const struct diffusion_global_data *diffusion) {}
 
 #ifdef HAVE_HDF5
 /**
@@ -183,7 +183,7 @@ static INLINE void diffusion_print(
  * @param diffusion: pointer to the diffusion_global_data struct.
  **/
 static INLINE void diffusion_print_snapshot(
-    hid_t h_grpsph, const struct diffusion_global_data* diffusion) {}
+    hid_t h_grpsph, const struct diffusion_global_data *diffusion) {}
 #endif
 
 #endif /* SWIFT_GADGET2_HYDRO_PARAMETERS_H */

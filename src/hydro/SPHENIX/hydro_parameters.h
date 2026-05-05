@@ -153,10 +153,10 @@ struct unit_system;
  * @param phys_const: pointer to the physical constants system
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
-static INLINE void viscosity_init(struct swift_params* params,
-                                  const struct unit_system* us,
-                                  const struct phys_const* phys_const,
-                                  struct viscosity_global_data* viscosity) {
+static INLINE void viscosity_init(struct swift_params *params,
+                                  const struct unit_system *us,
+                                  const struct phys_const *phys_const,
+                                  struct viscosity_global_data *viscosity) {
 
   /* Read the artificial viscosity parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
@@ -183,7 +183,7 @@ static INLINE void viscosity_init(struct swift_params* params,
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
 static INLINE void viscosity_init_no_hydro(
-    struct viscosity_global_data* viscosity) {
+    struct viscosity_global_data *viscosity) {
   viscosity->alpha = hydro_props_default_viscosity_alpha;
   viscosity->alpha_max = hydro_props_default_viscosity_alpha_max;
   viscosity->alpha_min = hydro_props_default_viscosity_alpha_min;
@@ -197,7 +197,7 @@ static INLINE void viscosity_init_no_hydro(
  *                   hydro_properties
  **/
 static INLINE void viscosity_print(
-    const struct viscosity_global_data* viscosity) {
+    const struct viscosity_global_data *viscosity) {
   message(
       "Artificial viscosity parameters set to alpha: %.3f, max: %.3f, "
       "min: %.3f, length: %.3f.",
@@ -213,7 +213,7 @@ static INLINE void viscosity_print(
  * @param viscosity: pointer to the viscosity_global_data struct.
  **/
 static INLINE void viscosity_print_snapshot(
-    hid_t h_grpsph, const struct viscosity_global_data* viscosity) {
+    hid_t h_grpsph, const struct viscosity_global_data *viscosity) {
 
   io_write_attribute_f(h_grpsph, "Alpha viscosity", viscosity->alpha);
   io_write_attribute_f(h_grpsph, "Alpha viscosity (max)", viscosity->alpha_max);
@@ -235,10 +235,10 @@ static INLINE void viscosity_print_snapshot(
  * @param phys_const: pointer to the physical constants system
  * @param diffusion_global_data: pointer to the diffusion struct to be filled.
  **/
-static INLINE void diffusion_init(struct swift_params* params,
-                                  const struct unit_system* us,
-                                  const struct phys_const* phys_const,
-                                  struct diffusion_global_data* diffusion) {
+static INLINE void diffusion_init(struct swift_params *params,
+                                  const struct unit_system *us,
+                                  const struct phys_const *phys_const,
+                                  struct diffusion_global_data *diffusion) {
 
   diffusion->alpha = parser_get_opt_param_float(
       params, "SPH:diffusion_alpha", hydro_props_default_diffusion_alpha);
@@ -262,7 +262,7 @@ static INLINE void diffusion_init(struct swift_params* params,
  * @param diffusion: pointer to the diffusion_global_data struct to be filled.
  **/
 static INLINE void diffusion_init_no_hydro(
-    struct diffusion_global_data* diffusion) {
+    struct diffusion_global_data *diffusion) {
   diffusion->alpha = hydro_props_default_diffusion_alpha;
   diffusion->alpha_max = hydro_props_default_diffusion_alpha_max;
   diffusion->alpha_min = hydro_props_default_diffusion_alpha_min;
@@ -276,7 +276,7 @@ static INLINE void diffusion_init_no_hydro(
  *                   hydro_properties
  **/
 static INLINE void diffusion_print(
-    const struct diffusion_global_data* diffusion) {
+    const struct diffusion_global_data *diffusion) {
   message(
       "Artificial diffusion parameters set to alpha: %.3f, max: %.3f, "
       "min: %.3f, beta: %.3f.",
@@ -292,7 +292,7 @@ static INLINE void diffusion_print(
  * @param diffusion: pointer to the diffusion_global_data struct.
  **/
 static INLINE void diffusion_print_snapshot(
-    hid_t h_grpsph, const struct diffusion_global_data* diffusion) {
+    hid_t h_grpsph, const struct diffusion_global_data *diffusion) {
   io_write_attribute_f(h_grpsph, "Diffusion alpha", diffusion->alpha);
   io_write_attribute_f(h_grpsph, "Diffusion alpha (max)", diffusion->alpha_max);
   io_write_attribute_f(h_grpsph, "Diffusion alpha (min)", diffusion->alpha_min);

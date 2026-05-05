@@ -152,6 +152,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_gparts_foreign = 0;
     s->gparts_foreign = NULL;
   }
+  if (s->gparts_fof_foreign != NULL) {
+    swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
+    s->size_gparts_foreign = 0;
+    s->gparts_fof_foreign = NULL;
+  }
   if (s->sparts_foreign != NULL) {
     swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = 0;
@@ -549,6 +554,21 @@ void space_free_buff_sort_indices(struct space *s) {
       cell_free_hydro_sorts(finger);
       cell_free_stars_sorts(finger);
     }
+  }
+}
+
+/**
+ * @brief Free the sort arrays and grid arrays for all local
+ * and foreign cells.
+ *
+ * @brief s The #space.
+ */
+void space_free_sort_indices(struct space *s) {
+
+  for (int i = 0; i < s->nr_local_cells_with_tasks; ++i) {
+
+    struct cell *c = &s->cells_top[s->local_cells_with_tasks_top[i]];
+    cell_clean(c);
   }
 }
 
@@ -1164,6 +1184,8 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
+  s->with_hydro_splitting = 0;
+  s->splitting_need_unique_id = 0;
 
   /* do a quick check that the box size has valid values */
 #if defined HYDRO_DIMENSION_1D
@@ -1231,7 +1253,11 @@ void space_init(struct space *s, struct swift_params *params,
   int maxtcells =
       parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                space_max_top_level_cells_default);
-  s->cell_min = 0.99 * dmax / maxtcells;
+  /* We're at risk of rounding errors if tol ~ 1 - 1/maxtcells. */
+  /* Make sure it's (much) closer to 1.0 than this. */
+  /* But also ensure it's not so small that we round in the other direction */
+  const float tol = max(1.0 - 1.0 / (maxtcells * maxtcells), 0.99);
+  s->cell_min = tol * dmax / maxtcells;
 
   /* Check that it is big enough. */
   const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);
@@ -1487,8 +1513,10 @@ void space_init(struct space *s, struct swift_params *params,
   if (!(star_formation || with_sink) ||
       !swift_star_formation_model_creates_stars) {
     space_extra_sparts = 0;
-    space_extra_gparts = 0;
     space_extra_sinks = 0;
+    if (!s->with_hydro_splitting) {
+      space_extra_gparts = 0;
+    }
   }
 
   const int create_sparts =
@@ -1515,7 +1543,7 @@ void space_init(struct space *s, struct swift_params *params,
   if (!dry_run) space_regrid(s, verbose);
 
   /* Compute the max id for the generation of unique id. */
-  if (create_sparts) {
+  if (create_sparts || s->splitting_need_unique_id) {
     space_init_unique_id(s, nr_nodes);
   }
 }
@@ -1793,7 +1821,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   offset_nuparts +=
       1 + total_dm + total_parts + total_sinks + total_sparts + total_bparts;
   offset_dm_background +=
-      1 + 10 * (total_dm * total_parts + total_sinks + total_sparts +
+      1 + 10 * (total_dm + total_parts + total_sinks + total_sparts +
                 total_bparts + total_nuparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
@@ -2515,6 +2543,9 @@ void space_after_snap_tracer(struct space *s, int verbose) {
   }
   for (size_t i = 0; i < s->nr_bparts; ++i) {
     tracers_after_snapshot_bpart(&s->bparts[i]);
+  }
+  for (size_t i = 0; i < s->nr_sinks; ++i) {
+    tracers_after_snapshot_sink(&s->sinks[i]);
   }
 }
 

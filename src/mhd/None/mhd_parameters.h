@@ -72,10 +72,10 @@ struct mhd_global_data {};
  * @param phys_const: pointer to the physical constants system
  * @param mhd: pointer to the mhd_global_data struct to be filled.
  **/
-static INLINE void mhd_init(struct swift_params* params,
-                            const struct unit_system* us,
-                            const struct phys_const* phys_const,
-                            struct mhd_global_data* mhd) {}
+static INLINE void mhd_init(struct swift_params *params,
+                            const struct unit_system *us,
+                            const struct phys_const *phys_const,
+                            struct mhd_global_data *mhd) {}
 
 /**
  * @brief Prints out the mhd parameters at the start of a run.
@@ -83,6 +83,6 @@ static INLINE void mhd_init(struct swift_params* params,
  * @param mhd: pointer to the mhd_global_data struct found in
  *                   hydro_properties
  **/
-static INLINE void mhd_print(const struct mhd_global_data* mhd) {}
+static INLINE void mhd_print(const struct mhd_global_data *mhd) {}
 
 #endif /* SWIFT_NONE_MHD_PARAMETERS_H */

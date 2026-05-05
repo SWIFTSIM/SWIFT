@@ -35,7 +35,7 @@
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_init(
-    struct part* restrict p, struct xpart* restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp) {
 
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
@@ -50,8 +50,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_velocities_prepare_force(struct part* restrict p,
-                               const struct xpart* restrict xp) {}
+hydro_velocities_prepare_force(struct part *restrict p,
+                               const struct xpart *restrict xp) {}
 
 /**
  * @brief Set the variables that will be used to update the smoothing length
@@ -60,7 +60,7 @@ hydro_velocities_prepare_force(struct part* restrict p,
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
-    struct part* restrict p) {
+    struct part *restrict p) {
 
   /* Add normalization to h_dt. */
   p->force.h_dt *= p->h * hydro_dimension_inv;
@@ -74,7 +74,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_set(
-    struct part* restrict p, struct xpart* restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp) {
 
   /* Set the velocities: */
   /* We first set the particle velocity */

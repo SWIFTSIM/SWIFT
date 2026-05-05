@@ -26,43 +26,19 @@
 #include "space.h"
 
 /* Local headers. */
-#include "adaptive_softening.h"
-#include "black_holes.h"
-#include "chemistry.h"
-#include "engine.h"
-#include "gravity.h"
-#include "mhd.h"
-#include "rt.h"
-#include "sink.h"
-#include "star_formation.h"
-#include "stars.h"
-#include "threadpool.h"
-#include "tracers.h"
+#include "part_init.h"
 
 void space_init_parts_mapper(void *restrict map_data, int count,
                              void *restrict extra_data) {
 
   struct part *restrict parts = (struct part *)map_data;
   const struct engine *restrict e = (struct engine *)extra_data;
-  const struct hydro_space *restrict hs = &e->s->hs;
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
-
   size_t ind = parts - e->s->parts;
   struct xpart *restrict xparts = e->s->xparts + ind;
 
   for (int k = 0; k < count; k++) {
-    hydro_init_part(&parts[k], hs);
-    adaptive_softening_init_part(&parts[k]);
-    mhd_init_part(&parts[k]);
-    black_holes_init_potential(&parts[k].black_holes_data);
-    chemistry_init_part(&parts[k], e->chemistry);
-    rt_init_part(&parts[k]);
+    part_init(&parts[k], &xparts[k], e);
     rt_reset_part(&parts[k], e->cosmology);
-    star_formation_init_part(&parts[k], e->star_formation);
-    tracers_after_init(&parts[k], &xparts[k], e->internal_units,
-                       e->physical_constants, with_cosmology, e->cosmology,
-                       e->hydro_properties, e->cooling_func, e->time);
-    sink_init_part(&parts[k], e->sink_properties);
   }
 }
 
@@ -89,7 +65,11 @@ void space_init_gparts_mapper(void *restrict map_data, int count,
                               void *restrict extra_data) {
 
   struct gpart *gparts = (struct gpart *)map_data;
-  for (int k = 0; k < count; k++) gravity_init_gpart(&gparts[k]);
+  const struct engine *restrict e = (struct engine *)extra_data;
+
+  for (int k = 0; k < count; k++) {
+    gpart_init(&gparts[k], e);
+  }
 }
 
 /**
@@ -106,7 +86,7 @@ void space_init_gparts(struct space *s, int verbose) {
   if (s->nr_gparts > 0)
     threadpool_map(&s->e->threadpool, space_init_gparts_mapper, s->gparts,
                    s->nr_gparts, sizeof(struct gpart),
-                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
+                   threadpool_auto_chunk_size, s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -116,9 +96,10 @@ void space_init_sparts_mapper(void *restrict map_data, int scount,
                               void *restrict extra_data) {
 
   struct spart *restrict sparts = (struct spart *)map_data;
+  const struct engine *restrict e = (struct engine *)extra_data;
+
   for (int k = 0; k < scount; k++) {
-    stars_init_spart(&sparts[k]);
-    rt_init_spart(&sparts[k]);
+    spart_init(&sparts[k], e);
     rt_reset_spart(&sparts[k]);
   }
 }
@@ -137,7 +118,7 @@ void space_init_sparts(struct space *s, int verbose) {
   if (s->nr_sparts > 0)
     threadpool_map(&s->e->threadpool, space_init_sparts_mapper, s->sparts,
                    s->nr_sparts, sizeof(struct spart),
-                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
+                   threadpool_auto_chunk_size, s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -147,7 +128,11 @@ void space_init_bparts_mapper(void *restrict map_data, int bcount,
                               void *restrict extra_data) {
 
   struct bpart *restrict bparts = (struct bpart *)map_data;
-  for (int k = 0; k < bcount; k++) black_holes_init_bpart(&bparts[k]);
+  const struct engine *restrict e = (struct engine *)extra_data;
+
+  for (int k = 0; k < bcount; k++) {
+    bpart_init(&bparts[k], e);
+  }
 }
 
 /**
@@ -164,7 +149,7 @@ void space_init_bparts(struct space *s, int verbose) {
   if (s->nr_bparts > 0)
     threadpool_map(&s->e->threadpool, space_init_bparts_mapper, s->bparts,
                    s->nr_bparts, sizeof(struct bpart),
-                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
+                   threadpool_auto_chunk_size, s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -174,7 +159,11 @@ void space_init_sinks_mapper(void *restrict map_data, int sink_count,
                              void *restrict extra_data) {
 
   struct sink *restrict sinks = (struct sink *)map_data;
-  for (int k = 0; k < sink_count; k++) sink_init_sink(&sinks[k]);
+  const struct engine *restrict e = (struct engine *)extra_data;
+
+  for (int k = 0; k < sink_count; k++) {
+    sink_init(&sinks[k], e);
+  }
 }
 
 /**
@@ -191,7 +180,7 @@ void space_init_sinks(struct space *s, int verbose) {
   if (s->nr_sinks > 0)
     threadpool_map(&s->e->threadpool, space_init_sinks_mapper, s->sinks,
                    s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
-                   /*extra_data=*/NULL);
+                   s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

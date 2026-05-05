@@ -25,6 +25,9 @@
 /* This object's header. */
 #include "cell.h"
 
+/* Local headers */
+#include "gravity.h"
+
 /**
  * @brief Pack the data of the given cell and all it's sub-cells.
  *
@@ -83,6 +86,9 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
     pc->grav.CoM_rebuild[2] = mp->CoM_rebuild[2];
     pc->grav.r_max = mp->r_max;
     pc->grav.r_max_rebuild = mp->r_max_rebuild;
+    pc->grav.dx_max[0] = mp->dx_max[0];
+    pc->grav.dx_max[1] = mp->dx_max[1];
+    pc->grav.dx_max[2] = mp->dx_max[2];
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -289,6 +295,9 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
     mp->CoM_rebuild[2] = pc->grav.CoM_rebuild[2];
     mp->r_max = pc->grav.r_max;
     mp->r_max_rebuild = pc->grav.r_max_rebuild;
+    mp->dx_max[0] = pc->grav.dx_max[0];
+    mp->dx_max[1] = pc->grav.dx_max[1];
+    mp->dx_max[2] = pc->grav.dx_max[2];
   }
 
   /* Number of new cells created. */
@@ -572,6 +581,54 @@ void cell_unpack_timebin(struct cell *const c, timebin_t *const t) {
 }
 
 /**
+ * @brief Pack the gpart information of the given cell.
+ *
+ * b needs to be aligned on SWIFT_CACHE_ALIGNMENT.
+ *
+ * @param c The #cell.
+ * @param b (output) The array of #gpart_foreign we pack into.
+ */
+void cell_pack_gpart(const struct cell *const c,
+                     struct gpart_foreign *const b) {
+
+#ifdef WITH_MPI
+
+  swift_declare_aligned_ptr(struct gpart_foreign, b_align, b,
+                            SWIFT_CACHE_ALIGNMENT);
+
+  for (int i = 0; i < c->grav.count; ++i)
+    gravity_foreign_copy(&b_align[i], &c->grav.parts[i]);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Pack the gpart FOF information of the given cell.
+ *
+ * b needs to be aligned on SWIFT_CACHE_ALIGNMENT.
+ *
+ * @param c The #cell.
+ * @param b (output) The array of #gpart_fof_foreign we pack into.
+ */
+void cell_pack_fof_gpart(const struct cell *const c,
+                         struct gpart_fof_foreign *const b) {
+
+#ifdef WITH_MPI
+
+  swift_declare_aligned_ptr(struct gpart_fof_foreign, b_align, b,
+                            SWIFT_CACHE_ALIGNMENT);
+
+  for (int i = 0; i < c->grav.count; ++i)
+    gravity_foreign_fof_copy(&b_align[i], &c->grav.parts[i]);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Pack the multipole information of the given cell and all it's
  * sub-cells.
  *
@@ -778,13 +835,14 @@ int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->stars.parts_rebuild == NULL)
-    error("Star particles array at rebuild is NULL!");
+  if (c->grav.parts_rebuild == NULL)
+    error("Grav. particles array at rebuild is NULL!");
 #endif
 
   /* Unpack this cell's data. */
   c->grav.count = pcells[0].count;
-  c->grav.parts = c->grav.parts_rebuild + pcells[0].delta_from_rebuild;
+  c->grav.parts_foreign =
+      c->grav.parts_foreign_rebuild + pcells[0].delta_from_rebuild;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;

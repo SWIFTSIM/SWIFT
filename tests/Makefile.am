@@ -28,13 +28,14 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
-        testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
+        testThreadpool testDump testCSDS testInteractions.sh \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-	    testLog testDistance testTimeline
+        testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
+        testNeutrinoFermiDirac \
+        testLog testDistance testTimeline  # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -46,7 +47,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
-		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
+		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
+		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
 
 # Rebuild tests when SWIFT is updated.
@@ -56,6 +58,8 @@ $(check_PROGRAMS): ../src/.libs/libswiftsim.a
 testGreetings_SOURCES = testGreetings.c
 
 testMaths_SOURCES = testMaths.c
+
+testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 
 testAtomic_SOURCES = testAtomic.c
 
@@ -170,9 +174,9 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              tolerance_27_normal.dat tolerance_27_perturbed.dat tolerance_27_perturbed_h.dat tolerance_27_perturbed_h2.dat \
              tolerance_testInteractions.dat tolerance_pair_active.dat tolerance_pair_force_active.dat \
              fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat \
-             testEOS.sh testEOS_plot.sh testSelectOutput.sh selectOutput.yml \
+             testEOS_plot.sh testSelectOutput.sh selectOutput.yml \
              output_list_params.yml output_list_time.txt output_list_redshift.txt \
-             output_list_scale_factor.txt testEOS.sh testEOS_plot.sh \
+             output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh

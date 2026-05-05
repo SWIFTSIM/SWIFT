@@ -29,8 +29,8 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void sink_read_particles(struct sink* sinks,
-                                       struct io_props* list, int* num_fields) {
+INLINE static void sink_read_particles(struct sink *sinks,
+                                       struct io_props *list, int *num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 5;
@@ -48,10 +48,10 @@ INLINE static void sink_read_particles(struct sink* sinks,
                                 UNIT_CONV_LENGTH, sinks, h);
 }
 
-INLINE static void convert_sink_pos(const struct engine* e,
-                                    const struct sink* sp, double* ret) {
+INLINE static void convert_sink_pos(const struct engine *e,
+                                    const struct sink *sp, double *ret) {
 
-  const struct space* s = e->s;
+  const struct space *s = e->s;
   if (s->periodic) {
     ret[0] = box_wrap(sp->x[0], 0.0, s->dim[0]);
     ret[1] = box_wrap(sp->x[1], 0.0, s->dim[1]);
@@ -63,11 +63,11 @@ INLINE static void convert_sink_pos(const struct engine* e,
   }
 }
 
-INLINE static void convert_sink_vel(const struct engine* e,
-                                    const struct sink* sp, float* ret) {
+INLINE static void convert_sink_vel(const struct engine *e,
+                                    const struct sink *sp, float *ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -85,7 +85,7 @@ INLINE static void convert_sink_vel(const struct engine* e,
   }
 
   /* Extrapolate the velocites to the current time */
-  const struct gpart* gp = sp->gpart;
+  const struct gpart *gp = sp->gpart;
   ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
   ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
@@ -104,8 +104,8 @@ INLINE static void convert_sink_vel(const struct engine* e,
  * @param num_fields The number of i/o fields to write.
  * @param with_cosmology Are we running a cosmological simulation?
  */
-INLINE static void sink_write_particles(const struct sink* sinks,
-                                        struct io_props* list, int* num_fields,
+INLINE static void sink_write_particles(const struct sink *sinks,
+                                        struct io_props *list, int *num_fields,
                                         int with_cosmology) {
 
   /* Say how much we want to write */

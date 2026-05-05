@@ -57,17 +57,17 @@
 #endif
 
 /* Now, some generic functions, defined in the source file */
-void potential_init(struct swift_params* parameter_file,
-                    const struct phys_const* phys_const,
-                    const struct unit_system* us, const struct space* s,
-                    struct external_potential* potential);
+void potential_init(struct swift_params *parameter_file,
+                    const struct phys_const *phys_const,
+                    const struct unit_system *us, const struct space *s,
+                    struct external_potential *potential);
 
-void potential_print(const struct external_potential* potential);
+void potential_print(const struct external_potential *potential);
 
 /* Dump/restore. */
-void potential_struct_dump(const struct external_potential* potential,
-                           FILE* stream);
-void potential_struct_restore(const struct external_potential* potential,
-                              FILE* stream);
+void potential_struct_dump(const struct external_potential *potential,
+                           FILE *stream);
+void potential_struct_restore(const struct external_potential *potential,
+                              FILE *stream);
 
 #endif /* SWIFT_POTENTIAL_H */

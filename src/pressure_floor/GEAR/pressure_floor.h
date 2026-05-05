@@ -24,10 +24,10 @@ struct cosmology;
 struct pressure_floor_props;
 
 __attribute__((always_inline)) static INLINE float
-pressure_floor_get_comoving_pressure(const struct part* p,
-                                     const struct pressure_floor_props* floor,
+pressure_floor_get_comoving_pressure(const struct part *p,
+                                     const struct pressure_floor_props *floor,
                                      const float pressure_comoving,
-                                     const struct cosmology* cosmo);
+                                     const struct cosmology *cosmo);
 
 #include "adiabatic_index.h"
 #include "cosmology.h"
@@ -69,10 +69,10 @@ struct pressure_floor_props {
  * @return The comoving pressure with the floor applied.
  */
 __attribute__((always_inline)) static INLINE float
-pressure_floor_get_comoving_pressure(const struct part* p,
-                                     const struct pressure_floor_props* pfloor,
+pressure_floor_get_comoving_pressure(const struct part *p,
+                                     const struct pressure_floor_props *pfloor,
                                      const float pressure_comoving,
-                                     const struct cosmology* cosmo) {
+                                     const struct cosmology *cosmo) {
 
   const float a_coef = pow_three_gamma_minus_one(cosmo->a);
   const float rho = hydro_get_comoving_density(p);
@@ -99,9 +99,9 @@ pressure_floor_get_comoving_pressure(const struct part* p,
  * @param props The pressure floor properties to fill.
  */
 __attribute__((always_inline)) static INLINE void pressure_floor_init(
-    struct pressure_floor_props* props, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct hydro_props* hydro_props,
-    struct swift_params* params) {
+    struct pressure_floor_props *props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct hydro_props *hydro_props,
+    struct swift_params *params) {
 
   /* Read the Jeans factor */
   props->n_jeans =
@@ -118,7 +118,7 @@ __attribute__((always_inline)) static INLINE void pressure_floor_init(
  * @param props The pressure floor properties.
  */
 __attribute__((always_inline)) static INLINE void pressure_floor_print(
-    const struct pressure_floor_props* props) {
+    const struct pressure_floor_props *props) {
 
   message("Pressure floor is 'GEAR' with:");
   message("Jeans factor  : %g", props->n_jeans);
@@ -146,9 +146,9 @@ __attribute__((always_inline)) INLINE static void pressure_floor_print_snapshot(
  * @param stream the file stream
  */
 __attribute__((always_inline)) INLINE static void pressure_floor_struct_dump(
-    const struct pressure_floor_props* pressure_floor, FILE* stream) {
+    const struct pressure_floor_props *pressure_floor, FILE *stream) {
 
-  restart_write_blocks((void*)pressure_floor,
+  restart_write_blocks((void *)pressure_floor,
                        sizeof(struct pressure_floor_props), 1, stream,
                        "pressure_floor", "pressure_floor");
 
@@ -164,9 +164,9 @@ __attribute__((always_inline)) INLINE static void pressure_floor_struct_dump(
  * @param stream the file stream
  */
 __attribute__((always_inline)) INLINE static void pressure_floor_struct_restore(
-    struct pressure_floor_props* pressure_floor, FILE* stream) {
+    struct pressure_floor_props *pressure_floor, FILE *stream) {
 
-  restart_read_blocks((void*)pressure_floor,
+  restart_read_blocks((void *)pressure_floor,
                       sizeof(struct pressure_floor_props), 1, stream, NULL,
                       "pressure_floor");
 

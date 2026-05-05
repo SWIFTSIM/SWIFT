@@ -19,8 +19,14 @@
 #ifndef SWIFT_TRACERS_EAGLE_DEBUG_H
 #define SWIFT_TRACERS_EAGLE_DEBUG_H
 
+/**
+ * @brief Write the particle-carried tracers field for debugging
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static void tracers_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+    const struct part *p, const struct xpart *xp) {
 
   if (xp != NULL) {
     warning("[PID%lld] tracers_xpart_data:", p->id);

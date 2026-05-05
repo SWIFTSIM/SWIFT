@@ -43,8 +43,8 @@
  * @param ngb_Z Metallicity (metal mass fraction) of the gas surrounding the
  * star.
  */
-double eagle_feedback_energy_fraction(const struct spart* sp,
-                                      const struct feedback_props* props,
+double eagle_feedback_energy_fraction(const struct spart *sp,
+                                      const struct feedback_props *props,
                                       const double ngb_nH_cgs,
                                       const double ngb_Z) {
 
@@ -102,9 +102,9 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  * masses).
  */
 INLINE static void compute_SNII_feedback(
-    struct spart* sp, const double star_age, const double dt,
+    struct spart *sp, const double star_age, const double dt,
     const int ngb_gas_N, const float ngb_gas_mass, const double ngb_nH_cgs,
-    const double ngb_Z, const struct feedback_props* feedback_props,
+    const double ngb_Z, const struct feedback_props *feedback_props,
     const double min_dying_mass_Msun, const double max_dying_mass_Msun,
     const integertime_t ti_begin) {
 
@@ -252,10 +252,10 @@ INLINE static void compute_SNII_feedback(
  * @param dt length of current timestep
  * @param ti_begin The current integer time (for random number hashing).
  */
-void compute_stellar_evolution(const struct feedback_props* feedback_props,
-                               const struct phys_const* phys_const,
-                               const struct cosmology* cosmo, struct spart* sp,
-                               const struct unit_system* us, const double age,
+void compute_stellar_evolution(const struct feedback_props *feedback_props,
+                               const struct phys_const *phys_const,
+                               const struct cosmology *cosmo, struct spart *sp,
+                               const struct unit_system *us, const double age,
                                const double dt, const integertime_t ti_begin) {
 
   TIMER_TIC;
@@ -282,7 +282,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
           exp10(log10_min_metallicity));
 
   /* Get the individual abundances (mass fractions at birth time) */
-  const float* const abundances =
+  const float *const abundances =
       chemistry_get_star_metal_mass_fraction_for_feedback(sp);
 
   /* Properties collected in the stellar density loop. */
@@ -404,12 +404,12 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  * @param hydro_props The already read-in properties of the hydro scheme.
  * @param cosmo The cosmological model.
  */
-void feedback_props_init(struct feedback_props* fp,
-                         const struct phys_const* phys_const,
-                         const struct unit_system* us,
-                         struct swift_params* params,
-                         const struct hydro_props* hydro_props,
-                         const struct cosmology* cosmo) {
+void feedback_props_init(struct feedback_props *fp,
+                         const struct phys_const *phys_const,
+                         const struct unit_system *us,
+                         struct swift_params *params,
+                         const struct hydro_props *hydro_props,
+                         const struct cosmology *cosmo) {
 
   /* Main operation modes ------------------------------------------------- */
 
@@ -677,7 +677,7 @@ void feedback_props_init(struct feedback_props* fp,
  *
  * @param fp the feedback data structure.
  */
-void feedback_clean(struct feedback_props* fp) {
+void feedback_clean(struct feedback_props *fp) {
 
   swift_free("imf-tables", fp->imf);
   swift_free("imf-tables", fp->imf_mass_bin);
@@ -727,7 +727,7 @@ void feedback_clean(struct feedback_props* fp) {
  * @param feedback the struct
  * @param stream the file stream
  */
-void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
+void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
 
   /* To make sure everything is restored correctly, we zero all the pointers to
      tables. If they are not restored correctly, we would crash after restart on
@@ -761,7 +761,7 @@ void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
   feedback_copy.imf_mass_bin = NULL;
   feedback_copy.imf_mass_bin_log10 = NULL;
 
-  restart_write_blocks((void*)&feedback_copy, sizeof(struct feedback_props), 1,
+  restart_write_blocks((void *)&feedback_copy, sizeof(struct feedback_props), 1,
                        stream, "feedback", "feedback function");
 }
 
@@ -775,9 +775,9 @@ void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
  * @param feedback the struct
  * @param stream the file stream
  */
-void feedback_struct_restore(struct feedback_props* feedback, FILE* stream) {
-  restart_read_blocks((void*)feedback, sizeof(struct feedback_props), 1, stream,
-                      NULL, "feedback function");
+void feedback_struct_restore(struct feedback_props *feedback, FILE *stream) {
+  restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
+                      stream, NULL, "feedback function");
 
   if (strlen(feedback->yield_table_path) != 0)
     feedback_restore_tables(feedback);
