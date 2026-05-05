@@ -138,11 +138,13 @@
 /* RT specific function calls */
 #define PART_IS_ACTIVE part_is_rt_active
 #define CELL_IS_ACTIVE cell_is_rt_active
+#define CELL_GET_H_MAX_ACTIVE cell_get_rt_h_max_active
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted_rt_sub_cycle
 #else
 /* default hydro behaviour. */
 #define PART_IS_ACTIVE part_is_active
 #define CELL_IS_ACTIVE cell_is_active_hydro
+#define CELL_GET_H_MAX_ACTIVE cell_get_hydro_h_max_active
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted
 /* when running with RT subcycling, we can have RT active
  * particles in a normal swift step that aren't drifted to
