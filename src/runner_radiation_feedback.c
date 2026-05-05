@@ -394,7 +394,9 @@ void runner_do_stars_hii_ionization_feedback_self(
       buffer[*count_found].r2 = r2;
       buffer[*count_found].p = pj;
       buffer[*count_found].xp = xpj;
+#ifdef SWIFT_DEBUG_CHECKS
       buffer[*count_found].c = c;
+#endif
       (*count_found)++;
     }
     /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
@@ -498,7 +500,9 @@ void runner_do_stars_hii_ionization_feedback_pair(
       buffer[*count_found].r2 = r2;
       buffer[*count_found].p = pj;
       buffer[*count_found].xp = xpj;
+#ifdef SWIFT_DEBUG_CHECKS
       buffer[*count_found].c = cj;
+#endif
       (*count_found)++;
     }
     /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
