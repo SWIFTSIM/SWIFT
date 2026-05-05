@@ -197,7 +197,13 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
         /* We have already handled the self case */
         if (l->t->type == task_type_self) continue;
 
-        struct cell *c_in = l->t->cj;
+	struct cell *c_in = (l->t->cj->hydro.super == c->hydro.super) ? l->t->ci->hydro.super : l->t->cj->hydro.super;
+
+#ifdef SWIFT_DEBUG_CHECKS
+	if (c_in->hydro.super->cellID == c->hydro.super->cellID) {
+	  warning("cj (%lld) has the same hydro super (%lld) than me (%lld)!", c_in->cellID, c->hydro.super->cellID, c->cellID);
+	}
+#endif
 
         /* Now, find the correct level... */
         const int can_recurse_j =
