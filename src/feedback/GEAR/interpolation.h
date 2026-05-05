@@ -133,9 +133,15 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_init(
     }
 
     /* Interpolate i */
-    const int j = x_j;
-    const float f = x_j - j;
-    interp->data[i] = (1. - f) * data[j] + f * data[j + 1];
+    int j = (int)x_j;
+
+    /* Handle the edge case where x_j is exactly at or very close to N_data - 1 */
+    if (j >= N_data - 1) {
+      interp->data[i] = data[N_data - 1];
+    } else {
+      const float f = x_j - (float)j;
+      interp->data[i] = (1.f - f) * data[j] + f * data[j + 1];
+    }
   }
 }
 
