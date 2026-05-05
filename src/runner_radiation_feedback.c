@@ -73,9 +73,9 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
      smallest hmax for a cell, process the stars and parts at this level for
      this cell, and go higher for cells/stars with higher h_hii */
 
-  float r_hii_max = c->hydro.super->stars.h_hii_max_old * kernel_gamma;
+  float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;
   if (c->stars.h_hii_max_old <= 0.0) {
-    r_hii_max = c->hydro.super->stars.h_max_old * kernel_gamma;
+    r_hii_max = c->stars.h_max_old * kernel_gamma;
   }
 
   const float interaction_limit = 1.2f * r_hii_max;
@@ -147,9 +147,9 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
   struct spart *restrict sparts = c->stars.parts;
   const int scount = c->stars.count;
 
-  float r_hii_max = c->hydro.super->stars.h_hii_max_old * kernel_gamma;
+  float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;
   if (c->stars.h_hii_max_old <= 0.0) {
-    r_hii_max = c->hydro.super->stars.h_max_old * kernel_gamma;
+    r_hii_max = c->stars.h_max_old * kernel_gamma;
   }
 
   const float interaction_limit = 1.2f * r_hii_max;
@@ -158,9 +158,10 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
     return;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* TODO: Reviser ces checks */  
   /* Did we mess up the recursion? */
-  if (interaction_limit > c->dmin)
-    error("Cell smaller than HII interaction length");
+  if (interaction_limit > c->dmin && c != c->hydro.super)
+    error("Cell (%lld) size (%e) smaller than HII interaction length (%e)", c->cellID, c->dmin,interaction_limit);
 #endif
 
   /* message("[c = %lld, super = %lld] interaction_limit = %e, cell_dmin = %e",
@@ -281,21 +282,13 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
           struct xpart *xpj = ngb_buffer[k].xp;
 
           /* Do the ionization */
-          /* 1. Tag gas as ionized (atomics)
-             2. Flag to be synchronized (atomics)
-             3. Consume photons from the star
-             4. Compute M_HII and r_HII for the star
-             5. Update the stars r_HII.
-             6. Update the cell max r_HII after finising processing all star
-             particles
-          */
           /* feedback_do_HII_ionization(p, xp); */
 
           /* Fast non-atomic check: if already ionized, just move on. */
           if (xpj->tracers_data.HII_region.is_ionized) continue;
 
-          message("Ionize %lld (budget = %e)!", pj->id,
-                  radiation_get_star_ionization_rate(si));
+          /* message("Ionize %lld (budget = %e)!", pj->id, */
+                  /* radiation_get_star_ionization_rate(si)); */
 
           const double Delta_dot_N_ion =
               radiation_get_part_rate_to_fully_ionize(
@@ -457,16 +450,20 @@ void runner_do_stars_hii_ionization_feedback_pair(
   const int count_j = cj->hydro.count;
 
   /* OR h_max_old? */
-  const float r_hii_max = ci->stars.h_hii_max_old * kernel_gamma;
+  float r_hii_max = ci->stars.h_hii_max_old * kernel_gamma;
+  if (ci->stars.h_hii_max_old <= 0.0) {
+    r_hii_max = ci->stars.h_max_old * kernel_gamma;
+  }
   const float interaction_limit = 1.2f * r_hii_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* TODO: Reviser ces checks */
   /* Did we mess up the recursion? */
-  if (interaction_limit > cj->dmin)
-    error("Cell smaller than HII interaction length");
+  if (interaction_limit > ci->dmin && ci != ci->hydro.super)
+    error("Cell (%lld) size (%e) smaller than HII interaction length (%e)", ci->cellID, ci->dmin, interaction_limit);  
 
   /* Call the function that will do the work */
-  if (interaction_limit > cj->dmin) {
+  if (interaction_limit > cj->dmin && cj != cj->hydro.super) {
     warning(
         "[c = %lld, cj = %lld, star = %lld] cj size is too small. We need to "
         "go up in the cell hierarchy!",
