@@ -135,7 +135,8 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_init(
     /* Interpolate i */
     int j = (int)x_j;
 
-    /* Handle the edge case where x_j is exactly at or very close to N_data - 1 */
+    /* Handle the edge case where x_j is exactly at or very close to N_data - 1
+     */
     if (j >= N_data - 1) {
       interp->data[i] = data[N_data - 1];
     } else {

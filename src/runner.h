@@ -194,8 +194,8 @@ void runner_do_stars_hii_ionization_feedback_pair(
     struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
     struct hii_neighbor *buffer, int max_size, int *count_found);
 void runner_hii_buffer_insert(struct hii_neighbor *buffer, int max_size,
-                                     int *count_found, float r2, struct part *p,
-			      struct xpart *xp, struct cell *c);
+                              int *count_found, float r2, struct part *p,
+                              struct xpart *xp, struct cell *c);
 void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
                          int timer);

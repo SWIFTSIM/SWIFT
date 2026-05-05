@@ -1229,8 +1229,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   /* For the ionizing band, get the number of photons produced. */
   sp->feedback_data.radiation.dot_N_ion =
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
-          sp->mass, us, phys_const) *
-      1e50;
+          sp->mass, us, phys_const);
 
   /* message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e", */
   /* 	   sp->id, sp->star_type, sp->mass, */

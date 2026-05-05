@@ -1811,8 +1811,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
     /* Subgrid tasks: HII ionization feedback */
     if (with_HII_ionization_feedback) {
       c->stars.hii_ionization_feedback =
-	scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
-			  task_subtype_none, 0, 0, c, NULL);
+          scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
+                            task_subtype_none, 0, 0, c, NULL);
     }
 
     if (with_feedback) {
@@ -1980,19 +1980,20 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       }
 
       if (with_HII_ionization_feedback) {
-	/* Do HII ionization once we know the stars' smoothing length and have
-	   computed properties from the gas */
-	scheduler_addunlock(s, c->stars.ghost_out,
-			    c->stars.hii_ionization_feedback);
-	scheduler_addunlock(s, c->stars.hii_ionization_feedback,
-			    c->stars.stars_out);
+        /* Do HII ionization once we know the stars' smoothing length and have
+           computed properties from the gas */
+        scheduler_addunlock(s, c->stars.ghost_out,
+                            c->stars.hii_ionization_feedback);
+        scheduler_addunlock(s, c->stars.hii_ionization_feedback,
+                            c->stars.stars_out);
 
-	if (with_timestep_sync) {
-	  if (c->super->timestep_sync == NULL)
-	    warning("c->super.timestep_sync is NULL!");
+        if (with_timestep_sync) {
+          if (c->super->timestep_sync == NULL)
+            warning("c->super.timestep_sync is NULL!");
 
-	  scheduler_addunlock(s, c->stars.hii_ionization_feedback, c->super->timestep_sync);
-	}
+          scheduler_addunlock(s, c->stars.hii_ionization_feedback,
+                              c->super->timestep_sync);
+        }
       }
 
       /* Radiative Transfer */
@@ -2682,7 +2683,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
     }
 
-    else if (t_type == task_type_stars_hii_ionization_feedback && ci->hydro.super != NULL) {
+    else if (t_type == task_type_stars_hii_ionization_feedback &&
+             ci->hydro.super != NULL) {
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
     }

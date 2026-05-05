@@ -52,7 +52,7 @@ double radiation_get_part_rate_to_fully_ionize(
 void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj);
 void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj);
 char radiation_is_part_tagged_as_ionized(const struct part *p,
-                                        const struct xpart *xpj);
+                                         const struct xpart *xpj);
 void radiation_consume_ionizing_photons(struct spart *sp,
                                         double Delta_dot_N_ion);
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);
@@ -72,11 +72,11 @@ float radiation_get_star_physical_radiation_pressure(
     const struct cosmology *cosmo);
 
 char radiation_is_part_ionized(const struct phys_const *phys_const,
-                              const struct hydro_props *hydro_props,
-                              const struct unit_system *us,
-                              const struct cosmology *cosmo,
-                              const struct cooling_function_data *cooling,
-                              const struct part *p, const struct xpart *xp);
+                               const struct hydro_props *hydro_props,
+                               const struct unit_system *us,
+                               const struct cosmology *cosmo,
+                               const struct cooling_function_data *cooling,
+                               const struct part *p, const struct xpart *xp);
 
 float radiation_get_individual_star_radius(const float mass,
                                            const struct unit_system *us,

@@ -40,8 +40,7 @@ struct tracers_xpart_data {
     float end_time;
 
   } HII_region;
-  
-  };
+};
 
 /* /\** */
 /*  * @brief Properties of the tracers stored in the star particle data. */
