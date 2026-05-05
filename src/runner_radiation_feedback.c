@@ -72,12 +72,16 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
      value as we do deeper in the cell hierarchy. Ideally, we want to use the
      smallest hmax for a cell, process the stars and parts at this level for
      this cell, and go higher for cells/stars with higher h_hii */
-  const float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;
+
+  float r_hii_max = c->hydro.super->stars.h_hii_max_old * kernel_gamma;
+  if (c->stars.h_hii_max_old <= 0.0) {
+    r_hii_max = c->hydro.super->stars.h_max_old * kernel_gamma;
+  }
+
   const float interaction_limit = 1.2f * r_hii_max;
   const int can_recurse = c->split && (interaction_limit < 0.5f * c->dmin);
 
-  if (c->stars.count == 0 || c->hydro.count == 0 || r_hii_max <= 0.f ||
-      !cell_is_active_stars(c, e))
+  if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
     return;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -100,8 +104,11 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   if (can_recurse) {
     /* Keep recursing deeper into the super-cell hierarchy. */
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL)
-        runner_do_stars_hii_ionization_feedback(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) {
+	struct cell *restrict cp = c->progeny[k];
+        runner_do_stars_hii_ionization_feedback(r, cp, 0);
+	c->stars.h_hii_max = max(c->stars.h_hii_max, cp->stars.h_hii_max);
+      }
     }
   } else {
     /* We have reached the 'Working Level' */
@@ -137,12 +144,14 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
   struct spart *restrict sparts = c->stars.parts;
   const int scount = c->stars.count;
 
-  /* OR h_max_old? */
-  const float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;
+  float r_hii_max = c->hydro.super->stars.h_hii_max_old * kernel_gamma;
+  if (c->stars.h_hii_max_old <= 0.0) {
+    r_hii_max = c->hydro.super->stars.h_max_old * kernel_gamma;
+  }
+
   const float interaction_limit = 1.2f * r_hii_max;
 
-  if (c->stars.count == 0 || c->hydro.count == 0 || r_hii_max <= 0.f ||
-      !cell_is_active_stars(c, e))
+  if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
     return;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -340,9 +349,6 @@ void runner_do_stars_hii_ionization_feedback_self(
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
-
-  const float hi = si->h_hii;
-  const float hig2 = hi * hi * kernel_gamma2;
   const float six[3] = {(float)(si->x[0] - c->loc[0]),
                         (float)(si->x[1] - c->loc[1]),
                         (float)(si->x[2] - c->loc[2])};
@@ -376,9 +382,7 @@ void runner_do_stars_hii_ionization_feedback_self(
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (r2 < hig2) {
-      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c);
-    }
+    runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c);
     /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
        flag to increase the stack size? Or to iterate again later by discarding
        these particles, since they will be tagged as ionized */
@@ -443,8 +447,6 @@ void runner_do_stars_hii_ionization_feedback_pair(
       shift[k] = -e->s->dim[k];
   }
 
-  const float hi = si->h_hii;
-  const float hig2 = hi * hi * kernel_gamma2;
   const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                         (float)(si->x[1] - (cj->loc[1] + shift[1])),
                         (float)(si->x[2] - (cj->loc[2] + shift[2]))};
@@ -475,9 +477,7 @@ void runner_do_stars_hii_ionization_feedback_pair(
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (r2 < hig2) {
-      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
-    }
+    runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
     /* TODO: If we reach the max_size, we shoudl print a warning. Maybe add a
        flag to increase the stack size? Or to iterate again later by discarding
        these particles, since they will be tagged as ionized */
