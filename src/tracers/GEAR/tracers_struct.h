@@ -25,7 +25,23 @@
 /**
  * @brief Properties of the tracers stored in the extended particle data.
  */
-struct tracers_xpart_data {};
+struct tracers_xpart_data {
+
+  /*! Radiation struct */
+  struct {
+
+    /*! Tag to ionize the part */
+    char is_ionized;
+
+    /*! Id of the star that ionized this particle */
+    long long star_id;
+
+    /*! Time when this particle is not ionized anymore */
+    float end_time;
+
+  } HII_region;
+  
+  };
 
 /* /\** */
 /*  * @brief Properties of the tracers stored in the star particle data. */

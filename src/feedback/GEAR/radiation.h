@@ -51,7 +51,7 @@ double radiation_get_part_rate_to_fully_ionize(
 
 void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj);
 void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj);
-int radiation_is_part_tagged_as_ionized(const struct part *p,
+char radiation_is_part_tagged_as_ionized(const struct part *p,
                                         const struct xpart *xpj);
 void radiation_consume_ionizing_photons(struct spart *sp,
                                         double Delta_dot_N_ion);
@@ -71,7 +71,7 @@ float radiation_get_star_physical_radiation_pressure(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo);
 
-int radiation_is_part_ionized(const struct phys_const *phys_const,
+char radiation_is_part_ionized(const struct phys_const *phys_const,
                               const struct hydro_props *hydro_props,
                               const struct unit_system *us,
                               const struct cosmology *cosmo,

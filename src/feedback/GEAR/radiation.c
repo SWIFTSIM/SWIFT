@@ -134,7 +134,7 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  */
 __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
     struct part *p, struct xpart *xp) {
-  xp->feedback_data.radiation.is_ionized = 1;
+  xp->tracers_data.HII_region.is_ionized = 1;
   return;
 }
 
@@ -146,7 +146,7 @@ __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
  */
 __attribute__((always_inline)) INLINE void radiation_reset_part_ionized_tag(
     struct part *p, struct xpart *xp) {
-  xp->feedback_data.radiation.is_ionized = 0;
+  xp->tracers_data.HII_region.is_ionized = 0;
   return;
 }
 
@@ -157,9 +157,9 @@ __attribute__((always_inline)) INLINE void radiation_reset_part_ionized_tag(
  * @param xp The extended data of the particle.
  * @return Is the particle *tagged* ionized?
  */
-__attribute__((always_inline)) INLINE int radiation_is_part_tagged_as_ionized(
+__attribute__((always_inline)) INLINE char radiation_is_part_tagged_as_ionized(
     const struct part *p, const struct xpart *xp) {
-  return xp->feedback_data.radiation.is_ionized;
+  return xp->tracers_data.HII_region.is_ionized;
 }
 
 /**
@@ -175,7 +175,7 @@ __attribute__((always_inline)) INLINE int radiation_is_part_tagged_as_ionized(
  * @param xp The extended data of the particle.
  * @return Is the particle ionized?
  */
-__attribute__((always_inline)) INLINE int radiation_is_part_ionized(
+__attribute__((always_inline)) INLINE char radiation_is_part_ionized(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const struct part *p,
@@ -188,7 +188,7 @@ __attribute__((always_inline)) INLINE int radiation_is_part_ionized(
       1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   /* Is the particle ionized ? */
-  return (T > ten_to_four_kelvin || xp->feedback_data.radiation.is_ionized);
+  return (T > ten_to_four_kelvin || xp->tracers_data.HII_region.is_ionized);
 }
 
 /**

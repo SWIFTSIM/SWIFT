@@ -82,7 +82,20 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  return 0;
+  int num = 2;
+
+  list[0] = io_make_output_field(
+      "IsIonizedFlags", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+      tracers_data.HII_region.is_ionized,
+      "Were the particles flagged as ionized by HII ionzation subgrid model?");  
+
+  list[1] = io_make_output_field(
+      "HIIStarIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+      tracers_data.HII_region.star_id,
+      "Star particle IDs that ionized these gas particles due to HII ionzation "
+      "subgrid model?");  
+
+  return num;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
