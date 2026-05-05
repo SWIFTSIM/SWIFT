@@ -167,7 +167,6 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
    */
   /*         c->cellID, c->hydro.super->cellID, interaction_limit, c->dmin); */
 
-  /* TODO: Handle the case where this value is too small. */
   /* TODO: Add multiple tries if the star has not exhausted its photons */
   const int max_ngbs = 128;
   struct hii_neighbor *ngb_buffer =
@@ -230,11 +229,6 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
                     c_in->cellID, c->hydro.super->cellID, c->cellID);
           }
 #endif
-
-          struct cell *cj = l->t->cj;
-          struct cell *ci = l->t->ci;
-          message("[%lld, %lld], hydro super = %lld , %lld", ci->cellID,
-                  cj->cellID, ci->hydro.super->cellID, cj->hydro.super->cellID);
 
           /* Now, find the correct level... */
           const int can_recurse_j =
