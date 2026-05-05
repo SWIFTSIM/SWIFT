@@ -238,64 +238,82 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
       }
 #endif
 
+      const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, si->time_bin);
+      const double dot_N_ion = si->feedback_data.radiation.dot_N_ion;
+
       /* Now let's ionize the gas particles! */
       for (int k = 0; k < count_found; k++) {
-        struct part *pj = ngb_buffer[k].p;
-        struct xpart *xpj = ngb_buffer[k].xp;
+	struct part *pj = ngb_buffer[k].p;
+	struct xpart *xpj = ngb_buffer[k].xp;
 
-        /* Do the ionization */
-        /* 1. Tag gas as ionized (atomics)
-           2. Flag to be synchronized (atomics)
-           3. Consume photons from the star
-           4. Compute M_HII and r_HII for the star
-           5. Update the stars r_HII.
-           6. Update the cell max r_HII after finising processing all star
-           particles
-        */
-        /* feedback_do_HII_ionization(p, xp); */
-        const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
-            phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+	/* Do the ionization */
+	/* 1. Tag gas as ionized (atomics)
+	   2. Flag to be synchronized (atomics)
+	   3. Consume photons from the star
+	   4. Compute M_HII and r_HII for the star
+	   5. Update the stars r_HII.
+	   6. Update the cell max r_HII after finising processing all star
+	   particles
+	*/
+	/* feedback_do_HII_ionization(p, xp); */
 
-        if (Delta_dot_N_ion <= radiation_get_star_ionization_rate(si) &&
-            atomic_cas(&xpj->feedback_data.radiation.is_ionized, 0, 1) == 0) {
+	/* Fast non-atomic check: if already ionized, just move on. */
+	if (xpj->tracers_data.HII_region.is_ionized) continue;
 
-          /* Flag the particle to be synchronized on the timeline. */
-          atomic_or(&pj->limiter_data.to_be_synchronized, 1);
+	const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
 
-          /* Consume photons from the star */
-          radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+	/* Case 1: Ionization is guaranteed */
+	if (Delta_dot_N_ion <= radiation_get_star_ionization_rate(si)) {
+	  if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) == 0) {
 
-          /* Update the star's HII mass */
-          /* si->feedback_data.mass_HII += hydro_get_mass(pj); */
+	    /* Flag the particle to be synchronized on the timeline.
+	       We still use atomic_or here because other stars might be
+	       tripping the limiter in feedback loop. */
+	    atomic_or(&pj->limiter_data.to_be_synchronized, 1);
 
-          /* Update the star's r_HII to the distance of this particle */
-          si->h_hii = sqrtf(ngb_buffer[k].r2) * kernel_gamma_inv;
-        } else {
-          /* Particle was already ionized by another star in this sub-cycle.
-           * We skip it and move to the next nearest neighbor. */
+	    /* Add the star ID */
+	    xpj->tracers_data.HII_region.star_id = si->id;
 
-	  /* TODO: Handle that */
-	  /* /\* If we cannot fully ionize, compute a probability to determine if */
-	  /*    we */
-	  /*    fully ionize pj or not and draw the random number.  *\/ */
-	  /* const float proba = dot_N_ion / Delta_dot_N_ion; */
-	  /* const float random_number = */
-          /*   random_unit_interval(sp->id, ti_begin, */
-	  /* 			 random_number_HII_regions); */
+	    /* Consume photons from the star */
+	    radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
 
-	  /* /\* If we are lucky, do the ionization *\/ */
-	  /* if (random_number <= proba) { */
-	  /*   /\* Update the Stromgren sphere radius *\/ */
-	  /*   sp->feedback_data.radiation.R_stromgren = stromgren[i].distance; */
-	  /* } */
+	    /* Update HII region properties */
+	    si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
+	    si->h_hii = max(si->h_hii, sqrtf(ngb_buffer[k].r2) * kernel_gamma_inv);
+	  }
+	  /* If CAS failed, someone else grabbed it; just continue. */
+	} else {
 
-	  /* /\* Consume the photons in all cases *\/ */
-	  /* radiation_consume_ionizing_photons(sp, Delta_dot_N_ion); */
-          continue;
-        }
-      }
-    } /* Loop over the sorted particles */
+	  /* If we cannot fully ionize, compute a probability to determine if
+	     we fully ionize pj or not and draw the random number.  */
+	  const float proba = dot_N_ion / Delta_dot_N_ion;
+	  const float random_number = random_unit_interval(si->id, ti_begin, random_number_HII_regions);
 
+	  /* If we are lucky, do the ionization */
+	  if (random_number <= proba) {
+	    /* We won the roll! Now try to claim the particle. */
+	    if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) == 0) {
+	      atomic_or(&pj->limiter_data.to_be_synchronized, 1);
+
+	      xpj->tracers_data.HII_region.star_id = si->id;
+
+	      /* The star is now empty of photons */
+	      radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+	      si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
+	      si->h_hii = max(si->h_hii, sqrtf(ngb_buffer[k].r2) * kernel_gamma_inv);
+
+	      /* We are out of photons, stop looking for neighbors for this star */
+	      break;
+	    }
+	  } else {
+	    /* We lost the roll. We still consume the remaining photons. */
+	    radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+	    /* Star is empty, stop. */
+	    break;
+	  }
+	} /* End of probability handling */
+      } /* Loop over the sorted particles */
+    }
   } /* Loop over sparts */
   free(ngb_buffer);
 }
