@@ -113,6 +113,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   const size_t b_index_size = size_bparts + space_expected_max_nr_strays;
   const size_t sink_index_size = size_sinks + space_expected_max_nr_strays;
 
+  const ticks tic_setup_buffers = getticks();
+
   /* Allocate arrays to store the indices of the cells where particles
      belong. We allocate extra space to allow for particles we may
      receive from other nodes */
@@ -173,6 +175,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     space_sinks_get_cell_index(s, sink_index, cell_sink_counts,
                                &count_inhibited_sinks, &count_extra_sinks,
                                verbose);
+
+  if (verbose)
+    message("Preparing cell index buffers took %.3f %s.",
+            clocks_from_ticks(getticks() - tic_setup_buffers),
+            clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some safety checks */
@@ -488,6 +495,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #ifdef WITH_MPI
 
+  const ticks tic_received_particles = getticks();
+
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. This can be skipped if we just repartitioned space
      as there should be no strays in that case */
@@ -646,6 +655,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #endif /* WITH_MPI */
 
+  if (verbose)
+    message("Integrating exchanged particles took %.3f %s.",
+            clocks_from_ticks(getticks() - tic_received_particles),
+            clocks_getunit());
+
   const ticks tic_sort = getticks();
 
   /* Sort the parts according to their cells. */
@@ -765,6 +779,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Extract the cell counts from the sorted indices. Deduct the extra
    * particles. */
+  const ticks tic_count_cells = getticks();
   size_t last_index = 0;
   h_index[nr_parts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_parts; k++) {
@@ -919,6 +934,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       last_gindex = k + 1;
     }
   }
+
+  if (verbose)
+    message("Counting particles per cell took %.3f %s.",
+            clocks_from_ticks(getticks() - tic_count_cells),
+            clocks_getunit());
 
   /* We no longer need the indices as of here. */
   swift_free("g_index", g_index);
