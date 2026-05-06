@@ -91,6 +91,7 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
   for (size_t i = 0; i < 3; i++) {
     sp->feedback_data.to_collect_mhd.ngb_m[i] = 0.f;
   }
+  sp->feedback_data.to_collect_mhd.ngb_B_inj = 0.f;
 
   /* Reset all ray structs carried by this star particle */
   ray_init(sp->feedback_data.SNII_rays, eagle_SNII_feedback_num_of_rays);
@@ -165,6 +166,7 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   for (size_t i = 0; i < 3; i++) {
     sp->feedback_data.to_distribute.magnetic_moment[i] = 0.f;
   }
+  sp->feedback_data.to_distribute.ngb_B_inj_abs = 0.f;
 
 }
 

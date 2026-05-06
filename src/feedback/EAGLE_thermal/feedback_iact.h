@@ -102,6 +102,10 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
     pj_m[2] /= pj_m_abs;
   }
 
+  if (rho != 0.f)
+    si->feedback_data.to_collect_mhd.ngb_B_inj += wi * wi * mj / 
+          (2 * fb_props->mu_0 * rho);
+
   si->feedback_data.to_collect_mhd.ngb_m[0] += pj_m[0];
   si->feedback_data.to_collect_mhd.ngb_m[1] += pj_m[1];
   si->feedback_data.to_collect_mhd.ngb_m[2] += pj_m[2];
@@ -414,30 +418,57 @@ runner_iact_nonsym_feedback_apply(
 
   /* Are we doing some SNII feedback? */
   if (N_of_SNII_thermal_energy_inj > 0) {
-
     int N_of_SNII_energy_inj_received_by_gas = 0;
 
-    float B_inj[3] = {0.f, 0.f, 0.f};
+    double B_inj[3] = {0.f, 0.f, 0.f};
 
     /* Find out how many rays this gas particle has received. */
     for (int i = 0; i < N_of_SNII_thermal_energy_inj; i++) {
       if (pj->id == si->feedback_data.SNII_rays[i].id_min_length) {
         N_of_SNII_energy_inj_received_by_gas++;
         
-        B_inj[0] += si->feedback_data.SNII_rays[i].B_inj[0];
-        B_inj[1] += si->feedback_data.SNII_rays[i].B_inj[1];
-        B_inj[2] += si->feedback_data.SNII_rays[i].B_inj[2];
+        if (!fb_props->all_neighbours_injection) {
+          B_inj[0] += si->feedback_data.SNII_rays[i].B_inj[0];
+          B_inj[1] += si->feedback_data.SNII_rays[i].B_inj[1];
+          B_inj[2] += si->feedback_data.SNII_rays[i].B_inj[2];
+        }
       }
+    }
+
+    if (fb_props->all_neighbours_injection) {
+      float m[3] = {si->feedback_data.to_distribute.magnetic_moment[0],
+                    si->feedback_data.to_distribute.magnetic_moment[1],
+                    si->feedback_data.to_distribute.magnetic_moment[2]};
+    
+      B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
+      B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
+      B_inj[2] = dx[0]*m[1] - dx[1]*m[0];
+
+      const float B_inj_rescale = wi / sqrtf(B_inj[0]*B_inj[0] +
+                            B_inj[1]*B_inj[1] + B_inj[2]*B_inj[2]);
+      for (size_t i = 0; i < 3; i++) {
+        B_inj[i] *= B_inj_rescale;
+      }
+
+      const float ngb_B_inj_norm = si->feedback_data.to_distribute.ngb_B_inj_abs;
+
+      xpj->mhd_data.B_over_rho_full[0] += ngb_B_inj_norm * B_inj[0] / rho_j;
+      xpj->mhd_data.B_over_rho_full[1] += ngb_B_inj_norm * B_inj[1] / rho_j;
+      xpj->mhd_data.B_over_rho_full[2] += ngb_B_inj_norm * B_inj[2] / rho_j;
+
     }
 
     /* If the number of SNII energy injections > 0, do SNII feedback */
     if (N_of_SNII_energy_inj_received_by_gas > 0) {
 
-      float B_inj_norm = si->feedback_data.to_distribute.B_inj_abs;
+      if (!fb_props->all_neighbours_injection) {
+        message("Test");
+        float B_inj_norm = si->feedback_data.to_distribute.B_inj_abs;
 
-      xpj->mhd_data.B_over_rho_full[0] += B_inj_norm * B_inj[0] / rho_j;
-      xpj->mhd_data.B_over_rho_full[1] += B_inj_norm * B_inj[1] / rho_j;
-      xpj->mhd_data.B_over_rho_full[2] += B_inj_norm * B_inj[2] / rho_j;
+        xpj->mhd_data.B_over_rho_full[0] += B_inj_norm * B_inj[0] / rho_j;
+        xpj->mhd_data.B_over_rho_full[1] += B_inj_norm * B_inj[1] / rho_j;
+        xpj->mhd_data.B_over_rho_full[2] += B_inj_norm * B_inj[2] / rho_j;
+      }
 
       /* Compute new energy of this particle */
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
