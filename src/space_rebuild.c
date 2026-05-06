@@ -65,8 +65,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   space_regrid(s, verbose);
 
   /* Allocate extra space for particles that will be created */
-  if (s->with_star_formation || s->with_sink || s->with_hydro_splitting)
+  if (s->with_star_formation || s->with_sink || s->with_hydro_splitting) {
+    const ticks tic_allocate_extras = getticks();
     space_allocate_extras(s, verbose);
+    if (verbose)
+      message("Allocating extra particles took %.3f %s.",
+              clocks_from_ticks(getticks() - tic_allocate_extras),
+              clocks_getunit());
+  }
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
@@ -640,6 +646,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #endif /* WITH_MPI */
 
+  const ticks tic_sort = getticks();
+
   /* Sort the parts according to their cells. */
   if (nr_parts > 0)
     space_parts_sort(s->parts, s->xparts, h_index, cell_part_counts,
@@ -813,8 +821,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   swift_free("sink_index", sink_index);
   swift_free("cell_sink_counts", cell_sink_counts);
 
+  const ticks tic_unique_ids = getticks();
+
   /* Update the slice of unique IDs. */
   space_update_unique_id(s);
+
+  if (verbose)
+    message("Updating unique IDs took %.3f %s.",
+            clocks_from_ticks(getticks() - tic_unique_ids),
+            clocks_getunit());
 
 #ifdef WITH_MPI
 
@@ -860,6 +875,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   if (nr_gparts > 0)
     space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
                       g_index, cell_gpart_counts, s->nr_cells);
+
+  if (verbose)
+    message("Sorting particles by cell took %.3f %s.",
+            clocks_from_ticks(getticks() - tic_sort), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -1092,8 +1111,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
-  if (s->with_star_formation || s->with_sink || s->with_hydro_splitting)
+  if (s->with_star_formation || s->with_sink || s->with_hydro_splitting) {
+    const ticks tic_reorder_extras = getticks();
     space_reorder_extras(s, verbose);
+    if (verbose)
+      message("Re-ordering extra particles took %.3f %s.",
+              clocks_from_ticks(getticks() - tic_reorder_extras),
+              clocks_getunit());
+  }
 
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
@@ -1106,8 +1131,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       cell_check_multipole(&s->cells_top[k], s->e->gravity_properties);
 #endif
 
+  const ticks tic_free_sort_indices = getticks();
+
   /* Clean up any stray sort indices in the cell buffer. */
   space_free_buff_sort_indices(s);
+
+  if (verbose)
+    message("Cleaning sort buffers took %.3f %s.",
+            clocks_from_ticks(getticks() - tic_free_sort_indices),
+            clocks_getunit());
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
