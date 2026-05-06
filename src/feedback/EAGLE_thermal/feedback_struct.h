@@ -124,6 +124,9 @@ struct feedback_spart_data {
       /* Magnetic moment */
       float magnetic_moment[3];
 
+      /* normalisation magnetic field (used if injecting in all neighbours) */
+      float ngb_B_inj_abs;
+
     } to_distribute;
   };
   
@@ -131,6 +134,9 @@ struct feedback_spart_data {
 
     /* neighbour magnetic moment */
     float ngb_m[3];
+
+    /* normalisation magnetic field (used if injecting all neighbours) */
+    float ngb_B_inj;
 
   } to_collect_mhd;
 

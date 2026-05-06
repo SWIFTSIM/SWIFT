@@ -182,38 +182,28 @@ INLINE static float compute_magnetic_injection_field(
         B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
         B_inj[2] = dx[0]*m[1] - dx[1]*m[0];
 
-	/* determine the kernel smoothing length */
-	float kernel_h;
-	if (feedback_props->constant_scale){
-	  kernel_h = r_soft;
-	  message("test constant scale");
-	}
-	else if (feedback_props->particle_distance) {
-	  kernel_h = r_max * kernel_gamma_inv;
-	  message("test particle distance");
-	}
-	else {
-	  kernel_h = sp_h;
-	  message("test sp smoothing length");
-	}
-
-
-	message("r %f", r);
-	message("kernel_h %f", kernel_h);
-	message("r_max %f", r_max);
+        /* determine the kernel smoothing length */
+        float kernel_h;
+        if (feedback_props->constant_scale){
+          kernel_h = r_soft;
+        }
+        else if (feedback_props->particle_distance) {
+          kernel_h = r_max * kernel_gamma_inv;
+        }
+        else {
+          kernel_h = sp_h;
+        }
 
         /* for this mode the magnetic field is softened with 
-	 * the kernel */
+         * the kernel */
         kernel_eval_double(r/kernel_h, &B_inj_abs);
-	B_inj_abs /= pow_dimension(kernel_h);
-	message("B_inj_abs %f", B_inj_abs);
+        B_inj_abs /= pow_dimension(kernel_h);
 
-        B_inj_rescale = 1 / sqrtf(B_inj[0]*B_inj[0] +
+        B_inj_rescale = B_inj_abs / sqrtf(B_inj[0]*B_inj[0] +
                             B_inj[1]*B_inj[1] + B_inj[2]*B_inj[2]);
 
         for (size_t i = 0; i < 3; i++){
           B_inj[i] *= B_inj_rescale;
-	  B_inj[i] *= B_inj_abs;
         }
 
         break;
@@ -245,8 +235,6 @@ INLINE static float compute_magnetic_injection_field(
         error("wrong magnetic injection field specified");
 
     }
-
-    message("B_inj_abs, %f", B_inj_abs);
 
     /* Store the field to inject in the ray data */
     ray->B_inj[0] = B_inj[0];
@@ -421,8 +409,11 @@ INLINE static void compute_magnetic_feedback(
 
   const float B_inj = sqrtf(E_B_inj / B_conv_factor);
 
+  const float ngb_B_inj_norm = sp->feedback_data.to_collect_mhd.ngb_B_inj;
+
   /* Store the magnetic field normalisation */
   sp->feedback_data.to_distribute.B_inj_abs = B_inj;
+  sp->feedback_data.to_distribute.ngb_B_inj_abs = sqrtf(E_B_inj / ngb_B_inj_norm);
 
   /* rescale the thermal energy injection */
   sp->feedback_data.to_distribute.SNII_delta_u *= (1 - feedback_props->f_E_B);
@@ -1092,6 +1083,10 @@ void feedback_props_init(struct feedback_props *fp,
     /* fraction of energy used for magnetic field injection */
     fp->f_E_B = parser_get_param_float(params,
         "EAGLEFeedback:SNII_energy_fraction_magnetic_field");
+
+    /* Do we inject magnetic fields into all neighbours */
+    fp->all_neighbours_injection = parser_get_opt_param_int(params,
+        "EAGLEFeedback:SNII_magnetic_injection_all_neighbours", 0);
 
     /* check that energy fraction makes sense */
     if ((fp->f_E_B < 0.f) || (fp->f_E_B > 1.f)) {

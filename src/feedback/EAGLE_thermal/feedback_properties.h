@@ -337,6 +337,9 @@ struct feedback_props {
   /* mode of determining magnetic injection orientation */
   enum SNII_magnetic_injection_orientation magnetic_orientation_model;
 
+  /* whether to inject magnetic fields into all neighbours */
+  int all_neighbours_injection;
+
   /* the magnetic moment, for the constant orientation model */
   float magnetic_moment[3];
 
