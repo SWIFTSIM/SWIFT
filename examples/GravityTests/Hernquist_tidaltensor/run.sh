@@ -8,7 +8,7 @@ then
 fi
 
 
-../../../swift --threads=8 --steps=1 --hydro --self-gravity --limiter --sync hernquist.yml 2>&1 | tee output.log
+../../../swift --threads=8 --steps=1 --self-gravity --limiter --sync hernquist.yml 2>&1 | tee output.log
 
 echo "Plot particle tidal tensor along with expected profile"
 

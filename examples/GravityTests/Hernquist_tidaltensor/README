@@ -1,6 +1,7 @@
 This example generates a gas cloud which follows a Hernquist profile
 and tests whether the tidal tensor (and tidal softening) 
-of these particles matches the expected profile.
+of these particles matches the expected profile. 
+Requires swiftsimio (tested with v12.1.3)
 
 (Default Hernquist profile paramters:
   total mass M: 1e10  [Msun]
@@ -14,4 +15,4 @@ Configure with:
 
 Then run run.sh
 
-requires swiftsimio
+

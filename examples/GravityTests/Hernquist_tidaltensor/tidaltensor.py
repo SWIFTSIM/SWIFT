@@ -1,3 +1,13 @@
+# Plot the dark matter particle densities, tidal tensor and 
+# gravitational softening length.
+# As DM densities are not calculated by swift, these are determined
+# after the fact with the smoothing lengths:
+#     rho = m / h ** 3
+# These result in smaller densities than expected. A small code snippet
+# is provided which calculates the density per shell (radius) based on
+# the number of particles in that shell. This matches expectation.
+
+
 import swiftsimio
 import matplotlib.pyplot as plt
 import unyt as u
@@ -10,13 +20,13 @@ G = swiftsimio.cosmo_quantity(1, u.G, comoving=True, scale_factor=1, scale_expon
 
 def rho(r, M, a, mres):
     '''
-    Preffered units:
+    Preferred units:
     r in kpc
     M in Msun
     a in kpc
     mres in Msun
     '''
-    return  M / (2 * np.pi) * a / (r * (r + a) ** 3)
+    return  M * a / (2 * np.pi * r * (r + a) ** 3)
 
 def shell_vol(rin, rout):
     ''' Volume of spherical shell between radii rin and rout'''
@@ -38,15 +48,25 @@ snap = swiftsimio.load(snapfile)
 G = swiftsimio.cosmo_quantity(1, u.G, comoving=True, scale_factor=1, scale_exponent=3)
 
 # Read in some data
-x_gas = snap.gas.coordinates
-x_cen = np.median(x_gas, axis=0)
-x_gas -= x_cen                      # center the data around median
-r_gas = np.sqrt(np.sum(x_gas * x_gas, axis=1)).to(u.kpc)
-dens = snap.gas.densities.to(u.mh/u.cm**3)
-epsilon_sim = snap.gas.softenings.to(u.kpc)
+x_dm = snap.dark_matter.coordinates
+snap.dark_matter.smoothing_length = \
+        swiftsimio.visualisation.smoothing_length.generate_smoothing_lengths(
+        snap.dark_matter.coordinates,
+        snap.metadata.boxsize,
+        kernel_gamma=1.8,
+        neighbours=57,
+        speedup_fac=2,
+        dimension=3,
+    )
+
+# Center coordinates
+x_cen = np.median(x_dm, axis=0)
+x_dm -= x_cen                      # center the data around median
+r_dm = np.sqrt(np.sum(x_dm * x_dm, axis=1)).to(u.kpc)
+epsilon_sim = snap.dark_matter.softenings.to(u.kpc)
 
 # Calculate the normed value of the tensor from data
-ten2 = snap.gas.tidal_tensors ** 2
+ten2 = snap.dark_matter.tidal_tensors ** 2
 ten_norm = np.sqrt(np.sum(ten2, axis=1) + np.sum(ten2[:, 3:], axis=1)).to(u.Myr ** -2)
 
 # Hernquist halo characteristics (from IC file)
@@ -56,31 +76,42 @@ mres = 1e5 * u.msun
 
 # Calculate expected tidal tensor and softening based on IC file:
 r_ = np.logspace(-1, 2.5, num=50) * u.kpc
+r_gcen = np.sqrt(r_[1:] * r_[:-1]) # geometric average
 ten_ = ten_norm_func(r_, M, a).to(u.Myr ** -2)
 epsilon_ = ((G * mres / ten_) ** (1/3)).to(u.kpc)
 
 
 # Calculate running averages:
-shell_mask = np.zeros([49, len(r_gas)])
+shell_mask = np.zeros([49, len(r_dm)])
 for i, (rmin, rmax) in enumerate(zip(r_[:-1], r_[1:])):
-    shell_mask[i] = (r_gas > rmin) & (r_gas < rmax)
+    shell_mask[i] = (r_dm > rmin) & (r_dm < rmax)
+
+dens = (snap.dark_matter.masses / \
+    (snap.dark_matter.smoothing_length ** 3)).to(u.mh/u.cm**3)
 
 avg_dens = running_avg(shell_mask, dens)
 avg_ten = running_avg(shell_mask, ten_norm)
 avg_epsilon = running_avg(shell_mask, epsilon_sim)
 
 
+# Below is a code snippet to calculate the density at each radius
+# from the number of particles in each shell.
+
+# n_part_per_shell = np.sum(shell_mask, axis=1)
+# avg_dens = (n_part_per_shell * mres / \
+#     shell_vol(r_[:-1], r_[1:])).to(u.mh/u.cm**3)
+
 
 # Plot..
 fig, axs = plt.subplots(3, 1, figsize=[5, 12])
 fig.subplots_adjust(hspace=0.3)
-fig.suptitle(r'Hernquist halo M = $10^{11}$M$_\odot$, c = 10 kpc' + \
+fig.suptitle(r'Hernquist halo M = $10^{10}$M$_\odot$, c = 10 kpc' + \
     '\n0th snap and theoretical profiles', y=0.95)
 
 ax = axs[0]
-ax.scatter(r_gas, dens, zorder=1, alpha=0.2, s=1)
+ax.scatter(r_dm, dens, zorder=1, alpha=0.2, s=1)
 ax.plot(r_, rho(r_, M, a, mres).to(u.mh/u.cm**3), c='k', label='Hernquist profile')
-ax.plot((r_[1:] + r_[:-1]) / 2, avg_dens, linestyle='--', c='r', label='Running average')
+ax.plot(r_gcen, avg_dens, linestyle='--', c='r', label='Running average')
 ax.set_xscale('log')
 ax.set_yscale('log')
 ax.set_xlabel('Distance [kpc]')
@@ -90,8 +121,8 @@ ax.set_xlim(1e-1, 1e2)
 legend = ax.legend(loc='lower left')
 
 ax = axs[1]
-ax.scatter(r_gas, ten_norm, alpha=0.3, label='sim', s=1)
-ax.plot((r_[1:] + r_[:-1]) / 2, avg_ten, linestyle='--', c='r', label='Running average')
+ax.scatter(r_dm, ten_norm, alpha=0.3, label='sim', s=1)
+ax.plot(r_gcen, avg_ten, linestyle='--', c='r', label='Running average')
 ax.plot(r_, ten_, c='k')
 ax.set_xscale('log')
 ax.set_yscale('log')
@@ -101,9 +132,9 @@ ax.set_title('Particle Tidal tensor')
 ax.set_xlim(1e-1, 1e2)
 
 ax = axs[2]
-ax.scatter(r_gas, epsilon_sim, alpha=0.3, label='sim', s=1)
+ax.scatter(r_dm, epsilon_sim, alpha=0.3, label='sim', s=1)
 ax.plot(r_, epsilon_, c='k')
-ax.plot((r_[1:] + r_[:-1]) / 2, avg_epsilon, linestyle='--', c='r')
+ax.plot(r_gcen, avg_epsilon, linestyle='--', c='r')
 ax.axhline(0.2, c='dimgrey', alpha=0.8, label='Default softening')
 # ax.axhline(0.01, c='dimgrey', alpha=0.8, linestyle='--')
 ax.set_xlabel('Distance [kpc]')
