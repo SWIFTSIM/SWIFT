@@ -226,10 +226,10 @@ runner_iact_grav_pp_full_tensors(const float r2, const float h2,
   /* Should we soften ? */
   if (r2 >= h2) {
 
-    const float r_inv3 = r_inv * r_inv * r_inv;
+    const float r_inv5 = r_inv * r_inv * r_inv * r_inv * r_inv;
 
     /* Get Newtonian gravity */
-    *tidFac2 = 3.f * mass * r_inv3 * r_inv * r_inv;
+    *tidFac2 = 3.f * mass * r_inv5;
 
   } else {
 
@@ -270,10 +270,10 @@ runner_iact_grav_pp_truncated_tensors(const float r2, const float h2,
   /* Should we soften ? */
   if (r2 >= h2) {
 
-    const float r_inv3 = r_inv * r_inv * r_inv;
+    const float r_inv5 = r_inv * r_inv * r_inv  * r_inv * r_inv;
 
     /* Get Newtonian gravity */
-    *tidFac2 = 3.f * mass * r_inv3 * r_inv * r_inv;
+    *tidFac2 = 3.f * mass * r_inv5;
 
   } else {
 

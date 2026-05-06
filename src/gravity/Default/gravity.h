@@ -230,7 +230,13 @@ gravity_add_comoving_mesh_tensor(struct gpart *restrict gp, const float T_xx,
  *
  * No tidal tensor in this model.
  *
- * @param gp The particle of interest
+ * @param gp The particle.
+ * @param T_xx the xx-component of the tensor
+ * @param T_yy the yy-component of the tensor
+ * @param T_zz the zz-component of the tensor
+ * @param T_xy the xy-component of the tensor
+ * @param T_xz the xz-component of the tensor
+ * @param T_yz the yz-component of the tensor
  */
 __attribute__((always_inline)) INLINE static void
 gravity_get_comoving_tidal_tensor(const struct gpart *restrict gp,
