@@ -56,6 +56,19 @@ struct tag_mapper_data {
   struct cell *space_cells;
 };
 
+struct proxy_tags_send_task {
+  const int *src;
+  int *dst;
+  int count;
+};
+
+struct proxy_tags_recv_task {
+  const int *src;
+  int *dst;
+  int count;
+  struct cell *cell;
+};
+
 #ifdef WITH_MPI
 
 void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
@@ -90,6 +103,32 @@ void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
   }
 }
 
+void proxy_tags_exchange_aggregate_pack_mapper(void *map_data, int num_elements,
+                                               void *extra_data) {
+
+  (void)extra_data;
+
+  struct proxy_tags_send_task *tasks = (struct proxy_tags_send_task *)map_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    memcpy(tasks[k].dst, tasks[k].src, tasks[k].count * sizeof(int));
+  }
+}
+
+void proxy_tags_exchange_aggregate_unpack_mapper(void *map_data,
+                                                 int num_elements,
+                                                 void *extra_data) {
+
+  (void)extra_data;
+
+  struct proxy_tags_recv_task *tasks = (struct proxy_tags_recv_task *)map_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    memcpy(tasks[k].dst, tasks[k].src, tasks[k].count * sizeof(int));
+    cell_unpack_tags(tasks[k].dst, tasks[k].cell);
+  }
+}
+
 #endif
 
 /**
@@ -107,8 +146,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
 #ifdef WITH_MPI
 
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  const int nodeID = s->e->nodeID;
 
   ticks tic2 = getticks();
 
@@ -161,7 +199,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                  threadpool_auto_chunk_size, &extra_data);
 
   if (s->e->verbose)
-    message("Rank %d: Setup & Main Pack took %.3f %s.", rank,
+    message("Node %d: Setup & Main Pack took %.3f %s.", nodeID,
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
@@ -169,98 +207,154 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* Prepare for Per-Proxy Communication */
   MPI_Request *proxy_reqs_in = NULL;
   MPI_Request *proxy_reqs_out = NULL;
-  void **temp_send_buffers = NULL;  // Array of pointers to temp send buffers
-  void **temp_recv_buffers = NULL;  // Array of pointers to temp recv buffers
-  int *send_sizes = NULL;           // Size of data to send to each proxy
-  int *recv_sizes = NULL;           // Size of data to receive from each proxy
-  int num_active_sends = 0;         // Count actual sends initiated
-  int num_active_recvs = 0;         // Count actual receives initiated
+  int **temp_send_buffers = NULL;
+  int **temp_recv_buffers = NULL;
+  int *send_sizes = NULL;
+  int *recv_sizes = NULL;
+  struct proxy_tags_send_task *send_tasks = NULL;
+  struct proxy_tags_recv_task *recv_tasks = NULL;
+  int num_send_tasks = 0;
+  int num_recv_tasks = 0;
+  int num_active_sends = 0;
+  int num_active_recvs = 0;
 
-  // Allocate helper arrays based on the number of proxies
   if (num_proxies > 0) {
-    // Use calloc to initialize pointers to NULL and sizes to 0
     proxy_reqs_in = (MPI_Request *)calloc(num_proxies, sizeof(MPI_Request));
     proxy_reqs_out = (MPI_Request *)calloc(num_proxies, sizeof(MPI_Request));
-    temp_send_buffers = (void **)calloc(num_proxies, sizeof(void *));
-    temp_recv_buffers = (void **)calloc(num_proxies, sizeof(void *));
+    temp_send_buffers = (int **)calloc(num_proxies, sizeof(int *));
+    temp_recv_buffers = (int **)calloc(num_proxies, sizeof(int *));
     send_sizes = (int *)calloc(num_proxies, sizeof(int));
     recv_sizes = (int *)calloc(num_proxies, sizeof(int));
 
     if (!proxy_reqs_in || !proxy_reqs_out || !temp_send_buffers ||
         !temp_recv_buffers || !send_sizes || !recv_sizes) {
-      error("Rank %d: Failed to allocate memory for proxy comm structures.",
-            rank);
+      error("Node %d: Failed to allocate memory for proxy comm structures.",
+            nodeID);
     }
   }
 
-  /* Initiate Non-blocking Sends and Receives (Per Proxy) */
   for (int k = 0; k < num_proxies; k++) {
-    int partner_rank = proxies[k].nodeID;
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      const int size = proxies[k].cells_out[j]->mpi.pcell_size;
+      send_sizes[k] += size;
+      if (size > 0) num_send_tasks += 1;
+    }
 
-    // --- Handle Sends to Proxy k ---
-    if (proxies[k].nr_cells_out > 0) {
-      // Calculate total size
-      for (int j = 0; j < proxies[k].nr_cells_out; j++) {
-        send_sizes[k] += proxies[k].cells_out[j]->mpi.pcell_size;
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      const int size = proxies[k].cells_in[j]->mpi.pcell_size;
+      recv_sizes[k] += size;
+      if (size > 0) num_recv_tasks += 1;
+    }
+  }
+
+  if (num_send_tasks > 0) {
+    send_tasks = (struct proxy_tags_send_task *)malloc(
+        num_send_tasks * sizeof(struct proxy_tags_send_task));
+    if (send_tasks == NULL)
+      error("Node %d: Failed to allocate aggregate send tasks.", nodeID);
+  }
+
+  if (num_recv_tasks > 0) {
+    recv_tasks = (struct proxy_tags_recv_task *)malloc(
+        num_recv_tasks * sizeof(struct proxy_tags_recv_task));
+    if (recv_tasks == NULL)
+      error("Node %d: Failed to allocate aggregate recv tasks.", nodeID);
+  }
+
+  int send_task_id = 0;
+  int recv_task_id = 0;
+
+  for (int k = 0; k < num_proxies; k++) {
+    const int partner_rank = proxies[k].nodeID;
+
+    if (recv_sizes[k] > 0) {
+      temp_recv_buffers[k] = (int *)malloc(recv_sizes[k] * sizeof(int));
+      if (temp_recv_buffers[k] == NULL)
+        error("Node %d: Failed to allocate temp recv buffer for proxy %d.",
+              nodeID, partner_rank);
+
+      int err = MPI_Irecv(temp_recv_buffers[k], recv_sizes[k], MPI_INT,
+                          partner_rank, proxy_tag_tags, MPI_COMM_WORLD,
+                          &proxy_reqs_in[num_active_recvs]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to Irecv aggregate tags.");
+      num_active_recvs += 1;
+    }
+
+    if (send_sizes[k] > 0) {
+      temp_send_buffers[k] = (int *)malloc(send_sizes[k] * sizeof(int));
+      if (temp_send_buffers[k] == NULL)
+        error("Node %d: Failed to allocate temp send buffer for proxy %d.",
+              nodeID, partner_rank);
+    }
+
+    int current_send_offset = 0;
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      const int cid = proxies[k].cells_out[j] - s->cells_top;
+      const int size = proxies[k].cells_out[j]->mpi.pcell_size;
+
+      if (size > 0) {
+        send_tasks[send_task_id].src = &tags_out[offset_out[cid]];
+        send_tasks[send_task_id].dst = &temp_send_buffers[k][current_send_offset];
+        send_tasks[send_task_id].count = size;
+        send_task_id += 1;
+        current_send_offset += size;
       }
+    }
 
-      if (send_sizes[k] > 0) {  // Proceed only if there's data
-        temp_send_buffers[k] = malloc(send_sizes[k] * sizeof(int));
-        if (!temp_send_buffers[k])
-          error("Rank %d: Failed to allocate temp send buffer for proxy %d.",
-                rank, partner_rank);
+    if (current_send_offset != send_sizes[k])
+      error("Node %d: Send size mismatch for proxy %d. Expected %d, built %d.",
+            nodeID, partner_rank, send_sizes[k], current_send_offset);
 
-        // Pack data from main tags_out into the temporary buffer
-        int current_offset = 0;
-        for (int j = 0; j < proxies[k].nr_cells_out; j++) {
-          const int cid = proxies[k].cells_out[j] - s->cells_top;
-          const int size = proxies[k].cells_out[j]->mpi.pcell_size;
-          if (size > 0) {
-            memcpy((char *)temp_send_buffers[k] + current_offset * sizeof(int),
-                   &tags_out[offset_out[cid]], size * sizeof(int));
-            current_offset += size;
-          }
-        }
+    int current_recv_offset = 0;
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      const int cid = proxies[k].cells_in[j] - s->cells_top;
+      const int size = proxies[k].cells_in[j]->mpi.pcell_size;
 
-        // Issue single MPI_Isend using temp buffer
-        // Use the RECEIVER's rank ID as the tag
-        const int tag = partner_rank;
-        int err = MPI_Isend(
-            temp_send_buffers[k], send_sizes[k], MPI_INT, partner_rank, tag,
-            MPI_COMM_WORLD,
-            &proxy_reqs_out[num_active_sends]);  // Use counter as index
-        if (err != MPI_SUCCESS)
-          mpi_error(err, "Failed to Isend aggregate tags.");
-        num_active_sends++;  // Increment count of active sends
+      if (size > 0) {
+        if (offset_in[cid] + size > count_in)
+          error(
+              "Node %d: Unpack error - offset calculation mismatch for cell "
+              "%d from proxy %d.",
+              nodeID, cid, partner_rank);
+
+        recv_tasks[recv_task_id].src = &temp_recv_buffers[k][current_recv_offset];
+        recv_tasks[recv_task_id].dst = &tags_in[offset_in[cid]];
+        recv_tasks[recv_task_id].count = size;
+        recv_tasks[recv_task_id].cell = &s->cells_top[cid];
+        recv_task_id += 1;
+        current_recv_offset += size;
       }
-    }  // End if nr_cells_out > 0
+    }
 
-    // --- Handle Receives from Proxy k ---
-    if (proxies[k].nr_cells_in > 0) {
-      // Calculate total size
-      for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-        recv_sizes[k] += proxies[k].cells_in[j]->mpi.pcell_size;
-      }
+    if (current_recv_offset != recv_sizes[k])
+      error("Node %d: Recv size mismatch for proxy %d. Expected %d, built %d.",
+            nodeID, partner_rank, recv_sizes[k], current_recv_offset);
+  }
 
-      if (recv_sizes[k] > 0) {  // Proceed only if data is expected
-        temp_recv_buffers[k] = malloc(recv_sizes[k] * sizeof(int));
-        if (!temp_recv_buffers[k])
-          error("Rank %d: Failed to allocate temp recv buffer for proxy %d.",
-                rank, partner_rank);
+  if (send_task_id != num_send_tasks)
+    error("Node %d: Built %d send tasks, expected %d.", nodeID, send_task_id,
+          num_send_tasks);
 
-        // Issue single MPI_Irecv into temp buffer
-        // Expect sender to use OUR rank ID as the tag
-        const int tag = rank;
-        int err = MPI_Irecv(
-            temp_recv_buffers[k], recv_sizes[k], MPI_INT, partner_rank, tag,
-            MPI_COMM_WORLD,
-            &proxy_reqs_in[num_active_recvs]);  // Use counter as index
-        if (err != MPI_SUCCESS)
-          mpi_error(err, "Failed to Irecv aggregate tags.");
-        num_active_recvs++;  // Increment count of active receives
-      }
-    }  // End if nr_cells_in > 0
-  }  // End loop over proxies
+  if (recv_task_id != num_recv_tasks)
+    error("Node %d: Built %d recv tasks, expected %d.", nodeID, recv_task_id,
+          num_recv_tasks);
+
+  if (num_send_tasks > 0) {
+    threadpool_map(&s->e->threadpool, proxy_tags_exchange_aggregate_pack_mapper,
+                   send_tasks, num_send_tasks,
+                   sizeof(struct proxy_tags_send_task),
+                   threadpool_auto_chunk_size, NULL);
+  }
+
+  for (int k = 0; k < num_proxies; k++) {
+    if (send_sizes[k] > 0) {
+      int err = MPI_Isend(temp_send_buffers[k], send_sizes[k], MPI_INT,
+                          proxies[k].nodeID, proxy_tag_tags, MPI_COMM_WORLD,
+                          &proxy_reqs_out[num_active_sends]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to Isend aggregate tags.");
+      num_active_sends += 1;
+    }
+  }
 
   if (s->e->verbose)
     message("Posted %d aggregate Sends / %d aggregate Recvs.", num_active_sends,
@@ -270,89 +364,25 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   if (num_active_recvs > 0) {
     if (MPI_Waitall(num_active_recvs, proxy_reqs_in, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
-      error("Rank %d: MPI_Waitall on aggregate receives failed.", rank);
+      error("Node %d: MPI_Waitall on aggregate receives failed.", nodeID);
   }
 
   if (s->e->verbose)
     message("Aggregate MPI_Waitall (Recvs) took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Unpack Received Data (Serially) */
+  /* Unpack Received Data */
   tic2 = getticks();
-  int current_recv_req_idx = 0;  // Track index corresponding to proxy_reqs_in
 
-  // Create the extra_data struct needed for cell_unpack_tags
-  // Note: We only need tags_in, offset_in, and space_cells now for unpacking
-  struct tag_mapper_data unpack_extra_data;
-  unpack_extra_data.tags_in = tags_in;  // Pointer to the main receive buffer
-  unpack_extra_data.offset_in = offset_in;  // Offsets within tags_in
-  unpack_extra_data.space_cells =
-      s->cells_top;  // Pointer to the beginning of cell array
-
-  for (int k = 0; k < num_proxies; k++) {
-    // Only unpack if we expected data and allocated a buffer for this proxy
-    if (proxies[k].nr_cells_in > 0 && recv_sizes[k] > 0) {
-      int current_offset_in_temp_buffer =
-          0;  // Track position within temp buffer
-
-      for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-        const struct cell *recv_cell_info = proxies[k].cells_in[j];
-        const int cid = recv_cell_info - s->cells_top;  // Get the cell index
-        const int size =
-            recv_cell_info->mpi.pcell_size;  // Size of data for this cell
-
-        if (size > 0) {
-          // --- Copy data from temp buffer to final tags_in location ---
-          // Ensure offset_in[cid] is valid and within bounds of tags_in
-          if (offset_in[cid] + size > count_in) {
-            error(
-                "Rank %d: Unpack error - offset calculation mismatch for cell "
-                "%d from proxy %d.",
-                rank, cid, proxies[k].nodeID);
-          }
-          memcpy(&tags_in[offset_in[cid]],  // Destination in main buffer
-                 (char *)temp_recv_buffers[k] +
-                     current_offset_in_temp_buffer *
-                         sizeof(int),  // Source in temp buffer
-                 size * sizeof(int));  // Size to copy
-
-          // --- Call the cell-specific unpack function ---
-          // This uses the data *now residing* in tags_in[offset_in[cid]]
-          // to update the actual cell structure at space_cells[cid].
-          cell_unpack_tags(
-              &tags_in[offset_in[cid]],  // Pointer to data in main buffer
-              &unpack_extra_data
-                   .space_cells[cid]);  // Pointer to target cell struct
-
-          // Update offset for the *next* cell's data within the temp buffer
-          current_offset_in_temp_buffer += size;
-        }
-      }  // End loop over cells for this proxy
-
-      // Sanity check: Did we process the expected amount from the temp buffer?
-      if (current_offset_in_temp_buffer != recv_sizes[k]) {
-        error(
-            "Rank %d: Unpack size mismatch for proxy %d. Expected %d, "
-            "processed %d.",
-            rank, proxies[k].nodeID, recv_sizes[k],
-            current_offset_in_temp_buffer);
-      }
-
-      free(temp_recv_buffers[k]);  // Free the temp buffer now it's fully
-                                   // processed
-      temp_recv_buffers[k] = NULL;
-      current_recv_req_idx++;  // Increment processed receive counter
-    }  // End if(data expected from proxy)
-  }  // End loop over proxies
-
-  // Sanity check: Did we process the expected number of receives?
-  if (current_recv_req_idx != num_active_recvs) {
-    error("Rank %d: Processed %d receives during unpack, but expected %d.",
-          rank, current_recv_req_idx, num_active_recvs);
+  if (num_recv_tasks > 0) {
+    threadpool_map(&s->e->threadpool,
+                   proxy_tags_exchange_aggregate_unpack_mapper, recv_tasks,
+                   num_recv_tasks, sizeof(struct proxy_tags_recv_task),
+                   threadpool_auto_chunk_size, NULL);
   }
 
   if (s->e->verbose)
-    message("Unpacking aggregate data (serial) took %.3f %s.",
+    message("Unpacking aggregate data took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Wait for ALL Sends to Complete */
@@ -362,30 +392,23 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   if (num_active_sends > 0) {
     if (MPI_Waitall(num_active_sends, proxy_reqs_out, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
-      error("Rank %d: MPI_Waitall on aggregate sends failed.", rank);
+      error("Node %d: MPI_Waitall on aggregate sends failed.", nodeID);
   }
 
   if (s->e->verbose)
-    message("Rank %d: Aggregate MPI_Waitall (Sends) took %.3f %s.", rank,
+    message("Node %d: Aggregate MPI_Waitall (Sends) took %.3f %s.", nodeID,
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Cleanup Temporary Communication Structures */
   if (num_proxies > 0) {
     for (int k = 0; k < num_proxies; k++) {
-      // Free any remaining send buffers (recv buffers freed during unpack)
       if (temp_send_buffers[k] != NULL) {
         free(temp_send_buffers[k]);
       }
-      // Check if recv buffer was missed (shouldn't happen with current logic)
       if (temp_recv_buffers[k] != NULL) {
-        warning(
-            "Rank %d: Temp recv buffer for proxy %d was not freed during "
-            "unpack?",
-            rank, k);
         free(temp_recv_buffers[k]);
       }
     }
-    // Free the helper arrays themselves
     free(proxy_reqs_in);
     free(proxy_reqs_out);
     free(temp_send_buffers);
@@ -393,6 +416,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     free(send_sizes);
     free(recv_sizes);
   }
+
+  free(send_tasks);
+  free(recv_tasks);
 
   /* Final Clean up - Main Buffers and Offsets */
   swift_free("tags_in", tags_in);
