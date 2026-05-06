@@ -493,9 +493,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     error("Counts of inhibited g-particles do not match!");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-#ifdef WITH_MPI
-
   const ticks tic_received_particles = getticks();
+
+#ifdef WITH_MPI
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. This can be skipped if we just repartitioned space
