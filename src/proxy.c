@@ -162,14 +162,14 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
       const int size = proxies[k].cells_out[j]->mpi.pcell_size;
       send_sizes[k] += size;
-      if (size > 0) num_send_tasks += 1;
+      if (size > 0) num_send_tasks++;
     }
 
     /* Incoming cells. */
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
       const int size = proxies[k].cells_in[j]->mpi.pcell_size;
       recv_sizes[k] += size;
-      if (size > 0) num_recv_tasks += 1;
+      if (size > 0) num_recv_tasks++;
     }
   }
 
@@ -248,7 +248,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
         send_tasks[send_task_id].cell = &s->cells_top[cid];
         send_tasks[send_task_id].dst =
             &temp_send_buffers[k][current_send_offset];
-        send_task_id += 1;
+        send_task_id++;
         current_send_offset += size;
       }
     }
@@ -276,7 +276,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
         recv_tasks[recv_task_id].src =
             &temp_recv_buffers[k][current_recv_offset];
         recv_tasks[recv_task_id].cell = &s->cells_top[cid];
-        recv_task_id += 1;
+        recv_task_id++;
         current_recv_offset += size;
       }
     }
@@ -311,7 +311,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to Isend aggregate tags.");
 
       /* Count that we posted a send */
-      num_active_sends += 1;
+      num_active_sends++;
     }
   }
 
