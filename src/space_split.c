@@ -1053,6 +1053,9 @@ void space_split(struct space *s, int verbose) {
     }
     message("Have %d cells including subcells (cell footprint: %zd MB)",
             s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
+    for (int tpid = 0; tpid < s->e->nr_pool_threads; ++tpid)
+      message("Thread %d has %d sub cells in the tree", tpid,
+              s->nr_cells_sub[tpid]);
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
   }

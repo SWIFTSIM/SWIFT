@@ -508,6 +508,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     /* Pick off the next cell. */
     cells[j] = s->cells_sub[tpid];
     s->cells_sub[tpid] = cells[j]->next;
+    ++s->nr_cells_sub[tpid];
 
     /* Hook the multipole */
     if (s->with_self_gravity) {
@@ -2613,6 +2614,7 @@ void space_clean(struct space *s) {
   swift_free("sinks_foreign", s->sinks_foreign);
 #endif
   free(s->cells_sub);
+  free(s->nr_cells_sub);
   free(s->multipoles_sub);
 
   if (s->zoom_props != NULL) {
@@ -2835,6 +2837,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->cells_top = NULL;
   s->cells_top_updated = NULL;
   s->cells_sub = NULL;
+  s->nr_cells_sub = NULL;
   s->multipoles_top = NULL;
   s->multipoles_sub = NULL;
   s->local_cells_top = NULL;

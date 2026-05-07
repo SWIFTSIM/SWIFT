@@ -185,6 +185,9 @@ struct space {
   /*! Buffer of unused cells for the sub-cells. One chunk per thread. */
   struct cell **cells_sub;
 
+  /*! Number of sub-cells currently in use per thread. */
+  int *nr_cells_sub;
+
   /*! The multipoles associated with the top-level (level 0) cells */
   struct gravity_tensors *multipoles_top;
 

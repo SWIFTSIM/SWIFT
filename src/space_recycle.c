@@ -285,6 +285,7 @@ void space_recycle(struct space *s, struct cell *c) {
   /* Hook this cell into the buffer. */
   c->next = s->cells_sub[c->tpid];
   s->cells_sub[c->tpid] = c;
+  --s->nr_cells_sub[c->tpid];
   atomic_dec(&s->tot_cells);
 }
 
@@ -339,6 +340,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   if (tpid < 0) tpid = 0;
   cell_list_end->next = s->cells_sub[tpid];
   s->cells_sub[tpid] = cell_list_begin;
+  s->nr_cells_sub[tpid] -= count;
   atomic_sub(&s->tot_cells, count);
 
   /* Hook the multipoles into the buffer. */

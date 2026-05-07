@@ -895,6 +895,7 @@ void engine_config(int restart, int fof, struct engine *e,
   /* Cells per thread buffer. */
   e->s->cells_sub =
       (struct cell **)calloc(nr_pool_threads + 1, sizeof(struct cell *));
+  e->s->nr_cells_sub = (int *)calloc(nr_pool_threads + 1, sizeof(int));
   e->s->multipoles_sub = (struct gravity_tensors **)calloc(
       nr_pool_threads + 1, sizeof(struct gravity_tensors *));
 
