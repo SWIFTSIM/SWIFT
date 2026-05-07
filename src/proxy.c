@@ -327,7 +327,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     message(
         "Setting up, packing, and posting proxy aggregated tag exchanges took "
         "%.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+        clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
 
   tic2 = getticks();
