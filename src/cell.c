@@ -1855,7 +1855,7 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
     const double max_distance = e->mesh->r_cut_max;
     const double max_distance2 = max_distance * max_distance;
     const double min_radius2_rebuild =
-        cell_min_dist2_same_size(ci, cj, s->periodic, s->dim);
+        cell_min_dist2(ci, cj, s->periodic, s->dim);
     const double min_radius2 =
         cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
     message(
