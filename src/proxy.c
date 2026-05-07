@@ -62,26 +62,43 @@ struct proxy_tags_recv_task {
 
 #ifdef WITH_MPI
 
-void proxy_tags_exchange_aggregate_pack_mapper(void *map_data, int num_elements,
-                                               void *extra_data) {
+/**
+ * @brief Mapper function to pack the tags of the cells into the send buffer.
+ *
+ * @param map_data The array of #proxy_tags_send_task containing the cells and
+ * their corresponding send buffer locations.
+ * @param num_elements The number of tasks in the map_data array.
+ * @param extra_data Unused.
+ *
+ */
+void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
+                                     void *extra_data) {
 
-  (void)extra_data;
-
+  /* Unpack the tasks from the map data. */
   struct proxy_tags_send_task *tasks = (struct proxy_tags_send_task *)map_data;
 
+  /* Pack this set of cells' tags into the corresponding send buffers. */
   for (int k = 0; k < num_elements; k++) {
     cell_pack_tags(tasks[k].cell, tasks[k].dst);
   }
 }
 
-void proxy_tags_exchange_aggregate_unpack_mapper(void *map_data,
-                                                 int num_elements,
-                                                 void *extra_data) {
+/**
+ * @brief Mapper function to unpack the tags of the cells from the recv buffer.
+ *
+ * @param map_data The array of #proxy_tags_recv_task containing the cells and
+ * their corresponding recv buffer locations.
+ * @param num_elements The number of tasks in the map_data array.
+ * @param extra_data Unused.
+ *
+ */
+void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
 
-  (void)extra_data;
-
+  /* Unpack the tasks from the map data. */
   struct proxy_tags_recv_task *tasks = (struct proxy_tags_recv_task *)map_data;
 
+  /* Unpack this set of cells' tags from the corresponding recv buffers. */
   for (int k = 0; k < num_elements; k++) {
     cell_unpack_tags(tasks[k].src, tasks[k].cell);
   }
@@ -104,15 +121,11 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
 #ifdef WITH_MPI
 
-  const int nodeID = s->e->nodeID;
+  /* Early exit, there's nothing to do. */
+  if (num_proxies == 0) return;
 
+  ticks tic = getticks();
   ticks tic2 = getticks();
-
-  if (s->e->verbose)
-    message("Node %d: Setup took %.3f %s.", nodeID,
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
 
   /* Prepare for Per-Proxy Communication */
   MPI_Request *proxy_reqs_in = NULL;
@@ -128,28 +141,31 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   int num_active_sends = 0;
   int num_active_recvs = 0;
 
-  if (num_proxies > 0) {
-    proxy_reqs_in = (MPI_Request *)calloc(num_proxies, sizeof(MPI_Request));
-    proxy_reqs_out = (MPI_Request *)calloc(num_proxies, sizeof(MPI_Request));
-    temp_send_buffers = (int **)calloc(num_proxies, sizeof(int *));
-    temp_recv_buffers = (int **)calloc(num_proxies, sizeof(int *));
-    send_sizes = (int *)calloc(num_proxies, sizeof(int));
-    recv_sizes = (int *)calloc(num_proxies, sizeof(int));
+  /* Allocate the structures for the per-proxy communication. */
+  proxy_reqs_in = (MPI_Request *)calloc(num_proxies, sizeof(MPI_Request));
+  proxy_reqs_out = (MPI_Request *)calloc(num_proxies, sizeof(MPI_Request));
+  temp_send_buffers = (int **)calloc(num_proxies, sizeof(int *));
+  temp_recv_buffers = (int **)calloc(num_proxies, sizeof(int *));
+  send_sizes = (int *)calloc(num_proxies, sizeof(int));
+  recv_sizes = (int *)calloc(num_proxies, sizeof(int));
 
-    if (!proxy_reqs_in || !proxy_reqs_out || !temp_send_buffers ||
-        !temp_recv_buffers || !send_sizes || !recv_sizes) {
-      error("Node %d: Failed to allocate memory for proxy comm structures.",
-            nodeID);
-    }
+  /* Ensure everything was allocated correctly. */
+  if (!proxy_reqs_in || !proxy_reqs_out || !temp_send_buffers ||
+      !temp_recv_buffers || !send_sizes || !recv_sizes) {
+    error("Failed to allocate memory for proxy comm structures.");
   }
 
+  /* Calculate the sizes of the send and recv buffers, and the number of tasks
+   * needed to pack/unpack them. */
   for (int k = 0; k < num_proxies; k++) {
+    /* Outgoing cells. */
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
       const int size = proxies[k].cells_out[j]->mpi.pcell_size;
       send_sizes[k] += size;
       if (size > 0) num_send_tasks += 1;
     }
 
+    /* Incoming cells. */
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
       const int size = proxies[k].cells_in[j]->mpi.pcell_size;
       recv_sizes[k] += size;
@@ -157,169 +173,238 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
   }
 
+  /* If we have send tasks, allocate the send tasks array. This holds everything
+   * we need to know to pack the tags of the outgoing cells into the send
+   * buffers. */
   if (num_send_tasks > 0) {
     send_tasks = (struct proxy_tags_send_task *)malloc(
         num_send_tasks * sizeof(struct proxy_tags_send_task));
-    if (send_tasks == NULL)
-      error("Node %d: Failed to allocate aggregate send tasks.", nodeID);
+    if (send_tasks == NULL) error("Failed to allocate aggregate send tasks.");
   }
 
+  /* If we have recv tasks, allocate the recv tasks array. This holds everything
+   * we need to know to unpack the tags of the incoming cells from the recv
+   * buffers. */
   if (num_recv_tasks > 0) {
     recv_tasks = (struct proxy_tags_recv_task *)malloc(
         num_recv_tasks * sizeof(struct proxy_tags_recv_task));
-    if (recv_tasks == NULL)
-      error("Node %d: Failed to allocate aggregate recv tasks.", nodeID);
+    if (recv_tasks == NULL) error("Failed to allocate aggregate recv tasks.");
   }
 
+  /* Initialise the send and recv task ids. */
   int send_task_id = 0;
   int recv_task_id = 0;
 
+  /* Loop over each proxy, post the receives, allocate the aggregate buffers,
+   * and build the send/recv task lists. */
   for (int k = 0; k < num_proxies; k++) {
+
+    /* Get the rank we will be communicating with for this proxy. */
     const int partner_rank = proxies[k].nodeID;
 
+    /* Are we receiving any tags from this proxy? */
     if (recv_sizes[k] > 0) {
+
+      /* Allocate the temporary receive buffer for this proxy. */
       temp_recv_buffers[k] = (int *)malloc(recv_sizes[k] * sizeof(int));
       if (temp_recv_buffers[k] == NULL)
-        error("Node %d: Failed to allocate temp recv buffer for proxy %d.",
-              nodeID, partner_rank);
+        error("Failed to allocate temp recv buffer for proxy %d.",
+              partner_rank);
 
+      /* Post the receive for this proxy. We will unpack this buffer into the
+       * incoming cells once the receive completes below. */
       int err = MPI_Irecv(temp_recv_buffers[k], recv_sizes[k], MPI_INT,
                           partner_rank, proxy_tag_tags, MPI_COMM_WORLD,
                           &proxy_reqs_in[num_active_recvs]);
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to Irecv aggregate tags.");
-      num_active_recvs += 1;
+
+      /* Count that we posted a receive */
+      num_active_recvs++;
     }
 
+    /* Are we sending any tags to this proxy? */
     if (send_sizes[k] > 0) {
+
+      /* Allocate the temporary send buffer for this proxy. We will pack the
+       * tags of the outgoing cells into this buffer and then send it. */
       temp_send_buffers[k] = (int *)malloc(send_sizes[k] * sizeof(int));
       if (temp_send_buffers[k] == NULL)
-        error("Node %d: Failed to allocate temp send buffer for proxy %d.",
-              nodeID, partner_rank);
+        error("Failed to allocate temp send buffer for proxy %d.",
+              partner_rank);
     }
 
+    /* Loop over the outgoing top-level cells for this proxy and construct the
+     * send tasks. */
     int current_send_offset = 0;
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      /* Get the cell index into the top-level cell array and the size of the
+       * packed cell. */
       const int cid = proxies[k].cells_out[j] - s->cells_top;
       const int size = proxies[k].cells_out[j]->mpi.pcell_size;
 
+      /* If this cell has tags to send, add it to the send task list with its
+       * destination in the aggregate send buffer. */
       if (size > 0) {
         send_tasks[send_task_id].cell = &s->cells_top[cid];
-        send_tasks[send_task_id].dst = &temp_send_buffers[k][current_send_offset];
+        send_tasks[send_task_id].dst =
+            &temp_send_buffers[k][current_send_offset];
         send_task_id += 1;
         current_send_offset += size;
       }
     }
 
-    if (current_send_offset != send_sizes[k])
-      error("Node %d: Send size mismatch for proxy %d. Expected %d, built %d.",
-            nodeID, partner_rank, send_sizes[k], current_send_offset);
+    /* Ensure we don't have a disagreement between the size we calculated and
+     * the size we built for the send buffer. */
+    if (current_send_offset != send_sizes[k]) {
+      error("Send size mismatch for proxy %d. Expected %d, built %d.",
+            partner_rank, send_sizes[k], current_send_offset);
+    }
 
+    /* Loop over the incoming top-level cells for this proxy and construct the
+     * recv tasks. We will unpack the recv buffer into these cells once the
+     * receive completes below. */
     int current_recv_offset = 0;
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+
+      /* Get the cell index into the top-level cell array and the size of the
+       * packed cell. */
       const int cid = proxies[k].cells_in[j] - s->cells_top;
       const int size = proxies[k].cells_in[j]->mpi.pcell_size;
 
+      /* If this cell has tags to receive, add it to the recv tasks. */
       if (size > 0) {
-        recv_tasks[recv_task_id].src = &temp_recv_buffers[k][current_recv_offset];
+        recv_tasks[recv_task_id].src =
+            &temp_recv_buffers[k][current_recv_offset];
         recv_tasks[recv_task_id].cell = &s->cells_top[cid];
         recv_task_id += 1;
         current_recv_offset += size;
       }
     }
 
+    /* Ensure we don't have a disagreement between the size we calculated and
+     * the size we built for the recv buffer. */
     if (current_recv_offset != recv_sizes[k])
-      error("Node %d: Recv size mismatch for proxy %d. Expected %d, built %d.",
-            nodeID, partner_rank, recv_sizes[k], current_recv_offset);
+      error("Recv size mismatch for proxy %d. Expected %d, built %d.",
+            partner_rank, recv_sizes[k], current_recv_offset);
   }
 
+  /* Ensure we built the number of send and recv tasks we expected. */
   if (send_task_id != num_send_tasks)
-    error("Node %d: Built %d send tasks, expected %d.", nodeID, send_task_id,
-          num_send_tasks);
-
+    error("Built %d send tasks, expected %d.", send_task_id, num_send_tasks);
   if (recv_task_id != num_recv_tasks)
-    error("Node %d: Built %d recv tasks, expected %d.", nodeID, recv_task_id,
-          num_recv_tasks);
+    error("Built %d recv tasks, expected %d.", recv_task_id, num_recv_tasks);
 
+  /* If we have send tasks, pack the send buffers with the threadpool. */
   if (num_send_tasks > 0) {
-    threadpool_map(&s->e->threadpool, proxy_tags_exchange_aggregate_pack_mapper,
+    threadpool_map(&s->e->threadpool, proxy_tags_exchange_pack_mapper,
                    send_tasks, num_send_tasks,
                    sizeof(struct proxy_tags_send_task),
                    threadpool_auto_chunk_size, NULL);
   }
 
+  /* With everything packed, post the sends for each proxy. */
   for (int k = 0; k < num_proxies; k++) {
     if (send_sizes[k] > 0) {
       int err = MPI_Isend(temp_send_buffers[k], send_sizes[k], MPI_INT,
                           proxies[k].nodeID, proxy_tag_tags, MPI_COMM_WORLD,
                           &proxy_reqs_out[num_active_sends]);
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to Isend aggregate tags.");
+
+      /* Count that we posted a send */
       num_active_sends += 1;
     }
   }
 
-  if (s->e->verbose)
-    message("Posted %d aggregate Sends / %d aggregate Recvs.", num_active_sends,
-            num_active_recvs);
+  /* Report the number of sends and receives we posted for this exchange. */
+  if (s->e->verbose) {
+    message("Posted %d proxy aggregated Sends / %d proxy aggregated Recvs.",
+            num_active_sends, num_active_recvs);
+  }
+
+  /* Report how long the setup, packing, and posting of the aggregated
+   * communication took. */
+  if (s->e->verbose) {
+    message(
+        "Setting up, packing, and posting proxy aggregated tag exchanges took "
+        "%.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
+
+  tic2 = getticks();
 
   /* Wait for ALL Receives to Complete */
   if (num_active_recvs > 0) {
     if (MPI_Waitall(num_active_recvs, proxy_reqs_in, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
-      error("Node %d: MPI_Waitall on aggregate receives failed.", nodeID);
+      error("MPI_Waitall on aggregate receives failed.");
   }
 
-  if (s->e->verbose)
-    message("Aggregate MPI_Waitall (Recvs) took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  /* How long were we waiting for the receives to complete? */
+  if (s->e->verbose) {
+    message(
+        "Waiting for proxy aggregated tag receives to complete (MPI_Waitall) "
+        "took %.3f %s.",
+        clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
-  /* Unpack Received Data */
   tic2 = getticks();
 
+  /* If we have recv tasks, unpack the recv buffers with the threadpool. */
   if (num_recv_tasks > 0) {
-    threadpool_map(&s->e->threadpool,
-                   proxy_tags_exchange_aggregate_unpack_mapper, recv_tasks,
-                   num_recv_tasks, sizeof(struct proxy_tags_recv_task),
+    threadpool_map(&s->e->threadpool, proxy_tags_exchange_unpack_mapper,
+                   recv_tasks, num_recv_tasks,
+                   sizeof(struct proxy_tags_recv_task),
                    threadpool_auto_chunk_size, NULL);
   }
 
-  if (s->e->verbose)
-    message("Unpacking aggregate data took %.3f %s.",
+  /* Report how long the unpacking of the recv buffers took. */
+  if (s->e->verbose) {
+    message("Unpacking aggregated data took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
-  /* Wait for ALL Sends to Complete */
-  // (Often done after unpack, allows computation/unpack to overlap with sends
-  // finishing)
+  /* Don't move on if we haven't finished sending yet, we want to be sure the
+   * send buffers aren't reused before the sends have completed. */
   tic2 = getticks();
   if (num_active_sends > 0) {
     if (MPI_Waitall(num_active_sends, proxy_reqs_out, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
-      error("Node %d: MPI_Waitall on aggregate sends failed.", nodeID);
+      error("MPI_Waitall on aggregate sends failed.");
   }
 
-  if (s->e->verbose)
-    message("Node %d: Aggregate MPI_Waitall (Sends) took %.3f %s.", nodeID,
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  /* How long were we waiting for the sends to complete? */
+  if (s->e->verbose) {
+    message(
+        "Waiting for proxy aggregated tag sends to complete (MPI_Waitall) took "
+        "%.3f %s.",
+        clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
   /* Cleanup Temporary Communication Structures */
-  if (num_proxies > 0) {
-    for (int k = 0; k < num_proxies; k++) {
-      if (temp_send_buffers[k] != NULL) {
-        free(temp_send_buffers[k]);
-      }
-      if (temp_recv_buffers[k] != NULL) {
-        free(temp_recv_buffers[k]);
-      }
+  for (int k = 0; k < num_proxies; k++) {
+    if (temp_send_buffers[k] != NULL) {
+      free(temp_send_buffers[k]);
     }
-    free(proxy_reqs_in);
-    free(proxy_reqs_out);
-    free(temp_send_buffers);
-    free(temp_recv_buffers);
-    free(send_sizes);
-    free(recv_sizes);
+    if (temp_recv_buffers[k] != NULL) {
+      free(temp_recv_buffers[k]);
+    }
   }
 
+  /* Clean up transient structures for the per-proxy communication. */
+  free(proxy_reqs_in);
+  free(proxy_reqs_out);
+  free(temp_send_buffers);
+  free(temp_recv_buffers);
+  free(send_sizes);
+  free(recv_sizes);
   free(send_tasks);
   free(recv_tasks);
+
+  /* Done */
+  if (s->e->verbose) {
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+  }
 
 #else
   error("SWIFT was not compiled with MPI support.");
