@@ -5,7 +5,7 @@ import sys
 import glob
 
 # Get the total number of snapshots
-file_list = glob.glob("CoolingHalo_*")
+file_list = glob.glob("CoolingHalo_*hdf5")
 n_snaps = len(file_list)
 
 # some constants
@@ -65,7 +65,7 @@ for i in range(n_snaps):
     header = f["Header"]
     snap_time = header.attrs["Time"]
     snap_time_cgs = snap_time * unit_time_cgs
-    time_array_cgs[i] = snap_time_cgs
+    time_array_cgs[i] = snap_time_cgs[0]
 
     coords[:, 0] -= box_centre[0] / 2.0
     coords[:, 1] -= box_centre[1] / 2.0
@@ -104,11 +104,11 @@ ke = kinetic_energy_array / (N * v_c ** 2)
 ie = internal_energy_array / (N * v_c ** 2)
 te = pe + ke + ie  # + re
 
-print(pe)
-print(ke)
-print(ie)
-#  print(re)
-print(te)
+#  print(pe)
+#  print(ke)
+#  print(ie)
+#  #  print(re)
+#  print(te)
 
 spe = s_potential_energy_array / (N * v_c ** 2)
 ske = s_kinetic_energy_array / (N * v_c ** 2)
@@ -144,5 +144,4 @@ fig.suptitle(
     r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" % (N, v_c)
 )
 # plt.ylim((-4,2))
-# plot_filename = "density_profile_%03d.png" %i
 plt.show()
