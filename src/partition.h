@@ -76,6 +76,7 @@ struct partition {
   int nr_phi_slices;
   double theta_width;
   double phi_width;
+  int metis_seed;
 };
 
 /* Repartition type to use. */
@@ -94,6 +95,7 @@ struct repartition {
   float minfrac;
   float itr;
   int usemetis;
+  int metis_seed;
   int adaptive;
 
   int use_fixed_costs;
@@ -164,11 +166,13 @@ void partition_graph_init(struct space *s, int periodic, idx_t *adjncy,
                           int *nadjcny, idx_t *xadj, int *nxadj,
                           const int *cell_edge_offsets);
 void partition_pick_metis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int *celllist,
+                          double *vertexw, double *edgew, int metis_seed,
+                          int verbose, int *celllist,
                           const int *cell_edge_offsets, int nedges);
 void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
                              double *vertexw, double *edgew, int refine,
-                             int adaptive, float itr, int *celllist,
+                             int adaptive, float itr, int metis_seed,
+                             int verbose, int *celllist,
                              const int *cell_edge_offsets, int nedges);
 void partition_split_metis(struct space *s, int nregions, int *celllist);
 #endif
