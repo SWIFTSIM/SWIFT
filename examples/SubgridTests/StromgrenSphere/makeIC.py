@@ -42,7 +42,7 @@ def parse_options():
         action="store",
         dest="rho",
         type=float,
-        default=0.1,
+        default=5,
         help="Mean gas density in atom/cm3",
     )
 
@@ -51,7 +51,7 @@ def parse_options():
         action="store",
         dest="mass",
         type=float,
-        default=50,
+        default=0.1,
         help="Gas particle mass in solar mass",
     )
 
@@ -131,7 +131,8 @@ UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
 np.random.seed(1)
 
 # Number of particles
-N = (2 ** opt.level) ** 3  # number of particles
+if opt.level is not None:
+    N = (2 ** opt.level) ** 3
 
 # Mean density
 rho = opt.rho  # atom/cc
@@ -142,19 +143,28 @@ m = opt.mass  # in solar mass
 m = m * units.Msun
 
 # Size of the box
-if opt.boxsize is None:
-    # If we don't give the boxsize, then we can determine it
-    # Gas mass in the box
-    M = N * m
-    L = (M / rho) ** (1 / 3.0)
-else:
-    # If we fixed the boxsize, then the number of particles might change
-    L = opt.boxsize*units.kpc
-    M = rho * L**3
+if opt.level is not None:
+    if opt.boxsize is None:
+        # If we don't give the boxsize and we gave the level, then we can determine
+        # gas mass in the box
+        M = N * m
+        L = (M / rho) ** (1 / 3.0)
+    else:
+        # If we fixed the boxsize, then the number of particles might change
+        L = opt.boxsize*units.kpc
+        M = rho * L**3
 
-    print(M.to(units.Msun))
-    N = int(np.ceil(M.to(units.Msun) / m))
-    print(N)
+        print(M.to(units.Msun))
+        N = int(np.ceil(M.to(units.Msun) / m))
+        print(N)
+else:
+    if opt.boxsize is not None:
+        L = opt.boxsize*units.kpc
+        M = (rho*L).to(u.Msun)
+        N = M / m
+    else:
+        raise RuntimeError("If the opt.level and opt.boxsize are None, then we cannot determine the number of particles")
+
 
 # Gravitational constant
 G = constants.G
