@@ -843,8 +843,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   if (verbose)
     message("Updating unique IDs took %.3f %s.",
-            clocks_from_ticks(getticks() - tic_unique_ids),
-            clocks_getunit());
+            clocks_from_ticks(getticks() - tic_unique_ids), clocks_getunit());
 
 #ifdef WITH_MPI
 
@@ -937,8 +936,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   if (verbose)
     message("Counting particles per cell took %.3f %s.",
-            clocks_from_ticks(getticks() - tic_count_cells),
-            clocks_getunit());
+            clocks_from_ticks(getticks() - tic_count_cells), clocks_getunit());
 
   /* We no longer need the indices as of here. */
   swift_free("g_index", g_index);
@@ -1151,15 +1149,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       cell_check_multipole(&s->cells_top[k], s->e->gravity_properties);
 #endif
 
-  const ticks tic_free_sort_indices = getticks();
-
   /* Clean up any stray sort indices in the cell buffer. */
   space_free_buff_sort_indices(s);
-
-  if (verbose)
-    message("Cleaning sort buffers took %.3f %s.",
-            clocks_from_ticks(getticks() - tic_free_sort_indices),
-            clocks_getunit());
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
