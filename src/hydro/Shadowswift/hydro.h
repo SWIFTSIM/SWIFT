@@ -973,7 +973,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
           hydro_props, &W[1]);
 
         if (Q[4] < 0.0f) {
-          warning("Q4 negative after dE Springel -- Q4 = %e, dE_springel = %e",
+          warning("Q4 negative after dE Springel -- Q4 = %e, dE_springel = %e. Resetting to E = Ekin + Etherm",
             Q[4], dE_springel);
 
           /* If the dE_springel failed, we just reset to the most simple case */
@@ -1062,7 +1062,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->gravity.dt_corr = dt_kick_corr;
 
     /* Do cooling routine in leapfrog fashion in kicks */
-    float u_new = xp->u_full + p->cool_du_dt_prev * dt_therm;
+    float u_old = gas_internal_energy_from_pressure(p->rho, p->P);
+    float u_new = u_old + p->cool_du_dt_prev * dt_therm;
 
     /* Check against entropy floor */
     const float floor_A = entropy_floor(p, cosmo, floor_props);
@@ -1076,7 +1077,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Add change of thermal energy from cooling directly to
      * entropy and energy */
-    p->conserved.energy += p->conserved.mass * (u_new - xp->u_full);
+    p->conserved.energy += p->conserved.mass * (u_new - u_old);
     p->conserved.entropy = p->conserved.mass * A_new;
 
     /* Set new pressure and entropic function A */
@@ -1106,7 +1107,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
 
     /* Do cooling routine in leapfrog fashion in kicks */
-    float u_new = xp->u_full + p->cool_du_dt_prev * dt_therm;
+    float u_old = gas_internal_energy_from_pressure(p->rho, p->P);
+    float u_new = u_old + p->cool_du_dt_prev * dt_therm;
 
     /* Check against entropy floor */
     const float floor_A = entropy_floor(p, cosmo, floor_props);
@@ -1120,7 +1122,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Add change of thermal energy from cooling directly to
      * entropy and energy */
-    p->conserved.energy += p->conserved.mass * (u_new - xp->u_full);
+    p->conserved.energy += p->conserved.mass * (u_new - u_old);
     p->conserved.entropy = p->conserved.mass * A_new;
 
     /* Set new pressure and entropic function A */
@@ -1153,7 +1155,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     hydro_velocities_set(p, xp, hydro_props, p->flux.dt);
 
     /* Do cooling routine in leapfrog fashion in kicks */
-    float u_new = xp->u_full + p->cool_du_dt_prev * dt_therm;
+    float u_old = gas_internal_energy_from_pressure(p->rho, p->P);
+    float u_new = u_old + p->cool_du_dt_prev * dt_therm;
 
     /* Check against entropy floor */
     const float floor_A = entropy_floor(p, cosmo, floor_props);
@@ -1167,7 +1170,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Add change of thermal energy from cooling directly to
      * entropy and energy */
-    p->conserved.energy += p->conserved.mass * (u_new - xp->u_full);
+    p->conserved.energy += p->conserved.mass * (u_new - u_old);
     p->conserved.entropy = p->conserved.mass * A_new;
 
     /* Set new pressure and entropic function A */
