@@ -550,6 +550,10 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
  */
 void space_free_buff_sort_indices(struct space *s) {
 
+  /* Early exit if we have no hydro or star particles, as we won't have
+   * allocated any sort arrays. */
+  if (s->nr_parts == 0 && s->nr_sparts == 0) return;
+
   const ticks tic = getticks();
 
   for (short int tpid = 0; tpid < s->e->nr_pool_threads; ++tpid) {
