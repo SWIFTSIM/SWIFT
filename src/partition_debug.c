@@ -97,17 +97,8 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
     if (w <= 0.0) continue;
 
     /* Get the top-level cells involved. */
-    struct cell *ci, *cj;
-    for (ci = t->ci; ci->parent != NULL; ci = ci->parent) {
-      /* Nothing to do here */
-    }
-    if (t->cj != NULL) {
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent) {
-        /* Nothing to do here */
-      }
-    } else {
-      cj = NULL;
-    }
+    struct cell *ci = t->ci->top;
+    struct cell *cj = (t->cj != NULL) ? t->cj->top : NULL;
 
     /* Get the cell IDs. */
     int cid = ci - cells;
@@ -160,8 +151,8 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
         int cjd = cj - cells;
 
         /* Local cells add weight to vertices. */
-        if (vweights && ci->nodeID == nodeID) {
-          weights_v[cid] += 0.5 * w;
+        if (vweights) {
+          if (ci->nodeID == nodeID) weights_v[cid] += 0.5 * w;
           if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
         }
 
