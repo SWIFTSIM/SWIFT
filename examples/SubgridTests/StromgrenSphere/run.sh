@@ -68,66 +68,49 @@ fi
 #Do some data analysis to show what's in this box
 
 # Gas density projection
-python3 plot_gas_density.py -i 0 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 1 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 2 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 3 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 4 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 5 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 6 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 7 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 8 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 9 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 10 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 20 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 30 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 40 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 50 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 100 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 0 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 1 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 2 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 3 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 4 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 5 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 6 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 7 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 8 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 9 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 10 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 20 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 30 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 40 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 50 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 100 -s 'snap/snapshot'
 
-# Phase space diagram
-python3 rhoTPlot.py -i 0 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 1 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 2 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 3 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 4 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 5 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 6 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 7 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 8 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 9 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 10 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 20 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 30 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 40 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 50 -s 'snap/snapshot'
-python3 rhoTPlot.py -i 100 -s 'snap/snapshot'
+# # Phase space diagram
+# python3 rhoTPlot.py -i 0 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 1 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 2 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 3 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 4 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 5 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 6 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 7 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 8 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 9 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 10 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 20 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 30 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 40 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 50 -s 'snap/snapshot'
+# python3 rhoTPlot.py -i 100 -s 'snap/snapshot'
 
 
-# Internal energy projection
-python3 plot_projected_qty.py --qty "internal_energy" snap/snapshot_000*.hdf5 --log --vmin 2 --vmax 6
-python3 plot_projected_qty.py --qty "internal_energy" snap/snapshot_*0.hdf5 --log --vmin 2 --vmax 6
+# # Internal energy projection
+# python3 plot_projected_qty.py --qty "internal_energy" snap/snapshot_000*.hdf5 --log --vmin 2 --vmax 6
+# python3 plot_projected_qty.py --qty "internal_energy" snap/snapshot_*0.hdf5 --log --vmin 2 --vmax 6
 
-# Movies
-# python3 rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
-python3 plot_gas_density.py -i 0 -f 100 -s 'snap/snapshot'
-
-# Radial momentum profile
-python3 radial_momentum_profile.py snap/snapshot_0010.hdf5 \
-	-o radial_momentum_profile_0010.png
-python3 radial_momentum_profile.py snap/snapshot_0020.hdf5 \
-	-o radial_momentum_profile_0020.png
-python3 radial_momentum_profile.py snap/snapshot_0030.hdf5 \
-	-o radial_momentum_profile_0030.png
-python3 radial_momentum_profile.py snap/snapshot_0040.hdf5 \
-	-o radial_momentum_profile_0040.png
-python3 radial_momentum_profile.py snap/snapshot_0050.hdf5 \
-	-o radial_momentum_profile_0050.png
-python3 radial_momentum_profile.py snap/snapshot_0100.hdf5 \
-	-o radial_momentum_profile_0100.png
-
-# python3 sn_sedov_solution.py snap/snapshot_0030.hdf5 --rho_0  2e-4 --P 1e-5 \
-# --E_0 5e-4
+# # Movies
+# # python3 rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
+# python3 plot_gas_density.py -i 0 -f 100 -s 'snap/snapshot'
 
 
 if [ -z "$run_name" ]; then
