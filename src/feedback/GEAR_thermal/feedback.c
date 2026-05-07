@@ -182,7 +182,6 @@ void feedback_init_spart(struct spart *sp) {
   /* TODO: Only reset that if do not need to rebuild the HII region */
   sp->feedback_data.radiation.mass_HII_region = 0.0;
 
-  sp->feedback_data.rho_star = 0.0;
   sp->feedback_data.grad_rho_star[0] = 0.0;
   sp->feedback_data.grad_rho_star[1] = 0.0;
   sp->feedback_data.grad_rho_star[2] = 0.0;

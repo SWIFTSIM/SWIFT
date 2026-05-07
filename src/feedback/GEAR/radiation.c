@@ -200,7 +200,8 @@ __attribute__((always_inline)) INLINE char radiation_is_part_ionized(
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
-  const float rho_gas = sp->feedback_data.rho_star;
+  /* Note: The enrichement weight is the star's density! */
+  const float rho_gas = sp->feedback_data.enrichment_weight;
   const float grad_rho[3] = {sp->feedback_data.grad_rho_star[0],
                              sp->feedback_data.grad_rho_star[1],
                              sp->feedback_data.grad_rho_star[2]};

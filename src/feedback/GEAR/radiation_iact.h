@@ -72,10 +72,6 @@ radiation_iact_nonsym_feedback_density(
   float wi, wi_dx;
   kernel_deval(ui, &wi, &wi_dx);
 
-  /* Gather data to compute the column density with the Sobolev approximation.
-   */
-  si->feedback_data.rho_star += mj * wi;
-
   /* Unit vector pointing to pj */
   float dx_unit[3];
   for (int k = 0; k < 3; ++k) {
@@ -94,8 +90,7 @@ radiation_iact_nonsym_feedback_density(
   }
 
   /* Metallicity at the star location */
-  si->feedback_data.Z_star +=
-      pj->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] * wi;
+  si->feedback_data.Z_star += chemistry_get_total_metal_mass_fraction_for_feedback(pj) * wi;
 }
 
 /**
@@ -129,12 +124,11 @@ feedback_prepare_radiation_feedback(
   const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
   const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
 
-  sp->feedback_data.rho_star *= hi_inv;
   sp->feedback_data.grad_rho_star[0] *= hi_inv_dim_plus_one;
   sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
   sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
 
-  sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.rho_star;
+  sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.enrichment_weight;
 
   /* const float Sigma_gas =
    * radiation_get_comoving_gas_column_density_at_star(sp); */

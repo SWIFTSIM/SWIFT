@@ -65,7 +65,8 @@ struct feedback_spart_data {
   /*! Is the star dead? */
   int is_dead;
 
-  /*! Inverse of normalisation factor used for the enrichment. */
+  /*! Gas density at the star location. This is also the inverse of
+   * normalisation factor used for the enrichment. */
   float enrichment_weight;
 
   /*! Does the particle needs the feedback loop? */
@@ -73,9 +74,6 @@ struct feedback_spart_data {
 
   /*! Integer number of neighbours */
   int num_ngbs;
-
-  /*! Gas density at the star location */
-  float rho_star;
 
   /*! Gas density gradient at the star location */
   float grad_rho_star[3];
