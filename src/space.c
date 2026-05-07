@@ -549,12 +549,20 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
  * @param s The #space.
  */
 void space_free_buff_sort_indices(struct space *s) {
+
+  const ticks tic = getticks();
+
   for (short int tpid = 0; tpid < s->e->nr_pool_threads; ++tpid) {
     for (struct cell *finger = s->cells_sub[tpid]; finger != NULL;
          finger = finger->next) {
       cell_free_hydro_sorts(finger);
       cell_free_stars_sorts(finger);
     }
+  }
+
+  if (s->e->verbose) {
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
   }
 }
 
