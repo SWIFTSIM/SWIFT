@@ -134,6 +134,8 @@ enum {
   timer_fof_self,
   timer_fof_pair,
   timer_drift_sink,
+  timer_do_sink_sort,
+  timer_do_sink_resort,
   timer_do_rt_ghost1,
   timer_do_rt_ghost2,
   timer_doself_rt_gradient,

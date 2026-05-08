@@ -103,6 +103,9 @@ struct cell_hydro {
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
 
+    /*! Task for sorting the stars again after a sink formation event */
+    struct task *sink_resort;
+
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
 

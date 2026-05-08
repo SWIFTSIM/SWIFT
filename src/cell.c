@@ -1258,6 +1258,9 @@ void cell_clean(struct cell *c) {
   /* Stars */
   cell_free_stars_sorts(c);
 
+  /* Sinks */
+  cell_free_sinks_sorts(c);
+
   /* Grid */
   cell_free_grid(c);
 
@@ -1405,7 +1408,42 @@ int cell_has_tasks(struct cell *c) {
 }
 
 /**
- * @brief Resets all the sorting properties for the stars in a given cell
+ * @brief Resets all the sorting properties for the sinks in a given cell
+ * hierarchy.
+ *
+ * The clear_unused_flags argument can be used to additionally clean up all
+ * the flags demanding a sort for the given cell. This should be used with
+ * caution as it will prevent the sort tasks from doing anything on that cell
+ * until these flags are reset.
+ *
+ * @param c The #cell to clean.
+ * @param clear_unused_flags Do we also clean the flags demanding a sort?
+ */
+void cell_clear_sinks_sort_flags(struct cell *c, const int clear_unused_flags) {
+
+  /* Clear the flags that have not been reset by the sort task? */
+  if (clear_unused_flags) {
+    c->sinks.requires_sorts = 0;
+    c->sinks.do_sort = 0;
+    cell_clear_flag(c, cell_flag_do_sink_sub_sort);
+  }
+
+  /* Indicate that the cell is not sorted and cancel the pointer sorting
+   * arrays.
+   */
+  c->sinks.sorted = 0;
+  cell_free_sinks_sorts(c);
+
+  /* Recurse if possible */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_clear_sinks_sort_flags(c->progeny[k], clear_unused_flags);
+  }
+}
+
+/**
+ * @brief Resets all the sorting properties for the sinks in a given cell
  * hierarchy.
  *
  * The clear_unused_flags argument can be used to additionally clean up all

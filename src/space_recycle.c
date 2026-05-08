@@ -109,6 +109,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.sorted = 0;
     c->hydro.sort_allocated = 0;
     c->stars.sorted = 0;
+    c->sinks.sorted = 0;
     c->hydro.count = 0;
     c->hydro.count_total = 0;
     c->hydro.updated = 0;
@@ -135,6 +136,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.sink_formation = NULL;
     c->sinks.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
+    c->hydro.sink_resort = NULL;
     c->stars.ghost_in = NULL;
     c->stars.ghost_out = NULL;
     for (int i = 0; i < STARS_GHOST_NTASK; i++) {
@@ -240,6 +242,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 
     cell_free_hydro_sorts(c);
     cell_free_stars_sorts(c);
+    cell_free_sinks_sorts(c);
 #if WITH_MPI
     c->mpi.tag = -1;
     c->mpi.recv = NULL;

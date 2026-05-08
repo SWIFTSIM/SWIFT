@@ -54,6 +54,9 @@ struct cell_sinks {
     /*! Linked list of the tasks computing this cell's sink do_sink_swallow. */
     struct link *do_sink_swallow;
 
+    /*! The task computing this cell's sorts before the density. */
+    struct task *sorts;
+
     /*! The drift task for sinks */
     struct task *drift;
 
@@ -82,6 +85,9 @@ struct cell_sinks {
     /*! Task for sink formation */
     struct task *sink_formation;
 
+    /*! Pointer for the sorted indices. */
+    struct sort_entry *sort;
+
     /*! Last (integer) time the cell's sink were drifted forward in time. */
     integertime_t ti_old_part;
 
@@ -103,6 +109,29 @@ struct cell_sinks {
 
     /*! Values of dx_max before the drifts, used for sub-cell tasks. */
     float dx_max_part_old;
+
+    /*! Maximum particle movement in this cell since the last sort. */
+    float dx_max_sort;
+
+    /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
+    float dx_max_sort_old;
+
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    uint16_t requires_sorts;
+
+    /*! Bit-mask indicating the sorted directions */
+    uint16_t sorted;
+
+    /*! Bit-mask indicating the sorted directions */
+    uint16_t sort_allocated;
+
+    /*! Bit mask of sorts that need to be computed for this cell. */
+    uint16_t do_sort;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /*! Last (integer) time the cell's sort arrays were updated. */
+    integertime_t ti_sort;
+#endif
 
 #ifdef SINK_NONE
   };

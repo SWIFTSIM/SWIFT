@@ -513,6 +513,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                (sizeof(int) * 8 - (scount_i ? intrinsics_clz(scount_i) : 0));
         break;
 
+      case task_type_sink_sort:
+        cost = wscale * intrinsics_popcount(t->flags) * sink_count_i *
+               (sizeof(int) * 8 -
+                (sink_count_i ? intrinsics_clz(sink_count_i) : 0));
+        break;
+
+      case task_type_sink_resort:
+        cost = wscale * intrinsics_popcount(t->flags) * sink_count_i *
+               (sizeof(int) * 8 -
+                (sink_count_i ? intrinsics_clz(sink_count_i) : 0));
+        break;
+
       case task_type_self:
         if (t->subtype == task_subtype_grav) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
@@ -936,6 +948,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_stars_ghost:
       case task_type_csds:
       case task_type_stars_sort:
+      case task_type_sink_sort:
       case task_type_timestep:
         qid = t->ci->super->owner;
         owner = &t->ci->super->owner;

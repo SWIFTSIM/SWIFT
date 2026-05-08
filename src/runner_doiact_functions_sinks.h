@@ -701,6 +701,20 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
   if (do_cj && (!cell_are_part_drifted(ci, e) || !cell_are_sink_drifted(cj, e)))
     error("Interacting undrifted cells.");
 
+  /* Get the sort ID.
+   * Note: this may swap the ci and cj pointers!! */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->sinks.sorted & (1 << sid)) ||
+      ci->sinks.dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells (ci).");
+
+  if (!(cj->sinks.sorted & (1 << sid)) ||
+      cj->sinks.dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells (cj).");
+
   /* No sorted interactions here -> use the naive ones */
   DOPAIR1_SINKS_NAIVE(r, ci, cj, 1);
 }

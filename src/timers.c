@@ -134,6 +134,8 @@ const char *timers_names[timer_count] = {
     "fof_self",
     "fof_pair",
     "drift_sink",
+    "sink_sort",
+    "sink_resort",
     "rt_ghost1",
     "rt_ghost2",
     "doself_rt_gradient",

@@ -1225,14 +1225,14 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_sinks) {
-    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation     | 5
+    /* 1 drift, 2 kicks, 1 sort, 1 time-step, 1 sink formation     | 5
        density: 1 self + 13 pairs                          | 14
        swallow: 1 self + 13 pairs                          | 14
        do_gas_swallow: 1 self + 13 pairs                   | 14
        do_sink_swallow: 1 self + 13 pairs                  | 14
        ghosts: density_ghost, sink_ghost_1, sink_ghost_2   | 3
        implicit: sink_in,  sink_out                        | 2 */
-    n1 += 66;
+    n1 += 67;
     n2 += 3;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
@@ -1802,7 +1802,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_star_formation ||
         t->type == task_type_star_formation_sink ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
-        t->type == task_type_stars_ghost ||
+        t->type == task_type_stars_ghost || t->type == task_type_sink_resort ||
         t->type == task_type_stars_ghost_in ||
         t->type == task_type_stars_ghost_out || t->type == task_type_sink_in ||
         t->type == task_type_sink_ghost1 || t->type == task_type_sink_ghost2 ||

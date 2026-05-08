@@ -116,6 +116,8 @@ const char *taskID_names[task_type_count] = {
     "sink_ghost1",
     "sink_ghost2",
     "sink_out",
+    "sink_sort",
+    "sink_resort",
     "rt_in",
     "rt_out",
     "sink_formation",
@@ -250,6 +252,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_drift_sink:
     case task_type_sink_density_ghost:
+    case task_type_sink_sort:
+    case task_type_sink_resort:
       return task_action_sink;
       break;
 
@@ -561,6 +565,8 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_sink:
+    case task_type_sink_sort:
+    case task_type_sink_resort:
       cell_sink_unlocktree(ci);
       break;
 
@@ -793,6 +799,8 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_sink:
+    case task_type_sink_sort:
+    case task_type_sink_resort:
       if (ci->sinks.hold) return 0;
       if (cell_sink_locktree(ci) != 0) return 0;
       break;
@@ -1696,9 +1704,11 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_sort:
     case task_type_stars_sort:
+    case task_type_sink_sort:
       return task_category_sort;
 
     case task_type_stars_resort:
+    case task_type_sink_resort:
       return task_category_resort;
 
     case task_type_send:

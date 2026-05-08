@@ -245,6 +245,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->sinks.h_max = 0.f;
       cp->sinks.h_max_active = 0.f;
       cp->sinks.dx_max_part = 0.f;
+      cp->sinks.dx_max_sort = 0.f;
       cp->black_holes.h_max = 0.f;
       cp->black_holes.h_max_active = 0.f;
       cp->black_holes.dx_max_part = 0.f;

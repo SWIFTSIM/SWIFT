@@ -109,8 +109,10 @@ enum task_types {
   task_type_sink_ghost1, /* Implicit */
   task_type_sink_ghost2, /* Implicit */
   task_type_sink_out,    /* Implicit */
-  task_type_rt_in,       /* Implicit */
-  task_type_rt_out,      /* Implicit */
+  task_type_sink_sort,
+  task_type_sink_resort,
+  task_type_rt_in,  /* Implicit */
+  task_type_rt_out, /* Implicit */
   task_type_sink_formation,
   task_type_rt_ghost1,
   task_type_rt_ghost2,
