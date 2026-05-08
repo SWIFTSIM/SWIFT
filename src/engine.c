@@ -1840,7 +1840,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #endif
 
   /* Run through the cells, and their tasks to mark as unskipped. */
-  engine_unskip(e);
+  engine_unskip(e, "rebuild");
   if (e->forcerebuild) error("engine_unskip faled after a rebuild!");
 
   /* Print the status of the system */
@@ -1878,7 +1878,8 @@ int engine_prepare(struct engine *e) {
   int repartitioned = 0;
 
   /* Unskip active tasks and check for rebuild */
-  if (!e->forcerebuild && !e->forcerepart && !e->restarting) engine_unskip(e);
+  if (!e->forcerebuild && !e->forcerepart && !e->restarting)
+    engine_unskip(e, "prepare fast-path");
 
   const ticks tic3 = getticks();
 
@@ -2652,7 +2653,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
     if (hydro_need_extra_init_loop) {
-      engine_unskip(e);
+      engine_unskip(e, "extra init loop");
       engine_skip_force_and_kick(e);
       engine_launch(e, "tasks");
     }
