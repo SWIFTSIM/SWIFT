@@ -204,7 +204,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
       if (size > 0) {
         send_tasks[send_task_id].cell = &s->cells_top[cid];
-        send_tasks[send_task_id].dst = &temp_send_buffers[k][current_send_offset];
+        send_tasks[send_task_id].dst =
+            &temp_send_buffers[k][current_send_offset];
         send_task_id += 1;
         current_send_offset += size;
       }
@@ -220,7 +221,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       const int size = proxies[k].cells_in[j]->mpi.pcell_size;
 
       if (size > 0) {
-        recv_tasks[recv_task_id].src = &temp_recv_buffers[k][current_recv_offset];
+        recv_tasks[recv_task_id].src =
+            &temp_recv_buffers[k][current_recv_offset];
         recv_tasks[recv_task_id].cell = &s->cells_top[cid];
         recv_task_id += 1;
         current_recv_offset += size;
