@@ -1756,13 +1756,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_star_formation_sink = (with_sinks && with_stars);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
-  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
 #ifdef WITH_CSDS
   const int with_csds = (e->policy & engine_policy_csds);
 #endif
 #ifdef IONIZATION_FEEDBACK_LOOP
-  const int with_HII_ionization_feedback =
-      with_stars && with_feedback && c->stars.count > 0 && c->hydro.count > 0;
+  const int with_HII_ionization_feedback = with_stars && with_feedback;
 #else
   const int with_HII_ionization_feedback = 0;
 #endif
@@ -1959,6 +1957,12 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                               0, /* implicit = */ 1, c, NULL);
 #endif
 
+        c->stars.feedback_ghost = scheduler_addtask(
+            s, task_type_stars_feedback_ghost, task_subtype_none, 0,
+            /* implicit = */ 1, c, NULL);
+
+        scheduler_addunlock(s, c->stars.feedback_ghost, c->stars.stars_out);
+
 #ifdef WITH_CSDS
         if (with_csds) {
           scheduler_addunlock(s, c->super->csds, c->stars.stars_in);
@@ -1976,23 +1980,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                                with_star_formation_sink))) {
           scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
                               c->stars.stars_in);
-        }
-      }
-
-      if (with_HII_ionization_feedback) {
-        /* Do HII ionization once we know the stars' smoothing length and have
-           computed properties from the gas */
-        scheduler_addunlock(s, c->stars.ghost_out,
-                            c->stars.hii_ionization_feedback);
-        scheduler_addunlock(s, c->stars.hii_ionization_feedback,
-                            c->stars.stars_out);
-
-        if (with_timestep_sync) {
-          if (c->super->timestep_sync == NULL)
-            warning("c->super.timestep_sync is NULL!");
-
-          scheduler_addunlock(s, c->stars.hii_ionization_feedback,
-                              c->super->timestep_sync);
         }
       }
 
@@ -2633,6 +2620,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
   const int with_sink = (e->policy & engine_policy_sinks);
+#ifdef IONIZATION_FEEDBACK_LOOP
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_HII_ionization_feedback = with_stars && with_feedback;
+#else
+  const int with_HII_ionization_feedback = 0;
+#endif
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
 #endif
@@ -2645,6 +2638,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_star_self_density[STARS_SELF_NTASK] = {NULL};
   struct task *t_star_pair_density = NULL;
   struct task *t_star_feedback = NULL;
+  struct task *t_star_radiation_in = NULL;
+  struct task *t_star_radiation_out = NULL;
   struct task *t_bh_density = NULL;
   struct task *t_bh_swallow = NULL;
   struct task *t_do_gas_swallow = NULL;
@@ -2680,12 +2675,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* Sort tasks depend on the drift of the cell (stars version). */
     else if (t_type == task_type_stars_sort && ci->nodeID == nodeID) {
-      scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
-    }
-
-    else if (t_type == task_type_stars_hii_ionization_feedback &&
-             ci->hydro.super != NULL) {
-      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
     }
 
@@ -2729,6 +2718,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addtask(sched, task_type_self, task_subtype_stars_prep2,
                               flags, 0, ci, NULL);
 #endif
+      }
+
+      if (with_HII_ionization_feedback) {
+        t_star_radiation_in = scheduler_addtask(sched, task_type_self,
+                                                task_subtype_stars_radiation_in,
+                                                flags, 0, ci, NULL);
+
+        t_star_radiation_out = scheduler_addtask(
+            sched, task_type_self, task_subtype_stars_radiation_out, flags, 0,
+            ci, NULL);
       }
 
       /* The sink tasks */
@@ -2790,6 +2789,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
         engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
 #endif
+      }
+      if (with_HII_ionization_feedback) {
+        engine_addlink(e, &ci->stars.feedback, t_star_radiation_in);
+        engine_addlink(e, &ci->stars.feedback, t_star_radiation_out);
       }
       if (with_sink) {
         engine_addlink(e, &ci->sinks.density, t_sink_density);
@@ -2877,6 +2880,26 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_star_feedback);
 #endif
         scheduler_addunlock(sched, t_star_feedback,
+                            ci->hydro.super->stars.feedback_ghost);
+      }
+
+      if (with_HII_ionization_feedback) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                            t_star_radiation_in);
+        scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                            t_star_radiation_in);
+
+        scheduler_addunlock(sched, ci->hydro.super->stars.feedback_ghost,
+                            t_star_radiation_in);
+
+        scheduler_addunlock(sched, t_star_radiation_in,
+                            ci->hydro.super->stars.hii_ionization_feedback);
+
+        scheduler_addunlock(sched,
+                            ci->hydro.super->stars.hii_ionization_feedback,
+                            t_star_radiation_out);
+
+        scheduler_addunlock(sched, t_star_radiation_out,
                             ci->hydro.super->stars.stars_out);
       }
 
@@ -2956,6 +2979,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (with_timestep_sync && with_feedback) {
         scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
       }
+      if (with_timestep_sync && with_HII_ionization_feedback) {
+        scheduler_addunlock(sched, t_star_radiation_out,
+                            ci->super->timestep_sync);
+      }
       if (with_timestep_sync && with_black_holes && bcount_i > 0) {
         scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
       }
@@ -3032,6 +3059,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_star_prep2 = scheduler_addtask(
             sched, task_type_pair, task_subtype_stars_prep2, flags, 0, ci, cj);
 #endif
+      }
+
+      if (with_HII_ionization_feedback) {
+        t_star_radiation_in = scheduler_addtask(sched, task_type_pair,
+                                                task_subtype_stars_radiation_in,
+                                                flags, 0, ci, cj);
+
+        t_star_radiation_out = scheduler_addtask(
+            sched, task_type_pair, task_subtype_stars_radiation_out, flags, 0,
+            ci, cj);
       }
 
       /* The sink tasks */
@@ -3114,6 +3151,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
         engine_addlink(e, &cj->stars.prepare2, t_star_prep2);
 #endif
+      }
+      if (with_HII_ionization_feedback) {
+        engine_addlink(e, &ci->stars.radiation_in, t_star_radiation_in);
+        engine_addlink(e, &cj->stars.radiation_out, t_star_radiation_in);
+        engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
+        engine_addlink(e, &cj->stars.radiation_out, t_star_radiation_out);
       }
       if (with_sink) {
         engine_addlink(e, &ci->sinks.density, t_sink_density);
@@ -3238,6 +3281,26 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_feedback);
 #endif
           scheduler_addunlock(sched, t_star_feedback,
+                              ci->hydro.super->stars.feedback_ghost);
+        }
+
+        if (with_HII_ionization_feedback) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_star_radiation_in);
+          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                              t_star_radiation_in);
+
+          scheduler_addunlock(sched, ci->hydro.super->stars.feedback_ghost,
+                              t_star_radiation_in);
+
+          scheduler_addunlock(sched, t_star_radiation_in,
+                              ci->hydro.super->stars.hii_ionization_feedback);
+
+          scheduler_addunlock(sched,
+                              ci->hydro.super->stars.hii_ionization_feedback,
+                              t_star_radiation_out);
+
+          scheduler_addunlock(sched, t_star_radiation_out,
                               ci->hydro.super->stars.stars_out);
         }
 
@@ -3321,6 +3384,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_timestep_sync && with_feedback) {
           scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
         }
+        if (with_timestep_sync && with_HII_ionization_feedback) {
+          scheduler_addunlock(sched, t_star_radiation_out,
+                              ci->super->timestep_sync);
+        }
         if (with_timestep_sync && with_black_holes &&
             (bcount_i > 0 || bcount_j > 0)) {
           scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
@@ -3397,6 +3464,26 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_star_feedback);
 #endif
             scheduler_addunlock(sched, t_star_feedback,
+                                cj->hydro.super->stars.feedback_ghost);
+          }
+
+          if (with_HII_ionization_feedback) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                t_star_radiation_in);
+            scheduler_addunlock(sched, cj->hydro.super->stars.drift,
+                                t_star_radiation_in);
+
+            scheduler_addunlock(sched, cj->hydro.super->stars.feedback_ghost,
+                                t_star_radiation_in);
+
+            scheduler_addunlock(sched, t_star_radiation_in,
+                                cj->hydro.super->stars.hii_ionization_feedback);
+
+            scheduler_addunlock(sched,
+                                cj->hydro.super->stars.hii_ionization_feedback,
+                                t_star_radiation_out);
+
+            scheduler_addunlock(sched, t_star_radiation_out,
                                 cj->hydro.super->stars.stars_out);
           }
 
@@ -3499,6 +3586,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           if (with_timestep_sync && with_feedback) {
             scheduler_addunlock(sched, t_star_feedback,
+                                cj->super->timestep_sync);
+          }
+          if (with_timestep_sync && with_HII_ionization_feedback) {
+            scheduler_addunlock(sched, t_star_radiation_out,
                                 cj->super->timestep_sync);
           }
           if (with_timestep_sync && with_black_holes &&

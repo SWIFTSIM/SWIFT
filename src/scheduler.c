@@ -546,6 +546,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * scount_i * count_i;
+        } else if (t->subtype == task_subtype_stars_radiation_in ||
+                   t->subtype == task_subtype_stars_radiation_out) {
+          cost = 0.f;
         } else {
           error("Untreated sub-type for selfs: %s",
                 subtaskID_names[t->subtype]);
@@ -632,6 +635,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * count_i * count_j;
+        } else if (t->subtype == task_subtype_stars_radiation_in ||
+                   t->subtype == task_subtype_stars_radiation_out) {
+          cost = 0.f;
         } else {
           error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);

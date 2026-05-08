@@ -206,17 +206,18 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
       /***************************************************/
       /* Now loop over particles in the neighboring cells */
-      for (struct link *l = c->hydro.super->stars.density; l != NULL; l = l->next) {
-	/* We have already handled the self case */
-	if (l->t->type == task_type_self) continue;
+      for (struct link *l = c->hydro.super->stars.radiation_in; l != NULL;
+           l = l->next) {
+        /* We have already handled the self case */
+        if (l->t->type == task_type_self) continue;
 
-	struct cell *c_in = (l->t->cj == c->hydro.super) ? l->t->ci : l->t->cj;
+        struct cell *c_in = (l->t->cj == c->hydro.super) ? l->t->ci : l->t->cj;
 
 #ifdef SWIFT_DEBUG_CHECKS
-	if (c_in->hydro.super->cellID == c->hydro.super->cellID) {
-	  warning("cj (%lld) has the same hydro super (%lld) than me (%lld)!",
-		  c_in->cellID, c->hydro.super->cellID, c->cellID);
-	}
+        if (c_in->hydro.super->cellID == c->hydro.super->cellID) {
+          warning("cj (%lld) has the same hydro super (%lld) than me (%lld)!",
+                  c_in->cellID, c->hydro.super->cellID, c->cellID);
+        }
 #endif
 	
 	runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si, ngb_buffer, max_ngbs, &count_found);

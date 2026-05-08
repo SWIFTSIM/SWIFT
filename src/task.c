@@ -98,6 +98,7 @@ const char *taskID_names[task_type_count] = {
     "stars_prep_ghost1",
     "hydro_prep_ghost1",
     "stars_prep_ghost2",
+    "stars_feedback_ghost",
     "stars_sort",
     "stars_resort",
     "stars_hii_ionization_feedback",
@@ -130,44 +131,44 @@ const char *taskID_names[task_type_count] = {
 };
 
 /* Sub-task type names. */
-const char *subtaskID_names[task_subtype_count] = {
-    "none",
-    "density",
-    "gradient",
-    "force",
-    "limiter",
-    "grav",
-    "fof",
-    "external_grav",
-    "tend",
-    "xv",
-    "rho",
-    "part_swallow",
-    "bpart_merger",
-    "gpart",
-    "spart_density",
-    "part_prep1",
-    "spart_prep2",
-    "stars_density",
-    "stars_prep1",
-    "stars_prep2",
-    "stars_feedback",
-    "sf_counts",
-    "grav_counts",
-    "bpart_rho",
-    "bpart_feedback",
-    "bh_density",
-    "bh_swallow",
-    "do_gas_swallow",
-    "do_bh_swallow",
-    "bh_feedback",
-    "sink_density",
-    "sink_do_sink_swallow",
-    "sink_swallow",
-    "sink_do_gas_swallow",
-    "rt_gradient",
-    "rt_transport",
-};
+const char *subtaskID_names[task_subtype_count] = {"none",
+                                                   "density",
+                                                   "gradient",
+                                                   "force",
+                                                   "limiter",
+                                                   "grav",
+                                                   "fof",
+                                                   "external_grav",
+                                                   "tend",
+                                                   "xv",
+                                                   "rho",
+                                                   "part_swallow",
+                                                   "bpart_merger",
+                                                   "gpart",
+                                                   "spart_density",
+                                                   "part_prep1",
+                                                   "spart_prep2",
+                                                   "stars_density",
+                                                   "stars_prep1",
+                                                   "stars_prep2",
+                                                   "stars_feedback",
+                                                   "sf_counts",
+                                                   "grav_counts",
+                                                   "bpart_rho",
+                                                   "bpart_feedback",
+                                                   "bh_density",
+                                                   "bh_swallow",
+                                                   "do_gas_swallow",
+                                                   "do_bh_swallow",
+                                                   "bh_feedback",
+                                                   "sink_density",
+                                                   "sink_do_sink_swallow",
+                                                   "sink_swallow",
+                                                   "sink_do_gas_swallow",
+                                                   "rt_gradient",
+                                                   "rt_transport",
+                                                   "stars_radiation_in",
+                                                   "stars_radiation_out"};
 
 const char *task_category_names[task_category_count] = {
     "drift",       "sorts",    "resort",
@@ -1215,6 +1216,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_sink_do_gas_swallow:
       strcpy(cluster, "DoGasSwallow");
+      break;
+    case task_subtype_stars_radiation_in:
+      strcpy(cluster, "RadiationIn");
+      break;
+    case task_subtype_stars_radiation_out:
+      strcpy(cluster, "RadiationOut");
       break;
     default:
       strcpy(cluster, "None");

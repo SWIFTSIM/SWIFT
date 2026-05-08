@@ -2473,6 +2473,90 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
     else if (t->type == task_type_pair) {
 
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+        scheduler_activate(s, t);
+      }
+    }
+
+    /* Nothing more to do here, all drifts and sorts activated above */
+  }
+
+  /* Un-skip the radiation_in tasks involved with this cell. */
+  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    const int cj_active =
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    if (t->type == task_type_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_pair) {
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+        scheduler_activate(s, t);
+      }
+    }
+    /* Nothing more to do here, all drifts and sorts activated above */
+  }
+
+  /* Un-skip the radiation_out tasks involved with this cell. */
+  for (struct link *l = c->stars.radiation_out; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    const int cj_active =
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    if (t->type == task_type_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_pair) {
+
       if (ci_active || cj_active) {
         /* Activate stars_out for each cell that is part of
          * a pair task as to not miss any dependencies */
@@ -2495,7 +2579,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         scheduler_activate(s, t);
       }
     }
-
     /* Nothing more to do here, all drifts and sorts activated above */
   }
 
@@ -2513,6 +2596,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         scheduler_activate(s, c->hydro.prep1_ghost);
       if (c->stars.prep2_ghost != NULL)
         scheduler_activate(s, c->stars.prep2_ghost);
+      if (c->stars.feedback_ghost != NULL)
+        scheduler_activate(s, c->stars.feedback_ghost);
       /* If we don't have pair tasks, then the stars_in and stars_out still
        * need reactivation. */
       if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);

@@ -66,6 +66,7 @@ TASKTYPES = [
     "stars_prep_ghost2",
     "stars_sort",
     "stars_resort",
+    "stars_hii_ionization_feedback",
     "bh_in",
     "bh_out",
     "bh_density_ghost",
@@ -132,6 +133,8 @@ SUBTYPES = [
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "stars_radiation_in",
+    "stars_radiation_out"
     #  "count",
 ]
 

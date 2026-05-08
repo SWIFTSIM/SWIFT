@@ -39,6 +39,9 @@ struct cell_stars {
 #ifdef STARS_NONE
   union {
 #endif
+    /*! Radiation cell, i.e. the highest-level parent cell that has a radiation
+     * pair/self tasks */
+    struct cell *radiation_level;
 
     /*! Pointer to the #spart data. */
     struct spart *parts;
@@ -61,6 +64,9 @@ struct cell_stars {
     /*! The second star ghost task related to kinetic feedback */
     struct task *prep2_ghost;
 
+    /*! The feedback star ghost task after feedback */
+    struct task *feedback_ghost;
+
     /*! Linked list of the tasks computing this cell's star density. */
     struct link *density;
 
@@ -74,6 +80,14 @@ struct cell_stars {
 
     /*! Linked list of the tasks computing this cell's star feedback. */
     struct link *feedback;
+
+    /*! Linked list of tasks gathering incoming dependencies for radiation
+        subgrid model */
+    struct link *radiation_in;
+
+    /*! Linked list of tasks gathering outgoing dependencies for radiation
+        subgrid model */
+    struct link *radiation_out;
 
     /*! The task computing this cell's sorts before the density. */
     struct task *sorts;
