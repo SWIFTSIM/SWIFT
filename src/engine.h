@@ -707,7 +707,7 @@ void engine_compute_next_statistics_time(struct engine *e);
 void engine_compute_next_los_time(struct engine *e);
 void engine_compute_next_ps_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
-void engine_unskip(struct engine *e);
+void engine_unskip(struct engine *e, const char *callsite_label);
 void engine_unskip_rt_sub_cycle(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles,
                       const int init_particles);

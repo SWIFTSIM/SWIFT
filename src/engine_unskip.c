@@ -404,7 +404,7 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  */
-void engine_unskip(struct engine *e) {
+void engine_unskip(struct engine *e, const char *callsite_label) {
 
   const ticks tic = getticks();
   struct space *s = e->s;
@@ -523,9 +523,14 @@ void engine_unskip(struct engine *e) {
     free(local_active_cells);
   }
 
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+  if (e->verbose) {
+    if (callsite_label != NULL && callsite_label[0] != '\0')
+      message("(%s) took %.3f %s.", callsite_label,
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+    else
+      message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+  }
 }
 
 void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
