@@ -36,7 +36,9 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
                                  const float dt_kick_corr2,
                                  const float* a_grav1, const float* a_grav2,
                                  const float* mflux1, const float* mflux2,
-                                 const float* v_full, const float* grav_kick) {
+                                 const float* v_full1, const float* v_full2,
+                                 const float m1dt1, const float m2dt2,
+                                 const float* grav_kick) {
 
   /* Developers note: this is follows the springel 2010 Eq 94 and all following
    * equations that are based from it. In some cases, you will see a 1/2
@@ -47,11 +49,26 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
 
   /* Solve as in Springel 2010 Eq 94. Carry out as in Hopkins 2015 Eq H2.
    * This is a slightly modified method of Springel, but we do both kicks
-   * at the same time, but as an average of n and n+1. */
+   * at the same time, but as an average of n and n+1.
+   *
+   * These terms are not particularly efficiently calculated, but seeing as
+   * this term alone has been the cause of an enormous amount of headache,
+   * instructive and readable code has been prioritised.
+   */
 
   /* Start with momentum kicks */
-  float dE_momentum = v_full[0] * grav_kick[0] + v_full[1] * grav_kick[1] +
-        v_full[2] * grav_kick[2];
+  float dE_momentum = v_full1[0] * grav_kick[0] + v_full1[1] * grav_kick[1] +
+        v_full1[2] * grav_kick[2];
+
+  float dE_momentum1 = m1dt1 *
+    (a_grav1[0] * v_full1[0] +
+      a_grav1[1] * v_full1[1] +
+        a_grav1[2] * v_full1[2]);
+
+  float dE_momentum2 = m2dt2 *
+    (a_grav2[0] * v_full2[0] +
+      a_grav2[1] * v_full2[1] +
+        a_grav2[2] * v_full2[2]);
 
   /* Contribution from timestep n */
   float grav_work1 = dt_kick_corr1 *
@@ -68,7 +85,9 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
   /* Sum contributions */
   const float dE = dE_momentum + grav_work1 + grav_work2;
 
-  return dE;
+  const float dE2 = dE_momentum1 + dE_momentum2 + grav_work1 + grav_work2;
+
+  return dE2;
 }
 
 /**

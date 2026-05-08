@@ -586,7 +586,8 @@ if (is_nan_float(Q[4])) {
                                    p->v[1] * p->v[1] +
                                    p->v[2] * p->v[2]) * flux[0];
 
-    thermal_energy = xp->u_full * p->conserved.mass + dE_therm;
+    float u_old = gas_internal_energy_from_pressure(p->rho, p->P);
+    thermal_energy = u_old * p->conserved.mass + dE_therm;
     thermal_energy += p->cool_du_dt_prev * Q[0] * dt_therm; // Re-add cooling
     u = thermal_energy * m_inv;
 
@@ -958,7 +959,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
          * and infalling/departing mass */
         dE_springel = hydro_gravity_energy_update_term(
             dt_grav_corr1, dt_grav_corr2, xp->a_grav,
-            a_grav, xp->mflux, p->gravity.mflux, p->v_part_full,
+            a_grav, xp->mflux, p->gravity.mflux,
+            p->v_part_full,xp->v_full, mdt1, mdt2,
             grav_kick);
 
         /* Store for debugging, testing, alternative implementations etc */
