@@ -21,9 +21,9 @@
 
 /* Local headers. */
 #include "random.h"
+#include "sidm_debug.h"
 #include "sidm_kernel.h"
 #include "sidm_properties.h"
-#include "sidm_debug.h"
 #include "timeline.h"
 
 /**
@@ -142,9 +142,10 @@ __attribute__((always_inline)) INLINE static void kick_siparts(
   const float mj = sipj->mass;
   const float mi_plus_mj = mi + mj;
 
-  const float v_com[3] = {(mi * sipi->v[0] + mj * sipj->v[0]) / (mi_plus_mj * a),
-                          (mi * sipi->v[1] + mj * sipj->v[1]) / (mi_plus_mj * a),
-                          (mi * sipi->v[2] + mj * sipj->v[2]) / (mi_plus_mj * a)};
+  const float v_com[3] = {
+      (mi * sipi->v[0] + mj * sipj->v[0]) / (mi_plus_mj * a),
+      (mi * sipi->v[1] + mj * sipj->v[1]) / (mi_plus_mj * a),
+      (mi * sipi->v[2] + mj * sipj->v[2]) / (mi_plus_mj * a)};
 
   /* Get scattering direction. */
   /* For isotropic sampling:
@@ -291,7 +292,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
   dv[1] = sipi->v[1] - sipj->v[1];
   dv[2] = sipi->v[2] - sipj->v[2];
   const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-  const double vij = sqrt(v2) * cosmo->a_inv;
+
+  const double hubble_flow = cosmo->a * cosmo->H * r;
+  const double vij = sqrt(v2) * cosmo->a_inv + hubble_flow;
 
   /* Get time-step for sipi and sipj */
   double dt_sipi;

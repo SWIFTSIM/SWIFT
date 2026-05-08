@@ -20,7 +20,7 @@
 #define SWIFT_BASIC_SIDM_KERNEL_H
 
 /**
- * @brief Kernel overlap assuming top-hat kernel. 
+ * @brief Kernel overlap assuming top-hat kernel.
  *
  * @param r Comoving distance between the two particles.
  * @param hi Comoving smoothing-length of part*icle i.
@@ -53,6 +53,5 @@ INLINE static float sidm_kernel_overlap_tophat(const float r, const float hi,
 
   return V_overlap / (Vi * Vj);
 }
-
 
 #endif /* SWIFT_BASIC_SIDM_KERNEL_H */

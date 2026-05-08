@@ -1,0 +1,4 @@
+#   ID    pos_x    pos_y    pos_z      v_x      v_y      v_z        rho      rho_dh    wcount    wcount_dh   SIDM_rate
+    0     1e-4     1e-4     1e-4       1e-4    1e-4     1e-4       1e-4     1e-4      1e-4      1e-4        1e-4
+    0     1e-4     1e-4     1e-4       1e-4    1e-4     1e-4       1e-4     1e-4      1e-4      1e-4        1e-4
+    0     1e-6     1e-6     1e-6       1e-6    1e-6     1e-6       1e-6     1e-6      1e-6      1e-6        1e-6

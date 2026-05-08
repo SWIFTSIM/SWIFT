@@ -33,7 +33,7 @@ __attribute__((always_inline)) INLINE static void sidm_debug_interaction(
   warning(
       "[PIDi%lld] vi=[%.3e,%.3e,%.3e], "
       "[PIDj%lld] vj=[%.3e,%.3e,%.3e], ",
-      sipi->id, sipi->v[0], sipi->v[1], sipi->v[2],
-      sipj->id, sipj->v[0], sipj->v[1], sipj->v[2]);
+      sipi->id, sipi->v[0], sipi->v[1], sipi->v[2], sipj->id, sipj->v[0],
+      sipj->v[1], sipj->v[2]);
 }
 #endif /* SWIFT_SIDM_BASIC_DEBUG_H */

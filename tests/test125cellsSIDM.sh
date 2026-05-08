@@ -1,0 +1,39 @@
+#!/bin/bash
+for v in {0..3}
+do
+    for p in {0..2}
+    do
+	echo ""
+
+	rm -f sidm_brute_force_125_standard.dat swift_sidm_dopair_125_standard.dat SIDM_NONE.dat
+
+	echo "Running ./test125cellsSIDM -n 6 -r 1 -d 1 -v $v -p $p -f standard"
+	./test125cellsSIDM -n 6 -r 1 -d 1 -v v -p p -f standard testSIDM.yml
+
+	# Skip tests if compiled without SIDM and exit early
+    if [ -e SIDM_NONE.dat ]
+    then
+      echo "SIDM disabled: test automatically passed"
+      exit 0
+    fi
+
+	if [ -e sidm_brute_force_125_standard.dat ]
+	then
+	    if python3 ./difffloat.py sidm_brute_force_125_standard.dat swift_sidm_dopair_125_standard.dat ./tolerance_125_normal_SIDM.dat 6
+	    then
+		echo "Accuracy test passed"
+	    else
+		echo "Accuracy test failed"
+		exit 1
+	    fi
+	else
+	    echo "Error Missing test output file"
+	    exit 1
+        fi
+
+	echo "------------"
+
+    done
+done
+	
+exit $?
