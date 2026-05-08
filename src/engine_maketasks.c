@@ -1740,9 +1740,12 @@ void engine_add_cooling(struct engine *e, struct cell *c,
  * @param c The #cell.
  * @param star_resort_cell Pointer to the cell where the star_resort task has
  * been created. NULL above that level or if not running with star formation.
+ * @param sink_resort_cell Pointer to the cell where the sink_resort task has
+ * been created. NULL above that level or if not running with sinks.
  */
 void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
-                                          struct cell *star_resort_cell) {
+                                          struct cell *star_resort_cell,
+                                          struct cell *sink_resort_cell) {
 
   struct scheduler *s = &e->sched;
   const int with_stars = (e->policy & engine_policy_stars);
@@ -1791,6 +1794,31 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
     }
   }
 
+  /* Are we are the level where we create the sinks' resort tasks?
+   * If the tree is shallow, we need to do this at the super-level if the
+   * super-level is above the level we want */
+  if ((c->nodeID == e->nodeID) && (sink_resort_cell == NULL) &&
+      (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
+    /* If star formation from gas or sinks has happened, we need to resort */
+    if (with_sinks && (c->hydro.count > 0 || c->sinks.count > 0)) {
+
+      /* Record this is the level where we re-sort */
+      sink_resort_cell = c;
+
+      c->hydro.sink_resort = scheduler_addtask(
+          s, task_type_sink_resort, task_subtype_none, 0, 0, c, NULL);
+
+      /* Now add the relevant unlocks */
+      /* If we can make sink, we should wait until sink formatoin is done
+         before resorting
+       */
+      if (with_sinks && c->hydro.count > 0) {
+        scheduler_addunlock(s, c->top->sinks.sink_formation,
+                            c->hydro.sink_resort);
+      }
+    }
+  }
+
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
 
@@ -1807,6 +1835,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->black_holes.swallow_ghost_1 =
           scheduler_addtask(s, task_type_bh_swallow_ghost1, task_subtype_none,
                             0, /* implicit =*/1, c, NULL);
+    }
+
+    if (with_sinks) {
+      c->sinks.sorts = scheduler_addtask(s, task_type_sink_sort,
+                                         task_subtype_none, 0, 0, c, NULL);
     }
 
     /* Local tasks only... */
@@ -2306,6 +2339,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
            finger = finger->parent) {
         if (finger->stars.sorts != NULL)
           scheduler_addunlock(sched, t, finger->stars.sorts);
+      }
+    } else if (t_type == task_type_sink_sort) {
+      for (struct cell *finger = t->ci->parent; finger != NULL;
+           finger = finger->parent) {
+        if (finger->sinks.sorts != NULL)
+          scheduler_addunlock(sched, t, finger->sinks.sorts);
       }
 
       /* Link self tasks to cells. */
@@ -2849,6 +2888,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_sink_density);
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
                             t_sink_density);
+        scheduler_addunlock(sched, ci->hydro.super->sinks.sorts,
+                            t_sink_density);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                            t_sink_density);
         scheduler_addunlock(sched, t_sink_density,
                             ci->hydro.super->sinks.density_ghost);
 
@@ -3362,6 +3405,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           if (with_sink) {
 
+            scheduler_addunlock(sched, cj->hydro.super->sinks.sorts,
+                                t_sink_density);
             /* Sink density */
             scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
                                 t_sink_density);
