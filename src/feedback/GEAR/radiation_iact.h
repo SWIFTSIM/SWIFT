@@ -90,7 +90,8 @@ radiation_iact_nonsym_feedback_density(
   }
 
   /* Metallicity at the star location */
-  si->feedback_data.Z_star += chemistry_get_total_metal_mass_fraction_for_feedback(pj) * wi;
+  si->feedback_data.Z_star +=
+      chemistry_get_total_metal_mass_fraction_for_feedback(pj) * wi;
 }
 
 /**

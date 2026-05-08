@@ -203,8 +203,8 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
       /***************************************************/
       /* First loop over particles in the current cell */
-      runner_do_stars_hii_ionization_feedback_self(r, c->hydro.super, si, ngb_buffer,
-                                                   max_ngbs, &count_found);
+      runner_do_stars_hii_ionization_feedback_self(
+          r, c->hydro.super, si, ngb_buffer, max_ngbs, &count_found);
 
       /***************************************************/
       /* Now loop over particles in the neighboring cells */
@@ -221,8 +221,9 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
                   c_in->cellID, c->hydro.super->cellID, c->cellID);
         }
 #endif
-	
-	runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si, ngb_buffer, max_ngbs, &count_found);
+
+        runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si, ngb_buffer,
+                                                     max_ngbs, &count_found);
       } /* Neighbour search */
 
       /* Flag if we hit the limit */
@@ -265,7 +266,7 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
           if (xpj->tracers_data.HII_region.is_ionized) continue;
 
           /* message("Ionize %lld (budget = %e)!", pj->id, */
-                  /* radiation_get_star_ionization_rate(si)); */
+          /* radiation_get_star_ionization_rate(si)); */
 
           const double Delta_dot_N_ion =
               radiation_get_part_rate_to_fully_ionize(
@@ -367,8 +368,8 @@ void runner_do_stars_hii_ionization_feedback_self(
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-	runner_do_stars_hii_ionization_feedback_self(r, c->progeny[k], si, buffer,
-						     max_size, count_found);
+        runner_do_stars_hii_ionization_feedback_self(
+            r, c->progeny[k], si, buffer, max_size, count_found);
       }
     }
   } else {
@@ -395,16 +396,15 @@ void runner_do_stars_hii_ionization_feedback_self(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pj->ti_drift != e->ti_current)
-	error(
-	      "Particle pj (%lld) not drifted to current time. c = %lld, "
-	      "c->super = %lld",
-	      pj->id, c->cellID, c->super->cellID);
+        error(
+            "Particle pj (%lld) not drifted to current time. c = %lld, "
+            "c->super = %lld",
+            pj->id, c->cellID, c->super->cellID);
 #endif
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0]),
-			    (float)(pj->x[1]),
-			    (float)(pj->x[2])};
+      const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
+                            (float)(pj->x[2])};
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -443,7 +443,8 @@ void runner_do_stars_hii_ionization_feedback_pair(
   if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL) {
-        runner_do_stars_hii_ionization_feedback_pair(r, ci, cj->progeny[k], si, buffer, max_size, count_found);
+        runner_do_stars_hii_ionization_feedback_pair(
+            r, ci, cj->progeny[k], si, buffer, max_size, count_found);
       }
     }
   } else {
@@ -451,15 +452,15 @@ void runner_do_stars_hii_ionization_feedback_pair(
     double shift[3] = {0.0, 0.0, 0.0};
     for (int k = 0; k < 3; k++) {
       if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-	shift[k] = e->s->dim[k];
+        shift[k] = e->s->dim[k];
       else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-	shift[k] = -e->s->dim[k];
+        shift[k] = -e->s->dim[k];
     }
 
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
                           (float)(si->x[2] - (cj->loc[2] + shift[2]))};
-    
+
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
@@ -475,16 +476,16 @@ void runner_do_stars_hii_ionization_feedback_pair(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pj->ti_drift != e->ti_current)
-	error(
-	      "Particle pj (%lld) not drifted to current time. c = %lld, "
-	      "c->super = %lld",
-	      pj->id, cj->cellID, cj->super->cellID);
+        error(
+            "Particle pj (%lld) not drifted to current time. c = %lld, "
+            "c->super = %lld",
+            pj->id, cj->cellID, cj->super->cellID);
 #endif
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-			    (float)(pj->x[1] - cj->loc[1]),
-			    (float)(pj->x[2] - cj->loc[2])};
+                            (float)(pj->x[1] - cj->loc[1]),
+                            (float)(pj->x[2] - cj->loc[2])};
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
