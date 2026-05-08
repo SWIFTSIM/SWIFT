@@ -39,12 +39,12 @@ def parse_options():
     parser = argparse.ArgumentParser(description=usage)
 
     parser.add_argument(
-        "--lJ",
+        "--T",
         action="store",
-        dest="lJ",
+        dest="T",
         type=float,
         default=0.250,
-        help="Jeans wavelength in box size unit",
+        help="Target gas temperature in Kelvin",
     )
 
     parser.add_argument(
@@ -128,6 +128,20 @@ def parse_options():
     return options
 
 
+def calculate_mu(T_k, H_frac):
+    """
+    Calculate mean molecular weight based on a temperature threshold.
+    """
+    T_transition = 1.1e4  # Kelvin
+
+    if T_k > T_transition:
+        # Fully ionized primordial gas
+        return 4.0 / (8.0 - 5.0 * (1.0 - H_frac))
+    else:
+        # Neutral primordial gas
+        return 4.0 / (1.0 + 3.0 * H_frac)
+
+
 ########################################
 # main
 ########################################
@@ -166,28 +180,24 @@ M = N * m
 # Size of the box
 L = (M / rho) ** (1 / 3.0)
 
-# Jeans wavelength in box size unit
-lJ = opt.lJ
-lJ = lJ * L
-
-# Gravitational constant
-G = unyt.G
-
-# Jeans wave number
-kJ = 2 * np.pi / lJ
-
-# Velocity dispersion
-sigma = np.sqrt(4 * np.pi * G * rho) / kJ
+# Thermodynamics properties
+gamma = 5.0 / 3.0  # Ideal gas
+H_frac = 0.76  # Standard primordial hydrogen mass fraction
+mu = calculate_mu(opt.T, H_frac)
+T = opt.T * unyt.K
+u_unyt = (unyt.kb * T) / ((gamma - 1.0) * mu * unyt.mp)
 
 print("Boxsize                               : {}".format(L.to(unyt.kpc)))
 print("Number of particles                   : {}".format(N))
-print("Equivalent velocity dispertion        : {}".format(sigma.to(unyt.m / unyt.s)))
+print("Target Temperature                    : {}".format(T))
+print("Mean molecular weight (mu)            : {}".format(mu))
+print("Specific Internal Energy (cgs)        : {}".format(u_unyt.to("erg/g")))
 
 # Convert to code units
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
 rho = rho.to(UnitMass / UnitLength ** 3).value
-sigma = sigma.to(UnitVelocity).value
+u_code = u_unyt.to(UnitVelocity ** 2).value
 
 # Generate the particles
 
@@ -202,9 +212,10 @@ else:
 
     # Reshape the grids into a list of particle positions
     pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
+
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
-u = np.ones(N) * sigma ** 2
+u = np.ones(N) * u_code
 ids = np.arange(N)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
 rho = np.ones(N) * rho
