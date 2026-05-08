@@ -281,13 +281,8 @@ void *runner_main(void *data) {
         case task_type_pair:
           if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_density) {
-            if (ci->hydro.super->cellID == 14 || cj->hydro.super->cellID == 14)
-              message("hydro: %lld %lld (super: %lld %lld)", ci->cellID,
-                      cj->cellID, ci->hydro.super->cellID,
-                      cj->hydro.super->cellID);
+          else if (t->subtype == task_subtype_density)
             runner_dosub_pair1_density(r, ci, cj, /*below_h_max=*/0, 1);
-          }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
@@ -300,12 +295,9 @@ void *runner_main(void *data) {
             runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, /*below_h_max=*/0, 1);
-          else if (t->subtype == task_subtype_stars_density) {
-            message("%lld %lld (super: %lld %lld)", ci->cellID, cj->cellID,
-                    ci->hydro.super->cellID, cj->hydro.super->cellID);
+          else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj, /*offset=*/0,
                                             /*ntasks=*/1, /*below_h_max=*/0, 1);
-          }
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
             runner_dosub_pair_stars_prep1(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
