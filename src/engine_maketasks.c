@@ -1452,6 +1452,12 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
         scheduler_addtask(s, task_type_recv, task_subtype_sink_gas_swallow,
                           c->mpi.tag, 0, c, NULL);
 
+    /* Only unlock the merger after the having swallowed gas. This ensures we
+       are not working concurrently on sinks that swallow and are swallowed */
+    /* Note: To be removed after merging the branch: This prevents the limiter
+       error "Particle has h larger than h_max_active" */
+    scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger);
+
     if (c->hydro.count > 0) {
       /* Add dependencies recv_sink_counts --> recv rho, gas swallow, sink
 	 merger. This ensures the new counts are received before any other
@@ -1495,6 +1501,7 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
     for (struct link *l = c->sinks.do_gas_swallow; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_sink_gas_swallow, l->t);
     }
+
     for (struct link *l = c->sinks.do_sink_swallow; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_sink_merger, l->t);
       scheduler_addunlock(s, l->t, tend);
