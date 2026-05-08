@@ -50,6 +50,9 @@
 #include "timestep_limiter.h"
 #include "tracers.h"
 
+#define search_radius_factor 1.2f
+#define max_ngbs 128
+
 /**
  * @brief Top-level function for HII ionization feedback.
  *
@@ -77,7 +80,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
     r_hii_max = c->stars.h_max_old * kernel_gamma;
   }
 
-  const float interaction_limit = 1.2f * r_hii_max;
+  const float interaction_limit = search_radius_factor * r_hii_max;
   const int can_recurse = c->split && (interaction_limit < 0.5f * c->dmin);
 
   if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
@@ -151,22 +154,21 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
     r_hii_max = c->stars.h_max_old * kernel_gamma;
   }
 
-  const float interaction_limit = 1.2f * r_hii_max;
+  const float interaction_limit = search_radius_factor * r_hii_max;
 
   if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
     return;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* TODO: Reviser ces checks */  
+  /* TODO: Reviser ces checks */
   /* Did we mess up the recursion? */
   if (interaction_limit > c->dmin && c != c->hydro.super)
-    error("Cell (%lld) size (%e) smaller than HII interaction length (%e)", c->cellID, c->dmin,interaction_limit);
+    error("Cell (%lld) size (%e) smaller than HII interaction length (%e)",
+          c->cellID, c->dmin, interaction_limit);
 #endif
-  
+
   /* TODO: Add multiple tries if the star has not exhausted its photons */
-  const int max_ngbs = 128;
-  struct hii_neighbor *ngb_buffer =
-      malloc(max_ngbs * sizeof(struct hii_neighbor));
+  struct hii_neighbor ngb_buffer[max_ngbs];
 
   for (int sid = 0; sid < scount; sid++) {
 
@@ -335,7 +337,6 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
 
     c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
   } /* Loop over sparts */
-  free(ngb_buffer);
 }
 
 /**
