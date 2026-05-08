@@ -1224,7 +1224,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     const int with_feedback = (e->policy & engine_policy_feedback);
     const int with_HII_ionization_feedback = with_feedback;
     if (with_HII_ionization_feedback) {
-      n1 += 1;
+      /* radiation_in : 1 self + 13 pairs        | 14
+         radiation_out : 1 self + 13 pairs       | 14
+         hii_ionization: 1                       | 1
+      */
+      n1 += 27;
     }
 
 #ifdef WITH_MPI
