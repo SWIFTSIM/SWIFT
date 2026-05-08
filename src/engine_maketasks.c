@@ -2791,8 +2791,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
       }
       if (with_HII_ionization_feedback) {
-        engine_addlink(e, &ci->stars.feedback, t_star_radiation_in);
-        engine_addlink(e, &ci->stars.feedback, t_star_radiation_out);
+        engine_addlink(e, &ci->stars.radiation_in, t_star_radiation_in);
+        engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
       }
       if (with_sink) {
         engine_addlink(e, &ci->sinks.density, t_sink_density);
@@ -3154,7 +3154,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
       if (with_HII_ionization_feedback) {
         engine_addlink(e, &ci->stars.radiation_in, t_star_radiation_in);
-        engine_addlink(e, &cj->stars.radiation_out, t_star_radiation_in);
+        engine_addlink(e, &cj->stars.radiation_in, t_star_radiation_in);
         engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
         engine_addlink(e, &cj->stars.radiation_out, t_star_radiation_out);
       }
