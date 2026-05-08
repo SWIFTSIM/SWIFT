@@ -676,6 +676,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   }
 
   /* Wait for each count to come in and start the recv. */
+  tic2 = getticks();
   for (int k = 0; k < num_proxies; k++) {
     int pid = MPI_UNDEFINED;
     MPI_Status status;
@@ -685,6 +686,10 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     // message( "request from proxy %i has arrived." , pid );
     proxy_cells_exchange_second(&proxies[pid]);
   }
+
+  if (s->e->verbose)
+    message("Waiting for cell counts took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Wait for all the sends to have finished too. */
   if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
@@ -697,6 +702,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   }
 
   tic2 = getticks();
+  ticks unpack_ticks = 0;
 
   /* Wait for each pcell array to come in from the proxies. */
   for (int k = 0; k < num_proxies; k++) {
@@ -706,14 +712,22 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "cell data from proxy %i has arrived." , pid );
+
+    const ticks unpack_tic = getticks();
     for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&proxies[pid].pcells_in[count],
                            proxies[pid].cells_in[j], s, with_gravity);
+    unpack_ticks += getticks() - unpack_tic;
   }
 
   if (s->e->verbose)
-    message("Un-packing cells took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+    message("Waiting for packed cells took %.3f %s.",
+            clocks_from_ticks((getticks() - tic2) - unpack_ticks),
+            clocks_getunit());
+
+  if (s->e->verbose)
+    message("Un-packing cells took %.3f %s.", clocks_from_ticks(unpack_ticks),
+            clocks_getunit());
 
   /* Wait for all the sends to have finished too. */
   if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
