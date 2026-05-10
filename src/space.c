@@ -7205,7 +7205,6 @@ double get_mean_density(double *rho, const int N) {
   for (int i = 0; i < N*N*N; i++) {
       rho[i] = rho[i] / mean_density;
   }
-  message("We found the mean density %lf",mean_density);
   return mean_density;
 }
 
@@ -7306,7 +7305,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
         break;
       case 3:
         /* Change the density field to represent a 1D sinusoid in the box */
-        double fR_mod = -1e-4;
+        double fR_mod = -1e-11;
         double delta = s->dim[0]/N;
         for (int i2=0; i2<N; i2++) {
           for (int j=0; j<N; j++) {
@@ -7415,7 +7414,26 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
   while (residual >= tolerance) {
     perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density, delta);
     residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
+
+    /* Check the mean of the solution we are trying to converge to */
+    //double *field_converted_check = malloc(N*N*N *sizeof(double));
+    //memcpy(field_converted_check, u, N*N*N*sizeof(double));
+    /* Convert to the field */
+    //double evo = ((1. + 4. * MG->Omega_ratio)/(MG->a3_inv + 4. * MG->Omega_ratio));
+    //for (int i=0; i<N*N*N; i++) {
+      //field_converted_check[i] = (MG->fR0 * evo* evo * exp(MG->normalisation * u[i]));
+    //}
+    //message("The mean is supposed to be %E", MG->fR0 * evo* evo);
+    //sum = 0.;
+    //for (int i=0; i<N*N*N; i++) {
+      //sum += field_converted_check[i];
+    //}
+    //message("In reality the mean is %E", sum/(N*N*N));
+
+    //free(field_converted_check);
+
     message("The residual is %E", residual);
+    //sleep(2);
     counter +=1;
   }
   message("We needed %d steps to converge", counter);
@@ -7472,11 +7490,11 @@ void perform_red_black_sweep_fR(double *u, const double *rho, struct MG_variable
           
           /* Do we use the equation with density or with overdensity? */
           double density_term;
-          if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)] * MG->a3_inv;
-          else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.) * MG->a3_inv;
+          if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)] * MG->a;
+          else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.) * MG->a;
           
           double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
-          double field_term = MG->R* (1. - exp(-(1./2.)*MG->normalisation*u[cell_getid(cdim, i,j,k)]));
+          double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.)*MG->normalisation*u[cell_getid(cdim, i,j,k)]));
           double derivative_term = get_derivative(u, MG, cdim, nbs, i, j, k, delta);
 
           u[cell_getid(cdim,i,j,k)] -= (Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term + density_term))/derivative_term;
@@ -7506,7 +7524,7 @@ double get_derivative(double *u, struct MG_variables *MG, int cdim[3], int nbs[6
   double field_term = A * exp(A * u[cell_getid(cdim, i, j, k)]) * (u[cell_getid(cdim, nbs[0], j, k)] + u[cell_getid(cdim, nbs[1], j, k)] 
                       + u[cell_getid(cdim, i, nbs[2], k)] + u[cell_getid(cdim, i, nbs[3], k)] + u[cell_getid(cdim, i, j, nbs[4])] 
                       + u[cell_getid(cdim, i, j, nbs[5])] - 6. * u[cell_getid(cdim, i, j, k)]);
-  double model_term = (1./2.) * MG->R * (1./(3.*MG->c*MG->c*MG->fR0)) * MG->fR_correction * exp((-1./2.) * A * u[cell_getid(cdim, i, j, k)]);
+  double model_term = (1./2.) * MG->R*MG->a*MG->a * (1./(3.*MG->c*MG->c*MG->fR0)) * MG->fR_correction * exp((-1./2.) * A * u[cell_getid(cdim, i, j, k)]);
 
   return (1./(2.*delta*delta)) * (field_term - exp_term) + model_term;
 }
@@ -7542,11 +7560,11 @@ double get_residual_fR(const double *u, const double *rho, struct MG_variables *
 
         /* Do we use the equation with density or with overdensity? */
         double density_term;
-        if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)] * MG->a3_inv;
-        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.) * MG->a3_inv;
+        if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)] * MG->a;
+        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.) * MG->a;
 
         double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
-        double field_term = MG->R* (1. - exp(-(1./2.)*MG->normalisation * u[cell_getid(cdim, i,j,k)]));
+        double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.)*MG->normalisation * u[cell_getid(cdim, i,j,k)]));
         double res = Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term + density_term); 
         
         if (verbose) {
@@ -7598,11 +7616,11 @@ void get_residual_array_fR(const double *u, const double *rho, struct MG_variabl
 
         /* Do we use the equation with density or with overdensity? */
         double density_term;
-        if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)] * MG->a3_inv;
-        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.) * MG->a3_inv;
+        if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)] * MG->a;
+        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.) * MG->a;
 
         double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
-        double field_term = MG->R* (1. - exp(-(1./2.)*MG->normalisation*u[cell_getid(cdim, i,j,k)]));
+        double field_term = MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*MG->normalisation*u[cell_getid(cdim, i,j,k)]));
         double res = Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction* (field_term + density_term); 
 
         residual_array[cell_getid(cdim, i, j, k)] = res;
@@ -7910,7 +7928,7 @@ void get_residual_array_coarser(const double *coarser_solution, const double *re
         nbs[1] = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
 
         double Laplacian_exp[2] = {get_Laplacian(MG, coarser_solution, cdim, nbs, i, j, k), get_Laplacian(MG, restricted_solution, cdim, nbs, i, j, k)};
-        double field_term[2] = {MG->R* (1. - exp(-(1./2.)*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R* (1. - exp(-(1./2.)*restricted_solution[cell_getid(cdim, i,j,k)]))};
+        double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*restricted_solution[cell_getid(cdim, i,j,k)]))};
         double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0)) * MG->fR_correction * (field_term[0] - field_term[1]) + restricted_residual[cell_getid(cdim, i,j,k)]/MG->normalisation; 
 
         coarser_residual[cell_getid(cdim, i, j, k)] = res;
@@ -7949,7 +7967,7 @@ void perform_red_black_sweep_coarser(double *coarser_solution, const double *res
             continue;
           
           double Laplacian_exp[2] = {get_Laplacian(MG, coarser_solution, cdim, nbs, i, j, k), get_Laplacian(MG, restricted_solution, cdim, nbs, i, j, k)};
-          double field_term[2] = {MG->R* (1. - exp(-(1./2.)*MG->normalisation*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R* (1. - exp(-(1./2.)*MG->normalisation*restricted_solution[cell_getid(cdim, i,j,k)]))};
+          double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*MG->normalisation*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*MG->normalisation*restricted_solution[cell_getid(cdim, i,j,k)]))};
           double derivative_term = get_derivative(coarser_solution, MG, cdim, nbs, i, j, k, delta);
 
           coarser_solution[cell_getid(cdim,i,j,k)] -= ((Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term[0] - field_term[1]) + (restricted_residual[cell_getid(cdim, i, j, k)]/MG->normalisation))/derivative_term;
@@ -7987,7 +8005,7 @@ double get_residual_coarser(const double *coarser_solution, const double *restri
         nbs[1] = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
 
         double Laplacian_exp[2] = {get_Laplacian(MG, coarser_solution, cdim, nbs, i, j, k), get_Laplacian(MG, restricted_solution, cdim, nbs, i, j, k)};
-        double field_term[2] = {MG->R* (1. - exp(-(1./2.)*MG->normalisation*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*(1. - exp(-(1./2.)*MG->normalisation*restricted_solution[cell_getid(cdim, i,j,k)]))};
+        double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*MG->normalisation*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a*(1. - exp(-(1./2.)*MG->normalisation*restricted_solution[cell_getid(cdim, i,j,k)]))};
         double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term[0] - field_term[1]) + restricted_residual[cell_getid(cdim, i,j,k)]/MG->normalisation; 
 
         residual += res*res;

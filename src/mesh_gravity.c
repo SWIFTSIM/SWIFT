@@ -926,6 +926,7 @@ void overdensity_to_gparts(struct space *s, double *rho, double mean_density, in
 
 void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, double normalisation) {
   MG->a = cosmo->a;
+  //MG->a = 0.03;
   //MG->a = 1.;
   MG->fR0 = fR0;
   MG->n = n;
@@ -934,6 +935,7 @@ void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, str
   //MG->Omega_ratio = 0.;
   MG->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
   MG->R = (3.*MG->m*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
+  message("The value of R is %E", MG->R);
   MG->c = s->e->physical_constants->const_speed_light_c;
   MG->G = s->e->physical_constants->const_newton_G;
   MG->normalisation = normalisation;
@@ -1103,11 +1105,11 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
 
   if (MG) { //Assume n=1 for now
-    int test = 0; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
+    int test = 2; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
     if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
 
     struct MG_variables MG_var;
-    double fR0 = -1e-5;
+    double fR0 = -1e-4;
     double normalisation = 1.; //Can be used to prevent too-small residuals (but broken)
     int n = 1;
     initialise_MG_variables(s, cosmo, &MG_var, fR0, n, normalisation);
@@ -1148,7 +1150,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
       case 3:
         /* Change the density field to represent a 1D sinusoid in the box */
         message("Testing the f(R) calculation with a 1D sine wave.");
-        double fR_mod = -1e-4;
+        double fR_mod = -1e-11;
         double fac = s->dim[0]/N;
         for (int i=0; i<N; i++) {
           for (int j=0; j<N; j++) {
@@ -1180,12 +1182,33 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     }
     
     message("Going to compute f(R)");
+
+    double evo_test = ((1. + 4. * MG_var.Omega_ratio)/(MG_var.a3_inv + 4. * MG_var.Omega_ratio));
+    message("The mean is supposed to be %E", MG_var.fR0 * evo_test* evo_test);
+    sleep(10);
     
     int N_min = 32; //Minimum gridsize to be used in multigrid acceleration
     double *rho_copy = malloc(N*N*N *sizeof(double));
     memcpy(rho_copy, rho, N*N*N*sizeof(double));
     space_get_fR_contribution(s, rho_copy, field_contribution, &MG_var, N_min, N, test); 
     free(rho_copy);
+
+    FILE *delta_exp;
+    delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/fR_z05.txt", "w");
+    for (int i=0; i<N; i++) {
+      for (int j=0; j<N; j++) {
+        for (int k=0; k<N; k++) {
+          if (i==N/2 && j==N/2 && k==N/2) continue;
+          double dx = fabs((double)(i-N/2) * box_size/N);
+          double dy = fabs((double)(j-N/2) * box_size/N);
+          double dz = fabs((double)(k-N/2) * box_size/N);
+          double r = sqrt(dx*dx + dy*dy + dz*dz);
+
+          if (r<13) fprintf(delta_exp, "%E %.15g \n", MG_var.fR0 * evo_test* evo_test*(exp(field_contribution[cell_getid(cdim, i, j, k)]) - 1.), r);
+        }
+      }
+    }
+    fclose(delta_exp);
 
     double delta = box_size/N;
     get_rho_mod(rho, field_contribution, &MG_var, delta, N);
