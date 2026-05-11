@@ -2317,8 +2317,10 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   /* Minimal distance between any 2 particles in the two cells */
   const double r_lr_check = sqrt(r2) - (multi_i->r_max + multi_j->r_max);
 
-  /* Are we beyond the distance where the truncated forces are 0? */
-  if (periodic && r_lr_check > max_distance) {
+  /* Use the same near-cutoff tolerance as task creation and rebuild checks. */
+  if (periodic &&
+      cell_mesh_distance_is_above_cutoff(r_lr_check * r_lr_check,
+                                         max_distance * max_distance)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_is_active_gravity(ci, e))
