@@ -20,6 +20,10 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Standard headers. */
+#include <stdint.h>
+#include <string.h>
+
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
@@ -29,6 +33,115 @@
 #include "runner_doiact_grav.h"
 #include "space.h"
 #include "timers.h"
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+/* Temporary debug tracker for a single problematic g-particle. */
+static const long long debug_mesh_track_gpart_id = 285742398LL;
+static const struct cell *debug_mesh_tracked_leaf = NULL;
+static const struct cell **debug_mesh_seen_sources = NULL;
+static size_t debug_mesh_seen_sources_cap = 0;
+static integertime_t debug_mesh_seen_sources_ti = -1;
+
+static long long runner_debug_get_gpart_id(const struct space *s,
+                                           const struct gpart *gp) {
+
+  if (gp->type == swift_type_gas)
+    return s->parts[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_stars)
+    return s->sparts[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_sink)
+    return s->sinks[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_black_hole)
+    return s->bparts[-gp->id_or_neg_offset].id;
+  else
+    return gp->id_or_neg_offset;
+}
+
+static const struct cell *runner_debug_find_gpart_leaf(const struct cell *c,
+                                                       const struct space *s) {
+
+  if (cell_is_split_or_void(c)) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] == NULL) continue;
+      const struct cell *leaf =
+          runner_debug_find_gpart_leaf(c->progeny[k], s);
+      if (leaf != NULL) return leaf;
+    }
+    return NULL;
+  }
+
+  const struct gpart *gparts = c->grav.parts;
+  for (int k = 0; k < c->grav.count; k++) {
+    if (runner_debug_get_gpart_id(s, &gparts[k]) == debug_mesh_track_gpart_id)
+      return c;
+  }
+
+  return NULL;
+}
+
+static void runner_debug_init_mesh_tracker(const struct engine *e) {
+
+  if (debug_mesh_tracked_leaf == NULL) {
+    const struct space *s = e->s;
+    for (int i = 0; i < s->nr_cells; i++) {
+      debug_mesh_tracked_leaf =
+          runner_debug_find_gpart_leaf(&s->cells_top[i], s);
+      if (debug_mesh_tracked_leaf != NULL) break;
+    }
+  }
+
+  if (debug_mesh_tracked_leaf == NULL) return;
+
+  if (debug_mesh_seen_sources == NULL) {
+    size_t cap = 1;
+    while (cap < 2u * (size_t)e->s->tot_cells) cap <<= 1;
+    debug_mesh_seen_sources = (const struct cell **)swift_malloc(
+        "debug_mesh_seen_sources", cap * sizeof(struct cell *));
+    if (debug_mesh_seen_sources == NULL)
+      error("Failed to allocate debug mesh tracker.");
+    debug_mesh_seen_sources_cap = cap;
+    memset((void *)debug_mesh_seen_sources, 0, cap * sizeof(struct cell *));
+  }
+
+  if (debug_mesh_seen_sources_ti != e->ti_current) {
+    memset((void *)debug_mesh_seen_sources, 0,
+           debug_mesh_seen_sources_cap * sizeof(struct cell *));
+    debug_mesh_seen_sources_ti = e->ti_current;
+  }
+}
+
+static void runner_debug_note_mesh_source(const struct cell *recipient,
+                                          const struct cell *source) {
+
+  if (debug_mesh_tracked_leaf == NULL) return;
+
+  if (!(recipient == debug_mesh_tracked_leaf ||
+        cell_contains_progeny(recipient, debug_mesh_tracked_leaf))) {
+    return;
+  }
+
+  const size_t mask = debug_mesh_seen_sources_cap - 1;
+  size_t ind = (((uintptr_t)source) >> 4) & mask;
+
+  while (debug_mesh_seen_sources[ind] != NULL) {
+    if (debug_mesh_seen_sources[ind] == source) {
+      error(
+          "Duplicate mesh-count source for tracked gpart id=%lld: "
+          "recipient(cellID=%llu type=%s subtype=%s depth=%d) "
+          "source(cellID=%llu type=%s subtype=%s depth=%d)",
+          debug_mesh_track_gpart_id, recipient->cellID,
+          cellID_names[recipient->type], subcellID_names[recipient->subtype],
+          recipient->depth, source->cellID, cellID_names[source->type],
+          subcellID_names[source->subtype], source->depth);
+    }
+    ind = (ind + 1) & mask;
+  }
+
+  debug_mesh_seen_sources[ind] = source;
+}
+
+#endif
 
 /**
  * @brief Performs M-M interactions between a given top-level cell and
@@ -449,16 +562,25 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 
   /* Decide which cell we are updating. */
   if (super == ci) {
+#ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_note_mesh_source(super, cj);
+#endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
     count_i++;
 #endif
   } else if (cell_contains_progeny(ci, super)) {
+#ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_note_mesh_source(super, cj);
+#endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
     count_i++;
 #endif
   } else if (cell_contains_progeny(super, ci)) {
+#ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_note_mesh_source(ci, cj);
+#endif
     runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
     count_i++;
@@ -468,16 +590,25 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   /* Handle the symmetric case for self interactions */
   if (is_self) {
     if (super == cj) {
+#ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_note_mesh_source(super, ci);
+#endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
       count_j++;
 #endif
     } else if (cell_contains_progeny(cj, super)) {
+#ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_note_mesh_source(super, ci);
+#endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
       count_j++;
 #endif
     } else if (cell_contains_progeny(super, cj)) {
+#ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_note_mesh_source(cj, ci);
+#endif
       runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
       count_j++;
@@ -973,6 +1104,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   TIMER_TIC;
 
   struct space *s = r->e->s;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  runner_debug_init_mesh_tracker(r->e);
+#endif
 
   /* Is the space periodic? */
   const int periodic = s->periodic;
