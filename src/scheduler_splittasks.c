@@ -274,7 +274,9 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
-static void scheduler_splittask_radiation_subgrid(struct task *t, struct scheduler *s) {
+static void scheduler_splittask_radiation_subgrid(struct task *t,
+                                                  struct scheduler *s) {
+#ifdef IONIZATION_FEEDBACK_LOOP  
   /* Are we considering both stars and hydro when splitting? */
   /* Note this is not very clean as the scheduler should not really
      access the engine... */
@@ -487,6 +489,7 @@ static void scheduler_splittask_radiation_subgrid(struct task *t, struct schedul
       }
     } /* pair interaction? */
   } /* iterate over the current task. */
+#endif /* IONIZATION_FEEDBACK_LOOP */  
 }
 
 /**
