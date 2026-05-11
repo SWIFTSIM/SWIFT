@@ -2295,8 +2295,8 @@ void engine_make_external_gravity_tasks(struct engine *e) {
 /**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
- * For each hydrodynamic and gravity task, construct the links with
- * the corresponding cell.  Similarly, construct the dependencies for
+ * For each hydrodynamic, radiation and gravity task, construct the links with
+ * the corresponding cell. Similarly, construct the dependencies for
  * all the sorting tasks.
  */
 void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
@@ -2336,6 +2336,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 #endif
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
+      } else if (t_subtype == task_subtype_stars_radiation_in) {
+	engine_addlink(e, &ci->stars.radiation_in, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -2352,6 +2354,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
+      } else if (t_subtype == task_subtype_stars_radiation_in) {
+        engine_addlink(e, &ci->stars.radiation_in, t);
+	engine_addlink(e, &cj->stars.radiation_in, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
