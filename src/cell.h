@@ -1161,7 +1161,6 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
@@ -1182,9 +1181,48 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
+
+/**
+ * @brief Can a pair radiation subgrid task associated with a cell be split
+ * into smaller sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_radiation_subgrid_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
+  /* Note that since tasks are create after a rebuild no need to take */
+  /* into account any part motion (i.e. dx_max == 0 here) */
+  return c->split &&
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
+    (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a self radiation_subgrid task associated with a cell be split
+ * into smaller sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_radiation_subgrid_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
+  /* Note: No need for more checks here as all the sub-pairs and sub-self */
+  /* tasks will be created. So no need to check for h_max */
+  return c->split &&
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
+    (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin);
+}   
 
 /**
  * @brief Can a pair gravity task associated with a cell be split into smaller
