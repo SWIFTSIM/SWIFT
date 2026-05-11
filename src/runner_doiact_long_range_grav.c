@@ -700,7 +700,12 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
     /* Skip NULL progeny */
     if (cpi == NULL) continue;
 
-    /* Skip empty non-void progeny */
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
+      continue;
+
+    /* Skip any empty progeny of a void cell (void cells themselves always
+     * have 0 particles but are never "empty"). */
     if (cell_is_empty_mpole(cpi)) continue;
 
     for (int j = 0; j < 8; j++) {
@@ -709,7 +714,15 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       /* Skip NULL progeny */
       if (cpj == NULL) continue;
 
-      /* Skip empty non-void progeny */
+      /* Skip void progeny that do not contain any zoom cells. */
+      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
+        continue;
+
+      /* Skip leaf neighbours interacting with void cells. */
+      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
+
+      /* Skip any empty progeny of a void cell (void cells themselves always
+       * have 0 particles but are never "empty"). */
       if (cell_is_empty_mpole(cpj)) continue;
 
       /* Skip entirely foreign pairs. */
@@ -764,6 +777,11 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
   for (int k = 0; k < 8; k++) {
     if (ci->progeny[k] == NULL) continue;
 
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (ci->progeny[k]->subtype == cell_subtype_void &&
+        !ci->progeny[k]->contains_zoom_cells)
+      continue;
+
     /* Skip empty progeny (void cells are never empty). */
     if (cell_is_empty_mpole(ci->progeny[k])) continue;
 
@@ -779,6 +797,16 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
   for (int j = 0; j < 8; j++) {
     if (ci->progeny[j] == NULL) continue;
 
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (ci->progeny[j]->subtype == cell_subtype_void &&
+        !ci->progeny[j]->contains_zoom_cells)
+      continue;
+
+    /* Skip empty non-void progeny. */
+    if (ci->progeny[j]->subtype != cell_subtype_void &&
+        ci->progeny[j]->grav.count == 0)
+      continue;
+
     /* Skip empty progeny. */
     if (cell_is_empty_mpole(ci->progeny[j])) continue;
 
@@ -786,6 +814,11 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
 
     for (int k = j + 1; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
+
+      /* Skip void progeny that do not contain any zoom cells. */
+      if (ci->progeny[k]->subtype == cell_subtype_void &&
+          !ci->progeny[k]->contains_zoom_cells)
+        continue;
 
       /* Skip empty progeny. */
       if (cell_is_empty_mpole(ci->progeny[k])) continue;
