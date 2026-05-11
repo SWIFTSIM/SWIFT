@@ -67,25 +67,6 @@ struct space_split_frontier {
 };
 
 /**
- * @brief Shared payload for the BFS frontier mapper.
- *
- * Holds pointers to the read-only current frontier, the write-only next
- * frontier (whose @c count is incremented atomically by workers when they
- * produce children) and the parent #space.
- */
-struct space_split_frontier_data {
-
-  /*! The #space being split. */
-  struct space *s;
-
-  /*! Frontier being consumed by this level. */
-  struct space_split_frontier *current;
-
-  /*! Frontier being produced by this level. */
-  struct space_split_frontier *next;
-};
-
-/**
  * @brief Reserve a slot in the next-level frontier and append a child
  *        cell pointer to it.
  *
@@ -112,9 +93,10 @@ __attribute__((always_inline)) static INLINE void space_split_frontier_append(
 /**
  * @brief Grow a frontier so that it can hold at least @c needed pointers.
  *
- * Used to pre-size the @e next frontier to @c 8 * size_of_current before a
+ * Used to pre-size the next-level frontier to @c 8 * size_of_current before a
  * parallel level so that #space_split_frontier_append needs no locking.
- * The current contents are preserved across the realloc.
+ * Frontiers are scratch storage that gets repopulated every level, so their
+ * previous contents never need to be preserved when they grow.
  *
  * @param frontier The frontier to resize.
  * @param needed Required capacity (in pointers).
@@ -128,8 +110,6 @@ static void space_split_frontier_ensure_capacity(
                      SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct cell *) * needed) != 0)
     error("Failed to (re)allocate BFS frontier of size %d", needed);
-  if (frontier->count > 0)
-    memcpy(new_cells, frontier->cells, sizeof(struct cell *) * frontier->count);
   if (frontier->cells != NULL) swift_free("split_frontier", frontier->cells);
   frontier->cells = new_cells;
   frontier->capacity = needed;
@@ -152,11 +132,10 @@ static void space_split_frontier_ensure_capacity(
  * @param c The cell to process.
  * @param tpid The threadpool tid of the calling worker.
  */
-static void space_split_frontier_process_cell(
-    struct space_split_frontier_data *data, struct cell *c,
-    const short int tpid) {
-
-  struct space *s = data->s;
+static void space_split_frontier_process_cell(struct space *s,
+                                              struct space_split_frontier *next,
+                                              struct cell *c,
+                                              const short int tpid) {
 
   /* Top-level cells inherit the worker's tpid (preserves the legacy
    * behavior where a top cell's progeny share its tpid). */
@@ -194,7 +173,7 @@ static void space_split_frontier_process_cell(
       c->progeny[k] = NULL;
     } else {
       /* Surviving child: enqueue for the next BFS level. */
-      space_split_frontier_append(data->next, cp);
+      space_split_frontier_append(next, cp);
     }
   }
 }
@@ -818,18 +797,21 @@ static void space_split_finalize_leaf(struct space *s, struct cell *c) {
  *
  * @param map_data Pointer to the start of a chunk of #cell pointers.
  * @param num_cells Number of cells in this chunk.
- * @param extra_data Pointer to the shared #space_split_frontier_data.
+ * @param extra_data Pointer to a two-entry array containing the #space and the
+ *        next-level frontier.
  */
 static void space_split_frontier_mapper(void *map_data, int num_cells,
                                         void *extra_data) {
 
-  struct space_split_frontier_data *data =
-      (struct space_split_frontier_data *)extra_data;
+  void **mapper_data = (void **)extra_data;
+  struct space *s = (struct space *)mapper_data[0];
+  struct space_split_frontier *next =
+      (struct space_split_frontier *)mapper_data[1];
   struct cell **cells = (struct cell **)map_data;
   const short int tpid = threadpool_gettid();
 
   for (int i = 0; i < num_cells; i++)
-    space_split_frontier_process_cell(data, cells[i], tpid);
+    space_split_frontier_process_cell(s, next, cells[i], tpid);
 }
 
 /**
@@ -913,13 +895,12 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
  *    #space_split_aggregate_recursive. This phase is parallel over top
  *    cells; each subtree is independent.
  *
- * The bucket ids required by @c cell_split are now computed internally
- * from the particle arrays using per-thread reusable integer scratch in
- * @c cell_split.c, so the old caller-side position buffers are gone.
- * The BFS frontier arrays are allocated once and sized to the worst
- * case (@c 8 * size_of_current_frontier) before each level, so
- * #space_split_frontier_append needs only an atomic counter increment
- * to reserve a slot.
+ * @c cell_split now computes child membership directly from the particle
+ * arrays, so the old caller-side split buffers are gone. The BFS frontier
+ * arrays are allocated once and sized to the worst case
+ * (@c 8 * size_of_current_frontier) before each level, so
+ * #space_split_frontier_append needs only an atomic counter increment to
+ * reserve a slot.
  *
  * @param s The #space.
  * @param verbose Are we talkative ?
@@ -939,60 +920,63 @@ void space_split(struct space *s, int verbose) {
     struct threadpool *tp = &s->e->threadpool;
     const int nr_threads = tp->num_threads;
 
-    /* Two frontier objects, swapped each level. The current frontier is
-     * seeded with the local top-level cells with particles. */
-    struct space_split_frontier frontier_a = {NULL, 0, 0};
-    struct space_split_frontier frontier_b = {NULL, 0, 0};
-    struct space_split_frontier *current = &frontier_a;
-    struct space_split_frontier *next = &frontier_b;
+    /* Two frontier buffers, swapped each level. One holds the cells of the
+     * current BFS level while the other accumulates their surviving children
+     * for the next level. Seed the current-level frontier with the local
+     * top-level cells with particles. */
+    struct space_split_frontier this_level_frontier = {NULL, 0, 0};
+    struct space_split_frontier next_level_frontier = {NULL, 0, 0};
+    struct space_split_frontier *this_level = &this_level_frontier;
+    struct space_split_frontier *next_level = &next_level_frontier;
 
-    space_split_frontier_ensure_capacity(current, nr_local_cells);
+    space_split_frontier_ensure_capacity(this_level, nr_local_cells);
     for (int ind = 0; ind < nr_local_cells; ind++) {
       struct cell *c =
           &s->cells_top[s->local_cells_with_particles_top[ind]];
-      current->cells[ind] = c;
+      this_level->cells[ind] = c;
     }
-    current->count = nr_local_cells;
+    this_level->count = nr_local_cells;
 
-    struct space_split_frontier_data data = {s, current, next};
+    void *frontier_mapper_data[2] = {s, next_level};
 
     /* Cutoff below which serial processing is faster than the threadpool
      * dispatch overhead. */
     const int serial_cutoff = nr_threads;
 
     /* Drive the BFS until the frontier is empty. */
-    while (current->count > 0) {
+    while (this_level->count > 0) {
 
       /* Pre-size the next frontier to the worst case (each cell can
        * spawn up to 8 surviving children). */
-      space_split_frontier_ensure_capacity(next, 8 * current->count);
-      next->count = 0;
+      space_split_frontier_ensure_capacity(next_level, 8 * this_level->count);
+      next_level->count = 0;
 
-      data.current = current;
-      data.next = next;
+      frontier_mapper_data[1] = next_level;
 
-      if (current->count <= serial_cutoff) {
+      if (this_level->count <= serial_cutoff) {
         /* Run the level on the calling thread to avoid threadpool
          * dispatch overhead at small frontier sizes. */
         const short int tpid = threadpool_gettid();
-        for (int i = 0; i < current->count; i++)
-          space_split_frontier_process_cell(&data, current->cells[i], tpid);
+        for (int i = 0; i < this_level->count; i++)
+          space_split_frontier_process_cell(s, next_level, this_level->cells[i],
+                                            tpid);
       } else {
-        threadpool_map(tp, space_split_frontier_mapper, current->cells,
-                       current->count, sizeof(struct cell *),
-                       threadpool_auto_chunk_size, &data);
+        threadpool_map(tp, space_split_frontier_mapper, this_level->cells,
+                       this_level->count, sizeof(struct cell *),
+                       threadpool_auto_chunk_size, frontier_mapper_data);
       }
 
       /* Swap frontiers. */
-      struct space_split_frontier *tmp = current;
-      current = next;
-      next = tmp;
+      struct space_split_frontier *tmp = this_level;
+      this_level = next_level;
+      next_level = tmp;
     }
 
     /* BFS finished: release frontier storage. */
-    if (frontier_a.cells != NULL) swift_free("split_frontier", frontier_a.cells);
-    if (frontier_b.cells != NULL)
-      swift_free("split_frontier", frontier_b.cells);
+    if (this_level_frontier.cells != NULL)
+      swift_free("split_frontier", this_level_frontier.cells);
+    if (next_level_frontier.cells != NULL)
+      swift_free("split_frontier", next_level_frontier.cells);
 
     /* Aggregation phase: walk each top tree from leaves up to combine
      * per-family h_max, time-bin bounds and multipoles. */
