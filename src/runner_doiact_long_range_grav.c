@@ -442,25 +442,63 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   /* Do we share the same top level cell? i.e. are we self-interacting? */
   int is_self = top_i == top_j;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  int count_i = 0;
+  int count_j = 0;
+#endif
+
   /* Decide which cell we are updating. */
   if (super == ci) {
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
+#ifdef SWIFT_DEBUG_CHECKS
+    count_i++;
+#endif
   } else if (cell_contains_progeny(ci, super)) {
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
+#ifdef SWIFT_DEBUG_CHECKS
+    count_i++;
+#endif
   } else if (cell_contains_progeny(super, ci)) {
     runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
+#ifdef SWIFT_DEBUG_CHECKS
+    count_i++;
+#endif
   }
 
   /* Handle the symmetric case for self interactions */
   if (is_self) {
     if (super == cj) {
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
+#ifdef SWIFT_DEBUG_CHECKS
+      count_j++;
+#endif
     } else if (cell_contains_progeny(cj, super)) {
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
+#ifdef SWIFT_DEBUG_CHECKS
+      count_j++;
+#endif
     } else if (cell_contains_progeny(super, cj)) {
       runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
+#ifdef SWIFT_DEBUG_CHECKS
+      count_j++;
+#endif
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (count_i == 0 || count_i > 1 || count_j > 1 || (!is_self && count_j != 0)) {
+    error(
+        "Unexpected mesh-count attachment: is_self=%d count_i=%d count_j=%d "
+        "super(type=%s subtype=%s depth=%d top=%lld) "
+        "ci(type=%s subtype=%s depth=%d top=%lld) "
+        "cj(type=%s subtype=%s depth=%d top=%lld)",
+        is_self, count_i, count_j, cellID_names[super->type],
+        subcellID_names[super->subtype], super->depth, super->top->cellID,
+        cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
+        top_i->cellID, cellID_names[cj->type], subcellID_names[cj->subtype],
+        cj->depth, top_j->cellID);
+  }
+#endif
 }
 
 /**
