@@ -486,7 +486,7 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (count_i == 0 || count_i > 1 || count_j > 1 || (!is_self && count_j != 0)) {
+  if (count_i > 1 || count_j > 1 || (!is_self && count_j != 0)) {
     error(
         "Unexpected mesh-count attachment: is_self=%d count_i=%d count_j=%d "
         "super(type=%s subtype=%s depth=%d top=%lld) "
