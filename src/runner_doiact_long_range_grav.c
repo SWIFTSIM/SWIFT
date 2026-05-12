@@ -30,6 +30,21 @@
 #include "space.h"
 #include "timers.h"
 
+#ifdef SWIFT_DEBUG_CHECKS
+static const unsigned long long debug_watch_parent_cell = 3283394ULL;
+static const unsigned long long debug_watch_child_cell = 17963458ULL;
+
+static INLINE int debug_watch_zoom_mirror_pair(const struct cell *ci,
+                                               const struct cell *cj) {
+  return (ci != NULL &&
+          (ci->cellID == debug_watch_parent_cell ||
+           ci->cellID == debug_watch_child_cell)) ||
+         (cj != NULL &&
+          (cj->cellID == debug_watch_parent_cell ||
+           cj->cellID == debug_watch_child_cell));
+}
+#endif
+
 /**
  * @brief Performs M-M interactions between a given top-level cell and
  *        all other top level cells not interacted with via pair tasks.
@@ -831,6 +846,14 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (debug_watch_zoom_mirror_pair(cpi, cpj))
+          message(
+              "mirror zoom-pair decision: pair(cellID=%llu/%llu type=%s/%s subtype=%s/%s depth=%d/%d) -> mesh",
+              cpi->cellID, cpj->cellID, cellID_names[cpi->type],
+              cellID_names[cpj->type], subcellID_names[cpi->subtype],
+              subcellID_names[cpj->subtype], cpi->depth, cpj->depth);
+#endif
         /* Record the mesh interaction */
         runner_count_mesh_interaction(e, c, cpi, cpj);
         continue;
@@ -841,9 +864,26 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
                                /*is_tree_walk=*/1,
                                /*periodic boundaries*/ s->periodic,
                                /*use_mesh*/ s->periodic)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (debug_watch_zoom_mirror_pair(cpi, cpj))
+          message(
+              "mirror zoom-pair decision: pair(cellID=%llu/%llu type=%s/%s subtype=%s/%s depth=%d/%d) -> mm",
+              cpi->cellID, cpj->cellID, cellID_names[cpi->type],
+              cellID_names[cpj->type], subcellID_names[cpi->subtype],
+              subcellID_names[cpj->subtype], cpi->depth, cpj->depth);
+#endif
         /* M-M task handles this, nothing to count */
         continue;
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (debug_watch_zoom_mirror_pair(cpi, cpj))
+        message(
+            "mirror zoom-pair decision: pair(cellID=%llu/%llu type=%s/%s subtype=%s/%s depth=%d/%d) -> recurse",
+            cpi->cellID, cpj->cellID, cellID_names[cpi->type],
+            cellID_names[cpj->type], subcellID_names[cpi->subtype],
+            subcellID_names[cpj->subtype], cpi->depth, cpj->depth);
+#endif
 
       /* Recurse to find more mesh interactions */
       runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
