@@ -187,15 +187,13 @@ void test(const char *param_filename) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(void) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  if (argc < 2) error("Usage: %s parameter_file.yml", argv[0]);
-
-  const char *param_filename = argv[1];
+  const char *param_filename = "testSIDM.yml";
 
 #ifdef SIDM_NONE
   message("SIDM disabled: skipping unit test.");
