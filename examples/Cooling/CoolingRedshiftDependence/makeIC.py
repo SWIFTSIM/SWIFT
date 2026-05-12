@@ -3,8 +3,8 @@ Creates a redshift-dependent cooling box such that it always has the same
 _physical_ density at the given redshift.
 """
 
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 from unyt import mh, cm, s, K, Mpc, kb
 import numpy as np
@@ -43,24 +43,46 @@ def generate_ics(redshift: float, filename: str, glass_filename: str) -> None:
 
     gas_particle_mass = physical_density * (boxsize**3) / number_of_particles
 
-    writer = Writer(cosmo_units, comoving_boxsize)
+    boxsize_cosmo = sw.cosmo_array(
+        [comoving_boxsize.value, comoving_boxsize.value, comoving_boxsize.value],
+        comoving_boxsize.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
+    writer = sw.Writer(unit_system=cosmo_units, boxsize=boxsize_cosmo)
 
-    writer.gas.coordinates = glass_coordinates * comoving_boxsize
-
-    writer.gas.velocities = np.zeros_like(glass_coordinates) * cm / s
-
-    writer.gas.masses = np.ones(number_of_particles, dtype=float) * gas_particle_mass
-
-    # Leave in physical units; handled by boxsize change.
-    writer.gas.internal_energy = (
-        np.ones(number_of_particles, dtype=float)
-        * 3.0
-        / 2.0
-        * (temperature * kb)
-        / (mu_hydrogen * mh)
+    coords = glass_coordinates * comoving_boxsize
+    writer.gas.coordinates = sw.cosmo_array(
+        coords.value, coords.units, comoving=True, scale_factor=1.0, scale_exponent=1
     )
 
-    writer.gas.generate_smoothing_lengths(boxsize=comoving_boxsize, dimension=3)
+    writer.gas.velocities = sw.cosmo_array(
+        np.zeros_like(glass_coordinates),
+        cm / s,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+
+    writer.gas.masses = sw.cosmo_array(
+        np.ones(number_of_particles, dtype=float) * gas_particle_mass.value,
+        gas_particle_mass.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+
+    u = 3.0 / 2.0 * (temperature * kb) / (mu_hydrogen * mh)
+    writer.gas.internal_energy = sw.cosmo_array(
+        np.ones(number_of_particles, dtype=float) * u.value,
+        u.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=-2,
+    )
+
+    writer.gas.generate_smoothing_lengths()
 
     writer.write(filename)
 

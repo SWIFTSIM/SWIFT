@@ -21,7 +21,7 @@ import scipy.special as sci
 from scipy.optimize import minimize
 import time
 import argparse
-from swiftsimio import Writer
+import swiftsimio as sw
 import unyt
 
 parser = argparse.ArgumentParser(
@@ -277,11 +277,42 @@ galactic_units = unyt.UnitSystem(
     unyt.unyt_quantity(1e10, units=unyt.Solar_Mass),
     unyt.unyt_quantity(1.0, units=unyt.s * unyt.Mpc / unyt.km).to(unyt.Gyr),
 )
-wrt = Writer(galactic_units, args.boxsize * unyt.kpc)
-wrt.dark_matter.coordinates = X * unyt.kpc
-wrt.dark_matter.velocities = V * (unyt.km / unyt.s)
-wrt.dark_matter.masses = m * 1e10 * unyt.msun
-wrt.dark_matter.particle_ids = np.arange(new_N)
+boxsize = sw.cosmo_array(
+    [args.boxsize, args.boxsize, args.boxsize],
+    unyt.kpc,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=1,
+)
+wrt = sw.Writer(unit_system=galactic_units, boxsize=boxsize)
+wrt.dark_matter.coordinates = sw.cosmo_array(
+    X,
+    unyt.kpc,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=1,
+)
+wrt.dark_matter.velocities = sw.cosmo_array(
+    V,
+    unyt.km / unyt.s,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=0,
+)
+wrt.dark_matter.masses = sw.cosmo_array(
+    m * 1e10,
+    unyt.msun,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=0,
+)
+wrt.dark_matter.particle_ids = sw.cosmo_array(
+    1 + np.arange(new_N),
+    unyt.dimensionless,
+    comoving=True,
+    scale_factor=1,
+    scale_exponent=0,
+)
 wrt.write(fname)
 print("Writing IC file...")
 

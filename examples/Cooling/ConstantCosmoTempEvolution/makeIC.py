@@ -17,8 +17,8 @@
 #
 ################################################################################
 
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 import unyt
 import numpy as np
@@ -57,27 +57,54 @@ gas_particle_mass = rho_bar_0 * boxsize**3 / (n_p_1D**3)
 
 # Generate object. cosmo_units corresponds to default Gadget-oid units
 # of 10^10 Msun, Mpc, and km/s
-x = Writer(cosmo_units, boxsize)
+boxsize_cosmo = sw.cosmo_array(
+    [boxsize.value, boxsize.value, boxsize.value],
+    boxsize.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
+x = sw.Writer(unit_system=cosmo_units, boxsize=boxsize_cosmo)
 
 # 32^3 particles.
 n_p = 32**3
 
 # Make gas coordinates from 0, 100 Mpc in each direction
-x.gas.coordinates = glass_pos * boxsize
+coords = glass_pos * boxsize
+x.gas.coordinates = sw.cosmo_array(
+    coords.value, coords.units, comoving=True, scale_factor=1.0, scale_exponent=1
+)
 
 # Random velocities from 0 to 1 km/s
-x.gas.velocities = np.zeros((n_p, 3)) * (unyt.km / unyt.s)
+x.gas.velocities = sw.cosmo_array(
+    np.zeros((n_p, 3)),
+    unyt.km / unyt.s,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
 
 # Generate uniform masses as 10^6 solar masses for each particle
-x.gas.masses = np.ones(n_p, dtype=float) * gas_particle_mass
+x.gas.masses = sw.cosmo_array(
+    np.ones(n_p, dtype=float) * gas_particle_mass.value,
+    gas_particle_mass.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
 
 # Generate internal energy corresponding to 10^4 K
-x.gas.internal_energy = (
-    np.ones(n_p, dtype=float) * (T_i * unyt.kb * unyt.K) / (1e6 * unyt.msun)
+u = (T_i * unyt.kb * unyt.K) / (1e6 * unyt.msun)
+x.gas.internal_energy = sw.cosmo_array(
+    np.ones(n_p, dtype=float) * u.value,
+    u.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=-2,
 )
 
 # Generate initial guess for smoothing lengths based on MIPS
-x.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
+x.gas.generate_smoothing_lengths()
 
 # If IDs are not present, this automatically generates
 x.write(filename)
