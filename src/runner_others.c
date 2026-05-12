@@ -65,6 +65,52 @@
 
 extern const int sort_stack_size;
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Dump the gravity-tensor interaction counters along a cell path.
+ *
+ * This is a post-mortem helper for understanding whether the field-tensor
+ * interaction counts were injected and propagated down the expected branch.
+ */
+static void runner_debug_dump_gravity_path(const struct cell *leaf) {
+
+  const struct cell *path[64];
+  int depth = 0;
+  const struct cell *c = leaf;
+
+  while (c != NULL) {
+    if (depth == 64) error("Cell path too deep for debug dump.");
+    path[depth++] = c;
+
+    if (c->void_parent != NULL)
+      c = c->void_parent;
+    else
+      c = c->parent;
+  }
+
+  for (int i = depth - 1; i >= 0; i--) {
+    const struct cell *cp = path[i];
+    const struct grav_tensor *pot = &cp->grav.multipole->pot;
+    const struct cell *super = cp->grav.super;
+
+    message(
+        "grav-path[%d/%d]: cellID=%llu type=%s subtype=%s depth=%d "
+        "super_cellID=%llu super_depth=%d interacted=%d num_interacted=%lld "
+        "num_interacted_tree=%lld num_interacted_pm=%lld num_gpart=%lld",
+        depth - 1 - i, depth, cp->cellID, cellID_names[cp->type],
+        subcellID_names[cp->subtype], cp->depth,
+        super != NULL ? super->cellID : 0ULL, super != NULL ? super->depth : -1,
+        (int)pot->interacted, pot->num_interacted,
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+        pot->num_interacted_tree, pot->num_interacted_pm,
+#else
+        0LL, 0LL,
+#endif
+        cp->grav.multipole->m_pole.num_gpart);
+  }
+}
+#endif
+
 /**
  * @brief Calculate gravity acceleration from external potential
  *
@@ -984,6 +1030,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_m2p, gp->num_interacted_m2l,
                 gp->num_interacted_p2p, gp->num_interacted_pm);
 #endif
+
+            runner_debug_dump_gravity_path(c);
 
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
