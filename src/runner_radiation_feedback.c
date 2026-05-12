@@ -87,11 +87,11 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
     return;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->cellID != c->hydro.super->cellID && timer == 1) {
+  if (c->cellID != c->stars.radiation_level->cellID && timer == 1) {
     warning(
-        "Not running the HII reionization task on the hydro super (c = %lld, "
-        "c->hydro.super = %lld)!",
-        c->cellID, c->hydro.super->cellID);
+        "Not running the HII reionization task on the radiation level (c = %lld, "
+        "c->stars.radiation_level = %lld)!",
+        c->cellID, c->stars.radiation_level->cellID);
   }
 #endif
 
@@ -113,6 +113,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
         struct cell *restrict cp = c->progeny[k];
         runner_do_stars_hii_ionization_feedback(r, cp, 0);
         c->stars.h_hii_max = max(c->stars.h_hii_max, cp->stars.h_hii_max);
+	c->stars.h_max_active = max(c->stars.h_max_active, cp->stars.h_max_active);        
       }
     }
   } else {
@@ -336,7 +337,8 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
        * we must go again to find the neighbors that were 'bumped out'. */
     } while (buffer_was_full && radiation_get_star_ionization_rate(si) > 0);
 
-    c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
+    c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);    
+    c->stars.h_max_active = max(c->stars.h_max_active, si->h_hii); 
   } /* Loop over sparts */
 }
 
