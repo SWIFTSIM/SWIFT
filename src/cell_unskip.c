@@ -2510,11 +2510,55 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
                                                    with_star_formation_sink);
 
-    if (t->type == task_type_self && ci_active) {
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
+
+      if (t->type == task_type_self) {
+        cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
+                                          with_star_formation_sink,
+                                          with_timestep_sync);
+
+        cell_activate_drift_spart(ci, s);
+        cell_activate_drift_part(ci, s);
+        if (with_timestep_sync) cell_activate_sync_part(ci, s);
+      }
+
+      else if (t->type == task_type_pair) {
+        cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
+                                          with_star_formation_sink,
+                                          with_timestep_sync);
+
+        /* Activate the drift tasks. */
+        if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+        if (cj_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(cj, s);
+
+        /* Activate the drift tasks. */
+        if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
+
+        /* Activate stars_in for each cell that is part of
+         * a pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->stars.stars_in);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->stars.stars_in);
+      }
     }
 
+
     else if (t->type == task_type_pair) {
+        /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
+      if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
+      
       /* We only want to activate the task if the cell is active and is
          going to update some gas on the *local* node */
       if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
@@ -2527,6 +2571,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
         scheduler_activate(s, t);
       }
+#ifdef WITH_MPI
+      /* TODO: We need to activate the send and recv parts */
+      error("MPI is not yet implemented");
+#endif      
     }
     /* Nothing more to do here, all drifts and sorts activated above */
   }
