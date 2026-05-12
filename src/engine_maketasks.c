@@ -3589,11 +3589,10 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
     /* Self interaction? */
     if (t_type == task_type_self && t_subtype == task_subtype_stars_radiation_in) {
 
+      /* If we are above the hydro super, what happens ? What should we do?*/
       /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-
-      message("DEBUG: [%lld] received a drift", ci->cellID);
 
       t_star_radiation_out = scheduler_addtask(
 					       sched, task_type_self, task_subtype_stars_radiation_out, flags, 0,
@@ -3614,7 +3613,7 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
       scheduler_addunlock(sched, ci->hydro.super->stars.feedback_ghost, t);
 
       scheduler_addunlock(sched, t,
-			  ci->hydro.super->stars.hii_ionization_feedback);
+			  ci->stars.radiation_level->stars.hii_ionization_feedback);
 
       scheduler_addunlock(sched,
 			  ci->stars.radiation_level->stars.hii_ionization_feedback,
@@ -3687,10 +3686,10 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
 
 	scheduler_addunlock(sched, ci->hydro.super->stars.feedback_ghost, t);
 
-	scheduler_addunlock(sched, t, ci->hydro.super->stars.hii_ionization_feedback);
+	scheduler_addunlock(sched, t, ci->stars.radiation_level->stars.hii_ionization_feedback);
 
 	scheduler_addunlock(sched,
-			    ci->hydro.super->stars.hii_ionization_feedback,
+			    ci->stars.radiation_level->stars.hii_ionization_feedback,
 			    t_star_radiation_out);
 
 	scheduler_addunlock(sched, t_star_radiation_out,
@@ -4547,9 +4546,6 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* TODO: Add the extra radiation subgrid loops here */
-  /* TODO: Add the dependencies somewhere... */
-  
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
