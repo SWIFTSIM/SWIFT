@@ -55,8 +55,18 @@ struct runner_debug_tensor_summary {
   long long sums[runner_debug_tensor_kind_count][runner_debug_source_count];
 };
 
+struct runner_debug_tensor_exact_entry {
+  const struct cell *recipient;
+  const struct cell *source;
+  int kind;
+  long long delta;
+};
+
 static struct runner_debug_tensor_summary *runner_debug_tensor_summaries = NULL;
 static size_t runner_debug_tensor_summaries_cap = 0;
+static struct runner_debug_tensor_exact_entry *runner_debug_tensor_exact = NULL;
+static size_t runner_debug_tensor_exact_cap = 0;
+static int runner_debug_tensor_exact_overflow = 0;
 static integertime_t runner_debug_tensor_summaries_ti = -1;
 
 static INLINE enum runner_debug_source_class runner_debug_source_classify(
@@ -81,6 +91,14 @@ static INLINE const char *runner_debug_tensor_kind_name(const int k) {
   return names[k];
 }
 
+static INLINE int runner_debug_track_exact_source(const struct cell *recipient,
+                                                  const int source_class) {
+  return recipient->type == cell_type_bkg &&
+         recipient->subtype == cell_subtype_neighbour &&
+         (source_class == runner_debug_source_zoom ||
+          source_class == runner_debug_source_bkg_void);
+}
+
 static struct runner_debug_tensor_summary *runner_debug_get_tensor_summary(
     const struct engine *e, const struct cell *recipient) {
   if (runner_debug_tensor_summaries == NULL) {
@@ -94,12 +112,27 @@ static struct runner_debug_tensor_summary *runner_debug_get_tensor_summary(
     runner_debug_tensor_summaries_cap = cap;
     bzero(runner_debug_tensor_summaries,
           cap * sizeof(struct runner_debug_tensor_summary));
+
+    runner_debug_tensor_exact_cap = 1u << 20;
+    runner_debug_tensor_exact = (struct runner_debug_tensor_exact_entry *)
+        swift_malloc("runner_debug_tensor_exact",
+                     runner_debug_tensor_exact_cap *
+                         sizeof(struct runner_debug_tensor_exact_entry));
+    if (runner_debug_tensor_exact == NULL)
+      error("Failed to allocate tensor exact debug entries.");
+    bzero(runner_debug_tensor_exact,
+          runner_debug_tensor_exact_cap *
+              sizeof(struct runner_debug_tensor_exact_entry));
   }
 
   if (runner_debug_tensor_summaries_ti != e->ti_current) {
     bzero(runner_debug_tensor_summaries,
           runner_debug_tensor_summaries_cap *
               sizeof(struct runner_debug_tensor_summary));
+    bzero(runner_debug_tensor_exact,
+          runner_debug_tensor_exact_cap *
+              sizeof(struct runner_debug_tensor_exact_entry));
+    runner_debug_tensor_exact_overflow = 0;
     runner_debug_tensor_summaries_ti = e->ti_current;
   }
 
@@ -122,6 +155,31 @@ void runner_debug_record_tensor_source(const struct engine *e,
       runner_debug_get_tensor_summary(e, recipient);
   const int c = runner_debug_source_classify(source);
   s->sums[kind][c] += delta;
+
+  if (!runner_debug_track_exact_source(recipient, c)) return;
+
+  const size_t mask = runner_debug_tensor_exact_cap - 1;
+  size_t ind = ((((size_t)recipient) >> 4) ^ (((size_t)source) >> 4) ^
+                ((size_t)kind << 12)) &
+               mask;
+  for (size_t n = 0; n < runner_debug_tensor_exact_cap; n++) {
+    struct runner_debug_tensor_exact_entry *entry = &runner_debug_tensor_exact[ind];
+    if (entry->recipient == NULL) {
+      entry->recipient = recipient;
+      entry->source = source;
+      entry->kind = kind;
+      entry->delta = delta;
+      return;
+    }
+    if (entry->recipient == recipient && entry->source == source &&
+        entry->kind == kind) {
+      entry->delta += delta;
+      return;
+    }
+    ind = (ind + 1) & mask;
+  }
+
+  runner_debug_tensor_exact_overflow = 1;
 }
 
 void runner_debug_dump_tensor_sources(const struct cell *c) {
@@ -143,6 +201,21 @@ void runner_debug_dump_tensor_sources(const struct cell *c) {
               runner_debug_source_class_name(cl), v);
     }
   }
+
+  for (size_t i = 0; i < runner_debug_tensor_exact_cap; i++) {
+    const struct runner_debug_tensor_exact_entry *entry =
+        &runner_debug_tensor_exact[i];
+    if (entry->recipient != c) continue;
+    message(
+        "tensor-source-exact: cellID=%llu kind=%s source_cellID=%llu type=%s subtype=%s depth=%d delta=%lld",
+        c->cellID, runner_debug_tensor_kind_name(entry->kind),
+        entry->source->cellID, cellID_names[entry->source->type],
+        subcellID_names[entry->source->subtype], entry->source->depth,
+        entry->delta);
+  }
+
+  if (runner_debug_tensor_exact_overflow)
+    message("tensor-source-exact: table overflowed, some entries omitted.");
 }
 #endif
 
