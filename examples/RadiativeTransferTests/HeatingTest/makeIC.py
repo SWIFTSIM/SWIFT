@@ -31,10 +31,9 @@ import unyt
 import numpy as np
 import h5py
 
-
 # number of particles in each dimension
 n_p = 10
-nparts = n_p ** 3
+nparts = n_p**3
 
 # filename of ICs to be generated
 outputfilename = "heating_test.hdf5"
@@ -49,7 +48,7 @@ boxsize = 1 * unyt.kpc
 # initial gas temperature
 initial_temperature = 1e3 * unyt.K
 # particle mass
-pmass = (unyt.atomic_mass_unit / unyt.cm ** 3) * (boxsize ** 3 / nparts)
+pmass = (unyt.atomic_mass_unit / unyt.cm**3) * (boxsize**3 / nparts)
 pmass = pmass.to("Msun")
 
 # -----------------------------------------------
@@ -69,7 +68,7 @@ def internal_energy(T, mu):
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp
@@ -159,9 +158,9 @@ nPhotonGroups = 3
 #  photon_energy = np.arange(1, nPhotonGroups+1) * photon_energy
 
 # Fluxes from the Iliev Test0 part3
-fluxes_iliev = np.array([1.350e1, 2.779e1, 6.152e0]) * unyt.erg / unyt.s / unyt.cm ** 2
+fluxes_iliev = np.array([1.350e1, 2.779e1, 6.152e0]) * unyt.erg / unyt.s / unyt.cm**2
 energy_density = fluxes_iliev / unyt.c
-photon_energy = energy_density * boxsize ** 3 / nparts
+photon_energy = energy_density * boxsize**3 / nparts
 photon_energy = photon_energy * 0.00001
 
 photon_energy.convert_to_units(cosmo_units["energy"])

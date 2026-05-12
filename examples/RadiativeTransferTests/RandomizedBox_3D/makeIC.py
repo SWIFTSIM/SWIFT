@@ -59,7 +59,7 @@ for i in range(n_p):
             z = (k + 0.501) * dx
             xp.append(np.array([x, y, z], dtype=np.float64))
 xp = np.array(xp)
-velp = np.zeros((n_p ** 3, 3), dtype=np.float64)
+velp = np.zeros((n_p**3, 3), dtype=np.float64)
 
 for i in range(n_s):
     x = (i + 0.001) * ds
@@ -69,7 +69,7 @@ for i in range(n_s):
             z = (k + 0.001) * ds
             xs.append(np.array([x, y, z], dtype=np.float64))
 xs = np.array(xs)
-vels = np.zeros((n_s ** 3, 3), dtype=np.float64)
+vels = np.zeros((n_s**3, 3), dtype=np.float64)
 
 
 amplitude = 0.5
@@ -128,8 +128,8 @@ velp_sampled = np.random.uniform(-1, 1, xp_sampled.shape) * velp_max
 xs_sampled = sample(n_sample_s)
 vels_sampled = np.random.uniform(-1, 1, xs_sampled.shape) * vels_max
 
-vels_norm = np.sqrt(np.sum(vels_sampled ** 2, axis=1))
-velp_norm = np.sqrt(np.sum(velp_sampled ** 2, axis=1))
+vels_norm = np.sqrt(np.sum(vels_sampled**2, axis=1))
+velp_norm = np.sqrt(np.sum(velp_sampled**2, axis=1))
 #  print("min/max vels:", velp_norm.min(), velp_norm.max())
 #  print("min/max vels:", vels_norm.min(), vels_norm.max())
 

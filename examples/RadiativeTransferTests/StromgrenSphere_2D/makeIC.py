@@ -76,13 +76,10 @@ def get_number_densities(Temp, XH, XHe):
 
         # Dielectronic recombination rate for He+ in units of cm^3 s^-1
         A_d = (
-            1.9e-3
-            / T ** 1.5
-            * np.exp(-470000.0 / T)
-            * (1.0 + 0.3 * np.exp(-94000.0 / T))
+            1.9e-3 / T**1.5 * np.exp(-470000.0 / T) * (1.0 + 0.3 * np.exp(-94000.0 / T))
         )
         # Recombination rate for He+ in units of cm^3 s^-1
-        A_Hep = 1.5e-10 / T ** 0.6353
+        A_Hep = 1.5e-10 / T**0.6353
         # Recombination rate for He++ in units of cm^3 s^-1
         A_Hepp = (
             3.36e-10
@@ -184,9 +181,9 @@ def get_number_densities_array(Temp, XH, XHe):
         8.40e-11 / np.sqrt(T) * (T * 1e-3) ** (-0.2) * 1.0 / (1.0 + (T * 1e-6) ** 0.7)
     )
     # Dielectronic recombination rate for He+ in units of cm^3 s^-1
-    A_d = 1.9e-3 / T ** 1.5 * np.exp(-470000.0 / T) * (1.0 + 0.3 * np.exp(-94000.0 / T))
+    A_d = 1.9e-3 / T**1.5 * np.exp(-470000.0 / T) * (1.0 + 0.3 * np.exp(-94000.0 / T))
     # Recombination rate for He+ in units of cm^3 s^-1
-    A_Hep = 1.5e-10 / T ** 0.6353
+    A_Hep = 1.5e-10 / T**0.6353
     # Recombination rate for He++ in units of cm^3 s^-1
     A_Hepp = (
         3.36e-10 / np.sqrt(T) * (T * 1e-3) ** (-0.2) * 1.0 / (1.0 + (T * 1e-6) ** 0.7)
@@ -276,7 +273,7 @@ def internal_energy(T, mu):
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp
@@ -349,7 +346,7 @@ if __name__ == "__main__":
     # get gas masses
     nH = 1e-3 * unyt.cm ** (-3)
     rho_gas = nH * unyt.proton_mass
-    Mtot = rho_gas * edgelen ** 3
+    Mtot = rho_gas * edgelen**3
     mpart = Mtot / xp.shape[0]
     mpart = mpart.to(cosmo_units["mass"])
     w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart

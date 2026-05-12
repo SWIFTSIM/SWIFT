@@ -52,7 +52,7 @@ h = glass["/PartType0/SmoothingLength"][:] * boxSize
 
 # Compute basic properties
 numPart = np.size(pos) // 3
-mass = boxSize ** 3 * rho / numPart
+mass = boxSize**3 * rho / numPart
 internalEnergy = k_b_cgs * T * mu / ((gamma - 1.0) * m_h_cgs)
 internalEnergy *= (unit_time / unit_length) ** 2
 

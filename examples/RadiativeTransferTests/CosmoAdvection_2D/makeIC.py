@@ -60,7 +60,7 @@ def initial_condition(x, unitsystem):
 
     x: particle position. 3D unyt array
 
-    returns: 
+    returns:
     E: photon energy for each photon group. List of scalars with size of nPhotonGroups
     F: photon flux for each photon group. List with size of nPhotonGroups of numpy arrays of shape (3,)
     """
@@ -123,8 +123,7 @@ def initial_condition(x, unitsystem):
     baseline = 1.0
 
     E = (
-        amplitude
-        * np.exp(-((x[0] - mean) ** 2 + (x[1] - mean) ** 2) / (2 * sigma ** 2))
+        amplitude * np.exp(-((x[0] - mean) ** 2 + (x[1] - mean) ** 2) / (2 * sigma**2))
         + baseline
     ) * unit_energy
 
@@ -142,7 +141,7 @@ def initial_condition(x, unitsystem):
     center = 0.5 * boxsize
     dx = x[0] - center
     dy = x[1] - center
-    r = np.sqrt(dx ** 2 + dy ** 2)
+    r = np.sqrt(dx**2 + dy**2)
     if r <= circle_radius:
         unit_vector = (dx / r, dy / r)
 

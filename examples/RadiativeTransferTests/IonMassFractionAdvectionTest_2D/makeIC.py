@@ -65,7 +65,7 @@ if __name__ == "__main__":
     w.gas.masses = masses
 
     w.gas.internal_energy = (
-        np.ones(xp.shape[0], dtype=np.float64) * 1.25e6 * unyt.m ** 2 / unyt.s ** 2
+        np.ones(xp.shape[0], dtype=np.float64) * 1.25e6 * unyt.m**2 / unyt.s**2
     )
 
     # get velocities

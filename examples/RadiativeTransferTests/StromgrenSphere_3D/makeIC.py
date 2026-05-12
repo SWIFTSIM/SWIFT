@@ -95,7 +95,7 @@ if __name__ == "__main__":
     XHe = 0.0  # helium mass fraction
     nH = 1e-3 * unyt.cm ** (-3)
     rho_gas = nH * unyt.proton_mass / XH
-    Mtot = rho_gas * edgelen ** 3
+    Mtot = rho_gas * edgelen**3
     mpart = Mtot / xp.shape[0]
     mpart = mpart.to(cosmo_units["mass"])
     w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart

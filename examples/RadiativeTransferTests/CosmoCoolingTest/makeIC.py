@@ -38,7 +38,7 @@ with open(r"rt_cooling_test.yml") as paramfile:
 
 # number of particles in each dimension
 n_p = 10
-nparts = n_p ** 3
+nparts = n_p**3
 # filename of ICs to be generated
 outputfilename = "cooling_test.hdf5"
 # adiabatic index
@@ -53,10 +53,10 @@ boxsize = 1 * unyt.kpc
 initial_temperature = 1e6 * unyt.K
 
 # Initial particle density and mass
-gas_density_phys_cgs = 1.6756058890024518e-25 * unyt.g / unyt.cm ** 3
+gas_density_phys_cgs = 1.6756058890024518e-25 * unyt.g / unyt.cm**3
 
 # Include a^3 to convert physical density to comoving
-pmass = (gas_density_phys_cgs) * (boxsize ** 3 / nparts) * a_begin ** 3
+pmass = (gas_density_phys_cgs) * (boxsize**3 / nparts) * a_begin**3
 pmass = pmass.to("Msun")
 # -----------------------------------------------
 
@@ -75,7 +75,7 @@ def internal_energy(T, mu):
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp

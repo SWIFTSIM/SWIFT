@@ -48,12 +48,7 @@ rsp = np.logspace(np.log10(args.Rmin), np.log10(args.Rmax), args.nbsamples)
 
 
 def plummer_analytical(r):
-    return (
-        3.0
-        * args.M
-        / (4.0 * np.pi * args.a ** 3)
-        * (1.0 + r ** 2 / args.a ** 2) ** (-2.5)
-    )
+    return 3.0 * args.M / (4.0 * np.pi * args.a**3) * (1.0 + r**2 / args.a**2) ** (-2.5)
 
 
 # Plot densities
@@ -70,7 +65,7 @@ for fname in fnames:
     mass = np.array(f["DMParticles"]["Masses"])
     x = pos[:, 0]
     y = pos[:, 1]
-    r = np.sqrt(np.sum(pos ** 2, 1))
+    r = np.sqrt(np.sum(pos**2, 1))
 
     # Methods to compute density profile
     def mass_ins(R):

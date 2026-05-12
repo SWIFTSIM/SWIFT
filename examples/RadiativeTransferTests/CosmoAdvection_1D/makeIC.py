@@ -133,7 +133,7 @@ def initial_condition(x, unitsystem):
     mean = 0.5 * boxsize
     amplitude = 2.0
 
-    E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2)) * unit_energy
+    E = amplitude * np.exp(-((x[0] - mean) ** 2) / (2 * sigma**2)) * unit_energy
 
     F = np.zeros(3, dtype=np.float64)
     F[0] = (E * c_internal).to(unit_flux)

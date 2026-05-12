@@ -24,7 +24,6 @@ import unyt
 import numpy as np
 import h5py as h5
 
-
 # Parameters
 boxsize = 100 * unyt.Mpc
 T_i = 1000.0  # Initial temperature of the gas (in K)
@@ -43,25 +42,25 @@ Omega_bar = 0.0482519  # same as in param file
 glass = h5.File(glassFile, "r")
 
 # Total number of particles
-n_p = n_p_1D ** 3
+n_p = n_p_1D**3
 # Read particle positions and from the glass
 glass_pos = glass["/PartType1/Coordinates"][:, :]
 glass.close()
 
 # Calculate mean baryon density today from comological parameters
 H_0 = 100.0 * hubble_param * unyt.km / unyt.s / unyt.Mpc
-rho_crit_0 = 3.0 * H_0 ** 2 / (8.0 * np.pi * unyt.G)
+rho_crit_0 = 3.0 * H_0**2 / (8.0 * np.pi * unyt.G)
 rho_bar_0 = Omega_bar * rho_crit_0
 
 # From this, we calculate the mass of the gas particles
-gas_particle_mass = rho_bar_0 * boxsize ** 3 / (n_p_1D ** 3)
+gas_particle_mass = rho_bar_0 * boxsize**3 / (n_p_1D**3)
 
 # Generate object. cosmo_units corresponds to default Gadget-oid units
 # of 10^10 Msun, Mpc, and km/s
 x = Writer(cosmo_units, boxsize)
 
 # 32^3 particles.
-n_p = 32 ** 3
+n_p = 32**3
 
 # Make gas coordinates from 0, 100 Mpc in each direction
 x.gas.coordinates = glass_pos * boxsize
