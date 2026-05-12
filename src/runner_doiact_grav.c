@@ -33,16 +33,6 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-#ifdef SWIFT_DEBUG_CHECKS
-static const unsigned long long debug_watch_cell_a = 2097607ULL;
-static const unsigned long long debug_watch_cell_b = 16777671ULL;
-
-__attribute__((always_inline)) INLINE static int runner_debug_watch_cell(
-    const struct cell *c) {
-  return c->cellID == debug_watch_cell_a || c->cellID == debug_watch_cell_b;
-}
-#endif
-
 /**
  * @brief Clear the unskip flags of this cell.
  *
@@ -135,17 +125,35 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           const long long child_after = cp->grav.multipole->pot.num_interacted;
           const long long total_expected =
               e->total_nr_gparts - e->count_inhibited_gparts;
+          const long long parent_num = c->grav.multipole->pot.num_interacted;
+          const long long remaining = total_expected - parent_num;
 
-          if (runner_debug_watch_cell(c) || runner_debug_watch_cell(cp)) {
+          if (child_before > remaining) {
             message(
-                "grav_down add: parent(cellID=%llu depth=%d type=%s subtype=%s) "
-                "child(cellID=%llu depth=%d type=%s subtype=%s) before=%lld "
-                "shifted=%lld after=%lld parent_num=%lld",
-                c->cellID, c->depth, cellID_names[c->type],
-                subcellID_names[c->subtype], cp->cellID, cp->depth,
-                cellID_names[cp->type], subcellID_names[cp->subtype],
-                child_before, shifted_tensor.num_interacted, child_after,
-                c->grav.multipole->pot.num_interacted);
+                "grav_down overlap before inheritance: parent(cellID=%llu type=%s subtype=%s "
+                "depth=%d super=%llu super_depth=%d) child(cellID=%llu type=%s "
+                "subtype=%s depth=%d super=%llu super_depth=%d) before=%lld "
+                "remaining=%lld overlap=%lld shifted=%lld after=%lld expected=%lld parent_num=%lld "
+                "parent_tree=%lld parent_pm=%lld child_tree=%lld child_pm=%lld",
+                c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
+                c->depth, c->grav.super != NULL ? c->grav.super->cellID : 0ULL,
+                c->grav.super != NULL ? c->grav.super->depth : -1, cp->cellID,
+                cellID_names[cp->type], subcellID_names[cp->subtype], cp->depth,
+                cp->grav.super != NULL ? cp->grav.super->cellID : 0ULL,
+                cp->grav.super != NULL ? cp->grav.super->depth : -1,
+                child_before, remaining, child_before - remaining,
+                shifted_tensor.num_interacted, child_after, total_expected,
+                parent_num,
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+                c->grav.multipole->pot.num_interacted_tree,
+                c->grav.multipole->pot.num_interacted_pm,
+                cp->grav.multipole->pot.num_interacted_tree,
+                cp->grav.multipole->pot.num_interacted_pm
+#else
+                0LL, 0LL, 0LL, 0LL
+#endif
+            );
+            error("grav_down child already overlaps parent inherited set.");
           }
 
           if (child_after > total_expected) {
@@ -162,7 +170,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
                 cp->grav.super != NULL ? cp->grav.super->cellID : 0ULL,
                 cp->grav.super != NULL ? cp->grav.super->depth : -1,
                 child_before, shifted_tensor.num_interacted, child_after,
-                total_expected, c->grav.multipole->pot.num_interacted,
+                total_expected, parent_num,
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
                 c->grav.multipole->pot.num_interacted_tree,
                 c->grav.multipole->pot.num_interacted_pm,
@@ -2381,34 +2389,12 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_is_active_gravity(ci, e)) {
-      const long long before = multi_i->pot.num_interacted;
       accumulate_add_ll(&multi_i->pot.num_interacted,
                         multi_j->m_pole.num_gpart);
-      if (runner_debug_watch_cell(ci)) {
-        message(
-            "recursive_pm_skip add: recipient(cellID=%llu depth=%d type=%s "
-            "subtype=%s) source(cellID=%llu depth=%d type=%s subtype=%s) "
-            "before=%lld delta=%lld after=%lld",
-            ci->cellID, ci->depth, cellID_names[ci->type],
-            subcellID_names[ci->subtype], cj->cellID, cj->depth,
-            cellID_names[cj->type], subcellID_names[cj->subtype], before,
-            multi_j->m_pole.num_gpart, multi_i->pot.num_interacted);
-      }
     }
     if (cell_is_active_gravity(cj, e)) {
-      const long long before = multi_j->pot.num_interacted;
       accumulate_add_ll(&multi_j->pot.num_interacted,
                         multi_i->m_pole.num_gpart);
-      if (runner_debug_watch_cell(cj)) {
-        message(
-            "recursive_pm_skip add: recipient(cellID=%llu depth=%d type=%s "
-            "subtype=%s) source(cellID=%llu depth=%d type=%s subtype=%s) "
-            "before=%lld delta=%lld after=%lld",
-            cj->cellID, cj->depth, cellID_names[cj->type],
-            subcellID_names[cj->subtype], ci->cellID, ci->depth,
-            cellID_names[ci->type], subcellID_names[ci->subtype], before,
-            multi_i->m_pole.num_gpart, multi_j->pot.num_interacted);
-      }
     }
 #endif
 

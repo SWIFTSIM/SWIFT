@@ -30,16 +30,6 @@
 #include "space.h"
 #include "timers.h"
 
-#ifdef SWIFT_DEBUG_CHECKS
-static const unsigned long long debug_watch_cell_a = 2097607ULL;
-static const unsigned long long debug_watch_cell_b = 16777671ULL;
-
-__attribute__((always_inline)) INLINE static int runner_debug_watch_cell(
-    const struct cell *c) {
-  return c->cellID == debug_watch_cell_a || c->cellID == debug_watch_cell_b;
-}
-#endif
-
 /**
  * @brief Performs M-M interactions between a given top-level cell and
  *        all other top level cells not interacted with via pair tasks.
@@ -420,26 +410,6 @@ static void runner_accumulate_interaction(
 }
 
 #ifdef SWIFT_DEBUG_CHECKS
-static void runner_debug_log_mesh_attachment(const struct cell *recipient,
-                                             const struct cell *source,
-                                             const long long before,
-                                             const long long delta,
-                                             const long long after) {
-
-  if (runner_debug_watch_cell(recipient) || runner_debug_watch_cell(source)) {
-    message(
-        "mesh_count add: recipient(cellID=%llu depth=%d type=%s subtype=%s) "
-        "source(cellID=%llu depth=%d type=%s subtype=%s) before=%lld "
-        "delta=%lld after=%lld",
-        recipient->cellID, recipient->depth, cellID_names[recipient->type],
-        subcellID_names[recipient->subtype], source->cellID, source->depth,
-        cellID_names[source->type], subcellID_names[source->subtype], before,
-        delta, after);
-  }
-}
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
 static void runner_debug_check_mesh_recipient_source_disjoint(
     const struct cell *recipient, const struct cell *source) {
 
@@ -508,38 +478,26 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   /* Decide which cell we are updating. */
   if (super == ci) {
 #ifdef SWIFT_DEBUG_CHECKS
-    const long long before = super->grav.multipole->pot.num_interacted;
     runner_debug_check_mesh_recipient_source_disjoint(super, cj);
 #endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_log_mesh_attachment(super, cj, before,
-                                     cj->grav.multipole->m_pole.num_gpart,
-                                     super->grav.multipole->pot.num_interacted);
     count_i++;
 #endif
   } else if (cell_contains_progeny(ci, super)) {
 #ifdef SWIFT_DEBUG_CHECKS
-    const long long before = super->grav.multipole->pot.num_interacted;
     runner_debug_check_mesh_recipient_source_disjoint(super, cj);
 #endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_log_mesh_attachment(super, cj, before,
-                                     cj->grav.multipole->m_pole.num_gpart,
-                                     super->grav.multipole->pot.num_interacted);
     count_i++;
 #endif
   } else if (cell_contains_progeny(super, ci)) {
 #ifdef SWIFT_DEBUG_CHECKS
-    const long long before = ci->grav.multipole->pot.num_interacted;
     runner_debug_check_mesh_recipient_source_disjoint(ci, cj);
 #endif
     runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_log_mesh_attachment(ci, cj, before,
-                                     cj->grav.multipole->m_pole.num_gpart,
-                                     ci->grav.multipole->pot.num_interacted);
     count_i++;
 #endif
   }
@@ -548,38 +506,26 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   if (is_self) {
     if (super == cj) {
 #ifdef SWIFT_DEBUG_CHECKS
-      const long long before = super->grav.multipole->pot.num_interacted;
       runner_debug_check_mesh_recipient_source_disjoint(super, ci);
 #endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_log_mesh_attachment(super, ci, before,
-                                       ci->grav.multipole->m_pole.num_gpart,
-                                       super->grav.multipole->pot.num_interacted);
       count_j++;
 #endif
     } else if (cell_contains_progeny(cj, super)) {
 #ifdef SWIFT_DEBUG_CHECKS
-      const long long before = super->grav.multipole->pot.num_interacted;
       runner_debug_check_mesh_recipient_source_disjoint(super, ci);
 #endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_log_mesh_attachment(super, ci, before,
-                                       ci->grav.multipole->m_pole.num_gpart,
-                                       super->grav.multipole->pot.num_interacted);
       count_j++;
 #endif
     } else if (cell_contains_progeny(super, cj)) {
 #ifdef SWIFT_DEBUG_CHECKS
-      const long long before = cj->grav.multipole->pot.num_interacted;
       runner_debug_check_mesh_recipient_source_disjoint(cj, ci);
 #endif
       runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_log_mesh_attachment(cj, ci, before,
-                                       ci->grav.multipole->m_pole.num_gpart,
-                                       cj->grav.multipole->pot.num_interacted);
       count_j++;
 #endif
     }
