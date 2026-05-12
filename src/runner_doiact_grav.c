@@ -110,12 +110,49 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
           struct grav_tensor shifted_tensor;
 
+#ifdef SWIFT_DEBUG_CHECKS
+          const long long child_before = cp->grav.multipole->pot.num_interacted;
+#endif
+
           /* Shift the field tensor */
           gravity_L2L(&shifted_tensor, &c->grav.multipole->pot,
                       cp->grav.multipole->CoM, c->grav.multipole->CoM);
 
           /* Add it to this level's tensor */
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          const long long child_after = cp->grav.multipole->pot.num_interacted;
+          const long long total_expected =
+              e->total_nr_gparts - e->count_inhibited_gparts;
+
+          if (child_after > total_expected) {
+            message(
+                "grav_down overflow: parent(cellID=%llu type=%s subtype=%s "
+                "depth=%d super=%llu super_depth=%d) child(cellID=%llu type=%s "
+                "subtype=%s depth=%d super=%llu super_depth=%d) before=%lld "
+                "shifted=%lld after=%lld expected=%lld parent_num=%lld "
+                "parent_tree=%lld parent_pm=%lld child_tree=%lld child_pm=%lld",
+                c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
+                c->depth, c->grav.super != NULL ? c->grav.super->cellID : 0ULL,
+                c->grav.super != NULL ? c->grav.super->depth : -1, cp->cellID,
+                cellID_names[cp->type], subcellID_names[cp->subtype], cp->depth,
+                cp->grav.super != NULL ? cp->grav.super->cellID : 0ULL,
+                cp->grav.super != NULL ? cp->grav.super->depth : -1,
+                child_before, shifted_tensor.num_interacted, child_after,
+                total_expected, c->grav.multipole->pot.num_interacted,
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+                c->grav.multipole->pot.num_interacted_tree,
+                c->grav.multipole->pot.num_interacted_pm,
+                cp->grav.multipole->pot.num_interacted_tree,
+                cp->grav.multipole->pot.num_interacted_pm
+#else
+                0LL, 0LL, 0LL, 0LL
+#endif
+            );
+            error("grav_down produced an over-counted child tensor.");
+          }
+#endif
         }
 
         /* Recurse, but only if we haven't reached the super level. This can
