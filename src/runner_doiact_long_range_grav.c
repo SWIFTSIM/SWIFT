@@ -40,7 +40,9 @@
 static const long long debug_mesh_track_gpart_id = 285742398LL;
 static const struct cell *debug_mesh_tracked_leaf = NULL;
 static const struct cell **debug_mesh_seen_sources = NULL;
+static const struct cell **debug_mesh_seen_sources_list = NULL;
 static size_t debug_mesh_seen_sources_cap = 0;
+static size_t debug_mesh_seen_sources_count = 0;
 static integertime_t debug_mesh_seen_sources_ti = -1;
 
 static long long runner_debug_get_gpart_id(const struct space *s,
@@ -100,13 +102,21 @@ static void runner_debug_init_mesh_tracker(const struct engine *e) {
         "debug_mesh_seen_sources", cap * sizeof(struct cell *));
     if (debug_mesh_seen_sources == NULL)
       error("Failed to allocate debug mesh tracker.");
+    debug_mesh_seen_sources_list = (const struct cell **)swift_malloc(
+        "debug_mesh_seen_sources_list", cap * sizeof(struct cell *));
+    if (debug_mesh_seen_sources_list == NULL)
+      error("Failed to allocate debug mesh tracker list.");
     debug_mesh_seen_sources_cap = cap;
     memset((void *)debug_mesh_seen_sources, 0, cap * sizeof(struct cell *));
+    memset((void *)debug_mesh_seen_sources_list, 0, cap * sizeof(struct cell *));
   }
 
   if (debug_mesh_seen_sources_ti != e->ti_current) {
     memset((void *)debug_mesh_seen_sources, 0,
            debug_mesh_seen_sources_cap * sizeof(struct cell *));
+    memset((void *)debug_mesh_seen_sources_list, 0,
+           debug_mesh_seen_sources_cap * sizeof(struct cell *));
+    debug_mesh_seen_sources_count = 0;
     debug_mesh_seen_sources_ti = e->ti_current;
   }
 }
@@ -119,6 +129,25 @@ static void runner_debug_note_mesh_source(const struct cell *recipient,
   if (!(recipient == debug_mesh_tracked_leaf ||
         cell_contains_progeny(recipient, debug_mesh_tracked_leaf))) {
     return;
+  }
+
+  for (size_t i = 0; i < debug_mesh_seen_sources_count; i++) {
+    const struct cell *old = debug_mesh_seen_sources_list[i];
+    if (old == NULL) continue;
+
+    if (cell_contains_progeny(old, source) || cell_contains_progeny(source, old)) {
+      error(
+          "Overlapping mesh-count sources for tracked gpart id=%lld: "
+          "recipient(cellID=%llu type=%s subtype=%s depth=%d) "
+          "old(cellID=%llu type=%s subtype=%s depth=%d) "
+          "new(cellID=%llu type=%s subtype=%s depth=%d)",
+          debug_mesh_track_gpart_id, recipient->cellID,
+          cellID_names[recipient->type], subcellID_names[recipient->subtype],
+          recipient->depth, old->cellID, cellID_names[old->type],
+          subcellID_names[old->subtype], old->depth, source->cellID,
+          cellID_names[source->type], subcellID_names[source->subtype],
+          source->depth);
+    }
   }
 
   const size_t mask = debug_mesh_seen_sources_cap - 1;
@@ -139,6 +168,7 @@ static void runner_debug_note_mesh_source(const struct cell *recipient,
   }
 
   debug_mesh_seen_sources[ind] = source;
+  debug_mesh_seen_sources_list[debug_mesh_seen_sources_count++] = source;
 }
 
 #endif
