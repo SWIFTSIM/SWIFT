@@ -452,7 +452,8 @@ static void runner_debug_check_mesh_recipient_source_disjoint(
  * @param ci The first #cell in the pair.
  * @param cj The second #cell in the pair.
  */
-static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
+static void runner_count_mesh_interaction(const struct engine *e,
+                                          struct cell *super, struct cell *ci,
                                           struct cell *cj) {
 
   /* Get the correct top level cells for self-interaction check */
@@ -482,7 +483,7 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_record_tensor_source(s->e, super, cj, /*kind=*/0,
+    runner_debug_record_tensor_source(e, super, cj, /*kind=*/0,
                                       cj->grav.multipole->m_pole.num_gpart);
     count_i++;
 #endif
@@ -492,7 +493,7 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_record_tensor_source(s->e, super, cj, /*kind=*/0,
+    runner_debug_record_tensor_source(e, super, cj, /*kind=*/0,
                                       cj->grav.multipole->m_pole.num_gpart);
     count_i++;
 #endif
@@ -502,7 +503,7 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
     runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_record_tensor_source(s->e, ci, cj, /*kind=*/0,
+    runner_debug_record_tensor_source(e, ci, cj, /*kind=*/0,
                                       cj->grav.multipole->m_pole.num_gpart);
     count_i++;
 #endif
@@ -516,7 +517,7 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_record_tensor_source(s->e, super, ci, /*kind=*/0,
+      runner_debug_record_tensor_source(e, super, ci, /*kind=*/0,
                                         ci->grav.multipole->m_pole.num_gpart);
       count_j++;
 #endif
@@ -526,7 +527,7 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_record_tensor_source(s->e, super, ci, /*kind=*/0,
+      runner_debug_record_tensor_source(e, super, ci, /*kind=*/0,
                                         ci->grav.multipole->m_pole.num_gpart);
       count_j++;
 #endif
@@ -536,7 +537,7 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
       runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_record_tensor_source(s->e, cj, ci, /*kind=*/0,
+      runner_debug_record_tensor_source(e, cj, ci, /*kind=*/0,
                                         ci->grav.multipole->m_pole.num_gpart);
       count_j++;
 #endif
@@ -612,7 +613,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpi, cpj);
+          runner_count_mesh_interaction(e, c, cpi, cpj);
           continue;
         }
 
@@ -680,7 +681,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpj, cpk);
+          runner_count_mesh_interaction(e, c, cpj, cpk);
           continue;
         }
 
@@ -748,7 +749,7 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(ci, top, cj);
+      runner_count_mesh_interaction(e, ci, top, cj);
       continue;
     }
 
@@ -831,7 +832,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpi, cpj);
+        runner_count_mesh_interaction(e, c, cpi, cpj);
         continue;
       }
 
@@ -933,7 +934,7 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpj, cpk)) {
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpj, cpk);
+        runner_count_mesh_interaction(e, c, cpj, cpk);
         continue;
       }
 
@@ -999,7 +1000,7 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(ci, top, cj);
+      runner_count_mesh_interaction(e, ci, top, cj);
       continue;
     }
 
