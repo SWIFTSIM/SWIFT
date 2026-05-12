@@ -40,21 +40,16 @@
  *
  * @param e The #engine.
  * @param ci The first #cell.
- * @param i The x index of the first #cell.
- * @param j The y index of the first #cell.
- * @param k The z index of the first #cell.
  * @param cj The second #cell.
- * @param ii The x index of the second #cell.
- * @param jj The y index of the second #cell.
- * @param kk The z index of the second #cell.
+ * @param is_direct_neighbour Are these cells adjacent in their owning grid.
  * @param r_max The maximum distance between particles in the cells.
  *
  * @returns proxy_type The proxy type for this pair.
  */
 int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
-                          const int i, const int j, const int k,
-                          const struct cell *cj, const int ii, const int jj,
-                          const int kk, const double r_max) {
+                          const struct cell *cj,
+                          const int is_direct_neighbour,
+                          const double r_max) {
 
   struct space *s = e->s;
 
@@ -72,16 +67,6 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
       (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
     with_hydro = 0;
   }
-
-  /* Are these cells adjacent or not? Note that this harmlessly assumes
-   * periodicity. */
-  const int is_direct_neighbour =
-      ((abs(i - ii) <= 1 || abs(i - ii - s->cdim[0]) <= 1 ||
-        abs(i - ii + s->cdim[0]) <= 1) &&
-       (abs(j - jj) <= 1 || abs(j - jj - s->cdim[1]) <= 1 ||
-        abs(j - jj + s->cdim[1]) <= 1) &&
-       (abs(k - kk) <= 1 || abs(k - kk - s->cdim[2]) <= 1 ||
-        abs(k - kk + s->cdim[2]) <= 1));
 
   /* In the hydro case, only care about direct neighbours */
   if (with_hydro && is_direct_neighbour) {
@@ -336,8 +321,15 @@ void engine_makeproxies(struct engine *e) {
                 continue;
 
               /* What sort of proxy (if any) do we need? */
+              const int is_direct_neighbour =
+                  ((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+                    abs(i - iii + cdim[0]) <= 1) &&
+                   (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+                    abs(j - jjj + cdim[1]) <= 1) &&
+                   (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+                    abs(k - kkk + cdim[2]) <= 1));
               int proxy_type = engine_get_proxy_type(
-                  e, &cells[cid], i, j, k, &cells[cjd], iii, jjj, kkk, r_max);
+                  e, &cells[cid], &cells[cjd], is_direct_neighbour, r_max);
 
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
