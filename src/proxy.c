@@ -50,63 +50,58 @@
 MPI_Datatype pcell_mpi_type;
 #endif
 
-struct tag_mapper_data {
-  int *tags_out, *tags_in;
-  int *offset_out, *offset_in;
-  struct cell *space_cells;
+struct proxy_tags_send_task {
+  const struct cell *cell;
+  int *dst;
 };
 
-struct proxy_tag_exchange_entry {
-  int cid;
-  int pcell_size;
-  int type;
+struct proxy_tags_recv_task {
+  const int *src;
+  struct cell *cell;
 };
 
 #ifdef WITH_MPI
 
+/**
+ * @brief Mapper function to pack the tags of the cells into the send buffer.
+ *
+ * @param map_data The array of #proxy_tags_send_task containing the cells and
+ * their corresponding send buffer locations.
+ * @param num_elements The number of tasks in the map_data array.
+ * @param extra_data Unused.
+ *
+ */
 void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
                                      void *extra_data) {
 
-  struct cell *cells = (struct cell *)map_data;
-  struct tag_mapper_data *data = (struct tag_mapper_data *)extra_data;
-  int *restrict tags_out = data->tags_out;
-  const int *restrict offset_out = data->offset_out;
-  struct cell *space_cells = data->space_cells;
-  const size_t delta = cells - space_cells;
+  /* Unpack the tasks from the map data. */
+  struct proxy_tags_send_task *tasks = (struct proxy_tags_send_task *)map_data;
 
+  /* Pack this set of cells' tags into the corresponding send buffers. */
   for (int k = 0; k < num_elements; k++) {
-    if (cells[k].mpi.sendto) {
-      cell_pack_tags(&cells[k], &tags_out[offset_out[k + delta]]);
-    }
+    cell_pack_tags(tasks[k].cell, tasks[k].dst);
   }
 }
 
+/**
+ * @brief Mapper function to unpack the tags of the cells from the recv buffer.
+ *
+ * @param map_data The array of #proxy_tags_recv_task containing the cells and
+ * their corresponding recv buffer locations.
+ * @param num_elements The number of tasks in the map_data array.
+ * @param extra_data Unused.
+ *
+ */
 void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
                                        void *extra_data) {
 
-  int *restrict cids_in = (int *)map_data;
-  struct tag_mapper_data *data = (struct tag_mapper_data *)extra_data;
-  const int *restrict offset_in = data->offset_in;
-  int *restrict tags_in = data->tags_in;
-  struct cell *space_cells = data->space_cells;
+  /* Unpack the tasks from the map data. */
+  struct proxy_tags_recv_task *tasks = (struct proxy_tags_recv_task *)map_data;
 
+  /* Unpack this set of cells' tags from the corresponding recv buffers. */
   for (int k = 0; k < num_elements; k++) {
-    const int cid = cids_in[k];
-    cell_unpack_tags(&tags_in[offset_in[cid]], &space_cells[cid]);
+    cell_unpack_tags(tasks[k].src, tasks[k].cell);
   }
-}
-
-static int proxy_tag_exchange_entry_cmp(const void *a, const void *b) {
-
-  const struct proxy_tag_exchange_entry *entry_a =
-      (const struct proxy_tag_exchange_entry *)a;
-  const struct proxy_tag_exchange_entry *entry_b =
-      (const struct proxy_tag_exchange_entry *)b;
-
-  if (entry_a->cid != entry_b->cid) return entry_a->cid - entry_b->cid;
-  if (entry_a->pcell_size != entry_b->pcell_size)
-    return entry_a->pcell_size - entry_b->pcell_size;
-  return entry_a->type - entry_b->type;
 }
 
 #endif
@@ -126,590 +121,290 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
 #ifdef WITH_MPI
 
-  message("Entering proxy tag exchange with %d proxies.", num_proxies);
+  /* Early exit, there's nothing to do. */
+  if (num_proxies == 0) return;
 
-  /* ticks tic2 = getticks(); */
+  ticks tic = getticks();
+  ticks tic2 = getticks();
 
-  /* Run through the cells and get the size of the tags that will be sent off.
-   */
-  int count_out = 0;
-  int *offset_out =
-      (int *)swift_malloc("tags_offsets_out", s->nr_cells * sizeof(int));
-  if (offset_out == NULL) error("Error allocating memory for tag offsets");
+  /* Prepare for Per-Proxy Communication */
+  MPI_Request *proxy_reqs_in = NULL;
+  MPI_Request *proxy_reqs_out = NULL;
+  int **temp_send_buffers = NULL;
+  int **temp_recv_buffers = NULL;
+  int *send_sizes = NULL;
+  int *recv_sizes = NULL;
+  struct proxy_tags_send_task *send_tasks = NULL;
+  struct proxy_tags_recv_task *recv_tasks = NULL;
+  int num_send_tasks = 0;
+  int num_recv_tasks = 0;
+  int num_active_sends = 0;
+  int num_active_recvs = 0;
 
-  for (int k = 0; k < s->nr_cells; k++) {
-    offset_out[k] = count_out;
-    if (s->cells_top[k].mpi.sendto) {
-      count_out += s->cells_top[k].mpi.pcell_size;
-    }
+  /* Allocate the structures for the per-proxy communication. */
+  proxy_reqs_in = (MPI_Request *)calloc(num_proxies, sizeof(MPI_Request));
+  proxy_reqs_out = (MPI_Request *)calloc(num_proxies, sizeof(MPI_Request));
+  temp_send_buffers = (int **)calloc(num_proxies, sizeof(int *));
+  temp_recv_buffers = (int **)calloc(num_proxies, sizeof(int *));
+  send_sizes = (int *)calloc(num_proxies, sizeof(int));
+  recv_sizes = (int *)calloc(num_proxies, sizeof(int));
+
+  /* Ensure everything was allocated correctly. */
+  if (!proxy_reqs_in || !proxy_reqs_out || !temp_send_buffers ||
+      !temp_recv_buffers || !send_sizes || !recv_sizes) {
+    error("Failed to allocate memory for proxy comm structures.");
   }
 
-  /* Run through the proxies and get the count of incoming tags. */
-  int count_in = 0;
-  int *offset_in =
-      (int *)swift_malloc("tags_offsets_in", s->nr_cells * sizeof(int));
-  if (offset_in == NULL) error("Error allocating memory for tag offsets");
-
+  /* Calculate the sizes of the send and recv buffers, and the number of tasks
+   * needed to pack/unpack them. */
   for (int k = 0; k < num_proxies; k++) {
-    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-      offset_in[proxies[k].cells_in[j] - s->cells_top] = count_in;
-      count_in += proxies[k].cells_in[j]->mpi.pcell_size;
-    }
-  }
-
-  message("Proxy tag exchange counts: count_in=%d count_out=%d.", count_in,
-          count_out);
-
-  /* Allocate the tags. */
-  int *tags_in = NULL;
-  int *tags_out = NULL;
-  if (swift_memalign("tags_in", (void **)&tags_in, SWIFT_CACHE_ALIGNMENT,
-                     sizeof(int) * count_in) != 0 ||
-      swift_memalign("tags_out", (void **)&tags_out, SWIFT_CACHE_ALIGNMENT,
-                     sizeof(int) * count_out) != 0)
-    error("Failed to allocate tags buffers.");
-
-  struct tag_mapper_data extra_data;
-  extra_data.tags_out = tags_out;
-  extra_data.offset_out = offset_out;
-  extra_data.space_cells = s->cells_top;
-
-  /* Pack the local tags. */
-  threadpool_map(&s->e->threadpool, proxy_tags_exchange_pack_mapper,
-                 s->cells_top, s->nr_cells, sizeof(struct cell),
-                 threadpool_auto_chunk_size, &extra_data);
-
-  message("Proxy tag exchange packed local tags.");
-
-  /* if (s->e->verbose) */
-  /*   message("Cell pack tags took %.3f %s.", */
-  /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
-
-  /* tic2 = getticks(); */
-
-  /* Allocate the incoming and outgoing request handles. */
-  int num_reqs_out = 0;
-  int num_reqs_in = 0;
-  for (int k = 0; k < num_proxies; k++) {
-    num_reqs_in += proxies[k].nr_cells_in;
-    num_reqs_out += proxies[k].nr_cells_out;
-  }
-
-  message("Proxy tag exchange requests: num_reqs_in=%d num_reqs_out=%d.",
-          num_reqs_in, num_reqs_out);
-
-  for (int k = 0; k < num_proxies; k++) {
-    int pcells_in = 0;
-    int pcells_out = 0;
-    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-      const ptrdiff_t cid = proxies[k].cells_in[j] - s->cells_top;
-      if (cid < 0 || cid >= s->nr_cells)
-        error(
-            "Invalid proxy input cell pointer in proxy %d node=%d cell=%d "
-            "cid=%td nr_cells=%d.",
-            k, proxies[k].nodeID, j, cid, s->nr_cells);
-      if (proxies[k].cells_in[j]->mpi.pcell_size < 0)
-        error(
-            "Invalid negative input pcell_size in proxy %d node=%d cell=%d "
-            "cid=%td pcell_size=%d.",
-            k, proxies[k].nodeID, j, cid,
-            proxies[k].cells_in[j]->mpi.pcell_size);
-      pcells_in += proxies[k].cells_in[j]->mpi.pcell_size;
-    }
+    /* Outgoing cells. */
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
-      const ptrdiff_t cid = proxies[k].cells_out[j] - s->cells_top;
-      if (cid < 0 || cid >= s->nr_cells)
-        error(
-            "Invalid proxy output cell pointer in proxy %d node=%d cell=%d "
-            "cid=%td nr_cells=%d.",
-            k, proxies[k].nodeID, j, cid, s->nr_cells);
-      if (proxies[k].cells_out[j]->mpi.pcell_size < 0)
-        error(
-            "Invalid negative output pcell_size in proxy %d node=%d cell=%d "
-            "cid=%td pcell_size=%d.",
-            k, proxies[k].nodeID, j, cid,
-            proxies[k].cells_out[j]->mpi.pcell_size);
-      pcells_out += proxies[k].cells_out[j]->mpi.pcell_size;
+      const int size = proxies[k].cells_out[j]->mpi.pcell_size;
+      send_sizes[k] += size;
+      if (size > 0) num_send_tasks++;
     }
+
+    /* Incoming cells. */
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      const int size = proxies[k].cells_in[j]->mpi.pcell_size;
+      recv_sizes[k] += size;
+      if (size > 0) num_recv_tasks++;
+    }
+  }
+
+  /* If we have send tasks, allocate the send tasks array. This holds everything
+   * we need to know to pack the tags of the outgoing cells into the send
+   * buffers. */
+  if (num_send_tasks > 0) {
+    send_tasks = (struct proxy_tags_send_task *)malloc(
+        num_send_tasks * sizeof(struct proxy_tags_send_task));
+    if (send_tasks == NULL) error("Failed to allocate aggregate send tasks.");
+  }
+
+  /* If we have recv tasks, allocate the recv tasks array. This holds everything
+   * we need to know to unpack the tags of the incoming cells from the recv
+   * buffers. */
+  if (num_recv_tasks > 0) {
+    recv_tasks = (struct proxy_tags_recv_task *)malloc(
+        num_recv_tasks * sizeof(struct proxy_tags_recv_task));
+    if (recv_tasks == NULL) error("Failed to allocate aggregate recv tasks.");
+  }
+
+  /* Initialise the send and recv task ids. */
+  int send_task_id = 0;
+  int recv_task_id = 0;
+
+  /* Loop over each proxy, post the receives, allocate the aggregate buffers,
+   * and build the send/recv task lists. */
+  for (int k = 0; k < num_proxies; k++) {
+
+    /* Get the rank we will be communicating with for this proxy. */
+    const int partner_rank = proxies[k].nodeID;
+
+    /* Are we receiving any tags from this proxy? */
+    if (recv_sizes[k] > 0) {
+
+      /* Allocate the temporary receive buffer for this proxy. */
+      temp_recv_buffers[k] = (int *)malloc(recv_sizes[k] * sizeof(int));
+      if (temp_recv_buffers[k] == NULL)
+        error("Failed to allocate temp recv buffer for proxy %d.",
+              partner_rank);
+
+      /* Post the receive for this proxy. We will unpack this buffer into the
+       * incoming cells once the receive completes below. */
+      int err = MPI_Irecv(temp_recv_buffers[k], recv_sizes[k], MPI_INT,
+                          partner_rank, proxy_tag_tags, MPI_COMM_WORLD,
+                          &proxy_reqs_in[num_active_recvs]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to Irecv aggregate tags.");
+
+      /* Count that we posted a receive */
+      num_active_recvs++;
+    }
+
+    /* Are we sending any tags to this proxy? */
+    if (send_sizes[k] > 0) {
+
+      /* Allocate the temporary send buffer for this proxy. We will pack the
+       * tags of the outgoing cells into this buffer and then send it. */
+      temp_send_buffers[k] = (int *)malloc(send_sizes[k] * sizeof(int));
+      if (temp_send_buffers[k] == NULL)
+        error("Failed to allocate temp send buffer for proxy %d.",
+              partner_rank);
+    }
+
+    /* Loop over the outgoing top-level cells for this proxy and construct the
+     * send tasks. */
+    int current_send_offset = 0;
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      /* Get the cell index into the top-level cell array and the size of the
+       * packed cell. */
+      const int cid = proxies[k].cells_out[j] - s->cells_top;
+      const int size = proxies[k].cells_out[j]->mpi.pcell_size;
+
+      /* If this cell has tags to send, add it to the send task list with its
+       * destination in the aggregate send buffer. */
+      if (size > 0) {
+        send_tasks[send_task_id].cell = &s->cells_top[cid];
+        send_tasks[send_task_id].dst =
+            &temp_send_buffers[k][current_send_offset];
+        send_task_id++;
+        current_send_offset += size;
+      }
+    }
+
+    /* Ensure we don't have a disagreement between the size we calculated and
+     * the size we built for the send buffer. */
+    if (current_send_offset != send_sizes[k]) {
+      error("Send size mismatch for proxy %d. Expected %d, built %d.",
+            partner_rank, send_sizes[k], current_send_offset);
+    }
+
+    /* Loop over the incoming top-level cells for this proxy and construct the
+     * recv tasks. We will unpack the recv buffer into these cells once the
+     * receive completes below. */
+    int current_recv_offset = 0;
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+
+      /* Get the cell index into the top-level cell array and the size of the
+       * packed cell. */
+      const int cid = proxies[k].cells_in[j] - s->cells_top;
+      const int size = proxies[k].cells_in[j]->mpi.pcell_size;
+
+      /* If this cell has tags to receive, add it to the recv tasks. */
+      if (size > 0) {
+        recv_tasks[recv_task_id].src =
+            &temp_recv_buffers[k][current_recv_offset];
+        recv_tasks[recv_task_id].cell = &s->cells_top[cid];
+        recv_task_id++;
+        current_recv_offset += size;
+      }
+    }
+
+    /* Ensure we don't have a disagreement between the size we calculated and
+     * the size we built for the recv buffer. */
+    if (current_recv_offset != recv_sizes[k])
+      error("Recv size mismatch for proxy %d. Expected %d, built %d.",
+            partner_rank, recv_sizes[k], current_recv_offset);
+  }
+
+  /* Ensure we built the number of send and recv tasks we expected. */
+  if (send_task_id != num_send_tasks)
+    error("Built %d send tasks, expected %d.", send_task_id, num_send_tasks);
+  if (recv_task_id != num_recv_tasks)
+    error("Built %d recv tasks, expected %d.", recv_task_id, num_recv_tasks);
+
+  /* If we have send tasks, pack the send buffers with the threadpool. */
+  if (num_send_tasks > 0) {
+    threadpool_map(&s->e->threadpool, proxy_tags_exchange_pack_mapper,
+                   send_tasks, num_send_tasks,
+                   sizeof(struct proxy_tags_send_task),
+                   threadpool_auto_chunk_size, NULL);
+  }
+
+  /* With everything packed, post the sends for each proxy. */
+  for (int k = 0; k < num_proxies; k++) {
+    if (send_sizes[k] > 0) {
+      int err = MPI_Isend(temp_send_buffers[k], send_sizes[k], MPI_INT,
+                          proxies[k].nodeID, proxy_tag_tags, MPI_COMM_WORLD,
+                          &proxy_reqs_out[num_active_sends]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to Isend aggregate tags.");
+
+      /* Count that we posted a send */
+      num_active_sends++;
+    }
+  }
+
+  /* Report the number of sends and receives we posted for this exchange. */
+  if (s->e->verbose) {
+    message("Posted %d proxy aggregated Sends / %d proxy aggregated Recvs.",
+            num_active_sends, num_active_recvs);
+  }
+
+  /* Report how long the setup, packing, and posting of the aggregated
+   * communication took. */
+  if (s->e->verbose) {
     message(
-        "Proxy tag exchange proxy %d node=%d cells_in=%d cells_out=%d "
-        "pcells_in=%d pcells_out=%d.",
-        k, proxies[k].nodeID, proxies[k].nr_cells_in, proxies[k].nr_cells_out,
-        pcells_in, pcells_out);
+        "Setting up, packing, and posting proxy aggregated tag exchanges took "
+        "%.3f %s.",
+        clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
 
-  /* Catch asymmetric proxy tag exchanges before entering MPI_Waitall(). */
-  const int nr_nodes = s->e->nr_nodes;
-  int *send_count_by_node = (int *)calloc(nr_nodes, sizeof(int));
-  int *recv_count_by_node = (int *)calloc(nr_nodes, sizeof(int));
-  int *peer_send_count = (int *)calloc(nr_nodes, sizeof(int));
-  unsigned long long *send_sum_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *recv_sum_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *peer_send_sum =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *send_size_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *recv_size_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *peer_send_size =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *send_pair_sum_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *recv_pair_sum_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *peer_send_pair_sum =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *send_pair_xor_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *recv_pair_xor_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *peer_send_pair_xor =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *send_xor_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *recv_xor_by_node =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  unsigned long long *peer_send_xor =
-      (unsigned long long *)calloc(nr_nodes, sizeof(unsigned long long));
-  if (send_count_by_node == NULL || recv_count_by_node == NULL ||
-      peer_send_count == NULL || send_sum_by_node == NULL ||
-      recv_sum_by_node == NULL || peer_send_sum == NULL ||
-      send_size_by_node == NULL || recv_size_by_node == NULL ||
-      peer_send_size == NULL ||
-      send_pair_sum_by_node == NULL || recv_pair_sum_by_node == NULL ||
-      peer_send_pair_sum == NULL || send_pair_xor_by_node == NULL ||
-      recv_pair_xor_by_node == NULL || peer_send_pair_xor == NULL ||
-      send_xor_by_node == NULL || recv_xor_by_node == NULL ||
-      peer_send_xor == NULL)
-    error("Failed to allocate proxy tag exchange debug buffers.");
+  tic2 = getticks();
 
-  for (int k = 0; k < num_proxies; k++) {
-    const int nodeID = proxies[k].nodeID;
-    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-      const unsigned long long cid = proxies[k].cells_in[j] - s->cells_top;
-      const unsigned long long size = proxies[k].cells_in[j]->mpi.pcell_size;
-      const unsigned long long pair_hash =
-          (cid + 0x9e3779b97f4a7c15ULL) ^ (size * 0xbf58476d1ce4e5b9ULL);
-      recv_count_by_node[nodeID] += 1;
-      recv_sum_by_node[nodeID] += cid;
-      recv_size_by_node[nodeID] += size;
-      recv_pair_sum_by_node[nodeID] += pair_hash;
-      recv_pair_xor_by_node[nodeID] ^= pair_hash;
-      recv_xor_by_node[nodeID] ^= cid;
-    }
-    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
-      const unsigned long long cid = proxies[k].cells_out[j] - s->cells_top;
-      const unsigned long long size = proxies[k].cells_out[j]->mpi.pcell_size;
-      const unsigned long long pair_hash =
-          (cid + 0x9e3779b97f4a7c15ULL) ^ (size * 0xbf58476d1ce4e5b9ULL);
-      send_count_by_node[nodeID] += 1;
-      send_sum_by_node[nodeID] += cid;
-      send_size_by_node[nodeID] += size;
-      send_pair_sum_by_node[nodeID] += pair_hash;
-      send_pair_xor_by_node[nodeID] ^= pair_hash;
-      send_xor_by_node[nodeID] ^= cid;
-    }
+  /* Wait for ALL Receives to Complete */
+  if (num_active_recvs > 0) {
+    if (MPI_Waitall(num_active_recvs, proxy_reqs_in, MPI_STATUSES_IGNORE) !=
+        MPI_SUCCESS)
+      error("MPI_Waitall on aggregate receives failed.");
   }
 
-  message("Proxy tag exchange checking peer symmetry.");
-
-  int mpi_err = MPI_Alltoall(send_count_by_node, 1, MPI_INT, peer_send_count,
-                             1, MPI_INT, MPI_COMM_WORLD);
-  if (mpi_err != MPI_SUCCESS)
-    mpi_error(mpi_err, "Failed to alltoall tag counts.");
-  mpi_err = MPI_Alltoall(send_sum_by_node, 1, MPI_UNSIGNED_LONG_LONG,
-                         peer_send_sum, 1, MPI_UNSIGNED_LONG_LONG,
-                         MPI_COMM_WORLD);
-  if (mpi_err != MPI_SUCCESS)
-    mpi_error(mpi_err, "Failed to alltoall tag sums.");
-  mpi_err = MPI_Alltoall(send_size_by_node, 1, MPI_UNSIGNED_LONG_LONG,
-                         peer_send_size, 1, MPI_UNSIGNED_LONG_LONG,
-                         MPI_COMM_WORLD);
-  if (mpi_err != MPI_SUCCESS)
-    mpi_error(mpi_err, "Failed to alltoall tag sizes.");
-  mpi_err = MPI_Alltoall(send_pair_sum_by_node, 1, MPI_UNSIGNED_LONG_LONG,
-                         peer_send_pair_sum, 1, MPI_UNSIGNED_LONG_LONG,
-                         MPI_COMM_WORLD);
-  if (mpi_err != MPI_SUCCESS)
-    mpi_error(mpi_err, "Failed to alltoall tag pair sums.");
-  mpi_err = MPI_Alltoall(send_pair_xor_by_node, 1, MPI_UNSIGNED_LONG_LONG,
-                         peer_send_pair_xor, 1, MPI_UNSIGNED_LONG_LONG,
-                         MPI_COMM_WORLD);
-  if (mpi_err != MPI_SUCCESS)
-    mpi_error(mpi_err, "Failed to alltoall tag pair xors.");
-  mpi_err = MPI_Alltoall(send_xor_by_node, 1, MPI_UNSIGNED_LONG_LONG,
-                         peer_send_xor, 1, MPI_UNSIGNED_LONG_LONG,
-                         MPI_COMM_WORLD);
-  if (mpi_err != MPI_SUCCESS)
-    mpi_error(mpi_err, "Failed to alltoall tag xors.");
-
-  message("Proxy tag exchange peer symmetry check completed.");
-
-  for (int k = 0; k < nr_nodes; k++) {
-    if (recv_count_by_node[k] != peer_send_count[k] ||
-        recv_sum_by_node[k] != peer_send_sum[k] ||
-        recv_size_by_node[k] != peer_send_size[k] ||
-        recv_pair_sum_by_node[k] != peer_send_pair_sum[k] ||
-        recv_pair_xor_by_node[k] != peer_send_pair_xor[k] ||
-        recv_xor_by_node[k] != peer_send_xor[k]) {
-      error(
-          "Asymmetric proxy tag exchange with node %d: expecting %d tags "
-          "(sum=%llu size=%llu pair_sum=%llu pair_xor=%llu xor=%llu), peer "
-          "sends %d tags (sum=%llu size=%llu pair_sum=%llu pair_xor=%llu "
-          "xor=%llu).",
-          k, recv_count_by_node[k], recv_sum_by_node[k], recv_size_by_node[k],
-          recv_pair_sum_by_node[k], recv_pair_xor_by_node[k],
-          recv_xor_by_node[k], peer_send_count[k], peer_send_sum[k],
-          peer_send_size[k], peer_send_pair_sum[k], peer_send_pair_xor[k],
-          peer_send_xor[k]);
-    }
+  /* How long were we waiting for the receives to complete? */
+  if (s->e->verbose) {
+    message(
+        "Waiting for proxy aggregated tag receives to complete (MPI_Waitall) "
+        "took %.3f %s.",
+        clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
 
-  message("Proxy tag exchange checking exact peer tag/size lists.");
+  tic2 = getticks();
 
-  for (int peer = 0; peer < nr_nodes; peer++) {
-
-    if (peer == s->e->nodeID) continue;
-    if (send_count_by_node[peer] == 0 && recv_count_by_node[peer] == 0 &&
-        peer_send_count[peer] == 0)
-      continue;
-
-    const int send_count = send_count_by_node[peer];
-    const int recv_count = recv_count_by_node[peer];
-    const int peer_count = peer_send_count[peer];
-
-    struct proxy_tag_exchange_entry *send_entries = NULL;
-    struct proxy_tag_exchange_entry *expected_entries = NULL;
-    struct proxy_tag_exchange_entry *peer_entries = NULL;
-
-    if ((send_count > 0 &&
-         (send_entries = (struct proxy_tag_exchange_entry *)malloc(
-              sizeof(struct proxy_tag_exchange_entry) * send_count)) == NULL) ||
-        (recv_count > 0 &&
-         (expected_entries = (struct proxy_tag_exchange_entry *)malloc(
-              sizeof(struct proxy_tag_exchange_entry) * recv_count)) == NULL) ||
-        (peer_count > 0 &&
-         (peer_entries = (struct proxy_tag_exchange_entry *)malloc(
-              sizeof(struct proxy_tag_exchange_entry) * peer_count)) == NULL))
-      error("Failed to allocate exact proxy tag exchange check buffers.");
-
-    int send_index = 0;
-    int recv_index = 0;
-    for (int p = 0; p < num_proxies; p++) {
-      if (proxies[p].nodeID != peer) continue;
-
-      for (int j = 0; j < proxies[p].nr_cells_out; j++) {
-        send_entries[send_index].cid = proxies[p].cells_out[j] - s->cells_top;
-        send_entries[send_index].pcell_size =
-            proxies[p].cells_out[j]->mpi.pcell_size;
-        send_entries[send_index].type = proxies[p].cells_out[j]->type;
-        send_index += 1;
-      }
-
-      for (int j = 0; j < proxies[p].nr_cells_in; j++) {
-        expected_entries[recv_index].cid =
-            proxies[p].cells_in[j] - s->cells_top;
-        expected_entries[recv_index].pcell_size =
-            proxies[p].cells_in[j]->mpi.pcell_size;
-        expected_entries[recv_index].type = proxies[p].cells_in[j]->type;
-        recv_index += 1;
-      }
-    }
-
-    if (send_index != send_count || recv_index != recv_count)
-      error(
-          "Exact proxy tag exchange check internal count mismatch for peer %d: "
-          "send_index=%d send_count=%d recv_index=%d recv_count=%d.",
-          peer, send_index, send_count, recv_index, recv_count);
-
-    qsort(send_entries, send_count, sizeof(struct proxy_tag_exchange_entry),
-          proxy_tag_exchange_entry_cmp);
-    qsort(expected_entries, recv_count, sizeof(struct proxy_tag_exchange_entry),
-          proxy_tag_exchange_entry_cmp);
-
-    for (int j = 1; j < send_count; j++) {
-      if (send_entries[j - 1].cid == send_entries[j].cid &&
-          send_entries[j - 1].type == send_entries[j].type)
-        error(
-            "Duplicate proxy tag send to peer %d for cid=%d type=%d: "
-            "pcell_size entries are %d and %d. MPI tag matching uses only cid.",
-            peer, send_entries[j].cid, send_entries[j].type,
-            send_entries[j - 1].pcell_size, send_entries[j].pcell_size);
-    }
-
-    for (int j = 1; j < recv_count; j++) {
-      if (expected_entries[j - 1].cid == expected_entries[j].cid &&
-          expected_entries[j - 1].type == expected_entries[j].type)
-        error(
-            "Duplicate proxy tag receive from peer %d for cid=%d type=%d: "
-            "pcell_size entries are %d and %d. MPI tag matching uses only cid.",
-            peer, expected_entries[j].cid, expected_entries[j].type,
-            expected_entries[j - 1].pcell_size,
-            expected_entries[j].pcell_size);
-    }
-
-    mpi_err = MPI_Sendrecv(send_entries,
-                           sizeof(struct proxy_tag_exchange_entry) * send_count,
-                           MPI_BYTE, peer, 31415, peer_entries,
-                           sizeof(struct proxy_tag_exchange_entry) * peer_count,
-                           MPI_BYTE, peer, 31415,
-                           MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    if (mpi_err != MPI_SUCCESS)
-      mpi_error(mpi_err, "Failed to sendrecv exact tag exchange lists.");
-
-    qsort(peer_entries, peer_count, sizeof(struct proxy_tag_exchange_entry),
-          proxy_tag_exchange_entry_cmp);
-
-    for (int j = 0; j < recv_count; j++) {
-      if (expected_entries[j].cid != peer_entries[j].cid ||
-          expected_entries[j].pcell_size != peer_entries[j].pcell_size ||
-          expected_entries[j].type != peer_entries[j].type)
-        error(
-            "Exact proxy tag exchange mismatch with peer %d at sorted entry %d "
-            "of %d: expecting cid=%d pcell_size=%d type=%d, peer sends "
-            "cid=%d pcell_size=%d type=%d.",
-            peer, j, recv_count, expected_entries[j].cid,
-            expected_entries[j].pcell_size, expected_entries[j].type,
-            peer_entries[j].cid, peer_entries[j].pcell_size,
-            peer_entries[j].type);
-    }
-
-    free(send_entries);
-    free(expected_entries);
-    free(peer_entries);
-  }
-
-  message("Proxy tag exchange exact peer tag/size lists matched.");
-
-  free(send_count_by_node);
-  free(recv_count_by_node);
-  free(peer_send_count);
-  free(send_sum_by_node);
-  free(recv_sum_by_node);
-  free(peer_send_sum);
-  free(send_size_by_node);
-  free(recv_size_by_node);
-  free(peer_send_size);
-  free(send_pair_sum_by_node);
-  free(recv_pair_sum_by_node);
-  free(peer_send_pair_sum);
-  free(send_pair_xor_by_node);
-  free(recv_pair_xor_by_node);
-  free(peer_send_pair_xor);
-  free(send_xor_by_node);
-  free(recv_xor_by_node);
-  free(peer_send_xor);
-
-  MPI_Request *reqs_in = NULL;
-  int *cids_in = NULL;
-  if ((reqs_in = (MPI_Request *)malloc(sizeof(MPI_Request) *
-                                       (num_reqs_in + num_reqs_out))) == NULL ||
-      (cids_in = (int *)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
-          NULL)
-    error("Failed to allocate MPI_Request arrays.");
-  MPI_Request *reqs_out = &reqs_in[num_reqs_in];
-  int *cids_out = &cids_in[num_reqs_in];
-
-  /* Check for void cells in proxy lists (should not happen after repartition). */
-  for (int k = 0; k < num_proxies; k++) {
-    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-      if (proxies[k].cells_in[j]->subtype == cell_subtype_void) {
-        error(
-            "Void cell in proxy %d cells_in[%d] (node=%d) during tag "
-            "exchange. This should not happen after repartition!",
-            k, j, proxies[k].nodeID);
-      }
-    }
-    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
-      if (proxies[k].cells_out[j]->subtype == cell_subtype_void) {
-        error(
-            "Void cell in proxy %d cells_out[%d] (node=%d) during tag "
-            "exchange. This should not happen after repartition!",
-            k, j, proxies[k].nodeID);
-      }
-    }
-  }
-
-  extra_data.tags_in = tags_in;
-  extra_data.offset_in = offset_in;
-  extra_data.space_cells = s->cells_top;
-
-  /* Test split exchange: finish all background cells before zoom cells. */
-  int recv_rid = 0;
-  int send_rid = 0;
-
-  message("Proxy tag exchange starting background pass.");
-
-  for (int k = 0; k < num_proxies; k++) {
-    message("Proxy tag exchange emitting background recvs for proxy %d node=%d.",
-            k, proxies[k].nodeID);
-    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-      if (proxies[k].cells_in[j]->type != cell_type_bkg) continue;
-
-      const int cid = proxies[k].cells_in[j] - s->cells_top;
-      if (offset_in[cid] < 0 ||
-          offset_in[cid] + proxies[k].cells_in[j]->mpi.pcell_size > count_in)
-        error(
-            "Invalid tag receive buffer bounds in proxy %d node=%d cell=%d "
-            "cid=%d offset=%d pcell_size=%d count_in=%d.",
-            k, proxies[k].nodeID, j, cid, offset_in[cid],
-            proxies[k].cells_in[j]->mpi.pcell_size, count_in);
-      cids_in[recv_rid] = cid;
-      int err = MPI_Irecv(&tags_in[offset_in[cid]],
-                          proxies[k].cells_in[j]->mpi.pcell_size, MPI_INT,
-                          proxies[k].nodeID, cid, MPI_COMM_WORLD,
-                          &reqs_in[recv_rid]);
-      if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv tags.");
-      recv_rid += 1;
-    }
-
-    message("Proxy tag exchange emitting background sends for proxy %d node=%d.",
-            k, proxies[k].nodeID);
-    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
-      if (proxies[k].cells_out[j]->type != cell_type_bkg) continue;
-
-      const int cid = proxies[k].cells_out[j] - s->cells_top;
-      if (offset_out[cid] < 0 ||
-          offset_out[cid] + proxies[k].cells_out[j]->mpi.pcell_size > count_out)
-        error(
-            "Invalid tag send buffer bounds in proxy %d node=%d cell=%d "
-            "cid=%d offset=%d pcell_size=%d count_out=%d.",
-            k, proxies[k].nodeID, j, cid, offset_out[cid],
-            proxies[k].cells_out[j]->mpi.pcell_size, count_out);
-      cids_out[send_rid] = cid;
-      int err = MPI_Isend(&tags_out[offset_out[cid]],
-                          proxies[k].cells_out[j]->mpi.pcell_size, MPI_INT,
-                          proxies[k].nodeID, cid, MPI_COMM_WORLD,
-                          &reqs_out[send_rid]);
-      if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
-      send_rid += 1;
-    }
-    message("Proxy tag exchange emitted background proxy %d node=%d.", k,
-            proxies[k].nodeID);
-  }
-
-  message("Proxy tag exchange waiting for background receives (%d).", recv_rid);
-  if (recv_rid > 0 &&
-      MPI_Waitall(recv_rid, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on tag receives failed.");
-
-  message("Proxy tag exchange background receives completed.");
-
-  if (recv_rid > 0) {
+  /* If we have recv tasks, unpack the recv buffers with the threadpool. */
+  if (num_recv_tasks > 0) {
     threadpool_map(&s->e->threadpool, proxy_tags_exchange_unpack_mapper,
-                   cids_in, recv_rid, sizeof(int), threadpool_auto_chunk_size,
-                   &extra_data);
+                   recv_tasks, num_recv_tasks,
+                   sizeof(struct proxy_tags_recv_task),
+                   threadpool_auto_chunk_size, NULL);
   }
 
-  message("Proxy tag exchange waiting for background sends (%d).", send_rid);
-  if (send_rid > 0 &&
-      MPI_Waitall(send_rid, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on tag sends failed.");
+  /* Report how long the unpacking of the recv buffers took. */
+  if (s->e->verbose) {
+    message("Unpacking aggregated data took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
-  message("Proxy tag exchange background sends completed.");
+  /* Don't move on if we haven't finished sending yet, we want to be sure the
+   * send buffers aren't reused before the sends have completed. */
+  tic2 = getticks();
+  if (num_active_sends > 0) {
+    if (MPI_Waitall(num_active_sends, proxy_reqs_out, MPI_STATUSES_IGNORE) !=
+        MPI_SUCCESS)
+      error("MPI_Waitall on aggregate sends failed.");
+  }
 
-  recv_rid = 0;
-  send_rid = 0;
+  /* How long were we waiting for the sends to complete? */
+  if (s->e->verbose) {
+    message(
+        "Waiting for proxy aggregated tag sends to complete (MPI_Waitall) took "
+        "%.3f %s.",
+        clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
-  message("Proxy tag exchange starting zoom pass.");
-
+  /* Cleanup Temporary Communication Structures */
   for (int k = 0; k < num_proxies; k++) {
-    message("Proxy tag exchange emitting zoom recvs for proxy %d node=%d.", k,
-            proxies[k].nodeID);
-    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-      if (proxies[k].cells_in[j]->type != cell_type_zoom) continue;
-
-      const int cid = proxies[k].cells_in[j] - s->cells_top;
-      if (offset_in[cid] < 0 ||
-          offset_in[cid] + proxies[k].cells_in[j]->mpi.pcell_size > count_in)
-        error(
-            "Invalid tag receive buffer bounds in proxy %d node=%d cell=%d "
-            "cid=%d offset=%d pcell_size=%d count_in=%d.",
-            k, proxies[k].nodeID, j, cid, offset_in[cid],
-            proxies[k].cells_in[j]->mpi.pcell_size, count_in);
-      cids_in[recv_rid] = cid;
-      int err = MPI_Irecv(&tags_in[offset_in[cid]],
-                          proxies[k].cells_in[j]->mpi.pcell_size, MPI_INT,
-                          proxies[k].nodeID, cid, MPI_COMM_WORLD,
-                          &reqs_in[recv_rid]);
-      if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv tags.");
-      recv_rid += 1;
+    if (temp_send_buffers[k] != NULL) {
+      free(temp_send_buffers[k]);
+    }
+    if (temp_recv_buffers[k] != NULL) {
+      free(temp_recv_buffers[k]);
     }
   }
 
-  message("Proxy tag exchange emitted all zoom receives (%d).", recv_rid);
+  /* Clean up transient structures for the per-proxy communication. */
+  free(proxy_reqs_in);
+  free(proxy_reqs_out);
+  free(temp_send_buffers);
+  free(temp_recv_buffers);
+  free(send_sizes);
+  free(recv_sizes);
+  free(send_tasks);
+  free(recv_tasks);
 
-  int zoom_send_wait_rid = 0;
-  const int zoom_send_batch_size = 64;
-
-  for (int k = 0; k < num_proxies; k++) {
-    message("Proxy tag exchange emitting zoom sends for proxy %d node=%d.", k,
-            proxies[k].nodeID);
-
-    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
-      if (proxies[k].cells_out[j]->type != cell_type_zoom) continue;
-
-      const int cid = proxies[k].cells_out[j] - s->cells_top;
-      if (offset_out[cid] < 0 ||
-          offset_out[cid] + proxies[k].cells_out[j]->mpi.pcell_size > count_out)
-        error(
-            "Invalid tag send buffer bounds in proxy %d node=%d cell=%d "
-            "cid=%d offset=%d pcell_size=%d count_out=%d.",
-            k, proxies[k].nodeID, j, cid, offset_out[cid],
-            proxies[k].cells_out[j]->mpi.pcell_size, count_out);
-      cids_out[send_rid] = cid;
-      int err = MPI_Isend(&tags_out[offset_out[cid]],
-                          proxies[k].cells_out[j]->mpi.pcell_size, MPI_INT,
-                          proxies[k].nodeID, cid, MPI_COMM_WORLD,
-                          &reqs_out[zoom_send_wait_rid]);
-      if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
-      zoom_send_wait_rid += 1;
-      send_rid += 1;
-
-      if (zoom_send_wait_rid == zoom_send_batch_size) {
-        message("Proxy tag exchange waiting for zoom send batch (%d/%d).",
-                zoom_send_wait_rid, send_rid);
-        if (MPI_Waitall(zoom_send_wait_rid, reqs_out, MPI_STATUSES_IGNORE) !=
-            MPI_SUCCESS)
-          error("MPI_Waitall on tag sends failed.");
-        zoom_send_wait_rid = 0;
-      }
-    }
-    message("Proxy tag exchange emitted zoom sends for proxy %d node=%d.", k,
-            proxies[k].nodeID);
+  /* Done */
+  if (s->e->verbose) {
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
   }
-
-  message("Proxy tag exchange waiting for zoom receives (%d).", recv_rid);
-  if (recv_rid > 0 &&
-      MPI_Waitall(recv_rid, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on tag receives failed.");
-
-  message("Proxy tag exchange zoom receives completed.");
-
-  if (recv_rid > 0) {
-    threadpool_map(&s->e->threadpool, proxy_tags_exchange_unpack_mapper,
-                   cids_in, recv_rid, sizeof(int), threadpool_auto_chunk_size,
-                   &extra_data);
-  }
-
-  message("Proxy tag exchange waiting for remaining zoom sends (%d/%d).",
-          zoom_send_wait_rid, send_rid);
-  if (zoom_send_wait_rid > 0 &&
-      MPI_Waitall(zoom_send_wait_rid, reqs_out, MPI_STATUSES_IGNORE) !=
-          MPI_SUCCESS)
-    error("MPI_Waitall on tag sends failed.");
-
-  message("Proxy tag exchange zoom sends completed.");
-
-  /* Clean up. */
-  swift_free("tags_in", tags_in);
-  swift_free("tags_out", tags_out);
-  swift_free("tags_offsets_in", offset_in);
-  swift_free("tags_offsets_out", offset_out);
-  free(reqs_in);
-  free(cids_in);
 
 #else
   error("SWIFT was not compiled with MPI support.");
