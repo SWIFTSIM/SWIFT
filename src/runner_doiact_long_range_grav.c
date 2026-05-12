@@ -39,6 +39,7 @@
 /* Temporary debug tracker for a single problematic g-particle. */
 static const long long debug_mesh_track_gpart_id = 285742398LL;
 static const struct cell *debug_mesh_tracked_leaf = NULL;
+static const struct cell *debug_mesh_tracked_super = NULL;
 static const struct cell **debug_mesh_seen_sources = NULL;
 static const struct cell **debug_mesh_seen_sources_list = NULL;
 static size_t debug_mesh_seen_sources_cap = 0;
@@ -95,6 +96,8 @@ static void runner_debug_init_mesh_tracker(const struct engine *e) {
 
   if (debug_mesh_tracked_leaf == NULL) return;
 
+  debug_mesh_tracked_super = debug_mesh_tracked_leaf->grav.super;
+
   if (debug_mesh_seen_sources == NULL) {
     size_t cap = 1;
     while (cap < 2u * (size_t)e->s->tot_cells) cap <<= 1;
@@ -129,6 +132,28 @@ static void runner_debug_note_mesh_source(const struct cell *recipient,
   if (!(recipient == debug_mesh_tracked_leaf ||
         cell_contains_progeny(recipient, debug_mesh_tracked_leaf))) {
     return;
+  }
+
+  /* If the source lives within the tracked super-cell, then the recipient must
+   * be below the branch point so that the down-pass does not hand this source
+   * to leaves inside the source subtree as well. */
+  if (debug_mesh_tracked_super != NULL &&
+      cell_contains_progeny(debug_mesh_tracked_super, source) &&
+      cell_contains_progeny(recipient, source)) {
+    error(
+        "Mesh-count recipient contains source subtree for tracked gpart "
+        "id=%lld: tracked_leaf(cellID=%llu depth=%d) "
+        "tracked_super(cellID=%llu depth=%d type=%s subtype=%s) "
+        "recipient(cellID=%llu depth=%d type=%s subtype=%s) "
+        "source(cellID=%llu depth=%d type=%s subtype=%s)",
+        debug_mesh_track_gpart_id, debug_mesh_tracked_leaf->cellID,
+        debug_mesh_tracked_leaf->depth, debug_mesh_tracked_super->cellID,
+        debug_mesh_tracked_super->depth,
+        cellID_names[debug_mesh_tracked_super->type],
+        subcellID_names[debug_mesh_tracked_super->subtype], recipient->cellID,
+        recipient->depth, cellID_names[recipient->type],
+        subcellID_names[recipient->subtype], source->cellID, source->depth,
+        cellID_names[source->type], subcellID_names[source->subtype]);
   }
 
   for (size_t i = 0; i < debug_mesh_seen_sources_count; i++) {
