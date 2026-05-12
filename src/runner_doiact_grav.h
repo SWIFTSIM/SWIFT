@@ -41,6 +41,8 @@ void runner_debug_record_tensor_source(const struct engine *e,
                                        const int kind,
                                        const long long delta);
 void runner_debug_dump_tensor_sources(const struct cell *c);
+void runner_debug_dump_tensor_source_overlaps(const struct cell *parent,
+                                              const struct cell *child);
 #endif
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer);

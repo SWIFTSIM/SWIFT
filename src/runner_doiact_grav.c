@@ -217,6 +217,39 @@ void runner_debug_dump_tensor_sources(const struct cell *c) {
   if (runner_debug_tensor_exact_overflow)
     message("tensor-source-exact: table overflowed, some entries omitted.");
 }
+
+void runner_debug_dump_tensor_source_overlaps(const struct cell *parent,
+                                              const struct cell *child) {
+  for (size_t i = 0; i < runner_debug_tensor_exact_cap; i++) {
+    const struct runner_debug_tensor_exact_entry *pi =
+        &runner_debug_tensor_exact[i];
+    if (pi->recipient != parent) continue;
+    if (runner_debug_source_classify(pi->source) != runner_debug_source_bkg_void)
+      continue;
+
+    for (size_t j = 0; j < runner_debug_tensor_exact_cap; j++) {
+      const struct runner_debug_tensor_exact_entry *cj =
+          &runner_debug_tensor_exact[j];
+      if (cj->recipient != child) continue;
+      if (runner_debug_source_classify(cj->source) != runner_debug_source_zoom)
+        continue;
+
+      if (cell_contains_progeny(pi->source, cj->source) ||
+          cell_contains_progeny(cj->source, pi->source)) {
+        message(
+            "tensor-source-overlap: parent_cellID=%llu parent_kind=%s "
+            "parent_source=%llu(%s/%s depth=%d delta=%lld) child_cellID=%llu "
+            "child_kind=%s child_source=%llu(%s/%s depth=%d delta=%lld)",
+            parent->cellID, runner_debug_tensor_kind_name(pi->kind),
+            pi->source->cellID, cellID_names[pi->source->type],
+            subcellID_names[pi->source->subtype], pi->source->depth, pi->delta,
+            child->cellID, runner_debug_tensor_kind_name(cj->kind),
+            cj->source->cellID, cellID_names[cj->source->type],
+            subcellID_names[cj->source->subtype], cj->source->depth, cj->delta);
+      }
+    }
+  }
+}
 #endif
 
 /**
@@ -317,6 +350,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           if (child_before > remaining) {
             runner_debug_dump_tensor_sources(c);
             runner_debug_dump_tensor_sources(cp);
+            runner_debug_dump_tensor_source_overlaps(c, cp);
             message(
                 "grav_down overlap before inheritance: parent(cellID=%llu type=%s subtype=%s "
                 "depth=%d super=%llu super_depth=%d) child(cellID=%llu type=%s "
