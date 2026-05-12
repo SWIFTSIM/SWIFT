@@ -32,6 +32,16 @@
 /* Avoid cyclic inclusions. */
 struct runner;
 struct cell;
+struct engine;
+
+#ifdef SWIFT_DEBUG_CHECKS
+void runner_debug_record_tensor_source(const struct engine *e,
+                                       const struct cell *recipient,
+                                       const struct cell *source,
+                                       const int kind,
+                                       const long long delta);
+void runner_debug_dump_tensor_sources(const struct cell *c);
+#endif
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer);
 
@@ -117,6 +127,11 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   /* Let's interact at this level */
   gravity_M2L_nonsym(&ci->grav.multipole->pot, multi_j, ci->grav.multipole->CoM,
                      cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  runner_debug_record_tensor_source(e, ci, cj, /*kind=*/2,
+                                    cj->grav.multipole->m_pole.num_gpart);
+#endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   /* Unlock the multipoles */

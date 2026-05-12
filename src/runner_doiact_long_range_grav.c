@@ -482,6 +482,8 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_record_tensor_source(s->e, super, cj, /*kind=*/0,
+                                      cj->grav.multipole->m_pole.num_gpart);
     count_i++;
 #endif
   } else if (cell_contains_progeny(ci, super)) {
@@ -490,6 +492,8 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_record_tensor_source(s->e, super, cj, /*kind=*/0,
+                                      cj->grav.multipole->m_pole.num_gpart);
     count_i++;
 #endif
   } else if (cell_contains_progeny(super, ci)) {
@@ -498,6 +502,8 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
     runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_record_tensor_source(s->e, ci, cj, /*kind=*/0,
+                                      cj->grav.multipole->m_pole.num_gpart);
     count_i++;
 #endif
   }
@@ -510,6 +516,8 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_record_tensor_source(s->e, super, ci, /*kind=*/0,
+                                        ci->grav.multipole->m_pole.num_gpart);
       count_j++;
 #endif
     } else if (cell_contains_progeny(cj, super)) {
@@ -518,6 +526,8 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_record_tensor_source(s->e, super, ci, /*kind=*/0,
+                                        ci->grav.multipole->m_pole.num_gpart);
       count_j++;
 #endif
     } else if (cell_contains_progeny(super, cj)) {
@@ -526,6 +536,8 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 #endif
       runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_record_tensor_source(s->e, cj, ci, /*kind=*/0,
+                                        ci->grav.multipole->m_pole.num_gpart);
       count_j++;
 #endif
     }

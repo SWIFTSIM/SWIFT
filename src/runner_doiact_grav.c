@@ -25,6 +25,7 @@
 /* Local includes. */
 #include "active.h"
 #include "cell.h"
+#include "engine.h"
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "gravity_iact.h"
@@ -32,6 +33,118 @@
 #include "part.h"
 #include "space_getsid.h"
 #include "timers.h"
+
+#ifdef SWIFT_DEBUG_CHECKS
+enum runner_debug_tensor_kind {
+  runner_debug_tensor_kind_mesh = 0,
+  runner_debug_tensor_kind_pm_skip = 1,
+  runner_debug_tensor_kind_mm = 2,
+  runner_debug_tensor_kind_count = 3,
+};
+
+enum runner_debug_source_class {
+  runner_debug_source_zoom = 0,
+  runner_debug_source_bkg_void = 1,
+  runner_debug_source_bkg_neigh = 2,
+  runner_debug_source_other = 3,
+  runner_debug_source_count = 4,
+};
+
+struct runner_debug_tensor_summary {
+  const struct cell *recipient;
+  long long sums[runner_debug_tensor_kind_count][runner_debug_source_count];
+};
+
+static struct runner_debug_tensor_summary *runner_debug_tensor_summaries = NULL;
+static size_t runner_debug_tensor_summaries_cap = 0;
+static integertime_t runner_debug_tensor_summaries_ti = -1;
+
+static INLINE enum runner_debug_source_class runner_debug_source_classify(
+    const struct cell *source) {
+  if (source->type == cell_type_zoom) return runner_debug_source_zoom;
+  if (source->type == cell_type_bkg && source->subtype == cell_subtype_void)
+    return runner_debug_source_bkg_void;
+  if (source->type == cell_type_bkg && source->subtype == cell_subtype_neighbour)
+    return runner_debug_source_bkg_neigh;
+  return runner_debug_source_other;
+}
+
+static INLINE const char *runner_debug_source_class_name(const int c) {
+  static const char *names[runner_debug_source_count] = {
+      "zoom", "bkg_void", "bkg_neigh", "other"};
+  return names[c];
+}
+
+static INLINE const char *runner_debug_tensor_kind_name(const int k) {
+  static const char *names[runner_debug_tensor_kind_count] = {
+      "mesh", "pm_skip", "mm"};
+  return names[k];
+}
+
+static struct runner_debug_tensor_summary *runner_debug_get_tensor_summary(
+    const struct engine *e, const struct cell *recipient) {
+  if (runner_debug_tensor_summaries == NULL) {
+    size_t cap = 1;
+    while (cap < 2u * (size_t)e->s->tot_cells) cap <<= 1;
+    runner_debug_tensor_summaries = (struct runner_debug_tensor_summary *)swift_malloc(
+        "runner_debug_tensor_summaries",
+        cap * sizeof(struct runner_debug_tensor_summary));
+    if (runner_debug_tensor_summaries == NULL)
+      error("Failed to allocate tensor debug summaries.");
+    runner_debug_tensor_summaries_cap = cap;
+    bzero(runner_debug_tensor_summaries,
+          cap * sizeof(struct runner_debug_tensor_summary));
+  }
+
+  if (runner_debug_tensor_summaries_ti != e->ti_current) {
+    bzero(runner_debug_tensor_summaries,
+          runner_debug_tensor_summaries_cap *
+              sizeof(struct runner_debug_tensor_summary));
+    runner_debug_tensor_summaries_ti = e->ti_current;
+  }
+
+  const size_t mask = runner_debug_tensor_summaries_cap - 1;
+  size_t ind = ((((size_t)recipient) >> 4) ^ (((size_t)recipient) >> 13)) & mask;
+  while (runner_debug_tensor_summaries[ind].recipient != NULL &&
+         runner_debug_tensor_summaries[ind].recipient != recipient)
+    ind = (ind + 1) & mask;
+  if (runner_debug_tensor_summaries[ind].recipient == NULL)
+    runner_debug_tensor_summaries[ind].recipient = recipient;
+  return &runner_debug_tensor_summaries[ind];
+}
+
+void runner_debug_record_tensor_source(const struct engine *e,
+                                       const struct cell *recipient,
+                                       const struct cell *source,
+                                       const int kind,
+                                       const long long delta) {
+  struct runner_debug_tensor_summary *s =
+      runner_debug_get_tensor_summary(e, recipient);
+  const int c = runner_debug_source_classify(source);
+  s->sums[kind][c] += delta;
+}
+
+void runner_debug_dump_tensor_sources(const struct cell *c) {
+  const size_t mask = runner_debug_tensor_summaries_cap - 1;
+  size_t ind = ((((size_t)c) >> 4) ^ (((size_t)c) >> 13)) & mask;
+  while (runner_debug_tensor_summaries[ind].recipient != NULL &&
+         runner_debug_tensor_summaries[ind].recipient != c)
+    ind = (ind + 1) & mask;
+  if (runner_debug_tensor_summaries[ind].recipient != c) {
+    message("tensor-source-summary: no entry for cellID=%llu", c->cellID);
+    return;
+  }
+  for (int k = 0; k < runner_debug_tensor_kind_count; k++) {
+    for (int cl = 0; cl < runner_debug_source_count; cl++) {
+      const long long v = runner_debug_tensor_summaries[ind].sums[k][cl];
+      if (v == 0) continue;
+      message("tensor-source-summary: cellID=%llu kind=%s class=%s sum=%lld",
+              c->cellID, runner_debug_tensor_kind_name(k),
+              runner_debug_source_class_name(cl), v);
+    }
+  }
+}
+#endif
 
 /**
  * @brief Clear the unskip flags of this cell.
@@ -129,6 +242,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           const long long remaining = total_expected - parent_num;
 
           if (child_before > remaining) {
+            runner_debug_dump_tensor_sources(c);
+            runner_debug_dump_tensor_sources(cp);
             message(
                 "grav_down overlap before inheritance: parent(cellID=%llu type=%s subtype=%s "
                 "depth=%d super=%llu super_depth=%d) child(cellID=%llu type=%s "
@@ -2391,10 +2506,14 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     if (cell_is_active_gravity(ci, e)) {
       accumulate_add_ll(&multi_i->pot.num_interacted,
                         multi_j->m_pole.num_gpart);
+      runner_debug_record_tensor_source(e, ci, cj, /*kind=*/1,
+                                        multi_j->m_pole.num_gpart);
     }
     if (cell_is_active_gravity(cj, e)) {
       accumulate_add_ll(&multi_j->pot.num_interacted,
                         multi_i->m_pole.num_gpart);
+      runner_debug_record_tensor_source(e, cj, ci, /*kind=*/1,
+                                        multi_i->m_pole.num_gpart);
     }
 #endif
 
