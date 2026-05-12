@@ -26,8 +26,8 @@
 import h5py
 import numpy as np
 import unyt
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 gamma = 5.0 / 3.0
 
@@ -325,7 +325,6 @@ if __name__ == "__main__":
     unitL = unyt.Mpc
     edgelen = 22 * 1e-3 * unitL  # 22 so we can cut off 1kpc on each edge for image
     edgelen = edgelen.to(unitL)
-    boxsize = np.array([1.0, 1.0, 0.0]) * edgelen
 
     xs = unyt.unyt_array(
         [np.array([xs[0] * edgelen, xs[1] * edgelen, 0.0 * edgelen])], unitL
@@ -333,15 +332,42 @@ if __name__ == "__main__":
     xp *= edgelen
     h *= edgelen
 
-    w = Writer(unit_system=cosmo_units, box_size=boxsize, dimension=2)
+    boxsize_cosmo = sw.cosmo_array(
+        [edgelen.value, edgelen.value],
+        edgelen.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
+    w = sw.Writer(unit_system=cosmo_units, boxsize=boxsize_cosmo, dimension=2)
 
     # write particle positions and smoothing lengths
-    w.gas.coordinates = xp
-    w.stars.coordinates = xs
-    w.gas.velocities = np.zeros(xp.shape) * (unitL / unyt.Myr)
-    w.stars.velocities = np.zeros(xs.shape) * (unitL / unyt.Myr)
-    w.gas.smoothing_length = h
-    w.stars.smoothing_length = w.gas.smoothing_length[:1]
+    w.gas.coordinates = sw.cosmo_array(
+        xp.value, xp.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    w.stars.coordinates = sw.cosmo_array(
+        xs.value, xs.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    w.gas.velocities = sw.cosmo_array(
+        np.zeros(xp.shape),
+        unitL / unyt.Myr,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    w.stars.velocities = sw.cosmo_array(
+        np.zeros(xs.shape),
+        unitL / unyt.Myr,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    w.gas.smoothing_lengths = sw.cosmo_array(
+        h.value, h.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    w.stars.smoothing_lengths = sw.cosmo_array(
+        h.value[:1], h.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
 
     # get gas masses
     nH = 1e-3 * unyt.cm ** (-3)
@@ -349,8 +375,20 @@ if __name__ == "__main__":
     Mtot = rho_gas * edgelen**3
     mpart = Mtot / xp.shape[0]
     mpart = mpart.to(cosmo_units["mass"])
-    w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart
-    w.stars.masses = np.ones(xs.shape[0], dtype=np.float64) * mpart
+    w.gas.masses = sw.cosmo_array(
+        np.ones(xp.shape[0], dtype=np.float64) * mpart.value,
+        mpart.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    w.stars.masses = sw.cosmo_array(
+        np.ones(xs.shape[0], dtype=np.float64) * mpart.value,
+        mpart.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
 
     # get gas internal energy for a given temperature and composition
     XH = 1.0  # hydrogen mass fraction
@@ -360,6 +398,12 @@ if __name__ == "__main__":
     mu = mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII)
     internal_energy = internal_energy(T, mu)
 
-    w.gas.internal_energy = np.ones(xp.shape[0], dtype=np.float64) * internal_energy
+    w.gas.internal_energy = sw.cosmo_array(
+        np.ones(xp.shape[0], dtype=np.float64) * internal_energy.value,
+        internal_energy.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=-2,
+    )
 
     w.write("stromgrenSphere-2D.hdf5")

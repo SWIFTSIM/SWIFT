@@ -17,8 +17,8 @@
 #
 ##############################################################################
 
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 from unyt import cm, kpc, mh, msun, K, s, kb
 
@@ -64,12 +64,44 @@ if __name__ == "__main__":
     internal_energy[central_particle] = heated_internal_energy
 
     # Now we have all the information we need to set up the initial conditions!
-    output = Writer(unit_system=unit_system, box_size=side_length)
+    sl = side_length.value
+    boxsize_cosmo = sw.cosmo_array(
+        [sl, sl, sl],
+        side_length.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
+    output = sw.Writer(unit_system=unit_system, boxsize=boxsize_cosmo)
 
-    output.gas.coordinates = positions * side_length
-    output.gas.velocities = np.zeros_like(positions) * cm / s
-    output.gas.smoothing_length = h * side_length
-    output.gas.internal_energy = internal_energy
-    output.gas.masses = np.ones_like(h) * particle_mass
+    coords = (positions * side_length).value
+    output.gas.coordinates = sw.cosmo_array(
+        coords, side_length.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    output.gas.velocities = sw.cosmo_array(
+        np.zeros_like(positions),
+        cm / s,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    smoothing = (h * side_length).value
+    output.gas.smoothing_lengths = sw.cosmo_array(
+        smoothing, side_length.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    output.gas.internal_energy = sw.cosmo_array(
+        internal_energy.value,
+        internal_energy.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=-2,
+    )
+    output.gas.masses = sw.cosmo_array(
+        np.ones_like(h) * particle_mass.value,
+        particle_mass.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
 
     output.write(file_name)

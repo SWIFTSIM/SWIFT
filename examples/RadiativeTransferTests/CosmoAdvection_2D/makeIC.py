@@ -35,8 +35,8 @@
 import h5py
 import numpy as np
 import unyt
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 # define unit system to use
 unitsystem = cosmo_units
@@ -172,19 +172,46 @@ if __name__ == "__main__":
     h *= boxsize
     numPart = np.size(h)
 
-    w = Writer(unitsystem, boxsize, dimension=2)
+    boxsize_cosmo = sw.cosmo_array(
+        [boxsize.value, boxsize.value],
+        boxsize.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
+    w = sw.Writer(unit_system=unitsystem, boxsize=boxsize_cosmo, dimension=2)
 
-    w.gas.coordinates = pos
-    w.gas.velocities = np.zeros((numPart, 3)) * (unyt.cm / unyt.s)
+    w.gas.coordinates = sw.cosmo_array(
+        pos.value, pos.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    w.gas.velocities = sw.cosmo_array(
+        np.zeros((numPart, 3)),
+        unyt.cm / unyt.s,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
     mpart = 1e20 * unyt.M_Sun
     mpart = mpart.to(unitsystem["mass"])
-    w.gas.masses = np.ones(numPart, dtype=np.float64) * mpart
-    w.gas.internal_energy = (
-        np.ones(numPart, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
+    w.gas.masses = sw.cosmo_array(
+        np.ones(numPart, dtype=np.float64) * mpart.value,
+        mpart.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    u = (300.0 * unyt.kb * unyt.K) / unyt.g
+    w.gas.internal_energy = sw.cosmo_array(
+        np.ones(numPart, dtype=np.float64) * u.value,
+        u.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=-2,
     )
 
-    # Generate initial guess for smoothing lengths based on MIPS
-    w.gas.smoothing_length = h
+    w.gas.smoothing_lengths = sw.cosmo_array(
+        h.value, h.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
 
     # If IDs are not present, this automatically generates
     w.write(outputfilename)

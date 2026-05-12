@@ -8,7 +8,7 @@ import h5py
 from unyt import cm, g, s, erg
 from unyt.unit_systems import cgs_unit_system
 
-from swiftsimio import Writer
+import swiftsimio as sw
 
 
 def generate_cube(num_on_side, side_length=1.0):
@@ -43,17 +43,36 @@ def generate_two_cube(num_on_side, side_length=1.0):
 
 
 def write_out_glass(filename, cube, side_length=1.0):
-    x = Writer(cgs_unit_system, side_length * cm)
+    boxsize_cosmo = sw.cosmo_array(
+        [side_length, side_length, side_length],
+        cm,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
+    x = sw.Writer(unit_system=cgs_unit_system, boxsize=boxsize_cosmo)
 
-    x.gas.coordinates = cube * cm
-
-    x.gas.velocities = np.zeros_like(cube) * cm / s
-
-    x.gas.masses = np.ones(cube.shape[0], dtype=float) * g
-
-    x.gas.internal_energy = np.ones(cube.shape[0], dtype=float) * erg / g
-
-    x.gas.generate_smoothing_lengths(boxsize=side_length * cm, dimension=3)
+    x.gas.coordinates = sw.cosmo_array(
+        cube, cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    x.gas.velocities = sw.cosmo_array(
+        np.zeros_like(cube), cm / s, comoving=True, scale_factor=1.0, scale_exponent=0
+    )
+    x.gas.masses = sw.cosmo_array(
+        np.ones(cube.shape[0], dtype=float),
+        g,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    x.gas.internal_energy = sw.cosmo_array(
+        np.ones(cube.shape[0], dtype=float),
+        erg / g,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=-2,
+    )
+    x.gas.generate_smoothing_lengths()
 
     x.write(filename)
 
