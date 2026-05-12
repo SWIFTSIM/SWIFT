@@ -58,7 +58,7 @@ def initial_condition(x):
 
     x: particle position. 3D unyt array
 
-    returns: 
+    returns:
     E: photon energy density for each photon group. List of scalars with size of nPhotonGroups
     F: photon flux for each photon group. List with size of nPhotonGroups of numpy arrays of shape (3,)
     """
@@ -110,7 +110,7 @@ def initial_condition(x):
     mean = 0.5 * boxsize
     amplitude = 2.0
 
-    E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
+    E = amplitude * np.exp(-((x[0] - mean) ** 2) / (2 * sigma**2))
     F = np.zeros(3, dtype=np.float64)
     F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
     n_p = len(xp_list)
     xp = unyt.unyt_array(np.zeros((n_p, 3), dtype=np.float64), boxsize.units)
-    volumes = unyt.unyt_array(np.zeros((n_p), dtype=np.float64), boxsize.units ** 3)
+    volumes = unyt.unyt_array(np.zeros((n_p), dtype=np.float64), boxsize.units**3)
     for i in range(n_p):
         xp[i, 0] = xp_list[i]
         volumes[i] = volumes_list[i]

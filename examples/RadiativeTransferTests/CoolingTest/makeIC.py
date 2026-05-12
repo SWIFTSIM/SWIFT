@@ -33,7 +33,7 @@ from swiftsimio.units import cosmo_units
 
 # number of particles in each dimension
 n_p = 20
-nparts = n_p ** 3
+nparts = n_p**3
 # filename of ICs to be generated
 outputfilename = "cooling_test.hdf5"
 # adiabatic index
@@ -48,7 +48,7 @@ boxsize = 1 * unyt.kpc
 initial_temperature = 1e6 * unyt.K
 # particle mass
 # take 0.1 amu/cm^3
-pmass = (0.1 * unyt.atomic_mass_unit / unyt.cm ** 3) * (boxsize ** 3 / nparts)
+pmass = (0.1 * unyt.atomic_mass_unit / unyt.cm**3) * (boxsize**3 / nparts)
 
 # -----------------------------------------------
 
@@ -67,7 +67,7 @@ def internal_energy(T, mu):
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp

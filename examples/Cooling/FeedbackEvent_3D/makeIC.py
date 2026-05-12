@@ -29,7 +29,7 @@ import numpy as np
 
 # Parameters
 gamma = 5.0 / 3.0
-initial_density = 0.1 * mh / (cm ** 3)
+initial_density = 0.1 * mh / (cm**3)
 initial_temperature = 2550 * (5 / 4) * K  # Equilibrium temperature at solar abundance
 inject_temperature = 10 ** (7.5) * K
 mu = 0.5

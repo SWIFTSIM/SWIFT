@@ -12,7 +12,7 @@ import unyt
 from swiftsimio import Writer
 
 NUMBER_OF_PARTICLES = 16  # in 1D
-TOTAL_NUMBER_OF_PARTICLES = NUMBER_OF_PARTICLES ** 3
+TOTAL_NUMBER_OF_PARTICLES = NUMBER_OF_PARTICLES**3
 PARTICLE_OVER_MASS_FACTOR = 16  # how many times over-massive is the main particle?
 TIME_STEP = 0.1  # in seconds
 

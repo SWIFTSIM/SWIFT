@@ -13,7 +13,7 @@ import h5py
 
 # Physics parameters.
 boxsize = 1.0 * Mpc
-physical_density = 0.1 * mh / cm ** 3
+physical_density = 0.1 * mh / cm**3
 mu_hydrogen = 0.5  # Fully ionised
 temperature = 1e7 * K
 gamma = 5.0 / 3.0
@@ -41,7 +41,7 @@ def generate_ics(redshift: float, filename: str, glass_filename: str) -> None:
     glass_coordinates = get_coordinates(glass_filename)
     number_of_particles = len(glass_coordinates)
 
-    gas_particle_mass = physical_density * (boxsize ** 3) / number_of_particles
+    gas_particle_mass = physical_density * (boxsize**3) / number_of_particles
 
     writer = Writer(cosmo_units, comoving_boxsize)
 
@@ -74,13 +74,11 @@ if __name__ == "__main__":
 
     import argparse as ap
 
-    parser = ap.ArgumentParser(
-        description="""
+    parser = ap.ArgumentParser(description="""
             Sets up the initial conditions for the cooling test. Takes two
             redshifts, and produces two files: ics_high_z.hdf5 and
             ics_low_z.hdf5.
-            """
-    )
+            """)
 
     parser.add_argument(
         "-a",

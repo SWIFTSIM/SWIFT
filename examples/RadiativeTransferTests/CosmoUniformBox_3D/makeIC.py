@@ -29,7 +29,7 @@ outputfilename = "uniform_3D.hdf5"
 def initial_condition(unitsystem):
     """
     The initial conditions of the uniform box
-    
+
     unitsystem: The unit system to use for IC
 
     returns:
@@ -49,12 +49,12 @@ def initial_condition(unitsystem):
     c_internal = (unyt.c * reduced_speed_of_light_fraction).to(unit_velocity)
 
     # Uniform energy
-    E = np.ones((n_p ** 3), dtype=np.float64) * unit_energy
+    E = np.ones((n_p**3), dtype=np.float64) * unit_energy
 
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     # we have that |F| = c * E
-    fluxes = np.zeros((3, n_p ** 3), dtype=np.float64)
+    fluxes = np.zeros((3, n_p**3), dtype=np.float64)
     fluxes[0] *= (E * c_internal / 1.73205).to(unit_flux)  # sqrt(3)
     fluxes[1] *= (E * c_internal / 1.73205).to(unit_flux)  # sqrt(3)
     fluxes[2] *= (E * c_internal / 1.73205).to(unit_flux)  # sqrt(3)
@@ -64,7 +64,7 @@ def initial_condition(unitsystem):
 
 if __name__ in ("__main__"):
     # Coordinate array
-    coords = np.zeros((n_p ** 3, 3), dtype=np.float64)
+    coords = np.zeros((n_p**3, 3), dtype=np.float64)
 
     # Calculate grid of evenly spaced coordinates
     coords_per_dim = np.linspace(0.5, n_p - 0.5, n_p)
@@ -80,13 +80,13 @@ if __name__ in ("__main__"):
     w = Writer(unitsystem, boxsize, dimension=3)
 
     w.gas.coordinates = coords
-    w.gas.velocities = np.zeros((n_p ** 3, 3)) * (unyt.cm / unyt.s)
+    w.gas.velocities = np.zeros((n_p**3, 3)) * (unyt.cm / unyt.s)
 
     mpart = 1e20 * unyt.M_sun
     mpart = mpart.to(unitsystem["mass"])
-    w.gas.masses = np.ones(n_p ** 3, dtype=np.float64) * mpart
+    w.gas.masses = np.ones(n_p**3, dtype=np.float64) * mpart
     w.gas.internal_energy = (
-        np.ones(n_p ** 3, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
+        np.ones(n_p**3, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
     )
 
     # Generate initial guess for smoothing lengths based on MIPS

@@ -47,7 +47,7 @@ boxsize = boxsize.to(unitsystem["length"])
 
 # number of particles in each dimension
 n_p = 15
-nparts = n_p ** 3
+nparts = n_p**3
 
 # filename of ICs to be generated
 outputfilename = "ionization_equilibrium_test.hdf5"
