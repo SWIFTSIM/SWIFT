@@ -20,9 +20,9 @@
 #define SWIFT_BASIC_SIDM_IACT_H
 
 /* Local headers. */
+#include "kernel_dark_matter.h"
 #include "random.h"
 #include "sidm_debug.h"
-#include "sidm_kernel.h"
 #include "sidm_properties.h"
 #include "timeline.h"
 

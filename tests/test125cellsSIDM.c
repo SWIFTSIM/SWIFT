@@ -30,7 +30,6 @@
 /* Local headers. */
 #include "swift.h"
 
-
 #define NODE_ID 0
 
 enum velocity_field {
@@ -193,21 +192,20 @@ void dump_particle_fields(char *fileName, struct cell *main_cell) {
   FILE *file = fopen(fileName, "w");
 
   /* Write header */
-  fprintf(file, "# %4s %10s %10s %10s %13s %13s %13s %13s %13s %13s %13s %13s\n",
-          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho",
-          "rho_dh", "wcount", "wcount_dh", "SIDM_rate");
+  fprintf(file,
+          "# %4s %10s %10s %10s %13s %13s %13s %13s %13s %13s %13s %13s\n",
+          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
+          "wcount", "wcount_dh", "SIDM_rate");
 
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
   for (int siid = 0; siid < main_cell->sidm.count; siid++) {
-    fprintf(file, "%6llu %10f %10f %10f %13e %13e %13e %13e %13e %13e %13e %13e\n",
-            main_cell->sidm.parts[siid].id,
-            main_cell->sidm.parts[siid].x[0],
-            main_cell->sidm.parts[siid].x[1],
-            main_cell->sidm.parts[siid].x[2],
-            main_cell->sidm.parts[siid].v[0],
-            main_cell->sidm.parts[siid].v[1],
+    fprintf(file,
+            "%6llu %10f %10f %10f %13e %13e %13e %13e %13e %13e %13e %13e\n",
+            main_cell->sidm.parts[siid].id, main_cell->sidm.parts[siid].x[0],
+            main_cell->sidm.parts[siid].x[1], main_cell->sidm.parts[siid].x[2],
+            main_cell->sidm.parts[siid].v[0], main_cell->sidm.parts[siid].v[1],
             main_cell->sidm.parts[siid].v[2],
             sidm_get_comoving_density(&main_cell->sidm.parts[siid]),
             main_cell->sidm.parts[siid].density.rho_dh,
@@ -227,10 +225,10 @@ void runner_doself1_branch_sidm_density(struct runner *r, struct cell *c,
                                         int limit_h_min, int limit_h_max);
 
 void runner_dopair1_branch_sidm_force(struct runner *r, struct cell *ci,
-                                 struct cell *cj, int limit_h_min,
-                                 int limit_h_max);
+                                      struct cell *cj, int limit_h_min,
+                                      int limit_h_max);
 void runner_doself1_branch_sidm_force(struct runner *r, struct cell *ci,
-                                 int limit_h_min, int limit_h_max);
+                                      int limit_h_min, int limit_h_max);
 void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer);
 
 /* And go... */
@@ -311,7 +309,8 @@ int main(int argc, char *argv[]) {
         "\nUsage: %s -n PARTICLES_PER_AXIS -r NUMBER_OF_RUNS [OPTIONS...]\n"
         "\nGenerates 125 cells, filled with particles on a Cartesian grid."
         "\nThese are then interacted using runner_dopair1_branch_sidm_density()"
-        " and runner_doself1_branch_sidm_density() followed by runner_dopair1_sidm_force() and "
+        " and runner_doself1_branch_sidm_density() followed by "
+        "runner_dopair1_sidm_force() and "
         "runner_doself1_sidm_force()"
         "\n\nOptions:"
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
@@ -319,7 +318,8 @@ int main(int argc, char *argv[]) {
         "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
         "\n-d pert            - Perturbation to apply to the particles [0,1["
-        "\n-v type (0,1,2,3)  - Velocity field: (zero, constant, divergent, rotating)"
+        "\n-v type (0,1,2,3)  - Velocity field: (zero, constant, divergent, "
+        "rotating)"
         "\n-f fileName        - Part of the file name used to save the dumps\n",
         argv[0]);
     exit(1);
@@ -385,8 +385,8 @@ int main(int argc, char *argv[]) {
   engine.cosmology = &cosmo;
 
   struct sidm_props sidm_p;
-  sidm_props_init(&sidm_p, &prog_const, &us, &param_file,
-                  &hydro_properties, &cosmo);
+  sidm_props_init(&sidm_p, &prog_const, &us, &param_file, &hydro_properties,
+                  &cosmo);
   sidm_p.eta_neighbours = h;
   sidm_p.h_tolerance = 1e0;
   sidm_p.h_max = FLT_MAX;
@@ -410,9 +410,9 @@ int main(int argc, char *argv[]) {
         const double offset[3] = {i * size, j * size, k * size};
 
         /* Construct it */
-        cells[i * 25 + j * 5 + k] = make_cell(siparticles, offset, size, h,
-                                               rho, &sipartId, perturbation,
-                                               h_pert, &sidm_p, vel);
+        cells[i * 25 + j * 5 + k] =
+            make_cell(siparticles, offset, size, h, rho, &sipartId,
+                      perturbation, h_pert, &sidm_p, vel);
         /* Store the inner cells */
         if (i > 0 && i < 4 && j > 0 && j < 4 && k > 0 && k < 4) {
           inner_cells[count] = cells[i * 25 + j * 5 + k];
@@ -559,8 +559,7 @@ int main(int argc, char *argv[]) {
   /* NOW BRUTE-FORCE CALCULATION */
 
   /* Reset particles to the same velocity field as the optimised run */
-  for (int j = 0; j < 125; ++j)
-    reset_siparticles(cells[j], vel, size);
+  for (int j = 0; j < 125; ++j) reset_siparticles(cells[j], vel, size);
 
   const ticks tic = getticks();
 
