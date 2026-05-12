@@ -30,6 +30,7 @@
 #include "gravity_cache.h"
 #include "gravity_iact.h"
 #include "inline.h"
+#include "lock.h"
 #include "part.h"
 #include "space_getsid.h"
 #include "timers.h"
@@ -68,6 +69,7 @@ static struct runner_debug_tensor_exact_entry *runner_debug_tensor_exact = NULL;
 static size_t runner_debug_tensor_exact_cap = 0;
 static int runner_debug_tensor_exact_overflow = 0;
 static integertime_t runner_debug_tensor_summaries_ti = -1;
+static swift_lock_type runner_debug_tensor_lock = lock_static_initializer;
 
 static INLINE enum runner_debug_source_class runner_debug_source_classify(
     const struct cell *source) {
@@ -151,12 +153,19 @@ void runner_debug_record_tensor_source(const struct engine *e,
                                        const struct cell *source,
                                        const int kind,
                                        const long long delta) {
+  if (lock_lock(&runner_debug_tensor_lock) != 0)
+    error("Failed to lock tensor debug state.");
+
   struct runner_debug_tensor_summary *s =
       runner_debug_get_tensor_summary(e, recipient);
   const int c = runner_debug_source_classify(source);
   s->sums[kind][c] += delta;
 
-  if (!runner_debug_track_exact_source(recipient, c)) return;
+  if (!runner_debug_track_exact_source(recipient, c)) {
+    if (lock_unlock(&runner_debug_tensor_lock) != 0)
+      error("Failed to unlock tensor debug state.");
+    return;
+  }
 
   const size_t mask = runner_debug_tensor_exact_cap - 1;
   size_t ind = ((((size_t)recipient) >> 4) ^ (((size_t)source) >> 4) ^
@@ -169,20 +178,29 @@ void runner_debug_record_tensor_source(const struct engine *e,
       entry->source = source;
       entry->kind = kind;
       entry->delta = delta;
+      if (lock_unlock(&runner_debug_tensor_lock) != 0)
+        error("Failed to unlock tensor debug state.");
       return;
     }
     if (entry->recipient == recipient && entry->source == source &&
         entry->kind == kind) {
       entry->delta += delta;
+      if (lock_unlock(&runner_debug_tensor_lock) != 0)
+        error("Failed to unlock tensor debug state.");
       return;
     }
     ind = (ind + 1) & mask;
   }
 
   runner_debug_tensor_exact_overflow = 1;
+  if (lock_unlock(&runner_debug_tensor_lock) != 0)
+    error("Failed to unlock tensor debug state.");
 }
 
 void runner_debug_dump_tensor_sources(const struct cell *c) {
+  if (lock_lock(&runner_debug_tensor_lock) != 0)
+    error("Failed to lock tensor debug state.");
+
   const size_t mask = runner_debug_tensor_summaries_cap - 1;
   size_t ind = ((((size_t)c) >> 4) ^ (((size_t)c) >> 13)) & mask;
   while (runner_debug_tensor_summaries[ind].recipient != NULL &&
@@ -190,6 +208,8 @@ void runner_debug_dump_tensor_sources(const struct cell *c) {
     ind = (ind + 1) & mask;
   if (runner_debug_tensor_summaries[ind].recipient != c) {
     message("tensor-source-summary: no entry for cellID=%llu", c->cellID);
+    if (lock_unlock(&runner_debug_tensor_lock) != 0)
+      error("Failed to unlock tensor debug state.");
     return;
   }
   for (int k = 0; k < runner_debug_tensor_kind_count; k++) {
@@ -216,10 +236,16 @@ void runner_debug_dump_tensor_sources(const struct cell *c) {
 
   if (runner_debug_tensor_exact_overflow)
     message("tensor-source-exact: table overflowed, some entries omitted.");
+
+  if (lock_unlock(&runner_debug_tensor_lock) != 0)
+    error("Failed to unlock tensor debug state.");
 }
 
 void runner_debug_dump_tensor_source_overlaps(const struct cell *parent,
                                               const struct cell *child) {
+  if (lock_lock(&runner_debug_tensor_lock) != 0)
+    error("Failed to lock tensor debug state.");
+
   for (size_t i = 0; i < runner_debug_tensor_exact_cap; i++) {
     const struct runner_debug_tensor_exact_entry *pi =
         &runner_debug_tensor_exact[i];
@@ -249,6 +275,9 @@ void runner_debug_dump_tensor_source_overlaps(const struct cell *parent,
       }
     }
   }
+
+  if (lock_unlock(&runner_debug_tensor_lock) != 0)
+    error("Failed to unlock tensor debug state.");
 }
 #endif
 

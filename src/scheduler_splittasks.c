@@ -36,21 +36,6 @@
 #include "space_getsid.h"
 #include "threadpool.h"
 
-#ifdef SWIFT_DEBUG_CHECKS
-static const unsigned long long debug_watch_parent_cell = 3283394ULL;
-static const unsigned long long debug_watch_child_cell = 17963458ULL;
-
-static INLINE int debug_watch_zoom_split_pair(const struct cell *ci,
-                                              const struct cell *cj) {
-  return (ci != NULL &&
-          (ci->cellID == debug_watch_parent_cell ||
-           ci->cellID == debug_watch_child_cell)) ||
-         (cj != NULL &&
-          (cj->cellID == debug_watch_parent_cell ||
-           cj->cellID == debug_watch_child_cell));
-}
-#endif
-
 /**
  * @brief Split a hydrodynamic task if too large.
  *
@@ -609,14 +594,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
       /* Could we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (debug_watch_zoom_split_pair(cpi, cpj))
-          message(
-              "splitter zoom-pair decision: pair(cellID=%llu/%llu type=%s/%s subtype=%s/%s depth=%d/%d) -> mesh",
-              cpi->cellID, cpj->cellID, cellID_names[cpi->type],
-              cellID_names[cpj->type], subcellID_names[cpi->subtype],
-              subcellID_names[cpj->subtype], cpi->depth, cpj->depth);
-#endif
         continue;
       }
 
@@ -626,14 +603,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                /*is_tree_walk=*/1,
                                /*periodic boundaries*/ sp->periodic,
                                /*use_mesh*/ sp->periodic)) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (debug_watch_zoom_split_pair(cpi, cpj))
-          message(
-              "splitter zoom-pair decision: pair(cellID=%llu/%llu type=%s/%s subtype=%s/%s depth=%d/%d) -> mm",
-              cpi->cellID, cpj->cellID, cellID_names[cpi->type],
-              cellID_names[cpj->type], subcellID_names[cpi->subtype],
-              subcellID_names[cpj->subtype], cpi->depth, cpj->depth);
-#endif
 
         /* Flag that we've reused the original task. */
         reused = 1;
@@ -647,15 +616,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         t->flags |= (1ULL << flag);
 
       } else {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (debug_watch_zoom_split_pair(cpi, cpj))
-          message(
-              "splitter zoom-pair decision: pair(cellID=%llu/%llu type=%s/%s subtype=%s/%s depth=%d/%d) -> recurse",
-              cpi->cellID, cpj->cellID, cellID_names[cpi->type],
-              cellID_names[cpj->type], subcellID_names[cpi->subtype],
-              subcellID_names[cpj->subtype], cpi->depth, cpj->depth);
-#endif
-
         /* Can't use an M-M so let's make a pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
