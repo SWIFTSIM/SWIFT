@@ -360,7 +360,7 @@ int main(int argc, char *argv[]) {
       (struct output_options *)malloc(sizeof(struct output_options));
   output_options_init(&param_file, 0, output_options);
 
-  struct hydro_props hydro_properties;
+  struct hydro_props hydro_properties = NULL;
 
   /* Build the infrastructure */
   struct space space;

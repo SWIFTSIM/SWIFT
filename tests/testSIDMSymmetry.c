@@ -62,7 +62,7 @@ void test(const char *param_filename) {
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
 
-  struct hydro_props hydro_properties;
+  struct hydro_props hydro_properties = NULL;
 
   struct sidm_props sidm_props;
   sidm_props_init(&sidm_props, &prog_const, &us, &param_file, &hydro_properties,
