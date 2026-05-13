@@ -104,6 +104,7 @@ tests/test27cellsStars_subset
 tests/test27cellsSIDM
 tests/testPeriodicBC
 tests/test125cells
+tests/test125cellsSIDM
 tests/brute_force_27_standard.dat
 tests/swift_dopair_27_standard.dat
 tests/brute_force_27_perturbed.dat
