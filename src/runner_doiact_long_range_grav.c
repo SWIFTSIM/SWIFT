@@ -411,6 +411,8 @@ static void runner_debug_record_zoom_top_invocation(const struct cell *top,
                                                     const struct cell *ci) {
 
   if (ci != top) return;
+  if (top->type != cell_type_bkg || top->subtype != cell_subtype_neighbour)
+    return;
 
   const unsigned long long top_ptr_key = (unsigned long long)(uintptr_t)top;
   const unsigned long long hash = top_ptr_key * 11400714819323198485ull;
