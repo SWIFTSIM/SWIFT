@@ -398,6 +398,7 @@ struct runner_debug_mesh_attachment_entry {
   unsigned long long source_top_key;
   int first_origin;
   int seen_count;
+  int duplicate_reported;
 };
 
 #define runner_debug_mesh_attachment_table_size (1 << 19)
@@ -460,7 +461,14 @@ static void runner_debug_record_mesh_attachment(
         slot->source_cell_key == source_key) {
       const int previous_seen_count = atomic_inc(&slot->seen_count);
 
-      if (previous_seen_count >= 1) {
+      const int interesting_duplicate =
+          ((enum runner_debug_mesh_count_origin)slot->first_origin != origin) ||
+          recipient->subtype == cell_subtype_neighbour ||
+          source->subtype == cell_subtype_neighbour || recipient->depth > 0 ||
+          source->depth > 0;
+
+      if (previous_seen_count == 1 && interesting_duplicate &&
+          atomic_cas(&slot->duplicate_reported, 0, 1) == 0) {
         message(
             "mesh-count duplicate attachment: recipient=%llu (%s/%s depth=%d top=%llu) "
             "source=%llu (%s/%s depth=%d top=%llu) first_origin=%s "
