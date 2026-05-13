@@ -61,6 +61,9 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
                                         const double time,
                                         const double dt_star);
 
+
+double feedback_get_star_ionization_rate(const struct spart *sp);
+
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,
     enum stellar_type star_type);

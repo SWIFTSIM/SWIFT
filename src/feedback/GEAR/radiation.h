@@ -35,8 +35,6 @@
 #define BB_NU_INTEGRATION_STEPS 500
 #define RADIATION_N_IONIZATION_STEPS 1000
 
-double radiation_get_star_ionization_rate(const struct spart *sp);
-
 double radiation_get_part_number_hydrogen_atoms(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,

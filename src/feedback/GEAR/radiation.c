@@ -104,17 +104,6 @@ radiation_get_part_rate_to_fully_ionize(
 }
 
 /**
- * Get the #spart ionization photon emission rate.
- *
- * @param sp The star.
- * @return Ionizing photon rate.
- */
-__attribute__((always_inline)) INLINE double radiation_get_star_ionization_rate(
-    const struct spart *sp) {
-  return sp->feedback_data.radiation.dot_N_ion;
-}
-
-/**
  * Consume the #spart ionizing photon budget.
  *
  * @param sp The star.

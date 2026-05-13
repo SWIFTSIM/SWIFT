@@ -202,7 +202,6 @@ void runner_do_stars_hii_ionization_feedback_branch(
           "Particle si (%lld) not drifted to current time c = %lld, "
           "c->super = %lld",
           si->id, c->cellID, c->super->cellID);
-
 #endif
 
     /* Logic: If the buffer was full, there might be more neighbors just
@@ -262,7 +261,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
         for (int k = 0; k < count_found; k++) {
 
           /* No more photons to consume */
-          if (radiation_get_star_ionization_rate(si) <= 0.0) {
+          if (feedback_get_star_ionization_rate(si) <= 0.0) {
             message("Star has exhausted all its ionizing photons!");
             break;
           }

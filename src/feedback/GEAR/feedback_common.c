@@ -323,6 +323,17 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
 }
 
 /**
+ * Get the #spart ionization photon emission rate.
+ *
+ * @param sp The star.
+ * @return Ionizing photon rate.
+ */
+__attribute__((always_inline)) INLINE double feedback_get_star_ionization_rate(
+    const struct spart *sp) {
+  return sp->feedback_data.radiation.dot_N_ion;
+}
+
+/**
  * @brief Prepare the feedback fields after a star is born.
  *
  * This function is called in the functions sink_copy_properties_to_star() and
