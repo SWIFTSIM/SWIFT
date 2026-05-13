@@ -390,6 +390,81 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
                                                 struct cell *ci,
                                                 struct cell *top);
 
+#ifdef SWIFT_DEBUG_CHECKS
+struct runner_debug_mesh_overlap_entry {
+  unsigned long long recipient_ptr_key;
+  unsigned long long source_ptr_key;
+};
+
+static int runner_debug_mesh_overlap_report_count = 0;
+static int runner_debug_mesh_overlap_limit_reported = 0;
+
+#define runner_debug_mesh_overlap_report_max 64
+#define runner_debug_mesh_overlap_table_size (1 << 14)
+#define runner_debug_mesh_overlap_probe_limit 16
+
+static struct runner_debug_mesh_overlap_entry
+    runner_debug_mesh_overlap_table[runner_debug_mesh_overlap_table_size];
+
+static void runner_debug_check_mesh_overlap(const struct cell *recipient,
+                                           const struct cell *source) {
+
+  const unsigned long long recipient_ptr_key =
+      (unsigned long long)(uintptr_t)recipient;
+  const unsigned long long source_ptr_key =
+      (unsigned long long)(uintptr_t)source;
+  const unsigned long long hash =
+      recipient_ptr_key * 11400714819323198485ull ^
+      source_ptr_key * 14029467366897019727ull;
+
+  for (int probe = 0; probe < runner_debug_mesh_overlap_probe_limit; probe++) {
+    struct runner_debug_mesh_overlap_entry *slot =
+        &runner_debug_mesh_overlap_table
+             [(hash + (unsigned long long)probe) &
+              (runner_debug_mesh_overlap_table_size - 1)];
+
+    if (slot->recipient_ptr_key == 0ULL) {
+      if (atomic_cas(&slot->recipient_ptr_key, 0ULL, recipient_ptr_key) == 0ULL) {
+        slot->source_ptr_key = source_ptr_key;
+        return;
+      }
+    }
+
+    if (slot->recipient_ptr_key != recipient_ptr_key) continue;
+
+    if (slot->source_ptr_key == source_ptr_key) return;
+
+    const struct cell *other_source =
+        (const struct cell *)(uintptr_t)slot->source_ptr_key;
+
+    if (cell_contains_progeny(other_source, source) ||
+        cell_contains_progeny(source, other_source)) {
+      const int report_index = atomic_inc(&runner_debug_mesh_overlap_report_count);
+
+      if (report_index < runner_debug_mesh_overlap_report_max) {
+        message(
+            "mesh-overlap: recipient=%p cellID=%llu (%s/%s depth=%d) "
+            "first_source=%p cellID=%llu (%s/%s depth=%d top=%p) "
+            "second_source=%p cellID=%llu (%s/%s depth=%d top=%p)",
+            (void *)recipient, recipient->cellID, cellID_names[recipient->type],
+            subcellID_names[recipient->subtype], recipient->depth,
+            (void *)other_source, other_source->cellID,
+            cellID_names[other_source->type], subcellID_names[other_source->subtype],
+            other_source->depth, (void *)other_source->top, (void *)source,
+            source->cellID, cellID_names[source->type],
+            subcellID_names[source->subtype], source->depth, (void *)source->top);
+      } else if (report_index == runner_debug_mesh_overlap_report_max &&
+                 atomic_cas(&runner_debug_mesh_overlap_limit_reported, 0, 1) == 0) {
+        message("mesh-overlap reporting capped at %d lines",
+                runner_debug_mesh_overlap_report_max);
+      }
+    }
+
+    return;
+  }
+}
+#endif
+
 static INLINE void runner_record_mesh_attachment(
     struct cell *super, struct cell *ci, struct cell *cj,
     struct cell *recipient, struct cell *source, const int origin,
@@ -404,6 +479,7 @@ static INLINE void runner_record_mesh_attachment(
   runner_accumulate_interaction(recipient->grav.multipole, source->grav.multipole);
 
 #ifdef SWIFT_DEBUG_CHECKS
+  runner_debug_check_mesh_overlap(recipient, source);
   runner_debug_add_tensor_interactions_by_type(
       recipient->grav.multipole->pot.num_interacted_pm_by_type, source,
       source->grav.multipole->m_pole.num_gpart);
