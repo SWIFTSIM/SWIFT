@@ -403,35 +403,21 @@ struct runner_debug_mesh_attachment_entry {
   const char *first_attachment_case;
 };
 
-static const unsigned long long runner_debug_mesh_watch_top_cell_id = 6572ULL;
-static int runner_debug_mesh_duplicate_report_count = 0;
-static int runner_debug_mesh_duplicate_report_limit_reported = 0;
-static int runner_debug_mesh_zoom_top_invocation_serial = 0;
-static int runner_debug_mesh_zoom_top_ci_top_invocations = 0;
+static int runner_debug_mesh_zoom_top_repeat_report_count = 0;
+static int runner_debug_mesh_zoom_top_repeat_limit_reported = 0;
 
-#define runner_debug_mesh_duplicate_report_max 16
+#define runner_debug_mesh_zoom_top_repeat_report_max 32
 
-struct runner_debug_mesh_zoom_top_loop_entry {
-  unsigned long long source_cell_key;
-  unsigned long long first_source_ptr;
-  int invocation_id;
-  int first_loop_index;
-  int first_decision;
-  double first_loc[3];
+struct runner_debug_mesh_zoom_top_entry {
+  unsigned long long top_ptr_key;
+  int seen_count;
 };
 
-#define runner_debug_mesh_zoom_top_loop_table_size (1 << 14)
-#define runner_debug_mesh_zoom_top_loop_probe_limit 16
+#define runner_debug_mesh_zoom_top_table_size (1 << 14)
+#define runner_debug_mesh_zoom_top_probe_limit 16
 
-static struct runner_debug_mesh_zoom_top_loop_entry
-    runner_debug_mesh_zoom_top_loop_table
-        [runner_debug_mesh_zoom_top_loop_table_size];
-
-enum runner_debug_mesh_zoom_top_decision {
-  runner_debug_mesh_zoom_top_decision_mesh = 0,
-  runner_debug_mesh_zoom_top_decision_mm = 1,
-  runner_debug_mesh_zoom_top_decision_recurse = 2,
-};
+static struct runner_debug_mesh_zoom_top_entry
+    runner_debug_mesh_zoom_top_table[runner_debug_mesh_zoom_top_table_size];
 
 #define runner_debug_mesh_attachment_table_size (1 << 19)
 #define runner_debug_mesh_attachment_probe_limit 32
@@ -458,86 +444,49 @@ runner_debug_mesh_count_origin_name(
   }
 }
 
-__attribute__((always_inline)) INLINE static const char *
-runner_debug_mesh_zoom_top_decision_name(const int decision) {
+static void runner_debug_record_zoom_top_invocation(const struct cell *top,
+                                                    const struct cell *ci) {
 
-  switch (decision) {
-    case runner_debug_mesh_zoom_top_decision_mesh:
-      return "mesh";
-    case runner_debug_mesh_zoom_top_decision_mm:
-      return "mm";
-    case runner_debug_mesh_zoom_top_decision_recurse:
-      return "recurse";
-    default:
-      return "unknown";
-  }
-}
-
-static void runner_debug_record_zoom_top_loop_visit(const struct cell *top,
-                                                    const struct cell *ci,
-                                                    const struct cell *cj,
-                                                    const int invocation_id,
-                                                    const int loop_index,
-                                                    const int decision) {
-
-  if (top->cellID != runner_debug_mesh_watch_top_cell_id) return;
   if (ci != top) return;
 
-  const unsigned long long source_key = cj->cellID + 1ULL;
-  const unsigned long long hash = source_key * 11400714819323198485ull;
+  const unsigned long long top_ptr_key = (unsigned long long)(uintptr_t)top;
+  const unsigned long long hash = top_ptr_key * 11400714819323198485ull;
 
-  for (int probe = 0; probe < runner_debug_mesh_zoom_top_loop_probe_limit;
-       probe++) {
-    struct runner_debug_mesh_zoom_top_loop_entry *slot =
-        &runner_debug_mesh_zoom_top_loop_table
+  for (int probe = 0; probe < runner_debug_mesh_zoom_top_probe_limit; probe++) {
+    struct runner_debug_mesh_zoom_top_entry *slot =
+        &runner_debug_mesh_zoom_top_table
             [(hash + (unsigned long long)probe) &
-             (runner_debug_mesh_zoom_top_loop_table_size - 1)];
+             (runner_debug_mesh_zoom_top_table_size - 1)];
 
-    if (slot->source_cell_key == 0ULL) {
-      if (atomic_cas(&slot->source_cell_key, 0ULL, source_key) == 0ULL) {
-        slot->invocation_id = invocation_id;
-        slot->first_loop_index = loop_index;
-        slot->first_decision = decision;
-        slot->first_source_ptr = (unsigned long long)(uintptr_t)cj;
-        slot->first_loc[0] = cj->loc[0];
-        slot->first_loc[1] = cj->loc[1];
-        slot->first_loc[2] = cj->loc[2];
+    if (slot->top_ptr_key == 0ULL) {
+      if (atomic_cas(&slot->top_ptr_key, 0ULL, top_ptr_key) == 0ULL) {
+        slot->seen_count = 1;
         return;
       }
     }
 
-    if (slot->source_cell_key == source_key) {
-      if (slot->invocation_id == invocation_id) {
+    if (slot->top_ptr_key == top_ptr_key) {
+      const int previous_seen_count = atomic_inc(&slot->seen_count);
+
+      if (previous_seen_count >= 1) {
         const int report_index =
-            atomic_inc(&runner_debug_mesh_duplicate_report_count);
-        if (report_index < runner_debug_mesh_duplicate_report_max) {
+            atomic_inc(&runner_debug_mesh_zoom_top_repeat_report_count);
+
+        if (report_index < runner_debug_mesh_zoom_top_repeat_report_max) {
           message(
-              "zoom-mesh top-loop duplicate source: top=%llu invocation=%d ci=%llu "
-              "source=%llu first[n=%d decision=%s ptr=%p loc=(%.3f,%.3f,%.3f)] "
-              "duplicate[n=%d decision=%s ptr=%p loc=(%.3f,%.3f,%.3f)]",
-              top->cellID, invocation_id, ci->cellID, cj->cellID,
-              slot->first_loop_index,
-              runner_debug_mesh_zoom_top_decision_name(slot->first_decision),
-              (void *)slot->first_source_ptr, slot->first_loc[0],
-              slot->first_loc[1], slot->first_loc[2], loop_index,
-              runner_debug_mesh_zoom_top_decision_name(decision), (void *)cj,
-              cj->loc[0], cj->loc[1], cj->loc[2]);
-        } else if (report_index == runner_debug_mesh_duplicate_report_max &&
-                   atomic_cas(&runner_debug_mesh_duplicate_report_limit_reported,
+              "zoom-mesh repeated top invocation: top_ptr=%p top_cellID=%llu "
+              "top_type=%s/%s top_loc=(%.3f,%.3f,%.3f) ci_ptr=%p count=%d",
+              (void *)top, top->cellID, cellID_names[top->type],
+              subcellID_names[top->subtype], top->loc[0], top->loc[1],
+              top->loc[2], (void *)ci, previous_seen_count + 1);
+        } else if (report_index == runner_debug_mesh_zoom_top_repeat_report_max &&
+                   atomic_cas(&runner_debug_mesh_zoom_top_repeat_limit_reported,
                               0, 1) == 0) {
-          message("zoom-mesh top-loop duplicate reporting capped at %d lines",
-                  runner_debug_mesh_duplicate_report_max);
+          message("zoom-mesh repeated top invocation reporting capped at %d lines",
+                  runner_debug_mesh_zoom_top_repeat_report_max);
         }
-        return;
       }
 
-      slot->invocation_id = invocation_id;
-      slot->first_loop_index = loop_index;
-      slot->first_decision = decision;
-      slot->first_source_ptr = (unsigned long long)(uintptr_t)cj;
-      slot->first_loc[0] = cj->loc[0];
-      slot->first_loc[1] = cj->loc[1];
-      slot->first_loc[2] = cj->loc[2];
       return;
     }
   }
@@ -1172,17 +1121,7 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
   struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  int debug_invocation_id = -1;
-  if (top->cellID == runner_debug_mesh_watch_top_cell_id && ci == top) {
-    debug_invocation_id = atomic_inc(&runner_debug_mesh_zoom_top_invocation_serial);
-    const int ci_top_invocations =
-        atomic_inc(&runner_debug_mesh_zoom_top_ci_top_invocations) + 1;
-    if (ci_top_invocations <= 4) {
-      message(
-          "zoom-mesh top-loop invocation: top=%llu ci=%llu invocation=%d ci_eq_top_count=%d",
-          top->cellID, ci->cellID, debug_invocation_id, ci_top_invocations);
-    }
-  }
+  runner_debug_record_zoom_top_invocation(top, ci);
 #endif
 
   /* First, handle self interactions from the top-level cell.
@@ -1207,13 +1146,6 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
     /* Can we use the mesh for this top-level pair? */
     if (cell_can_use_mesh(e, top, cj)) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-      if (debug_invocation_id >= 0)
-        runner_debug_record_zoom_top_loop_visit(
-            top, ci, cj, debug_invocation_id, n,
-            runner_debug_mesh_zoom_top_decision_mesh);
-#endif
-
       /* If so, record the mesh interaction */
       runner_count_mesh_interaction(ci, top, cj,
                                     runner_debug_mesh_count_origin_zoom_pair);
@@ -1226,23 +1158,9 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
                              /*periodic boundaries*/ s->periodic,
                              /*use_mesh*/ s->periodic)) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-      if (debug_invocation_id >= 0)
-        runner_debug_record_zoom_top_loop_visit(
-            top, ci, cj, debug_invocation_id, n,
-            runner_debug_mesh_zoom_top_decision_mm);
-#endif
-
       /* M-M task handles this, nothing to count */
       continue;
     }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (debug_invocation_id >= 0)
-      runner_debug_record_zoom_top_loop_visit(
-          top, ci, cj, debug_invocation_id, n,
-          runner_debug_mesh_zoom_top_decision_recurse);
-#endif
 
     /* We would create a pair task here, so recurse to count mesh interactions
      * that arise from task splitting through the void hierarchy */
