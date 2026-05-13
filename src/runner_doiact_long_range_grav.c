@@ -440,6 +440,9 @@ static int runner_debug_mesh_payload_limit_reported = 0;
 
 #define runner_debug_mesh_payload_report_max 64
 
+/* Set from a failing grav-path dump to inspect one exact top branch. */
+static const unsigned long long runner_debug_mesh_payload_target_top_ptr = 0ULL;
+
 static void runner_debug_record_zoom_top_invocation(const struct cell *top,
                                                     const struct cell *ci) {
 
@@ -498,6 +501,11 @@ static void runner_debug_record_mesh_attachment(
 
   if (recipient->top->type != cell_type_bkg ||
       recipient->top->subtype != cell_subtype_neighbour)
+    return;
+
+  if (runner_debug_mesh_payload_target_top_ptr != 0ULL &&
+      (unsigned long long)(uintptr_t)recipient->top !=
+          runner_debug_mesh_payload_target_top_ptr)
     return;
 
   const int payload_report_index = atomic_inc(&runner_debug_mesh_payload_report_count);

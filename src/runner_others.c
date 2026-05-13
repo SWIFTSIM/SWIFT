@@ -95,14 +95,15 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
     const int path_level = depth - 1 - i;
 
     message(
-        "grav-path[level=%d/%d]: cell=%llu (%s/%s depth=%d, super=%llu depth=%d) "
+        "grav-path[level=%d/%d]: cell=%llu ptr=%p (%s/%s depth=%d, super=%llu super_ptr=%p depth=%d) "
         "tensor[interacted=%d total=%lld tree=%lld pm=%lld] local_cell_gparts=%lld "
         "sources{mesh:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
         "pm_skip:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
         "mm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]}",
-        path_level, depth, cp->cellID, cellID_names[cp->type],
+        path_level, depth, cp->cellID, (void *)cp, cellID_names[cp->type],
         subcellID_names[cp->subtype], cp->depth,
-        super != NULL ? super->cellID : 0ULL, super != NULL ? super->depth : -1,
+        super != NULL ? super->cellID : 0ULL, (void *)super,
+        super != NULL ? super->depth : -1,
         (int)pot->interacted, pot->num_interacted,
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
         pot->num_interacted_tree, pot->num_interacted_pm,
