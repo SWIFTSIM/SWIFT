@@ -391,6 +391,19 @@ enum runner_debug_mesh_count_origin {
   runner_debug_mesh_count_origin_zoom_self = 3,
 };
 
+struct runner_debug_mesh_attachment_entry {
+  unsigned long long top_ptr_key;
+  unsigned long long recipient_ptr_key;
+  unsigned long long source_ptr_key;
+  unsigned long long first_super_ptr_key;
+  unsigned long long first_ci_ptr_key;
+  unsigned long long first_cj_ptr_key;
+  int first_origin;
+  int seen_count;
+  int duplicate_reported;
+  const char *first_attachment_case;
+};
+
 static int runner_debug_mesh_zoom_top_repeat_report_count = 0;
 static int runner_debug_mesh_zoom_top_repeat_limit_reported = 0;
 
@@ -406,6 +419,16 @@ struct runner_debug_mesh_zoom_top_entry {
 
 static struct runner_debug_mesh_zoom_top_entry
     runner_debug_mesh_zoom_top_table[runner_debug_mesh_zoom_top_table_size];
+
+static int runner_debug_mesh_attachment_report_count = 0;
+static int runner_debug_mesh_attachment_limit_reported = 0;
+
+#define runner_debug_mesh_attachment_report_max 32
+#define runner_debug_mesh_attachment_table_size (1 << 14)
+#define runner_debug_mesh_attachment_probe_limit 16
+
+static struct runner_debug_mesh_attachment_entry
+    runner_debug_mesh_attachment_table[runner_debug_mesh_attachment_table_size];
 
 static void runner_debug_record_zoom_top_invocation(const struct cell *top,
                                                     const struct cell *ci) {
@@ -463,8 +486,76 @@ static void runner_debug_record_mesh_attachment(
     const enum runner_debug_mesh_count_origin origin,
     const char *attachment_case) {
 
-  /* Disabled while focusing on the top-level zoom mesh loop. */
-  return;
+  if (recipient->top->type != cell_type_bkg ||
+      recipient->top->subtype != cell_subtype_neighbour)
+    return;
+
+  const unsigned long long top_ptr_key =
+      (unsigned long long)(uintptr_t)recipient->top;
+  const unsigned long long recipient_ptr_key =
+      (unsigned long long)(uintptr_t)recipient;
+  const unsigned long long source_ptr_key =
+      (unsigned long long)(uintptr_t)source;
+  const unsigned long long hash =
+      top_ptr_key * 11400714819323198485ull ^
+      recipient_ptr_key * 14029467366897019727ull ^
+      source_ptr_key * 1609587929392839161ull;
+
+  for (int probe = 0; probe < runner_debug_mesh_attachment_probe_limit; probe++) {
+    struct runner_debug_mesh_attachment_entry *slot =
+        &runner_debug_mesh_attachment_table
+            [(hash + (unsigned long long)probe) &
+             (runner_debug_mesh_attachment_table_size - 1)];
+
+    if (slot->top_ptr_key == 0ULL) {
+      if (atomic_cas(&slot->top_ptr_key, 0ULL, top_ptr_key) == 0ULL) {
+        slot->recipient_ptr_key = recipient_ptr_key;
+        slot->source_ptr_key = source_ptr_key;
+        slot->first_super_ptr_key = (unsigned long long)(uintptr_t)super;
+        slot->first_ci_ptr_key = (unsigned long long)(uintptr_t)ci;
+        slot->first_cj_ptr_key = (unsigned long long)(uintptr_t)cj;
+        slot->first_origin = (int)origin;
+        slot->seen_count = 1;
+        slot->first_attachment_case = attachment_case;
+        return;
+      }
+    }
+
+    if (slot->top_ptr_key == top_ptr_key &&
+        slot->recipient_ptr_key == recipient_ptr_key &&
+        slot->source_ptr_key == source_ptr_key) {
+      const int previous_seen_count = atomic_inc(&slot->seen_count);
+
+      if (previous_seen_count == 1 &&
+          atomic_cas(&slot->duplicate_reported, 0, 1) == 0) {
+        const int report_index =
+            atomic_inc(&runner_debug_mesh_attachment_report_count);
+
+        if (report_index < runner_debug_mesh_attachment_report_max) {
+          message(
+              "mesh-attachment duplicate(ptr): top_ptr=%p top_cellID=%llu "
+              "first[super=%p ci=%p cj=%p attach=%s origin=%d] "
+              "duplicate[super=%p ci=%p cj=%p attach=%s origin=%d] "
+              "recipient=%p (%s/%s depth=%d) source=%p (%s/%s depth=%d)",
+              (void *)recipient->top, recipient->top->cellID,
+              (void *)slot->first_super_ptr_key, (void *)slot->first_ci_ptr_key,
+              (void *)slot->first_cj_ptr_key, slot->first_attachment_case,
+              slot->first_origin, (void *)super, (void *)ci, (void *)cj,
+              attachment_case, (int)origin, (void *)recipient,
+              cellID_names[recipient->type], subcellID_names[recipient->subtype],
+              recipient->depth, (void *)source, cellID_names[source->type],
+              subcellID_names[source->subtype], source->depth);
+        } else if (report_index == runner_debug_mesh_attachment_report_max &&
+                   atomic_cas(&runner_debug_mesh_attachment_limit_reported, 0,
+                              1) == 0) {
+          message("mesh-attachment duplicate(ptr) reporting capped at %d lines",
+                  runner_debug_mesh_attachment_report_max);
+        }
+      }
+
+      return;
+    }
+  }
 }
 
 static INLINE void runner_record_mesh_attachment(
