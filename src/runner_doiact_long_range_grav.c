@@ -379,6 +379,10 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
+static void runner_accumulate_interaction(
+    struct gravity_tensors *restrict multi_i,
+    struct gravity_tensors *restrict multi_j);
+
 #ifdef SWIFT_DEBUG_CHECKS
 enum runner_debug_mesh_count_origin {
   runner_debug_mesh_count_origin_uniform_pair = 0,
