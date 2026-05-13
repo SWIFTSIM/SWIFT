@@ -85,6 +85,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   const float interaction_limit = min(search_radius_factor * r_hii_max, max_search_radius);
   const int can_recurse = c->split && (interaction_limit < 0.5f * c->dmin);
 
+  /* Anything to do here? */  
   if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
     return;
 
@@ -176,10 +177,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
     if (!spart_is_active(si, e)) continue;
     if (!feedback_is_active(si, e)) continue;
     if (!feedback_is_HII_ionization_active(si, e)) continue;
-
-    message("[%lld] Star can do ionization! (%e)", si->id,
-            radiation_get_star_ionization_rate(si));
-
+    
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
     if (si->ti_drift != e->ti_current)
@@ -359,7 +357,7 @@ void runner_do_stars_hii_ionization_feedback_self(
   struct engine *e = r->e;
   const int count = c->hydro.count;
 
-  /* If this cell has no hydro particles, skip */
+  /* Anything to do here?*/
   if (count == 0) return;
 
   /* If cell is leaf, do the brute force search */
@@ -435,7 +433,7 @@ void runner_do_stars_hii_ionization_feedback_pair(
   struct xpart *restrict xparts_j = cj->hydro.xparts;
   const int count_j = cj->hydro.count;
 
-  /* If this cell has no hydro particles, skip */
+  /* Anything to do here?*/
   if (count_j == 0) return;
 
   if (cj->split) {
