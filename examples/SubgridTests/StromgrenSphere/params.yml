@@ -6,6 +6,11 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
+Restarts:
+  enable: 1
+  delta_hours: 0.1
+  resubmit_on_exit: 0
+
 # Parameters for the self-gravity scheme
 Gravity:
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.

@@ -11,6 +11,7 @@ star_type=${star_type:="single_star"}
 with_cooling=${with_cooling:=1}
 L=${boxsize:=0.05} #boxsize in kpc
 run_name=${run_name:=""}
+restart=${restart:=0}
 
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
@@ -45,8 +46,10 @@ fi
 DIR=snap #First test of units conversion
 if [ -d "$DIR" ];
 then
-    echo "$DIR directory exists. Its content will be removed."
-    rm -r $DIR
+    if [ "$restart" -ne 1 ]; then
+	echo "$DIR directory exists. Its content will be removed."
+	rm -r $DIR
+    fi
 else
     echo "$DIR directory does not exists. It will be created."
     mkdir $DIR
@@ -54,13 +57,19 @@ fi
 
 printf "Running simulation..."
 
+if [ "$restart" -eq 1 ]; then
+    runtime_param="--restart --verbose=0"
+else
+    runtime_param="--verbose=0"
+fi
+
 if [ "$with_cooling" -eq 1 ]; then
 ../../../swift --hydro --stars --external-gravity --feedback --cooling \
-		   --sync --limiter --threads=$n_threads \
+		   --sync --limiter $runtime_param --threads=$n_threads \
 	       params.yml 2>&1 | tee output.log
 else
 ../../../swift --hydro --stars --external-gravity --feedback \
-		--sync --limiter --threads=$n_threads \
+		--sync --limiter $runtime_param --threads=$n_threads \
 	       params.yml 2>&1 | tee output.log
 fi
 
