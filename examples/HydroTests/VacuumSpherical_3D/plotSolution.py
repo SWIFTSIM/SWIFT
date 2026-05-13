@@ -62,24 +62,24 @@ git = file["Code"].attrs["Git Revision"]
 # Bin the data values
 # We let scipy choose the bins and then reuse them for all other quantities
 rho_bin, x_bin_edge, _ = stats.binned_statistic(x, rho, statistic="mean", bins=50)
-rho2_bin, _, _ = stats.binned_statistic(x, rho ** 2, statistic="mean", bins=x_bin_edge)
-rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
+rho2_bin, _, _ = stats.binned_statistic(x, rho**2, statistic="mean", bins=x_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
 
 v_bin, _, _ = stats.binned_statistic(x, v, statistic="mean", bins=x_bin_edge)
-v2_bin, _, _ = stats.binned_statistic(x, v ** 2, statistic="mean", bins=x_bin_edge)
-v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
+v2_bin, _, _ = stats.binned_statistic(x, v**2, statistic="mean", bins=x_bin_edge)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
 
 P_bin, _, _ = stats.binned_statistic(x, P, statistic="mean", bins=x_bin_edge)
-P2_bin, _, _ = stats.binned_statistic(x, P ** 2, statistic="mean", bins=x_bin_edge)
-P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
+P2_bin, _, _ = stats.binned_statistic(x, P**2, statistic="mean", bins=x_bin_edge)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
 
 u_bin, _, _ = stats.binned_statistic(x, u, statistic="mean", bins=x_bin_edge)
-u2_bin, _, _ = stats.binned_statistic(x, u ** 2, statistic="mean", bins=x_bin_edge)
-u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
+u2_bin, _, _ = stats.binned_statistic(x, u**2, statistic="mean", bins=x_bin_edge)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
 S_bin, _, _ = stats.binned_statistic(x, S, statistic="mean", bins=x_bin_edge)
-S2_bin, _, _ = stats.binned_statistic(x, S ** 2, statistic="mean", bins=x_bin_edge)
-S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
+S2_bin, _, _ = stats.binned_statistic(x, S**2, statistic="mean", bins=x_bin_edge)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
 
 x_bin = 0.5 * (x_bin_edge[1:] + x_bin_edge[:-1])
 

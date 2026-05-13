@@ -53,6 +53,7 @@
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
+#include "sidm_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
@@ -701,6 +702,11 @@ void write_virtual_file(struct engine *e, const char *fileName_base,
                               &num_fields, list);
         break;
 
+      case swift_type_sidm:
+        io_select_sidm_fields(NULL, with_cosmology, with_fof, with_stf, e,
+                              &num_fields, list);
+        break;
+
       case swift_type_stars:
         io_select_star_fields(NULL, with_cosmology, with_fof, with_stf, with_rt,
                               e, &num_fields, list);
@@ -804,6 +810,7 @@ void write_output_distributed(struct engine *e,
   const struct xpart *xparts = e->s->xparts;
   const struct gpart *gparts = e->s->gparts;
   const struct sink *sinks = e->s->sinks;
+  const struct sipart *siparts = e->s->siparts;
   const struct spart *sparts = e->s->sparts;
   const struct bpart *bparts = e->s->bparts;
   struct output_options *output_options = e->output_options;
@@ -820,6 +827,7 @@ void write_output_distributed(struct engine *e,
   const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
   const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
   const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;
+  const int with_sidm = (e->policy & engine_policy_sidm) ? 1 : 0;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -832,6 +840,7 @@ void write_output_distributed(struct engine *e,
   const size_t Ngas = e->s->nr_parts;
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nstars = e->s->nr_sparts;
+  const size_t Nsidm = e->s->nr_siparts;
   const size_t Nblackholes = e->s->nr_bparts;
 
   /* Determine if we are writing a reduced snapshot, and if so which
@@ -924,7 +933,7 @@ void write_output_distributed(struct engine *e,
 
   /* Number of particles that we will write */
   size_t Ngas_written, Ndm_written, Ndm_background, Ndm_neutrino,
-      Nsinks_written, Nstars_written, Nblackholes_written;
+      Nsinks_written, Nstars_written, Nsidm_written, Nblackholes_written;
 
   if (subsample[swift_type_gas]) {
     Ngas_written = io_count_gas_to_write(e->s, /*subsample=*/1,
@@ -951,6 +960,15 @@ void write_output_distributed(struct engine *e,
   } else {
     Nblackholes_written =
         e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
+  }
+
+  if (subsample[swift_type_sidm]) {
+    Nsidm_written = io_count_sidm_to_write(e->s, /*subsample=*/1,
+                                           subsample_fraction[swift_type_sidm],
+                                           e->snapshot_output_count);
+  } else {
+    Nsidm_written =
+        e->s->nr_siparts - e->s->nr_inhibited_siparts - e->s->nr_extra_siparts;
   }
 
   if (subsample[swift_type_sink]) {
@@ -986,7 +1004,7 @@ void write_output_distributed(struct engine *e,
   /* Compute offset in the file and total number of particles */
   long long N[swift_type_count] = {
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
-      Nstars_written, Nblackholes_written, Ndm_neutrino};
+      Nstars_written, Nblackholes_written, Ndm_neutrino,   Nsidm_written};
 
   /* Gather the total number of particles to write */
   long long N_total[swift_type_count] = {0};
@@ -1003,9 +1021,7 @@ void write_output_distributed(struct engine *e,
    * in case future snapshots will contain them (e.g. star formation) */
   const int to_write[swift_type_count] = {
       with_hydro, with_DM,         with_DM_background, with_sink,
-      with_stars, with_black_hole, with_neutrinos
-
-  };
+      with_stars, with_black_hole, with_neutrinos,     with_sidm};
 
   /* Use a single Lustre stripe with a rank-based OST offset? */
   if (e->snapshot_lustre_OST_checks != 0) {
@@ -1232,6 +1248,7 @@ void write_output_distributed(struct engine *e,
     struct sink *sinks_written = NULL;
     struct spart *sparts_written = NULL;
     struct bpart *bparts_written = NULL;
+    struct sipart *siparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1486,6 +1503,39 @@ void write_output_distributed(struct engine *e,
         }
       } break;
 
+      case swift_type_sidm: {
+        if (Nsidm == Nsidm_written) {
+
+          /* No inhibted particles: easy case */
+          Nparticles = Nsidm;
+
+          /* Select the fields to write */
+          io_select_sidm_fields(siparts, with_cosmology, with_fof, with_stf, e,
+                                &num_fields, list);
+
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          Nparticles = Nsidm_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("siarts_written", (void **)&siparts_written,
+                             sipart_align,
+                             Nsidm_written * sizeof(struct sipart)) != 0)
+            error("Error while allocating temporary memory for siparts");
+
+          /* Collect the particles we want to write */
+          io_collect_siparts_to_write(
+              siparts, siparts_written, subsample[swift_type_sidm],
+              subsample_fraction[swift_type_sidm], e->snapshot_output_count,
+              Nsidm, Nsidm_written);
+
+          /* Select the fields to write */
+          io_select_sidm_fields(siparts_written, with_cosmology, with_fof,
+                                with_stf, e, &num_fields, list);
+        }
+      } break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -1540,6 +1590,7 @@ void write_output_distributed(struct engine *e,
     if (sinks_written) swift_free("sinks_written", sinks_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
+    if (siparts_written) swift_free("siparts_written", siparts_written);
 
     /* Close particle group */
     H5Gclose(h_grp);

@@ -27,9 +27,10 @@ def cdm_to_SIDM(input_filename, output_filename, old_PT=1, new_PT=7):
     old_name = f"PartType{old_PT}"
     new_name = f"PartType{new_PT}"
 
-    with h5py.File(input_filename, "r") as f_in, h5py.File(
-        output_filename, "w"
-    ) as f_out:
+    with (
+        h5py.File(input_filename, "r") as f_in,
+        h5py.File(output_filename, "w") as f_out,
+    ):
 
         # Copy all groups except the old DM group
         for key in f_in.keys():
@@ -76,7 +77,7 @@ def cdm_to_SIDM(input_filename, output_filename, old_PT=1, new_PT=7):
 
         # Add DM smoothing lengths
         rmax = 50
-        h = 1.2348 * ((4 * np.pi * rmax ** 3) / 3 / ndm) ** (1.0 / 3.0)
+        h = 1.2348 * ((4 * np.pi * rmax**3) / 3 / ndm) ** (1.0 / 3.0)
         u = np.zeros(ndm)
 
         parttype7 = f_out["PartType0"]

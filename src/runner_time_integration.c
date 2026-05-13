@@ -1055,62 +1055,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       }
     }
 
-    /* Loop over the sink particles in this cell. */
-    for (int k = 0; k < sink_count; k++) {
-
-      /* Get a handle on the part. */
-      struct sink *restrict sink = &sinks[k];
-
-      /* need to be updated ? */
-      if (sink_is_active(sink, e)) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Current end of time-step */
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, sink->time_bin);
-
-        if (ti_end != ti_current)
-          error("Computing time-step of rogue particle.");
-#endif
-        /* Get new time-step */
-        const integertime_t ti_new_step = get_sink_timestep(sink, e);
-
-        /* Update particle */
-        sink->time_bin = get_time_bin(ti_new_step);
-        sink->gpart->time_bin = get_time_bin(ti_new_step);
-
-        /* Number of updated sink-particles */
-        sink_updated++;
-        g_updated++;
-
-        ti_sinks_end_min = min(ti_current + ti_new_step, ti_sinks_end_min);
-        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
-
-        /* What is the next starting point for this cell ? */
-        ti_sinks_beg_max = max(ti_current, ti_sinks_beg_max);
-        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
-
-        /* sink particle is inactive but not inhibited */
-      } else {
-
-        if (!sink_is_inhibited(sink, e)) {
-
-          const integertime_t ti_end =
-              get_integer_time_end(ti_current, sink->time_bin);
-
-          const integertime_t ti_beg =
-              get_integer_time_begin(ti_current + 1, sink->time_bin);
-
-          ti_sinks_end_min = min(ti_end, ti_sinks_end_min);
-          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-
-          /* What is the next starting point for this cell ? */
-          ti_sinks_beg_max = max(ti_beg, ti_sinks_beg_max);
-          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
-        }
-      }
-    }
-
     /* Loop over the black hole particles in this cell. */
     for (int k = 0; k < bcount; k++) {
 
@@ -1278,18 +1222,24 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Update particle */
         sip->time_bin = get_time_bin(ti_new_step);
-        sip->gpart->time_bin = get_time_bin(ti_new_step);
+        if (sip->gpart != NULL) sip->gpart->time_bin = sip->time_bin;
 
         /* Number of updated si-particles */
         si_updated++;
-        g_updated++;
+        if (sip->gpart != NULL) g_updated++;
 
+        /* What is the next sync-point ? */
         ti_sidm_end_min = min(ti_current + ti_new_step, ti_sidm_end_min);
-        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
 
         /* What is the next starting point for this cell ? */
         ti_sidm_beg_max = max(ti_current, ti_sidm_beg_max);
-        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+
+        /* Same collection for the gravity case */
+        if (sip->gpart != NULL) {
+          ti_gravity_end_min =
+              min(ti_current + ti_new_step, ti_gravity_end_min);
+          ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+        }
 
         /* si particle is inactive but not inhibited */
       } else {
@@ -1302,12 +1252,16 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
           const integertime_t ti_beg =
               get_integer_time_begin(ti_current + 1, sip->time_bin);
 
+          /* What is the next sync-point ? */
           ti_sidm_end_min = min(ti_end, ti_sidm_end_min);
-          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
 
           /* What is the next starting point for this cell ? */
           ti_sidm_beg_max = max(ti_beg, ti_sidm_beg_max);
-          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+
+          if (sip->gpart != NULL) {
+            ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+            ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+          }
         }
       }
     }

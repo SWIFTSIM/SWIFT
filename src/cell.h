@@ -199,6 +199,23 @@ struct pcell {
 
   } black_holes;
 
+  /*! SIDM variables */
+  struct {
+
+    /*! Number of #spart in this cell. */
+    int count;
+
+    /*! Maximal smoothing length. */
+    float h_max;
+
+    /*! Minimal integer end-of-timestep in this cell for black hole tasks */
+    integertime_t ti_end_min;
+
+    /*! Integer time of the last drift of the #spart in this cell */
+    integertime_t ti_old_part;
+
+  } sidm;
+
   /*! Sink variables */
   struct {
 
@@ -284,6 +301,15 @@ struct pcell_step {
     /*! Maximal distance any #part has travelled since last rebuild */
     float dx_max_part;
   } black_holes;
+
+  struct {
+
+    /*! Minimal integer end-of-timestep in this cell (sidm) */
+    integertime_t ti_end_min;
+
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+  } sidm;
 
   struct {
 
@@ -595,14 +621,17 @@ int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart_foreign *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
 int cell_link_bparts(struct cell *c, struct bpart *bparts);
+int cell_link_siparts(struct cell *c, struct sipart *siparts);
 int cell_link_sinks(struct cell *c, struct sink *sinks);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
 int cell_link_foreign_gparts(struct cell *c, struct gpart_foreign *gparts);
 int cell_link_foreign_fof_gparts(struct cell *c,
                                  struct gpart_fof_foreign *gparts);
+int cell_link_foreign_siparts(struct cell *c, struct sipart *siparts);
 void cell_unlink_foreign_particles(struct cell *c);
 int cell_count_parts_for_tasks(const struct cell *c);
 int cell_count_gparts_for_tasks(const struct cell *c);
+int cell_count_siparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current,
                           const struct gravity_props *const grav_props);
@@ -754,6 +783,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const int use_rebuild_data, const int is_tree_walk);
 int cell_can_use_mesh(struct engine *e, const struct cell *ci,
                       const struct cell *cj);
+int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
+                                       const struct cell *cj);
 int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
                                const struct cell *cj);
 void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e);
@@ -767,7 +798,8 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
     const struct cell *c) {
 
   return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
-          c->black_holes.count == 0 && c->sinks.count == 0);
+          c->black_holes.count == 0 && c->sinks.count == 0 &&
+          c->sidm.count == 0);
 }
 
 /**
@@ -1237,6 +1269,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
@@ -1275,6 +1308,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
