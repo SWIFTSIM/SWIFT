@@ -39,20 +39,21 @@ rcParams.update(params)
 path_to_file = "../"
 snapshot_base = "output_"
 
+
 # Coefficient c1 in eqn 32 (Kaiser and Alexander 1997)
 #   - opening_angle_deg: half-opening angle of the jet
 #   - gamma: adiabatic index (here the same for jet, lobe and ambient medium)
 #   - beta: slope of the density profile of the ambient medium
 def c1(theta, gama, beta):
     A = (
-        1.084 / theta * (1 + 0.5 * theta ** 2 * 1.084 ** 2)
+        1.084 / theta * (1 + 0.5 * theta**2 * 1.084**2)
     )  # approximate aspect ratio, assuming theta is small enough
     return (
-        A ** 4
+        A**4
         / (18 * np.pi)
         * (5 - beta) ** 3
-        * (gama ** 2 - 1)
-        / (9 * (gama + (gama - 1) * A ** 2 * 0.5) - 4 - beta)
+        * (gama**2 - 1)
+        / (9 * (gama + (gama - 1) * A**2 * 0.5) - 4 - beta)
     ) ** (1 / (5 - beta))
 
 
@@ -64,7 +65,7 @@ def c1(theta, gama, beta):
 #   - P_j: jet power
 #   - t: time
 def D_jet(theta, gama, beta, rho_0, P_j, t):
-    return c1(theta, gama, beta) * (P_j / rho_0 * t ** 3) ** (1 / 5)
+    return c1(theta, gama, beta) * (P_j / rho_0 * t**3) ** (1 / 5)
 
 
 def wrap(dx, box):
@@ -181,7 +182,7 @@ for i in range(4):
     # Some jet parameters for an analytical estimate
     opening_angle_in_degrees = 10
     theta = opening_angle_in_degrees / 180 * np.pi  # in radians
-    lobe_aspect_ratio = 1.084 / theta * (1 + 0.5 * theta ** 2 * 1.084 ** 2)
+    lobe_aspect_ratio = 1.084 / theta * (1 + 0.5 * theta**2 * 1.084**2)
 
     dens_0 = 1.47e-5  # density of the ambient medium
     P_jet = 1.56e8  # jet power
