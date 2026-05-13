@@ -394,12 +394,20 @@ enum runner_debug_mesh_count_origin {
 struct runner_debug_mesh_attachment_entry {
   unsigned long long recipient_cell_key;
   unsigned long long source_cell_key;
+  unsigned long long first_super_cell_id;
+  unsigned long long first_ci_cell_id;
+  unsigned long long first_cj_cell_id;
   int first_origin;
   int seen_count;
   int duplicate_reported;
+  const char *first_attachment_case;
 };
 
 static const unsigned long long runner_debug_mesh_watch_top_cell_id = 6572ULL;
+static int runner_debug_mesh_duplicate_report_count = 0;
+static int runner_debug_mesh_duplicate_report_limit_reported = 0;
+
+#define runner_debug_mesh_duplicate_report_max 64
 
 #define runner_debug_mesh_attachment_table_size (1 << 19)
 #define runner_debug_mesh_attachment_probe_limit 32
@@ -452,8 +460,12 @@ static void runner_debug_record_mesh_attachment(
     if (existing_recipient_key == 0ULL) {
       if (atomic_cas(&slot->recipient_cell_key, 0ULL, recipient_key) == 0ULL) {
         slot->source_cell_key = source_key;
+        slot->first_super_cell_id = super->cellID;
+        slot->first_ci_cell_id = ci->cellID;
+        slot->first_cj_cell_id = cj->cellID;
         slot->first_origin = (int)origin;
         slot->seen_count = 1;
+        slot->first_attachment_case = attachment_case;
         return;
       }
     }
@@ -464,24 +476,36 @@ static void runner_debug_record_mesh_attachment(
 
       if (previous_seen_count == 1 &&
           atomic_cas(&slot->duplicate_reported, 0, 1) == 0) {
-        message(
-            "mesh-count duplicate attachment: top=%llu super=%llu (%s/%s depth=%d) "
-            "ci=%llu (%s/%s depth=%d top=%llu) cj=%llu (%s/%s depth=%d top=%llu) "
-            "attach=%s recipient=%llu (%s/%s depth=%d top=%llu) "
-            "source=%llu (%s/%s depth=%d top=%llu) first_origin=%s duplicate_origin=%s",
-            recipient->top->cellID, super->cellID, cellID_names[super->type],
-            subcellID_names[super->subtype], super->depth, ci->cellID,
-            cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
-            ci->top->cellID, cj->cellID, cellID_names[cj->type],
-            subcellID_names[cj->subtype], cj->depth, cj->top->cellID,
-            attachment_case,
-            recipient->cellID, cellID_names[recipient->type],
-            subcellID_names[recipient->subtype], recipient->depth,
-            recipient->top->cellID, source->cellID, cellID_names[source->type],
-            subcellID_names[source->subtype], source->depth, source->top->cellID,
-            runner_debug_mesh_count_origin_name(
-                (enum runner_debug_mesh_count_origin)slot->first_origin),
-            runner_debug_mesh_count_origin_name(origin));
+        const int report_index = atomic_inc(&runner_debug_mesh_duplicate_report_count);
+
+        if (report_index < runner_debug_mesh_duplicate_report_max) {
+          message(
+              "mesh-count duplicate attachment: top=%llu first[super=%llu ci=%llu cj=%llu attach=%s origin=%s] "
+              "duplicate[super=%llu (%s/%s depth=%d) ci=%llu (%s/%s depth=%d top=%llu) "
+              "cj=%llu (%s/%s depth=%d top=%llu) attach=%s origin=%s] "
+              "recipient=%llu (%s/%s depth=%d top=%llu) source=%llu (%s/%s depth=%d top=%llu)",
+              recipient->top->cellID, slot->first_super_cell_id,
+              slot->first_ci_cell_id, slot->first_cj_cell_id,
+              slot->first_attachment_case,
+              runner_debug_mesh_count_origin_name(
+                  (enum runner_debug_mesh_count_origin)slot->first_origin),
+              super->cellID, cellID_names[super->type],
+              subcellID_names[super->subtype], super->depth, ci->cellID,
+              cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
+              ci->top->cellID, cj->cellID, cellID_names[cj->type],
+              subcellID_names[cj->subtype], cj->depth, cj->top->cellID,
+              attachment_case, runner_debug_mesh_count_origin_name(origin),
+              recipient->cellID, cellID_names[recipient->type],
+              subcellID_names[recipient->subtype], recipient->depth,
+              recipient->top->cellID, source->cellID,
+              cellID_names[source->type], subcellID_names[source->subtype],
+              source->depth, source->top->cellID);
+        } else if (report_index == runner_debug_mesh_duplicate_report_max &&
+                   atomic_cas(&runner_debug_mesh_duplicate_report_limit_reported,
+                              0, 1) == 0) {
+          message("mesh-count duplicate attachment reporting capped at %d lines",
+                  runner_debug_mesh_duplicate_report_max);
+        }
       }
 
       return;
