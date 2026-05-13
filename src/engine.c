@@ -786,13 +786,14 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
   const int with_sinks = e->policy & engine_policy_sinks;
+  const int with_sidm = e->policy & engine_policy_sidm;
   struct space *s = e->s;
   ticks tic = getticks();
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
   size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0,
-         count_bparts_in = 0, count_sinks_in = 0;
+         count_bparts_in = 0, count_siparts_in = 0, count_sinks_in = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -803,6 +804,11 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
         count_gparts_in +=
             cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
+      }
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_sidm) {
+        count_siparts_in +=
+            cell_count_siparts_for_tasks(e->proxies[k].cells_in[j]);
       }
 
       /* For stars, we just use the numbers in the top-level cells */
@@ -824,6 +830,11 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
         "Not running with hydro but about to receive gas particles in "
         "proxies!");
 
+  if (!with_sidm && count_siparts_in)
+    error(
+        "Not running with hydro but about to receive gas particles in "
+        "proxies!");
+
   if (e->verbose)
     message("Counting number of foreign particles took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -831,7 +842,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   tic = getticks();
 
   /* Allocate space for the foreign particles we will receive */
-  size_t old_size_parts_foreign = s->size_parts_foreign;
+  const size_t old_size_parts_foreign = s->size_parts_foreign;
   if (!fof && count_parts_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
@@ -840,8 +851,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign part data.");
   }
 
-  /* Allocate space for the foreign particles we will receive */
-  size_t old_size_gparts_foreign = s->size_gparts_foreign;
+  /* Allocate space for the foreign g-particles we will receive */
+  const size_t old_size_gparts_foreign = s->size_gparts_foreign;
   if (!fof && count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL)
       swift_free("gparts_foreign", s->gparts_foreign);
@@ -852,7 +863,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign gpart data.");
   }
 
-  /* Allocate space for the foreign FOF particles we will receive */
+  /* Allocate space for the foreign FOF g-particles we will receive */
   if (fof && count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL)
       swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
@@ -863,8 +874,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign FOF gpart data.");
   }
 
-  /* Allocate space for the foreign particles we will receive */
-  size_t old_size_sparts_foreign = s->size_sparts_foreign;
+  /* Allocate space for the foreign s-particles we will receive */
+  const size_t old_size_sparts_foreign = s->size_sparts_foreign;
   if (!fof && count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL)
       swift_free("sparts_foreign", s->sparts_foreign);
@@ -884,8 +895,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 #endif
   }
 
-  /* Allocate space for the foreign particles we will receive */
-  size_t old_size_bparts_foreign = s->size_bparts_foreign;
+  /* Allocate space for the foreign b-particles we will receive */
+  const size_t old_size_bparts_foreign = s->size_bparts_foreign;
   if (!fof && count_bparts_in > s->size_bparts_foreign) {
     if (s->bparts_foreign != NULL)
       swift_free("bparts_foreign", s->bparts_foreign);
@@ -896,8 +907,20 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign bpart data.");
   }
 
-  /* Allocate space for the foreign particles we will receive */
-  size_t old_size_sinks_foreign = s->size_sinks_foreign;
+  /* Allocate space for the foreign sidm-particles we will receive */
+  const size_t old_size_siparts_foreign = s->size_siparts_foreign;
+  if (!fof && count_siparts_in > s->size_siparts_foreign) {
+    if (s->siparts_foreign != NULL)
+      swift_free("siparts_foreign", s->siparts_foreign);
+    s->size_siparts_foreign = engine_foreign_alloc_margin * count_siparts_in;
+    if (swift_memalign("siparts_foreign", (void **)&s->siparts_foreign,
+                       bpart_align,
+                       sizeof(struct bpart) * s->size_siparts_foreign) != 0)
+      error("Failed to allocate foreign bpart data.");
+  }
+
+  /* Allocate space for the foreign sink particles we will receive */
+  const size_t old_size_sinks_foreign = s->size_sinks_foreign;
   if (!fof && count_sinks_in > s->size_sinks_foreign) {
     if (s->sinks_foreign != NULL) swift_free("sinks_foreign", s->sinks_foreign);
     s->size_sinks_foreign = engine_foreign_alloc_margin * count_sinks_in;
@@ -919,28 +942,31 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
   if (e->verbose) {
     message(
-        "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/bpart/sink "
-        "(%zd/%zd/%zd/%zd/%zd MB)",
+        "Allocating %zd/%zd/%zd/%zd/%zd/%zd foreign "
+        "part/gpart/spart/bpart/sipart/sink (%zd/%zd/%zd/%zd/%zd/%zd MB)",
         s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
-        s->size_bparts_foreign, s->size_sinks_foreign,
+        s->size_bparts_foreign, s->size_siparts_foreign, s->size_sinks_foreign,
         s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
         s->size_gparts_foreign * sizeof(struct gpart_foreign) / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
         s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024),
+        s->size_siparts_foreign * sizeof(struct sipart) / (1024 * 1024),
         s->size_sinks_foreign * sizeof(struct sink) / (1024 * 1024));
 
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
         (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
         (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
         (s->size_bparts_foreign - old_size_bparts_foreign) > 0 ||
+        (s->size_siparts_foreign - old_size_siparts_foreign) > 0 ||
         (s->size_sinks_foreign - old_size_sinks_foreign) > 0) {
       message(
-          "Re-allocations %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/sink "
-          "(%zd/%zd/%zd/%zd/%zd MB)",
+          "Re-allocations %zd/%zd/%zd/%zd/%zd/%zd "
+          "part/gpart/spart/bpart/sipart/sink (%zd/%zd/%zd/%zd/%zd/%zd MB)",
           (s->size_parts_foreign - old_size_parts_foreign),
           (s->size_gparts_foreign - old_size_gparts_foreign),
           (s->size_sparts_foreign - old_size_sparts_foreign),
           (s->size_bparts_foreign - old_size_bparts_foreign),
+          (s->size_siparts_foreign - old_size_siparts_foreign),
           (s->size_sinks_foreign - old_size_sinks_foreign),
           (s->size_parts_foreign - old_size_parts_foreign) *
               sizeof(struct part) / (1024 * 1024),
@@ -952,6 +978,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
               sizeof(struct spart) / (1024 * 1024),
           (s->size_bparts_foreign - old_size_bparts_foreign) *
               sizeof(struct bpart) / (1024 * 1024),
+          (s->size_siparts_foreign - old_size_siparts_foreign) *
+              sizeof(struct sipart) / (1024 * 1024),
           (s->size_sinks_foreign - old_size_sinks_foreign) *
               sizeof(struct sink) / (1024 * 1024));
     }
@@ -969,6 +997,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   struct gpart_fof_foreign *gparts_fof_foreign = s->gparts_fof_foreign;
   struct spart *sparts = s->sparts_foreign;
   struct bpart *bparts = s->bparts_foreign;
+  struct sipart *siparts = s->siparts_foreign;
   struct sink *sinks = s->sinks_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
@@ -992,6 +1021,13 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
         const size_t count_gparts =
             cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts_foreign);
         gparts_foreign = &gparts_foreign[count_gparts];
+      }
+
+      if (!fof && e->proxies[k].cells_in_type[j] & proxy_cell_type_sidm) {
+
+        const size_t count_siparts =
+            cell_link_foreign_siparts(e->proxies[k].cells_in[j], siparts);
+        siparts = &siparts[count_siparts];
       }
 
       if (!fof && with_stars) {
@@ -1027,6 +1063,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     s->nr_gparts_foreign = gparts_foreign - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
   s->nr_bparts_foreign = bparts - s->bparts_foreign;
+  s->nr_siparts_foreign = siparts - s->siparts_foreign;
   s->nr_sinks_foreign = sinks - s->sinks_foreign;
 
   if (e->verbose)
@@ -1191,6 +1228,17 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef WITH_MPI
     n1 += 2;
 #endif
+#endif
+  }
+  if (e->policy & engine_policy_sidm) {
+    /* 2 self (density, force), 1 sort, 26/2 density pairs
+       26/2 force pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
+       1 end_force, 1 collect, 2 extra space
+     */
+    n1 += 38;
+    n2 += 2;
+#ifdef WITH_MPI
+    n1 += 6;
 #endif
   }
   if (e->policy & engine_policy_timestep_limiter) {
@@ -1813,8 +1861,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync || t->type == task_type_collect ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
-        t->type == task_type_stars_in || t->type == task_type_stars_out ||
-        t->type == task_type_star_formation ||
+        t->type == task_type_sidm_end_force || t->type == task_type_stars_in ||
+        t->type == task_type_stars_out || t->type == task_type_star_formation ||
         t->type == task_type_star_formation_sink ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
         t->type == task_type_stars_ghost ||
@@ -1849,8 +1897,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
         t->subtype == task_subtype_sink_do_gas_swallow ||
-        t->subtype == task_subtype_sipart || t->subtype == task_subtype_tend ||
-        t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_sidm_comm_rho ||
+        t->subtype == task_subtype_sidm_force ||
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
         t->subtype == task_subtype_spart_prep2 ||

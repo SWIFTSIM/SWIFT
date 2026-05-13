@@ -363,7 +363,7 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
   long long num_high_res_DM = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     const struct gpart *gp = &s->gparts[i];
-    if (gp->type == swift_type_dark_matter &&
+    if ((gp->type == swift_type_dark_matter || gp->type == swift_type_sidm) &&
         gp->time_bin != time_bin_inhibited &&
         gp->time_bin != time_bin_not_created) {
       high_res_DM_mass += gp->mass;

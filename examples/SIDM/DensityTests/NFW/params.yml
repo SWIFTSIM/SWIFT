@@ -19,7 +19,7 @@ Gravity:
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
   theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
   eta:                           0.025     # Constant dimensionless multiplier for time integration.
-  max_physical_DM_softening: 0.025     # Physical softening length (in internal units)
+  max_physical_DM_softening:     0.025     # Physical softening length (in internal units)
 
 # Parameters governing the snapshots
 Snapshots:
@@ -40,5 +40,6 @@ InitialConditions:
 
 # Parameters for the SIDM scheme
 BasicSIDM:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  
+  resolution_eta:         1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  constant_cross_section: 1
+  sigma_over_m_cgs:       5

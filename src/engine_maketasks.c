@@ -653,6 +653,80 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
 }
 
 /**
+ * @brief Add send tasks for the SIDM pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_xv The send_xv #task, if it has already been created.
+ * @param t_rho The send_rho #task, if it has already been created.
+ */
+void engine_addtasks_send_sidm(struct engine *e, struct cell *ci,
+                               struct cell *cj, struct task *t_xv,
+                               struct task *t_rho) {
+
+#ifdef WITH_MPI
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
+
+  /* Check if any of the density tasks are for the target node. */
+  for (l = ci->sidm.density; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* If so, attach send tasks. */
+  if (l != NULL) {
+
+    /* Create the tasks and their dependencies? */
+    if (t_xv == NULL) {
+
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
+
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_sidm_comm_xv,
+                               ci->mpi.tag, 0, ci, cj);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_sidm_comm_rho,
+                                ci->mpi.tag, 0, ci, cj);
+      scheduler_addunlock(s, t_xv, t_rho);
+
+      /* The send_rho task should unlock the super_sidm-cell's kick task. */
+      scheduler_addunlock(s, t_rho, ci->sidm.super->sidm.end_force);
+      scheduler_addunlock(s, t_rho, ci->super->kick2);
+
+      /* The send_rho task depends on the cell's ghost task. */
+      scheduler_addunlock(s, ci->sidm.super->sidm.density_ghost, t_rho);
+
+      /* The send_xv task should unlock the super_sidm-cell's ghost task. */
+      scheduler_addunlock(s, t_xv, ci->sidm.super->sidm.density_ghost);
+
+      /* Drift before you send */
+      scheduler_addunlock(s, ci->sidm.super->sidm.drift, t_xv);
+      scheduler_addunlock(s, ci->sidm.super->sidm.drift, t_rho);
+
+    } /* if t_xv == NULL */
+
+    /* Add them to the local cell. */
+    engine_addlink(e, &ci->mpi.send, t_xv);
+    engine_addlink(e, &ci->mpi.send, t_rho);
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_sidm(e, ci->progeny[k], cj, t_xv, t_rho);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Add recv tasks for hydro pairs to a hierarchy of cells.
  *
  * @param e The #engine.
@@ -942,7 +1016,6 @@ void engine_addtasks_recv_hydro(
  * @param c The foreign #cell.
  * @param tend The top-level time-step communication #task.
  */
-
 void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
                                                struct task *const tend) {
 
@@ -1260,6 +1333,73 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
         engine_addtasks_recv_sinks(e, c->progeny[k], t_rho, t_sink_merger,
                                    t_sink_gas_swallow, t_sink_formation_counts,
                                    tend);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add recv tasks for SIDM pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_xv The recv_xv #task, if it has already been created.
+ * @param t_rho The recv_rho #task, if it has already been created.
+ * @param tend The top-level time-step communication #task.
+ */
+void engine_addtasks_recv_sidm(struct engine *e, struct cell *c,
+                               struct task *t_xv, struct task *t_rho,
+                               struct task *const tend) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Have we reached a level where there are any hydro tasks ? */
+  if (t_xv == NULL && c->sidm.density != NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+    /* Create the tasks. */
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_sidm_comm_xv,
+                             c->mpi.tag, 0, c, NULL);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_sidm_comm_rho,
+                              c->mpi.tag, 0, c, NULL);
+
+    scheduler_addunlock(s, t_xv, t_rho);
+  }
+
+  if (t_xv != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_xv);
+    engine_addlink(e, &c->mpi.recv, t_rho);
+
+    /* Add dependencies. */
+    if (c->hydro.sorts != NULL) {
+      // scheduler_addunlock(s, t_xv, c->sidm.sorts);
+      // scheduler_addunlock(s, c->sidm.sorts, t_rho);
+    }
+
+    for (struct link *l = c->sidm.density; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_xv, l->t);
+      scheduler_addunlock(s, l->t, t_rho);
+    }
+    for (struct link *l = c->sidm.force; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_rho, l->t);
+      scheduler_addunlock(s, l->t, tend);
+    }
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_sidm(e, c->progeny[k], t_xv, t_rho, tend);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4066,6 +4206,11 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  /*t_sink_gas_swallow=*/NULL,
                                  /*t_sink_formation_count=*/NULL);
 
+    /* Add the send tasks for the cells in the proxy that have a black holes
+     * connection. */
+    if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_sidm))
+      engine_addtasks_send_sidm(e, ci, cj, /*t_xv=*/NULL, /*t_rho=*/NULL);
+
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
@@ -4177,6 +4322,12 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                  /*t_sink_merger*/ NULL,
                                  /*t_sink_gas_swallow=*/NULL,
                                  /*t_sink_formation_counts=*/NULL, tend);
+
+    /* Add the recv tasks for the cells in the proxy that have a black holes
+     * connection. */
+    if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_sidm))
+      engine_addtasks_recv_sidm(e, ci, /*t_xv=*/NULL,
+                                /*t_rho=*/NULL, tend);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */

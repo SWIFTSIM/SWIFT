@@ -3500,7 +3500,65 @@ int cell_unskip_sidm_tasks(struct cell *c, struct scheduler *s) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_sidm_pair(ci, cj)) rebuild = 1;
-      if (cell_need_rebuild_for_sidm_pair(cj, ci)) rebuild = 1;
+
+#ifdef WITH_MPI
+      /* Activate the send/recv tasks. */
+      if (ci_nodeID != nodeID) {
+
+        /* If the local cell is active, receive data from the foreign cell. */
+        if (cj_active) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm_comm_xv);
+          if (ci_active) {
+            scheduler_activate_recv(s, ci->mpi.recv,
+                                    task_subtype_sidm_comm_rho);
+          }
+        }
+
+        /* Is the foreign cell active and will need stuff from us? */
+        if (ci_active) {
+
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_sidm_comm_xv,
+                                  ci_nodeID);
+
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_sipart(cj, s);
+
+          /* If the local cell is also active, more stuff will be needed. */
+          if (cj_active) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_sidm_comm_rho,
+                                    ci_nodeID);
+          }
+        }
+
+      } else if (cj_nodeID != nodeID) {
+        /* If the local cell is active, receive data from the foreign cell. */
+        if (ci_active) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm_comm_xv);
+          if (cj_active) {
+            scheduler_activate_recv(s, cj->mpi.recv,
+                                    task_subtype_sidm_comm_rho);
+          }
+        }
+
+        /* Is the foreign cell active and will need stuff from us? */
+        if (cj_active) {
+
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_sidm_comm_xv,
+                                  cj_nodeID);
+
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_sipart(ci, s);
+          /* If the local cell is also active, more stuff will be needed. */
+          if (ci_active) {
+
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_sidm_comm_rho,
+                                    cj_nodeID);
+          }
+        }
+      }
+#endif /* WITH_MPI */
     }
   }
 
@@ -3512,8 +3570,8 @@ int cell_unskip_sidm_tasks(struct cell *c, struct scheduler *s) {
       scheduler_activate(s, l->t);
     }
 
-    if (c->sidm.super->sidm.density_ghost != NULL)
-      scheduler_activate(s, c->sidm.super->sidm.density_ghost);
+    if (c->sidm.density_ghost != NULL)
+      scheduler_activate(s, c->sidm.density_ghost);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);

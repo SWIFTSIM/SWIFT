@@ -90,16 +90,23 @@ INLINE static void convert_sipart_vel(const struct engine *e,
       kick_get_grav_kick_dt(ti_beg, (ti_beg + ti_end) / 2, time_base,
                             with_cosmology, cosmo);
 
-  /* Extrapolate the velocites to the current time */
-  const struct gpart *gp = sip->gpart;
-  ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
-  ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
-  ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
+  ret[0] = 0.f;
+  ret[1] = 0.f;
+  ret[2] = 0.f;
 
-  /* Extrapolate the velocites to the current time (mesh forces) */
-  ret[0] += gp->a_grav_mesh[0] * dt_kick_grav_mesh;
-  ret[1] += gp->a_grav_mesh[1] * dt_kick_grav_mesh;
-  ret[2] += gp->a_grav_mesh[2] * dt_kick_grav_mesh;
+  const struct gpart *gp = sip->gpart;
+
+  if (gp != NULL) {
+    /* Extrapolate the velocites to the current time */
+    ret[0] += gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
+    ret[1] += gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
+    ret[2] += gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
+
+    /* Extrapolate the velocites to the current time (mesh forces) */
+    ret[0] += gp->a_grav_mesh[0] * dt_kick_grav_mesh;
+    ret[1] += gp->a_grav_mesh[1] * dt_kick_grav_mesh;
+    ret[2] += gp->a_grav_mesh[2] * dt_kick_grav_mesh;
+  }
 
   /* Conversion from internal units to peculiar velocities */
   ret[0] *= cosmo->a_inv;
@@ -131,7 +138,7 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 7;
+  *num_fields = 8;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sipart(
@@ -154,11 +161,15 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, siparts,
       convert_sipart_potential, "Gravitational potentials of the particles");
 
-  list[5] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
+  list[5] = io_make_output_field(
+      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, siparts, h,
+      "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+
+  list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
                                  siparts, rho,
                                  "Co-moving mass densities of the particles");
 
-  list[6] = io_make_output_field(
+  list[7] = io_make_output_field(
       "Rates", FLOAT, 1, UNIT_CONV_FREQUENCY, -1.f, siparts, SIDM_rate,
       "SIDM scattering rate of the particles");  // TODO:check cosmo factor
 }

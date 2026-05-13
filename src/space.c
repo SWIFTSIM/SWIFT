@@ -2272,6 +2272,7 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
     switch (gparts[i].type) {
       case swift_type_dark_matter:
       case swift_type_dark_matter_background:
+      case swift_type_sidm:
         mass_cdm += gparts[i].mass;
         break;
       case swift_type_neutrino:
