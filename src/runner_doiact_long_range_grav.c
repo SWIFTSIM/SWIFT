@@ -20,30 +20,19 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Standard headers. */
+#include <string.h>
+
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
 #include "engine.h"
+#include "lock.h"
 #include "gravity_properties.h"
 #include "runner.h"
 #include "runner_doiact_grav.h"
 #include "space.h"
 #include "timers.h"
-
-#ifdef SWIFT_DEBUG_CHECKS
-static const unsigned long long debug_watch_parent_cell = 3283394ULL;
-static const unsigned long long debug_watch_child_cell = 17963458ULL;
-
-static INLINE int debug_watch_zoom_mirror_pair(const struct cell *ci,
-                                               const struct cell *cj) {
-  return (ci != NULL &&
-          (ci->cellID == debug_watch_parent_cell ||
-           ci->cellID == debug_watch_child_cell)) ||
-         (cj != NULL &&
-          (cj->cellID == debug_watch_parent_cell ||
-           cj->cellID == debug_watch_child_cell));
-}
-#endif
 
 /**
  * @brief Performs M-M interactions between a given top-level cell and
@@ -425,6 +414,72 @@ static void runner_accumulate_interaction(
 }
 
 #ifdef SWIFT_DEBUG_CHECKS
+struct runner_debug_mesh_pair_entry {
+  unsigned long long recipient_id;
+  unsigned long long source_id;
+};
+
+static struct runner_debug_mesh_pair_entry *runner_debug_mesh_pairs = NULL;
+static size_t runner_debug_mesh_pairs_cap = 0;
+static integertime_t runner_debug_mesh_pairs_ti = -1;
+static swift_lock_type runner_debug_mesh_pairs_lock = lock_static_initializer;
+
+static int runner_debug_mesh_pair_is_new(const struct engine *e,
+                                         const struct cell *recipient,
+                                         const struct cell *source) {
+
+  if (runner_debug_mesh_pairs == NULL) {
+    size_t cap = 1u << 22;
+    runner_debug_mesh_pairs = (struct runner_debug_mesh_pair_entry *)swift_malloc(
+        "runner_debug_mesh_pairs",
+        cap * sizeof(struct runner_debug_mesh_pair_entry));
+    if (runner_debug_mesh_pairs == NULL)
+      error("Failed to allocate mesh debug dedupe table.");
+    runner_debug_mesh_pairs_cap = cap;
+    memset(runner_debug_mesh_pairs, 0,
+           cap * sizeof(struct runner_debug_mesh_pair_entry));
+  }
+
+  if (lock_lock(&runner_debug_mesh_pairs_lock) != 0)
+    error("Failed to lock mesh debug dedupe table.");
+
+  if (runner_debug_mesh_pairs_ti != e->ti_current) {
+    memset(runner_debug_mesh_pairs, 0,
+           runner_debug_mesh_pairs_cap *
+               sizeof(struct runner_debug_mesh_pair_entry));
+    runner_debug_mesh_pairs_ti = e->ti_current;
+  }
+
+  const size_t mask = runner_debug_mesh_pairs_cap - 1;
+  size_t ind = ((recipient->cellID * 11400714819323198485ull) ^
+                (source->cellID * 14029467366897019727ull)) &
+               mask;
+
+  for (size_t n = 0; n < runner_debug_mesh_pairs_cap; n++) {
+    struct runner_debug_mesh_pair_entry *entry = &runner_debug_mesh_pairs[ind];
+
+    if (entry->recipient_id == 0ULL && entry->source_id == 0ULL) {
+      entry->recipient_id = recipient->cellID;
+      entry->source_id = source->cellID;
+      if (lock_unlock(&runner_debug_mesh_pairs_lock) != 0)
+        error("Failed to unlock mesh debug dedupe table.");
+      return 1;
+    }
+
+    if (entry->recipient_id == recipient->cellID &&
+        entry->source_id == source->cellID) {
+      if (lock_unlock(&runner_debug_mesh_pairs_lock) != 0)
+        error("Failed to unlock mesh debug dedupe table.");
+      return 0;
+    }
+
+    ind = (ind + 1) & mask;
+  }
+
+  error("Mesh debug dedupe table overflowed.");
+  return 0;
+}
+
 static void runner_debug_check_mesh_recipient_source_disjoint(
     const struct cell *recipient, const struct cell *source) {
 
@@ -495,6 +550,7 @@ static void runner_count_mesh_interaction(const struct engine *e,
   if (super == ci) {
 #ifdef SWIFT_DEBUG_CHECKS
     runner_debug_check_mesh_recipient_source_disjoint(super, cj);
+    if (!runner_debug_mesh_pair_is_new(e, super, cj)) return;
 #endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
@@ -505,6 +561,7 @@ static void runner_count_mesh_interaction(const struct engine *e,
   } else if (cell_contains_progeny(ci, super)) {
 #ifdef SWIFT_DEBUG_CHECKS
     runner_debug_check_mesh_recipient_source_disjoint(super, cj);
+    if (!runner_debug_mesh_pair_is_new(e, super, cj)) return;
 #endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
@@ -515,6 +572,7 @@ static void runner_count_mesh_interaction(const struct engine *e,
   } else if (cell_contains_progeny(super, ci)) {
 #ifdef SWIFT_DEBUG_CHECKS
     runner_debug_check_mesh_recipient_source_disjoint(ci, cj);
+    if (!runner_debug_mesh_pair_is_new(e, ci, cj)) return;
 #endif
     runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
@@ -529,6 +587,7 @@ static void runner_count_mesh_interaction(const struct engine *e,
     if (super == cj) {
 #ifdef SWIFT_DEBUG_CHECKS
       runner_debug_check_mesh_recipient_source_disjoint(super, ci);
+      if (!runner_debug_mesh_pair_is_new(e, super, ci)) return;
 #endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
@@ -539,6 +598,7 @@ static void runner_count_mesh_interaction(const struct engine *e,
     } else if (cell_contains_progeny(cj, super)) {
 #ifdef SWIFT_DEBUG_CHECKS
       runner_debug_check_mesh_recipient_source_disjoint(super, ci);
+      if (!runner_debug_mesh_pair_is_new(e, super, ci)) return;
 #endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
@@ -549,6 +609,7 @@ static void runner_count_mesh_interaction(const struct engine *e,
     } else if (cell_contains_progeny(super, cj)) {
 #ifdef SWIFT_DEBUG_CHECKS
       runner_debug_check_mesh_recipient_source_disjoint(cj, ci);
+      if (!runner_debug_mesh_pair_is_new(e, cj, ci)) return;
 #endif
       runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
@@ -846,14 +907,6 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (debug_watch_zoom_mirror_pair(cpi, cpj))
-          message(
-              "mirror zoom-pair decision: pair(cellID=%llu/%llu type=%s/%s subtype=%s/%s depth=%d/%d) -> mesh",
-              cpi->cellID, cpj->cellID, cellID_names[cpi->type],
-              cellID_names[cpj->type], subcellID_names[cpi->subtype],
-              subcellID_names[cpj->subtype], cpi->depth, cpj->depth);
-#endif
         /* Record the mesh interaction */
         runner_count_mesh_interaction(e, c, cpi, cpj);
         continue;
@@ -864,26 +917,9 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
                                /*is_tree_walk=*/1,
                                /*periodic boundaries*/ s->periodic,
                                /*use_mesh*/ s->periodic)) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (debug_watch_zoom_mirror_pair(cpi, cpj))
-          message(
-              "mirror zoom-pair decision: pair(cellID=%llu/%llu type=%s/%s subtype=%s/%s depth=%d/%d) -> mm",
-              cpi->cellID, cpj->cellID, cellID_names[cpi->type],
-              cellID_names[cpj->type], subcellID_names[cpi->subtype],
-              subcellID_names[cpj->subtype], cpi->depth, cpj->depth);
-#endif
         /* M-M task handles this, nothing to count */
         continue;
       }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (debug_watch_zoom_mirror_pair(cpi, cpj))
-        message(
-            "mirror zoom-pair decision: pair(cellID=%llu/%llu type=%s/%s subtype=%s/%s depth=%d/%d) -> recurse",
-            cpi->cellID, cpj->cellID, cellID_names[cpi->type],
-            cellID_names[cpj->type], subcellID_names[cpi->subtype],
-            subcellID_names[cpj->subtype], cpi->depth, cpj->depth);
-#endif
 
       /* Recurse to find more mesh interactions */
       runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
