@@ -441,7 +441,8 @@ static int runner_debug_mesh_payload_limit_reported = 0;
 #define runner_debug_mesh_payload_report_max 64
 
 /* Set from a failing grav-path dump to inspect one exact top branch. */
-static const unsigned long long runner_debug_mesh_payload_target_top_ptr = 0ULL;
+static const unsigned long long runner_debug_mesh_payload_target_top_ptr =
+    0x14f11fb13b20ULL;
 
 static void runner_debug_record_zoom_top_invocation(const struct cell *top,
                                                     const struct cell *ci) {
