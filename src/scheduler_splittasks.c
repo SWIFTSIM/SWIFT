@@ -276,7 +276,12 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
  */
 static void scheduler_splittask_radiation_subgrid(struct task *t,
                                                   struct scheduler *s) {
-#ifdef IONIZATION_FEEDBACK_LOOP  
+#ifdef IONIZATION_FEEDBACK_LOOP
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->subtype != task_subtype_stars_radiation_in)
+    error("Found non radiation_in task in scheduler_splittask_radiation_subgrid!");
+#endif
+
   /* Are we considering both stars and hydro when splitting? */
   /* Note this is not very clean as the scheduler should not really
      access the engine... */
