@@ -20,11 +20,6 @@
 /* Config parameters. */
 #include <config.h>
 
-/* Some standard headers. */
-#include <float.h>
-#include <limits.h>
-#include <stdlib.h>
-
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -39,16 +34,9 @@
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
-#include "fof.h"
-#include "gravity.h"
 #include "hydro.h"
-#include "runner_doiact_sinks.h"
-#include "space.h"
-#include "star_formation.h"
 #include "stars.h"
 #include "timers.h"
-#include "timestep_limiter.h"
-#include "tracers.h"
 
 #define search_radius_factor 1.2f
 #define max_ngbs 128
