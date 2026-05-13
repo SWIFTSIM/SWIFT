@@ -928,7 +928,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_stars_radiation_in ||
                    t->subtype == task_subtype_stars_radiation_out) {
           qid = -1;
-	} else {
+        } else {
           qid = t->ci->hydro.super->owner;
           owner = &t->ci->hydro.super->owner;
         }

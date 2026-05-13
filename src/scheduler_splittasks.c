@@ -284,7 +284,9 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
 #ifdef IONIZATION_FEEDBACK_LOOP
 #ifdef SWIFT_DEBUG_CHECKS
   if (t->subtype != task_subtype_stars_radiation_in)
-    error("Found non radiation_in task in scheduler_splittask_radiation_subgrid!");
+    error(
+        "Found non radiation_in task in "
+        "scheduler_splittask_radiation_subgrid!");
 #endif
 
   /* Are we considering both stars and hydro when splitting? */
@@ -305,12 +307,11 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
         ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0));
 
     /* Is this a non-empty pair-task? */
-    const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
-                        (t->cj != NULL) &&
-                        ((t->ci->hydro.count > 0) ||
-                         (with_feedback && t->ci->stars.count > 0)) &&
-                        ((t->cj->hydro.count > 0) ||
-                         (with_feedback && t->cj->stars.count > 0));
+    const int is_pair =
+        (t->type == task_type_pair) && (t->ci != NULL) && (t->cj != NULL) &&
+        ((t->ci->hydro.count > 0) ||
+         (with_feedback && t->ci->stars.count > 0)) &&
+        ((t->cj->hydro.count > 0) || (with_feedback && t->cj->stars.count > 0));
 
     /* Empty task? */
     if (!is_self && !is_pair) {
@@ -445,7 +446,7 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
         }
 
         /* Replace by a single sub-task? */
-	/* Note: Contrary to hydro, we keep the corners */
+        /* Note: Contrary to hydro, we keep the corners */
         if (scheduler_dosub &&
             (do_sub_hydro && do_sub_stars_i && do_sub_stars_j)) {
 
@@ -499,7 +500,7 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
       }
     } /* pair interaction? */
   } /* iterate over the current task. */
-#endif /* IONIZATION_FEEDBACK_LOOP */  
+#endif /* IONIZATION_FEEDBACK_LOOP */
 }
 
 /**

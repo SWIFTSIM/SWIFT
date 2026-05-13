@@ -2510,7 +2510,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
                                                    with_star_formation_sink);
 
-
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
@@ -2552,13 +2551,12 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       }
     }
 
-
     else if (t->type == task_type_pair) {
-        /* Check whether there was too much particle motion, i.e. the
-         cell neighbour conditions were violated. */
+      /* Check whether there was too much particle motion, i.e. the
+       cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
-      
+
       /* We only want to activate the task if the cell is active and is
          going to update some gas on the *local* node */
       if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
@@ -2574,7 +2572,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #ifdef WITH_MPI
       /* TODO: We need to activate the send and recv parts */
       error("MPI is not yet implemented");
-#endif      
+#endif
     }
     /* Nothing more to do here, all drifts and sorts activated above */
   }

@@ -59,62 +59,71 @@ INLINE static void cooling_ionize_part_subgrid(
      Then, ionise during t_part + delta t
   */
   /* TODO: Check temperature formula */
-  if (!radiation_is_part_tagged_as_ionized(p, xp)) {
-    return;
-  }
+  /*   if (!radiation_is_part_tagged_as_ionized(p, xp)) { */
+  /*     return; */
+  /*   } */
 
-  const double m_p = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
+  /*   const double m_p = phys_const->const_proton_mass; */
+  /*   const double k_B = phys_const->const_boltzmann_k; */
 
-  /* Get the internal energy increase to ionization */
-  const double N_H = radiation_get_part_number_hydrogen_atoms(
-      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  /*   /\* Get the internal energy increase to ionization *\/ */
+  /*   const double N_H = radiation_get_part_number_hydrogen_atoms( */
+  /*       phys_const, hydro_props, us, cosmo, cooling, p, xp); */
 
-  const double E_ion =
-      2.17872e-11 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-  const double Delta_u_ionized = N_H * E_ion / hydro_get_mass(p);
+  /*   const double E_ion = */
+  /*       2.17872e-11 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY); */
+  /*   const double Delta_u_ionized = N_H * E_ion / hydro_get_mass(p); */
 
-  /* Get internal energy due to collisions */
-  const double Z = chemistry_get_total_metal_mass_fraction_for_feedback(p);
-  const double Z_sun = 0.02;
-  const double mu = cooling_get_mean_molecular_weight(
-      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+  /*   /\* Get internal energy due to collisions *\/ */
+  /*   const double Z = chemistry_get_total_metal_mass_fraction_for_feedback(p);
+   */
+  /*   const double Z_sun = 0.02; */
+  /*   const double mu = cooling_get_mean_molecular_weight( */
+  /*       phys_const, us, cosmo, hydro_props, cooling, p, xp); */
 
-  /* Here we need to treat the cases Z << Z_sun otherwise we have T < 0 */
-  const double ten_to_four_K =
-      1e4 * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-  double T_collisional;
-  if (Z >= Z_sun * 1e-3) {
-    const double tmp = 0.86 / (1 + 0.22 * log(Z / Z_sun));
-    T_collisional = ten_to_four_K * min(6.62, tmp);
-  } else {
-    T_collisional = 6.62 * ten_to_four_K;  // High-temp asymptote
-  }
+  /*   /\* Here we need to treat the cases Z << Z_sun otherwise we have T < 0
+   * *\/ */
+  /*   const double ten_to_four_K = */
+  /*       1e4 * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE); */
+  /*   double T_collisional; */
+  /*   if (Z >= Z_sun * 1e-3) { */
+  /*     const double tmp = 0.86 / (1 + 0.22 * log(Z / Z_sun)); */
+  /*     T_collisional = ten_to_four_K * min(6.62, tmp); */
+  /*   } else { */
+  /*     T_collisional = 6.62 * ten_to_four_K;  // High-temp asymptote */
+  /*   } */
 
-  /* Convert T to internal energy */
-  const double u_collisional =
-      cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p);
+  /*   /\* Convert T to internal energy *\/ */
+  /*   const double u_collisional = */
+  /*       cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p); */
 
-  /* The internal engergy is the min of the energy required to fully ionize
-     and the equilibrium temperature in HII regions */
-  const float u_new = min(Delta_u_ionized, u_collisional);
+  /*   /\* The internal engergy is the min of the energy required to fully
+   * ionize */
+  /*      and the equilibrium temperature in HII regions *\/ */
+  /*   const float u_new = min(Delta_u_ionized, u_collisional); */
 
-  /* message("u = %e, Delta_u_ionized = %e, u_coll = %e, T_col = %e", */
-  /*         u, Delta_u_ionized, u_collisional, T_collisional); */
+  /*   /\* message("u = %e, Delta_u_ionized = %e, u_coll = %e, T_col = %e", *\/
+   */
+  /*   /\*         u, Delta_u_ionized, u_collisional, T_collisional); *\/ */
 
-  /* Now update the gas internal energy state */
-  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-  hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
+  /*   /\* Now update the gas internal energy state *\/ */
+  /*   hydro_set_physical_internal_energy(p, xp, cosmo, u_new); */
+  /*   hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor,
+   * u_new); */
 
-#if COOLING_GRACKLE_MODE > 0
-  /* If we have the non-equilibrium cooling, we can also set these values and
-     let grackle solve the network. */
-  xp->cooling_data.HI_frac = 0;
-  xp->cooling_data.HII_frac = 1;
-#endif
+  /*   /\* Deactivate the cooling as we are heating the particle *\/ */
+  /*   hydro_set_physical_internal_energy_dt(p, cosmo, 0.f); */
+
+  /* #if COOLING_GRACKLE_MODE > 0 */
+  /*   /\* If we have the non-equilibrium cooling, we can also set these values
+   * and */
+  /*      let grackle solve the network. *\/ */
+  /*   xp->cooling_data.HI_frac = 0; */
+  /*   xp->cooling_data.HII_frac = 1; */
+  /* #endif */
 
   /* Reset the ionization tag */
-  radiation_reset_part_ionized_tag(p, xp);
+  /* radiation_reset_part_ionized_tag(p, xp); */
 }
 
 /**

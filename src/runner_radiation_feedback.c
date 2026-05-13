@@ -77,26 +77,42 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
      increased.
 
      TODO: Implement retry if search radius is too small */
-  float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;  
+  float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;
   if (c->stars.h_hii_max_old <= 0.0) {
     r_hii_max = c->stars.h_max_old * kernel_gamma;
   }
   const float max_search_radius = star_props->max_HII_search_radius;
-  const float interaction_limit = min(search_radius_factor * r_hii_max, max_search_radius);
+  const float interaction_limit =
+      min(search_radius_factor * r_hii_max, max_search_radius);
   const int can_recurse = c->split && (interaction_limit < 0.5f * c->dmin);
 
-  /* Anything to do here? */  
+  /* Anything to do here? */
   if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
     return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->cellID != c->stars.radiation_level->cellID && timer == 1) {
     warning(
-        "Not running the HII reionization task on the radiation level (c = %lld, "
+        "Not running the HII reionization task on the radiation level (c = "
+        "%lld, "
         "c->stars.radiation_level = %lld)!",
         c->cellID, c->stars.radiation_level->cellID);
   }
 #endif
+
+  /* for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) { */
+  /*   /\* We have already handled the self case *\/ */
+  /*   if (l->t->type == task_type_self) continue; */
+
+  /*   struct cell *cj = l->t->cj; */
+  /*   struct cell *ci = l->t->ci; */
+  /*   message( */
+  /*       "[%lld, %lld] hydro super: %lld , %lld | radiation_level: %lld %lld",
+   */
+  /*       ci->cellID, cj->cellID, ci->hydro.super->cellID, */
+  /*       cj->hydro.super->cellID, ci->stars.radiation_level->cellID, */
+  /*       cj->stars.radiation_level->cellID); */
+  /* } */
 
   TIMER_TIC;
 
@@ -116,7 +132,8 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
         struct cell *restrict cp = c->progeny[k];
         runner_do_stars_hii_ionization_feedback(r, cp, 0);
         c->stars.h_hii_max = max(c->stars.h_hii_max, cp->stars.h_hii_max);
-	c->stars.h_max_active = max(c->stars.h_max_active, cp->stars.h_max_active);        
+        c->stars.h_max_active =
+            max(c->stars.h_max_active, cp->stars.h_max_active);
       }
     }
   } else {
@@ -140,7 +157,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
  * @param c The #cell containing the stars to process.
  */
 void runner_do_stars_hii_ionization_feedback_branch(
-    struct runner *r, struct cell *c, const float interaction_limit) {  
+    struct runner *r, struct cell *c, const float interaction_limit) {
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -153,7 +170,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
   struct spart *restrict sparts = c->stars.parts;
   const int scount = c->stars.count;
 
-  /* Anything to do here? */  
+  /* Anything to do here? */
   if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
     return;
 
@@ -177,7 +194,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
     if (!spart_is_active(si, e)) continue;
     if (!feedback_is_active(si, e)) continue;
     if (!feedback_is_HII_ionization_active(si, e)) continue;
-    
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
     if (si->ti_drift != e->ti_current)
@@ -331,8 +348,8 @@ void runner_do_stars_hii_ionization_feedback_branch(
        * we must go again to find the neighbors that were 'bumped out'. */
     } while (buffer_was_full && radiation_get_star_ionization_rate(si) > 0);
 
-    c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);    
-    c->stars.h_max_active = max(c->stars.h_max_active, si->h_hii); 
+    c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
+    c->stars.h_max_active = max(c->stars.h_max_active, si->h_hii);
   } /* Loop over sparts */
 }
 

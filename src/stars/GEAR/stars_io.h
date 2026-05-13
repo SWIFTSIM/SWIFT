@@ -303,8 +303,9 @@ INLINE static void stars_props_init(struct stars_props *sp,
   }
 
 #ifdef IONIZATION_FEEDBACK_LOOP
-  /* Read the maximal search radius */  
-  sp->max_HII_search_radius = parser_get_param_float(params, "Stars:max_HII_search_radius");
+  /* Read the maximal search radius */
+  sp->max_HII_search_radius =
+      parser_get_param_float(params, "Stars:max_HII_search_radius");
 #endif
 }
 
@@ -336,8 +337,8 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
 #ifdef IONIZATION_FEEDBACK_LOOP
   message("Maximal search radius for HII ionization: %e (U_L)",
-          sp->max_HII_search_radius);  
-#endif  
+          sp->max_HII_search_radius);
+#endif
 }
 
 #if defined(HAVE_HDF5)

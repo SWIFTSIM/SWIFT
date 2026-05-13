@@ -1759,7 +1759,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 #ifdef WITH_CSDS
   const int with_csds = (e->policy & engine_policy_csds);
 #endif
-  
+
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
    * super-level is above the level we want */
@@ -2095,8 +2095,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 }
 
 /**
- * @brief Generate the subgrid radiation hierarchical tasks for a hierarchy of cells -
- * i.e. all the O(Npart) tasks -- subgrid radiation version
+ * @brief Generate the subgrid radiation hierarchical tasks for a hierarchy of
+ * cells - i.e. all the O(Npart) tasks -- subgrid radiation version
  *
  * Tasks are only created here. The dependencies will be added later on.
  *
@@ -2106,7 +2106,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The #cell.
  */
-void engine_make_hierarchical_tasks_radiation_subgrid(struct engine *e, struct cell *c) {
+void engine_make_hierarchical_tasks_radiation_subgrid(struct engine *e,
+                                                      struct cell *c) {
 #ifdef IONIZATION_FEEDBACK_LOOP
   struct scheduler *s = &e->sched;
 
@@ -2114,9 +2115,9 @@ void engine_make_hierarchical_tasks_radiation_subgrid(struct engine *e, struct c
   if (c->stars.radiation_level == c) {
 
     /* Subgrid tasks: HII ionization feedback */
-      c->stars.hii_ionization_feedback =
-          scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
-                            task_subtype_none, 0, 0, c, NULL);
+    c->stars.hii_ionization_feedback =
+        scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
+                          task_subtype_none, 0, 0, c, NULL);
 
   } else { /* We are above the super-cell so need to go deeper */
 
@@ -2126,9 +2127,8 @@ void engine_make_hierarchical_tasks_radiation_subgrid(struct engine *e, struct c
         if (c->progeny[k] != NULL)
           engine_make_hierarchical_tasks_radiation_subgrid(e, c->progeny[k]);
   }
-#endif  
+#endif
 }
-
 
 void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
@@ -2143,7 +2143,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int with_HII_ionization_feedback = with_stars && with_feedback;
 #else
   const int with_HII_ionization_feedback = 0;
-#endif 
+#endif
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -2373,7 +2373,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
       } else if (t_subtype == task_subtype_stars_radiation_in) {
-	engine_addlink(e, &ci->stars.radiation_in, t);
+        engine_addlink(e, &ci->stars.radiation_in, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -2392,7 +2392,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->hydro.density, t);
       } else if (t_subtype == task_subtype_stars_radiation_in) {
         engine_addlink(e, &ci->stars.radiation_in, t);
-	engine_addlink(e, &cj->stars.radiation_in, t);
+        engine_addlink(e, &cj->stars.radiation_in, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -3557,8 +3557,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
  * With all the relevant tasks for a given cell available, we construct
  * all the dependencies for that cell.
  */
-void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elements,
-						  void *extra_data) {
+void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
+                                                  int num_elements,
+                                                  void *extra_data) {
 #ifdef IONIZATION_FEEDBACK_LOOP
   struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
@@ -3587,48 +3588,49 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
     if (t->subtype == task_subtype_density) continue;
 
     /* Self interaction? */
-    if (t_type == task_type_self && t_subtype == task_subtype_stars_radiation_in) {
+    if (t_type == task_type_self &&
+        t_subtype == task_subtype_stars_radiation_in) {
 
       /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
 
-      t_star_radiation_out = scheduler_addtask(
-					       sched, task_type_self, task_subtype_stars_radiation_out, flags, 1,
-					       ci, NULL);
+      t_star_radiation_out = scheduler_addtask(sched, task_type_self,
+                                               task_subtype_stars_radiation_out,
+                                               flags, 1, ci, NULL);
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
 
-
       scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
       scheduler_addunlock(sched, ci->hydro.super->stars.sorts, t);
 
-
       if (with_cooling) {
-	scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out, t);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out, t);
       }
 
       scheduler_addunlock(sched, ci->hydro.super->stars.feedback_ghost, t);
 
-      scheduler_addunlock(sched, t,
-			  ci->stars.radiation_level->stars.hii_ionization_feedback);
+      scheduler_addunlock(
+          sched, t, ci->stars.radiation_level->stars.hii_ionization_feedback);
 
-      scheduler_addunlock(sched,
-			  ci->stars.radiation_level->stars.hii_ionization_feedback,
-			  t_star_radiation_out);
+      scheduler_addunlock(
+          sched, ci->stars.radiation_level->stars.hii_ionization_feedback,
+          t_star_radiation_out);
 
       scheduler_addunlock(sched, t_star_radiation_out,
-			  ci->hydro.super->stars.stars_out);
+                          ci->hydro.super->stars.stars_out);
 
       if (with_timestep_sync) {
-	scheduler_addunlock(sched, t_star_radiation_out, ci->super->timestep_sync);
+        scheduler_addunlock(sched, t_star_radiation_out,
+                            ci->super->timestep_sync);
       }
     }
 
     /* Otherwise, pair interaction? */
-    else if (t_type == task_type_pair && t_subtype == task_subtype_stars_radiation_in) {
-      
+    else if (t_type == task_type_pair &&
+             t_subtype == task_subtype_stars_radiation_in) {
+
       /* Make all density tasks depend on the drift */
       /* Note: We are doing feedback, so we do it for local and foreign cell
        * stars */
@@ -3639,17 +3641,18 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
       /* 	scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t); */
       /* } */
 
-      /* message("DEBUG: [%lld, %lld] received a drift", ci->cellID, cj->cellID); */
+      /* message("DEBUG: [%lld, %lld] received a drift", ci->cellID,
+       * cj->cellID); */
 
       /* Make all density tasks depend on the sorts */
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
       if (ci->stars.radiation_level != cj->stars.radiation_level) {
-	scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
       }
 
-      t_star_radiation_out = scheduler_addtask(
-					       sched, task_type_pair, task_subtype_stars_radiation_out, flags, 1,
-					       ci, cj);
+      t_star_radiation_out =
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_stars_radiation_out, flags, 1, ci, cj);
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
@@ -3659,86 +3662,90 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
       /* that are local and are not descendant of the same radiation_level-cells
        */
       /* if (ci->nodeID == nodeID) { */
-      /* 	/\* engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci, *\/ */
+      /* 	/\* engine_make_hydro_loops_dependencies(sched, t, t_force,
+       * t_limiter, ci, *\/ */
       /* 	/\*                                      with_cooling, *\/ */
-      /* 	/\*                                      with_timestep_limiter); *\/ */
-
+      /* 	/\*                                      with_timestep_limiter);
+       * *\/ */
 
       /* } */
-      /* if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) { */
-      /* 	/\* engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj, *\/ */
+      /* if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+       */
+      /* 	/\* engine_make_hydro_loops_dependencies(sched, t, t_force,
+       * t_limiter, cj, *\/ */
       /* 	/\*                                      with_cooling, *\/ */
-      /* 	/\*                                      with_timestep_limiter); *\/ */
-
+      /* 	/\*                                      with_timestep_limiter);
+       * *\/ */
 
       /* } */
 
       if (ci->nodeID == nodeID) {
 
-	/* Check if this dep must be local only */
-	if (with_cooling) {
-	  scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out, t);
-	}
+        /* Check if this dep must be local only */
+        if (with_cooling) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out, t);
+        }
 
-	/* scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t); */
-	/* scheduler_addunlock(sched, ci->hydro.super->stars.drift, t); */
+        /* scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t); */
+        /* scheduler_addunlock(sched, ci->hydro.super->stars.drift, t); */
 
-	scheduler_addunlock(sched, ci->hydro.super->stars.feedback_ghost, t);
+        scheduler_addunlock(sched, ci->hydro.super->stars.feedback_ghost, t);
 
-	scheduler_addunlock(sched, t, ci->stars.radiation_level->stars.hii_ionization_feedback);
+        scheduler_addunlock(
+            sched, t, ci->stars.radiation_level->stars.hii_ionization_feedback);
 
-	scheduler_addunlock(sched,
-			    ci->stars.radiation_level->stars.hii_ionization_feedback,
-			    t_star_radiation_out);
+        scheduler_addunlock(
+            sched, ci->stars.radiation_level->stars.hii_ionization_feedback,
+            t_star_radiation_out);
 
-	scheduler_addunlock(sched, t_star_radiation_out,
-			    ci->hydro.super->stars.stars_out);
+        scheduler_addunlock(sched, t_star_radiation_out,
+                            ci->hydro.super->stars.stars_out);
 
-
-	if (with_timestep_sync) {
-	  scheduler_addunlock(sched, t_star_radiation_out, ci->super->timestep_sync);
-	}
+        if (with_timestep_sync) {
+          scheduler_addunlock(sched, t_star_radiation_out,
+                              ci->super->timestep_sync);
+        }
 
       } else /* ci->nodeID != nodeID */ {
 
-	scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-			    t);
+        scheduler_addunlock(sched, ci->hydro.super->stars.sorts, t);
       }
 
       if (cj->nodeID == nodeID) {
 
-	if (ci->stars.radiation_level != cj->stars.radiation_level) {
+        if (ci->stars.radiation_level != cj->stars.radiation_level) {
 
-	  if (with_cooling) {
-	    scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out, t);
-	  }
+          if (with_cooling) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out, t);
+          }
 
-	  scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
-	  scheduler_addunlock(sched, cj->hydro.super->stars.drift, t);
+          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+          scheduler_addunlock(sched, cj->hydro.super->stars.drift, t);
 
-	  scheduler_addunlock(sched, cj->hydro.super->stars.feedback_ghost, t);
+          scheduler_addunlock(sched, cj->hydro.super->stars.feedback_ghost, t);
 
-	  scheduler_addunlock(sched, t,
-			      cj->stars.radiation_level->stars.hii_ionization_feedback);
+          scheduler_addunlock(
+              sched, t,
+              cj->stars.radiation_level->stars.hii_ionization_feedback);
 
-	  scheduler_addunlock(sched,
-			      cj->stars.radiation_level->stars.hii_ionization_feedback,
-			      t_star_radiation_out);
+          scheduler_addunlock(
+              sched, cj->stars.radiation_level->stars.hii_ionization_feedback,
+              t_star_radiation_out);
 
-	  scheduler_addunlock(sched, t_star_radiation_out,
-			      cj->hydro.super->stars.stars_out);
-	}
+          scheduler_addunlock(sched, t_star_radiation_out,
+                              cj->hydro.super->stars.stars_out);
+        }
 
-	if (ci->super != cj->super) {
-	  if (with_timestep_sync) {
-	    scheduler_addunlock(sched, t_star_radiation_out,
-				cj->super->timestep_sync);
-	  }
-	}
+        if (ci->super != cj->super) {
+          if (with_timestep_sync) {
+            scheduler_addunlock(sched, t_star_radiation_out,
+                                cj->super->timestep_sync);
+          }
+        }
       } else /* cj->nodeID != nodeID */ {
-	if (with_feedback) {
-	  scheduler_addunlock(sched, cj->hydro.super->stars.sorts, t);
-	}
+        if (with_feedback) {
+          scheduler_addunlock(sched, cj->hydro.super->stars.sorts, t);
+        }
       }
     }
   }
@@ -3932,8 +3939,8 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_stars_radiation_in, 0, 1, ci,
-                        NULL);
+      scheduler_addtask(sched, task_type_self, task_subtype_stars_radiation_in,
+                        0, 1, ci, NULL);
     }
 
     /* Now loop over all the neighbours of this cell */
@@ -3963,7 +3970,8 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Construct the pair task */
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          scheduler_addtask(sched, task_type_pair, task_subtype_stars_radiation_in, sid, 1, ci, cj);
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_stars_radiation_in, sid, 1, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -4014,7 +4022,6 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
   }
 #endif /* IONIZATION_FEEDBACK_LOOP */
 }
-
 
 struct cell_type_pair {
   struct cell *ci, *cj;
@@ -4424,14 +4431,14 @@ void engine_maketasks(struct engine *e) {
   const int nr_cells = s->nr_cells;
   const ticks tic = getticks();
 
-#ifdef IONIZATION_FEEDBACK_LOOP  
+#ifdef IONIZATION_FEEDBACK_LOOP
   const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_stars = (e->policy & engine_policy_stars); 
+  const int with_stars = (e->policy & engine_policy_stars);
   const int with_subgrid_radiation_feedback = with_stars && with_feedback;
 #else
   const int with_subgrid_radiation_feedback = 0;
 #endif
-  
+
   /* Re-set the scheduler. */
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
@@ -4535,7 +4542,7 @@ void engine_maketasks(struct engine *e) {
   if (e->verbose)
     message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
-  
+
   /* Append hierarchical tasks to each cell. */
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
                  nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
@@ -4563,23 +4570,23 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* Run through the tasks and make force tasks for each radiation_in */     
+  /* Run through the tasks and make force tasks for each radiation_in */
   if (with_subgrid_radiation_feedback) {
 
     /* Note that this does not scale well at all so we do not use the
      * threadpool version here until the reason for this is found.
      * We call the mapper function directly as if there was only 1 thread
      * in the pool. */
-    engine_make_extra_radiationloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
-    /* threadpool_map(&e->threadpool, engine_make_extra_radiationloop_tasks_mapper,
-     *                sched->tasks, sched->nr_tasks, sizeof(struct task),
-     *                threadpool_auto_chunk_size, e); */
-  }  
+    engine_make_extra_radiationloop_tasks_mapper(sched->tasks, sched->nr_tasks,
+                                                 e);
+    /* threadpool_map(&e->threadpool,
+     * engine_make_extra_radiationloop_tasks_mapper, sched->tasks,
+     * sched->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, e); */
+  }
 
   if (e->verbose)
     message("Making extra radiation subgrid tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
 
   tic2 = getticks();
 

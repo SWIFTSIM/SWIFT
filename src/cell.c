@@ -1314,9 +1314,10 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
 void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
                     const int with_grav, const int with_radiation_subgrid) {
   /* Are we in a cell which is either the hydro or gravity super? */
-  if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
-                        (with_grav && c->grav.super != NULL) ||
-			(with_radiation_subgrid && c->stars.radiation_level != NULL)))
+  if (super == NULL &&
+      ((with_hydro && c->hydro.super != NULL) ||
+       (with_grav && c->grav.super != NULL) ||
+       (with_radiation_subgrid && c->stars.radiation_level != NULL)))
     super = c;
 
   /* Set the super-cell */
@@ -1326,7 +1327,8 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        cell_set_super(c->progeny[k], super, with_hydro, with_grav, with_radiation_subgrid);
+        cell_set_super(c->progeny[k], super, with_hydro, with_grav,
+                       with_radiation_subgrid);
 }
 
 /**
@@ -1358,9 +1360,11 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  * @param super_hydro Pointer to the deepest cell with tasks in this part of
  * the tree.
  */
-void cell_set_super_radiation_subgrid(struct cell *c, struct cell *super_radiation) {
+void cell_set_super_radiation_subgrid(struct cell *c,
+                                      struct cell *super_radiation) {
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_radiation == NULL && c->stars.radiation_in != NULL) super_radiation = c;
+  if (super_radiation == NULL && c->stars.radiation_in != NULL)
+    super_radiation = c;
 
   /* Set the super-cell */
   c->stars.radiation_level = super_radiation;
@@ -1371,7 +1375,6 @@ void cell_set_super_radiation_subgrid(struct cell *c, struct cell *super_radiati
       if (c->progeny[k] != NULL)
         cell_set_super_radiation_subgrid(c->progeny[k], super_radiation);
 }
-
 
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
@@ -1429,7 +1432,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
     /* Super-pointer for radiation subgrid */
     if (with_radiation_subgrid) cell_set_super_radiation_subgrid(c, NULL);
-    
+
     /* Super-pointer for gravity */
     if (with_grav) cell_set_super_gravity(c, NULL);
 

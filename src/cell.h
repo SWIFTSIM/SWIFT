@@ -1192,8 +1192,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_split_pair_radiation_subgrid_task(
-    const struct cell *c) {
+__attribute__((always_inline)) INLINE static int
+cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
@@ -1212,8 +1212,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_radiation_s
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_split_self_radiation_subgrid_task(
-    const struct cell *c) {
+__attribute__((always_inline)) INLINE static int
+cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
@@ -1223,8 +1223,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_radiation_s
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-    (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin);
-}   
+         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin);
+}
 
 /**
  * @brief Can a pair gravity task associated with a cell be split into smaller
