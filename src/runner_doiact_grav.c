@@ -2398,10 +2398,14 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     if (cell_is_active_gravity(ci, e)) {
       accumulate_add_ll(&multi_i->pot.num_interacted,
                         multi_j->m_pole.num_gpart);
+      runner_debug_add_tensor_interactions_by_type(
+          multi_i->pot.num_interacted_pm_by_type, cj, multi_j->m_pole.num_gpart);
     }
     if (cell_is_active_gravity(cj, e)) {
       accumulate_add_ll(&multi_j->pot.num_interacted,
                         multi_i->m_pole.num_gpart);
+      runner_debug_add_tensor_interactions_by_type(
+          multi_j->pot.num_interacted_pm_by_type, ci, multi_i->m_pole.num_gpart);
     }
 #endif
 
