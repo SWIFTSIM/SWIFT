@@ -568,6 +568,7 @@ void task_unlock(struct task *t) {
 
     case task_type_stars_sort:
     case task_type_stars_resort:
+    case task_type_stars_hii_ionization_feedback:
       cell_sunlocktree(ci, /*split_task=*/0);
       break;
 
