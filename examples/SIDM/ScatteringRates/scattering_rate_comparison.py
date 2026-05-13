@@ -22,6 +22,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import h5py
+from scipy.integrate import quad
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -79,12 +80,40 @@ def nfw_mass_enclosed(r, rho_s, rs):
     return 4 * np.pi * rho_s * rs**3 * (np.log(1 + x) - x / (1 + x))
 
 
+def nfw_sigma_1d(r, c, M200, r200):
+    """
+    Compute 1D velocity dispersion sigma(r) for an NFW halo (Lokas 2001).
+    Assumes isotropic velocitiy dist.
+    """
+
+    # NFW parameters
+    rs = r200 / c
+    x = r / rs
+    f_c = np.log(1 + c) - c / (1 + c)
+    rho_s = M200 / (4 * np.pi * rs**3 * f_c)
+
+    prefactor = 4 * np.pi * G * rho_s * rs**2
+
+    def integrand(t):
+        return (np.log(1 + t) - t / (1 + t)) / (t**3 * (1 + t) ** 2)
+
+    sigma2 = np.zeros_like(x)
+
+    for i, xi in enumerate(x):
+        # Integral from x to infinity - avoids scary dilogarithm terms
+        val, _ = quad(integrand, xi, np.inf)
+        sigma2[i] = prefactor * xi * (1 + xi) ** 2 * val
+
+    return np.sqrt(sigma2) if sigma2.size > 1 else np.sqrt(sigma2)[0]
+
+
 def scattering_rate_nfw(r, M200, c, sigma_over_m):
-    _, rs, rho_s = nfw_params(M200, c)
+    r200, rs, rho_s = nfw_params(M200, c)
+
     rho = nfw_density(r, rho_s, rs)
-    Menc = nfw_mass_enclosed(r, rho_s, rs)
-    sigma_1d = np.sqrt(G * Menc / np.maximum(r, 1e-10)) / np.sqrt(2)
-    v_rel = 4 * sigma_1d / np.sqrt(np.pi)  # km/s
+    sigma_1d = nfw_sigma_1d(r, c, M200, r200)
+    v_rel = 4 * sigma_1d / np.sqrt(np.pi)
+
     return rho * sigma_over_m * v_rel * KM_S_TO_KPC_PER_GYR
 
 

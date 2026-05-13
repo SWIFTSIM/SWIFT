@@ -21,9 +21,10 @@ import h5py
 
 
 def fix_pids(input_filename, output_filename):
-    with h5py.File(input_filename, "r") as f_in, h5py.File(
-        output_filename, "w"
-    ) as f_out:
+    with (
+        h5py.File(input_filename, "r") as f_in,
+        h5py.File(output_filename, "w") as f_out,
+    ):
 
         for key in f_in:
             if key != "PartType1":
