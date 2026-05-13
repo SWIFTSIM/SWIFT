@@ -77,6 +77,22 @@ void zoom_parse_params(struct swift_params *params,
       parser_get_opt_param_int(params, "ZoomRegion:bkg_subdepth_diff_grav",
                                zoom_bkg_subdepth_diff_grav_default);
 
+  /* Should we truncate the background? */
+  props->truncate_background =
+      parser_get_opt_param_int(params, "ZoomRegion:truncate_background", 0);
+
+  /* If we are truncating the background we need the tidal factor and the
+   * target tolerance. */
+  if (props->truncate_background) {
+    props->tidal_factor = parser_get_opt_param_float(
+        params, "ZoomRegion:truncate_tidal_factor", 1.0);
+    props->truncate_epsilon =
+        parser_get_opt_param_float(params, "ZoomRegion:truncate_epsilon", 1e-3);
+  } else {
+    props->tidal_factor = 0.0;
+    props->truncate_epsilon = 0.0;
+  }
+
   /* Extract the maximum shift of the zoom region we will allow in units of
    * the zoom region extent. */
   props->max_com_dx =
@@ -514,6 +530,126 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
 }
 
 /**
+ * @brief Calculate the half-width of the retained box after truncation.
+ *
+ * This uses a simple geometric argument based on the tidal scaling
+ * `(L / R)^3`, where `L` is the protected high-resolution region size and `R`
+ * is the distance to the omitted background mass. The returned value is the
+ * half-width of the retained cubic domain centred on the high-resolution
+ * region.
+ *
+ * @param protected_dim The protected high-resolution region dimensions.
+ * @param tidal_factor The tidal factor accounting for anisotropies in the
+ *     background (>1, higher means more background preserved, i.e. more
+ *     accurate).
+ * @param epsilon The tolerated fractional tidal error across the protected
+ *     region.
+ * @return The truncation half-width.
+ */
+static double zoom_compute_bkg_truncate_half_width(const double protected_dim,
+                                                   const double tidal_factor,
+                                                   const double epsilon) {
+
+  return tidal_factor * protected_dim / pow(epsilon, 1.0 / 3.0);
+}
+
+/**
+ * @brief Truncate the simulation volume to remove distant background.
+ *
+ * This removes background particles outside a cubic region centred on the
+ * high-resolution particle distribution. The half-width of the retained box is
+ * computed with zoom_compute_bkg_truncate_half_width().
+ *
+ * @param s The #space.
+ * @param verbose Whether to be verbose or not.
+ */
+void zoom_truncate_bkg(struct space *s, const int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Extract some useful pointers and information. */
+  double tidal_factor = s->zoom_props->tidal_factor;
+  double epsilon = s->zoom_props->truncate_epsilon;
+
+  /* Protect twice the measured high-resolution radius. This corresponds to a
+   * protected diameter twice the high-resolution particle extent. */
+  const double high_res_dim =
+      max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
+           s->zoom_props->part_dim[2]);
+  const double protected_dim = 2.0 * high_res_dim;
+
+  /* Compute the retained half-box width. */
+  const double retained_half_width = zoom_compute_bkg_truncate_half_width(
+      protected_dim, tidal_factor, epsilon);
+
+  if (verbose)
+    message(
+        "Computed a truncation half-width of %.2f internal units for a "
+        "protected high-resolution extent of %.2f (with %.2f x %.2f / "
+        "(%.1e)^(1/3))",
+        retained_half_width, protected_dim, tidal_factor, protected_dim,
+        epsilon);
+
+  /* If the retained box exceeds the original box we can't truncate. */
+  if (retained_half_width * 2.0 >=
+      fmin(s->dim[0], fmin(s->dim[1], s->dim[2]))) {
+    error(
+        "Truncation half-width (%.2e) exceeds box size (%.2e), cannot "
+        "truncate. "
+        "You probably don't need truncation in this case, turn off "
+        "ZoomRegion:truncate_background.",
+        retained_half_width * 2, fmin(s->dim[0], fmin(s->dim[1], s->dim[2])));
+  }
+
+  /* Include the shift needed for truncation with the shift we just calculated
+   * to centre the zoom region. */
+  const double box_mid[3] = {s->dim[0] / 2.0, s->dim[1] / 2.0, s->dim[2] / 2.0};
+  s->zoom_props->zoom_shift[0] += -(box_mid[0] - retained_half_width);
+  s->zoom_props->zoom_shift[1] += -(box_mid[1] - retained_half_width);
+  s->zoom_props->zoom_shift[2] += -(box_mid[2] - retained_half_width);
+
+  /* Set the new box dimensions. */
+  for (int i = 0; i < 3; i++) {
+    s->dim[i] = 2.0 * retained_half_width;
+  }
+
+  /* Loop over all the gparts and inhibit background particles that are
+   * further away than the truncation distance. */
+  size_t ntrunc = 0;
+  size_t nbkg = 0;
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+
+    /* Skip non-background particles. */
+    if (s->gparts[k].type != swift_type_dark_matter_background) {
+      continue;
+    }
+
+    /* Account for any initial shift. */
+    double pos[3];
+    for (int i = 0; i < 3; i++) {
+      pos[i] = s->gparts[k].x[i] + s->zoom_props->zoom_shift[i];
+    }
+
+    /* Inhibit background particles that are too far away. */
+    for (int i = 0; i < 3; i++) {
+      if (pos[i] < 0.0 || pos[i] > s->dim[i]) {
+        s->gparts[k].time_bin = time_bin_inhibited;
+        s->nr_inhibited_gparts++;
+        ntrunc++;
+        break;
+      }
+    }
+    nbkg++;
+  }
+
+  if (verbose) {
+    message("Removing %zu background particles out of %zu.", ntrunc, nbkg);
+    message("Truncating the box took %f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
+}
+
+/**
  * @brief Compute the void region geometry.
  *
  * The void region is the region covered by background cells above the zoom
@@ -645,6 +781,8 @@ void zoom_report_cell_properties(const struct space *s) {
           s->cdim[2]);
   message("%28s = [%d, %d, %d]", "Zoom cdim", zoom_props->cdim[0],
           zoom_props->cdim[1], zoom_props->cdim[2]);
+  message("%28s = [%d, %d, %d]", "Void cdim", zoom_props->void_cdim[0],
+          zoom_props->void_cdim[1], zoom_props->void_cdim[2]);
 
   /* Dimensions */
   message("%28s = [%f, %f, %f]", "Background Dimensions", s->dim[0], s->dim[1],
@@ -851,6 +989,12 @@ void zoom_region_init(struct space *s, const int regridding,
    * to check if we need to regrid so we skip it here. */
   if (!regridding) zoom_get_region_dim_and_shift(s, verbose);
 
+  /* Are we truncating the background? This is only applied when initialising
+   * the zoom geometry, not during restart handling above. */
+  if (s->zoom_props->truncate_background && s->e != NULL) {
+    zoom_truncate_bkg(s, verbose);
+  }
+
   /* Apply the zoom shift to the particles. */
   zoom_apply_zoom_shift_to_particles(s, verbose);
 
@@ -962,11 +1106,88 @@ void zoom_region_init(struct space *s, const int regridding,
   s->zoom_props->nr_zoom_cells = s->zoom_props->bkg_cell_offset;
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
+  /* Compute the number of background cells along each side of the void
+   * region. Here we include an small buffer to ensure we don't fall foul of
+   * rounding errors, we already know the void region is aligned with the
+   * background cells so this is totally safe. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->void_cdim[i] =
+        (int)floor((s->zoom_props->void_dim[i] * s->iwidth[i]) + 0.5);
+  }
+
   /* Report what we have done */
   if (verbose) {
     zoom_report_cell_properties(s);
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure all particles are within the box boundaries (sanity check for
+   * truncation and shifting, if not truncated we don't need to wrap here as
+   * it is done in the main code). */
+  if (s->zoom_props->truncate_background) {
+    for (size_t k = 0; k < s->nr_parts; k++) {
+      if (s->parts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->parts[k].x[i] < 0.0 || s->parts[k].x[i] >= s->dim[i]) {
+          error(
+              "Particle %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->parts[k].x[0], s->parts[k].x[1], s->parts[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
+      }
+    }
+    for (size_t k = 0; k < s->nr_gparts; k++) {
+      if (s->gparts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->gparts[k].x[i] < 0.0 || s->gparts[k].x[i] >= s->dim[i]) {
+          error(
+              "gpart %zu (%s) is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, part_type_names[s->gparts[k].type], s->gparts[k].x[0],
+              s->gparts[k].x[1], s->gparts[k].x[2], s->dim[0], s->dim[1],
+              s->dim[2]);
+        }
+      }
+    }
+    for (size_t k = 0; k < s->nr_sparts; k++) {
+      if (s->sparts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->sparts[k].x[i] < 0.0 || s->sparts[k].x[i] >= s->dim[i]) {
+          error(
+              "SPart %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->sparts[k].x[0], s->sparts[k].x[1], s->sparts[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
+      }
+    }
+    for (size_t k = 0; k < s->nr_bparts; k++) {
+      if (s->bparts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->bparts[k].x[i] < 0.0 || s->bparts[k].x[i] >= s->dim[i]) {
+          error(
+              "BPart %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->bparts[k].x[0], s->bparts[k].x[1], s->bparts[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
+      }
+    }
+    for (size_t k = 0; k < s->nr_sinks; k++) {
+      if (s->sinks[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->sinks[k].x[i] < 0.0 || s->sinks[k].x[i] >= s->dim[i]) {
+          error(
+              "Sink %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->sinks[k].x[0], s->sinks[k].x[1], s->sinks[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
+      }
+    }
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
   /* Report how long it took. */
   if (verbose) {
     message("Zoom region initialisation took %f %s",

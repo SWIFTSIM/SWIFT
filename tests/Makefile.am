@@ -36,7 +36,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline testZoomInit.sh testGetZoomIJKFunc.sh \
-        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testMeshGravityRebuildCheck
+        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testZoomTruncation.sh \
+        testMeshGravityRebuildCheck
         # testMatrixInversion
 
 # List of test programs to compile
@@ -51,7 +52,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
                  test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
                  testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testZoomInit testGetZoomIJKFunc \
-                 testZoomRegrid testSpaceSplit testZoomVoidTree testMeshGravityRebuildCheck
+                 testZoomRegrid testSpaceSplit testZoomVoidTree testZoomTruncation \
+                 testMeshGravityRebuildCheck
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -178,6 +180,8 @@ testZoomRegrid_SOURCES = testZoomRegrid.c
 
 testZoomVoidTree_SOURCES = testZoomVoidTree.c
 
+testZoomTruncation_SOURCES = testZoomTruncation.c
+
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
@@ -192,5 +196,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh \
-             testZoomInit.sh zoom_params_small.yml zoom_params_large.yml testGetZoomIJKFunc.sh \
-             testZoomRegrid.sh testZoomVoidTree.sh
+              testZoomInit.sh zoom_params_small.yml zoom_params_large.yml testGetZoomIJKFunc.sh \
+              testZoomRegrid.sh testZoomVoidTree.sh testZoomTruncation.sh \
+              zoom_truncation_base.yml zoom_truncation_tight.yml zoom_truncation_strong.yml
