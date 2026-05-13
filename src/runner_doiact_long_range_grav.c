@@ -383,6 +383,13 @@ static void runner_accumulate_interaction(
     struct gravity_tensors *restrict multi_i,
     struct gravity_tensors *restrict multi_j);
 
+static void runner_count_mesh_interactions_uniform(struct runner *r,
+                                                   struct cell *ci,
+                                                   struct cell *top);
+static void runner_count_mesh_interactions_zoom(struct runner *r,
+                                                struct cell *ci,
+                                                struct cell *top);
+
 #ifdef SWIFT_DEBUG_CHECKS
 enum runner_debug_mesh_count_origin {
   runner_debug_mesh_count_origin_uniform_pair = 0,

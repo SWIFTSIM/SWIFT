@@ -73,7 +73,7 @@ static INLINE void runner_clear_grav_flags(struct cell *c,
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
   /* Some constants */
-  const struct engine *e = r->e;
+  struct engine *e = r->e;
 
   TIMER_TIC;
 
