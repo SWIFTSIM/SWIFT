@@ -3594,7 +3594,7 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
 
       t_star_radiation_out = scheduler_addtask(
-					       sched, task_type_self, task_subtype_stars_radiation_out, flags, 0,
+					       sched, task_type_self, task_subtype_stars_radiation_out, flags, 1,
 					       ci, NULL);
 
       /* Add the link between the new loop and the cell */
@@ -3648,7 +3648,7 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
       }
 
       t_star_radiation_out = scheduler_addtask(
-					       sched, task_type_pair, task_subtype_stars_radiation_out, flags, 0,
+					       sched, task_type_pair, task_subtype_stars_radiation_out, flags, 1,
 					       ci, cj);
 
       /* Add the link between the new loop and the cell */
@@ -3932,7 +3932,7 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_stars_radiation_in, 0, 0, ci,
+      scheduler_addtask(sched, task_type_self, task_subtype_stars_radiation_in, 0, 1, ci,
                         NULL);
     }
 
@@ -3963,7 +3963,7 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Construct the pair task */
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          scheduler_addtask(sched, task_type_pair, task_subtype_stars_radiation_in, sid, 0, ci, cj);
+          scheduler_addtask(sched, task_type_pair, task_subtype_stars_radiation_in, sid, 1, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
