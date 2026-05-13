@@ -435,6 +435,11 @@ static int runner_debug_mesh_overlap_limit_reported = 0;
 
 #define runner_debug_mesh_overlap_report_max 32
 
+static int runner_debug_mesh_payload_report_count = 0;
+static int runner_debug_mesh_payload_limit_reported = 0;
+
+#define runner_debug_mesh_payload_report_max 64
+
 static void runner_debug_record_zoom_top_invocation(const struct cell *top,
                                                     const struct cell *ci) {
 
@@ -494,6 +499,27 @@ static void runner_debug_record_mesh_attachment(
   if (recipient->top->type != cell_type_bkg ||
       recipient->top->subtype != cell_subtype_neighbour)
     return;
+
+  const int payload_report_index = atomic_inc(&runner_debug_mesh_payload_report_count);
+  if (payload_report_index < runner_debug_mesh_payload_report_max) {
+    message(
+        "mesh-attachment payload: top_ptr=%p top_cellID=%llu recipient=%p (%s/%s depth=%d count=%d mpole_gparts=%lld) "
+        "source=%p (%s/%s depth=%d count=%d mpole_gparts=%lld contains_zoom=%d top=%p top_type=%s/%s) "
+        "super=%p ci=%p cj=%p attach=%s origin=%d",
+        (void *)recipient->top, recipient->top->cellID, (void *)recipient,
+        cellID_names[recipient->type], subcellID_names[recipient->subtype],
+        recipient->depth, recipient->grav.count,
+        recipient->grav.multipole->m_pole.num_gpart, (void *)source,
+        cellID_names[source->type], subcellID_names[source->subtype],
+        source->depth, source->grav.count, source->grav.multipole->m_pole.num_gpart,
+        source->contains_zoom_cells, (void *)source->top,
+        cellID_names[source->top->type], subcellID_names[source->top->subtype],
+        (void *)super, (void *)ci, (void *)cj, attachment_case, (int)origin);
+  } else if (payload_report_index == runner_debug_mesh_payload_report_max &&
+             atomic_cas(&runner_debug_mesh_payload_limit_reported, 0, 1) == 0) {
+    message("mesh-attachment payload reporting capped at %d lines",
+            runner_debug_mesh_payload_report_max);
+  }
 
   const unsigned long long top_ptr_key =
       (unsigned long long)(uintptr_t)recipient->top;
