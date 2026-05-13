@@ -287,12 +287,15 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
       accumulate_add_ll(&gparts_i[i].num_interacted, multi_j->m_pole.num_gpart);
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_add_gpart_interactions_by_type(
+          gparts_i[i].num_interacted_m2p_by_type, cj, multi_j->m_pole.num_gpart);
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
       /* Update the M2P interaction counter and forces. */
       accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
                         multi_j->m_pole.num_gpart);
-      runner_debug_add_gpart_interactions_by_type(
-          gparts_i[i].num_interacted_m2p_by_type, cj, multi_j->m_pole.num_gpart);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[0], f_x);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[1], f_y);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[2], f_z);
@@ -361,11 +364,14 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
           accumulate_inc_ll(&gparts_i[i].num_interacted);
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+          runner_debug_inc_gpart_interactions_by_type(
+              gparts_i[i].num_interacted_p2p_by_type, cj);
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
           /* Update the p2p interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-          runner_debug_inc_gpart_interactions_by_type(
-              gparts_i[i].num_interacted_p2p_by_type, cj);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
@@ -569,12 +575,15 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
       accumulate_add_ll(&gparts_i[i].num_interacted, multi_j->m_pole.num_gpart);
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_add_gpart_interactions_by_type(
+          gparts_i[i].num_interacted_m2p_by_type, cj, multi_j->m_pole.num_gpart);
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
       /* Update the M2P interaction counter and forces. */
       accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
                         multi_j->m_pole.num_gpart);
-      runner_debug_add_gpart_interactions_by_type(
-          gparts_i[i].num_interacted_m2p_by_type, cj, multi_j->m_pole.num_gpart);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[0], f_x);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[1], f_y);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[2], f_z);
@@ -649,11 +658,14 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
           accumulate_inc_ll(&gparts_i[i].num_interacted);
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+          runner_debug_inc_gpart_interactions_by_type(
+              gparts_i[i].num_interacted_p2p_by_type, cj);
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
           /* Update the p2p interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-          runner_debug_inc_gpart_interactions_by_type(
-              gparts_i[i].num_interacted_p2p_by_type, cj);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
@@ -723,11 +735,14 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
           accumulate_inc_ll(&gparts_i[i].num_interacted);
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+          runner_debug_inc_gpart_interactions_by_type(
+              gparts_i[i].num_interacted_p2p_by_type, cj);
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
           /* Update the p2p interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-          runner_debug_inc_gpart_interactions_by_type(
-              gparts_i[i].num_interacted_p2p_by_type, cj);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
@@ -918,19 +933,25 @@ static INLINE void runner_dopair_grav_pp_full(
         accumulate_inc_ll(&gparts_i[pid].num_interacted);
 #endif
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-      /* Update the p2p interaction counter if it's not a padded gpart */
+#ifdef SWIFT_DEBUG_CHECKS
       if (!foreign_j && pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e)) {
-        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
         runner_debug_inc_gpart_interactions_by_type(
             gparts_i[pid].num_interacted_p2p_by_type, cj);
       }
       if (foreign_j && pjd < gcount_j &&
           !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e)) {
-        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
         runner_debug_inc_gpart_interactions_by_type(
             gparts_i[pid].num_interacted_p2p_by_type, cj);
       }
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+      /* Update the p2p interaction counter if it's not a padded gpart */
+      if (!foreign_j && pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
+      if (foreign_j && pjd < gcount_j &&
+          !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e))
+        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
 #endif
     }
 
@@ -1120,19 +1141,25 @@ static INLINE void runner_dopair_grav_pp_truncated(
         accumulate_inc_ll(&gparts_i[pid].num_interacted);
 #endif
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-      /* Update the p2p interaction counter if it's not a padded gpart */
+#ifdef SWIFT_DEBUG_CHECKS
       if (!foreign_j && pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e)) {
-        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
         runner_debug_inc_gpart_interactions_by_type(
             gparts_i[pid].num_interacted_p2p_by_type, cj);
       }
       if (foreign_j && pjd < gcount_j &&
           !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e)) {
-        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
         runner_debug_inc_gpart_interactions_by_type(
             gparts_i[pid].num_interacted_p2p_by_type, cj);
       }
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+      /* Update the p2p interaction counter if it's not a padded gpart */
+      if (!foreign_j && pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
+      if (foreign_j && pjd < gcount_j &&
+          !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e))
+        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
 #endif
     }
 
@@ -1281,14 +1308,19 @@ static INLINE void runner_dopair_grav_pm_full(
                         cj->grav.multipole->m_pole.num_gpart);
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pid < gcount_i) {
+      runner_debug_add_gpart_interactions_by_type(
+          gparts_i[pid].num_interacted_m2p_by_type, cj,
+          cj->grav.multipole->m_pole.num_gpart);
+    }
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Update the M2P interaction counter and forces. */
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
-      runner_debug_add_gpart_interactions_by_type(
-          gparts_i[pid].num_interacted_m2p_by_type, cj,
-          cj->grav.multipole->m_pole.num_gpart);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);
@@ -1433,14 +1465,19 @@ static INLINE void runner_dopair_grav_pm_truncated(
                         cj->grav.multipole->m_pole.num_gpart);
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pid < gcount_i) {
+      runner_debug_add_gpart_interactions_by_type(
+          gparts_i[pid].num_interacted_m2p_by_type, cj,
+          cj->grav.multipole->m_pole.num_gpart);
+    }
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Update the M2P interaction counter and forces. */
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
-      runner_debug_add_gpart_interactions_by_type(
-          gparts_i[pid].num_interacted_m2p_by_type, cj,
-          cj->grav.multipole->m_pole.num_gpart);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);

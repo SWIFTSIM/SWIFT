@@ -403,7 +403,7 @@ static INLINE void runner_record_mesh_attachment(
 
   runner_accumulate_interaction(recipient->grav.multipole, source->grav.multipole);
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   runner_debug_add_tensor_interactions_by_type(
       recipient->grav.multipole->pot.num_interacted_pm_by_type, source,
       source->grav.multipole->m_pole.num_gpart);

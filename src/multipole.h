@@ -145,14 +145,14 @@ __attribute__((nonnull)) INLINE static void gravity_field_tensors_add(
   if (lb->num_interacted == 0) error("Adding tensors that did not interact");
 
   la->num_interacted += lb->num_interacted;
-#endif
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  la->num_interacted_tree += lb->num_interacted_tree;
-  la->num_interacted_pm += lb->num_interacted_pm;
   for (int i = 0; i < 4; i++) {
     la->num_interacted_tree_by_type[i] += lb->num_interacted_tree_by_type[i];
     la->num_interacted_pm_by_type[i] += lb->num_interacted_pm_by_type[i];
   }
+#endif
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  la->num_interacted_tree += lb->num_interacted_tree;
+  la->num_interacted_pm += lb->num_interacted_pm;
 #endif
 
   la->interacted = 1;
@@ -2673,14 +2673,14 @@ __attribute__((nonnull)) INLINE static void gravity_L2L(
   if (lb->num_interacted == 0) error("Shifting tensors that did not interact");
 
   la->num_interacted = lb->num_interacted;
-#endif
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  la->num_interacted_tree = lb->num_interacted_tree;
-  la->num_interacted_pm = lb->num_interacted_pm;
   for (int i = 0; i < 4; i++) {
     la->num_interacted_tree_by_type[i] = lb->num_interacted_tree_by_type[i];
     la->num_interacted_pm_by_type[i] = lb->num_interacted_pm_by_type[i];
   }
+#endif
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  la->num_interacted_tree = lb->num_interacted_tree;
+  la->num_interacted_pm = lb->num_interacted_pm;
 #endif
 
   /* Distance to shift by */
@@ -3041,15 +3041,18 @@ __attribute__((nonnull)) INLINE static void gravity_L2P(
   accumulate_add_ll(&gp->num_interacted, lb->num_interacted);
 #endif
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  accumulate_add_ll(&gp->num_interacted_m2l, lb->num_interacted_tree);
-  accumulate_add_ll(&gp->num_interacted_pm, lb->num_interacted_pm);
+#ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < 4; i++) {
     accumulate_add_ll(&gp->num_interacted_m2l_by_type[i],
                       lb->num_interacted_tree_by_type[i]);
     accumulate_add_ll(&gp->num_interacted_pm_by_type[i],
                       lb->num_interacted_pm_by_type[i]);
   }
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  accumulate_add_ll(&gp->num_interacted_m2l, lb->num_interacted_tree);
+  accumulate_add_ll(&gp->num_interacted_pm, lb->num_interacted_pm);
 #endif
 
   /* Local accumulator */

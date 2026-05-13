@@ -71,7 +71,7 @@ runner_debug_inc_gpart_interactions_by_type(long long counts[4],
 }
 #endif
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
 __attribute__((always_inline)) INLINE static void
 runner_debug_add_tensor_interactions_by_type(long long counts[4],
                                              const struct cell *source,
@@ -165,7 +165,7 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   gravity_M2L_nonsym(&ci->grav.multipole->pot, multi_j, ci->grav.multipole->CoM,
                      cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   runner_debug_add_tensor_interactions_by_type(
       ci->grav.multipole->pot.num_interacted_tree_by_type, cj,
       multi_j->num_gpart);
@@ -255,7 +255,7 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
                         multi_i, multi_j, ci->grav.multipole->CoM,
                         cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   runner_debug_add_tensor_interactions_by_type(
       ci->grav.multipole->pot.num_interacted_tree_by_type, cj,
       multi_j->num_gpart);

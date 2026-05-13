@@ -95,6 +95,23 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
     const struct cell *super = cp->grav.super;
     const int path_level = depth - 1 - i;
 
+    const long long tensor_tree_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        pot->num_interacted_tree_by_type[0], pot->num_interacted_tree_by_type[1],
+        pot->num_interacted_tree_by_type[2], pot->num_interacted_tree_by_type[3]
+#else
+        0LL, 0LL, 0LL, 0LL
+#endif
+    };
+    const long long tensor_pm_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        pot->num_interacted_pm_by_type[0], pot->num_interacted_pm_by_type[1],
+        pot->num_interacted_pm_by_type[2], pot->num_interacted_pm_by_type[3]
+#else
+        0LL, 0LL, 0LL, 0LL
+#endif
+    };
+
     message(
         "grav-path[level=%d/%d]: cell=%llu ptr=%p (%s/%s depth=%d, super=%llu super_ptr=%p depth=%d) "
         "tensor[interacted=%d total=%lld tree=%lld pm=%lld] local_cell_gparts=%lld "
@@ -107,15 +124,13 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
         (int)pot->interacted, pot->num_interacted,
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
         pot->num_interacted_tree, pot->num_interacted_pm,
-        cp->grav.multipole->m_pole.num_gpart,
-        pot->num_interacted_tree_by_type[0], pot->num_interacted_tree_by_type[1],
-        pot->num_interacted_tree_by_type[2], pot->num_interacted_tree_by_type[3],
-        pot->num_interacted_pm_by_type[0], pot->num_interacted_pm_by_type[1],
-        pot->num_interacted_pm_by_type[2], pot->num_interacted_pm_by_type[3]);
 #else
-        0LL, 0LL, cp->grav.multipole->m_pole.num_gpart, 0LL, 0LL, 0LL, 0LL,
-        0LL, 0LL, 0LL, 0LL);
+        0LL, 0LL,
 #endif
+        cp->grav.multipole->m_pole.num_gpart, tensor_tree_by_type[0],
+        tensor_tree_by_type[1], tensor_tree_by_type[2], tensor_tree_by_type[3],
+        tensor_pm_by_type[0], tensor_pm_by_type[1], tensor_pm_by_type[2],
+        tensor_pm_by_type[3]);
   }
 }
 #endif
@@ -1027,9 +1042,22 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           if (gp->num_interacted !=
               e->total_nr_gparts - e->count_inhibited_gparts) {
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
             /* If we have the gravity force checks enabled, we print more
              * information about the particle */
+            const long long num_interacted_m2p =
+                gp->num_interacted_m2p_by_type[0] + gp->num_interacted_m2p_by_type[1] +
+                gp->num_interacted_m2p_by_type[2] + gp->num_interacted_m2p_by_type[3];
+            const long long num_interacted_m2l =
+                gp->num_interacted_m2l_by_type[0] + gp->num_interacted_m2l_by_type[1] +
+                gp->num_interacted_m2l_by_type[2] + gp->num_interacted_m2l_by_type[3];
+            const long long num_interacted_p2p =
+                gp->num_interacted_p2p_by_type[0] + gp->num_interacted_p2p_by_type[1] +
+                gp->num_interacted_p2p_by_type[2] + gp->num_interacted_p2p_by_type[3];
+            const long long num_interacted_pm =
+                gp->num_interacted_pm_by_type[0] + gp->num_interacted_pm_by_type[1] +
+                gp->num_interacted_pm_by_type[2] + gp->num_interacted_pm_by_type[3];
+
             message(
                 "Interaction breakdown for g-particle (id=%lld, type=%s): "
                 "num_interacted=%lld, num_interacted_m2p=%lld, "
@@ -1039,9 +1067,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "m2l_by_type=[%lld,%lld,%lld,%lld], "
                 "p2p_by_type=[%lld,%lld,%lld,%lld], "
                 "pm_by_type=[%lld,%lld,%lld,%lld]",
-                id, part_type_names[gp->type], gp->num_interacted,
-                gp->num_interacted_m2p, gp->num_interacted_m2l,
-                gp->num_interacted_p2p, gp->num_interacted_pm,
+                id, part_type_names[gp->type], gp->num_interacted, num_interacted_m2p,
+                num_interacted_m2l, num_interacted_p2p, num_interacted_pm,
                 gp->num_interacted_m2p_by_type[0], gp->num_interacted_m2p_by_type[1],
                 gp->num_interacted_m2p_by_type[2], gp->num_interacted_m2p_by_type[3],
                 gp->num_interacted_m2l_by_type[0], gp->num_interacted_m2l_by_type[1],

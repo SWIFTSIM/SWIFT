@@ -83,26 +83,26 @@ struct grav_tensor {
 #error "Missing implementation for order >5"
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Total number of gpart this field tensor interacted with */
+  long long num_interacted;
+
+  /* Interaction counters by source cell class.
+   * Index order: zoom, bkg_void, bkg_neigh, other. */
+  long long num_interacted_tree_by_type[4];
+  long long num_interacted_pm_by_type[4];
+
+  /* Last time this tensor was zeroed */
+  integertime_t ti_init;
+
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Number of gparts interacted through the tree. */
   long long num_interacted_tree;
 
   /* Number of gparts interacted through the FFT mesh */
   long long num_interacted_pm;
-
-  /* Interaction counters by source cell class.
-   * Index order: zoom, bkg_void, bkg_neigh, other. */
-  long long num_interacted_tree_by_type[4];
-  long long num_interacted_pm_by_type[4];
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Total number of gpart this field tensor interacted with */
-  long long num_interacted;
-
-  /* Last time this tensor was zeroed */
-  integertime_t ti_init;
-
 #endif
 
   /* Has this tensor received any contribution? */
