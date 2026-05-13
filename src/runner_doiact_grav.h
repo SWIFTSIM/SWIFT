@@ -34,61 +34,49 @@
 struct runner;
 struct cell;
 
-#ifdef SWIFT_DEBUG_CHECKS
-enum runner_debug_tensor_origin {
-  runner_debug_tensor_origin_mesh = 0,
-  runner_debug_tensor_origin_pm_skip = 1,
-  runner_debug_tensor_origin_mm = 2,
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+enum runner_debug_source_class {
+  runner_debug_source_class_zoom = 0,
+  runner_debug_source_class_bkg_void = 1,
+  runner_debug_source_class_bkg_neigh = 2,
+  runner_debug_source_class_other = 3,
 };
 
-void runner_debug_dump_mesh_attachments_for_top(const struct cell *top);
-void runner_debug_replay_mesh_attachments_for_top(struct runner *r,
-                                                  struct cell *top);
+__attribute__((always_inline)) INLINE static enum runner_debug_source_class
+runner_debug_get_source_class(const struct cell *source) {
+
+  if (source->type == cell_type_zoom) return runner_debug_source_class_zoom;
+
+  if (source->type == cell_type_bkg && source->subtype == cell_subtype_void)
+    return runner_debug_source_class_bkg_void;
+
+  if (source->type == cell_type_bkg &&
+      source->subtype == cell_subtype_neighbour)
+    return runner_debug_source_class_bkg_neigh;
+
+  return runner_debug_source_class_other;
+}
 
 __attribute__((always_inline)) INLINE static void
-runner_debug_add_tensor_origin_count(struct grav_tensor *pot,
-                                     const struct cell *source,
-                                     const long long delta,
-                                     const enum runner_debug_tensor_origin origin) {
+runner_debug_add_gpart_interactions_by_type(long long counts[4],
+                                            const struct cell *source,
+                                            const long long delta) {
+  counts[runner_debug_get_source_class(source)] += delta;
+}
 
-  long long *slot = NULL;
+__attribute__((always_inline)) INLINE static void
+runner_debug_inc_gpart_interactions_by_type(long long counts[4],
+                                            const struct cell *source) {
+  counts[runner_debug_get_source_class(source)] += 1;
+}
+#endif
 
-  if (origin == runner_debug_tensor_origin_mesh) {
-    if (source->type == cell_type_zoom)
-      slot = &pot->num_interacted_mesh_zoom;
-    else if (source->type == cell_type_bkg &&
-             source->subtype == cell_subtype_void)
-      slot = &pot->num_interacted_mesh_bkg_void;
-    else if (source->type == cell_type_bkg &&
-             source->subtype == cell_subtype_neighbour)
-      slot = &pot->num_interacted_mesh_bkg_neigh;
-    else
-      slot = &pot->num_interacted_mesh_other;
-  } else if (origin == runner_debug_tensor_origin_pm_skip) {
-    if (source->type == cell_type_zoom)
-      slot = &pot->num_interacted_pm_skip_zoom;
-    else if (source->type == cell_type_bkg &&
-             source->subtype == cell_subtype_void)
-      slot = &pot->num_interacted_pm_skip_bkg_void;
-    else if (source->type == cell_type_bkg &&
-             source->subtype == cell_subtype_neighbour)
-      slot = &pot->num_interacted_pm_skip_bkg_neigh;
-    else
-      slot = &pot->num_interacted_pm_skip_other;
-  } else {
-    if (source->type == cell_type_zoom)
-      slot = &pot->num_interacted_mm_zoom;
-    else if (source->type == cell_type_bkg &&
-             source->subtype == cell_subtype_void)
-      slot = &pot->num_interacted_mm_bkg_void;
-    else if (source->type == cell_type_bkg &&
-             source->subtype == cell_subtype_neighbour)
-      slot = &pot->num_interacted_mm_bkg_neigh;
-    else
-      slot = &pot->num_interacted_mm_other;
-  }
-
-  *slot += delta;
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+__attribute__((always_inline)) INLINE static void
+runner_debug_add_tensor_interactions_by_type(long long counts[4],
+                                             const struct cell *source,
+                                             const long long delta) {
+  counts[runner_debug_get_source_class(source)] += delta;
 }
 #endif
 
@@ -177,10 +165,10 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   gravity_M2L_nonsym(&ci->grav.multipole->pot, multi_j, ci->grav.multipole->CoM,
                      cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  runner_debug_add_tensor_origin_count(&ci->grav.multipole->pot, cj,
-                                       multi_j->num_gpart,
-                                       runner_debug_tensor_origin_mm);
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  runner_debug_add_tensor_interactions_by_type(
+      ci->grav.multipole->pot.num_interacted_tree_by_type, cj,
+      multi_j->num_gpart);
 #endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -266,6 +254,15 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
   gravity_M2L_symmetric(&ci->grav.multipole->pot, &cj->grav.multipole->pot,
                         multi_i, multi_j, ci->grav.multipole->CoM,
                         cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  runner_debug_add_tensor_interactions_by_type(
+      ci->grav.multipole->pot.num_interacted_tree_by_type, cj,
+      multi_j->num_gpart);
+  runner_debug_add_tensor_interactions_by_type(
+      cj->grav.multipole->pot.num_interacted_tree_by_type, ci,
+      multi_i->num_gpart);
+#endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   /* Unlock the multipoles */

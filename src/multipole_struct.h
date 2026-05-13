@@ -89,27 +89,16 @@ struct grav_tensor {
 
   /* Number of gparts interacted through the FFT mesh */
   long long num_interacted_pm;
+
+  /* Interaction counters by source cell class.
+   * Index order: zoom, bkg_void, bkg_neigh, other. */
+  long long num_interacted_tree_by_type[4];
+  long long num_interacted_pm_by_type[4];
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Total number of gpart this field tensor interacted with */
   long long num_interacted;
-
-  /* Breakdown of interaction counts by origin and source class. */
-  long long num_interacted_mesh_zoom;
-  long long num_interacted_mesh_bkg_void;
-  long long num_interacted_mesh_bkg_neigh;
-  long long num_interacted_mesh_other;
-
-  long long num_interacted_pm_skip_zoom;
-  long long num_interacted_pm_skip_bkg_void;
-  long long num_interacted_pm_skip_bkg_neigh;
-  long long num_interacted_pm_skip_other;
-
-  long long num_interacted_mm_zoom;
-  long long num_interacted_mm_bkg_void;
-  long long num_interacted_mm_bkg_neigh;
-  long long num_interacted_mm_other;
 
   /* Last time this tensor was zeroed */
   integertime_t ti_init;

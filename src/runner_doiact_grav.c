@@ -291,6 +291,8 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
       /* Update the M2P interaction counter and forces. */
       accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
                         multi_j->m_pole.num_gpart);
+      runner_debug_add_gpart_interactions_by_type(
+          gparts_i[i].num_interacted_m2p_by_type, cj, multi_j->m_pole.num_gpart);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[0], f_x);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[1], f_y);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[2], f_z);
@@ -362,6 +364,8 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
           /* Update the p2p interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+          runner_debug_inc_gpart_interactions_by_type(
+              gparts_i[i].num_interacted_p2p_by_type, cj);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
@@ -429,6 +433,8 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
           /* Update the p2p interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+          runner_debug_inc_gpart_interactions_by_type(
+              gparts_i[i].num_interacted_p2p_by_type, cj);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
@@ -567,6 +573,8 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
       /* Update the M2P interaction counter and forces. */
       accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
                         multi_j->m_pole.num_gpart);
+      runner_debug_add_gpart_interactions_by_type(
+          gparts_i[i].num_interacted_m2p_by_type, cj, multi_j->m_pole.num_gpart);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[0], f_x);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[1], f_y);
       accumulate_add_f(&gparts_i[i].a_grav_m2p[2], f_z);
@@ -644,6 +652,8 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
           /* Update the p2p interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+          runner_debug_inc_gpart_interactions_by_type(
+              gparts_i[i].num_interacted_p2p_by_type, cj);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
@@ -716,6 +726,8 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
           /* Update the p2p interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+          runner_debug_inc_gpart_interactions_by_type(
+              gparts_i[i].num_interacted_p2p_by_type, cj);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
           accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
@@ -773,7 +785,7 @@ static INLINE void runner_dopair_grav_pp_full(
     const float dim[3], const struct engine *restrict e,
     struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j,
     const struct gpart_foreign *restrict gparts_foreign_j,
-    const int foreign_j) {
+    const int foreign_j, const struct cell *restrict cj) {
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
@@ -908,8 +920,17 @@ static INLINE void runner_dopair_grav_pp_full(
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
       /* Update the p2p interaction counter if it's not a padded gpart */
-      if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+      if (!foreign_j && pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e)) {
         accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
+        runner_debug_inc_gpart_interactions_by_type(
+            gparts_i[pid].num_interacted_p2p_by_type, cj);
+      }
+      if (foreign_j && pjd < gcount_j &&
+          !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e)) {
+        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
+        runner_debug_inc_gpart_interactions_by_type(
+            gparts_i[pid].num_interacted_p2p_by_type, cj);
+      }
 #endif
     }
 
@@ -960,7 +981,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const float r_s_inv, const struct engine *restrict e,
     struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j,
     const struct gpart_foreign *restrict gparts_foreign_j,
-    const int foreign_j) {
+    const int foreign_j, const struct cell *restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -1101,8 +1122,17 @@ static INLINE void runner_dopair_grav_pp_truncated(
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
       /* Update the p2p interaction counter if it's not a padded gpart */
-      if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+      if (!foreign_j && pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e)) {
         accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
+        runner_debug_inc_gpart_interactions_by_type(
+            gparts_i[pid].num_interacted_p2p_by_type, cj);
+      }
+      if (foreign_j && pjd < gcount_j &&
+          !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e)) {
+        accumulate_inc_ll(&gparts_i[pid].num_interacted_p2p);
+        runner_debug_inc_gpart_interactions_by_type(
+            gparts_i[pid].num_interacted_p2p_by_type, cj);
+      }
 #endif
     }
 
@@ -1256,6 +1286,9 @@ static INLINE void runner_dopair_grav_pm_full(
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
+      runner_debug_add_gpart_interactions_by_type(
+          gparts_i[pid].num_interacted_m2p_by_type, cj,
+          cj->grav.multipole->m_pole.num_gpart);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);
@@ -1405,6 +1438,9 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
+      runner_debug_add_gpart_interactions_by_type(
+          gparts_i[pid].num_interacted_m2p_by_type, cj,
+          cj->grav.multipole->m_pole.num_gpart);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
       accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);
@@ -1533,7 +1569,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       runner_dopair_grav_pp_full(
           ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, periodic,
           dim, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
-          cj->nodeID != e->nodeID);
+          cj->nodeID != e->nodeID, cj);
 
       /* Then the M2P */
       if (allow_multipole_j)
@@ -1547,7 +1583,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       runner_dopair_grav_pp_full(
           cj_cache, ci_cache, gcount_j, gcount_i, gcount_padded_i, periodic,
           dim, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
-          ci->nodeID != e->nodeID);
+          ci->nodeID != e->nodeID, ci);
 
       /* Then the M2P */
       if (allow_multipole_i)
@@ -1584,7 +1620,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         runner_dopair_grav_pp_truncated(
             ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, dim,
             r_s_inv, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
-            cj->nodeID != e->nodeID);
+            cj->nodeID != e->nodeID, cj);
 
         /* Then the M2P */
         if (allow_multipole_j)
@@ -1598,7 +1634,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         runner_dopair_grav_pp_truncated(
             cj_cache, ci_cache, gcount_j, gcount_i, gcount_padded_i, dim,
             r_s_inv, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
-            ci->nodeID != e->nodeID);
+            ci->nodeID != e->nodeID, ci);
 
         /* Then the M2P */
         if (allow_multipole_i)
@@ -1618,7 +1654,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         runner_dopair_grav_pp_full(
             ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, periodic,
             dim, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
-            cj->nodeID != e->nodeID);
+            cj->nodeID != e->nodeID, cj);
 
         /* Then the M2P */
         if (allow_multipole_j)
@@ -1632,7 +1668,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         runner_dopair_grav_pp_full(
             cj_cache, ci_cache, gcount_j, gcount_i, gcount_padded_i, periodic,
             dim, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
-            ci->nodeID != e->nodeID);
+            ci->nodeID != e->nodeID, ci);
 
         /* Then the M2P */
         if (allow_multipole_i)
@@ -2314,22 +2350,21 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   const double r2 = dx * dx + dy * dy + dz * dz;
 
   /* Are we beyond the distance where the truncated forces are 0? */
-  if (gettimer && cell_can_use_mesh(e, ci, cj)) {
+  const double max_distance = e->mesh->r_cut_max;
+
+  /* Minimal distance between any 2 particles in the two cells */
+  const double r_lr_check = sqrt(r2) - (multi_i->r_max + multi_j->r_max);
+
+  if (periodic && r_lr_check > max_distance) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_is_active_gravity(ci, e)) {
       accumulate_add_ll(&multi_i->pot.num_interacted,
                         multi_j->m_pole.num_gpart);
-      runner_debug_add_tensor_origin_count(&multi_i->pot, cj,
-                                           multi_j->m_pole.num_gpart,
-                                           runner_debug_tensor_origin_pm_skip);
     }
     if (cell_is_active_gravity(cj, e)) {
       accumulate_add_ll(&multi_j->pot.num_interacted,
                         multi_i->m_pole.num_gpart);
-      runner_debug_add_tensor_origin_count(&multi_j->pot, ci,
-                                           multi_i->m_pole.num_gpart,
-                                           runner_debug_tensor_origin_pm_skip);
     }
 #endif
 

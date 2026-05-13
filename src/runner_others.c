@@ -98,9 +98,8 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
     message(
         "grav-path[level=%d/%d]: cell=%llu ptr=%p (%s/%s depth=%d, super=%llu super_ptr=%p depth=%d) "
         "tensor[interacted=%d total=%lld tree=%lld pm=%lld] local_cell_gparts=%lld "
-        "sources{mesh:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "pm_skip:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "mm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]}",
+        "sources{tree:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
+        "pm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]}",
         path_level, depth, cp->cellID, (void *)cp, cellID_names[cp->type],
         subcellID_names[cp->subtype], cp->depth,
         super != NULL ? super->cellID : 0ULL, (void *)super,
@@ -108,18 +107,15 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
         (int)pot->interacted, pot->num_interacted,
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
         pot->num_interacted_tree, pot->num_interacted_pm,
-#else
-        0LL, 0LL,
-#endif
         cp->grav.multipole->m_pole.num_gpart,
-        pot->num_interacted_mesh_zoom, pot->num_interacted_mesh_bkg_void,
-        pot->num_interacted_mesh_bkg_neigh, pot->num_interacted_mesh_other,
-        pot->num_interacted_pm_skip_zoom,
-        pot->num_interacted_pm_skip_bkg_void,
-        pot->num_interacted_pm_skip_bkg_neigh,
-        pot->num_interacted_pm_skip_other, pot->num_interacted_mm_zoom,
-        pot->num_interacted_mm_bkg_void, pot->num_interacted_mm_bkg_neigh,
-        pot->num_interacted_mm_other);
+        pot->num_interacted_tree_by_type[0], pot->num_interacted_tree_by_type[1],
+        pot->num_interacted_tree_by_type[2], pot->num_interacted_tree_by_type[3],
+        pot->num_interacted_pm_by_type[0], pot->num_interacted_pm_by_type[1],
+        pot->num_interacted_pm_by_type[2], pot->num_interacted_pm_by_type[3]);
+#else
+        0LL, 0LL, cp->grav.multipole->m_pole.num_gpart, 0LL, 0LL, 0LL, 0LL,
+        0LL, 0LL, 0LL, 0LL);
+#endif
   }
 }
 #endif
@@ -1038,14 +1034,23 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "Interaction breakdown for g-particle (id=%lld, type=%s): "
                 "num_interacted=%lld, num_interacted_m2p=%lld, "
                 "num_interacted_m2l=%lld, num_interacted_p2p=%lld, "
-                "num_interacted_pm=%lld",
+                "num_interacted_pm=%lld, "
+                "m2p_by_type=[%lld,%lld,%lld,%lld], "
+                "m2l_by_type=[%lld,%lld,%lld,%lld], "
+                "p2p_by_type=[%lld,%lld,%lld,%lld], "
+                "pm_by_type=[%lld,%lld,%lld,%lld]",
                 id, part_type_names[gp->type], gp->num_interacted,
                 gp->num_interacted_m2p, gp->num_interacted_m2l,
-                gp->num_interacted_p2p, gp->num_interacted_pm);
+                gp->num_interacted_p2p, gp->num_interacted_pm,
+                gp->num_interacted_m2p_by_type[0], gp->num_interacted_m2p_by_type[1],
+                gp->num_interacted_m2p_by_type[2], gp->num_interacted_m2p_by_type[3],
+                gp->num_interacted_m2l_by_type[0], gp->num_interacted_m2l_by_type[1],
+                gp->num_interacted_m2l_by_type[2], gp->num_interacted_m2l_by_type[3],
+                gp->num_interacted_p2p_by_type[0], gp->num_interacted_p2p_by_type[1],
+                gp->num_interacted_p2p_by_type[2], gp->num_interacted_p2p_by_type[3],
+                gp->num_interacted_pm_by_type[0], gp->num_interacted_pm_by_type[1],
+                gp->num_interacted_pm_by_type[2], gp->num_interacted_pm_by_type[3]);
 #endif
-
-            runner_debug_dump_mesh_attachments_for_top(c->grav.super);
-            runner_debug_replay_mesh_attachments_for_top(r, c->grav.super);
 
             runner_debug_dump_gravity_path(c);
 

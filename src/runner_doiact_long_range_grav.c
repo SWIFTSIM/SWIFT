@@ -390,331 +390,25 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
                                                 struct cell *ci,
                                                 struct cell *top);
 
-#ifdef SWIFT_DEBUG_CHECKS
-enum runner_debug_mesh_count_origin {
-  runner_debug_mesh_count_origin_uniform_pair = 0,
-  runner_debug_mesh_count_origin_uniform_self = 1,
-  runner_debug_mesh_count_origin_zoom_pair = 2,
-  runner_debug_mesh_count_origin_zoom_self = 3,
-};
-
-struct runner_debug_mesh_attachment_entry {
-  unsigned long long top_ptr_key;
-  unsigned long long recipient_ptr_key;
-  unsigned long long source_ptr_key;
-  unsigned long long first_super_ptr_key;
-  unsigned long long first_ci_ptr_key;
-  unsigned long long first_cj_ptr_key;
-  int first_origin;
-  int seen_count;
-  int duplicate_reported;
-  const char *first_attachment_case;
-};
-
-static int runner_debug_mesh_zoom_top_repeat_report_count = 0;
-static int runner_debug_mesh_zoom_top_repeat_limit_reported = 0;
-
-#define runner_debug_mesh_zoom_top_repeat_report_max 32
-
-struct runner_debug_mesh_zoom_top_entry {
-  unsigned long long top_ptr_key;
-  int seen_count;
-};
-
-#define runner_debug_mesh_zoom_top_table_size (1 << 14)
-#define runner_debug_mesh_zoom_top_probe_limit 16
-
-static struct runner_debug_mesh_zoom_top_entry
-    runner_debug_mesh_zoom_top_table[runner_debug_mesh_zoom_top_table_size];
-
-static int runner_debug_mesh_attachment_report_count = 0;
-static int runner_debug_mesh_attachment_limit_reported = 0;
-
-#define runner_debug_mesh_attachment_report_max 32
-#define runner_debug_mesh_attachment_table_size (1 << 14)
-#define runner_debug_mesh_attachment_probe_limit 16
-
-static struct runner_debug_mesh_attachment_entry
-    runner_debug_mesh_attachment_table[runner_debug_mesh_attachment_table_size];
-
-static int runner_debug_mesh_overlap_report_count = 0;
-static int runner_debug_mesh_overlap_limit_reported = 0;
-
-#define runner_debug_mesh_overlap_report_max 32
-
-static int runner_debug_mesh_payload_report_count = 0;
-static int runner_debug_mesh_payload_limit_reported = 0;
-
-#define runner_debug_mesh_payload_report_max 64
-
-static void runner_debug_record_zoom_top_invocation(const struct cell *top,
-                                                    const struct cell *ci) {
-
-  if (ci != top) return;
-  if (top->type != cell_type_bkg || top->subtype != cell_subtype_neighbour)
-    return;
-
-  const unsigned long long top_ptr_key = (unsigned long long)(uintptr_t)top;
-  const unsigned long long hash = top_ptr_key * 11400714819323198485ull;
-
-  for (int probe = 0; probe < runner_debug_mesh_zoom_top_probe_limit; probe++) {
-    struct runner_debug_mesh_zoom_top_entry *slot =
-        &runner_debug_mesh_zoom_top_table
-            [(hash + (unsigned long long)probe) &
-             (runner_debug_mesh_zoom_top_table_size - 1)];
-
-    if (slot->top_ptr_key == 0ULL) {
-      if (atomic_cas(&slot->top_ptr_key, 0ULL, top_ptr_key) == 0ULL) {
-        slot->seen_count = 1;
-        return;
-      }
-    }
-
-    if (slot->top_ptr_key == top_ptr_key) {
-      const int previous_seen_count = atomic_inc(&slot->seen_count);
-
-      if (previous_seen_count >= 1) {
-        const int report_index =
-            atomic_inc(&runner_debug_mesh_zoom_top_repeat_report_count);
-
-        if (report_index < runner_debug_mesh_zoom_top_repeat_report_max) {
-          message(
-              "zoom-mesh repeated top invocation: top_ptr=%p top_cellID=%llu "
-              "top_type=%s/%s top_loc=(%.3f,%.3f,%.3f) ci_ptr=%p count=%d",
-              (void *)top, top->cellID, cellID_names[top->type],
-              subcellID_names[top->subtype], top->loc[0], top->loc[1],
-              top->loc[2], (void *)ci, previous_seen_count + 1);
-        } else if (report_index == runner_debug_mesh_zoom_top_repeat_report_max &&
-                   atomic_cas(&runner_debug_mesh_zoom_top_repeat_limit_reported,
-                              0, 1) == 0) {
-          message("zoom-mesh repeated top invocation reporting capped at %d lines",
-                  runner_debug_mesh_zoom_top_repeat_report_max);
-        }
-      }
-
-      return;
-    }
-  }
-}
-
-static void runner_debug_record_mesh_attachment(
-    const struct cell *super, const struct cell *ci, const struct cell *cj,
-    const struct cell *recipient, const struct cell *source,
-    const enum runner_debug_mesh_count_origin origin,
-    const char *attachment_case) {
-
-  if (recipient->top->type != cell_type_bkg ||
-      recipient->top->subtype != cell_subtype_neighbour)
-    return;
-
-  const int payload_report_index = atomic_inc(&runner_debug_mesh_payload_report_count);
-  if (payload_report_index < runner_debug_mesh_payload_report_max) {
-    message(
-        "mesh-attachment payload: top_ptr=%p top_cellID=%llu recipient=%p (%s/%s depth=%d count=%d mpole_gparts=%lld) "
-        "source=%p (%s/%s depth=%d count=%d mpole_gparts=%lld contains_zoom=%d top=%p top_type=%s/%s) "
-        "super=%p ci=%p cj=%p attach=%s origin=%d",
-        (void *)recipient->top, recipient->top->cellID, (void *)recipient,
-        cellID_names[recipient->type], subcellID_names[recipient->subtype],
-        recipient->depth, recipient->grav.count,
-        recipient->grav.multipole->m_pole.num_gpart, (void *)source,
-        cellID_names[source->type], subcellID_names[source->subtype],
-        source->depth, source->grav.count, source->grav.multipole->m_pole.num_gpart,
-        source->contains_zoom_cells, (void *)source->top,
-        cellID_names[source->top->type], subcellID_names[source->top->subtype],
-        (void *)super, (void *)ci, (void *)cj, attachment_case, (int)origin);
-  } else if (payload_report_index == runner_debug_mesh_payload_report_max &&
-             atomic_cas(&runner_debug_mesh_payload_limit_reported, 0, 1) == 0) {
-    message("mesh-attachment payload reporting capped at %d lines",
-            runner_debug_mesh_payload_report_max);
-  }
-
-  const unsigned long long top_ptr_key =
-      (unsigned long long)(uintptr_t)recipient->top;
-  const unsigned long long recipient_ptr_key =
-      (unsigned long long)(uintptr_t)recipient;
-  const unsigned long long source_ptr_key =
-      (unsigned long long)(uintptr_t)source;
-  const unsigned long long hash =
-      top_ptr_key * 11400714819323198485ull ^
-      recipient_ptr_key * 14029467366897019727ull ^
-      source_ptr_key * 1609587929392839161ull;
-
-  for (int probe = 0; probe < runner_debug_mesh_attachment_probe_limit; probe++) {
-    struct runner_debug_mesh_attachment_entry *slot =
-        &runner_debug_mesh_attachment_table
-            [(hash + (unsigned long long)probe) &
-             (runner_debug_mesh_attachment_table_size - 1)];
-
-    if (slot->top_ptr_key == 0ULL) {
-      if (atomic_cas(&slot->top_ptr_key, 0ULL, top_ptr_key) == 0ULL) {
-        slot->recipient_ptr_key = recipient_ptr_key;
-        slot->source_ptr_key = source_ptr_key;
-        slot->first_super_ptr_key = (unsigned long long)(uintptr_t)super;
-        slot->first_ci_ptr_key = (unsigned long long)(uintptr_t)ci;
-        slot->first_cj_ptr_key = (unsigned long long)(uintptr_t)cj;
-        slot->first_origin = (int)origin;
-        slot->seen_count = 1;
-        slot->first_attachment_case = attachment_case;
-        return;
-      }
-    }
-
-    if (slot->top_ptr_key == top_ptr_key &&
-        slot->recipient_ptr_key == recipient_ptr_key &&
-        slot->source_ptr_key != source_ptr_key) {
-
-      const struct cell *other_source = (const struct cell *)(uintptr_t)slot->source_ptr_key;
-
-      if (cell_contains_progeny(other_source, source) ||
-          cell_contains_progeny(source, other_source)) {
-
-        const int report_index = atomic_inc(&runner_debug_mesh_overlap_report_count);
-
-        if (report_index < runner_debug_mesh_overlap_report_max) {
-          message(
-              "mesh-attachment overlap(ptr): top_ptr=%p top_cellID=%llu recipient=%p (%s/%s depth=%d) "
-              "first[source=%p (%s/%s depth=%d) super=%p ci=%p cj=%p attach=%s origin=%d] "
-              "second[source=%p (%s/%s depth=%d) super=%p ci=%p cj=%p attach=%s origin=%d]",
-              (void *)recipient->top, recipient->top->cellID, (void *)recipient,
-              cellID_names[recipient->type], subcellID_names[recipient->subtype],
-              recipient->depth, (void *)other_source,
-              cellID_names[other_source->type], subcellID_names[other_source->subtype],
-              other_source->depth, (void *)slot->first_super_ptr_key,
-              (void *)slot->first_ci_ptr_key, (void *)slot->first_cj_ptr_key,
-              slot->first_attachment_case, slot->first_origin, (void *)source,
-              cellID_names[source->type], subcellID_names[source->subtype],
-              source->depth, (void *)super, (void *)ci, (void *)cj,
-              attachment_case, (int)origin);
-        } else if (report_index == runner_debug_mesh_overlap_report_max &&
-                   atomic_cas(&runner_debug_mesh_overlap_limit_reported, 0, 1) == 0) {
-          message("mesh-attachment overlap(ptr) reporting capped at %d lines",
-                  runner_debug_mesh_overlap_report_max);
-        }
-      }
-    }
-
-    if (slot->top_ptr_key == top_ptr_key &&
-        slot->recipient_ptr_key == recipient_ptr_key &&
-        slot->source_ptr_key == source_ptr_key) {
-      const int previous_seen_count = atomic_inc(&slot->seen_count);
-
-      if (previous_seen_count == 1 &&
-          atomic_cas(&slot->duplicate_reported, 0, 1) == 0) {
-        const int report_index =
-            atomic_inc(&runner_debug_mesh_attachment_report_count);
-
-        if (report_index < runner_debug_mesh_attachment_report_max) {
-          message(
-              "mesh-attachment duplicate(ptr): top_ptr=%p top_cellID=%llu "
-              "first[super=%p ci=%p cj=%p attach=%s origin=%d] "
-              "duplicate[super=%p ci=%p cj=%p attach=%s origin=%d] "
-              "recipient=%p (%s/%s depth=%d) source=%p (%s/%s depth=%d)",
-              (void *)recipient->top, recipient->top->cellID,
-              (void *)slot->first_super_ptr_key, (void *)slot->first_ci_ptr_key,
-              (void *)slot->first_cj_ptr_key, slot->first_attachment_case,
-              slot->first_origin, (void *)super, (void *)ci, (void *)cj,
-              attachment_case, (int)origin, (void *)recipient,
-              cellID_names[recipient->type], subcellID_names[recipient->subtype],
-              recipient->depth, (void *)source, cellID_names[source->type],
-              subcellID_names[source->subtype], source->depth);
-        } else if (report_index == runner_debug_mesh_attachment_report_max &&
-                   atomic_cas(&runner_debug_mesh_attachment_limit_reported, 0,
-                              1) == 0) {
-          message("mesh-attachment duplicate(ptr) reporting capped at %d lines",
-                  runner_debug_mesh_attachment_report_max);
-        }
-      }
-
-      return;
-    }
-  }
-}
-
-void runner_debug_dump_mesh_attachments_for_top(const struct cell *top) {
-
-  if (top == NULL) return;
-
-  const unsigned long long top_ptr_key = (unsigned long long)(uintptr_t)top;
-  int dumped = 0;
-
-  for (int i = 0; i < runner_debug_mesh_attachment_table_size; i++) {
-    const struct runner_debug_mesh_attachment_entry *slot =
-        &runner_debug_mesh_attachment_table[i];
-
-    if (slot->top_ptr_key != top_ptr_key) continue;
-
-    const struct cell *recipient =
-        (const struct cell *)(uintptr_t)slot->recipient_ptr_key;
-    const struct cell *source = (const struct cell *)(uintptr_t)slot->source_ptr_key;
-    const struct cell *super =
-        (const struct cell *)(uintptr_t)slot->first_super_ptr_key;
-    const struct cell *ci = (const struct cell *)(uintptr_t)slot->first_ci_ptr_key;
-    const struct cell *cj = (const struct cell *)(uintptr_t)slot->first_cj_ptr_key;
-
-    message(
-        "mesh-attachment dump: top_ptr=%p top_cellID=%llu recipient=%p (%s/%s depth=%d count=%d mpole_gparts=%lld) "
-        "source=%p (%s/%s depth=%d count=%d mpole_gparts=%lld contains_zoom=%d top=%p top_type=%s/%s) "
-        "first[super=%p ci=%p cj=%p attach=%s origin=%d seen=%d]",
-        (void *)top, top->cellID, (void *)recipient, cellID_names[recipient->type],
-        subcellID_names[recipient->subtype], recipient->depth,
-        recipient->grav.count, recipient->grav.multipole->m_pole.num_gpart,
-        (void *)source, cellID_names[source->type],
-        subcellID_names[source->subtype], source->depth, source->grav.count,
-        source->grav.multipole->m_pole.num_gpart, source->contains_zoom_cells,
-        (void *)source->top, cellID_names[source->top->type],
-        subcellID_names[source->top->subtype], (void *)super, (void *)ci,
-        (void *)cj, slot->first_attachment_case, slot->first_origin,
-        slot->seen_count);
-    dumped++;
-  }
-
-  message("mesh-attachment dump summary: top_ptr=%p top_cellID=%llu entries=%d",
-          (void *)top, top->cellID, dumped);
-}
-
-static INLINE void runner_record_mesh_attachment(
-    struct cell *super, struct cell *ci, struct cell *cj,
-    struct cell *recipient, struct cell *source,
-    const enum runner_debug_mesh_count_origin origin,
-    const char *attachment_case) {
-
-  runner_accumulate_interaction(recipient->grav.multipole, source->grav.multipole);
-  runner_debug_add_tensor_origin_count(&recipient->grav.multipole->pot, source,
-                                       source->grav.multipole->m_pole.num_gpart,
-                                       runner_debug_tensor_origin_mesh);
-  runner_debug_record_mesh_attachment(super, ci, cj, recipient, source, origin,
-                                      attachment_case);
-}
-
-void runner_debug_replay_mesh_attachments_for_top(struct runner *r,
-                                                  struct cell *top) {
-
-  if (top == NULL) return;
-
-  message("mesh-attachment replay start: top_ptr=%p top_cellID=%llu type=%s/%s",
-          (void *)top, top->cellID, cellID_names[top->type],
-          subcellID_names[top->subtype]);
-
-  if (r->e->s->periodic) {
-    if (top->type == cell_type_bkg || top->type == cell_type_zoom) {
-      runner_count_mesh_interactions_zoom(r, top, top);
-    } else {
-      runner_count_mesh_interactions_uniform(r, top, top);
-    }
-  }
-
-  message("mesh-attachment replay end: top_ptr=%p top_cellID=%llu",
-          (void *)top, top->cellID);
-}
-#else
 static INLINE void runner_record_mesh_attachment(
     struct cell *super, struct cell *ci, struct cell *cj,
     struct cell *recipient, struct cell *source, const int origin,
     const char *attachment_case) {
 
+  (void)super;
+  (void)ci;
+  (void)cj;
+  (void)origin;
+  (void)attachment_case;
+
   runner_accumulate_interaction(recipient->grav.multipole, source->grav.multipole);
-}
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  runner_debug_add_tensor_interactions_by_type(
+      recipient->grav.multipole->pot.num_interacted_pm_by_type, source,
+      source->grav.multipole->m_pole.num_gpart);
 #endif
+}
 
 /**
  * @brief Increment the mesh interaction counters.
@@ -769,9 +463,7 @@ static void runner_accumulate_interaction(
  * @param cj The second #cell in the pair.
  */
 static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
-                                          struct cell *cj,
-                                          const enum runner_debug_mesh_count_origin
-                                              origin) {
+                                          struct cell *cj) {
 
   /* Get the correct top level cells for self-interaction check */
   struct cell *top_i = ci->top;
@@ -784,27 +476,21 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 
   /* Decide which cell we are updating. */
   if (super == ci) {
-    runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
-                                  "super_eq_ci");
+    runner_record_mesh_attachment(super, ci, cj, super, cj, 0, NULL);
   } else if (cell_contains_progeny(ci, super)) {
-    runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
-                                  "super_in_ci");
+    runner_record_mesh_attachment(super, ci, cj, super, cj, 0, NULL);
   } else if (cell_contains_progeny(super, ci)) {
-    runner_record_mesh_attachment(super, ci, cj, ci, cj, origin,
-                                  "ci_in_super");
+    runner_record_mesh_attachment(super, ci, cj, ci, cj, 0, NULL);
   }
 
   /* Handle the symmetric case for self interactions */
   if (is_self) {
     if (super == cj) {
-      runner_record_mesh_attachment(super, ci, cj, super, ci, origin,
-                                    "self_super_eq_cj");
+      runner_record_mesh_attachment(super, ci, cj, super, ci, 0, NULL);
     } else if (cell_contains_progeny(cj, super)) {
-      runner_record_mesh_attachment(super, ci, cj, super, ci, origin,
-                                    "self_super_in_cj");
+      runner_record_mesh_attachment(super, ci, cj, super, ci, 0, NULL);
     } else if (cell_contains_progeny(super, cj)) {
-      runner_record_mesh_attachment(super, ci, cj, cj, ci, origin,
-                                    "self_cj_in_super");
+      runner_record_mesh_attachment(super, ci, cj, cj, ci, 0, NULL);
     }
   }
 }
@@ -823,9 +509,7 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
                                                           struct cell *ci,
                                                           struct cell *cj,
-                                                          struct space *s,
-                                                          const enum runner_debug_mesh_count_origin
-                                                              origin) {
+                                                          struct space *s) {
 
   /* No self interactions here */
   if (ci == cj) {
@@ -860,7 +544,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpi, cpj, origin);
+          runner_count_mesh_interaction(c, cpi, cpj);
           continue;
         }
 
@@ -874,7 +558,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         }
 
         /* We would create real tasks, so recurse to find mesh interactions */
-        runner_count_mesh_interactions_pair_recursive(c, cpi, cpj, s, origin);
+        runner_count_mesh_interactions_pair_recursive(c, cpi, cpj, s);
       }
     }
   }
@@ -894,9 +578,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
  */
 static void runner_count_mesh_interactions_self_recursive(struct cell *c,
                                                           struct cell *ci,
-                                                          struct space *s,
-                                                          const enum runner_debug_mesh_count_origin
-                                                              origin) {
+                                                          struct space *s) {
 
   struct engine *e = s->e;
 
@@ -916,8 +598,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
     /* Recurse on self interactions for each progeny */
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
-      runner_count_mesh_interactions_self_recursive(c, ci->progeny[k], s,
-                                                    origin);
+      runner_count_mesh_interactions_self_recursive(c, ci->progeny[k], s);
     }
 
     /* Now handle pair interactions between progeny */
@@ -931,7 +612,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpj, cpk, origin);
+          runner_count_mesh_interaction(c, cpj, cpk);
           continue;
         }
 
@@ -942,11 +623,11 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         /* Recurse as a pair interaction, ensuring we always pass the cell
          * containing c as the first argument after c. */
         if (cpj_contains_c) {
-          runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s, origin);
+          runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s);
         } else if (cpk_contains_c) {
-          runner_count_mesh_interactions_pair_recursive(c, cpk, cpj, s, origin);
+          runner_count_mesh_interactions_pair_recursive(c, cpk, cpj, s);
         } else {
-          runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s, origin);
+          runner_count_mesh_interactions_pair_recursive(c, cpj, cpk, s);
         }
       }
     }
@@ -979,8 +660,7 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
 
   /* First, handle self interactions from the top-level cell.
    * This mirrors the self task created at the top level. */
-  runner_count_mesh_interactions_self_recursive(
-      ci, top, s, runner_debug_mesh_count_origin_uniform_self);
+  runner_count_mesh_interactions_self_recursive(ci, top, s);
 
   /* Now loop over all other top-level cells for pair interactions.
    * This mirrors the pair tasks created between top-level cells. */
@@ -1000,8 +680,7 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(ci, top, cj,
-                                    runner_debug_mesh_count_origin_uniform_pair);
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
@@ -1017,8 +696,7 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
 
     /* We would create a pair task here, so recurse to count mesh interactions
      * that arise from task splitting */
-    runner_count_mesh_interactions_pair_recursive(
-        ci, top, cj, s, runner_debug_mesh_count_origin_uniform_pair);
+    runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
   }
 }
 
@@ -1036,14 +714,13 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
  * @param s The #space.
  */
 static void runner_count_mesh_interactions_zoom_pair_recursive(
-    struct cell *c, struct cell *ci, struct cell *cj, struct space *s,
-    const enum runner_debug_mesh_count_origin origin) {
+    struct cell *c, struct cell *ci, struct cell *cj, struct space *s) {
 
   struct engine *e = s->e;
 
   /* If neither cell is a void cell, use the normal pair recursive function */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
-    runner_count_mesh_interactions_pair_recursive(c, ci, cj, s, origin);
+    runner_count_mesh_interactions_pair_recursive(c, ci, cj, s);
     return;
   }
 
@@ -1086,7 +763,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpi, cpj, origin);
+        runner_count_mesh_interaction(c, cpi, cpj);
         continue;
       }
 
@@ -1100,8 +777,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       }
 
       /* Recurse to find more mesh interactions */
-      runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s,
-                                                         origin);
+      runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
     }
   }
 }
@@ -1119,14 +795,13 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
  * @param s The #space.
  */
 static void runner_count_mesh_interactions_zoom_self_recursive(
-    struct cell *c, struct cell *ci, struct space *s,
-    const enum runner_debug_mesh_count_origin origin) {
+    struct cell *c, struct cell *ci, struct space *s) {
 
   struct engine *e = s->e;
 
   /* If not a void cell, use the normal self recursive function */
   if (ci->subtype != cell_subtype_void) {
-    runner_count_mesh_interactions_self_recursive(c, ci, s, origin);
+    runner_count_mesh_interactions_self_recursive(c, ci, s);
     return;
   }
 
@@ -1147,8 +822,7 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
         ci->progeny[k]->nodeID != engine_rank)
       continue;
 
-    runner_count_mesh_interactions_zoom_self_recursive(c, ci->progeny[k], s,
-                                                       origin);
+    runner_count_mesh_interactions_zoom_self_recursive(c, ci->progeny[k], s);
   }
 
   /* Now handle pair interactions between progeny */
@@ -1191,7 +865,7 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpj, cpk)) {
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpj, cpk, origin);
+        runner_count_mesh_interaction(c, cpj, cpk);
         continue;
       }
 
@@ -1202,14 +876,11 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
       /* Recurse as a pair interaction, ensuring we always pass the cell
        * containing c as the first argument after c. */
       if (cpj_contains_c) {
-        runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s,
-                                                           origin);
+        runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s);
       } else if (cpk_contains_c) {
-        runner_count_mesh_interactions_zoom_pair_recursive(c, cpk, cpj, s,
-                                                           origin);
+        runner_count_mesh_interactions_zoom_pair_recursive(c, cpk, cpj, s);
       } else {
-        runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s,
-                                                           origin);
+        runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s);
       }
     }
   }
@@ -1238,14 +909,9 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
   struct space *s = e->s;
   struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  runner_debug_record_zoom_top_invocation(top, ci);
-#endif
-
   /* First, handle self interactions from the top-level cell.
    * This mirrors the self task created at the void level. */
-  runner_count_mesh_interactions_zoom_self_recursive(
-      ci, top, s, runner_debug_mesh_count_origin_zoom_self);
+  runner_count_mesh_interactions_zoom_self_recursive(ci, top, s);
 
   /* Now loop over all other background/void top-level cells for pair
    * interactions. This mirrors the pair tasks created between void cells. */
@@ -1265,8 +931,7 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(ci, top, cj,
-                                    runner_debug_mesh_count_origin_zoom_pair);
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
@@ -1282,8 +947,7 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
 
     /* We would create a pair task here, so recurse to count mesh interactions
      * that arise from task splitting through the void hierarchy */
-    runner_count_mesh_interactions_zoom_pair_recursive(
-        ci, top, cj, s, runner_debug_mesh_count_origin_zoom_pair);
+    runner_count_mesh_interactions_zoom_pair_recursive(ci, top, cj, s);
   }
 }
 
