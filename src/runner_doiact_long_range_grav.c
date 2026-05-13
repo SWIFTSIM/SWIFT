@@ -440,10 +440,6 @@ static int runner_debug_mesh_payload_limit_reported = 0;
 
 #define runner_debug_mesh_payload_report_max 64
 
-/* Set from a failing grav-path dump to inspect one exact top branch. */
-static const unsigned long long runner_debug_mesh_payload_target_top_ptr =
-    0x14f11fb13b20ULL;
-
 static void runner_debug_record_zoom_top_invocation(const struct cell *top,
                                                     const struct cell *ci) {
 
@@ -502,11 +498,6 @@ static void runner_debug_record_mesh_attachment(
 
   if (recipient->top->type != cell_type_bkg ||
       recipient->top->subtype != cell_subtype_neighbour)
-    return;
-
-  if (runner_debug_mesh_payload_target_top_ptr != 0ULL &&
-      (unsigned long long)(uintptr_t)recipient->top !=
-          runner_debug_mesh_payload_target_top_ptr)
     return;
 
   const int payload_report_index = atomic_inc(&runner_debug_mesh_payload_report_count);
@@ -630,6 +621,48 @@ static void runner_debug_record_mesh_attachment(
       return;
     }
   }
+}
+
+void runner_debug_dump_mesh_attachments_for_top(const struct cell *top) {
+
+  if (top == NULL) return;
+
+  const unsigned long long top_ptr_key = (unsigned long long)(uintptr_t)top;
+  int dumped = 0;
+
+  for (int i = 0; i < runner_debug_mesh_attachment_table_size; i++) {
+    const struct runner_debug_mesh_attachment_entry *slot =
+        &runner_debug_mesh_attachment_table[i];
+
+    if (slot->top_ptr_key != top_ptr_key) continue;
+
+    const struct cell *recipient =
+        (const struct cell *)(uintptr_t)slot->recipient_ptr_key;
+    const struct cell *source = (const struct cell *)(uintptr_t)slot->source_ptr_key;
+    const struct cell *super =
+        (const struct cell *)(uintptr_t)slot->first_super_ptr_key;
+    const struct cell *ci = (const struct cell *)(uintptr_t)slot->first_ci_ptr_key;
+    const struct cell *cj = (const struct cell *)(uintptr_t)slot->first_cj_ptr_key;
+
+    message(
+        "mesh-attachment dump: top_ptr=%p top_cellID=%llu recipient=%p (%s/%s depth=%d count=%d mpole_gparts=%lld) "
+        "source=%p (%s/%s depth=%d count=%d mpole_gparts=%lld contains_zoom=%d top=%p top_type=%s/%s) "
+        "first[super=%p ci=%p cj=%p attach=%s origin=%d seen=%d]",
+        (void *)top, top->cellID, (void *)recipient, cellID_names[recipient->type],
+        subcellID_names[recipient->subtype], recipient->depth,
+        recipient->grav.count, recipient->grav.multipole->m_pole.num_gpart,
+        (void *)source, cellID_names[source->type],
+        subcellID_names[source->subtype], source->depth, source->grav.count,
+        source->grav.multipole->m_pole.num_gpart, source->contains_zoom_cells,
+        (void *)source->top, cellID_names[source->top->type],
+        subcellID_names[source->top->subtype], (void *)super, (void *)ci,
+        (void *)cj, slot->first_attachment_case, slot->first_origin,
+        slot->seen_count);
+    dumped++;
+  }
+
+  message("mesh-attachment dump summary: top_ptr=%p top_cellID=%llu entries=%d",
+          (void *)top, top->cellID, dumped);
 }
 
 static INLINE void runner_record_mesh_attachment(

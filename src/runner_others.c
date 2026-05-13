@@ -1043,6 +1043,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_p2p, gp->num_interacted_pm);
 #endif
 
+            runner_debug_dump_mesh_attachments_for_top(c->grav.super);
+
             runner_debug_dump_gravity_path(c);
 
             error(
