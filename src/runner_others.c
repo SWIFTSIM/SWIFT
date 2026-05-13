@@ -92,14 +92,15 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
     const struct cell *cp = path[i];
     const struct grav_tensor *pot = &cp->grav.multipole->pot;
     const struct cell *super = cp->grav.super;
+    const int path_level = depth - 1 - i;
 
     message(
-        "grav-path[%d/%d]: cellID=%llu type=%s subtype=%s depth=%d "
-        "super_cellID=%llu super_depth=%d interacted=%d num_interacted=%lld "
-        "num_interacted_tree=%lld num_interacted_pm=%lld num_gpart=%lld "
-        "mesh[z=%lld v=%lld n=%lld o=%lld] pm_skip[z=%lld v=%lld n=%lld o=%lld] "
-        "mm[z=%lld v=%lld n=%lld o=%lld]",
-        depth - 1 - i, depth, cp->cellID, cellID_names[cp->type],
+        "grav-path[level=%d/%d]: cell=%llu (%s/%s depth=%d, super=%llu depth=%d) "
+        "tensor[interacted=%d total=%lld tree=%lld pm=%lld] local_cell_gparts=%lld "
+        "sources{mesh:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
+        "pm_skip:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
+        "mm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]}",
+        path_level, depth, cp->cellID, cellID_names[cp->type],
         subcellID_names[cp->subtype], cp->depth,
         super != NULL ? super->cellID : 0ULL, super != NULL ? super->depth : -1,
         (int)pot->interacted, pot->num_interacted,
