@@ -185,8 +185,8 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
 void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer);
 void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                              int timer);
-void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
-                                                    struct cell *c);
+void runner_do_stars_hii_ionization_feedback_branch(
+    struct runner *r, struct cell *c, const float interaction_limit);
 void runner_do_stars_hii_ionization_feedback_self(
     struct runner *r, struct cell *c, struct spart *si,
     struct hii_neighbor *buffer, int max_size, int *count_found);

@@ -301,6 +301,11 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->spart_first_init_birth_time =
         parser_get_param_float(params, "Stars:birth_time");
   }
+
+#ifdef IONIZATION_FEEDBACK_LOOP
+  /* Read the maximal search radius */  
+  sp->max_HII_search_radius = parser_get_param_float(params, "Stars:max_HII_search_radius");
+#endif
 }
 
 /**
@@ -328,6 +333,11 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
   if (sp->overwrite_birth_time)
     message("Stars' birth time read from the ICs will be overwritten to %f",
             sp->spart_first_init_birth_time);
+
+#ifdef IONIZATION_FEEDBACK_LOOP
+  message("Maximal search radius for HII ionization: %e (U_L)",
+          sp->max_HII_search_radius);  
+#endif  
 }
 
 #if defined(HAVE_HDF5)

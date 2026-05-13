@@ -101,3 +101,4 @@ Stars:
   timestep_age_threshold_Myr:           7.      # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
   max_timestep_young_Myr:               0.5     # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1       # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
+  max_HII_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm.

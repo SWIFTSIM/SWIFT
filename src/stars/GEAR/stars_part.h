@@ -183,6 +183,9 @@ struct stars_props {
 
   /*! Value to set birth time of stars read from ICs */
   float spart_first_init_birth_time;
+
+  /*! Maximal search radius for the HII ionization */
+  float max_HII_search_radius;
 };
 
 #endif /* SWIFT_GEAR_STAR_PART_H */

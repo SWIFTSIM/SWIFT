@@ -69,18 +69,20 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                              int timer) {
 #ifdef IONIZATION_FEEDBACK_LOOP
   struct engine *e = r->e;
+  struct stars_props *star_props = e->stars_properties;
 
-  /* TODO: Which cell h_hii_max shall I look at? The current code changes the
-     value as we do deeper in the cell hierarchy. Ideally, we want to use the
-     smallest hmax for a cell, process the stars and parts at this level for
-     this cell, and go higher for cells/stars with higher h_hii */
+  /* Determine the search radius. Contrary to many implementations out there,
+     we do not iterate if the search radius is too small. At the next step,
+     the star will have a larger search radius since it's hii radius has
+     increased.
 
-  float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;
+     TODO: Implement retry if search radius is too small */
+  float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;  
   if (c->stars.h_hii_max_old <= 0.0) {
     r_hii_max = c->stars.h_max_old * kernel_gamma;
   }
-
-  const float interaction_limit = search_radius_factor * r_hii_max;
+  const float max_search_radius = star_props->max_HII_search_radius;
+  const float interaction_limit = min(search_radius_factor * r_hii_max, max_search_radius);
   const int can_recurse = c->split && (interaction_limit < 0.5f * c->dmin);
 
   if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
@@ -118,7 +120,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
     }
   } else {
     /* We have reached the 'Working Level' */
-    runner_do_stars_hii_ionization_feedback_branch(r, c);
+    runner_do_stars_hii_ionization_feedback_branch(r, c, interaction_limit);
   }
 
   if (timer) TIMER_TOC(timer_stars_hii_ionization_feedback);
@@ -136,8 +138,8 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
  * @param r The #runner thread.
  * @param c The #cell containing the stars to process.
  */
-void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
-                                                    struct cell *c) {
+void runner_do_stars_hii_ionization_feedback_branch(
+    struct runner *r, struct cell *c, const float interaction_limit) {  
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -150,13 +152,7 @@ void runner_do_stars_hii_ionization_feedback_branch(struct runner *r,
   struct spart *restrict sparts = c->stars.parts;
   const int scount = c->stars.count;
 
-  float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;
-  if (c->stars.h_hii_max_old <= 0.0) {
-    r_hii_max = c->stars.h_max_old * kernel_gamma;
-  }
-
-  const float interaction_limit = search_radius_factor * r_hii_max;
-
+  /* Anything to do here? */  
   if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
     return;
 
