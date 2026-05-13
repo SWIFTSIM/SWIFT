@@ -394,12 +394,12 @@ enum runner_debug_mesh_count_origin {
 struct runner_debug_mesh_attachment_entry {
   unsigned long long recipient_cell_key;
   unsigned long long source_cell_key;
-  unsigned long long recipient_top_key;
-  unsigned long long source_top_key;
   int first_origin;
   int seen_count;
   int duplicate_reported;
 };
+
+static const unsigned long long runner_debug_mesh_watch_top_cell_id = 6572ULL;
 
 #define runner_debug_mesh_attachment_table_size (1 << 19)
 #define runner_debug_mesh_attachment_probe_limit 32
@@ -427,13 +427,16 @@ runner_debug_mesh_count_origin_name(
 }
 
 static void runner_debug_record_mesh_attachment(
+    const struct cell *super, const struct cell *ci, const struct cell *cj,
     const struct cell *recipient, const struct cell *source,
-    const enum runner_debug_mesh_count_origin origin) {
+    const enum runner_debug_mesh_count_origin origin,
+    const char *attachment_case) {
+
+  /* Focus duplicate tracking on the currently failing top neighbour cell. */
+  if (recipient->top->cellID != runner_debug_mesh_watch_top_cell_id) return;
 
   const unsigned long long recipient_key = recipient->cellID + 1ULL;
   const unsigned long long source_key = source->cellID + 1ULL;
-  const unsigned long long recipient_top_key = recipient->top->cellID + 1ULL;
-  const unsigned long long source_top_key = source->top->cellID + 1ULL;
   const unsigned long long hash =
       recipient_key * 11400714819323198485ull ^
       source_key * 14029467366897019727ull;
@@ -449,8 +452,6 @@ static void runner_debug_record_mesh_attachment(
     if (existing_recipient_key == 0ULL) {
       if (atomic_cas(&slot->recipient_cell_key, 0ULL, recipient_key) == 0ULL) {
         slot->source_cell_key = source_key;
-        slot->recipient_top_key = recipient_top_key;
-        slot->source_top_key = source_top_key;
         slot->first_origin = (int)origin;
         slot->seen_count = 1;
         return;
@@ -461,25 +462,26 @@ static void runner_debug_record_mesh_attachment(
         slot->source_cell_key == source_key) {
       const int previous_seen_count = atomic_inc(&slot->seen_count);
 
-      const int interesting_duplicate =
-          ((enum runner_debug_mesh_count_origin)slot->first_origin != origin) ||
-          recipient->subtype == cell_subtype_neighbour ||
-          source->subtype == cell_subtype_neighbour || recipient->depth > 0 ||
-          source->depth > 0;
-
-      if (previous_seen_count == 1 && interesting_duplicate &&
+      if (previous_seen_count == 1 &&
           atomic_cas(&slot->duplicate_reported, 0, 1) == 0) {
         message(
-            "mesh-count duplicate attachment: recipient=%llu (%s/%s depth=%d top=%llu) "
-            "source=%llu (%s/%s depth=%d top=%llu) first_origin=%s "
-            "duplicate_origin=%s seen_count=%d",
+            "mesh-count duplicate attachment: top=%llu super=%llu (%s/%s depth=%d) "
+            "ci=%llu (%s/%s depth=%d top=%llu) cj=%llu (%s/%s depth=%d top=%llu) "
+            "attach=%s recipient=%llu (%s/%s depth=%d top=%llu) "
+            "source=%llu (%s/%s depth=%d top=%llu) first_origin=%s duplicate_origin=%s",
+            recipient->top->cellID, super->cellID, cellID_names[super->type],
+            subcellID_names[super->subtype], super->depth, ci->cellID,
+            cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
+            ci->top->cellID, cj->cellID, cellID_names[cj->type],
+            subcellID_names[cj->subtype], cj->depth, cj->top->cellID,
+            attachment_case,
             recipient->cellID, cellID_names[recipient->type],
             subcellID_names[recipient->subtype], recipient->depth,
             recipient->top->cellID, source->cellID, cellID_names[source->type],
             subcellID_names[source->subtype], source->depth, source->top->cellID,
             runner_debug_mesh_count_origin_name(
                 (enum runner_debug_mesh_count_origin)slot->first_origin),
-            runner_debug_mesh_count_origin_name(origin), previous_seen_count + 1);
+            runner_debug_mesh_count_origin_name(origin));
       }
 
       return;
@@ -492,18 +494,23 @@ static void runner_debug_record_mesh_attachment(
 }
 
 static INLINE void runner_record_mesh_attachment(
+    struct cell *super, struct cell *ci, struct cell *cj,
     struct cell *recipient, struct cell *source,
-    const enum runner_debug_mesh_count_origin origin) {
+    const enum runner_debug_mesh_count_origin origin,
+    const char *attachment_case) {
 
   runner_accumulate_interaction(recipient->grav.multipole, source->grav.multipole);
   runner_debug_add_tensor_origin_count(&recipient->grav.multipole->pot, source,
                                        source->grav.multipole->m_pole.num_gpart,
                                        runner_debug_tensor_origin_mesh);
-  runner_debug_record_mesh_attachment(recipient, source, origin);
+  runner_debug_record_mesh_attachment(super, ci, cj, recipient, source, origin,
+                                      attachment_case);
 }
 #else
 static INLINE void runner_record_mesh_attachment(
-    struct cell *recipient, struct cell *source, const int origin) {
+    struct cell *super, struct cell *ci, struct cell *cj,
+    struct cell *recipient, struct cell *source, const int origin,
+    const char *attachment_case) {
 
   runner_accumulate_interaction(recipient->grav.multipole, source->grav.multipole);
 }
@@ -577,21 +584,27 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 
   /* Decide which cell we are updating. */
   if (super == ci) {
-    runner_record_mesh_attachment(super, cj, origin);
+    runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
+                                  "super_eq_ci");
   } else if (cell_contains_progeny(ci, super)) {
-    runner_record_mesh_attachment(super, cj, origin);
+    runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
+                                  "super_in_ci");
   } else if (cell_contains_progeny(super, ci)) {
-    runner_record_mesh_attachment(ci, cj, origin);
+    runner_record_mesh_attachment(super, ci, cj, ci, cj, origin,
+                                  "ci_in_super");
   }
 
   /* Handle the symmetric case for self interactions */
   if (is_self) {
     if (super == cj) {
-      runner_record_mesh_attachment(super, ci, origin);
+      runner_record_mesh_attachment(super, ci, cj, super, ci, origin,
+                                    "self_super_eq_cj");
     } else if (cell_contains_progeny(cj, super)) {
-      runner_record_mesh_attachment(super, ci, origin);
+      runner_record_mesh_attachment(super, ci, cj, super, ci, origin,
+                                    "self_super_in_cj");
     } else if (cell_contains_progeny(super, cj)) {
-      runner_record_mesh_attachment(cj, ci, origin);
+      runner_record_mesh_attachment(super, ci, cj, cj, ci, origin,
+                                    "self_cj_in_super");
     }
   }
 }
