@@ -20,8 +20,8 @@
 /* Include header */
 #include "feedback_common.h"
 
-#include "cosmology.h"
 #include "cooling.h"
+#include "cosmology.h"
 #include "engine.h"
 #include "hydro_properties.h"
 #include "part.h"
@@ -375,6 +375,81 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
   return (is_cold || is_dense || !radiation_is_part_tagged_as_ionized(p, xp));
 }
 
+/**
+ * @brief Perform the ionization of a gas particle by a star.
+ *
+ * @param si The #spart (star) providing photons.
+ * @param pj The #part (gas) being ionized.
+ * @param xpj The #xpart (gas) being ionized.
+ * @param r2 Squared distance between star and gas.
+ * @param phys_const Physics constants.
+ * @param hydro_props Hydrodynamics properties.
+ * @param us Internal unit system.
+ * @param cosmo Cosmology.
+ * @param cooling Cooling function data.
+ * @param ti_begin Integer time at the start of the step (for RNG).
+ */
+__attribute__((always_inline)) INLINE void feedback_do_HII_ionization(
+    struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xpj, float r2, const struct phys_const *phys_const,
+    const struct hydro_props *hydro_props, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const integertime_t ti_begin) {
+
+  /* If already ionized (by another thread), just move on. */
+  if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
+
+  const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
+      phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+
+  /* Case 1: Ionization is guaranteed */
+  if (Delta_dot_N_ion <= feedback_get_star_ionization_rate(si)) {
+    if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) == 0) {
+
+      /* Flag the particle to be synchronized on the timeline.
+         We still use atomic_or here because other stars might be
+         tripping the limiter in feedback loop. */
+      atomic_or(&pj->limiter_data.to_be_synchronized, 1);
+
+      /* Add the star ID */
+      xpj->tracers_data.HII_region.star_id = si->id;
+
+      /* Consume photons from the star */
+      radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+
+      /* Update HII region properties */
+      si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
+      si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
+    }
+    /* If CAS failed, someone else grabbed it; just continue. */
+  } else {
+
+    /* If we cannot fully ionize, compute a probability to determine if
+       we fully ionize pj or not and draw the random number.  */
+    const double dot_N_ion = feedback_get_star_ionization_rate(si);
+    const float proba = dot_N_ion / Delta_dot_N_ion;
+    const float random_number =
+        random_unit_interval(si->id, ti_begin, random_number_HII_regions);
+
+    /* If we are lucky, do the ionization */
+    if (random_number <= proba) {
+      /* We won the roll! Now try to claim the particle. */
+      if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) == 0) {
+        atomic_or(&pj->limiter_data.to_be_synchronized, 1);
+
+        xpj->tracers_data.HII_region.star_id = si->id;
+
+        /* The star is now empty of photons */
+        radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+        si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
+        si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
+      }
+    } else {
+      /* We lost the roll. We still consume the remaining photons. */
+      radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+    }
+  } /* End of probability handling */
+}
 
 /**
  * @brief Prepare the feedback fields after a star is born.
