@@ -925,7 +925,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
           owner = &t->ci->grav.super->owner;
-        } else {
+        } else if (t->subtype == task_subtype_stars_radiation_in ||
+                   t->subtype == task_subtype_stars_radiation_out) {
+          qid = -1;
+	} else {
           qid = t->ci->hydro.super->owner;
           owner = &t->ci->hydro.super->owner;
         }
@@ -948,6 +951,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_timestep:
         qid = t->ci->super->owner;
         owner = &t->ci->super->owner;
+        break;
+      case task_type_stars_hii_ionization_feedback:
+        qid = t->ci->stars.radiation_level->owner;
+        owner = &t->ci->stars.radiation_level->owner;
         break;
       case task_type_pair:
         qid = t->ci->super->owner;
