@@ -2314,7 +2314,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   const double r2 = dx * dx + dy * dy + dz * dz;
 
   /* Are we beyond the distance where the truncated forces are 0? */
-  if (cell_can_use_mesh(e, ci, cj)) {
+  if (gettimer && cell_can_use_mesh(e, ci, cj)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_is_active_gravity(ci, e)) {
