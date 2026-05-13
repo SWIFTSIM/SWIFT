@@ -433,7 +433,7 @@ static int runner_debug_mesh_pair_is_new(const struct engine *e,
   const unsigned long long source_id = (unsigned long long)source->cellID;
 
   if (runner_debug_mesh_pairs == NULL) {
-    size_t cap = 1u << 22;
+    size_t cap = 1u << 25;
     runner_debug_mesh_pairs = (struct runner_debug_mesh_pair_entry *)swift_malloc(
         "runner_debug_mesh_pairs",
         cap * sizeof(struct runner_debug_mesh_pair_entry));
