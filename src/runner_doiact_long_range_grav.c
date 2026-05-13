@@ -417,7 +417,7 @@ struct runner_debug_mesh_zoom_top_loop_entry {
   int invocation_id;
   int first_loop_index;
   int first_decision;
-  int first_loc[3];
+  double first_loc[3];
 };
 
 #define runner_debug_mesh_zoom_top_loop_table_size (1 << 14)
@@ -513,8 +513,8 @@ static void runner_debug_record_zoom_top_loop_visit(const struct cell *top,
         if (report_index < runner_debug_mesh_duplicate_report_max) {
           message(
               "zoom-mesh top-loop duplicate source: top=%llu invocation=%d ci=%llu "
-              "source=%llu first[n=%d decision=%s ptr=%p loc=(%d,%d,%d)] "
-              "duplicate[n=%d decision=%s ptr=%p loc=(%d,%d,%d)]",
+              "source=%llu first[n=%d decision=%s ptr=%p loc=(%.3f,%.3f,%.3f)] "
+              "duplicate[n=%d decision=%s ptr=%p loc=(%.3f,%.3f,%.3f)]",
               top->cellID, invocation_id, ci->cellID, cj->cellID,
               slot->first_loop_index,
               runner_debug_mesh_zoom_top_decision_name(slot->first_decision),
