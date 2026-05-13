@@ -1685,7 +1685,7 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
                                     const struct cell *restrict cj) {
 
   /* Recover some useful constants */
-  const struct engine *e = r->e;
+  struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
@@ -2258,7 +2258,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
                                   struct cell *cj, const int gettimer) {
 
-  const struct engine *e = r->e;
+  struct engine *e = r->e;
 
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
