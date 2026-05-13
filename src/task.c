@@ -784,6 +784,7 @@ int task_lock(struct task *t) {
 
     case task_type_stars_sort:
     case task_type_stars_resort:
+    case task_type_stars_hii_ionization_feedback:
       if (ci->stars.hold) return 0;
       if (cell_slocktree(ci, /*split_task=*/0) != 0) return 0;
       break;
