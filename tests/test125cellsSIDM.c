@@ -192,16 +192,14 @@ void dump_particle_fields(char *fileName, struct cell *main_cell) {
   FILE *file = fopen(fileName, "w");
 
   /* Write header */
-  fprintf(file,
-          "# %4s %10s %10s %10s %13s %13s %13s %13s %13s\n",
-          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "SIDM_rate");
+  fprintf(file, "# %4s %10s %10s %10s %13s %13s %13s %13s %13s\n", "ID",
+          "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "SIDM_rate");
 
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
   for (int siid = 0; siid < main_cell->sidm.count; siid++) {
-    fprintf(file,
-            "%6llu %10f %10f %10f %13e %13e %13e %13e %13e\n",
+    fprintf(file, "%6llu %10f %10f %10f %13e %13e %13e %13e %13e\n",
             main_cell->sidm.parts[siid].id, main_cell->sidm.parts[siid].x[0],
             main_cell->sidm.parts[siid].x[1], main_cell->sidm.parts[siid].x[2],
             main_cell->sidm.parts[siid].v[0], main_cell->sidm.parts[siid].v[1],
