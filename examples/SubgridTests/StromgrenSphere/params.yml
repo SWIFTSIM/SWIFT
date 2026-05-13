@@ -89,6 +89,7 @@ GEARFeedback:
 
   # Radiation
   do_photoionization: 1                         # Whether to fo run the subgrid photoionization model to mimick Strömgren sphere. 1: Do photoionization, 0: do not. (Default: 0)
+  minimal_HII_ionization_density_Hpcm3: 1       # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   radiation_pressure_efficiency: 0.0 #1              # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
 
   #Mechanical feedback
@@ -101,4 +102,4 @@ Stars:
   timestep_age_threshold_Myr:           7.      # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
   max_timestep_young_Myr:               0.5     # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1       # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
-  max_HII_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm.
+  max_HII_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm (in internal units).

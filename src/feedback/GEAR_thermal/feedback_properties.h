@@ -63,6 +63,9 @@ struct feedback_props {
   /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
 
+  /* Minimal density to consider a particle eligible for HII ionization */
+  float minimal_HII_ionization_density;
+
   /*! Pre-supernova feedback energy effectively deposited */
   float winds_efficiency;
 
@@ -98,37 +101,43 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   }
 
   /* Print the feedback properties */
-  message("Supernovae efficiency = %.2g",
+  message("Supernovae efficiency                                      = %.2g",
           feedback_props->supernovae_efficiency);
-  message("Stellar wind feedback = %s",
+  message("Stellar wind feedback                                      = %s",
           feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
-  message("Stellar winds efficiency = %.2g", feedback_props->winds_efficiency);
-  message("Yields table = %s", feedback_props->stellar_model.yields_table);
+  message("Stellar winds efficiency                                   = %.2g",
+          feedback_props->winds_efficiency);
+
+  const char do_photoionization = feedback_props->radiation_policy & radiation_policy_photoionization;  
+  message("Photoionization                                            = %i", do_photoionization);
+
+  if (do_photoionization)
+    message("Minimal HII ionization density (internal units)            = %g",
+            feedback_props->minimal_HII_ionization_density);  
+  
+  message("Radiation pressure                                         = %i",
+      feedback_props->radiation_policy & radiation_policy_radiation_pressure);
+  message("Radiation pressure efficiency                              = %.2g",
+          feedback_props->radiation_pressure_efficiency);
+  message("Photo-electric heating                                     = %i",
+          feedback_props->radiation_policy &
+              radiation_policy_photoelectric_heating);
+  
+  message("Yields table                                               = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
   stellar_model_print(&feedback_props->stellar_model);
 
   /* Print the first stars */
   if (feedback_props->metallicity_max_first_stars != -1) {
-    message("Yields table first stars = %s",
+    message("Yields table first stars                                 = %s",
             feedback_props->stellar_model_first_stars.yields_table);
     stellar_model_print(&feedback_props->stellar_model_first_stars);
-    message("Metallicity max for the first stars (in abundance) = %g",
+    message("Metallicity max for the first stars (in abundance)       = %g",
             feedback_props->imf_transition_metallicity);
-    message("Metallicity max for the first stars (in mass fraction) = %g",
+    message("Metallicity max for the first stars (in mass fraction)   = %g",
             feedback_props->metallicity_max_first_stars);
   }
-
-  message("Photoionization                    =  %i",
-          feedback_props->radiation_policy & radiation_policy_photoionization);
-  message(
-      "Radiation pressure                 =  %i",
-      feedback_props->radiation_policy & radiation_policy_radiation_pressure);
-  message("Radiation pressure efficiency:     =  %.2g",
-          feedback_props->radiation_pressure_efficiency);
-  message("Photo-electric heating              =  %i",
-          feedback_props->radiation_policy &
-              radiation_policy_photoelectric_heating);
 }
 
 /**
@@ -237,6 +246,19 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   if (do_photoelectric_heating) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;
   }
+
+  if (do_photoionization) {
+    fp->minimal_HII_ionization_density = parser_get_param_float(
+        params, "GEARFeedback:minimal_HII_ionization_density_Hpcm3");
+
+    /* Convert to internal units */    
+    const double m_p_cgs = phys_const->const_proton_mass *
+      units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+    fp->minimal_HII_ionization_density *=
+      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);    
+    
+  }    
+
 
   /* -------------------------------------------- */
   /* Print the stellar properties */
