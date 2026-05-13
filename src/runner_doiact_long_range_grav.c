@@ -430,6 +430,11 @@ static int runner_debug_mesh_attachment_limit_reported = 0;
 static struct runner_debug_mesh_attachment_entry
     runner_debug_mesh_attachment_table[runner_debug_mesh_attachment_table_size];
 
+static int runner_debug_mesh_overlap_report_count = 0;
+static int runner_debug_mesh_overlap_limit_reported = 0;
+
+#define runner_debug_mesh_overlap_report_max 32
+
 static void runner_debug_record_zoom_top_invocation(const struct cell *top,
                                                     const struct cell *ci) {
 
@@ -518,6 +523,40 @@ static void runner_debug_record_mesh_attachment(
         slot->seen_count = 1;
         slot->first_attachment_case = attachment_case;
         return;
+      }
+    }
+
+    if (slot->top_ptr_key == top_ptr_key &&
+        slot->recipient_ptr_key == recipient_ptr_key &&
+        slot->source_ptr_key != source_ptr_key) {
+
+      const struct cell *other_source = (const struct cell *)(uintptr_t)slot->source_ptr_key;
+
+      if (cell_contains_progeny(other_source, source) ||
+          cell_contains_progeny(source, other_source)) {
+
+        const int report_index = atomic_inc(&runner_debug_mesh_overlap_report_count);
+
+        if (report_index < runner_debug_mesh_overlap_report_max) {
+          message(
+              "mesh-attachment overlap(ptr): top_ptr=%p top_cellID=%llu recipient=%p (%s/%s depth=%d) "
+              "first[source=%p (%s/%s depth=%d) super=%p ci=%p cj=%p attach=%s origin=%d] "
+              "second[source=%p (%s/%s depth=%d) super=%p ci=%p cj=%p attach=%s origin=%d]",
+              (void *)recipient->top, recipient->top->cellID, (void *)recipient,
+              cellID_names[recipient->type], subcellID_names[recipient->subtype],
+              recipient->depth, (void *)other_source,
+              cellID_names[other_source->type], subcellID_names[other_source->subtype],
+              other_source->depth, (void *)slot->first_super_ptr_key,
+              (void *)slot->first_ci_ptr_key, (void *)slot->first_cj_ptr_key,
+              slot->first_attachment_case, slot->first_origin, (void *)source,
+              cellID_names[source->type], subcellID_names[source->subtype],
+              source->depth, (void *)super, (void *)ci, (void *)cj,
+              attachment_case, (int)origin);
+        } else if (report_index == runner_debug_mesh_overlap_report_max &&
+                   atomic_cas(&runner_debug_mesh_overlap_limit_reported, 0, 1) == 0) {
+          message("mesh-attachment overlap(ptr) reporting capped at %d lines",
+                  runner_debug_mesh_overlap_report_max);
+        }
       }
     }
 
