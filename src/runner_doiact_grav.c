@@ -1436,7 +1436,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                            const int symmetric, const int allow_mpole) {
 
   /* Recover some useful constants */
-  const struct engine *e = r->e;
+  struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
