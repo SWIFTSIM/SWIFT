@@ -678,6 +678,27 @@ static INLINE void runner_record_mesh_attachment(
   runner_debug_record_mesh_attachment(super, ci, cj, recipient, source, origin,
                                       attachment_case);
 }
+
+void runner_debug_replay_mesh_attachments_for_top(struct runner *r,
+                                                  struct cell *top) {
+
+  if (top == NULL) return;
+
+  message("mesh-attachment replay start: top_ptr=%p top_cellID=%llu type=%s/%s",
+          (void *)top, top->cellID, cellID_names[top->type],
+          subcellID_names[top->subtype]);
+
+  if (r->e->s->periodic) {
+    if (top->type == cell_type_bkg || top->type == cell_type_zoom) {
+      runner_count_mesh_interactions_zoom(r, top, top);
+    } else {
+      runner_count_mesh_interactions_uniform(r, top, top);
+    }
+  }
+
+  message("mesh-attachment replay end: top_ptr=%p top_cellID=%llu",
+          (void *)top, top->cellID);
+}
 #else
 static INLINE void runner_record_mesh_attachment(
     struct cell *super, struct cell *ci, struct cell *cj,

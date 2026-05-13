@@ -42,6 +42,8 @@ enum runner_debug_tensor_origin {
 };
 
 void runner_debug_dump_mesh_attachments_for_top(const struct cell *top);
+void runner_debug_replay_mesh_attachments_for_top(struct runner *r,
+                                                  struct cell *top);
 
 __attribute__((always_inline)) INLINE static void
 runner_debug_add_tensor_origin_count(struct grav_tensor *pot,

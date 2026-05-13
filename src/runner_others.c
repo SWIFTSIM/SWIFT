@@ -1045,6 +1045,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 #endif
 
             runner_debug_dump_mesh_attachments_for_top(c->grav.super);
+            runner_debug_replay_mesh_attachments_for_top(r, c->grav.super);
 
             runner_debug_dump_gravity_path(c);
 
