@@ -1291,7 +1291,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   const int kcutright = (int)(Ngrid / 256.0 * (double)kcutn / foldfac);
   /* numtot = 76 * Nfold + 14;
    * assumes a 256 grid, foldfac=6 and  windoworder=2 */
-  const int numtot = kcutleft + (Nfold - 1) * (kcutleft - kcutright + 1);
+  const int numtot = (Nfold>1) ? kcutleft + (Nfold - 1) * (kcutleft - kcutright + 1) : 1;
   int numstart = 0;
 
   double* kcomb = (double*)malloc(numtot * sizeof(double));
@@ -1301,7 +1301,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   char outputfileBase[200] = "";
   char outputfileName[256] = "";
 
-  sprintf(outputfileBase, "power_noMG_256_e-4_viaparts_%s", get_powtype_filename(type1));
+  sprintf(outputfileBase, "power_noMG_128_cells_new_%s", get_powtype_filename(type1));
   if (type1 != type2) {
     const int length = strlen(outputfileBase);
     sprintf(outputfileBase + length, "-%s", get_powtype_filename(type2));
@@ -1442,24 +1442,30 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       fclose(outputfile);
 
       /* Combine most accurate measurements from foldings */
-      if (i == 0) {
+      if (Nfold>1) {
+        if (i == 0) {
 
-        for (int j = 0; j < kcutleft; ++j) {
-          kcomb[j] = (j + 1) * kfac;
-          pcomb[j] = powersum[j + 1] / modecounts[j + 1] * volfac;
+          for (int j = 0; j < kcutleft; ++j) {
+            kcomb[j] = (j + 1) * kfac;
+            pcomb[j] = powersum[j + 1] / modecounts[j + 1] * volfac;
+          }
+
+          numstart += kcutleft;
+
+        } else {
+
+          const int off = kcutright + 1;
+          for (int j = 0; j < (kcutleft - kcutright + 1); ++j) {
+            kcomb[j + numstart] = (j + off) * kfac;
+            pcomb[j + numstart] =
+                powersum[j + off] / modecounts[j + off] * volfac;
+          }
+          numstart += (kcutleft - kcutright + 1);
         }
-
-        numstart += kcutleft;
-
-      } else {
-
-        const int off = kcutright + 1;
-        for (int j = 0; j < (kcutleft - kcutright + 1); ++j) {
-          kcomb[j + numstart] = (j + off) * kfac;
-          pcomb[j + numstart] =
-              powersum[j + off] / modecounts[j + off] * volfac;
-        }
-        numstart += (kcutleft - kcutright + 1);
+      }
+      else {
+        kcomb[0] = kfac;
+        pcomb[0] = powersum[0]/modecounts[0] * volfac;
       }
 
     } /* Work of rank 0 */

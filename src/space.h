@@ -640,4 +640,8 @@ void get_residual_array_coarser_Poisson(const double *coarser_solution, const do
 double get_residual_coarser_Poisson(const double *coarser_solution, const double *coarser_residual, const double *coarser_equation, int cdim[3], double delta);
 void apply_multigrid_FAS(const double *rho, double *pot, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
 double peak_overdensity(struct MG_variables *MG, double delta_x, double fR_mean, double box_size);
+double get_residual_fR_linear(double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+void perform_red_black_sweep_fR_linear(double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+void apply_GS_fR(const double *rho, double *u, struct MG_variables *MG, int cdim[3], double mean_density, double box_size);
+void space_get_fR_linear(const struct space *s, double *rho, double *u, struct MG_variables *MG, int N_min, const int N_max);
 #endif /* SWIFT_SPACE_H */

@@ -926,15 +926,15 @@ void overdensity_to_gparts(struct space *s, double *rho, double mean_density, in
 
 void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, double normalisation) {
   MG->a = cosmo->a;
-  //MG->a = 0.03;
-  //MG->a = 1.;
+  //MG->a = 0.8;
   MG->fR0 = fR0;
   MG->n = n;
   MG->a3_inv = (1./(MG->a*MG->a*MG->a));
   MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
   //MG->Omega_ratio = 0.;
   MG->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
-  MG->R = (3.*MG->m*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
+  MG->R = (3.*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
+  //MG->R = (3.*MG->m*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
   message("The value of R is %E", MG->R);
   MG->c = s->e->physical_constants->const_speed_light_c;
   MG->G = s->e->physical_constants->const_newton_G;
@@ -1105,11 +1105,11 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
 
   if (MG) { //Assume n=1 for now
-    int test = 2; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
+    int test = 0; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
     if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
 
     struct MG_variables MG_var;
-    double fR0 = -1e-4;
+    double fR0 = -1e-5;
     double normalisation = 1.; //Can be used to prevent too-small residuals (but broken)
     int n = 1;
     initialise_MG_variables(s, cosmo, &MG_var, fR0, n, normalisation);
@@ -1117,7 +1117,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     double fR_evo = ((MG_var.a3_inv + 4. * MG_var.Omega_ratio)/(1. + 4. * MG_var.Omega_ratio));
     MG_var.fR_correction = fR_evo * fR_evo;
     int cdim[3] = {N,N,N};
-    double mean_density = 50.;
+    double mean_density = 20.;
 
     /* Are we testing? */
     switch (test) {
@@ -1185,33 +1185,50 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
 
     double evo_test = ((1. + 4. * MG_var.Omega_ratio)/(MG_var.a3_inv + 4. * MG_var.Omega_ratio));
     message("The mean is supposed to be %E", MG_var.fR0 * evo_test* evo_test);
-    sleep(10);
+    sleep(2);
     
+    int linear = 0;
     int N_min = 32; //Minimum gridsize to be used in multigrid acceleration
     double *rho_copy = malloc(N*N*N *sizeof(double));
     memcpy(rho_copy, rho, N*N*N*sizeof(double));
-    space_get_fR_contribution(s, rho_copy, field_contribution, &MG_var, N_min, N, test); 
+    double *rho_copy2 = malloc(N*N*N *sizeof(double));
+    memcpy(rho_copy2, rho, N*N*N*sizeof(double));
+    if (!linear) space_get_fR_contribution(s, rho_copy, field_contribution, &MG_var, N_min, N, test); //Out comes u
+    else space_get_fR_linear(s, rho_copy, field_contribution, &MG_var, N_min, N); //Out comes delta f_R
     free(rho_copy);
 
-    FILE *delta_exp;
-    delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/fR_z05.txt", "w");
-    for (int i=0; i<N; i++) {
-      for (int j=0; j<N; j++) {
-        for (int k=0; k<N; k++) {
-          if (i==N/2 && j==N/2 && k==N/2) continue;
-          double dx = fabs((double)(i-N/2) * box_size/N);
-          double dy = fabs((double)(j-N/2) * box_size/N);
-          double dz = fabs((double)(k-N/2) * box_size/N);
-          double r = sqrt(dx*dx + dy*dy + dz*dz);
+    //if (get_MG_acc){
+      //for (int i=0; i<N*N*N; i++) {
+        //if (!linear) field_contribution[i] = (MG_var.fR0 * evo_test* evo_test)/(MG_var.a*MG_var.a) * (MG_var.c*MG_var.c)/2. * exp(field_contribution[i]);
+        //else field_contribution[i] = (MG_var.c*MG_var.c)/(2.*MG_var.a*MG_var.a) * (field_contribution[i] + MG_var.fR0 * evo_test* evo_test);
+      //}
+      //get_cell_acc(acc, field_contribution, N, cell_fac);
+    //}
 
-          if (r<13) fprintf(delta_exp, "%E %.15g \n", MG_var.fR0 * evo_test* evo_test*(exp(field_contribution[cell_getid(cdim, i, j, k)]) - 1.), r);
-        }
-      }
-    }
-    fclose(delta_exp);
+    //double delta = box_size/N;
+    //get_rho_mod(rho, field_contribution, &MG_var, delta, N);
+    //mean_density = 0.;
+    //for (int i=0; i<N*N*N; i++) {
+      //mean_density += rho_copy2[i]/(N*N*N);
+    //}
 
-    double delta = box_size/N;
-    get_rho_mod(rho, field_contribution, &MG_var, delta, N);
+    //FILE *delta_exp;
+    //delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/improved_R/fR_128_e-5_z05.txt", "w");
+    //for (int i=0; i<N; i++) {
+      //for (int j=0; j<N; j++) {
+        //for (int k=0; k<N; k++) {
+          //if (i==N/2 && j==N/2 && k==N/2) continue;
+          //double dx = fabs((double)(i-N/2) * box_size/N);
+          //double dy = fabs((double)(j-N/2) * box_size/N);
+          //double dz = fabs((double)(k-N/2) * box_size/N);
+          //size_t cid = cell_getid(cdim, i, j, k);
+          //double r = sqrt(dx*dx + dy*dy + dz*dz);
+          //double acc_sq = sqrt(acc[0][cid]*acc[0][cid] + acc[1][cid]*acc[1][cid] + acc[2][cid]*acc[2][cid]);
+          //if (r<25) fprintf(delta_exp, "%E %.15g\n", MG_var.fR0 * evo_test* evo_test*(exp(field_contribution[cid])-1.), r);
+        //}
+      //}
+    //}
+    //fclose(delta_exp);
   }
 
   if (power) {

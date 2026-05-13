@@ -7208,6 +7208,106 @@ double get_mean_density(double *rho, const int N) {
   return mean_density;
 }
 
+void space_get_fR_linear(const struct space *s, double *rho, double *u, struct MG_variables *MG, int N_min, const int N_max) {
+  const double box_size = s->dim[0];
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double fac = ((double) N_max)/box_size;
+
+  /* Check if the space and mesh satisfy the conditions for Gauss-Seidel */
+  if (dim[0] != dim[1] || dim[0] != dim[2]) {
+    error("Noncubic domain for density calculation. Did not fill density array");
+  }
+  if (N_max%2 != 0){
+    error("Uneven domain for density calculation. Did not apply Gauss-Seidel");
+  }
+
+  double mean_density = get_mean_density(rho, N_max);
+  mean_density *= fac*fac*fac;
+
+  /* Set initial guess on the coarsest grid and solve directly */
+  int cdim[3] = {N_max, N_max, N_max};
+  set_initial_guess(u, cdim, /*MG=*/1);
+  apply_GS_fR(rho, u, MG, cdim, mean_density, box_size);
+  message("Finished applying Gauss-Seidel");
+}
+
+void apply_GS_fR(const double *rho, double *u, struct MG_variables *MG, int cdim[3], double mean_density, double box_size) {
+  message("Applying Gauss-Seidel...");
+  int N = cdim[0];
+  double delta = box_size/N;
+  double residual = get_residual_fR_linear(u, rho, MG, cdim, mean_density, delta);
+  double tolerance = 10e-12; //Choose reasonable value here
+  int counter = 0;
+  double sum = 0.;
+
+  while (residual >= tolerance) {
+    perform_red_black_sweep_fR_linear(u, rho, MG, cdim, mean_density, delta);
+    residual = get_residual_fR_linear(u, rho, MG, cdim, mean_density, delta);
+    counter +=1;
+    if (counter %50 == 0) message("Did %d steps and the residual is %E", counter, residual);
+  }
+  residual = get_residual_fR_linear(u, rho, MG, cdim, mean_density, delta);
+  message("We needed %d steps to converge and the residual is %E", counter, residual);
+
+  for (int i=0; i<N*N*N; i++) {
+    sum += (u[i] + MG->fR0/MG->fR_correction)/(N*N*N);
+  }
+  message("The mean is %E", sum);
+
+}
+
+void perform_red_black_sweep_fR_linear(double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta) {
+  float rhs_correction = 1.0;
+  for (int col=0; col<2; col++){
+    for (int k=0; k<cdim[2]; k++){
+      int k_plus = (k+1) % cdim[2];
+      int k_min = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
+      for (int j=0; j<cdim[1]; j++){
+        int j_plus = (j+1) % cdim[1];
+        int j_min = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
+        for (int i=0; i<cdim[0]; i++) {
+          int i_plus = (i+1) % cdim[0];
+          int i_min = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
+          if ((i+j+k)%2 != col)
+            continue;
+          u[cell_getid(cdim,i,j,k)] = ((u[cell_getid(cdim,i_min,j,k)]+ u[cell_getid(cdim,i_plus,j,k)]+ 
+                                              u[cell_getid(cdim,i,j_min,k)]+u[cell_getid(cdim,i,j_plus,k)] + 
+                                              u[cell_getid(cdim,i,j,k_min)]+u[cell_getid(cdim,i,j,k_plus)] + 
+                                              (delta*delta*mean_density*8.*MG->G*M_PI)/(3.*MG->c*MG->c*MG->a)*(rho[cell_getid(cdim,i,j,k)]-rhs_correction))/(6.0-(MG->a*MG->a*MG->R*delta*delta)/(6.*MG->c*MG->c*(MG->fR0)/(MG->fR_correction))));
+          
+        }
+      }
+    }
+  }
+}
+
+double get_residual_fR_linear(double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta) {
+  double residual = 0.;
+  int N = cdim[0];
+  float rhs_correction = 1.;
+  for (int k=0; k<N; k++){
+    int k_plus = (k+1) % N;
+    int k_min = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
+    for (int j=0; j<N; j++){
+      int j_plus = (j+1) % N;
+      int j_min = (j-1>=0) ? (j-1) % N : (j-1) % N + N;
+      for (int i=0; i<N; i++) {
+        int i_plus = (i+1) % N;
+        int i_min = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
+        double res = ((u[cell_getid(cdim,i_min,j,k)]+ u[cell_getid(cdim,i_plus,j,k)]+
+                                                u[cell_getid(cdim,i,j_min,k)]+u[cell_getid(cdim,i,j_plus,k)]+
+                                                u[cell_getid(cdim,i,j,k_min)]+u[cell_getid(cdim,i,j,k_plus)]
+                                                - 6.0*u[cell_getid(cdim,i,j,k)])/(delta*delta) 
+                                                - (1.)/(3.*MG->c*MG->c)*(-(MG->a*MG->a*MG->R)/(2.*MG->fR0/(MG->fR_correction)) * u[cell_getid(cdim,i,j,k)] - (mean_density*8.*M_PI*MG->G)/(MG->a)*(rho[cell_getid(cdim,i,j,k)]-rhs_correction)));
+      residual += res*res;
+      }
+    }
+  }
+  return sqrt(residual/(N*N*N));
+}
+
+
+
 /**
  * @brief Compute the field u = ln(f_R/mean(f_R)) on a series of uniform grids. 
  *
@@ -7398,7 +7498,7 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
   int N = cdim[0];
   double delta = box_size/N;
   double residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
-  message("Before smoothing the residual is %E", residual);
+  message("Before smoothing the resisdual is %E", residual);
 
   /* Get the mean */
   double sum = 0.;
@@ -7490,8 +7590,8 @@ void perform_red_black_sweep_fR(double *u, const double *rho, struct MG_variable
           
           /* Do we use the equation with density or with overdensity? */
           double density_term;
-          if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)] * MG->a;
-          else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.) * MG->a;
+          if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)]/MG->a;
+          else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.)/MG->a;
           
           double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
           double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.)*MG->normalisation*u[cell_getid(cdim, i,j,k)]));
@@ -7560,22 +7660,21 @@ double get_residual_fR(const double *u, const double *rho, struct MG_variables *
 
         /* Do we use the equation with density or with overdensity? */
         double density_term;
-        if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)] * MG->a;
-        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.) * MG->a;
+        if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)]/MG->a;
+        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.)/MG->a;
 
         double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
         double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.)*MG->normalisation * u[cell_getid(cdim, i,j,k)]));
         double res = Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term + density_term); 
         
-        if (verbose) {
-          message("The field is %E", u[cell_getid(cdim, i,j,k)]);
-          message("The argument of the exponential is %E", -(1./2.)*MG->normalisation * u[cell_getid(cdim, i,j,k)]);
+        if (verbose && exp(u[cell_getid(cdim, i,j,k)])<0.9) {
+          message("The overdensity is %lf", mean_density * (rho[cell_getid(cdim, i,j,k)]-1.));
+          message("The density term is %E", density_term);
+          message("The fR/mean(fR) is %E and dR/R is %E", exp(u[cell_getid(cdim, i,j,k)]), (1. - exp(-(1./2.)*MG->normalisation * u[cell_getid(cdim, i,j,k)])));
           message("The field term is %E", field_term);
-          message("The density term is %E and we used the overdensity %d", density_term, MG->overdensity);
-          message("The Laplacian term is %E", Laplacian_exp/(delta*delta));
-          message("The other term is %E, namely %E multiplied by %E and %E", (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term + density_term), (field_term + density_term), (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)), MG->fR_correction);
-          message("The residual is %E", res);
-          sleep(5);
+          message("The LHS (Laplacian) is %E and the RHS is %E", Laplacian_exp/(delta*delta), (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term + density_term));
+          message("The residual is %E \n", res);
+          sleep(2);
         }
 
         residual += (res*res)/(N*N*N);
@@ -7616,8 +7715,8 @@ void get_residual_array_fR(const double *u, const double *rho, struct MG_variabl
 
         /* Do we use the equation with density or with overdensity? */
         double density_term;
-        if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)] * MG->a;
-        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.) * MG->a;
+        if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)]/MG->a;
+        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.)/MG->a;
 
         double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
         double field_term = MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*MG->normalisation*u[cell_getid(cdim, i,j,k)]));
@@ -7771,6 +7870,19 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
   message("In reality the mean is %E", sum/(N_max*N_max*N_max));
 
   free(field_converted);
+
+  /*if (N_max == 128) {
+    FILE *delta_exp;
+    delta_exp = fopen("/data1/vandervlugt/PythonFiles/MG_density/z05/rho_rhoeff.txt", "w");
+    for (int i=0; i<N_max; i++) {
+      for (int j=0; j<N_max; j++) {
+        for (int k=0; k<N_max; k++) {
+          fprintf(delta_exp, "%E %E \n", rho_copy2[cell_getid(cdim, i, j, k)] - mean_density, rho[cell_getid(cdim, i, j, k)]);
+        }
+      }
+    }
+    fclose(delta_exp);
+  }*/
 }
 
 /**
