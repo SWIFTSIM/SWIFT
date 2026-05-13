@@ -173,7 +173,6 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     ds[0] = p->geometry.centroid[0];
     ds[1] = p->geometry.centroid[1];
     ds[2] = p->geometry.centroid[2];
-    const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
 #endif
 
     const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
