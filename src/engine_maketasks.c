@@ -3589,7 +3589,6 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
     /* Self interaction? */
     if (t_type == task_type_self && t_subtype == task_subtype_stars_radiation_in) {
 
-      /* If we are above the hydro super, what happens ? What should we do?*/
       /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
@@ -3634,7 +3633,7 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data, int num_elemen
       /* Note: We are doing feedback, so we do it for local and foreign cell
        * stars */
 
-      /* Determine why this happens */      
+      /* TODO: Determine why this happens */
       /* scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t); */
       /* if (ci->stars.radiation_level != cj->stars.radiation_level) { */
       /* 	scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t); */
@@ -3912,9 +3911,6 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
   const int nodeID = e->nodeID;
   const int *cdim = s->cdim;
   struct cell *cells = s->cells_top;
-
-  /* TODO: Alos check the logic for gravity in
-     engine_make_self_gravity_tasks_mapper */
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
