@@ -25,261 +25,13 @@
 /* Local includes. */
 #include "active.h"
 #include "cell.h"
-#include "engine.h"
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "gravity_iact.h"
 #include "inline.h"
-#include "lock.h"
 #include "part.h"
 #include "space_getsid.h"
 #include "timers.h"
-
-#ifdef SWIFT_DEBUG_CHECKS
-enum runner_debug_tensor_kind {
-  runner_debug_tensor_kind_mesh = 0,
-  runner_debug_tensor_kind_pm_skip = 1,
-  runner_debug_tensor_kind_mm = 2,
-  runner_debug_tensor_kind_count = 3,
-};
-
-enum runner_debug_source_class {
-  runner_debug_source_zoom = 0,
-  runner_debug_source_bkg_void = 1,
-  runner_debug_source_bkg_neigh = 2,
-  runner_debug_source_other = 3,
-  runner_debug_source_count = 4,
-};
-
-struct runner_debug_tensor_summary {
-  const struct cell *recipient;
-  long long sums[runner_debug_tensor_kind_count][runner_debug_source_count];
-};
-
-struct runner_debug_tensor_exact_entry {
-  const struct cell *recipient;
-  const struct cell *source;
-  int kind;
-  long long delta;
-};
-
-static struct runner_debug_tensor_summary *runner_debug_tensor_summaries = NULL;
-static size_t runner_debug_tensor_summaries_cap = 0;
-static struct runner_debug_tensor_exact_entry *runner_debug_tensor_exact = NULL;
-static size_t runner_debug_tensor_exact_cap = 0;
-static int runner_debug_tensor_exact_overflow = 0;
-static integertime_t runner_debug_tensor_summaries_ti = -1;
-static swift_lock_type runner_debug_tensor_lock = lock_static_initializer;
-
-static INLINE enum runner_debug_source_class runner_debug_source_classify(
-    const struct cell *source) {
-  if (source->type == cell_type_zoom) return runner_debug_source_zoom;
-  if (source->type == cell_type_bkg && source->subtype == cell_subtype_void)
-    return runner_debug_source_bkg_void;
-  if (source->type == cell_type_bkg && source->subtype == cell_subtype_neighbour)
-    return runner_debug_source_bkg_neigh;
-  return runner_debug_source_other;
-}
-
-static INLINE const char *runner_debug_source_class_name(const int c) {
-  static const char *names[runner_debug_source_count] = {
-      "zoom", "bkg_void", "bkg_neigh", "other"};
-  return names[c];
-}
-
-static INLINE const char *runner_debug_tensor_kind_name(const int k) {
-  static const char *names[runner_debug_tensor_kind_count] = {
-      "mesh", "pm_skip", "mm"};
-  return names[k];
-}
-
-static INLINE int runner_debug_track_exact_source(const struct cell *recipient,
-                                                  const int source_class) {
-  return recipient->type == cell_type_bkg &&
-         recipient->subtype == cell_subtype_neighbour &&
-         (source_class == runner_debug_source_zoom ||
-          source_class == runner_debug_source_bkg_void);
-}
-
-static struct runner_debug_tensor_summary *runner_debug_get_tensor_summary(
-    const struct engine *e, const struct cell *recipient) {
-  if (runner_debug_tensor_summaries == NULL) {
-    size_t cap = 1;
-    while (cap < 2u * (size_t)e->s->tot_cells) cap <<= 1;
-    runner_debug_tensor_summaries = (struct runner_debug_tensor_summary *)swift_malloc(
-        "runner_debug_tensor_summaries",
-        cap * sizeof(struct runner_debug_tensor_summary));
-    if (runner_debug_tensor_summaries == NULL)
-      error("Failed to allocate tensor debug summaries.");
-    runner_debug_tensor_summaries_cap = cap;
-    bzero(runner_debug_tensor_summaries,
-          cap * sizeof(struct runner_debug_tensor_summary));
-
-    runner_debug_tensor_exact_cap = 1u << 20;
-    runner_debug_tensor_exact = (struct runner_debug_tensor_exact_entry *)
-        swift_malloc("runner_debug_tensor_exact",
-                     runner_debug_tensor_exact_cap *
-                         sizeof(struct runner_debug_tensor_exact_entry));
-    if (runner_debug_tensor_exact == NULL)
-      error("Failed to allocate tensor exact debug entries.");
-    bzero(runner_debug_tensor_exact,
-          runner_debug_tensor_exact_cap *
-              sizeof(struct runner_debug_tensor_exact_entry));
-  }
-
-  if (runner_debug_tensor_summaries_ti != e->ti_current) {
-    bzero(runner_debug_tensor_summaries,
-          runner_debug_tensor_summaries_cap *
-              sizeof(struct runner_debug_tensor_summary));
-    bzero(runner_debug_tensor_exact,
-          runner_debug_tensor_exact_cap *
-              sizeof(struct runner_debug_tensor_exact_entry));
-    runner_debug_tensor_exact_overflow = 0;
-    runner_debug_tensor_summaries_ti = e->ti_current;
-  }
-
-  const size_t mask = runner_debug_tensor_summaries_cap - 1;
-  size_t ind = ((((size_t)recipient) >> 4) ^ (((size_t)recipient) >> 13)) & mask;
-  while (runner_debug_tensor_summaries[ind].recipient != NULL &&
-         runner_debug_tensor_summaries[ind].recipient != recipient)
-    ind = (ind + 1) & mask;
-  if (runner_debug_tensor_summaries[ind].recipient == NULL)
-    runner_debug_tensor_summaries[ind].recipient = recipient;
-  return &runner_debug_tensor_summaries[ind];
-}
-
-void runner_debug_record_tensor_source(const struct engine *e,
-                                       const struct cell *recipient,
-                                       const struct cell *source,
-                                       const int kind,
-                                       const long long delta) {
-  if (lock_lock(&runner_debug_tensor_lock) != 0)
-    error("Failed to lock tensor debug state.");
-
-  struct runner_debug_tensor_summary *s =
-      runner_debug_get_tensor_summary(e, recipient);
-  const int c = runner_debug_source_classify(source);
-  s->sums[kind][c] += delta;
-
-  if (!runner_debug_track_exact_source(recipient, c)) {
-    if (lock_unlock(&runner_debug_tensor_lock) != 0)
-      error("Failed to unlock tensor debug state.");
-    return;
-  }
-
-  const size_t mask = runner_debug_tensor_exact_cap - 1;
-  size_t ind = ((((size_t)recipient) >> 4) ^ (((size_t)source) >> 4) ^
-                ((size_t)kind << 12)) &
-               mask;
-  for (size_t n = 0; n < runner_debug_tensor_exact_cap; n++) {
-    struct runner_debug_tensor_exact_entry *entry = &runner_debug_tensor_exact[ind];
-    if (entry->recipient == NULL) {
-      entry->recipient = recipient;
-      entry->source = source;
-      entry->kind = kind;
-      entry->delta = delta;
-      if (lock_unlock(&runner_debug_tensor_lock) != 0)
-        error("Failed to unlock tensor debug state.");
-      return;
-    }
-    if (entry->recipient == recipient && entry->source == source &&
-        entry->kind == kind) {
-      entry->delta += delta;
-      if (lock_unlock(&runner_debug_tensor_lock) != 0)
-        error("Failed to unlock tensor debug state.");
-      return;
-    }
-    ind = (ind + 1) & mask;
-  }
-
-  runner_debug_tensor_exact_overflow = 1;
-  if (lock_unlock(&runner_debug_tensor_lock) != 0)
-    error("Failed to unlock tensor debug state.");
-}
-
-void runner_debug_dump_tensor_sources(const struct cell *c) {
-  if (lock_lock(&runner_debug_tensor_lock) != 0)
-    error("Failed to lock tensor debug state.");
-
-  const size_t mask = runner_debug_tensor_summaries_cap - 1;
-  size_t ind = ((((size_t)c) >> 4) ^ (((size_t)c) >> 13)) & mask;
-  while (runner_debug_tensor_summaries[ind].recipient != NULL &&
-         runner_debug_tensor_summaries[ind].recipient != c)
-    ind = (ind + 1) & mask;
-  if (runner_debug_tensor_summaries[ind].recipient != c) {
-    message("tensor-source-summary: no entry for cellID=%llu", c->cellID);
-    if (lock_unlock(&runner_debug_tensor_lock) != 0)
-      error("Failed to unlock tensor debug state.");
-    return;
-  }
-  for (int k = 0; k < runner_debug_tensor_kind_count; k++) {
-    for (int cl = 0; cl < runner_debug_source_count; cl++) {
-      const long long v = runner_debug_tensor_summaries[ind].sums[k][cl];
-      if (v == 0) continue;
-      message("tensor-source-summary: cellID=%llu kind=%s class=%s sum=%lld",
-              c->cellID, runner_debug_tensor_kind_name(k),
-              runner_debug_source_class_name(cl), v);
-    }
-  }
-
-  for (size_t i = 0; i < runner_debug_tensor_exact_cap; i++) {
-    const struct runner_debug_tensor_exact_entry *entry =
-        &runner_debug_tensor_exact[i];
-    if (entry->recipient != c) continue;
-    message(
-        "tensor-source-exact: cellID=%llu kind=%s source_cellID=%llu type=%s subtype=%s depth=%d delta=%lld",
-        c->cellID, runner_debug_tensor_kind_name(entry->kind),
-        entry->source->cellID, cellID_names[entry->source->type],
-        subcellID_names[entry->source->subtype], entry->source->depth,
-        entry->delta);
-  }
-
-  if (runner_debug_tensor_exact_overflow)
-    message("tensor-source-exact: table overflowed, some entries omitted.");
-
-  if (lock_unlock(&runner_debug_tensor_lock) != 0)
-    error("Failed to unlock tensor debug state.");
-}
-
-void runner_debug_dump_tensor_source_overlaps(const struct cell *parent,
-                                              const struct cell *child) {
-  if (lock_lock(&runner_debug_tensor_lock) != 0)
-    error("Failed to lock tensor debug state.");
-
-  for (size_t i = 0; i < runner_debug_tensor_exact_cap; i++) {
-    const struct runner_debug_tensor_exact_entry *pi =
-        &runner_debug_tensor_exact[i];
-    if (pi->recipient != parent) continue;
-    if (runner_debug_source_classify(pi->source) != runner_debug_source_bkg_void)
-      continue;
-
-    for (size_t j = 0; j < runner_debug_tensor_exact_cap; j++) {
-      const struct runner_debug_tensor_exact_entry *cj =
-          &runner_debug_tensor_exact[j];
-      if (cj->recipient != child) continue;
-      if (runner_debug_source_classify(cj->source) != runner_debug_source_zoom)
-        continue;
-
-      if (cell_contains_progeny(pi->source, cj->source) ||
-          cell_contains_progeny(cj->source, pi->source)) {
-        message(
-            "tensor-source-overlap: parent_cellID=%llu parent_kind=%s "
-            "parent_source=%llu(%s/%s depth=%d delta=%lld) child_cellID=%llu "
-            "child_kind=%s child_source=%llu(%s/%s depth=%d delta=%lld)",
-            parent->cellID, runner_debug_tensor_kind_name(pi->kind),
-            pi->source->cellID, cellID_names[pi->source->type],
-            subcellID_names[pi->source->subtype], pi->source->depth, pi->delta,
-            child->cellID, runner_debug_tensor_kind_name(cj->kind),
-            cj->source->cellID, cellID_names[cj->source->type],
-            subcellID_names[cj->source->subtype], cj->source->depth, cj->delta);
-      }
-    }
-  }
-
-  if (lock_unlock(&runner_debug_tensor_lock) != 0)
-    error("Failed to unlock tensor debug state.");
-}
-#endif
 
 /**
  * @brief Clear the unskip flags of this cell.
@@ -358,82 +110,12 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
           struct grav_tensor shifted_tensor;
 
-#ifdef SWIFT_DEBUG_CHECKS
-          const long long child_before = cp->grav.multipole->pot.num_interacted;
-#endif
-
           /* Shift the field tensor */
           gravity_L2L(&shifted_tensor, &c->grav.multipole->pot,
                       cp->grav.multipole->CoM, c->grav.multipole->CoM);
 
           /* Add it to this level's tensor */
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
-
-#ifdef SWIFT_DEBUG_CHECKS
-          const long long child_after = cp->grav.multipole->pot.num_interacted;
-          const long long total_expected =
-              e->total_nr_gparts - e->count_inhibited_gparts;
-          const long long parent_num = c->grav.multipole->pot.num_interacted;
-          const long long remaining = total_expected - parent_num;
-
-          if (child_before > remaining) {
-            runner_debug_dump_tensor_sources(c);
-            runner_debug_dump_tensor_sources(cp);
-            runner_debug_dump_tensor_source_overlaps(c, cp);
-            message(
-                "grav_down overlap before inheritance: parent(cellID=%llu type=%s subtype=%s "
-                "depth=%d super=%llu super_depth=%d) child(cellID=%llu type=%s "
-                "subtype=%s depth=%d super=%llu super_depth=%d) before=%lld "
-                "remaining=%lld overlap=%lld shifted=%lld after=%lld expected=%lld parent_num=%lld "
-                "parent_tree=%lld parent_pm=%lld child_tree=%lld child_pm=%lld",
-                c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
-                c->depth, c->grav.super != NULL ? c->grav.super->cellID : 0ULL,
-                c->grav.super != NULL ? c->grav.super->depth : -1, cp->cellID,
-                cellID_names[cp->type], subcellID_names[cp->subtype], cp->depth,
-                cp->grav.super != NULL ? cp->grav.super->cellID : 0ULL,
-                cp->grav.super != NULL ? cp->grav.super->depth : -1,
-                child_before, remaining, child_before - remaining,
-                shifted_tensor.num_interacted, child_after, total_expected,
-                parent_num,
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-                c->grav.multipole->pot.num_interacted_tree,
-                c->grav.multipole->pot.num_interacted_pm,
-                cp->grav.multipole->pot.num_interacted_tree,
-                cp->grav.multipole->pot.num_interacted_pm
-#else
-                0LL, 0LL, 0LL, 0LL
-#endif
-            );
-            error("grav_down child already overlaps parent inherited set.");
-          }
-
-          if (child_after > total_expected) {
-            message(
-                "grav_down overflow: parent(cellID=%llu type=%s subtype=%s "
-                "depth=%d super=%llu super_depth=%d) child(cellID=%llu type=%s "
-                "subtype=%s depth=%d super=%llu super_depth=%d) before=%lld "
-                "shifted=%lld after=%lld expected=%lld parent_num=%lld "
-                "parent_tree=%lld parent_pm=%lld child_tree=%lld child_pm=%lld",
-                c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
-                c->depth, c->grav.super != NULL ? c->grav.super->cellID : 0ULL,
-                c->grav.super != NULL ? c->grav.super->depth : -1, cp->cellID,
-                cellID_names[cp->type], subcellID_names[cp->subtype], cp->depth,
-                cp->grav.super != NULL ? cp->grav.super->cellID : 0ULL,
-                cp->grav.super != NULL ? cp->grav.super->depth : -1,
-                child_before, shifted_tensor.num_interacted, child_after,
-                total_expected, parent_num,
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-                c->grav.multipole->pot.num_interacted_tree,
-                c->grav.multipole->pot.num_interacted_pm,
-                cp->grav.multipole->pot.num_interacted_tree,
-                cp->grav.multipole->pot.num_interacted_pm
-#else
-                0LL, 0LL, 0LL, 0LL
-#endif
-            );
-            error("grav_down produced an over-counted child tensor.");
-          }
-#endif
         }
 
         /* Recurse, but only if we haven't reached the super level. This can
@@ -2642,14 +2324,16 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     if (cell_is_active_gravity(ci, e)) {
       accumulate_add_ll(&multi_i->pot.num_interacted,
                         multi_j->m_pole.num_gpart);
-      runner_debug_record_tensor_source(e, ci, cj, /*kind=*/1,
-                                        multi_j->m_pole.num_gpart);
+      runner_debug_add_tensor_origin_count(&multi_i->pot, cj,
+                                           multi_j->m_pole.num_gpart,
+                                           runner_debug_tensor_origin_pm_skip);
     }
     if (cell_is_active_gravity(cj, e)) {
       accumulate_add_ll(&multi_j->pot.num_interacted,
                         multi_i->m_pole.num_gpart);
-      runner_debug_record_tensor_source(e, cj, ci, /*kind=*/1,
-                                        multi_i->m_pole.num_gpart);
+      runner_debug_add_tensor_origin_count(&multi_j->pot, ci,
+                                           multi_i->m_pole.num_gpart,
+                                           runner_debug_tensor_origin_pm_skip);
     }
 #endif
 

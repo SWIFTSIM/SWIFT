@@ -96,7 +96,9 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
     message(
         "grav-path[%d/%d]: cellID=%llu type=%s subtype=%s depth=%d "
         "super_cellID=%llu super_depth=%d interacted=%d num_interacted=%lld "
-        "num_interacted_tree=%lld num_interacted_pm=%lld num_gpart=%lld",
+        "num_interacted_tree=%lld num_interacted_pm=%lld num_gpart=%lld "
+        "mesh[z=%lld v=%lld n=%lld o=%lld] pm_skip[z=%lld v=%lld n=%lld o=%lld] "
+        "mm[z=%lld v=%lld n=%lld o=%lld]",
         depth - 1 - i, depth, cp->cellID, cellID_names[cp->type],
         subcellID_names[cp->subtype], cp->depth,
         super != NULL ? super->cellID : 0ULL, super != NULL ? super->depth : -1,
@@ -106,7 +108,15 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
 #else
         0LL, 0LL,
 #endif
-        cp->grav.multipole->m_pole.num_gpart);
+        cp->grav.multipole->m_pole.num_gpart,
+        pot->num_interacted_mesh_zoom, pot->num_interacted_mesh_bkg_void,
+        pot->num_interacted_mesh_bkg_neigh, pot->num_interacted_mesh_other,
+        pot->num_interacted_pm_skip_zoom,
+        pot->num_interacted_pm_skip_bkg_void,
+        pot->num_interacted_pm_skip_bkg_neigh,
+        pot->num_interacted_pm_skip_other, pot->num_interacted_mm_zoom,
+        pot->num_interacted_mm_bkg_void, pot->num_interacted_mm_bkg_neigh,
+        pot->num_interacted_mm_other);
   }
 }
 #endif

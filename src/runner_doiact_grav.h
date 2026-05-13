@@ -25,6 +25,7 @@
 
 /* Local includes */
 #include "active.h"
+#include "cell.h"
 #include "inline.h"
 #include "multipole.h"
 #include "timers.h"
@@ -32,17 +33,59 @@
 /* Avoid cyclic inclusions. */
 struct runner;
 struct cell;
-struct engine;
 
 #ifdef SWIFT_DEBUG_CHECKS
-void runner_debug_record_tensor_source(const struct engine *e,
-                                       const struct cell *recipient,
-                                       const struct cell *source,
-                                       const int kind,
-                                       const long long delta);
-void runner_debug_dump_tensor_sources(const struct cell *c);
-void runner_debug_dump_tensor_source_overlaps(const struct cell *parent,
-                                              const struct cell *child);
+enum runner_debug_tensor_origin {
+  runner_debug_tensor_origin_mesh = 0,
+  runner_debug_tensor_origin_pm_skip = 1,
+  runner_debug_tensor_origin_mm = 2,
+};
+
+__attribute__((always_inline)) INLINE static void
+runner_debug_add_tensor_origin_count(struct grav_tensor *pot,
+                                     const struct cell *source,
+                                     const long long delta,
+                                     const enum runner_debug_tensor_origin origin) {
+
+  long long *slot = NULL;
+
+  if (origin == runner_debug_tensor_origin_mesh) {
+    if (source->type == cell_type_zoom)
+      slot = &pot->num_interacted_mesh_zoom;
+    else if (source->type == cell_type_bkg &&
+             source->subtype == cell_subtype_void)
+      slot = &pot->num_interacted_mesh_bkg_void;
+    else if (source->type == cell_type_bkg &&
+             source->subtype == cell_subtype_neighbour)
+      slot = &pot->num_interacted_mesh_bkg_neigh;
+    else
+      slot = &pot->num_interacted_mesh_other;
+  } else if (origin == runner_debug_tensor_origin_pm_skip) {
+    if (source->type == cell_type_zoom)
+      slot = &pot->num_interacted_pm_skip_zoom;
+    else if (source->type == cell_type_bkg &&
+             source->subtype == cell_subtype_void)
+      slot = &pot->num_interacted_pm_skip_bkg_void;
+    else if (source->type == cell_type_bkg &&
+             source->subtype == cell_subtype_neighbour)
+      slot = &pot->num_interacted_pm_skip_bkg_neigh;
+    else
+      slot = &pot->num_interacted_pm_skip_other;
+  } else {
+    if (source->type == cell_type_zoom)
+      slot = &pot->num_interacted_mm_zoom;
+    else if (source->type == cell_type_bkg &&
+             source->subtype == cell_subtype_void)
+      slot = &pot->num_interacted_mm_bkg_void;
+    else if (source->type == cell_type_bkg &&
+             source->subtype == cell_subtype_neighbour)
+      slot = &pot->num_interacted_mm_bkg_neigh;
+    else
+      slot = &pot->num_interacted_mm_other;
+  }
+
+  *slot += delta;
+}
 #endif
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer);
@@ -131,8 +174,9 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
                      cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  runner_debug_record_tensor_source(e, ci, cj, /*kind=*/2,
-                                    cj->grav.multipole->m_pole.num_gpart);
+  runner_debug_add_tensor_origin_count(&ci->grav.multipole->pot, cj,
+                                       multi_j->num_gpart,
+                                       runner_debug_tensor_origin_mm);
 #endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS

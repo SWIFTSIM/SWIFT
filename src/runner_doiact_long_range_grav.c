@@ -20,14 +20,10 @@
 /* Config parameters. */
 #include <config.h>
 
-/* Standard headers. */
-#include <string.h>
-
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
 #include "engine.h"
-#include "lock.h"
 #include "gravity_properties.h"
 #include "runner.h"
 #include "runner_doiact_grav.h"
@@ -413,97 +409,6 @@ static void runner_accumulate_interaction(
   multi_i->pot.interacted = 1;
 }
 
-#ifdef SWIFT_DEBUG_CHECKS
-struct runner_debug_mesh_pair_entry {
-  unsigned long long recipient_id;
-  unsigned long long source_id;
-};
-
-static struct runner_debug_mesh_pair_entry *runner_debug_mesh_pairs = NULL;
-static size_t runner_debug_mesh_pairs_cap = 0;
-static integertime_t runner_debug_mesh_pairs_ti = -1;
-static swift_lock_type runner_debug_mesh_pairs_lock = lock_static_initializer;
-
-static int runner_debug_mesh_pair_is_new(const struct engine *e,
-                                         const struct cell *recipient,
-                                         const struct cell *source) {
-
-  const unsigned long long recipient_id =
-      (unsigned long long)recipient->cellID;
-  const unsigned long long source_id = (unsigned long long)source->cellID;
-
-  if (runner_debug_mesh_pairs == NULL) {
-    size_t cap = 1u << 25;
-    runner_debug_mesh_pairs = (struct runner_debug_mesh_pair_entry *)swift_malloc(
-        "runner_debug_mesh_pairs",
-        cap * sizeof(struct runner_debug_mesh_pair_entry));
-    if (runner_debug_mesh_pairs == NULL)
-      error("Failed to allocate mesh debug dedupe table.");
-    runner_debug_mesh_pairs_cap = cap;
-    memset(runner_debug_mesh_pairs, 0,
-           cap * sizeof(struct runner_debug_mesh_pair_entry));
-  }
-
-  if (lock_lock(&runner_debug_mesh_pairs_lock) != 0)
-    error("Failed to lock mesh debug dedupe table.");
-
-  if (runner_debug_mesh_pairs_ti != e->ti_current) {
-    memset(runner_debug_mesh_pairs, 0,
-           runner_debug_mesh_pairs_cap *
-               sizeof(struct runner_debug_mesh_pair_entry));
-    runner_debug_mesh_pairs_ti = e->ti_current;
-  }
-
-  const size_t mask = runner_debug_mesh_pairs_cap - 1;
-  size_t ind = ((recipient_id * 11400714819323198485ull) ^
-                (source_id * 14029467366897019727ull)) &
-               mask;
-
-  for (size_t n = 0; n < runner_debug_mesh_pairs_cap; n++) {
-    struct runner_debug_mesh_pair_entry *entry = &runner_debug_mesh_pairs[ind];
-
-    if (entry->recipient_id == 0ULL && entry->source_id == 0ULL) {
-      entry->recipient_id = recipient_id;
-      entry->source_id = source_id;
-      if (lock_unlock(&runner_debug_mesh_pairs_lock) != 0)
-        error("Failed to unlock mesh debug dedupe table.");
-      return 1;
-    }
-
-    if (entry->recipient_id == recipient_id && entry->source_id == source_id) {
-      if (lock_unlock(&runner_debug_mesh_pairs_lock) != 0)
-        error("Failed to unlock mesh debug dedupe table.");
-      return 0;
-    }
-
-    ind = (ind + 1) & mask;
-  }
-
-  error("Mesh debug dedupe table overflowed.");
-  return 0;
-}
-
-static void runner_debug_check_mesh_recipient_source_disjoint(
-    const struct cell *recipient, const struct cell *source) {
-
-  if (recipient == source) {
-    error("Recipient and source are identical in mesh-count attachment.");
-  }
-
-  if (cell_contains_progeny(recipient, source) ||
-      cell_contains_progeny(source, recipient)) {
-    error(
-        "Recipient/source overlap in mesh-count attachment: "
-        "recipient(cellID=%llu type=%s subtype=%s depth=%d) "
-        "source(cellID=%llu type=%s subtype=%s depth=%d)",
-        recipient->cellID, cellID_names[recipient->type],
-        subcellID_names[recipient->subtype], recipient->depth, source->cellID,
-        cellID_names[source->type], subcellID_names[source->subtype],
-        source->depth);
-  }
-}
-#endif
-
 /**
  * @brief Count a mesh interaction between two related cells.
  *
@@ -525,8 +430,7 @@ static void runner_debug_check_mesh_recipient_source_disjoint(
  * @param ci The first #cell in the pair.
  * @param cj The second #cell in the pair.
  */
-static void runner_count_mesh_interaction(const struct engine *e,
-                                          struct cell *super, struct cell *ci,
+static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
                                           struct cell *cj) {
 
   /* Get the correct top level cells for self-interaction check */
@@ -538,109 +442,55 @@ static void runner_count_mesh_interaction(const struct engine *e,
   /* Do we share the same top level cell? i.e. are we self-interacting? */
   int is_self = top_i == top_j;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  int count_i = 0;
-  int count_j = 0;
-  const int expect_i = (super == ci || cell_contains_progeny(ci, super) ||
-                        cell_contains_progeny(super, ci));
-  const int expect_j =
-      is_self &&
-      (super == cj || cell_contains_progeny(cj, super) ||
-       cell_contains_progeny(super, cj));
-#endif
-
   /* Decide which cell we are updating. */
   if (super == ci) {
-#ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_check_mesh_recipient_source_disjoint(super, cj);
-    if (!runner_debug_mesh_pair_is_new(e, super, cj)) return;
-#endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_record_tensor_source(e, super, cj, /*kind=*/0,
-                                      cj->grav.multipole->m_pole.num_gpart);
-    count_i++;
+    runner_debug_add_tensor_origin_count(&super->grav.multipole->pot, cj,
+                                         cj->grav.multipole->m_pole.num_gpart,
+                                         runner_debug_tensor_origin_mesh);
 #endif
   } else if (cell_contains_progeny(ci, super)) {
-#ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_check_mesh_recipient_source_disjoint(super, cj);
-    if (!runner_debug_mesh_pair_is_new(e, super, cj)) return;
-#endif
     runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_record_tensor_source(e, super, cj, /*kind=*/0,
-                                      cj->grav.multipole->m_pole.num_gpart);
-    count_i++;
+    runner_debug_add_tensor_origin_count(&super->grav.multipole->pot, cj,
+                                         cj->grav.multipole->m_pole.num_gpart,
+                                         runner_debug_tensor_origin_mesh);
 #endif
   } else if (cell_contains_progeny(super, ci)) {
-#ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_check_mesh_recipient_source_disjoint(ci, cj);
-    if (!runner_debug_mesh_pair_is_new(e, ci, cj)) return;
-#endif
     runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_record_tensor_source(e, ci, cj, /*kind=*/0,
-                                      cj->grav.multipole->m_pole.num_gpart);
-    count_i++;
+    runner_debug_add_tensor_origin_count(&ci->grav.multipole->pot, cj,
+                                         cj->grav.multipole->m_pole.num_gpart,
+                                         runner_debug_tensor_origin_mesh);
 #endif
   }
 
   /* Handle the symmetric case for self interactions */
   if (is_self) {
     if (super == cj) {
-#ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_check_mesh_recipient_source_disjoint(super, ci);
-      if (!runner_debug_mesh_pair_is_new(e, super, ci)) return;
-#endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_record_tensor_source(e, super, ci, /*kind=*/0,
-                                        ci->grav.multipole->m_pole.num_gpart);
-      count_j++;
+      runner_debug_add_tensor_origin_count(&super->grav.multipole->pot, ci,
+                                           ci->grav.multipole->m_pole.num_gpart,
+                                           runner_debug_tensor_origin_mesh);
 #endif
     } else if (cell_contains_progeny(cj, super)) {
-#ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_check_mesh_recipient_source_disjoint(super, ci);
-      if (!runner_debug_mesh_pair_is_new(e, super, ci)) return;
-#endif
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_record_tensor_source(e, super, ci, /*kind=*/0,
-                                        ci->grav.multipole->m_pole.num_gpart);
-      count_j++;
+      runner_debug_add_tensor_origin_count(&super->grav.multipole->pot, ci,
+                                           ci->grav.multipole->m_pole.num_gpart,
+                                           runner_debug_tensor_origin_mesh);
 #endif
     } else if (cell_contains_progeny(super, cj)) {
-#ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_check_mesh_recipient_source_disjoint(cj, ci);
-      if (!runner_debug_mesh_pair_is_new(e, cj, ci)) return;
-#endif
       runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
 #ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_record_tensor_source(e, cj, ci, /*kind=*/0,
-                                        ci->grav.multipole->m_pole.num_gpart);
-      count_j++;
+      runner_debug_add_tensor_origin_count(&cj->grav.multipole->pot, ci,
+                                           ci->grav.multipole->m_pole.num_gpart,
+                                           runner_debug_tensor_origin_mesh);
 #endif
     }
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if ((expect_i && count_i != 1) || (!expect_i && count_i != 0) ||
-      (expect_j && count_j != 1) || (!expect_j && count_j != 0) ||
-      (!is_self && count_j != 0)) {
-    error(
-        "Unexpected mesh-count attachment: is_self=%d count_i=%d count_j=%d "
-        "expect_i=%d expect_j=%d "
-        "super(type=%s subtype=%s depth=%d top=%lld) "
-        "ci(type=%s subtype=%s depth=%d top=%lld) "
-        "cj(type=%s subtype=%s depth=%d top=%lld)",
-        is_self, count_i, count_j, expect_i, expect_j,
-        cellID_names[super->type],
-        subcellID_names[super->subtype], super->depth, super->top->cellID,
-        cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
-        top_i->cellID, cellID_names[cj->type], subcellID_names[cj->subtype],
-        cj->depth, top_j->cellID);
-  }
-#endif
 }
 
 /**
@@ -692,7 +542,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(e, c, cpi, cpj);
+          runner_count_mesh_interaction(c, cpi, cpj);
           continue;
         }
 
@@ -760,7 +610,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(e, c, cpj, cpk);
+          runner_count_mesh_interaction(c, cpj, cpk);
           continue;
         }
 
@@ -828,7 +678,7 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(e, ci, top, cj);
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
@@ -911,7 +761,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(e, c, cpi, cpj);
+        runner_count_mesh_interaction(c, cpi, cpj);
         continue;
       }
 
@@ -1013,7 +863,7 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpj, cpk)) {
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(e, c, cpj, cpk);
+        runner_count_mesh_interaction(c, cpj, cpk);
         continue;
       }
 
@@ -1079,7 +929,7 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(e, ci, top, cj);
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
