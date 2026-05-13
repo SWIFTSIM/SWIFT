@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 import argparse
 import h5py
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("file", type=str, help="Snapshot file")
 parser.add_argument("--notex", action="store_true", help="Disable LaTeX")
@@ -57,7 +56,7 @@ def get_unit_conversions(f):
 
 def compute_radius(pos):
     pos -= np.median(pos, axis=0)
-    return np.sqrt((pos ** 2).sum(axis=1))
+    return np.sqrt((pos**2).sum(axis=1))
 
 
 def binned_density(r, mass, bins):
@@ -83,12 +82,12 @@ def nfw_density(r, M200, c):
     G = 4.30091e-6  # kpc (km/s)^2 / Msun
     H0 = 70.0 / 1e3  # km/s/kpc
 
-    rho_crit = 3 * H0 ** 2 / (8 * np.pi * G)
+    rho_crit = 3 * H0**2 / (8 * np.pi * G)
     R200 = (3 * M200 / (4 * np.pi * 200 * rho_crit)) ** (1 / 3)
     rs = R200 / c
 
     f = np.log(1 + c) - c / (1 + c)
-    rho0 = M200 / (4 * np.pi * rs ** 3 * f)
+    rho0 = M200 / (4 * np.pi * rs**3 * f)
 
     x = r / rs
     return rho0 / (x * (1 + x) ** 2)
@@ -120,8 +119,8 @@ def main():
     centers, rho_sph_binned = sph_density_profile(r, rho_sph, rsp)
 
     # Plot
-    ax.plot(centers, rho_sph_binned, lw=lw, label=fr"$t={time:.3f}$ Gyr (SPH)")
-    ax.plot(rs, dens, lw=lw, label=fr"$t={time:.3f}$ Gyr")
+    ax.plot(centers, rho_sph_binned, lw=lw, label=rf"$t={time:.3f}$ Gyr (SPH)")
+    ax.plot(rs, dens, lw=lw, label=rf"$t={time:.3f}$ Gyr")
     ax.plot(rsp, nfw_density(rsp, 5e9, 12), color="black", ls="--", label="NFW")
     ax.set_xlabel("r [kpc]")
     ax.set_ylabel(r"$\rho(r)$ [$M_{\odot}$ kpc$^{-3}$]")

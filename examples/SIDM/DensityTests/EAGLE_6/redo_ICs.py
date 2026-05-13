@@ -27,9 +27,10 @@ def gas_to_SIDM(input_filename, output_filename, old_PT=0, new_PT=7):
     old_name = f"PartType{old_PT}"
     new_name = f"PartType{new_PT}"
 
-    with h5py.File(input_filename, "r") as f_in, h5py.File(
-        output_filename, "w"
-    ) as f_out:
+    with (
+        h5py.File(input_filename, "r") as f_in,
+        h5py.File(output_filename, "w") as f_out,
+    ):
 
         # Copy all groups except the gas group
         for key in f_in.keys():
