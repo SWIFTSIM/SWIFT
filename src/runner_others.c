@@ -54,6 +54,7 @@
 #include "potential.h"
 #include "pressure_floor.h"
 #include "rt.h"
+#include "runner_doiact_grav.h"
 #include "runner_doiact_sinks.h"
 #include "space.h"
 #include "star_formation.h"
