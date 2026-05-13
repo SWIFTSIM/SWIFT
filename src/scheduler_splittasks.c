@@ -43,6 +43,11 @@
  * @param s The #scheduler we are working in.
  */
 static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->subtype != task_subtype_density)
+    error("Found non hydro density task in scheduler_splittask_hydro!");
+#endif
+
   /* Are we considering both stars and hydro when splitting? */
   /* Note this is not very clean as the scheduler should not really
      access the engine... */
