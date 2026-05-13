@@ -21,6 +21,7 @@
 #include "feedback_common.h"
 
 #include "cosmology.h"
+#include "cooling.h"
 #include "engine.h"
 #include "hydro_properties.h"
 #include "part.h"
@@ -351,7 +352,6 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
 
   const struct phys_const *phys_const = e->physical_constants;
   const struct hydro_props *hydro_props = e->hydro_properties;
-  /* const struct stars_props *stars_props = e->stars_properties;   */
   const struct feedback_props *feedback_props = e->feedback_props;
   const struct unit_system *us = e->internal_units;
   const struct cosmology *cosmo = e->cosmology;
@@ -359,20 +359,20 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
 
   /* Is T > 10^4 K ? */
   const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
+					  cooling, p, xp);
   const float ten_to_four_kelvin =
       1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   /* The 1.1 factor is here for safety margin and numerical stability */
-  const char is_too_hot = T <= 1.01*ten_to_four_kelvin;
+  const char is_cold = (T <= 1.01*ten_to_four_kelvin);
 
   /* Density threshold criterion */
   const float rho = hydro_get_physical_density(p, cosmo);
   const float rho_threshold = feedback_props->minimal_HII_ionization_density;
-  const char is_dense_enough = rho > rho_threshold;
+  const char is_dense = rho >= rho_threshold;
 
-  /* Is the particle ionized ? */
-  return (is_too_hot || is_dense_enough || radiation_is_part_tagged_as_ionized(p, xp));
+  /* Can the particle be ionized? */
+  return (is_cold || is_dense || !radiation_is_part_tagged_as_ionized(p, xp));
 }
 
 
