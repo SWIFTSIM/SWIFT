@@ -353,8 +353,8 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
             if (ci->progeny[k] != NULL &&
                 (ci->progeny[k]->hydro.count ||
                  (with_stars && ci->progeny[k]->stars.count))) {
-              scheduler_splittask_hydro(
-                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+              scheduler_splittask_radiation_subgrid(
+                  scheduler_addtask(s, task_type_self, t->subtype, 0, 1,
                                     ci->progeny[k], NULL),
                   s);
             }
@@ -371,9 +371,9 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
                 if (ci->progeny[k] != NULL &&
                     (ci->progeny[k]->hydro.count ||
                      (with_feedback && ci->progeny[k]->stars.count))) {
-                  scheduler_splittask_hydro(
+                  scheduler_splittask_radiation_subgrid(
                       scheduler_addtask(s, task_type_pair, t->subtype,
-                                        sub_sid_flag[j][k], 0, ci->progeny[j],
+                                        sub_sid_flag[j][k], 1, ci->progeny[j],
                                         ci->progeny[k]),
                       s);
                 }
@@ -462,9 +462,9 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
 
           t->flags = csp->pairs[0].sid;
           for (int k = 1; k < csp->count; k++) {
-            scheduler_splittask_hydro(
+            scheduler_splittask_radiation_subgrid(
                 scheduler_addtask(s, task_type_pair, t->subtype,
-                                  csp->pairs[k].sid, 0,
+                                  csp->pairs[k].sid, 1,
                                   ci->progeny[csp->pairs[k].pid],
                                   cj->progeny[csp->pairs[k].pjd]),
                 s);
@@ -485,9 +485,9 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
             for (int k = 0; k < 8; k++)
               if (cj->progeny[k] != NULL && cj->progeny[k]->hydro.count) {
                 struct task *tl =
-                    scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
+                    scheduler_addtask(s, task_type_pair, t->subtype, 0, 1,
                                       ci->progeny[j], cj->progeny[k]);
-                scheduler_splittask_hydro(tl, s);
+                scheduler_splittask_radiation_subgrid(tl, s);
                 tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
                                                         &t->cj, shift);
               }
