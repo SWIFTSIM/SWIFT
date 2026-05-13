@@ -391,18 +391,6 @@ enum runner_debug_mesh_count_origin {
   runner_debug_mesh_count_origin_zoom_self = 3,
 };
 
-struct runner_debug_mesh_attachment_entry {
-  unsigned long long recipient_cell_key;
-  unsigned long long source_cell_key;
-  unsigned long long first_super_cell_id;
-  unsigned long long first_ci_cell_id;
-  unsigned long long first_cj_cell_id;
-  int first_origin;
-  int seen_count;
-  int duplicate_reported;
-  const char *first_attachment_case;
-};
-
 static int runner_debug_mesh_zoom_top_repeat_report_count = 0;
 static int runner_debug_mesh_zoom_top_repeat_limit_reported = 0;
 
@@ -418,31 +406,6 @@ struct runner_debug_mesh_zoom_top_entry {
 
 static struct runner_debug_mesh_zoom_top_entry
     runner_debug_mesh_zoom_top_table[runner_debug_mesh_zoom_top_table_size];
-
-#define runner_debug_mesh_attachment_table_size (1 << 19)
-#define runner_debug_mesh_attachment_probe_limit 32
-
-static struct runner_debug_mesh_attachment_entry
-    runner_debug_mesh_attachment_table[runner_debug_mesh_attachment_table_size];
-static int runner_debug_mesh_attachment_overflow_reported = 0;
-
-__attribute__((always_inline)) INLINE static const char *
-runner_debug_mesh_count_origin_name(
-    const enum runner_debug_mesh_count_origin origin) {
-
-  switch (origin) {
-    case runner_debug_mesh_count_origin_uniform_pair:
-      return "uniform_pair";
-    case runner_debug_mesh_count_origin_uniform_self:
-      return "uniform_self";
-    case runner_debug_mesh_count_origin_zoom_pair:
-      return "zoom_pair";
-    case runner_debug_mesh_count_origin_zoom_self:
-      return "zoom_self";
-    default:
-      return "unknown";
-  }
-}
 
 static void runner_debug_record_zoom_top_invocation(const struct cell *top,
                                                     const struct cell *ci) {
