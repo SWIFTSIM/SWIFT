@@ -214,7 +214,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
   const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
 
   const double hubble_flow = cosmo->a * cosmo->H * r;
-  const double vij = sqrt(v2) * cosmo->a_inv + hubble_flow;
+  const double vij_pec = sqrt(v2) * cosmo->a_inv;
+  const double vij = vij_pec + hubble_flow;
 
   /* Get time-step for sipi and sipj */
   double dt_sipi, dt_sipj;
@@ -256,7 +257,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
 
   if (x < p) {
     sidm_debug_interaction(sipi, sipj);
-    kick_siparts(sipi, sipj, a, vij, ti_current);
+    kick_siparts(sipi, sipj, a, vij_pec, ti_current);
     sidm_debug_interaction(sipi, sipj);
   }
 }
@@ -294,7 +295,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
   const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
 
   const double hubble_flow = cosmo->a * cosmo->H * r;
-  const double vij = sqrt(v2) * cosmo->a_inv + hubble_flow;
+  const double vij_pec = sqrt(v2) * cosmo->a_inv;
+  const double vij = vij_pec + hubble_flow;
 
   /* Get time-step for sipi and sipj */
   double dt_sipi;
@@ -325,7 +327,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
 
   if (x < pij) {
     sidm_debug_interaction(sipi, sipj);
-    kick_siparts(sipi, sipj, a, vij, ti_current);
+    kick_siparts(sipi, sipj, a, vij_pec, ti_current);
     sidm_debug_interaction(sipi, sipj);
   }
 }
