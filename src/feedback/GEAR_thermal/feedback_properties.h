@@ -108,22 +108,26 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   message("Stellar winds efficiency                                   = %.2g",
           feedback_props->winds_efficiency);
 
-  const char do_photoionization = feedback_props->radiation_policy & radiation_policy_photoionization;  
-  message("Photoionization                                            = %i", do_photoionization);
+  const char do_photoionization =
+      feedback_props->radiation_policy & radiation_policy_photoionization;
+  message("Photoionization                                            = %i",
+          do_photoionization);
 
   if (do_photoionization)
     message("Minimal HII ionization density (internal units)            = %g",
-            feedback_props->minimal_HII_ionization_density);  
-  
-  message("Radiation pressure                                         = %i",
+            feedback_props->minimal_HII_ionization_density);
+
+  message(
+      "Radiation pressure                                         = %i",
       feedback_props->radiation_policy & radiation_policy_radiation_pressure);
   message("Radiation pressure efficiency                              = %.2g",
           feedback_props->radiation_pressure_efficiency);
   message("Photo-electric heating                                     = %i",
           feedback_props->radiation_policy &
               radiation_policy_photoelectric_heating);
-  
-  message("Yields table                                               = %s", feedback_props->stellar_model.yields_table);
+
+  message("Yields table                                               = %s",
+          feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
   stellar_model_print(&feedback_props->stellar_model);
@@ -251,14 +255,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->minimal_HII_ionization_density = parser_get_param_float(
         params, "GEARFeedback:minimal_HII_ionization_density_Hpcm3");
 
-    /* Convert to internal units */    
+    /* Convert to internal units */
     const double m_p_cgs = phys_const->const_proton_mass *
-      units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+                           units_cgs_conversion_factor(us, UNIT_CONV_MASS);
     fp->minimal_HII_ionization_density *=
-      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);    
-    
-  }    
-
+        m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  }
 
   /* -------------------------------------------- */
   /* Print the stellar properties */

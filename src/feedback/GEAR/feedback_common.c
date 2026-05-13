@@ -359,12 +359,12 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
 
   /* Is T > 10^4 K ? */
   const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-					  cooling, p, xp);
+                                          cooling, p, xp);
   const float ten_to_four_kelvin =
       1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   /* The 1.1 factor is here for safety margin and numerical stability */
-  const char is_cold = (T <= 1.01*ten_to_four_kelvin);
+  const char is_cold = (T <= 1.01 * ten_to_four_kelvin);
 
   /* Density threshold criterion */
   const float rho = hydro_get_physical_density(p, cosmo);
