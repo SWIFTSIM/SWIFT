@@ -428,6 +428,10 @@ static int runner_debug_mesh_pair_is_new(const struct engine *e,
                                          const struct cell *recipient,
                                          const struct cell *source) {
 
+  const unsigned long long recipient_id =
+      (unsigned long long)recipient->cellID;
+  const unsigned long long source_id = (unsigned long long)source->cellID;
+
   if (runner_debug_mesh_pairs == NULL) {
     size_t cap = 1u << 22;
     runner_debug_mesh_pairs = (struct runner_debug_mesh_pair_entry *)swift_malloc(
@@ -451,23 +455,22 @@ static int runner_debug_mesh_pair_is_new(const struct engine *e,
   }
 
   const size_t mask = runner_debug_mesh_pairs_cap - 1;
-  size_t ind = ((recipient->cellID * 11400714819323198485ull) ^
-                (source->cellID * 14029467366897019727ull)) &
+  size_t ind = ((recipient_id * 11400714819323198485ull) ^
+                (source_id * 14029467366897019727ull)) &
                mask;
 
   for (size_t n = 0; n < runner_debug_mesh_pairs_cap; n++) {
     struct runner_debug_mesh_pair_entry *entry = &runner_debug_mesh_pairs[ind];
 
     if (entry->recipient_id == 0ULL && entry->source_id == 0ULL) {
-      entry->recipient_id = recipient->cellID;
-      entry->source_id = source->cellID;
+      entry->recipient_id = recipient_id;
+      entry->source_id = source_id;
       if (lock_unlock(&runner_debug_mesh_pairs_lock) != 0)
         error("Failed to unlock mesh debug dedupe table.");
       return 1;
     }
 
-    if (entry->recipient_id == recipient->cellID &&
-        entry->source_id == source->cellID) {
+    if (entry->recipient_id == recipient_id && entry->source_id == source_id) {
       if (lock_unlock(&runner_debug_mesh_pairs_lock) != 0)
         error("Failed to unlock mesh debug dedupe table.");
       return 0;
