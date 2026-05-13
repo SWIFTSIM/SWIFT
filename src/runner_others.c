@@ -67,6 +67,45 @@
 extern const int sort_stack_size;
 
 #ifdef SWIFT_DEBUG_CHECKS
+static void runner_debug_get_available_gparts_by_source_representation(
+    const struct engine *e, long long counts[4]) {
+
+  counts[0] = 0;
+  counts[1] = 0;
+  counts[2] = 0;
+  counts[3] = 0;
+
+  const struct space *s = e->s;
+
+  if (s->with_zoom_region) {
+    for (int i = 0; i < s->zoom_props->nr_zoom_cells; i++) {
+      counts[runner_debug_source_class_zoom] +=
+          s->zoom_props->zoom_cells_top[i].grav.multipole->m_pole.num_gpart;
+    }
+
+    for (int i = 0; i < s->zoom_props->nr_void_cells; i++) {
+      const int index = s->zoom_props->void_cell_indices[i];
+      counts[runner_debug_source_class_bkg_void] +=
+          s->cells_top[index].grav.multipole->m_pole.num_gpart;
+    }
+
+    for (int i = 0; i < s->zoom_props->nr_neighbour_cells; i++) {
+      const int index = s->zoom_props->neighbour_cells_top[i];
+      counts[runner_debug_source_class_bkg_neigh] +=
+          s->zoom_props->bkg_cells_top[index].grav.multipole->m_pole.num_gpart;
+    }
+
+    for (int i = 0; i < s->zoom_props->nr_bkg_cells; i++) {
+      const struct cell *c = &s->zoom_props->bkg_cells_top[i];
+      if (c->subtype == cell_subtype_void || c->subtype == cell_subtype_neighbour)
+        continue;
+      counts[runner_debug_source_class_other] += c->grav.multipole->m_pole.num_gpart;
+    }
+  } else {
+    counts[runner_debug_source_class_other] = e->total_nr_gparts;
+  }
+}
+
 /**
  * @brief Dump the gravity-tensor interaction counters along a cell path.
  *
@@ -1057,6 +1096,18 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
             const long long num_interacted_pm =
                 gp->num_interacted_pm_by_type[0] + gp->num_interacted_pm_by_type[1] +
                 gp->num_interacted_pm_by_type[2] + gp->num_interacted_pm_by_type[3];
+            long long available_by_type[4];
+            runner_debug_get_available_gparts_by_source_representation(
+                e, available_by_type);
+            const long long observed_by_type[4] = {
+                gp->num_interacted_m2p_by_type[0] + gp->num_interacted_m2l_by_type[0] +
+                    gp->num_interacted_p2p_by_type[0] + gp->num_interacted_pm_by_type[0],
+                gp->num_interacted_m2p_by_type[1] + gp->num_interacted_m2l_by_type[1] +
+                    gp->num_interacted_p2p_by_type[1] + gp->num_interacted_pm_by_type[1],
+                gp->num_interacted_m2p_by_type[2] + gp->num_interacted_m2l_by_type[2] +
+                    gp->num_interacted_p2p_by_type[2] + gp->num_interacted_pm_by_type[2],
+                gp->num_interacted_m2p_by_type[3] + gp->num_interacted_m2l_by_type[3] +
+                    gp->num_interacted_p2p_by_type[3] + gp->num_interacted_pm_by_type[3]};
 
             message(
                 "Interaction breakdown for g-particle (id=%lld, type=%s): "
@@ -1066,7 +1117,9 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "m2p_by_type=[%lld,%lld,%lld,%lld], "
                 "m2l_by_type=[%lld,%lld,%lld,%lld], "
                 "p2p_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_by_type=[%lld,%lld,%lld,%lld]",
+                "pm_by_type=[%lld,%lld,%lld,%lld], "
+                "observed_by_type=[%lld,%lld,%lld,%lld], "
+                "available_by_type=[%lld,%lld,%lld,%lld]",
                 id, part_type_names[gp->type], gp->num_interacted, num_interacted_m2p,
                 num_interacted_m2l, num_interacted_p2p, num_interacted_pm,
                 gp->num_interacted_m2p_by_type[0], gp->num_interacted_m2p_by_type[1],
@@ -1076,7 +1129,10 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_p2p_by_type[0], gp->num_interacted_p2p_by_type[1],
                 gp->num_interacted_p2p_by_type[2], gp->num_interacted_p2p_by_type[3],
                 gp->num_interacted_pm_by_type[0], gp->num_interacted_pm_by_type[1],
-                gp->num_interacted_pm_by_type[2], gp->num_interacted_pm_by_type[3]);
+                gp->num_interacted_pm_by_type[2], gp->num_interacted_pm_by_type[3],
+                observed_by_type[0], observed_by_type[1], observed_by_type[2],
+                observed_by_type[3], available_by_type[0], available_by_type[1],
+                available_by_type[2], available_by_type[3]);
 #endif
 
             runner_debug_dump_gravity_path(c);
