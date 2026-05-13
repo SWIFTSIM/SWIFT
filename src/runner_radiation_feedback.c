@@ -217,22 +217,12 @@ void runner_do_stars_hii_ionization_feedback_branch(
       runner_do_stars_hii_ionization_feedback_self(
           r, c->hydro.super, si, ngb_buffer, max_ngbs, &count_found);
 
-      /***************************************************/
       /* Now loop over particles in the neighboring cells */
       for (struct link *l = c->hydro.super->stars.radiation_in; l != NULL;
            l = l->next) {
         /* We have already handled the self case */
         if (l->t->type == task_type_self) continue;
-
         struct cell *c_in = (l->t->cj == c->hydro.super) ? l->t->ci : l->t->cj;
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (c_in->hydro.super->cellID == c->hydro.super->cellID) {
-          warning("cj (%lld) has the same hydro super (%lld) than me (%lld)!",
-                  c_in->cellID, c->hydro.super->cellID, c->cellID);
-        }
-#endif
-
         runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si, ngb_buffer,
                                                      max_ngbs, &count_found);
       } /* Neighbour search */
@@ -273,8 +263,8 @@ void runner_do_stars_hii_ionization_feedback_branch(
           /* feedback_do_HII_ionization(sp, p, xp, r2, phys_const, hydro_props,
              us, cosmo, cooling, ti_begin); */
 
-          /* Fast non-atomic check: if already ionized, just move on. */
-          if (xpj->tracers_data.HII_region.is_ionized) continue;
+          /* If already ionized (by another thread), just move on. */
+          if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
 
           /* message("Ionize %lld (budget = %e)!", pj->id, */
           /* radiation_get_star_ionization_rate(si)); */
