@@ -413,9 +413,11 @@ static int runner_debug_mesh_zoom_top_ci_top_invocations = 0;
 
 struct runner_debug_mesh_zoom_top_loop_entry {
   unsigned long long source_cell_key;
+  unsigned long long first_source_ptr;
   int invocation_id;
   int first_loop_index;
   int first_decision;
+  int first_loc[3];
 };
 
 #define runner_debug_mesh_zoom_top_loop_table_size (1 << 14)
@@ -496,6 +498,10 @@ static void runner_debug_record_zoom_top_loop_visit(const struct cell *top,
         slot->invocation_id = invocation_id;
         slot->first_loop_index = loop_index;
         slot->first_decision = decision;
+        slot->first_source_ptr = (unsigned long long)(uintptr_t)cj;
+        slot->first_loc[0] = cj->loc[0];
+        slot->first_loc[1] = cj->loc[1];
+        slot->first_loc[2] = cj->loc[2];
         return;
       }
     }
@@ -507,11 +513,15 @@ static void runner_debug_record_zoom_top_loop_visit(const struct cell *top,
         if (report_index < runner_debug_mesh_duplicate_report_max) {
           message(
               "zoom-mesh top-loop duplicate source: top=%llu invocation=%d ci=%llu "
-              "source=%llu first[n=%d decision=%s] duplicate[n=%d decision=%s]",
+              "source=%llu first[n=%d decision=%s ptr=%p loc=(%d,%d,%d)] "
+              "duplicate[n=%d decision=%s ptr=%p loc=(%d,%d,%d)]",
               top->cellID, invocation_id, ci->cellID, cj->cellID,
               slot->first_loop_index,
               runner_debug_mesh_zoom_top_decision_name(slot->first_decision),
-              loop_index, runner_debug_mesh_zoom_top_decision_name(decision));
+              (void *)slot->first_source_ptr, slot->first_loc[0],
+              slot->first_loc[1], slot->first_loc[2], loop_index,
+              runner_debug_mesh_zoom_top_decision_name(decision), (void *)cj,
+              cj->loc[0], cj->loc[1], cj->loc[2]);
         } else if (report_index == runner_debug_mesh_duplicate_report_max &&
                    atomic_cas(&runner_debug_mesh_duplicate_report_limit_reported,
                               0, 1) == 0) {
@@ -524,6 +534,10 @@ static void runner_debug_record_zoom_top_loop_visit(const struct cell *top,
       slot->invocation_id = invocation_id;
       slot->first_loop_index = loop_index;
       slot->first_decision = decision;
+      slot->first_source_ptr = (unsigned long long)(uintptr_t)cj;
+      slot->first_loc[0] = cj->loc[0];
+      slot->first_loc[1] = cj->loc[1];
+      slot->first_loc[2] = cj->loc[2];
       return;
     }
   }
