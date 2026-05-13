@@ -24,6 +24,7 @@
 #include "engine.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "radiation.h"
 #include "stellar_evolution.h"
 #include "units.h"
 
@@ -332,6 +333,48 @@ __attribute__((always_inline)) INLINE double feedback_get_star_ionization_rate(
     const struct spart *sp) {
   return sp->feedback_data.radiation.dot_N_ion;
 }
+
+/**
+ * Determines whether a gas #part can be ionized.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param hydro_properties The #hydro_props.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Is the particle ionized?
+ */
+__attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
+    const struct part *p, const struct xpart *xp, const struct engine *e) {
+
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  /* const struct stars_props *stars_props = e->stars_properties;   */
+  const struct feedback_props *feedback_props = e->feedback_props;
+  const struct unit_system *us = e->internal_units;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct cooling_function_data *cooling = e->cooling_func;
+
+  /* Is T > 10^4 K ? */
+  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
+                                          cooling, p, xp);
+  const float ten_to_four_kelvin =
+      1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  /* The 1.1 factor is here for safety margin and numerical stability */
+  const char is_too_hot = T <= 1.01*ten_to_four_kelvin;
+
+  /* Density threshold criterion */
+  const float rho = hydro_get_physical_density(p, cosmo);
+  const float rho_threshold = feedback_props->minimal_HII_ionization_density;
+  const char is_dense_enough = rho > rho_threshold;
+
+  /* Is the particle ionized ? */
+  return (is_too_hot || is_dense_enough || radiation_is_part_tagged_as_ionized(p, xp));
+}
+
 
 /**
  * @brief Prepare the feedback fields after a star is born.

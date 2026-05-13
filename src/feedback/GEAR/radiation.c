@@ -152,35 +152,6 @@ __attribute__((always_inline)) INLINE char radiation_is_part_tagged_as_ionized(
 }
 
 /**
- * Determines whether a gas #part is ionized or not based on its
- * thermodynamical properties.
- *
- * @param phys_const Physical constants.
- * @param us Unit system.
- * @param hydro_properties The #hydro_props.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
- * @param p The particle.
- * @param xp The extended data of the particle.
- * @return Is the particle ionized?
- */
-__attribute__((always_inline)) INLINE char radiation_is_part_ionized(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
-    const struct xpart *xp) {
-
-  /* Is T > 10^4 K ? */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
-  const float ten_to_four_kelvin =
-      1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-
-  /* Is the particle ionized ? */
-  return (T > ten_to_four_kelvin || xp->tracers_data.HII_region.is_ionized);
-}
-
-/**
  * Compute the gas comoving column density at the star's location using the
  * Sobolev approximation.
  *

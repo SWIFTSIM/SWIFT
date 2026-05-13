@@ -266,15 +266,12 @@ void runner_do_stars_hii_ionization_feedback_branch(
           /* If already ionized (by another thread), just move on. */
           if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
 
-          /* message("Ionize %lld (budget = %e)!", pj->id, */
-          /* radiation_get_star_ionization_rate(si)); */
-
           const double Delta_dot_N_ion =
               radiation_get_part_rate_to_fully_ionize(
                   phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
 
           /* Case 1: Ionization is guaranteed */
-          if (Delta_dot_N_ion <= radiation_get_star_ionization_rate(si)) {
+          if (Delta_dot_N_ion <= feedback_get_star_ionization_rate(si)) {
             if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) ==
                 0) {
 
@@ -299,7 +296,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
 
             /* If we cannot fully ionize, compute a probability to determine if
                we fully ionize pj or not and draw the random number.  */
-            const double dot_N_ion = radiation_get_star_ionization_rate(si);
+            const double dot_N_ion = feedback_get_star_ionization_rate(si);
             const float proba = dot_N_ion / Delta_dot_N_ion;
             const float random_number = random_unit_interval(
                 si->id, ti_begin, random_number_HII_regions);
@@ -335,7 +332,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
       }
       /* If the star still has photons and we previously filled the buffer,
        * we must go again to find the neighbors that were 'bumped out'. */
-    } while (buffer_was_full && radiation_get_star_ionization_rate(si) > 0);
+    } while (buffer_was_full && feedback_get_star_ionization_rate(si) > 0);
 
     c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
     c->stars.h_max_active = max(c->stars.h_max_active, si->h_hii);
@@ -391,7 +388,7 @@ void runner_do_stars_hii_ionization_feedback_self(
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
-      if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
+      if (feedback_part_can_be_ionized(pj, xpj, e)) continue;
 
       /* message("[self] Found %lld!", pj->id); */
 
@@ -471,7 +468,7 @@ void runner_do_stars_hii_ionization_feedback_pair(
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
-      if (radiation_is_part_tagged_as_ionized(pj, xpj)) continue;
+      if (feedback_part_can_be_ionized(pj, xpj, e)) continue;
 
       /* message("[pair] Found %lld!", pj->id); */
 

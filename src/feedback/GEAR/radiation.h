@@ -69,13 +69,6 @@ float radiation_get_star_physical_radiation_pressure(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo);
 
-char radiation_is_part_ionized(const struct phys_const *phys_const,
-                               const struct hydro_props *hydro_props,
-                               const struct unit_system *us,
-                               const struct cosmology *cosmo,
-                               const struct cooling_function_data *cooling,
-                               const struct part *p, const struct xpart *xp);
-
 float radiation_get_individual_star_radius(const float mass,
                                            const struct unit_system *us,
                                            const struct phys_const *phys_const);

@@ -149,7 +149,7 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
  * @brief Should this particle be doing any HII ionization feedback-related
  * operation?
  *
- * TODO: Add a condition
+ * @TODO: Move to feedback common
  *
  * @param sp The #spart.
  * @param e The #engine.
@@ -163,7 +163,9 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
   /* If the spart is dead, don't do anything */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
-  return radiation_get_star_ionization_rate(sp) > 0.0;
+  /* TODO: Check the radiation policy here */
+
+  return feedback_get_star_ionization_rate(sp) > 0.0;
 }
 
 /**
