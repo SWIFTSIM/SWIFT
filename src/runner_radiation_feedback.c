@@ -161,9 +161,8 @@ void runner_do_stars_hii_ionization_feedback_branch(
     return;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* TODO: Reviser ces checks */
   /* Did we mess up the recursion? */
-  if (interaction_limit > c->dmin && c != c->hydro.super)
+  if (interaction_limit > c->dmin && c != c->stars.radiation_level)
     error("Cell (%lld) size (%e) smaller than HII interaction length (%e)",
           c->cellID, c->dmin, interaction_limit);
 #endif
@@ -202,15 +201,15 @@ void runner_do_stars_hii_ionization_feedback_branch(
       /***************************************************/
       /* First loop over particles in the current cell */
       runner_do_stars_hii_ionization_feedback_self(
-          r, c->hydro.super, si, interaction_limit, ngb_buffer, max_ngbs,
+          r, c->stars.radiation_level, si, interaction_limit, ngb_buffer, max_ngbs,
           &count_found);
 
       /* Now loop over particles in the neighboring cells */
-      for (struct link *l = c->hydro.super->stars.radiation_in; l != NULL;
+      for (struct link *l = c->stars.radiation_level->stars.radiation_in; l != NULL;
            l = l->next) {
         /* We have already handled the self case */
         if (l->t->type == task_type_self) continue;
-        struct cell *c_in = (l->t->cj == c->hydro.super) ? l->t->ci : l->t->cj;
+        struct cell *c_in = (l->t->cj == c->stars.radiation_level) ? l->t->ci : l->t->cj;
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
 	const int force_naive = 1;
