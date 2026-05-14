@@ -269,6 +269,8 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
     gp->num_interacted_m2l_by_type[i] = 0;
     gp->num_interacted_p2p_by_type[i] = 0;
     gp->num_interacted_pm_by_type[i] = 0;
+    gp->num_interacted_pm_long_range_by_type[i] = 0;
+    gp->num_interacted_pm_pair_skip_by_type[i] = 0;
   }
   gp->initialised = 1;
 #endif

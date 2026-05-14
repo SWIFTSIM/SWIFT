@@ -91,6 +91,8 @@ struct grav_tensor {
    * Index order: zoom, bkg_void, bkg_neigh, other. */
   long long num_interacted_tree_by_type[4];
   long long num_interacted_pm_by_type[4];
+  long long num_interacted_pm_long_range_by_type[4];
+  long long num_interacted_pm_pair_skip_by_type[4];
 
   /* Last time this tensor was zeroed */
   integertime_t ti_init;

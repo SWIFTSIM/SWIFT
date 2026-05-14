@@ -494,6 +494,9 @@ static INLINE void runner_record_mesh_attachment(
   runner_debug_add_tensor_interactions_by_type(
       recipient->grav.multipole->pot.num_interacted_pm_by_type, source,
       source->grav.multipole->m_pole.num_gpart);
+  runner_debug_add_tensor_interactions_by_type(
+      recipient->grav.multipole->pot.num_interacted_pm_long_range_by_type,
+      source, source->grav.multipole->m_pole.num_gpart);
 #endif
 }
 

@@ -96,6 +96,8 @@ struct gpart {
   long long num_interacted_m2l_by_type[4];
   long long num_interacted_p2p_by_type[4];
   long long num_interacted_pm_by_type[4];
+  long long num_interacted_pm_long_range_by_type[4];
+  long long num_interacted_pm_pair_skip_by_type[4];
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

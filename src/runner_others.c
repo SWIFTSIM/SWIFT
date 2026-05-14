@@ -1084,6 +1084,16 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
             const long long num_interacted_pm =
                 gp->num_interacted_pm_by_type[0] + gp->num_interacted_pm_by_type[1] +
                 gp->num_interacted_pm_by_type[2] + gp->num_interacted_pm_by_type[3];
+            const long long num_interacted_pm_long_range =
+                gp->num_interacted_pm_long_range_by_type[0] +
+                gp->num_interacted_pm_long_range_by_type[1] +
+                gp->num_interacted_pm_long_range_by_type[2] +
+                gp->num_interacted_pm_long_range_by_type[3];
+            const long long num_interacted_pm_pair_skip =
+                gp->num_interacted_pm_pair_skip_by_type[0] +
+                gp->num_interacted_pm_pair_skip_by_type[1] +
+                gp->num_interacted_pm_pair_skip_by_type[2] +
+                gp->num_interacted_pm_pair_skip_by_type[3];
             long long top_level_gparts_by_type[4];
             int top_level_cells_by_type[4];
             long long top_level_mesh_gparts_by_type[4];
@@ -1118,11 +1128,14 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "Interaction breakdown for g-particle (id=%lld, type=%s): "
                 "num_interacted=%lld, num_interacted_m2p=%lld, "
                 "num_interacted_m2l=%lld, num_interacted_p2p=%lld, "
-                "num_interacted_pm=%lld, "
+                "num_interacted_pm=%lld, num_interacted_pm_long_range=%lld, "
+                "num_interacted_pm_pair_skip=%lld, "
                 "m2p_by_type=[%lld,%lld,%lld,%lld], "
                 "m2l_by_type=[%lld,%lld,%lld,%lld], "
                 "p2p_by_type=[%lld,%lld,%lld,%lld], "
                 "pm_by_type=[%lld,%lld,%lld,%lld], "
+                "pm_long_range_by_type=[%lld,%lld,%lld,%lld], "
+                "pm_pair_skip_by_type=[%lld,%lld,%lld,%lld], "
                 "observed_by_type=[%lld,%lld,%lld,%lld], "
                 "top_level_mesh_gparts_by_type=[%lld,%lld,%lld,%lld], "
                 "top_level_mm_gparts_by_type=[%lld,%lld,%lld,%lld], "
@@ -1135,6 +1148,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "top_level_cells_by_type=[%d,%d,%d,%d]",
                 id, part_type_names[gp->type], gp->num_interacted, num_interacted_m2p,
                 num_interacted_m2l, num_interacted_p2p, num_interacted_pm,
+                num_interacted_pm_long_range, num_interacted_pm_pair_skip,
                 gp->num_interacted_m2p_by_type[0], gp->num_interacted_m2p_by_type[1],
                 gp->num_interacted_m2p_by_type[2], gp->num_interacted_m2p_by_type[3],
                 gp->num_interacted_m2l_by_type[0], gp->num_interacted_m2l_by_type[1],
@@ -1143,6 +1157,14 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_p2p_by_type[2], gp->num_interacted_p2p_by_type[3],
                 gp->num_interacted_pm_by_type[0], gp->num_interacted_pm_by_type[1],
                 gp->num_interacted_pm_by_type[2], gp->num_interacted_pm_by_type[3],
+                gp->num_interacted_pm_long_range_by_type[0],
+                gp->num_interacted_pm_long_range_by_type[1],
+                gp->num_interacted_pm_long_range_by_type[2],
+                gp->num_interacted_pm_long_range_by_type[3],
+                gp->num_interacted_pm_pair_skip_by_type[0],
+                gp->num_interacted_pm_pair_skip_by_type[1],
+                gp->num_interacted_pm_pair_skip_by_type[2],
+                gp->num_interacted_pm_pair_skip_by_type[3],
                 observed_by_type[0], observed_by_type[1], observed_by_type[2],
                 observed_by_type[3], top_level_mesh_gparts_by_type[0],
                 top_level_mesh_gparts_by_type[1], top_level_mesh_gparts_by_type[2],
