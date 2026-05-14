@@ -409,13 +409,50 @@ struct runner_debug_mesh_overlap_entry {
 
 static int runner_debug_mesh_overlap_report_count = 0;
 static int runner_debug_mesh_overlap_limit_reported = 0;
+static int runner_debug_recursive_mesh_bkg_neigh_report_count = 0;
+static int runner_debug_recursive_mesh_bkg_neigh_limit_reported = 0;
 
 #define runner_debug_mesh_overlap_report_max 64
+#define runner_debug_recursive_mesh_bkg_neigh_report_max 128
 #define runner_debug_mesh_overlap_table_size (1 << 14)
 #define runner_debug_mesh_overlap_probe_limit 16
 
 static struct runner_debug_mesh_overlap_entry
     runner_debug_mesh_overlap_table[runner_debug_mesh_overlap_table_size];
+
+static void runner_debug_log_recursive_mesh_bkg_neigh(
+    const struct cell *super, const struct cell *ci, const struct cell *cj,
+    const struct cell *recipient, const struct cell *source,
+    const char *attachment_case) {
+
+  if (runner_debug_get_source_class(source) != runner_debug_source_class_bkg_neigh)
+    return;
+
+  const int report_index =
+      atomic_inc(&runner_debug_recursive_mesh_bkg_neigh_report_count);
+
+  if (report_index < runner_debug_recursive_mesh_bkg_neigh_report_max) {
+    message(
+        "mesh-recursive-bkg-neigh: super=%llu (%s/%s depth=%d top=%p) "
+        "ci=%llu (%s/%s depth=%d top=%p) cj=%llu (%s/%s depth=%d top=%p) "
+        "recipient=%llu (%s/%s depth=%d top=%p) "
+        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) case=%s",
+        super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
+        super->depth, (void *)super->top, ci->cellID, cellID_names[ci->type],
+        subcellID_names[ci->subtype], ci->depth, (void *)ci->top, cj->cellID,
+        cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
+        (void *)cj->top, recipient->cellID, cellID_names[recipient->type],
+        subcellID_names[recipient->subtype], recipient->depth,
+        (void *)recipient->top, source->cellID, cellID_names[source->type],
+        subcellID_names[source->subtype], source->depth, (void *)source->top,
+        source->grav.multipole->m_pole.num_gpart, attachment_case);
+  } else if (report_index == runner_debug_recursive_mesh_bkg_neigh_report_max &&
+             atomic_cas(&runner_debug_recursive_mesh_bkg_neigh_limit_reported, 0,
+                        1) == 0) {
+    message("mesh-recursive-bkg-neigh reporting capped at %d lines",
+            runner_debug_recursive_mesh_bkg_neigh_report_max);
+  }
+}
 
 static void runner_debug_check_mesh_overlap(const struct cell *recipient,
                                             const struct cell *source) {
@@ -491,6 +528,9 @@ static INLINE void runner_record_mesh_attachment(
 
 #ifdef SWIFT_DEBUG_CHECKS
   runner_debug_check_mesh_overlap(recipient, source);
+  if (origin != 0)
+    runner_debug_log_recursive_mesh_bkg_neigh(super, ci, cj, recipient, source,
+                                              attachment_case);
   runner_debug_add_tensor_interactions_by_type(
       recipient->grav.multipole->pot.num_interacted_pm_by_type, source,
       source->grav.multipole->m_pole.num_gpart);

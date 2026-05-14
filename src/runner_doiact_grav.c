@@ -33,6 +33,47 @@
 #include "space_getsid.h"
 #include "timers.h"
 
+#ifdef SWIFT_DEBUG_CHECKS
+static int runner_debug_recursive_pair_skip_bkg_neigh_report_count = 0;
+static int runner_debug_recursive_pair_skip_bkg_neigh_limit_reported = 0;
+
+#define runner_debug_recursive_pair_skip_bkg_neigh_report_max 128
+
+static void runner_debug_log_recursive_pair_skip_bkg_neigh(
+    const struct cell *ci, const struct cell *cj) {
+
+  const enum runner_debug_source_class ci_class =
+      runner_debug_get_source_class(ci);
+  const enum runner_debug_source_class cj_class =
+      runner_debug_get_source_class(cj);
+
+  if (ci_class != runner_debug_source_class_bkg_neigh &&
+      cj_class != runner_debug_source_class_bkg_neigh)
+    return;
+
+  const int report_index =
+      atomic_inc(&runner_debug_recursive_pair_skip_bkg_neigh_report_count);
+
+  if (report_index < runner_debug_recursive_pair_skip_bkg_neigh_report_max) {
+    message(
+        "pair-skip-recursive-bkg-neigh: ci=%llu (%s/%s depth=%d top=%p super=%p gparts=%lld) "
+        "cj=%llu (%s/%s depth=%d top=%p super=%p gparts=%lld)",
+        ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype],
+        ci->depth, (void *)ci->top, (void *)ci->grav.super,
+        ci->grav.multipole->m_pole.num_gpart, cj->cellID,
+        cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
+        (void *)cj->top, (void *)cj->grav.super,
+        cj->grav.multipole->m_pole.num_gpart);
+  } else if (report_index ==
+                 runner_debug_recursive_pair_skip_bkg_neigh_report_max &&
+             atomic_cas(&runner_debug_recursive_pair_skip_bkg_neigh_limit_reported,
+                        0, 1) == 0) {
+    message("pair-skip-recursive-bkg-neigh reporting capped at %d lines",
+            runner_debug_recursive_pair_skip_bkg_neigh_report_max);
+  }
+}
+#endif
+
 /**
  * @brief Clear the unskip flags of this cell.
  *
@@ -2396,6 +2437,9 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   if (periodic && r_lr_check > max_distance) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+    if (!pair_skip_is_direct)
+      runner_debug_log_recursive_pair_skip_bkg_neigh(ci, cj);
+
     if (cell_is_active_gravity(ci, e)) {
       accumulate_add_ll(&multi_i->pot.num_interacted,
                         multi_j->m_pole.num_gpart);
