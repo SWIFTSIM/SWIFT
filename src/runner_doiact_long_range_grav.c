@@ -20,6 +20,9 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Some standard headers. */
+#include <string.h>
+
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
@@ -923,6 +926,113 @@ int runner_debug_dump_zoom_pair_recursive_revisits(const struct cell *ci) {
 
   return report_count;
 }
+
+int runner_debug_dump_zoom_pair_handoff_overlaps(const struct cell *ci) {
+
+  struct {
+    unsigned long long source_top_ptr_key;
+    long long void_stage_count;
+    long long zoom_stage_count;
+  } stage_totals[runner_debug_recursive_mesh_budget_report_max];
+  int stage_totals_count = 0;
+  int report_count = 0;
+
+  bzero(stage_totals, sizeof(stage_totals));
+
+  for (const struct cell *recipient = ci; recipient != NULL;) {
+    int stage = -1;
+
+    if (recipient->type == cell_type_bkg &&
+        recipient->subtype == cell_subtype_void) {
+      stage = 0;
+    } else if (recipient->type == cell_type_zoom) {
+      stage = 1;
+    }
+
+    if (stage != -1) {
+      const unsigned long long recipient_ptr_key =
+          (unsigned long long)(uintptr_t)recipient;
+
+      for (int i = 0; i < runner_debug_recursive_mesh_budget_table_size; i++) {
+        const struct runner_debug_recursive_mesh_budget_entry *slot =
+            &runner_debug_recursive_mesh_budget_table[i];
+
+        if (slot->recipient_ptr_key != recipient_ptr_key) continue;
+        if (slot->source_top_ptr_key == 0ULL) continue;
+        if (slot->attachment_case == NULL) continue;
+        if (strcmp(slot->attachment_case, "zoom_pair_recursive") != 0) continue;
+
+        const struct cell *source_top =
+            (const struct cell *)(uintptr_t)slot->source_top_ptr_key;
+        if (runner_debug_get_source_class(source_top) !=
+            runner_debug_source_class_bkg_neigh)
+          continue;
+
+        int found = 0;
+        for (int j = 0; j < stage_totals_count; j++) {
+          if (stage_totals[j].source_top_ptr_key != slot->source_top_ptr_key)
+            continue;
+
+          if (stage == 0)
+            stage_totals[j].void_stage_count += slot->counted_gparts;
+          else
+            stage_totals[j].zoom_stage_count += slot->counted_gparts;
+
+          found = 1;
+          break;
+        }
+
+        if (!found &&
+            stage_totals_count < runner_debug_recursive_mesh_budget_report_max) {
+          stage_totals[stage_totals_count].source_top_ptr_key =
+              slot->source_top_ptr_key;
+          if (stage == 0)
+            stage_totals[stage_totals_count].void_stage_count =
+                slot->counted_gparts;
+          else
+            stage_totals[stage_totals_count].zoom_stage_count =
+                slot->counted_gparts;
+          stage_totals_count++;
+        }
+      }
+    }
+
+    if (recipient->void_parent != NULL)
+      recipient = recipient->void_parent;
+    else
+      recipient = recipient->parent;
+  }
+
+  for (int i = 0; i < stage_totals_count; i++) {
+    const struct cell *source_top =
+        (const struct cell *)(uintptr_t)stage_totals[i].source_top_ptr_key;
+    const long long void_stage = stage_totals[i].void_stage_count;
+    const long long zoom_stage = stage_totals[i].zoom_stage_count;
+
+    if (void_stage == 0 || zoom_stage == 0) continue;
+
+    if (report_count < runner_debug_recursive_mesh_budget_report_max) {
+      message(
+          "zoom-pair-handoff-overlap: leaf=%llu (%s/%s depth=%d super=%llu) "
+          "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) "
+          "void_stage=%lld zoom_stage=%lld total=%lld excess=%lld",
+          ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype],
+          ci->depth, ci->grav.super->cellID, source_top->cellID,
+          cellID_names[source_top->type], subcellID_names[source_top->subtype],
+          source_top->depth, (void *)source_top->top,
+          source_top->grav.multipole->m_pole.num_gpart, void_stage, zoom_stage,
+          void_stage + zoom_stage,
+          void_stage + zoom_stage - source_top->grav.multipole->m_pole.num_gpart);
+    } else if (report_count == runner_debug_recursive_mesh_budget_report_max) {
+      message("zoom-pair-handoff-overlap reporting capped at %d lines",
+              runner_debug_recursive_mesh_budget_report_max);
+    }
+
+    report_count++;
+  }
+
+  return report_count;
+}
 #endif
 
 static INLINE void runner_record_mesh_attachment(
@@ -1039,20 +1149,9 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   /* Do we share the same top level cell? i.e. are we self-interacting? */
   int is_self = top_i == top_j;
 
-  /* In zoom void-pair recursion, mesh ownership stays with the void-side
-   * branch until that descent has actually handed off to a non-void child.
-   * Attaching directly to the zoom supercell here double-counts the neighbour
-   * source once the counters are later propagated down the zoom path. */
-  const int keep_zoom_pair_recursive_on_void_branch =
-      (origin == 2 && ci->subtype == cell_subtype_void &&
-       super->type == cell_type_zoom && cell_contains_progeny(ci, super));
-
   /* Decide which cell we are updating. */
   if (super == ci) {
     runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
-                                  attachment_case);
-  } else if (keep_zoom_pair_recursive_on_void_branch) {
-    runner_record_mesh_attachment(super, ci, cj, ci, cj, origin,
                                   attachment_case);
   } else if (cell_contains_progeny(ci, super)) {
     runner_record_mesh_attachment(super, ci, cj, super, cj, origin,

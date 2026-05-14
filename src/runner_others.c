@@ -1372,6 +1372,15 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                       c->grav.super->cellID, cellID_names[c->grav.super->type],
                       subcellID_names[c->grav.super->subtype], c->grav.super->depth);
             }
+
+            const int zoom_pair_handoff_overlaps =
+                runner_debug_dump_zoom_pair_handoff_overlaps(c);
+            if (zoom_pair_handoff_overlaps == 0) {
+              message(
+                  "zoom-pair-handoff-overlap: none for super=%llu (%s/%s depth=%d)",
+                  c->grav.super->cellID, cellID_names[c->grav.super->type],
+                  subcellID_names[c->grav.super->subtype], c->grav.super->depth);
+            }
 #endif
 
             runner_debug_dump_gravity_path(c);

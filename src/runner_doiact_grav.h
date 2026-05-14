@@ -90,6 +90,7 @@ void runner_debug_get_top_level_methods_by_type(const struct engine *e,
 
 int runner_debug_dump_recursive_mesh_budget_overlaps(const struct cell *ci);
 int runner_debug_dump_zoom_pair_recursive_revisits(const struct cell *ci);
+int runner_debug_dump_zoom_pair_handoff_overlaps(const struct cell *ci);
 #endif
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer);
