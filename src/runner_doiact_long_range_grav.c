@@ -1063,9 +1063,9 @@ void runner_debug_get_top_level_methods_by_type(const struct engine *e,
   if (!e->s->periodic) return;
 
   struct space *s = e->s;
-  struct cell *cells = s->cells_top;
+  struct cell *cells = s->zoom_props->bkg_cells_top;
 
-  for (int n = 0; n < s->nr_cells; n++) {
+  for (int n = 0; n < s->zoom_props->nr_bkg_cells; n++) {
     struct cell *source = &cells[n];
     const struct gravity_tensors *multi = source->grav.multipole;
     const enum runner_debug_source_class source_class =
