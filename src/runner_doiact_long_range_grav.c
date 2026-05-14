@@ -1039,9 +1039,20 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   /* Do we share the same top level cell? i.e. are we self-interacting? */
   int is_self = top_i == top_j;
 
+  /* In zoom void-pair recursion, mesh ownership stays with the void-side
+   * branch until that descent has actually handed off to a non-void child.
+   * Attaching directly to the zoom supercell here double-counts the neighbour
+   * source once the counters are later propagated down the zoom path. */
+  const int keep_zoom_pair_recursive_on_void_branch =
+      (origin == 2 && ci->subtype == cell_subtype_void &&
+       super->type == cell_type_zoom && cell_contains_progeny(ci, super));
+
   /* Decide which cell we are updating. */
   if (super == ci) {
     runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
+                                  attachment_case);
+  } else if (keep_zoom_pair_recursive_on_void_branch) {
+    runner_record_mesh_attachment(super, ci, cj, ci, cj, origin,
                                   attachment_case);
   } else if (cell_contains_progeny(ci, super)) {
     runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
