@@ -65,10 +65,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
      increased.
 
      TODO: Implement retry if search radius is too small */
-  float r_hii_max = c->stars.h_hii_max_old * kernel_gamma;
-  if (c->stars.h_hii_max_old <= 0.0) {
-    r_hii_max = c->stars.h_max_old * kernel_gamma;
-  }
+  const float r_hii_max = max(c->stars.h_hii_max_old, c->stars.h_max_old) * kernel_gamma;
   const float max_search_radius = star_props->max_HII_search_radius;
   const float interaction_limit =
       min(search_radius_factor * r_hii_max, max_search_radius);
