@@ -1033,6 +1033,67 @@ int runner_debug_dump_zoom_pair_handoff_overlaps(const struct cell *ci) {
 
   return report_count;
 }
+
+int runner_debug_dump_path_pair_recursive_sources(const struct cell *leaf) {
+
+  const struct cell *path[64];
+  int depth = 0;
+  int report_count = 0;
+
+  for (const struct cell *c = leaf; c != NULL;) {
+    if (depth == 64) error("Cell path too deep for debug dump.");
+    path[depth++] = c;
+
+    if (c->void_parent != NULL)
+      c = c->void_parent;
+    else
+      c = c->parent;
+  }
+
+  for (int p = depth - 1; p >= 0; p--) {
+    const struct cell *recipient = path[p];
+    const unsigned long long recipient_ptr_key =
+        (unsigned long long)(uintptr_t)recipient;
+    const int path_level = depth - 1 - p;
+
+    for (int i = 0; i < runner_debug_recursive_mesh_budget_table_size; i++) {
+      const struct runner_debug_recursive_mesh_budget_entry *slot =
+          &runner_debug_recursive_mesh_budget_table[i];
+
+      if (slot->recipient_ptr_key != recipient_ptr_key) continue;
+      if (slot->source_top_ptr_key == 0ULL) continue;
+      if (slot->attachment_case == NULL) continue;
+      if (strcmp(slot->attachment_case, "pair_recursive") != 0 &&
+          strcmp(slot->attachment_case, "zoom_pair_recursive") != 0)
+        continue;
+
+      const struct cell *source_top =
+          (const struct cell *)(uintptr_t)slot->source_top_ptr_key;
+      const enum runner_debug_source_class source_class =
+          runner_debug_get_source_class(source_top);
+
+      if (report_count < runner_debug_recursive_mesh_budget_report_max) {
+        message(
+            "path-pair-recursive-source: level=%d/%d recipient=%llu (%s/%s depth=%d super=%llu) "
+            "case=%s source_top=%llu (%s/%s depth=%d top=%p class=%d budget=%lld) counted=%lld",
+            path_level, depth, recipient->cellID, cellID_names[recipient->type],
+            subcellID_names[recipient->subtype], recipient->depth,
+            recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
+            slot->attachment_case, source_top->cellID,
+            cellID_names[source_top->type], subcellID_names[source_top->subtype],
+            source_top->depth, (void *)source_top->top, (int)source_class,
+            source_top->grav.multipole->m_pole.num_gpart, slot->counted_gparts);
+      } else if (report_count == runner_debug_recursive_mesh_budget_report_max) {
+        message("path-pair-recursive-source reporting capped at %d lines",
+                runner_debug_recursive_mesh_budget_report_max);
+      }
+
+      report_count++;
+    }
+  }
+
+  return report_count;
+}
 #endif
 
 static INLINE void runner_record_mesh_attachment(

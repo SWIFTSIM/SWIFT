@@ -1381,6 +1381,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                   c->grav.super->cellID, cellID_names[c->grav.super->type],
                   subcellID_names[c->grav.super->subtype], c->grav.super->depth);
             }
+
+            runner_debug_dump_path_pair_recursive_sources(c);
 #endif
 
             runner_debug_dump_gravity_path(c);
