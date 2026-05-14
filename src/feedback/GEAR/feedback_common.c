@@ -372,7 +372,7 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
   const char is_dense = rho >= rho_threshold;
 
   /* Can the particle be ionized? */
-  return (is_cold || is_dense || !radiation_is_part_tagged_as_ionized(p, xp));
+  return (is_cold && is_dense && !radiation_is_part_tagged_as_ionized(p, xp));
 }
 
 /**
