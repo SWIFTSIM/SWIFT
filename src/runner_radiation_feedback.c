@@ -176,8 +176,9 @@ void runner_do_stars_hii_ionization_feedback_branch(
     struct spart *si = &sparts[sid];
 
     /* Is this part within the timestep? */
+    if (spart_is_inhibited(si, e)) continue;
     if (!spart_is_active(si, e)) continue;
-    if (!feedback_is_active(si, e)) continue;
+    if (!feedback_is_active(si, e)) continue; /* TODO: Do we want this? */
     if (!feedback_is_HII_ionization_active(si, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -297,6 +298,13 @@ void runner_do_stars_hii_ionization_feedback_self(
       }
     }
   } else {
+
+    /* Check that cells are drifted. */
+    if (!cell_are_part_drifted(c, e))
+      error("Interacting undrifted cell (hydro).");
+    if (!cell_are_spart_drifted(c, e))
+      error("Interacting undrifted cell (stars).");
+    
     struct part *restrict parts = c->hydro.parts;
     struct xpart *restrict xparts = c->hydro.xparts;
     const float six[3] = {si->x[0], si->x[1], si->x[2]};
@@ -370,7 +378,7 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
   if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL) {
-        runner_do_stars_hii_ionization_feedback_pair(r, ci, cj->progeny[k], si,
+        runner_do_stars_hii_ionization_feedback_pair_naive(r, ci, cj->progeny[k], si,
                                                      search_radius, buffer,
                                                      max_size, count_found);
       }
@@ -397,7 +405,7 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
-      if (feedback_part_can_be_ionized(pj, xpj, e)) continue;
+      if (!feedback_part_can_be_ionized(pj, xpj, e)) continue;
 
       /* message("[pair] Found %lld!", pj->id); */
 
