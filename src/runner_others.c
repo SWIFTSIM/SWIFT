@@ -1085,13 +1085,20 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_pm_by_type[0] + gp->num_interacted_pm_by_type[1] +
                 gp->num_interacted_pm_by_type[2] + gp->num_interacted_pm_by_type[3];
             long long top_level_gparts_by_type[4];
-            long long top_level_mesh_gparts_by_type[4];
             int top_level_cells_by_type[4];
+            long long top_level_mesh_gparts_by_type[4];
+            long long top_level_mm_gparts_by_type[4];
+            long long top_level_p2p_gparts_by_type[4];
+            long long top_level_total_gparts_by_type[4];
             int top_level_mesh_cells_by_type[4];
+            int top_level_mm_cells_by_type[4];
+            int top_level_p2p_cells_by_type[4];
             runner_debug_get_top_level_gparts_by_source_representation(
                 e, top_level_gparts_by_type, top_level_cells_by_type);
-            runner_debug_get_top_level_mesh_sources_by_type(
-                e, c, top_level_mesh_gparts_by_type, top_level_mesh_cells_by_type);
+            runner_debug_get_top_level_methods_by_type(
+                e, c, top_level_mesh_gparts_by_type, top_level_mm_gparts_by_type,
+                top_level_p2p_gparts_by_type, top_level_mesh_cells_by_type,
+                top_level_mm_cells_by_type, top_level_p2p_cells_by_type);
             const long long observed_by_type[4] = {
                 gp->num_interacted_m2p_by_type[0] + gp->num_interacted_m2l_by_type[0] +
                     gp->num_interacted_p2p_by_type[0] + gp->num_interacted_pm_by_type[0],
@@ -1101,6 +1108,11 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                     gp->num_interacted_p2p_by_type[2] + gp->num_interacted_pm_by_type[2],
                 gp->num_interacted_m2p_by_type[3] + gp->num_interacted_m2l_by_type[3] +
                     gp->num_interacted_p2p_by_type[3] + gp->num_interacted_pm_by_type[3]};
+            for (int i = 0; i < 4; i++) {
+              top_level_total_gparts_by_type[i] =
+                  top_level_mesh_gparts_by_type[i] + top_level_mm_gparts_by_type[i] +
+                  top_level_p2p_gparts_by_type[i];
+            }
 
             message(
                 "Interaction breakdown for g-particle (id=%lld, type=%s): "
@@ -1113,7 +1125,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "pm_by_type=[%lld,%lld,%lld,%lld], "
                 "observed_by_type=[%lld,%lld,%lld,%lld], "
                 "top_level_mesh_gparts_by_type=[%lld,%lld,%lld,%lld], "
+                "top_level_mm_gparts_by_type=[%lld,%lld,%lld,%lld], "
+                "top_level_p2p_gparts_by_type=[%lld,%lld,%lld,%lld], "
+                "top_level_total_gparts_by_type=[%lld,%lld,%lld,%lld], "
                 "top_level_mesh_cells_by_type=[%d,%d,%d,%d], "
+                "top_level_mm_cells_by_type=[%d,%d,%d,%d], "
+                "top_level_p2p_cells_by_type=[%d,%d,%d,%d], "
                 "top_level_gparts_by_type=[%lld,%lld,%lld,%lld], "
                 "top_level_cells_by_type=[%d,%d,%d,%d]",
                 id, part_type_names[gp->type], gp->num_interacted, num_interacted_m2p,
@@ -1129,9 +1146,19 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 observed_by_type[0], observed_by_type[1], observed_by_type[2],
                 observed_by_type[3], top_level_mesh_gparts_by_type[0],
                 top_level_mesh_gparts_by_type[1], top_level_mesh_gparts_by_type[2],
-                top_level_mesh_gparts_by_type[3], top_level_mesh_cells_by_type[0],
+                top_level_mesh_gparts_by_type[3], top_level_mm_gparts_by_type[0],
+                top_level_mm_gparts_by_type[1], top_level_mm_gparts_by_type[2],
+                top_level_mm_gparts_by_type[3], top_level_p2p_gparts_by_type[0],
+                top_level_p2p_gparts_by_type[1], top_level_p2p_gparts_by_type[2],
+                top_level_p2p_gparts_by_type[3], top_level_total_gparts_by_type[0],
+                top_level_total_gparts_by_type[1], top_level_total_gparts_by_type[2],
+                top_level_total_gparts_by_type[3], top_level_mesh_cells_by_type[0],
                 top_level_mesh_cells_by_type[1], top_level_mesh_cells_by_type[2],
-                top_level_mesh_cells_by_type[3], top_level_gparts_by_type[0],
+                top_level_mesh_cells_by_type[3], top_level_mm_cells_by_type[0],
+                top_level_mm_cells_by_type[1], top_level_mm_cells_by_type[2],
+                top_level_mm_cells_by_type[3], top_level_p2p_cells_by_type[0],
+                top_level_p2p_cells_by_type[1], top_level_p2p_cells_by_type[2],
+                top_level_p2p_cells_by_type[3], top_level_gparts_by_type[0],
                 top_level_gparts_by_type[1], top_level_gparts_by_type[2],
                 top_level_gparts_by_type[3], top_level_cells_by_type[0],
                 top_level_cells_by_type[1], top_level_cells_by_type[2],

@@ -391,10 +391,14 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
                                                 struct cell *top);
 
 #ifdef SWIFT_DEBUG_CHECKS
-void runner_debug_get_top_level_mesh_sources_by_type(const struct engine *e,
-                                                     const struct cell *ci,
-                                                     long long counts[4],
-                                                     int nr_cells[4]);
+void runner_debug_get_top_level_methods_by_type(const struct engine *e,
+                                                const struct cell *ci,
+                                                long long mesh_counts[4],
+                                                long long mm_counts[4],
+                                                long long p2p_counts[4],
+                                                int mesh_nr_cells[4],
+                                                int mm_nr_cells[4],
+                                                int p2p_nr_cells[4]);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -414,7 +418,7 @@ static struct runner_debug_mesh_overlap_entry
     runner_debug_mesh_overlap_table[runner_debug_mesh_overlap_table_size];
 
 static void runner_debug_check_mesh_overlap(const struct cell *recipient,
-                                           const struct cell *source) {
+                                            const struct cell *source) {
 
   const unsigned long long recipient_ptr_key =
       (unsigned long long)(uintptr_t)recipient;
@@ -1035,22 +1039,26 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
 }
 
 #ifdef SWIFT_DEBUG_CHECKS
-void runner_debug_get_top_level_mesh_sources_by_type(const struct engine *e,
-                                                     const struct cell *ci,
-                                                     long long counts[4],
-                                                     int nr_cells[4]) {
+void runner_debug_get_top_level_methods_by_type(const struct engine *e,
+                                                const struct cell *ci,
+                                                long long mesh_counts[4],
+                                                long long mm_counts[4],
+                                                long long p2p_counts[4],
+                                                int mesh_nr_cells[4],
+                                                int mm_nr_cells[4],
+                                                int p2p_nr_cells[4]) {
 
   struct cell *top = ci->top;
   while (top->void_parent != NULL) top = top->void_parent->top;
 
-  counts[0] = 0;
-  counts[1] = 0;
-  counts[2] = 0;
-  counts[3] = 0;
-  nr_cells[0] = 0;
-  nr_cells[1] = 0;
-  nr_cells[2] = 0;
-  nr_cells[3] = 0;
+  for (int i = 0; i < 4; i++) {
+    mesh_counts[i] = 0;
+    mm_counts[i] = 0;
+    p2p_counts[i] = 0;
+    mesh_nr_cells[i] = 0;
+    mm_nr_cells[i] = 0;
+    p2p_nr_cells[i] = 0;
+  }
 
   if (!e->s->periodic) return;
 
@@ -1066,10 +1074,20 @@ void runner_debug_get_top_level_mesh_sources_by_type(const struct engine *e,
 
       if (source == top) continue;
       if (multi->m_pole.M_000 == 0.f) continue;
-      if (!cell_can_use_mesh((struct engine *)e, top, source)) continue;
-
-      counts[source_class] += multi->m_pole.num_gpart;
-      nr_cells[source_class] += 1;
+      if (cell_can_use_mesh((struct engine *)e, top, source)) {
+        mesh_counts[source_class] += multi->m_pole.num_gpart;
+        mesh_nr_cells[source_class] += 1;
+      } else if (cell_can_use_pair_mm(top, source, (struct engine *)e, s,
+                                      /*use_rebuild_data=*/1,
+                                      /*is_tree_walk=*/0,
+                                      /*periodic boundaries=*/s->periodic,
+                                      /*use_mesh=*/s->periodic)) {
+        mm_counts[source_class] += multi->m_pole.num_gpart;
+        mm_nr_cells[source_class] += 1;
+      } else {
+        p2p_counts[source_class] += multi->m_pole.num_gpart;
+        p2p_nr_cells[source_class] += 1;
+      }
     }
 
   } else {
@@ -1084,10 +1102,20 @@ void runner_debug_get_top_level_mesh_sources_by_type(const struct engine *e,
 
       if (source == top) continue;
       if (multi->m_pole.M_000 == 0.f) continue;
-      if (!cell_can_use_mesh((struct engine *)e, top, source)) continue;
-
-      counts[source_class] += multi->m_pole.num_gpart;
-      nr_cells[source_class] += 1;
+      if (cell_can_use_mesh((struct engine *)e, top, source)) {
+        mesh_counts[source_class] += multi->m_pole.num_gpart;
+        mesh_nr_cells[source_class] += 1;
+      } else if (cell_can_use_pair_mm(top, source, (struct engine *)e, s,
+                                      /*use_rebuild_data=*/1,
+                                      /*is_tree_walk=*/0,
+                                      /*periodic boundaries=*/s->periodic,
+                                      /*use_mesh=*/s->periodic)) {
+        mm_counts[source_class] += multi->m_pole.num_gpart;
+        mm_nr_cells[source_class] += 1;
+      } else {
+        p2p_counts[source_class] += multi->m_pole.num_gpart;
+        p2p_nr_cells[source_class] += 1;
+      }
     }
   }
 }
