@@ -627,6 +627,11 @@ static void runner_debug_record_recursive_mesh_budget(
 int runner_debug_dump_recursive_mesh_budget_overlaps(const struct cell *ci) {
 
   int report_count = 0;
+  struct runner_debug_recursive_mesh_budget_entry path_totals
+      [runner_debug_recursive_mesh_budget_report_max];
+  int path_totals_count = 0;
+
+  bzero(path_totals, sizeof(path_totals));
 
   for (const struct cell *recipient = ci; recipient != NULL;
        recipient = (recipient == recipient->grav.super) ? NULL : recipient->parent) {
@@ -645,6 +650,24 @@ int runner_debug_dump_recursive_mesh_budget_overlaps(const struct cell *ci) {
           (const struct cell *)(uintptr_t)slot->source_top_ptr_key;
       const long long budget = source_top->grav.multipole->m_pole.num_gpart;
       const long long counted = slot->counted_gparts;
+
+      int found_path_total = 0;
+      for (int j = 0; j < path_totals_count; j++) {
+        if (path_totals[j].source_top_ptr_key != slot->source_top_ptr_key) continue;
+        if (path_totals[j].attachment_case != slot->attachment_case) continue;
+
+        path_totals[j].counted_gparts += counted;
+        found_path_total = 1;
+        break;
+      }
+
+      if (!found_path_total &&
+          path_totals_count < runner_debug_recursive_mesh_budget_report_max) {
+        path_totals[path_totals_count].source_top_ptr_key = slot->source_top_ptr_key;
+        path_totals[path_totals_count].attachment_case = slot->attachment_case;
+        path_totals[path_totals_count].counted_gparts = counted;
+        path_totals_count++;
+      }
 
       if (counted <= budget) continue;
 
@@ -666,6 +689,32 @@ int runner_debug_dump_recursive_mesh_budget_overlaps(const struct cell *ci) {
 
       report_count++;
     }
+  }
+
+  for (int i = 0; i < path_totals_count; i++) {
+    const struct cell *source_top =
+        (const struct cell *)(uintptr_t)path_totals[i].source_top_ptr_key;
+    const long long budget = source_top->grav.multipole->m_pole.num_gpart;
+    const long long counted = path_totals[i].counted_gparts;
+
+    if (counted <= budget) continue;
+
+    if (report_count < runner_debug_recursive_mesh_budget_report_max) {
+      message(
+          "recursive-mesh-budget-path-overlap: leaf=%llu (%s/%s depth=%d super=%llu) "
+          "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) "
+          "case=%s counted=%lld excess=%lld",
+          ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
+          ci->grav.super->cellID, source_top->cellID,
+          cellID_names[source_top->type], subcellID_names[source_top->subtype],
+          source_top->depth, (void *)source_top->top, budget,
+          path_totals[i].attachment_case, counted, counted - budget);
+    } else if (report_count == runner_debug_recursive_mesh_budget_report_max) {
+      message("recursive-mesh-budget-overlap reporting capped at %d lines",
+              runner_debug_recursive_mesh_budget_report_max);
+    }
+
+    report_count++;
   }
 
   return report_count;
