@@ -118,14 +118,10 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
         }
 
-        /* Recurse, but only if we haven't reached the super level. This can
-         * can only happen in zoom land when recursing from the void cells to
-         * the zoom cells. From the zoom super onwards to the leaves is
-         * handled by the zoom super down call.
-         * In a non-zoom simulation the down is defined at the super level,
-         * so you can never hit another down when recursing. Only the
-         * void->zoom cell tree can have two super levels.  */
-        if (cp->grav.super != cp) {
+        /* Recurse unless we are stopping at a separate super-level down task.
+         * For the temporary zoom test wiring we let the void down-pass carry on
+         * through the zoom super when no dedicated zoom grav.down task exists. */
+        if (cp->grav.super != cp || cp->grav.down == NULL) {
           runner_do_grav_down(r, cp, 0);
         }
       }

@@ -1581,8 +1581,10 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
             s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity recursive down-pass */
-        c->grav.down = scheduler_addtask(s, task_type_grav_down,
-                                         task_subtype_none, 0, 0, c, NULL);
+        if (c->void_super == NULL) {
+          c->grav.down = scheduler_addtask(s, task_type_grav_down,
+                                           task_subtype_none, 0, 0, c, NULL);
+        }
 
         /* Implicit tasks for the up and down passes */
         c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
@@ -1594,8 +1596,13 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
         /* Long-range gravity forces (not the mesh ones!) */
         scheduler_addunlock(s, c->grav.init, c->grav.long_range);
-        scheduler_addunlock(s, c->grav.long_range, c->grav.down);
-        scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
+        if (c->void_super != NULL) {
+          scheduler_addunlock(s, c->grav.long_range, c->void_super->grav.down);
+          scheduler_addunlock(s, c->void_super->grav.down, c->grav.end_force);
+        } else {
+          scheduler_addunlock(s, c->grav.long_range, c->grav.down);
+          scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
+        }
 
         /* With adaptive softening, force the hydro density to complete first */
         if (gravity_after_hydro_density && c->hydro.super == c) {
@@ -1605,10 +1612,15 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
-        scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+        if (c->void_super != NULL) {
+          scheduler_addunlock(s, c->grav.down_in, c->void_super->grav.down);
+        } else {
+          scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+        }
 
-        /* In zoom land we need to link the void super down task to the zoom
-         * level down_in to ensure the void down pass happens first. */
+        /* In zoom land we need to ensure the void down pass waits for the zoom
+         * super's long-range and interaction work, then carries on down the
+         * zoom tree itself. */
         if (c->void_super != NULL) {
 
           /* zoom.init_out -> void.init_out */
@@ -1616,9 +1628,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
            * which have not yet been initialised. */
           scheduler_addunlock(s, c->grav.init_out,
                               c->void_parent->grav.init_out);
-
-          /* void.down -> zoom.down_in */
-          scheduler_addunlock(s, c->void_super->grav.down, c->grav.down_in);
         }
       }
     }
