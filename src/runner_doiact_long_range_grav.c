@@ -407,6 +407,13 @@ struct runner_debug_mesh_overlap_entry {
   unsigned long long source_ptr_key;
 };
 
+struct runner_debug_recursive_mesh_budget_entry {
+  unsigned long long recipient_super_ptr_key;
+  unsigned long long source_top_ptr_key;
+  const char *attachment_case;
+  long long counted_gparts;
+};
+
 static int runner_debug_mesh_overlap_report_count = 0;
 static int runner_debug_mesh_overlap_limit_reported = 0;
 static int runner_debug_recursive_mesh_bkg_neigh_report_count = 0;
@@ -417,11 +424,25 @@ static int runner_debug_mesh_pair_overlap_limit_reported = 0;
 #define runner_debug_mesh_overlap_report_max 64
 #define runner_debug_recursive_mesh_bkg_neigh_report_max 128
 #define runner_debug_mesh_pair_overlap_report_max 128
+#define runner_debug_recursive_mesh_budget_report_max 64
 #define runner_debug_mesh_overlap_table_size (1 << 14)
 #define runner_debug_mesh_overlap_probe_limit 16
+#define runner_debug_recursive_mesh_budget_table_size (1 << 15)
+#define runner_debug_recursive_mesh_budget_probe_limit 32
 
 static struct runner_debug_mesh_overlap_entry
     runner_debug_mesh_overlap_table[runner_debug_mesh_overlap_table_size];
+static struct runner_debug_recursive_mesh_budget_entry
+    runner_debug_recursive_mesh_budget_table
+        [runner_debug_recursive_mesh_budget_table_size];
+
+static INLINE const struct cell *runner_debug_get_recursive_mesh_source_top(
+    const struct cell *source) {
+
+  const struct cell *source_top = source->top;
+  if (source_top->void_parent != NULL) source_top = source_top->void_parent->top;
+  return source_top;
+}
 
 static void runner_debug_log_recursive_mesh_bkg_neigh(
     const struct cell *super, const struct cell *ci, const struct cell *cj,
@@ -562,6 +583,90 @@ static void runner_debug_check_mesh_pair_overlap(const struct cell *recipient,
     return;
   }
 }
+
+static void runner_debug_record_recursive_mesh_budget(
+    const struct cell *super, const struct cell *source,
+    const char *attachment_case) {
+
+  const struct cell *source_top = runner_debug_get_recursive_mesh_source_top(source);
+  const unsigned long long recipient_super_ptr_key =
+      (unsigned long long)(uintptr_t)super;
+  const unsigned long long source_top_ptr_key =
+      (unsigned long long)(uintptr_t)source_top;
+  const unsigned long long case_key = (unsigned long long)(uintptr_t)attachment_case;
+  const unsigned long long hash =
+      recipient_super_ptr_key * 11400714819323198485ull ^
+      source_top_ptr_key * 14029467366897019727ull ^
+      case_key * 1609587929392839161ull;
+
+  for (int probe = 0; probe < runner_debug_recursive_mesh_budget_probe_limit;
+       probe++) {
+    struct runner_debug_recursive_mesh_budget_entry *slot =
+        &runner_debug_recursive_mesh_budget_table
+             [(hash + (unsigned long long)probe) &
+              (runner_debug_recursive_mesh_budget_table_size - 1)];
+
+    if (slot->recipient_super_ptr_key == 0ULL) {
+      if (atomic_cas(&slot->recipient_super_ptr_key, 0ULL,
+                     recipient_super_ptr_key) == 0ULL) {
+        slot->source_top_ptr_key = source_top_ptr_key;
+        slot->attachment_case = attachment_case;
+        slot->counted_gparts = source->grav.multipole->m_pole.num_gpart;
+        return;
+      }
+    }
+
+    if (slot->recipient_super_ptr_key != recipient_super_ptr_key) continue;
+    if (slot->source_top_ptr_key != source_top_ptr_key) continue;
+    if (slot->attachment_case != attachment_case) continue;
+
+    accumulate_add_ll(&slot->counted_gparts, source->grav.multipole->m_pole.num_gpart);
+    return;
+  }
+}
+
+int runner_debug_dump_recursive_mesh_budget_overlaps(const struct cell *ci) {
+
+  const struct cell *super = ci->grav.super;
+  const unsigned long long recipient_super_ptr_key =
+      (unsigned long long)(uintptr_t)super;
+  int report_count = 0;
+
+  for (int i = 0; i < runner_debug_recursive_mesh_budget_table_size; i++) {
+    const struct runner_debug_recursive_mesh_budget_entry *slot =
+        &runner_debug_recursive_mesh_budget_table[i];
+
+    if (slot->recipient_super_ptr_key != recipient_super_ptr_key) continue;
+    if (slot->source_top_ptr_key == 0ULL) continue;
+    if (slot->attachment_case == NULL) continue;
+
+    const struct cell *source_top =
+        (const struct cell *)(uintptr_t)slot->source_top_ptr_key;
+    const long long budget = source_top->grav.multipole->m_pole.num_gpart;
+    const long long counted = slot->counted_gparts;
+
+    if (counted <= budget) continue;
+
+    if (report_count < runner_debug_recursive_mesh_budget_report_max) {
+      message(
+          "recursive-mesh-budget-overlap: super=%llu (%s/%s depth=%d) "
+          "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) "
+          "case=%s counted=%lld excess=%lld",
+          super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
+          super->depth, source_top->cellID, cellID_names[source_top->type],
+          subcellID_names[source_top->subtype], source_top->depth,
+          (void *)source_top->top, budget, slot->attachment_case, counted,
+          counted - budget);
+    } else if (report_count == runner_debug_recursive_mesh_budget_report_max) {
+      message("recursive-mesh-budget-overlap reporting capped at %d lines",
+              runner_debug_recursive_mesh_budget_report_max);
+    }
+
+    report_count++;
+  }
+
+  return report_count;
+}
 #endif
 
 static INLINE void runner_record_mesh_attachment(
@@ -581,6 +686,8 @@ static INLINE void runner_record_mesh_attachment(
   runner_debug_check_mesh_overlap(recipient, source);
   runner_debug_check_mesh_pair_overlap(recipient, source, origin,
                                        attachment_case);
+  if (origin != 0)
+    runner_debug_record_recursive_mesh_budget(super, source, attachment_case);
   if (origin != 0)
     runner_debug_log_recursive_mesh_bkg_neigh(super, ci, cj, recipient, source,
                                               attachment_case);

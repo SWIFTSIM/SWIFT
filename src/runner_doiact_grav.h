@@ -87,6 +87,8 @@ void runner_debug_get_top_level_methods_by_type(const struct engine *e,
                                                 int mesh_nr_cells[4],
                                                 int mm_nr_cells[4],
                                                 int p2p_nr_cells[4]);
+
+int runner_debug_dump_recursive_mesh_budget_overlaps(const struct cell *ci);
 #endif
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer);

@@ -1244,6 +1244,15 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 top_level_gparts_by_type[3], top_level_cells_by_type[0],
                 top_level_cells_by_type[1], top_level_cells_by_type[2],
                 top_level_cells_by_type[3]);
+
+            const int recursive_mesh_budget_overlaps =
+                runner_debug_dump_recursive_mesh_budget_overlaps(c);
+            if (recursive_mesh_budget_overlaps == 0) {
+              message(
+                  "recursive-mesh-budget-overlap: none for super=%llu (%s/%s depth=%d)",
+                  c->grav.super->cellID, cellID_names[c->grav.super->type],
+                  subcellID_names[c->grav.super->subtype], c->grav.super->depth);
+            }
 #endif
 
             runner_debug_dump_gravity_path(c);
