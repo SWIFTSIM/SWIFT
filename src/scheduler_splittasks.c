@@ -387,11 +387,13 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
             gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
           /* Otherwise, split it. */
         } else {
-          /* Turn the task into a M-M task that will take care of all the
-           * progeny pairs */
-          t->type = task_type_grav_mm;
-          t->subtype = task_subtype_progeny;
-          t->flags = 0;
+          /* Temporarily disable split-generated M-M work so any non-mesh child
+           * pairs recurse as ordinary gravity tasks. */
+          t->type = task_type_none;
+          t->subtype = task_subtype_none;
+          t->ci = NULL;
+          t->cj = NULL;
+          t->skip = 1;
 
           /* Make a task for every other pair of progeny */
           for (int i = 0; i < 8; i++) {
@@ -407,40 +409,14 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     continue;
                   }
 
-                  /* Can we use a M-M interaction here? */
-                  if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e,
-                                           sp, /*use_rebuild_data=*/1,
-                                           /*is_tree_walk=*/1,
-                                           /*periodic boundaries*/ sp->periodic,
-                                           /*use_mesh*/ sp->periodic)) {
-
-                    /* Flag this pair as being treated by the M-M task.
-                     * We use the 64 bits in the task->flags field to store
-                     * this information. The corresponding task will unpack
-                     * the information and operate according to the choices
-                     * made here. */
-                    const int flag = i * 8 + j;
-                    t->flags |= (1ULL << flag);
-
-                  } else {
-                    /* Ok, we actually have to create a task */
-                    scheduler_splittask_gravity(
-                        scheduler_addtask(s, task_type_pair, task_subtype_grav,
-                                          0, 0, cpi, cpj),
-                        s);
-                  }
+                  /* Ok, we actually have to create a task */
+                  scheduler_splittask_gravity(
+                      scheduler_addtask(s, task_type_pair, task_subtype_grav,
+                                        0, 0, cpi, cpj),
+                      s);
                 }
               }
             }
-          }
-
-          /* Can none of the progenies use M-M calculations? */
-          if (t->flags == 0) {
-            t->type = task_type_none;
-            t->subtype = task_subtype_none;
-            t->ci = NULL;
-            t->cj = NULL;
-            t->skip = 1;
           }
 
         } /* Split the pair */
@@ -530,14 +506,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         cj->contains_zoom_cells, cj->grav.count);
   }
 
-  /* Convert to a grav_mm/progeny task. The flags field encodes which progeny
-   * pairs will be handled by M-M; remaining pairs are spawned as new tasks. */
-  t->type = task_type_grav_mm;
-  t->subtype = task_subtype_progeny;
-  t->flags = 0;
-
-  /* Define a flag for when the original task has been reused. */
-  int reused = 0;
+  /* Temporarily disable split-generated M-M work here too. */
+  t->type = task_type_none;
+  t->subtype = task_subtype_none;
+  t->ci = NULL;
+  t->cj = NULL;
+  t->skip = 1;
 
   /* When we split a regular cell's task because it is interacting with a
    * void cell, we can end up below the depth set by space_subdepth_diff_grav.
@@ -597,41 +571,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         continue;
       }
 
-      /* Can we use a M-M interaction here? */
-      if (cell_can_use_pair_mm(cpi, cpj, e, sp,
-                               /*use_rebuild_data=*/1,
-                               /*is_tree_walk=*/1,
-                               /*periodic boundaries*/ sp->periodic,
-                               /*use_mesh*/ sp->periodic)) {
-
-        /* Flag that we've reused the original task. */
-        reused = 1;
-
-        /* Flag this pair as being treated by the M-M task.
-         * We use the 64 bits in the task->flags field to store
-         * this information. The corresponding taks will unpack
-         * the information and operate according to the choices
-         * made here. */
-        const int flag = i * 8 + j;
-        t->flags |= (1ULL << flag);
-
-      } else {
-        /* Can't use an M-M so let's make a pair task. */
-        zoom_scheduler_splittask_gravity_void_pair(
-            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
-                              cpj),
-            s);
-      }
+      /* Can't use the mesh so let's make a pair task. */
+      zoom_scheduler_splittask_gravity_void_pair(
+          scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
+                            cpj),
+          s);
     }
-  }
-
-  /* Can none of the progenies use M-M calculations? */
-  if (!reused) {
-    t->type = task_type_none;
-    t->subtype = task_subtype_none;
-    t->ci = NULL;
-    t->cj = NULL;
-    t->skip = 1;
   }
 }
 
