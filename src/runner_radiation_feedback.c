@@ -577,6 +577,8 @@ void runner_do_stars_hii_ionization_feedback_pair(
       /* Star is on the 'right', loop backward until we pass the star's reach */
       for (int pjd = count_j - 1; pjd >= 0 && sort_j[pjd].d >= di_min; pjd--) {
 
+	/* Skip particles that are too far on the 'near' side of the slab */
+	if (sort_j[pjd].d < di_min) continue;
 
 	struct part *restrict pj = &parts_j[sort_j[pjd].i];
 	struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
