@@ -429,12 +429,15 @@ static int runner_debug_recursive_mesh_bkg_neigh_report_count = 0;
 static int runner_debug_recursive_mesh_bkg_neigh_limit_reported = 0;
 static int runner_debug_mesh_pair_overlap_report_count = 0;
 static int runner_debug_mesh_pair_overlap_limit_reported = 0;
+static int runner_debug_zoom_mesh_stop_overlap_report_count = 0;
+static int runner_debug_zoom_mesh_stop_overlap_limit_reported = 0;
 
 #define runner_debug_mesh_overlap_report_max 64
 #define runner_debug_recursive_mesh_bkg_neigh_report_max 128
 #define runner_debug_mesh_pair_overlap_report_max 128
 #define runner_debug_recursive_mesh_budget_report_max 64
 #define runner_debug_zoom_pair_revisit_report_max 64
+#define runner_debug_zoom_mesh_stop_overlap_report_max 128
 #define runner_debug_mesh_overlap_table_size (1 << 14)
 #define runner_debug_mesh_overlap_probe_limit 16
 #define runner_debug_recursive_mesh_budget_table_size (1 << 15)
@@ -595,6 +598,61 @@ static void runner_debug_check_mesh_pair_overlap(const struct cell *recipient,
     }
 
     return;
+  }
+}
+
+static void runner_debug_check_zoom_mesh_stop_pair_overlap(
+    const struct cell *recipient, const struct cell *ci, const struct cell *cj) {
+
+  const struct cell *branches[2] = {ci, cj};
+  const struct cell *partners[2] = {cj, ci};
+
+  for (int side = 0; side < 2; side++) {
+    const struct cell *branch = branches[side];
+    const struct cell *partner = partners[side];
+
+    for (const struct link *l = branch->grav.grav; l != NULL; l = l->next) {
+      const struct task *t = l->t;
+
+      if (t->type != task_type_pair || t->subtype != task_subtype_grav) continue;
+
+      const struct cell *other = (t->ci == branch) ? t->cj : t->ci;
+      if (other == NULL) continue;
+
+      if (other != partner && !cell_contains_progeny(other, partner) &&
+          !cell_contains_progeny(partner, other))
+        continue;
+
+      const int report_index =
+          atomic_inc(&runner_debug_zoom_mesh_stop_overlap_report_count);
+
+      if (report_index < runner_debug_zoom_mesh_stop_overlap_report_max) {
+        message(
+            "zoom-mesh-stop-pair-overlap: recipient=%llu (%s/%s depth=%d top=%p) "
+            "branch=%llu (%s/%s depth=%d top=%p gparts=%lld) "
+            "partner=%llu (%s/%s depth=%d top=%p gparts=%lld) "
+            "pair_other=%llu (%s/%s depth=%d top=%p gparts=%lld) "
+            "task_cells=[%llu,%llu]",
+            recipient->cellID, cellID_names[recipient->type],
+            subcellID_names[recipient->subtype], recipient->depth,
+            (void *)recipient->top, branch->cellID, cellID_names[branch->type],
+            subcellID_names[branch->subtype], branch->depth, (void *)branch->top,
+            branch->grav.multipole->m_pole.num_gpart, partner->cellID,
+            cellID_names[partner->type], subcellID_names[partner->subtype],
+            partner->depth, (void *)partner->top,
+            partner->grav.multipole->m_pole.num_gpart, other->cellID,
+            cellID_names[other->type], subcellID_names[other->subtype],
+            other->depth, (void *)other->top, other->grav.multipole->m_pole.num_gpart,
+            t->ci != NULL ? t->ci->cellID : 0, t->cj != NULL ? t->cj->cellID : 0);
+      } else if (report_index == runner_debug_zoom_mesh_stop_overlap_report_max &&
+                 atomic_cas(&runner_debug_zoom_mesh_stop_overlap_limit_reported, 0,
+                            1) == 0) {
+        message("zoom-mesh-stop-pair-overlap reporting capped at %d lines",
+                runner_debug_zoom_mesh_stop_overlap_report_max);
+      }
+
+      return;
+    }
   }
 }
 
@@ -938,15 +996,6 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   /* Do we share the same top level cell? i.e. are we self-interacting? */
   int is_self = top_i == top_j;
 
-  /* For pair-recursive mesh counts, attach to the owning recipient-side branch
-   * if it sits below the super level, otherwise attach at the super. */
-  if (!is_self && origin == 2) {
-    struct cell *recipient = (super != ci && cell_contains_progeny(super, ci)) ? ci : super;
-    runner_record_mesh_attachment(super, ci, cj, recipient, cj, origin,
-                                  attachment_case);
-    return;
-  }
-
   /* Decide which cell we are updating. */
   if (super == ci) {
     runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
@@ -1265,6 +1314,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       if (cell_can_use_mesh(e, cpi, cpj)) {
 #ifdef SWIFT_DEBUG_CHECKS
         runner_debug_record_zoom_pair_visit(c, cpi, cpj, 1);
+        runner_debug_check_zoom_mesh_stop_pair_overlap(c, cpi, cpj);
 #endif
         /* Record the mesh interaction */
         runner_count_mesh_interaction(c, cpi, cpj, 2, "zoom_pair_recursive");
