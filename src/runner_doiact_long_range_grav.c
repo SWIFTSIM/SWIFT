@@ -670,6 +670,11 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
     return;
   }
 
+  /* The first cell must remain on the unique branch containing c. */
+  if (ci != c && !cell_contains_progeny(ci, c)) {
+    return;
+  }
+
   /* Should this pair be split? */
   if (cell_can_split_pair_gravity_task(ci, cj)) {
 
@@ -680,24 +685,32 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
       return;
     }
 
-    /* Recurse on all progeny pairs */
+    /* Only recurse through the unique child branch containing c on the first
+     * side, while still scanning all source-side children. */
+    struct cell *cpi = NULL;
     for (int i = 0; i < 8; i++) {
       if (ci->progeny[i] == NULL) continue;
-      struct cell *cpi = ci->progeny[i];
-      for (int j = 0; j < 8; j++) {
-        if (cj->progeny[j] == NULL) continue;
-        struct cell *cpj = cj->progeny[j];
-
-        /* Can we use the mesh for this pair? */
-        if (cell_can_use_mesh(e, cpi, cpj)) {
-          /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpi, cpj, 1, "pair_recursive");
-          continue;
-        }
-
-        /* We would create real tasks, so recurse to find mesh interactions */
-        runner_count_mesh_interactions_pair_recursive(c, cpi, cpj, s);
+      if (ci->progeny[i] == c || cell_contains_progeny(ci->progeny[i], c)) {
+        cpi = ci->progeny[i];
+        break;
       }
+    }
+
+    if (cpi == NULL) return;
+
+    for (int j = 0; j < 8; j++) {
+      if (cj->progeny[j] == NULL) continue;
+      struct cell *cpj = cj->progeny[j];
+
+      /* Can we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpi, cpj)) {
+        /* Record the mesh interaction */
+        runner_count_mesh_interaction(c, cpi, cpj, 1, "pair_recursive");
+        continue;
+      }
+
+      /* We would create real tasks, so recurse to find mesh interactions */
+      runner_count_mesh_interactions_pair_recursive(c, cpi, cpj, s);
     }
   }
   /* else: We have a real task that doesn't split further, no mesh
@@ -856,58 +869,71 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
   struct engine *e = s->e;
 
+  /* The first cell must remain on the unique branch containing c. */
+  if (ci != c && !cell_contains_progeny(ci, c)) {
+    return;
+  }
+
   /* If neither cell is a void cell, use the normal pair recursive function */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
     runner_count_mesh_interactions_pair_recursive(c, ci, cj, s);
     return;
   }
 
-  /* Loop over progeny pairs, mirroring
-   * zoom_scheduler_splittask_gravity_void_pair */
+  /* Follow only the unique child branch containing c on the first side while
+   * still scanning all source-side children. */
+  struct cell *cpi = NULL;
   for (int i = 0; i < 8; i++) {
-    struct cell *cpi = ci->progeny[i];
+    struct cell *candidate = ci->progeny[i];
 
     /* Skip NULL progeny */
-    if (cpi == NULL) continue;
+    if (candidate == NULL) continue;
 
     /* Skip void progeny that do not contain any zoom cells. */
-    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
+    if (candidate->subtype == cell_subtype_void && !candidate->contains_zoom_cells)
       continue;
 
     /* Skip any empty progeny of a void cell (void cells themselves always
      * have 0 particles but are never "empty"). */
-    if (cell_is_empty_mpole(cpi)) continue;
+    if (cell_is_empty_mpole(candidate)) continue;
 
-    for (int j = 0; j < 8; j++) {
-      struct cell *cpj = cj->progeny[j];
-
-      /* Skip NULL progeny */
-      if (cpj == NULL) continue;
-
-      /* Skip void progeny that do not contain any zoom cells. */
-      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
-        continue;
-
-      /* Skip leaf neighbours interacting with void cells. */
-      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
-
-      /* Skip any empty progeny of a void cell (void cells themselves always
-       * have 0 particles but are never "empty"). */
-      if (cell_is_empty_mpole(cpj)) continue;
-
-      /* Skip entirely foreign pairs. */
-      if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
-
-      /* Can we use the mesh for this pair? */
-      if (cell_can_use_mesh(e, cpi, cpj)) {
-        /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpi, cpj, 1, "zoom_pair_recursive");
-        continue;
-      }
-
-      /* Recurse to find more mesh interactions */
-      runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
+    if (candidate == c || cell_contains_progeny(candidate, c)) {
+      cpi = candidate;
+      break;
     }
+  }
+
+  if (cpi == NULL) return;
+
+  for (int j = 0; j < 8; j++) {
+    struct cell *cpj = cj->progeny[j];
+
+    /* Skip NULL progeny */
+    if (cpj == NULL) continue;
+
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
+      continue;
+
+    /* Skip leaf neighbours interacting with void cells. */
+    if (!ci->split && cpj->subtype == cell_subtype_void) continue;
+
+    /* Skip any empty progeny of a void cell (void cells themselves always
+     * have 0 particles but are never "empty"). */
+    if (cell_is_empty_mpole(cpj)) continue;
+
+    /* Skip entirely foreign pairs. */
+    if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
+
+    /* Can we use the mesh for this pair? */
+    if (cell_can_use_mesh(e, cpi, cpj)) {
+      /* Record the mesh interaction */
+      runner_count_mesh_interaction(c, cpi, cpj, 1, "zoom_pair_recursive");
+      continue;
+    }
+
+    /* Recurse to find more mesh interactions */
+    runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
   }
 }
 
