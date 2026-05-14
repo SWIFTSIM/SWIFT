@@ -163,7 +163,11 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
   /* If the spart is dead, don't do anything */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
-  /* TODO: Check the radiation policy here */
+  /* Did we enable HII photoionization? */
+  const struct feedback_props *fb_props = e->feedback_props;
+  const char do_photoionization = fb_props->radiation_policy & radiation_policy_photoionization;
+
+  if (!do_photoionization) return 0;
 
   return feedback_get_star_ionization_rate(sp) > 0.0;
 }
