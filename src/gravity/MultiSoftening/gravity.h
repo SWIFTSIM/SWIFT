@@ -273,6 +273,8 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
     gp->num_interacted_pm_long_range_direct_by_type[i] = 0;
     gp->num_interacted_pm_long_range_recursive_by_type[i] = 0;
     gp->num_interacted_pm_pair_skip_by_type[i] = 0;
+    gp->num_interacted_pm_pair_skip_direct_by_type[i] = 0;
+    gp->num_interacted_pm_pair_skip_recursive_by_type[i] = 0;
   }
   gp->initialised = 1;
 #endif
