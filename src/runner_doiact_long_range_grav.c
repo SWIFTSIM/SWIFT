@@ -414,6 +414,15 @@ struct runner_debug_recursive_mesh_budget_entry {
   long long counted_gparts;
 };
 
+struct runner_debug_zoom_pair_visit_entry {
+  unsigned long long recipient_ptr_key;
+  unsigned long long ci_ptr_key;
+  unsigned long long cj_ptr_key;
+  int visit_count;
+  int mesh_stop_count;
+  int recurse_count;
+};
+
 static int runner_debug_mesh_overlap_report_count = 0;
 static int runner_debug_mesh_overlap_limit_reported = 0;
 static int runner_debug_recursive_mesh_bkg_neigh_report_count = 0;
@@ -425,16 +434,21 @@ static int runner_debug_mesh_pair_overlap_limit_reported = 0;
 #define runner_debug_recursive_mesh_bkg_neigh_report_max 128
 #define runner_debug_mesh_pair_overlap_report_max 128
 #define runner_debug_recursive_mesh_budget_report_max 64
+#define runner_debug_zoom_pair_revisit_report_max 64
 #define runner_debug_mesh_overlap_table_size (1 << 14)
 #define runner_debug_mesh_overlap_probe_limit 16
 #define runner_debug_recursive_mesh_budget_table_size (1 << 15)
 #define runner_debug_recursive_mesh_budget_probe_limit 32
+#define runner_debug_zoom_pair_visit_table_size (1 << 15)
+#define runner_debug_zoom_pair_visit_probe_limit 32
 
 static struct runner_debug_mesh_overlap_entry
     runner_debug_mesh_overlap_table[runner_debug_mesh_overlap_table_size];
 static struct runner_debug_recursive_mesh_budget_entry
     runner_debug_recursive_mesh_budget_table
         [runner_debug_recursive_mesh_budget_table_size];
+static struct runner_debug_zoom_pair_visit_entry
+    runner_debug_zoom_pair_visit_table[runner_debug_zoom_pair_visit_table_size];
 
 static INLINE const struct cell *runner_debug_get_recursive_mesh_source_top(
     const struct cell *source) {
@@ -715,6 +729,98 @@ int runner_debug_dump_recursive_mesh_budget_overlaps(const struct cell *ci) {
     }
 
     report_count++;
+  }
+
+  return report_count;
+}
+
+static void runner_debug_record_zoom_pair_visit(const struct cell *recipient,
+                                                const struct cell *ci,
+                                                const struct cell *cj,
+                                                const int mesh_stop) {
+
+  const unsigned long long recipient_ptr_key =
+      (unsigned long long)(uintptr_t)recipient;
+  unsigned long long ci_ptr_key = (unsigned long long)(uintptr_t)ci;
+  unsigned long long cj_ptr_key = (unsigned long long)(uintptr_t)cj;
+
+  if (cj_ptr_key < ci_ptr_key) {
+    const unsigned long long tmp = ci_ptr_key;
+    ci_ptr_key = cj_ptr_key;
+    cj_ptr_key = tmp;
+  }
+
+  const unsigned long long hash =
+      recipient_ptr_key * 11400714819323198485ull ^
+      ci_ptr_key * 14029467366897019727ull ^ cj_ptr_key * 1609587929392839161ull;
+
+  for (int probe = 0; probe < runner_debug_zoom_pair_visit_probe_limit; probe++) {
+    struct runner_debug_zoom_pair_visit_entry *slot =
+        &runner_debug_zoom_pair_visit_table
+             [(hash + (unsigned long long)probe) &
+              (runner_debug_zoom_pair_visit_table_size - 1)];
+
+    if (slot->recipient_ptr_key == 0ULL) {
+      if (atomic_cas(&slot->recipient_ptr_key, 0ULL, recipient_ptr_key) == 0ULL) {
+        slot->ci_ptr_key = ci_ptr_key;
+        slot->cj_ptr_key = cj_ptr_key;
+        slot->visit_count = 1;
+        slot->mesh_stop_count = mesh_stop;
+        slot->recurse_count = !mesh_stop;
+        return;
+      }
+    }
+
+    if (slot->recipient_ptr_key != recipient_ptr_key) continue;
+    if (slot->ci_ptr_key != ci_ptr_key) continue;
+    if (slot->cj_ptr_key != cj_ptr_key) continue;
+
+    slot->visit_count += 1;
+    slot->mesh_stop_count += mesh_stop;
+    slot->recurse_count += !mesh_stop;
+    return;
+  }
+}
+
+int runner_debug_dump_zoom_pair_recursive_revisits(const struct cell *ci) {
+
+  int report_count = 0;
+
+  for (const struct cell *recipient = ci; recipient != NULL;
+       recipient = (recipient == recipient->grav.super) ? NULL : recipient->parent) {
+    const unsigned long long recipient_ptr_key =
+        (unsigned long long)(uintptr_t)recipient;
+
+    for (int i = 0; i < runner_debug_zoom_pair_visit_table_size; i++) {
+      const struct runner_debug_zoom_pair_visit_entry *slot =
+          &runner_debug_zoom_pair_visit_table[i];
+
+      if (slot->recipient_ptr_key != recipient_ptr_key) continue;
+      if (slot->visit_count <= 1) continue;
+
+      const struct cell *ci_branch = (const struct cell *)(uintptr_t)slot->ci_ptr_key;
+      const struct cell *cj_branch = (const struct cell *)(uintptr_t)slot->cj_ptr_key;
+
+      if (report_count < runner_debug_zoom_pair_revisit_report_max) {
+        message(
+            "zoom-pair-revisit: recipient=%llu (%s/%s depth=%d super=%llu) "
+            "ci=%llu (%s/%s depth=%d top=%p) "
+            "cj=%llu (%s/%s depth=%d top=%p) visits=%d mesh_stops=%d recurses=%d",
+            recipient->cellID, cellID_names[recipient->type],
+            subcellID_names[recipient->subtype], recipient->depth,
+            recipient->grav.super->cellID, ci_branch->cellID,
+            cellID_names[ci_branch->type], subcellID_names[ci_branch->subtype],
+            ci_branch->depth, (void *)ci_branch->top, cj_branch->cellID,
+            cellID_names[cj_branch->type], subcellID_names[cj_branch->subtype],
+            cj_branch->depth, (void *)cj_branch->top, slot->visit_count,
+            slot->mesh_stop_count, slot->recurse_count);
+      } else if (report_count == runner_debug_zoom_pair_revisit_report_max) {
+        message("zoom-pair-revisit reporting capped at %d lines",
+                runner_debug_zoom_pair_revisit_report_max);
+      }
+
+      report_count++;
+    }
   }
 
   return report_count;
@@ -1106,6 +1212,10 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
     return;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  runner_debug_record_zoom_pair_visit(c, ci, cj, 0);
+#endif
+
   /* Loop over progeny pairs, mirroring
    * zoom_scheduler_splittask_gravity_void_pair */
   for (int i = 0; i < 8; i++) {
@@ -1144,6 +1254,9 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        runner_debug_record_zoom_pair_visit(c, cpi, cpj, 1);
+#endif
         /* Record the mesh interaction */
         runner_count_mesh_interaction(c, cpi, cpj, 2, "zoom_pair_recursive");
         continue;

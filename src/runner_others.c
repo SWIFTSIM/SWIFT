@@ -1253,6 +1253,14 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                   c->grav.super->cellID, cellID_names[c->grav.super->type],
                   subcellID_names[c->grav.super->subtype], c->grav.super->depth);
             }
+
+            const int zoom_pair_revisits =
+                runner_debug_dump_zoom_pair_recursive_revisits(c);
+            if (zoom_pair_revisits == 0) {
+              message("zoom-pair-revisit: none for super=%llu (%s/%s depth=%d)",
+                      c->grav.super->cellID, cellID_names[c->grav.super->type],
+                      subcellID_names[c->grav.super->subtype], c->grav.super->depth);
+            }
 #endif
 
             runner_debug_dump_gravity_path(c);
