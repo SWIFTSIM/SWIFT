@@ -431,6 +431,8 @@ static int runner_debug_mesh_pair_overlap_report_count = 0;
 static int runner_debug_mesh_pair_overlap_limit_reported = 0;
 static int runner_debug_zoom_mesh_stop_overlap_report_count = 0;
 static int runner_debug_zoom_mesh_stop_overlap_limit_reported = 0;
+static int runner_debug_pair_recursive_bkg_neigh_attach_report_count = 0;
+static int runner_debug_pair_recursive_bkg_neigh_attach_limit_reported = 0;
 
 #define runner_debug_mesh_overlap_report_max 64
 #define runner_debug_recursive_mesh_bkg_neigh_report_max 128
@@ -438,6 +440,7 @@ static int runner_debug_zoom_mesh_stop_overlap_limit_reported = 0;
 #define runner_debug_recursive_mesh_budget_report_max 64
 #define runner_debug_zoom_pair_revisit_report_max 64
 #define runner_debug_zoom_mesh_stop_overlap_report_max 128
+#define runner_debug_pair_recursive_bkg_neigh_attach_report_max 128
 #define runner_debug_mesh_overlap_table_size (1 << 14)
 #define runner_debug_mesh_overlap_probe_limit 16
 #define runner_debug_recursive_mesh_budget_table_size (1 << 15)
@@ -653,6 +656,43 @@ static void runner_debug_check_zoom_mesh_stop_pair_overlap(
 
       return;
     }
+  }
+}
+
+static void runner_debug_log_pair_recursive_bkg_neigh_attachment(
+    const struct cell *super, const struct cell *ci, const struct cell *cj,
+    const struct cell *recipient, const struct cell *source,
+    const char *attachment_case) {
+
+  if (runner_debug_get_source_class(source) != runner_debug_source_class_bkg_neigh)
+    return;
+
+  const int report_index =
+      atomic_inc(&runner_debug_pair_recursive_bkg_neigh_attach_report_count);
+
+  if (report_index < runner_debug_pair_recursive_bkg_neigh_attach_report_max) {
+    message(
+        "pair-recursive-bkg-neigh-attach: super=%llu (%s/%s depth=%d top=%p) "
+        "ci=%llu (%s/%s depth=%d top=%p) cj=%llu (%s/%s depth=%d top=%p) "
+        "recipient=%llu (%s/%s depth=%d top=%p parent=%p super=%llu) "
+        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) case=%s",
+        super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
+        super->depth, (void *)super->top, ci->cellID, cellID_names[ci->type],
+        subcellID_names[ci->subtype], ci->depth, (void *)ci->top, cj->cellID,
+        cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
+        (void *)cj->top, recipient->cellID, cellID_names[recipient->type],
+        subcellID_names[recipient->subtype], recipient->depth,
+        (void *)recipient->top, (void *)recipient->parent,
+        recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
+        source->cellID, cellID_names[source->type],
+        subcellID_names[source->subtype], source->depth, (void *)source->top,
+        source->grav.multipole->m_pole.num_gpart, attachment_case);
+  } else if (report_index ==
+                 runner_debug_pair_recursive_bkg_neigh_attach_report_max &&
+             atomic_cas(&runner_debug_pair_recursive_bkg_neigh_attach_limit_reported,
+                        0, 1) == 0) {
+    message("pair-recursive-bkg-neigh-attach reporting capped at %d lines",
+            runner_debug_pair_recursive_bkg_neigh_attach_report_max);
   }
 }
 
@@ -904,6 +944,9 @@ static INLINE void runner_record_mesh_attachment(
                                        attachment_case);
   if (origin != 0)
     runner_debug_record_recursive_mesh_budget(recipient, source, attachment_case);
+  if (origin == 2)
+    runner_debug_log_pair_recursive_bkg_neigh_attachment(
+        super, ci, cj, recipient, source, attachment_case);
   if (origin != 0)
     runner_debug_log_recursive_mesh_bkg_neigh(super, ci, cj, recipient, source,
                                               attachment_case);
