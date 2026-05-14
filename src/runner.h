@@ -189,10 +189,16 @@ void runner_do_stars_hii_ionization_feedback_branch(
     struct runner *r, struct cell *c, const float interaction_limit);
 void runner_do_stars_hii_ionization_feedback_self(
     struct runner *r, struct cell *c, struct spart *si,
-    struct hii_neighbor *buffer, int max_size, int *count_found);
+    const float search_radius, struct hii_neighbor *buffer, int max_size,
+    int *count_found);
+void runner_do_stars_hii_ionization_feedback_pair_naive(
+    struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
+    const float search_radius, struct hii_neighbor *buffer, int max_size,
+    int *count_found);
 void runner_do_stars_hii_ionization_feedback_pair(
     struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
-    struct hii_neighbor *buffer, int max_size, int *count_found);
+    const float search_radius, struct hii_neighbor *buffer, int max_size,
+    int *count_found);
 void runner_hii_buffer_insert(struct hii_neighbor *buffer, int max_size,
                               int *count_found, float r2, struct part *p,
                               struct xpart *xp, struct cell *c);

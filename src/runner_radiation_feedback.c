@@ -200,7 +200,8 @@ void runner_do_stars_hii_ionization_feedback_branch(
       /***************************************************/
       /* First loop over particles in the current cell */
       runner_do_stars_hii_ionization_feedback_self(
-          r, c->hydro.super, si, ngb_buffer, max_ngbs, &count_found);
+          r, c->hydro.super, si, interaction_limit, ngb_buffer, max_ngbs,
+          &count_found);
 
       /* Now loop over particles in the neighboring cells */
       for (struct link *l = c->hydro.super->stars.radiation_in; l != NULL;
@@ -208,8 +209,9 @@ void runner_do_stars_hii_ionization_feedback_branch(
         /* We have already handled the self case */
         if (l->t->type == task_type_self) continue;
         struct cell *c_in = (l->t->cj == c->hydro.super) ? l->t->ci : l->t->cj;
-        runner_do_stars_hii_ionization_feedback_pair(r, c, c_in, si, ngb_buffer,
-                                                     max_ngbs, &count_found);
+        runner_do_stars_hii_ionization_feedback_pair(
+            r, c, c_in, si, interaction_limit, ngb_buffer, max_ngbs,
+            &count_found);
       } /* Neighbour search */
 
       /* Flag if we hit the limit */
@@ -270,13 +272,15 @@ void runner_do_stars_hii_ionization_feedback_branch(
  * @param r The #runner thread.
  * @param c The #cell containing the gas particles.
  * @param si The #spart (star) performing the feedback.
+ * @param search_radius The distance of potential gas candidates.
  * @param buffer The #hii_neighbor array to store found candidates.
  * @param max_size The maximum capacity of the neighbor buffer.
  * @param count_found (return) The number of neighbors successfully gathered.
  */
 void runner_do_stars_hii_ionization_feedback_self(
     struct runner *r, struct cell *c, struct spart *si,
-    struct hii_neighbor *buffer, int max_size, int *count_found) {
+    const float search_radius, struct hii_neighbor *buffer, int max_size,
+    int *count_found) {
 
   struct engine *e = r->e;
   const int count = c->hydro.count;
@@ -289,7 +293,7 @@ void runner_do_stars_hii_ionization_feedback_self(
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         runner_do_stars_hii_ionization_feedback_self(
-            r, c->progeny[k], si, buffer, max_size, count_found);
+            r, c->progeny[k], si, search_radius, buffer, max_size, count_found);
       }
     }
   } else {
@@ -334,7 +338,8 @@ void runner_do_stars_hii_ionization_feedback_self(
 }
 
 /**
- * @brief Gather gas particles within the HII radius from a neighboring cell.
+ * @brief Gather gas particles within the HII radius from a neighboring cell
+ * using a naive O(N_gas) search.
  *
  * Similar to the 'self' version, but handles the distance calculations between
  * two different cells (@p ci and @p cj), including periodic boundary
@@ -344,13 +349,15 @@ void runner_do_stars_hii_ionization_feedback_self(
  * @param ci The #cell containing the star.
  * @param cj The #cell containing the gas particles.
  * @param si The #spart (star) performing the feedback.
+ * @param search_radius The distance of potential gas candidates.
  * @param buffer The #hii_neighbor array to store found candidates.
  * @param max_size The maximum capacity of the neighbor buffer.
  * @param count_found (return) The number of neighbors successfully gathered.
  */
-void runner_do_stars_hii_ionization_feedback_pair(
+void runner_do_stars_hii_ionization_feedback_pair_naive(
     struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
-    struct hii_neighbor *buffer, int max_size, int *count_found) {
+    const float search_radius, struct hii_neighbor *buffer, int max_size,
+    int *count_found) {
 
   struct engine *e = r->e;
   struct part *restrict parts_j = cj->hydro.parts;
@@ -363,8 +370,94 @@ void runner_do_stars_hii_ionization_feedback_pair(
   if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL) {
-        runner_do_stars_hii_ionization_feedback_pair(
-            r, ci, cj->progeny[k], si, buffer, max_size, count_found);
+        runner_do_stars_hii_ionization_feedback_pair(r, ci, cj->progeny[k], si,
+                                                     search_radius, buffer,
+                                                     max_size, count_found);
+      }
+    }
+  } else {
+    /* Get the relative distance between the pairs, wrapping. */
+    double shift[3] = {0.0, 0.0, 0.0};
+    for (int k = 0; k < 3; k++) {
+      if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+        shift[k] = e->s->dim[k];
+      else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+        shift[k] = -e->s->dim[k];
+    }
+
+    const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+                          (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                          (float)(si->x[2] - (cj->loc[2] + shift[2]))};
+
+    for (int pjd = 0; pjd < count_j; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts_j[pjd];
+      struct xpart *restrict xpj = &xparts_j[pjd];
+
+      /* Early abort? */
+      if (part_is_inhibited(pj, e)) continue;
+      if (feedback_part_can_be_ionized(pj, xpj, e)) continue;
+
+      /* message("[pair] Found %lld!", pj->id); */
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (pj->ti_drift != e->ti_current)
+        error(
+            "Particle pj (%lld) not drifted to current time. c = %lld, "
+            "c->super = %lld",
+            pj->id, cj->cellID, cj->super->cellID);
+#endif
+
+      /* Compute the pairwise distance. */
+      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
+                            (float)(pj->x[1] - cj->loc[1]),
+                            (float)(pj->x[2] - cj->loc[2])};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
+    } /* Loop in current cell */
+  }
+}
+
+/**
+ * @brief Gather gas particles within the HII radius from a neighboring cell.
+ * 
+ *
+ * Similar to the 'self' version, but handles the distance calculations between
+ * two different cells (@p ci and @p cj), including periodic boundary
+ * conditions/wrapping.
+ *
+ * @param r The #runner thread.
+ * @param ci The #cell containing the star.
+ * @param cj The #cell containing the gas particles.
+ * @param si The #spart (star) performing the feedback.
+ * @param search_radius The distance of potential gas candidates.
+ * @param buffer The #hii_neighbor array to store found candidates.
+ * @param max_size The maximum capacity of the neighbor buffer.
+ * @param count_found (return) The number of neighbors successfully gathered.
+ */
+void runner_do_stars_hii_ionization_feedback_pair(
+    struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
+    const float search_radius, struct hii_neighbor *buffer, int max_size,
+    int *count_found) {
+
+  struct engine *e = r->e;
+  struct part *restrict parts_j = cj->hydro.parts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
+  const int count_j = cj->hydro.count;
+
+  /* Anything to do here?*/
+  if (count_j == 0) return;
+
+  if (cj->split) {
+    for (int k = 0; k < 8; k++) {
+      if (cj->progeny[k] != NULL) {
+        runner_do_stars_hii_ionization_feedback_pair(r, ci, cj->progeny[k], si,
+                                                     search_radius, buffer,
+                                                     max_size, count_found);
       }
     }
   } else {
