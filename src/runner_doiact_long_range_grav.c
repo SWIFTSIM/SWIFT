@@ -411,9 +411,12 @@ static int runner_debug_mesh_overlap_report_count = 0;
 static int runner_debug_mesh_overlap_limit_reported = 0;
 static int runner_debug_recursive_mesh_bkg_neigh_report_count = 0;
 static int runner_debug_recursive_mesh_bkg_neigh_limit_reported = 0;
+static int runner_debug_mesh_pair_overlap_report_count = 0;
+static int runner_debug_mesh_pair_overlap_limit_reported = 0;
 
 #define runner_debug_mesh_overlap_report_max 64
 #define runner_debug_recursive_mesh_bkg_neigh_report_max 128
+#define runner_debug_mesh_pair_overlap_report_max 128
 #define runner_debug_mesh_overlap_table_size (1 << 14)
 #define runner_debug_mesh_overlap_probe_limit 16
 
@@ -511,6 +514,54 @@ static void runner_debug_check_mesh_overlap(const struct cell *recipient,
     return;
   }
 }
+
+static void runner_debug_check_mesh_pair_overlap(const struct cell *recipient,
+                                                 const struct cell *source,
+                                                 const int origin,
+                                                 const char *attachment_case) {
+
+  if (origin == 0) return;
+
+  for (const struct link *l = recipient->grav.grav; l != NULL; l = l->next) {
+
+    const struct task *t = l->t;
+
+    if (t->type != task_type_pair || t->subtype != task_subtype_grav) continue;
+
+    const struct cell *other = (t->ci == recipient) ? t->cj : t->ci;
+    if (other == NULL) continue;
+
+    if (other != source && !cell_contains_progeny(other, source) &&
+        !cell_contains_progeny(source, other))
+      continue;
+
+    const int report_index = atomic_inc(&runner_debug_mesh_pair_overlap_report_count);
+
+    if (report_index < runner_debug_mesh_pair_overlap_report_max) {
+      message(
+          "mesh-pair-overlap: recipient=%llu (%s/%s depth=%d top=%p) "
+          "source=%llu (%s/%s depth=%d top=%p gparts=%lld) "
+          "pair_other=%llu (%s/%s depth=%d top=%p gparts=%lld) "
+          "task_cells=[%llu,%llu] origin=%d case=%s",
+          recipient->cellID, cellID_names[recipient->type],
+          subcellID_names[recipient->subtype], recipient->depth,
+          (void *)recipient->top, source->cellID, cellID_names[source->type],
+          subcellID_names[source->subtype], source->depth, (void *)source->top,
+          source->grav.multipole->m_pole.num_gpart, other->cellID,
+          cellID_names[other->type], subcellID_names[other->subtype],
+          other->depth, (void *)other->top, other->grav.multipole->m_pole.num_gpart,
+          t->ci != NULL ? t->ci->cellID : 0, t->cj != NULL ? t->cj->cellID : 0,
+          origin, attachment_case);
+    } else if (report_index == runner_debug_mesh_pair_overlap_report_max &&
+               atomic_cas(&runner_debug_mesh_pair_overlap_limit_reported, 0,
+                          1) == 0) {
+      message("mesh-pair-overlap reporting capped at %d lines",
+              runner_debug_mesh_pair_overlap_report_max);
+    }
+
+    return;
+  }
+}
 #endif
 
 static INLINE void runner_record_mesh_attachment(
@@ -528,6 +579,8 @@ static INLINE void runner_record_mesh_attachment(
 
 #ifdef SWIFT_DEBUG_CHECKS
   runner_debug_check_mesh_overlap(recipient, source);
+  runner_debug_check_mesh_pair_overlap(recipient, source, origin,
+                                       attachment_case);
   if (origin != 0)
     runner_debug_log_recursive_mesh_bkg_neigh(super, ci, cj, recipient, source,
                                               attachment_case);
