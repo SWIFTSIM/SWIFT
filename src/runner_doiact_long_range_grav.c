@@ -1062,60 +1062,30 @@ void runner_debug_get_top_level_methods_by_type(const struct engine *e,
 
   if (!e->s->periodic) return;
 
-  if (e->s->with_zoom_region) {
-    struct space *s = e->s;
-    struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+  struct space *s = e->s;
+  struct cell *cells = s->cells_top;
 
-    for (int n = 0; n < s->zoom_props->nr_bkg_cells; n++) {
-      struct cell *source = &bkg_cells[n];
-      const struct gravity_tensors *multi = source->grav.multipole;
-      const enum runner_debug_source_class source_class =
-          runner_debug_get_source_class(source);
+  for (int n = 0; n < s->nr_cells; n++) {
+    struct cell *source = &cells[n];
+    const struct gravity_tensors *multi = source->grav.multipole;
+    const enum runner_debug_source_class source_class =
+        runner_debug_get_source_class(source);
 
-      if (source == top) continue;
-      if (multi->m_pole.M_000 == 0.f) continue;
-      if (cell_can_use_mesh((struct engine *)e, top, source)) {
-        mesh_counts[source_class] += multi->m_pole.num_gpart;
-        mesh_nr_cells[source_class] += 1;
-      } else if (cell_can_use_pair_mm(top, source, (struct engine *)e, s,
-                                      /*use_rebuild_data=*/1,
-                                      /*is_tree_walk=*/0,
-                                      /*periodic boundaries=*/s->periodic,
-                                      /*use_mesh=*/s->periodic)) {
-        mm_counts[source_class] += multi->m_pole.num_gpart;
-        mm_nr_cells[source_class] += 1;
-      } else {
-        p2p_counts[source_class] += multi->m_pole.num_gpart;
-        p2p_nr_cells[source_class] += 1;
-      }
-    }
-
-  } else {
-    struct space *s = e->s;
-    struct cell *cells = s->cells_top;
-
-    for (int n = 0; n < s->nr_cells; n++) {
-      struct cell *source = &cells[n];
-      const struct gravity_tensors *multi = source->grav.multipole;
-      const enum runner_debug_source_class source_class =
-          runner_debug_get_source_class(source);
-
-      if (source == top) continue;
-      if (multi->m_pole.M_000 == 0.f) continue;
-      if (cell_can_use_mesh((struct engine *)e, top, source)) {
-        mesh_counts[source_class] += multi->m_pole.num_gpart;
-        mesh_nr_cells[source_class] += 1;
-      } else if (cell_can_use_pair_mm(top, source, (struct engine *)e, s,
-                                      /*use_rebuild_data=*/1,
-                                      /*is_tree_walk=*/0,
-                                      /*periodic boundaries=*/s->periodic,
-                                      /*use_mesh=*/s->periodic)) {
-        mm_counts[source_class] += multi->m_pole.num_gpart;
-        mm_nr_cells[source_class] += 1;
-      } else {
-        p2p_counts[source_class] += multi->m_pole.num_gpart;
-        p2p_nr_cells[source_class] += 1;
-      }
+    if (source == top) continue;
+    if (multi->m_pole.M_000 == 0.f) continue;
+    if (cell_can_use_mesh((struct engine *)e, top, source)) {
+      mesh_counts[source_class] += multi->m_pole.num_gpart;
+      mesh_nr_cells[source_class] += 1;
+    } else if (cell_can_use_pair_mm(top, source, (struct engine *)e, s,
+                                    /*use_rebuild_data=*/1,
+                                    /*is_tree_walk=*/0,
+                                    /*periodic boundaries=*/s->periodic,
+                                    /*use_mesh=*/s->periodic)) {
+      mm_counts[source_class] += multi->m_pole.num_gpart;
+      mm_nr_cells[source_class] += 1;
+    } else {
+      p2p_counts[source_class] += multi->m_pole.num_gpart;
+      p2p_nr_cells[source_class] += 1;
     }
   }
 }
