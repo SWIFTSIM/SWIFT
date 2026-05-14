@@ -938,6 +938,15 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   /* Do we share the same top level cell? i.e. are we self-interacting? */
   int is_self = top_i == top_j;
 
+  /* For pair-recursive mesh counts, attach to the owning recipient-side branch
+   * if it sits below the super level, otherwise attach at the super. */
+  if (!is_self && origin == 2) {
+    struct cell *recipient = (super != ci && cell_contains_progeny(super, ci)) ? ci : super;
+    runner_record_mesh_attachment(super, ci, cj, recipient, cj, origin,
+                                  attachment_case);
+    return;
+  }
+
   /* Decide which cell we are updating. */
   if (super == ci) {
     runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
