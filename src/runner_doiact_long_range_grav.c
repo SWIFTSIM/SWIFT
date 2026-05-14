@@ -541,10 +541,15 @@ static INLINE void runner_record_mesh_attachment(
     runner_debug_add_tensor_interactions_by_type(
         recipient->grav.multipole->pot.num_interacted_pm_long_range_direct_by_type,
         source, source->grav.multipole->m_pole.num_gpart);
-  } else {
+  } else if (origin == 1) {
     runner_debug_add_tensor_interactions_by_type(
         recipient->grav.multipole
-            ->pot.num_interacted_pm_long_range_recursive_by_type,
+            ->pot.num_interacted_pm_long_range_self_recursive_by_type,
+        source, source->grav.multipole->m_pole.num_gpart);
+  } else if (origin == 2) {
+    runner_debug_add_tensor_interactions_by_type(
+        recipient->grav.multipole
+            ->pot.num_interacted_pm_long_range_pair_recursive_by_type,
         source, source->grav.multipole->m_pole.num_gpart);
   }
 #endif
@@ -701,7 +706,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpi, cpj, 1, "pair_recursive");
+          runner_count_mesh_interaction(c, cpi, cpj, 2, "pair_recursive");
           continue;
         }
 
@@ -928,7 +933,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpi, cpj, 1, "zoom_pair_recursive");
+        runner_count_mesh_interaction(c, cpi, cpj, 2, "zoom_pair_recursive");
         continue;
       }
 

@@ -152,8 +152,10 @@ __attribute__((nonnull)) INLINE static void gravity_field_tensors_add(
         lb->num_interacted_pm_long_range_by_type[i];
     la->num_interacted_pm_long_range_direct_by_type[i] +=
         lb->num_interacted_pm_long_range_direct_by_type[i];
-    la->num_interacted_pm_long_range_recursive_by_type[i] +=
-        lb->num_interacted_pm_long_range_recursive_by_type[i];
+    la->num_interacted_pm_long_range_self_recursive_by_type[i] +=
+        lb->num_interacted_pm_long_range_self_recursive_by_type[i];
+    la->num_interacted_pm_long_range_pair_recursive_by_type[i] +=
+        lb->num_interacted_pm_long_range_pair_recursive_by_type[i];
     la->num_interacted_pm_pair_skip_by_type[i] +=
         lb->num_interacted_pm_pair_skip_by_type[i];
     la->num_interacted_pm_pair_skip_direct_by_type[i] +=
@@ -2692,8 +2694,10 @@ __attribute__((nonnull)) INLINE static void gravity_L2L(
         lb->num_interacted_pm_long_range_by_type[i];
     la->num_interacted_pm_long_range_direct_by_type[i] =
         lb->num_interacted_pm_long_range_direct_by_type[i];
-    la->num_interacted_pm_long_range_recursive_by_type[i] =
-        lb->num_interacted_pm_long_range_recursive_by_type[i];
+    la->num_interacted_pm_long_range_self_recursive_by_type[i] =
+        lb->num_interacted_pm_long_range_self_recursive_by_type[i];
+    la->num_interacted_pm_long_range_pair_recursive_by_type[i] =
+        lb->num_interacted_pm_long_range_pair_recursive_by_type[i];
     la->num_interacted_pm_pair_skip_by_type[i] =
         lb->num_interacted_pm_pair_skip_by_type[i];
     la->num_interacted_pm_pair_skip_direct_by_type[i] =
@@ -3075,8 +3079,10 @@ __attribute__((nonnull)) INLINE static void gravity_L2P(
                       lb->num_interacted_pm_long_range_by_type[i]);
     accumulate_add_ll(&gp->num_interacted_pm_long_range_direct_by_type[i],
                       lb->num_interacted_pm_long_range_direct_by_type[i]);
-    accumulate_add_ll(&gp->num_interacted_pm_long_range_recursive_by_type[i],
-                      lb->num_interacted_pm_long_range_recursive_by_type[i]);
+    accumulate_add_ll(&gp->num_interacted_pm_long_range_self_recursive_by_type[i],
+                      lb->num_interacted_pm_long_range_self_recursive_by_type[i]);
+    accumulate_add_ll(&gp->num_interacted_pm_long_range_pair_recursive_by_type[i],
+                      lb->num_interacted_pm_long_range_pair_recursive_by_type[i]);
     accumulate_add_ll(&gp->num_interacted_pm_pair_skip_by_type[i],
                       lb->num_interacted_pm_pair_skip_by_type[i]);
     accumulate_add_ll(&gp->num_interacted_pm_pair_skip_direct_by_type[i],

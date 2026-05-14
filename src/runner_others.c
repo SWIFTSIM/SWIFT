@@ -1094,11 +1094,16 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_pm_long_range_direct_by_type[1] +
                 gp->num_interacted_pm_long_range_direct_by_type[2] +
                 gp->num_interacted_pm_long_range_direct_by_type[3];
-            const long long num_interacted_pm_long_range_recursive =
-                gp->num_interacted_pm_long_range_recursive_by_type[0] +
-                gp->num_interacted_pm_long_range_recursive_by_type[1] +
-                gp->num_interacted_pm_long_range_recursive_by_type[2] +
-                gp->num_interacted_pm_long_range_recursive_by_type[3];
+            const long long num_interacted_pm_long_range_self_recursive =
+                gp->num_interacted_pm_long_range_self_recursive_by_type[0] +
+                gp->num_interacted_pm_long_range_self_recursive_by_type[1] +
+                gp->num_interacted_pm_long_range_self_recursive_by_type[2] +
+                gp->num_interacted_pm_long_range_self_recursive_by_type[3];
+            const long long num_interacted_pm_long_range_pair_recursive =
+                gp->num_interacted_pm_long_range_pair_recursive_by_type[0] +
+                gp->num_interacted_pm_long_range_pair_recursive_by_type[1] +
+                gp->num_interacted_pm_long_range_pair_recursive_by_type[2] +
+                gp->num_interacted_pm_long_range_pair_recursive_by_type[3];
             const long long num_interacted_pm_pair_skip =
                 gp->num_interacted_pm_pair_skip_by_type[0] +
                 gp->num_interacted_pm_pair_skip_by_type[1] +
@@ -1150,7 +1155,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "num_interacted_m2l=%lld, num_interacted_p2p=%lld, "
                 "num_interacted_pm=%lld, num_interacted_pm_long_range=%lld, "
                 "num_interacted_pm_long_range_direct=%lld, "
-                "num_interacted_pm_long_range_recursive=%lld, "
+                "num_interacted_pm_long_range_self_recursive=%lld, "
+                "num_interacted_pm_long_range_pair_recursive=%lld, "
                 "num_interacted_pm_pair_skip=%lld, "
                 "num_interacted_pm_pair_skip_direct=%lld, "
                 "num_interacted_pm_pair_skip_recursive=%lld, "
@@ -1160,7 +1166,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "pm_by_type=[%lld,%lld,%lld,%lld], "
                 "pm_long_range_by_type=[%lld,%lld,%lld,%lld], "
                 "pm_long_range_direct_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_long_range_recursive_by_type=[%lld,%lld,%lld,%lld], "
+                "pm_long_range_self_recursive_by_type=[%lld,%lld,%lld,%lld], "
+                "pm_long_range_pair_recursive_by_type=[%lld,%lld,%lld,%lld], "
                 "pm_pair_skip_by_type=[%lld,%lld,%lld,%lld], "
                 "pm_pair_skip_direct_by_type=[%lld,%lld,%lld,%lld], "
                 "pm_pair_skip_recursive_by_type=[%lld,%lld,%lld,%lld], "
@@ -1177,7 +1184,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 id, part_type_names[gp->type], gp->num_interacted, num_interacted_m2p,
                 num_interacted_m2l, num_interacted_p2p, num_interacted_pm,
                 num_interacted_pm_long_range, num_interacted_pm_long_range_direct,
-                num_interacted_pm_long_range_recursive,
+                num_interacted_pm_long_range_self_recursive,
+                num_interacted_pm_long_range_pair_recursive,
                 num_interacted_pm_pair_skip, num_interacted_pm_pair_skip_direct,
                 num_interacted_pm_pair_skip_recursive,
                 gp->num_interacted_m2p_by_type[0], gp->num_interacted_m2p_by_type[1],
@@ -1196,10 +1204,14 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_pm_long_range_direct_by_type[1],
                 gp->num_interacted_pm_long_range_direct_by_type[2],
                 gp->num_interacted_pm_long_range_direct_by_type[3],
-                gp->num_interacted_pm_long_range_recursive_by_type[0],
-                gp->num_interacted_pm_long_range_recursive_by_type[1],
-                gp->num_interacted_pm_long_range_recursive_by_type[2],
-                gp->num_interacted_pm_long_range_recursive_by_type[3],
+                gp->num_interacted_pm_long_range_self_recursive_by_type[0],
+                gp->num_interacted_pm_long_range_self_recursive_by_type[1],
+                gp->num_interacted_pm_long_range_self_recursive_by_type[2],
+                gp->num_interacted_pm_long_range_self_recursive_by_type[3],
+                gp->num_interacted_pm_long_range_pair_recursive_by_type[0],
+                gp->num_interacted_pm_long_range_pair_recursive_by_type[1],
+                gp->num_interacted_pm_long_range_pair_recursive_by_type[2],
+                gp->num_interacted_pm_long_range_pair_recursive_by_type[3],
                 gp->num_interacted_pm_pair_skip_by_type[0],
                 gp->num_interacted_pm_pair_skip_by_type[1],
                 gp->num_interacted_pm_pair_skip_by_type[2],
