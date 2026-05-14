@@ -121,6 +121,8 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
     const struct grav_tensor *pot = &cp->grav.multipole->pot;
     const struct cell *super = cp->grav.super;
     const int path_level = depth - 1 - i;
+    const struct grav_tensor *parent_pot =
+        (i < depth - 1) ? &path[i + 1]->grav.multipole->pot : NULL;
 
     const long long tensor_tree_by_type[4] = {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -138,12 +140,107 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
         0LL, 0LL, 0LL, 0LL
 #endif
     };
+    const long long delta_tree_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        parent_pot != NULL ? pot->num_interacted_tree_by_type[0] -
+                                parent_pot->num_interacted_tree_by_type[0]
+                          : pot->num_interacted_tree_by_type[0],
+        parent_pot != NULL ? pot->num_interacted_tree_by_type[1] -
+                                parent_pot->num_interacted_tree_by_type[1]
+                          : pot->num_interacted_tree_by_type[1],
+        parent_pot != NULL ? pot->num_interacted_tree_by_type[2] -
+                                parent_pot->num_interacted_tree_by_type[2]
+                          : pot->num_interacted_tree_by_type[2],
+        parent_pot != NULL ? pot->num_interacted_tree_by_type[3] -
+                                parent_pot->num_interacted_tree_by_type[3]
+                          : pot->num_interacted_tree_by_type[3]
+#else
+        0LL, 0LL, 0LL, 0LL
+#endif
+    };
+    const long long delta_pm_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        parent_pot != NULL ? pot->num_interacted_pm_by_type[0] -
+                                parent_pot->num_interacted_pm_by_type[0]
+                          : pot->num_interacted_pm_by_type[0],
+        parent_pot != NULL ? pot->num_interacted_pm_by_type[1] -
+                                parent_pot->num_interacted_pm_by_type[1]
+                          : pot->num_interacted_pm_by_type[1],
+        parent_pot != NULL ? pot->num_interacted_pm_by_type[2] -
+                                parent_pot->num_interacted_pm_by_type[2]
+                          : pot->num_interacted_pm_by_type[2],
+        parent_pot != NULL ? pot->num_interacted_pm_by_type[3] -
+                                parent_pot->num_interacted_pm_by_type[3]
+                          : pot->num_interacted_pm_by_type[3]
+#else
+        0LL, 0LL, 0LL, 0LL
+#endif
+    };
+    const long long delta_pm_long_range_direct_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        parent_pot != NULL ? pot->num_interacted_pm_long_range_direct_by_type[0] -
+                                parent_pot->num_interacted_pm_long_range_direct_by_type[0]
+                          : pot->num_interacted_pm_long_range_direct_by_type[0],
+        parent_pot != NULL ? pot->num_interacted_pm_long_range_direct_by_type[1] -
+                                parent_pot->num_interacted_pm_long_range_direct_by_type[1]
+                          : pot->num_interacted_pm_long_range_direct_by_type[1],
+        parent_pot != NULL ? pot->num_interacted_pm_long_range_direct_by_type[2] -
+                                parent_pot->num_interacted_pm_long_range_direct_by_type[2]
+                          : pot->num_interacted_pm_long_range_direct_by_type[2],
+        parent_pot != NULL ? pot->num_interacted_pm_long_range_direct_by_type[3] -
+                                parent_pot->num_interacted_pm_long_range_direct_by_type[3]
+                          : pot->num_interacted_pm_long_range_direct_by_type[3]
+#else
+        0LL, 0LL, 0LL, 0LL
+#endif
+    };
+    const long long delta_pm_long_range_pair_recursive_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        parent_pot != NULL ? pot->num_interacted_pm_long_range_pair_recursive_by_type[0] -
+                                parent_pot->num_interacted_pm_long_range_pair_recursive_by_type[0]
+                          : pot->num_interacted_pm_long_range_pair_recursive_by_type[0],
+        parent_pot != NULL ? pot->num_interacted_pm_long_range_pair_recursive_by_type[1] -
+                                parent_pot->num_interacted_pm_long_range_pair_recursive_by_type[1]
+                          : pot->num_interacted_pm_long_range_pair_recursive_by_type[1],
+        parent_pot != NULL ? pot->num_interacted_pm_long_range_pair_recursive_by_type[2] -
+                                parent_pot->num_interacted_pm_long_range_pair_recursive_by_type[2]
+                          : pot->num_interacted_pm_long_range_pair_recursive_by_type[2],
+        parent_pot != NULL ? pot->num_interacted_pm_long_range_pair_recursive_by_type[3] -
+                                parent_pot->num_interacted_pm_long_range_pair_recursive_by_type[3]
+                          : pot->num_interacted_pm_long_range_pair_recursive_by_type[3]
+#else
+        0LL, 0LL, 0LL, 0LL
+#endif
+    };
+    const long long delta_pm_pair_skip_recursive_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        parent_pot != NULL ? pot->num_interacted_pm_pair_skip_recursive_by_type[0] -
+                                parent_pot->num_interacted_pm_pair_skip_recursive_by_type[0]
+                          : pot->num_interacted_pm_pair_skip_recursive_by_type[0],
+        parent_pot != NULL ? pot->num_interacted_pm_pair_skip_recursive_by_type[1] -
+                                parent_pot->num_interacted_pm_pair_skip_recursive_by_type[1]
+                          : pot->num_interacted_pm_pair_skip_recursive_by_type[1],
+        parent_pot != NULL ? pot->num_interacted_pm_pair_skip_recursive_by_type[2] -
+                                parent_pot->num_interacted_pm_pair_skip_recursive_by_type[2]
+                          : pot->num_interacted_pm_pair_skip_recursive_by_type[2],
+        parent_pot != NULL ? pot->num_interacted_pm_pair_skip_recursive_by_type[3] -
+                                parent_pot->num_interacted_pm_pair_skip_recursive_by_type[3]
+                          : pot->num_interacted_pm_pair_skip_recursive_by_type[3]
+#else
+        0LL, 0LL, 0LL, 0LL
+#endif
+    };
 
     message(
         "grav-path[level=%d/%d]: cell=%llu ptr=%p (%s/%s depth=%d, super=%llu super_ptr=%p depth=%d) "
         "tensor[interacted=%d total=%lld tree=%lld pm=%lld] local_cell_gparts=%lld "
         "sources{tree:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "pm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]}",
+        "pm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]} "
+        "delta{tree:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
+        "pm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
+        "pm_long_range_direct:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
+        "pm_long_range_pair_recursive:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
+        "pm_pair_skip_recursive:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]}",
         path_level, depth, cp->cellID, (void *)cp, cellID_names[cp->type],
         subcellID_names[cp->subtype], cp->depth,
         super != NULL ? super->cellID : 0ULL, (void *)super,
@@ -157,7 +254,21 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
         cp->grav.multipole->m_pole.num_gpart, tensor_tree_by_type[0],
         tensor_tree_by_type[1], tensor_tree_by_type[2], tensor_tree_by_type[3],
         tensor_pm_by_type[0], tensor_pm_by_type[1], tensor_pm_by_type[2],
-        tensor_pm_by_type[3]);
+        tensor_pm_by_type[3], delta_tree_by_type[0], delta_tree_by_type[1],
+        delta_tree_by_type[2], delta_tree_by_type[3], delta_pm_by_type[0],
+        delta_pm_by_type[1], delta_pm_by_type[2], delta_pm_by_type[3],
+        delta_pm_long_range_direct_by_type[0],
+        delta_pm_long_range_direct_by_type[1],
+        delta_pm_long_range_direct_by_type[2],
+        delta_pm_long_range_direct_by_type[3],
+        delta_pm_long_range_pair_recursive_by_type[0],
+        delta_pm_long_range_pair_recursive_by_type[1],
+        delta_pm_long_range_pair_recursive_by_type[2],
+        delta_pm_long_range_pair_recursive_by_type[3],
+        delta_pm_pair_skip_recursive_by_type[0],
+        delta_pm_pair_skip_recursive_by_type[1],
+        delta_pm_pair_skip_recursive_by_type[2],
+        delta_pm_pair_skip_recursive_by_type[3]);
   }
 }
 #endif
