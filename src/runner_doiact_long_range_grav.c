@@ -635,15 +635,6 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
           continue;
         }
 
-        /* Can we use M-M for this pair? */
-        if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/1,
-                                 /*periodic boundaries*/ s->periodic,
-                                 /*use_mesh*/ s->periodic)) {
-          /* This would be handled by a M-M task, nothing to count */
-          continue;
-        }
-
         /* We would create real tasks, so recurse to find mesh interactions */
         runner_count_mesh_interactions_pair_recursive(c, cpi, cpj, s);
       }
@@ -851,15 +842,6 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       if (cell_can_use_mesh(e, cpi, cpj)) {
         /* Record the mesh interaction */
         runner_count_mesh_interaction(c, cpi, cpj);
-        continue;
-      }
-
-      /* Can we use M-M for this pair? */
-      if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                               /*is_tree_walk=*/1,
-                               /*periodic boundaries*/ s->periodic,
-                               /*use_mesh*/ s->periodic)) {
-        /* M-M task handles this, nothing to count */
         continue;
       }
 
