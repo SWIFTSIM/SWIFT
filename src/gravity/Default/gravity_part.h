@@ -97,6 +97,8 @@ struct gpart {
   long long num_interacted_p2p_by_type[4];
   long long num_interacted_pm_by_type[4];
   long long num_interacted_pm_long_range_by_type[4];
+  long long num_interacted_pm_long_range_direct_by_type[4];
+  long long num_interacted_pm_long_range_recursive_by_type[4];
   long long num_interacted_pm_pair_skip_by_type[4];
 #endif
 
