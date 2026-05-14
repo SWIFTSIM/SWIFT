@@ -391,6 +391,13 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
                                                 struct cell *top);
 
 #ifdef SWIFT_DEBUG_CHECKS
+void runner_debug_get_top_level_mesh_sources_by_type(const struct engine *e,
+                                                     const struct cell *ci,
+                                                     long long counts[4],
+                                                     int nr_cells[4]);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
 struct runner_debug_mesh_overlap_entry {
   unsigned long long recipient_ptr_key;
   unsigned long long source_ptr_key;
@@ -1026,6 +1033,65 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
     runner_count_mesh_interactions_zoom_pair_recursive(ci, top, cj, s);
   }
 }
+
+#ifdef SWIFT_DEBUG_CHECKS
+void runner_debug_get_top_level_mesh_sources_by_type(const struct engine *e,
+                                                     const struct cell *ci,
+                                                     long long counts[4],
+                                                     int nr_cells[4]) {
+
+  struct cell *top = ci->top;
+  while (top->void_parent != NULL) top = top->void_parent->top;
+
+  counts[0] = 0;
+  counts[1] = 0;
+  counts[2] = 0;
+  counts[3] = 0;
+  nr_cells[0] = 0;
+  nr_cells[1] = 0;
+  nr_cells[2] = 0;
+  nr_cells[3] = 0;
+
+  if (!e->s->periodic) return;
+
+  if (e->s->with_zoom_region) {
+    struct space *s = e->s;
+    struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+
+    for (int n = 0; n < s->zoom_props->nr_bkg_cells; n++) {
+      struct cell *source = &bkg_cells[n];
+      const struct gravity_tensors *multi = source->grav.multipole;
+      const enum runner_debug_source_class source_class =
+          runner_debug_get_source_class(source);
+
+      if (source == top) continue;
+      if (multi->m_pole.M_000 == 0.f) continue;
+      if (!cell_can_use_mesh((struct engine *)e, top, source)) continue;
+
+      counts[source_class] += multi->m_pole.num_gpart;
+      nr_cells[source_class] += 1;
+    }
+
+  } else {
+    struct space *s = e->s;
+    struct cell *cells = s->cells_top;
+
+    for (int n = 0; n < s->nr_cells; n++) {
+      struct cell *source = &cells[n];
+      const struct gravity_tensors *multi = source->grav.multipole;
+      const enum runner_debug_source_class source_class =
+          runner_debug_get_source_class(source);
+
+      if (source == top) continue;
+      if (multi->m_pole.M_000 == 0.f) continue;
+      if (!cell_can_use_mesh((struct engine *)e, top, source)) continue;
+
+      counts[source_class] += multi->m_pole.num_gpart;
+      nr_cells[source_class] += 1;
+    }
+  }
+}
+#endif
 
 #endif /* SWIFT_DEBUG_CHECKS || SWIFT_GRAVITY_FORCE_CHECKS */
 

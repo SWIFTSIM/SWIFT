@@ -78,6 +78,11 @@ runner_debug_add_tensor_interactions_by_type(long long counts[4],
                                              const long long delta) {
   counts[runner_debug_get_source_class(source)] += delta;
 }
+
+void runner_debug_get_top_level_mesh_sources_by_type(const struct engine *e,
+                                                     const struct cell *ci,
+                                                     long long counts[4],
+                                                     int nr_cells[4]);
 #endif
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer);
