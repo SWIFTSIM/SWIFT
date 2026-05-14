@@ -24,6 +24,9 @@
 #include <config.h>
 
 /* Some standard headers. */
+#include <stdlib.h>
+
+/* Some standard headers. */
 
 /* This object's header. */
 #include "scheduler.h"
@@ -35,6 +38,93 @@
 #include "space.h"
 #include "space_getsid.h"
 #include "threadpool.h"
+
+#ifdef SWIFT_DEBUG_CHECKS
+struct scheduler_debug_grav_pair_key {
+  unsigned long long ci_ptr;
+  unsigned long long cj_ptr;
+  int type;
+  int subtype;
+};
+
+static int scheduler_debug_compare_grav_pair_keys(const void *a, const void *b) {
+
+  const struct scheduler_debug_grav_pair_key *ka =
+      (const struct scheduler_debug_grav_pair_key *)a;
+  const struct scheduler_debug_grav_pair_key *kb =
+      (const struct scheduler_debug_grav_pair_key *)b;
+
+  if (ka->ci_ptr < kb->ci_ptr) return -1;
+  if (ka->ci_ptr > kb->ci_ptr) return 1;
+  if (ka->cj_ptr < kb->cj_ptr) return -1;
+  if (ka->cj_ptr > kb->cj_ptr) return 1;
+  if (ka->type < kb->type) return -1;
+  if (ka->type > kb->type) return 1;
+  if (ka->subtype < kb->subtype) return -1;
+  if (ka->subtype > kb->subtype) return 1;
+  return 0;
+}
+
+static void scheduler_debug_check_duplicate_gravity_pairs(struct scheduler *s) {
+
+  int pair_count = 0;
+  for (int i = 0; i < s->nr_tasks; i++) {
+    const struct task *t = &s->tasks[i];
+    if (t->type != task_type_pair) continue;
+    if (t->subtype != task_subtype_grav) continue;
+    if (t->ci == NULL || t->cj == NULL) continue;
+    pair_count++;
+  }
+
+  if (pair_count == 0) return;
+
+  struct scheduler_debug_grav_pair_key *keys = malloc(
+      (size_t)pair_count * sizeof(struct scheduler_debug_grav_pair_key));
+  if (keys == NULL) error("Failed to allocate gravity pair debug keys.");
+
+  int key_count = 0;
+  for (int i = 0; i < s->nr_tasks; i++) {
+    const struct task *t = &s->tasks[i];
+    if (t->type != task_type_pair) continue;
+    if (t->subtype != task_subtype_grav) continue;
+    if (t->ci == NULL || t->cj == NULL) continue;
+
+    unsigned long long ci_ptr = (unsigned long long)(uintptr_t)t->ci;
+    unsigned long long cj_ptr = (unsigned long long)(uintptr_t)t->cj;
+    if (cj_ptr < ci_ptr) {
+      const unsigned long long tmp = ci_ptr;
+      ci_ptr = cj_ptr;
+      cj_ptr = tmp;
+    }
+
+    keys[key_count].ci_ptr = ci_ptr;
+    keys[key_count].cj_ptr = cj_ptr;
+    keys[key_count].type = (int)t->type;
+    keys[key_count].subtype = (int)t->subtype;
+    key_count++;
+  }
+
+  qsort(keys, (size_t)key_count, sizeof(struct scheduler_debug_grav_pair_key),
+        scheduler_debug_compare_grav_pair_keys);
+
+  for (int i = 1; i < key_count; i++) {
+    if (scheduler_debug_compare_grav_pair_keys(&keys[i - 1], &keys[i]) != 0)
+      continue;
+
+    const struct cell *ci = (const struct cell *)(uintptr_t)keys[i].ci_ptr;
+    const struct cell *cj = (const struct cell *)(uintptr_t)keys[i].cj_ptr;
+    free(keys);
+    error(
+        "Duplicate gravity pair tasks detected after splitting: "
+        "cells=[%llu (%s/%s depth=%d top=%p), %llu (%s/%s depth=%d top=%p)]",
+        ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype],
+        ci->depth, (void *)ci->top, cj->cellID, cellID_names[cj->type],
+        subcellID_names[cj->subtype], cj->depth, (void *)cj->top);
+  }
+
+  free(keys);
+}
+#endif
 
 /**
  * @brief Split a hydrodynamic task if too large.
@@ -888,4 +978,8 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                    s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                    s);
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!fof_tasks) scheduler_debug_check_duplicate_gravity_pairs(s);
+#endif
 }

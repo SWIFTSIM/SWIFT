@@ -436,6 +436,8 @@ static int runner_debug_zoom_mesh_stop_overlap_report_count = 0;
 static int runner_debug_zoom_mesh_stop_overlap_limit_reported = 0;
 static int runner_debug_pair_recursive_bkg_neigh_attach_report_count = 0;
 static int runner_debug_pair_recursive_bkg_neigh_attach_limit_reported = 0;
+static int runner_debug_pair_recursive_ownership_boundary_report_count = 0;
+static int runner_debug_pair_recursive_ownership_boundary_limit_reported = 0;
 
 #define runner_debug_mesh_overlap_report_max 64
 #define runner_debug_recursive_mesh_bkg_neigh_report_max 128
@@ -444,6 +446,7 @@ static int runner_debug_pair_recursive_bkg_neigh_attach_limit_reported = 0;
 #define runner_debug_zoom_pair_revisit_report_max 64
 #define runner_debug_zoom_mesh_stop_overlap_report_max 128
 #define runner_debug_pair_recursive_bkg_neigh_attach_report_max 128
+#define runner_debug_pair_recursive_ownership_boundary_report_max 128
 #define runner_debug_mesh_overlap_table_size (1 << 14)
 #define runner_debug_mesh_overlap_probe_limit 16
 #define runner_debug_recursive_mesh_budget_table_size (1 << 15)
@@ -696,6 +699,54 @@ static void runner_debug_log_pair_recursive_bkg_neigh_attachment(
                         0, 1) == 0) {
     message("pair-recursive-bkg-neigh-attach reporting capped at %d lines",
             runner_debug_pair_recursive_bkg_neigh_attach_report_max);
+  }
+}
+
+static void runner_debug_check_pair_recursive_ownership_boundary(
+    const struct cell *super, const struct cell *recipient,
+    const struct cell *source, const int origin, const char *attachment_case) {
+
+  if (origin != 2) return;
+  if (strcmp(attachment_case, "pair_recursive") != 0 &&
+      strcmp(attachment_case, "zoom_pair_recursive") != 0)
+    return;
+
+  const struct grav_tensor *pot = &recipient->grav.multipole->pot;
+  const long long tree_here =
+      pot->num_interacted_tree_by_type[runner_debug_source_class_bkg_neigh] +
+      pot->num_interacted_tree_by_type[runner_debug_source_class_zoom];
+  const long long pair_skip_here =
+      pot->num_interacted_pm_pair_skip_recursive_by_type
+          [runner_debug_source_class_bkg_neigh] +
+      pot->num_interacted_pm_pair_skip_recursive_by_type
+          [runner_debug_source_class_zoom];
+
+  if (tree_here == 0 && pair_skip_here == 0) return;
+
+  const int report_index =
+      atomic_inc(&runner_debug_pair_recursive_ownership_boundary_report_count);
+
+  if (report_index < runner_debug_pair_recursive_ownership_boundary_report_max) {
+    message(
+        "pair-recursive-ownership-boundary: super=%llu (%s/%s depth=%d top=%p) "
+        "recipient=%llu (%s/%s depth=%d top=%p super=%llu) "
+        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) case=%s "
+        "existing_tree_local=%lld existing_pair_skip_local=%lld",
+        super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
+        super->depth, (void *)super->top, recipient->cellID,
+        cellID_names[recipient->type], subcellID_names[recipient->subtype],
+        recipient->depth, (void *)recipient->top,
+        recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
+        source->cellID, cellID_names[source->type],
+        subcellID_names[source->subtype], source->depth, (void *)source->top,
+        source->grav.multipole->m_pole.num_gpart, attachment_case, tree_here,
+        pair_skip_here);
+  } else if (report_index ==
+                 runner_debug_pair_recursive_ownership_boundary_report_max &&
+             atomic_cas(&runner_debug_pair_recursive_ownership_boundary_limit_reported,
+                        0, 1) == 0) {
+    message("pair-recursive-ownership-boundary reporting capped at %d lines",
+            runner_debug_pair_recursive_ownership_boundary_report_max);
   }
 }
 
@@ -1113,6 +1164,8 @@ static INLINE void runner_record_mesh_attachment(
   runner_debug_check_mesh_overlap(recipient, source);
   runner_debug_check_mesh_pair_overlap(recipient, source, origin,
                                        attachment_case);
+  runner_debug_check_pair_recursive_ownership_boundary(super, recipient, source,
+                                                       origin, attachment_case);
   if (origin != 0)
     runner_debug_record_recursive_mesh_budget(recipient, source, attachment_case);
   if (origin == 2)
