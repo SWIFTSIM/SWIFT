@@ -102,7 +102,15 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
     const struct spart *sparts, struct io_props *list,
     const int with_cosmology) {
 
-  return 0;
+  int num = 1;
+
+  list[0] = io_make_output_field(
+      "FinalHIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 0.f, sparts,
+      tracers_data.final_HII_radius,
+      "Co-moving HII region radius of the star particles before they die or "
+      "were not eligible to form HII regions anymore.");
+  
+  return num;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_bparticles(
