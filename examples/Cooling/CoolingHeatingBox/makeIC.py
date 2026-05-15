@@ -29,9 +29,7 @@ boxSize = 1  # 1 kiloparsec
 # rho = 3.2e3  # Density in code units (3.2e6 is 0.1 hydrogen atoms per cm^3)
 
 # Iliev test values
-rho = (
-    2471402.49842514
-)  # Density in code units (1-hydrogen atoms per cm^3 assuming Hydrogen only)
+rho = 2471402.49842514  # Density in code units (1-hydrogen atoms per cm^3 assuming Hydrogen only)
 T = 100  # Initial Temperature
 
 
@@ -61,7 +59,7 @@ h = glass["/PartType0/SmoothingLength"][:] * boxSize
 
 # Compute basic properties
 numPart = np.size(pos) // 3
-mass = boxSize ** 3 * rho / numPart
+mass = boxSize**3 * rho / numPart
 internalEnergy = k_b_cgs * T * mu / ((gamma - 1.0) * m_h_cgs)
 internalEnergy *= (unit_time / unit_length) ** 2
 

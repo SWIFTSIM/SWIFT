@@ -43,7 +43,7 @@ snapshot_base = "output"
 
 # -----------------------------------------------------------------------
 
-energy_units = unyt.Msun * unyt.kpc ** 2 / unyt.kyr ** 2
+energy_units = unyt.Msun * unyt.kpc**2 / unyt.kyr**2
 mass_units = unyt.Msun
 
 
