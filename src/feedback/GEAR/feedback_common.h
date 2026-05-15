@@ -62,6 +62,8 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
                                         const double time,
                                         const double dt_star);
 
+int feedback_is_HII_ionization_active(const struct spart *sp,
+                                      const struct engine *e);
 double feedback_get_star_ionization_rate(const struct spart *sp);
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
