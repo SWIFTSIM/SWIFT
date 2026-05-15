@@ -20,7 +20,7 @@ LAST_R_PEAK = 0.0
 def get_gas_mu(data):
     cooling = data.metadata.subgrid_scheme["Cooling Model"]
     gas = data.gas
-    rho = gas.densities.to(unyt.g / unyt.cm ** 3)
+    rho = gas.densities.to(unyt.g / unyt.cm**3)
     mH_in_g = mh.to(unyt.g)
     if cooling in [b"Grackle3", b"Grackle2", b"Grackle1"]:
         nHI, nHII = gas.hi * rho / mH_in_g, gas.hii * rho / mH_in_g
@@ -74,7 +74,7 @@ def get_data(filename):
         else unyt.unyt_array([0, 0, 0], "pc")
     )
     coords = data.gas.coordinates - center
-    r = np.sqrt(np.sum(coords ** 2, axis=1))
+    r = np.sqrt(np.sum(coords**2, axis=1))
     v_r = np.sum(coords * data.gas.velocities, axis=1) / np.where(
         r > 0, r, 1.0 * unyt.pc
     )

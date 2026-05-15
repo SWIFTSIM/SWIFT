@@ -36,10 +36,10 @@ fileName = "smoothed_metallicity.hdf5"
 
 # shift all metals in order to obtain nicer plots
 low_metal = [low_metal] * Nelem + np.linspace(0, max_shift, Nelem)
-low_metal = 10 ** low_metal
+low_metal = 10**low_metal
 
 high_metal = [high_metal] * Nelem + np.linspace(0, max_shift, Nelem)
-high_metal = 10 ** high_metal
+high_metal = 10**high_metal
 
 # ---------------------------------------------------
 glass = h5py.File("glassCube_32.hdf5", "r")

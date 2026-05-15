@@ -60,7 +60,7 @@ N = sim["/Header"].attrs["NumPart_Total"][0]
 sim.close()
 
 # Expected comoving quantities
-rho_0 = N * m_gas / boxSize ** 3
+rho_0 = N * m_gas / boxSize**3
 u_0 = kB_in_SI * T_i / (gas_gamma - 1.0) / mH_in_kg
 u_0 *= 1e-6  # conversion to internal units
 u_0 *= a ** (-3 * (1 - gas_gamma))
@@ -116,7 +116,7 @@ for i in range(N_output):
     vz_std[i] = np.std(v[:, 2])
 
 # Move to physical quantities
-rho_mean_phys = rho_mean / a ** 3
+rho_mean_phys = rho_mean / a**3
 u_mean_phys = u_mean / a ** (3 * (gas_gamma - 1.0))
 S_mean_phys = S_mean
 

@@ -65,7 +65,7 @@ for i in range(N):
         solution_v_phi[i] = 0.0
 
 solution_rho = ones(N) * rho0
-solution_s = solution_P / solution_rho ** gas_gamma
+solution_s = solution_P / solution_rho**gas_gamma
 solution_u = solution_P / ((gas_gamma - 1.0) * solution_rho)
 
 # Read the simulation data
@@ -82,7 +82,7 @@ pos = sim["/PartType0/Coordinates"][:, :]
 x = pos[:, 0] - boxSize / 2
 y = pos[:, 1] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:, :]
-r = sqrt(x ** 2 + y ** 2)
+r = sqrt(x**2 + y**2)
 v_r = (x * vel[:, 0] + y * vel[:, 1]) / r
 v_phi = (-y * vel[:, 0] + x * vel[:, 1]) / r
 v_norm = sqrt(vel[:, 0] ** 2 + vel[:, 1] ** 2)
@@ -99,16 +99,16 @@ v_bin, _, _ = stats.binned_statistic(r, v_phi, statistic="mean", bins=r_bin_edge
 P_bin, _, _ = stats.binned_statistic(r, P, statistic="mean", bins=r_bin_edge)
 S_bin, _, _ = stats.binned_statistic(r, S, statistic="mean", bins=r_bin_edge)
 u_bin, _, _ = stats.binned_statistic(r, u, statistic="mean", bins=r_bin_edge)
-rho2_bin, _, _ = stats.binned_statistic(r, rho ** 2, statistic="mean", bins=r_bin_edge)
-v2_bin, _, _ = stats.binned_statistic(r, v_phi ** 2, statistic="mean", bins=r_bin_edge)
-P2_bin, _, _ = stats.binned_statistic(r, P ** 2, statistic="mean", bins=r_bin_edge)
-S2_bin, _, _ = stats.binned_statistic(r, S ** 2, statistic="mean", bins=r_bin_edge)
-u2_bin, _, _ = stats.binned_statistic(r, u ** 2, statistic="mean", bins=r_bin_edge)
-rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
-v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
-P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
-S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
-u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
+rho2_bin, _, _ = stats.binned_statistic(r, rho**2, statistic="mean", bins=r_bin_edge)
+v2_bin, _, _ = stats.binned_statistic(r, v_phi**2, statistic="mean", bins=r_bin_edge)
+P2_bin, _, _ = stats.binned_statistic(r, P**2, statistic="mean", bins=r_bin_edge)
+S2_bin, _, _ = stats.binned_statistic(r, S**2, statistic="mean", bins=r_bin_edge)
+u2_bin, _, _ = stats.binned_statistic(r, u**2, statistic="mean", bins=r_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
 
 # Plot the interesting quantities

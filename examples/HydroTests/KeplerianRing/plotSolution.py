@@ -52,7 +52,6 @@ except ImportError:
 
 from make_movie import get_metadata
 
-
 yt.funcs.mylog.setLevel(50)
 tqdm.monitor_interval = 0
 
@@ -82,7 +81,7 @@ def get_axes_grid(figure):
 def get_yt_actual_data(plot, name="density"):
     """
     Extracts the image data and colourmap from a yt plot.
-    
+
     This is used to put on our own grid.
     """
 
@@ -95,7 +94,7 @@ def get_yt_actual_data(plot, name="density"):
 def chi_square(observed, expected):
     """
     The chi squared statistic.
-        
+
     This also looks for where expected == 0 and masks over those particles to
     avoid divide by zero errors and unrealistically high chi squared.
     """
@@ -105,7 +104,7 @@ def chi_square(observed, expected):
     masked_expected = np.array(expected)[mask]
     masked_observed = np.array(observed)[mask]
 
-    return sum(((masked_observed - masked_expected) ** 2) / masked_expected ** 2)
+    return sum(((masked_observed - masked_expected) ** 2) / masked_expected**2)
 
 
 def load_data(filename):
@@ -148,7 +147,7 @@ def bin_density_r(radii, density, binrange, binnumber):
 
         binned_masses[bin] += density[index]
 
-    areas = [np.pi * (a ** 2 - b ** 2) for a, b in zip(bins[1:], bins[:-1])]
+    areas = [np.pi * (a**2 - b**2) for a, b in zip(bins[1:], bins[:-1])]
     binned_densities = binned_masses / areas
 
     return bins, binned_densities
@@ -471,12 +470,10 @@ def convert_snapshot_number_to_rotations_at(r, snapnum, filename):
 if __name__ == "__main__":
     import argparse as ap
 
-    parser = ap.ArgumentParser(
-        description="""
+    parser = ap.ArgumentParser(description="""
                     Plotting code for the Keplerian Ring test. Uses yt to make
                     surface density plots.
-                    """
-    )
+                    """)
 
     parser.add_argument(
         "-b",
