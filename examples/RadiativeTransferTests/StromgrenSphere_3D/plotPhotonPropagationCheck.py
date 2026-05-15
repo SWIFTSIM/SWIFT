@@ -86,7 +86,7 @@ mpl.rcParams["text.usetex"] = True
 def analytical_integrated_energy_solution(L, time, r, rmax):
     """
     Compute analytical solution for the sum of the energy
-    in bins for given injection rate <L> at time <time> 
+    in bins for given injection rate <L> at time <time>
     at bin edges <r> and maximal radius <rmax>
     """
 
@@ -120,7 +120,7 @@ def analytical_energy_solution(L, time, r, rmax):
     E_fraction_bin = np.zeros(r.shape[0] - 1) * Etot.units
     mask = r_center <= rmax
     dr = r[1:] ** 2 - r[:-1] ** 2
-    E_fraction_bin[mask] = 1.0 / (rmax ** 2 - r0 ** 2) * dr[mask]
+    E_fraction_bin[mask] = 1.0 / (rmax**2 - r0**2) * dr[mask]
     bin_surface = dr
     total_weight = Etot / np.sum(E_fraction_bin / bin_surface)
     E = E_fraction_bin / bin_surface * total_weight
@@ -136,7 +136,7 @@ def analytical_flux_magnitude_solution(L, time, r, rmax, scheme):
     """
     r, E = analytical_energy_solution(L, time, r, rmax)
     if scheme.startswith("GEAR M1closure"):
-        F = unyt.c.to(r.units / time.units) * E / r.units ** 3
+        F = unyt.c.to(r.units / time.units) * E / r.units**3
     elif scheme.startswith("SPH M1closure"):
         F = unyt.c.to(r.units / time.units) * E
     else:
@@ -146,12 +146,12 @@ def analytical_flux_magnitude_solution(L, time, r, rmax, scheme):
 
 
 def x2(x, a, b):
-    return a * x ** 2 + b
+    return a * x**2 + b
 
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -198,7 +198,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     xstar = data.stars.coordinates
     xpart = data.gas.coordinates
     dxp = xpart - xstar
-    r = np.sqrt(np.sum(dxp ** 2, axis=1))
+    r = np.sqrt(np.sum(dxp**2, axis=1))
 
     time = meta.time
     r_expect = meta.time * meta.reduced_lightspeed
@@ -239,7 +239,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
                     meta.parameters["SPHM1RT:star_emission_rates"].decode("utf-8")
                 )
                 * unit_m_in_cgs
-                * unit_v_in_cgs ** 3
+                * unit_v_in_cgs**3
                 / unit_l_in_cgs
             )
             L = const_emission_rates[group_index]
@@ -269,7 +269,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     Fy = getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "Y")
     Fz = getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "Z")
 
-    fmag = np.sqrt(Fx ** 2 + Fy ** 2 + Fz ** 2)
+    fmag = np.sqrt(Fx**2 + Fy**2 + Fz**2)
     particle_count, _ = np.histogram(
         r,
         bins=r_analytical_bin_edges,
@@ -485,7 +485,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
             bins=r_bin_edges,
             range=(r_bin_edges[0], r_bin_edges[-1]),
         )
-        F_sum_bin = np.sqrt(Fx_sum_bin ** 2 + Fy_sum_bin ** 2)
+        F_sum_bin = np.sqrt(Fx_sum_bin**2 + Fy_sum_bin**2)
 
         ax4.plot(
             r_bin_centres[mask_sum],
@@ -560,7 +560,7 @@ def get_plot_boundaries(filenames):
 
         fx = getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "X")
         fy = getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "Y")
-        fmag = np.sqrt(fx ** 2 + fy ** 2)
+        fmag = np.sqrt(fx**2 + fy**2)
 
         fmagmin = min(fmagmin, fmag.min())
         fmagmax = max(fmagmax, fmag.max())

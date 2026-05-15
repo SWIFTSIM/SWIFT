@@ -61,7 +61,7 @@ u = r / epsilon
 
 # Newtonian solution
 phi_newton = 1.0 / r
-F_newton = 1.0 / r ** 2
+F_newton = 1.0 / r**2
 W_newton = 0.0 * r
 
 # Softened potential
@@ -91,9 +91,9 @@ for i in range(np.size(r)):
                 - 10.0 * u[i] ** 2
                 + 1.0
             )
-            / epsilon ** 3
+            / epsilon**3
         )
-        F[i] = (1.0 / epsilon ** 2) * (
+        F[i] = (1.0 / epsilon**2) * (
             21.0 * u[i] ** 6
             - 90 * u[i] ** 5
             + 140.0 * u[i] ** 4
@@ -110,15 +110,15 @@ epsilon_plummer = epsilon / plummer_equivalent_factor
 # Plummer potential
 phi_plummer = (1.0 / epsilon_plummer) * (1 + (r / epsilon_plummer) ** 2) ** (-1.0 / 2.0)
 F_plummer = (
-    (1.0 / epsilon_plummer ** 3) * r / (1 + (r / epsilon_plummer) ** 2) ** (3.0 / 2.0)
+    (1.0 / epsilon_plummer**3) * r / (1 + (r / epsilon_plummer) ** 2) ** (3.0 / 2.0)
 )
 
 
 def eta_plummer(r):
-    return (3.0 / (4.0 * math.pi)) * 1.0 / (1 + r ** 2) ** (5.0 / 2.0)
+    return (3.0 / (4.0 * math.pi)) * 1.0 / (1 + r**2) ** (5.0 / 2.0)
 
 
-W_plummer = (1.0 / epsilon_plummer ** 3) * eta_plummer(r / epsilon_plummer)
+W_plummer = (1.0 / epsilon_plummer**3) * eta_plummer(r / epsilon_plummer)
 
 
 # Gadget-2 potential
@@ -140,7 +140,7 @@ for i in range(np.size(r)):
             - (16.0 / 5.0)
             + 1.0 / (15.0 * u[i])
         ) / (epsilon_gadget)
-        W_gadget2[i] = (8.0 / math.pi) * (2.0 * (1 - u[i]) ** 3) / epsilon_gadget ** 3
+        W_gadget2[i] = (8.0 / math.pi) * (2.0 * (1 - u[i]) ** 3) / epsilon_gadget**3
         F_gadget2[i] = (
             u[i]
             * (
@@ -150,7 +150,7 @@ for i in range(np.size(r)):
                 - 10.6666667 * u[i] ** 3
                 - 0.06666667 * u[i] ** -3
             )
-            / epsilon_gadget ** 2
+            / epsilon_gadget**2
         )
     else:
         phi_gadget2[i] = -(
@@ -162,10 +162,10 @@ for i in range(np.size(r)):
         W_gadget2[i] = (
             (8.0 / math.pi)
             * (1.0 - 6.0 * u[i] ** 2 + 6.0 * u[i] ** 3)
-            / epsilon_gadget ** 3
+            / epsilon_gadget**3
         )
         F_gadget2[i] = (
-            u[i] * (10.666667 + u[i] ** 2 * (32.0 * u[i] - 38.4)) / epsilon_gadget ** 2
+            u[i] * (10.666667 + u[i] ** 2 * (32.0 * u[i] - 38.4)) / epsilon_gadget**2
         )
 
 figure()
