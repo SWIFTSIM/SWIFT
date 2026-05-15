@@ -86,8 +86,36 @@ enum runner_debug_coverage_kind {
   runner_debug_coverage_kind_pm = 2,
 };
 
+__attribute__((always_inline)) INLINE static enum runner_debug_source_class
+runner_debug_get_cell_coverage_source_class(const struct cell *source) {
+
+  if (source->subtype == cell_subtype_void) return runner_debug_source_class_zoom;
+
+  return runner_debug_get_source_class(source);
+}
+
+__attribute__((always_inline)) INLINE static double
+runner_debug_count_void_represented_zoom_cells(const struct cell *source) {
+
+  if (source == NULL) return 0.;
+
+  if (source->subtype != cell_subtype_void)
+    return (source->type == cell_type_zoom && source->depth == 0) ? 1. : 0.;
+
+  double count = 0.;
+  for (int k = 0; k < 8; ++k) {
+    if (source->progeny[k] != NULL)
+      count += runner_debug_count_void_represented_zoom_cells(source->progeny[k]);
+  }
+
+  return count;
+}
+
 __attribute__((always_inline)) INLINE static double
 runner_debug_get_cell_fractional_weight(const struct cell *source) {
+
+  if (source->subtype == cell_subtype_void)
+    return runner_debug_count_void_represented_zoom_cells(source);
 
   double weight = 1.;
   for (int depth = source->depth; depth > 0; --depth) weight *= 0.125;
@@ -98,7 +126,7 @@ __attribute__((always_inline)) INLINE static void runner_debug_add_cell_coverage
     struct cell *recipient, const struct cell *source,
     const enum runner_debug_coverage_kind kind) {
 
-  const int source_class = runner_debug_get_source_class(source);
+  const int source_class = runner_debug_get_cell_coverage_source_class(source);
   const double weight = runner_debug_get_cell_fractional_weight(source);
 
   atomic_add_d(&recipient->num_interacted_cells_total, weight);
