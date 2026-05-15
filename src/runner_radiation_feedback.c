@@ -179,7 +179,6 @@ void runner_do_stars_hii_ionization_feedback_branch(
     /* Is this part within the timestep? */
     if (spart_is_inhibited(si, e)) continue;
     if (!spart_is_active(si, e)) continue;
-    if (!feedback_is_active(si, e)) continue; /* TODO: Do we want this? */
     if (!feedback_is_HII_ionization_active(si, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -397,6 +396,13 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
       }
     }
   } else {
+
+    /* Check that cells are drifted. */
+    if (!cell_are_part_drifted(cj, e))
+      error("Interacting undrifted cell (hydro).");
+    if (!cell_are_spart_drifted(cj, e))
+      error("Interacting undrifted cell (stars).");
+
     /* Get the relative distance between the pairs, wrapping. */
     double shift[3] = {0.0, 0.0, 0.0};
     for (int k = 0; k < 3; k++) {
