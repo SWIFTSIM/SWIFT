@@ -159,6 +159,10 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
+        runner_debug_inherit_cell_interactions(cp, c);
+#endif
+
         /* Recurse, but only if we haven't reached the super level. This can
          * can only happen in zoom land when recursing from the void cells to
          * the zoom cells. From the zoom super onwards to the leaves is
@@ -259,7 +263,6 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 
 #ifdef SWIFT_DEBUG_CHECKS
   int used_p2p = 0;
-  int used_mm = 0;
 #endif
 
   /* Prepare the i cache */
@@ -331,7 +334,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter */
       accumulate_add_ll(&gparts_i[i].num_interacted, multi_j->m_pole.num_gpart);
-      used_mm = 1;
+      used_p2p = 1;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -508,8 +511,6 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
   if (used_p2p)
     runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_p2p);
-  if (used_mm)
-    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
 #endif
 
   /* Write back to the particle data */
@@ -553,7 +554,6 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 
 #ifdef SWIFT_DEBUG_CHECKS
   int used_p2p = 0;
-  int used_mm = 0;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -634,7 +634,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter */
       accumulate_add_ll(&gparts_i[i].num_interacted, multi_j->m_pole.num_gpart);
-      used_mm = 1;
+      used_p2p = 1;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -826,8 +826,6 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
   if (used_p2p)
     runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_p2p);
-  if (used_mm)
-    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
 #endif
 
   /* Write back to the particle data */
@@ -1648,10 +1646,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const int allow_multipole_j = allow_mpole && cj->grav.count > 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci_active && allow_multipole_j)
-    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
-  if (cj_active && symmetric && allow_multipole_i)
-    runner_debug_add_cell_coverage(cj, ci, runner_debug_coverage_kind_mm);
 #endif
 
   /* Fill the caches */
@@ -2349,10 +2343,6 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 
     /* Ok, let's do the interaction here */
   } else {
-
-#ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
-#endif
 
     /* Start by constructing particle caches */
 

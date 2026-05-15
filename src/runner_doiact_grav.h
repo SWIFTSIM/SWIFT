@@ -120,6 +120,27 @@ __attribute__((always_inline)) INLINE static void runner_debug_add_cell_coverage
   }
 }
 
+__attribute__((always_inline)) INLINE static void
+runner_debug_inherit_cell_interactions(struct cell *child,
+                                       const struct cell *parent) {
+
+  child->num_interacted_cells_total += parent->num_interacted_cells_mm;
+  child->num_interacted_cells_total += parent->num_interacted_cells_pm;
+  child->num_interacted_cells_mm += parent->num_interacted_cells_mm;
+  child->num_interacted_cells_pm += parent->num_interacted_cells_pm;
+
+  for (int i = 0; i < 4; ++i) {
+    child->num_interacted_cells_total_by_type[i] +=
+        parent->num_interacted_cells_mm_by_type[i];
+    child->num_interacted_cells_total_by_type[i] +=
+        parent->num_interacted_cells_pm_by_type[i];
+    child->num_interacted_cells_mm_by_type[i] +=
+        parent->num_interacted_cells_mm_by_type[i];
+    child->num_interacted_cells_pm_by_type[i] +=
+        parent->num_interacted_cells_pm_by_type[i];
+  }
+}
+
 void runner_debug_get_top_level_methods_by_type(const struct engine *e,
                                                 const struct cell *ci,
                                                 long long mesh_counts[4],
