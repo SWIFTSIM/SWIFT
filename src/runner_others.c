@@ -247,6 +247,94 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
         parent_cell != NULL ? cp->num_interacted_cells_pm -
                                  parent_cell->num_interacted_cells_pm
                            : cp->num_interacted_cells_pm;
+    const double delta_num_interacted_cells_total_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        parent_cell != NULL
+            ? cp->num_interacted_cells_total_by_type[0] -
+                  parent_cell->num_interacted_cells_total_by_type[0]
+            : cp->num_interacted_cells_total_by_type[0],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_total_by_type[1] -
+                  parent_cell->num_interacted_cells_total_by_type[1]
+            : cp->num_interacted_cells_total_by_type[1],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_total_by_type[2] -
+                  parent_cell->num_interacted_cells_total_by_type[2]
+            : cp->num_interacted_cells_total_by_type[2],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_total_by_type[3] -
+                  parent_cell->num_interacted_cells_total_by_type[3]
+            : cp->num_interacted_cells_total_by_type[3]
+#else
+        0., 0., 0., 0.
+#endif
+    };
+    const double delta_num_interacted_cells_p2p_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        parent_cell != NULL
+            ? cp->num_interacted_cells_p2p_by_type[0] -
+                  parent_cell->num_interacted_cells_p2p_by_type[0]
+            : cp->num_interacted_cells_p2p_by_type[0],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_p2p_by_type[1] -
+                  parent_cell->num_interacted_cells_p2p_by_type[1]
+            : cp->num_interacted_cells_p2p_by_type[1],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_p2p_by_type[2] -
+                  parent_cell->num_interacted_cells_p2p_by_type[2]
+            : cp->num_interacted_cells_p2p_by_type[2],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_p2p_by_type[3] -
+                  parent_cell->num_interacted_cells_p2p_by_type[3]
+            : cp->num_interacted_cells_p2p_by_type[3]
+#else
+        0., 0., 0., 0.
+#endif
+    };
+    const double delta_num_interacted_cells_mm_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        parent_cell != NULL
+            ? cp->num_interacted_cells_mm_by_type[0] -
+                  parent_cell->num_interacted_cells_mm_by_type[0]
+            : cp->num_interacted_cells_mm_by_type[0],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_mm_by_type[1] -
+                  parent_cell->num_interacted_cells_mm_by_type[1]
+            : cp->num_interacted_cells_mm_by_type[1],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_mm_by_type[2] -
+                  parent_cell->num_interacted_cells_mm_by_type[2]
+            : cp->num_interacted_cells_mm_by_type[2],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_mm_by_type[3] -
+                  parent_cell->num_interacted_cells_mm_by_type[3]
+            : cp->num_interacted_cells_mm_by_type[3]
+#else
+        0., 0., 0., 0.
+#endif
+    };
+    const double delta_num_interacted_cells_pm_by_type[4] = {
+#ifdef SWIFT_DEBUG_CHECKS
+        parent_cell != NULL
+            ? cp->num_interacted_cells_pm_by_type[0] -
+                  parent_cell->num_interacted_cells_pm_by_type[0]
+            : cp->num_interacted_cells_pm_by_type[0],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_pm_by_type[1] -
+                  parent_cell->num_interacted_cells_pm_by_type[1]
+            : cp->num_interacted_cells_pm_by_type[1],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_pm_by_type[2] -
+                  parent_cell->num_interacted_cells_pm_by_type[2]
+            : cp->num_interacted_cells_pm_by_type[2],
+        parent_cell != NULL
+            ? cp->num_interacted_cells_pm_by_type[3] -
+                  parent_cell->num_interacted_cells_pm_by_type[3]
+            : cp->num_interacted_cells_pm_by_type[3]
+#else
+        0., 0., 0., 0.
+#endif
+    };
 
     message(
         "grav-path[level=%d/%d] cell=%llu ptr=%p type=%s/%s depth=%d super=%llu super_ptr=%p super_depth=%d",
@@ -302,6 +390,26 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
     message("  dlt cells        %16.9g %16.9g %16.9g %16.9g",
             delta_num_interacted_cells_total, delta_num_interacted_cells_p2p,
             delta_num_interacted_cells_mm, delta_num_interacted_cells_pm);
+    message("  dlt cells-total  %16.9g %16.9g %16.9g %16.9g",
+            delta_num_interacted_cells_total_by_type[0],
+            delta_num_interacted_cells_total_by_type[1],
+            delta_num_interacted_cells_total_by_type[2],
+            delta_num_interacted_cells_total_by_type[3]);
+    message("  dlt cells-p2p    %16.9g %16.9g %16.9g %16.9g",
+            delta_num_interacted_cells_p2p_by_type[0],
+            delta_num_interacted_cells_p2p_by_type[1],
+            delta_num_interacted_cells_p2p_by_type[2],
+            delta_num_interacted_cells_p2p_by_type[3]);
+    message("  dlt cells-mm     %16.9g %16.9g %16.9g %16.9g",
+            delta_num_interacted_cells_mm_by_type[0],
+            delta_num_interacted_cells_mm_by_type[1],
+            delta_num_interacted_cells_mm_by_type[2],
+            delta_num_interacted_cells_mm_by_type[3]);
+    message("  dlt cells-pm     %16.9g %16.9g %16.9g %16.9g",
+            delta_num_interacted_cells_pm_by_type[0],
+            delta_num_interacted_cells_pm_by_type[1],
+            delta_num_interacted_cells_pm_by_type[2],
+            delta_num_interacted_cells_pm_by_type[3]);
   }
 }
 #endif

@@ -438,6 +438,8 @@ static int runner_debug_pair_recursive_bkg_neigh_attach_report_count = 0;
 static int runner_debug_pair_recursive_bkg_neigh_attach_limit_reported = 0;
 static int runner_debug_pair_recursive_ownership_boundary_report_count = 0;
 static int runner_debug_pair_recursive_ownership_boundary_limit_reported = 0;
+static int runner_debug_pair_recursive_recipient_choice_report_count = 0;
+static int runner_debug_pair_recursive_recipient_choice_limit_reported = 0;
 
 #define runner_debug_mesh_overlap_report_max 64
 #define runner_debug_recursive_mesh_bkg_neigh_report_max 128
@@ -447,6 +449,7 @@ static int runner_debug_pair_recursive_ownership_boundary_limit_reported = 0;
 #define runner_debug_zoom_mesh_stop_overlap_report_max 128
 #define runner_debug_pair_recursive_bkg_neigh_attach_report_max 128
 #define runner_debug_pair_recursive_ownership_boundary_report_max 128
+#define runner_debug_pair_recursive_recipient_choice_report_max 128
 #define runner_debug_mesh_overlap_table_size (1 << 14)
 #define runner_debug_mesh_overlap_probe_limit 16
 #define runner_debug_recursive_mesh_budget_table_size (1 << 15)
@@ -747,6 +750,48 @@ static void runner_debug_check_pair_recursive_ownership_boundary(
                         0, 1) == 0) {
     message("pair-recursive-ownership-boundary reporting capped at %d lines",
             runner_debug_pair_recursive_ownership_boundary_report_max);
+  }
+}
+
+static void runner_debug_log_pair_recursive_recipient_choice(
+    const struct cell *super, const struct cell *ci, const struct cell *cj,
+    const struct cell *recipient, const struct cell *source,
+    const char *attachment_case, const char *choice_case) {
+
+  if (runner_debug_get_source_class(source) != runner_debug_source_class_bkg_neigh)
+    return;
+
+  if (strcmp(attachment_case, "pair_recursive") != 0 &&
+      strcmp(attachment_case, "zoom_pair_recursive") != 0)
+    return;
+
+  const int report_index =
+      atomic_inc(&runner_debug_pair_recursive_recipient_choice_report_count);
+
+  if (report_index < runner_debug_pair_recursive_recipient_choice_report_max) {
+    message(
+        "pair-recursive-recipient-choice: super=%llu (%s/%s depth=%d top=%p) "
+        "ci=%llu (%s/%s depth=%d top=%p) cj=%llu (%s/%s depth=%d top=%p) "
+        "recipient=%llu (%s/%s depth=%d top=%p parent=%p void_parent=%p super=%llu) "
+        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) case=%s choice=%s",
+        super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
+        super->depth, (void *)super->top, ci->cellID, cellID_names[ci->type],
+        subcellID_names[ci->subtype], ci->depth, (void *)ci->top, cj->cellID,
+        cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
+        (void *)cj->top, recipient->cellID, cellID_names[recipient->type],
+        subcellID_names[recipient->subtype], recipient->depth,
+        (void *)recipient->top, (void *)recipient->parent,
+        (void *)recipient->void_parent,
+        recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
+        source->cellID, cellID_names[source->type],
+        subcellID_names[source->subtype], source->depth, (void *)source->top,
+        source->grav.multipole->m_pole.num_gpart, attachment_case, choice_case);
+  } else if (
+      report_index == runner_debug_pair_recursive_recipient_choice_report_max &&
+      atomic_cas(&runner_debug_pair_recursive_recipient_choice_limit_reported, 0,
+                 1) == 0) {
+    message("pair-recursive-recipient-choice reporting capped at %d lines",
+            runner_debug_pair_recursive_recipient_choice_report_max);
   }
 }
 
@@ -1269,12 +1314,24 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   if (super == ci) {
     runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
                                   attachment_case);
+#ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_log_pair_recursive_recipient_choice(
+        super, ci, cj, super, cj, attachment_case, "super_eq_ci");
+#endif
   } else if (cell_contains_progeny(ci, super)) {
     runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
                                   attachment_case);
+#ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_log_pair_recursive_recipient_choice(
+        super, ci, cj, super, cj, attachment_case, "ci_contains_super");
+#endif
   } else if (cell_contains_progeny(super, ci)) {
     runner_record_mesh_attachment(super, ci, cj, ci, cj, origin,
                                   attachment_case);
+#ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_log_pair_recursive_recipient_choice(
+        super, ci, cj, ci, cj, attachment_case, "super_contains_ci");
+#endif
   }
 
   /* Handle the symmetric case for self interactions */
@@ -1282,12 +1339,24 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
     if (super == cj) {
       runner_record_mesh_attachment(super, ci, cj, super, ci, origin,
                                     attachment_case);
+#ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_log_pair_recursive_recipient_choice(
+          super, ci, cj, super, ci, attachment_case, "self_super_eq_cj");
+#endif
     } else if (cell_contains_progeny(cj, super)) {
       runner_record_mesh_attachment(super, ci, cj, super, ci, origin,
                                     attachment_case);
+#ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_log_pair_recursive_recipient_choice(
+          super, ci, cj, super, ci, attachment_case, "self_cj_contains_super");
+#endif
     } else if (cell_contains_progeny(super, cj)) {
       runner_record_mesh_attachment(super, ci, cj, cj, ci, origin,
                                     attachment_case);
+#ifdef SWIFT_DEBUG_CHECKS
+      runner_debug_log_pair_recursive_recipient_choice(
+          super, ci, cj, cj, ci, attachment_case, "self_super_contains_cj");
+#endif
     }
   }
 }
