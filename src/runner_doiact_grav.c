@@ -257,6 +257,11 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     struct gravity_cache *cache_i, struct cell *ci, const struct cell *cj,
     const struct gravity_tensors *multi_j) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  int used_p2p = 0;
+  int used_mm = 0;
+#endif
+
   /* Prepare the i cache */
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
   if (cache_i->count < gcount_padded_i)
@@ -326,6 +331,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter */
       accumulate_add_ll(&gparts_i[i].num_interacted, multi_j->m_pole.num_gpart);
+      used_mm = 1;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -403,6 +409,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
           /* Update the interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted);
+          used_p2p = 1;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -475,6 +482,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
           /* Update the interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted);
+          used_p2p = 1;
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -496,6 +504,13 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     cache_i->pot[i] += pot;
     cache_i->active[i] = 1;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (used_p2p)
+    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_p2p);
+  if (used_mm)
+    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
+#endif
 
   /* Write back to the particle data */
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -535,6 +550,11 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     const struct gravity_props *grav_props, struct gravity_cache *cache_i,
     struct cell *ci, const struct cell *cj,
     const struct gravity_tensors *multi_j) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  int used_p2p = 0;
+  int used_mm = 0;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -614,6 +634,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter */
       accumulate_add_ll(&gparts_i[i].num_interacted, multi_j->m_pole.num_gpart);
+      used_mm = 1;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -697,6 +718,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
           /* Update the interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted);
+          used_p2p = 1;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -774,6 +796,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
           /* Update the interaction counter */
           accumulate_inc_ll(&gparts_i[i].num_interacted);
+          used_p2p = 1;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -799,6 +822,13 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     cache_i->pot[i] += pot;
     cache_i->active[i] = 1;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (used_p2p)
+    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_p2p);
+  if (used_mm)
+    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
+#endif
 
   /* Write back to the particle data */
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -1580,6 +1610,16 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
     error("Un-drifted multipole");
   if (ci_active && cj->grav.ti_old_multipole != e->ti_current)
     error("Un-drifted multipole");
+
+  if (ci_active)
+    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_p2p);
+  if (cj_active && symmetric)
+    runner_debug_add_cell_coverage(cj, ci, runner_debug_coverage_kind_p2p);
+
+  if (ci_active && allow_multipole_j)
+    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
+  if (cj_active && symmetric && allow_multipole_i)
+    runner_debug_add_cell_coverage(cj, ci, runner_debug_coverage_kind_mm);
 #endif
 
   /* Caches to play with */
@@ -2162,6 +2202,10 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   /* Anything to do here? */
   if (!cell_is_active_gravity(c, e)) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  runner_debug_add_cell_coverage(c, c, runner_debug_coverage_kind_p2p);
+#endif
+
   /* Check that we are not doing something stupid */
   if (c->split) error("Running P-P on a splitable cell");
 
@@ -2303,6 +2347,10 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 
     /* Ok, let's do the interaction here */
   } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
+#endif
 
     /* Start by constructing particle caches */
 
@@ -2470,12 +2518,21 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Need to account for the interactions we missed */
-    if (cell_is_active_gravity(ci, e))
+    if (cell_is_active_gravity(ci, e)) {
       accumulate_add_ll(&multi_i->pot.num_interacted_pm,
                         multi_j->m_pole.num_gpart);
-    if (cell_is_active_gravity(cj, e))
+    }
+    if (cell_is_active_gravity(cj, e)) {
       accumulate_add_ll(&multi_j->pot.num_interacted_pm,
                         multi_i->m_pole.num_gpart);
+    }
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cell_is_active_gravity(ci, e))
+      runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_pm);
+    if (cell_is_active_gravity(cj, e))
+      runner_debug_add_cell_coverage(cj, ci, runner_debug_coverage_kind_pm);
 #endif
     return;
   }

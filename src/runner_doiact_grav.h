@@ -25,6 +25,7 @@
 
 /* Local includes */
 #include "active.h"
+#include "atomic.h"
 #include "cell.h"
 #include "inline.h"
 #include "multipole.h"
@@ -77,6 +78,46 @@ runner_debug_add_tensor_interactions_by_type(long long counts[4],
                                              const struct cell *source,
                                              const long long delta) {
   counts[runner_debug_get_source_class(source)] += delta;
+}
+
+enum runner_debug_coverage_kind {
+  runner_debug_coverage_kind_p2p = 0,
+  runner_debug_coverage_kind_mm = 1,
+  runner_debug_coverage_kind_pm = 2,
+};
+
+__attribute__((always_inline)) INLINE static double
+runner_debug_get_cell_fractional_weight(const struct cell *source) {
+
+  double weight = 1.;
+  for (int depth = source->depth; depth > 0; --depth) weight *= 0.125;
+  return weight;
+}
+
+__attribute__((always_inline)) INLINE static void runner_debug_add_cell_coverage(
+    struct cell *recipient, const struct cell *source,
+    const enum runner_debug_coverage_kind kind) {
+
+  const int source_class = runner_debug_get_source_class(source);
+  const double weight = runner_debug_get_cell_fractional_weight(source);
+
+  atomic_add_d(&recipient->num_interacted_cells_total, weight);
+  atomic_add_d(&recipient->num_interacted_cells_total_by_type[source_class],
+               weight);
+
+  if (kind == runner_debug_coverage_kind_p2p) {
+    atomic_add_d(&recipient->num_interacted_cells_p2p, weight);
+    atomic_add_d(&recipient->num_interacted_cells_p2p_by_type[source_class],
+                 weight);
+  } else if (kind == runner_debug_coverage_kind_mm) {
+    atomic_add_d(&recipient->num_interacted_cells_mm, weight);
+    atomic_add_d(&recipient->num_interacted_cells_mm_by_type[source_class],
+                 weight);
+  } else if (kind == runner_debug_coverage_kind_pm) {
+    atomic_add_d(&recipient->num_interacted_cells_pm, weight);
+    atomic_add_d(&recipient->num_interacted_cells_pm_by_type[source_class],
+                 weight);
+  }
 }
 
 void runner_debug_get_top_level_methods_by_type(const struct engine *e,
@@ -183,6 +224,7 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   runner_debug_add_tensor_interactions_by_type(
       ci->grav.multipole->pot.num_interacted_tree_by_type, cj,
       multi_j->num_gpart);
+  runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
 #endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -276,6 +318,8 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
   runner_debug_add_tensor_interactions_by_type(
       cj->grav.multipole->pot.num_interacted_tree_by_type, ci,
       multi_i->num_gpart);
+  runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
+  runner_debug_add_cell_coverage(cj, ci, runner_debug_coverage_kind_mm);
 #endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS

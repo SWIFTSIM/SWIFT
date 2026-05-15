@@ -1174,6 +1174,8 @@ static INLINE void runner_record_mesh_attachment(
   if (origin != 0)
     runner_debug_log_recursive_mesh_bkg_neigh(super, ci, cj, recipient, source,
                                               attachment_case);
+  runner_debug_add_cell_coverage(recipient, source,
+                                 runner_debug_coverage_kind_pm);
   runner_debug_add_tensor_interactions_by_type(
       recipient->grav.multipole->pot.num_interacted_pm_by_type, source,
       source->grav.multipole->m_pole.num_gpart);

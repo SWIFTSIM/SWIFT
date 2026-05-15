@@ -1011,6 +1011,16 @@ void cell_reset_task_counters(struct cell *c) {
   for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
   for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
   c->reached_in_task_split = 0;
+  c->num_interacted_cells_total = 0.;
+  c->num_interacted_cells_p2p = 0.;
+  c->num_interacted_cells_mm = 0.;
+  c->num_interacted_cells_pm = 0.;
+  for (int i = 0; i < 4; ++i) {
+    c->num_interacted_cells_total_by_type[i] = 0.;
+    c->num_interacted_cells_p2p_by_type[i] = 0.;
+    c->num_interacted_cells_mm_by_type[i] = 0.;
+    c->num_interacted_cells_pm_by_type[i] = 0.;
+  }
   for (int k = 0; k < 8; ++k)
     if (c->progeny[k] != NULL) cell_reset_task_counters(c->progeny[k]);
 #else

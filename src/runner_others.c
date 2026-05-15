@@ -123,6 +123,7 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
     const int path_level = depth - 1 - i;
     const struct grav_tensor *parent_pot =
         (i < depth - 1) ? &path[i + 1]->grav.multipole->pot : NULL;
+    const struct cell *parent_cell = (i < depth - 1) ? path[i + 1] : NULL;
 
     const long long tensor_tree_by_type[4] = {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -230,17 +231,35 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
         0LL, 0LL, 0LL, 0LL
 #endif
     };
+    const double delta_num_interacted_cells_total =
+        parent_cell != NULL ? cp->num_interacted_cells_total -
+                                 parent_cell->num_interacted_cells_total
+                           : cp->num_interacted_cells_total;
+    const double delta_num_interacted_cells_p2p =
+        parent_cell != NULL ? cp->num_interacted_cells_p2p -
+                                 parent_cell->num_interacted_cells_p2p
+                           : cp->num_interacted_cells_p2p;
+    const double delta_num_interacted_cells_mm =
+        parent_cell != NULL ? cp->num_interacted_cells_mm -
+                                 parent_cell->num_interacted_cells_mm
+                           : cp->num_interacted_cells_mm;
+    const double delta_num_interacted_cells_pm =
+        parent_cell != NULL ? cp->num_interacted_cells_pm -
+                                 parent_cell->num_interacted_cells_pm
+                           : cp->num_interacted_cells_pm;
 
     message(
         "grav-path[level=%d/%d]: cell=%llu ptr=%p (%s/%s depth=%d, super=%llu super_ptr=%p depth=%d) "
         "tensor[interacted=%d total=%lld tree=%lld pm=%lld] local_cell_gparts=%lld "
+        "num_interacted_cells[total=%.9g p2p=%.9g mm=%.9g pm=%.9g] "
         "sources{tree:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
         "pm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]} "
         "delta{tree:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
         "pm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
         "pm_long_range_direct:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
         "pm_long_range_pair_recursive:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "pm_pair_skip_recursive:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]}",
+        "pm_pair_skip_recursive:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
+        "num_interacted_cells:[total=%.9g p2p=%.9g mm=%.9g pm=%.9g]}",
         path_level, depth, cp->cellID, (void *)cp, cellID_names[cp->type],
         subcellID_names[cp->subtype], cp->depth,
         super != NULL ? super->cellID : 0ULL, (void *)super,
@@ -251,7 +270,10 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
 #else
         0LL, 0LL,
 #endif
-        cp->grav.multipole->m_pole.num_gpart, tensor_tree_by_type[0],
+        cp->grav.multipole->m_pole.num_gpart,
+        cp->num_interacted_cells_total, cp->num_interacted_cells_p2p,
+        cp->num_interacted_cells_mm, cp->num_interacted_cells_pm,
+        tensor_tree_by_type[0],
         tensor_tree_by_type[1], tensor_tree_by_type[2], tensor_tree_by_type[3],
         tensor_pm_by_type[0], tensor_pm_by_type[1], tensor_pm_by_type[2],
         tensor_pm_by_type[3], delta_tree_by_type[0], delta_tree_by_type[1],
@@ -268,7 +290,9 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
         delta_pm_pair_skip_recursive_by_type[0],
         delta_pm_pair_skip_recursive_by_type[1],
         delta_pm_pair_skip_recursive_by_type[2],
-        delta_pm_pair_skip_recursive_by_type[3]);
+        delta_pm_pair_skip_recursive_by_type[3],
+        delta_num_interacted_cells_total, delta_num_interacted_cells_p2p,
+        delta_num_interacted_cells_mm, delta_num_interacted_cells_pm);
   }
 }
 #endif
@@ -1239,6 +1263,10 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
             int top_level_mesh_cells_by_type[4];
             int top_level_mm_cells_by_type[4];
             int top_level_p2p_cells_by_type[4];
+            const double num_interacted_cells_total = c->num_interacted_cells_total;
+            const double num_interacted_cells_p2p = c->num_interacted_cells_p2p;
+            const double num_interacted_cells_mm = c->num_interacted_cells_mm;
+            const double num_interacted_cells_pm = c->num_interacted_cells_pm;
             runner_debug_get_top_level_gparts_by_source_representation(
                 e, top_level_gparts_by_type, top_level_cells_by_type);
             runner_debug_get_top_level_methods_by_type(
@@ -1282,6 +1310,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "pm_pair_skip_by_type=[%lld,%lld,%lld,%lld], "
                 "pm_pair_skip_direct_by_type=[%lld,%lld,%lld,%lld], "
                 "pm_pair_skip_recursive_by_type=[%lld,%lld,%lld,%lld], "
+                "num_interacted_cells_total=%.9g, num_interacted_cells_p2p=%.9g, "
+                "num_interacted_cells_mm=%.9g, num_interacted_cells_pm=%.9g, "
+                "num_interacted_cells_total_by_type=[%.9g,%.9g,%.9g,%.9g], "
+                "num_interacted_cells_p2p_by_type=[%.9g,%.9g,%.9g,%.9g], "
+                "num_interacted_cells_mm_by_type=[%.9g,%.9g,%.9g,%.9g], "
+                "num_interacted_cells_pm_by_type=[%.9g,%.9g,%.9g,%.9g], "
                 "observed_by_type=[%lld,%lld,%lld,%lld], "
                 "top_level_mesh_gparts_by_type=[%lld,%lld,%lld,%lld], "
                 "top_level_mm_gparts_by_type=[%lld,%lld,%lld,%lld], "
@@ -1335,6 +1369,24 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_pm_pair_skip_recursive_by_type[1],
                 gp->num_interacted_pm_pair_skip_recursive_by_type[2],
                 gp->num_interacted_pm_pair_skip_recursive_by_type[3],
+                num_interacted_cells_total, num_interacted_cells_p2p,
+                num_interacted_cells_mm, num_interacted_cells_pm,
+                c->num_interacted_cells_total_by_type[0],
+                c->num_interacted_cells_total_by_type[1],
+                c->num_interacted_cells_total_by_type[2],
+                c->num_interacted_cells_total_by_type[3],
+                c->num_interacted_cells_p2p_by_type[0],
+                c->num_interacted_cells_p2p_by_type[1],
+                c->num_interacted_cells_p2p_by_type[2],
+                c->num_interacted_cells_p2p_by_type[3],
+                c->num_interacted_cells_mm_by_type[0],
+                c->num_interacted_cells_mm_by_type[1],
+                c->num_interacted_cells_mm_by_type[2],
+                c->num_interacted_cells_mm_by_type[3],
+                c->num_interacted_cells_pm_by_type[0],
+                c->num_interacted_cells_pm_by_type[1],
+                c->num_interacted_cells_pm_by_type[2],
+                c->num_interacted_cells_pm_by_type[3],
                 observed_by_type[0], observed_by_type[1], observed_by_type[2],
                 observed_by_type[3], top_level_mesh_gparts_by_type[0],
                 top_level_mesh_gparts_by_type[1], top_level_mesh_gparts_by_type[2],
