@@ -34,8 +34,8 @@ material = 0  # Ideal gas
 fileName = "input.hdf5"
 
 # ---------------------------------------------------
-numPart = L ** 3
-mass = boxSize ** 3 * density / numPart
+numPart = L**3
+mass = boxSize**3 * density / numPart
 internalEnergy = P / ((gamma - 1.0) * density)
 
 # chemistry data

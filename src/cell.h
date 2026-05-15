@@ -736,6 +736,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const int use_rebuild_data, const int is_tree_walk);
 int cell_can_use_mesh(struct engine *e, const struct cell *ci,
                       const struct cell *cj);
+int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
+                                       const struct cell *cj);
 int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
                                const struct cell *cj);
 void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e);
@@ -1162,6 +1164,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
@@ -1183,6 +1186,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
