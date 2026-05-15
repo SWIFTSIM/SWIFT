@@ -1615,11 +1615,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
     runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_p2p);
   if (cj_active && symmetric)
     runner_debug_add_cell_coverage(cj, ci, runner_debug_coverage_kind_p2p);
-
-  if (ci_active && allow_multipole_j)
-    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
-  if (cj_active && symmetric && allow_multipole_i)
-    runner_debug_add_cell_coverage(cj, ci, runner_debug_coverage_kind_mm);
 #endif
 
   /* Caches to play with */
@@ -1651,6 +1646,13 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
   const int allow_multipole_i = allow_mpole && ci->grav.count > 1;
   const int allow_multipole_j = allow_mpole && cj->grav.count > 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci_active && allow_multipole_j)
+    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
+  if (cj_active && symmetric && allow_multipole_i)
+    runner_debug_add_cell_coverage(cj, ci, runner_debug_coverage_kind_mm);
+#endif
 
   /* Fill the caches */
   if (ci->nodeID == e->nodeID) {
