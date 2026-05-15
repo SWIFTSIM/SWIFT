@@ -255,8 +255,7 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
         super != NULL ? super->cellID : 0ULL, (void *)super,
         super != NULL ? super->depth : -1);
     message(
-        "  scalar                 total            tree              pm      local_gparts interacted",
-        0);
+        "  scalar                 total            tree              pm      local_gparts interacted");
     message(
         "  tensor      %16lld %16lld %16lld %16lld %10d",
         pot->num_interacted,
