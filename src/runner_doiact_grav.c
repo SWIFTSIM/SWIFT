@@ -2344,6 +2344,10 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     /* Ok, let's do the interaction here */
   } else {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_p2p);
+#endif
+
     /* Start by constructing particle caches */
 
     /* Cache to play with */

@@ -249,50 +249,60 @@ static void runner_debug_dump_gravity_path(const struct cell *leaf) {
                            : cp->num_interacted_cells_pm;
 
     message(
-        "grav-path[level=%d/%d]: cell=%llu ptr=%p (%s/%s depth=%d, super=%llu super_ptr=%p depth=%d) "
-        "tensor[interacted=%d total=%lld tree=%lld pm=%lld] local_cell_gparts=%lld "
-        "num_interacted_cells[total=%.9g p2p=%.9g mm=%.9g pm=%.9g] "
-        "sources{tree:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "pm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld]} "
-        "delta{tree:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "pm:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "pm_long_range_direct:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "pm_long_range_pair_recursive:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "pm_pair_skip_recursive:[zoom=%lld bkg_void=%lld bkg_neigh=%lld other=%lld] "
-        "num_interacted_cells:[total=%.9g p2p=%.9g mm=%.9g pm=%.9g]}",
+        "grav-path[level=%d/%d] cell=%llu ptr=%p type=%s/%s depth=%d super=%llu super_ptr=%p super_depth=%d",
         path_level, depth, cp->cellID, (void *)cp, cellID_names[cp->type],
         subcellID_names[cp->subtype], cp->depth,
         super != NULL ? super->cellID : 0ULL, (void *)super,
-        super != NULL ? super->depth : -1,
-        (int)pot->interacted, pot->num_interacted,
+        super != NULL ? super->depth : -1);
+    message(
+        "  scalar                 total            tree              pm      local_gparts interacted",
+        0);
+    message(
+        "  tensor      %16lld %16lld %16lld %16lld %10d",
+        pot->num_interacted,
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-        pot->num_interacted_tree, pot->num_interacted_pm,
+        pot->num_interacted_tree,
+        pot->num_interacted_pm,
 #else
         0LL, 0LL,
 #endif
-        cp->grav.multipole->m_pole.num_gpart,
+        cp->grav.multipole->m_pole.num_gpart, (int)pot->interacted);
+    message(
+        "  cells       %16.9g %16.9g %16.9g %16.9g",
         cp->num_interacted_cells_total, cp->num_interacted_cells_p2p,
-        cp->num_interacted_cells_mm, cp->num_interacted_cells_pm,
-        tensor_tree_by_type[0],
-        tensor_tree_by_type[1], tensor_tree_by_type[2], tensor_tree_by_type[3],
-        tensor_pm_by_type[0], tensor_pm_by_type[1], tensor_pm_by_type[2],
-        tensor_pm_by_type[3], delta_tree_by_type[0], delta_tree_by_type[1],
-        delta_tree_by_type[2], delta_tree_by_type[3], delta_pm_by_type[0],
-        delta_pm_by_type[1], delta_pm_by_type[2], delta_pm_by_type[3],
-        delta_pm_long_range_direct_by_type[0],
-        delta_pm_long_range_direct_by_type[1],
-        delta_pm_long_range_direct_by_type[2],
-        delta_pm_long_range_direct_by_type[3],
-        delta_pm_long_range_pair_recursive_by_type[0],
-        delta_pm_long_range_pair_recursive_by_type[1],
-        delta_pm_long_range_pair_recursive_by_type[2],
-        delta_pm_long_range_pair_recursive_by_type[3],
-        delta_pm_pair_skip_recursive_by_type[0],
-        delta_pm_pair_skip_recursive_by_type[1],
-        delta_pm_pair_skip_recursive_by_type[2],
-        delta_pm_pair_skip_recursive_by_type[3],
-        delta_num_interacted_cells_total, delta_num_interacted_cells_p2p,
-        delta_num_interacted_cells_mm, delta_num_interacted_cells_pm);
+        cp->num_interacted_cells_mm, cp->num_interacted_cells_pm);
+    message(
+        "  by-type                            zoom         bkg_void        bkg_neigh           other");
+    message("  src tree         %16lld %16lld %16lld %16lld",
+            tensor_tree_by_type[0], tensor_tree_by_type[1], tensor_tree_by_type[2],
+            tensor_tree_by_type[3]);
+    message("  src pm           %16lld %16lld %16lld %16lld",
+            tensor_pm_by_type[0], tensor_pm_by_type[1], tensor_pm_by_type[2],
+            tensor_pm_by_type[3]);
+    message("  dlt tree         %16lld %16lld %16lld %16lld",
+            delta_tree_by_type[0], delta_tree_by_type[1], delta_tree_by_type[2],
+            delta_tree_by_type[3]);
+    message("  dlt pm           %16lld %16lld %16lld %16lld",
+            delta_pm_by_type[0], delta_pm_by_type[1], delta_pm_by_type[2],
+            delta_pm_by_type[3]);
+    message("  dlt pm-direct    %16lld %16lld %16lld %16lld",
+            delta_pm_long_range_direct_by_type[0],
+            delta_pm_long_range_direct_by_type[1],
+            delta_pm_long_range_direct_by_type[2],
+            delta_pm_long_range_direct_by_type[3]);
+    message("  dlt pm-pair-rec  %16lld %16lld %16lld %16lld",
+            delta_pm_long_range_pair_recursive_by_type[0],
+            delta_pm_long_range_pair_recursive_by_type[1],
+            delta_pm_long_range_pair_recursive_by_type[2],
+            delta_pm_long_range_pair_recursive_by_type[3]);
+    message("  dlt pm-skip-rec  %16lld %16lld %16lld %16lld",
+            delta_pm_pair_skip_recursive_by_type[0],
+            delta_pm_pair_skip_recursive_by_type[1],
+            delta_pm_pair_skip_recursive_by_type[2],
+            delta_pm_pair_skip_recursive_by_type[3]);
+    message("  dlt cells        %16.9g %16.9g %16.9g %16.9g",
+            delta_num_interacted_cells_total, delta_num_interacted_cells_p2p,
+            delta_num_interacted_cells_mm, delta_num_interacted_cells_pm);
   }
 }
 #endif
@@ -1288,125 +1298,146 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                   top_level_p2p_gparts_by_type[i];
             }
 
+            message("Interaction breakdown for g-particle id=%lld type=%s", id,
+                    part_type_names[gp->type]);
             message(
-                "Interaction breakdown for g-particle (id=%lld, type=%s): "
-                "num_interacted=%lld, num_interacted_m2p=%lld, "
-                "num_interacted_m2l=%lld, num_interacted_p2p=%lld, "
-                "num_interacted_pm=%lld, num_interacted_pm_long_range=%lld, "
-                "num_interacted_pm_long_range_direct=%lld, "
-                "num_interacted_pm_long_range_self_recursive=%lld, "
-                "num_interacted_pm_long_range_pair_recursive=%lld, "
-                "num_interacted_pm_pair_skip=%lld, "
-                "num_interacted_pm_pair_skip_direct=%lld, "
-                "num_interacted_pm_pair_skip_recursive=%lld, "
-                "m2p_by_type=[%lld,%lld,%lld,%lld], "
-                "m2l_by_type=[%lld,%lld,%lld,%lld], "
-                "p2p_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_long_range_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_long_range_direct_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_long_range_self_recursive_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_long_range_pair_recursive_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_pair_skip_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_pair_skip_direct_by_type=[%lld,%lld,%lld,%lld], "
-                "pm_pair_skip_recursive_by_type=[%lld,%lld,%lld,%lld], "
-                "num_interacted_cells_total=%.9g, num_interacted_cells_p2p=%.9g, "
-                "num_interacted_cells_mm=%.9g, num_interacted_cells_pm=%.9g, "
-                "num_interacted_cells_total_by_type=[%.9g,%.9g,%.9g,%.9g], "
-                "num_interacted_cells_p2p_by_type=[%.9g,%.9g,%.9g,%.9g], "
-                "num_interacted_cells_mm_by_type=[%.9g,%.9g,%.9g,%.9g], "
-                "num_interacted_cells_pm_by_type=[%.9g,%.9g,%.9g,%.9g], "
-                "observed_by_type=[%lld,%lld,%lld,%lld], "
-                "top_level_mesh_gparts_by_type=[%lld,%lld,%lld,%lld], "
-                "top_level_mm_gparts_by_type=[%lld,%lld,%lld,%lld], "
-                "top_level_p2p_gparts_by_type=[%lld,%lld,%lld,%lld], "
-                "top_level_total_gparts_by_type=[%lld,%lld,%lld,%lld], "
-                "top_level_mesh_cells_by_type=[%d,%d,%d,%d], "
-                "top_level_mm_cells_by_type=[%d,%d,%d,%d], "
-                "top_level_p2p_cells_by_type=[%d,%d,%d,%d], "
-                "top_level_gparts_by_type=[%lld,%lld,%lld,%lld], "
-                "top_level_cells_by_type=[%d,%d,%d,%d]",
-                id, part_type_names[gp->type], gp->num_interacted, num_interacted_m2p,
-                num_interacted_m2l, num_interacted_p2p, num_interacted_pm,
-                num_interacted_pm_long_range, num_interacted_pm_long_range_direct,
-                num_interacted_pm_long_range_self_recursive,
-                num_interacted_pm_long_range_pair_recursive,
-                num_interacted_pm_pair_skip, num_interacted_pm_pair_skip_direct,
-                num_interacted_pm_pair_skip_recursive,
-                gp->num_interacted_m2p_by_type[0], gp->num_interacted_m2p_by_type[1],
-                gp->num_interacted_m2p_by_type[2], gp->num_interacted_m2p_by_type[3],
-                gp->num_interacted_m2l_by_type[0], gp->num_interacted_m2l_by_type[1],
-                gp->num_interacted_m2l_by_type[2], gp->num_interacted_m2l_by_type[3],
-                gp->num_interacted_p2p_by_type[0], gp->num_interacted_p2p_by_type[1],
-                gp->num_interacted_p2p_by_type[2], gp->num_interacted_p2p_by_type[3],
-                gp->num_interacted_pm_by_type[0], gp->num_interacted_pm_by_type[1],
-                gp->num_interacted_pm_by_type[2], gp->num_interacted_pm_by_type[3],
-                gp->num_interacted_pm_long_range_by_type[0],
-                gp->num_interacted_pm_long_range_by_type[1],
-                gp->num_interacted_pm_long_range_by_type[2],
-                gp->num_interacted_pm_long_range_by_type[3],
-                gp->num_interacted_pm_long_range_direct_by_type[0],
-                gp->num_interacted_pm_long_range_direct_by_type[1],
-                gp->num_interacted_pm_long_range_direct_by_type[2],
-                gp->num_interacted_pm_long_range_direct_by_type[3],
-                gp->num_interacted_pm_long_range_self_recursive_by_type[0],
-                gp->num_interacted_pm_long_range_self_recursive_by_type[1],
-                gp->num_interacted_pm_long_range_self_recursive_by_type[2],
-                gp->num_interacted_pm_long_range_self_recursive_by_type[3],
-                gp->num_interacted_pm_long_range_pair_recursive_by_type[0],
-                gp->num_interacted_pm_long_range_pair_recursive_by_type[1],
-                gp->num_interacted_pm_long_range_pair_recursive_by_type[2],
-                gp->num_interacted_pm_long_range_pair_recursive_by_type[3],
-                gp->num_interacted_pm_pair_skip_by_type[0],
-                gp->num_interacted_pm_pair_skip_by_type[1],
-                gp->num_interacted_pm_pair_skip_by_type[2],
-                gp->num_interacted_pm_pair_skip_by_type[3],
-                gp->num_interacted_pm_pair_skip_direct_by_type[0],
-                gp->num_interacted_pm_pair_skip_direct_by_type[1],
-                gp->num_interacted_pm_pair_skip_direct_by_type[2],
-                gp->num_interacted_pm_pair_skip_direct_by_type[3],
-                gp->num_interacted_pm_pair_skip_recursive_by_type[0],
-                gp->num_interacted_pm_pair_skip_recursive_by_type[1],
-                gp->num_interacted_pm_pair_skip_recursive_by_type[2],
-                gp->num_interacted_pm_pair_skip_recursive_by_type[3],
-                num_interacted_cells_total, num_interacted_cells_p2p,
-                num_interacted_cells_mm, num_interacted_cells_pm,
-                c->num_interacted_cells_total_by_type[0],
-                c->num_interacted_cells_total_by_type[1],
-                c->num_interacted_cells_total_by_type[2],
-                c->num_interacted_cells_total_by_type[3],
-                c->num_interacted_cells_p2p_by_type[0],
-                c->num_interacted_cells_p2p_by_type[1],
-                c->num_interacted_cells_p2p_by_type[2],
-                c->num_interacted_cells_p2p_by_type[3],
-                c->num_interacted_cells_mm_by_type[0],
-                c->num_interacted_cells_mm_by_type[1],
-                c->num_interacted_cells_mm_by_type[2],
-                c->num_interacted_cells_mm_by_type[3],
-                c->num_interacted_cells_pm_by_type[0],
-                c->num_interacted_cells_pm_by_type[1],
-                c->num_interacted_cells_pm_by_type[2],
-                c->num_interacted_cells_pm_by_type[3],
-                observed_by_type[0], observed_by_type[1], observed_by_type[2],
-                observed_by_type[3], top_level_mesh_gparts_by_type[0],
-                top_level_mesh_gparts_by_type[1], top_level_mesh_gparts_by_type[2],
-                top_level_mesh_gparts_by_type[3], top_level_mm_gparts_by_type[0],
-                top_level_mm_gparts_by_type[1], top_level_mm_gparts_by_type[2],
-                top_level_mm_gparts_by_type[3], top_level_p2p_gparts_by_type[0],
-                top_level_p2p_gparts_by_type[1], top_level_p2p_gparts_by_type[2],
-                top_level_p2p_gparts_by_type[3], top_level_total_gparts_by_type[0],
-                top_level_total_gparts_by_type[1], top_level_total_gparts_by_type[2],
-                top_level_total_gparts_by_type[3], top_level_mesh_cells_by_type[0],
-                top_level_mesh_cells_by_type[1], top_level_mesh_cells_by_type[2],
-                top_level_mesh_cells_by_type[3], top_level_mm_cells_by_type[0],
-                top_level_mm_cells_by_type[1], top_level_mm_cells_by_type[2],
-                top_level_mm_cells_by_type[3], top_level_p2p_cells_by_type[0],
-                top_level_p2p_cells_by_type[1], top_level_p2p_cells_by_type[2],
-                top_level_p2p_cells_by_type[3], top_level_gparts_by_type[0],
-                top_level_gparts_by_type[1], top_level_gparts_by_type[2],
-                top_level_gparts_by_type[3], top_level_cells_by_type[0],
-                top_level_cells_by_type[1], top_level_cells_by_type[2],
-                top_level_cells_by_type[3]);
+                "  scalar                                  value");
+            message("  num_interacted                 %16lld", gp->num_interacted);
+            message("  num_interacted_m2p             %16lld", num_interacted_m2p);
+            message("  num_interacted_m2l             %16lld", num_interacted_m2l);
+            message("  num_interacted_p2p             %16lld", num_interacted_p2p);
+            message("  num_interacted_pm              %16lld", num_interacted_pm);
+            message("  pm_long_range                  %16lld",
+                    num_interacted_pm_long_range);
+            message("  pm_long_range_direct           %16lld",
+                    num_interacted_pm_long_range_direct);
+            message("  pm_long_range_self_recursive   %16lld",
+                    num_interacted_pm_long_range_self_recursive);
+            message("  pm_long_range_pair_recursive   %16lld",
+                    num_interacted_pm_long_range_pair_recursive);
+            message("  pm_pair_skip                   %16lld",
+                    num_interacted_pm_pair_skip);
+            message("  pm_pair_skip_direct            %16lld",
+                    num_interacted_pm_pair_skip_direct);
+            message("  pm_pair_skip_recursive         %16lld",
+                    num_interacted_pm_pair_skip_recursive);
+            message("  num_interacted_cells_total     %16.9g",
+                    num_interacted_cells_total);
+            message("  num_interacted_cells_p2p       %16.9g",
+                    num_interacted_cells_p2p);
+            message("  num_interacted_cells_mm        %16.9g",
+                    num_interacted_cells_mm);
+            message("  num_interacted_cells_pm        %16.9g",
+                    num_interacted_cells_pm);
+            message(
+                "  by-type                            zoom         bkg_void        bkg_neigh           other");
+            message("  m2p            %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_m2p_by_type[0],
+                    gp->num_interacted_m2p_by_type[1],
+                    gp->num_interacted_m2p_by_type[2],
+                    gp->num_interacted_m2p_by_type[3]);
+            message("  m2l            %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_m2l_by_type[0],
+                    gp->num_interacted_m2l_by_type[1],
+                    gp->num_interacted_m2l_by_type[2],
+                    gp->num_interacted_m2l_by_type[3]);
+            message("  p2p            %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_p2p_by_type[0],
+                    gp->num_interacted_p2p_by_type[1],
+                    gp->num_interacted_p2p_by_type[2],
+                    gp->num_interacted_p2p_by_type[3]);
+            message("  pm             %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_pm_by_type[0],
+                    gp->num_interacted_pm_by_type[1],
+                    gp->num_interacted_pm_by_type[2],
+                    gp->num_interacted_pm_by_type[3]);
+            message("  pm-long        %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_pm_long_range_by_type[0],
+                    gp->num_interacted_pm_long_range_by_type[1],
+                    gp->num_interacted_pm_long_range_by_type[2],
+                    gp->num_interacted_pm_long_range_by_type[3]);
+            message("  pm-direct      %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_pm_long_range_direct_by_type[0],
+                    gp->num_interacted_pm_long_range_direct_by_type[1],
+                    gp->num_interacted_pm_long_range_direct_by_type[2],
+                    gp->num_interacted_pm_long_range_direct_by_type[3]);
+            message("  pm-self-rec    %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_pm_long_range_self_recursive_by_type[0],
+                    gp->num_interacted_pm_long_range_self_recursive_by_type[1],
+                    gp->num_interacted_pm_long_range_self_recursive_by_type[2],
+                    gp->num_interacted_pm_long_range_self_recursive_by_type[3]);
+            message("  pm-pair-rec    %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_pm_long_range_pair_recursive_by_type[0],
+                    gp->num_interacted_pm_long_range_pair_recursive_by_type[1],
+                    gp->num_interacted_pm_long_range_pair_recursive_by_type[2],
+                    gp->num_interacted_pm_long_range_pair_recursive_by_type[3]);
+            message("  pm-skip        %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_pm_pair_skip_by_type[0],
+                    gp->num_interacted_pm_pair_skip_by_type[1],
+                    gp->num_interacted_pm_pair_skip_by_type[2],
+                    gp->num_interacted_pm_pair_skip_by_type[3]);
+            message("  pm-skip-dir    %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_pm_pair_skip_direct_by_type[0],
+                    gp->num_interacted_pm_pair_skip_direct_by_type[1],
+                    gp->num_interacted_pm_pair_skip_direct_by_type[2],
+                    gp->num_interacted_pm_pair_skip_direct_by_type[3]);
+            message("  pm-skip-rec    %16lld %16lld %16lld %16lld",
+                    gp->num_interacted_pm_pair_skip_recursive_by_type[0],
+                    gp->num_interacted_pm_pair_skip_recursive_by_type[1],
+                    gp->num_interacted_pm_pair_skip_recursive_by_type[2],
+                    gp->num_interacted_pm_pair_skip_recursive_by_type[3]);
+            message("  cells-total    %16.9g %16.9g %16.9g %16.9g",
+                    c->num_interacted_cells_total_by_type[0],
+                    c->num_interacted_cells_total_by_type[1],
+                    c->num_interacted_cells_total_by_type[2],
+                    c->num_interacted_cells_total_by_type[3]);
+            message("  cells-p2p      %16.9g %16.9g %16.9g %16.9g",
+                    c->num_interacted_cells_p2p_by_type[0],
+                    c->num_interacted_cells_p2p_by_type[1],
+                    c->num_interacted_cells_p2p_by_type[2],
+                    c->num_interacted_cells_p2p_by_type[3]);
+            message("  cells-mm       %16.9g %16.9g %16.9g %16.9g",
+                    c->num_interacted_cells_mm_by_type[0],
+                    c->num_interacted_cells_mm_by_type[1],
+                    c->num_interacted_cells_mm_by_type[2],
+                    c->num_interacted_cells_mm_by_type[3]);
+            message("  cells-pm       %16.9g %16.9g %16.9g %16.9g",
+                    c->num_interacted_cells_pm_by_type[0],
+                    c->num_interacted_cells_pm_by_type[1],
+                    c->num_interacted_cells_pm_by_type[2],
+                    c->num_interacted_cells_pm_by_type[3]);
+            message("  observed       %16lld %16lld %16lld %16lld",
+                    observed_by_type[0], observed_by_type[1], observed_by_type[2],
+                    observed_by_type[3]);
+            message("  tl-mesh-gp     %16lld %16lld %16lld %16lld",
+                    top_level_mesh_gparts_by_type[0], top_level_mesh_gparts_by_type[1],
+                    top_level_mesh_gparts_by_type[2], top_level_mesh_gparts_by_type[3]);
+            message("  tl-mm-gp       %16lld %16lld %16lld %16lld",
+                    top_level_mm_gparts_by_type[0], top_level_mm_gparts_by_type[1],
+                    top_level_mm_gparts_by_type[2], top_level_mm_gparts_by_type[3]);
+            message("  tl-p2p-gp      %16lld %16lld %16lld %16lld",
+                    top_level_p2p_gparts_by_type[0], top_level_p2p_gparts_by_type[1],
+                    top_level_p2p_gparts_by_type[2], top_level_p2p_gparts_by_type[3]);
+            message("  tl-total-gp    %16lld %16lld %16lld %16lld",
+                    top_level_total_gparts_by_type[0],
+                    top_level_total_gparts_by_type[1],
+                    top_level_total_gparts_by_type[2],
+                    top_level_total_gparts_by_type[3]);
+            message("  tl-mesh-cells  %16d %16d %16d %16d",
+                    top_level_mesh_cells_by_type[0], top_level_mesh_cells_by_type[1],
+                    top_level_mesh_cells_by_type[2], top_level_mesh_cells_by_type[3]);
+            message("  tl-mm-cells    %16d %16d %16d %16d",
+                    top_level_mm_cells_by_type[0], top_level_mm_cells_by_type[1],
+                    top_level_mm_cells_by_type[2], top_level_mm_cells_by_type[3]);
+            message("  tl-p2p-cells   %16d %16d %16d %16d",
+                    top_level_p2p_cells_by_type[0], top_level_p2p_cells_by_type[1],
+                    top_level_p2p_cells_by_type[2], top_level_p2p_cells_by_type[3]);
+            message("  tl-gparts      %16lld %16lld %16lld %16lld",
+                    top_level_gparts_by_type[0], top_level_gparts_by_type[1],
+                    top_level_gparts_by_type[2], top_level_gparts_by_type[3]);
+            message("  tl-cells       %16d %16d %16d %16d",
+                    top_level_cells_by_type[0], top_level_cells_by_type[1],
+                    top_level_cells_by_type[2], top_level_cells_by_type[3]);
 
             const int recursive_mesh_budget_overlaps =
                 runner_debug_dump_recursive_mesh_budget_overlaps(c);
