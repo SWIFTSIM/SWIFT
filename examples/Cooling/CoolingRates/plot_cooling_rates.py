@@ -31,19 +31,19 @@ for elem in range(elements):
 
 # Plot
 ax = plt.subplot(111)
-p0, = plt.loglog(u, cooling_rate[0], linewidth=0.5, color="k", label="Total")
-p1, = plt.loglog(
+(p0,) = plt.loglog(u, cooling_rate[0], linewidth=0.5, color="k", label="Total")
+(p1,) = plt.loglog(
     u, cooling_rate[1], linewidth=0.5, color="k", linestyle="--", label="H + He"
 )
-p2, = plt.loglog(u, cooling_rate[3], linewidth=0.5, color="b", label="C")
-p3, = plt.loglog(u, cooling_rate[4], linewidth=0.5, color="g", label="N")
-p4, = plt.loglog(u, cooling_rate[5], linewidth=0.5, color="r", label="O")
-p5, = plt.loglog(u, cooling_rate[6], linewidth=0.5, color="c", label="Ne")
-p6, = plt.loglog(u, cooling_rate[7], linewidth=0.5, color="m", label="Mg")
-p7, = plt.loglog(u, cooling_rate[8], linewidth=0.5, color="y", label="Si")
-p8, = plt.loglog(u, cooling_rate[9], linewidth=0.5, color="lightgray", label="S")
-p9, = plt.loglog(u, cooling_rate[10], linewidth=0.5, color="olive", label="Ca")
-p10, = plt.loglog(u, cooling_rate[11], linewidth=0.5, color="saddlebrown", label="Fe")
+(p2,) = plt.loglog(u, cooling_rate[3], linewidth=0.5, color="b", label="C")
+(p3,) = plt.loglog(u, cooling_rate[4], linewidth=0.5, color="g", label="N")
+(p4,) = plt.loglog(u, cooling_rate[5], linewidth=0.5, color="r", label="O")
+(p5,) = plt.loglog(u, cooling_rate[6], linewidth=0.5, color="c", label="Ne")
+(p6,) = plt.loglog(u, cooling_rate[7], linewidth=0.5, color="m", label="Mg")
+(p7,) = plt.loglog(u, cooling_rate[8], linewidth=0.5, color="y", label="Si")
+(p8,) = plt.loglog(u, cooling_rate[9], linewidth=0.5, color="lightgray", label="S")
+(p9,) = plt.loglog(u, cooling_rate[10], linewidth=0.5, color="olive", label="Ca")
+(p10,) = plt.loglog(u, cooling_rate[11], linewidth=0.5, color="saddlebrown", label="Fe")
 ax.set_position([0.15, 0.15, 0.75, 0.75])
 plt.xlim([1e3, 1e8])
 plt.ylim([1e-24, 1e-21])

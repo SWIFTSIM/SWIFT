@@ -24,7 +24,6 @@ Run with python make_test_plots.py <snapshot-directory-name>
 
 """
 
-
 import numpy as np
 from sys import argv
 from glob import glob
@@ -44,7 +43,7 @@ params = {
 plt.rcParams.update(params)
 
 # Units
-G_cgs = 6.6743e-8 * unyt.cm ** 3 * unyt.g ** -1 * unyt.s ** -2
+G_cgs = 6.6743e-8 * unyt.cm**3 * unyt.g**-1 * unyt.s**-2
 unit_mass_cgs = 1.988409870698051e43 * unyt.g
 unit_density_cgs = 6.767905323247329e-22 * unyt.Unit("g/cm**3")
 unit_velocity_cgs = (1.0 * unyt.Unit("km/s")).to("cm/s")
@@ -65,8 +64,8 @@ def simple_bondi_hoyle(t, m, rho, v, cs):
 
     for i in range(len(times) - 1):
 
-        numerator = 4.0 * np.pi * G_cgs ** 2 * m_sink[i] ** 2 * rho_0
-        denominator = np.power(v_0 ** 2 + cs_0 ** 2, 3.0 / 2.0)
+        numerator = 4.0 * np.pi * G_cgs**2 * m_sink[i] ** 2 * rho_0
+        denominator = np.power(v_0**2 + cs_0**2, 3.0 / 2.0)
 
         m_sink[i + 1] = m_sink[i] + (numerator / denominator) * timestep
 

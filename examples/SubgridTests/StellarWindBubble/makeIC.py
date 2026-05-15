@@ -164,11 +164,11 @@ UnitVelocity = UnitVelocity_in_cgs * unyt.cm / unyt.s
 np.random.seed(1)
 
 # Number of particles
-N = (2 ** opt.level) ** 3  # number of gas particles
+N = (2**opt.level) ** 3  # number of gas particles
 
 # Mean density
 rho = opt.rho  # atom/cc
-rho = rho * unyt.mp / unyt.cm ** 3
+rho = rho * unyt.mp / unyt.cm**3
 
 # Gas particle mass
 m = opt.mass  # in solar mass
@@ -196,8 +196,8 @@ print("Specific Internal Energy (cgs)        : {}".format(u_unyt.to("erg/g")))
 # Convert to code units
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
-rho = rho.to(UnitMass / UnitLength ** 3).value
-u_code = u_unyt.to(UnitVelocity ** 2).value
+rho = rho.to(UnitMass / UnitLength**3).value
+u_code = u_unyt.to(UnitVelocity**2).value
 
 # Generate the particles
 
@@ -205,7 +205,7 @@ if opt.random_positions:
     print("Sampling random positions in the box")
     pos = np.random.random([N, 3]) * np.array([L, L, L])
 else:
-    points = np.linspace(0, L, 2 ** opt.level, endpoint=False)
+    points = np.linspace(0, L, 2**opt.level, endpoint=False)
 
     # Create a meshgrid of these points
     x, y, z = np.meshgrid(points, points, points)
