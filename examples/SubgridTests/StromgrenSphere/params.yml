@@ -51,7 +51,7 @@ Statistics:
 InitialConditions:
   file_name:          ICs_homogeneous_box.hdf5
   periodic:                 1    # Are we running with periodic ICs?
-  shift:              [0.0,0.0,0.0]
+  shift:              [0.025, 0.025, 0.025] #[-0.00833333, -0.00833333, -0.00833333] #[0.0,0.0,0.0]
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -78,7 +78,7 @@ GEARChemistry:
   scale_initial_metallicity: 1
 
 GEARFeedback:
-  supernovae_Ia_energy_erg: 1e51                   # supernovae energy, used only for SNIa
+  supernovae_Ia_energy_erg: 1e51                # supernovae energy, used only for SNIa
   supernovae_efficiency: 0                      # supernovae energy efficiency, used for both SNIa and SNII
   with_stellar_wind_feedback: 0
   yields_table: POPIIsw.h5
