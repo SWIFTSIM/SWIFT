@@ -41,6 +41,7 @@
 
 #define search_radius_factor 1.2f
 #define max_ngbs 128
+#define max_retry_full_buffer 10
 
 /**
  * @brief Top-level function for HII ionization feedback.
@@ -194,6 +195,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
      * outside the current R_max of the buffer. We retry until the buffer
      * is no longer maxed out OR the star runs out of photons. */
     int buffer_was_full = 0;
+    int num_retry_full_buffer = 0;
     do {
       int count_found = 0;
       buffer_was_full = 0;
@@ -268,8 +270,11 @@ void runner_do_stars_hii_ionization_feedback_branch(
         } /* Loop over the sorted particles */
       }
       /* If the star still has photons and we previously filled the buffer,
-       * we must go again to find the neighbors that were 'bumped out'. */
-    } while (buffer_was_full && feedback_get_star_ionization_rate(si) > 0);
+       * we must go again to find the neighbors that were 'bumped out'. Repeat
+       * max_retry_full_buffer times. */
+      ++num_retry_full_buffer;
+    } while (buffer_was_full && feedback_get_star_ionization_rate(si) > 0 &&
+             num_retry_full_buffer < max_retry_full_buffer);
 
     c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
     c->stars.h_max_active = max(c->stars.h_max_active, si->h_hii);
