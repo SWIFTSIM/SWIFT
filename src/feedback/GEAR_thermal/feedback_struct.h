@@ -69,8 +69,11 @@ struct feedback_spart_data {
    * normalisation factor used for the enrichment. */
   float enrichment_weight;
 
-  /*! Does the particle needs the feedback loop? */
+  /*! Does the particle needs to go through the feedback loops? */
   char will_do_feedback;
+
+  /*! Does the particle needs to go through the HII ionization loop? */
+  char will_do_HII_ionization;
 
   /*! Integer number of neighbours */
   int num_ngbs;

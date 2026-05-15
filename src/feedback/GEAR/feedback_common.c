@@ -143,6 +143,7 @@ void feedback_will_do_feedback(
   sp->feedback_data.supernovae.energy_ejected = 0;
   sp->feedback_data.winds.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
+  sp->feedback_data.will_do_HII_ionization = 0;
 
   /* Quit if the birth_scale_factor or birth_time is negative.
      No Feedback event for the initial fake step. */
@@ -174,6 +175,7 @@ void feedback_will_do_feedback(
        need to go through the feedback loops in the next timestep to compute
        all required quantitied for the stellar evolution. */
     sp->feedback_data.will_do_feedback = 1;
+    sp->feedback_data.will_do_HII_ionization = 1;
     return;
   }
 
@@ -233,6 +235,25 @@ void feedback_will_do_feedback(
       sp->feedback_data.supernovae.energy_ejected != 0. ||
       sp->feedback_data.winds.energy_ejected != 0. ||
       !sp->feedback_data.is_dead;
+
+  /* Do we need to do HII ionization feedback? */
+  const char do_photoionization = feedback_props->radiation_policy & radiation_policy_photoionization;
+  const char has_enough_photons = feedback_get_star_ionization_rate(sp) > 0.0;
+  sp->feedback_data.will_do_HII_ionization = do_photoionization || !sp->feedback_data.is_dead || has_enough_photons;
+
+  /* TODO: Add other conditions:
+     1. If the star is dead
+     2. Or it is too old to continue HII ionization
+  This star stopped doing HII for the rest of its life. Hence, h_hii = 0. If
+     we want to keep track of the last h_hii, we can store it in the tracers. */
+  if (sp->feedback_data.is_dead) {
+    /* Store the value in the tracers */
+    sp->tracers_data.final_HII_radius = sp->h_hii * kernel_gamma;
+
+    /* Reset to 0. This prevents dead particles with large h_hii to force the
+       tasks at higher levels than necessary. */
+    sp->h_hii = 0.0;
+  }
 }
 
 /**
@@ -351,14 +372,8 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
   /* If the spart is dead, don't do anything */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
-  /* Did we enable HII photoionization? */
-  const struct feedback_props *fb_props = e->feedback_props;
-  const char do_photoionization = fb_props->radiation_policy & radiation_policy_photoionization;
-
-  if (!do_photoionization) return 0;
-
-  return feedback_get_star_ionization_rate(sp) > 0.0;
-}
+  return sp->feedback_data.will_do_HII_ionization;
+}  
 
 /**
  * Determines whether a gas #part can be ionized.
@@ -507,6 +522,7 @@ void feedback_init_after_star_formation(
   now.
   */
   sp->feedback_data.will_do_feedback = 0;
+  sp->feedback_data.will_do_HII_ionization = 0;
 
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
@@ -535,6 +551,7 @@ void feedback_first_init_spart(struct spart *sp,
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;
+  sp->feedback_data.will_do_HII_ionization = 1;
 }
 
 /**
