@@ -612,16 +612,6 @@ struct cell {
 
   /*! Flag set to 1 when this cell has been reached during task splitting */
   int reached_in_task_split;
-
-  /*! Fractional source-cell ownership counters. */
-  double num_interacted_cells_total;
-  double num_interacted_cells_p2p;
-  double num_interacted_cells_mm;
-  double num_interacted_cells_pm;
-  double num_interacted_cells_total_by_type[4];
-  double num_interacted_cells_p2p_by_type[4];
-  double num_interacted_cells_mm_by_type[4];
-  double num_interacted_cells_pm_by_type[4];
 #endif
 
   struct ghost_stats ghost_statistics;

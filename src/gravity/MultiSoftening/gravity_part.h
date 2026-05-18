@@ -96,20 +96,6 @@ struct gpart {
 
   /* Total number of gparts this gpart interacted with */
   long long num_interacted;
-
-  /* Interaction counters by method and source cell class.
-   * Index order: zoom, bkg_void, bkg_neigh, other. */
-  long long num_interacted_m2p_by_type[4];
-  long long num_interacted_m2l_by_type[4];
-  long long num_interacted_p2p_by_type[4];
-  long long num_interacted_pm_by_type[4];
-  long long num_interacted_pm_long_range_by_type[4];
-  long long num_interacted_pm_long_range_direct_by_type[4];
-  long long num_interacted_pm_long_range_self_recursive_by_type[4];
-  long long num_interacted_pm_long_range_pair_recursive_by_type[4];
-  long long num_interacted_pm_pair_skip_by_type[4];
-  long long num_interacted_pm_pair_skip_direct_by_type[4];
-  long long num_interacted_pm_pair_skip_recursive_by_type[4];
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

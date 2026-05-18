@@ -1011,16 +1011,6 @@ void cell_reset_task_counters(struct cell *c) {
   for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
   for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
   c->reached_in_task_split = 0;
-  c->num_interacted_cells_total = 0.;
-  c->num_interacted_cells_p2p = 0.;
-  c->num_interacted_cells_mm = 0.;
-  c->num_interacted_cells_pm = 0.;
-  for (int i = 0; i < 4; ++i) {
-    c->num_interacted_cells_total_by_type[i] = 0.;
-    c->num_interacted_cells_p2p_by_type[i] = 0.;
-    c->num_interacted_cells_mm_by_type[i] = 0.;
-    c->num_interacted_cells_pm_by_type[i] = 0.;
-  }
   for (int k = 0; k < 8; ++k)
     if (c->progeny[k] != NULL) cell_reset_task_counters(c->progeny[k]);
 #else
@@ -2171,6 +2161,8 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
     return cell_check_grav_mesh_pairs_recursive(ci, cj, e);
   }
 
+  struct space *s = e->s;
+
   /* Loop over progeny pairs, mirroring
    * zoom_scheduler_splittask_gravity_void_pair */
   for (int i = 0; i < 8; i++) {
@@ -2179,12 +2171,7 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
     /* Skip NULL progeny */
     if (cpi == NULL) continue;
 
-    /* Skip void progeny that do not contain any zoom cells. */
-    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
-      continue;
-
-    /* Skip any empty progeny of a void cell (void cells themselves always
-     * have 0 particles but are never "empty"). */
+    /* Skip empty progeny */
     if (cell_is_empty_mpole(cpi)) continue;
 
     for (int j = 0; j < 8; j++) {
@@ -2193,19 +2180,8 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
       /* Skip NULL progeny */
       if (cpj == NULL) continue;
 
-      /* Skip void progeny that do not contain any zoom cells. */
-      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
-        continue;
-
-      /* Skip leaf neighbours interacting with void cells. */
-      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
-
-      /* Skip any empty progeny of a void cell (void cells themselves always
-       * have 0 particles but are never "empty"). */
+      /* Skip empty progeny */
       if (cell_is_empty_mpole(cpj)) continue;
-
-      /* Skip entirely foreign pairs. */
-      if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
@@ -2230,6 +2206,15 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
           return 1;
         }
         /* Mesh still valid, continue */
+        continue;
+      }
+
+      /* Can we use M-M for this pair? */
+      if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0,
+                               /*periodic boundaries*/ s->periodic,
+                               /*use_mesh*/ s->periodic)) {
+        /* M-M task handles this, skip */
         continue;
       }
 
@@ -2274,18 +2259,8 @@ static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
   for (int k = 0; k < 8; k++) {
     if (ci->progeny[k] == NULL) continue;
 
-    /* Skip void progeny that do not contain any zoom cells. */
-    if (ci->progeny[k]->subtype == cell_subtype_void &&
-        !ci->progeny[k]->contains_zoom_cells)
-      continue;
-
     /* Skip empty progeny */
     if (cell_is_empty_mpole(ci->progeny[k])) continue;
-
-    /* Skip foreign zoom progeny (no such thing as a foreign self task). */
-    if (ci->progeny[k]->type == cell_type_zoom &&
-        ci->progeny[k]->nodeID != engine_rank)
-      continue;
 
     if (cell_check_grav_mesh_pairs_zoom_self_recursive(ci->progeny[k], e)) {
       return 1;
@@ -2296,16 +2271,6 @@ static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
   for (int j = 0; j < 8; j++) {
     if (ci->progeny[j] == NULL) continue;
 
-    /* Skip void progeny that do not contain any zoom cells. */
-    if (ci->progeny[j]->subtype == cell_subtype_void &&
-        !ci->progeny[j]->contains_zoom_cells)
-      continue;
-
-    /* Skip empty non-void progeny. */
-    if (ci->progeny[j]->subtype != cell_subtype_void &&
-        ci->progeny[j]->grav.count == 0)
-      continue;
-
     /* Skip empty progeny */
     if (cell_is_empty_mpole(ci->progeny[j])) continue;
 
@@ -2313,11 +2278,6 @@ static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
 
     for (int k = j + 1; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
-
-      /* Skip void progeny that do not contain any zoom cells. */
-      if (ci->progeny[k]->subtype == cell_subtype_void &&
-          !ci->progeny[k]->contains_zoom_cells)
-        continue;
 
       /* Skip empty progeny */
       if (cell_is_empty_mpole(ci->progeny[k])) continue;

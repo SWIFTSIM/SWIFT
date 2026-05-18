@@ -115,7 +115,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.count = 0;
     c->grav.count_total = 0;
     c->grav.updated = 0;
-    c->grav.tasks_below_diff_grav_depth = 0;
     c->sinks.count = 0;
     c->stars.count = 0;
     c->stars.count_total = 0;

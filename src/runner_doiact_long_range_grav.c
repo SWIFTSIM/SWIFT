@@ -20,12 +20,8 @@
 /* Config parameters. */
 #include <config.h>
 
-/* Some standard headers. */
-#include <string.h>
-
 /* Local headers. */
 #include "active.h"
-#include "atomic.h"
 #include "cell.h"
 #include "engine.h"
 #include "gravity_properties.h"
@@ -382,889 +378,6 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
-static void runner_accumulate_interaction(
-    struct gravity_tensors *restrict multi_i,
-    struct gravity_tensors *restrict multi_j);
-
-static void runner_count_mesh_interactions_uniform(struct runner *r,
-                                                   struct cell *ci,
-                                                   struct cell *top);
-static void runner_count_mesh_interactions_zoom(struct runner *r,
-                                                struct cell *ci,
-                                                struct cell *top);
-
-#ifdef SWIFT_DEBUG_CHECKS
-void runner_debug_get_top_level_methods_by_type(const struct engine *e,
-                                                const struct cell *ci,
-                                                long long mesh_counts[4],
-                                                long long mm_counts[4],
-                                                long long p2p_counts[4],
-                                                int mesh_nr_cells[4],
-                                                int mm_nr_cells[4],
-                                                int p2p_nr_cells[4]);
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-struct runner_debug_mesh_overlap_entry {
-  unsigned long long recipient_ptr_key;
-  unsigned long long source_ptr_key;
-};
-
-struct runner_debug_recursive_mesh_budget_entry {
-  unsigned long long recipient_ptr_key;
-  unsigned long long source_top_ptr_key;
-  const char *attachment_case;
-  long long counted_gparts;
-};
-
-struct runner_debug_zoom_pair_visit_entry {
-  unsigned long long recipient_ptr_key;
-  unsigned long long ci_ptr_key;
-  unsigned long long cj_ptr_key;
-  int visit_count;
-  int mesh_stop_count;
-  int recurse_count;
-};
-
-static int runner_debug_mesh_overlap_report_count = 0;
-static int runner_debug_mesh_overlap_limit_reported = 0;
-static int runner_debug_recursive_mesh_bkg_neigh_report_count = 0;
-static int runner_debug_recursive_mesh_bkg_neigh_limit_reported = 0;
-static int runner_debug_mesh_pair_overlap_report_count = 0;
-static int runner_debug_mesh_pair_overlap_limit_reported = 0;
-static int runner_debug_zoom_mesh_stop_overlap_report_count = 0;
-static int runner_debug_zoom_mesh_stop_overlap_limit_reported = 0;
-static int runner_debug_pair_recursive_bkg_neigh_attach_report_count = 0;
-static int runner_debug_pair_recursive_bkg_neigh_attach_limit_reported = 0;
-static int runner_debug_pair_recursive_ownership_boundary_report_count = 0;
-static int runner_debug_pair_recursive_ownership_boundary_limit_reported = 0;
-static int runner_debug_pair_recursive_recipient_choice_report_count = 0;
-static int runner_debug_pair_recursive_recipient_choice_limit_reported = 0;
-
-#define runner_debug_mesh_overlap_report_max 64
-#define runner_debug_recursive_mesh_bkg_neigh_report_max 128
-#define runner_debug_mesh_pair_overlap_report_max 128
-#define runner_debug_recursive_mesh_budget_report_max 64
-#define runner_debug_zoom_pair_revisit_report_max 64
-#define runner_debug_zoom_mesh_stop_overlap_report_max 128
-#define runner_debug_pair_recursive_bkg_neigh_attach_report_max 128
-#define runner_debug_pair_recursive_ownership_boundary_report_max 128
-#define runner_debug_pair_recursive_recipient_choice_report_max 128
-#define runner_debug_pair_recursive_large_source_threshold 1000000LL
-#define runner_debug_mesh_overlap_table_size (1 << 14)
-#define runner_debug_mesh_overlap_probe_limit 16
-#define runner_debug_recursive_mesh_budget_table_size (1 << 15)
-#define runner_debug_recursive_mesh_budget_probe_limit 32
-#define runner_debug_zoom_pair_visit_table_size (1 << 15)
-#define runner_debug_zoom_pair_visit_probe_limit 32
-
-static struct runner_debug_mesh_overlap_entry
-    runner_debug_mesh_overlap_table[runner_debug_mesh_overlap_table_size];
-static struct runner_debug_recursive_mesh_budget_entry
-    runner_debug_recursive_mesh_budget_table
-        [runner_debug_recursive_mesh_budget_table_size];
-static struct runner_debug_zoom_pair_visit_entry
-    runner_debug_zoom_pair_visit_table[runner_debug_zoom_pair_visit_table_size];
-
-static INLINE const struct cell *runner_debug_get_recursive_mesh_source_top(
-    const struct cell *source) {
-
-  const struct cell *source_top = source->top;
-  if (source_top->void_parent != NULL) source_top = source_top->void_parent->top;
-  return source_top;
-}
-
-static void runner_debug_log_recursive_mesh_bkg_neigh(
-    const struct cell *super, const struct cell *ci, const struct cell *cj,
-    const struct cell *recipient, const struct cell *source,
-    const char *attachment_case) {
-
-  if (runner_debug_get_source_class(source) != runner_debug_source_class_bkg_neigh)
-    return;
-
-  const int report_index =
-      atomic_inc(&runner_debug_recursive_mesh_bkg_neigh_report_count);
-
-  if (report_index < runner_debug_recursive_mesh_bkg_neigh_report_max) {
-    message(
-        "mesh-recursive-bkg-neigh: super=%llu (%s/%s depth=%d top=%p) "
-        "ci=%llu (%s/%s depth=%d top=%p) cj=%llu (%s/%s depth=%d top=%p) "
-        "recipient=%llu (%s/%s depth=%d top=%p) "
-        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) case=%s",
-        super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
-        super->depth, (void *)super->top, ci->cellID, cellID_names[ci->type],
-        subcellID_names[ci->subtype], ci->depth, (void *)ci->top, cj->cellID,
-        cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
-        (void *)cj->top, recipient->cellID, cellID_names[recipient->type],
-        subcellID_names[recipient->subtype], recipient->depth,
-        (void *)recipient->top, source->cellID, cellID_names[source->type],
-        subcellID_names[source->subtype], source->depth, (void *)source->top,
-        source->grav.multipole->m_pole.num_gpart, attachment_case);
-  } else if (report_index == runner_debug_recursive_mesh_bkg_neigh_report_max &&
-             atomic_cas(&runner_debug_recursive_mesh_bkg_neigh_limit_reported, 0,
-                        1) == 0) {
-    message("mesh-recursive-bkg-neigh reporting capped at %d lines",
-            runner_debug_recursive_mesh_bkg_neigh_report_max);
-  }
-}
-
-static void runner_debug_check_mesh_overlap(const struct cell *recipient,
-                                            const struct cell *source) {
-
-  const unsigned long long recipient_ptr_key =
-      (unsigned long long)(uintptr_t)recipient;
-  const unsigned long long source_ptr_key =
-      (unsigned long long)(uintptr_t)source;
-  const unsigned long long hash =
-      recipient_ptr_key * 11400714819323198485ull ^
-      source_ptr_key * 14029467366897019727ull;
-
-  for (int probe = 0; probe < runner_debug_mesh_overlap_probe_limit; probe++) {
-    struct runner_debug_mesh_overlap_entry *slot =
-        &runner_debug_mesh_overlap_table
-             [(hash + (unsigned long long)probe) &
-              (runner_debug_mesh_overlap_table_size - 1)];
-
-    if (slot->recipient_ptr_key == 0ULL) {
-      if (atomic_cas(&slot->recipient_ptr_key, 0ULL, recipient_ptr_key) == 0ULL) {
-        slot->source_ptr_key = source_ptr_key;
-        return;
-      }
-    }
-
-    if (slot->recipient_ptr_key != recipient_ptr_key) continue;
-
-    if (slot->source_ptr_key == source_ptr_key) return;
-
-    const struct cell *other_source =
-        (const struct cell *)(uintptr_t)slot->source_ptr_key;
-
-    if (cell_contains_progeny(other_source, source) ||
-        cell_contains_progeny(source, other_source)) {
-      const int report_index = atomic_inc(&runner_debug_mesh_overlap_report_count);
-
-      if (report_index < runner_debug_mesh_overlap_report_max) {
-        message(
-            "mesh-overlap: recipient=%p cellID=%llu (%s/%s depth=%d) "
-            "first_source=%p cellID=%llu (%s/%s depth=%d top=%p) "
-            "second_source=%p cellID=%llu (%s/%s depth=%d top=%p)",
-            (void *)recipient, recipient->cellID, cellID_names[recipient->type],
-            subcellID_names[recipient->subtype], recipient->depth,
-            (void *)other_source, other_source->cellID,
-            cellID_names[other_source->type], subcellID_names[other_source->subtype],
-            other_source->depth, (void *)other_source->top, (void *)source,
-            source->cellID, cellID_names[source->type],
-            subcellID_names[source->subtype], source->depth, (void *)source->top);
-      } else if (report_index == runner_debug_mesh_overlap_report_max &&
-                 atomic_cas(&runner_debug_mesh_overlap_limit_reported, 0, 1) == 0) {
-        message("mesh-overlap reporting capped at %d lines",
-                runner_debug_mesh_overlap_report_max);
-      }
-    }
-
-    return;
-  }
-}
-
-static void runner_debug_check_mesh_pair_overlap(const struct cell *recipient,
-                                                 const struct cell *source,
-                                                 const int origin,
-                                                 const char *attachment_case) {
-
-  if (origin == 0) return;
-
-  for (const struct link *l = recipient->grav.grav; l != NULL; l = l->next) {
-
-    const struct task *t = l->t;
-
-    if (t->type != task_type_pair || t->subtype != task_subtype_grav) continue;
-
-    const struct cell *other = (t->ci == recipient) ? t->cj : t->ci;
-    if (other == NULL) continue;
-
-    if (other != source && !cell_contains_progeny(other, source) &&
-        !cell_contains_progeny(source, other))
-      continue;
-
-    const int report_index = atomic_inc(&runner_debug_mesh_pair_overlap_report_count);
-
-    if (report_index < runner_debug_mesh_pair_overlap_report_max) {
-      message(
-          "mesh-pair-overlap: recipient=%llu (%s/%s depth=%d top=%p) "
-          "source=%llu (%s/%s depth=%d top=%p gparts=%lld) "
-          "pair_other=%llu (%s/%s depth=%d top=%p gparts=%lld) "
-          "task_cells=[%llu,%llu] origin=%d case=%s",
-          recipient->cellID, cellID_names[recipient->type],
-          subcellID_names[recipient->subtype], recipient->depth,
-          (void *)recipient->top, source->cellID, cellID_names[source->type],
-          subcellID_names[source->subtype], source->depth, (void *)source->top,
-          source->grav.multipole->m_pole.num_gpart, other->cellID,
-          cellID_names[other->type], subcellID_names[other->subtype],
-          other->depth, (void *)other->top, other->grav.multipole->m_pole.num_gpart,
-          t->ci != NULL ? t->ci->cellID : 0, t->cj != NULL ? t->cj->cellID : 0,
-          origin, attachment_case);
-    } else if (report_index == runner_debug_mesh_pair_overlap_report_max &&
-               atomic_cas(&runner_debug_mesh_pair_overlap_limit_reported, 0,
-                          1) == 0) {
-      message("mesh-pair-overlap reporting capped at %d lines",
-              runner_debug_mesh_pair_overlap_report_max);
-    }
-
-    return;
-  }
-}
-
-static void runner_debug_check_zoom_mesh_stop_pair_overlap(
-    const struct cell *recipient, const struct cell *ci, const struct cell *cj) {
-
-  const struct cell *branches[2] = {ci, cj};
-  const struct cell *partners[2] = {cj, ci};
-
-  for (int side = 0; side < 2; side++) {
-    const struct cell *branch = branches[side];
-    const struct cell *partner = partners[side];
-
-    for (const struct link *l = branch->grav.grav; l != NULL; l = l->next) {
-      const struct task *t = l->t;
-
-      if (t->type != task_type_pair || t->subtype != task_subtype_grav) continue;
-
-      const struct cell *other = (t->ci == branch) ? t->cj : t->ci;
-      if (other == NULL) continue;
-
-      if (other != partner && !cell_contains_progeny(other, partner) &&
-          !cell_contains_progeny(partner, other))
-        continue;
-
-      const int report_index =
-          atomic_inc(&runner_debug_zoom_mesh_stop_overlap_report_count);
-
-      if (report_index < runner_debug_zoom_mesh_stop_overlap_report_max) {
-        message(
-            "zoom-mesh-stop-pair-overlap: recipient=%llu (%s/%s depth=%d top=%p) "
-            "branch=%llu (%s/%s depth=%d top=%p gparts=%lld) "
-            "partner=%llu (%s/%s depth=%d top=%p gparts=%lld) "
-            "pair_other=%llu (%s/%s depth=%d top=%p gparts=%lld) "
-            "task_cells=[%llu,%llu]",
-            recipient->cellID, cellID_names[recipient->type],
-            subcellID_names[recipient->subtype], recipient->depth,
-            (void *)recipient->top, branch->cellID, cellID_names[branch->type],
-            subcellID_names[branch->subtype], branch->depth, (void *)branch->top,
-            branch->grav.multipole->m_pole.num_gpart, partner->cellID,
-            cellID_names[partner->type], subcellID_names[partner->subtype],
-            partner->depth, (void *)partner->top,
-            partner->grav.multipole->m_pole.num_gpart, other->cellID,
-            cellID_names[other->type], subcellID_names[other->subtype],
-            other->depth, (void *)other->top, other->grav.multipole->m_pole.num_gpart,
-            t->ci != NULL ? t->ci->cellID : 0, t->cj != NULL ? t->cj->cellID : 0);
-      } else if (report_index == runner_debug_zoom_mesh_stop_overlap_report_max &&
-                 atomic_cas(&runner_debug_zoom_mesh_stop_overlap_limit_reported, 0,
-                            1) == 0) {
-        message("zoom-mesh-stop-pair-overlap reporting capped at %d lines",
-                runner_debug_zoom_mesh_stop_overlap_report_max);
-      }
-
-      return;
-    }
-  }
-}
-
-static void runner_debug_log_pair_recursive_bkg_neigh_attachment(
-    const struct cell *super, const struct cell *ci, const struct cell *cj,
-    const struct cell *recipient, const struct cell *source,
-    const char *attachment_case) {
-
-  const struct cell *source_top = runner_debug_get_recursive_mesh_source_top(source);
-
-  if (runner_debug_get_source_class(source) != runner_debug_source_class_bkg_neigh)
-    return;
-  if (source->grav.multipole->m_pole.num_gpart <
-      runner_debug_pair_recursive_large_source_threshold)
-    return;
-
-  const int report_index =
-      atomic_inc(&runner_debug_pair_recursive_bkg_neigh_attach_report_count);
-
-  if (report_index < runner_debug_pair_recursive_bkg_neigh_attach_report_max) {
-    message(
-        "pair-recursive-bkg-neigh-attach: super=%llu (%s/%s depth=%d top=%p) "
-        "ci=%llu (%s/%s depth=%d top=%p) cj=%llu (%s/%s depth=%d top=%p) "
-        "recipient=%llu (%s/%s depth=%d top=%p parent=%p super=%llu) "
-        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) "
-        "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) case=%s",
-        super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
-        super->depth, (void *)super->top, ci->cellID, cellID_names[ci->type],
-        subcellID_names[ci->subtype], ci->depth, (void *)ci->top, cj->cellID,
-        cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
-        (void *)cj->top, recipient->cellID, cellID_names[recipient->type],
-        subcellID_names[recipient->subtype], recipient->depth,
-        (void *)recipient->top, (void *)recipient->parent,
-        recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
-        source->cellID, cellID_names[source->type],
-        subcellID_names[source->subtype], source->depth, (void *)source->top,
-        source->grav.multipole->m_pole.num_gpart, source_top->cellID,
-        cellID_names[source_top->type], subcellID_names[source_top->subtype],
-        source_top->depth, (void *)source_top->top,
-        source_top->grav.multipole->m_pole.num_gpart, attachment_case);
-  } else if (report_index ==
-                 runner_debug_pair_recursive_bkg_neigh_attach_report_max &&
-             atomic_cas(&runner_debug_pair_recursive_bkg_neigh_attach_limit_reported,
-                        0, 1) == 0) {
-    message("pair-recursive-bkg-neigh-attach reporting capped at %d lines",
-            runner_debug_pair_recursive_bkg_neigh_attach_report_max);
-  }
-}
-
-static void runner_debug_check_pair_recursive_ownership_boundary(
-    const struct cell *super, const struct cell *recipient,
-    const struct cell *source, const int origin, const char *attachment_case) {
-
-  if (origin != 2) return;
-  if (strcmp(attachment_case, "pair_recursive") != 0 &&
-      strcmp(attachment_case, "zoom_pair_recursive") != 0)
-    return;
-
-  const struct grav_tensor *pot = &recipient->grav.multipole->pot;
-  const long long tree_here =
-      pot->num_interacted_tree_by_type[runner_debug_source_class_bkg_neigh] +
-      pot->num_interacted_tree_by_type[runner_debug_source_class_zoom];
-  const long long pair_skip_here =
-      pot->num_interacted_pm_pair_skip_recursive_by_type
-          [runner_debug_source_class_bkg_neigh] +
-      pot->num_interacted_pm_pair_skip_recursive_by_type
-          [runner_debug_source_class_zoom];
-
-  if (tree_here == 0 && pair_skip_here == 0) return;
-
-  const int report_index =
-      atomic_inc(&runner_debug_pair_recursive_ownership_boundary_report_count);
-
-  if (report_index < runner_debug_pair_recursive_ownership_boundary_report_max) {
-    message(
-        "pair-recursive-ownership-boundary: super=%llu (%s/%s depth=%d top=%p) "
-        "recipient=%llu (%s/%s depth=%d top=%p super=%llu) "
-        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) case=%s "
-        "existing_tree_local=%lld existing_pair_skip_local=%lld",
-        super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
-        super->depth, (void *)super->top, recipient->cellID,
-        cellID_names[recipient->type], subcellID_names[recipient->subtype],
-        recipient->depth, (void *)recipient->top,
-        recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
-        source->cellID, cellID_names[source->type],
-        subcellID_names[source->subtype], source->depth, (void *)source->top,
-        source->grav.multipole->m_pole.num_gpart, attachment_case, tree_here,
-        pair_skip_here);
-  } else if (report_index ==
-                 runner_debug_pair_recursive_ownership_boundary_report_max &&
-             atomic_cas(&runner_debug_pair_recursive_ownership_boundary_limit_reported,
-                        0, 1) == 0) {
-    message("pair-recursive-ownership-boundary reporting capped at %d lines",
-            runner_debug_pair_recursive_ownership_boundary_report_max);
-  }
-}
-
-static void runner_debug_log_pair_recursive_recipient_choice(
-    const struct cell *super, const struct cell *ci, const struct cell *cj,
-    const struct cell *recipient, const struct cell *source,
-    const char *attachment_case, const char *choice_case) {
-
-  const struct cell *source_top = runner_debug_get_recursive_mesh_source_top(source);
-
-  if (runner_debug_get_source_class(source) != runner_debug_source_class_bkg_neigh)
-    return;
-  if (source->grav.multipole->m_pole.num_gpart <
-      runner_debug_pair_recursive_large_source_threshold)
-    return;
-
-  if (strcmp(attachment_case, "pair_recursive") != 0 &&
-      strcmp(attachment_case, "zoom_pair_recursive") != 0)
-    return;
-
-  const int report_index =
-      atomic_inc(&runner_debug_pair_recursive_recipient_choice_report_count);
-
-  if (report_index < runner_debug_pair_recursive_recipient_choice_report_max) {
-    message(
-        "pair-recursive-recipient-choice: super=%llu (%s/%s depth=%d top=%p) "
-        "ci=%llu (%s/%s depth=%d top=%p) cj=%llu (%s/%s depth=%d top=%p) "
-        "recipient=%llu (%s/%s depth=%d top=%p parent=%p void_parent=%p super=%llu) "
-        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) "
-        "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) case=%s choice=%s",
-        super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
-        super->depth, (void *)super->top, ci->cellID, cellID_names[ci->type],
-        subcellID_names[ci->subtype], ci->depth, (void *)ci->top, cj->cellID,
-        cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
-        (void *)cj->top, recipient->cellID, cellID_names[recipient->type],
-        subcellID_names[recipient->subtype], recipient->depth,
-        (void *)recipient->top, (void *)recipient->parent,
-        (void *)recipient->void_parent,
-        recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
-        source->cellID, cellID_names[source->type],
-        subcellID_names[source->subtype], source->depth, (void *)source->top,
-        source->grav.multipole->m_pole.num_gpart, source_top->cellID,
-        cellID_names[source_top->type], subcellID_names[source_top->subtype],
-        source_top->depth, (void *)source_top->top,
-        source_top->grav.multipole->m_pole.num_gpart, attachment_case,
-        choice_case);
-  } else if (
-      report_index == runner_debug_pair_recursive_recipient_choice_report_max &&
-      atomic_cas(&runner_debug_pair_recursive_recipient_choice_limit_reported, 0,
-                 1) == 0) {
-    message("pair-recursive-recipient-choice reporting capped at %d lines",
-            runner_debug_pair_recursive_recipient_choice_report_max);
-  }
-}
-
-static void runner_debug_record_recursive_mesh_budget(
-    const struct cell *recipient, const struct cell *source,
-    const char *attachment_case) {
-
-  const struct cell *source_top = runner_debug_get_recursive_mesh_source_top(source);
-  const unsigned long long recipient_ptr_key =
-      (unsigned long long)(uintptr_t)recipient;
-  const unsigned long long source_top_ptr_key =
-      (unsigned long long)(uintptr_t)source_top;
-  const unsigned long long case_key = (unsigned long long)(uintptr_t)attachment_case;
-  const unsigned long long hash =
-      recipient_ptr_key * 11400714819323198485ull ^
-      source_top_ptr_key * 14029467366897019727ull ^
-      case_key * 1609587929392839161ull;
-
-  for (int probe = 0; probe < runner_debug_recursive_mesh_budget_probe_limit;
-       probe++) {
-    struct runner_debug_recursive_mesh_budget_entry *slot =
-        &runner_debug_recursive_mesh_budget_table
-             [(hash + (unsigned long long)probe) &
-              (runner_debug_recursive_mesh_budget_table_size - 1)];
-
-    if (slot->recipient_ptr_key == 0ULL) {
-      if (atomic_cas(&slot->recipient_ptr_key, 0ULL, recipient_ptr_key) == 0ULL) {
-        slot->source_top_ptr_key = source_top_ptr_key;
-        slot->attachment_case = attachment_case;
-        slot->counted_gparts = source->grav.multipole->m_pole.num_gpart;
-        return;
-      }
-    }
-
-    if (slot->recipient_ptr_key != recipient_ptr_key) continue;
-    if (slot->source_top_ptr_key != source_top_ptr_key) continue;
-    if (slot->attachment_case != attachment_case) continue;
-
-    accumulate_add_ll(&slot->counted_gparts, source->grav.multipole->m_pole.num_gpart);
-    return;
-  }
-}
-
-int runner_debug_dump_recursive_mesh_budget_overlaps(const struct cell *ci) {
-
-  int report_count = 0;
-  struct runner_debug_recursive_mesh_budget_entry path_totals
-      [runner_debug_recursive_mesh_budget_report_max];
-  int path_totals_count = 0;
-
-  bzero(path_totals, sizeof(path_totals));
-
-  for (const struct cell *recipient = ci; recipient != NULL;
-       recipient = (recipient == recipient->grav.super) ? NULL : recipient->parent) {
-    const unsigned long long recipient_ptr_key =
-        (unsigned long long)(uintptr_t)recipient;
-
-    for (int i = 0; i < runner_debug_recursive_mesh_budget_table_size; i++) {
-      const struct runner_debug_recursive_mesh_budget_entry *slot =
-          &runner_debug_recursive_mesh_budget_table[i];
-
-      if (slot->recipient_ptr_key != recipient_ptr_key) continue;
-      if (slot->source_top_ptr_key == 0ULL) continue;
-      if (slot->attachment_case == NULL) continue;
-
-      const struct cell *source_top =
-          (const struct cell *)(uintptr_t)slot->source_top_ptr_key;
-      const long long budget = source_top->grav.multipole->m_pole.num_gpart;
-      const long long counted = slot->counted_gparts;
-
-      int found_path_total = 0;
-      for (int j = 0; j < path_totals_count; j++) {
-        if (path_totals[j].source_top_ptr_key != slot->source_top_ptr_key) continue;
-        if (path_totals[j].attachment_case != slot->attachment_case) continue;
-
-        path_totals[j].counted_gparts += counted;
-        found_path_total = 1;
-        break;
-      }
-
-      if (!found_path_total &&
-          path_totals_count < runner_debug_recursive_mesh_budget_report_max) {
-        path_totals[path_totals_count].source_top_ptr_key = slot->source_top_ptr_key;
-        path_totals[path_totals_count].attachment_case = slot->attachment_case;
-        path_totals[path_totals_count].counted_gparts = counted;
-        path_totals_count++;
-      }
-
-      if (counted <= budget) continue;
-
-      if (report_count < runner_debug_recursive_mesh_budget_report_max) {
-        message(
-            "recursive-mesh-budget-overlap: recipient=%llu (%s/%s depth=%d super=%llu) "
-            "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) "
-            "case=%s counted=%lld excess=%lld",
-            recipient->cellID, cellID_names[recipient->type],
-            subcellID_names[recipient->subtype], recipient->depth,
-            recipient->grav.super->cellID, source_top->cellID,
-            cellID_names[source_top->type], subcellID_names[source_top->subtype],
-            source_top->depth, (void *)source_top->top, budget,
-            slot->attachment_case, counted, counted - budget);
-      } else if (report_count == runner_debug_recursive_mesh_budget_report_max) {
-        message("recursive-mesh-budget-overlap reporting capped at %d lines",
-                runner_debug_recursive_mesh_budget_report_max);
-      }
-
-      report_count++;
-    }
-  }
-
-  for (int i = 0; i < path_totals_count; i++) {
-    const struct cell *source_top =
-        (const struct cell *)(uintptr_t)path_totals[i].source_top_ptr_key;
-    const long long budget = source_top->grav.multipole->m_pole.num_gpart;
-    const long long counted = path_totals[i].counted_gparts;
-
-    if (counted <= budget) continue;
-
-    if (report_count < runner_debug_recursive_mesh_budget_report_max) {
-      message(
-          "recursive-mesh-budget-path-overlap: leaf=%llu (%s/%s depth=%d super=%llu) "
-          "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) "
-          "case=%s counted=%lld excess=%lld",
-          ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
-          ci->grav.super->cellID, source_top->cellID,
-          cellID_names[source_top->type], subcellID_names[source_top->subtype],
-          source_top->depth, (void *)source_top->top, budget,
-          path_totals[i].attachment_case, counted, counted - budget);
-    } else if (report_count == runner_debug_recursive_mesh_budget_report_max) {
-      message("recursive-mesh-budget-overlap reporting capped at %d lines",
-              runner_debug_recursive_mesh_budget_report_max);
-    }
-
-    report_count++;
-  }
-
-  return report_count;
-}
-
-static void runner_debug_record_zoom_pair_visit(const struct cell *recipient,
-                                                const struct cell *ci,
-                                                const struct cell *cj,
-                                                const int mesh_stop) {
-
-  const unsigned long long recipient_ptr_key =
-      (unsigned long long)(uintptr_t)recipient;
-  unsigned long long ci_ptr_key = (unsigned long long)(uintptr_t)ci;
-  unsigned long long cj_ptr_key = (unsigned long long)(uintptr_t)cj;
-
-  if (cj_ptr_key < ci_ptr_key) {
-    const unsigned long long tmp = ci_ptr_key;
-    ci_ptr_key = cj_ptr_key;
-    cj_ptr_key = tmp;
-  }
-
-  const unsigned long long hash =
-      recipient_ptr_key * 11400714819323198485ull ^
-      ci_ptr_key * 14029467366897019727ull ^ cj_ptr_key * 1609587929392839161ull;
-
-  for (int probe = 0; probe < runner_debug_zoom_pair_visit_probe_limit; probe++) {
-    struct runner_debug_zoom_pair_visit_entry *slot =
-        &runner_debug_zoom_pair_visit_table
-             [(hash + (unsigned long long)probe) &
-              (runner_debug_zoom_pair_visit_table_size - 1)];
-
-    if (slot->recipient_ptr_key == 0ULL) {
-      if (atomic_cas(&slot->recipient_ptr_key, 0ULL, recipient_ptr_key) == 0ULL) {
-        slot->ci_ptr_key = ci_ptr_key;
-        slot->cj_ptr_key = cj_ptr_key;
-        slot->visit_count = 1;
-        slot->mesh_stop_count = mesh_stop;
-        slot->recurse_count = !mesh_stop;
-        return;
-      }
-    }
-
-    if (slot->recipient_ptr_key != recipient_ptr_key) continue;
-    if (slot->ci_ptr_key != ci_ptr_key) continue;
-    if (slot->cj_ptr_key != cj_ptr_key) continue;
-
-    slot->visit_count += 1;
-    slot->mesh_stop_count += mesh_stop;
-    slot->recurse_count += !mesh_stop;
-    return;
-  }
-}
-
-int runner_debug_dump_zoom_pair_recursive_revisits(const struct cell *ci) {
-
-  int report_count = 0;
-
-  for (const struct cell *recipient = ci; recipient != NULL;
-       recipient = (recipient == recipient->grav.super) ? NULL : recipient->parent) {
-    const unsigned long long recipient_ptr_key =
-        (unsigned long long)(uintptr_t)recipient;
-
-    for (int i = 0; i < runner_debug_zoom_pair_visit_table_size; i++) {
-      const struct runner_debug_zoom_pair_visit_entry *slot =
-          &runner_debug_zoom_pair_visit_table[i];
-
-      if (slot->recipient_ptr_key != recipient_ptr_key) continue;
-      if (slot->visit_count <= 1) continue;
-
-      const struct cell *ci_branch = (const struct cell *)(uintptr_t)slot->ci_ptr_key;
-      const struct cell *cj_branch = (const struct cell *)(uintptr_t)slot->cj_ptr_key;
-
-      if (report_count < runner_debug_zoom_pair_revisit_report_max) {
-        message(
-            "zoom-pair-revisit: recipient=%llu (%s/%s depth=%d super=%llu) "
-            "ci=%llu (%s/%s depth=%d top=%p) "
-            "cj=%llu (%s/%s depth=%d top=%p) visits=%d mesh_stops=%d recurses=%d",
-            recipient->cellID, cellID_names[recipient->type],
-            subcellID_names[recipient->subtype], recipient->depth,
-            recipient->grav.super->cellID, ci_branch->cellID,
-            cellID_names[ci_branch->type], subcellID_names[ci_branch->subtype],
-            ci_branch->depth, (void *)ci_branch->top, cj_branch->cellID,
-            cellID_names[cj_branch->type], subcellID_names[cj_branch->subtype],
-            cj_branch->depth, (void *)cj_branch->top, slot->visit_count,
-            slot->mesh_stop_count, slot->recurse_count);
-      } else if (report_count == runner_debug_zoom_pair_revisit_report_max) {
-        message("zoom-pair-revisit reporting capped at %d lines",
-                runner_debug_zoom_pair_revisit_report_max);
-      }
-
-      report_count++;
-    }
-  }
-
-  return report_count;
-}
-
-int runner_debug_dump_zoom_pair_handoff_overlaps(const struct cell *ci) {
-
-  struct {
-    unsigned long long source_top_ptr_key;
-    long long void_stage_count;
-    long long zoom_stage_count;
-  } stage_totals[runner_debug_recursive_mesh_budget_report_max];
-  int stage_totals_count = 0;
-  int report_count = 0;
-
-  bzero(stage_totals, sizeof(stage_totals));
-
-  for (const struct cell *recipient = ci; recipient != NULL;) {
-    int stage = -1;
-
-    if (recipient->type == cell_type_bkg &&
-        recipient->subtype == cell_subtype_void) {
-      stage = 0;
-    } else if (recipient->type == cell_type_zoom) {
-      stage = 1;
-    }
-
-    if (stage != -1) {
-      const unsigned long long recipient_ptr_key =
-          (unsigned long long)(uintptr_t)recipient;
-
-      for (int i = 0; i < runner_debug_recursive_mesh_budget_table_size; i++) {
-        const struct runner_debug_recursive_mesh_budget_entry *slot =
-            &runner_debug_recursive_mesh_budget_table[i];
-
-        if (slot->recipient_ptr_key != recipient_ptr_key) continue;
-        if (slot->source_top_ptr_key == 0ULL) continue;
-        if (slot->attachment_case == NULL) continue;
-        if (strcmp(slot->attachment_case, "zoom_pair_recursive") != 0) continue;
-
-        const struct cell *source_top =
-            (const struct cell *)(uintptr_t)slot->source_top_ptr_key;
-        if (runner_debug_get_source_class(source_top) !=
-            runner_debug_source_class_bkg_neigh)
-          continue;
-
-        int found = 0;
-        for (int j = 0; j < stage_totals_count; j++) {
-          if (stage_totals[j].source_top_ptr_key != slot->source_top_ptr_key)
-            continue;
-
-          if (stage == 0)
-            stage_totals[j].void_stage_count += slot->counted_gparts;
-          else
-            stage_totals[j].zoom_stage_count += slot->counted_gparts;
-
-          found = 1;
-          break;
-        }
-
-        if (!found &&
-            stage_totals_count < runner_debug_recursive_mesh_budget_report_max) {
-          stage_totals[stage_totals_count].source_top_ptr_key =
-              slot->source_top_ptr_key;
-          if (stage == 0)
-            stage_totals[stage_totals_count].void_stage_count =
-                slot->counted_gparts;
-          else
-            stage_totals[stage_totals_count].zoom_stage_count =
-                slot->counted_gparts;
-          stage_totals_count++;
-        }
-      }
-    }
-
-    if (recipient->void_parent != NULL)
-      recipient = recipient->void_parent;
-    else
-      recipient = recipient->parent;
-  }
-
-  for (int i = 0; i < stage_totals_count; i++) {
-    const struct cell *source_top =
-        (const struct cell *)(uintptr_t)stage_totals[i].source_top_ptr_key;
-    const long long void_stage = stage_totals[i].void_stage_count;
-    const long long zoom_stage = stage_totals[i].zoom_stage_count;
-
-    if (void_stage == 0 || zoom_stage == 0) continue;
-
-    if (report_count < runner_debug_recursive_mesh_budget_report_max) {
-      message(
-          "zoom-pair-handoff-overlap: leaf=%llu (%s/%s depth=%d super=%llu) "
-          "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) "
-          "void_stage=%lld zoom_stage=%lld total=%lld excess=%lld",
-          ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype],
-          ci->depth, ci->grav.super->cellID, source_top->cellID,
-          cellID_names[source_top->type], subcellID_names[source_top->subtype],
-          source_top->depth, (void *)source_top->top,
-          source_top->grav.multipole->m_pole.num_gpart, void_stage, zoom_stage,
-          void_stage + zoom_stage,
-          void_stage + zoom_stage - source_top->grav.multipole->m_pole.num_gpart);
-    } else if (report_count == runner_debug_recursive_mesh_budget_report_max) {
-      message("zoom-pair-handoff-overlap reporting capped at %d lines",
-              runner_debug_recursive_mesh_budget_report_max);
-    }
-
-    report_count++;
-  }
-
-  return report_count;
-}
-
-int runner_debug_dump_path_pair_recursive_sources(const struct cell *leaf) {
-
-  const struct cell *path[64];
-  int depth = 0;
-  int report_count = 0;
-
-  for (const struct cell *c = leaf; c != NULL;) {
-    if (depth == 64) error("Cell path too deep for debug dump.");
-    path[depth++] = c;
-
-    if (c->void_parent != NULL)
-      c = c->void_parent;
-    else
-      c = c->parent;
-  }
-
-  for (int p = depth - 1; p >= 0; p--) {
-    const struct cell *recipient = path[p];
-    const unsigned long long recipient_ptr_key =
-        (unsigned long long)(uintptr_t)recipient;
-    const int path_level = depth - 1 - p;
-
-    for (int i = 0; i < runner_debug_recursive_mesh_budget_table_size; i++) {
-      const struct runner_debug_recursive_mesh_budget_entry *slot =
-          &runner_debug_recursive_mesh_budget_table[i];
-
-      if (slot->recipient_ptr_key != recipient_ptr_key) continue;
-      if (slot->source_top_ptr_key == 0ULL) continue;
-      if (slot->attachment_case == NULL) continue;
-      if (strcmp(slot->attachment_case, "pair_recursive") != 0 &&
-          strcmp(slot->attachment_case, "zoom_pair_recursive") != 0)
-        continue;
-
-      const struct cell *source_top =
-          (const struct cell *)(uintptr_t)slot->source_top_ptr_key;
-      const enum runner_debug_source_class source_class =
-          runner_debug_get_source_class(source_top);
-
-      if (report_count < runner_debug_recursive_mesh_budget_report_max) {
-        message(
-            "path-pair-recursive-source: level=%d/%d recipient=%llu (%s/%s depth=%d super=%llu) "
-            "case=%s source_top=%llu (%s/%s depth=%d top=%p class=%d budget=%lld) counted=%lld",
-            path_level, depth, recipient->cellID, cellID_names[recipient->type],
-            subcellID_names[recipient->subtype], recipient->depth,
-            recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
-            slot->attachment_case, source_top->cellID,
-            cellID_names[source_top->type], subcellID_names[source_top->subtype],
-            source_top->depth, (void *)source_top->top, (int)source_class,
-            source_top->grav.multipole->m_pole.num_gpart, slot->counted_gparts);
-      } else if (report_count == runner_debug_recursive_mesh_budget_report_max) {
-        message("path-pair-recursive-source reporting capped at %d lines",
-                runner_debug_recursive_mesh_budget_report_max);
-      }
-
-      report_count++;
-    }
-  }
-
-  return report_count;
-}
-#endif
-
-static INLINE void runner_record_mesh_attachment(
-    struct cell *super, struct cell *ci, struct cell *cj,
-    struct cell *recipient, struct cell *source, const int origin,
-    const char *attachment_case) {
-
-  (void)super;
-  (void)ci;
-  (void)cj;
-  (void)origin;
-  (void)attachment_case;
-
-  runner_accumulate_interaction(recipient->grav.multipole, source->grav.multipole);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  runner_debug_check_mesh_overlap(recipient, source);
-  runner_debug_check_mesh_pair_overlap(recipient, source, origin,
-                                       attachment_case);
-  runner_debug_check_pair_recursive_ownership_boundary(super, recipient, source,
-                                                       origin, attachment_case);
-  if (origin != 0)
-    runner_debug_record_recursive_mesh_budget(recipient, source, attachment_case);
-  if (origin == 2)
-    runner_debug_log_pair_recursive_bkg_neigh_attachment(
-        super, ci, cj, recipient, source, attachment_case);
-  if (origin != 0)
-    runner_debug_log_recursive_mesh_bkg_neigh(super, ci, cj, recipient, source,
-                                              attachment_case);
-  runner_debug_add_cell_coverage(recipient, source,
-                                 runner_debug_coverage_kind_pm);
-  runner_debug_add_tensor_interactions_by_type(
-      recipient->grav.multipole->pot.num_interacted_pm_by_type, source,
-      source->grav.multipole->m_pole.num_gpart);
-  runner_debug_add_tensor_interactions_by_type(
-      recipient->grav.multipole->pot.num_interacted_pm_long_range_by_type,
-      source, source->grav.multipole->m_pole.num_gpart);
-  if (origin == 0) {
-    runner_debug_add_tensor_interactions_by_type(
-        recipient->grav.multipole->pot.num_interacted_pm_long_range_direct_by_type,
-        source, source->grav.multipole->m_pole.num_gpart);
-  } else if (origin == 1) {
-    runner_debug_add_tensor_interactions_by_type(
-        recipient->grav.multipole
-            ->pot.num_interacted_pm_long_range_self_recursive_by_type,
-        source, source->grav.multipole->m_pole.num_gpart);
-  } else if (origin == 2) {
-    runner_debug_add_tensor_interactions_by_type(
-        recipient->grav.multipole
-            ->pot.num_interacted_pm_long_range_pair_recursive_by_type,
-        source, source->grav.multipole->m_pole.num_gpart);
-  }
-#endif
-}
-
 /**
  * @brief Increment the mesh interaction counters.
  *
@@ -1318,8 +431,7 @@ static void runner_accumulate_interaction(
  * @param cj The second #cell in the pair.
  */
 static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
-                                          struct cell *cj, const int origin,
-                                          const char *attachment_case) {
+                                          struct cell *cj) {
 
   /* Get the correct top level cells for self-interaction check */
   struct cell *top_i = ci->top;
@@ -1332,51 +444,21 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 
   /* Decide which cell we are updating. */
   if (super == ci) {
-    runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
-                                  attachment_case);
-#ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_log_pair_recursive_recipient_choice(
-        super, ci, cj, super, cj, attachment_case, "super_eq_ci");
-#endif
+    runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
   } else if (cell_contains_progeny(ci, super)) {
-    runner_record_mesh_attachment(super, ci, cj, super, cj, origin,
-                                  attachment_case);
-#ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_log_pair_recursive_recipient_choice(
-        super, ci, cj, super, cj, attachment_case, "ci_contains_super");
-#endif
+    runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
   } else if (cell_contains_progeny(super, ci)) {
-    runner_record_mesh_attachment(super, ci, cj, ci, cj, origin,
-                                  attachment_case);
-#ifdef SWIFT_DEBUG_CHECKS
-    runner_debug_log_pair_recursive_recipient_choice(
-        super, ci, cj, ci, cj, attachment_case, "super_contains_ci");
-#endif
+    runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
   }
 
   /* Handle the symmetric case for self interactions */
   if (is_self) {
     if (super == cj) {
-      runner_record_mesh_attachment(super, ci, cj, super, ci, origin,
-                                    attachment_case);
-#ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_log_pair_recursive_recipient_choice(
-          super, ci, cj, super, ci, attachment_case, "self_super_eq_cj");
-#endif
+      runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
     } else if (cell_contains_progeny(cj, super)) {
-      runner_record_mesh_attachment(super, ci, cj, super, ci, origin,
-                                    attachment_case);
-#ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_log_pair_recursive_recipient_choice(
-          super, ci, cj, super, ci, attachment_case, "self_cj_contains_super");
-#endif
+      runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
     } else if (cell_contains_progeny(super, cj)) {
-      runner_record_mesh_attachment(super, ci, cj, cj, ci, origin,
-                                    attachment_case);
-#ifdef SWIFT_DEBUG_CHECKS
-      runner_debug_log_pair_recursive_recipient_choice(
-          super, ci, cj, cj, ci, attachment_case, "self_super_contains_cj");
-#endif
+      runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
     }
   }
 }
@@ -1392,33 +474,6 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
  * @param cpj The current #cell from cj's hierarchy being processed.
  * @param s The #space.
  */
-static INLINE int runner_count_mesh_cell_is_above_diff_grav_depth(
-    const struct cell *c) {
-
-  /* For pure background-background mesh-count recursion, do not let a
-   * zoom-forced below-depth flag alter the split depth. That flag is set while
-   * splitting void interactions and can otherwise make this debug mirror split
-   * background pairs deeper than the already-created real tasks did. */
-  if (c->type == cell_type_regular || c->type == cell_type_zoom) {
-    return (c->maxdepth - c->depth) > space_subdepth_diff_grav;
-  }
-
-  return (c->maxdepth - c->depth) > zoom_bkg_subdepth_diff_grav;
-}
-
-static INLINE int runner_count_mesh_can_split_pair_gravity_task(
-    const struct cell *ci, const struct cell *cj) {
-
-  if (ci->type == cell_type_bkg && cj->type == cell_type_bkg &&
-      ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
-    return (ci->split && cj->split) &&
-           runner_count_mesh_cell_is_above_diff_grav_depth(ci) &&
-           runner_count_mesh_cell_is_above_diff_grav_depth(cj);
-  }
-
-  return cell_can_split_pair_gravity_task(ci, cj);
-}
-
 static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
                                                           struct cell *ci,
                                                           struct cell *cj,
@@ -1431,23 +486,13 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
 
   struct engine *e = s->e;
 
-  /* Maintain the invariant that ci is the branch containing c whenever one
-   * side of the pair does. */
-  const int ci_contains_c = (ci == c || cell_contains_progeny(ci, c));
-  const int cj_contains_c = (cj == c || cell_contains_progeny(cj, c));
-  if (!ci_contains_c && cj_contains_c) {
-    struct cell *tmp = ci;
-    ci = cj;
-    cj = tmp;
-  }
-
   /* Foreign pair? This mirrors scheduler_splittask_gravity. */
   if (ci->nodeID != engine_rank && cj->nodeID != engine_rank) {
     return;
   }
 
   /* Should this pair be split? */
-  if (runner_count_mesh_can_split_pair_gravity_task(ci, cj)) {
+  if (cell_can_split_pair_gravity_task(ci, cj)) {
 
     /* Check particle count threshold - mirrors scheduler_splittask_gravity */
     const long long gcount_i = ci->grav.count;
@@ -1467,19 +512,21 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpi, cpj, 2, "pair_recursive");
+          runner_count_mesh_interaction(c, cpi, cpj);
           continue;
         }
 
-        const int cpi_contains_c = (cpi == c || cell_contains_progeny(cpi, c));
-        const int cpj_contains_c = (cpj == c || cell_contains_progeny(cpj, c));
+        /* Can we use M-M for this pair? */
+        if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/1,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
+          /* This would be handled by a M-M task, nothing to count */
+          continue;
+        }
 
         /* We would create real tasks, so recurse to find mesh interactions */
-        if (!cpi_contains_c && cpj_contains_c) {
-          runner_count_mesh_interactions_pair_recursive(c, cpj, cpi, s);
-        } else {
-          runner_count_mesh_interactions_pair_recursive(c, cpi, cpj, s);
-        }
+        runner_count_mesh_interactions_pair_recursive(c, cpi, cpj, s);
       }
     }
   }
@@ -1533,7 +580,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpj, cpk, 1, "self_recursive");
+          runner_count_mesh_interaction(c, cpj, cpk);
           continue;
         }
 
@@ -1601,7 +648,7 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(ci, top, cj, 0, "top_level_direct");
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
@@ -1639,27 +686,11 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
   struct engine *e = s->e;
 
-  /* Maintain the invariant that ci is the branch containing c whenever one
-   * side of the pair does. The real pair task is symmetric, but this counter is
-   * not: runner_count_mesh_interaction() attaches the contribution to the ci
-   * side for non-self pairs. */
-  const int ci_contains_c = (ci == c || cell_contains_progeny(ci, c));
-  const int cj_contains_c = (cj == c || cell_contains_progeny(cj, c));
-  if (!ci_contains_c && cj_contains_c) {
-    struct cell *tmp = ci;
-    ci = cj;
-    cj = tmp;
-  }
-
   /* If neither cell is a void cell, use the normal pair recursive function */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
     runner_count_mesh_interactions_pair_recursive(c, ci, cj, s);
     return;
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  runner_debug_record_zoom_pair_visit(c, ci, cj, 0);
-#endif
 
   /* Loop over progeny pairs, mirroring
    * zoom_scheduler_splittask_gravity_void_pair */
@@ -1669,12 +700,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
     /* Skip NULL progeny */
     if (cpi == NULL) continue;
 
-    /* Skip void progeny that do not contain any zoom cells. */
-    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
-      continue;
-
-    /* Skip any empty progeny of a void cell (void cells themselves always
-     * have 0 particles but are never "empty"). */
+    /* Skip empty non-void progeny */
     if (cell_is_empty_mpole(cpi)) continue;
 
     for (int j = 0; j < 8; j++) {
@@ -1683,15 +709,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       /* Skip NULL progeny */
       if (cpj == NULL) continue;
 
-      /* Skip void progeny that do not contain any zoom cells. */
-      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
-        continue;
-
-      /* Skip leaf neighbours interacting with void cells. */
-      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
-
-      /* Skip any empty progeny of a void cell (void cells themselves always
-       * have 0 particles but are never "empty"). */
+      /* Skip empty non-void progeny */
       if (cell_is_empty_mpole(cpj)) continue;
 
       /* Skip entirely foreign pairs. */
@@ -1699,25 +717,22 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
-#ifdef SWIFT_DEBUG_CHECKS
-        runner_debug_record_zoom_pair_visit(c, cpi, cpj, 1);
-        runner_debug_check_zoom_mesh_stop_pair_overlap(c, cpi, cpj);
-#endif
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpi, cpj, 2, "zoom_pair_recursive");
+        runner_count_mesh_interaction(c, cpi, cpj);
         continue;
       }
 
-      const int cpi_contains_c = (cpi == c || cell_contains_progeny(cpi, c));
-      const int cpj_contains_c = (cpj == c || cell_contains_progeny(cpj, c));
-
-      /* Recurse to find more mesh interactions, keeping the recipient branch
-       * first for the non-symmetric debug attachment logic. */
-      if (!cpi_contains_c && cpj_contains_c) {
-        runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpi, s);
-      } else {
-        runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
+      /* Can we use M-M for this pair? */
+      if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/1,
+                               /*periodic boundaries*/ s->periodic,
+                               /*use_mesh*/ s->periodic)) {
+        /* M-M task handles this, nothing to count */
+        continue;
       }
+
+      /* Recurse to find more mesh interactions */
+      runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
     }
   }
 }
@@ -1749,11 +764,6 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
   for (int k = 0; k < 8; k++) {
     if (ci->progeny[k] == NULL) continue;
 
-    /* Skip void progeny that do not contain any zoom cells. */
-    if (ci->progeny[k]->subtype == cell_subtype_void &&
-        !ci->progeny[k]->contains_zoom_cells)
-      continue;
-
     /* Skip empty progeny (void cells are never empty). */
     if (cell_is_empty_mpole(ci->progeny[k])) continue;
 
@@ -1769,16 +779,6 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
   for (int j = 0; j < 8; j++) {
     if (ci->progeny[j] == NULL) continue;
 
-    /* Skip void progeny that do not contain any zoom cells. */
-    if (ci->progeny[j]->subtype == cell_subtype_void &&
-        !ci->progeny[j]->contains_zoom_cells)
-      continue;
-
-    /* Skip empty non-void progeny. */
-    if (ci->progeny[j]->subtype != cell_subtype_void &&
-        ci->progeny[j]->grav.count == 0)
-      continue;
-
     /* Skip empty progeny. */
     if (cell_is_empty_mpole(ci->progeny[j])) continue;
 
@@ -1786,11 +786,6 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
 
     for (int k = j + 1; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
-
-      /* Skip void progeny that do not contain any zoom cells. */
-      if (ci->progeny[k]->subtype == cell_subtype_void &&
-          !ci->progeny[k]->contains_zoom_cells)
-        continue;
 
       /* Skip empty progeny. */
       if (cell_is_empty_mpole(ci->progeny[k])) continue;
@@ -1805,7 +800,7 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpj, cpk)) {
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpj, cpk, 1, "zoom_self_recursive");
+        runner_count_mesh_interaction(c, cpj, cpk);
         continue;
       }
 
@@ -1871,7 +866,7 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(ci, top, cj, 0, "zoom_top_level_direct");
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
@@ -1890,59 +885,6 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
     runner_count_mesh_interactions_zoom_pair_recursive(ci, top, cj, s);
   }
 }
-
-#ifdef SWIFT_DEBUG_CHECKS
-void runner_debug_get_top_level_methods_by_type(const struct engine *e,
-                                                const struct cell *ci,
-                                                long long mesh_counts[4],
-                                                long long mm_counts[4],
-                                                long long p2p_counts[4],
-                                                int mesh_nr_cells[4],
-                                                int mm_nr_cells[4],
-                                                int p2p_nr_cells[4]) {
-
-  struct cell *top = ci->top;
-  while (top->void_parent != NULL) top = top->void_parent->top;
-
-  for (int i = 0; i < 4; i++) {
-    mesh_counts[i] = 0;
-    mm_counts[i] = 0;
-    p2p_counts[i] = 0;
-    mesh_nr_cells[i] = 0;
-    mm_nr_cells[i] = 0;
-    p2p_nr_cells[i] = 0;
-  }
-
-  if (!e->s->periodic) return;
-
-  struct space *s = e->s;
-  struct cell *cells = s->zoom_props->bkg_cells_top;
-
-  for (int n = 0; n < s->zoom_props->nr_bkg_cells; n++) {
-    struct cell *source = &cells[n];
-    const struct gravity_tensors *multi = source->grav.multipole;
-    const enum runner_debug_source_class source_class =
-        runner_debug_get_source_class(source);
-
-    if (source == top) continue;
-    if (multi->m_pole.M_000 == 0.f) continue;
-    if (cell_can_use_mesh((struct engine *)e, top, source)) {
-      mesh_counts[source_class] += multi->m_pole.num_gpart;
-      mesh_nr_cells[source_class] += 1;
-    } else if (cell_can_use_pair_mm(top, source, (struct engine *)e, s,
-                                    /*use_rebuild_data=*/1,
-                                    /*is_tree_walk=*/0,
-                                    /*periodic boundaries=*/s->periodic,
-                                    /*use_mesh=*/s->periodic)) {
-      mm_counts[source_class] += multi->m_pole.num_gpart;
-      mm_nr_cells[source_class] += 1;
-    } else {
-      p2p_counts[source_class] += multi->m_pole.num_gpart;
-      p2p_nr_cells[source_class] += 1;
-    }
-  }
-}
-#endif
 
 #endif /* SWIFT_DEBUG_CHECKS || SWIFT_GRAVITY_FORCE_CHECKS */
 

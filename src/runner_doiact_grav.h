@@ -25,8 +25,6 @@
 
 /* Local includes */
 #include "active.h"
-#include "atomic.h"
-#include "cell.h"
 #include "inline.h"
 #include "multipole.h"
 #include "timers.h"
@@ -34,145 +32,6 @@
 /* Avoid cyclic inclusions. */
 struct runner;
 struct cell;
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-enum runner_debug_source_class {
-  runner_debug_source_class_zoom = 0,
-  runner_debug_source_class_bkg_void = 1,
-  runner_debug_source_class_bkg_neigh = 2,
-  runner_debug_source_class_other = 3,
-};
-
-__attribute__((always_inline)) INLINE static enum runner_debug_source_class
-runner_debug_get_source_class(const struct cell *source) {
-
-  if (source->type == cell_type_zoom) return runner_debug_source_class_zoom;
-
-  if (source->type == cell_type_bkg && source->subtype == cell_subtype_void)
-    return runner_debug_source_class_bkg_void;
-
-  if (source->type == cell_type_bkg &&
-      source->subtype == cell_subtype_neighbour)
-    return runner_debug_source_class_bkg_neigh;
-
-  return runner_debug_source_class_other;
-}
-
-__attribute__((always_inline)) INLINE static void
-runner_debug_add_gpart_interactions_by_type(long long counts[4],
-                                            const struct cell *source,
-                                            const long long delta) {
-  counts[runner_debug_get_source_class(source)] += delta;
-}
-
-__attribute__((always_inline)) INLINE static void
-runner_debug_inc_gpart_interactions_by_type(long long counts[4],
-                                            const struct cell *source) {
-  counts[runner_debug_get_source_class(source)] += 1;
-}
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-__attribute__((always_inline)) INLINE static void
-runner_debug_add_tensor_interactions_by_type(long long counts[4],
-                                             const struct cell *source,
-                                             const long long delta) {
-  counts[runner_debug_get_source_class(source)] += delta;
-}
-
-enum runner_debug_coverage_kind {
-  runner_debug_coverage_kind_p2p = 0,
-  runner_debug_coverage_kind_mm = 1,
-  runner_debug_coverage_kind_pm = 2,
-};
-
-__attribute__((always_inline)) INLINE static int
-runner_debug_get_cell_fractional_depth(const struct cell *source) {
-
-  int depth = source->depth;
-
-  if (source->type == cell_type_zoom) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (source->top == NULL || source->top->void_parent == NULL)
-      error("Zoom source has no void parent for cell weighting.");
-#endif
-    depth += source->top->void_parent->depth + 1;
-  }
-
-  return depth;
-}
-
-__attribute__((always_inline)) INLINE static double
-runner_debug_get_cell_fractional_weight(const struct cell *source) {
-
-  double weight = 1.;
-  for (int depth = runner_debug_get_cell_fractional_depth(source); depth > 0;
-       --depth)
-    weight *= 0.125;
-  return weight;
-}
-
-__attribute__((always_inline)) INLINE static void runner_debug_add_cell_coverage(
-    struct cell *recipient, const struct cell *source,
-    const enum runner_debug_coverage_kind kind) {
-
-  const int source_class = runner_debug_get_source_class(source);
-  const double weight = runner_debug_get_cell_fractional_weight(source);
-
-  atomic_add_d(&recipient->num_interacted_cells_total, weight);
-  atomic_add_d(&recipient->num_interacted_cells_total_by_type[source_class],
-               weight);
-
-  if (kind == runner_debug_coverage_kind_p2p) {
-    atomic_add_d(&recipient->num_interacted_cells_p2p, weight);
-    atomic_add_d(&recipient->num_interacted_cells_p2p_by_type[source_class],
-                 weight);
-  } else if (kind == runner_debug_coverage_kind_mm) {
-    atomic_add_d(&recipient->num_interacted_cells_mm, weight);
-    atomic_add_d(&recipient->num_interacted_cells_mm_by_type[source_class],
-                 weight);
-  } else if (kind == runner_debug_coverage_kind_pm) {
-    atomic_add_d(&recipient->num_interacted_cells_pm, weight);
-    atomic_add_d(&recipient->num_interacted_cells_pm_by_type[source_class],
-                 weight);
-  }
-}
-
-__attribute__((always_inline)) INLINE static void
-runner_debug_inherit_cell_interactions(struct cell *child,
-                                       const struct cell *parent) {
-
-  child->num_interacted_cells_total += parent->num_interacted_cells_mm;
-  child->num_interacted_cells_total += parent->num_interacted_cells_pm;
-  child->num_interacted_cells_mm += parent->num_interacted_cells_mm;
-  child->num_interacted_cells_pm += parent->num_interacted_cells_pm;
-
-  for (int i = 0; i < 4; ++i) {
-    child->num_interacted_cells_total_by_type[i] +=
-        parent->num_interacted_cells_mm_by_type[i];
-    child->num_interacted_cells_total_by_type[i] +=
-        parent->num_interacted_cells_pm_by_type[i];
-    child->num_interacted_cells_mm_by_type[i] +=
-        parent->num_interacted_cells_mm_by_type[i];
-    child->num_interacted_cells_pm_by_type[i] +=
-        parent->num_interacted_cells_pm_by_type[i];
-  }
-}
-
-void runner_debug_get_top_level_methods_by_type(const struct engine *e,
-                                                const struct cell *ci,
-                                                long long mesh_counts[4],
-                                                long long mm_counts[4],
-                                                long long p2p_counts[4],
-                                                int mesh_nr_cells[4],
-                                                int mm_nr_cells[4],
-                                                int p2p_nr_cells[4]);
-
-int runner_debug_dump_recursive_mesh_budget_overlaps(const struct cell *ci);
-int runner_debug_dump_zoom_pair_recursive_revisits(const struct cell *ci);
-int runner_debug_dump_zoom_pair_handoff_overlaps(const struct cell *ci);
-int runner_debug_dump_path_pair_recursive_sources(const struct cell *ci);
-#endif
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer);
 
@@ -259,13 +118,6 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   gravity_M2L_nonsym(&ci->grav.multipole->pot, multi_j, ci->grav.multipole->CoM,
                      cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  runner_debug_add_tensor_interactions_by_type(
-      ci->grav.multipole->pot.num_interacted_tree_by_type, cj,
-      multi_j->num_gpart);
-  runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
-#endif
-
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   /* Unlock the multipoles */
   if (lock_unlock(&ci->grav.mlock) != 0) error("Failed to unlock multipole");
@@ -349,17 +201,6 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
   gravity_M2L_symmetric(&ci->grav.multipole->pot, &cj->grav.multipole->pot,
                         multi_i, multi_j, ci->grav.multipole->CoM,
                         cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  runner_debug_add_tensor_interactions_by_type(
-      ci->grav.multipole->pot.num_interacted_tree_by_type, cj,
-      multi_j->num_gpart);
-  runner_debug_add_tensor_interactions_by_type(
-      cj->grav.multipole->pot.num_interacted_tree_by_type, ci,
-      multi_i->num_gpart);
-  runner_debug_add_cell_coverage(ci, cj, runner_debug_coverage_kind_mm);
-  runner_debug_add_cell_coverage(cj, ci, runner_debug_coverage_kind_mm);
-#endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   /* Unlock the multipoles */

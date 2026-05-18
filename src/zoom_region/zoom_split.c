@@ -27,23 +27,6 @@
 #include "threadpool.h"
 #include "zoom.h"
 
-#ifdef SWIFT_DEBUG_CHECKS
-static long long zoom_count_void_descendant_gparts(const struct cell *c) {
-
-  if (c == NULL) return 0;
-
-  if (c->subtype != cell_subtype_void)
-    return c->grav.multipole->m_pole.num_gpart;
-
-  long long count = 0;
-  for (int k = 0; k < 8; k++) {
-    count += zoom_count_void_descendant_gparts(c->progeny[k]);
-  }
-
-  return count;
-}
-#endif
-
 /**
  * @brief Link the top level cells in zoom grid to a void parent cell.
  *
@@ -337,21 +320,6 @@ void zoom_void_space_split(struct space *s, int verbose) {
           "Number of gparts is inconsistent between zoom cells and "
           "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
           nr_gparts_in_void, nr_gparts);
-
-    for (int i = 0; i < nr_void_cells; i++) {
-      const struct cell *c = &cells_top[s->zoom_props->void_cell_indices[i]];
-      const long long void_num_gpart = c->grav.multipole->m_pole.num_gpart;
-      const long long descendant_num_gpart = zoom_count_void_descendant_gparts(c);
-
-      if (void_num_gpart != descendant_num_gpart) {
-        error(
-            "Top-level void cell multipole count mismatch "
-            "(cellID=%llu, depth=%d, contains_zoom_cells=%d, "
-            "void_num_gpart=%lld, descendant_num_gpart=%lld)",
-            c->cellID, c->depth, c->contains_zoom_cells, void_num_gpart,
-            descendant_num_gpart);
-      }
-    }
   }
 #endif
 }

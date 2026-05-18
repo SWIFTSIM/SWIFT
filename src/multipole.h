@@ -145,24 +145,6 @@ __attribute__((nonnull)) INLINE static void gravity_field_tensors_add(
   if (lb->num_interacted == 0) error("Adding tensors that did not interact");
 
   la->num_interacted += lb->num_interacted;
-  for (int i = 0; i < 4; i++) {
-    la->num_interacted_tree_by_type[i] += lb->num_interacted_tree_by_type[i];
-    la->num_interacted_pm_by_type[i] += lb->num_interacted_pm_by_type[i];
-    la->num_interacted_pm_long_range_by_type[i] +=
-        lb->num_interacted_pm_long_range_by_type[i];
-    la->num_interacted_pm_long_range_direct_by_type[i] +=
-        lb->num_interacted_pm_long_range_direct_by_type[i];
-    la->num_interacted_pm_long_range_self_recursive_by_type[i] +=
-        lb->num_interacted_pm_long_range_self_recursive_by_type[i];
-    la->num_interacted_pm_long_range_pair_recursive_by_type[i] +=
-        lb->num_interacted_pm_long_range_pair_recursive_by_type[i];
-    la->num_interacted_pm_pair_skip_by_type[i] +=
-        lb->num_interacted_pm_pair_skip_by_type[i];
-    la->num_interacted_pm_pair_skip_direct_by_type[i] +=
-        lb->num_interacted_pm_pair_skip_direct_by_type[i];
-    la->num_interacted_pm_pair_skip_recursive_by_type[i] +=
-        lb->num_interacted_pm_pair_skip_recursive_by_type[i];
-  }
 #endif
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   la->num_interacted_tree += lb->num_interacted_tree;
@@ -2687,24 +2669,6 @@ __attribute__((nonnull)) INLINE static void gravity_L2L(
   if (lb->num_interacted == 0) error("Shifting tensors that did not interact");
 
   la->num_interacted = lb->num_interacted;
-  for (int i = 0; i < 4; i++) {
-    la->num_interacted_tree_by_type[i] = lb->num_interacted_tree_by_type[i];
-    la->num_interacted_pm_by_type[i] = lb->num_interacted_pm_by_type[i];
-    la->num_interacted_pm_long_range_by_type[i] =
-        lb->num_interacted_pm_long_range_by_type[i];
-    la->num_interacted_pm_long_range_direct_by_type[i] =
-        lb->num_interacted_pm_long_range_direct_by_type[i];
-    la->num_interacted_pm_long_range_self_recursive_by_type[i] =
-        lb->num_interacted_pm_long_range_self_recursive_by_type[i];
-    la->num_interacted_pm_long_range_pair_recursive_by_type[i] =
-        lb->num_interacted_pm_long_range_pair_recursive_by_type[i];
-    la->num_interacted_pm_pair_skip_by_type[i] =
-        lb->num_interacted_pm_pair_skip_by_type[i];
-    la->num_interacted_pm_pair_skip_direct_by_type[i] =
-        lb->num_interacted_pm_pair_skip_direct_by_type[i];
-    la->num_interacted_pm_pair_skip_recursive_by_type[i] =
-        lb->num_interacted_pm_pair_skip_recursive_by_type[i];
-  }
 #endif
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   la->num_interacted_tree = lb->num_interacted_tree;
@@ -3067,29 +3031,6 @@ __attribute__((nonnull)) INLINE static void gravity_L2P(
   if (lb->num_interacted == 0) error("Interacting with empty field tensor");
 
   accumulate_add_ll(&gp->num_interacted, lb->num_interacted);
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < 4; i++) {
-    accumulate_add_ll(&gp->num_interacted_m2l_by_type[i],
-                      lb->num_interacted_tree_by_type[i]);
-    accumulate_add_ll(&gp->num_interacted_pm_by_type[i],
-                      lb->num_interacted_pm_by_type[i]);
-    accumulate_add_ll(&gp->num_interacted_pm_long_range_by_type[i],
-                      lb->num_interacted_pm_long_range_by_type[i]);
-    accumulate_add_ll(&gp->num_interacted_pm_long_range_direct_by_type[i],
-                      lb->num_interacted_pm_long_range_direct_by_type[i]);
-    accumulate_add_ll(&gp->num_interacted_pm_long_range_self_recursive_by_type[i],
-                      lb->num_interacted_pm_long_range_self_recursive_by_type[i]);
-    accumulate_add_ll(&gp->num_interacted_pm_long_range_pair_recursive_by_type[i],
-                      lb->num_interacted_pm_long_range_pair_recursive_by_type[i]);
-    accumulate_add_ll(&gp->num_interacted_pm_pair_skip_by_type[i],
-                      lb->num_interacted_pm_pair_skip_by_type[i]);
-    accumulate_add_ll(&gp->num_interacted_pm_pair_skip_direct_by_type[i],
-                      lb->num_interacted_pm_pair_skip_direct_by_type[i]);
-    accumulate_add_ll(&gp->num_interacted_pm_pair_skip_recursive_by_type[i],
-                      lb->num_interacted_pm_pair_skip_recursive_by_type[i]);
-  }
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
