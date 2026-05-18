@@ -603,15 +603,15 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   t->cj = NULL;
   t->skip = 1;
 
-  /* When we split a regular cell's task because it is interacting with a
-   * void cell, we can end up below the depth set by space_subdepth_diff_grav.
-   * This will cause absolute havoc with hierarchical gravity tasks being
-   * missing on the regular cell if we don't flag this somehow to ensure
-   * task recursions continue to this level. */
-  if (!cell_is_above_diff_grav_depth(ci)) {
+  /* When a non-void cell is forced to keep splitting because it is paired with
+   * a void cell, it can end up below the usual diff_grav task depth. Mark only
+   * that non-void side so later task recursion reaches the same depth. The
+   * void side is handled explicitly by the zoom splitter and must not inherit
+   * this regular-cell recursion override. */
+  if (ci->subtype != cell_subtype_void && !cell_is_above_diff_grav_depth(ci)) {
     ci->grav.tasks_below_diff_grav_depth = 1;
   }
-  if (!cell_is_above_diff_grav_depth(cj)) {
+  if (cj->subtype != cell_subtype_void && !cell_is_above_diff_grav_depth(cj)) {
     cj->grav.tasks_below_diff_grav_depth = 1;
   }
 

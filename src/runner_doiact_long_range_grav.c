@@ -450,6 +450,7 @@ static int runner_debug_pair_recursive_recipient_choice_limit_reported = 0;
 #define runner_debug_pair_recursive_bkg_neigh_attach_report_max 128
 #define runner_debug_pair_recursive_ownership_boundary_report_max 128
 #define runner_debug_pair_recursive_recipient_choice_report_max 128
+#define runner_debug_pair_recursive_large_source_threshold 1000000LL
 #define runner_debug_mesh_overlap_table_size (1 << 14)
 #define runner_debug_mesh_overlap_probe_limit 16
 #define runner_debug_recursive_mesh_budget_table_size (1 << 15)
@@ -673,7 +674,12 @@ static void runner_debug_log_pair_recursive_bkg_neigh_attachment(
     const struct cell *recipient, const struct cell *source,
     const char *attachment_case) {
 
+  const struct cell *source_top = runner_debug_get_recursive_mesh_source_top(source);
+
   if (runner_debug_get_source_class(source) != runner_debug_source_class_bkg_neigh)
+    return;
+  if (source->grav.multipole->m_pole.num_gpart <
+      runner_debug_pair_recursive_large_source_threshold)
     return;
 
   const int report_index =
@@ -684,7 +690,8 @@ static void runner_debug_log_pair_recursive_bkg_neigh_attachment(
         "pair-recursive-bkg-neigh-attach: super=%llu (%s/%s depth=%d top=%p) "
         "ci=%llu (%s/%s depth=%d top=%p) cj=%llu (%s/%s depth=%d top=%p) "
         "recipient=%llu (%s/%s depth=%d top=%p parent=%p super=%llu) "
-        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) case=%s",
+        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) "
+        "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) case=%s",
         super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
         super->depth, (void *)super->top, ci->cellID, cellID_names[ci->type],
         subcellID_names[ci->subtype], ci->depth, (void *)ci->top, cj->cellID,
@@ -695,7 +702,10 @@ static void runner_debug_log_pair_recursive_bkg_neigh_attachment(
         recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
         source->cellID, cellID_names[source->type],
         subcellID_names[source->subtype], source->depth, (void *)source->top,
-        source->grav.multipole->m_pole.num_gpart, attachment_case);
+        source->grav.multipole->m_pole.num_gpart, source_top->cellID,
+        cellID_names[source_top->type], subcellID_names[source_top->subtype],
+        source_top->depth, (void *)source_top->top,
+        source_top->grav.multipole->m_pole.num_gpart, attachment_case);
   } else if (report_index ==
                  runner_debug_pair_recursive_bkg_neigh_attach_report_max &&
              atomic_cas(&runner_debug_pair_recursive_bkg_neigh_attach_limit_reported,
@@ -758,7 +768,12 @@ static void runner_debug_log_pair_recursive_recipient_choice(
     const struct cell *recipient, const struct cell *source,
     const char *attachment_case, const char *choice_case) {
 
+  const struct cell *source_top = runner_debug_get_recursive_mesh_source_top(source);
+
   if (runner_debug_get_source_class(source) != runner_debug_source_class_bkg_neigh)
+    return;
+  if (source->grav.multipole->m_pole.num_gpart <
+      runner_debug_pair_recursive_large_source_threshold)
     return;
 
   if (strcmp(attachment_case, "pair_recursive") != 0 &&
@@ -773,7 +788,8 @@ static void runner_debug_log_pair_recursive_recipient_choice(
         "pair-recursive-recipient-choice: super=%llu (%s/%s depth=%d top=%p) "
         "ci=%llu (%s/%s depth=%d top=%p) cj=%llu (%s/%s depth=%d top=%p) "
         "recipient=%llu (%s/%s depth=%d top=%p parent=%p void_parent=%p super=%llu) "
-        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) case=%s choice=%s",
+        "source=%llu (%s/%s depth=%d top=%p gparts=%lld) "
+        "source_top=%llu (%s/%s depth=%d top=%p budget=%lld) case=%s choice=%s",
         super->cellID, cellID_names[super->type], subcellID_names[super->subtype],
         super->depth, (void *)super->top, ci->cellID, cellID_names[ci->type],
         subcellID_names[ci->subtype], ci->depth, (void *)ci->top, cj->cellID,
@@ -785,7 +801,11 @@ static void runner_debug_log_pair_recursive_recipient_choice(
         recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
         source->cellID, cellID_names[source->type],
         subcellID_names[source->subtype], source->depth, (void *)source->top,
-        source->grav.multipole->m_pole.num_gpart, attachment_case, choice_case);
+        source->grav.multipole->m_pole.num_gpart, source_top->cellID,
+        cellID_names[source_top->type], subcellID_names[source_top->subtype],
+        source_top->depth, (void *)source_top->top,
+        source_top->grav.multipole->m_pole.num_gpart, attachment_case,
+        choice_case);
   } else if (
       report_index == runner_debug_pair_recursive_recipient_choice_report_max &&
       atomic_cas(&runner_debug_pair_recursive_recipient_choice_limit_reported, 0,
@@ -1593,7 +1613,9 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
   struct engine *e = s->e;
 
   /* Maintain the invariant that ci is the branch containing c whenever one
-   * side of the pair does. */
+   * side of the pair does. The real pair task is symmetric, but this counter is
+   * not: runner_count_mesh_interaction() attaches the contribution to the ci
+   * side for non-self pairs. */
   const int ci_contains_c = (ci == c || cell_contains_progeny(ci, c));
   const int cj_contains_c = (cj == c || cell_contains_progeny(cj, c));
   if (!ci_contains_c && cj_contains_c) {
@@ -1638,8 +1660,12 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
         continue;
 
-      /* Skip leaf neighbours interacting with void cells. */
-      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
+      /* Skip leaf neighbours interacting with void cells. The real splitter
+       * sees an ordered pair, but this counter may reorder ci/cj to keep the
+       * recipient branch first. Keep the skip semantic order-independent. */
+      if ((cpi->subtype == cell_subtype_void && !cpj->split) ||
+          (!cpi->split && cpj->subtype == cell_subtype_void))
+        continue;
 
       /* Skip any empty progeny of a void cell (void cells themselves always
        * have 0 particles but are never "empty"). */
@@ -1662,7 +1688,8 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       const int cpi_contains_c = (cpi == c || cell_contains_progeny(cpi, c));
       const int cpj_contains_c = (cpj == c || cell_contains_progeny(cpj, c));
 
-      /* Recurse to find more mesh interactions */
+      /* Recurse to find more mesh interactions, keeping the recipient branch
+       * first for the non-symmetric debug attachment logic. */
       if (!cpi_contains_c && cpj_contains_c) {
         runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpi, s);
       } else {

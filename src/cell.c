@@ -2235,15 +2235,6 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
         continue;
       }
 
-      /* Can we use M-M for this pair? */
-      if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                               /*is_tree_walk=*/1,
-                               /*periodic boundaries*/ s->periodic,
-                               /*use_mesh*/ s->periodic)) {
-        /* M-M task handles this, skip */
-        continue;
-      }
-
       /* Recurse to find more mesh interactions */
       if (cell_check_grav_mesh_pairs_zoom_pair_recursive(cpi, cpj, e)) {
         return 1;
