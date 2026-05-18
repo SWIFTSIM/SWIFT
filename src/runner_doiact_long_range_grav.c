@@ -486,6 +486,17 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
 
   struct engine *e = s->e;
 
+  /* Keep ci as the branch containing c whenever possible. The real pair task
+   * is symmetric, but this debug counter attaches non-self contributions via
+   * the ci side. */
+  const int ci_contains_c = (ci == c || cell_contains_progeny(ci, c));
+  const int cj_contains_c = (cj == c || cell_contains_progeny(cj, c));
+  if (!ci_contains_c && cj_contains_c) {
+    struct cell *tmp = ci;
+    ci = cj;
+    cj = tmp;
+  }
+
   /* Foreign pair? This mirrors scheduler_splittask_gravity. */
   if (ci->nodeID != engine_rank && cj->nodeID != engine_rank) {
     return;
@@ -686,6 +697,15 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
   struct engine *e = s->e;
 
+  /* Keep ci as the branch containing c whenever possible. */
+  const int ci_contains_c = (ci == c || cell_contains_progeny(ci, c));
+  const int cj_contains_c = (cj == c || cell_contains_progeny(cj, c));
+  if (!ci_contains_c && cj_contains_c) {
+    struct cell *tmp = ci;
+    ci = cj;
+    cj = tmp;
+  }
+
   /* If neither cell is a void cell, use the normal pair recursive function */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
     runner_count_mesh_interactions_pair_recursive(c, ci, cj, s);
@@ -700,7 +720,12 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
     /* Skip NULL progeny */
     if (cpi == NULL) continue;
 
-    /* Skip empty non-void progeny */
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
+      continue;
+
+    /* Skip any empty progeny of a void cell (void cells themselves always
+     * have 0 particles but are never "empty"). */
     if (cell_is_empty_mpole(cpi)) continue;
 
     for (int j = 0; j < 8; j++) {
@@ -709,7 +734,15 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       /* Skip NULL progeny */
       if (cpj == NULL) continue;
 
-      /* Skip empty non-void progeny */
+      /* Skip void progeny that do not contain any zoom cells. */
+      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
+        continue;
+
+      /* Skip leaf neighbours interacting with non-useful void cells. */
+      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
+
+      /* Skip any empty progeny of a void cell (void cells themselves always
+       * have 0 particles but are never "empty"). */
       if (cell_is_empty_mpole(cpj)) continue;
 
       /* Skip entirely foreign pairs. */
@@ -764,6 +797,11 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
   for (int k = 0; k < 8; k++) {
     if (ci->progeny[k] == NULL) continue;
 
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (ci->progeny[k]->subtype == cell_subtype_void &&
+        !ci->progeny[k]->contains_zoom_cells)
+      continue;
+
     /* Skip empty progeny (void cells are never empty). */
     if (cell_is_empty_mpole(ci->progeny[k])) continue;
 
@@ -779,13 +817,25 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
   for (int j = 0; j < 8; j++) {
     if (ci->progeny[j] == NULL) continue;
 
-    /* Skip empty progeny. */
-    if (cell_is_empty_mpole(ci->progeny[j])) continue;
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (ci->progeny[j]->subtype == cell_subtype_void &&
+        !ci->progeny[j]->contains_zoom_cells)
+      continue;
+
+    /* Skip empty non-void progeny. */
+    if (ci->progeny[j]->subtype != cell_subtype_void &&
+        ci->progeny[j]->grav.count == 0)
+      continue;
 
     struct cell *cpj = ci->progeny[j];
 
     for (int k = j + 1; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
+
+      /* Skip void progeny that do not contain any zoom cells. */
+      if (ci->progeny[k]->subtype == cell_subtype_void &&
+          !ci->progeny[k]->contains_zoom_cells)
+        continue;
 
       /* Skip empty progeny. */
       if (cell_is_empty_mpole(ci->progeny[k])) continue;
