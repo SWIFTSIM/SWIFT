@@ -429,10 +429,18 @@ static void runner_accumulate_interaction(
  * @param super The super-cell being updated.
  * @param ci The first #cell in the pair.
  * @param cj The second #cell in the pair.
- * @param is_self Is this pair from a self-interaction traversal?
  */
 static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
-                                          struct cell *cj, const int is_self) {
+                                          struct cell *cj) {
+
+  /* Get the correct top level cells for self-interaction check */
+  struct cell *top_i = ci->top;
+  if (top_i->void_parent != NULL) top_i = top_i->void_parent->top;
+  struct cell *top_j = cj->top;
+  if (top_j->void_parent != NULL) top_j = top_j->void_parent->top;
+
+  /* Do we share the same top level cell? i.e. are we self-interacting? */
+  int is_self = top_i == top_j;
 
   /* Decide which cell we are updating. */
   if (super == ci) {
@@ -515,7 +523,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpi, cpj)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpi, cpj, /*is_self=*/0);
+          runner_count_mesh_interaction(c, cpi, cpj);
           continue;
         }
 
@@ -583,7 +591,7 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
         /* Can we use the mesh for this pair? */
         if (cell_can_use_mesh(e, cpj, cpk)) {
           /* Record the mesh interaction */
-          runner_count_mesh_interaction(c, cpj, cpk, /*is_self=*/1);
+          runner_count_mesh_interaction(c, cpj, cpk);
           continue;
         }
 
@@ -651,7 +659,7 @@ static void runner_count_mesh_interactions_uniform(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(ci, top, cj, /*is_self=*/0);
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
@@ -735,7 +743,7 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       if (cell_can_use_mesh(e, cpi, cpj)) {
 
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpi, cpj, /*is_self=*/0);
+        runner_count_mesh_interaction(c, cpi, cpj);
         continue;
       }
 
@@ -834,7 +842,7 @@ static void runner_count_mesh_interactions_zoom_self_recursive(
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpj, cpk)) {
         /* Record the mesh interaction */
-        runner_count_mesh_interaction(c, cpj, cpk, /*is_self=*/1);
+        runner_count_mesh_interaction(c, cpj, cpk);
         continue;
       }
 
@@ -900,7 +908,7 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
     if (cell_can_use_mesh(e, top, cj)) {
 
       /* If so, record the mesh interaction */
-      runner_count_mesh_interaction(ci, top, cj, /*is_self=*/0);
+      runner_count_mesh_interaction(ci, top, cj);
       continue;
     }
 
