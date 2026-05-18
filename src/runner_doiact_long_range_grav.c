@@ -455,8 +455,6 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
   if (is_self) {
     if (super == cj) {
       runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
-    } else if (cell_contains_progeny(cj, super)) {
-      runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
     } else if (cell_contains_progeny(super, cj)) {
       runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
     }
@@ -741,12 +739,6 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
-        if ((cpi != c && !cell_contains_progeny(cpi, c)) &&
-            (cpj == c || cell_contains_progeny(cpj, c))) {
-          struct cell *tmp = cpi;
-          cpi = cpj;
-          cpj = tmp;
-        }
 
         /* Record the mesh interaction */
         runner_count_mesh_interaction(c, cpi, cpj);
