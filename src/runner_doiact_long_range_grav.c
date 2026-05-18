@@ -378,6 +378,72 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
+#ifdef SWIFT_DEBUG_CHECKS
+
+#define runner_debug_mesh_count_table_size (1 << 22)
+#define runner_debug_mesh_count_probe_limit 4096
+
+struct runner_debug_mesh_count_entry {
+  unsigned long long recipient_key;
+  unsigned long long source_key;
+};
+
+static struct runner_debug_mesh_count_entry
+    runner_debug_mesh_count_table[runner_debug_mesh_count_table_size];
+
+static void runner_debug_check_mesh_count_overlap(const struct cell *recipient,
+                                                  const struct cell *source) {
+
+  const unsigned long long recipient_key = (unsigned long long)recipient;
+  const unsigned long long source_key = (unsigned long long)source;
+  const unsigned long long hash =
+      recipient_key * 11400714819323198485ull;
+
+  for (int probe = 0; probe < runner_debug_mesh_count_probe_limit; probe++) {
+    struct runner_debug_mesh_count_entry *slot =
+        &runner_debug_mesh_count_table
+             [(hash + (unsigned long long)probe) &
+              (runner_debug_mesh_count_table_size - 1)];
+
+    if (slot->recipient_key == 0ULL) {
+      if (atomic_cas(&slot->recipient_key, 0ULL, recipient_key) == 0ULL) {
+        slot->source_key = source_key;
+        return;
+      }
+    }
+
+    if (slot->recipient_key != recipient_key) continue;
+    if (slot->source_key == 0ULL) continue;
+
+    const struct cell *other_source =
+        (const struct cell *)slot->source_key;
+
+    if (other_source == source || cell_contains_progeny(other_source, source) ||
+        cell_contains_progeny(source, other_source)) {
+      error(
+          "Duplicate or overlapping mesh-count contribution: "
+          "recipient=%llu (%s/%s depth=%d top=%p super=%llu) "
+          "source=%llu (%s/%s depth=%d top=%p gparts=%lld) "
+          "other_source=%llu (%s/%s depth=%d top=%p gparts=%lld)",
+          recipient->cellID, cellID_names[recipient->type],
+          subcellID_names[recipient->subtype], recipient->depth,
+          (void *)recipient->top,
+          recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
+          source->cellID, cellID_names[source->type],
+          subcellID_names[source->subtype], source->depth, (void *)source->top,
+          source->grav.multipole->m_pole.num_gpart, other_source->cellID,
+          cellID_names[other_source->type],
+          subcellID_names[other_source->subtype], other_source->depth,
+          (void *)other_source->top,
+          other_source->grav.multipole->m_pole.num_gpart);
+    }
+  }
+
+  error("Mesh-count debug table probe limit exceeded.");
+}
+
+#endif
+
 /**
  * @brief Increment the mesh interaction counters.
  *
@@ -388,8 +454,10 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
  * @param multi_j The multipole giving the interaction.
  */
 static void runner_accumulate_interaction(
-    struct gravity_tensors *restrict multi_i,
-    struct gravity_tensors *restrict multi_j) {
+    struct cell *recipient, struct cell *source) {
+
+  struct gravity_tensors *restrict multi_i = recipient->grav.multipole;
+  struct gravity_tensors *restrict multi_j = source->grav.multipole;
 
   /* Ensure we aren't self-interacting */
   if (multi_i == multi_j) {
@@ -397,6 +465,8 @@ static void runner_accumulate_interaction(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  runner_debug_check_mesh_count_overlap(recipient, source);
+
   /* Need to account for the mesh interactions we missed */
   accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
 #endif
@@ -444,21 +514,21 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
 
   /* Decide which cell we are updating. */
   if (super == ci) {
-    runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
+    runner_accumulate_interaction(super, cj);
   } else if (cell_contains_progeny(ci, super)) {
-    runner_accumulate_interaction(super->grav.multipole, cj->grav.multipole);
+    runner_accumulate_interaction(super, cj);
   } else if (cell_contains_progeny(super, ci)) {
-    runner_accumulate_interaction(ci->grav.multipole, cj->grav.multipole);
+    runner_accumulate_interaction(ci, cj);
   }
 
   /* Handle the symmetric case for self interactions */
   if (is_self) {
     if (super == cj) {
-      runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
+      runner_accumulate_interaction(super, ci);
     } else if (cell_contains_progeny(cj, super)) {
-      runner_accumulate_interaction(super->grav.multipole, ci->grav.multipole);
+      runner_accumulate_interaction(super, ci);
     } else if (cell_contains_progeny(super, cj)) {
-      runner_accumulate_interaction(cj->grav.multipole, ci->grav.multipole);
+      runner_accumulate_interaction(cj, ci);
     }
   }
 }
