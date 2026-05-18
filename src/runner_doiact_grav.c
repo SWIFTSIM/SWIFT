@@ -2321,22 +2321,23 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   if (periodic && r_lr_check > max_distance) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (cell_is_active_gravity(ci, e))
-      accumulate_add_ll(&multi_i->pot.num_interacted,
-                        multi_j->m_pole.num_gpart);
-    if (cell_is_active_gravity(cj, e))
-      accumulate_add_ll(&multi_j->pot.num_interacted,
-                        multi_i->m_pole.num_gpart);
+    /* Temporarily disabled to isolate PM over-counting. */
+    /* if (cell_is_active_gravity(ci, e)) */
+    /*   accumulate_add_ll(&multi_i->pot.num_interacted, */
+    /*                     multi_j->m_pole.num_gpart); */
+    /* if (cell_is_active_gravity(cj, e)) */
+    /*   accumulate_add_ll(&multi_j->pot.num_interacted, */
+    /*                     multi_i->m_pole.num_gpart); */
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     /* Need to account for the interactions we missed */
-    if (cell_is_active_gravity(ci, e))
-      accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                        multi_j->m_pole.num_gpart);
-    if (cell_is_active_gravity(cj, e))
-      accumulate_add_ll(&multi_j->pot.num_interacted_pm,
-                        multi_i->m_pole.num_gpart);
+    /* if (cell_is_active_gravity(ci, e)) */
+    /*   accumulate_add_ll(&multi_i->pot.num_interacted_pm, */
+    /*                     multi_j->m_pole.num_gpart); */
+    /* if (cell_is_active_gravity(cj, e)) */
+    /*   accumulate_add_ll(&multi_j->pot.num_interacted_pm, */
+    /*                     multi_i->m_pole.num_gpart); */
 #endif
     return;
   }

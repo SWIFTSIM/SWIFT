@@ -453,21 +453,11 @@ static void runner_count_mesh_interaction_one_way(struct cell *super,
 static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
                                           struct cell *cj) {
 
-  /* Get the correct top level cells for self-interaction check. Only remap via
-   * void parents for genuinely zoom/void interactions; plain background pairs
-   * should use their normal top-level cells. */
+  /* Get the correct top level cells for self-interaction check */
   struct cell *top_i = ci->top;
+  if (top_i->void_parent != NULL) top_i = top_i->void_parent->top;
   struct cell *top_j = cj->top;
-  const int use_void_roots = ci->type == cell_type_zoom ||
-                             cj->type == cell_type_zoom ||
-                             ci->subtype == cell_subtype_void ||
-                             cj->subtype == cell_subtype_void ||
-                             top_i->subtype == cell_subtype_void ||
-                             top_j->subtype == cell_subtype_void;
-  if (use_void_roots) {
-    if (top_i->void_parent != NULL) top_i = top_i->void_parent->top;
-    if (top_j->void_parent != NULL) top_j = top_j->void_parent->top;
-  }
+  if (top_j->void_parent != NULL) top_j = top_j->void_parent->top;
 
   /* Do we share the same top level cell? i.e. are we self-interacting? */
   int is_self = top_i == top_j;
