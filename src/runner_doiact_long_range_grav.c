@@ -1392,6 +1392,33 @@ static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
  * @param cpj The current #cell from cj's hierarchy being processed.
  * @param s The #space.
  */
+static INLINE int runner_count_mesh_cell_is_above_diff_grav_depth(
+    const struct cell *c) {
+
+  /* For pure background-background mesh-count recursion, do not let a
+   * zoom-forced below-depth flag alter the split depth. That flag is set while
+   * splitting void interactions and can otherwise make this debug mirror split
+   * background pairs deeper than the already-created real tasks did. */
+  if (c->type == cell_type_regular || c->type == cell_type_zoom) {
+    return (c->maxdepth - c->depth) > space_subdepth_diff_grav;
+  }
+
+  return (c->maxdepth - c->depth) > zoom_bkg_subdepth_diff_grav;
+}
+
+static INLINE int runner_count_mesh_can_split_pair_gravity_task(
+    const struct cell *ci, const struct cell *cj) {
+
+  if (ci->type == cell_type_bkg && cj->type == cell_type_bkg &&
+      ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
+    return (ci->split && cj->split) &&
+           runner_count_mesh_cell_is_above_diff_grav_depth(ci) &&
+           runner_count_mesh_cell_is_above_diff_grav_depth(cj);
+  }
+
+  return cell_can_split_pair_gravity_task(ci, cj);
+}
+
 static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
                                                           struct cell *ci,
                                                           struct cell *cj,
@@ -1420,7 +1447,7 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
   }
 
   /* Should this pair be split? */
-  if (cell_can_split_pair_gravity_task(ci, cj)) {
+  if (runner_count_mesh_can_split_pair_gravity_task(ci, cj)) {
 
     /* Check particle count threshold - mirrors scheduler_splittask_gravity */
     const long long gcount_i = ci->grav.count;
