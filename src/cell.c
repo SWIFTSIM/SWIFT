@@ -2171,8 +2171,6 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
     return cell_check_grav_mesh_pairs_recursive(ci, cj, e);
   }
 
-  struct space *s = e->s;
-
   /* Loop over progeny pairs, mirroring
    * zoom_scheduler_splittask_gravity_void_pair */
   for (int i = 0; i < 8; i++) {
