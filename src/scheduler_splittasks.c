@@ -912,6 +912,47 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
   }
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Check that no remaining gravity pair task could have used the mesh.
+ *
+ * This verifies the final post-splitting task list. Any pair that can use the
+ * mesh should have been skipped rather than retained as a gravity task.
+ *
+ * @param s The #scheduler we are working in.
+ */
+static void scheduler_debug_check_gravity_pairs_not_mesh(struct scheduler *s) {
+
+  struct engine *e = s->space->e;
+
+  for (int ind = 0; ind < s->nr_tasks; ind++) {
+    const struct task *t = &s->tasks[ind];
+
+    if (t->skip) continue;
+    if (t->type != task_type_pair || t->subtype != task_subtype_grav) continue;
+
+    const struct cell *ci = t->ci;
+    const struct cell *cj = t->cj;
+
+    if (ci == NULL || cj == NULL) {
+      error("Found an active gravity pair task with a NULL cell.");
+    }
+
+    if (cell_can_use_mesh(e, ci, cj)) {
+      error(
+          "Found a gravity pair task that could have used the mesh: "
+          "task_index=%d ci=%llu (%s/%s depth=%d top=%p super=%llu) "
+          "cj=%llu (%s/%s depth=%d top=%p super=%llu)",
+          ind, ci->cellID, cellID_names[ci->type], subcellID_names[ci->subtype],
+          ci->depth, (void *)ci->top,
+          ci->grav.super != NULL ? ci->grav.super->cellID : 0ULL, cj->cellID,
+          cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
+          (void *)cj->top, cj->grav.super != NULL ? cj->grav.super->cellID : 0ULL);
+    }
+  }
+}
+#endif
+
 /**
  * @brief Splits all the tasks in the scheduler that are too large.
  *
@@ -943,5 +984,9 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
     threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                    s);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    scheduler_debug_check_gravity_pairs_not_mesh(s);
+#endif
   }
 }
