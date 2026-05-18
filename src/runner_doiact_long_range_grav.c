@@ -380,8 +380,8 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-#define runner_debug_mesh_count_table_size (1 << 23)
-#define runner_debug_mesh_count_probe_limit 16384
+#define runner_debug_mesh_count_table_size (1 << 24)
+#define runner_debug_mesh_count_probe_limit (1 << 20)
 
 struct runner_debug_mesh_count_entry {
   unsigned long long recipient_key;
@@ -394,11 +394,14 @@ static struct runner_debug_mesh_count_entry
 static void runner_debug_check_mesh_count_overlap(const struct cell *recipient,
                                                   const struct cell *source) {
 
+  if (recipient->type != cell_type_bkg ||
+      recipient->subtype != cell_subtype_neighbour || recipient->depth > 4)
+    return;
+
   const unsigned long long recipient_key = (unsigned long long)recipient;
   const unsigned long long source_key = (unsigned long long)source;
   const unsigned long long hash =
-      recipient_key * 11400714819323198485ull ^
-      source_key * 14029467366897019727ull;
+      recipient_key * 11400714819323198485ull;
 
   for (int probe = 0; probe < runner_debug_mesh_count_probe_limit; probe++) {
     struct runner_debug_mesh_count_entry *slot =
@@ -440,7 +443,17 @@ static void runner_debug_check_mesh_count_overlap(const struct cell *recipient,
     }
   }
 
-  error("Mesh-count debug table probe limit exceeded.");
+  error(
+      "Mesh-count debug table probe limit exceeded: recipient=%llu (%s/%s "
+      "depth=%d top=%p super=%llu) source=%llu (%s/%s depth=%d top=%p "
+      "gparts=%lld)",
+      recipient->cellID, cellID_names[recipient->type],
+      subcellID_names[recipient->subtype], recipient->depth,
+      (void *)recipient->top,
+      recipient->grav.super != NULL ? recipient->grav.super->cellID : 0ULL,
+      source->cellID, cellID_names[source->type],
+      subcellID_names[source->subtype], source->depth, (void *)source->top,
+      source->grav.multipole->m_pole.num_gpart);
 }
 
 #endif
