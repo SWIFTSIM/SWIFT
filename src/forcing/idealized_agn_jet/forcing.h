@@ -168,7 +168,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
       /* Normalise B field */
       if (B_kick_abs != 0.) {
         for (size_t i = 0; i < 3; i++) {
-          B_kick[i] /= terms->B_kick / B_kick_abs;
+          B_kick[i] *= terms->B_kick / B_kick_abs;
         }
       }
 
