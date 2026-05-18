@@ -1660,12 +1660,8 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
       if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
         continue;
 
-      /* Skip leaf neighbours interacting with void cells. The real splitter
-       * sees an ordered pair, but this counter may reorder ci/cj to keep the
-       * recipient branch first. Keep the skip semantic order-independent. */
-      if ((cpi->subtype == cell_subtype_void && !cpj->split) ||
-          (!cpi->split && cpj->subtype == cell_subtype_void))
-        continue;
+      /* Skip leaf neighbours interacting with void cells. */
+      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
 
       /* Skip any empty progeny of a void cell (void cells themselves always
        * have 0 particles but are never "empty"). */
