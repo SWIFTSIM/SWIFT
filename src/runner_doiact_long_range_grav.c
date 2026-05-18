@@ -697,15 +697,6 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
   struct engine *e = s->e;
 
-  /* Keep ci as the branch containing c whenever possible. */
-  const int ci_contains_c = (ci == c || cell_contains_progeny(ci, c));
-  const int cj_contains_c = (cj == c || cell_contains_progeny(cj, c));
-  if (!ci_contains_c && cj_contains_c) {
-    struct cell *tmp = ci;
-    ci = cj;
-    cj = tmp;
-  }
-
   /* If neither cell is a void cell, use the normal pair recursive function */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
     runner_count_mesh_interactions_pair_recursive(c, ci, cj, s);
@@ -750,6 +741,13 @@ static void runner_count_mesh_interactions_zoom_pair_recursive(
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
+        if ((cpi != c && !cell_contains_progeny(cpi, c)) &&
+            (cpj == c || cell_contains_progeny(cpj, c))) {
+          struct cell *tmp = cpi;
+          cpi = cpj;
+          cpj = tmp;
+        }
+
         /* Record the mesh interaction */
         runner_count_mesh_interaction(c, cpi, cpj);
         continue;
@@ -931,8 +929,11 @@ static void runner_count_mesh_interactions_zoom(struct runner *r,
     }
 
     /* We would create a pair task here, so recurse to count mesh interactions
-     * that arise from task splitting through the void hierarchy */
-    runner_count_mesh_interactions_zoom_pair_recursive(ci, top, cj, s);
+     * using the same splitter dispatch as scheduler_splittasks_mapper(). */
+    if (top->subtype == cell_subtype_void || cj->subtype == cell_subtype_void)
+      runner_count_mesh_interactions_zoom_pair_recursive(ci, top, cj, s);
+    else
+      runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
   }
 }
 
