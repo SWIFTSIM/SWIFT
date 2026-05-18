@@ -398,12 +398,14 @@ static void runner_accumulate_interaction(
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Need to account for the mesh interactions we missed */
-  accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
+  /* accumulate_add_ll(&multi_i->pot.num_interacted, */
+  /*                   multi_j->m_pole.num_gpart); */
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Need to account for the mesh interactions we missed */
-  accumulate_add_ll(&multi_i->pot.num_interacted_pm, multi_j->m_pole.num_gpart);
+  /* accumulate_add_ll(&multi_i->pot.num_interacted_pm, */
+  /*                   multi_j->m_pole.num_gpart); */
 #endif
   /* Record that this multipole received a contribution */
   multi_i->pot.interacted = 1;
