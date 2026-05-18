@@ -380,8 +380,8 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-#define runner_debug_mesh_count_table_size (1 << 22)
-#define runner_debug_mesh_count_probe_limit 4096
+#define runner_debug_mesh_count_table_size (1 << 23)
+#define runner_debug_mesh_count_probe_limit 16384
 
 struct runner_debug_mesh_count_entry {
   unsigned long long recipient_key;
@@ -397,7 +397,8 @@ static void runner_debug_check_mesh_count_overlap(const struct cell *recipient,
   const unsigned long long recipient_key = (unsigned long long)recipient;
   const unsigned long long source_key = (unsigned long long)source;
   const unsigned long long hash =
-      recipient_key * 11400714819323198485ull;
+      recipient_key * 11400714819323198485ull ^
+      source_key * 14029467366897019727ull;
 
   for (int probe = 0; probe < runner_debug_mesh_count_probe_limit; probe++) {
     struct runner_debug_mesh_count_entry *slot =
