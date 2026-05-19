@@ -351,85 +351,61 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 
-  // float W[6];
-  // hydro_part_get_primitive_variables(p, W);
-  //
-  // float m_inv_1;
-  // float m_inv_2;
-  // float ekin_1;
-  // float ekin_2;
-  //
-  // // Do we need to catch old mass?
-  // if (p->conserved.mass == 0.) {
-  //   warning("Mass 1 is = 0, setting internal energy dt to 0!");
-  //   m_inv_1 = 0.;
-  //   return 0; // If the mass is 0, how can the energy change?
-  // } else {
-  //   m_inv_1 = 1.f / p->conserved.mass;
-  // }
-  //
-  // /* Find initial thermal energy, should still be explicitly safe */
-  // ekin_1 = 0.5 * (p->conserved.momentum[0] * p->conserved.momentum[0]
-  //         + p->conserved.momentum[1] * p->conserved.momentum[1]
-  //         + p->conserved.momentum[2] * p->conserved.momentum[2]) * m_inv_1;
-  //
-  // /* Still safe from setting in previous kick */
-  // float thermal_energy_initial = p->conserved.energy - ekin_1;
-  //
-  // // Catch updated mass?
-  // if ((p->conserved.mass + p->flux.mass) <= 0.) {
-  //   warning("Mass 2 is <= 0, setting internal energy dt to u/dt");
-  //   return thermal_energy_initial * m_inv_1; // Loses all its energy
-  // } else {
-  //   m_inv_2 = 1.f / (p->conserved.mass + p->flux.mass);
-  // }
-  //
-  // /* Kinetic energy at next timestep with pure hydro interactions */
-  // ekin_2 = 0.5 * ((p->conserved.momentum[0] + p->flux.momentum[0]) *
-  //   (p->conserved.momentum[0] + p->flux.momentum[0]) +
-  //           (p->conserved.momentum[1] + p->flux.momentum[1]) *
-  //           (p->conserved.momentum[1] + p->flux.momentum[1]) +
-  //           (p->conserved.momentum[2] + p->flux.momentum[2]) *
-  //           (p->conserved.momentum[2] + p->flux.momentum[2])) *
-  //             m_inv_2;
-  //
-  // const float internal_energy_1 = (p->conserved.energy - ekin_1) * m_inv_1;
-  // float internal_energy_2 =
-  //   (p->conserved.energy + p->flux.energy - ekin_2) * m_inv_2;
-  //
-  // /* Cooling may also change the internal energy */
-  // internal_energy_2 += p->cool_du_dt_prev *
-  //   p->flux.dt;
-  //
-  // /* Pure hydro dudt */
-  // const float du_dt_old = (internal_energy_2 - internal_energy_1) / p->flux.dt;
-  //
-  // //return du_dt;
-
   float W[6];
   hydro_part_get_primitive_variables(p, W);
 
-  if (W[0] <= 0.0f) {
-    return 0.0f;
+  float m_inv_1;
+  float m_inv_2;
+  float ekin_1;
+  float ekin_2;
+
+  // Do we need to catch old mass?
+  if (p->conserved.mass == 0.) {
+    warning("Mass 1 is = 0, setting internal energy dt to 0!");
+    m_inv_1 = 0.;
+    return 0; // If the mass is 0, how can the energy change?
+  } else {
+    m_inv_1 = 1.f / p->conserved.mass;
   }
 
-  const float rho_inv = 1.f / W[0];
+  /* Find initial thermal energy, should still be explicitly safe */
+  ekin_1 = 0.5 * (p->conserved.momentum[0] * p->conserved.momentum[0]
+          + p->conserved.momentum[1] * p->conserved.momentum[1]
+          + p->conserved.momentum[2] * p->conserved.momentum[2]) * m_inv_1;
 
-  float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3], gradA[3];
-  hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP, gradA);
+  /* Still safe from setting in previous kick */
+  float thermal_energy_initial = p->conserved.energy - ekin_1;
 
-  const float divv = gradvx[0] + gradvy[1] + gradvz[2];
-
-  float gradu[3] = {0.f, 0.f, 0.f};
-  for (int i = 0; i < 3; i++) {
-    gradu[i] = hydro_one_over_gamma_minus_one * rho_inv *
-               (gradP[i] - rho_inv * W[4] * gradrho[i]);
+  // Catch updated mass?
+  if ((p->conserved.mass + p->flux.mass) <= 0.) {
+    warning("Mass 2 is <= 0, setting internal energy dt to u/dt");
+    return thermal_energy_initial * m_inv_1; // Loses all its energy
+  } else {
+    m_inv_2 = 1.f / (p->conserved.mass + p->flux.mass);
   }
 
-  const float du_dt = -(W[1] * gradu[0] + W[2] * gradu[1] + W[3] * gradu[2]) -
-                      rho_inv * W[4] * divv;
+  /* Kinetic energy at next timestep with pure hydro interactions */
+  ekin_2 = 0.5 * ((p->conserved.momentum[0] + p->flux.momentum[0]) *
+    (p->conserved.momentum[0] + p->flux.momentum[0]) +
+            (p->conserved.momentum[1] + p->flux.momentum[1]) *
+            (p->conserved.momentum[1] + p->flux.momentum[1]) +
+            (p->conserved.momentum[2] + p->flux.momentum[2]) *
+            (p->conserved.momentum[2] + p->flux.momentum[2])) *
+              m_inv_2;
+
+  const float internal_energy_1 = (p->conserved.energy - ekin_1) * m_inv_1;
+  float internal_energy_2 =
+    (p->conserved.energy + p->flux.energy - ekin_2) * m_inv_2;
+
+  /* Cooling may also change the internal energy */
+  internal_energy_2 += p->cool_du_dt_prev *
+    p->flux.dt;
+
+  /* Pure hydro dudt */
+  const float du_dt = (internal_energy_2 - internal_energy_1) / p->flux.dt;
 
   return du_dt;
+
 
 }
 
