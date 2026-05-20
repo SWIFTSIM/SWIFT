@@ -397,10 +397,6 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
   float internal_energy_2 =
     (p->conserved.energy + p->flux.energy - ekin_2) * m_inv_2;
 
-  /* Cooling may also change the internal energy */
-  internal_energy_2 += p->cool_du_dt_prev *
-    p->flux.dt;
-
   /* Pure hydro dudt */
   const float du_dt = (internal_energy_2 - internal_energy_1) / p->flux.dt;
 
