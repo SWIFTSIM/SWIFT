@@ -94,10 +94,10 @@ hydro_part_positivity_limiter_fluxes(const struct part* pi,
 
   double V_inv_i = 1. / pi->geometry.volume;
   double V_inv_j = 1. / pi->geometry.volume;
-  double flux_fac_i =  pi->flux.dt * pi->geometry.nface * pi->flux.dt;
-  double flux_fac_j =  pj->flux.dt * pj->geometry.nface * pj->flux.dt;
-  //double flux_fac_i = (1. + 1e-5) * pi->geometry.area / Anorm * pi->flux.dt;
-  //double flux_fac_j = (1. + 1e-5) * pj->geometry.area / Anorm * pj->flux.dt;
+  //double flux_fac_i =  pi->flux.dt * pi->geometry.nface;
+  //double flux_fac_j =  pj->flux.dt * pj->geometry.nface;
+  double flux_fac_i = (1. + 1e-5) * pi->geometry.area / Anorm * pi->flux.dt;
+  double flux_fac_j = (1. + 1e-5) * pj->geometry.area / Anorm * pj->flux.dt;
   double m_dagger_i = pi->conserved.mass - flux_fac_i * fluxes[0];
   double m_dagger_j = pj->conserved.mass + flux_fac_j * fluxes[0];
   double rho_i = m_dagger_i * V_inv_i;
