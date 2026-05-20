@@ -75,17 +75,14 @@ print("")
 
 # Derived units
 const_G = (
-    NEWTON_GRAVITY_CGS
-    * unit_mass_in_cgs
-    * unit_time_in_cgs ** 2
-    * unit_length_in_cgs ** -3
+    NEWTON_GRAVITY_CGS * unit_mass_in_cgs * unit_time_in_cgs**2 * unit_length_in_cgs**-3
 )
-const_mp = PROTON_MASS_IN_CGS * unit_mass_in_cgs ** -1
+const_mp = PROTON_MASS_IN_CGS * unit_mass_in_cgs**-1
 const_kb = (
     BOLTZMANN_IN_CGS
-    * unit_mass_in_cgs ** -1
-    * unit_length_in_cgs ** -2
-    * unit_time_in_cgs ** 2
+    * unit_mass_in_cgs**-1
+    * unit_length_in_cgs**-2
+    * unit_time_in_cgs**2
 )
 
 print("--- Some constants [internal units] ---")

@@ -58,7 +58,7 @@ projection_kwargs = {"resolution": 1024, "parallel": True}
 # Set Units of your choice
 energy_units = 1e50 * unyt.erg
 energy_units_str = "10^{50} \\rm{erg}"
-flux_units = energy_units / unyt.kpc ** 2 / unyt.Gyr
+flux_units = energy_units / unyt.kpc**2 / unyt.Gyr
 flux_units_str = "10^{50} \\rm{erg} \\ \\rm{kpc}^{-2} \\ \\rm{Gyr}^{-1}"
 time_units = unyt.Gyr
 # -----------------------------------------------------------------------

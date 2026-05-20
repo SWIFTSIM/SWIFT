@@ -165,7 +165,7 @@ def interpolate_2d(params, mass, metallicity, verbose, num_error):
                 print(
                     f"Error : the indices found are in opposition with the SWIFT's ones"
                 )
-            return [(0)]
+            return [0]
 
         else:
             print("Error : type of boundary not found or not expected")
@@ -201,7 +201,7 @@ def main():
 
     args = parser.parse_args()
 
-    num_error = [(0)]
+    num_error = [0]
 
     for file in args.log_file:
 
