@@ -233,13 +233,18 @@ void runner_do_stars_hii_ionization_feedback_branch(
         const int flipped = runner_flip[sid];
         sid = sortlistID[sid];
 
+	/* OPTIMIZATION: Check if cj is completely out of reach before doing anything else */
+        if (!runner_hii_check_cell_can_be_reached(c, cj, sid, flipped, shift, si, interaction_limit)) {
+          continue; 
+        }
+
         /* Let's first lock the cell */
         lock_lock(&cj->hydro.extra_sort_lock);
 
-        /* const int is_sorted = */
-        /*   (cj->hydro.sorted & (1 << sid)) && */
-        /*   (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin); */
-        const int is_sorted = 1;
+        const int is_sorted =
+          (cj->hydro.sorted & (1 << sid)) &&
+          (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
+        /* const int is_sorted = 1; */
 
         /* Unlock if it wasn't sorted as we will not use the sort array */
         if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
@@ -252,8 +257,8 @@ void runner_do_stars_hii_ionization_feedback_branch(
 #endif
 
         if (force_naive || !is_sorted) {
-          message("[%lld, %lld] Doing naive interaction!", c->cellID,
-                  cj->cellID);
+          message("[%lld, %lld] Doing naive interaction! %i", c->cellID,
+                  cj->cellID, cj->hydro.sorted & (1 << sid));
           runner_do_stars_hii_ionization_feedback_pair_naive(
               r, c, cj, shift, si, interaction_limit, ngb_buffer, max_ngbs,
               &count_found);
@@ -667,4 +672,60 @@ __attribute__((always_inline)) INLINE void runner_hii_buffer_insert(
     buffer[i + 1].c = c;
 #endif
   }
+}
+
+/**
+ * @brief Check if a star's interaction radius can reach any part of a neighboring cell along a specific axis.
+ *
+ * @param ci The cell containing the star particle.
+ * @param cj The neighboring gas cell to check.
+ * @param sid The sorting axis index between the pair.
+ * @param flipped Flag indicating if the cell order is flipped relative to the axis direction.
+ * @param shift The periodic wrapping shift vector.
+ * @param si The star particle pointer.
+ * @param search_radius The maximum HII ionization radius of the star.
+ * @return 1 if the cell is within reach (or if we cannot determine it safely), 0 if it can be completely skipped.
+ */
+__attribute__((always_inline)) INLINE int runner_hii_check_cell_can_be_reached(
+    const struct cell *ci, const struct cell *cj, const int sid, const int flipped,
+    const double shift[3], const struct spart *si, const float search_radius) {
+
+  const float dx_max = cj->hydro.dx_max_sort + ci->stars.dx_max_sort;
+
+  /* Project the star onto the sorting axis, applying periodic shift */
+  const double shift_sign = flipped ? -1.0 : 1.0;
+  const double pix[3] = {si->x[0] + shift_sign * shift[0],
+                         si->x[1] + shift_sign * shift[1],
+                         si->x[2] + shift_sign * shift[2]};
+
+  double di_star = 0.0;
+  for (int k = 0; k < 3; k++) {
+    di_star += pix[k] * runner_shift[sid][k];
+  }
+
+  /* Star reach window along the axis direction */
+  const double di_min = di_star - search_radius - dx_max;
+  const double di_max = di_star + search_radius + dx_max;
+
+  /* Calculate cell boundaries directly from geometry to remain safe if unsorted */
+  double cj_center[3] = {cj->loc[0] + cj->width[0] * 0.5,
+                         cj->loc[1] + cj->width[1] * 0.5,
+                         cj->loc[2] + cj->width[2] * 0.5};
+  
+  double dj_center = 0.0;
+  double dj_extent = 0.0;
+  for (int k = 0; k < 3; k++) {
+    dj_center += cj_center[k] * runner_shift[sid][k];
+    dj_extent += cj->width[k] * 0.5 * fabs(runner_shift[sid][k]);
+  }
+
+  const double dj_min = dj_center - dj_extent;
+  const double dj_max = dj_center + dj_extent;
+
+  /* Skip if completely out of range */
+  if (di_max < dj_min || di_min > dj_max) {
+    return 0;
+  }
+
+  return 1;
 }
