@@ -37,7 +37,6 @@
 #include "hydro.h"
 #include "stars.h"
 #include "timers.h"
-#include "space_getsid.h"
 
 #define search_radius_factor 1.2f
 #define max_ngbs 128
@@ -172,10 +171,10 @@ void runner_do_stars_hii_ionization_feedback_branch(
   /* TODO: Add multiple tries if the star has not exhausted its photons */
   struct hii_neighbor ngb_buffer[max_ngbs];
 
-  for (int sid = 0; sid < scount; sid++) {
+  for (int i = 0; i < scount; i++) {
 
     /* Get a hold of the ith spart in ci. */
-    struct spart *si = &sparts[sid];
+    struct spart *si = &sparts[i];
 
     /* Is this part within the timestep? */
     if (spart_is_inhibited(si, e)) continue;
@@ -203,31 +202,66 @@ void runner_do_stars_hii_ionization_feedback_branch(
       /***************************************************/
       /* First loop over particles in the current cell */
       runner_do_stars_hii_ionization_feedback_self(
-          r, c->stars.radiation_level, si, interaction_limit, ngb_buffer, max_ngbs,
-          &count_found);
+          r, c->stars.radiation_level, si, interaction_limit, ngb_buffer,
+          max_ngbs, &count_found);
 
       /* Now loop over particles in the neighboring cells */
-      for (struct link *l = c->stars.radiation_level->stars.radiation_in; l != NULL;
-           l = l->next) {
+      for (struct link *l = c->stars.radiation_level->stars.radiation_in;
+           l != NULL; l = l->next) {
         /* We have already handled the self case */
         if (l->t->type == task_type_self) continue;
-        struct cell *c_in = (l->t->cj == c->stars.radiation_level) ? l->t->ci : l->t->cj;
+        struct cell *cj =
+            (l->t->cj == c->stars.radiation_level) ? l->t->ci : l->t->cj;
+
+        /* Get the relative distance between the pairs, wrapping. */
+        double shift[3] = {0.0, 0.0, 0.0};
+        for (int k = 0; k < 3; k++) {
+          if (cj->loc[k] - c->loc[k] < -e->s->dim[k] / 2)
+            shift[k] = e->s->dim[k];
+          else if (cj->loc[k] - c->loc[k] > e->s->dim[k] / 2)
+            shift[k] = -e->s->dim[k];
+        }
+
+        /* Get the sorting index. */
+        int sid = 0;
+        for (int k = 0; k < 3; k++)
+          sid = 3 * sid + ((cj->loc[k] - c->loc[k] + shift[k] < 0)   ? 0
+                           : (cj->loc[k] - c->loc[k] + shift[k] > 0) ? 2
+                                                                     : 1);
+
+        /* Switch the cells around? */
+        const int flipped = runner_flip[sid];
+        sid = sortlistID[sid];
+
+        /* Let's first lock the cell */
+        lock_lock(&cj->hydro.extra_sort_lock);
+
+        /* const int is_sorted = */
+        /*   (cj->hydro.sorted & (1 << sid)) && */
+        /*   (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin); */
+        const int is_sorted = 1;
+
+        /* Unlock if it wasn't sorted as we will not use the sort array */
+        if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+          error("Impossible to unlock cell!");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
-	const int force_naive = 1;
+        const int force_naive = 1;
 #else
-	const int force_naive = 0;
+        const int force_naive = 0;
 #endif
 
-	if (force_naive) {
-	  runner_do_stars_hii_ionization_feedback_pair_naive(
-            r, c, c_in, si, interaction_limit, ngb_buffer, max_ngbs,
-            &count_found);
-	} else {
-        runner_do_stars_hii_ionization_feedback_pair(
-            r, c, c_in, si, interaction_limit, ngb_buffer, max_ngbs,
-            &count_found);
-	}
+        if (force_naive || !is_sorted) {
+          message("[%lld, %lld] Doing naive interaction!", c->cellID,
+                  cj->cellID);
+          runner_do_stars_hii_ionization_feedback_pair_naive(
+              r, c, cj, shift, si, interaction_limit, ngb_buffer, max_ngbs,
+              &count_found);
+        } else {
+          runner_do_stars_hii_ionization_feedback_pair(
+              r, c, cj, sid, flipped, shift, si, interaction_limit, ngb_buffer,
+              max_ngbs, &count_found);
+        }
       } /* Neighbour search */
 
       /* Flag if we hit the limit */
@@ -322,7 +356,7 @@ void runner_do_stars_hii_ionization_feedback_self(
       error("Interacting undrifted cell (hydro).");
     if (!cell_are_spart_drifted(c, e))
       error("Interacting undrifted cell (stars).");
-    
+
     struct part *restrict parts = c->hydro.parts;
     struct xpart *restrict xparts = c->hydro.xparts;
     const float six[3] = {si->x[0], si->x[1], si->x[2]};
@@ -357,7 +391,7 @@ void runner_do_stars_hii_ionization_feedback_self(
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       if (r2 < search_radius * search_radius)
-	runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c);
+        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c);
     } /* Loop in current cell */
   }
 }
@@ -380,9 +414,9 @@ void runner_do_stars_hii_ionization_feedback_self(
  * @param count_found (return) The number of neighbors successfully gathered.
  */
 void runner_do_stars_hii_ionization_feedback_pair_naive(
-    struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
-    const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found) {
+    struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
+    struct spart *si, const float search_radius, struct hii_neighbor *buffer,
+    int max_size, int *count_found) {
 
   struct engine *e = r->e;
   struct part *restrict parts_j = cj->hydro.parts;
@@ -395,9 +429,9 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
   if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL) {
-        runner_do_stars_hii_ionization_feedback_pair_naive(r, ci, cj->progeny[k], si,
-                                                     search_radius, buffer,
-                                                     max_size, count_found);
+        runner_do_stars_hii_ionization_feedback_pair_naive(
+            r, ci, cj->progeny[k], shift, si, search_radius, buffer, max_size,
+            count_found);
       }
     }
   } else {
@@ -407,15 +441,6 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
       error("Interacting undrifted cell (hydro).");
     if (!cell_are_spart_drifted(cj, e))
       error("Interacting undrifted cell (stars).");
-
-    /* Get the relative distance between the pairs, wrapping. */
-    double shift[3] = {0.0, 0.0, 0.0};
-    for (int k = 0; k < 3; k++) {
-      if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-        shift[k] = e->s->dim[k];
-      else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-        shift[k] = -e->s->dim[k];
-    }
 
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
@@ -456,7 +481,7 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
 
 /**
  * @brief Gather gas particles within the HII radius from a neighboring cell.
- * 
+ *
  *
  * Similar to the 'self' version, but handles the distance calculations between
  * two different cells (@p ci and @p cj), including periodic boundary
@@ -472,7 +497,8 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
  * @param count_found (return) The number of neighbors successfully gathered.
  */
 void runner_do_stars_hii_ionization_feedback_pair(
-    struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
+    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
+    const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found) {
 
@@ -485,9 +511,9 @@ void runner_do_stars_hii_ionization_feedback_pair(
   if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL) {
-        runner_do_stars_hii_ionization_feedback_pair(r, ci, cj->progeny[k], si,
-                                                     search_radius, buffer,
-                                                     max_size, count_found);
+        runner_do_stars_hii_ionization_feedback_pair(
+            r, ci, cj->progeny[k], sid, flipped, shift, si, search_radius,
+            buffer, max_size, count_found);
       }
     }
   } else {
@@ -498,124 +524,117 @@ void runner_do_stars_hii_ionization_feedback_pair(
     if (!cell_are_spart_drifted(cj, e))
       error("Interacting undrifted cell (stars).");
 
-    /* Get the sid and handle potential cell swapping */
-    double shift[3] = {0.0, 0.0, 0.0};
-    struct cell *ci_temp = ci;
-    struct cell *cj_temp = cj;
-    int sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
-
-    /* Determine if our gas cell (cj) ended up as the 'i' or 'j' cell in the swap */
-    const int flipped = (cj_temp == ci);
-
     /* Get the hydro sorts for our gas cell */
     const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
     const float dx_max = cj->hydro.dx_max_sort + ci->stars.dx_max_sort;
 
-    /* Project the star's position onto the sorting axis.
-     * We MUST use the shift returned by space_getsid_and_swap_cells to
-     * bring the star into the frame of the neighbor cell's sorted distances. */
     double di_star = 0.0;
+    double di_shift = 0.0;
     for (int k = 0; k < 3; k++) {
-      di_star += (si->x[k] + shift[k]) * runner_shift[sid][k];
+      di_star += si->x[k] * runner_shift[sid][k];
+      di_shift += shift[k] * runner_shift[sid][k];
     }
 
-    /* Handle the 'Flipped' state for clipping.
-     * If flipped, the joining axis direction is inverted relative to the
-     * star's perspective in its original cell. */
     double di_min, di_max;
     if (!flipped) {
-      /* Star is "behind" the gas cell on the axis */
-      di_min = di_star - dx_max; // Not strictly needed for the pjd=0 start
-      di_max = di_star + search_radius + dx_max;
+      /* Star is in ci_temp, gas is in cj_temp. Shift is added to ci to get to
+       * cj frame. */
+      const double di = di_star + di_shift;
+      di_min = di - search_radius - dx_max;
+      di_max = di + search_radius + dx_max;
     } else {
-      /* Star is "ahead" of the gas cell on the axis */
-      di_min = di_star - search_radius - dx_max;
-      di_max = di_star + dx_max; // Not strictly needed for the pjd=count-1 end
+      /* Cells were flipped! Star is in cj_temp, gas is in ci_temp.
+       * Shift sign is inverted relative to the axis direction. */
+      const double di = di_star - di_shift;
+      di_min = di - search_radius - dx_max;
+      di_max = di + search_radius + dx_max;
     }
 
     const double dj_min = sort_j[0].d;
     const double dj_max = sort_j[count_j - 1].d;
 
-    /* Skip if the cell is not reachable */
+    /* Skip if the cell is completely out of reach along the sorted axis */
     if (di_max < dj_min || di_min > dj_max) {
       return;
     }
 
-    /* The Particle Loop (Directional optimization) */
     struct part *restrict parts_j = cj->hydro.parts;
     struct xpart *restrict xparts_j = cj->hydro.xparts;
     const float r2_max = search_radius * search_radius;
 
-    const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
-                          (float)(si->x[1] - (cj->loc[1] + shift[1])),
-                          (float)(si->x[2] - (cj->loc[2] + shift[2]))};
-    
+    /* If flipped is true, shift must be subtracted to align the coordinates
+     * correctly */
+    const double shift_sign = flipped ? -1.0 : 1.0;
+    const float six[3] = {(float)(si->x[0] + shift_sign * shift[0]),
+                          (float)(si->x[1] + shift_sign * shift[1]),
+                          (float)(si->x[2] + shift_sign * shift[2])};
+
     if (!flipped) {
       /* Star is on the 'left', loop forward until we pass the star's reach */
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d <= di_max; pjd++) {
 
-      /* Skip particles that are too far on the 'near' side of the slab */
-      if (sort_j[pjd].d < di_min) continue;
+        /* Skip particles that are too far on the 'near' side of the slab */
+        if (sort_j[pjd].d < di_min) continue;
 
-      /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
-      struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
+        /* Get a pointer to the jth particle. */
+        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
 
-      /* Early abort? */
-      if (part_is_inhibited(pj, e)) continue;
-      if (!feedback_part_can_be_ionized(pj, xpj, e)) continue;
+        /* Early abort? */
+        if (part_is_inhibited(pj, e)) continue;
+        if (!feedback_part_can_be_ionized(pj, xpj, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (pj->ti_drift != e->ti_current)
-	error(
-	      "Particle pj (%lld) not drifted to current time. c = %lld, "
-	      "c->super = %lld",
-	      pj->id, cj->cellID, cj->super->cellID);
+        /* Check that particles have been drifted to the current time */
+        if (pj->ti_drift != e->ti_current)
+          error(
+              "Particle pj (%lld) not drifted to current time. c = %lld, "
+              "c->super = %lld",
+              pj->id, cj->cellID, cj->super->cellID);
 #endif
 
-      /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-			    (float)(pj->x[1] - cj->loc[1]),
-			    (float)(pj->x[2] - cj->loc[2])};
-      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        /* Compute the pairwise distance. */
+        const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
+                              (float)(pj->x[2])};
+        const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      if (r2 < r2_max)
-	runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
+        if (r2 < r2_max)
+          runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj,
+                                   cj);
       }
     } else {
       /* Star is on the 'right', loop backward until we pass the star's reach */
       for (int pjd = count_j - 1; pjd >= 0 && sort_j[pjd].d >= di_min; pjd--) {
 
-	/* Skip particles that are too far on the 'near' side of the slab */
-	if (sort_j[pjd].d < di_min) continue;
+        /* Skip particles that are too far on the 'near' side of the slab */
+        if (sort_j[pjd].d < di_min) continue;
 
-	struct part *restrict pj = &parts_j[sort_j[pjd].i];
-	struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
+        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
 
-	/* Early abort? */
-	if (part_is_inhibited(pj, e)) continue;
-	if (!feedback_part_can_be_ionized(pj, xpj, e)) continue;
+        /* Early abort? */
+        if (part_is_inhibited(pj, e)) continue;
+        if (!feedback_part_can_be_ionized(pj, xpj, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-	/* Check that particles have been drifted to the current time */
-	if (pj->ti_drift != e->ti_current)
-	  error(
-		"Particle pj (%lld) not drifted to current time. c = %lld, "
-		"c->super = %lld",
-		pj->id, cj->cellID, cj->super->cellID);
+        /* Check that particles have been drifted to the current time */
+        if (pj->ti_drift != e->ti_current)
+          error(
+              "Particle pj (%lld) not drifted to current time. c = %lld, "
+              "c->super = %lld",
+              pj->id, cj->cellID, cj->super->cellID);
 #endif
 
-	/* Compute the pairwise distance. */
-	const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-			      (float)(pj->x[1] - cj->loc[1]),
-			      (float)(pj->x[2] - cj->loc[2])};
-	const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
-	const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        /* Compute the pairwise distance. */
+        const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
+                              (float)(pj->x[2])};
+        const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-	if (r2 < r2_max)
-	  runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
+        if (r2 < r2_max)
+          runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj,
+                                   cj);
       }
     }
   }

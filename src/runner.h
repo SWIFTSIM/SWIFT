@@ -192,11 +192,12 @@ void runner_do_stars_hii_ionization_feedback_self(
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found);
 void runner_do_stars_hii_ionization_feedback_pair_naive(
-    struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
-    const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found);
+    struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
+    struct spart *si, const float search_radius, struct hii_neighbor *buffer,
+    int max_size, int *count_found);
 void runner_do_stars_hii_ionization_feedback_pair(
-    struct runner *r, struct cell *ci, struct cell *cj, struct spart *si,
+    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
+    const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found);
 void runner_hii_buffer_insert(struct hii_neighbor *buffer, int max_size,
