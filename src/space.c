@@ -7249,10 +7249,10 @@ void apply_GS_fR(const double *rho, double *u, struct MG_variables *MG, int cdim
   residual = get_residual_fR_linear(u, rho, MG, cdim, mean_density, delta);
   message("We needed %d steps to converge and the residual is %E", counter, residual);
 
-  for (int i=0; i<N*N*N; i++) {
-    sum += (u[i] + MG->fR0/MG->fR_correction)/(N*N*N);
-  }
-  message("The mean is %E", sum);
+  //for (int i=0; i<N*N*N; i++) {
+    //sum += (u[i] + MG->fR0/MG->fR_correction)/(N*N*N);
+  //}
+  //message("The mean is %E", sum);
 
 }
 
@@ -7273,7 +7273,7 @@ void perform_red_black_sweep_fR_linear(double *u, const double *rho, struct MG_v
           u[cell_getid(cdim,i,j,k)] = ((u[cell_getid(cdim,i_min,j,k)]+ u[cell_getid(cdim,i_plus,j,k)]+ 
                                               u[cell_getid(cdim,i,j_min,k)]+u[cell_getid(cdim,i,j_plus,k)] + 
                                               u[cell_getid(cdim,i,j,k_min)]+u[cell_getid(cdim,i,j,k_plus)] + 
-                                              (delta*delta*mean_density*8.*MG->G*M_PI)/(3.*MG->c*MG->c*MG->a)*(rho[cell_getid(cdim,i,j,k)]-rhs_correction))/(6.0-(MG->a*MG->a*MG->R*delta*delta)/(6.*MG->c*MG->c*(MG->fR0)/(MG->fR_correction))));
+                                              (delta*delta*mean_density*8.*MG->G*M_PI)/(3.*MG->c*MG->c*MG->a)*(rho[cell_getid(cdim,i,j,k)]-rhs_correction))/(6.0-(MG->a*MG->a*MG->R*delta*delta)/(6.*MG->c*MG->c*MG->fR_bar)));
           
         }
       }
@@ -7298,7 +7298,7 @@ double get_residual_fR_linear(double *u, const double *rho, struct MG_variables 
                                                 u[cell_getid(cdim,i,j_min,k)]+u[cell_getid(cdim,i,j_plus,k)]+
                                                 u[cell_getid(cdim,i,j,k_min)]+u[cell_getid(cdim,i,j,k_plus)]
                                                 - 6.0*u[cell_getid(cdim,i,j,k)])/(delta*delta) 
-                                                - (1.)/(3.*MG->c*MG->c)*(-(MG->a*MG->a*MG->R)/(2.*MG->fR0/(MG->fR_correction)) * u[cell_getid(cdim,i,j,k)] - (mean_density*8.*M_PI*MG->G)/(MG->a)*(rho[cell_getid(cdim,i,j,k)]-rhs_correction)));
+                                                - (1.)/(3.*MG->c*MG->c)*(-(MG->a*MG->a*MG->R)/(2.*MG->fR_bar) * u[cell_getid(cdim,i,j,k)] - (mean_density*8.*M_PI*MG->G)/(MG->a)*(rho[cell_getid(cdim,i,j,k)]-rhs_correction)));
       residual += res*res;
       }
     }
@@ -7405,7 +7405,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
         break;
       case 3:
         /* Change the density field to represent a 1D sinusoid in the box */
-        double fR_mod = -1e-11;
+        double fR_mod = -1e-5;
         double delta = s->dim[0]/N;
         for (int i2=0; i2<N; i2++) {
           for (int j=0; j<N; j++) {
@@ -7479,6 +7479,28 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     cdim[2] = N;
     apply_multigrid_fR(rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, 15);
   }
+
+  if (test==3) { //Test whether the theoretical sine is a solution
+    message("\n Testing the theoretical sine wave");
+    //double evo_term_half = ((1.+4.*MG->Omega_ratio)/(MG->a3_inv + 4.*MG->Omega_ratio));
+    //double evo_term = evo_term_half*evo_term_half;
+    int cdim_max[3] = {N_max, N_max, N_max};
+    for (int i=0; i<N_max; i++) {
+      for (int j=0; j<N_max; j++) {
+        for (int k=0; k<N_max; k++) {
+          double dx = fabs((double)(i) * box_size/N_max);
+          size_t cid = cell_getid(cdim_max, i, j, k);
+          //message("The argument is %E", sin((2.*M_PI*dx)/box_size)-2.); 
+          u_levels[N_levels-1][cid] = log((2. - sin((2.*M_PI*dx)/box_size))/2.); 
+        }
+      }
+    }
+    double mean_density_copy[N_levels]; //Copy of mean_density containing the densities of the grid at level i to level 0
+    for (int j=0; j<N_levels; j++) {
+      mean_density_copy[j] = mean_density[N_levels-1-j];
+    }
+    apply_multigrid_fR(rho_levels[N_levels-1], u_levels[N_levels-1], MG, cdim_max, mean_density_copy, box_size, N_min, N_max, 2);
+  }
 }
 
 /**
@@ -7532,7 +7554,7 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
 
     //free(field_converted_check);
 
-    message("The residual is %E", residual);
+    if (counter%50 == 0) message("The residual is %E", residual);
     //sleep(2);
     counter +=1;
   }
@@ -7597,7 +7619,7 @@ void perform_red_black_sweep_fR(double *u, const double *rho, struct MG_variable
           double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.)*MG->normalisation*u[cell_getid(cdim, i,j,k)]));
           double derivative_term = get_derivative(u, MG, cdim, nbs, i, j, k, delta);
 
-          u[cell_getid(cdim,i,j,k)] -= (Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term + density_term))/derivative_term;
+          u[cell_getid(cdim,i,j,k)] -= (Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar*MG->normalisation)) * (field_term + density_term))/derivative_term;
         }
       }
     }
@@ -7624,7 +7646,7 @@ double get_derivative(double *u, struct MG_variables *MG, int cdim[3], int nbs[6
   double field_term = A * exp(A * u[cell_getid(cdim, i, j, k)]) * (u[cell_getid(cdim, nbs[0], j, k)] + u[cell_getid(cdim, nbs[1], j, k)] 
                       + u[cell_getid(cdim, i, nbs[2], k)] + u[cell_getid(cdim, i, nbs[3], k)] + u[cell_getid(cdim, i, j, nbs[4])] 
                       + u[cell_getid(cdim, i, j, nbs[5])] - 6. * u[cell_getid(cdim, i, j, k)]);
-  double model_term = (1./2.) * MG->R*MG->a*MG->a * (1./(3.*MG->c*MG->c*MG->fR0)) * MG->fR_correction * exp((-1./2.) * A * u[cell_getid(cdim, i, j, k)]);
+  double model_term = (1./2.) * MG->R*MG->a*MG->a * (1./(3.*MG->c*MG->c*MG->fR_bar)) * exp((-1./2.) * A * u[cell_getid(cdim, i, j, k)]);
 
   return (1./(2.*delta*delta)) * (field_term - exp_term) + model_term;
 }
@@ -7665,14 +7687,15 @@ double get_residual_fR(const double *u, const double *rho, struct MG_variables *
 
         double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
         double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.)*MG->normalisation * u[cell_getid(cdim, i,j,k)]));
-        double res = Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term + density_term); 
+        double res = Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar*MG->normalisation)) * (field_term + density_term); 
         
-        if (verbose && exp(u[cell_getid(cdim, i,j,k)])<0.9) {
-          message("The overdensity is %lf", mean_density * (rho[cell_getid(cdim, i,j,k)]-1.));
+        if (verbose) {
+          message("The i-index is %d", i);
+          //message("The overdensity is %lf", mean_density * (rho[cell_getid(cdim, i,j,k)]-1.));
           message("The density term is %E", density_term);
           message("The fR/mean(fR) is %E and dR/R is %E", exp(u[cell_getid(cdim, i,j,k)]), (1. - exp(-(1./2.)*MG->normalisation * u[cell_getid(cdim, i,j,k)])));
           message("The field term is %E", field_term);
-          message("The LHS (Laplacian) is %E and the RHS is %E", Laplacian_exp/(delta*delta), (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term + density_term));
+          message("The LHS (Laplacian) is %E and the RHS is %E", Laplacian_exp/(delta*delta), (1./(3.*MG->c*MG->c*MG->fR_bar*MG->normalisation)) * (field_term + density_term));
           message("The residual is %E \n", res);
           sleep(2);
         }
@@ -7720,7 +7743,7 @@ void get_residual_array_fR(const double *u, const double *rho, struct MG_variabl
 
         double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
         double field_term = MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*MG->normalisation*u[cell_getid(cdim, i,j,k)]));
-        double res = Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction* (field_term + density_term); 
+        double res = Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar*MG->normalisation)) * (field_term + density_term); 
 
         residual_array[cell_getid(cdim, i, j, k)] = res;
       }
@@ -7795,7 +7818,8 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
   double delta = box_size/N_max; //Width of a grid cell of the finest level
   double residual; 
   residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
-  message("The first residual is %lf", residual);
+  message("The first residual is %E", residual);
+  if (V_max == 2) residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 1);
   const double tolerance = 10e-10; //Choose reasonable value here
   int counter = 0;
   int fine_steps = 10; //Choose reasonable value here
@@ -7960,7 +7984,7 @@ void FAS_recursive(double *u, const double *residual, struct MG_variables *MG, i
       perform_red_black_sweep_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
       coarser_residual_abs = get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
       counter +=1;
-      message("Did %d steps and the residual is %E", counter, coarser_residual_abs);
+      if (counter%50 == 0) message("Did %d steps and the residual is %E", counter, coarser_residual_abs);
     }
     coarser_residual_abs = get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
     message("The total number of steps on the coarsest grid is %d and the residual is %lf", counter, coarser_residual_abs);
@@ -8041,7 +8065,7 @@ void get_residual_array_coarser(const double *coarser_solution, const double *re
 
         double Laplacian_exp[2] = {get_Laplacian(MG, coarser_solution, cdim, nbs, i, j, k), get_Laplacian(MG, restricted_solution, cdim, nbs, i, j, k)};
         double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*restricted_solution[cell_getid(cdim, i,j,k)]))};
-        double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0)) * MG->fR_correction * (field_term[0] - field_term[1]) + restricted_residual[cell_getid(cdim, i,j,k)]/MG->normalisation; 
+        double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term[0] - field_term[1]) + restricted_residual[cell_getid(cdim, i,j,k)]/MG->normalisation; 
 
         coarser_residual[cell_getid(cdim, i, j, k)] = res;
       }
@@ -8082,7 +8106,7 @@ void perform_red_black_sweep_coarser(double *coarser_solution, const double *res
           double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*MG->normalisation*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*MG->normalisation*restricted_solution[cell_getid(cdim, i,j,k)]))};
           double derivative_term = get_derivative(coarser_solution, MG, cdim, nbs, i, j, k, delta);
 
-          coarser_solution[cell_getid(cdim,i,j,k)] -= ((Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term[0] - field_term[1]) + (restricted_residual[cell_getid(cdim, i, j, k)]/MG->normalisation))/derivative_term;
+          coarser_solution[cell_getid(cdim,i,j,k)] -= ((Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar*MG->normalisation)) * (field_term[0] - field_term[1]) + (restricted_residual[cell_getid(cdim, i, j, k)]/MG->normalisation))/derivative_term;
         }
       }
     }
@@ -8118,7 +8142,7 @@ double get_residual_coarser(const double *coarser_solution, const double *restri
 
         double Laplacian_exp[2] = {get_Laplacian(MG, coarser_solution, cdim, nbs, i, j, k), get_Laplacian(MG, restricted_solution, cdim, nbs, i, j, k)};
         double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*MG->normalisation*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a*(1. - exp(-(1./2.)*MG->normalisation*restricted_solution[cell_getid(cdim, i,j,k)]))};
-        double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR0*MG->normalisation)) * MG->fR_correction * (field_term[0] - field_term[1]) + restricted_residual[cell_getid(cdim, i,j,k)]/MG->normalisation; 
+        double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar*MG->normalisation)) * (field_term[0] - field_term[1]) + restricted_residual[cell_getid(cdim, i,j,k)]/MG->normalisation; 
 
         residual += res*res;
       }
@@ -8182,7 +8206,7 @@ void perform_red_black_sweep_NGS(double *pot, const double *rho, int cdim[3], do
 double peak_overdensity(struct MG_variables *MG, double delta_x, double fR_mean, double box_size) {
   double period = (2.*M_PI)/box_size;
   double term1 = 3. * fR_mean * sin(period*delta_x) * period*period *(MG->c*MG->c);
-  double term2 = MG->R * (sqrt((2./(2.-sin(period*delta_x)))) - 1.);
+  double term2 = MG->a*MG->a*MG->R * (sqrt((2./(2.-sin(period*delta_x)))) - 1.);
 
-  return (term2 - term1)/(8.*M_PI*MG->G);
+  return ((MG->a)*(term2 - term1))/(8.*M_PI*MG->G);
 }

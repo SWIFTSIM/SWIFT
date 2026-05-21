@@ -926,7 +926,7 @@ void overdensity_to_gparts(struct space *s, double *rho, double mean_density, in
 
 void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, double normalisation) {
   MG->a = cosmo->a;
-  //MG->a = 0.8;
+  //MG->a = 1.;
   MG->fR0 = fR0;
   MG->n = n;
   MG->a3_inv = (1./(MG->a*MG->a*MG->a));
@@ -1105,7 +1105,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
 
   if (MG) { //Assume n=1 for now
-    int test = 0; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
+    int test = 3; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
     if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
 
     struct MG_variables MG_var;
@@ -1114,8 +1114,8 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     int n = 1;
     initialise_MG_variables(s, cosmo, &MG_var, fR0, n, normalisation);
 
-    double fR_evo = ((MG_var.a3_inv + 4. * MG_var.Omega_ratio)/(1. + 4. * MG_var.Omega_ratio));
-    MG_var.fR_correction = fR_evo * fR_evo;
+    double fR_evo = ((1. + 4. * MG_var.Omega_ratio)/(MG_var.a3_inv + 4. * MG_var.Omega_ratio));
+    MG_var.fR_bar = MG_var.fR0 * fR_evo * fR_evo;
     int cdim[3] = {N,N,N};
     double mean_density = 20.;
 
@@ -1150,7 +1150,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
       case 3:
         /* Change the density field to represent a 1D sinusoid in the box */
         message("Testing the f(R) calculation with a 1D sine wave.");
-        double fR_mod = -1e-11;
+        double fR_mod = -1e-5;
         double fac = s->dim[0]/N;
         for (int i=0; i<N; i++) {
           for (int j=0; j<N; j++) {
@@ -1183,8 +1183,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     
     message("Going to compute f(R)");
 
-    double evo_test = ((1. + 4. * MG_var.Omega_ratio)/(MG_var.a3_inv + 4. * MG_var.Omega_ratio));
-    message("The mean is supposed to be %E", MG_var.fR0 * evo_test* evo_test);
+    message("The mean is supposed to be %E", MG_var.fR_bar);
     sleep(2);
     
     int linear = 0;
@@ -1212,23 +1211,18 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
       //mean_density += rho_copy2[i]/(N*N*N);
     //}
 
-    //FILE *delta_exp;
-    //delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/improved_R/fR_128_e-5_z05.txt", "w");
-    //for (int i=0; i<N; i++) {
-      //for (int j=0; j<N; j++) {
-        //for (int k=0; k<N; k++) {
-          //if (i==N/2 && j==N/2 && k==N/2) continue;
-          //double dx = fabs((double)(i-N/2) * box_size/N);
-          //double dy = fabs((double)(j-N/2) * box_size/N);
-          //double dz = fabs((double)(k-N/2) * box_size/N);
-          //size_t cid = cell_getid(cdim, i, j, k);
-          //double r = sqrt(dx*dx + dy*dy + dz*dz);
-          //double acc_sq = sqrt(acc[0][cid]*acc[0][cid] + acc[1][cid]*acc[1][cid] + acc[2][cid]*acc[2][cid]);
-          //if (r<25) fprintf(delta_exp, "%E %.15g\n", MG_var.fR0 * evo_test* evo_test*(exp(field_contribution[cid])-1.), r);
-        //}
-      //}
-    //}
-    //fclose(delta_exp);
+    FILE *delta_exp;
+    delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/sine_wave_new/improved_R/fR_128_e-5_forcetheory.txt", "w");
+    for (int i=0; i<N; i++) {
+      for (int j=0; j<N; j++) {
+        for (int k=0; k<N; k++) {
+          double dx = fabs((double)(i) * box_size/N);
+          size_t cid = cell_getid(cdim, i, j, k);
+          fprintf(delta_exp, "%E %.15g\n", MG_var.fR_bar*(exp(field_contribution[cid])), dx);
+        }
+      }
+    }
+    fclose(delta_exp);
   }
 
   if (power) {
