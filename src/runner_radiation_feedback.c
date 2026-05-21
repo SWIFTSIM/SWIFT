@@ -38,12 +38,12 @@
 #include "timers.h"
 
 /**
- * @brief Top-level function for HII ionization feedback.
+ * @brief Top-level steering function for HII ionization feedback.
  *
  * This function recurses down the cell hierarchy until it reaches a level
  * where the cell size is comparable to the maximum HII radius of the stars
- * within it. At the leaf level, it processes local star-gas interactions
- * (self) and climbs to handle neighboring cell pairs (pair).
+ * within it (the operational working level). If the cell is small enough,
+ * it stops recursing and hands off control to the sub-task coordinator.
  *
  * @param r The #runner thread.
  * @param c The #cell to process.
@@ -129,15 +129,18 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 }
 
 /**
- * @brief Branching point to coordinate HII ionization for stars in a cell.
+ * @brief Coordinator function to manage HII neighbor gathering and ionization
+ * loops for active stars.
  *
- * This function manages the neighbor gathering for all active stars in the
- * cell. It allocates a temporary buffer, gathers neighbors from the cell itself
- * (self) and its neighbors (pair) by climbing the cell hierarchy, and
- * prepares the gathered particles for sorting and ionization.
+ * This function acts at the working-level cell context. For each active star,
+ * it allocates a temporary neighbor buffer, triggers a strict local
+ * self-interaction search, and iterates over the scheduled engine task links
+ * (`radiation_in`) to discover interacting neighbor branches. Once neighbors
+ * are gathered, it *tags* them as ionized through atomic operations.
  *
  * @param r The #runner thread.
- * @param c The #cell containing the stars to process.
+ * @param c The working-level #cell containing the active stars to process.
+ * @param interaction_limit The calculated maximum search range boundary for neighbor mapping.
  */
 void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
                                                 struct cell *c,
@@ -196,16 +199,14 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       int count_found = 0;
       buffer_was_full = 0;
 
-      /***************************************************/
       /* First loop over particles in the current cell */
-
       /* TODO: Try to see if we will go faster if we recurse to lower levels
       and use sorted interactions for gas that are not in the leaf cell of the
       star */
       runner_do_stars_hii_ionization_feedback_self(
           r, c, si, interaction_limit, ngb_buffer, max_ngbs, &count_found);
 
-      /* Now loop over particles in the neighboring cells */
+      /* Now loop over particles in the neighboring cells via task links */
       for (struct link *l = c->stars.radiation_level->stars.radiation_in;
            l != NULL; l = l->next) {
 
@@ -295,6 +296,27 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
   } /* Loop over sparts */
 }
 
+/**
+ * @brief Downward recursion branch handler for pair cell interactions.
+ *
+ * This function evaluates a target cell pair configuration. It applies a
+ * bounding-box optimization check along the sorting axis to determine if the
+ * cell block is within reach. If the target cell is split, it continues down
+ * the sub-tree hierarchy; otherwise, it resolves the leaf interaction using
+ * either a sorted array approach or a naive fallback mechanism.
+ *
+ * @param r The #runner thread.
+ * @param ci The local cell context containing the active source star particle.
+ * @param cj The target neighbor cell containing gas particle candidates.
+ * @param sid The sorting axis index between the pair.
+ * @param flipped Flag indicating if the cell order is flipped relative to the axis direction.
+ * @param shift The periodic wrapping shift vector applied to the coordinates.
+ * @param si The #spart (star) performing the feedback.
+ * @param search_radius The maximum search distance around the star.
+ * @param ngb_buffer The tracking array where valid gas neighbors are collected.
+ * @param max_size The maximum capacity of the neighbor tracking array.
+ * @param count_found (return) Total tracking count of validated gas neighbors gathered.
+ */
 void runner_do_stars_hii_ionization_feedback_branch(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const int flipped, const double shift[3], struct spart *si,
@@ -507,12 +529,14 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
 }
 
 /**
- * @brief Gather gas particles within the HII radius from a neighboring cell.
+ * @brief Gather gas particles within the HII radius from a neighboring cell
+ * using the sorted cells to speed up the search.
  *
+ * Projects the source star position along the target sorting axis vector @p
+ * sid and analyzes the pre-sorted gas array layout of cell @p cj. It
+ * implements directional parsing boundaries to read only the specific window
+ * of gas particles capable of interacting, skipping distant arrays.
  *
- * Similar to the 'self' version, but handles the distance calculations between
- * two different cells (@p ci and @p cj), including periodic boundary
- * conditions/wrapping.
  *
  * @param r The #runner thread.
  * @param ci The #cell containing the star.
