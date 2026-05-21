@@ -203,7 +203,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       /* TODO: Try to see if we will go faster if we recurse to lower levels
       and use sorted interactions for gas that are not in the leaf cell of the
       star */
-      runner_do_stars_hii_ionization_feedback_self(
+      runner_doself_stars_hii_ionization_feedback(
           r, c, si, interaction_limit, ngb_buffer, max_ngbs, &count_found);
 
       /* Now loop over particles in the neighboring cells via task links */
@@ -364,11 +364,11 @@ void runner_do_stars_hii_ionization_feedback_branch(
     if (force_naive || !is_sorted) {
       message("[%lld, %lld] Doing naive interaction! %i", ci->cellID,
               cj->cellID, cj->hydro.sorted & (1 << sid));
-      runner_do_stars_hii_ionization_feedback_pair_naive(
+      runner_dopair_naive_stars_hii_ionization_feedback(
           r, ci, cj, shift, si, search_radius, ngb_buffer, max_ngbs,
           count_found);
     } else {
-      runner_do_stars_hii_ionization_feedback_pair(
+      runner_dopair_stars_hii_ionization_feedback(
           r, ci, cj, sid, flipped, shift, si, search_radius, ngb_buffer,
           max_ngbs, count_found);
     }
@@ -390,7 +390,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
  * @param max_size The maximum capacity of the neighbor buffer.
  * @param count_found (return) The number of neighbors successfully gathered.
  */
-void runner_do_stars_hii_ionization_feedback_self(
+void runner_doself_stars_hii_ionization_feedback(
     struct runner *r, struct cell *c, struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found) {
@@ -462,7 +462,7 @@ void runner_do_stars_hii_ionization_feedback_self(
  * @param max_size The maximum capacity of the neighbor buffer.
  * @param count_found (return) The number of neighbors successfully gathered.
  */
-void runner_do_stars_hii_ionization_feedback_pair_naive(
+void runner_dopair_naive_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
     struct spart *si, const float search_radius, struct hii_neighbor *buffer,
     int max_size, int *count_found) {
@@ -478,7 +478,7 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
   if (cj != ci && cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL) {
-        runner_do_stars_hii_ionization_feedback_pair_naive(
+        runner_dopair_naive_stars_hii_ionization_feedback(
             r, ci, cj->progeny[k], shift, si, search_radius, buffer, max_size,
             count_found);
       }
@@ -547,7 +547,7 @@ void runner_do_stars_hii_ionization_feedback_pair_naive(
  * @param max_size The maximum capacity of the neighbor buffer.
  * @param count_found (return) The number of neighbors successfully gathered.
  */
-void runner_do_stars_hii_ionization_feedback_pair(
+void runner_dopair_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
