@@ -82,19 +82,20 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   }
 #endif
 
-  /* for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) { */
-  /*   /\* We have already handled the self case *\/ */
-  /*   if (l->t->type == task_type_self) continue; */
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+    /* We have already handled the self case */
+    if (l->t->type == task_type_self) continue;
 
-  /*   struct cell *cj = l->t->cj; */
-  /*   struct cell *ci = l->t->ci; */
-  /*   message( */
-  /*       "[%lld, %lld] hydro super: %lld , %lld | radiation_level: %lld %lld",
-   */
-  /*       ci->cellID, cj->cellID, ci->hydro.super->cellID, */
-  /*       cj->hydro.super->cellID, ci->stars.radiation_level->cellID, */
-  /*       cj->stars.radiation_level->cellID); */
-  /* } */
+    struct cell *cj = l->t->cj;
+    struct cell *ci = l->t->ci;
+    message(
+        "[%lld, %lld] hydro super: %lld , %lld | radiation_level: %lld %lld",
+        ci->cellID, cj->cellID, ci->hydro.super->cellID,
+        cj->hydro.super->cellID, ci->stars.radiation_level->cellID,
+        cj->stars.radiation_level->cellID);
+  }
+#endif
 
   TIMER_TIC;
 
@@ -265,7 +266,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
           /* No more photons to consume */
           if (feedback_get_star_ionization_rate(si) <= 0.0) {
-            message("Star has exhausted all its ionizing photons!");
+#ifdef SWIFT_DEBUG_CHECKS
+            message("Star %lld has exhausted all its ionizing photons!",
+                    si->id);
+#endif
             break;
           }
 
@@ -320,7 +324,6 @@ void runner_do_stars_hii_ionization_feedback_branch(
     const int is_sorted =
         (cj->hydro.sorted & (1 << sid)) &&
         (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
-    /* const int is_sorted = 1; */
 
     /* Unlock if it wasn't sorted as we will not use the sort array */
     if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
