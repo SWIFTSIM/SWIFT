@@ -1105,7 +1105,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
 
   if (MG) { //Assume n=1 for now
-    int test = 3; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
+    int test = 0; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
     if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
 
     struct MG_variables MG_var;
@@ -1150,17 +1150,22 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
       case 3:
         /* Change the density field to represent a 1D sinusoid in the box */
         message("Testing the f(R) calculation with a 1D sine wave.");
-        double fR_mod = -1e-5;
+        double fR_mod = MG_var.fR_bar;
         double fac = s->dim[0]/N;
+        MG_var.fR0 = 2. * fR_mod;
+        MG_var.fR_bar *= 2.;
         for (int i=0; i<N; i++) {
           for (int j=0; j<N; j++) {
             for (int k=0; k<N; k++) {
               double x_dist = ((double) i) * fac;
               rho[cell_getid(cdim, i, j, k)] = peak_overdensity(&MG_var, x_dist, fR_mod, s->dim[0]);
+              //if (i==1) {
+                //message("Just initialised %E", rho[cell_getid(cdim, i, j, k)]);
+                //sleep(5);
+              //}
             }
           }
         }
-        MG_var.fR0 = 2. * fR_mod;
         MG_var.overdensity = 1;
         break;
       case 4: 
@@ -1211,18 +1216,18 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
       //mean_density += rho_copy2[i]/(N*N*N);
     //}
 
-    FILE *delta_exp;
-    delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/sine_wave_new/improved_R/fR_128_e-5_forcetheory.txt", "w");
-    for (int i=0; i<N; i++) {
-      for (int j=0; j<N; j++) {
-        for (int k=0; k<N; k++) {
-          double dx = fabs((double)(i) * box_size/N);
-          size_t cid = cell_getid(cdim, i, j, k);
-          fprintf(delta_exp, "%E %.15g\n", MG_var.fR_bar*(exp(field_contribution[cid])), dx);
-        }
-      }
-    }
-    fclose(delta_exp);
+    //FILE *delta_exp;
+    //delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/sine_wave_new/improved_R/fR_128_e-5_z05.txt", "w");
+    //for (int i=0; i<N; i++) {
+      //for (int j=0; j<N; j++) {
+        //for (int k=0; k<N; k++) {
+          //double dx = fabs((double)(i) * box_size/N);
+          //size_t cid = cell_getid(cdim, i, j, k);
+          //fprintf(delta_exp, "%E %.15g\n", MG_var.fR_bar*(exp(field_contribution[cid])), dx);
+        //}
+      //}
+    //}
+    //fclose(delta_exp);
   }
 
   if (power) {

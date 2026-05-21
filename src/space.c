@@ -7238,7 +7238,7 @@ void apply_GS_fR(const double *rho, double *u, struct MG_variables *MG, int cdim
   double residual = get_residual_fR_linear(u, rho, MG, cdim, mean_density, delta);
   double tolerance = 10e-12; //Choose reasonable value here
   int counter = 0;
-  double sum = 0.;
+  //double sum = 0.;
 
   while (residual >= tolerance) {
     perform_red_black_sweep_fR_linear(u, rho, MG, cdim, mean_density, delta);
@@ -7405,7 +7405,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
         break;
       case 3:
         /* Change the density field to represent a 1D sinusoid in the box */
-        double fR_mod = -1e-5;
+        double fR_mod = MG->fR_bar/2;
         double delta = s->dim[0]/N;
         for (int i2=0; i2<N; i2++) {
           for (int j=0; j<N; j++) {
@@ -7479,7 +7479,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     cdim[2] = N;
     apply_multigrid_fR(rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, 15);
   }
-
+  /*
   if (test==3) { //Test whether the theoretical sine is a solution
     message("\n Testing the theoretical sine wave");
     //double evo_term_half = ((1.+4.*MG->Omega_ratio)/(MG->a3_inv + 4.*MG->Omega_ratio));
@@ -7499,8 +7499,8 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     for (int j=0; j<N_levels; j++) {
       mean_density_copy[j] = mean_density[N_levels-1-j];
     }
-    apply_multigrid_fR(rho_levels[N_levels-1], u_levels[N_levels-1], MG, cdim_max, mean_density_copy, box_size, N_min, N_max, 2);
-  }
+    apply_multigrid_fR(rho_levels[N_levels-1], u_levels[N_levels-1], MG, cdim_max, mean_density_copy, box_size, N_min, N_max, 15);
+  }*/
 }
 
 /**
@@ -7692,9 +7692,9 @@ double get_residual_fR(const double *u, const double *rho, struct MG_variables *
         if (verbose) {
           message("The i-index is %d", i);
           //message("The overdensity is %lf", mean_density * (rho[cell_getid(cdim, i,j,k)]-1.));
-          message("The density term is %E", density_term);
+          message("The density term is %E", (1./(3.*MG->c*MG->c*MG->fR_bar*MG->normalisation)) * density_term);
           message("The fR/mean(fR) is %E and dR/R is %E", exp(u[cell_getid(cdim, i,j,k)]), (1. - exp(-(1./2.)*MG->normalisation * u[cell_getid(cdim, i,j,k)])));
-          message("The field term is %E", field_term);
+          message("The field term is %E and its components are c = %E, fR = %E, normalisation = %E, a = %E, R = %E", (1./(3.*MG->c*MG->c*MG->fR_bar*MG->normalisation)) * field_term, MG->c, MG->fR_bar, MG->normalisation, MG->a, MG->R);
           message("The LHS (Laplacian) is %E and the RHS is %E", Laplacian_exp/(delta*delta), (1./(3.*MG->c*MG->c*MG->fR_bar*MG->normalisation)) * (field_term + density_term));
           message("The residual is %E \n", res);
           sleep(2);
@@ -8207,6 +8207,10 @@ double peak_overdensity(struct MG_variables *MG, double delta_x, double fR_mean,
   double period = (2.*M_PI)/box_size;
   double term1 = 3. * fR_mean * sin(period*delta_x) * period*period *(MG->c*MG->c);
   double term2 = MG->a*MG->a*MG->R * (sqrt((2./(2.-sin(period*delta_x)))) - 1.);
-
+  //if (delta_x>0.1 && delta_x<2) {
+    //message("Setting the value %E", 1/(3.*MG->c*MG->c*MG->fR_bar) * (term2 - term1));
+    //message("We used c = %E, fR_mean = %E, period = %E, a = %E, R = %E", MG->c, fR_mean, period, MG->a, MG->R);
+    //sleep(5);
+  //}
   return ((MG->a)*(term2 - term1))/(8.*M_PI*MG->G);
 }
