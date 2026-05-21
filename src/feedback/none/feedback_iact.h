@@ -47,6 +47,122 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {}
 
+#ifdef EXTRA_STAR_LOOPS_1
+/**
+ * @brief prep1 feedback interaction between two particles
+ * (non-symmetric). Update the #part and #xpart.
+ *
+ * Nothing to do here for the no-feedback model.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sparticle.
+ * @param pj Second particle (not updated).
+ * @param xp Extra particle data (not updated).
+ * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
+ * @param ti_current Current integer time value
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  const struct spart *si, struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const struct feedback_props *fb_props,
+                                  const integertime_t ti_current) {}
+
+#endif
+
+#ifdef EXTRA_STAR_LOOPS_2
+/**
+ * @brief prep2 feedback interaction between two particles
+ * (non-symmetric). Update the #spart
+ *
+ * Nothing to do here for the no-feedback model.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sparticle.
+ * @param pj Second particle (not updated).
+ * @param xp Extra particle data (not updated).
+ * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
+ * @param ti_current Current integer time value
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  const struct spart *si, struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const struct feedback_props *fb_props,
+                                  const integertime_t ti_current) {}
+
+#endif
+
+#ifdef EXTRA_STAR_LOOPS_3
+/**
+ * @brief prep3 feedback interaction between two particles
+ * (non-symmetric). Update the #spart.
+ *
+ * Nothing to do here for the no-feedback model.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sparticle.
+ * @param pj Second particle (not updated).
+ * @param xp Extra particle data (not updated).
+ * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
+ * @param ti_current Current integer time value
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  const struct spart *si, struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const struct feedback_props *fb_props,
+                                  const integertime_t ti_current) {}
+
+#endif
+
+#ifdef EXTRA_STAR_LOOPS_4
+/**
+ * @brief prep4 feedback interaction between two particles
+ * (non-symmetric). Update the #spart.
+ *
+ * Nothing to do here for the no-feedback model.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sparticle.
+ * @param pj Second particle (not updated).
+ * @param xp Extra particle data (not updated).
+ * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
+ * @param ti_current Current integer time value
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  const struct spart *si, struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const struct feedback_props *fb_props,
+                                  const integertime_t ti_current) {}
+
+#endif
+
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
  * Used for updating properties of gas particles neighbouring a star particle
