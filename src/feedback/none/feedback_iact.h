@@ -47,7 +47,6 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {}
 
-
 #ifdef EXTRA_STAR_LOOPS_1
 /**
  * @brief prep1 feedback interaction between two particles
@@ -163,7 +162,6 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
                                   const integertime_t ti_current) {}
 
 #endif
-
 
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
