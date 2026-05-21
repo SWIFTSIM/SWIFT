@@ -26,21 +26,18 @@
 #endif
 
 /* This object's header. */
-#include "runner.h"
+#include "runner_radiation_feedback.h"
 
 /* Local headers. */
+#include "runner.h"
 #include "active.h"
 #include "cell.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
-#include "hydro.h"
-#include "stars.h"
 #include "timers.h"
 
-#define search_radius_factor 1.2f
-#define max_ngbs 128
-#define max_retry_full_buffer 10
+
 
 /**
  * @brief Top-level function for HII ionization feedback.

@@ -90,29 +90,6 @@ struct runner {
 #endif
 };
 
-/**
- * @brief Temporary structure to store gas particles found within the HII
- * interaction radius of a star.
- *
- * This is used to gather and sort potential ionization candidates before
- * performing the feedback.
- */
-struct hii_neighbor {
-
-  /*! Squared distance between the star and the gas particle. */
-  float r2;
-
-  /*! Pointer to the gas particle data. */
-  struct part *p;
-
-  /*! Pointer to the gas particle extra data. */
-  struct xpart *xp;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /*! Pointer to the cell this particle belongs to */
-  struct cell *c;
-#endif
-};
 
 /* Function prototypes. */
 void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
@@ -183,26 +160,6 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
 void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
                                        struct cell *cj, int timer);
 void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer);
-void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
-                                             int timer);
-void runner_do_stars_hii_ionization_feedback_branch(
-    struct runner *r, struct cell *c, const float interaction_limit);
-void runner_do_stars_hii_ionization_feedback_self(
-    struct runner *r, struct cell *c, struct spart *si,
-    const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found);
-void runner_do_stars_hii_ionization_feedback_pair_naive(
-    struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
-    struct spart *si, const float search_radius, struct hii_neighbor *buffer,
-    int max_size, int *count_found);
-void runner_do_stars_hii_ionization_feedback_pair(
-    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
-    const int flipped, const double shift[3], struct spart *si,
-    const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found);
-void runner_hii_buffer_insert(struct hii_neighbor *buffer, int max_size,
-                              int *count_found, float r2, struct part *p,
-                              struct xpart *xp, struct cell *c);
 void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
                          int timer);
