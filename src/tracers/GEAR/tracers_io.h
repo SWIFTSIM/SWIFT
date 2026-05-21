@@ -109,7 +109,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       tracers_data.final_HII_radius,
       "Co-moving HII region radius of the star particles before they die or "
       "were not eligible to form HII regions anymore.");
-  
+
   return num;
 }
 

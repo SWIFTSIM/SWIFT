@@ -38,7 +38,7 @@ struct tracers_xpart_data {
 
     /*! Time when this particle is not ionized anymore */
     float end_time;
-    
+
   } HII_region;
 };
 
@@ -47,10 +47,9 @@ struct tracers_xpart_data {
  *
  */
 struct tracers_spart_data {
-    /*! Radius of the HII region before the star died or was not HII eligible
-        for the rest of its lifetime */
-    float final_HII_radius;
-
+  /*! Radius of the HII region before the star died or was not HII eligible
+      for the rest of its lifetime */
+  float final_HII_radius;
 };
 
 /**

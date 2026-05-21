@@ -237,10 +237,11 @@ void feedback_will_do_feedback(
       !sp->feedback_data.is_dead;
 
   /* Do we need to do HII ionization feedback? */
-  const char do_photoionization = feedback_props->radiation_policy & radiation_policy_photoionization;
+  const char do_photoionization =
+      feedback_props->radiation_policy & radiation_policy_photoionization;
   const char has_enough_photons = feedback_get_star_ionization_rate(sp) > 0.0;
   sp->feedback_data.will_do_HII_ionization =
-    do_photoionization && (!sp->feedback_data.is_dead && has_enough_photons);
+      do_photoionization && (!sp->feedback_data.is_dead && has_enough_photons);
 
   /* TODO: Add other conditions:
      1. If the star is dead
@@ -374,7 +375,7 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
   return sp->feedback_data.will_do_HII_ionization;
-}  
+}
 
 /**
  * Determines whether a gas #part can be ionized.
@@ -409,7 +410,7 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
 
   /* Density threshold criterion */
   const float rho = hydro_get_physical_density(p, cosmo);
-  const float rho_threshold = feedback_props->minimal_HII_ionization_density;
+  const float rho_threshold = feedback_props->HII_region_min_density;
   const char is_dense = rho >= rho_threshold;
 
   /* Can the particle be ionized? */
