@@ -278,7 +278,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           const float r2 = ngb_buffer[k].r2;
 
           /* Do the ionization */
-          feedback_do_HII_ionization(si, pj, xpj, r2, phys_const, hydro_props,
+          feedback_iact_HII_ionization(si, pj, xpj, r2, phys_const, hydro_props,
                                      us, cosmo, cooling, ti_begin);
 
         } /* Loop over the sorted particles */
@@ -308,7 +308,12 @@ void runner_do_stars_hii_ionization_feedback_branch(
     return;
   }
 
+  /* Don't reprocess cj or its child if it's ci. These particles were
+     processed in the self interaction */
+  if (ci == cj) return;
+
   if (cj->split) {
+
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL) {
         runner_do_stars_hii_ionization_feedback_branch(
@@ -632,51 +637,6 @@ void runner_do_stars_hii_ionization_feedback_pair(
         runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj,
                                  cj);
     }
-  }
-}
-
-/**
- * @brief Maintain a sorted buffer by inserting a new neighbor at the correct
- * position.
- *
- * If the buffer is full, it replaces the furthest element if the new one is
- * closer.
- */
-__attribute__((always_inline)) INLINE void runner_hii_buffer_insert(
-    struct hii_neighbor *buffer, int max_size, int *count_found, float r2,
-    struct part *p, struct xpart *xp, struct cell *c) {
-
-  /* Case A: Buffer is not yet full */
-  if (*count_found < max_size) {
-    int i = *count_found - 1;
-    /* Shift elements to make room (standard insertion) */
-    while (i >= 0 && buffer[i].r2 > r2) {
-      buffer[i + 1] = buffer[i];
-      i--;
-    }
-    buffer[i + 1].r2 = r2;
-    buffer[i + 1].p = p;
-    buffer[i + 1].xp = xp;
-#ifdef SWIFT_DEBUG_CHECKS
-    buffer[i + 1].c = c;
-#endif
-    (*count_found)++;
-  }
-  /* Case B: Buffer is full, check if new particle is closer than the furthest
-   */
-  else if (r2 < buffer[max_size - 1].r2) {
-    int i = max_size - 2;
-    /* Shift elements to replace the furthest */
-    while (i >= 0 && buffer[i].r2 > r2) {
-      buffer[i + 1] = buffer[i];
-      i--;
-    }
-    buffer[i + 1].r2 = r2;
-    buffer[i + 1].p = p;
-    buffer[i + 1].xp = xp;
-#ifdef SWIFT_DEBUG_CHECKS
-    buffer[i + 1].c = c;
-#endif
   }
 }
 

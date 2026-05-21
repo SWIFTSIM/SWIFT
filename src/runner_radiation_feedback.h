@@ -68,9 +68,6 @@ int runner_hii_check_cell_can_be_reached(const struct cell *ci,
                                          const double shift[3],
                                          const struct spart *si,
                                          const float search_radius);
-void runner_hii_buffer_insert(struct hii_neighbor *buffer, int max_size,
-                              int *count_found, float r2, struct part *p,
-                              struct xpart *xp, struct cell *c);
 
 void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                              int timer);
@@ -96,5 +93,53 @@ void runner_do_stars_hii_ionization_feedback_pair(
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found);
+
+
+
+/**
+ * @brief Maintain a sorted buffer by inserting a new neighbor at the correct
+ * position.
+ *
+ * If the buffer is full, it replaces the furthest element if the new one is
+ * closer.
+ */
+__attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
+    struct hii_neighbor *buffer, int max_size, int *count_found, float r2,
+    struct part *p, struct xpart *xp, struct cell *c) {
+
+  /* Case A: Buffer is not yet full */
+  if (*count_found < max_size) {
+    int i = *count_found - 1;
+    /* Shift elements to make room (standard insertion) */
+    while (i >= 0 && buffer[i].r2 > r2) {
+      buffer[i + 1] = buffer[i];
+      i--;
+    }
+    buffer[i + 1].r2 = r2;
+    buffer[i + 1].p = p;
+    buffer[i + 1].xp = xp;
+#ifdef SWIFT_DEBUG_CHECKS
+    buffer[i + 1].c = c;
+#endif
+    (*count_found)++;
+  }
+  /* Case B: Buffer is full, check if new particle is closer than the furthest
+   */
+  else if (r2 < buffer[max_size - 1].r2) {
+    int i = max_size - 2;
+    /* Shift elements to replace the furthest */
+    while (i >= 0 && buffer[i].r2 > r2) {
+      buffer[i + 1] = buffer[i];
+      i--;
+    }
+    buffer[i + 1].r2 = r2;
+    buffer[i + 1].p = p;
+    buffer[i + 1].xp = xp;
+#ifdef SWIFT_DEBUG_CHECKS
+    buffer[i + 1].c = c;
+#endif
+  }
+}
+
 
 #endif /* SWIFT_RUNNER_RADIATION_FEEBDACK_H */

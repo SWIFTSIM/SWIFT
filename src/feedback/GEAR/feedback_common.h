@@ -67,7 +67,7 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
 double feedback_get_star_ionization_rate(const struct spart *sp);
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
-void feedback_do_HII_ionization(
+void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
     struct xpart *restrict xpj, float r2, const struct phys_const *phys_const,
     const struct hydro_props *hydro_props, const struct unit_system *us,

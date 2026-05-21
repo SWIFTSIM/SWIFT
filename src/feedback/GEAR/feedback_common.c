@@ -431,7 +431,7 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  * @param cooling Cooling function data.
  * @param ti_begin Integer time at the start of the step (for RNG).
  */
-__attribute__((always_inline)) INLINE void feedback_do_HII_ionization(
+__attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
     struct xpart *restrict xpj, float r2, const struct phys_const *phys_const,
     const struct hydro_props *hydro_props, const struct unit_system *us,
