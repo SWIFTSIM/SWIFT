@@ -160,6 +160,12 @@ INLINE static int star_formation_should_convert_to_star(
     return 0;
   }
 
+  /* TODO: Update doc */
+  /* If you are tagged as ionized, you cannot be star-forming */
+  if (radiation_is_part_tagged_as_ionized(p, xp)) {
+    return 0;
+  }
+
   /* Get a few variables */
   const float G = phys_const->const_newton_G;
   const float density = hydro_get_physical_density(p, cosmo);
