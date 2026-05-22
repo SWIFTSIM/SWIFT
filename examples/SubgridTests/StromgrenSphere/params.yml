@@ -92,6 +92,8 @@ GEARFeedback:
   with_photoionization:          1              # Whether to run with the subgrid photoionization model to mimick Strömgren sphere.
   HII_region_min_density_Hpcm3: 1               # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   radiation_pressure_efficiency: 0              # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
+  HII_region_max_age_Myr:        50.0           # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
+  HII_region_rebuild_time_Myr:   0.5            # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
 
   #Mechanical feedback
   maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
