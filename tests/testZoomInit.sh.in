@@ -1,4 +1,6 @@
 #!/bin/bash
 
-./testZoomInit @srcdir@/zoom_params_small.yml 20
-./testZoomInit @srcdir@/zoom_params_large.yml 80
+./testZoomInit @srcdir@/zoom_params_small.yml 20 16 3
+./testZoomInit @srcdir@/zoom_params_large.yml 80 8 2
+./testZoomInit @srcdir@/zoom_params_cells_exact.yml 80 8 2
+./testZoomInit @srcdir@/zoom_params_cells.yml 80 16 3

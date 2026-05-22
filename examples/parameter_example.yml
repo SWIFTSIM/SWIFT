@@ -1118,7 +1118,8 @@ Lightcone1:
 # Parameters defining a zoom region (only used for running zoom simulations with --zoom runtime flag)
 ZoomRegion:
   region_pad_factor:          1.1    # How much larger the zoom region will be than the high res particle distribution in the ICs?
-  zoom_top_level_depth:       2     # The depth of the zoom top level cells in a single background cell.
+  zoom_top_level_depth:       2      # The depth of the zoom top level cells in a single background cell.
+  zoom_min_top_level_cells:   -1     # (Optional) Minimum target zoom cdim. If positive, this overrides zoom_top_level_depth and the required depth is derived.
   bkg_top_level_cells:        -1     # How many cells should the background be resolved with? (This is treated as gospel, but if it is set to -1 we will try and find the optimal value to minimise the padding around the zoom region)
   buffer_cell_depth:          0      # (Optional, only used when buffer cells are needed) The depth of the top level buffer cells in a single background cell. (default: 0)
   neighbour_max_tree_depth:   2      # (Optional) The depth of the cell trees neighbouring the zoom region (default: -1)

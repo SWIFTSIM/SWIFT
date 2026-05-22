@@ -243,6 +243,7 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
 
     /* If adjusting the background didn't work then decrease the zoom region
      * depth by one (doubling the zoom cell size). */
+    const int old_zoom_cell_depth = s->zoom_props->zoom_cell_depth;
     s->zoom_props->zoom_cell_depth--;
 
     /* Ensure we don't go below depth 1. */
@@ -251,6 +252,16 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
           "Failed to find an acceptable zoom region before reaching depth=0 "
           "(i.e. not a zoom). Try to decrease the initial background cell "
           "size.");
+    }
+
+    /* If the geometry was originally driven by a requested cdim, update that
+     * target too, otherwise zoom_region_init() will derive the old depth again.
+     */
+    if (s->zoom_props->zoom_cell_min_cdim > 0) {
+      const int parent_cdim =
+          s->zoom_props->cdim[0] / (1 << old_zoom_cell_depth);
+      s->zoom_props->zoom_cell_min_cdim =
+          parent_cdim * (1 << s->zoom_props->zoom_cell_depth);
     }
 
     /* Recalculate the zoom region geometry. */
