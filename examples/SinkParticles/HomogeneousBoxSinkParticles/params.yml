@@ -86,6 +86,13 @@ GEARFeedback:
   imf_transition_metallicity: 0                  # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]   # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
+  # Radiation parameters
+  radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
+  with_photoelectric_heating:    0                         # Whether to run with the subgrid photoelectric heating model to mimick Strömgren sphere. Note this needs to compile with GRACKLE_X, X=1,2 or 3 and will automatically turn on grackle photoelectric parameters. 1: Run with photoelectric heating, 0: Run without. (Default: 0)
+  with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
+  minimal_HII_ionization_density_Hpcm3: 1                  # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  HII_region_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
+  HII_region_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
 
 GEARSink:
   use_fixed_cut_off_radius: 1                    # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
