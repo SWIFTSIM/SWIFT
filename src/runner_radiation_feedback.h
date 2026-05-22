@@ -94,8 +94,6 @@ void runner_dopair_stars_hii_ionization_feedback(
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found);
 
-
-
 /**
  * @brief Maintain a sorted buffer by inserting a new neighbor at the correct
  * position.

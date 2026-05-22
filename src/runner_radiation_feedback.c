@@ -228,17 +228,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       /***************************************************/
       /* It's time to sort the gas particles */
       if (count_found > 0) {
-#ifdef SWIFT_DEBUG_CHECKS
         /* Verify that the neighbors are properly sorted by distance */
-        for (int k = 0; k < count_found - 1; k++) {
-          if (ngb_buffer[k].r2 > ngb_buffer[k + 1].r2) {
-            error(
-                "HII neighbor buffer not properly sorted! "
-                "Index %d (r2=%e) is larger than index %d (r2=%e).",
-                k, ngb_buffer[k].r2, k + 1, ngb_buffer[k + 1].r2);
-          }
-        }
-#endif
+        runner_do_stars_hii_ionization_feedback_check_sort(ngb_buffer,
+                                                           count_found);
+
         const integertime_t ti_begin =
             get_integer_time_begin(e->ti_current - 1, si->time_bin);
 
