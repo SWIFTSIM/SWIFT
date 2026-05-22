@@ -87,7 +87,7 @@ float feedback_compute_spart_timestep(
   const float lifetime = lifetime_myr * 1e6 * phys_const->const_year;
 
   /* Adapt the factor depending on the star lifetime to provide adequate
-     timesteps for different star liftimes. */
+     timesteps for different star lifetimes. */
   float factor = 0.0;
   if (lifetime_myr >= 100) {
     factor = 1;
@@ -104,15 +104,22 @@ float feedback_compute_spart_timestep(
   /* To avoid very small timesteps for star_age_beg_step, take the mean */
   const double star_age = 0.5 * (star_age_beg_step_safe + star_age_end_step);
 
-  float dt_evolution =
+  const float dt_evolution =
       (star_age_beg_step <= 0) ? FLT_MAX : star_age / (factor * lifetime);
   /*----------------------------------------*/
+
+  /* HII region constraint to rebuild the HII region every
+   * feedback_props->HII_region_rebuild_dt. */
+  const double HII_region_max_age = feedback_props->HII_region_max_age;
+  const float dt_HII = (star_age_beg_step <= HII_region_max_age)
+                           ? feedback_props->HII_region_rebuild_dt
+                           : FLT_MAX;
 
   /* If the star is dead, do not limit its timestep */
   if (sp->feedback_data.is_dead) {
     return FLT_MAX;
   } else {
-    dt = min(dt, dt_evolution);
+    dt = min3(dt, dt_evolution, dt_HII);
     return dt;
   }
 }
