@@ -139,5 +139,24 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
   }
 }
 
-
+/**
+ * @brief Verify that the gathered HII neighbor buffer is properly sorted.
+ *
+ * @param ngb_buffer The array of gathered #hii_neighbor structures.
+ * @param count_found The number of valid neighbors stored in the buffer.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_do_stars_hii_ionization_feedback_check_sort(
+    const struct hii_neighbor *ngb_buffer, const int count_found) {
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int k = 0; k < count_found - 1; k++) {
+    if (ngb_buffer[k].r2 > ngb_buffer[k + 1].r2) {
+      error(
+          "HII neighbor buffer not properly sorted! "
+          "Index %d (r2=%e) is larger than index %d (r2=%e).",
+          k, ngb_buffer[k].r2, k + 1, ngb_buffer[k + 1].r2);
+    }
+  }
+#endif
+}
 #endif /* SWIFT_RUNNER_RADIATION_FEEBDACK_H */

@@ -384,6 +384,7 @@ void runner_doself_stars_hii_ionization_feedback(
 
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
+  const float r2_max = search_radius * search_radius;
   const float six[3] = {si->x[0], si->x[1], si->x[2]};
 
   /* TODO: Use sorted cells to check that the particles/the cell are/is
@@ -415,7 +416,7 @@ void runner_doself_stars_hii_ionization_feedback(
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (r2 < search_radius * search_radius)
+    if (r2 < r2_max)
       runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c);
   } /* Loop in current cell */
 }
@@ -443,8 +444,6 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
     int max_size, int *count_found) {
 
   struct engine *e = r->e;
-  struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
   const int count_j = cj->hydro.count;
 
   /* Anything to do here?*/
@@ -466,6 +465,9 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
     if (!cell_are_spart_drifted(cj, e))
       error("Interacting undrifted cell (stars).");
 
+    struct part *restrict parts_j = cj->hydro.parts;
+    struct xpart *restrict xparts_j = cj->hydro.xparts;
+    const float r2_max = search_radius * search_radius;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
                           (float)(si->x[2] - (cj->loc[2] + shift[2]))};
@@ -498,7 +500,9 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj);
+      if (r2 < r2_max)
+        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj,
+                                 cj);
     } /* Loop in current cell */
   }
 }
@@ -573,9 +577,6 @@ void runner_dopair_stars_hii_ionization_feedback(
   struct part *restrict parts_j = cj->hydro.parts;
   struct xpart *restrict xparts_j = cj->hydro.xparts;
   const float r2_max = search_radius * search_radius;
-
-  /* Use the same consistent shifted frame for our absolute distance
-   * calculations */
   const float six[3] = {(float)pix[0], (float)pix[1], (float)pix[2]};
 
   if (!flipped) {
