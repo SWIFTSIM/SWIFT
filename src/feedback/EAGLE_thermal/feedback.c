@@ -119,7 +119,7 @@ INLINE static float compute_magnetic_injection_field(
 
     /* Initialize variables to calculate */
     float B_inj[3] = {0., 0., 0.};
-    double B_inj_abs;
+    double B_inj_abs = 0.;
     float B_inj_rescale;
 
     /* the seperation vector (si - pj)*/
