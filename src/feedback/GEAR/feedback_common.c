@@ -112,7 +112,7 @@ float feedback_compute_spart_timestep(
    * feedback_props->HII_region_rebuild_dt. */
   const double HII_region_max_age = feedback_props->HII_region_max_age;
   const float dt_HII = (star_age_beg_step <= HII_region_max_age)
-                           ? feedback_props->HII_region_rebuild_dt
+                           ? feedback_props->HII_region_rebuild_time
                            : FLT_MAX;
 
   /* If the star is dead, do not limit its timestep */
