@@ -90,7 +90,6 @@ struct runner {
 #endif
 };
 
-
 /* Function prototypes. */
 void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
                      const int ntasks, const int timer);
