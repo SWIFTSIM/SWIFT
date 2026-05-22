@@ -247,15 +247,13 @@ void feedback_will_do_feedback(
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
   const char has_enough_photons = feedback_get_star_ionization_rate(sp) > 0.0;
+  const char is_HII_eligible = star_age_beg_step <= feedback_props->HII_region_max_age;
   sp->feedback_data.will_do_HII_ionization =
-      do_photoionization && (!sp->feedback_data.is_dead && has_enough_photons);
+      do_photoionization && (!sp->feedback_data.is_dead && has_enough_photons && is_HII_eligible);
 
-  /* TODO: Add other conditions:
-     1. If the star is dead
-     2. Or it is too old to continue HII ionization
-  This star stopped doing HII for the rest of its life. Hence, h_hii = 0. If
+  /* This star stopped doing HII for the rest of its life. Hence, h_hii = 0. If
      we want to keep track of the last h_hii, we can store it in the tracers. */
-  if (sp->feedback_data.is_dead && sp->h_hii != 0.0) {
+  if ((sp->feedback_data.is_dead || !is_HII_eligible) && sp->h_hii != 0.0) {
     /* Store the value in the tracers */
     sp->tracers_data.final_HII_radius = sp->h_hii * kernel_gamma;
 
