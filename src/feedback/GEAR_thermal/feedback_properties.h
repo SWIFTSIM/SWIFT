@@ -24,6 +24,10 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
+#define default_HII_region_min_density_Hpcm3 1.0
+#define default_HII_region_max_age_Myr 50.0
+#define default_HII_region_rebuild_time_Myr 0.5
+
 /**
  * @brief The different subgrid radiation feedback processes GEAR models.
  */
@@ -45,6 +49,8 @@ struct feedback_props {
   /*! Supernovae energy effectively deposited */
   float supernovae_efficiency;
 
+  /* ------------- Stellar model properties ------------- */
+
   /*! The stellar model */
   struct stellar_model stellar_model;
 
@@ -57,14 +63,24 @@ struct feedback_props {
   /*! Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
 
+  /* ------------- Subgrid Radiation properties ------------- */
+
   /* The radiation processes enabled */
   int radiation_policy;
 
   /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
 
-  /* Minimal density to consider a particle eligible for HII ionization */
-  float minimal_HII_ionization_density;
+  /*! Minimal density to consider a particle eligible for HII ionization */
+  float HII_region_min_density;
+
+  /*! HII region rebuild frequency */
+  float HII_region_rebuild_time;
+
+  /*! Maximun age of star particle to trigger the HII region algorithm */
+  float HII_region_max_age;
+
+  /* ------------- Stellar winds properties ------------- */
 
   /*! Pre-supernova feedback energy effectively deposited */
   float winds_efficiency;
@@ -114,8 +130,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           do_photoionization);
 
   if (do_photoionization)
-    message("Minimal HII ionization density (internal units)            = %g",
-            feedback_props->minimal_HII_ionization_density);
+    message("HII region minimal gas density (internal units)            = %g",
+            feedback_props->HII_region_min_density);
 
   message(
       "Radiation pressure                                         = %i",
@@ -222,19 +238,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                  params, cosmo, fp->with_stellar_wind_feedback);
   }
 
-  /* -------------------------------------------- */
-  /* Radiation fields */
+  /* ------------- Subgrid Radiation properties ------------- */
   fp->radiation_policy = 0;
 
   /* TODO: For the future, enforce these to have a non-zero value */
-
-  /* Are we running with photoionization? */
-  const int do_photoionization =
-      parser_get_opt_param_int(params, "GEARFeedback:do_photoionization", 0);
-
-  if (do_photoionization) {
-    fp->radiation_policy |= radiation_policy_photoionization;
-  }
 
   /* Radiation pressure */
   fp->radiation_pressure_efficiency = parser_get_opt_param_float(
@@ -244,22 +251,48 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->radiation_policy |= radiation_policy_radiation_pressure;
   }
 
-  const int do_photoelectric_heating = parser_get_opt_param_int(
-      params, "GEARFeedback:do_photoelectric_heating", 0);
+  const int with_photoelectric_heating = parser_get_opt_param_int(
+      params, "GEARFeedback:with_photoelectric_heating", 0);
 
-  if (do_photoelectric_heating) {
+  if (with_photoelectric_heating) {
     fp->radiation_policy |= radiation_policy_photoelectric_heating;
   }
 
-  if (do_photoionization) {
-    fp->minimal_HII_ionization_density = parser_get_param_float(
-        params, "GEARFeedback:minimal_HII_ionization_density_Hpcm3");
+  /* Are we running with photoionization? */
+  const int with_photoionization =
+      parser_get_opt_param_int(params, "GEARFeedback:with_photoionization", 0);
+
+  if (with_photoionization) {
+    fp->radiation_policy |= radiation_policy_photoionization;
+    
+    /* Read the minimal density */
+    fp->HII_region_min_density = parser_get_opt_param_float(
+        params, "GEARFeedback:HII_region_min_density_Hpcm3",
+        default_HII_region_min_density_Hpcm3);
+
+    /* Read the HII region maximal age */
+    fp->HII_region_max_age = parser_get_opt_param_float(
+        params, "GEARFeedback:HII_region_max_age_Myr",
+        default_HII_region_max_age_Myr);
+
+    /* Read the HII region rebuild frequency */
+    fp->HII_region_max_age = parser_get_opt_param_float(
+        params, "GEARFeedback:HII_region_rebuild_time_Myr",
+        default_HII_region_rebuild_time_Myr);
 
     /* Convert to internal units */
     const double m_p_cgs = phys_const->const_proton_mass *
                            units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-    fp->minimal_HII_ionization_density *=
+    fp->HII_region_min_density *=
         m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
+    const double Myr_internal_units = 1e6 * phys_const->const_year;
+    fp->HII_region_max_age *= Myr_internal_units;
+    fp->HII_region_rebuild_time *= Myr_internal_units;
+
+    if (fp->HII_region_rebuild_time <= 0.0) {
+      /* TODO: What do we do? We rebuild at every step the star is active */
+    }
   }
 
   /* -------------------------------------------- */
