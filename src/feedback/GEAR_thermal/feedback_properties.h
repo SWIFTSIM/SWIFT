@@ -276,7 +276,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         default_HII_region_max_age_Myr);
 
     /* Read the HII region rebuild frequency */
-    fp->HII_region_max_age = parser_get_opt_param_float(
+    fp->HII_region_rebuild_time = parser_get_opt_param_float(
         params, "GEARFeedback:HII_region_rebuild_time_Myr",
         default_HII_region_rebuild_time_Myr);
 
