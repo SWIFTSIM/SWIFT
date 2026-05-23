@@ -137,6 +137,9 @@ struct part {
   float drho_dt;
 
   /*! Gradient of velocity, calculated using normalised kernel. */
+  float dr_norm_kernel[3][3];
+
+  /*! Gradient of velocity, calculated using normalised kernel. */
   float dv_norm_kernel[3][3];
 
   /*! Gradient of internal energy, calculated using normalised kernel. */

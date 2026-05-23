@@ -44,6 +44,7 @@ hydro_prepare_gradient_extra_visc_difn(struct part *restrict p) {
   memset(p->drho_norm_kernel, 0.f, 3 * sizeof(float));
   memset(p->dh_norm_kernel, 0.f, 3 * sizeof(float));
   memset(p->dv_norm_kernel, 0.f, 3 * 3 * sizeof(float));
+  memset(p->dr_norm_kernel, 0.f, 3 * 3 * sizeof(float));
 }
 
 /**
@@ -119,6 +120,13 @@ hydro_runner_iact_gradient_extra_visc_difn(struct part *restrict pi,
       pj->dv_norm_kernel[i][j] +=
           (pi->v[j] - pj->v[j]) * wj_dx_term[i] * volume_i;
     }
+
+    for (int j = 0; j < 3; j++) {
+      pi->dr_norm_kernel[i][j] +=
+          dx[j] * wi_dx_term[i] * volume_j;
+      pj->dr_norm_kernel[i][j] -=
+          dx[j] * wj_dx_term[i] * volume_i;
+    }
   }
 }
 
@@ -173,6 +181,11 @@ hydro_runner_iact_nonsym_gradient_extra_visc_difn(
       pi->dv_norm_kernel[i][j] +=
           (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
     }
+
+    for (int j = 0; j < 3; j++) {
+      pi->dr_norm_kernel[i][j] +=
+          dx[j] * wi_dx_term[i] * volume_j;
+    }
   }
 }
 
@@ -199,8 +212,7 @@ hydro_end_gradient_extra_visc_difn(struct part *restrict p) {}
 __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     float *Qi, float *Qj, float *visc_signal_velocity,
     float *difn_signal_velocity, const struct part *restrict pi,
-    const struct part *restrict pj, const float dx[3], 
-    const float a,
+    const struct part *restrict pj, const float dx[3], const float a,
     const float H) {
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
@@ -240,6 +252,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     /* 1/2 * (r_j - r_i) * dv/dr in second term of Sandnes+2025 Eqn. 38 */
     float v_reconst_i[3] = {0};
     float v_reconst_j[3] = {0};
+    const float hubble_a2 = H * a * a;
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
@@ -248,8 +261,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
         A_i_v += pi->dv_norm_kernel[i][j] * dx[i] * dx[j];
         A_j_v += pj->dv_norm_kernel[i][j] * dx[i] * dx[j];
 
-        v_reconst_i[j] -= 0.5 * pi->dv_norm_kernel[i][j] * dx[i];
-        v_reconst_j[j] += 0.5 * pj->dv_norm_kernel[i][j] * dx[i];
+        /*1/2 * (rj-ri) sum (vj-vi) partial hatW mj / rhoj + 1/2 * Ha^2 (rj-ri) sum (rj-ri) partial hatW mj / rhoj*/
+        v_reconst_i[j] -= (0.5 * pi->dv_norm_kernel[i][j] * dx[i] + hubble_a2 * 0.5 * pi->dr_norm_kernel[i][j] * dx[i]); 
+        v_reconst_j[j] += (0.5 * pj->dv_norm_kernel[i][j] * dx[i] + hubble_a2 * 0.5 * pj->dr_norm_kernel[i][j] * dx[i]);
       }
     }
 
@@ -283,15 +297,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
                       slope_limiter_exp_denom);
     }
 
-    const float hubble_flow_times_a2 = H * a * a;
     for (int i = 0; i < 3; i++) {
       /* Assemble the reconstructed velocity (Sandnes+2025 Eqn. 36 ) */
-      
-      /*Add scale factors here (eq 78 SPH eqs paper + eq 74-76 for the reconstructed velocities)*/
-      vtilde_i[i] = hubble_flow_times_a2 * pi->x[i] +
-          pi->v[i] + (1.f - pi->force.balsara) * phi_i_v * (v_reconst_i[i] + 3.f * hubble_flow_times_a2);
-      vtilde_j[i] = hubble_flow_times_a2 * pj->x[i] +
-          pj->v[i] + (1.f - pj->force.balsara) * phi_j_v * (v_reconst_j[i] + 3.f * hubble_flow_times_a2);
+      vtilde_i[i] = pi->v[i] + (1.f - pi->force.balsara) * phi_i_v * v_reconst_i[i];
+      vtilde_j[i] = pj->v[i] + (1.f - pj->force.balsara) * phi_j_v * v_reconst_j[i];
     }
   }
 
@@ -310,15 +319,15 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
-  /*Add scale factors here! (eq 84 SPH eqs paper)*/
-  const float cosmo_factor_Qij = pow_three_gamma_minus_five_over_two(a);
-  const float cosmo_a2 = a * a;
+  /*Add scale factors here! (eq 84 SPH eqs paper) (Balsara switch is accounted for in hydro.h)*/
+  const float cosmo_mu = 1.f / pow_three_gamma_minus_five_over_two(a);
+  const float cosmo_factor_Qij = pow_three_gamma_minus_five(a);
 
   /* Finally assemble viscous pressure terms (Sandnes+2025 41) */
   *Qi = cosmo_factor_Qij * (a_visc + b_visc * pi->force.balsara) * 0.5f * pi->rho *
-        (-alpha * ci * mu_i + cosmo_a2 * beta * mu_i * mu_i);
-  *Qj = cosmo_factor_Qij* (a_visc + b_visc * pj->force.balsara) * 0.5f * pj->rho *
-        (-alpha * cj * mu_j + cosmo_a2 * beta * mu_j * mu_j);
+        (-alpha * cosmo_mu * ci * mu_i + beta * mu_i * mu_i);
+  *Qj = cosmo_factor_Qij * (a_visc + b_visc * pj->force.balsara) * 0.5f * pj->rho *
+        (-alpha * cosmo_mu * cj * mu_j + beta * mu_j * mu_j);
 
   /* Account for alpha being outside brackets in timestep code */
   const float viscosity_parameter_factor = (alpha == 0.f) ? 0.f : beta / alpha;

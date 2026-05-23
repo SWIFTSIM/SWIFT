@@ -687,15 +687,17 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Balsara switch using normalised kernel gradients (Sandnes+2025 Eqn. 34 with
    * velocity gradients calculated by Eqn. 35) */
-   /*Add scale factor here for the Balsara switch*/
-  float a_factor_balsara = cosmo -> a_factor_Balsara_eps;
-  float a_factor_remix_balsara = a_factor_balsara / cosmo -> a;
+  /*Add scale factor here for the Balsara switch*/
+  float a_factor_balsara_sphenix = cosmo -> a_factor_Balsara_eps; /* a^{(1 - 3*gamma) / 2} */
+  float a_factor_remix_balsara = a_factor_balsara_sphenix * cosmo -> a * cosmo -> a; /* a^{(5 - 3*gamma) / 2} */
+  float hubble_flow = cosmo -> a_dot * cosmo -> a_inv;
   float balsara;
   if (div_v == 0.f) {
     balsara = 0.f;
   } else {
-    balsara = fabsf(div_v) /
-              (fabsf(div_v) + mod_curl_v + 0.0001f * soundspeed * a_factor_remix_balsara / p->h);
+    float abs_div_v = fabsf(3.f * hubble_flow + div_v);
+    balsara = abs_div_v /
+              (abs_div_v + mod_curl_v + 0.0001f * soundspeed * a_factor_remix_balsara / p->h);
   }
 
   /* Compute the pressure */
@@ -943,6 +945,12 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
+
+  /* Convert the physcial internal energy to the comoving one. */
+  /* u' = a^(3(g-1)) u */
+  const float u_factor = 1.f / cosmo->a_factor_internal_energy;
+  p->u *= u_factor;
+  xp->u_full = p->u;
 
   /* Compute the pressure */
   const float pressure =

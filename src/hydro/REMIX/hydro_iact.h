@@ -306,10 +306,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->u_dt += mj * (P_i_term + Q_i_term) * dvdotG;
   pj->u_dt += mi * (P_j_term + Q_j_term) * dvdotG;
 
-  /* Additional term from scale factors */
-  const float drdotG = (pi->x[0] - pj->x[0]) * G_mean[0] +
-                       (pi->x[1] - pj->x[1]) * G_mean[1] +
-                       (pi->x[2] - pj->x[2]) * G_mean[2];
+  /* Additional term from cosmology */
+  const float drdotG = dx[0] * G_mean[0] +
+                       dx[1] * G_mean[1] +
+                       dx[2] * G_mean[2];
 
   const float H_a2 = H * a * a;
   pi->u_dt += H_a2 * mj * Q_i_term * drdotG;
@@ -348,14 +348,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
   const float alpha_norm = const_remix_norm_alpha;
 
-  /* Add scale factors! (SPH eqs paper Eq 106) */
+  /* Add cosmology terms */
   float drho_dt_norm_and_difn_i = alpha_norm  *
                                   pi->force.vac_switch *
-                                  (pi->m0 * rhoi - rhoi) * ( mj * v_sig_norm * mod_G * mean_rho_inv - 3.f * hubble_flow_times_a2);
+                                  (pi->m0 * rhoi - rhoi) * (v_sig_norm + hubble_flow_times_a2* r) * (mj * mod_G * mean_rho_inv);
+                        
   float drho_dt_norm_and_difn_j = alpha_norm  *
                                   pj->force.vac_switch *
-                                  (pj->m0 * rhoj - rhoj) * ( mi * v_sig_norm * mod_G * mean_rho_inv - 3.f * hubble_flow_times_a2);
-
+                                  (pj->m0 * rhoj - rhoj) * (v_sig_norm + hubble_flow_times_a2 * r) * (mi * mod_G * mean_rho_inv);
 
   /* Only include diffusion for same-material particle pair */
   if (pi->mat_id == pj->mat_id) {
@@ -482,10 +482,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Internal energy time derivative */
   pi->u_dt += mj * (P_i_term + Q_i_term) * dvdotG;
 
-  /* Additional term from scale factors */
-  const float drdotG = (pi->x[0] - pj->x[0]) * G_mean[0] +
-                       (pi->x[1] - pj->x[1]) * G_mean[1] +
-                       (pi->x[2] - pj->x[2]) * G_mean[2];
+  /* Additional term from cosmology */
+  const float drdotG = dx[0] * G_mean[0] +
+                       dx[1] * G_mean[1] +
+                       dx[2] * G_mean[2];
 
   const float hubble_flow_times_a2 = H * a * a;
   pi->u_dt += hubble_flow_times_a2 * mj * Q_i_term * drdotG;
@@ -522,8 +522,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float alpha_norm = const_remix_norm_alpha;
   float drho_dt_norm_and_difn_i = alpha_norm * 
                                   pi->force.vac_switch *
-                                  (pi->m0 * rhoi - rhoi) *(mj * v_sig_norm * mod_G * mean_rho_inv - 3.f * hubble_flow_times_a2);
-
+                                  (pi->m0 * rhoi - rhoi) * (v_sig_norm + hubble_flow_times_a2 * r) * (mj * mod_G * mean_rho_inv);
 
   /* Only include diffusion for same-material particle pair */
   if (pi->mat_id == pj->mat_id) {
