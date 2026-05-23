@@ -938,7 +938,6 @@ void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, str
   message("The value of R is %E", MG->R);
   MG->c = s->e->physical_constants->const_speed_light_c;
   MG->G = s->e->physical_constants->const_newton_G;
-  MG->normalisation = normalisation;
   MG->h = cosmo->h;
   MG->overdensity = 0; //Do we know the overdensity instead of the density?
 }
@@ -952,7 +951,7 @@ void get_rho_mod(double *rho, double *u, struct MG_variables *MG, double delta, 
   for (int i=0; i<N*N*N; i++) {
     rho[i] -= mean_density;
     rho[i] *= (4./3.);
-    rho[i] += (MG->R*MG->a*MG->a*MG->a)/(24.*M_PI*MG->G) * (delta*delta*delta)*(1. - exp(-(1./2.)*MG->normalisation*u[i]));
+    rho[i] += (MG->R*MG->a*MG->a*MG->a)/(24.*M_PI*MG->G) * (delta*delta*delta)*(1. - exp(-(1./2.)*u[i]));
     rho[i] += mean_density;
   }
 }
@@ -1217,13 +1216,16 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     //}
 
     //FILE *delta_exp;
-    //delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/sine_wave_new/improved_R/fR_128_e-5_z05.txt", "w");
+    //delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/improved_R/fR_128_e-5_z82.txt", "w");
     //for (int i=0; i<N; i++) {
       //for (int j=0; j<N; j++) {
         //for (int k=0; k<N; k++) {
-          //double dx = fabs((double)(i) * box_size/N);
+          //double dx = fabs((double)(i-N/2) * box_size/N);
+          //double dy = fabs((double)(j-N/2) * box_size/N);
+          //double dz = fabs((double)(k-N/2) * box_size/N);
+          //double r = sqrt(dx*dx+dy*dy+dz*dz);
           //size_t cid = cell_getid(cdim, i, j, k);
-          //fprintf(delta_exp, "%E %.15g\n", MG_var.fR_bar*(exp(field_contribution[cid])), dx);
+          //if (r<25) fprintf(delta_exp, "%E %.15g\n", MG_var.fR_bar*(exp(field_contribution[cid])-1.), r);
         //}
       //}
     //}
