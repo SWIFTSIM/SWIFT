@@ -410,7 +410,6 @@ struct MG_variables {
   double G;
   double a3_inv;
   double fR_bar;
-  double normalisation;
   double h;
   double m;
 };
