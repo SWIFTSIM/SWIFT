@@ -424,6 +424,9 @@ void runner_do_recv_sipart(struct runner *r, struct cell *c, int clear_sorts,
   if (c->nodeID == engine_rank) error("Updating a local cell!");
 #endif
 
+  /* Clear this cell's sorted mask. */
+  if (clear_sorts) c->sidm.sorted = 0;
+
   /* If this cell is a leaf, collect the particle data. */
   if (!c->split) {
 

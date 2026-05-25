@@ -127,6 +127,7 @@ const char *taskID_names[task_type_count] = {
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
+    "sidm_sort",
     "sidm_density_ghost",
     "sidm_end_force",
 };
@@ -273,6 +274,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_drift_sipart:
+    case task_type_sidm_sort:
     case task_type_sidm_density_ghost:
     case task_type_sidm_end_force:
       return task_action_sipart;
@@ -612,6 +614,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_sipart:
+    case task_type_sidm_sort:
     case task_type_sidm_density_ghost:
     case task_type_sidm_end_force:
       cell_siunlocktree(ci);
@@ -852,6 +855,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_sipart:
+    case task_type_sidm_sort:
     case task_type_sidm_density_ghost:
     case task_type_sidm_end_force:
       if (ci->sidm.hold) return 0;
@@ -1779,6 +1783,7 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_sort:
     case task_type_stars_sort:
+    case task_type_sidm_sort:
       return task_category_sort;
 
     case task_type_stars_resort:

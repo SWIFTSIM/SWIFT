@@ -1213,6 +1213,7 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
   struct sipart *const siparts = c->sidm.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
+  float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
 
@@ -1262,6 +1263,7 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
 
         /* Update */
         dx_max = max(dx_max, cp->sidm.dx_max_part);
+        dx_max_sort = max(dx_max_sort, cp->hydro.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->sidm.h_max);
         cell_h_max_active = max(cell_h_max_active, cp->sidm.h_max_active);
       }
@@ -1271,6 +1273,7 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
     c->sidm.h_max = cell_h_max;
     c->sidm.h_max_active = cell_h_max_active;
     c->sidm.dx_max_part = dx_max;
+    c->sidm.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
     c->sidm.ti_old_part = ti_current;
@@ -1353,6 +1356,10 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
                         sip->x_diff[1] * sip->x_diff[1] +
                         sip->x_diff[2] * sip->x_diff[2];
       dx2_max = max(dx2_max, dx2);
+      const float dx2_sort = sip->x_diff_sort[0] * sip->x_diff_sort[0] +
+                             sip->x_diff_sort[1] * sip->x_diff_sort[1] +
+                             sip->x_diff_sort[2] * sip->x_diff_sort[2];
+      dx2_max_sort = max(dx2_max_sort, dx2_sort);
 
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, sip->h);
@@ -1370,11 +1377,13 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
+    dx_max_sort = sqrtf(dx2_max_sort);
 
     /* Store the values */
     c->sidm.h_max = cell_h_max;
     c->sidm.h_max_active = cell_h_max_active;
     c->sidm.dx_max_part = dx_max;
+    c->sidm.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
     c->sidm.ti_old_part = ti_current;

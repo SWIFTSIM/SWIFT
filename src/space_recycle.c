@@ -112,6 +112,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.sorted = 0;
     c->hydro.sort_allocated = 0;
     c->stars.sorted = 0;
+    c->stars.sort_allocated = 0;
+    c->sidm.sorted = 0;
+    c->sidm.sort_allocated = 0;
     c->hydro.count = 0;
     c->hydro.count_total = 0;
     c->hydro.updated = 0;
@@ -252,6 +255,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 
     cell_free_hydro_sorts(c);
     cell_free_stars_sorts(c);
+    cell_free_sidm_sorts(c);
 #if WITH_MPI
     c->mpi.tag = -1;
     c->mpi.recv = NULL;

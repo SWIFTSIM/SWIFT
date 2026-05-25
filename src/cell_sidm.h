@@ -94,8 +94,22 @@ struct cell_sidm {
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;
 
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    uint16_t requires_sorts;
+
     /*! Bit-mask indicating the sorted directions */
     uint16_t sorted;
+
+    /*! Bit-mask indicating the sorted directions */
+    uint16_t sort_allocated;
+
+    /*! Bit mask of sorts that need to be computed for this cell. */
+    uint16_t do_sort;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /*! Last (integer) time the cell's sort arrays were updated. */
+    integertime_t ti_sort;
+#endif
 
 #ifdef SIDM_NONE
   };

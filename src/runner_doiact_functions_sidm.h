@@ -792,6 +792,23 @@ void DOPAIR1_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
   if (!cell_are_sipart_drifted(ci, e) || !cell_are_sipart_drifted(cj, e))
     error("Interacting undrifted cells.");
 
+  // TODO: Matthieu: Uncomment the block below when the sorts are implemented
+  // in the interactions
+
+  /* /\* Get the sort ID. */
+  /*  * Note: this may swap the ci and cj pointers!! *\/ */
+  /* double shift[3] = {0.0, 0.0, 0.0}; */
+  /* const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift); */
+
+  /* /\* Have the cells been sorted? *\/ */
+  /* if (!(ci->sidm.sorted & (1 << sid)) || */
+  /*     ci->sidm.dx_max_sort_old > space_maxreldx * ci->dmin) */
+  /*   error("Interacting unsorted cells (ci)."); */
+
+  /* if (!(cj->sidm.sorted & (1 << sid)) || */
+  /*     cj->sidm.dx_max_sort_old > space_maxreldx * cj->dmin) */
+  /*   error("Interacting unsorted cells (cj)."); */
+
   /* No sorted intreactions here -> use the naive ones */
   DOPAIR1_SIDM_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 }

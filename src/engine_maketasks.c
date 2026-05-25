@@ -1380,9 +1380,9 @@ void engine_addtasks_recv_sidm(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_rho);
 
     /* Add dependencies. */
-    if (c->hydro.sorts != NULL) {
-      // scheduler_addunlock(s, t_xv, c->sidm.sorts);
-      // scheduler_addunlock(s, c->sidm.sorts, t_rho);
+    if (c->sidm.sorts != NULL) {
+      scheduler_addunlock(s, t_xv, c->sidm.sorts);
+      scheduler_addunlock(s, c->sidm.sorts, t_rho);
     }
 
     for (struct link *l = c->sidm.density; l != NULL; l = l->next) {
@@ -2249,7 +2249,9 @@ void engine_make_hierarchical_tasks_sidm(struct engine *e, struct cell *c) {
   /* Are we in a super-cell ? */
   if (c->sidm.super == c) {
 
-    /* TODO:Add the SIDM sort task. */
+    /* Add the sort task. */
+    c->sidm.sorts = scheduler_addtask(s, task_type_sidm_sort, task_subtype_none,
+                                      0, 0, c, NULL);
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -2504,6 +2506,14 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
            finger = finger->parent) {
         if (finger->stars.sorts != NULL)
           scheduler_addunlock(sched, t, finger->stars.sorts);
+      }
+
+      /* Link SIDM sort tasks to all the higher sort task. */
+    } else if (t_type == task_type_sidm_sort) {
+      for (struct cell *finger = t->ci->parent; finger != NULL;
+           finger = finger->parent) {
+        if (finger->sidm.sorts != NULL)
+          scheduler_addunlock(sched, t, finger->sidm.sorts);
       }
 
       /* Link self tasks to cells. */
@@ -4013,14 +4023,17 @@ void engine_make_extra_sidmloop_tasks_mapper(void *map_data, int num_elements,
     /* Escape early */
     if (t->type == task_type_none) continue;
 
-    /* TODO:sort tasks. */
+    /* Sort tasks depend on the drift of the cell (gas version). */
+    if (t_type == task_type_sidm_sort && ci->nodeID == nodeID) {
+      scheduler_addunlock(sched, ci->sidm.super->sidm.drift, t);
+    }
 
     /* Otherwise, self interaction? */
     if (t_type == task_type_self && t_subtype == task_subtype_sidm_density) {
 
       /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, ci->sidm.super->sidm.drift, t);
-      // scheduler_addunlock(sched, ci->sidm.super->sidm.sorts, t);
+      scheduler_addunlock(sched, ci->sidm.super->sidm.sorts, t);
 
       /* Start by constructing the task for the second SIDM loop */
       t_sidm_force = scheduler_addtask(
@@ -4051,10 +4064,10 @@ void engine_make_extra_sidmloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* Make all density tasks depend on the sorts */
-      // scheduler_addunlock(sched, ci->sidm.super->sidm.sorts, t);
-      // if (ci->sidm.super != cj->sidm.super) {
-      //   scheduler_addunlock(sched, cj->sidm.super->sidm.sorts, t);
-      // }
+      scheduler_addunlock(sched, ci->sidm.super->sidm.sorts, t);
+      if (ci->sidm.super != cj->sidm.super) {
+        scheduler_addunlock(sched, cj->sidm.super->sidm.sorts, t);
+      }
 
       /* New task for the force */
       t_sidm_force = scheduler_addtask(
