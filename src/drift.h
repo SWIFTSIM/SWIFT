@@ -418,5 +418,6 @@ __attribute__((always_inline)) INLINE static void drift_sipart(
   for (int k = 0; k < 3; k++) {
     const float dx = sip->v[k] * dt_drift;
     sip->x_diff[k] -= dx;
+    sip->x_diff_sort[k] -= dx;
   }
 }

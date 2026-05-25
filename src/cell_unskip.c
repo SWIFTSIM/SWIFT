@@ -895,6 +895,59 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
 }
 
 /**
+ * @brief Activate the SIDM sorts up a cell hierarchy.
+ */
+void cell_activate_sidm_sorts_up(struct cell *c, struct scheduler *s) {
+  if (c == c->sidm.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->sidm.sorts == NULL)
+      error("Trying to activate un-existing c->sidm.sorts");
+#endif
+    scheduler_activate(s, c->sidm.sorts);
+    if (c->nodeID == engine_rank) cell_activate_drift_sipart(c, s);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_sidm_sub_sort);
+         parent = parent->parent) {
+      cell_set_flag(parent, cell_flag_do_sidm_sub_sort);
+      if (parent == c->sidm.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->sidm.sorts == NULL)
+          error("Trying to activate un-existing parents->sidm.sorts");
+#endif
+        scheduler_activate(s, parent->sidm.sorts);
+        if (parent->nodeID == engine_rank)
+          cell_activate_drift_sipart(parent, s);
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the SIDM sorts on a given cell, if needed.
+ */
+void cell_activate_sidm_sorts(struct cell *c, int sid, struct scheduler *s) {
+  /* Do we need to re-sort? */
+  if (c->sidm.dx_max_sort > space_maxreldx * c->dmin) {
+    /* Climb up the tree to active the sorts in that direction */
+    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+      if (finger->sidm.requires_sorts) {
+        atomic_or(&finger->sidm.do_sort, finger->sidm.requires_sorts);
+        cell_activate_sidm_sorts_up(finger, s);
+      }
+      finger->sidm.sorted = 0;
+    }
+  }
+
+  /* Has this cell been sorted at all for the given sid? */
+  if (!(c->sidm.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+    atomic_or(&c->sidm.do_sort, (1 << sid));
+    cell_activate_sidm_sorts_up(c, s);
+  }
+}
+
+/**
  * @brief Traverse a sub-cell task and activate the hydro drift tasks that are
  * required by a hydro task
  *
@@ -1417,9 +1470,19 @@ void cell_activate_subcell_sidm_tasks(struct cell *ci, struct cell *cj,
     /* Otherwise, activate the drifts. */
     else if (ci_active || cj_active) {
 
+      /* We are going to interact this pair, so store some values. */
+      atomic_or(&ci->sidm.requires_sorts, 1 << sid);
+      atomic_or(&cj->sidm.requires_sorts, 1 << sid);
+      ci->sidm.dx_max_sort_old = ci->sidm.dx_max_sort;
+      cj->sidm.dx_max_sort_old = cj->sidm.dx_max_sort;
+
       /* Activate the drifts if the cells are local. */
       if (ci->nodeID == engine_rank) cell_activate_drift_sipart(ci, s);
       if (cj->nodeID == engine_rank) cell_activate_drift_sipart(cj, s);
+
+      /* Do we need to sort the cells? */
+      cell_activate_sidm_sorts(ci, sid, s);
+      cell_activate_sidm_sorts(cj, sid, s);
     }
   } /* Otherwise, pair interation */
 }

@@ -389,8 +389,9 @@ enum cell_flags {
   cell_flag_skip_rt_sort = (1UL << 21),     /* skip rt_sort after a RT recv? */
   cell_flag_do_rt_sub_sort = (1UL << 22),   /* same as hydro_sub_sort for RT */
   cell_flag_rt_requests_sort = (1UL << 23), /* was this sort requested by RT? */
-  cell_flag_do_sidm_drift = (1UL << 24),
-  cell_flag_do_sidm_sub_drift = (1UL << 25),
+  cell_flag_do_sidm_sub_sort = (1UL << 24),
+  cell_flag_do_sidm_drift = (1UL << 25),
+  cell_flag_do_sidm_sub_drift = (1UL << 26),
 };
 
 /**
@@ -727,6 +728,7 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s);
 void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
+void cell_activate_sidm_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
@@ -741,8 +743,9 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
 void cell_check_sort_flags(const struct cell *c);
-void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
 void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
+void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
+void cell_clear_sidm_sort_flags(struct cell *c, const int unused_flags);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -1774,6 +1777,124 @@ cell_get_stars_sorts(const struct cell *c, const int sid) {
 
   /* Return the corresponding array */
   return &c->stars.sort[j * (c->stars.count + 1)];
+}
+
+/**
+ * @brief Allocate sidm sort memory for cell.
+ *
+ * @param c The #cell that will require sorting.
+ * @param flags Cell flags.
+ */
+__attribute__((always_inline)) INLINE static void cell_malloc_sidm_sorts(
+    struct cell *c, const int flags) {
+
+  const int count = c->sidm.count;
+
+  /* Have we already allocated something? */
+  if (c->sidm.sort != NULL) {
+
+    /* Start by counting how many dimensions we need
+       and how many we already have */
+    const int num_arrays_wanted =
+        intrinsics_popcount(c->sidm.sort_allocated | flags);
+    const int num_already_allocated =
+        intrinsics_popcount(c->sidm.sort_allocated);
+
+    /* Do we already have what we want? */
+    if (num_arrays_wanted == num_already_allocated) return;
+
+    /* Allocate memory for the new array */
+    struct sort_entry *new_array = NULL;
+    if ((new_array = (struct sort_entry *)swift_malloc(
+             "sidm.sort", sizeof(struct sort_entry) * num_arrays_wanted *
+                              (count + 1))) == NULL)
+      error("Failed to allocate sort memory.");
+
+    /* Now, copy the already existing arrays */
+    int from = 0;
+    int to = 0;
+    for (int j = 0; j < 13; j++) {
+      if (c->sidm.sort_allocated & (1 << j)) {
+        memcpy(&new_array[to * (count + 1)], &c->sidm.sort[from * (count + 1)],
+               sizeof(struct sort_entry) * (count + 1));
+        ++from;
+        ++to;
+      } else if (flags & (1 << j)) {
+        ++to;
+        c->sidm.sort_allocated |= (1 << j);
+      }
+    }
+
+    /* Swap the pointers */
+    swift_free("sidm.sort", c->sidm.sort);
+    c->sidm.sort = new_array;
+
+  } else {
+
+    c->sidm.sort_allocated = flags;
+
+    /* Start by counting how many dimensions we need */
+    const int num_arrays = intrinsics_popcount(flags);
+
+    /* If there is anything, allocate enough memory */
+    if (num_arrays) {
+      if ((c->sidm.sort = (struct sort_entry *)swift_malloc(
+               "sidm.sort",
+               sizeof(struct sort_entry) * num_arrays * (count + 1))) == NULL)
+        error("Failed to allocate sort memory.");
+    }
+  }
+}
+
+/**
+ * @brief Free sidm sort memory for cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_free_sidm_sorts(
+    struct cell *c) {
+
+#ifdef SIDM_NONE
+  /* Nothing to do as we have no particles and hence no sorts */
+#else
+  if (c->sidm.sort != NULL) {
+    swift_free("sidm.sort", c->sidm.sort);
+    c->sidm.sort = NULL;
+    c->sidm.sort_allocated = 0;
+    c->sidm.sorted = 0;
+  }
+#endif
+}
+
+/**
+ * @brief Returns the array of sorted indices for the star particles of a given
+ * cell along agiven direction.
+ *
+ * @param c The #cell.
+ * @param sid the direction id.
+ */
+__attribute__((always_inline)) INLINE static struct sort_entry *
+cell_get_sidm_sorts(const struct cell *c, const int sid) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sid >= 13 || sid < 0) error("Invalid sid!");
+
+  if (!(c->sidm.sort_allocated & (1 << sid)))
+    error("Sort not allocated along direction %d", sid);
+#endif
+
+  /* We need to find at what position in the meta-array of
+     sorts where the corresponding sid has been allocated since
+     there might be gaps as we only allocated the directions that
+     are in use.
+     We create a mask with all the bits before the sid's one set to 1
+     and apply it on the list of allocated directions. We then count
+     the number of bits that are in the results to obtain the position
+     of the correspondin sid in the meta-array */
+  const int j = intrinsics_popcount(c->sidm.sort_allocated & ((1 << sid) - 1));
+
+  /* Return the corresponding array */
+  return &c->sidm.sort[j * (c->sidm.count + 1)];
 }
 
 /**
