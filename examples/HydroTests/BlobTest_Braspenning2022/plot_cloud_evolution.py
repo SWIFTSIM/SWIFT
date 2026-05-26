@@ -77,8 +77,8 @@ def analyse_snapshot(i, chi, rho_cl0, m_cl0, resolution):
         m_t_intermediate = (
             np.sum(
                 data.gas.masses.value[
-                    (data.gas.temperatures > 10 ** 4.5)
-                    & (data.gas.temperatures < 10 ** 5.5)
+                    (data.gas.temperatures > 10**4.5)
+                    & (data.gas.temperatures < 10**5.5)
                 ]
             )
             / m_cl0
@@ -87,8 +87,8 @@ def analyse_snapshot(i, chi, rho_cl0, m_cl0, resolution):
         m_t_intermediate = (
             np.sum(
                 data.gas.masses.value[
-                    (data.gas.temperatures > 10 ** 4.25)
-                    & (data.gas.temperatures < 10 ** 4.75)
+                    (data.gas.temperatures > 10**4.25)
+                    & (data.gas.temperatures < 10**4.75)
                 ]
             )
             / m_cl0
@@ -118,10 +118,10 @@ def analyse_snapshot(i, chi, rho_cl0, m_cl0, resolution):
     binned_masses = binned_masses * data.gas.masses.units
 
     if chi == 100:
-        mask = (binned_temperatures > 10 ** 4.5) & (binned_temperatures < 10 ** 5.5)
+        mask = (binned_temperatures > 10**4.5) & (binned_temperatures < 10**5.5)
         m_t_intermediate_resampled_32 = np.sum(binned_masses.v[mask]) / m_cl0
     elif chi == 10:
-        mask = (binned_temperatures > 10 ** 4.25) & (binned_temperatures < 10 ** 4.75)
+        mask = (binned_temperatures > 10**4.25) & (binned_temperatures < 10**4.75)
         m_t_intermediate_resampled_32 = np.sum(binned_masses.v[mask]) / m_cl0
 
     """
@@ -148,10 +148,10 @@ def analyse_snapshot(i, chi, rho_cl0, m_cl0, resolution):
     binned_masses = binned_masses * data.gas.masses.units
 
     if chi == 100:
-        mask = (binned_temperatures > 10 ** 4.5) & (binned_temperatures < 10 ** 5.5)
+        mask = (binned_temperatures > 10**4.5) & (binned_temperatures < 10**5.5)
         m_t_intermediate_resampled_16 = np.sum(binned_masses.v[mask]) / m_cl0
     elif chi == 10:
-        mask = (binned_temperatures > 10 ** 4.25) & (binned_temperatures < 10 ** 4.75)
+        mask = (binned_temperatures > 10**4.25) & (binned_temperatures < 10**4.75)
         m_t_intermediate_resampled_16 = np.sum(binned_masses.v[mask]) / m_cl0
 
     return (
@@ -211,13 +211,15 @@ dense_mass_32 = np.zeros(steps)
 intermediate_temp_mass_32 = np.zeros(steps)
 
 for i in range(steps):
-    time[i], dense_mass[i], intermediate_temp_mass[i], dense_mass_16[
-        i
-    ], intermediate_temp_mass_16[i], dense_mass_32[i], intermediate_temp_mass_32[
-        i
-    ] = analyse_snapshot(
-        i, chi, rho_cl0, m_cl0, resolution
-    )
+    (
+        time[i],
+        dense_mass[i],
+        intermediate_temp_mass[i],
+        dense_mass_16[i],
+        intermediate_temp_mass_16[i],
+        dense_mass_32[i],
+        intermediate_temp_mass_32[i],
+    ) = analyse_snapshot(i, chi, rho_cl0, m_cl0, resolution)
 
 fig, ax = plt.subplots(3, 2, figsize=(10, 15))
 

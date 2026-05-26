@@ -1,6 +1,7 @@
 import h5py as h5
 import numpy as np
 
+
 # Define some functions that will be used at the end to write the actual IC data
 def write_header(f, boxsize, flag_entropy, np_total, np_total_hw, other=False):
     # We'll first build a dictionary to iterate through.
@@ -128,13 +129,11 @@ print("Resolution in the ambient medium:\n", m_part)
 print("Resolution in the jet:\n", m_part_jet)
 
 # Density of the ambient medium in internal units.
-ambient_medium_density = (
-    1.47e-5
-)  # Corresponds to 0.01 cm^-3, typical of galaxy cluster centers (of halo mass 10**15 Msun)
+ambient_medium_density = 1.47e-5  # Corresponds to 0.01 cm^-3, typical of galaxy cluster centers (of halo mass 10**15 Msun)
 
 # Temperature of the ambient medium in Kelvin.
 ambient_medium_temperature = (
-    10 ** 7
+    10**7
 )  # Typical of cool core galaxy clusters (of halo mass 10**15 Msun)
 
 ## Some jet-related parameters ##
@@ -147,19 +146,17 @@ cos_opening_angle = np.cos(opening_angle / 180.0 * np.pi)
 
 # We need to compute how many particles we want to launch. Assume some jet parameters for this
 # Jet power, duration that it's on, and total launched energy
-P_jet = (
-    1.56e8
-)  # 10^45 erg/s in internal units. Make sure it is consistent with parameter file
+P_jet = 1.56e8  # 10^45 erg/s in internal units. Make sure it is consistent with parameter file
 T_jet = (
-    0.10228
-)  # 100 Myr in internal units. Make sure it is consistent with parameter file
+    0.10228  # 100 Myr in internal units. Make sure it is consistent with parameter file
+)
 E_jet = P_jet * T_jet
 
 # Jet velocity
 v_jet = 7.5e3  # km/s in internal units. Make sure it is consistent with parameter file
 
 # Finally we can compute total number of particles to launch
-N_jet_target = int(np.floor(E_jet / (0.5 * m_part_jet * v_jet ** 2)))
+N_jet_target = int(np.floor(E_jet / (0.5 * m_part_jet * v_jet**2)))
 print("Target number of particles to launch:\n", N_jet_target)
 
 
@@ -290,7 +287,7 @@ internal_energies_gas = internal_energy * np.ones(N_total)
 
 # Assign particle IDs
 IDs_gas = np.concatenate(
-    (np.arange(1, N_jet_final + 1), 10 ** 7 * 2 + np.arange(N_ambient_medium)),
+    (np.arange(1, N_jet_final + 1), 10**7 * 2 + np.arange(N_ambient_medium)),
     axis=None,
 )
 
@@ -303,7 +300,7 @@ masses_gas = np.concatenate(
 smoothing_length_ambient_medium = 0.5 * (50 * m_part / (ambient_medium_density)) ** (
     1.0 / 3.0
 )
-volume_jet_cone = 4.0 * np.pi / 3.0 * R ** 3 * np.sin(opening_angle) ** 2
+volume_jet_cone = 4.0 * np.pi / 3.0 * R**3 * np.sin(opening_angle) ** 2
 smoothing_length_jet_cone = 0.5 * (50 / (N_jet_final / volume_jet_cone)) ** (1.0 / 3.0)
 smoothing_lengths_gas = np.concatenate(
     (
@@ -332,10 +329,10 @@ with h5.File("ICs.hdf5", "w") as f:
     write_units(
         f,
         current=1.0,
-        length=3.08566 * 10 ** 21,  # kpc
-        mass=1.98848 * 10 ** 43.0,  # 10**10 Msun
+        length=3.08566 * 10**21,  # kpc
+        mass=1.98848 * 10**43.0,  # 10**10 Msun
         temperature=1.0,  # Kelvin
-        time=3.156 * 10 ** 16.0,  # Gyr
+        time=3.156 * 10**16.0,  # Gyr
     )
 
     write_block(

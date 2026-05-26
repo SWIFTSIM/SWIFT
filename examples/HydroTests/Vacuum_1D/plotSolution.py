@@ -63,7 +63,7 @@ xa = np.arange(-0.25, 0.25, 0.001)
 rhoa, va, Pa, _ = solver.solve(rhoL, vL, PL, rhoR, vR, PR, xa / time)
 
 ua = Pa / (gamma - 1.0) / rhoa
-Sa = Pa / rhoa ** gamma
+Sa = Pa / rhoa**gamma
 
 # Plot the interesting quantities
 fig, ax = pl.subplots(2, 3, figsize=(7, 7 / 1.6))
