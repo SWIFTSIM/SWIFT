@@ -144,6 +144,7 @@ static void space_split_frontier_process_cell(struct space *s,
                                               struct cell_buff **top_bbuff,
                                               struct cell_buff **top_gbuff,
                                               struct cell_buff **top_sink_buff,
+                                              double *top_buffer_time,
                                               struct space_split_frontier *next,
                                               struct cell *c,
                                               const short int tpid) {
@@ -174,6 +175,7 @@ static void space_split_frontier_process_cell(struct space *s,
    * where leaves never paid the buffer cost, while still allowing the first
    * BFS level to do the work in parallel. */
   if (c->top == c) {
+    const ticks top_buffer_tic = getticks();
     const ptrdiff_t top_index = c - s->cells_top;
 
     if (top_buff[top_index] != NULL || top_sbuff[top_index] != NULL ||
@@ -215,6 +217,8 @@ static void space_split_frontier_process_cell(struct space *s,
     space_split_fill_top_buffers(c, top_buff[top_index], top_sbuff[top_index],
                                  top_bbuff[top_index], top_gbuff[top_index],
                                  top_sink_buff[top_index]);
+
+    top_buffer_time[tpid] += clocks_from_ticks(getticks() - top_buffer_tic);
   }
 
   space_split_init_progeny(s, c, tpid);
@@ -967,15 +971,16 @@ static void space_split_frontier_mapper(void *map_data, int num_cells,
   struct cell_buff **top_bbuff = (struct cell_buff **)mapper_data[3];
   struct cell_buff **top_gbuff = (struct cell_buff **)mapper_data[4];
   struct cell_buff **top_sink_buff = (struct cell_buff **)mapper_data[5];
+  double *top_buffer_time = (double *)mapper_data[6];
   struct space_split_frontier *next =
-      (struct space_split_frontier *)mapper_data[6];
+      (struct space_split_frontier *)mapper_data[7];
   struct cell **cells = (struct cell **)map_data;
   const short int tpid = threadpool_gettid();
 
   for (int i = 0; i < num_cells; i++)
     space_split_frontier_process_cell(s, top_buff, top_sbuff, top_bbuff,
-                                      top_gbuff, top_sink_buff, next, cells[i],
-                                      tpid);
+                                      top_gbuff, top_sink_buff,
+                                      top_buffer_time, next, cells[i], tpid);
 }
 
 /**
@@ -1098,9 +1103,11 @@ void space_split(struct space *s, int verbose) {
         "top_split_gbuff", sizeof(struct cell_buff *) * nr_top_cells);
     struct cell_buff **top_sink_buff = (struct cell_buff **)swift_malloc(
         "top_split_sink_buff", sizeof(struct cell_buff *) * nr_top_cells);
+    double *top_buffer_time =
+        (double *)swift_malloc("top_split_timer", sizeof(double) * nr_threads);
 
     if (top_buff == NULL || top_sbuff == NULL || top_bbuff == NULL ||
-        top_gbuff == NULL || top_sink_buff == NULL)
+        top_gbuff == NULL || top_sink_buff == NULL || top_buffer_time == NULL)
       error("Failed to allocate top-level split buffer pointer arrays.");
 
     bzero(top_buff, sizeof(struct cell_buff *) * nr_top_cells);
@@ -1108,6 +1115,7 @@ void space_split(struct space *s, int verbose) {
     bzero(top_bbuff, sizeof(struct cell_buff *) * nr_top_cells);
     bzero(top_gbuff, sizeof(struct cell_buff *) * nr_top_cells);
     bzero(top_sink_buff, sizeof(struct cell_buff *) * nr_top_cells);
+    bzero(top_buffer_time, sizeof(double) * nr_threads);
 
     /* Two frontier buffers, swapped each level. One holds the cells of the
      * current BFS level while the other accumulates their surviving children
@@ -1126,8 +1134,13 @@ void space_split(struct space *s, int verbose) {
     }
     this_level->count = nr_local_cells;
 
-    void *frontier_mapper_data[7] = {s,        top_buff,      top_sbuff,
-                                     top_bbuff, top_gbuff,    top_sink_buff,
+    void *frontier_mapper_data[8] = {s,
+                                     top_buff,
+                                     top_sbuff,
+                                     top_bbuff,
+                                     top_gbuff,
+                                     top_sink_buff,
+                                     top_buffer_time,
                                      next_level};
 
     /* Cutoff below which serial processing is faster than the threadpool
@@ -1135,6 +1148,7 @@ void space_split(struct space *s, int verbose) {
     const int serial_cutoff = nr_threads;
 
     /* Drive the BFS until the frontier is empty. */
+    const ticks bfs_tic = getticks();
     while (this_level->count > 0) {
 
       /* Pre-size the next frontier to the worst case (each cell can
@@ -1142,7 +1156,7 @@ void space_split(struct space *s, int verbose) {
       space_split_frontier_ensure_capacity(next_level, 8 * this_level->count);
       next_level->count = 0;
 
-      frontier_mapper_data[6] = next_level;
+      frontier_mapper_data[7] = next_level;
 
       if (this_level->count <= serial_cutoff) {
         /* Run the level on the calling thread to avoid threadpool
@@ -1151,7 +1165,7 @@ void space_split(struct space *s, int verbose) {
         for (int i = 0; i < this_level->count; i++)
           space_split_frontier_process_cell(
               s, top_buff, top_sbuff, top_bbuff, top_gbuff, top_sink_buff,
-              next_level, this_level->cells[i], tpid);
+              top_buffer_time, next_level, this_level->cells[i], tpid);
       } else {
         threadpool_map(tp, space_split_frontier_mapper, this_level->cells,
                        this_level->count, sizeof(struct cell *),
@@ -1163,6 +1177,7 @@ void space_split(struct space *s, int verbose) {
       this_level = next_level;
       next_level = tmp;
     }
+    const ticks bfs_toc = getticks();
 
     /* BFS finished: release the transient top-level split buffers and the
      * frontier storage. */
@@ -1193,9 +1208,27 @@ void space_split(struct space *s, int verbose) {
 
     /* Aggregation phase: walk each top tree from leaves up to combine
      * per-family h_max, time-bin bounds and multipoles. */
+    const ticks aggregate_tic = getticks();
     threadpool_map(tp, space_split_aggregate_mapper,
                    s->local_cells_with_particles_top, nr_local_cells,
                    sizeof(int), threadpool_auto_chunk_size, s);
+    const ticks aggregate_toc = getticks();
+
+    if (verbose) {
+      double total_top_buffer_time = 0.;
+      for (int t = 0; t < nr_threads; t++)
+        total_top_buffer_time += top_buffer_time[t];
+
+      message("Top split-buffer setup: %.3f %s (cumulative worker time)",
+              total_top_buffer_time, clocks_getunit());
+      message("BFS split loop: %.3f %s.", clocks_from_ticks(bfs_toc - bfs_tic),
+              clocks_getunit());
+      message("Aggregate pass: %.3f %s.",
+              clocks_from_ticks(aggregate_toc - aggregate_tic),
+              clocks_getunit());
+    }
+
+    swift_free("top_split_timer", top_buffer_time);
   }
 
   if (verbose) {
