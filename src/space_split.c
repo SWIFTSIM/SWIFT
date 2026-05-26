@@ -168,6 +168,55 @@ static void space_split_frontier_process_cell(struct space *s,
 
   /* Otherwise this cell splits: allocate progeny, partition particles,
    * recycle empty progeny and enqueue the rest. */
+
+  /* Allocate and fill the transient split buffers lazily, only when a top
+   * cell actually decides to split. This preserves the old DFS behaviour
+   * where leaves never paid the buffer cost, while still allowing the first
+   * BFS level to do the work in parallel. */
+  if (c->top == c) {
+    const ptrdiff_t top_index = c - s->cells_top;
+
+    if (top_buff[top_index] != NULL || top_sbuff[top_index] != NULL ||
+        top_bbuff[top_index] != NULL || top_gbuff[top_index] != NULL ||
+        top_sink_buff[top_index] != NULL)
+      error("Top-level split buffers already allocated.");
+
+    if (c->hydro.count > 0 &&
+        swift_memalign("top_split_buff", (void **)&top_buff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->hydro.count) != 0)
+      error("Failed to allocate hydro top-level split buffer.");
+
+    if (c->stars.count > 0 &&
+        swift_memalign("top_split_sbuff", (void **)&top_sbuff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->stars.count) != 0)
+      error("Failed to allocate stars top-level split buffer.");
+
+    if (c->black_holes.count > 0 &&
+        swift_memalign("top_split_bbuff", (void **)&top_bbuff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->black_holes.count) != 0)
+      error("Failed to allocate black-hole top-level split buffer.");
+
+    if (c->grav.count > 0 &&
+        swift_memalign("top_split_gbuff", (void **)&top_gbuff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->grav.count) != 0)
+      error("Failed to allocate gravity top-level split buffer.");
+
+    if (c->sinks.count > 0 &&
+        swift_memalign("top_split_sink_buff",
+                       (void **)&top_sink_buff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->sinks.count) != 0)
+      error("Failed to allocate sink top-level split buffer.");
+
+    space_split_fill_top_buffers(c, top_buff[top_index], top_sbuff[top_index],
+                                 top_bbuff[top_index], top_gbuff[top_index],
+                                 top_sink_buff[top_index]);
+  }
+
   space_split_init_progeny(s, c, tpid);
 
   const ptrdiff_t top_index = c->top - s->cells_top;
@@ -813,8 +862,9 @@ static void space_split_finalize_leaf(struct space *s, struct cell *c) {
 /**
  * @brief Fill the transient top-level split buffers for one top cell.
  *
- * The positions are copied exactly once, before the BFS split phase starts.
- * Descendants later recover their active slice by pointer arithmetic relative
+ * The positions are copied exactly once, the first time a top cell actually
+ * decides to split. Descendants later recover their active slice by pointer
+ * arithmetic relative
  * to @c c->top and reuse the already-permuted buffers just like the legacy DFS
  * implementation did when it passed slices down recursively.
  *
@@ -1009,10 +1059,11 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
  *    #space_split_aggregate_recursive. This phase is parallel over top
  *    cells; each subtree is independent.
  *
- * Each top cell owns transient split buffers that are filled once before the
- * BFS starts. Descendants recover their current buffer slice from @c c->top
- * and the particle-array offsets within that top cell, matching the legacy
- * DFS buffer semantics without carrying extra data in the frontier. The BFS
+ * Each top cell that actually splits owns transient split buffers that are
+ * allocated and filled exactly once, on demand. Descendants recover their
+ * current buffer slice from @c c->top and the particle-array offsets within
+ * that top cell, matching the legacy DFS buffer semantics without carrying
+ * extra data in the frontier. The BFS
  * frontier arrays are allocated once and sized to the worst case
  * (@c 8 * size_of_current_frontier) before each level, so
  * #space_split_frontier_append needs only an atomic counter increment to
@@ -1057,46 +1108,6 @@ void space_split(struct space *s, int verbose) {
     bzero(top_bbuff, sizeof(struct cell_buff *) * nr_top_cells);
     bzero(top_gbuff, sizeof(struct cell_buff *) * nr_top_cells);
     bzero(top_sink_buff, sizeof(struct cell_buff *) * nr_top_cells);
-
-    for (int ind = 0; ind < nr_local_cells; ind++) {
-      const int top_index = s->local_cells_with_particles_top[ind];
-      struct cell *c = &s->cells_top[top_index];
-
-      if (c->hydro.count > 0 &&
-          swift_memalign("top_split_buff", (void **)&top_buff[top_index],
-                         SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * c->hydro.count) != 0)
-        error("Failed to allocate hydro top-level split buffer.");
-
-      if (c->stars.count > 0 &&
-          swift_memalign("top_split_sbuff", (void **)&top_sbuff[top_index],
-                         SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * c->stars.count) != 0)
-        error("Failed to allocate stars top-level split buffer.");
-
-      if (c->black_holes.count > 0 &&
-          swift_memalign("top_split_bbuff", (void **)&top_bbuff[top_index],
-                         SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * c->black_holes.count) != 0)
-        error("Failed to allocate black-hole top-level split buffer.");
-
-      if (c->grav.count > 0 &&
-          swift_memalign("top_split_gbuff", (void **)&top_gbuff[top_index],
-                         SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * c->grav.count) != 0)
-        error("Failed to allocate gravity top-level split buffer.");
-
-      if (c->sinks.count > 0 &&
-          swift_memalign("top_split_sink_buff",
-                         (void **)&top_sink_buff[top_index],
-                         SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * c->sinks.count) != 0)
-        error("Failed to allocate sink top-level split buffer.");
-
-      space_split_fill_top_buffers(c, top_buff[top_index], top_sbuff[top_index],
-                                   top_bbuff[top_index], top_gbuff[top_index],
-                                   top_sink_buff[top_index]);
-    }
 
     /* Two frontier buffers, swapped each level. One holds the cells of the
      * current BFS level while the other accumulates their surviving children
