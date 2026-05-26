@@ -72,6 +72,12 @@ extern unsigned long long last_cell_id;
 extern unsigned long long last_leaf_cell_id;
 #endif
 
+/* Struct to temporarily buffer the particle locations and bin id. */
+struct cell_buff {
+  double x[3];
+  int ind;
+} SWIFT_STRUCT_ALIGN;
+
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
 
@@ -527,9 +533,11 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split(struct cell *c, ptrdiff_t parts_offset,
-                ptrdiff_t sparts_offset, ptrdiff_t bparts_offset,
-                ptrdiff_t sinks_offset);
+void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
+                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
+                struct cell_buff *buff, struct cell_buff *sbuff,
+                struct cell_buff *bbuff, struct cell_buff *gbuff,
+                struct cell_buff *sinkbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);

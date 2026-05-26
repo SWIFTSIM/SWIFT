@@ -29,22 +29,6 @@
 #include "memswap.h"
 
 /**
- * @brief Compute a child bucket index using inclusive comparisons.
- */
-__attribute__((always_inline)) static INLINE int cell_split_bid_ge(
-    const double x[3], const double pivot[3]) {
-  return (x[0] >= pivot[0]) * 4 + (x[1] >= pivot[1]) * 2 + (x[2] >= pivot[2]);
-}
-
-/**
- * @brief Compute a child bucket index using strict comparisons.
- */
-__attribute__((always_inline)) static INLINE int cell_split_bid_gt(
-    const double x[3], const double pivot[3]) {
-  return (x[0] > pivot[0]) * 4 + (x[1] > pivot[1]) * 2 + (x[2] > pivot[2]);
-}
-
-/**
  * @brief Sort the parts into eight bins along the given pivots.
  *
  * @param c The #cell array to be sorted.
@@ -57,11 +41,24 @@ __attribute__((always_inline)) static INLINE int cell_split_bid_gt(
  * s->black_holes.parts.
  * @param sinks_offset Offset of the cell sink array relative to the
  *        space's sink array, i.e. c->sinks.parts - s->sinks.parts.
+ * @param buff A buffer with at least max(c->hydro.count, c->grav.count)
+ * entries, used for sorting indices.
+ * @param sbuff A buffer with at least max(c->stars.count, c->grav.count)
+ * entries, used for sorting indices for the sparts.
+ * @param bbuff A buffer with at least max(c->black_holes.count, c->grav.count)
+ * entries, used for sorting indices for the sparts.
+ * @param gbuff A buffer with at least max(c->hydro.count, c->grav.count)
+ * entries, used for sorting indices for the gparts.
+ * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
+ * entries, used for sorting indices for the sinks.
  */
 void cell_split(struct cell *c, const ptrdiff_t parts_offset,
-                const ptrdiff_t sparts_offset,
-                const ptrdiff_t bparts_offset,
-                const ptrdiff_t sinks_offset) {
+                const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
+                const ptrdiff_t sinks_offset, struct cell_buff *restrict buff,
+                struct cell_buff *restrict sbuff,
+                struct cell_buff *restrict bbuff,
+                struct cell_buff *restrict gbuff,
+                struct cell_buff *restrict sinkbuff) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
@@ -78,9 +75,41 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
 
-  /* Count how many hydro particles belong to each child bucket. */
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the buffs are OK. */
   for (int k = 0; k < count; k++) {
-    bucket_count[cell_split_bid_ge(parts[k].x, pivot)]++;
+    if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
+        buff[k].x[2] != parts[k].x[2])
+      error("Inconsistent buff contents.");
+  }
+  for (int k = 0; k < gcount; k++) {
+    if (gbuff[k].x[0] != gparts[k].x[0] || gbuff[k].x[1] != gparts[k].x[1] ||
+        gbuff[k].x[2] != gparts[k].x[2])
+      error("Inconsistent gbuff contents.");
+  }
+  for (int k = 0; k < scount; k++) {
+    if (sbuff[k].x[0] != sparts[k].x[0] || sbuff[k].x[1] != sparts[k].x[1] ||
+        sbuff[k].x[2] != sparts[k].x[2])
+      error("Inconsistent sbuff contents.");
+  }
+  for (int k = 0; k < bcount; k++) {
+    if (bbuff[k].x[0] != bparts[k].x[0] || bbuff[k].x[1] != bparts[k].x[1] ||
+        bbuff[k].x[2] != bparts[k].x[2])
+      error("Inconsistent bbuff contents.");
+  }
+  for (int k = 0; k < sink_count; k++) {
+    if (sinkbuff[k].x[0] != sinks[k].x[0] ||
+        sinkbuff[k].x[1] != sinks[k].x[1] || sinkbuff[k].x[2] != sinks[k].x[2])
+      error("Inconsistent sinkbuff contents.");
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  /* Fill the buffer with the indices. */
+  for (int k = 0; k < count; k++) {
+    const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
+                    (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
+    bucket_count[bid]++;
+    buff[k].ind = bid;
   }
 
   /* Set the buffer offsets. */
@@ -94,24 +123,27 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_split_bid_ge(parts[k].x, pivot);
+      int bid = buff[k].ind;
       if (bid != bucket) {
         struct part part = parts[k];
         struct xpart xpart = xparts[k];
+        struct cell_buff temp_buff = buff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_split_bid_ge(parts[j].x, pivot) == bid) {
+          while (buff[j].ind == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&parts[j], &part, sizeof(struct part));
           memswap(&xparts[j], &xpart, sizeof(struct xpart));
+          memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
           if (parts[j].gpart)
             parts[j].gpart->id_or_neg_offset = -(j + parts_offset);
-          bid = cell_split_bid_ge(part.x, pivot);
+          bid = temp_buff.ind;
         }
         parts[k] = part;
         xparts[k] = xpart;
+        buff[k] = temp_buff;
         if (parts[k].gpart)
           parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
       }
@@ -128,11 +160,12 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the hydro bucket ordering is monotonic. */
+  /* Check that the buffs are OK. */
   for (int k = 1; k < count; k++) {
-    if (cell_split_bid_ge(parts[k].x, pivot) <
-        cell_split_bid_ge(parts[k - 1].x, pivot))
-      error("Hydro particles not sorted.");
+    if (buff[k].ind < buff[k - 1].ind) error("Buff not sorted.");
+    if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
+        buff[k].x[2] != parts[k].x[2])
+      error("Inconsistent buff contents (k=%i).", k);
   }
 
   /* Verify that _all_ the parts have been assigned to a cell. */
@@ -192,9 +225,12 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   /* Now do the same song and dance for the sparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Count how many sparts belong to each child bucket. */
+  /* Fill the buffer with the indices. */
   for (int k = 0; k < scount; k++) {
-    bucket_count[cell_split_bid_gt(sparts[k].x, pivot)]++;
+    const int bid = (sbuff[k].x[0] > pivot[0]) * 4 +
+                    (sbuff[k].x[1] > pivot[1]) * 2 + (sbuff[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    sbuff[k].ind = bid;
   }
 
   /* Set the buffer offsets. */
@@ -208,21 +244,24 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_split_bid_gt(sparts[k].x, pivot);
+      int bid = sbuff[k].ind;
       if (bid != bucket) {
         struct spart spart = sparts[k];
+        struct cell_buff temp_buff = sbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_split_bid_gt(sparts[j].x, pivot) == bid) {
+          while (sbuff[j].ind == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&sparts[j], &spart, sizeof(struct spart));
+          memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
           if (sparts[j].gpart)
             sparts[j].gpart->id_or_neg_offset = -(j + sparts_offset);
-          bid = cell_split_bid_gt(spart.x, pivot);
+          bid = temp_buff.ind;
         }
         sparts[k] = spart;
+        sbuff[k] = temp_buff;
         if (sparts[k].gpart)
           sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
       }
@@ -241,9 +280,12 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   /* Now do the same song and dance for the bparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Count how many bparts belong to each child bucket. */
+  /* Fill the buffer with the indices. */
   for (int k = 0; k < bcount; k++) {
-    bucket_count[cell_split_bid_gt(bparts[k].x, pivot)]++;
+    const int bid = (bbuff[k].x[0] > pivot[0]) * 4 +
+                    (bbuff[k].x[1] > pivot[1]) * 2 + (bbuff[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    bbuff[k].ind = bid;
   }
 
   /* Set the buffer offsets. */
@@ -257,21 +299,24 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_split_bid_gt(bparts[k].x, pivot);
+      int bid = bbuff[k].ind;
       if (bid != bucket) {
         struct bpart bpart = bparts[k];
+        struct cell_buff temp_buff = bbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_split_bid_gt(bparts[j].x, pivot) == bid) {
+          while (bbuff[j].ind == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&bparts[j], &bpart, sizeof(struct bpart));
+          memswap(&bbuff[j], &temp_buff, sizeof(struct cell_buff));
           if (bparts[j].gpart)
             bparts[j].gpart->id_or_neg_offset = -(j + bparts_offset);
-          bid = cell_split_bid_gt(bpart.x, pivot);
+          bid = temp_buff.ind;
         }
         bparts[k] = bpart;
+        bbuff[k] = temp_buff;
         if (bparts[k].gpart)
           bparts[k].gpart->id_or_neg_offset = -(k + bparts_offset);
       }
@@ -289,9 +334,13 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   /* Now do the same song and dance for the sinks. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Count how many sinks belong to each child bucket. */
+  /* Fill the buffer with the indices. */
   for (int k = 0; k < sink_count; k++) {
-    bucket_count[cell_split_bid_gt(sinks[k].x, pivot)]++;
+    const int bid = (sinkbuff[k].x[0] > pivot[0]) * 4 +
+                    (sinkbuff[k].x[1] > pivot[1]) * 2 +
+                    (sinkbuff[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    sinkbuff[k].ind = bid;
   }
 
   /* Set the buffer offsets. */
@@ -305,21 +354,24 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_split_bid_gt(sinks[k].x, pivot);
+      int bid = sinkbuff[k].ind;
       if (bid != bucket) {
         struct sink sink = sinks[k];
+        struct cell_buff temp_buff = sinkbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_split_bid_gt(sinks[j].x, pivot) == bid) {
+          while (sinkbuff[j].ind == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&sinks[j], &sink, sizeof(struct sink));
+          memswap(&sinkbuff[j], &temp_buff, sizeof(struct cell_buff));
           if (sinks[j].gpart)
             sinks[j].gpart->id_or_neg_offset = -(j + sinks_offset);
-          bid = cell_split_bid_gt(sink.x, pivot);
+          bid = temp_buff.ind;
         }
         sinks[k] = sink;
+        sinkbuff[k] = temp_buff;
         if (sinks[k].gpart)
           sinks[k].gpart->id_or_neg_offset = -(k + sinks_offset);
       }
@@ -338,9 +390,12 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   /* Finally, do the same song and dance for the gparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Count how many gparts belong to each child bucket. */
+  /* Fill the buffer with the indices. */
   for (int k = 0; k < gcount; k++) {
-    bucket_count[cell_split_bid_gt(gparts[k].x, pivot)]++;
+    const int bid = (gbuff[k].x[0] > pivot[0]) * 4 +
+                    (gbuff[k].x[1] > pivot[1]) * 2 + (gbuff[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    gbuff[k].ind = bid;
   }
 
   /* Set the buffer offsets. */
@@ -354,16 +409,18 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_split_bid_gt(gparts[k].x, pivot);
+      int bid = gbuff[k].ind;
       if (bid != bucket) {
         struct gpart gpart = gparts[k];
+        struct cell_buff temp_buff = gbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_split_bid_gt(gparts[j].x, pivot) == bid) {
+          while (gbuff[j].ind == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap_unaligned(&gparts[j], &gpart, sizeof(struct gpart));
+          memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
           if (gparts[j].type == swift_type_gas) {
             parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
                 &gparts[j];
@@ -377,9 +434,10 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
             bparts[-gparts[j].id_or_neg_offset - bparts_offset].gpart =
                 &gparts[j];
           }
-          bid = cell_split_bid_gt(gpart.x, pivot);
+          bid = temp_buff.ind;
         }
         gparts[k] = gpart;
+        gbuff[k] = temp_buff;
         if (gparts[k].type == swift_type_gas) {
           parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_stars) {

@@ -44,6 +44,12 @@ __attribute__((always_inline)) static INLINE int space_split_should_split(
 static void space_split_init_progeny(struct space *s, struct cell *c,
                                      const short int tpid);
 static void space_split_finalize_leaf(struct space *s, struct cell *c);
+static void space_split_fill_top_buffers(const struct cell *c,
+                                         struct cell_buff *buff,
+                                         struct cell_buff *sbuff,
+                                         struct cell_buff *bbuff,
+                                         struct cell_buff *gbuff,
+                                         struct cell_buff *sink_buff);
 
 /**
  * @brief A frontier of cells waiting to be split.
@@ -133,6 +139,11 @@ static void space_split_frontier_ensure_capacity(
  * @param tpid The threadpool tid of the calling worker.
  */
 static void space_split_frontier_process_cell(struct space *s,
+                                              struct cell_buff **top_buff,
+                                              struct cell_buff **top_sbuff,
+                                              struct cell_buff **top_bbuff,
+                                              struct cell_buff **top_gbuff,
+                                              struct cell_buff **top_sink_buff,
                                               struct space_split_frontier *next,
                                               struct cell *c,
                                               const short int tpid) {
@@ -159,9 +170,22 @@ static void space_split_frontier_process_cell(struct space *s,
    * recycle empty progeny and enqueue the rest. */
   space_split_init_progeny(s, c, tpid);
 
+  const ptrdiff_t top_index = c->top - s->cells_top;
+  struct cell_buff *buff =
+      top_buff[top_index] + (c->hydro.parts - c->top->hydro.parts);
+  struct cell_buff *sbuff =
+      top_sbuff[top_index] + (c->stars.parts - c->top->stars.parts);
+  struct cell_buff *bbuff = top_bbuff[top_index] +
+                            (c->black_holes.parts - c->top->black_holes.parts);
+  struct cell_buff *gbuff =
+      top_gbuff[top_index] + (c->grav.parts - c->top->grav.parts);
+  struct cell_buff *sink_buff =
+      top_sink_buff[top_index] + (c->sinks.parts - c->top->sinks.parts);
+
   cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
              c->black_holes.parts - s->bparts,
-             c->sinks.parts - s->sinks);
+             c->sinks.parts - s->sinks, buff, sbuff, bbuff, gbuff,
+             sink_buff);
 
   for (int k = 0; k < 8; k++) {
     struct cell *cp = c->progeny[k];
@@ -786,6 +810,89 @@ static void space_split_finalize_leaf(struct space *s, struct cell *c) {
   c->owner = -1;
 }
 
+/**
+ * @brief Fill the transient top-level split buffers for one top cell.
+ *
+ * The positions are copied exactly once, before the BFS split phase starts.
+ * Descendants later recover their active slice by pointer arithmetic relative
+ * to @c c->top and reuse the already-permuted buffers just like the legacy DFS
+ * implementation did when it passed slices down recursively.
+ *
+ * @param c The top-level #cell owning the particle ranges.
+ * @param buff Hydro particle buffer.
+ * @param sbuff Stars particle buffer.
+ * @param bbuff Black-hole particle buffer.
+ * @param gbuff Gravity particle buffer.
+ * @param sink_buff Sink particle buffer.
+ */
+static void space_split_fill_top_buffers(const struct cell *c,
+                                         struct cell_buff *buff,
+                                         struct cell_buff *sbuff,
+                                         struct cell_buff *bbuff,
+                                         struct cell_buff *gbuff,
+                                         struct cell_buff *sink_buff) {
+
+  for (int k = 0; k < c->hydro.count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->hydro.parts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (c->hydro.parts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
+#endif
+    buff[k].x[0] = c->hydro.parts[k].x[0];
+    buff[k].x[1] = c->hydro.parts[k].x[1];
+    buff[k].x[2] = c->hydro.parts[k].x[2];
+  }
+
+  for (int k = 0; k < c->grav.count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->grav.parts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (c->grav.parts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
+#endif
+    gbuff[k].x[0] = c->grav.parts[k].x[0];
+    gbuff[k].x[1] = c->grav.parts[k].x[1];
+    gbuff[k].x[2] = c->grav.parts[k].x[2];
+  }
+
+  for (int k = 0; k < c->stars.count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->stars.parts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (c->stars.parts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
+#endif
+    sbuff[k].x[0] = c->stars.parts[k].x[0];
+    sbuff[k].x[1] = c->stars.parts[k].x[1];
+    sbuff[k].x[2] = c->stars.parts[k].x[2];
+  }
+
+  for (int k = 0; k < c->black_holes.count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->black_holes.parts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (c->black_holes.parts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
+#endif
+    bbuff[k].x[0] = c->black_holes.parts[k].x[0];
+    bbuff[k].x[1] = c->black_holes.parts[k].x[1];
+    bbuff[k].x[2] = c->black_holes.parts[k].x[2];
+  }
+
+  for (int k = 0; k < c->sinks.count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->sinks.parts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (c->sinks.parts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
+#endif
+    sink_buff[k].x[0] = c->sinks.parts[k].x[0];
+    sink_buff[k].x[1] = c->sinks.parts[k].x[1];
+    sink_buff[k].x[2] = c->sinks.parts[k].x[2];
+  }
+}
+
 
 /**
  * @brief #threadpool mapper function for one BFS level.
@@ -797,21 +904,28 @@ static void space_split_finalize_leaf(struct space *s, struct cell *c) {
  *
  * @param map_data Pointer to the start of a chunk of #cell pointers.
  * @param num_cells Number of cells in this chunk.
- * @param extra_data Pointer to a two-entry array containing the #space and the
- *        next-level frontier.
+ * @param extra_data Pointer to an array containing the #space, the transient
+ *        top-level split buffers and the next-level frontier.
  */
 static void space_split_frontier_mapper(void *map_data, int num_cells,
                                         void *extra_data) {
 
   void **mapper_data = (void **)extra_data;
   struct space *s = (struct space *)mapper_data[0];
+  struct cell_buff **top_buff = (struct cell_buff **)mapper_data[1];
+  struct cell_buff **top_sbuff = (struct cell_buff **)mapper_data[2];
+  struct cell_buff **top_bbuff = (struct cell_buff **)mapper_data[3];
+  struct cell_buff **top_gbuff = (struct cell_buff **)mapper_data[4];
+  struct cell_buff **top_sink_buff = (struct cell_buff **)mapper_data[5];
   struct space_split_frontier *next =
-      (struct space_split_frontier *)mapper_data[1];
+      (struct space_split_frontier *)mapper_data[6];
   struct cell **cells = (struct cell **)map_data;
   const short int tpid = threadpool_gettid();
 
   for (int i = 0; i < num_cells; i++)
-    space_split_frontier_process_cell(s, next, cells[i], tpid);
+    space_split_frontier_process_cell(s, top_buff, top_sbuff, top_bbuff,
+                                      top_gbuff, top_sink_buff, next, cells[i],
+                                      tpid);
 }
 
 /**
@@ -895,9 +1009,11 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
  *    #space_split_aggregate_recursive. This phase is parallel over top
  *    cells; each subtree is independent.
  *
- * @c cell_split now computes child membership directly from the particle
- * arrays, so the old caller-side split buffers are gone. The BFS frontier
- * arrays are allocated once and sized to the worst case
+ * Each top cell owns transient split buffers that are filled once before the
+ * BFS starts. Descendants recover their current buffer slice from @c c->top
+ * and the particle-array offsets within that top cell, matching the legacy
+ * DFS buffer semantics without carrying extra data in the frontier. The BFS
+ * frontier arrays are allocated once and sized to the worst case
  * (@c 8 * size_of_current_frontier) before each level, so
  * #space_split_frontier_append needs only an atomic counter increment to
  * reserve a slot.
@@ -919,6 +1035,68 @@ void space_split(struct space *s, int verbose) {
 
     struct threadpool *tp = &s->e->threadpool;
     const int nr_threads = tp->num_threads;
+    const int nr_top_cells = s->nr_cells;
+
+    struct cell_buff **top_buff = (struct cell_buff **)swift_malloc(
+        "top_split_buff", sizeof(struct cell_buff *) * nr_top_cells);
+    struct cell_buff **top_sbuff = (struct cell_buff **)swift_malloc(
+        "top_split_sbuff", sizeof(struct cell_buff *) * nr_top_cells);
+    struct cell_buff **top_bbuff = (struct cell_buff **)swift_malloc(
+        "top_split_bbuff", sizeof(struct cell_buff *) * nr_top_cells);
+    struct cell_buff **top_gbuff = (struct cell_buff **)swift_malloc(
+        "top_split_gbuff", sizeof(struct cell_buff *) * nr_top_cells);
+    struct cell_buff **top_sink_buff = (struct cell_buff **)swift_malloc(
+        "top_split_sink_buff", sizeof(struct cell_buff *) * nr_top_cells);
+
+    if (top_buff == NULL || top_sbuff == NULL || top_bbuff == NULL ||
+        top_gbuff == NULL || top_sink_buff == NULL)
+      error("Failed to allocate top-level split buffer pointer arrays.");
+
+    bzero(top_buff, sizeof(struct cell_buff *) * nr_top_cells);
+    bzero(top_sbuff, sizeof(struct cell_buff *) * nr_top_cells);
+    bzero(top_bbuff, sizeof(struct cell_buff *) * nr_top_cells);
+    bzero(top_gbuff, sizeof(struct cell_buff *) * nr_top_cells);
+    bzero(top_sink_buff, sizeof(struct cell_buff *) * nr_top_cells);
+
+    for (int ind = 0; ind < nr_local_cells; ind++) {
+      const int top_index = s->local_cells_with_particles_top[ind];
+      struct cell *c = &s->cells_top[top_index];
+
+      if (c->hydro.count > 0 &&
+          swift_memalign("top_split_buff", (void **)&top_buff[top_index],
+                         SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * c->hydro.count) != 0)
+        error("Failed to allocate hydro top-level split buffer.");
+
+      if (c->stars.count > 0 &&
+          swift_memalign("top_split_sbuff", (void **)&top_sbuff[top_index],
+                         SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * c->stars.count) != 0)
+        error("Failed to allocate stars top-level split buffer.");
+
+      if (c->black_holes.count > 0 &&
+          swift_memalign("top_split_bbuff", (void **)&top_bbuff[top_index],
+                         SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * c->black_holes.count) != 0)
+        error("Failed to allocate black-hole top-level split buffer.");
+
+      if (c->grav.count > 0 &&
+          swift_memalign("top_split_gbuff", (void **)&top_gbuff[top_index],
+                         SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * c->grav.count) != 0)
+        error("Failed to allocate gravity top-level split buffer.");
+
+      if (c->sinks.count > 0 &&
+          swift_memalign("top_split_sink_buff",
+                         (void **)&top_sink_buff[top_index],
+                         SWIFT_STRUCT_ALIGNMENT,
+                         sizeof(struct cell_buff) * c->sinks.count) != 0)
+        error("Failed to allocate sink top-level split buffer.");
+
+      space_split_fill_top_buffers(c, top_buff[top_index], top_sbuff[top_index],
+                                   top_bbuff[top_index], top_gbuff[top_index],
+                                   top_sink_buff[top_index]);
+    }
 
     /* Two frontier buffers, swapped each level. One holds the cells of the
      * current BFS level while the other accumulates their surviving children
@@ -937,7 +1115,9 @@ void space_split(struct space *s, int verbose) {
     }
     this_level->count = nr_local_cells;
 
-    void *frontier_mapper_data[2] = {s, next_level};
+    void *frontier_mapper_data[7] = {s,        top_buff,      top_sbuff,
+                                     top_bbuff, top_gbuff,    top_sink_buff,
+                                     next_level};
 
     /* Cutoff below which serial processing is faster than the threadpool
      * dispatch overhead. */
@@ -951,15 +1131,16 @@ void space_split(struct space *s, int verbose) {
       space_split_frontier_ensure_capacity(next_level, 8 * this_level->count);
       next_level->count = 0;
 
-      frontier_mapper_data[1] = next_level;
+      frontier_mapper_data[6] = next_level;
 
       if (this_level->count <= serial_cutoff) {
         /* Run the level on the calling thread to avoid threadpool
          * dispatch overhead at small frontier sizes. */
         const short int tpid = threadpool_gettid();
         for (int i = 0; i < this_level->count; i++)
-          space_split_frontier_process_cell(s, next_level, this_level->cells[i],
-                                            tpid);
+          space_split_frontier_process_cell(
+              s, top_buff, top_sbuff, top_bbuff, top_gbuff, top_sink_buff,
+              next_level, this_level->cells[i], tpid);
       } else {
         threadpool_map(tp, space_split_frontier_mapper, this_level->cells,
                        this_level->count, sizeof(struct cell *),
@@ -972,7 +1153,28 @@ void space_split(struct space *s, int verbose) {
       next_level = tmp;
     }
 
-    /* BFS finished: release frontier storage. */
+    /* BFS finished: release the transient top-level split buffers and the
+     * frontier storage. */
+    for (int ind = 0; ind < nr_local_cells; ind++) {
+      const int top_index = s->local_cells_with_particles_top[ind];
+      if (top_buff[top_index] != NULL)
+        swift_free("top_split_buff", top_buff[top_index]);
+      if (top_sbuff[top_index] != NULL)
+        swift_free("top_split_sbuff", top_sbuff[top_index]);
+      if (top_bbuff[top_index] != NULL)
+        swift_free("top_split_bbuff", top_bbuff[top_index]);
+      if (top_gbuff[top_index] != NULL)
+        swift_free("top_split_gbuff", top_gbuff[top_index]);
+      if (top_sink_buff[top_index] != NULL)
+        swift_free("top_split_sink_buff", top_sink_buff[top_index]);
+    }
+
+    swift_free("top_split_buff", top_buff);
+    swift_free("top_split_sbuff", top_sbuff);
+    swift_free("top_split_bbuff", top_bbuff);
+    swift_free("top_split_gbuff", top_gbuff);
+    swift_free("top_split_sink_buff", top_sink_buff);
+
     if (this_level_frontier.cells != NULL)
       swift_free("split_frontier", this_level_frontier.cells);
     if (next_level_frontier.cells != NULL)
