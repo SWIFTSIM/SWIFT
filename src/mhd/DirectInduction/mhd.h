@@ -170,7 +170,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   }
 
   const float dt_deltaB =
-      denum_dt_deltaB2
+      B_over_rho2 && denum_dt_deltaB2
           ? maxRelChangeBoverRho * a2 * sqrtf(B_over_rho2 / denum_dt_deltaB2)
           : FLT_MAX;
 

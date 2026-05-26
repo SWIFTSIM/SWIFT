@@ -336,8 +336,10 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         } /* Loop over the stars to spawn */
 
         /* Update the sink after star formation */
-        sink_update_sink_properties_after_star_formation(s, e, sink_props,
-                                                         phys_const);
+        sink_update_sink_properties_after_star_formation(
+            s, with_cosmology, cosmo, sink_props, phys_const, e->ti_current,
+            e->time, e->time_base);
+
       } /* if sink_is_active */
     } /* Loop over the particles */
   }
@@ -935,13 +937,29 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           if (gp->num_interacted !=
               e->total_nr_gparts - e->count_inhibited_gparts) {
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+            /* If we have the gravity force checks enabled, we print more
+             * information about the particle */
+            message(
+                "Interaction breakdown for g-particle (id=%lld, type=%s): "
+                "num_interacted=%lld, num_interacted_m2p=%lld, "
+                "num_interacted_m2l=%lld, num_interacted_p2p=%lld, "
+                "num_interacted_pm=%lld",
+                id, part_type_names[gp->type], gp->num_interacted,
+                gp->num_interacted_m2p, gp->num_interacted_m2l,
+                gp->num_interacted_p2p, gp->num_interacted_pm);
+#endif
+
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
-                "gp->num_interacted=%lld, total_gparts=%lld (local "
-                "num_gparts=%zd inhibited_gparts=%lld)",
+                "gp->num_interacted=%lld, total_gparts=%lld, missing=%lld "
+                "(local num_gparts=%zd inhibited_gparts=%lld) "
+                "(cell info: c->depth=%d c->grav.super->depth=%d)",
                 id, part_type_names[gp->type], gp->num_interacted,
-                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts);
+                e->total_nr_gparts, e->total_nr_gparts - gp->num_interacted,
+                e->s->nr_gparts, e->count_inhibited_gparts, c->depth,
+                c->grav.super->depth);
           }
         }
 #endif
