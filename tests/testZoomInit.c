@@ -95,6 +95,8 @@ int main(int argc, char *argv[]) {
 
   const char *input_file = argv[1];
   const double zoom_width = atof(argv[2]);
+  const int expected_zoom_cdim = argc > 3 ? atoi(argv[3]) : -1;
+  const int expected_zoom_depth = argc > 4 ? atoi(argv[4]) : -1;
 
   /* Create a structure to read file into. */
   struct swift_params param_file;
@@ -123,6 +125,16 @@ int main(int argc, char *argv[]) {
          500);
   assert(s->zoom_props->region_lower_bounds[2] + (s->zoom_props->dim[2] / 2) ==
          500);
+
+  if (expected_zoom_cdim > 0) {
+    assert(s->zoom_props->cdim[0] == expected_zoom_cdim);
+    assert(s->zoom_props->cdim[1] == expected_zoom_cdim);
+    assert(s->zoom_props->cdim[2] == expected_zoom_cdim);
+  }
+
+  if (expected_zoom_depth >= 0) {
+    assert(s->zoom_props->zoom_cell_depth == expected_zoom_depth);
+  }
 
   /* Ensure the cell boundaries line up. */
   {

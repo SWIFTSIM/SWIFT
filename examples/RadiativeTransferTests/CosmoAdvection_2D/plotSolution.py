@@ -38,7 +38,6 @@ import swiftsimio
 from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-
 # Parameters users should/may tweak
 plot_all_data = True  # plot all groups and all photon quantities
 snapshot_base = "output"  # snapshot basename
