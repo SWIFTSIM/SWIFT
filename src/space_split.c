@@ -984,6 +984,164 @@ static void space_split_frontier_mapper(void *map_data, int num_cells,
 }
 
 /**
+ * @brief Recursively split a cell's subtree depth-first.
+ *
+ * Semantically equivalent to #space_split_frontier_process_cell but, instead
+ * of enqueuing surviving children into a BFS frontier, it recurses into them
+ * depth-first. Used by the hybrid BFS-then-DFS path when the BFS frontier has
+ * grown large enough that each thread can process an entire subtree serially
+ * without per-level synchronization overhead.
+ *
+ * Top-level cells trigger the on-demand transient split-buffer allocation and
+ * fill exactly as in the BFS path. Deeper cells inherit buffer slices from
+ * their top cell via pointer arithmetic.
+ *
+ * @param s The #space.
+ * @param top_buff, top_sbuff, top_bbuff, top_gbuff, top_sink_buff Transient
+ *        per-top-cell split buffers (side arrays indexed by top-cell offset).
+ * @param top_buffer_time Cumulative per-thread timer for buffer setup.
+ * @param c The cell whose subtree to process.
+ * @param tpid The threadpool tid of the calling worker.
+ */
+static void space_split_recursive(struct space *s,
+                                   struct cell_buff **top_buff,
+                                   struct cell_buff **top_sbuff,
+                                   struct cell_buff **top_bbuff,
+                                   struct cell_buff **top_gbuff,
+                                   struct cell_buff **top_sink_buff,
+                                   double *top_buffer_time, struct cell *c,
+                                   const short int tpid) {
+
+  if (c->depth > space_cell_maxdepth) {
+    error(
+        "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
+        "most likely due to having too many particles at the exact same "
+        "position, making the construction of a tree impossible.",
+        space_cell_maxdepth);
+  }
+
+  /* Leaf? Finalise it and we're done. */
+  if (!space_split_should_split(s, c)) {
+    space_split_finalize_leaf(s, c);
+    return;
+  }
+
+  /* Allocate and fill the transient split buffers lazily, only when a top
+   * cell actually decides to split. */
+  if (c->top == c) {
+    const ticks top_buffer_tic = getticks();
+    const ptrdiff_t top_index = c - s->cells_top;
+
+    if (top_buff[top_index] != NULL || top_sbuff[top_index] != NULL ||
+        top_bbuff[top_index] != NULL || top_gbuff[top_index] != NULL ||
+        top_sink_buff[top_index] != NULL)
+      error("Top-level split buffers already allocated.");
+
+    if (c->hydro.count > 0 &&
+        swift_memalign("top_split_buff", (void **)&top_buff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->hydro.count) != 0)
+      error("Failed to allocate hydro top-level split buffer.");
+
+    if (c->stars.count > 0 &&
+        swift_memalign("top_split_sbuff", (void **)&top_sbuff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->stars.count) != 0)
+      error("Failed to allocate stars top-level split buffer.");
+
+    if (c->black_holes.count > 0 &&
+        swift_memalign("top_split_bbuff", (void **)&top_bbuff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->black_holes.count) != 0)
+      error("Failed to allocate black-hole top-level split buffer.");
+
+    if (c->grav.count > 0 &&
+        swift_memalign("top_split_gbuff", (void **)&top_gbuff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->grav.count) != 0)
+      error("Failed to allocate gravity top-level split buffer.");
+
+    if (c->sinks.count > 0 &&
+        swift_memalign("top_split_sink_buff",
+                       (void **)&top_sink_buff[top_index],
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * c->sinks.count) != 0)
+      error("Failed to allocate sink top-level split buffer.");
+
+    space_split_fill_top_buffers(c, top_buff[top_index], top_sbuff[top_index],
+                                 top_bbuff[top_index], top_gbuff[top_index],
+                                 top_sink_buff[top_index]);
+
+    top_buffer_time[tpid] += clocks_from_ticks(getticks() - top_buffer_tic);
+  }
+
+  space_split_init_progeny(s, c, tpid);
+
+  const ptrdiff_t top_index = c->top - s->cells_top;
+  struct cell_buff *buff =
+      top_buff[top_index] + (c->hydro.parts - c->top->hydro.parts);
+  struct cell_buff *sbuff =
+      top_sbuff[top_index] + (c->stars.parts - c->top->stars.parts);
+  struct cell_buff *bbuff = top_bbuff[top_index] +
+                            (c->black_holes.parts - c->top->black_holes.parts);
+  struct cell_buff *gbuff =
+      top_gbuff[top_index] + (c->grav.parts - c->top->grav.parts);
+  struct cell_buff *sink_buff =
+      top_sink_buff[top_index] + (c->sinks.parts - c->top->sinks.parts);
+
+  cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
+             c->black_holes.parts - s->bparts,
+             c->sinks.parts - s->sinks, buff, sbuff, bbuff, gbuff,
+             sink_buff);
+
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+
+    /* Remove any progeny with zero particles. */
+    if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
+        cp->black_holes.count == 0 && cp->sinks.count == 0) {
+      space_recycle(s, cp);
+      c->progeny[k] = NULL;
+    } else {
+      /* Recurse depth-first into surviving child. */
+      space_split_recursive(s, top_buff, top_sbuff, top_bbuff, top_gbuff,
+                            top_sink_buff, top_buffer_time, cp, tpid);
+    }
+  }
+}
+
+/**
+ * @brief #threadpool mapper for the hybrid DFS phase.
+ *
+ * Each chunk is a contiguous range of cells from the final BFS frontier. The
+ * worker recursively walks each cell's entire subtree depth-first via
+ * #space_split_recursive.
+ *
+ * @param map_data Pointer to the start of a chunk of #cell pointers.
+ * @param num_cells Number of cells in this chunk.
+ * @param extra_data Same flat-pointer array as #space_split_frontier_mapper
+ *        (the next-level frontier slot is unused).
+ */
+static void space_split_dfs_mapper(void *map_data, int num_cells,
+                                    void *extra_data) {
+
+  void **mapper_data = (void **)extra_data;
+  struct space *s = (struct space *)mapper_data[0];
+  struct cell_buff **top_buff = (struct cell_buff **)mapper_data[1];
+  struct cell_buff **top_sbuff = (struct cell_buff **)mapper_data[2];
+  struct cell_buff **top_bbuff = (struct cell_buff **)mapper_data[3];
+  struct cell_buff **top_gbuff = (struct cell_buff **)mapper_data[4];
+  struct cell_buff **top_sink_buff = (struct cell_buff **)mapper_data[5];
+  double *top_buffer_time = (double *)mapper_data[6];
+  struct cell **cells = (struct cell **)map_data;
+  const short int tpid = threadpool_gettid();
+
+  for (int i = 0; i < num_cells; i++)
+    space_split_recursive(s, top_buff, top_sbuff, top_bbuff, top_gbuff,
+                          top_sink_buff, top_buffer_time, cells[i], tpid);
+}
+
+/**
  * @brief #threadpool mapper function for the upward aggregation pass.
  *
  * Each chunk is a contiguous range of top-level cell indices. The
@@ -1045,7 +1203,7 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
 /**
  * @brief Split particles between cells of a hierarchy.
  *
- * Two-phase parallel implementation:
+ * Hybrid BFS-then-DFS parallel implementation:
  *
  * 1. <em>BFS split phase.</em> A frontier of cells (initially the local
  *    top-level cells with particles) is processed level by level using
@@ -1057,12 +1215,19 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
  *    only across top-level cells, eliminating the load imbalance that
  *    arises when a few top cells contain most of the particles.
  *
- * 2. <em>Aggregation phase.</em> Once the BFS terminates (no more
- *    cells need to be split), each top cell's subtree is walked
- *    depth-first to combine per-family @c h_max, time-bin bounds and
- *    multipoles from the leaves up to the top via
- *    #space_split_aggregate_recursive. This phase is parallel over top
- *    cells; each subtree is independent.
+ * 2. <em>DFS split phase.</em> Once the BFS frontier shrinks below a cutoff
+ *    (~@c 2 * nr_threads), the overhead of per-level synchronisation outweighs
+ *    the benefit of further breadth-first spreading. The remaining frontier
+ *    cells are distributed among threads which then process each cell's
+ *    entire subtree recursively via #space_split_recursive. This preserves
+ *    the load balancing of the BFS for the upper levels while avoiding its
+ *    dispatch cost for the deep, fine-grained levels.
+ *
+ * 3. <em>Aggregation phase.</em> Once all splitting is done, each top cell's
+ *    subtree is walked depth-first to combine per-family @c h_max, time-bin
+ *    bounds and multipoles from the leaves up to the top via
+ *    #space_split_aggregate_recursive. This phase is parallel over top cells;
+ *    each subtree is independent.
  *
  * Each top cell that actually splits owns transient split buffers that are
  * allocated and filled exactly once, on demand. Descendants recover their
@@ -1143,13 +1308,27 @@ void space_split(struct space *s, int verbose) {
                                      top_buffer_time,
                                      next_level};
 
-    /* Cutoff below which serial processing is faster than the threadpool
-     * dispatch overhead. */
-    const int serial_cutoff = nr_threads;
+    /* Cutoff below which the frontier is small enough that the per-level
+     * dispatch overhead of pure BFS outweighs the benefit of further
+     * breadth-first spreading. At this point the tree is close to the
+     * leaves, so the risk of DFS load imbalance is limited, and we switch
+     * to parallel DFS per subtree to avoid synchronisation on every level. */
+    const int serial_cutoff = 2 * nr_threads;
 
-    /* Drive the BFS until the frontier is empty. */
+    /* Drive the BFS until the frontier is small enough for DFS. */
     const ticks bfs_tic = getticks();
     while (this_level->count > 0) {
+
+      if (this_level->count <= serial_cutoff) {
+        /* Small frontier: switch to parallel DFS per subtree. Each thread
+         * processes an entire subtree recursively via
+         * #space_split_recursive, avoiding the synchronisation overhead of
+         * further BFS levels. */
+        threadpool_map(tp, space_split_dfs_mapper, this_level->cells,
+                       this_level->count, sizeof(struct cell *),
+                       threadpool_auto_chunk_size, frontier_mapper_data);
+        break;
+      }
 
       /* Pre-size the next frontier to the worst case (each cell can
        * spawn up to 8 surviving children). */
@@ -1158,25 +1337,16 @@ void space_split(struct space *s, int verbose) {
 
       frontier_mapper_data[7] = next_level;
 
-      if (this_level->count <= serial_cutoff) {
-        /* Run the level on the calling thread to avoid threadpool
-         * dispatch overhead at small frontier sizes. */
-        const short int tpid = threadpool_gettid();
-        for (int i = 0; i < this_level->count; i++)
-          space_split_frontier_process_cell(
-              s, top_buff, top_sbuff, top_bbuff, top_gbuff, top_sink_buff,
-              top_buffer_time, next_level, this_level->cells[i], tpid);
-      } else {
-        threadpool_map(tp, space_split_frontier_mapper, this_level->cells,
-                       this_level->count, sizeof(struct cell *),
-                       threadpool_auto_chunk_size, frontier_mapper_data);
-      }
+      threadpool_map(tp, space_split_frontier_mapper, this_level->cells,
+                     this_level->count, sizeof(struct cell *),
+                     threadpool_auto_chunk_size, frontier_mapper_data);
 
       /* Swap frontiers. */
       struct space_split_frontier *tmp = this_level;
       this_level = next_level;
       next_level = tmp;
     }
+
     const ticks bfs_toc = getticks();
 
     /* BFS finished: release the transient top-level split buffers and the
