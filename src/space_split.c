@@ -22,6 +22,9 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Standard headers. */
+#include <limits.h>
+
 /* This object's header. */
 #include "space.h"
 
@@ -40,6 +43,12 @@
  * overhead for cache locality while preserving BFS load balance across
  * frontier cells. */
 static const int dfs_levels_at_a_time = 3;
+
+/* Worst-case number of next-frontier entries produced by one frontier entry
+ * after dfs_levels_at_a_time levels of splitting: each of the 8 octants can
+ * split for dfs_levels_at_a_time levels, giving 8^dfs_levels_at_a_time. */
+static const size_t bfs_capacity_multiplier = 1ULL
+                                             << (3 * dfs_levels_at_a_time);
 
 /* ------------------------------------------------------------------------- */
 /* BFS-frontier infrastructure for space_split.                              */
@@ -64,7 +73,8 @@ static void space_split_fill_top_buffers(const struct cell *c,
  * Used as a flat array of @c cell pointers shared by all workers. Workers
  * read from @c cells and append produced children to a separate @e next
  * frontier whose @c count is grown atomically. Capacity is sized
- * conservatively to @c 8 * max_input_count before each level so no
+ * conservatively to @c bfs_capacity_multiplier * max_input_count before each
+ * level so no
  * reallocation is needed during the parallel append.
  */
 struct space_split_frontier {
@@ -85,7 +95,8 @@ struct space_split_frontier {
  *
  * Reservation is done with a single relaxed atomic increment of the
  * frontier @c count, which is safe because the buffer was sized to
- * @c 8 * (current frontier size) before the parallel append began, so
+ * @c bfs_capacity_multiplier * (current frontier size) before the parallel
+ * append began, so
  * overflow is impossible.
  *
  * @param frontier The frontier being produced.
@@ -106,8 +117,8 @@ __attribute__((always_inline)) static INLINE void space_split_frontier_append(
 /**
  * @brief Grow a frontier so that it can hold at least @c needed pointers.
  *
- * Used to pre-size the next-level frontier to @c 8 * size_of_current before a
- * parallel level so that #space_split_frontier_append needs no locking.
+ * Used to pre-size the next-level frontier before a parallel level so that
+ * #space_split_frontier_append needs no locking.
  * Frontiers are scratch storage that gets repopulated every level, so their
  * previous contents never need to be preserved when they grow.
  *
@@ -126,6 +137,40 @@ static void space_split_frontier_ensure_capacity(
   if (frontier->cells != NULL) swift_free("split_frontier", frontier->cells);
   frontier->cells = new_cells;
   frontier->capacity = needed;
+}
+
+/**
+ * @brief Compute a safe upper bound for the next frontier size.
+ *
+ * After @c dfs_levels_at_a_time levels of limited DFS, one input frontier
+ * cell can in principle produce up to @c bfs_capacity_multiplier output
+ * cells. However, the next frontier can never contain more split-candidate
+ * cells than there are particles relevant to the split criterion at a fixed
+ * tree depth: with self-gravity this is bounded by @c nr_gparts, otherwise by
+ * @c nr_parts + nr_sparts.
+ *
+ * This bound avoids both frontier overflow and pathological over-allocation
+ * when @c bfs_capacity_multiplier * current_count would exceed the actual
+ * number of possible next-frontier cells.
+ *
+ * @param s The #space.
+ * @param current_count Number of cells in the current frontier.
+ * @return The required next-frontier capacity as an @c int.
+ */
+static int space_split_next_frontier_capacity(const struct space *s,
+                                              const int current_count) {
+
+  const size_t particle_bound =
+      s->with_self_gravity ? s->nr_gparts : s->nr_parts + s->nr_sparts;
+  size_t needed = bfs_capacity_multiplier * (size_t)current_count;
+
+  if (needed > particle_bound) needed = particle_bound;
+
+  if (needed > INT_MAX)
+    error("Next frontier capacity %zu exceeds supported range %d", needed,
+          INT_MAX);
+
+  return (int)needed;
 }
 
 /**
@@ -1083,7 +1128,7 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
  * that top cell, matching the legacy DFS buffer semantics without carrying
  * extra data in the frontier. The BFS
  * frontier arrays are allocated once and sized to the worst case
- * (@c 8 * size_of_current_frontier) before each level, so
+ * (@c bfs_capacity_multiplier * size_of_current_frontier) before each level, so
  * #space_split_frontier_append needs only an atomic counter increment to
  * reserve a slot.
  *
@@ -1157,9 +1202,10 @@ void space_split(struct space *s, int verbose) {
     const ticks bfs_tic = getticks();
     while (this_level->count > 0) {
 
-      /* Pre-size the next frontier to the worst case (each cell can
-       * spawn up to 8 surviving children after its DFS batch). */
-      space_split_frontier_ensure_capacity(next_level, 8 * this_level->count);
+      /* Pre-size the next frontier to a safe particle-based upper bound for
+       * this DFS batch. */
+      space_split_frontier_ensure_capacity(
+          next_level, space_split_next_frontier_capacity(s, this_level->count));
       next_level->count = 0;
 
       frontier_mapper_data[6] = next_level;
