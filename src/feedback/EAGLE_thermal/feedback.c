@@ -132,12 +132,6 @@ INLINE float compute_magnetic_injection_field_strength (
       B_inj_abs = 1.;
 
       break;
-
-    case SNII_magnetic_decreasing_toroidal_injection:
-
-      error("Decreasing toroidal magnetic injection no longer supported");
-
-      break;
       
     case SNII_magnetic_kernel_softened_toroidal_injection:
 
@@ -230,12 +224,6 @@ INLINE void compute_magnetic_injection_field(
       }
 
       break;
-
-    case SNII_magnetic_decreasing_toroidal_injection:
-
-      error("Decreasing toroid not supported");
-
-      break;
       
     case SNII_magnetic_kernel_softened_toroidal_injection:
 
@@ -324,12 +312,6 @@ INLINE static void compute_magnetic_feedback(
 
   /* Choose the orientation of the magnetic moment */
   switch (feedback_props->magnetic_orientation_model) {
-    
-    case SNII_magnetic_orientation_ngb_model: 
-
-      error("Choosing the orientation through the plane is not supported anymore");
-
-      break;
 
     case SNII_magnetic_orientation_maxB_model:
       /* choose the moment such that it maximizes
@@ -996,37 +978,8 @@ void feedback_props_init(struct feedback_props *fp,
     if (strcmp(B_injection_model, "const_toroid") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_const_toroidal_injection;
     }  
-    else if (strcmp(B_injection_model, "decreasing_toroid") == 0) {
-      fp->magnetic_injection_model = SNII_magnetic_decreasing_toroidal_injection;
-      fp->r_scale = parser_get_param_float(params,
-          "EAGLEFeedback:SNII_magnetic_toroid_scale");
-    }
     else if (strcmp(B_injection_model, "kernel_toroid") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_kernel_softened_toroidal_injection;
-
-      /* what do we use as softening scale */ 
-      char scale_determination[20];
-      parser_get_param_string(params,
-	  "EAGLEFeedback:SNII_kernel_toroid_softening_model", 
-	  scale_determination);
-
-      if (strcmp(scale_determination, "stellar_h") == 0) {
-	/* stellar particle smoothing length as softening length */
-	fp->sp_smoothing_length = 1;
-      }
-      else if (strcmp(scale_determination, "particle_dist") == 0) {
-	/* particle with maximum distance is at kernel cut-off */
-	fp->particle_distance = 1;
-      }
-      else if (strcmp(scale_determination, "const_scale") == 0) {
-        /* use a constant kernel softening length */
-	fp->constant_scale = 1;
-        fp->r_softening = parser_get_param_float(params,
-	    "EAGLEFeedback:SNII_magnetic_kernel_softening_length");
-      }
-      else {
-	error("Wrong softening length determination given");
-      }
     }
     else if (strcmp(B_injection_model, "kernel_actual_toroid") == 0) {
       fp->magnetic_injection_model = 
@@ -1046,14 +999,12 @@ void feedback_props_init(struct feedback_props *fp,
     parser_get_param_string(params, 
         "EAGLEFeedback:SNII_magnetic_injection_orientation_model", 
 	  	  B_orientation_model);
-    if (strcmp(B_orientation_model, "NearestNgb") == 0)
-      fp->magnetic_orientation_model = SNII_magnetic_orientation_ngb_model;
+    if (strcmp(B_orientation_model, "Random") == 0)
+      fp->magnetic_orientation_model = SNII_magnetic_orientation_random_model;
     else if (strcmp(B_orientation_model, "MaxB") == 0)
       fp->magnetic_orientation_model = SNII_magnetic_orientation_maxB_model;
     else if (strcmp(B_orientation_model, "MinB") == 0)
       fp->magnetic_orientation_model = SNII_magnetic_orientation_minB_model;
-    else if (strcmp(B_orientation_model, "Random") == 0)
-      fp->magnetic_orientation_model = SNII_magnetic_orientation_random_model;
     else if (strcmp(B_orientation_model, "Constant") == 0) {
       fp->magnetic_orientation_model = SNII_magnetic_orientation_constant_model;
       parser_get_param_float_array(params, 
@@ -1065,10 +1016,6 @@ void feedback_props_init(struct feedback_props *fp,
     /* fraction of energy used for magnetic field injection */
     fp->f_E_B = parser_get_param_float(params,
         "EAGLEFeedback:SNII_energy_fraction_magnetic_field");
-
-    /* Do we inject magnetic fields into all neighbours */
-    fp->all_neighbours_injection = parser_get_opt_param_int(params,
-        "EAGLEFeedback:SNII_magnetic_injection_all_neighbours", 0);
 
     /* check that energy fraction makes sense */
     if ((fp->f_E_B < 0.f) || (fp->f_E_B > 1.f)) {

@@ -481,9 +481,11 @@ runner_iact_nonsym_feedback_apply(
       }
     }
 
+    /* current magnetic field */
     float B0[3] = {0.f, 0.f, 0.f};
     mhd_get_physical_magnetic_field(pj, xpj, cosmo, B0); 
 
+    /* get the magnetic field to inject */
     float m[3] = {si->feedback_data.to_distribute.magnetic_moment[0],
                   si->feedback_data.to_distribute.magnetic_moment[1],
                   si->feedback_data.to_distribute.magnetic_moment[2]};
@@ -493,27 +495,10 @@ runner_iact_nonsym_feedback_apply(
         si->feedback_data.to_distribute.ngb_B_inj_abs, dx, m, 
         fb_props, wi);
 
+    /* inject the magnetic field */
     const float B_final[3] = {B0[0] + B_inj[0],
                               B0[1] + B_inj[1],
                               B0[2] + B_inj[2]};
-  
-    
-      /* B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
-      B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
-      B_inj[2] = dx[0]*m[1] - dx[1]*m[0]; */
-
-      /* const float B_inj_rescale = wi / sqrtf(B_inj[0]*B_inj[0] +
-                            B_inj[1]*B_inj[1] + B_inj[2]*B_inj[2]); */
-      /* for (size_t i = 0; i < 3; i++) {
-        B_inj[i] *= 100* wi; *//* B_inj_rescale; */
-      /*} */
-      /*  
-      const float ngb_B_inj_norm = si->feedback_data.to_distribute.ngb_B_inj_abs;
-
-      xpj->mhd_data.B_over_rho_full[0] += ngb_B_inj_norm * B_inj[0] / rho_j;
-      xpj->mhd_data.B_over_rho_full[1] += ngb_B_inj_norm * B_inj[1] / rho_j;
-      xpj->mhd_data.B_over_rho_full[2] += ngb_B_inj_norm * B_inj[2] / rho_j;
-      */
 
     mhd_set_physical_magnetic_field(pj, xpj, cosmo, B_final);
 
