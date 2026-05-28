@@ -579,6 +579,47 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
 }
 
 /**
+ * @brief Initialise the chemistry properties of a black hole with
+ * the chemistry properties of the gas it is born from.
+ *
+ * Black holes don't store fractions so we need to use element masses.
+ *
+ * @param bp_data The black hole data to initialise.
+ * @param p_data The gas data to use.
+ * @param gas_mass The mass of the gas particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
+    struct chemistry_bpart_data *bp_data,
+    const struct chemistry_part_data *p_data, const double gas_mass) {
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    bp_data->metal_mass_fraction[i] = p_data->metal_mass[i]/gas_mass;
+  }
+}
+
+/**
+ * @brief Add the chemistry data of a gas particle to a black hole.
+ *
+ * @param bp_data The black hole data to add to.
+ * @param p_data The gas data to use.
+ * @param gas_mass The mass of the gas particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
+    struct chemistry_bpart_data *bp_data,
+    const struct chemistry_part_data *p_data, const double gas_mass) {
+
+  /* /\* gas mass *\/ */
+  /* const float mass = hydro_get_mass(p); */
+
+  /* for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) { */
+  /*   double mk = s->chemistry_data.metal_mass_fraction[k] * ms_old + */
+  /*               p->chemistry_data.smoothed_metal_mass_fraction[k] * mass; */
+
+  /*   s->chemistry_data.metal_mass_fraction[k] = mk / s->mass; */
+  /* } */
+}
+
+/**
  * @brief Transfer chemistry data of a gas particle to a black hole.
  *
  * In contrast to `chemistry_add_part_to_bpart`, only a fraction of the
@@ -586,7 +627,8 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
  * of the gas particle are adjusted as well.
  * Black holes don't store fractions so we need to add element masses.
  *
- * Nothing to do here.
+ * We expect the nibble_mass to be the gas particle mass multiplied by the
+ * nibble_fraction.
  *
  * @param bp_data The black hole data to add to.
  * @param p_data The gas data to use.
@@ -599,13 +641,14 @@ chemistry_transfer_part_to_bpart(struct chemistry_bpart_data *bp_data,
                                  struct chemistry_part_data *p_data,
                                  const double nibble_mass,
                                  const double nibble_fraction) {
-  error("To be implemented.");
+
+  /* bp_data->metal_mass_total += p_data->metal_mass_fraction_total * nibble_mass; */
+  /* for (int i = 0; i < chemistry_element_count; ++i) */
+  /*   bp_data->metal_mass[i] += p_data->metal_mass_fraction[i] * nibble_mass; */
 }
 
 /**
  * @brief Add the chemistry data of a black hole to another one.
- *
- * Nothing to do here.
  *
  * @param bp_data The black hole data to add to.
  * @param swallowed_data The black hole data to use.
@@ -613,7 +656,18 @@ chemistry_transfer_part_to_bpart(struct chemistry_bpart_data *bp_data,
 __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
     struct chemistry_bpart_data *bp_data,
     const struct chemistry_bpart_data *swallowed_data) {
-  error("Loic: to be implemented");
+
+  /* bp_data->metal_mass_total += swallowed_data->metal_mass_total; */
+  /* for (int i = 0; i < chemistry_element_count; ++i) { */
+  /*   bp_data->metal_mass[i] += swallowed_data->metal_mass[i]; */
+  /* } */
+  /* bp_data->mass_from_SNIa += swallowed_data->mass_from_SNIa; */
+  /* bp_data->mass_from_SNII += swallowed_data->mass_from_SNII; */
+  /* bp_data->mass_from_AGB += swallowed_data->mass_from_AGB; */
+  /* bp_data->metal_mass_from_SNIa += swallowed_data->metal_mass_from_SNIa; */
+  /* bp_data->metal_mass_from_SNII += swallowed_data->metal_mass_from_SNII; */
+  /* bp_data->metal_mass_from_AGB += swallowed_data->metal_mass_from_AGB; */
+  /* bp_data->iron_mass_from_SNIa += swallowed_data->iron_mass_from_SNIa; */
 }
 
 /**
