@@ -50,7 +50,6 @@ enum SNII_energy_scalings {
  */
 enum SNII_magnetic_injection_model {
   SNII_magnetic_const_toroidal_injection, /*< constant field in phi direction */
-  SNII_magnetic_decreasing_toroidal_injection, 
   SNII_magnetic_kernel_softened_toroidal_injection,
   SNII_magnetic_kernel_softened_actual_toroidal_injection,
   SNII_magnetic_dipole_injection          /*< (softened) dipole injection */
@@ -60,7 +59,6 @@ enum SNII_magnetic_injection_model {
  * @brief Mode of magnetic injection orientation
  */
 enum SNII_magnetic_injection_orientation {
-  SNII_magnetic_orientation_ngb_model,     /*< plane through three nearest neighbours */ 
   SNII_magnetic_orientation_maxB_model,    /*< orientation to maximize B injection energy */
   SNII_magnetic_orientation_minB_model,    /*< orientation to minimize B injection energy */
   SNII_magnetic_orientation_random_model,  /*< random orientation */
@@ -338,22 +336,11 @@ struct feedback_props {
   /* mode of determining magnetic injection orientation */
   enum SNII_magnetic_injection_orientation magnetic_orientation_model;
 
-  /* whether to inject magnetic fields into all neighbours */
-  int all_neighbours_injection;
-
   /* the magnetic moment, for the constant orientation model */
   float magnetic_moment[3];
 
-  /* dipole scale length */
-  float r_scale;
-
   /* dipole softening length */
   float r_softening;
-
-  /* toroidal softening scale determination flags */
-  int constant_scale;
-  int particle_distance;
-  int sp_smoothing_length;
 
   /* Energy fraction used for magnetic field injection */
   float f_E_B;
