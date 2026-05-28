@@ -112,136 +112,190 @@ double eagle_feedback_energy_fraction(const struct spart *sp,
   return f_th;
 }
 
-INLINE static float compute_magnetic_injection_field(
-    struct ray_data *ray, float m[3],
+INLINE float compute_magnetic_injection_field_strength (
+    const float dx[3], const float m[3], 
     const struct feedback_props *feedback_props,
-    const float r_max, const float sp_h) {
+    const float wi) {
 
-    /* Initialize variables to calculate */
-    float B_inj[3] = {0., 0., 0.};
-    double B_inj_abs = 0.;
-    float B_inj_rescale;
+  float B_inj[3] = {0.f, 0.f, 0.f};
+  double B_inj_abs = 0.f;
 
-    /* the seperation vector (si - pj)*/
-    float dx[3] = {ray->dx[0], ray->dx[1], ray->dx[2]};
-    float r = sqrtf(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
-
-    /* the softening length */
-    const float r_soft = feedback_props->r_softening;
-
-    /* the scale length of the radially decreasing toroid */
-    const float r_scale = feedback_props->r_scale;
+  float r = sqrtf(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
+  float m_abs = sqrtf(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
     
-    switch (feedback_props->magnetic_injection_model) {
+  switch (feedback_props->magnetic_injection_model) {
 
-      case SNII_magnetic_const_toroidal_injection:
+    case SNII_magnetic_const_toroidal_injection:
 
-        /* toroidal direction */
-        B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
-        B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
-        B_inj[2] = dx[0]*m[1] - dx[1]*m[0];
+      /* for this mode the magnetic field has constant 
+       * strength in the toroid */
+      B_inj_abs = 1.;
 
-        /* for this mode the magnetic field has constant 
-         * strength in the toroid */
-        B_inj_abs = 1.;
+      break;
 
-        B_inj_rescale = B_inj_abs / sqrtf(B_inj[0]*B_inj[0] + 
-                                 B_inj[1]*B_inj[1] + 
-                                 B_inj[2]*B_inj[2]);
-        
-        for (size_t i = 0; i < 3; i++){
-          B_inj[i] *= B_inj_rescale;
-        }
+    case SNII_magnetic_decreasing_toroidal_injection:
 
-        break;
+      error("Decreasing toroidal magnetic injection no longer supported");
 
-      case SNII_magnetic_decreasing_toroidal_injection:
-
-        /* toroidal direction */
-        B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
-        B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
-        B_inj[2] = dx[0]*m[1] - dx[1]*m[0];
-
-        /* for this mode the magnetic field has decreasing 
-         * strength in the toroid */
-        B_inj_abs = exp(-1. * (r/r_scale) * (r/r_scale));
-        
-        B_inj_rescale = B_inj_abs / sqrtf(B_inj[0]*B_inj[0] + 
-                            B_inj[1]*B_inj[1] + B_inj[2]*B_inj[2]);
-
-        for (size_t i = 0; i < 3; i++){
-          B_inj[i] *= B_inj_rescale;
-        }
-
-        break;
+      break;
       
-      case SNII_magnetic_kernel_softened_toroidal_injection:
+    case SNII_magnetic_kernel_softened_toroidal_injection:
 
-	        /* toroidal direction */
-        B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
-        B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
-        B_inj[2] = dx[0]*m[1] - dx[1]*m[0];
+      /* for this mode the magnetic field has a strength 
+       * defined by the kernel */
+      B_inj_abs = wi;
 
-        /* determine the kernel smoothing length */
-        float kernel_h;
-        if (feedback_props->constant_scale){
-          kernel_h = r_soft;
-        }
-        else if (feedback_props->particle_distance) {
-          kernel_h = r_max * kernel_gamma_inv;
-        }
-        else {
-          kernel_h = sp_h;
-        }
+      break;
 
-        /* for this mode the magnetic field is softened with 
-         * the kernel */
-        kernel_eval_double(r/kernel_h, &B_inj_abs);
-        B_inj_abs /= pow_dimension(kernel_h);
+    case SNII_magnetic_kernel_softened_actual_toroidal_injection:
 
-        B_inj_rescale = B_inj_abs / sqrtf(B_inj[0]*B_inj[0] +
-                            B_inj[1]*B_inj[1] + B_inj[2]*B_inj[2]);
+      B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
+      B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
+      B_inj[2] = dx[0]*m[1] - dx[1]*m[0];
 
-        for (size_t i = 0; i < 3; i++){
-          B_inj[i] *= B_inj_rescale;
-        }
+      B_inj_abs = wi * sqrtf(B_inj[0]*B_inj[0] + 
+                             B_inj[1]*B_inj[1] + 
+                             B_inj[2]*B_inj[2]);
 
-        break;
+      break;
 
-      case SNII_magnetic_dipole_injection:
+    case SNII_magnetic_dipole_injection:
 
-        /* dot product magnetic moment and unit vector dx / r */
-        float m_dot_r = (m[0] * dx[0] + 
-                         m[1] * dx[1] + 
-                         m[2] * dx[2]) / r;
+      /* the softening length */
+      const float r_soft = feedback_props->r_softening;
 
-        /* calculate the magnetic dipole field */
-        B_inj[0] = 3. * dx[0] * m_dot_r - (r - 2*r_soft) * m[0];
-        B_inj[1] = 3. * dx[1] * m_dot_r - (r - 2*r_soft) * m[1];
-        B_inj[2] = 3. * dx[2] * m_dot_r - (r - 2*r_soft) * m[2];
+      /* dot product magnetic moment and unit vector dx / r */
+      float m_dot_r = (m[0] * dx[0] + 
+                       m[1] * dx[1] + 
+                       m[2] * dx[2]) / r;
 
-        for (size_t i = 0; i < 3; i++) {
-          B_inj[i] /= pow(r + r_soft, 4);
-        }
+      /* absolute value of the field (note that m is assumed to be of
+       * length 1)*/
+      B_inj_abs = sqrtf((3*r*r + 12*r*r_soft)*m_dot_r*m_dot_r +
+                        (r - 2*r_soft) * (r - 2*r_soft) * m_abs * m_abs) /
+                        pow((r + r_soft), 4);
 
-        B_inj_abs = sqrtf(B_inj[0] * B_inj[0] + 
-                          B_inj[1] * B_inj[1] + 
-                          B_inj[2] * B_inj[2]);
-
-        break;
+      break;
         
-      default:
+    default:
          
-        error("wrong magnetic injection field specified");
+      error("wrong magnetic injection field specified");
 
     }
 
-    /* Store the field to inject in the ray data */
-    ray->B_inj[0] = B_inj[0];
-    ray->B_inj[1] = B_inj[1];
-    ray->B_inj[2] = B_inj[2];
+  return B_inj_abs;
+}
 
-    return B_inj_abs;
+/** 
+ * @brief compute the injected magnetic field
+ *
+ * @param B_inj (return) the injected magnetic field
+ * @param B_inj_norm the normalisation constant for the injection field
+ * @param dx the seperation vector
+ * @param m the magnetic moment
+ * @param feedback_props the properties of the feedback model
+ * @param wi the kernel of the star
+ */
+INLINE void compute_magnetic_injection_field(
+    float *B_inj, const float B_inj_norm, const float dx[3], 
+    const float m[3], const struct feedback_props *feedback_props, 
+    const float wi) {
+
+  float B_inj_temp[3] = {0.f, 0.f, 0.f};
+  float B_inj_rescale;
+
+  /* the seperation vector (si - pj)*/
+  float r = sqrtf(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
+
+  /* the softening length */
+  const float r_soft = feedback_props->r_softening;
+    
+  switch (feedback_props->magnetic_injection_model) {
+
+    case SNII_magnetic_const_toroidal_injection:
+
+      /* toroidal direction */
+      B_inj_temp[0] = dx[1]*m[2] - dx[2]*m[1];
+      B_inj_temp[1] = dx[2]*m[0] - dx[0]*m[2];
+      B_inj_temp[2] = dx[0]*m[1] - dx[1]*m[0];
+
+      /* for this mode the magnetic field has constant 
+       * strength in the toroid */
+      B_inj_rescale = 1.f / sqrtf(B_inj_temp[0]*B_inj_temp[0] + 
+                                  B_inj_temp[1]*B_inj_temp[1] + 
+                                  B_inj_temp[2]*B_inj_temp[2]);
+        
+      for (size_t i = 0; i < 3; i++){
+        B_inj_temp[i] *= B_inj_rescale;
+      }
+
+      break;
+
+    case SNII_magnetic_decreasing_toroidal_injection:
+
+      error("Decreasing toroid not supported");
+
+      break;
+      
+    case SNII_magnetic_kernel_softened_toroidal_injection:
+
+	    /* toroidal direction */
+      B_inj_temp[0] = dx[1]*m[2] - dx[2]*m[1];
+      B_inj_temp[1] = dx[2]*m[0] - dx[0]*m[2];
+      B_inj_temp[2] = dx[0]*m[1] - dx[1]*m[0];
+
+      /* note wi is particle dependent, so this differs from previous field */
+      B_inj_rescale = wi / sqrtf(B_inj_temp[0]*B_inj_temp[0] +
+                                 B_inj_temp[1]*B_inj_temp[1] + 
+                                 B_inj_temp[2]*B_inj_temp[2]);
+
+      for (size_t i = 0; i < 3; i++){
+        B_inj_temp[i] *= B_inj_rescale;
+      }
+
+      break;
+
+    case SNII_magnetic_kernel_softened_actual_toroidal_injection:
+
+      /* toroidal direction */
+      B_inj_temp[0] = dx[1]*m[2] - dx[2]*m[1];
+      B_inj_temp[1] = dx[2]*m[0] - dx[0]*m[2];
+      B_inj_temp[2] = dx[0]*m[1] - dx[1]*m[0];
+
+      for (size_t i = 0; i < 3; i++){
+        B_inj_temp[i] *= wi;
+      }
+      
+      break;
+
+    case SNII_magnetic_dipole_injection:
+
+      /* dot product magnetic moment and unit vector dx / r */
+      float m_dot_r = (m[0] * dx[0] + 
+                       m[1] * dx[1] + 
+                       m[2] * dx[2]) / r;
+
+      /* calculate the magnetic dipole field */
+      B_inj_temp[0] = 3. * dx[0] * m_dot_r - (r - 2*r_soft) * m[0];
+      B_inj_temp[1] = 3. * dx[1] * m_dot_r - (r - 2*r_soft) * m[1];
+      B_inj_temp[2] = 3. * dx[2] * m_dot_r - (r - 2*r_soft) * m[2];
+
+      for (size_t i = 0; i < 3; i++) {
+        B_inj_temp[i] /= pow(r + r_soft, 4);
+      }
+
+      break;
+        
+    default:
+         
+      error("wrong magnetic injection field specified");
+
+    }
+
+    /* return the magnetic field */
+    B_inj[0] = B_inj_norm * B_inj_temp[0];
+    B_inj[1] = B_inj_norm * B_inj_temp[1];
+    B_inj[2] = B_inj_norm * B_inj_temp[2];
 }
 
 /** 
@@ -272,29 +326,8 @@ INLINE static void compute_magnetic_feedback(
   switch (feedback_props->magnetic_orientation_model) {
     
     case SNII_magnetic_orientation_ngb_model: 
-      /* choose the magnetic moment perpendicular to a 
-       * plane through the closest three neighbours */
 
-      /* seperation vectors between the three nearest particles 
-       * (x_1 - x_2) and (x_1 - x_3) */
-      const float dx1[3] = {sp->feedback_data.SNII_rays[0].dx[0] - 
-                              sp->feedback_data.SNII_rays[1].dx[0],
-                            sp->feedback_data.SNII_rays[0].dx[1] - 
-                              sp->feedback_data.SNII_rays[1].dx[1],
-                            sp->feedback_data.SNII_rays[0].dx[2] - 
-                              sp->feedback_data.SNII_rays[1].dx[2]};
-      const float dx2[3] = {sp->feedback_data.SNII_rays[0].dx[0] - 
-                              sp->feedback_data.SNII_rays[2].dx[0],
-                            sp->feedback_data.SNII_rays[0].dx[1] - 
-                              sp->feedback_data.SNII_rays[2].dx[1],
-                            sp->feedback_data.SNII_rays[0].dx[2] - 
-                              sp->feedback_data.SNII_rays[2].dx[2]}; 
-
-      /* vector perpendicular to the plane is the cross-product of 
-       * the seperation vectors */
-      m[0] = dx1[1]*dx2[2] - dx1[2]*dx2[1];
-      m[1] = dx1[2]*dx2[0] - dx1[0]*dx2[2];
-      m[2] = dx1[0]*dx2[1] - dx1[1]*dx2[0];
+      error("Choosing the orientation through the plane is not supported anymore");
 
       break;
 
@@ -324,46 +357,12 @@ INLINE static void compute_magnetic_feedback(
 
       break;
 
-    case SNII_magnetic_orientation_random_model:
-      /* choose a random orientation, note that the index is taken 
-       * to be eagle_SNII_feedback_num_of_rays (+ 1) as to not 
-       * coincide with the orientation of rays in the isotropic scheme 
-       * Note, for random direction we need phi and cos theta to be 
-       * uniformly distributed (not phi and theta)*/
-
-      const double rand_theta_m = random_unit_interval_part_ID_and_index(
-            sp->id, eagle_SNII_feedback_num_of_rays, ti_begin,
-            random_number_isotropic_SNII_feedback_ray_theta);
-      const double rand_phi_m = random_unit_interval_part_ID_and_index(
-            sp->id, eagle_SNII_feedback_num_of_rays + 1, ti_begin,
-            random_number_isotropic_SNII_feedback_ray_phi);
-
-      /* convert [0,1[ interval to [-1, 1[*/
-      const double cos_theta_m = 2. * rand_theta_m - 1.;
-
-      /* get polar angle */
-      const double theta_m = acos(cos_theta_m);
-
-      /* convert [0,1[ interval to [-M_PI, M_PI[ */
-      const double phi_m = 2.* M_PI * rand_phi_m - M_PI;
-
-      m[0] = sin(theta_m) * cos(phi_m);
-      m[1] = sin(theta_m) * sin(phi_m);
-      m[2] = cos_theta_m;
-
-      break;
-
-    case SNII_magnetic_orientation_constant_model:
-      /* the constant magnetic moment from the parameters */
-      m[0] = feedback_props->magnetic_moment[0];
-      m[1] = feedback_props->magnetic_moment[1];
-      m[2] = feedback_props->magnetic_moment[2];
-
-      break;
-
     default:
 
-      error("wrong magnetic orientation model specified");
+      /* use the moment computed in the density loop */
+      m[0] = sp->feedback_data.to_collect_mhd.m[0];
+      m[1] = sp->feedback_data.to_collect_mhd.m[1];
+      m[2] = sp->feedback_data.to_collect_mhd.m[2];
 
     }
 
@@ -382,37 +381,16 @@ INLINE static void compute_magnetic_feedback(
 
   /* the total injected energy */
   float E_th_tot = 0.f;
-
-  /* maximum distance of injected particles */
-  float r_max = sp->feedback_data.SNII_rays[number_of_SN_events - 1].min_length;
-
-  /* stellar particle smoothing length */
-  float sp_h = sp->h;
-
-  /* The normalisation of the magnetic field */
-  float B_conv_factor = 0.f;
-  float field_fraction = 0.f;
   for (int i = 0; i < number_of_SN_events; i++) {
-    /* TODO: take into account particles receiving two rays */
-    field_fraction = compute_magnetic_injection_field(
-      &sp->feedback_data.SNII_rays[i], m, feedback_props, 
-      r_max, sp_h);
-
-    B_conv_factor += field_fraction * field_fraction * 
-      sp->feedback_data.SNII_rays[i].mass / sp->feedback_data.SNII_rays[i].rho;
     E_th_tot += delta_u * sp->feedback_data.SNII_rays[i].mass;
   }
-  B_conv_factor *= 1 / (2 * feedback_props->mu_0);
 
   /* magnetic energy available for injection */
   const float E_B_inj = feedback_props->f_E_B * E_th_tot;
 
-  const float B_inj = sqrtf(E_B_inj / B_conv_factor);
-
   const float ngb_B_inj_norm = sp->feedback_data.to_collect_mhd.ngb_B_inj;
 
   /* Store the magnetic field normalisation */
-  sp->feedback_data.to_distribute.B_inj_abs = B_inj;
   sp->feedback_data.to_distribute.ngb_B_inj_abs = sqrtf(E_B_inj / ngb_B_inj_norm);
 
   /* rescale the thermal energy injection */
@@ -1049,6 +1027,10 @@ void feedback_props_init(struct feedback_props *fp,
       else {
 	error("Wrong softening length determination given");
       }
+    }
+    else if (strcmp(B_injection_model, "kernel_actual_toroid") == 0) {
+      fp->magnetic_injection_model = 
+        SNII_magnetic_kernel_softened_actual_toroidal_injection;
     }
     else if (strcmp(B_injection_model, "dipole") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_dipole_injection;

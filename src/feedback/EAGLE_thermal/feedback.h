@@ -327,10 +327,15 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
   }
 }
 
-/* void compute_magnetic_feedback(
-    struct spart *sp, const struct feedback_props *feedback_props,
-    const float delta_u, const int number_of_SN_events, 
-    const integertime_t ti_begin); */
+float compute_magnetic_injection_field_strength (
+    const float dx[3], const float m[3], 
+    const struct feedback_props *feedback_props,
+    const float wi);
+
+void compute_magnetic_injection_field(
+    float *B_inj, const float B_inj_norm, const float dx[3], 
+    const float m[3], const struct feedback_props *feedback_props, 
+    const float wi);
 
 void feedback_clean(struct feedback_props *fp);
 
