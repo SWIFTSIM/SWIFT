@@ -154,10 +154,10 @@ runner_iact_nonsym_sinks_gas_density(
   /* AND the sink smoothing length */
   si->to_collect.minimal_h_gas = min(hj, si->to_collect.minimal_h_gas);
 
-  /* Contribution to the BH gas density */
+  /* Contribution to the smoothed quantities */
+  const float uj = hydro_get_drifted_physical_internal_energy(pj, cosmo);
   si->to_collect.rho_gas += mj * wi;
-
-  /* Contribution to the smoothed sound speed */
+  si->to_collect.internal_energy_gas += mj * wi * uj;
   si->to_collect.sound_speed_gas += mj * wi * hydro_get_comoving_soundspeed(pj);
 
   /* Neighbour's (drifted) velocity in the frame of the sink
@@ -166,7 +166,7 @@ runner_iact_nonsym_sinks_gas_density(
   const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
                        pj->v[2] - si->v[2]};
 
-  /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
+  /* Contribution to the smoothed velocity (gas w.r.t. sink) */
   si->to_collect.velocity_gas[0] += mj * dv[0] * wi;
   si->to_collect.velocity_gas[1] += mj * dv[1] * wi;
   si->to_collect.velocity_gas[2] += mj * dv[2] * wi;

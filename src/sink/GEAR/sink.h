@@ -200,6 +200,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   /* Init properties based on the local gas */
   sp->to_collect.minimal_h_gas = FLT_MAX;
   sp->to_collect.rho_gas = 0.0;
+  sp->to_collect.internal_energy_gas = 0.0;
   sp->to_collect.sound_speed_gas = 0.0;
   sp->to_collect.velocity_gas[0] = 0.0;
   sp->to_collect.velocity_gas[1] = 0.0;
@@ -270,6 +271,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   /* Init properties based on the local gas */
   sp->to_collect.minimal_h_gas = FLT_MAX;
   sp->to_collect.rho_gas = 0.0;
+  sp->to_collect.internal_energy_gas = 0.0;
   sp->to_collect.sound_speed_gas = 0.0;
   sp->to_collect.velocity_gas[0] = 0.0;
   sp->to_collect.velocity_gas[1] = 0.0;
@@ -354,7 +356,8 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
   const float rho_inv = 1.f / si->to_collect.rho_gas;
 
   /* For the following, we also have to undo the mass smoothing
-   * (N.B.: bp->velocity_gas is in BH frame, in internal units). */
+   * (N.B.: bp->velocity_gas is in sink frame, in internal units). */
+  si->to_collect.internal_energy_gas *= h_inv_dim*rho_inv;
   si->to_collect.sound_speed_gas *= h_inv_dim * rho_inv;
   si->to_collect.velocity_gas[0] *= h_inv_dim * rho_inv;
   si->to_collect.velocity_gas[1] *= h_inv_dim * rho_inv;
@@ -391,6 +394,7 @@ __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* Reset problematic values */
+  sp->to_collect.internal_energy_gas = -FLT_MAX;
   sp->to_collect.velocity_gas[0] = sp->v[0];
   sp->to_collect.velocity_gas[1] = sp->v[1];
   sp->to_collect.velocity_gas[2] = sp->v[2];
@@ -402,8 +406,6 @@ __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
 /**
  * @brief Compute the accretion rate of the sink and any quantities
  * required swallowing based on an accretion rate
- *
- * Adapted from black_holes_prepare_feedback
  *
  * @param si The sink particle.
  * @param props The properties of the sink scheme.
