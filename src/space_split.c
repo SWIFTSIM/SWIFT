@@ -1133,6 +1133,11 @@ void space_split(struct space *s, int verbose) {
 
     space_split_merge_local_frontiers(this_level, local_frontiers, nr_threads);
 
+    int frontier_level = 1;
+    if (verbose)
+      message("Frontier level %d has %d cells.", frontier_level,
+              this_level->count);
+
     while (this_level->count > 0) {
 
       threadpool_map(tp, space_split_frontier_mapper, this_level->cells,
@@ -1146,6 +1151,11 @@ void space_split(struct space *s, int verbose) {
       struct space_split_frontier *tmp = this_level;
       this_level = next_level;
       next_level = tmp;
+      frontier_level += 1;
+
+      if (verbose && this_level->count > 0)
+        message("Frontier level %d has %d cells.", frontier_level,
+                this_level->count);
     }
     const ticks bfs_toc = getticks();
 
