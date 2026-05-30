@@ -36,10 +36,9 @@
 
 /* Depth budget per frontier entry. Each cell in the BFS frontier processes
  * this many levels depth-first before its surviving children re-enter the
- * frontier.  A value of 1 gives pure BFS; larger values trade dispatch
+ * frontier. A value of 1 gives pure BFS; larger values trade dispatch
  * overhead for cache locality while preserving BFS load balance across
- * frontier cells. */
-static const int dfs_levels_at_a_time = 3;
+ * frontier cells. Controlled by Scheduler:dfs_levels_per_frontier. */
 
 /* ------------------------------------------------------------------------- */
 /* BFS-frontier infrastructure for space_split.                              */
@@ -202,7 +201,7 @@ static void space_split_merge_local_frontiers(
  *        this DFS chunk exactly as in the master recursive implementation.
  * @param tpid The threadpool tid of the calling worker.
  * @param depth_remaining Number of additional DFS levels to descend before
- *        enqueuing survivors (@c dfs_levels_at_a_time - 1 on entry from
+ *        enqueuing survivors (@c space_dfs_levels_per_frontier - 1 on entry from
  *        the mapper).
  */
 static void space_split_recursive(
@@ -964,7 +963,7 @@ static void space_split_top_mapper(void *map_data, int num_cells,
   for (int i = 0; i < num_cells; i++) {
     struct cell *c = &s->cells_top[local_cells_with_particles[i]];
     space_split_recursive(s, next, c, NULL, NULL, NULL, NULL, NULL, tpid,
-                          dfs_levels_at_a_time - 1);
+                           space_dfs_levels_per_frontier - 1);
   }
 }
 
@@ -994,7 +993,7 @@ static void space_split_frontier_mapper(void *map_data, int num_cells,
 
   for (int i = 0; i < num_cells; i++)
     space_split_recursive(s, next, cells[i], NULL, NULL, NULL, NULL, NULL, tpid,
-                          dfs_levels_at_a_time - 1);
+                          space_dfs_levels_per_frontier - 1);
 }
 
 /**
@@ -1065,7 +1064,7 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
  *    master implementation: a #threadpool mapper over the local top cells,
  *    with each top cell starting a DFS chunk that allocates and frees its
  *    own local split buffers. When a DFS chunk reaches its depth budget
- *    (@c dfs_levels_at_a_time), surviving subtrees are appended to a
+ *    (@c space_dfs_levels_per_frontier), surviving subtrees are appended to a
  *    frontier. Subsequent rounds process that frontier in parallel, each
  *    frontier cell again starting a fresh DFS chunk with its own local
  *    buffers. This keeps the master-style buffer ownership and recursion
