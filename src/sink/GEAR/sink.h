@@ -357,7 +357,7 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
 
   /* For the following, we also have to undo the mass smoothing
    * (N.B.: bp->velocity_gas is in sink frame, in internal units). */
-  si->to_collect.internal_energy_gas *= h_inv_dim*rho_inv;
+  si->to_collect.internal_energy_gas *= h_inv_dim * rho_inv;
   si->to_collect.sound_speed_gas *= h_inv_dim * rho_inv;
   si->to_collect.velocity_gas[0] *= h_inv_dim * rho_inv;
   si->to_collect.velocity_gas[1] *= h_inv_dim * rho_inv;
@@ -991,7 +991,8 @@ INLINE static void sink_copy_properties_to_star(
   const float internal_energy_gas = sink->to_collect.internal_energy_gas;
   const double mu = cooling_get_equilibrium_mean_molecular_weight(
       internal_energy_gas, phys_const, hydro_props, cooling);
-  const float T_gas = cooling_temperature_from_internal_energy(internal_energy_gas, mu, k_b, m_p);
+  const float T_gas = cooling_temperature_from_internal_energy(
+      internal_energy_gas, mu, k_b, m_p);
 
   /* Birth properties. */
   star_formation_set_spart_birth_density(sp, sink->to_collect.rho_gas);
