@@ -39,7 +39,7 @@
  * frontier.  A value of 1 gives pure BFS; larger values trade dispatch
  * overhead for cache locality while preserving BFS load balance across
  * frontier cells. */
-static const int dfs_levels_at_a_time = 20;
+static const int dfs_levels_at_a_time = 3;
 
 /* ------------------------------------------------------------------------- */
 /* BFS-frontier infrastructure for space_split.                              */
@@ -397,9 +397,8 @@ static void space_split_recursive(
 
     /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
-               c->black_holes.parts - s->bparts,
-               c->sinks.parts - s->sinks, buff, sbuff, bbuff, gbuff,
-               sink_buff);
+               c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
+               buff, sbuff, bbuff, gbuff, sink_buff);
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
@@ -421,8 +420,8 @@ static void space_split_recursive(
 
         if (depth_remaining > 0)
           space_split_recursive(s, next, cp, progeny_buff, progeny_sbuff,
-                                progeny_bbuff, progeny_gbuff,
-                                progeny_sink_buff, tpid, depth_remaining - 1);
+                                progeny_bbuff, progeny_gbuff, progeny_sink_buff,
+                                tpid, depth_remaining - 1);
         else
           space_split_local_frontier_append(next, cp);
 
@@ -972,8 +971,8 @@ static void space_split_top_mapper(void *map_data, int num_cells,
 /**
  * @brief #threadpool mapper function for one BFS level.
  *
-  * Each chunk of work is a contiguous range of cells from the
-  * @c current frontier. Each worker appends produced cells to its own
+ * Each chunk of work is a contiguous range of cells from the
+ * @c current frontier. Each worker appends produced cells to its own
  * thread-local frontier, which is merged into the flat next frontier after
  * the parallel level completes.
  *
@@ -994,8 +993,8 @@ static void space_split_frontier_mapper(void *map_data, int num_cells,
   struct space_split_local_frontier *next = &local_frontiers[tpid];
 
   for (int i = 0; i < num_cells; i++)
-    space_split_recursive(s, next, cells[i], NULL, NULL, NULL, NULL, NULL,
-                          tpid, dfs_levels_at_a_time - 1);
+    space_split_recursive(s, next, cells[i], NULL, NULL, NULL, NULL, NULL, tpid,
+                          dfs_levels_at_a_time - 1);
 }
 
 /**
@@ -1128,9 +1127,9 @@ void space_split(struct space *s, int verbose) {
      * subtrees to the first frontier instead of always recursing to the
      * leaves. */
     const ticks bfs_tic = getticks();
-    threadpool_map(tp, space_split_top_mapper, s->local_cells_with_particles_top,
-                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                   top_mapper_data);
+    threadpool_map(tp, space_split_top_mapper,
+                   s->local_cells_with_particles_top, nr_local_cells,
+                   sizeof(int), threadpool_auto_chunk_size, top_mapper_data);
 
     space_split_merge_local_frontiers(this_level, local_frontiers, nr_threads);
 
@@ -1178,8 +1177,7 @@ void space_split(struct space *s, int verbose) {
       message("BFS split loop: %.3f %s.", clocks_from_ticks(bfs_toc - bfs_tic),
               clocks_getunit());
       message("Split teardown: %.3f %s.",
-              clocks_from_ticks(teardown_toc - teardown_tic),
-              clocks_getunit());
+              clocks_from_ticks(teardown_toc - teardown_tic), clocks_getunit());
       message("Aggregate pass: %.3f %s.",
               clocks_from_ticks(aggregate_toc - aggregate_tic),
               clocks_getunit());
