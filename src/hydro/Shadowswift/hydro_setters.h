@@ -121,9 +121,14 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_comoving_internal_energy_dt(struct part* restrict p,
                                       const float du_dt) {
 
+  /* The old way of doing things */
   const float old_du_dt = hydro_get_comoving_internal_energy_dt(p);
+  const float du = (du_dt - old_du_dt) * p->flux.dt;
+  p->flux.energy += p->conserved.mass * du;
+  p->flux.entropy +=
+      p->conserved.mass * gas_entropy_from_internal_energy(p->rho, du);
 
-  /* Store cooling du_dt used in KDK time integration in Kick1 and Kick2 */
+  /* Needed for hydro_predict_extra */
   p->cool_du_dt_prev = du_dt - old_du_dt;
 }
 
