@@ -186,7 +186,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
     const struct part* restrict p, const struct xpart* restrict xp) {
 
   if (p->rho > 0.0f) {
-    return gas_entropy_from_pressure(p->rho, p->P);
+    /* As it is in the hydro solver kick2 */
+    return p->conserved.entropy;
   } else {
     return 0.f;
   }
