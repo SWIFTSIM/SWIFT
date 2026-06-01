@@ -256,7 +256,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
                  -dx[1] + pi->geometry.centroid[1] - pj->geometry.centroid[1],
                  -dx[2] + pi->geometry.centroid[2] - pj->geometry.centroid[2]};
   float s = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
-  hydro_slope_limit_face(Wi, Wj, dWi, dWj, dx_i, dx_j, s);
+  hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, s); // Use correct distance
 
   /* Apply the slope limited extrapolations */
   hydro_gradients_apply_extrapolation(Wi, dWi);
