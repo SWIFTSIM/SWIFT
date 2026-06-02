@@ -45,7 +45,8 @@
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const struct sink_props *sink_props,
+    const struct cosmology *cosmo) {
 
   /* In order to prevent the formation of two sink particles too close together,
    * we keep only gas particles with the smallest potential. The distance at
@@ -69,6 +70,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
       pj->sink_data.can_form_sink = 0;
       return;
     }
+
+    /* Compute the quantities required to later decide to form a sink or not. */
+    sink_prepare_part_sink_formation_gas_criteria(pi, pj, cosmo, sink_props);
+    sink_prepare_part_sink_formation_gas_criteria(pj, pi, cosmo, sink_props);
   }
 }
 
@@ -91,7 +96,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const struct sink_props *sink_props,
+    const struct cosmology *cosmo) {
 
   /* In order to prevent the formation of two sink particles too close together,
    * we keep only gas particles with the smallest potential. The distance at
@@ -108,6 +114,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     /* if the potential is larger
      * prevent the particle to form a sink */
     if (potential_i > potential_j) pi->sink_data.can_form_sink = 0;
+
+    sink_prepare_part_sink_formation_gas_criteria(pi, pj, cosmo, sink_props);
   }
 }
 
