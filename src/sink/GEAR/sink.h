@@ -228,11 +228,10 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
     cpd->can_form_sink = 1;
   }
   cpd->N_neighbours = 0;
-  cpd->M_tot = 0.0;
 
   cpd->E_kin_neighbours = 0.f;
   cpd->E_int_neighbours = 0.f;
-  cpd->E_mag_neighbours = 0.f;
+  cpd->E_pot_neighbours = 0.f;
   cpd->E_rot_neighbours[0] = 0.f;
   cpd->E_rot_neighbours[1] = 0.f;
   cpd->E_rot_neighbours[2] = 0.f;
@@ -468,14 +467,11 @@ INLINE static int sink_is_forming(
   const float h = p->h;
   const float sink_cut_off_radius = sink_props->cut_off_radius;
 
-  /* Add self constribution */
-  const float M_tot = sink_data->M_tot + hydro_get_mass(p);
-
   const float E_int = sink_data->E_int_neighbours;
-  const float E_grav = -0.6*M_tot*M_tot/sink_cut_off_radius;
+  const float E_grav = sink_data->E_pot_neighbours;
   const float E_rot = sink_compute_neighbour_rotation_energy_magnitude(p);
-  const float E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
-                 E_grav + sink_data->E_mag_neighbours;
+  const float E_tot =
+      sink_data->E_kin_neighbours + sink_data->E_int_neighbours + E_grav;
 
   /* const char is_small_enough = kernel_gamma*p->h < sink_cut_off_radius; */
   if (density > density_threshold) {
@@ -1245,7 +1241,6 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
 
   /* Accumulate number of neighbours and mass */
   p->sink_data.N_neighbours += 1;
-  p->sink_data.M_tot += mi;
 
   /* Updates the energies */
   p->sink_data.E_kin_neighbours += 0.5f * mi * dv_physical_squared;

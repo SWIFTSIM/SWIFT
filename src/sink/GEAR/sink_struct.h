@@ -34,10 +34,6 @@ struct sink_part_data {
   /*! Does the future sink overalp an existing one ? */
   char is_overlapping_sink;
 
-  /*! Total mass of the neigbouring gas particles (i.e.inside
-   * sink_cut_off_radius) */
-  float M_tot;
-
   /*! Number of neigbouring particles */  
   int N_neighbours;  
 
@@ -49,9 +45,9 @@ struct sink_part_data {
    * sink_cut_off_radius) */
   float E_int_neighbours;
 
-  /*! Total magnetic energy of the neigbouring gas particles (i.e. inside
+  /*! Total potential energy of the neigbouring gas particles (i.e. inside
    * sink_cut_off_radius) */
-  float E_mag_neighbours;
+  float E_pot_neighbours;
 
   /*! Total rotational energy per component (x, y and z) of the neigbouring gas
    * particles  (i.e. inside sink_cut_off_radius) */
