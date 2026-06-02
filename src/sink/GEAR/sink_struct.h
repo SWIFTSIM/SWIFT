@@ -49,10 +49,6 @@ struct sink_part_data {
    * sink_cut_off_radius) */
   float E_int_neighbours;
 
-  /*! Total self potential energy of the neigbouring gas particles (i.e. inside
-   * sink_cut_off_radius) */
-  float E_pot_self_neighbours;
-
   /*! Total magnetic energy of the neigbouring gas particles (i.e. inside
    * sink_cut_off_radius) */
   float E_mag_neighbours;
