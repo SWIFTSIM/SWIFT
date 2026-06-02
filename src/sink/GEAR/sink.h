@@ -492,19 +492,20 @@ INLINE static int sink_is_forming(
 	    (E_int < 0.5*fabs(E_grav)), (E_int+E_rot<fabs(E_grav)), (E_tot < 0.0));
   }
 
+  /* If density > maximal_density_threshold, and we do not overlap with other
+     sinks, form a sink. */
+  if ((density > maximal_density_threshold) &&
+      (sink_props->sink_formation_overlapping_sink_criterion &&
+       sink_data->is_overlapping_sink)) {
+    return 1;
+  }
+  /* Otherwise, proceed with the regular sink formation criteria */
+
   /* Density criterion */
   if (density < density_threshold) {
     return 0;
   }
   /* Here we have density >= density_threshold */
-
-  /* If density_threshold <= density <= maximal_density_threshold, check the
-     temperature. If density > maximal_density_threshold, do no check the
-     temperature. */
-  if ((density <= maximal_density_threshold) &&
-      (temperature >= temperature_threshold)) {
-    return 0;
-  }
 
   /* Contracting gas criterion */
   if ((sink_props->sink_formation_contracting_gas_criterion) && (div_v > 0)) {
@@ -518,10 +519,6 @@ INLINE static int sink_is_forming(
     message("[%lld] Size criterion failed!", p->id);
     return 0;
   }
-
-  /* Active neighbours criterion */
-  /* This is checked on the fly in runner_do_sink_formation(). The part is
-     flagged to not form sink through p->sink_data.can_form_sink */
 
   /* Jeans instability criterion */
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
