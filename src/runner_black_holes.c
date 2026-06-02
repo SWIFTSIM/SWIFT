@@ -30,6 +30,7 @@
 #include "black_holes.h"
 #include "cell.h"
 #include "engine.h"
+#include "periodic.h"
 #include "timers.h"
 
 /**
@@ -504,4 +505,156 @@ void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
    * active BH */
   if (cell_is_active_black_holes(cj, e)) runner_do_bh_swallow(r, ci, timer);
   if (cell_is_active_black_holes(ci, e)) runner_do_bh_swallow(r, cj, timer);
+}
+
+/**
+ * @brief Brute-force stellar accretion (TDE) for all active BHs in a cell.
+ *
+ * For each active BH, loops over all star particles in the simulation to:
+ *   1. Compute the total stellar mass density within a 1 kpc physical aperture.
+ *   2. Apply a TDE accretion rate (currently a placeholder constant) to the BH
+ *      subgrid mass.
+ *   3. Nibble the corresponding mass from the star particles within the aperture,
+ *      proportional to each star's share of the total stellar mass.
+ *
+ * Note: this is an O(N_BH * N_stars) brute-force implementation. It is also
+ * not thread-safe when multiple BH cells are processed concurrently.
+ *
+ * @param r The thread #runner.
+ * @param c The #cell.
+ * @param timer Are we timing this?
+ */
+void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
+                                    int timer) {
+
+  struct engine *e = r->e;
+  const struct space *s = e->s;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct unit_system *us = e->internal_units;
+  const struct black_holes_props *props = e->black_holes_properties;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int periodic = s->periodic;
+
+  /* Anything to do here? */
+  if (c->black_holes.count == 0) return;
+  if (!cell_is_active_black_holes(c, e)) return;
+
+  /* Recurse over sub-cells. */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        runner_do_bh_stellar_accretion(r, c->progeny[k], 0);
+    return;
+  }
+
+  struct bpart *restrict bparts = c->black_holes.parts;
+  const int count = c->black_holes.count;
+
+  /* Physical aperture radius: 1 kpc in internal length units. */
+  const double kpc_in_cm = 3.08567758e21;
+  const double aperture_phys = kpc_in_cm / us->UnitLength_in_cgs;
+
+  /* Comoving aperture threshold (positions are stored in comoving coords). */
+  const double aperture_comoving = aperture_phys / cosmo->a;
+  const double aperture_comoving2 = aperture_comoving * aperture_comoving;
+
+  /* Physical volume of the aperture sphere. */
+  const double aperture_volume =
+      (4.0 / 3.0) * M_PI * aperture_phys * aperture_phys * aperture_phys;
+
+  /* Radiative efficiency (same as gas accretion). */
+  const double epsilon_r = props->epsilon_r;
+  const double excess_fraction = 1.0 / (1.0 - epsilon_r);
+
+  for (int i = 0; i < count; i++) {
+
+    struct bpart *restrict bp = &bparts[i];
+    if (!bpart_is_active(bp, e)) continue;
+
+    /* Get this BH's timestep. */
+    double dt;
+    if (with_cosmology) {
+      const integertime_t ti_step = get_integer_timestep(bp->time_bin);
+      const integertime_t ti_begin =
+          get_integer_time_begin(e->ti_current - 1, bp->time_bin);
+      dt = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+    } else {
+      dt = get_timestep(bp->time_bin, e->time_base);
+    }
+
+    /* --- First pass: accumulate total stellar mass within aperture --- */
+    double M_total = 0.0;
+    for (size_t j = 0; j < s->nr_sparts; j++) {
+      const struct spart *sp = &s->sparts[j];
+      if (spart_is_inhibited(sp, e)) continue;
+
+      double dx = bp->x[0] - sp->x[0];
+      double dy = bp->x[1] - sp->x[1];
+      double dz = bp->x[2] - sp->x[2];
+
+      if (periodic) {
+        dx = nearest(dx, s->dim[0]);
+        dy = nearest(dy, s->dim[1]);
+        dz = nearest(dz, s->dim[2]);
+      }
+
+      if (dx * dx + dy * dy + dz * dz < aperture_comoving2)
+        M_total += sp->mass;
+    }
+
+    /* Store physical stellar mass density on the BH. */
+    bp->rho_stellar = (M_total > 0.0) ? (float)(M_total / aperture_volume) : 0.f;
+
+    /* Compute TDE accretion and update BH subgrid mass. */
+    const double tde_mass_deficit = black_holes_do_tde_accretion(bp, dt);
+
+    message(
+        "BH (ID %lld) z=%.4f  rho_stellar=%g (internal)  "
+        "tde_mass_deficit=%g (internal)",
+        bp->id, cosmo->z, (double)bp->rho_stellar, tde_mass_deficit);
+
+    /* Nothing to nibble if no stars nearby or zero deficit. */
+    if (M_total <= 0.0 || tde_mass_deficit <= 0.0) continue;
+
+    /* --- Second pass: nibble mass from star particles within aperture --- */
+    for (size_t j = 0; j < s->nr_sparts; j++) {
+      struct spart *sp = &s->sparts[j];
+      if (spart_is_inhibited(sp, e)) continue;
+
+      double dx = bp->x[0] - sp->x[0];
+      double dy = bp->x[1] - sp->x[1];
+      double dz = bp->x[2] - sp->x[2];
+
+      if (periodic) {
+        dx = nearest(dx, s->dim[0]);
+        dy = nearest(dy, s->dim[1]);
+        dz = nearest(dz, s->dim[2]);
+      }
+
+      if (dx * dx + dy * dy + dz * dz >= aperture_comoving2) continue;
+
+      /* Each star contributes proportionally to its share of M_total. */
+      const double weight = (double)sp->mass / M_total;
+
+      /* Mass removed from this star (includes the radiated fraction). */
+      const float star_mass_loss =
+          (float)(tde_mass_deficit * weight * excess_fraction);
+
+      if (star_mass_loss >= sp->mass) {
+        warning(
+            "TDE nibbling would make star particle %lld mass negative "
+            "(mass=%g, loss=%g). Skipping.",
+            sp->id, (double)sp->mass, (double)star_mass_loss);
+        continue;
+      }
+
+      sp->mass -= star_mass_loss;
+      sp->gpart->mass -= star_mass_loss;
+    }
+
+    /* Add the net accreted mass (excluding radiation) to the BH dynamical
+     * mass, consistent with how gas nibbling updates bp->mass. */
+    bp->mass += (float)tde_mass_deficit;
+    bp->gpart->mass += (float)tde_mass_deficit;
+  }
 }

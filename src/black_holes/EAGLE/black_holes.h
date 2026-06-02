@@ -161,6 +161,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->density.wcount = 0.f;
   bp->density.wcount_dh = 0.f;
   bp->rho_gas = 0.f;
+  bp->rho_stellar = 0.f;
   bp->sound_speed_gas = 0.f;
   bp->internal_energy_gas = 0.f;
   bp->rho_subgrid_gas = -1.f;
@@ -1229,6 +1230,41 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
     bp->ids_ngbs_force[i] = -1;
   bp->num_ngb_force = 0;
 #endif
+}
+
+/**
+ * @brief Compute and apply TDE accretion for a black hole.
+ *
+ * Adds a constant placeholder accretion rate to the BH subgrid mass and
+ * returns the accreted mass deficit for use in stellar nibbling.
+ *
+ * @param bp The black hole particle.
+ * @param dt The timestep.
+ * @return The mass accreted onto the BH subgrid mass this step.
+ */
+__attribute__((always_inline)) INLINE static double black_holes_do_tde_accretion(
+    struct bpart *restrict bp, const double dt) {
+
+  /* Placeholder constant TDE accretion rate in internal units (mass / time).
+   * Set to give ~10^7 Msun growth over z=0.1 to z=0 (dt ~ 1.36e-3 internal
+   * time units). Replace with a formula using bp->rho_stellar once calibrated. */
+  const double tde_rate = 0.74;
+
+  const double tde_mass_deficit = tde_rate * dt;
+  bp->subgrid_mass += tde_mass_deficit;
+
+  /* TODO: add TDE luminosity to the feedback energy reservoir. Requires
+   * extending the function signature to accept props and constants:
+   *   const struct black_holes_props *props
+   *   const struct phys_const *constants
+   * then uncomment:
+   *
+   * const double c = constants->const_speed_light_c;
+   * bp->energy_reservoir +=
+   *     props->epsilon_r * tde_rate * c * c * props->epsilon_f * dt;
+   */
+
+  return tde_mass_deficit;
 }
 
 /**
