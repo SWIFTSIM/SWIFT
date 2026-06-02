@@ -211,7 +211,6 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const struct sink_props *sink_props = e->sink_properties;
   const float a = cosmo->a;
   const float H = cosmo->H;
   double shift[3] = {0.0, 0.0, 0.0};
@@ -256,8 +255,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
-        runner_iact_nonsym_sink(r2, dx, hi, pj->h, pi, pj, a, H, sink_props,
-                                cosmo);
+        runner_iact_nonsym_sink(r2, dx, hi, pj->h, pi, pj, a, H);
       }
     }
   }
@@ -298,8 +296,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_chemistry(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, a, H);
-        runner_iact_nonsym_sink(r2, dx, hj, pi->h, pj, pi, a, H, sink_props,
-                                cosmo);
+        runner_iact_nonsym_sink(r2, dx, hj, pi->h, pj, pi, a, H);
       }
     }
   }
@@ -595,7 +592,6 @@ void self_all_density(struct runner *r, struct cell *ci) {
   struct part *pi, *pj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const struct sink_props *sink_props = e->sink_properties;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -631,8 +627,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H, sink_props,
-                                cosmo);
+        runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H);
       }
 
       /* Hit or miss? */
@@ -647,8 +642,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H, sink_props,
-                                cosmo);
+        runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H);
       }
     }
   }
