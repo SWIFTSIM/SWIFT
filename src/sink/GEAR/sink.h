@@ -453,9 +453,6 @@ INLINE static int sink_is_forming(
   /* the particle is not elligible */
   if (!p->sink_data.can_form_sink) return 0;
 
-  /* Add self constribution */
-  p->sink_data.M_tot += hydro_get_mass(p);
-
   const struct sink_part_data *sink_data = &p->sink_data;
 
   const float temperature_threshold = sink_props->temperature_threshold;
@@ -471,7 +468,9 @@ INLINE static int sink_is_forming(
   const float h = p->h;
   const float sink_cut_off_radius = sink_props->cut_off_radius;
 
-  const float M_tot = sink_data->M_tot;
+  /* Add self constribution */
+  const float M_tot = sink_data->M_tot + hydro_get_mass(p);
+
   const float E_int = sink_data->E_int_neighbours;
   const float E_grav = -0.6*M_tot*M_tot/sink_cut_off_radius;
   const float E_rot = sink_compute_neighbour_rotation_energy_magnitude(p);
