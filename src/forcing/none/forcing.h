@@ -36,7 +36,7 @@
 /**
  * @brief Forcing Term Properties
  */
-struct forcing_terms {};
+struct forcing_terms { int a;};
 
 /**
  * @brief Computes the hydrodynamic forcing terms.

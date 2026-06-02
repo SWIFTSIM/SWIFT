@@ -26,7 +26,7 @@
 /**
  * @brief Properties of the EAGLE feedback model.
  */
-struct feedback_props {};
+struct feedback_props { int a; };
 
 /**
  * @brief Initialize the global properties of the feedback scheme.

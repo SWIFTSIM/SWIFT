@@ -29,7 +29,7 @@
 /**
  * @brief Properties of the 'none' radiative transfer model
  */
-struct rt_props {};
+struct rt_props { int a; };
 
 /**
  * @brief Print the RT model.
