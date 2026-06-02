@@ -466,12 +466,8 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
   const struct sink_props *sink_props = e->sink_properties;
   const struct phys_const *phys_const = e->physical_constants;
 
-  const float G = phys_const->const_newton_G;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
-
-  /* Physical accretion radius of part p */
-  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
 
   /* Loop over all particles to find the neighbours within r_acc. Then,
      compute all quantities you need.  */
@@ -483,32 +479,9 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_gas_criteria(p, pi, cosmo, sink_props);
 
-    /* Compute the gravitational energy term */
-    const float m = hydro_get_mass(p);
-
-    /* Comoving distance of particl p */
-    const float px[3] = {(float)(p->x[0]), (float)(p->x[1]), (float)(p->x[2])};
-
     for (int j = i + 1; j < count; j++) {
-       /* Compute the pairwise physical distance */
-      const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
-			    (float)(pi->x[2])};
-
-      const float dx[3] = {px[0] - pix[0], px[1] - pix[1], px[2] - pix[2]};
-      const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
-				    dx[2] * cosmo->a};
-      const float r2_physical = dx_physical[0] * dx_physical[0] +
-	dx_physical[1] * dx_physical[1] +
-	dx_physical[2] * dx_physical[2];
-
-      /* Checks that this part is a neighbour */
-      if ((r2_physical > r_acc_p * r_acc_p) || (r2_physical == 0.0)) {
-	continue;
-      }
-
-      const float distance = sqrtf(r2_physical);
-      const float mi = hydro_get_mass(pi);
-      p->sink_data.E_pot_neighbours -= G * m * mi / distance;
+      sink_prepare_part_sink_formation_grav_criteria(p, pi, cosmo, sink_props,
+                                                     phys_const);
     }
   } /* End of gas neighbour loop */
 

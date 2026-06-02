@@ -1263,6 +1263,59 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
 }
 
 /**
+ * @brief Compute the pairwise gravitational potential energy between two gas
+ * neighbors within a clump and accumulate it.
+ *
+ * @param p The main #part (the candidate sink core).
+ * @param pi A neighboring #part within the clump.
+ * @param cosmo The cosmological parameters and properties.
+ * @param sink_props The sink properties to use.
+ * @param G The gravitational constant.
+ */
+INLINE static void sink_prepare_part_sink_formation_grav_criteria(
+    struct part *restrict p, const struct part *restrict pi,
+    const struct cosmology *cosmo, const struct sink_props *sink_props,
+    const struct phys_const *phys_const) {
+
+  /* If for some reason the particle has been flagged to not form a sink,
+   * do not continue. */
+  if (!p->sink_data.can_form_sink) {
+    return;
+  }
+
+  const float G = phys_const->const_newton_G;
+
+  /* Physical accretion radius of part p */
+  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
+
+  /* Comoving distance of particle p */
+  const float px[3] = {(float)(p->x[0]), (float)(p->x[1]), (float)(p->x[2])};
+
+  /* Compute the pairwise physical distance */
+  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
+                        (float)(pi->x[2])};
+
+  const float dx[3] = {px[0] - pix[0], px[1] - pix[1], px[2] - pix[2]};
+  const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
+                                dx[2] * cosmo->a};
+  const float r2_physical = dx_physical[0] * dx_physical[0] +
+                            dx_physical[1] * dx_physical[1] +
+                            dx_physical[2] * dx_physical[2];
+
+  /* Checks that this part is a neighbor and not the particle itself */
+  if ((r2_physical > r_acc_p * r_acc_p) || (r2_physical == 0.0)) {
+    return;
+  }
+
+  const float distance = sqrtf(r2_physical);
+  const float m = hydro_get_mass(p);
+  const float mi = hydro_get_mass(pi);
+
+  /* Accumulate the negative mutual gravitational self-energy */
+  p->sink_data.E_pot_neighbours -= G * m * mi / distance;
+}
+
+/**
  * @brief Compute all quantities required for the formation of a sink. This
  * function works on the neighbouring sink particles.
  *
