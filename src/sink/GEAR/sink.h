@@ -511,12 +511,12 @@ INLINE static int sink_is_forming(
 
   /* Jeans instability criterion */
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
-      (sink_data->E_int_neighbours >= 0.5f * fabs(E_grav))) {
+      (E_int >= 0.5f * fabs(E_grav))) {
     return 0;
   }
 
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
-      (sink_data->E_int_neighbours + E_rot_neighbours >= fabs(E_grav))) {
+      (E_int + E_rot >= fabs(E_grav))) {
     return 0;
   }
 
