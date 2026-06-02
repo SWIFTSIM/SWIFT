@@ -1152,24 +1152,23 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  *
  * @param e The #engine.
  * @param p The #part for which we compute the quantities.
- * @param xp The #xpart data of the particle #p.
  * @param pi A neighbouring #part of #p.
- * @param xpi The #xpart data of the particle #pi.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct engine *e, struct part *restrict p, struct xpart *restrict xp,
-    struct part *restrict pi, struct xpart *restrict xpi,
+    struct part *restrict p, const struct part *restrict pi,
     const struct cosmology *cosmo, const struct sink_props *sink_props) {
+
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
 
   /* If for some reason the particle has been flagged to not form sink,
      do not continue and save some computationnal ressources. */
   if (!p->sink_data.can_form_sink) {
     return;
   }
-
-  const int with_self_grav = (e->policy & engine_policy_self_gravity);
 
   /* Physical accretion radius of part p */
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
@@ -1196,22 +1195,12 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     return;
   }
 
-  /* Do not form sinks if some neighbours are not active */
-  if (!part_is_active(pi, e)) {
-    p->sink_data.can_form_sink = 0;
-    return;
-  }
-
   const float mi = hydro_get_mass(p);
   const float u_inter_i = hydro_get_drifted_physical_internal_energy(p, cosmo);
 
   /* Compute the relative comoving velocity between p and pi */
   const float dv[3] = {pi->v[0] - p->v[0], pi->v[1] - p->v[1],
                        pi->v[2] - p->v[2]};
-
-  const float a = cosmo->a;
-  const float H = cosmo->H;
-  const float a2H = a * a * H;
 
   /* Calculate the velocity with the Hubble flow */
   const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
@@ -1235,11 +1224,10 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   /* Updates the energies */
   p->sink_data.E_kin_neighbours += 0.5f * mi * dv_physical_squared;
   p->sink_data.E_int_neighbours += mi * u_inter_i;
-  p->sink_data.E_rad_neighbours += cooling_get_radiated_energy(xpi);
 
   /* Notice that we skip the potential of the current particle here
      instead of subtracting it later */
-  if ((with_self_grav) && (pi != p))
+  if (pi != p)
     p->sink_data.E_pot_self_neighbours +=
         0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
 
