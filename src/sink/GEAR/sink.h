@@ -480,6 +480,21 @@ INLINE static int sink_is_forming(
   const float E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
                  E_grav + sink_data->E_mag_neighbours;
 
+  /* const char is_small_enough = kernel_gamma*p->h < sink_cut_off_radius; */
+  if (density > density_threshold) {
+    const float pot = p->sink_data.potential;
+    const int N_neighbours = p->sink_data.N_neighbours;
+    message("[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
+            " rho = %e, T = %e, div_v = %e, h = %e, potential = %e,"
+            " N_neighbours = %i| E_int = %e, E_grav = %e, "
+	    "E_rot = %e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
+	    "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
+	    p->id, density_threshold, maximal_density_threshold,
+	    temperature_threshold, sink_cut_off_radius, density, temperature,
+	    div_v, h, pot, N_neighbours, E_int, E_grav, E_rot, E_tot,
+	    (E_int < 0.5*fabs(E_grav)), (E_int+E_rot<fabs(E_grav)), (E_tot < 0.0));
+  }
+
   /* Density criterion */
   if (density < density_threshold) {
     return 0;
@@ -496,12 +511,14 @@ INLINE static int sink_is_forming(
 
   /* Contracting gas criterion */
   if ((sink_props->sink_formation_contracting_gas_criterion) && (div_v > 0)) {
+    message("[%lld] Divergence criterion failed!", p->id);
     return 0;
   }
 
   /* Smoothing length criterion */
   if ((sink_props->sink_formation_smoothing_length_criterion) &&
       (kernel_gamma * h >= sink_cut_off_radius)) {
+    message("[%lld] Size criterion failed!", p->id);
     return 0;
   }
 
@@ -512,16 +529,19 @@ INLINE static int sink_is_forming(
   /* Jeans instability criterion */
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
       (E_int >= 0.5f * fabs(E_grav))) {
+    message("[%lld] Jeans instability criterion 1 failed!", p->id);
     return 0;
   }
 
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
       (E_int + E_rot >= fabs(E_grav))) {
+    message("[%lld] Jeans instability criterion 2 failed!", p->id);
     return 0;
   }
 
   /* Bound state criterion */
   if ((sink_props->sink_formation_bound_state_criterion) && (E_tot >= 0)) {
+    message("[%lld] Bound state criterion failed!", p->id);
     return 0;
   }
 
@@ -533,6 +553,7 @@ INLINE static int sink_is_forming(
   /* Overlapping existing sinks criterion */
   if (sink_props->sink_formation_overlapping_sink_criterion &&
       sink_data->is_overlapping_sink) {
+    message("[%lld] Overlapping sink criterion failed!", p->id);
     return 0;
   }
 
