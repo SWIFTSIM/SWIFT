@@ -35,9 +35,12 @@ struct sink_part_data {
    * sink_cut_off_radius) */
   double E_kin_neighbours;
 
-  /* Total interal energy of the neigbouring gas particles (i.e. inside
+  /*! Total mass of the neigbouring gas particles (i.e.inside
    * sink_cut_off_radius) */
-  double E_int_neighbours;
+  float M_tot;
+
+  /*! Number of neigbouring particles */  
+  int N_neighbours;  
 
   /* Total radiated energy of the neigbouring gas particles (i.e. inside
    * sink_cut_off_radius) */

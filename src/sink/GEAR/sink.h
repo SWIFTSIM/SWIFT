@@ -227,9 +227,11 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   } else {
     cpd->can_form_sink = 1;
   }
+  cpd->N_neighbours = 0;
+  cpd->M_tot = 0.0;
+
   cpd->E_kin_neighbours = 0.f;
   cpd->E_int_neighbours = 0.f;
-  cpd->E_rad_neighbours = 0.f;
   cpd->E_pot_self_neighbours = 0.f;
   cpd->E_pot_ext_neighbours = 0.f;
   cpd->E_mag_neighbours = 0.f;
@@ -452,6 +454,9 @@ INLINE static int sink_is_forming(
 
   /* the particle is not elligible */
   if (!p->sink_data.can_form_sink) return 0;
+
+  /* Add self constribution */
+  p->sink_data.M_tot += hydro_get_mass(p);
 
   const struct sink_part_data *sink_data = &p->sink_data;
 
@@ -1221,24 +1226,13 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
       dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
       dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
 
+  /* Accumulate number of neighbours and mass */
+  p->sink_data.N_neighbours += 1;
+  p->sink_data.M_tot += mi;
+
   /* Updates the energies */
   p->sink_data.E_kin_neighbours += 0.5f * mi * dv_physical_squared;
   p->sink_data.E_int_neighbours += mi * u_inter_i;
-
-  /* Notice that we skip the potential of the current particle here
-     instead of subtracting it later */
-  if (pi != p)
-    p->sink_data.E_pot_self_neighbours +=
-        0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
-
-  /* No external potential for now */
-  /* if (gpi != NULL && with_ext_grav)	 */
-  /* p->sink_data.E_pot_ext_neighbours +=  mi *
-   * external_gravity_get_potential_energy( */
-  /* time, potential, phys_const, gpi); */
-
-  /* Need to include mhd header */
-  /* p->sink_data.E_mag_neighbours += mhd_get_magnetic_energy(p, xpi); */
 
   /* Compute rotation energies per component */
   p->sink_data.E_rot_neighbours[0] +=
