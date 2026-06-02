@@ -450,8 +450,8 @@ INLINE static int sink_is_forming(
     const struct cooling_function_data *restrict cooling,
     const struct entropy_floor_properties *restrict entropy_floor) {
 
-  /* the particle is not elligible */
-  if (!p->sink_data.can_form_sink) return 0;
+  /* The particle is not elligible */
+  if (!p->sink_data.can_form_sink || p->sink_data.N_neighbours < 1) return 0;
 
   const struct sink_part_data *sink_data = &p->sink_data;
 
