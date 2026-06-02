@@ -104,6 +104,9 @@ struct bpart {
   /*! Density of the gas surrounding the black hole. */
   float rho_gas;
 
+  /*! Stellar mass density within 1 kpc of the black hole (physical). */
+  float rho_stellar;
+
   /*! Internal energy of the gas surrounding the black hole. */
   float internal_energy_gas;
 
