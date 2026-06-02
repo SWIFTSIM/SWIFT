@@ -38,7 +38,7 @@ then
     $scripts_location/getGrackleCoolingTable.sh
 fi
 
-if [ ! -e POPII.h5 ]
+if [ ! -e POPII.hdf5 ]
 then
     echo "Fetching the chemistry tables..."
     $scripts_location/getChemistryTable.sh --with-winds
@@ -64,7 +64,7 @@ DIR=snap #First test of units conversion
 if [ -d "$DIR" ];
 then
     echo "$DIR directory exists. Its content will be removed."
-    rm -r $DIR
+    # rm -r $DIR
 else
     echo "$DIR directory does not exists. It will be created."
     mkdir $DIR
@@ -89,16 +89,33 @@ $swift --hydro $runtime_params --stars --self-gravity --feedback \
        --cooling --sync --limiter --threads=$n_threads \
        $parameter_file 2>&1 | tee output.log
 
+echo "========================================"
+echo "Detecting last snapshot..."
+echo "========================================"
+
+# Look for files matching 'snap/snapshot_XXXX.hdf5', strip strings, sort numerically, pick the last one
+last_snap_file=$(ls snap/snapshot_*.hdf5 2>/dev/null | sort | tail -n 1)
+
+if [ -z "$last_snap_file" ]; then
+    echo "Error: No snapshots found in snap/ directory! Defaulting analysis to 0."
+    last_snap=0
+else
+    # Extracts the 4-digit number from "snap/snapshot_0282.hdf5" -> "0282"
+    # Then strips leading zeros using 10# conversion to prevent Bash octal parsing issues
+    snap_num=$(echo "$last_snap_file" | grep -oE '[0-9]{4}')
+    last_snap=$((10#$snap_num))
+    echo "Found last snapshot: ${snap_num} (Integer: ${last_snap})"
+fi
 
 echo "========================================"
-echo "Perfoming data analysis..."
+echo "Performing data analysis..."
 echo "========================================"
 
-#Do some data analysis to show what's in this box
-python3 $scripts_location/plot_gas_density.py -i 282 -s 'snap/snapshot'
-python3 $scripts_location/rhoTPlot.py -i 282 -s 'snap/snapshot'
-python3 $scripts_location/rhoTPlot.py -i 0 -f 282 -s 'snap/snapshot'
-python3 $scripts_location/plot_gas_density.py -i 0 -f 282 -s 'snap/snapshot'
+# Do some data analysis using the dynamically detected snapshot index
+python3 $scripts_location/plot_gas_density.py -i $last_snap -s 'snap/snapshot'
+python3 $scripts_location/rhoTPlot.py -i $last_snap -s 'snap/snapshot'
+python3 $scripts_location/rhoTPlot.py -i 0 -f $last_snap -s 'snap/snapshot'
+python3 $scripts_location/plot_gas_density.py -i 0 -f $last_snap -s 'snap/snapshot'
 
 echo "========================================"
 echo "Saving the results..."
