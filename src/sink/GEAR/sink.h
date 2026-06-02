@@ -477,15 +477,17 @@ INLINE static int sink_is_forming(
   if (density > density_threshold) {
     const float pot = p->sink_data.potential;
     const int N_neighbours = p->sink_data.N_neighbours;
-    message("[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
-            " rho = %e, T = %e, div_v = %e, h = %e, potential = %e,"
-            " N_neighbours = %i| E_int = %e, E_grav = %e, "
-	    "E_rot = %e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
-	    "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
-	    p->id, density_threshold, maximal_density_threshold,
-	    temperature_threshold, sink_cut_off_radius, density, temperature,
-	    div_v, h, pot, N_neighbours, E_int, E_grav, E_rot, E_tot,
-	    (E_int < 0.5*fabs(E_grav)), (E_int+E_rot<fabs(E_grav)), (E_tot < 0.0));
+    message(
+        "[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
+        " rho = %e, T = %e, div_v = %e, h = %e, potential = %e,"
+        " N_neighbours = %i | E_int = %e, E_grav = %e, "
+        "E_rot = %e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
+        "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
+        p->id, density_threshold, maximal_density_threshold,
+        temperature_threshold, sink_cut_off_radius, density, temperature, div_v,
+        h, pot, N_neighbours, E_int, E_grav, E_rot, E_tot,
+        (E_int < 0.5 * fabs(E_grav)), (E_int + E_rot < fabs(E_grav)),
+        (E_tot < 0.0));
   }
 
   /* If density > maximal_density_threshold, and we do not overlap with other

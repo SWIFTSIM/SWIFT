@@ -72,8 +72,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
     }
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    /* sink_prepare_part_sink_formation_gas_criteria(pi, pj, cosmo, sink_props); */
-    /* sink_prepare_part_sink_formation_gas_criteria(pj, pi, cosmo, sink_props); */
+    /* sink_prepare_part_sink_formation_gas_criteria(pi, pj, cosmo, sink_props);
+     */
+    /* sink_prepare_part_sink_formation_gas_criteria(pj, pi, cosmo, sink_props);
+     */
   }
 }
 
@@ -115,7 +117,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
      * prevent the particle to form a sink */
     if (potential_i > potential_j) pi->sink_data.can_form_sink = 0;
 
-    /* sink_prepare_part_sink_formation_gas_criteria(pi, pj, cosmo, sink_props); */
+    /* sink_prepare_part_sink_formation_gas_criteria(pi, pj, cosmo, sink_props);
+     */
   }
 }
 

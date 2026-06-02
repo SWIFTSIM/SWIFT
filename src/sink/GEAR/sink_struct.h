@@ -34,8 +34,8 @@ struct sink_part_data {
   /*! Does the future sink overalp an existing one ? */
   char is_overlapping_sink;
 
-  /*! Number of neigbouring particles */  
-  int N_neighbours;  
+  /*! Number of neigbouring particles */
+  int N_neighbours;
 
   /*! Total kinetic energy of the neigbouring gas particles (i.e. inside
    * sink_cut_off_radius) */
