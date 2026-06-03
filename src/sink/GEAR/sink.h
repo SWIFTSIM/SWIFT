@@ -1222,8 +1222,8 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
      not. This is done in runner_prepare_part_sink_formation(). */
 
   /* Compute the pairwise physical distance */
-  const float pjx[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
-                        (float)(pi->x[2])};
+  const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
+                        (float)(pj->x[2])};
 
   const float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
   const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
@@ -1265,7 +1265,6 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
 
   /* Accumulate number of neighbours and mass */
   pi->sink_data.M_tot += mj;
-  message("Mtot = %e", pi->sink_data.M_tot);
   pi->sink_data.N_neighbours += 1;
 
   /* Updates the energies */
