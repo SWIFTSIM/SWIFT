@@ -229,6 +229,8 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
     cpd->can_form_sink = 1;
   }
   cpd->N_neighbours = 0;
+  cpd->M_tot = 0;
+  cpd->max_potential = cpd->potential;
 
   cpd->E_kin_neighbours = 0.f;
   cpd->E_int_neighbours = 0.f;
@@ -468,9 +470,11 @@ INLINE static int sink_is_forming(
 
   const float h = p->h;
   const float sink_cut_off_radius = sink_props->cut_off_radius;
+  const float M_tot = sink_data->M_tot;
+  const float max_potential = sink_data->max_potential;
 
   const float E_int = sink_data->E_int_neighbours;
-  const float E_grav = sink_data->E_pot_neighbours;
+  const float E_grav = sink_data->E_pot_neighbours - M_tot * max_potential;
   const float E_rot = sink_compute_neighbour_rotation_energy_magnitude(p);
   const float E_tot =
       sink_data->E_kin_neighbours + sink_data->E_int_neighbours + E_grav;
@@ -481,13 +485,14 @@ INLINE static int sink_is_forming(
     const int N_neighbours = p->sink_data.N_neighbours;
     message(
         "[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
-        " rho = %e, T = %e, div_v = %e, h = %e, potential = %e,"
-        " N_neighbours = %i | E_int = %e, E_grav = %e, "
-        "E_rot = %e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
+        " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e"
+        " N_neighbours = %i | E_int = %e, E_grav = %e, E_grav_unormalized = %e "
+        " E_grav_max = %e, E_rot = %e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
         "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
         p->id, density_threshold, maximal_density_threshold,
         temperature_threshold, sink_cut_off_radius, density, temperature, div_v,
-        h, pot, N_neighbours, E_int, E_grav, E_rot, E_tot,
+        h, pot, max_potential, N_neighbours, E_int, E_grav,
+        sink_data->E_pot_neighbours, E_rot, E_tot, M_tot * max_potential,
         (E_int < 0.5 * fabs(E_grav)), (E_int + E_rot < fabs(E_grav)),
         (E_tot < 0.0));
   }
@@ -1256,11 +1261,21 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
       dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
 
   /* Accumulate number of neighbours and mass */
+  p->sink_data.M_tot += mi;
   p->sink_data.N_neighbours += 1;
 
   /* Updates the energies */
   p->sink_data.E_kin_neighbours += 0.5f * mi * dv_physical_squared;
   p->sink_data.E_int_neighbours += mi * u_inter_i;
+
+  /* Notice that we skip the potential of the current particle here
+     instead of subtracting it later */
+  if (pi != p) {
+    p->sink_data.E_pot_neighbours +=
+        0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
+    p->sink_data.max_potential =
+        max(p->sink_data.max_potential, pi->sink_data.potential);
+  }
 
   /* Compute rotation energies per component */
   p->sink_data.E_rot_neighbours[0] +=

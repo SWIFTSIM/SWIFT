@@ -37,6 +37,15 @@ struct sink_part_data {
   /*! Number of neigbouring particles */
   int N_neighbours;
 
+  /*! Total mass of the neighbouring particles */
+  int M_tot;
+
+  /*! Potential of the particle copied from the #gpart */
+  float potential;
+
+  /*! Maximal potential among the neighbours */
+  float max_potential;
+
   /*! Total kinetic energy of the neigbouring gas particles (i.e. inside
    * sink_cut_off_radius) */
   float E_kin_neighbours;
@@ -52,9 +61,6 @@ struct sink_part_data {
   /*! Total rotational energy per component (x, y and z) of the neigbouring gas
    * particles  (i.e. inside sink_cut_off_radius) */
   float E_rot_neighbours[3];
-
-  /*! Potential of the particle copied from the #gpart */
-  float potential;
 
   /*! Mechanical energy between the part and the sink with swallow_id.
    * This is used to check that this part is, out of all sinks, the most bound
