@@ -230,7 +230,7 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   }
   cpd->N_neighbours = 0;
   cpd->M_tot = 0.0;
-  cpd->max_potential = -FLT_MIN;
+  cpd->max_potential = cpd->potential;
 
   cpd->E_kin_neighbours = 0.f;
   cpd->E_int_neighbours = 0.f;
