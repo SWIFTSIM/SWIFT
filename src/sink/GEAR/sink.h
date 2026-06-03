@@ -488,13 +488,12 @@ INLINE static int sink_is_forming(
         "[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
         " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e"
         " N_neighbours = %i, M_tot = %e | E_int = %e, E_grav = %e, "
-        "E_grav_unormalized = %e "
-        " E_grav_max = %e, E_rot = %e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
+        "E_grav_unormalized = %e, "
+        "E_grav_max = %e, E_rot = %e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
         "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
         p->id, density_threshold, maximal_density_threshold,
         temperature_threshold, sink_cut_off_radius, density, temperature, div_v,
-        h, pot, max_potential, N_neighbours, M_tot,
-        E_int, E_grav,
+        h, pot, max_potential, N_neighbours, M_tot, E_int, E_grav,
         sink_data->E_pot_neighbours, E_grav_max, E_rot, E_tot,
         (E_int < 0.5 * fabs(E_grav)), (E_int + E_rot < fabs(E_grav)),
         (E_tot < 0.0));
@@ -1216,7 +1215,8 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
 
   /* Comoving distance of particl p */
-  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]), (float)(pi->x[2])};
+  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
+                        (float)(pi->x[2])};
 
   /* No need to check if the particle has been flagged to form a sink or
      not. This is done in runner_prepare_part_sink_formation(). */
@@ -1389,13 +1389,15 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   const float r_acc_sj = rmax * cosmo->a;
 
   /* Comoving distance of particl p */
-  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]), (float)(pi->x[2])};
+  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
+                        (float)(pi->x[2])};
 
   /* Compute the pairwise physical distance */
   const float six[3] = {(float)(sj->x[0]), (float)(sj->x[1]),
                         (float)(sj->x[2])};
 
-  const float dx[3] = {(pix[0] - six[0]) * cosmo->a, (pix[1] - six[1]) * cosmo->a,
+  const float dx[3] = {(pix[0] - six[0]) * cosmo->a,
+                       (pix[1] - six[1]) * cosmo->a,
                        (pix[2] - six[2]) * cosmo->a};
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 

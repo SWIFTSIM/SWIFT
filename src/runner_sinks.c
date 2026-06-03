@@ -501,8 +501,8 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
     struct sink *restrict sj = &sinks[j];
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_sink_criteria(e, pi, xpi, sj, with_cosmology,
-                                                   cosmo, sink_props, e->time);
+    sink_prepare_part_sink_formation_sink_criteria(
+        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time);
 
   } /* End of sink neighbour loop */
 }
