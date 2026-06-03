@@ -464,7 +464,7 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct sink_props *sink_props = e->sink_properties;
-  const struct phys_const *phys_const = e->physical_constants;
+  /* const struct phys_const *phys_const = e->physical_constants; */
 
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -479,14 +479,15 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_gas_criteria(p, pi, cosmo, sink_props);
 
-    for (int j = i + 1; j < count; j++) {
-      /* Get a handle on the part */
-      struct part *restrict pj = &parts[j];
+    /* for (int j = i + 1; j < count; j++) { */
+    /*   /\* Get a handle on the part *\/ */
+    /*   struct part *restrict pj = &parts[j]; */
 
-      /* Accumulate gravitational quantities */
-      sink_prepare_part_sink_formation_grav_criteria(p, pj, cosmo, sink_props,
-                                                     phys_const);
-    }
+    /*   /\* Accumulate gravitational quantities *\/ */
+    /*   sink_prepare_part_sink_formation_grav_criteria(p, pj, cosmo,
+     * sink_props, */
+    /*                                                  phys_const); */
+    /* } */
   } /* End of gas neighbour loop */
 
   /* Check that we are not forming a sink in the accretion radius of another
