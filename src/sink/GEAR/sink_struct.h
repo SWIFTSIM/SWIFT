@@ -38,7 +38,7 @@ struct sink_part_data {
   int N_neighbours;
 
   /*! Total mass of the neighbouring particles */
-  int M_tot;
+  float M_tot;
 
   /*! Potential of the particle copied from the #gpart */
   float potential;

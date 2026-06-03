@@ -458,8 +458,8 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
  * @param xp The #xpart data of the particle p.
  */
 void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
-                                           struct part *restrict p,
-                                           struct xpart *restrict xp) {
+                                           struct part *restrict pi,
+                                           struct xpart *restrict xpi) {
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
@@ -471,20 +471,20 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
 
   /* Loop over all particles to find the neighbours within r_acc. Then,
      compute all quantities you need.  */
-  for (int i = 0; i < count; i++) {
+  for (int j = 0; j < count; j++) {
 
     /* Get a handle on the part */
-    struct part *restrict pi = &parts[i];
+    struct part *restrict pj = &parts[j];
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_gas_criteria(p, pi, cosmo, sink_props);
+    sink_prepare_part_sink_formation_gas_criteria(pi, pj, cosmo, sink_props);
 
-    /* for (int j = i + 1; j < count; j++) { */
+    /* for (int k = j + 1; k < count; k++) { */
     /*   /\* Get a handle on the part *\/ */
-    /*   struct part *restrict pj = &parts[j]; */
+    /*   struct part *restrict pk = &parts[k]; */
 
     /*   /\* Accumulate gravitational quantities *\/ */
-    /*   sink_prepare_part_sink_formation_grav_criteria(p, pj, cosmo,
+    /*   sink_prepare_part_sink_formation_grav_criteria(pi, pk, cosmo,
      * sink_props, */
     /*                                                  phys_const); */
     /* } */
@@ -495,14 +495,14 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
   const int scount = c->sinks.count;
   struct sink *restrict sinks = c->sinks.parts;
 
-  for (int i = 0; i < scount; i++) {
+  for (int j = 0; j < scount; j++) {
 
     /* Get a hold of the ith sinks in ci. */
-    struct sink *restrict si = &sinks[i];
+    struct sink *restrict sj = &sinks[j];
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, with_cosmology,
-                                                   cosmo, sink_props, e->time);
+    sink_prepare_part_sink_formation_sink_criteria(
+        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time);
 
   } /* End of sink neighbour loop */
 }
