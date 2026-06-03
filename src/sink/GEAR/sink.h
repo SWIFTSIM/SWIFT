@@ -486,7 +486,7 @@ INLINE static int sink_is_forming(
     const int N_neighbours = p->sink_data.N_neighbours;
     message(
         "[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
-        " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e"
+        " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e,"
         " N_neighbours = %i, M_tot = %e | E_int = %e, E_grav = %e, "
         "E_grav_unormalized = %e, "
         "E_grav_max = %e, E_rot = %e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
