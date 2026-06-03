@@ -477,8 +477,8 @@ INLINE static int sink_is_forming(
   const float E_grav_max = 0.5 * M_tot * max_potential * cosmo->a_inv;
   const float E_grav = sink_data->E_pot_neighbours - E_grav_max;
   const float E_rot = sink_compute_neighbour_rotation_energy_magnitude(p);
-  const float E_tot =
-      sink_data->E_kin_neighbours + sink_data->E_int_neighbours + E_grav;
+  const float E_kin = sink_data->E_kin_neighbours;
+  const float E_tot = E_kin + E_int + E_grav;
 
   /* const char is_small_enough = kernel_gamma*p->h < sink_cut_off_radius; */
   if (density > density_threshold) {
@@ -489,12 +489,12 @@ INLINE static int sink_is_forming(
         " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e,"
         " N_neighbours = %i, M_tot = %e | E_int = %e, E_grav = %e, "
         "E_grav_unormalized = %e, "
-        "E_grav_max = %e, E_rot = %e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
+        "E_grav_max = %e, E_rot = %e, E_kin =%e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
         "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
         p->id, density_threshold, maximal_density_threshold,
         temperature_threshold, sink_cut_off_radius, density, temperature, div_v,
         h, pot, max_potential, N_neighbours, M_tot, E_int, E_grav,
-        sink_data->E_pot_neighbours, E_grav_max, E_rot, E_tot,
+        sink_data->E_pot_neighbours, E_grav_max, E_rot, E_kin, E_tot,
         (E_int < 0.5 * fabs(E_grav)), (E_int + E_rot < fabs(E_grav)),
         (E_tot < 0.0));
   }
