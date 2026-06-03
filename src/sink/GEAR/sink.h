@@ -1237,8 +1237,8 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     return;
   }
 
-  const float mi = hydro_get_mass(p);
-  const float u_inter_i = hydro_get_drifted_physical_internal_energy(p, cosmo);
+  const float mi = hydro_get_mass(pi);
+  const float u_inter_i = hydro_get_drifted_physical_internal_energy(pi, cosmo);
 
   /* Compute the relative comoving velocity between p and pi */
   const float dv[3] = {pi->v[0] - p->v[0], pi->v[1] - p->v[1],
