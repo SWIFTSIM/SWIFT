@@ -1199,7 +1199,7 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct part *restrict p, const struct part *restrict pi,
+    struct part *restrict pi, const struct part *restrict pj,
     const struct cosmology *cosmo, const struct sink_props *sink_props) {
 
   const float a = cosmo->a;
@@ -1208,7 +1208,7 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
 
   /* If for some reason the particle has been flagged to not form sink,
      do not continue and save some computationnal ressources. */
-  if (!p->sink_data.can_form_sink) {
+  if (!pi->sink_data.can_form_sink) {
     return;
   }
 
@@ -1216,16 +1216,16 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
 
   /* Comoving distance of particl p */
-  const float px[3] = {(float)(p->x[0]), (float)(p->x[1]), (float)(p->x[2])};
+  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]), (float)(pi->x[2])};
 
   /* No need to check if the particle has been flagged to form a sink or
      not. This is done in runner_prepare_part_sink_formation(). */
 
   /* Compute the pairwise physical distance */
-  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
+  const float pjx[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
                         (float)(pi->x[2])};
 
-  const float dx[3] = {px[0] - pix[0], px[1] - pix[1], px[2] - pix[2]};
+  const float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
   const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
                                 dx[2] * cosmo->a};
   const float r2_physical = dx_physical[0] * dx_physical[0] +
@@ -1237,12 +1237,12 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     return;
   }
 
-  const float mi = hydro_get_mass(pi);
-  const float u_inter_i = hydro_get_drifted_physical_internal_energy(pi, cosmo);
+  const float mj = hydro_get_mass(pj);
+  const float u_inter_j = hydro_get_drifted_physical_internal_energy(pj, cosmo);
 
   /* Compute the relative comoving velocity between p and pi */
-  const float dv[3] = {pi->v[0] - p->v[0], pi->v[1] - p->v[1],
-                       pi->v[2] - p->v[2]};
+  const float dv[3] = {pj->v[0] - pi->v[0], pj->v[1] - pi->v[1],
+                       pj->v[2] - pi->v[2]};
 
   /* Calculate the velocity with the Hubble flow */
   const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
@@ -1264,31 +1264,32 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
       dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
 
   /* Accumulate number of neighbours and mass */
-  p->sink_data.M_tot += mi;
-  p->sink_data.N_neighbours += 1;
+  pi->sink_data.M_tot += mj;
+  message("Mtot = %e", pi->sink_data.M_tot);
+  pi->sink_data.N_neighbours += 1;
 
   /* Updates the energies */
-  p->sink_data.E_kin_neighbours += 0.5f * mi * dv_physical_squared;
-  p->sink_data.E_int_neighbours += mi * u_inter_i;
+  pi->sink_data.E_kin_neighbours += 0.5f * mj * dv_physical_squared;
+  pi->sink_data.E_int_neighbours += mj * u_inter_j;
 
   /* Notice that we skip the potential of the current particle here
      instead of subtracting it later */
-  if (pi != p) {
-    p->sink_data.E_pot_neighbours +=
-        0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
-    p->sink_data.max_potential =
-        max(p->sink_data.max_potential, pi->sink_data.potential);
+  if (pi != pj) {
+    pi->sink_data.E_pot_neighbours +=
+        0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
+    pi->sink_data.max_potential =
+        max(pi->sink_data.max_potential, pj->sink_data.potential);
   }
 
   /* Compute rotation energies per component */
-  p->sink_data.E_rot_neighbours[0] +=
-      0.5 * mi * specific_angular_momentum[0] * specific_angular_momentum[0] /
+  pi->sink_data.E_rot_neighbours[0] +=
+      0.5 * mj * specific_angular_momentum[0] * specific_angular_momentum[0] /
       sqrtf(dx_physical[1] * dx_physical[1] + dx_physical[2] * dx_physical[2]);
-  p->sink_data.E_rot_neighbours[1] +=
-      0.5 * mi * specific_angular_momentum[1] * specific_angular_momentum[1] /
+  pi->sink_data.E_rot_neighbours[1] +=
+      0.5 * mj * specific_angular_momentum[1] * specific_angular_momentum[1] /
       sqrtf(dx_physical[0] * dx_physical[0] + dx_physical[2] * dx_physical[2]);
-  p->sink_data.E_rot_neighbours[2] +=
-      0.5 * mi * specific_angular_momentum[2] * specific_angular_momentum[2] /
+  pi->sink_data.E_rot_neighbours[2] +=
+      0.5 * mj * specific_angular_momentum[2] * specific_angular_momentum[2] /
       sqrtf(dx_physical[0] * dx_physical[0] + dx_physical[1] * dx_physical[1]);
 
   /* Shall we reset the values of the energies for the next timestep? No, it is
@@ -1361,19 +1362,19 @@ INLINE static void sink_prepare_part_sink_formation_grav_criteria(
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
-    struct engine *e, struct part *restrict p, struct xpart *restrict xp,
-    struct sink *restrict si, const int with_cosmology,
+    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
+    struct sink *restrict sj, const int with_cosmology,
     const struct cosmology *cosmo, const struct sink_props *sink_props,
     const double time) {
 
   /* Do not continue if the gas cannot form sink for any reason */
-  if (!p->sink_data.can_form_sink) {
+  if (!pi->sink_data.can_form_sink) {
     return;
   }
 
   /* Determine if the sink is dead, i.e. if its age is bigger than the
      age_threshold_unlimited */
-  const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  const int sink_age = sink_get_sink_age(sj, with_cosmology, cosmo, time);
   char is_dead = sink_age > sink_props->age_threshold_unlimited;
 
   /* If the sink is dead, do not check the criteria for the si - p pair. */
@@ -1385,25 +1386,25 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
 
   /* Physical accretion radius of sink si */
-  const float rmax = si->h * kernel_gamma;
-  const float r_acc_si = rmax * cosmo->a;
+  const float rmax = sj->h * kernel_gamma;
+  const float r_acc_sj = rmax * cosmo->a;
 
   /* Comoving distance of particl p */
-  const float px[3] = {(float)(p->x[0]), (float)(p->x[1]), (float)(p->x[2])};
+  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]), (float)(pi->x[2])};
 
   /* Compute the pairwise physical distance */
-  const float six[3] = {(float)(si->x[0]), (float)(si->x[1]),
-                        (float)(si->x[2])};
+  const float six[3] = {(float)(sj->x[0]), (float)(sj->x[1]),
+                        (float)(sj->x[2])};
 
-  const float dx[3] = {(px[0] - six[0]) * cosmo->a, (px[1] - six[1]) * cosmo->a,
-                       (px[2] - six[2]) * cosmo->a};
+  const float dx[3] = {(pix[0] - six[0]) * cosmo->a, (pix[1] - six[1]) * cosmo->a,
+                       (pix[2] - six[2]) * cosmo->a};
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   /* If forming a sink from this particle will create a sink overlapping an
      existing sink's accretion radius, do not form a sink. This criterion can
      be disabled. */
-  if (r2 < (r_acc_si + r_acc_p) * (r_acc_si + r_acc_p)) {
-    p->sink_data.is_overlapping_sink = 1;
+  if (r2 < (r_acc_sj + r_acc_p) * (r_acc_sj + r_acc_p)) {
+    pi->sink_data.is_overlapping_sink = 1;
   }
 }
 
