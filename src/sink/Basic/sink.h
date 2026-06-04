@@ -537,6 +537,8 @@ INLINE static int sink_spawn_star(struct sink *sink, const struct engine *e,
  * @param sp The star particle.
  * @param e The #engine
  * @param sink_props The sink properties to use.
+ * @param hydro_properties The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
  * @param cosmo The cosmological parameters and properties.
  * @param with_cosmology If we run with cosmology.
  * @param phys_const The physical constants in internal units.
@@ -546,7 +548,8 @@ INLINE static int sink_spawn_star(struct sink *sink, const struct engine *e,
  */
 INLINE static void sink_copy_properties_to_star(
     struct sink *sink, struct spart *sp, const struct engine *e,
-    const struct sink_props *sink_props, const struct cosmology *cosmo,
+    const struct sink_props *sink_props, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
     const int with_cosmology, const struct phys_const *phys_const,
     const struct unit_system *restrict us, float displacement[3]) {}
 
