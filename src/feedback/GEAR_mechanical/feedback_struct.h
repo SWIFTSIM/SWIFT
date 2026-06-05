@@ -50,10 +50,10 @@ struct feedback_xpart_data {
   float delta_p[3];
 
   /*! Number of supernovae affecting this particle */
-  int number_SN;
+  unsigned int number_SN;
 
   /*! Number of supernovae affecting this particle */
-  int number_winds;
+  unsigned int number_winds;
 };
 
 /**

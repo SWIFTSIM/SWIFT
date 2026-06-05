@@ -74,8 +74,8 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   /* Compute correction therm to account for multiple feedback events. This
      terms allows to recover energy conservation. If there is only one
      feedback that affected p and xp, f_corr = 1. */
-  const int N_SN = xp->feedback_data.number_SN;
-  const int N_SW = xp->feedback_data.number_winds;
+  const unsigned int N_SN = xp->feedback_data.number_SN;
+  const unsigned int N_SW = xp->feedback_data.number_winds;
   if (e->feedback_props->enable_multiple_SN_momentum_correction_factor &&
       (N_SN > 1 || N_SW > 1)) {
     const float f_corr =
@@ -649,7 +649,7 @@ feedback_compute_momentum_correction_factor_for_multiple_sn_events(
 
   /* Finally compute the corrector factor */
   const float sqrt_argument =
-      p_old_times_dp * p_old_times_dp - p_tilde_norm_2 * dp_norm_2;
+    fabs(p_old_times_dp * p_old_times_dp - p_tilde_norm_2 * dp_norm_2);
   const float f_corr = (-p_old_times_dp + sqrtf(sqrt_argument)) / dp_norm_2;
 
   return f_corr;
