@@ -7,7 +7,7 @@ Snapshots:
   basename:   output      # Common part of the name of output files
   time_first:          0.      # Time of the first output (in internal units)
   delta_time:          1e-3    # Time difference between consecutive outputs (in internal units)
-
+  
 # Parameters governing the time integration
 TimeIntegration:
   time_begin:          0.      # The starting time of the simulation (in internal units).

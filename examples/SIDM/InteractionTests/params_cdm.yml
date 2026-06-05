@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin:          0.      # The starting time of the simulation (in internal units).
-  time_end:            0.03     # The end time of the simulation (in internal units).
+  time_end:            0.4     # The end time of the simulation (in internal units).
   dt_min:              1e-11   # The minimal time-step size of the simulation (in internal units).
   dt_max:              1e-3    # The maximal time-step size of the simulation (in internal units).
 
@@ -23,10 +23,10 @@ Gravity:
 
 # Parameters governing the snapshots
 Snapshots:
-  subdir:              snap
+  subdir:              snap_cdm
   basename:            snapshot  # Common part of the name of output files
   time_first:          0.        # Time of the first output (in internal units)
-  delta_time:          .01       # Time difference between consecutive outputs (in internal units)
+  delta_time:          .05       # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -34,13 +34,6 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:          dSph_cusp_SIDM.hdf5 # The file to read
+  file_name:          dSph_cusp_fixed.hdf5 # The file to read
   shift:              [100,100,100]
   periodic:           0
-
-# Parameters for the SIDM scheme
-BasicSIDM:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  constant_cross_section: 1
-  sigma_over_m_cgs: 100 # Scattering cross-section per unit mass in units of cm^2/g.
-  kappa_timestep: 1

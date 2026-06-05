@@ -37,17 +37,44 @@ void print_bytes(void *p, size_t len) {
   printf(")\n");
 }
 
-void test(void) {
+void test(const char *param_filename) {
 
   /* Start with some values for the cosmological parameters and unused variables
    */
   const float a = (float)random_uniform(0.8, 1.);
   const float H = 1.f;
-  const struct sidm_props *sidm_props = NULL;
-  const struct cosmology *cosmo = NULL;
   const int with_cosmology = 0;
   const float ti_current = 0;
-  const float time_base = 0;
+  const float time_base = 1;
+
+  /* parse parameters */
+  struct swift_params param_file;
+  parser_read_file(param_filename, &param_file);
+
+  /* Default unit system */
+  struct unit_system us;
+  units_init_cgs(&us);
+
+  /* Default physical constants */
+  struct phys_const prog_const;
+  phys_const_init(&us, &param_file, &prog_const);
+
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+
+  struct hydro_props hydro_properties;
+  hydro_props_init(&hydro_properties, &prog_const, &us, &param_file);
+
+  struct sidm_props sidm_props;
+  sidm_props_init(&sidm_props, &prog_const, &us, &param_file, &hydro_properties,
+                  &cosmo);
+  sidm_props.eta_neighbours = 1.2348f;
+  sidm_props.sigma_over_m = 0.f;
+  sidm_props.h_tolerance = 1e0;
+  sidm_props.h_max = FLT_MAX;
+  sidm_props.h_min = 0.f;
+  sidm_props.h_min_ratio = 0.f;
+  sidm_props.max_smoothing_iterations = 10;
 
   /* Create two random particles (don't do this at home !) */
   struct sipart pi, pj;
@@ -63,11 +90,14 @@ void test(void) {
   pj.h = 2.f;
   pi.id = 1ll;
   pj.id = 2ll;
-
-  /* Make an xpart companion */
-  struct xpart xpi, xpj;
-  bzero(&xpi, sizeof(struct xpart));
-  bzero(&xpj, sizeof(struct xpart));
+  pi.time_bin = 1;
+  pj.time_bin = 1;
+  pi.v[0] = random_uniform(-10.0f, 10.0f);
+  pi.v[1] = random_uniform(-10.0f, 10.0f);
+  pi.v[2] = random_uniform(-10.0f, 10.0f);
+  pj.v[0] = random_uniform(-10.0f, 10.0f);
+  pj.v[1] = random_uniform(-10.0f, 10.0f);
+  pj.v[2] = random_uniform(-10.0f, 10.0f);
 
   /* Make some copies */
   struct sipart pi2, pj2;
@@ -91,18 +121,18 @@ void test(void) {
 
   /* Call the symmetric version */
   runner_iact_sidm_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H, with_cosmology,
-                           cosmo, sidm_props, ti_current, time_base);
+                           &cosmo, &sidm_props, ti_current, time_base);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_sidm_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H,
-                                  with_cosmology, cosmo, sidm_props, ti_current,
-                                  time_base);
+                                  with_cosmology, &cosmo, &sidm_props,
+                                  ti_current, time_base);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
   runner_iact_nonsym_sidm_density(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H,
-                                  with_cosmology, cosmo, sidm_props, ti_current,
-                                  time_base);
+                                  with_cosmology, &cosmo, &sidm_props,
+                                  ti_current, time_base);
 
   /* Check that the particles are the same */
   i_not_ok = memcmp(&pi, &pi2, sizeof(struct sipart));
@@ -122,13 +152,49 @@ void test(void) {
     print_bytes(&pj2, sizeof(struct sipart));
     error("Particles 'sipj' do not match after density (byte = %d)", j_not_ok);
   }
+
+  /* --- Test the force loop --- */
+
+  /* Call the symmetric version */
+  runner_iact_sidm_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H, with_cosmology,
+                         &cosmo, &sidm_props, ti_current, time_base);
+
+  /* Call the non-symmetric version */
+  runner_iact_nonsym_sidm_force(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H,
+                                with_cosmology, &cosmo, &sidm_props, ti_current,
+                                time_base);
+  dx[0] = -dx[0];
+  dx[1] = -dx[1];
+  dx[2] = -dx[2];
+  runner_iact_nonsym_sidm_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H,
+                                with_cosmology, &cosmo, &sidm_props, ti_current,
+                                time_base);
+
+  /* Check that the particles have the same scattering rates
+  Only meaningful for sigma_over_m=0 since particle velocities change if a kick
+  is triggered */
+  const float tol = 1e-6f;
+  i_not_ok = fabs(pi.SIDM_rate - pi2.SIDM_rate) > tol;
+  j_not_ok = fabs(pj.SIDM_rate - pj2.SIDM_rate) > tol;
+
+  if (i_not_ok) {
+    error("Particle i SIDM_rate mismatch: %.8e != %.8e", pi.SIDM_rate,
+          pi2.SIDM_rate);
+  }
+
+  if (j_not_ok) {
+    error("Particle j SIDM_rate mismatch: %.8e != %.8e", pj.SIDM_rate,
+          pj2.SIDM_rate);
+  }
 }
 
-int main(int argc, char *argv[]) {
+int main(void) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
+
+  const char *param_filename = "testSIDM.yml";
 
 #ifdef SIDM_NONE
   message("SIDM disabled: skipping unit test.");
@@ -147,9 +213,9 @@ int main(int argc, char *argv[]) {
   srand(seed);
 
   for (int i = 0; i < 100; ++i) {
-    message("Random test %d/100", i);
-    test();
-    message("Passed test %d/100", i);
+    message("Random test %d/100", i + 1);
+    test(param_filename);
+    message("Passed test %d/100", i + 1);
   }
   message("All good");
 

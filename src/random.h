@@ -73,6 +73,9 @@ enum random_number_type {
   random_number_mosaic_schechter = 562448657LL,
   random_number_mosaic_poisson = 384160001LL,
   random_number_powerspectrum_split = 126247697LL,
+  random_number_sidm_scattering = 6155000003LL,
+  random_number_sidm_polar_angle = 9974024443LL,
+  random_number_sidm_azimuthal_angle = 5695695337LL,
 };
 
 #ifndef __APPLE__
