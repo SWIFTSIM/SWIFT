@@ -461,11 +461,17 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
                                            struct part *restrict pi,
                                            struct xpart *restrict xpi) {
   struct engine *e = r->e;
+  struct space *s = e->s;
+  
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct sink_props *sink_props = e->sink_properties;
-  /* const struct phys_const *phys_const = e->physical_constants; */
 
+  /* Loop over gas particles in this cell. Note that it means we are missing
+   *gas particles in other cells.
+   *
+   * TODO (Darwin): This will be improved in the future with a proper self/pair task search.
+   */  
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
 
@@ -476,29 +482,32 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
     /* Get a handle on the part */
     struct part *restrict pj = &parts[j];
 
+    /* Ignore inhibited particles */
+    if (part_is_inhibited(pj, e)) continue;
+
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_gas_criteria(pi, pj, cosmo, sink_props);
-
-    /* for (int k = j + 1; k < count; k++) { */
-    /*   /\* Get a handle on the part *\/ */
-    /*   struct part *restrict pk = &parts[k]; */
-
-    /*   /\* Accumulate gravitational quantities *\/ */
-    /*   sink_prepare_part_sink_formation_grav_criteria(pi, pk, cosmo,
-     * sink_props, */
-    /*                                                  phys_const); */
-    /* } */
   } /* End of gas neighbour loop */
 
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
-  const int scount = c->sinks.count;
-  struct sink *restrict sinks = c->sinks.parts;
+
+
+  /* For the sinks, we can loop over all sinks in the space. This is an
+     O(N_part_eligible*N_sink) search. We assume that N_sink < N_part, which
+     make this brute force search feasible.
+   *
+   * TODO: In the future, we can optimise by adding a self/pair tasks */
+  const int scount = s->nr_sinks;
+  struct sink *restrict sinks = s->sinks;
 
   for (int j = 0; j < scount; j++) {
 
     /* Get a hold of the ith sinks in ci. */
     struct sink *restrict sj = &sinks[j];
+
+    /* Ignore inhibited particles */
+    if (sink_is_inhibited(sj, e)) continue;
 
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_sink_criteria(
