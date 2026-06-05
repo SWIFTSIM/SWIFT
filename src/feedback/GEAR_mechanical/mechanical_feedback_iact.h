@@ -26,8 +26,8 @@
 
 __attribute__((always_inline)) INLINE static void
 mechanical_feedback_accumulate_fluxes_for_conservation_check(
-    struct spart *si, const double dm, const double dp[3], const double m_ej,
-    const double p_ej, const double E_ej) {
+    struct spart *si, const double dm, const double dp[3], const float m_ej,
+    const float p_ej, const float E_ej) {
   /* Reminder: This is not the SWIFT_DEBUG_CHECKS */
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
@@ -86,7 +86,7 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
     const float r2, struct spart *si, struct part *pj, struct xpart *xpj,
     const double w_j_bar[3], const double w_j_bar_norm, const float v_i_p[3],
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
-    const double dm, const double new_mass, const struct cosmology *cosmo,
+    const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
@@ -184,7 +184,7 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
     const float r2, struct spart *si, struct part *pj, struct xpart *xpj,
     const double w_j_bar[3], const double w_j_bar_norm, const float v_i_p[3],
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
-    const double dm, const double new_mass, const struct cosmology *cosmo,
+    const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
@@ -325,7 +325,7 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
     const float r2, struct spart *si, struct part *pj, struct xpart *xpj,
     const double w_j_bar[3], const double w_j_bar_norm, const float v_i_p[3],
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
-    const double dm, const double new_mass, const struct cosmology *cosmo,
+    const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
@@ -413,7 +413,7 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
     const float r2, struct spart *si, struct part *pj, struct xpart *xpj,
     const double w_j_bar[3], const double w_j_bar_norm, const float v_i_p[3],
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
-    const double dm, const double new_mass, const struct cosmology *cosmo,
+    const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
@@ -529,7 +529,7 @@ runner_iact_nonsym_mechanical_stellar_winds_apply(
     const float r2, struct spart *si, struct part *pj, struct xpart *xpj,
     const double w_j_bar[3], const double w_j_bar_norm, const float v_i_p[3],
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
-    const double dm, const double new_mass, const struct cosmology *cosmo,
+    const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 
@@ -580,7 +580,7 @@ runner_iact_nonsym_mechanical_feedback_apply(
     const float r2, struct spart *si, struct part *pj, struct xpart *xpj,
     const double w_j_bar[3], const double w_j_bar_norm, const float v_i_p[3],
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
-    const double dm, const double new_mass, const struct cosmology *cosmo,
+    const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
 

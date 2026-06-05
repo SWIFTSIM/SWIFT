@@ -390,11 +390,11 @@ runner_iact_nonsym_feedback_apply(
   }
 
   const float mj = hydro_get_mass(pj);
-  double m_ej = 0.0;
-  double new_mass = mj;
-  double dm_SW = 0.0;
-  double dm_SN = 0.0;
-  double total_momentum_kick_p[3] = {0.0, 0.0, 0.0};
+  float m_ej = 0.0;
+  float new_mass = mj;
+  float dm_SW = 0.0;
+  float dm_SN = 0.0;
+  float total_momentum_kick_p[3] = {0.0, 0.0, 0.0};
 
   /* Calculate the velocity with the Hubble flow */
   const float a = cosmo->a;
@@ -422,7 +422,7 @@ runner_iact_nonsym_feedback_apply(
   /*****************************************/
   /* Do we have stellar winds */
   if (feedback_should_inject_wind_feedback(si)) {
-    const double E_ej_SW = si->feedback_data.winds.energy_ejected;
+    const float E_ej_SW = si->feedback_data.winds.energy_ejected;
 
     /* Mass received by Stellar Winds */
     /* For physical consistency, we consider that the pre-SN feedback occurs
