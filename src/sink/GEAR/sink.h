@@ -200,6 +200,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   /* Init properties based on the local gas */
   sp->to_collect.minimal_h_gas = FLT_MAX;
   sp->to_collect.rho_gas = 0.0;
+  sp->to_collect.internal_energy_gas = 0.0;
   sp->to_collect.sound_speed_gas = 0.0;
   sp->to_collect.velocity_gas[0] = 0.0;
   sp->to_collect.velocity_gas[1] = 0.0;
@@ -270,6 +271,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   /* Init properties based on the local gas */
   sp->to_collect.minimal_h_gas = FLT_MAX;
   sp->to_collect.rho_gas = 0.0;
+  sp->to_collect.internal_energy_gas = 0.0;
   sp->to_collect.sound_speed_gas = 0.0;
   sp->to_collect.velocity_gas[0] = 0.0;
   sp->to_collect.velocity_gas[1] = 0.0;
@@ -354,7 +356,8 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
   const float rho_inv = 1.f / si->to_collect.rho_gas;
 
   /* For the following, we also have to undo the mass smoothing
-   * (N.B.: bp->velocity_gas is in BH frame, in internal units). */
+   * (N.B.: bp->velocity_gas is in sink frame, in internal units). */
+  si->to_collect.internal_energy_gas *= h_inv_dim * rho_inv;
   si->to_collect.sound_speed_gas *= h_inv_dim * rho_inv;
   si->to_collect.velocity_gas[0] *= h_inv_dim * rho_inv;
   si->to_collect.velocity_gas[1] *= h_inv_dim * rho_inv;
@@ -391,6 +394,7 @@ __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* Reset problematic values */
+  sp->to_collect.internal_energy_gas = -FLT_MAX;
   sp->to_collect.velocity_gas[0] = sp->v[0];
   sp->to_collect.velocity_gas[1] = sp->v[1];
   sp->to_collect.velocity_gas[2] = sp->v[2];
@@ -402,8 +406,6 @@ __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
 /**
  * @brief Compute the accretion rate of the sink and any quantities
  * required swallowing based on an accretion rate
- *
- * Adapted from black_holes_prepare_feedback
  *
  * @param si The sink particle.
  * @param props The properties of the sink scheme.
@@ -941,6 +943,8 @@ INLINE static void sink_star_formation_give_new_velocity(
  * @param sp The star particle.
  * @param e The #engine
  * @param sink_props The sink properties to use.
+ * @param hydro_properties The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
  * @param cosmo The cosmological parameters and properties.
  * @param with_cosmology If we run with cosmology.
  * @param phys_const The physical constants in internal units.
@@ -950,7 +954,8 @@ INLINE static void sink_star_formation_give_new_velocity(
  */
 INLINE static void sink_copy_properties_to_star(
     struct sink *sink, struct spart *sp, const struct engine *e,
-    const struct sink_props *sink_props, const struct cosmology *cosmo,
+    const struct sink_props *sink_props, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
     const int with_cosmology, const struct phys_const *phys_const,
     const struct unit_system *restrict us, float displacement[3]) {
 
@@ -979,10 +984,19 @@ INLINE static void sink_copy_properties_to_star(
   /* Note: The sink module need to be compiled with GEAR SF as we store data
      in the SF struct. However, we do not need to run with --star-formation */
 
-  /* Birth properties. For density and temperature, we simply propagate the
-     sink's value. */
-  star_formation_set_spart_birth_density(sp, sink->birth_data.density);
-  star_formation_set_spart_birth_temperature(sp, sink->birth_data.temperature);
+  /* We use the equilibrium assumption to compute T. We only need an
+     approximation. */
+  const double m_p = phys_const->const_proton_mass;
+  const double k_b = phys_const->const_boltzmann_k;
+  const float internal_energy_gas = sink->to_collect.internal_energy_gas;
+  const double mu = cooling_get_equilibrium_mean_molecular_weight(
+      internal_energy_gas, phys_const, hydro_props, cooling);
+  const float T_gas = cooling_temperature_from_internal_energy(
+      internal_energy_gas, mu, k_b, m_p);
+
+  /* Birth properties. */
+  star_formation_set_spart_birth_density(sp, sink->to_collect.rho_gas);
+  star_formation_set_spart_birth_temperature(sp, T_gas);
   star_formation_set_spart_birth_mass(sp, sp->mass);
   star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a,
                                                       with_cosmology);
