@@ -16,13 +16,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #################################################################################
- 
+
 import re
 from collections import Counter
 
 # Matches the step header lines, e.g. "       7   4.272461e-05 ..."
-STEP_LINE_RE = re.compile(r'^\s+(\d+)\s+\S+\s+\S+\s+\S+\s+\S+', re.MULTILINE)
-PID_RE = re.compile(r'\[PID[ij](\d+)\]')
+STEP_LINE_RE = re.compile(r"^\s+(\d+)\s+\S+\s+\S+\s+\S+\s+\S+", re.MULTILINE)
+PID_RE = re.compile(r"\[PID[ij](\d+)\]")
+
 
 def split_into_timesteps(log_content):
     """
@@ -95,7 +96,7 @@ def count_pids(log_content):
         print("No violations found — every particle scattered at most once per step.")
 
 
-with open('output.log', 'r') as f:
+with open("output.log", "r") as f:
     log_content = f.read()
 
 count_pids(log_content)
