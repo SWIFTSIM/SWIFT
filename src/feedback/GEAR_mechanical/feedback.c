@@ -626,31 +626,31 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
  * @param old_mass The mass before feeback events.
  * @param new_mass The mass after feeback events.
  */
-__attribute__((always_inline)) INLINE double
+__attribute__((always_inline)) INLINE float
 feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-    struct part *p, struct xpart *xp, float old_mass, float new_mass) {
+    struct part *p, struct xpart *xp, const float old_mass,
+    const float new_mass) {
+
   const float dm = xp->feedback_data.delta_mass;
-
-  const double p_old[3] = {old_mass * xp->v_full[0], old_mass * xp->v_full[1],
+  const float p_old[3] = {old_mass * xp->v_full[0], old_mass * xp->v_full[1],
                            old_mass * xp->v_full[2]};
-  const double p_old_norm_2 =
+  const float p_old_norm_2 =
       p_old[0] * p_old[0] + p_old[1] * p_old[1] + p_old[2] * p_old[2];
-  const double p_tilde_norm_2 =
-      p_old_norm_2 * dm / old_mass +
-      2.0 * (old_mass + dm) * xp->feedback_data.delta_E_kin;
 
-  const double dp[3] = {xp->feedback_data.delta_p[0],
-                        xp->feedback_data.delta_p[1],
-                        xp->feedback_data.delta_p[2]};
-  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
-  const double p_old_times_dp =
-      p_old[0] * dp[0] + p_old[1] * dp[1] + p_old[2] * dp[2];
+  const float p_tilde_norm_2 =
+      p_old_norm_2 * dm / old_mass +
+      2.0 * new_mass * xp->feedback_data.delta_E_kin;
+
+  const float dp[3] = {xp->feedback_data.delta_p[0],
+		       xp->feedback_data.delta_p[1],
+		       xp->feedback_data.delta_p[2]};
+  const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+  const float p_old_times_dp = p_old[0] * dp[0] + p_old[1] * dp[1] + p_old[2] * dp[2];
 
   /* Finally compute the corrector factor */
-  const double sqrt_argument =
-      fabs(p_old_times_dp * p_old_times_dp - p_tilde_norm_2 * dp_norm_2);
-  const double f_corr =
-      (-p_old_times_dp + sqrt(sqrt_argument)) / p_tilde_norm_2;
+  const float sqrt_argument =
+      p_old_times_dp * p_old_times_dp - p_tilde_norm_2 * dp_norm_2;
+  const float f_corr = (-p_old_times_dp + sqrtf(sqrt_argument)) / dp_norm_2;
 
   return f_corr;
 }
