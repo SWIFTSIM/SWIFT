@@ -212,10 +212,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
   dv[1] = sipi->v[1] - sipj->v[1];
   dv[2] = sipi->v[2] - sipj->v[2];
   const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-
-  const double hubble_flow = cosmo->a * cosmo->H * r;
-  const double vij_pec = sqrt(v2) * cosmo->a_inv;
-  const double vij = vij_pec + hubble_flow;
+  const double vij = sqrt(v2) * cosmo->a_inv;
 
   /* Get time-step for sipi and sipj */
   double dt_sipi, dt_sipj;
@@ -226,7 +223,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
         get_integer_time_begin(ti_current - 1, sipi->time_bin);
     const integertime_t ti_step = get_integer_timestep(sipi->time_bin);
     dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-
     const integertime_t tj_begin =
         get_integer_time_begin(ti_current - 1, sipj->time_bin);
     const integertime_t tj_step = get_integer_timestep(sipj->time_bin);
@@ -251,13 +247,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
   float pji = SIDM_rate_j * dt_sipj;
   float p = (pij + pji) * 0.5;
 
-  /* Pair interaction? */  // need two ids here
+  /* Pair interaction? */
   const float x = random_unit_interval_two_IDs(sipi->id, sipj->id, ti_current,
                                                random_number_sidm_scattering);
 
   if (x < p) {
     sidm_debug_interaction(sipi, sipj);
-    kick_siparts(sipi, sipj, a, vij_pec, ti_current);
+    kick_siparts(sipi, sipj, a, vij, ti_current);
     sidm_debug_interaction(sipi, sipj);
   }
 }
@@ -292,11 +288,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
   dv[0] = sipi->v[0] - sipj->v[0];
   dv[1] = sipi->v[1] - sipj->v[1];
   dv[2] = sipi->v[2] - sipj->v[2];
-  const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
 
-  const double hubble_flow = cosmo->a * cosmo->H * r;
-  const double vij_pec = sqrt(v2) * cosmo->a_inv;
-  const double vij = vij_pec + hubble_flow;
+  const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+  const double vij = sqrt(v2) * cosmo->a_inv;
 
   /* Get time-step for sipi and sipj */
   double dt_sipi;
@@ -327,7 +321,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
 
   if (x < pij) {
     sidm_debug_interaction(sipi, sipj);
-    kick_siparts(sipi, sipj, a, vij_pec, ti_current);
+    kick_siparts(sipi, sipj, a, vij, ti_current);
     sidm_debug_interaction(sipi, sipj);
   }
 }
