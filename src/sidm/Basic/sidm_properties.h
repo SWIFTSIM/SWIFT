@@ -28,6 +28,7 @@
 #define sidm_props_default_h_max FLT_MAX
 #define sidm_props_default_h_min_ratio 0.f
 #define sidm_props_default_h_tolerance 1e-4
+#define sidm_props_default_kappa_timestep 1e-2
 
 /**
  * @brief Properties of SIDM in the Basic model.
@@ -39,6 +40,9 @@ struct sidm_props {
 
   /*! SIDM scattering cross-section per unit mass */
   float sigma_over_m;
+
+  /*! Controls timestep  */
+  float kappa_timestep;
 
   /* ----- Basic neighbour search properties ------ */
 
@@ -152,6 +156,9 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
         units_cgs_conversion_factor(us, UNIT_CONV_AREA_PER_UNIT_MASS);
   else
     sip->sigma_over_m = 0.f;  // TODO: deal with velocity-dependent models later
+
+  sip->kappa_timestep = parser_get_opt_param_float(
+      params, "BasicSIDM:kappa_timestep", sidm_props_default_kappa_timestep);
 }
 
 /**

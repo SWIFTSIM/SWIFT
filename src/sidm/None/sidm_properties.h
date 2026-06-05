@@ -27,6 +27,15 @@
  */
 struct sidm_props {
 
+  /* ----- SIDM scheme ------ */
+  int with_constant_cross_section;
+
+  /*! SIDM scattering cross-section per unit mass */
+  float sigma_over_m;
+
+  /*! Controls timestep  */
+  float kappa_timestep;
+
   /* ----- Basic neighbour search properties ------ */
 
   /*! Resolution parameter */
