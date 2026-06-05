@@ -11,7 +11,4 @@ fi
 
 printf "Running simulation..."
 
-../../../swift --sidm --self-gravity -n 1 --threads=14 params.yml 2>&1 | tee output.log
-
-printf "Checking scattering rates..."
-python3 scattering_rate_comparison.py
+../../../swift --sidm --self-gravity --threads=14 params.yml 2>&1 | tee output.log

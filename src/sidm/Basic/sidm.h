@@ -208,7 +208,12 @@ __attribute__((always_inline)) INLINE static float sidm_compute_timestep(
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const double time_base) {
 
-  return FLT_MAX;
+  /* Choose timestep such that the expected number of scattering events is <1 */
+  if (sip->density.wcount == 0) {
+    return FLT_MAX;
+  } else {
+    return sidm_properties->kappa_timestep * 1.f / sip->SIDM_rate;
+  }
 }
 
 /**
