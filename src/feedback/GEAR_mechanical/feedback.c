@@ -232,50 +232,7 @@ void feedback_init_spart(struct spart *sp) {
  * @param feedback_props The properties of the feedback model.
  */
 void feedback_reset_feedback(struct spart *sp,
-                             const struct feedback_props *feedback_props) {
-
-  /* TODO: Determine if reinitialising here changes something or not */
-  /* GEAR does not do anything here.
-     However, this is only called if the particle is not feedback active or the
-     star was just born. I am unsure how it will change the simulations. But if
-     this is called when a particle is not active, it should not alter
-     anything. We'll see.
-  */
-  /* message("Reset feedback for %lld (is_dead = %d)", sp->id,
-   * sp->feedback_data.is_dead); */
-
-  /*   sp->feedback_data.supernovae.energy_ejected = 0.0; */
-  /*   sp->feedback_data.enrichment_weight = 0.0; */
-  /*   sp->feedback_data.weighted_gas_density = 0.0; */
-  /*   sp->feedback_data.weighted_gas_metallicity = 0.0; */
-
-  /*   sp->feedback_data.f_sum_minus_term[0] = 0.0; */
-  /*   sp->feedback_data.f_sum_minus_term[1] = 0.0; */
-  /*   sp->feedback_data.f_sum_minus_term[2] = 0.0; */
-
-  /*   sp->feedback_data.f_sum_plus_term[0] = 0.0; */
-  /*   sp->feedback_data.f_sum_plus_term[1] = 0.0; */
-  /*   sp->feedback_data.f_sum_plus_term[2] = 0.0; */
-
-  /* #if FEEDBACK_GEAR_MECHANICAL_MODE == 2     */
-  /* sp->feedback_data.accumulator_sn.E_total = 0.0; */
-  /* sp->feedback_data.accumulator_sn.beta_1 = 0.0; */
-  /* sp->feedback_data.accumulator_sn.beta_2 = 0.0; */
-
-  /* sp->feedback_data.accumulator_winds.E_total = 0.0; */
-  /* sp->feedback_data.accumulator_winds.beta_1 = 0.0; */
-  /* sp->feedback_data.accumulator_winds.beta_2 = 0.0; */
-  /* #endif */
-
-  /* #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS */
-  /*   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0; */
-  /*   sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0; */
-
-  /*   sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0.0; */
-  /*   sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0.0; */
-  /*   sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0.0; */
-  /* #endif /\* SWIFT_FEEDBACK_DEBUG_CHECKS *\/ */
-}
+                             const struct feedback_props *feedback_props) {}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
