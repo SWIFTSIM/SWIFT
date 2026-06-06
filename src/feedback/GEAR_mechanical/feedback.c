@@ -576,7 +576,10 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
  *
  * This is scale-factor free --> no conversion needed from/to comoving.
  *
- * Reference: https://arxiv.org/abs/2203.00040
+ * Reference: https://arxiv.org/pdf/2603.17421
+ * Note this formula is similar to the Hopkins+2023 Fire 3 paper, except that
+ * Okamoto works in the gas frame. Therefore, the p_old terms disapear and the
+ * equation is simpler and non-pathological.
  *
  * @param p The #part to correct.
  * @param xp The #xpart.
@@ -588,26 +591,32 @@ feedback_compute_momentum_correction_factor_for_multiple_sn_events(
     struct part *p, struct xpart *xp, const float old_mass,
     const float new_mass) {
 
-  const float dm = xp->feedback_data.delta_mass;
-  const float p_old[3] = {old_mass * xp->v_full[0], old_mass * xp->v_full[1],
-                           old_mass * xp->v_full[2]};
-  const float p_old_norm_2 =
-      p_old[0] * p_old[0] + p_old[1] * p_old[1] + p_old[2] * p_old[2];
-
-  const float p_tilde_norm_2 =
-      p_old_norm_2 * dm / old_mass +
-      2.0 * new_mass * xp->feedback_data.delta_E_kin;
-
+  const float delta_E_kin = xp->feedback_data.delta_E_kin;
   const float dp[3] = {xp->feedback_data.delta_p[0],
 		       xp->feedback_data.delta_p[1],
 		       xp->feedback_data.delta_p[2]};
   const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
-  const float p_old_times_dp = p_old[0] * dp[0] + p_old[1] * dp[1] + p_old[2] * dp[2];
 
-  /* Finally compute the corrector factor */
-  const float sqrt_argument =
-    fabs(p_old_times_dp * p_old_times_dp - p_tilde_norm_2 * dp_norm_2);
-  const float f_corr = (-p_old_times_dp + sqrtf(sqrt_argument)) / dp_norm_2;
+  /* This is called Delta KE^naive in Hopkins+2023 */
+  const float delta_E_kin_eff = 0.5 * dp_norm_2 / new_mass;
 
-  return f_corr;
+  /* The correction factor is simply: */
+  const float f_corr = sqrtf(delta_E_kin / delta_E_kin_eff);
+
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  if (f_corr < 1.0)
+    message(
+      "[Oka, %lld, %d, %d] delta_p = (%e %e %e), f_corr = %e | dp_norm2 = %e, "
+      "delta_E_kin = %e, delta_E_kin_eff = %e",
+      p->id, xp->feedback_data.number_SN, xp->feedback_data.number_winds,
+      xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1],
+      xp->feedback_data.delta_p[2], f_corr,
+      dp_norm_2, delta_E_kin, delta_E_kin_eff);
+#endif
+
+  if (f_corr > 1.0) {
+    return 1.0;
+  } else {
+    return f_corr;
+  }
 }
