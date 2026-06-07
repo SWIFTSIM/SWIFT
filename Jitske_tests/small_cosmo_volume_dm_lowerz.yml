@@ -31,7 +31,8 @@ Gravity:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            snap_new
+  subdir:              snapshots_64
+  basename:            snap_64
   delta_time:          1.0816  # Only every second VELOCIraptor invoke gets a full snapshot dump.
   scale_factor_first:  0.1     # z = 9
   compression:         4
@@ -48,10 +49,10 @@ Scheduler:
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:                   small_cosmo_volume_new.hdf5
+  file_name:                   ics_swift_128.hdf5
   periodic:                    1
-  cleanup_h_factors:           1    
-  cleanup_velocity_factors:    1  
+  cleanup_h_factors:           0   
+  cleanup_velocity_factors:    0  
 
 # Structure finding options
 StructureFinding:
@@ -74,4 +75,5 @@ CSDS:
   basename:             csds_index  # Common part of the filenames
   initial_buffer_size:  0.3      # (Optional) Buffer size in GB
   buffer_scale:	        2       # (Optional) When buffer size is too small, update it with required memory times buffer_scale
+
 

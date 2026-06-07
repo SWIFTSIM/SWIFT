@@ -408,6 +408,7 @@ struct MG_variables {
   double fR_bar;
   double h;
   double m;
+  double lambda;
 };
 
 /* Function prototypes. */
@@ -531,7 +532,7 @@ double get_residual(const double *pot, const double *rho, int cdim[3], double mu
 void get_residual_array(const double *pot, const double *dens, int cdim[3], double multiplier, double *residual, double delta);
 void perform_red_black_sweep(double *pot, const double *rho, int cdim[3], double multiplier, double delta);
 void set_initial_guess(double *potential_array, const int cdim[3], int MG);
-double get_mean_density(double *dens, const int N);
+double get_mean_density(double *dens, const int N, int MG);
 void get_pm_potential(struct cic_mapper_data* data, const int N, const double box_size, struct threadpool* tp, int cdim[3]);
 void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
                                const int slice_offset, const int slice_width,

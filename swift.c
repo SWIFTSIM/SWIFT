@@ -1629,10 +1629,11 @@ int main(int argc, char *argv[]) {
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
     /* Relaxation for the Poisson equation */
-    //space_apply_FMG(&e, 16, 256, 0);
-    //space_get_density(&e, 64, 0);
+    //space_apply_FMG(&e, 16, 64, 0);
+    //space_get_density(&e, 64, 1);
 
-    pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1, /*power=*/0);
+    //pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1, /*power=*/0);
+    //space_get_AMR_density(&s, &e, 1000, 1000);
 
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
