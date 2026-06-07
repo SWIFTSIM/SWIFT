@@ -6,6 +6,14 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
+Cosmology:                      # WMAP9 cosmology
+  Omega_cdm:      0.2305
+  Omega_lambda:   0.724
+  Omega_b:        0.0455
+  h:              0.703
+  a_begin:        0.6666	# z_ini = 50.
+  a_end:          1.0		# z_end = 0.
+
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
@@ -21,28 +29,21 @@ Gravity:
   epsilon_fmm:  0.001
   comoving_DM_softening:     0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
   max_physical_DM_softening: 0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
-  mesh_side_length:       256
-
-Cosmology:                      # WMAP9 cosmology
-  Omega_cdm:      0.2305
-  Omega_lambda:   0.724
-  Omega_b:        0.0455
-  h:              0.703
-  a_begin:        0.66666	# z_ini = 0.499
-  a_end:          1.0		# z_end = 0.
+  mesh_side_length:       128
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            snap_new
+  subdir:              snapshots
+  basename:            snap_MG
   delta_time:          1.0816  # Only every second VELOCIraptor invoke gets a full snapshot dump.
-  scale_factor_first:  0.98     # z = 0.5
+  scale_factor_first:  0.8     # z = 9
   compression:         4
   invoke_ps:           1
 
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1.01
-  scale_factor_first:  0.98
+  scale_factor_first:  0.8
   
 Scheduler:
   max_top_level_cells: 8
@@ -50,7 +51,7 @@ Scheduler:
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:                   snap_z05.hdf5 #low-redshift snapshot from SmallCosmoVolume_DM
+  file_name:                   snapshots_highres/snap_highres_0031.hdf5
   periodic:                    1
   cleanup_h_factors:           0    
   cleanup_velocity_factors:    0  
@@ -59,14 +60,14 @@ InitialConditions:
 StructureFinding:
   config_file_name:     vrconfig_3dfof_subhalos_SO_hydro.cfg
   basename:             ./stf
-  scale_factor_first:   0.1       # z = 9
+  scale_factor_first:   0.8       # z = 9
   delta_time:           1.04
 
 # Power spectrum calculation options
 PowerSpectrum:
-  grid_side_length: 64
-  num_folds: 1
-  fold_factor: 1
+  grid_side_length: 256
+  num_folds: 4
+  fold_factor: 2
   window_order: 2
   requested_spectra: ["matter-matter"]
 
@@ -76,4 +77,5 @@ CSDS:
   basename:             csds_index  # Common part of the filenames
   initial_buffer_size:  0.3      # (Optional) Buffer size in GB
   buffer_scale:	        2       # (Optional) When buffer size is too small, update it with required memory times buffer_scale
+
 
