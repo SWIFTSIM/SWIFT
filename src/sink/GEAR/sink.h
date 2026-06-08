@@ -522,6 +522,9 @@ INLINE static int sink_is_forming(
 
   /* Temperature criterion */
   if (temperature > temperature_threshold) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    message("[%lld] Temperature criterion failed!", p->id);
+#endif
     return 0;
   }
 
