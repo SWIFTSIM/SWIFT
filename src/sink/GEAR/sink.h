@@ -1200,13 +1200,16 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct part *restrict pi, const struct part *restrict pj,
-    const struct cosmology *cosmo, const struct sink_props *sink_props) {
+    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
+    const struct part *restrict pj, struct xpart *restrict xpj,
+    const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
 
   const float a = cosmo->a;
   const float H = cosmo->H;
   const float a2H = a * a * H;
-
+  const int with_self_gravity = (e->policy & engine_policy_self_gravity);
+  
   /* If for some reason the particle has been flagged to not form sink,
      do not continue and save some computationnal ressources. */
   if (!pi->sink_data.can_form_sink) {
@@ -1276,10 +1279,13 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   /* Notice that we skip the potential of the current particle here
      instead of subtracting it later */
   if (pi != pj) {
-    pi->sink_data.E_pot_neighbours +=
+
+    if (with_self_gravity) {
+      pi->sink_data.E_pot_neighbours +=
         0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
-    pi->sink_data.max_potential =
+      pi->sink_data.max_potential =
         max(pi->sink_data.max_potential, pj->sink_data.potential);
+    }
 
     /* Compute rotation energies per component */
     const float Dx = dx_physical[0];
