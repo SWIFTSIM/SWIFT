@@ -512,13 +512,16 @@ void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
  *
  * For each active BH, loops over all star particles in the simulation to:
  *   1. Compute the total stellar mass density within a 1 kpc physical aperture.
- *   2. Apply a TDE accretion rate (currently a placeholder constant) to the BH
- *      subgrid mass.
- *   3. Nibble the corresponding mass from the star particles within the aperture,
- *      proportional to each star's share of the total stellar mass.
+ *   2. Apply a TDE accretion rate to the BH subgrid mass and energy reservoir.
+ *   3. Nibble the corresponding mass from the nearest star particle.
  *
  * Note: this is an O(N_BH * N_stars) brute-force implementation. It is also
- * not thread-safe when multiple BH cells are processed concurrently.
+ * not thread-safe when multiple BH cells are processed concurrently (mitigated
+ * by a space-level lock around star mass writes).
+ *
+ * NOTE: star particles are not guaranteed to be fully drifted to the current
+ * time at this point in the task graph. A proper fix requires a dedicated
+ * BH-star pair task with drift_spart dependencies.
  *
  * @param r The thread #runner.
  * @param c The #cell.
@@ -654,11 +657,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
         "bh_mass_gain=%g (internal)",
         bp->id, cosmo->z, (double)bp->rho_stellar, bh_mass_gain);
 
-    /* NOTE: star particles are not guaranteed to be fully drifted to the
-     * current time at this point in the task graph. A proper fix requires
-     * a dedicated BH-star pair task with drift_spart dependencies.
-     *
-     * Lock the space to prevent concurrent writes from other BH cells
+    /* Lock the space to prevent concurrent writes from other BH cells
      * being processed simultaneously on different threads. */
     lock_lock(&s->lock);
     nearest_sp->mass = (float)new_star_mass;
