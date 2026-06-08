@@ -587,42 +587,8 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
       dt = get_timestep(bp->time_bin, e->time_base);
     }
 
-    /* --- First pass: accumulate total stellar mass within aperture --- */
+    /* --- Single pass: accumulate total stellar mass and find nearest star --- */
     double M_total = 0.0;
-    for (size_t j = 0; j < s->nr_sparts; j++) {
-      const struct spart *sp = &s->sparts[j];
-      if (spart_is_inhibited(sp, e)) continue;
-
-      double dx = bp->x[0] - sp->x[0];
-      double dy = bp->x[1] - sp->x[1];
-      double dz = bp->x[2] - sp->x[2];
-
-      if (periodic) {
-        dx = nearest(dx, s->dim[0]);
-        dy = nearest(dy, s->dim[1]);
-        dz = nearest(dz, s->dim[2]);
-      }
-
-      if (dx * dx + dy * dy + dz * dz < aperture_comoving2)
-        M_total += sp->mass;
-    }
-
-    /* Store physical stellar mass density on the BH. */
-    bp->rho_stellar = (M_total > 0.0) ? (float)(M_total / aperture_volume) : 0.f;
-
-    /* Compute TDE accretion and update BH subgrid mass and energy reservoir. */
-    const double tde_mass_deficit =
-        black_holes_do_tde_accretion(bp, props, constants, dt);
-
-    message(
-        "BH (ID %lld) z=%.4f  rho_stellar=%g (internal)  "
-        "tde_mass_deficit=%g (internal)",
-        bp->id, cosmo->z, (double)bp->rho_stellar, tde_mass_deficit);
-
-    /* Nothing to nibble if no stars nearby or zero deficit. */
-    if (M_total <= 0.0 || tde_mass_deficit <= 0.0) continue;
-
-    /* --- Second pass: find the nearest star within the aperture --- */
     double nearest_r2 = aperture_comoving2;
     struct spart *nearest_sp = NULL;
     for (size_t j = 0; j < s->nr_sparts; j++) {
@@ -640,13 +606,43 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
       }
 
       const double r2 = dx * dx + dy * dy + dz * dz;
+      if (r2 < aperture_comoving2) M_total += sp->mass;
       if (r2 < nearest_r2) {
         nearest_r2 = r2;
         nearest_sp = sp;
       }
     }
 
+    /* Store physical stellar mass density on the BH. */
+    bp->rho_stellar = (M_total > 0.0) ? (float)(M_total / aperture_volume) : 0.f;
+
+    /* Nothing to nibble if no star found. */
     if (nearest_sp == NULL) continue;
+
+    /* Available mass on the nearest star above the nibbling floor. */
+    const double available_mass =
+        (double)nearest_sp->mass - min_star_mass_for_nibbling;
+    if (available_mass <= 0.0) continue;
+
+    /* TDE rate set so the nearest star loses 50% of its available mass per Gyr
+     * if it stays beside the BH. This gives exponential decay with
+     * half-life t_half = 1 Gyr: rate = ln(2) / t_half * available_mass.
+     * tde_rate is the net BH gain (after radiation), so we divide by
+     * excess_fraction to account for the radiated fraction. */
+    const double gyr_in_cgs = 3.15576e16; /* 1 Gyr in seconds */
+    const double t_half = gyr_in_cgs / us->UnitTime_in_cgs;
+    const double tde_rate = log(2.0) / t_half * available_mass / excess_fraction;
+
+    /* Compute TDE accretion and update BH subgrid mass and energy reservoir. */
+    const double tde_mass_deficit =
+        black_holes_do_tde_accretion(bp, props, constants, tde_rate, dt);
+
+    message(
+        "BH (ID %lld) z=%.4f  rho_stellar=%g (internal)  "
+        "tde_mass_deficit=%g (internal)",
+        bp->id, cosmo->z, (double)bp->rho_stellar, tde_mass_deficit);
+
+    if (tde_mass_deficit <= 0.0) continue;
 
     /* Mass removed from the nearest star (includes the radiated fraction). */
     const double star_mass_loss = tde_mass_deficit * excess_fraction;
@@ -660,8 +656,16 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
       continue;
     }
 
+    /* NOTE: star particles are not guaranteed to be fully drifted to the
+     * current time at this point in the task graph. A proper fix requires
+     * a dedicated BH-star pair task with drift_spart dependencies.
+     *
+     * Lock the space to prevent concurrent writes from other BH cells
+     * being processed simultaneously on different threads. */
+    lock_lock(&s->lock);
     nearest_sp->mass = (float)new_star_mass;
     nearest_sp->gpart->mass = (float)new_star_mass;
+    if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space.");
 
     /* Update BH velocity to conserve momentum of the accreted mass,
      * mirroring the gas nibbling momentum update. */
