@@ -323,8 +323,8 @@ runner_iact_nonsym_sinks_sink_swallow(
 
     /* Calculate the velocity with the Hubble flow. The Hubble flow term is
      * relative wrt the sink particle. For the gas, we use -dx = pj - si. */
-    const float v_plus_H_flow[3] = {- a2H * dx[0] + dv[0], - a2H * dx[1] + dv[1],
-                                    - a2H * dx[2] + dv[2]};
+    const float v_plus_H_flow[3] = {-a2H * dx[0] + dv[0], -a2H * dx[1] + dv[1],
+                                    -a2H * dx[2] + dv[2]};
 
     /* Compute the physical relative velocity between the particles */
     const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
@@ -509,8 +509,8 @@ runner_iact_nonsym_sinks_gas_swallow(
 
     /* Calculate the velocity with the Hubble flow. The Hubble flow term is
      * relative wrt the sink particle. For the gas, we use -dx = pj - si. */
-    const float v_plus_H_flow[3] = {- a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
-                                    - a2H * dx[2] + dv[2]};
+    const float v_plus_H_flow[3] = {-a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+                                    -a2H * dx[2] + dv[2]};
 
     /* Compute the physical relative velocity between the particles */
     const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,

@@ -462,7 +462,7 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
                                            struct xpart *restrict xpi) {
   struct engine *e = r->e;
   struct space *s = e->s;
-  
+
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct sink_props *sink_props = e->sink_properties;
@@ -470,10 +470,12 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
   /* Loop over gas particles in this cell. Note that it means we are missing
    *gas particles in other cells.
    *
-   * TODO (Darwin): This will be improved in the future with a proper self/pair task search.
-   */  
+   * TODO (Darwin): This will be improved in the future with a proper self/pair
+   *task search.
+   */
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
 
   /* Loop over all particles to find the neighbours within r_acc. Then,
      compute all quantities you need.  */
@@ -481,12 +483,14 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
 
     /* Get a handle on the part */
     struct part *restrict pj = &parts[j];
+    struct xpart *restrict xpj = &xparts[j];
 
     /* Ignore inhibited particles */
     if (part_is_inhibited(pj, e)) continue;
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_gas_criteria(pi, pj, cosmo, sink_props);
+    sink_prepare_part_sink_formation_gas_criteria(e, pi, xpi, pj, xpj, cosmo,
+                                                  sink_props);
   } /* End of gas neighbour loop */
 
   /* Check that we are not forming a sink in the accretion radius of another

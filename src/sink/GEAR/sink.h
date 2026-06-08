@@ -40,6 +40,10 @@
 #include "sink_setters.h"
 #include "star_formation.h"
 
+#ifdef SWIFT_GRAVITY_NO_POTENTIAL
+#error "GEAR sink particles require the gravitational potential"
+#endif
+
 /**
  * @brief Computes the time-step of a given sink particle.
  *
@@ -480,25 +484,6 @@ INLINE static int sink_is_forming(
   const float E_kin = sink_data->E_kin_neighbours;
   const float E_tot = E_kin + E_int + E_grav;
 
-  /* const char is_small_enough = kernel_gamma*p->h < sink_cut_off_radius; */
-  if (density > density_threshold) {
-    const float pot = p->sink_data.potential;
-    const int N_neighbours = p->sink_data.N_neighbours;
-    message(
-        "[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
-        " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e,"
-        " N_neighbours = %i, M_tot = %e | E_int = %e, E_grav = %e, "
-        "E_grav_unormalized = %e, "
-        "E_grav_max = %e, E_rot = %e, E_kin =%e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
-        "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
-        p->id, density_threshold, maximal_density_threshold,
-        temperature_threshold, sink_cut_off_radius, density, temperature, div_v,
-        h, pot, max_potential, N_neighbours, M_tot, E_int, E_grav,
-        sink_data->E_pot_neighbours, E_grav_max, E_rot, E_kin, E_tot,
-        (E_int < 0.5 * fabs(E_grav)), (E_int + E_rot < fabs(E_grav)),
-        (E_tot < 0.0));
-  }
-
   /* If density > maximal_density_threshold, and we do not overlap with other
      sinks, form a sink. */
   if ((density > maximal_density_threshold) &&
@@ -514,35 +499,72 @@ INLINE static int sink_is_forming(
   }
   /* Here we have density >= density_threshold */
 
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+  const float pot = p->sink_data.potential;
+  const int N_neighbours = p->sink_data.N_neighbours;
+  message(
+      "[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
+      " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e,"
+      " N_neighbours = %i, M_tot = %e | E_int = %e, E_grav = %e, "
+      "E_grav_unormalized = %e, "
+      "E_grav_max = %e, E_rot = %e, E_kin =%e, E_tot = %e | E_int < "
+      "0.5*|E_grav| = %i, "
+      "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
+      p->id, density_threshold, maximal_density_threshold,
+      temperature_threshold, sink_cut_off_radius, density, temperature, div_v,
+      h, pot, max_potential, N_neighbours, M_tot, E_int, E_grav,
+      sink_data->E_pot_neighbours, E_grav_max, E_rot, E_kin, E_tot,
+      (E_int < 0.5 * fabs(E_grav)), (E_int + E_rot < fabs(E_grav)),
+      (E_tot < 0.0));
+#endif
+
+  /* Temperature criterion */
+  if (temperature > temperature_threshold) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    message("[%lld] Temperature criterion failed!", p->id);
+#endif
+    return 0;
+  }
+
   /* Contracting gas criterion */
   if ((sink_props->sink_formation_contracting_gas_criterion) && (div_v > 0)) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Divergence criterion failed!", p->id);
+#endif
     return 0;
   }
 
   /* Smoothing length criterion */
   if ((sink_props->sink_formation_smoothing_length_criterion) &&
       (kernel_gamma * h >= sink_cut_off_radius)) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Size criterion failed!", p->id);
+#endif
     return 0;
   }
 
   /* Jeans instability criterion */
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
       (E_int >= 0.5f * fabs(E_grav))) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Jeans instability criterion 1 failed!", p->id);
+#endif
     return 0;
   }
 
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
       (E_int + E_rot >= fabs(E_grav))) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Jeans instability criterion 2 failed!", p->id);
+#endif
     return 0;
   }
 
   /* Bound state criterion */
   if ((sink_props->sink_formation_bound_state_criterion) && (E_tot >= 0)) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Bound state criterion failed!", p->id);
+#endif
     return 0;
   }
 
@@ -554,7 +576,9 @@ INLINE static int sink_is_forming(
   /* Overlapping existing sinks criterion */
   if (sink_props->sink_formation_overlapping_sink_criterion &&
       sink_data->is_overlapping_sink) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Overlapping sink criterion failed!", p->id);
+#endif
     return 0;
   }
 
@@ -1193,18 +1217,23 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * neighbouring gas particles.
  *
  * @param e The #engine.
- * @param p The #part for which we compute the quantities.
- * @param pi A neighbouring #part of #p.
+ * @param pi The #part for which we compute the quantities.
+ * @param xpi The #xpart data of the particle #pi.
+ * @param pj A neighbouring #part of #pi.
+ * @param xpj The #xpart data of the particle #pj.
+ * @param cosmo The cosmological parameters and properties.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct part *restrict pi, const struct part *restrict pj,
+    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
+    const struct part *restrict pj, struct xpart *restrict xpj,
     const struct cosmology *cosmo, const struct sink_props *sink_props) {
 
   const float a = cosmo->a;
   const float H = cosmo->H;
   const float a2H = a * a * H;
+  const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
   /* If for some reason the particle has been flagged to not form sink,
      do not continue and save some computationnal ressources. */
@@ -1246,7 +1275,7 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
                        pj->v[2] - pi->v[2]};
 
   /* Calculate the velocity with the Hubble flow */
-  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], - a2H * dx[1] + dv[1],
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], -a2H * dx[1] + dv[1],
                                   a2H * dx[2] + dv[2]};
 
   /* Compute the physical relative velocity between the particles */
@@ -1272,14 +1301,14 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   pi->sink_data.E_kin_neighbours += 0.5f * mj * dv_physical_squared;
   pi->sink_data.E_int_neighbours += mj * u_inter_j;
 
-  /* Notice that we skip the potential of the current particle here
-     instead of subtracting it later */
-  if (pi != pj) {
+  if (with_self_gravity) {
     pi->sink_data.E_pot_neighbours +=
         0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
     pi->sink_data.max_potential =
         max(pi->sink_data.max_potential, pj->sink_data.potential);
+  }
 
+  if (pi != pj) {
     /* Compute rotation energies per component */
     const float Dx = dx_physical[0];
     const float Dy = dx_physical[1];
@@ -1291,71 +1320,19 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
         specific_angular_momentum[0] * specific_angular_momentum[0];
     const float L_y2 =
         specific_angular_momentum[1] * specific_angular_momentum[1];
-    const float L_z2 = specific_angular_momentum[2] * specific_angular_momentum[2];
+    const float L_z2 =
+        specific_angular_momentum[2] * specific_angular_momentum[2];
 
     /* Limiting behaviour when R=0:
-		 L = R*v_phi => E_rot = 0.5*m*L^2/R = 0.5*m*R*v_phi^2.
+                 L = R*v_phi => E_rot = 0.5*m*L^2/R = 0.5*m*R*v_phi^2.
        So, if R = 0, then E_rot = 0. */
     if (R_yz > 0.0) pi->sink_data.E_rot_neighbours[0] += 0.5 * mj * L_x2 / R_yz;
     if (R_xz > 0.0) pi->sink_data.E_rot_neighbours[1] += 0.5 * mj * L_y2 / R_xz;
     if (R_xy > 0.0) pi->sink_data.E_rot_neighbours[2] += 0.5 * mj * L_z2 / R_xy;
-  }  
+  }
   /* Shall we reset the values of the energies for the next timestep? No, it is
      done in cell_drift.c and space_init.c, for active particles. The
      potential is set in runner_others.c->runner_do_end_grav_force() */
-}
-
-/**
- * @brief Compute the pairwise gravitational potential energy between two gas
- * neighbors within a clump and accumulate it.
- *
- * @param p The main #part (the candidate sink core).
- * @param pi A neighboring #part within the clump.
- * @param cosmo The cosmological parameters and properties.
- * @param sink_props The sink properties to use.
- * @param G The gravitational constant.
- */
-INLINE static void sink_prepare_part_sink_formation_grav_criteria(
-    struct part *restrict p, const struct part *restrict pi,
-    const struct cosmology *cosmo, const struct sink_props *sink_props,
-    const struct phys_const *phys_const) {
-
-  /* If for some reason the particle has been flagged to not form a sink,
-   * do not continue. */
-  if (!p->sink_data.can_form_sink) {
-    return;
-  }
-
-  const float G = phys_const->const_newton_G;
-
-  /* Physical accretion radius of part p */
-  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
-
-  /* Comoving distance of particle p */
-  const float px[3] = {(float)(p->x[0]), (float)(p->x[1]), (float)(p->x[2])};
-
-  /* Compute the pairwise physical distance */
-  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
-                        (float)(pi->x[2])};
-
-  const float dx[3] = {px[0] - pix[0], px[1] - pix[1], px[2] - pix[2]};
-  const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
-                                dx[2] * cosmo->a};
-  const float r2_physical = dx_physical[0] * dx_physical[0] +
-                            dx_physical[1] * dx_physical[1] +
-                            dx_physical[2] * dx_physical[2];
-
-  /* Checks that this part is a neighbor and not the particle itself */
-  if ((r2_physical > r_acc_p * r_acc_p) || (r2_physical == 0.0)) {
-    return;
-  }
-
-  const float distance = sqrtf(r2_physical);
-  const float m = hydro_get_mass(p);
-  const float mi = hydro_get_mass(pi);
-
-  /* Accumulate the negative mutual gravitational self-energy */
-  p->sink_data.E_pot_neighbours -= G * m * mi / distance;
 }
 
 /**
