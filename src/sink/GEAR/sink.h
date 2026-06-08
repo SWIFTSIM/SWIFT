@@ -1301,17 +1301,14 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   pi->sink_data.E_kin_neighbours += 0.5f * mj * dv_physical_squared;
   pi->sink_data.E_int_neighbours += mj * u_inter_j;
 
-  /* Notice that we skip the potential of the current particle here
-     instead of subtracting it later */
+  if (with_self_gravity) {
+    pi->sink_data.E_pot_neighbours +=
+        0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
+    pi->sink_data.max_potential =
+        max(pi->sink_data.max_potential, pj->sink_data.potential);
+  }
+
   if (pi != pj) {
-
-    if (with_self_gravity) {
-      pi->sink_data.E_pot_neighbours +=
-          0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
-      pi->sink_data.max_potential =
-          max(pi->sink_data.max_potential, pj->sink_data.potential);
-    }
-
     /* Compute rotation energies per component */
     const float Dx = dx_physical[0];
     const float Dy = dx_physical[1];
