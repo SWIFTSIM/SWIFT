@@ -386,7 +386,8 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
   }
 
   /* ... physical internal energy */
-  const double U_tot = E_tot - epsilon * (beta_2 + 2.0 * beta_1);
+  const double f_therm = beta_2 + 2.0 * beta_1;
+  const double U_tot = E_tot - f_therm * epsilon;
   *dU = w_j_bar_norm * U_tot;
 
   /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
