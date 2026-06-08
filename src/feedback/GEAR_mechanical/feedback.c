@@ -82,9 +82,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
         feedback_compute_momentum_correction_factor_for_multiple_sn_events(
             p, xp, old_mass, new_mass);
 
-    /* TODO: We need to determine what to do with the stellar winds since we
-       are using the same variable */
-    /* Update the xpart accumulated dp */
+    /* Update the xpart accumulated dp from the feedback */
     xp->feedback_data.delta_p[0] *= f_corr;
     xp->feedback_data.delta_p[1] *= f_corr;
     xp->feedback_data.delta_p[2] *= f_corr;
@@ -593,8 +591,8 @@ feedback_compute_momentum_correction_factor_for_multiple_sn_events(
 
   const float delta_E_kin = xp->feedback_data.delta_E_kin;
   const float dp[3] = {xp->feedback_data.delta_p[0],
-		       xp->feedback_data.delta_p[1],
-		       xp->feedback_data.delta_p[2]};
+                       xp->feedback_data.delta_p[1],
+                       xp->feedback_data.delta_p[2]};
   const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
 
   /* This is called Delta KE^naive in Hopkins+2023 */
@@ -606,15 +604,16 @@ feedback_compute_momentum_correction_factor_for_multiple_sn_events(
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   if (f_corr < 1.0)
     message(
-      "[Oka, %lld, %d, %d] delta_p = (%e %e %e), f_corr = %e | dp_norm2 = %e, "
-      "delta_E_kin = %e, delta_E_kin_eff = %e",
-      p->id, xp->feedback_data.number_SN, xp->feedback_data.number_winds,
-      xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1],
-      xp->feedback_data.delta_p[2], f_corr,
-      dp_norm_2, delta_E_kin, delta_E_kin_eff);
+        "[Oka, %lld, %d, %d] delta_p = (%e %e %e), f_corr = %e | dp_norm2 = "
+        "%e, "
+        "delta_E_kin = %e, delta_E_kin_eff = %e",
+        p->id, xp->feedback_data.number_SN, xp->feedback_data.number_winds,
+        xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1],
+        xp->feedback_data.delta_p[2], f_corr, dp_norm_2, delta_E_kin,
+        delta_E_kin_eff);
 #endif
 
-  if (f_corr > 1.0) {
+  if (f_corr >= 1.0) {
     return 1.0;
   } else {
     return f_corr;
