@@ -1217,8 +1217,11 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * neighbouring gas particles.
  *
  * @param e The #engine.
- * @param p The #part for which we compute the quantities.
- * @param pi A neighbouring #part of #p.
+ * @param pi The #part for which we compute the quantities.
+ * @param xpi The #xpart data of the particle #pi.
+ * @param pj A neighbouring #part of #pi.
+ * @param xpj The #xpart data of the particle #pj.
+ * @param cosmo The cosmological parameters and properties.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
