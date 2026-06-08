@@ -569,7 +569,6 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
 
   /* Radiative efficiency (same as gas accretion). */
   const double epsilon_r = props->epsilon_r;
-  const double excess_fraction = 1.0 / (1.0 - epsilon_r);
 
   for (int i = 0; i < count; i++) {
 
@@ -624,30 +623,20 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
         (double)nearest_sp->mass - min_star_mass_for_nibbling;
     if (available_mass <= 0.0) continue;
 
-    /* TDE rate set so the nearest star loses 50% of its available mass per Gyr
-     * if it stays beside the BH. This gives exponential decay with
-     * half-life t_half = 1 Gyr: rate = ln(2) / t_half * available_mass.
-     * tde_rate is the net BH gain (after radiation), so we divide by
-     * excess_fraction to account for the radiated fraction. */
+    /* Star loses 50% of available mass per Gyr (exponential decay,
+     * half-life = 1 Gyr): star_mass_loss_rate = ln(2) / t_half * available_mass.
+     * The BH gains less due to radiation: bh_accretion_rate = (1 - epsilon_r)
+     * * star_mass_loss_rate. */
     const double gyr_in_cgs = 3.15576e16; /* 1 Gyr in seconds */
     const double t_half = gyr_in_cgs / us->UnitTime_in_cgs;
-    const double tde_rate = log(2.0) / t_half * available_mass / excess_fraction;
+    const double star_mass_loss_rate = log(2.0) / t_half * available_mass;
+    const double bh_accretion_rate = star_mass_loss_rate * (1.0 - epsilon_r);
 
-    /* Compute TDE accretion and update BH subgrid mass and energy reservoir. */
-    const double tde_mass_deficit =
-        black_holes_do_tde_accretion(bp, props, constants, tde_rate, dt);
-
-    message(
-        "BH (ID %lld) z=%.4f  rho_stellar=%g (internal)  "
-        "tde_mass_deficit=%g (internal)",
-        bp->id, cosmo->z, (double)bp->rho_stellar, tde_mass_deficit);
-
-    if (tde_mass_deficit <= 0.0) continue;
-
-    /* Mass removed from the nearest star (includes the radiated fraction). */
-    const double star_mass_loss = tde_mass_deficit * excess_fraction;
+    /* Mass changes this timestep. */
+    const double star_mass_loss = star_mass_loss_rate * dt;
     const double new_star_mass = (double)nearest_sp->mass - star_mass_loss;
 
+    /* Check minimum mass before modifying any particles. */
     if (new_star_mass < min_star_mass_for_nibbling) {
       warning(
           "TDE nibbling would reduce star particle %lld (mass=%g) below "
@@ -655,6 +644,15 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
           nearest_sp->id, (double)nearest_sp->mass, bp->id, (double)bp->mass);
       continue;
     }
+
+    /* Update BH subgrid mass and energy reservoir. */
+    const double bh_mass_gain =
+        black_holes_do_tde_accretion(bp, props, constants, bh_accretion_rate, dt);
+
+    message(
+        "BH (ID %lld) z=%.4f  rho_stellar=%g (internal)  "
+        "bh_mass_gain=%g (internal)",
+        bp->id, cosmo->z, (double)bp->rho_stellar, bh_mass_gain);
 
     /* NOTE: star particles are not guaranteed to be fully drifted to the
      * current time at this point in the task graph. A proper fix requires
@@ -670,13 +668,13 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     /* Update BH velocity to conserve momentum of the accreted mass,
      * mirroring the gas nibbling momentum update. */
     const double bp_mass_orig = (double)bp->mass;
-    const double new_bp_mass = bp_mass_orig + tde_mass_deficit;
+    const double new_bp_mass = bp_mass_orig + bh_mass_gain;
     bp->v[0] = (float)((bp_mass_orig * bp->v[0] +
-                        tde_mass_deficit * nearest_sp->v[0]) / new_bp_mass);
+                        bh_mass_gain * nearest_sp->v[0]) / new_bp_mass);
     bp->v[1] = (float)((bp_mass_orig * bp->v[1] +
-                        tde_mass_deficit * nearest_sp->v[1]) / new_bp_mass);
+                        bh_mass_gain * nearest_sp->v[1]) / new_bp_mass);
     bp->v[2] = (float)((bp_mass_orig * bp->v[2] +
-                        tde_mass_deficit * nearest_sp->v[2]) / new_bp_mass);
+                        bh_mass_gain * nearest_sp->v[2]) / new_bp_mass);
 
     /* Add the net accreted mass (excluding radiation) to the BH dynamical
      * mass, consistent with how gas nibbling updates bp->mass. */
