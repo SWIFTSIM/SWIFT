@@ -40,6 +40,10 @@
 #include "sink_setters.h"
 #include "star_formation.h"
 
+#ifdef SWIFT_GRAVITY_NO_POTENTIAL
+#error "GEAR sink particles require the gravitational potential"
+#endif
+
 /**
  * @brief Computes the time-step of a given sink particle.
  *
