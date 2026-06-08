@@ -532,8 +532,13 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
   const struct cosmology *cosmo = e->cosmology;
   const struct unit_system *us = e->internal_units;
   const struct black_holes_props *props = e->black_holes_properties;
+  const struct phys_const *constants = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int periodic = s->periodic;
+
+  /* Minimum star mass allowed after nibbling: 50% of mean baryon particle mass. */
+  const double min_star_mass_for_nibbling =
+      0.5 * s->initial_mean_mass_particles[swift_type_gas];
 
   /* Anything to do here? */
   if (c->black_holes.count == 0) return;
@@ -605,8 +610,9 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     /* Store physical stellar mass density on the BH. */
     bp->rho_stellar = (M_total > 0.0) ? (float)(M_total / aperture_volume) : 0.f;
 
-    /* Compute TDE accretion and update BH subgrid mass. */
-    const double tde_mass_deficit = black_holes_do_tde_accretion(bp, dt);
+    /* Compute TDE accretion and update BH subgrid mass and energy reservoir. */
+    const double tde_mass_deficit =
+        black_holes_do_tde_accretion(bp, props, constants, dt);
 
     message(
         "BH (ID %lld) z=%.4f  rho_stellar=%g (internal)  "
@@ -616,7 +622,9 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     /* Nothing to nibble if no stars nearby or zero deficit. */
     if (M_total <= 0.0 || tde_mass_deficit <= 0.0) continue;
 
-    /* --- Second pass: nibble mass from star particles within aperture --- */
+    /* --- Second pass: find the nearest star within the aperture --- */
+    double nearest_r2 = aperture_comoving2;
+    struct spart *nearest_sp = NULL;
     for (size_t j = 0; j < s->nr_sparts; j++) {
       struct spart *sp = &s->sparts[j];
       if (spart_is_inhibited(sp, e)) continue;
@@ -631,30 +639,44 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
         dz = nearest(dz, s->dim[2]);
       }
 
-      if (dx * dx + dy * dy + dz * dz >= aperture_comoving2) continue;
-
-      /* Each star contributes proportionally to its share of M_total. */
-      const double weight = (double)sp->mass / M_total;
-
-      /* Mass removed from this star (includes the radiated fraction). */
-      const float star_mass_loss =
-          (float)(tde_mass_deficit * weight * excess_fraction);
-
-      if (star_mass_loss >= sp->mass) {
-        warning(
-            "TDE nibbling would make star particle %lld mass negative "
-            "(mass=%g, loss=%g). Skipping.",
-            sp->id, (double)sp->mass, (double)star_mass_loss);
-        continue;
+      const double r2 = dx * dx + dy * dy + dz * dz;
+      if (r2 < nearest_r2) {
+        nearest_r2 = r2;
+        nearest_sp = sp;
       }
-
-      sp->mass -= star_mass_loss;
-      sp->gpart->mass -= star_mass_loss;
     }
+
+    if (nearest_sp == NULL) continue;
+
+    /* Mass removed from the nearest star (includes the radiated fraction). */
+    const double star_mass_loss = tde_mass_deficit * excess_fraction;
+    const double new_star_mass = (double)nearest_sp->mass - star_mass_loss;
+
+    if (new_star_mass < min_star_mass_for_nibbling) {
+      warning(
+          "TDE nibbling would reduce star particle %lld (mass=%g) below "
+          "minimum mass threshold. BH ID=%lld (mass=%g). Skipping.",
+          nearest_sp->id, (double)nearest_sp->mass, bp->id, (double)bp->mass);
+      continue;
+    }
+
+    nearest_sp->mass = (float)new_star_mass;
+    nearest_sp->gpart->mass = (float)new_star_mass;
+
+    /* Update BH velocity to conserve momentum of the accreted mass,
+     * mirroring the gas nibbling momentum update. */
+    const double bp_mass_orig = (double)bp->mass;
+    const double new_bp_mass = bp_mass_orig + tde_mass_deficit;
+    bp->v[0] = (float)((bp_mass_orig * bp->v[0] +
+                        tde_mass_deficit * nearest_sp->v[0]) / new_bp_mass);
+    bp->v[1] = (float)((bp_mass_orig * bp->v[1] +
+                        tde_mass_deficit * nearest_sp->v[1]) / new_bp_mass);
+    bp->v[2] = (float)((bp_mass_orig * bp->v[2] +
+                        tde_mass_deficit * nearest_sp->v[2]) / new_bp_mass);
 
     /* Add the net accreted mass (excluding radiation) to the BH dynamical
      * mass, consistent with how gas nibbling updates bp->mass. */
-    bp->mass += (float)tde_mass_deficit;
-    bp->gpart->mass += (float)tde_mass_deficit;
+    bp->mass = (float)new_bp_mass;
+    bp->gpart->mass = (float)new_bp_mass;
   }
 }
