@@ -570,6 +570,10 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
   const double aperture_volume =
       (4.0 / 3.0) * M_PI * aperture_phys * aperture_phys * aperture_phys;
 
+  /* Half-life for TDE mass loss: star loses 50% of available mass per Gyr. */
+  const double gyr_in_cgs = 3.15576e16; /* 1 Gyr in seconds */
+  const double t_half = gyr_in_cgs / us->UnitTime_in_cgs;
+  const double ln2_over_t_half = log(2.0) / t_half;
 
   for (int i = 0; i < count; i++) {
 
@@ -628,9 +632,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
      * half-life = 1 Gyr): star_mass_loss_rate = ln(2) / t_half * available_mass.
      * The BH gains less due to radiation: bh_accretion_rate = (1 - epsilon_r)
      * * star_mass_loss_rate. */
-    const double gyr_in_cgs = 3.15576e16; /* 1 Gyr in seconds */
-    const double t_half = gyr_in_cgs / us->UnitTime_in_cgs;
-    const double star_mass_loss_rate = log(2.0) / t_half * available_mass;
+    const double star_mass_loss_rate = ln2_over_t_half * available_mass;
 
     /* Mass changes this timestep. */
     const double star_mass_loss = star_mass_loss_rate * dt;
