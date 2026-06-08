@@ -90,13 +90,16 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
   /* Update the velocities */
   for (int i = 0; i < 3; i++) {
-    const float dv = xp->feedback_data.delta_p[i] / new_mass;
+    const float dp_prime =
+        xp->feedback_data.delta_p_ejecta[i] + xp->feedback_data.delta_p[i];
+    const float dv = dp_prime / new_mass;
 
     xp->v_full[i] += dv;
     p->v[i] += dv;
 
     /* Reset the values */
     xp->feedback_data.delta_p[i] = 0.0;
+    xp->feedback_data.delta_p_ejecta[i] = 0.0;
   }
 
   /* Reset the values */
