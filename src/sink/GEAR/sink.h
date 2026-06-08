@@ -480,7 +480,7 @@ INLINE static int sink_is_forming(
   const float E_kin = sink_data->E_kin_neighbours;
   const float E_tot = E_kin + E_int + E_grav;
 
-  /* const char is_small_enough = kernel_gamma*p->h < sink_cut_off_radius; */
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   if (density > density_threshold) {
     const float pot = p->sink_data.potential;
     const int N_neighbours = p->sink_data.N_neighbours;
@@ -499,7 +499,8 @@ INLINE static int sink_is_forming(
         (E_int < 0.5 * fabs(E_grav)), (E_int + E_rot < fabs(E_grav)),
         (E_tot < 0.0));
   }
-
+#endif
+  
   /* If density > maximal_density_threshold, and we do not overlap with other
      sinks, form a sink. */
   if ((density > maximal_density_threshold) &&
@@ -517,33 +518,43 @@ INLINE static int sink_is_forming(
 
   /* Contracting gas criterion */
   if ((sink_props->sink_formation_contracting_gas_criterion) && (div_v > 0)) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Divergence criterion failed!", p->id);
+#endif    
     return 0;
   }
 
   /* Smoothing length criterion */
   if ((sink_props->sink_formation_smoothing_length_criterion) &&
       (kernel_gamma * h >= sink_cut_off_radius)) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Size criterion failed!", p->id);
+#endif    
     return 0;
   }
 
   /* Jeans instability criterion */
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
       (E_int >= 0.5f * fabs(E_grav))) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Jeans instability criterion 1 failed!", p->id);
+#endif    
     return 0;
   }
 
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
       (E_int + E_rot >= fabs(E_grav))) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Jeans instability criterion 2 failed!", p->id);
+#endif    
     return 0;
   }
 
   /* Bound state criterion */
   if ((sink_props->sink_formation_bound_state_criterion) && (E_tot >= 0)) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Bound state criterion failed!", p->id);
+#endif    
     return 0;
   }
 
@@ -555,7 +566,9 @@ INLINE static int sink_is_forming(
   /* Overlapping existing sinks criterion */
   if (sink_props->sink_formation_overlapping_sink_criterion &&
       sink_data->is_overlapping_sink) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Overlapping sink criterion failed!", p->id);
+#endif
     return 0;
   }
 
