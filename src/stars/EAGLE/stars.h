@@ -147,6 +147,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   sp->count_since_last_enrichment = -1;
   sp->number_of_heating_events = 0.;
   sp->number_of_SNII_events = 0;
+  sp->mass_lost_to_tde = 0.f;
 
   if (stars_properties->overwrite_birth_time)
     sp->birth_time = stars_properties->spart_first_init_birth_time;

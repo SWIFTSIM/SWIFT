@@ -169,7 +169,7 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 44;
+  *num_fields = 45;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -460,6 +460,11 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
   list[43] = io_make_output_field_convert_bpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
       convert_bpart_potential, "Gravitational potentials of the particles");
+
+  list[44] = io_make_output_field(
+      "MassGainedFromTDE", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
+      mass_gained_from_tde,
+      "Cumulative mass gained by this black hole via TDE stellar nibbling.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

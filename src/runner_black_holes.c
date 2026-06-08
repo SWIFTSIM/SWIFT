@@ -570,8 +570,6 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
   const double aperture_volume =
       (4.0 / 3.0) * M_PI * aperture_phys * aperture_phys * aperture_phys;
 
-  /* Radiative efficiency (same as gas accretion). */
-  const double epsilon_r = props->epsilon_r;
 
   for (int i = 0; i < count; i++) {
 
@@ -633,7 +631,6 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     const double gyr_in_cgs = 3.15576e16; /* 1 Gyr in seconds */
     const double t_half = gyr_in_cgs / us->UnitTime_in_cgs;
     const double star_mass_loss_rate = log(2.0) / t_half * available_mass;
-    const double bh_accretion_rate = star_mass_loss_rate * (1.0 - epsilon_r);
 
     /* Mass changes this timestep. */
     const double star_mass_loss = star_mass_loss_rate * dt;
@@ -650,7 +647,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
 
     /* Update BH subgrid mass and energy reservoir. */
     const double bh_mass_gain =
-        black_holes_do_tde_accretion(bp, props, constants, bh_accretion_rate, dt);
+        black_holes_do_tde_accretion(bp, props, constants, star_mass_loss_rate, dt);
 
     message(
         "BH (ID %lld) z=%.4f  rho_stellar=%g (internal)  "
@@ -662,6 +659,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     lock_lock(&s->lock);
     nearest_sp->mass = (float)new_star_mass;
     nearest_sp->gpart->mass = (float)new_star_mass;
+    nearest_sp->mass_lost_to_tde += (float)star_mass_loss;
     if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space.");
 
     /* Update BH velocity to conserve momentum of the accreted mass,
@@ -679,5 +677,6 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
      * mass, consistent with how gas nibbling updates bp->mass. */
     bp->mass = (float)new_bp_mass;
     bp->gpart->mass = (float)new_bp_mass;
+    bp->mass_gained_from_tde += (float)bh_mass_gain;
   }
 }

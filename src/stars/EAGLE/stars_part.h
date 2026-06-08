@@ -91,6 +91,9 @@ struct spart {
   /*! Total number of SNII injection events this star performed */
   int number_of_SNII_events;
 
+  /*! Cumulative mass lost to TDE nibbling by a black hole */
+  float mass_lost_to_tde;
+
   /*! Feedback energy fraction */
   float f_E;
 
