@@ -1225,7 +1225,7 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
                         (float)(pj->x[2])};
 
-  const float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
+  const float dx[3] = {pjx[0] - pix[0], pjx[1] - pix[1], pjx[2] - pix[2]};
   const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
                                 dx[2] * cosmo->a};
   const float r2_physical = dx_physical[0] * dx_physical[0] +
@@ -1245,7 +1245,7 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
                        pj->v[2] - pi->v[2]};
 
   /* Calculate the velocity with the Hubble flow */
-  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], - a2H * dx[1] + dv[1],
                                   a2H * dx[2] + dv[2]};
 
   /* Compute the physical relative velocity between the particles */
