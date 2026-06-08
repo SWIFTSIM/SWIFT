@@ -113,6 +113,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
         bp->id, bp->subgrid_mass);
   }
   bp->total_accreted_mass = 0.f;
+  bp->mass_gained_from_tde = 0.f;
   bp->accretion_rate = 0.f;
   bp->formation_time = -1.f;
   bp->energy_reservoir = 0.f;
@@ -1235,29 +1236,31 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
 /**
  * @brief Compute and apply TDE accretion for a black hole.
  *
- * Adds the given accretion rate to the BH subgrid mass, adds the corresponding
- * luminosity to the energy reservoir, and returns the accreted mass deficit for
- * use in stellar nibbling.
+ * Given the total stellar mass loss rate, computes the net BH mass gain
+ * (after radiative losses), updates the BH subgrid mass and energy reservoir,
+ * and returns the BH mass gain for use in the dynamical mass and momentum update.
  *
  * @param bp The black hole particle.
  * @param props The black hole properties.
  * @param constants The physical constants.
- * @param tde_rate The net BH mass gain rate (after radiative losses) in internal units.
+ * @param star_mass_loss_rate Total rate at which stellar mass is lost (before radiation).
  * @param dt The timestep.
  * @return The mass accreted onto the BH subgrid mass this step.
  */
 __attribute__((always_inline)) INLINE static double black_holes_do_tde_accretion(
     struct bpart *restrict bp, const struct black_holes_props *props,
-    const struct phys_const *constants, const double tde_rate, const double dt) {
+    const struct phys_const *constants, const double star_mass_loss_rate,
+    const double dt) {
 
-  const double tde_mass_deficit = tde_rate * dt;
-  bp->subgrid_mass += tde_mass_deficit;
+  const double epsilon_r = props->epsilon_r;
+  const double bh_mass_gain = (1.0 - epsilon_r) * star_mass_loss_rate * dt;
+  bp->subgrid_mass += bh_mass_gain;
 
   const double c = constants->const_speed_light_c;
   bp->energy_reservoir +=
-      props->epsilon_r * tde_rate * c * c * props->epsilon_f * dt;
+      epsilon_r * star_mass_loss_rate * c * c * props->epsilon_f * dt;
 
-  return tde_mass_deficit;
+  return bh_mass_gain;
 }
 
 /**
@@ -1320,6 +1323,7 @@ INLINE static void black_holes_create_from_gas(
 
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;
+  bp->mass_gained_from_tde = 0.f;
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
   bp->number_of_gas_swallows = 0;

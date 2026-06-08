@@ -147,7 +147,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list, int *num_fields,
                                          const int with_cosmology) {
   /* Say how much we want to write */
-  *num_fields = 14;
+  *num_fields = 15;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -230,6 +230,12 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[13] = io_make_output_field_convert_spart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
       convert_spart_potential, "Gravitational potentials of the particles");
+
+  list[14] = io_make_output_field(
+      "MassLostToTDE", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
+      mass_lost_to_tde,
+      "Cumulative mass lost by this star particle to TDE nibbling by a black "
+      "hole.");
 }
 
 /**

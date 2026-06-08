@@ -95,6 +95,9 @@ struct bpart {
    * from other black holes) */
   float total_accreted_mass;
 
+  /*! Cumulative mass gained via TDE stellar nibbling */
+  float mass_gained_from_tde;
+
   /*! Energy reservoir for feedback */
   float energy_reservoir;
 
