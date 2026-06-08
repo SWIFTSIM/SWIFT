@@ -110,27 +110,27 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
     /* Gather all in a variable */
     dp_prime[i] = dp_ejecta[i] + dp[i];
   }
+
   /* Norm of physical velocities of the gas particle j */
-  const float norm2_v_p =
+  const float norm2_v_j_p =
       v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
 
   /* ----- Calculate physical Energy and internal Energy received ------ */
-  const double norm2_delta_p_lab_frame =
-      dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
-  const double norm2_delta_p = w_j_bar_norm * w_j_bar_norm * p_ej * p_ej;
+  const double dp_prime_norm2 =
+      dp_prime[0] * dp_prime[0] + dp_prime[1] * dp_prime[1] + dp_prime[2] * dp_prime[2];
+  const double dp_norm2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
 
   /* The energy ejected from the star particle i by stellar wind that is
    * actually received by the gas particle j */
-  const double weighted_energy = w_j_bar_norm * E_ej;
+  const double dE = w_j_bar_norm * E_ej;
 
   /* The additional energy received by the gas particle j due to the
    * momentum of the star particle i */
-  const double dE_change_of_frame =
-      0.5 * (norm2_delta_p_lab_frame - norm2_delta_p) / dm;
+  const double dE_change_of_frame = 0.5 * (dp_prime_norm2 - dp_norm2) / dm;
 
   /* The total energy received from the gas particle j in the laboratory
    * frame of reference */
-  const double dE_lab_frame = weighted_energy + dE_change_of_frame;
+  const double dE_lab_frame = dE + dE_change_of_frame;
 
   /* The momentum of the gas particle j after receiving the momentum from
    * stellar wind */
