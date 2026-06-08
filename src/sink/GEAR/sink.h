@@ -683,15 +683,16 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->mass += gas_mass;
   sp->gpart->mass += gas_mass;
 
-  /* Comoving and physical distance between the particles */
-  const float dx[3] = {sp->x[0] - p->x[0], sp->x[1] - p->x[1],
-                       sp->x[2] - p->x[2]};
+  /* Comoving and physical distance between the particles. We set our frame of
+     reference on the sink particle. */
+  const float dx[3] = {p->x[0] - sp->x[0], p->x[1] - sp->x[1],
+                       p->x[2] - sp->x[2]};
   const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
                                 dx[2] * cosmo->a};
 
   /* Relative velocity between the sink and the part */
-  const float dv[3] = {sp->v[0] - p->v[0], sp->v[1] - p->v[1],
-                       sp->v[2] - p->v[2]};
+  const float dv[3] = {p->v[0] - sp->v[0], p->v[1] - sp->v[1],
+                       p->v[2] - sp->v[2]};
 
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -1225,7 +1226,7 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
                         (float)(pj->x[2])};
 
-  const float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
+  const float dx[3] = {pjx[0] - pix[0], pjx[1] - pix[1], pjx[2] - pix[2]};
   const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
                                 dx[2] * cosmo->a};
   const float r2_physical = dx_physical[0] * dx_physical[0] +
@@ -1245,7 +1246,7 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
                        pj->v[2] - pi->v[2]};
 
   /* Calculate the velocity with the Hubble flow */
-  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], - a2H * dx[1] + dv[1],
                                   a2H * dx[2] + dv[2]};
 
   /* Compute the physical relative velocity between the particles */
@@ -1278,19 +1279,27 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
         0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
     pi->sink_data.max_potential =
         max(pi->sink_data.max_potential, pj->sink_data.potential);
-  }
 
-  /* Compute rotation energies per component */
-  pi->sink_data.E_rot_neighbours[0] +=
-      0.5 * mj * specific_angular_momentum[0] * specific_angular_momentum[0] /
-      sqrtf(dx_physical[1] * dx_physical[1] + dx_physical[2] * dx_physical[2]);
-  pi->sink_data.E_rot_neighbours[1] +=
-      0.5 * mj * specific_angular_momentum[1] * specific_angular_momentum[1] /
-      sqrtf(dx_physical[0] * dx_physical[0] + dx_physical[2] * dx_physical[2]);
-  pi->sink_data.E_rot_neighbours[2] +=
-      0.5 * mj * specific_angular_momentum[2] * specific_angular_momentum[2] /
-      sqrtf(dx_physical[0] * dx_physical[0] + dx_physical[1] * dx_physical[1]);
+    /* Compute rotation energies per component */
+    const float Dx = dx_physical[0];
+    const float Dy = dx_physical[1];
+    const float Dz = dx_physical[2];
+    const float R_yz = sqrtf(Dy * Dy + Dz * Dz);
+    const float R_xz = sqrtf(Dx * Dx + Dz * Dz);
+    const float R_xy = sqrtf(Dx * Dx + Dy * Dy);
+    const float L_x2 =
+        specific_angular_momentum[0] * specific_angular_momentum[0];
+    const float L_y2 =
+        specific_angular_momentum[1] * specific_angular_momentum[1];
+    const float L_z2 = specific_angular_momentum[2] * specific_angular_momentum[2];
 
+    /* Limiting behaviour when R=0:
+		 L = R*v_phi => E_rot = 0.5*m*L^2/R = 0.5*m*R*v_phi^2.
+       So, if R = 0, then E_rot = 0. */
+    if (R_yz > 0.0) pi->sink_data.E_rot_neighbours[0] += 0.5 * mj * L_x2 / R_yz;
+    if (R_xz > 0.0) pi->sink_data.E_rot_neighbours[1] += 0.5 * mj * L_y2 / R_xz;
+    if (R_xy > 0.0) pi->sink_data.E_rot_neighbours[2] += 0.5 * mj * L_z2 / R_xy;
+  }  
   /* Shall we reset the values of the energies for the next timestep? No, it is
      done in cell_drift.c and space_init.c, for active particles. The
      potential is set in runner_others.c->runner_do_end_grav_force() */
