@@ -205,6 +205,7 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
     double dp_ejecta[3]) {
 
   const float dm_inv = 1.0 / dm;
+  const double new_mass_inv = 1.0 / new_mass;
 
   /* ... physical momentum */
   const double p_ej = sqrt(2 * m_ej * E_ej);
