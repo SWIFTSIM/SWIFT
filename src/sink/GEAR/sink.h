@@ -520,6 +520,11 @@ INLINE static int sink_is_forming(
   }
   /* Here we have density >= density_threshold */
 
+  /* Temperature criterion */
+  if (temperature > temperature_threshold) {
+    return 0;
+  }
+
   /* Contracting gas criterion */
   if ((sink_props->sink_formation_contracting_gas_criterion) && (div_v > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
