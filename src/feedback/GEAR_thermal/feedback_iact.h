@@ -149,9 +149,9 @@ runner_iact_nonsym_feedback_apply(
                               si->v[2] * a_inv};
 
       /* Physical velocities of the gas particle j. */
-      const float v_j_p[3] = {- a_dot * dx[0] + xpj->v_full[0] * a_inv,
-                              - a_dot * dx[1] + xpj->v_full[1] * a_inv,
-                              - a_dot * dx[2] + xpj->v_full[2] * a_inv};
+      const float v_j_p[3] = {-a_dot * dx[0] + xpj->v_full[0] * a_inv,
+                              -a_dot * dx[1] + xpj->v_full[1] * a_inv,
+                              -a_dot * dx[2] + xpj->v_full[2] * a_inv};
 
       const float r_p = sqrtf(r2) * a;
       const float dx_p[3] = {dx[0] * a, dx[1] * a, dx[2] * a};

@@ -405,9 +405,9 @@ runner_iact_nonsym_feedback_apply(
   /* The Hubble flow term is relative wrt the star particle, hence dx = 0. For
    * the gas, we use -dx = pj - si. */
   const float vi_plus_H_flow[3] = {si->v[0], si->v[1], si->v[2]};
-  const float vj_plus_H_flow[3] = {- a2H * dx[0] + xpj->v_full[0],
-                                   - a2H * dx[1] + xpj->v_full[1],
-                                   - a2H * dx[2] + xpj->v_full[2]};
+  const float vj_plus_H_flow[3] = {-a2H * dx[0] + xpj->v_full[0],
+                                   -a2H * dx[1] + xpj->v_full[1],
+                                   -a2H * dx[2] + xpj->v_full[2]};
 
   /* Compute the _physical_ relative velocity between the particles. */
   const float v_i_p[3] = {vi_plus_H_flow[0] * a_inv, vi_plus_H_flow[1] * a_inv,

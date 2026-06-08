@@ -116,8 +116,9 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
       v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
 
   /* ----- Calculate physical Energy and internal Energy received ------ */
-  const double dp_prime_norm2 =
-      dp_prime[0] * dp_prime[0] + dp_prime[1] * dp_prime[1] + dp_prime[2] * dp_prime[2];
+  const double dp_prime_norm2 = dp_prime[0] * dp_prime[0] +
+                                dp_prime[1] * dp_prime[1] +
+                                dp_prime[2] * dp_prime[2];
   const double dp_norm2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
 
   /* The energy ejected from the star particle i by stellar wind that is
@@ -203,7 +204,7 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
     const struct unit_system *us, double *dU, double *dKE, double dp[3],
     double dp_ejecta[3]) {
 
-  const float dm_inv = 1.0/dm;
+  const float dm_inv = 1.0 / dm;
 
   /* ... physical momentum */
   const double p_ej = sqrt(2 * m_ej * E_ej);
@@ -230,7 +231,7 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
                                  dp_prime[1] * dp_prime[1] +
                                  dp_prime[2] * dp_prime[2];
   const double dE = w_j_bar_norm * E_ej;
-  const double dE_prime = dE + 0.5 * (dp_prime_norm_2 - dp_norm_2) *dm_inv;
+  const double dE_prime = dE + 0.5 * (dp_prime_norm_2 - dp_norm_2) * dm_inv;
 
   /* Now, we take into account for potentially unresolved energy-conserving
      phase of the SN explosion. If we cannot resolve this phase, we give mostly
