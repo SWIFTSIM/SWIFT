@@ -441,11 +441,12 @@ runner_iact_nonsym_feedback_apply(
     /* Now we treat the fluxes distribution differently for each mode */
     double dU_SW = 0.0;
     double dKE_SW = 0.0;
-    double dp_prime_SW[3] = {0.0, 0.0, 0.0};
+    double dp_SW[3] = {0.0, 0.0, 0.0};
+    double dp_ejecta_SW[3] = {0.0, 0.0, 0.0};
     runner_iact_nonsym_mechanical_stellar_winds_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SW, m_ej, mj,
         dm_SW, new_mass, cosmo, fb_props, phys_const, us, &dU_SW, &dKE_SW,
-        dp_prime_SW);
+        dp_SW, dp_ejecta_SW);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -454,7 +455,8 @@ runner_iact_nonsym_feedback_apply(
 #if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
     /* Convert to comoving units */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dp_prime_SW[i] * a;
+      xpj->feedback_data.delta_p[i] += dp_SW[i] * a;
+      xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SW[i] * a;
     }
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
@@ -510,10 +512,12 @@ runner_iact_nonsym_feedback_apply(
     /* Now we treat the fluxes distribution differently for each mode */
     double dU = 0.0;
     double dKE = 0.0;
-    double dp_prime[3] = {0.0, 0.0, 0.0};
+    double dp_SN[3] = {0.0, 0.0, 0.0};
+    double dp_ejecta_SN[3] = {0.0, 0.0, 0.0};
     runner_iact_nonsym_mechanical_feedback_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SN, m_ej, mj,
-        dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_prime);
+        dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_SN,
+        dp_ejecta_SN);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -522,7 +526,8 @@ runner_iact_nonsym_feedback_apply(
 #if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
     /* Convert to comoving units */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dp_prime[i] * a;
+      xpj->feedback_data.delta_p[i] += dp_SN[i] * a;
+      xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SN[i] * a;
     }
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 

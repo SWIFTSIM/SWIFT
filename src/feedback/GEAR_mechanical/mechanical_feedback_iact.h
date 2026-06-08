@@ -79,7 +79,8 @@ mechanical_feedback_accumulate_fluxes_for_conservation_check(
  * @param dU (return) Internal energy to distribute to gas particle j.
  * @param dKE (return) Kinetic energy variation before and after the SN
  * feedback.
- * @param dp_prime (return) Momentum to distribute to gas particle j.
+ * @param dp (return) Momemtum from mechanical feedback to distribute j.
+ * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_1_stellar_winds_apply(
@@ -88,20 +89,27 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
+    const struct unit_system *us, double *dU, double *dKE, double dp[3],
+    double dp_ejecta[3]) {
+
+  const double new_mass_inv = 1.0 / new_mass;
 
   /* --------------- Compute physical momentum received ---------------- */
   /* Total momentum ejected by the winds during the timestep from the star
    * particle i */
   const float p_ej = sqrt(2.0 * m_ej * E_ej);
-  const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-                        w_j_bar[2] * p_ej};
+  double dp_prime[3] = {0.0};
 
-  /* Now boost to the 'laboratory' frame */
   for (int i = 0; i < 3; i++) {
-    dp_prime[i] = dp[i] + dm * v_i_p[i];
-  }
+    /* Now, we can compute dp */
+    dp[i] = w_j_bar[i] * p_ej;
 
+    /* And the boost to the 'laboratory' frame */
+    dp_ejecta[i] = dm * v_i_p[i];
+
+    /* Gather all in a variable */
+    dp_prime[i] = dp_ejecta[i] + dp[i];
+  }
   /* Norm of physical velocities of the gas particle j */
   const float norm2_v_p =
       v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
@@ -132,23 +140,28 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
                               p_new[2] * p_new[2]};
 
   /* The new and old kinetic energy of the gas particle j */
-  const double E_kin_old = 0.5 * mj * norm2_v_p;
-  const double E_kin_new = 0.5 * norm2_p_new / new_mass;
-  *dKE = E_kin_new - E_kin_old;
+  const double E_kin_old = 0.5 * mj * norm2_v_j_p;
+  const double E_kin_new = 0.5 * norm2_p_new * new_mass_inv;
 
   /* The additional internal energy of the gas particle j.
      Ekin_new + U_new = Ekin_old + U_old + dEtot
      -> dU = (U_new - U_old) = (Ekin_old + dEtot - Ekin_new) */
   *dU = E_kin_old + dE_lab_frame - E_kin_new;
 
+  /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
+     which simplifies the formulas. */
+  *dKE = 0.5 * dp_norm2 * new_mass_inv;
+
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  const double dE_kin = E_kin_new - E_kin_old;
   const double U_old = hydro_get_physical_internal_energy(pj, xpj, cosmo);
   message(
-      "E_ej = %e, p_ej = %e, E_new = %e, U_new = %e, E_kin_new = %e, "
-      "E_old = %e, U_old = %e, E_kin_old = %e, dE_prime = %e, dU = %e",
+      "E_ej = %e, p_ej = %e | E_new = %e, U_new = %e, E_kin_new = %e, "
+      "E_old = %e, U_old = %e, E_kin_old = %e | dE_prime = %e, dU = %e, "
+      "dE_kin = %e, dKE_gas_frame = %e",
       E_ej, p_ej, E_new, U_new, E_kin_new, E_old, U_old, E_kin_old,
-      dE_change_lab_frame, *dU);
-#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
+      dE_change_lab_frame, *dU, dE_kin, *dKE);
+#endif /* SWIFT_FEEDBACK_DEBUG CHECKS */
 }
 
 /**
@@ -177,7 +190,8 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
  * @param dU (return) Internal energy to distribute to gas particle j.
  * @param dKE (return) Kinetic energy variation before and after the SN
  * feedback.
- * @param dp_prime (return) Momentum to distribute to gas particle j.
+ * @param dp (return) Momemtum from mechanical feedback to distribute j.
+ * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_1_supernovae_apply(
@@ -186,30 +200,42 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
+    const struct unit_system *us, double *dU, double *dKE, double dp[3],
+    double dp_ejecta[3]) {
+
+  const float dm_inv = 1.0/dm;
 
   /* ... physical momentum */
   const double p_ej = sqrt(2 * m_ej * E_ej);
-  const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-                        w_j_bar[2] * p_ej};
-  const double dE = w_j_bar_norm * E_ej;
+  double dp_prime[3] = {0.0};
 
-  /* Now boost to the 'laboratory' frame */
-  dp_prime[0] = dp[0] + dm * v_i_p[0];
-  dp_prime[1] = dp[1] + dm * v_i_p[1];
-  dp_prime[2] = dp[2] + dm * v_i_p[2];
+  for (int i = 0; i < 3; i++) {
+    /* Now, we can compute dp */
+    dp[i] = w_j_bar[i] * p_ej;
+
+    /* And the boost to the 'laboratory' frame */
+    dp_ejecta[i] = dm * v_i_p[i];
+
+    /* Gather all in a variable */
+    dp_prime[i] = dp_ejecta[i] + dp[i];
+  }
+
+  /* Norm of physical velocities of the gas particle j */
+  const float norm2_v_j_p =
+      v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2];
 
   /* ... physical total energy */
   const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   const double dp_prime_norm_2 = dp_prime[0] * dp_prime[0] +
                                  dp_prime[1] * dp_prime[1] +
                                  dp_prime[2] * dp_prime[2];
-  const double dE_prime = dE + 0.5 * (dp_prime_norm_2 - dp_norm_2) / dm;
+  const double dE = w_j_bar_norm * E_ej;
+  const double dE_prime = dE + 0.5 * (dp_prime_norm_2 - dp_norm_2) *dm_inv;
 
   /* Now, we take into account for potentially unresolved energy-conserving
      phase of the SN explosion. If we cannot resolve this phase, we give mostly
      momentum. The thermal energy will be radiated away because of cooling. */
-  const double PdV_work_fraction = sqrt(1 + mj / dm);
+  const double PdV_work_fraction = sqrt(1 + mj * dm_inv);
   const double p_terminal = feedback_get_physical_SN_terminal_momentum(
       si, pj, xpj, phys_const, us, fb_props, cosmo);
 
@@ -220,9 +246,16 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
      radiated away. Thus, the factor to multiply dp_prime is: */
   const double p_factor = min(PdV_work_fraction, p_terminal / p_ej);
 
-  dp_prime[0] *= p_factor;
-  dp_prime[1] *= p_factor;
-  dp_prime[2] *= p_factor;
+  for (int i = 0; i < 3; i++) {
+    /* Now, we can compute dp */
+    dp[i] *= p_factor;
+
+    /* And the boost to the 'laboratory' frame */
+    dp_ejecta[i] *= p_factor;
+
+    /* Gather all in a variable */
+    dp_prime[i] *= p_factor;
+  }
 
   /* Note: Changing dp_prime after computing the total energy is correct. The
      total energy does not specify how much energy goes into kinetic and
@@ -234,18 +267,14 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
 
   /* ... physical internal energy */
   /* Compute kinetic energy difference before and after SN */
-  const double p_old_norm_2 =
-      mj * mj *
-      (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
   const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
                            mj * v_j_p[1] + dp_prime[1],
                            mj * v_j_p[2] + dp_prime[2]};
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
-  const double E_kin_old = 0.5 * p_old_norm_2 / mj;
+  const double E_kin_old = 0.5 * norm2_v_j_p * mj;
   const double E_kin_new = 0.5 * p_new_norm_2 / new_mass;
-  *dKE = E_kin_new - E_kin_old;
 
   const double U_old = hydro_get_physical_internal_energy(pj, xpj, cosmo);
   const double E_old = U_old + E_kin_old;
@@ -255,15 +284,9 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
   /* Compute the physical internal energy */
   *dU = U_new - U_old;
 
-#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
-  message(
-      "E_ej = %e, p_ej = %e, p_terminal = %e, p_factor = %e, "
-      "E_new = %e, U_new = %e, E_kin_new = %e, "
-      "E_old = %e, U_old = %e, E_kin_old = %e, "
-      "dE_prime = %e, dU = %e",
-      E_ej, p_ej, p_terminal, p_factor, E_new, U_new, E_kin_new, E_old, U_old,
-      E_kin_old, dE_prime, *dU);
-#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
+  /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
+     which simplifies the formulas. */
+  *dKE = 0.5 * dp_norm_2 * new_mass_inv;
 
   /* Compute the comoving cooling radius */
   const float r_cool = cosmo->a_inv * feedback_get_physical_SN_cooling_radius(
@@ -279,6 +302,15 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
             r_cool);
 #endif /* SWIFT_DEBUG_CHECKS */
   } /* else we do not change dU */
+
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  message(
+      "E_ej = %e, p_ej = %e | p_terminal = %e, p_factor = %e | E_new = %e, "
+      "U_new = %e, E_kin_new = %e, E_old = %e, U_old = %e, E_kin_old = %e "
+      "| dE_prime = %e, dU = %e",
+      E_ej, p_ej, p_terminal, p_factor, E_new, U_new, E_kin_new, E_old, U_old,
+      E_kin_old, dE_prime, *dU);
+#endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 
   mechanical_feedback_accumulate_fluxes_for_conservation_check(si, dm, dp, m_ej,
                                                                p_ej, E_ej);
@@ -318,7 +350,8 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
  * @param dU (return) Internal energy to distribute to gas particle j.
  * @param dKE (return) Kinetic energy variation before and after the SN
  * feedback.
- * @param dp_prime (return) Momentum to distribute to gas particle j.
+ * @param dp (return) Momemtum from mechanical feedback to distribute j.
+ * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_2_stellar_winds_apply(
@@ -327,10 +360,9 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
+    const struct unit_system *us, double *dU, double *dKE, double dp[3],
+    double dp_ejecta[3]) {
 
-  const double mj_2 = mj * mj;
-  const double mj_inv = 1.0 / mj;
   const double new_mass_inv = 1.0 / new_mass;
 
   /* Compute the relevant variables from the accumulators. */
@@ -345,37 +377,44 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
      the ejected velocity is */
   const double p_ej = sqrt(2.0 * epsilon * m_ej);
 
-  /* Now, we can compute dp */
-  const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-                        w_j_bar[2] * p_ej};
+  for (int i = 0; i < 3; i++) {
+    /* Now, we can compute dp */
+    dp[i] = w_j_bar[i] * p_ej;
 
-  /* Now boost to the 'laboratory' frame */
-  dp_prime[0] = dp[0] + dm * v_i_p[0];
-  dp_prime[1] = dp[1] + dm * v_i_p[1];
-  dp_prime[2] = dp[2] + dm * v_i_p[2];
+    /* And the boost to the 'laboratory' frame */
+    dp_ejecta[i] = dm * v_i_p[i];
+  }
 
   /* ... physical internal energy */
   const double U_tot = E_tot - epsilon * (beta_2 + 2.0 * beta_1);
   *dU = w_j_bar_norm * U_tot;
 
+  /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
+     which simplifies the formulas. */
+  const double dp_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+  *dKE = 0.5 * dp_2 * new_mass_inv;
+
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   /* Compute kinetic energy difference before and after SN */
+  const double mj_2 = mj * mj;
+  const double mj_inv = 1.0 / mj;
   const double p_old_norm_2 =
       mj_2 * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
-  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
-                           mj * v_j_p[1] + dp_prime[1],
-                           mj * v_j_p[2] + dp_prime[2]};
+  const double p_new[3] = {mj * v_j_p[0] + dp_ejecta[0] + dp[0],
+                           mj * v_j_p[1] + dp_ejecta[1] + dp[1],
+                           mj * v_j_p[2] + dp_ejecta[2] + dp[2]};
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
   const double E_kin_old = 0.5 * p_old_norm_2 * mj_inv;
   const double E_kin_new = 0.5 * p_new_norm_2 * new_mass_inv;
-  *dKE = E_kin_new - E_kin_old;
-
-#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  const double dE_kin = E_kin_new - E_kin_old;
   message(
-      "beta_1 = %e, beta_2 = %e, E_ej = %e, E_tot = %e, U_tot = %e, "
-      "E_kin_tot = %e, p_ej = %e, dU = %e",
-      beta_1, beta_2, E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, *dU);
+      "beta_1 = %e, beta_2 = %e | E_ej = %e, p_ej = %e | E_tot = %e, U_tot = "
+      "%e, E_kin_tot = %e | E_kin_old = %e, E_kin_new = %e | dU = %e, "
+      "f_therm = %e, dE_kin = %e, dKE_gas_frame = %e",
+      beta_1, beta_2, E_ej, p_ej, E_tot, U_tot, epsilon, E_kin_old, E_kin_new,
+      *dU, f_therm, dE_kin, *dKE);
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 }
 
@@ -406,7 +445,8 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
  * @param dU (return) Internal energy to distribute to gas particle j.
  * @param dKE (return) Kinetic energy variation before and after the SN
  * feedback.
- * @param dp_prime (return) Momentum to distribute to gas particle j.
+ * @param dp (return) Momemtum from mechanical feedback to distribute j.
+ * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_2_supernovae_apply(
@@ -415,10 +455,9 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
+    const struct unit_system *us, double *dU, double *dKE, double dp[3],
+    double dp_ejecta[3]) {
 
-  const double mj_2 = mj * mj;
-  const double mj_inv = 1.0 / mj;
   const double new_mass_inv = 1.0 / new_mass;
   const double f_kin_0 = fb_props->f_kin_0;
 
@@ -440,19 +479,18 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
   const double p_available = sqrt(2.0 * epsilon * m_ej);
   const double p_terminal = feedback_get_physical_SN_terminal_momentum(
       si, pj, xpj, phys_const, us, fb_props, cosmo);
-  const double xsi = min(1, p_terminal / (psi * p_available));
+  const double xsi = min(1.0, p_terminal / (psi * p_available));
 
   /* Finally, the ejected velocity is */
   const double p_ej = psi * xsi * p_available;
 
-  /* Now, we can compute dp */
-  const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
-                        w_j_bar[2] * p_ej};
+  for (int i = 0; i < 3; i++) {
+    /* Now, we can compute dp */
+    dp[i] = w_j_bar[i] * p_ej;
 
-  /* Now boost to the 'laboratory' frame */
-  dp_prime[0] = dp[0] + dm * v_i_p[0];
-  dp_prime[1] = dp[1] + dm * v_i_p[1];
-  dp_prime[2] = dp[2] + dm * v_i_p[2];
+    /* And the boost to the 'laboratory' frame */
+    dp_ejecta[i] = dm * v_i_p[i];
+  }
 
   /* ... physical internal energy */
   const double factor =
@@ -461,29 +499,35 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
   const double U_tot = f_therm * E_tot;
   *dU = w_j_bar_norm * U_tot;
 
+  /* In the frame of the gas particle. Note that v_j_p = 0 in this frame,
+     which simplifies the formulas. */
+  const double dp_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+  *dKE = 0.5 * dp_2 * new_mass_inv;
+
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   /* Compute kinetic energy difference before and after SN */
+  const double mj_2 = mj * mj;
+  const double mj_inv = 1.0 / mj;
   const double p_old_norm_2 =
       mj_2 * (v_j_p[0] * v_j_p[0] + v_j_p[1] * v_j_p[1] + v_j_p[2] * v_j_p[2]);
-  const double p_new[3] = {mj * v_j_p[0] + dp_prime[0],
-                           mj * v_j_p[1] + dp_prime[1],
-                           mj * v_j_p[2] + dp_prime[2]};
+  const double p_new[3] = {mj * v_j_p[0] + dp_ejecta[0] + dp[0],
+                           mj * v_j_p[1] + dp_ejecta[1] + dp[1],
+                           mj * v_j_p[2] + dp_ejecta[2] + dp[2]};
   const double p_new_norm_2 =
       p_new[0] * p_new[0] + p_new[1] * p_new[1] + p_new[2] * p_new[2];
 
   const double E_kin_old = 0.5 * p_old_norm_2 * mj_inv;
   const double E_kin_new = 0.5 * p_new_norm_2 * new_mass_inv;
-  *dKE = E_kin_new - E_kin_old;
+  const double dE_kin = E_kin_new - E_kin_old;
 
-#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   message(
       "beta_1 = %e, beta_2 = %e, psi = %e, psi*p_available = %e, p_available = "
-      "%e",
-      beta_1, beta_2, psi, psi * p_available, p_available);
-  message("xsi = %e, p_t = %e", xsi, p_terminal);
-  message(
-      "E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, "
-      "p_terminal = %e, dU = %e, f_therm = %e",
-      E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, *dU, f_therm);
+      "%e | xsi = %e, p_t = %e | E_ej = %e, p_ej = %e | E_tot = %e, U_tot = %e"
+      ", E_kin_tot = %e | E_kin_old = %e, E_kin_new = %e | p_terminal = %e, "
+      "dU = %e, f_therm = %e, dE_kin = %e, dKE_gas_frame = %e",
+      beta_1, beta_2, psi, psi * p_available, p_available, xsi, p_terminal,
+      E_ej, p_ej, E_tot, U_tot, epsilon, E_kin_old, E_kin_new, p_terminal, *dU,
+      f_therm, dE_kin, *dKE);
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
 
   /* Now we accumulate to verify the conservation of the fluxes. */
@@ -522,7 +566,8 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
  * @param dU (return) Internal energy to distribute to gas particle j.
  * @param dKE (return) Kinetic energy variation before and after the SN
  * feedback.
- * @param dp_prime (return) Momemtum to distribute to gas particle j.
+ * @param dp (return) Momemtum from mechanical feedback to distribute j.
+ * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_stellar_winds_apply(
@@ -531,16 +576,17 @@ runner_iact_nonsym_mechanical_stellar_winds_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
+    const struct unit_system *us, double *dU, double *dKE, double dp[3],
+    double dp_ejecta[3]) {
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   runner_iact_nonsym_mechanical_1_stellar_winds_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
-      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp_prime);
+      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp, dp_ejecta);
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
   runner_iact_nonsym_mechanical_2_stellar_winds_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
-      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp_prime);
+      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp, dp_ejecta);
 #else
 #error "Mechanical feedback only supports mode 1 and 2"
 #endif
@@ -573,7 +619,8 @@ runner_iact_nonsym_mechanical_stellar_winds_apply(
  * @param dU (return) Internal energy to distribute to gas particle j.
  * @param dKE (return) Kinetic energy variation before and after the SN
  * feedback.
- * @param dp_prime (return) Momemtum to distribute to gas particle j.
+ * @param dp (return) Momemtum from mechanical feedback to distribute j.
+ * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_feedback_apply(
@@ -582,16 +629,17 @@ runner_iact_nonsym_mechanical_feedback_apply(
     const float v_j_p[3], const float E_ej, const float m_ej, const float mj,
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, double *dU, double *dKE, double dp_prime[3]) {
+    const struct unit_system *us, double *dU, double *dKE, double dp[3],
+    double dp_ejecta[3]) {
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   runner_iact_nonsym_mechanical_1_supernovae_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
-      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp_prime);
+      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp, dp_ejecta);
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
   runner_iact_nonsym_mechanical_2_supernovae_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
-      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp_prime);
+      new_mass, cosmo, fb_props, phys_const, us, dU, dKE, dp, dp_ejecta);
 #else
 #error "Mechanical feedback only supports mode 1 and 2"
 #endif
