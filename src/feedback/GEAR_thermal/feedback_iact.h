@@ -142,15 +142,16 @@ runner_iact_nonsym_feedback_apply(
       const float H = cosmo->H;
       const float a_dot = a * H;
 
-      /* physical velocities of the star particle i */
-      const float v_i_p[3] = {a_dot * si->x[0] + si->v[0] * a_inv,
-                              a_dot * si->x[1] + si->v[1] * a_inv,
-                              a_dot * si->x[2] + si->v[2] * a_inv};
+      /* Physical velocities of the star particle i. The Hubble flow term is
+         relative wrt the star particle. Hence, for the star, dx = 0 ; for the
+         gas, we use -dx = pj - si. */
+      const float v_i_p[3] = {si->v[0] * a_inv, si->v[1] * a_inv,
+                              si->v[2] * a_inv};
 
-      /* physical velocities of the gas particle j */
-      const float v_j_p[3] = {a_dot * pj->x[0] + xpj->v_full[0] * a_inv,
-                              a_dot * pj->x[1] + xpj->v_full[1] * a_inv,
-                              a_dot * pj->x[2] + xpj->v_full[2] * a_inv};
+      /* Physical velocities of the gas particle j. */
+      const float v_j_p[3] = {- a_dot * dx[0] + xpj->v_full[0] * a_inv,
+                              - a_dot * dx[1] + xpj->v_full[1] * a_inv,
+                              - a_dot * dx[2] + xpj->v_full[2] * a_inv};
 
       const float r_p = sqrtf(r2) * a;
       const float dx_p[3] = {dx[0] * a, dx[1] * a, dx[2] * a};

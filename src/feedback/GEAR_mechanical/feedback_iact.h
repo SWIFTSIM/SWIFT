@@ -396,19 +396,20 @@ runner_iact_nonsym_feedback_apply(
   float dm_SN = 0.0;
   float total_momentum_kick_p[3] = {0.0, 0.0, 0.0};
 
-  /* Calculate the velocity with the Hubble flow */
+  /* Calculate the velocity with the Hubble flow. */
   const float a = cosmo->a;
   const float a_inv = cosmo->a_inv;
   const float H = cosmo->H;
   const float a2H = a * a * H;
-  const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0],
-                                   a2H * si->x[1] + si->v[1],
-                                   a2H * si->x[2] + si->v[2]};
-  const float vj_plus_H_flow[3] = {a2H * pj->x[0] + xpj->v_full[0],
-                                   a2H * pj->x[1] + xpj->v_full[1],
-                                   a2H * pj->x[2] + xpj->v_full[2]};
 
-  /* Compute the _physical_ relative velocity between the particles */
+  /* The Hubble flow term is relative wrt the star particle, hence dx = 0. For
+   * the gas, we use -dx = pj - si. */
+  const float vi_plus_H_flow[3] = {si->v[0], si->v[1], si->v[2]};
+  const float vj_plus_H_flow[3] = {- a2H * dx[0] + xpj->v_full[0],
+                                   - a2H * dx[1] + xpj->v_full[1],
+                                   - a2H * dx[2] + xpj->v_full[2]};
+
+  /* Compute the _physical_ relative velocity between the particles. */
   const float v_i_p[3] = {vi_plus_H_flow[0] * a_inv, vi_plus_H_flow[1] * a_inv,
                           vi_plus_H_flow[2] * a_inv};
 
