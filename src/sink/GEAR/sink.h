@@ -683,15 +683,16 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->mass += gas_mass;
   sp->gpart->mass += gas_mass;
 
-  /* Comoving and physical distance between the particles */
-  const float dx[3] = {sp->x[0] - p->x[0], sp->x[1] - p->x[1],
-                       sp->x[2] - p->x[2]};
+  /* Comoving and physical distance between the particles. We set our frame of
+     reference on the sink particle. */
+  const float dx[3] = {p->x[0] - sp->x[0], p->x[1] - sp->x[1],
+                       p->x[2] - sp->x[2]};
   const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
                                 dx[2] * cosmo->a};
 
   /* Relative velocity between the sink and the part */
-  const float dv[3] = {sp->v[0] - p->v[0], sp->v[1] - p->v[1],
-                       sp->v[2] - p->v[2]};
+  const float dv[3] = {p->v[0] - sp->v[0], p->v[1] - sp->v[1],
+                       p->v[2] - sp->v[2]};
 
   const float a = cosmo->a;
   const float H = cosmo->H;
