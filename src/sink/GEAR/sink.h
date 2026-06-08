@@ -483,7 +483,7 @@ INLINE static int sink_is_forming(
   const float E_rot = sink_compute_neighbour_rotation_energy_magnitude(p);
   const float E_kin = sink_data->E_kin_neighbours;
   const float E_tot = E_kin + E_int + E_grav;
-  
+
   /* If density > maximal_density_threshold, and we do not overlap with other
      sinks, form a sink. */
   if ((density > maximal_density_threshold) &&
@@ -503,19 +503,19 @@ INLINE static int sink_is_forming(
   const float pot = p->sink_data.potential;
   const int N_neighbours = p->sink_data.N_neighbours;
   message(
-	  "[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
-	  " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e,"
-	  " N_neighbours = %i, M_tot = %e | E_int = %e, E_grav = %e, "
-	  "E_grav_unormalized = %e, "
-	  "E_grav_max = %e, E_rot = %e, E_kin =%e, E_tot = %e | E_int < "
-	  "0.5*|E_grav| = %i, "
-	  "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
-	  p->id, density_threshold, maximal_density_threshold,
-	  temperature_threshold, sink_cut_off_radius, density, temperature, div_v,
-	  h, pot, max_potential, N_neighbours, M_tot, E_int, E_grav,
-	  sink_data->E_pot_neighbours, E_grav_max, E_rot, E_kin, E_tot,
-	  (E_int < 0.5 * fabs(E_grav)), (E_int + E_rot < fabs(E_grav)),
-	  (E_tot < 0.0));
+      "[%lld] rho_thr1 = %e, rho_thr2 = %e, T_thr = %e, r_acc = %e | "
+      " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e,"
+      " N_neighbours = %i, M_tot = %e | E_int = %e, E_grav = %e, "
+      "E_grav_unormalized = %e, "
+      "E_grav_max = %e, E_rot = %e, E_kin =%e, E_tot = %e | E_int < "
+      "0.5*|E_grav| = %i, "
+      "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
+      p->id, density_threshold, maximal_density_threshold,
+      temperature_threshold, sink_cut_off_radius, density, temperature, div_v,
+      h, pot, max_potential, N_neighbours, M_tot, E_int, E_grav,
+      sink_data->E_pot_neighbours, E_grav_max, E_rot, E_kin, E_tot,
+      (E_int < 0.5 * fabs(E_grav)), (E_int + E_rot < fabs(E_grav)),
+      (E_tot < 0.0));
 #endif
 
   /* Temperature criterion */
@@ -1225,14 +1225,13 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
     const struct part *restrict pj, struct xpart *restrict xpj,
-    const struct cosmology *cosmo,
-    const struct sink_props *sink_props) {
+    const struct cosmology *cosmo, const struct sink_props *sink_props) {
 
   const float a = cosmo->a;
   const float H = cosmo->H;
   const float a2H = a * a * H;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
-  
+
   /* If for some reason the particle has been flagged to not form sink,
      do not continue and save some computationnal ressources. */
   if (!pi->sink_data.can_form_sink) {
@@ -1305,9 +1304,9 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
 
     if (with_self_gravity) {
       pi->sink_data.E_pot_neighbours +=
-        0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
+          0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
       pi->sink_data.max_potential =
-        max(pi->sink_data.max_potential, pj->sink_data.potential);
+          max(pi->sink_data.max_potential, pj->sink_data.potential);
     }
 
     /* Compute rotation energies per component */
