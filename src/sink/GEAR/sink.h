@@ -489,7 +489,8 @@ INLINE static int sink_is_forming(
         " rho = %e, T = %e, div_v = %e, h = %e, potential = %e, max_pot = %e,"
         " N_neighbours = %i, M_tot = %e | E_int = %e, E_grav = %e, "
         "E_grav_unormalized = %e, "
-        "E_grav_max = %e, E_rot = %e, E_kin =%e, E_tot = %e | E_int < 0.5*|E_grav| = %i, "
+        "E_grav_max = %e, E_rot = %e, E_kin =%e, E_tot = %e | E_int < "
+        "0.5*|E_grav| = %i, "
         "E_int + E_rot < |E_grav| = %i, E_tot < 0 = %i",
         p->id, density_threshold, maximal_density_threshold,
         temperature_threshold, sink_cut_off_radius, density, temperature, div_v,
@@ -1246,7 +1247,7 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
                        pj->v[2] - pi->v[2]};
 
   /* Calculate the velocity with the Hubble flow */
-  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], - a2H * dx[1] + dv[1],
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], -a2H * dx[1] + dv[1],
                                   a2H * dx[2] + dv[2]};
 
   /* Compute the physical relative velocity between the particles */
@@ -1291,15 +1292,16 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
         specific_angular_momentum[0] * specific_angular_momentum[0];
     const float L_y2 =
         specific_angular_momentum[1] * specific_angular_momentum[1];
-    const float L_z2 = specific_angular_momentum[2] * specific_angular_momentum[2];
+    const float L_z2 =
+        specific_angular_momentum[2] * specific_angular_momentum[2];
 
     /* Limiting behaviour when R=0:
-		 L = R*v_phi => E_rot = 0.5*m*L^2/R = 0.5*m*R*v_phi^2.
+                 L = R*v_phi => E_rot = 0.5*m*L^2/R = 0.5*m*R*v_phi^2.
        So, if R = 0, then E_rot = 0. */
     if (R_yz > 0.0) pi->sink_data.E_rot_neighbours[0] += 0.5 * mj * L_x2 / R_yz;
     if (R_xz > 0.0) pi->sink_data.E_rot_neighbours[1] += 0.5 * mj * L_y2 / R_xz;
     if (R_xy > 0.0) pi->sink_data.E_rot_neighbours[2] += 0.5 * mj * L_z2 / R_xy;
-  }  
+  }
   /* Shall we reset the values of the energies for the next timestep? No, it is
      done in cell_drift.c and space_init.c, for active particles. The
      potential is set in runner_others.c->runner_do_end_grav_force() */

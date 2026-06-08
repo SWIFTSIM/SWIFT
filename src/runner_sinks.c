@@ -462,7 +462,7 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
                                            struct xpart *restrict xpi) {
   struct engine *e = r->e;
   struct space *s = e->s;
-  
+
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct sink_props *sink_props = e->sink_properties;
@@ -470,8 +470,9 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
   /* Loop over gas particles in this cell. Note that it means we are missing
    *gas particles in other cells.
    *
-   * TODO (Darwin): This will be improved in the future with a proper self/pair task search.
-   */  
+   * TODO (Darwin): This will be improved in the future with a proper self/pair
+   *task search.
+   */
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
 
@@ -491,7 +492,6 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
 
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
-
 
   /* For the sinks, we can loop over all sinks in the space. This is an
      O(N_part_eligible*N_sink) search. We assume that N_sink < N_part, which
