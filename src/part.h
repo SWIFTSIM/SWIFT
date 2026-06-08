@@ -116,6 +116,9 @@ struct threadpool;
 #include "./stars/None/stars_part.h"
 #elif defined(STARS_BASIC)
 #include "./stars/Basic/stars_part.h"
+#elif defined(STARS_TEST_DF)
+#include "./stars/test_df/stars_part.h"
+#define STARS_SIDM_INTERACTIONS
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_part.h"
 #elif defined(STARS_GEAR)
