@@ -531,7 +531,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
                                     int timer) {
 
   struct engine *e = r->e;
-  const struct space *s = e->s;
+  struct space *s = e->s;
   const struct cosmology *cosmo = e->cosmology;
   const struct unit_system *us = e->internal_units;
   const struct black_holes_props *props = e->black_holes_properties;
