@@ -74,15 +74,15 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   /* Compute correction therm to account for multiple feedback events. This
      terms allows to recover energy conservation. If there is only one
      feedback that affected p and xp, f_corr = 1. */
+  const unsigned int N_SN = xp->feedback_data.number_SN;
+  const unsigned int N_SW = xp->feedback_data.number_winds;
   if (e->feedback_props->enable_multiple_SN_momentum_correction_factor &&
-      xp->feedback_data.number_SN > 1) {
-    const double f_corr =
+      (N_SN > 1 || N_SW > 1)) {
+    const float f_corr =
         feedback_compute_momentum_correction_factor_for_multiple_sn_events(
             p, xp, old_mass, new_mass);
 
-    /* TODO: We need to determine what to do with the stellar winds since we
-       are using the same variable */
-    /* Update the xpart accumulated dp */
+    /* Update the xpart accumulated dp from the feedback */
     xp->feedback_data.delta_p[0] *= f_corr;
     xp->feedback_data.delta_p[1] *= f_corr;
     xp->feedback_data.delta_p[2] *= f_corr;
@@ -90,13 +90,16 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
   /* Update the velocities */
   for (int i = 0; i < 3; i++) {
-    const float dv = xp->feedback_data.delta_p[i] / new_mass;
+    const float dp_prime =
+        xp->feedback_data.delta_p_ejecta[i] + xp->feedback_data.delta_p[i];
+    const float dv = dp_prime / new_mass;
 
     xp->v_full[i] += dv;
     p->v[i] += dv;
 
     /* Reset the values */
     xp->feedback_data.delta_p[i] = 0.0;
+    xp->feedback_data.delta_p_ejecta[i] = 0.0;
   }
 
   /* Reset the values */
@@ -230,50 +233,7 @@ void feedback_init_spart(struct spart *sp) {
  * @param feedback_props The properties of the feedback model.
  */
 void feedback_reset_feedback(struct spart *sp,
-                             const struct feedback_props *feedback_props) {
-
-  /* TODO: Determine if reinitialising here changes something or not */
-  /* GEAR does not do anything here.
-     However, this is only called if the particle is not feedback active or the
-     star was just born. I am unsure how it will change the simulations. But if
-     this is called when a particle is not active, it should not alter
-     anything. We'll see.
-  */
-  /* message("Reset feedback for %lld (is_dead = %d)", sp->id,
-   * sp->feedback_data.is_dead); */
-
-  /*   sp->feedback_data.supernovae.energy_ejected = 0.0; */
-  /*   sp->feedback_data.enrichment_weight = 0.0; */
-  /*   sp->feedback_data.weighted_gas_density = 0.0; */
-  /*   sp->feedback_data.weighted_gas_metallicity = 0.0; */
-
-  /*   sp->feedback_data.f_sum_minus_term[0] = 0.0; */
-  /*   sp->feedback_data.f_sum_minus_term[1] = 0.0; */
-  /*   sp->feedback_data.f_sum_minus_term[2] = 0.0; */
-
-  /*   sp->feedback_data.f_sum_plus_term[0] = 0.0; */
-  /*   sp->feedback_data.f_sum_plus_term[1] = 0.0; */
-  /*   sp->feedback_data.f_sum_plus_term[2] = 0.0; */
-
-  /* #if FEEDBACK_GEAR_MECHANICAL_MODE == 2     */
-  /* sp->feedback_data.accumulator_sn.E_total = 0.0; */
-  /* sp->feedback_data.accumulator_sn.beta_1 = 0.0; */
-  /* sp->feedback_data.accumulator_sn.beta_2 = 0.0; */
-
-  /* sp->feedback_data.accumulator_winds.E_total = 0.0; */
-  /* sp->feedback_data.accumulator_winds.beta_1 = 0.0; */
-  /* sp->feedback_data.accumulator_winds.beta_2 = 0.0; */
-  /* #endif */
-
-  /* #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS */
-  /*   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0; */
-  /*   sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0; */
-
-  /*   sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0.0; */
-  /*   sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0.0; */
-  /*   sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0.0; */
-  /* #endif /\* SWIFT_FEEDBACK_DEBUG_CHECKS *\/ */
-}
+                             const struct feedback_props *feedback_props) {}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
@@ -617,38 +577,48 @@ feedback_get_physical_SN_cooling_radius(const struct spart *restrict sp,
  *
  * This is scale-factor free --> no conversion needed from/to comoving.
  *
- * Reference: https://arxiv.org/abs/2203.00040
+ * Reference: https://arxiv.org/pdf/2603.17421
+ * Note this formula is similar to the Hopkins+2023 Fire 3 paper, except that
+ * Okamoto works in the gas frame. Therefore, the p_old terms disapear and the
+ * equation is simpler and non-pathological.
  *
  * @param p The #part to correct.
  * @param xp The #xpart.
  * @param old_mass The mass before feeback events.
  * @param new_mass The mass after feeback events.
  */
-__attribute__((always_inline)) INLINE double
+__attribute__((always_inline)) INLINE float
 feedback_compute_momentum_correction_factor_for_multiple_sn_events(
-    struct part *p, struct xpart *xp, float old_mass, float new_mass) {
-  const float dm = xp->feedback_data.delta_mass;
+    struct part *p, struct xpart *xp, const float old_mass,
+    const float new_mass) {
 
-  const double p_old[3] = {old_mass * xp->v_full[0], old_mass * xp->v_full[1],
-                           old_mass * xp->v_full[2]};
-  const double p_old_norm_2 =
-      p_old[0] * p_old[0] + p_old[1] * p_old[1] + p_old[2] * p_old[2];
-  const double p_tilde_norm_2 =
-      p_old_norm_2 * dm / old_mass +
-      2.0 * (old_mass + dm) * xp->feedback_data.delta_E_kin;
+  const float delta_E_kin = xp->feedback_data.delta_E_kin;
+  const float dp[3] = {xp->feedback_data.delta_p[0],
+                       xp->feedback_data.delta_p[1],
+                       xp->feedback_data.delta_p[2]};
+  const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
 
-  const double dp[3] = {xp->feedback_data.delta_p[0],
-                        xp->feedback_data.delta_p[1],
-                        xp->feedback_data.delta_p[2]};
-  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
-  const double p_old_times_dp =
-      p_old[0] * dp[0] + p_old[1] * dp[1] + p_old[2] * dp[2];
+  /* This is called Delta KE^naive in Hopkins+2023 */
+  const float delta_E_kin_eff = 0.5 * dp_norm_2 / new_mass;
 
-  /* Finally compute the corrector factor */
-  const double sqrt_argument =
-      fabs(p_old_times_dp * p_old_times_dp - p_tilde_norm_2 * dp_norm_2);
-  const double f_corr =
-      (-p_old_times_dp + sqrt(sqrt_argument)) / p_tilde_norm_2;
+  /* The correction factor is simply: */
+  const float f_corr = sqrtf(delta_E_kin / delta_E_kin_eff);
 
-  return f_corr;
+#ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
+  if (f_corr < 1.0)
+    message(
+        "[Oka, %lld, %d, %d] delta_p = (%e %e %e), f_corr = %e | dp_norm2 = "
+        "%e, "
+        "delta_E_kin = %e, delta_E_kin_eff = %e",
+        p->id, xp->feedback_data.number_SN, xp->feedback_data.number_winds,
+        xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1],
+        xp->feedback_data.delta_p[2], f_corr, dp_norm_2, delta_E_kin,
+        delta_E_kin_eff);
+#endif
+
+  if (f_corr >= 1.0) {
+    return 1.0;
+  } else {
+    return f_corr;
+  }
 }

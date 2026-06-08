@@ -37,23 +37,28 @@ struct feedback_part_data {
  * @brief Extra feedback fields carried by each hydro particles
  */
 struct feedback_xpart_data {
-  /*! Mass received from supernovae */
+  /*! Mass received from supernovae and stellar winds */
   float delta_mass;
 
-  /*! Physical specific energy received from supernovae */
+  /*! Physical specific energy received from supernovae and stellar winds */
   float delta_u;
 
-  /*! Kinetic energy (not specific!) received from supernovae */
+  /*! Kinetic energy (not specific!) received from supernovae and stellar winds
+   */
   float delta_E_kin;
 
-  /*! Comoving momemtum received from a supernovae */
+  /*! Comoving feedback momentum received from the blastwave. */
   float delta_p[3];
 
-  /*! Number of supernovae affecting this particle */
-  int number_SN;
+  /*! Comoving momentum contribution brought solely by the transferred stellar
+   * mass */
+  float delta_p_ejecta[3];
 
   /*! Number of supernovae affecting this particle */
-  int number_winds;
+  unsigned int number_SN;
+
+  /*! Number of supernovae affecting this particle */
+  unsigned int number_winds;
 };
 
 /**

@@ -65,7 +65,7 @@ struct feedback_props {
   /* Enable the correction factor to momentum if multiple SN affect a gas
      particle during one timestep. This factor ensures exact energy
      conservation in the case of multiple SN. */
-  int enable_multiple_SN_momentum_correction_factor;
+  char enable_multiple_SN_momentum_correction_factor;
 
   /*! Pre-supernova feedback energy effectively deposited */
   float winds_efficiency;

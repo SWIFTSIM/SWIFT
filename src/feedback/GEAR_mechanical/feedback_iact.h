@@ -390,25 +390,26 @@ runner_iact_nonsym_feedback_apply(
   }
 
   const float mj = hydro_get_mass(pj);
-  double m_ej = 0.0;
-  double new_mass = mj;
-  double dm_SW = 0.0;
-  double dm_SN = 0.0;
-  double total_momentum_kick_p[3] = {0.0, 0.0, 0.0};
+  float m_ej = 0.0;
+  float new_mass = mj;
+  float dm_SW = 0.0;
+  float dm_SN = 0.0;
+  float total_momentum_kick_p[3] = {0.0, 0.0, 0.0};
 
-  /* Calculate the velocity with the Hubble flow */
+  /* Calculate the velocity with the Hubble flow. */
   const float a = cosmo->a;
   const float a_inv = cosmo->a_inv;
   const float H = cosmo->H;
   const float a2H = a * a * H;
-  const float vi_plus_H_flow[3] = {a2H * si->x[0] + si->v[0],
-                                   a2H * si->x[1] + si->v[1],
-                                   a2H * si->x[2] + si->v[2]};
-  const float vj_plus_H_flow[3] = {a2H * pj->x[0] + xpj->v_full[0],
-                                   a2H * pj->x[1] + xpj->v_full[1],
-                                   a2H * pj->x[2] + xpj->v_full[2]};
 
-  /* Compute the _physical_ relative velocity between the particles */
+  /* The Hubble flow term is relative wrt the star particle, hence dx = 0. For
+   * the gas, we use -dx = pj - si. */
+  const float vi_plus_H_flow[3] = {si->v[0], si->v[1], si->v[2]};
+  const float vj_plus_H_flow[3] = {-a2H * dx[0] + xpj->v_full[0],
+                                   -a2H * dx[1] + xpj->v_full[1],
+                                   -a2H * dx[2] + xpj->v_full[2]};
+
+  /* Compute the _physical_ relative velocity between the particles. */
   const float v_i_p[3] = {vi_plus_H_flow[0] * a_inv, vi_plus_H_flow[1] * a_inv,
                           vi_plus_H_flow[2] * a_inv};
 
@@ -422,7 +423,7 @@ runner_iact_nonsym_feedback_apply(
   /*****************************************/
   /* Do we have stellar winds */
   if (feedback_should_inject_wind_feedback(si)) {
-    const double E_ej_SW = si->feedback_data.winds.energy_ejected;
+    const float E_ej_SW = si->feedback_data.winds.energy_ejected;
 
     /* Mass received by Stellar Winds */
     /* For physical consistency, we consider that the pre-SN feedback occurs
@@ -441,11 +442,12 @@ runner_iact_nonsym_feedback_apply(
     /* Now we treat the fluxes distribution differently for each mode */
     double dU_SW = 0.0;
     double dKE_SW = 0.0;
-    double dp_prime_SW[3] = {0.0, 0.0, 0.0};
+    double dp_SW[3] = {0.0, 0.0, 0.0};
+    double dp_ejecta_SW[3] = {0.0, 0.0, 0.0};
     runner_iact_nonsym_mechanical_stellar_winds_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SW, m_ej, mj,
         dm_SW, new_mass, cosmo, fb_props, phys_const, us, &dU_SW, &dKE_SW,
-        dp_prime_SW);
+        dp_SW, dp_ejecta_SW);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -454,7 +456,8 @@ runner_iact_nonsym_feedback_apply(
 #if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
     /* Convert to comoving units */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dp_prime_SW[i] * a;
+      xpj->feedback_data.delta_p[i] += dp_SW[i] * a;
+      xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SW[i] * a;
     }
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
@@ -510,10 +513,12 @@ runner_iact_nonsym_feedback_apply(
     /* Now we treat the fluxes distribution differently for each mode */
     double dU = 0.0;
     double dKE = 0.0;
-    double dp_prime[3] = {0.0, 0.0, 0.0};
+    double dp_SN[3] = {0.0, 0.0, 0.0};
+    double dp_ejecta_SN[3] = {0.0, 0.0, 0.0};
     runner_iact_nonsym_mechanical_feedback_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SN, m_ej, mj,
-        dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_prime);
+        dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dKE, dp_SN,
+        dp_ejecta_SN);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -522,7 +527,8 @@ runner_iact_nonsym_feedback_apply(
 #if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
     /* Convert to comoving units */
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dp_prime[i] * a;
+      xpj->feedback_data.delta_p[i] += dp_SN[i] * a;
+      xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SN[i] * a;
     }
 #endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
 
