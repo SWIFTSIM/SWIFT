@@ -68,10 +68,10 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
   double m_Zj = Uj[0] * mj / hydro_get_physical_density(pj, cosmo);
 
   unsigned int dumb;
-  chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
+  const char corrected_i = chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
                                    /*callloc=*/1, /*element*/ metal, pi->id,
                                    /*neg_counter*/ &dumb);
-  chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
+  const char corrected_j = chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
                                    /*callloc=*/1, /*element*/ metal, pj->id,
                                    &dumb);
 
@@ -83,13 +83,13 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
 
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */
-  if (m_Zi == m_Zi_not_extrapolated) {
+  if (corrected_i) {
     Ui[0] = m_Zi_not_extrapolated * hydro_get_physical_density(pi, cosmo) / mi;
     flux_i[0] = chi->diffusion_flux[metal][0];
     flux_i[1] = chi->diffusion_flux[metal][1];
     flux_i[2] = chi->diffusion_flux[metal][2];
   }
-  if (m_Zj == m_Zj_not_extrapolated) {
+  if (corrected_j) {
     Uj[0] = m_Zj_not_extrapolated * hydro_get_physical_density(pj, cosmo) / mj;
     flux_j[0] = chj->diffusion_flux[metal][0];
     flux_j[1] = chj->diffusion_flux[metal][1];

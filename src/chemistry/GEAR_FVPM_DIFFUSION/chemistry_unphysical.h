@@ -48,7 +48,7 @@
  * @param negativity_counter Counts the successive number of time the particle
  * was negative.
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline)) INLINE static char
 chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
                                  const double gas_mass, int callloc,
                                  const int element, const long long id,
@@ -59,6 +59,9 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
     error("[%lld, %d] Got inf/nan metal density/mass diffusion case %d | %.6e ",
           id, element, callloc, *metal_mass);
 #endif
+
+  /* Flag to track corrections */
+  char corrected = 0;
 
   /* Fix negative masses */
   const double metal_mass_fraction = *metal_mass / gas_mass;
@@ -75,6 +78,7 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
     } else if (callloc == 1) {
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = (Z_old >= 0.0) ? mZ_old : 0.0;
+      corrected = 1;
     } else /* callloc == 2 */ {
       /* First, be verbose */
       if ((*negativity_counter %
@@ -116,6 +120,7 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
          * the particle's mass */
         *metal_mass = gas_mass;
       }
+      corrected = 1;
     } else {
       /* DO NOT do this unless strictly necessary. This breaks metal mass
          conservation */
@@ -128,6 +133,7 @@ chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
           id, element, callloc, *metal_mass, mZ_old, gas_mass);
     }
   }
+  return corrected;
 }
 
 /**
