@@ -156,12 +156,15 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   const double dE_kin = E_kin_new - E_kin_old;
   const double U_old = hydro_get_physical_internal_energy(pj, xpj, cosmo);
+  const double E_old = U_old + E_kin_old;
+  const double E_new = E_old + dE_lab_frame;
+  const double U_new = U_old + *dU;
   message(
       "E_ej = %e, p_ej = %e | E_new = %e, U_new = %e, E_kin_new = %e, "
       "E_old = %e, U_old = %e, E_kin_old = %e | dE_prime = %e, dU = %e, "
       "dE_kin = %e, dKE_gas_frame = %e",
       E_ej, p_ej, E_new, U_new, E_kin_new, E_old, U_old, E_kin_old,
-      dE_change_lab_frame, *dU, dE_kin, *dKE);
+      dE_change_of_frame, *dU, dE_kin, *dKE);
 #endif /* SWIFT_FEEDBACK_DEBUG CHECKS */
 }
 
