@@ -124,6 +124,13 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
     flux_j[2] = 0.0;
   }
 
+  /* Final Safety Clamp:
+     Even if the extrapolation was 'valid' according to the limiter, numerical
+     precision can result in tiny negatives. We must kill them as the Riemann
+     solver will not like them. */
+  if (Ui[0] < 0.0) Ui[0] = 0.0;
+  if (Uj[0] < 0.0) Uj[0] = 0.0;
+
   /* Now assign the fluxes */
   Ui[1] = flux_i[0];
   Ui[2] = flux_i[1];
