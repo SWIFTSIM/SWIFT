@@ -486,12 +486,12 @@ INLINE static int sink_is_forming(
 
   /* If density > maximal_density_threshold, and we do not overlap with other
      sinks, form a sink. */
-  if (density > maximal_density_threshold)
-    &&(sink_props->sink_formation_overlapping_sink_criterion &&
-       !sink_data->is_overlapping_sink) {
-      message("Gas particle %lld can form a sink !", p->id);
-      return 1;
-    }
+  if ((density > maximal_density_threshold) &&
+      (sink_props->sink_formation_overlapping_sink_criterion &&
+       !sink_data->is_overlapping_sink)) {
+    message("Gas particle %lld can form a sink !", p->id);
+    return 1;
+  }
   /* Otherwise, proceed with the regular sink formation criteria */
 
   /* Density criterion */
