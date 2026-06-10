@@ -96,5 +96,46 @@ do_configure --with-subgrid=GEAR-G3 --with-hydro=sphenix --disable-hand-vec --wi
 do_make
 do_make clean
 
+echo
+echo "----------------"
+echo "Prep1 loop build"
+echo "----------------"
+CFLAGS="-DEXTRA_STAR_LOOPS_1" do_configure --with-hydro=sphenix --disable-hand-vec --with-stars=basic
+do_make
+do_make clean
+
+echo
+echo "-----------------------------------------------"
+echo "Prep1 + 2 loop build (similar to EAGLE-kinetic)"
+echo "-----------------------------------------------"
+CFLAGS="-DEXTRA_STAR_LOOPS_1 -DEXTRA_STAR_LOOPS_2" do_configure --with-hydro=sphenix --disable-hand-vec --with-stars=basic
+do_make
+do_make clean
+
+echo
+echo "--------------------------------------------------------"
+echo "Prep2 + 3 loop build (similar to GEAR-mechanical mode 1)"
+echo "--------------------------------------------------------"
+CFLAGS="-DEXTRA_STAR_LOOPS_2 -DEXTRA_STAR_LOOPS_3" do_configure --with-hydro=sphenix --disable-hand-vec --with-stars=basic
+do_make
+do_make clean
+
+echo
+echo "------------------------------------------------------------"
+echo "Prep2 + 3 + 4 loop build (similar to GEAR-mechanical mode 2)"
+echo "------------------------------------------------------------"
+CFLAGS="-DEXTRA_STAR_LOOPS_2 -DEXTRA_STAR_LOOPS_3 -DEXTRA_STAR_LOOPS_4" do_configure --with-hydro=sphenix --disable-hand-vec --with-stars=basic
+do_make
+do_make clean
+
+echo
+echo "----------------------------"
+echo "Prep1 + 2 + 3 + 4 loop build"
+echo "----------------------------"
+CFLAGS
+="-DEXTRA_STAR_LOOPS_1 -DEXTRA_STAR_LOOPS_2 -DEXTRA_STAR_LOOPS_3 -DEXTRA_STAR_LOOPS_4" do_configure --with-hydro=sphenix --disable-hand-vec --with-stars=basic
+do_make
+do_make clean
+
 #  Keep simple, may have a number of these happening.
 exit
