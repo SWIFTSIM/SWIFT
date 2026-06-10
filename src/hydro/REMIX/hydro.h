@@ -374,6 +374,7 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
 __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(struct part *p,
                                            const struct cosmology *cosmo,
+                                           const struct pressure_floor_props *pressure_floor,
                                            const float u) {
 
   p->u = u / cosmo->a_factor_internal_energy;
@@ -411,7 +412,35 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
  */
 __attribute__((always_inline)) INLINE static void
 hydro_diffusive_feedback_reset(struct part *restrict p) {
-  /* This scheme has fixed alpha */
+  /* Set the diffusion controlable omega to 0 to exclude it for thermal feedback
+  particles */
+  p->diffusion.omega = 0.f;
+}
+
+
+
+/**
+ * @brief Correct the signal velocity of the particle partaking in
+ * supernova (kinetic) feedback based on the velocity kick the particle receives
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param dv_phys The velocity kick received by the particle expressed in
+ * physical units (note that dv_phys must be positive or equal to zero)
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_v_sig_based_on_velocity_kick(struct part *p,
+                                       const struct cosmology *cosmo,
+                                       const float dv_phys) {
+
+  /* Compute the velocity kick in comoving coordinates */
+  const float dv = dv_phys / cosmo->a_factor_sound_speed;
+
+  /* Sound speed */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Update the signal velocity */                                      
+  p->force.v_sig = max(p->force.v_sig + 2.f * dv, 2.f * soundspeed);
 }
 
 /**
@@ -658,12 +687,17 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Balsara switch using normalised kernel gradients (Sandnes+2025 Eqn. 34 with
    * velocity gradients calculated by Eqn. 35) */
+  /*Add scale factor here for the Balsara switch*/
+  float a_factor_balsara_sphenix = cosmo -> a_factor_Balsara_eps; /* a^{(1 - 3*gamma) / 2} */
+  float a_factor_remix_balsara = a_factor_balsara_sphenix * cosmo -> a * cosmo -> a; /* a^{(5 - 3*gamma) / 2} */
+  float hubble_flow = cosmo -> a_dot * cosmo -> a_inv;
   float balsara;
   if (div_v == 0.f) {
     balsara = 0.f;
   } else {
-    balsara = fabsf(div_v) /
-              (fabsf(div_v) + mod_curl_v + 0.0001f * soundspeed / p->h);
+    float abs_div_v = fabsf(3.f * hubble_flow + div_v);
+    balsara = abs_div_v /
+              (abs_div_v + mod_curl_v + 0.0001f * soundspeed * a_factor_remix_balsara / p->h);
   }
 
   /* Compute the pressure */
@@ -788,7 +822,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  const float floor_u = FLT_MIN;
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho_evol, floor_A, p->mat_id);
   p->u = max(p->u, floor_u);
 
   /* Compute the new pressure */
@@ -803,6 +839,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+
+  /* Change diffusion.omega based on the current value (this is added for handling SNe particles in thermal feedback)*/
+ const float tau_inverse = p->force.v_sig / (kernel_gamma * p->h);
+ const float omega_dt = (const_remix_difn_omega_u - p->diffusion.omega) * tau_inverse;
+ const float increase_factor = 1.f / 128.f; /*Controls how fast or slow we want to increase omega*/
+ p->diffusion.omega = min(p->diffusion.omega + increase_factor * omega_dt * dt_therm, const_remix_difn_omega_u);
+
 }
 
 /**
@@ -855,7 +898,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   /* Check against absolute minimum */
   const float min_u =
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  const float floor_u = FLT_MIN;
+  
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho_evol, floor_A, p->mat_id);
 
   /* Take highest of both limits */
   const float energy_min = max(min_u, floor_u);
@@ -900,6 +946,12 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
+  /* Convert the physcial internal energy to the comoving one. */
+  /* u' = a^(3(g-1)) u */
+  const float u_factor = 1.f / cosmo->a_factor_internal_energy;
+  p->u *= u_factor;
+  xp->u_full = p->u;
+
   /* Compute the pressure */
   const float pressure =
       gas_pressure_from_internal_energy(p->rho_evol, p->u, p->mat_id);
@@ -933,6 +985,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   p->rho_evol = p->rho;
   xp->rho_evol_full = p->rho_evol;
+
+  /* Set the initial values for the thermal diffusion controlling variable*/
+  p->diffusion.omega = const_remix_difn_omega_u;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
