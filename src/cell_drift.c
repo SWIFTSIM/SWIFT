@@ -809,6 +809,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
+  float cell_h_star_max = 0.f;
+  float cell_h_star_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_bh_drift));
@@ -859,12 +861,17 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
         cell_h_max = max(cell_h_max, cp->black_holes.h_max);
         cell_h_max_active =
             max(cell_h_max_active, cp->black_holes.h_max_active);
+        cell_h_star_max = max(cell_h_star_max, cp->black_holes.h_star_max);
+        cell_h_star_max_active =
+            max(cell_h_star_max_active, cp->black_holes.h_star_max_active);
       }
     }
 
     /* Store the values */
     c->black_holes.h_max = cell_h_max;
     c->black_holes.h_max_active = cell_h_max_active;
+    c->black_holes.h_star_max = cell_h_star_max;
+    c->black_holes.h_star_max_active = cell_h_star_max_active;
     c->black_holes.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
@@ -951,6 +958,11 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, bp->h);
 
+#ifdef BLACK_HOLES_HAVE_STAR_DENSITY
+      /* Maximal star-neighbour search radius */
+      cell_h_star_max = max(cell_h_star_max, bp->h_star);
+#endif
+
       /* Mark the particle has not being swallowed */
       black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 
@@ -962,6 +974,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       if (bpart_is_active(bp, e)) {
         /* Update the maximal active smoothing length in the cell */
         cell_h_max_active = max(cell_h_max_active, bp->h);
+#ifdef BLACK_HOLES_HAVE_STAR_DENSITY
+        cell_h_star_max_active = max(cell_h_star_max_active, bp->h_star);
+#endif
       }
     }
 
@@ -971,6 +986,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     /* Store the values */
     c->black_holes.h_max = cell_h_max;
     c->black_holes.h_max_active = cell_h_max_active;
+    c->black_holes.h_star_max = cell_h_star_max;
+    c->black_holes.h_star_max_active = cell_h_star_max_active;
     c->black_holes.dx_max_part = dx_max;
 
     /* Update the time of the last drift */

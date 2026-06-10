@@ -254,6 +254,43 @@ runner_iact_nonsym_bh_gas_density(
 }
 
 /**
+ * @brief Density interaction between a black hole and a star particle
+ * (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (bi - sj).
+ * @param hi Comoving star-neighbour search radius of the black hole.
+ * @param bi First particle (black hole).
+ * @param sj Second particle (star, not updated).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_stars_density(const float r2, const float dx[3],
+                                    const float hi, struct bpart *bi,
+                                    const struct spart *sj) {
+
+  float wi, wi_dx;
+
+  /* Get r. */
+  const float r = sqrtf(r2);
+
+  /* Compute the kernel function */
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Compute contribution to the number of star neighbours */
+  bi->stars_density.wcount += wi;
+  bi->stars_density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  /* Contribution to the smoothed stellar mass density */
+  bi->stars_density.rho += sj->mass * wi;
+
+#ifdef SWIFT_BH_STARS_DENSITY_CHECKS
+  ++bi->N_stars_density;
+#endif
+}
+
+/**
  * @brief Repositioning interaction between two particles (non-symmetric).
  *
  * Function used to identify the gas particle that this BH may move towards.

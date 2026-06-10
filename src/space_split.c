@@ -72,6 +72,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   float stars_h_max_active = 0.f;
   float black_holes_h_max = 0.f;
   float black_holes_h_max_active = 0.f;
+  float black_holes_h_star_max = 0.f;
+  float black_holes_h_star_max_active = 0.f;
   float sinks_h_max = 0.f;
   float sinks_h_max_active = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
@@ -247,6 +249,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->sinks.dx_max_part = 0.f;
       cp->black_holes.h_max = 0.f;
       cp->black_holes.h_max_active = 0.f;
+      cp->black_holes.h_star_max = 0.f;
+      cp->black_holes.h_star_max_active = 0.f;
       cp->black_holes.dx_max_part = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
@@ -307,6 +311,10 @@ void space_split_recursive(struct space *s, struct cell *c,
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         black_holes_h_max_active =
             max(black_holes_h_max_active, cp->black_holes.h_max_active);
+        black_holes_h_star_max =
+            max(black_holes_h_star_max, cp->black_holes.h_star_max);
+        black_holes_h_star_max_active = max(black_holes_h_star_max_active,
+                                            cp->black_holes.h_star_max_active);
         sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
         sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
 
@@ -625,6 +633,15 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (bpart_is_active(&bparts[k], e))
         black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
 
+#ifdef BLACK_HOLES_HAVE_STAR_DENSITY
+      black_holes_h_star_max =
+          max(black_holes_h_star_max, bparts[k].h_star);
+
+      if (bpart_is_active(&bparts[k], e))
+        black_holes_h_star_max_active =
+            max(black_holes_h_star_max_active, bparts[k].h_star);
+#endif
+
       cell_set_bpart_h_depth(&bparts[k], c);
 
       /* Reset x_diff */
@@ -690,6 +707,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
   c->black_holes.h_max_active = black_holes_h_max_active;
+  c->black_holes.h_star_max = black_holes_h_star_max;
+  c->black_holes.h_star_max_active = black_holes_h_star_max_active;
   c->maxdepth = maxdepth;
 
   /* No runner owns this cell yet. We assign those during scheduling. */

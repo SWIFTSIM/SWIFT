@@ -54,6 +54,9 @@ struct cell_black_holes {
     /*! The black hole ghost task itself */
     struct task *density_ghost;
 
+    /*! The ghost task of the BH loop over star particles */
+    struct task *stars_ghost;
+
     /*! The ghost tasks related to BH swallowing */
     struct task *swallow_ghost_1;
     struct task *swallow_ghost_2;
@@ -61,6 +64,9 @@ struct cell_black_holes {
 
     /*! Linked list of the tasks computing this cell's BH density. */
     struct link *density;
+
+    /*! Linked list of the tasks computing this cell's BH density of stars. */
+    struct link *stars_density;
 
     /*! Linked list of the tasks computing this cell's BH swallowing and
      * merging. */
@@ -87,6 +93,12 @@ struct cell_black_holes {
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
 
+    /*! Max star-neighbour search radius of active particles in this cell. */
+    float h_star_max_active;
+
+    /*! Values of h_star_max before the drifts, used for sub-cell tasks. */
+    float h_star_max_old;
+
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
 
@@ -109,6 +121,9 @@ struct cell_black_holes {
 
   /*! Max smoothing length in this cell. */
   float h_max;
+
+  /*! Max star-neighbour search radius in this cell. */
+  float h_star_max;
 
   /*! Is the #bpart data of this cell being used in a sub-cell? */
   int hold;

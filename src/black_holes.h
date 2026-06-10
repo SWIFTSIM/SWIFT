@@ -33,4 +33,13 @@
 #error "Invalid choice of black hole model"
 #endif
 
+struct engine;
+struct space;
+
+void black_holes_exact_stars_density_compute(struct space *s,
+                                             const struct engine *e);
+void black_holes_exact_stars_density_check(struct space *s,
+                                           const struct engine *e,
+                                           const double rel_tol);
+
 #endif /* SWIFT_BLACK_HOLES_H */

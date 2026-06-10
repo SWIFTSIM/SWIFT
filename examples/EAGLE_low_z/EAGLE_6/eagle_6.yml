@@ -116,6 +116,12 @@ EAGLEChemistry: 	     # Solar abundances
   init_abundance_Silicon:    6.825874e-4
   init_abundance_Iron:       1.1032152e-3
 
+# Parameters of the black hole star-neighbour loop
+BlackHoles:
+  use_star_neighbour_loop:  1     # Compute the density of stars around the black holes.
+  stars_resolution_eta:     1.2348  # Target star-neighbour number in units of the mean inter-particle separation (1.2348 == 48 Ngbs with the cubic spline kernel).
+  stars_h_max:              0.1   # Maximal star-neighbour search radius (internal units). Note kernel_gamma * stars_h_max must stay below the top-level cell size.
+
 # EAGLE cooling parameters
 EAGLECooling:
   dir_name:                ./coolingtables/

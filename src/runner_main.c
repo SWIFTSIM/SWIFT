@@ -112,6 +112,9 @@
 #include "runner_doiact_black_holes.h"
 #include "runner_doiact_undef.h"
 
+/* Import the black hole star-density loop functions. */
+#include "runner_doiact_bh_stars.h"
+
 /* Import the sink density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
@@ -249,6 +252,8 @@ void *runner_main(void *data) {
                                              /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
+          else if (t->subtype == task_subtype_bh_stars_density)
+            runner_dosub_self_bh_stars_density(r, ci, 1);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_dosub_self_bh_swallow(r, ci, 1);
           else if (t->subtype == task_subtype_do_gas_swallow)
@@ -307,6 +312,8 @@ void *runner_main(void *data) {
                 r, ci, cj, /*offset=*/0, /*ntasks=*/1, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_bh_stars_density)
+            runner_dosub_pair_bh_stars_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_dosub_pair_bh_swallow(r, ci, cj, 1);
           else if (t->subtype == task_subtype_do_gas_swallow)
@@ -378,6 +385,9 @@ void *runner_main(void *data) {
           break;
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);
+          break;
+        case task_type_bh_stars_ghost:
+          runner_do_bh_stars_ghost(r, ci, 1);
           break;
         case task_type_bh_swallow_ghost3:
           runner_do_black_holes_swallow_ghost(r, ci, 1);

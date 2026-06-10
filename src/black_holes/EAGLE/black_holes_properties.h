@@ -27,6 +27,8 @@
 #include "exp10.h"
 #include "hydro_properties.h"
 
+#include <float.h>
+
 /* Includes. */
 #include <string.h>
 
@@ -70,6 +72,23 @@ struct black_holes_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /* ----- Star neighbour loop properties ------ */
+
+  /*! Resolution parameter of the loop over star neighbours */
+  float stars_eta_neighbours;
+
+  /*! Target weighted number of star neighbours (for info only) */
+  float stars_target_neighbours;
+
+  /*! Tolerance on the search radius of the loop over star neighbours */
+  float stars_h_tolerance;
+
+  /*! Tolerance on star neighbour number (for info only) */
+  float stars_delta_neighbours;
+
+  /*! Maximal allowed search radius of the loop over star neighbours */
+  float stars_h_max;
 
   /* ----- Initialisation properties  ------ */
 
@@ -318,6 +337,27 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->max_smoothing_iterations =
       parser_get_opt_param_int(params, "BlackHoles:max_ghost_iterations",
                                hydro_props->max_smoothing_iterations);
+
+  /* Properties of the loop over star neighbours.
+   * Note that TDE-like physics typically wants more star neighbours than
+   * the gas loop targets, hence the separate resolution parameter. */
+  bp->stars_eta_neighbours = parser_get_opt_param_float(
+      params, "BlackHoles:stars_resolution_eta", bp->eta_neighbours);
+
+  bp->stars_h_tolerance = parser_get_opt_param_float(
+      params, "BlackHoles:stars_h_tolerance", bp->h_tolerance);
+
+  bp->stars_target_neighbours =
+      pow_dimension(bp->stars_eta_neighbours) * kernel_norm;
+  const float stars_delta_eta =
+      bp->stars_eta_neighbours * (1.f + bp->stars_h_tolerance);
+  bp->stars_delta_neighbours =
+      (pow_dimension(stars_delta_eta) -
+       pow_dimension(bp->stars_eta_neighbours)) *
+      kernel_norm;
+
+  bp->stars_h_max =
+      parser_get_opt_param_float(params, "BlackHoles:stars_h_max", FLT_MAX);
 
   /* Time integration properties */
   const float max_volume_change =

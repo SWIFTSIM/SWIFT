@@ -142,6 +142,9 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   /* Set the initial targetted heating temperature, used for the
    * BH time step determination */
   bp->AGN_delta_T = props->AGN_delta_T_desired;
+
+  /* Start the star-neighbour search from the gas smoothing length */
+  bp->h_star = bp->h;
 }
 
 /**
@@ -185,6 +188,27 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
 
   /* Reset the rays carried by this BH */
   ray_init(bp->rays, eagle_blackhole_number_of_rays);
+}
+
+/**
+ * @brief Prepares a b-particle for its interactions with star particles
+ *
+ * This is kept separate from black_holes_init_bpart() as the gas-density
+ * and star-density ghosts iterate independently and may re-initialise
+ * their respective accumulators concurrently.
+ *
+ * @param bp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_init_stars_density(struct bpart *bp) {
+
+  bp->stars_density.wcount = 0.f;
+  bp->stars_density.wcount_dh = 0.f;
+  bp->stars_density.rho = 0.f;
+
+#ifdef SWIFT_BH_STARS_DENSITY_CHECKS
+  bp->N_stars_density = 0;
+#endif
 }
 
 /**
@@ -330,6 +354,50 @@ black_holes_bpart_has_no_neighbours(struct bpart *bp,
   bp->velocity_gas[2] = FLT_MAX;
 
   bp->internal_energy_gas = -FLT_MAX;
+}
+
+/**
+ * @brief Finishes the calculation of the density of stars around black holes
+ *
+ * @param bp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_stars_end_density(struct bpart *bp,
+                              const struct cosmology *cosmo) {
+
+  /* Some search radius multiples. */
+  const float h = bp->h_star;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+
+  /* Finish the calculation by inserting the missing h-factors */
+  bp->stars_density.wcount *= h_inv_dim;
+  bp->stars_density.wcount_dh *= h_inv_dim_plus_one;
+  bp->stars_density.rho *= h_inv_dim;
+}
+
+/**
+ * @brief Sets all star-density fields to sensible values when the #bpart has
+ * 0 star neighbours.
+ *
+ * @param bp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_bpart_has_no_stars_neighbours(struct bpart *restrict bp,
+                                          const struct cosmology *cosmo) {
+
+  /* Some search radius multiples. */
+  const float h = bp->h_star;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  bp->stars_density.wcount = kernel_root * h_inv_dim;
+  bp->stars_density.wcount_dh = 0.f;
+  bp->stars_density.rho = 0.f;
 }
 
 /**

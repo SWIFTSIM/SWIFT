@@ -664,6 +664,8 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
+void cell_activate_subcell_bh_stars_tasks(struct cell *ci, struct cell *cj,
+                                          struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
@@ -1130,6 +1132,43 @@ cell_can_recurse_in_self_black_holes_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair black hole-stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param ci The #cell with black holes.
+ * @param cj The #cell with star parts.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_bh_stars_task(const struct cell *ci,
+                                       const struct cell *cj) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ci->split && cj->split &&
+         ((kernel_gamma * ci->black_holes.h_star_max_old +
+           ci->black_holes.dx_max_part_old) < 0.5f * ci->dmin) &&
+         ((kernel_gamma * cj->stars.h_max_old + cj->stars.dx_max_part_old) <
+          0.5f * cj->dmin);
+}
+
+/**
+ * @brief Can a sub-self black hole-stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_bh_stars_task(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the search radius? */
+  return c->split &&
+         (kernel_gamma * c->black_holes.h_star_max_old < 0.5f * c->dmin) &&
+         (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-self sinks task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -1344,6 +1383,28 @@ cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->black_holes.h_max, cj->hydro.h_max) +
           ci->black_holes.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * @brief Have the black holes of a pair of cells moved too much relative to
+ * the star particles whose density they gather, requiring a rebuild?
+ *
+ * @param ci The #cell with the black holes.
+ * @param cj The #cell with the star particles.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_need_rebuild_for_bh_stars_pair(const struct cell *ci,
+                                    const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  if (kernel_gamma * max(ci->black_holes.h_star_max, cj->stars.h_max) +
+          ci->black_holes.dx_max_part + cj->stars.dx_max_part >
       cj->dmin) {
     return 1;
   }

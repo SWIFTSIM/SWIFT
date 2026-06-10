@@ -96,6 +96,9 @@ static INLINE void spart_init(struct spart *sp, const struct engine *e) {
 static INLINE void bpart_init(struct bpart *bp, const struct engine *e) {
 
   black_holes_init_bpart(bp);
+#ifdef BLACK_HOLES_HAVE_STAR_DENSITY
+  black_holes_init_stars_density(bp);
+#endif
 }
 
 /**

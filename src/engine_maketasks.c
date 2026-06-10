@@ -1798,7 +1798,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
     c->hydro.sorts =
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
 
-    if (with_feedback) {
+    if (with_feedback || (with_black_holes && e->with_bh_stars_density)) {
       c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
                                          task_subtype_none, 0, 0, c, NULL);
     }
@@ -2044,6 +2044,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
         c->black_holes.density_ghost = scheduler_addtask(
             s, task_type_bh_density_ghost, task_subtype_none, 0, 0, c, NULL);
+
+        if (e->with_bh_stars_density) {
+          c->black_holes.stars_ghost = scheduler_addtask(
+              s, task_type_bh_stars_ghost, task_subtype_none, 0, 0, c, NULL);
+        }
 
         c->black_holes.swallow_ghost_2 =
             scheduler_addtask(s, task_type_bh_swallow_ghost2, task_subtype_none,
@@ -2599,6 +2604,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
   const int with_sink = (e->policy & engine_policy_sinks);
+  const int with_bh_stars = with_black_holes && e->with_bh_stars_density;
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
 #endif
@@ -2616,6 +2622,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_do_gas_swallow = NULL;
   struct task *t_do_bh_swallow = NULL;
   struct task *t_bh_feedback = NULL;
+  struct task *t_bh_stars_density = NULL;
   struct task *t_sink_density = NULL;
   struct task *t_sink_swallow = NULL;
   struct task *t_rt_gradient = NULL;
@@ -2727,6 +2734,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               flags, 0, ci, NULL);
       }
 
+      /* The black hole star-density task */
+      if (with_bh_stars && bcount_i > 0) {
+        t_bh_stars_density =
+            scheduler_addtask(sched, task_type_self,
+                              task_subtype_bh_stars_density, flags, 0, ci,
+                              NULL);
+      }
+
       if (with_rt) {
         t_rt_gradient =
             scheduler_addtask(sched, task_type_self, task_subtype_rt_gradient,
@@ -2763,6 +2778,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->black_holes.do_gas_swallow, t_do_gas_swallow);
         engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
+      }
+      if (with_bh_stars && bcount_i > 0) {
+        engine_addlink(e, &ci->black_holes.stars_density, t_bh_stars_density);
       }
       if (with_rt) {
         engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
@@ -2906,6 +2924,28 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             ci->hydro.super->black_holes.black_holes_out);
       }
 
+      if (with_bh_stars && bcount_i > 0) {
+
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
+                            t_bh_stars_density);
+        scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                            t_bh_stars_density);
+        scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                            t_bh_stars_density);
+        if (ci->hydro.super->stars.stars_in != NULL)
+          scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                              t_bh_stars_density);
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
+                            t_bh_stars_density);
+        scheduler_addunlock(sched, t_bh_stars_density,
+                            ci->hydro.super->black_holes.stars_ghost);
+
+        /* Make sure the star census is complete before any accretion
+         * decisions are taken. */
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.stars_ghost,
+                            t_bh_swallow);
+      }
+
       if (with_timestep_limiter) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
         scheduler_addunlock(sched, ci->super->timestep, t_limiter);
@@ -3024,6 +3064,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             sched, task_type_pair, task_subtype_bh_feedback, flags, 0, ci, cj);
       }
 
+      /* The black hole star-density task */
+      if (with_bh_stars && (bcount_i > 0 || bcount_j > 0)) {
+        t_bh_stars_density =
+            scheduler_addtask(sched, task_type_pair,
+                              task_subtype_bh_stars_density, flags, 0, ci, cj);
+      }
+
       if (with_rt) {
         t_rt_gradient = scheduler_addtask(
             sched, task_type_pair, task_subtype_rt_gradient, flags, 0, ci, cj);
@@ -3096,6 +3143,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->black_holes.do_bh_swallow, t_do_bh_swallow);
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
         engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
+      }
+      if (with_bh_stars && (bcount_i > 0 || bcount_j > 0)) {
+        engine_addlink(e, &ci->black_holes.stars_density, t_bh_stars_density);
+        engine_addlink(e, &cj->black_holes.stars_density, t_bh_stars_density);
       }
       if (with_rt) {
         engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
@@ -3271,6 +3322,29 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               ci->hydro.super->black_holes.black_holes_out);
         }
 
+        if (with_bh_stars && (bcount_i > 0 || bcount_j > 0)) {
+
+          scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
+                              t_bh_stars_density);
+          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                              t_bh_stars_density);
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                              t_bh_stars_density);
+          if (ci->hydro.super->stars.stars_in != NULL)
+            scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                                t_bh_stars_density);
+          scheduler_addunlock(sched,
+                              ci->hydro.super->black_holes.black_holes_in,
+                              t_bh_stars_density);
+          scheduler_addunlock(sched, t_bh_stars_density,
+                              ci->hydro.super->black_holes.stars_ghost);
+
+          /* Make sure the star census is complete before any accretion
+           * decisions are taken. */
+          scheduler_addunlock(sched, ci->hydro.super->black_holes.stars_ghost,
+                              t_bh_swallow);
+        }
+
         if (with_timestep_limiter) {
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
           scheduler_addunlock(sched, ci->super->timestep, t_limiter);
@@ -3430,6 +3504,30 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_bh_feedback);
             scheduler_addunlock(sched, t_bh_feedback,
                                 cj->hydro.super->black_holes.black_holes_out);
+          }
+
+          if (with_bh_stars && (bcount_i > 0 || bcount_j > 0)) {
+
+            scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
+                                t_bh_stars_density);
+            scheduler_addunlock(sched, cj->hydro.super->stars.drift,
+                                t_bh_stars_density);
+            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                t_bh_stars_density);
+            if (cj->hydro.super->stars.stars_in != NULL)
+              scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
+                                  t_bh_stars_density);
+            scheduler_addunlock(sched,
+                                cj->hydro.super->black_holes.black_holes_in,
+                                t_bh_stars_density);
+            scheduler_addunlock(sched, t_bh_stars_density,
+                                cj->hydro.super->black_holes.stars_ghost);
+
+            /* Make sure the star census is complete before any accretion
+             * decisions are taken. */
+            scheduler_addunlock(sched,
+                                cj->hydro.super->black_holes.stars_ghost,
+                                t_bh_swallow);
           }
           if (with_rt) {
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,

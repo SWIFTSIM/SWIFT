@@ -533,6 +533,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
           cost = 1.f * (wscale * bcount_i) * count_i;
+        } else if (t->subtype == task_subtype_bh_stars_density) {
+          cost = 1.f * (wscale * bcount_i) * scount_i;
         } else if (t->subtype == task_subtype_do_gas_swallow) {
           cost = 1.f * wscale * count_i;
         } else if (t->subtype == task_subtype_do_bh_swallow) {
@@ -612,6 +614,15 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
                    sid_scale[t->flags];
           }
+        } else if (t->subtype == task_subtype_bh_stars_density) {
+          if (t->ci->nodeID != nodeID) {
+            cost = 3.f * (wscale * scount_i) * bcount_j * sid_scale[t->flags];
+          } else if (t->cj->nodeID != nodeID) {
+            cost = 3.f * (wscale * bcount_i) * scount_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * wscale * (bcount_i * scount_j + bcount_j * scount_i) *
+                   sid_scale[t->flags];
+          }
 
         } else if (t->subtype == task_subtype_do_gas_swallow) {
           cost = 1.f * wscale * (count_i + count_j);
@@ -648,6 +659,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
         break;
       case task_type_bh_density_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
+        break;
+      case task_type_bh_stars_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
       case task_type_bh_swallow_ghost2:

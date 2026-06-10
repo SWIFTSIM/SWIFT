@@ -445,6 +445,20 @@ elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
 fi
 
+# Check if BH star-density checks are on for some particles.
+AC_ARG_ENABLE([bh-stars-density-checks],
+   [AS_HELP_STRING([--enable-bh-stars-density-checks],
+     [Activate expensive brute-force checks of the star density around black holes for a fraction 1/N of all black holes @<:@N@:>@]
+   )],
+   [bh_stars_density_checks="$enableval"],
+   [bh_stars_density_checks="no"]
+)
+if test "$bh_stars_density_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of black holes to check when using --enable-bh-stars-density-checks!)
+elif test "$bh_stars_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_BH_STARS_DENSITY_CHECKS], [$enableval] ,[Enable BH star-density brute-force checks])
+fi
+
 # Check if sink density checks are on for some particles.
 AC_ARG_ENABLE([sink-density-checks],
    [AS_HELP_STRING([--enable-sink-density-checks],
@@ -3392,6 +3406,7 @@ AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
 AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/test27cellsStars.sh], [chmod +x tests/test27cellsStars.sh])
+AC_CONFIG_FILES([tests/test27cellsBHStars.sh], [chmod +x tests/test27cellsBHStars.sh])
 AC_CONFIG_FILES([tests/test27cellsStarsPerturbed.sh], [chmod +x tests/test27cellsStarsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
 AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])

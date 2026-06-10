@@ -763,6 +763,50 @@ Black-hole repositioning
 AGN feedback
 ~~~~~~~~~~~~
 
+.. _EAGLE_black_hole_star_neighbours:
+
+Black-hole star neighbour census
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SWIFT can optionally compute the density of *star* particles around the
+black holes, alongside the regular gas-density loop. Each black hole then
+carries a second search radius, iterated in the same way as a smoothing
+length until a target weighted number of star neighbours is reached. The
+converged radius and the kernel-weighted stellar mass density within it are
+written to the snapshots as ``StarSearchRadii`` and ``StarDensities``. The
+census is infrastructure for models that need to know about the stellar
+environment of the black holes (e.g. tidal disruption event rates or
+dynamical friction); it does not by itself alter any physics and the star
+particles are never modified. The census is guaranteed to be complete
+before the black holes take any accretion decision in the same time-step.
+
+The loop is switched on at run time via the parameter file:
+
+.. code:: YAML
+
+   BlackHoles:
+     use_star_neighbour_loop:  1       # Default: 0
+     stars_resolution_eta:     1.2348  # (Optional) Target star neighbour number in units of the mean inter-particle separation. Defaults to BlackHoles:resolution_eta.
+     stars_h_tolerance:        7e-3    # (Optional) Tolerance of the search radius iteration. Defaults to BlackHoles:h_tolerance.
+     stars_h_max:              0.1     # (Optional) Maximal allowed search radius in internal units. Defaults to SPH:h_max.
+
+Black holes can sit in star-poor regions where the target neighbour number
+cannot be reached, so unlike the gas smoothing lengths the maximal search
+radius is routinely attained and should be chosen deliberately: black holes
+that hit the ceiling keep a truncated kernel and simply report the stars
+they do find. As for the gas smoothing lengths, the search radii must fit
+in the top-level cells, i.e. :math:`\gamma \cdot h_{\rm star, max}` must
+remain below the top-level cell size or the code will abort when
+re-gridding the space.
+
+The census requires the EAGLE black hole model and is not yet available
+when running over MPI.
+
+For debugging, the result of the neighbour search can be verified at the
+end of every step against a brute-force calculation for a fraction
+:math:`1/N` of the black holes by configuring the code with
+``--enable-bh-stars-density-checks=N``.
+
 .. [#f1] Recall that in a non-cosmological run the critical density is
 	 set to 0, effectively removing the over-density
 	 constraint of the floors.

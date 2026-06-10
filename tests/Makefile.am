@@ -33,6 +33,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
+        test27cellsBHStars.sh \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline  # testMatrixInversion
@@ -46,7 +47,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
          testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
-		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
+		 test27cellsStars test27cellsStars_subset test27cellsBHStars test27cellsBHStars_subset \
+		 testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
@@ -105,6 +107,12 @@ test27cellsStars_SOURCES = test27cellsStars.c
 test27cellsStars_subset_SOURCES = test27cellsStars.c
 
 test27cellsStars_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
+
+test27cellsBHStars_SOURCES = test27cellsBHStars.c
+
+test27cellsBHStars_subset_SOURCES = test27cellsBHStars.c
+
+test27cellsBHStars_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 
@@ -178,5 +186,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_params.yml output_list_time.txt output_list_redshift.txt \
              output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
+             test27cellsBHStars.sh bh_stars_tolerance_27.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh

@@ -28,6 +28,9 @@
 #include "rays_struct.h"
 #include "timeline.h"
 
+/*! This model supports the BH loop over star neighbours. */
+#define BLACK_HOLES_HAVE_STAR_DENSITY 1
+
 /**
  * @brief Particle fields for the black hole particles.
  *
@@ -74,6 +77,41 @@ struct bpart {
     float wcount_dh;
 
   } density;
+
+  /*! Search radius of the loop over star particles. */
+  float h_star;
+
+  struct {
+
+    /* Number of star neighbours. */
+    float wcount;
+
+    /* Number of star neighbours spatial derivative. */
+    float wcount_dh;
+
+    /* Smoothed stellar mass density. */
+    float rho;
+
+  } stars_density;
+
+#ifdef SWIFT_BH_STARS_DENSITY_CHECKS
+
+  /* Integer number of star neighbours in the density loop */
+  int N_stars_density;
+
+  /* Exact integer number of star neighbours in the density loop */
+  int N_stars_density_exact;
+
+  /*! Has this particle interacted with any unhibited star neighbour? */
+  char stars_inhibited_exact;
+
+  /*! Brute-force evaluation of the star neighbour number density. */
+  float stars_n_exact;
+
+  /*! Exact value of the stellar density obtained via brute-force loop */
+  float stars_rho_exact;
+
+#endif
 
   /*! Union for the formation time and formation scale factor */
   union {

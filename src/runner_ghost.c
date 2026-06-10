@@ -63,6 +63,9 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
+/* Import the black hole star-density loop functions. */
+#include "runner_doiact_bh_stars.h"
+
 /* Import the sink density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
@@ -936,6 +939,328 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
   }
 
   if (timer) TIMER_TOC(timer_do_black_holes_ghost);
+}
+
+/**
+ * @brief Intermediate task after the density of star particles around the
+ * black holes has been computed. Iterates the star-neighbour search radius
+ * of the black holes until the target star neighbour number is reached.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_bh_stars_ghost(struct runner *r, struct cell *c, int timer) {
+
+#ifdef BLACK_HOLES_HAVE_STAR_DENSITY
+
+  struct bpart *restrict bparts = c->black_holes.parts;
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float stars_h_max =
+      min(e->black_holes_properties->stars_h_max, e->hydro_properties->h_max);
+  const float stars_h_min = e->hydro_properties->h_min;
+  const float eps = e->black_holes_properties->stars_h_tolerance;
+  const float stars_eta_dim =
+      pow_dimension(e->black_holes_properties->stars_eta_neighbours);
+  const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
+  int redo = 0, bcount = 0;
+
+  /* Running value of the maximal search radius */
+  float h_max = c->black_holes.h_star_max;
+  float h_max_active = 0.f;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->black_holes.count == 0) return;
+  if (!cell_is_active_black_holes(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_bh_stars_ghost(r, c->progeny[k], 0);
+
+        /* Update h_max */
+        h_max = max(h_max, c->progeny[k]->black_holes.h_star_max);
+        h_max_active =
+            max(h_max_active, c->progeny[k]->black_holes.h_star_max_active);
+      }
+    }
+  } else {
+
+    /* Init the list of active particles that have to be updated. */
+    int *sid = NULL;
+    float *h_0 = NULL;
+    float *left = NULL;
+    float *right = NULL;
+    if ((sid = (int *)malloc(sizeof(int) * c->black_holes.count)) == NULL)
+      error("Can't allocate memory for sid.");
+    if ((h_0 = (float *)malloc(sizeof(float) * c->black_holes.count)) == NULL)
+      error("Can't allocate memory for h_0.");
+    if ((left = (float *)malloc(sizeof(float) * c->black_holes.count)) == NULL)
+      error("Can't allocate memory for left.");
+    if ((right = (float *)malloc(sizeof(float) * c->black_holes.count)) == NULL)
+      error("Can't allocate memory for right.");
+    for (int k = 0; k < c->black_holes.count; k++)
+      if (bpart_is_active(&bparts[k], e)) {
+        sid[bcount] = k;
+        h_0[bcount] = bparts[k].h_star;
+        left[bcount] = 0.f;
+        right[bcount] = stars_h_max;
+        ++bcount;
+      }
+
+    /* While there are particles that need to be updated... */
+    for (int num_reruns = 0; bcount > 0 && num_reruns < max_smoothing_iter;
+         num_reruns++) {
+
+      /* Reset the redo-count. */
+      redo = 0;
+
+      /* Loop over the remaining active parts in this cell. */
+      for (int i = 0; i < bcount; i++) {
+
+        /* Get a direct pointer on the part. */
+        struct bpart *bp = &bparts[sid[i]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Is this part within the timestep? */
+        if (!bpart_is_active(bp, e))
+          error("Ghost applied to inactive particle");
+#endif
+
+        /* Get some useful values */
+        const float h_init = h_0[i];
+        const float h_old = bp->h_star;
+        const float h_old_dim = pow_dimension(h_old);
+        const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+
+        float h_new;
+        int has_no_neighbours = 0;
+
+        if (bp->stars_density.wcount <
+            1.e-5 * kernel_root) { /* No neighbours case */
+
+          /* Flag that there were no neighbours */
+          has_no_neighbours = 1;
+
+          /* Double h and try again */
+          h_new = 2.f * h_old;
+
+        } else {
+
+          /* Finish the density calculation */
+          black_holes_stars_end_density(bp, cosmo);
+
+          /* Compute one step of the Newton-Raphson scheme */
+          const float n_sum = bp->stars_density.wcount * h_old_dim;
+          const float n_target = stars_eta_dim;
+          const float f = n_sum - n_target;
+          const float f_prime =
+              bp->stars_density.wcount_dh * h_old_dim +
+              hydro_dimension * bp->stars_density.wcount * h_old_dim_minus_one;
+
+          /* Improve the bisection bounds */
+          if (n_sum < n_target)
+            left[i] = max(left[i], h_old);
+          else if (n_sum > n_target)
+            right[i] = min(right[i], h_old);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Check the validity of the left and right bounds */
+          if (left[i] > right[i])
+            error("Invalid left (%e) and right (%e)", left[i], right[i]);
+#endif
+
+          /* Skip if h is already h_max and we don't have enough neighbours */
+          /* Same if we are below h_min */
+          if (((bp->h_star >= stars_h_max) && (f < 0.f)) ||
+              ((bp->h_star <= stars_h_min) && (f > 0.f))) {
+
+            /* Check if h_max has increased */
+            h_max = max(h_max, bp->h_star);
+            h_max_active = max(h_max_active, bp->h_star);
+
+            /* Ok, we are done with this particle */
+            continue;
+          }
+
+          /* Normal case: Use Newton-Raphson to get a better value of h */
+
+          /* Avoid floating point exception from f_prime = 0 */
+          h_new = h_old - f / (f_prime + FLT_MIN);
+
+          /* Be verbose about the particles that struggle to converge */
+          if (num_reruns > max_smoothing_iter - 10) {
+
+            message(
+                "Star search radius convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                num_reruns, bp->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                n_target, left[i], right[i]);
+          }
+
+          /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
+          h_new = min(h_new, 2.f * h_old);
+          h_new = max(h_new, 0.5f * h_old);
+
+          /* Verify that we are actually progrssing towards the answer */
+          h_new = max(h_new, left[i]);
+          h_new = min(h_new, right[i]);
+        }
+
+        /* Check whether the particle has an inappropriate search radius */
+        if (fabsf(h_new - h_old) > eps * h_old) {
+
+          /* Ok, correct then */
+
+          /* Case where we have been oscillating around the solution */
+          if ((h_new == left[i] && h_old == right[i]) ||
+              (h_old == left[i] && h_new == right[i])) {
+
+            /* Bisect the remaining interval */
+            bp->h_star = pow_inv_dimension(
+                0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
+
+          } else {
+
+            /* Normal case */
+            bp->h_star = h_new;
+          }
+
+          /* If below the absolute maximum, try again */
+          if (bp->h_star < stars_h_max && bp->h_star > stars_h_min) {
+
+            /* Flag for another round of fun */
+            sid[redo] = sid[i];
+            h_0[redo] = h_0[i];
+            left[redo] = left[i];
+            right[redo] = right[i];
+            redo += 1;
+
+            /* Re-initialise everything */
+            black_holes_init_stars_density(bp);
+
+            /* Off we go ! */
+            continue;
+
+          } else if (bp->h_star <= stars_h_min) {
+
+            /* Ok, this particle is a lost cause... */
+            bp->h_star = stars_h_min;
+
+          } else if (bp->h_star >= stars_h_max) {
+
+            /* Ok, this particle is a lost cause... */
+            bp->h_star = stars_h_max;
+
+            /* Do some damage control if no neighbours at all were found */
+            if (has_no_neighbours) {
+              black_holes_bpart_has_no_stars_neighbours(bp, cosmo);
+            }
+
+          } else {
+            error(
+                "Fundamental problem with the search radius iteration "
+                "logic.");
+          }
+        }
+
+        /* We now have a particle whose search radius has converged */
+
+        /* Check if h_max has increased */
+        h_max = max(h_max, bp->h_star);
+        h_max_active = max(h_max_active, bp->h_star);
+      }
+
+      /* We now need to treat the particles whose search radius had not
+       * converged again */
+
+      /* Re-set the counter for the next loop (potentially). */
+      bcount = redo;
+      if (bcount > 0) {
+
+        /* Climb up the cell hierarchy. */
+        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+
+          /* Run through this cell's star-density interactions. */
+          for (struct link *l = finger->black_holes.stars_density; l != NULL;
+               l = l->next) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (l->t->ti_run < r->e->ti_current)
+              error("Star-density task should have been run.");
+#endif
+
+            /* Self-interaction? */
+            if (l->t->type == task_type_self) {
+              runner_dosub_subset_bh_stars_density(r, finger, bparts, sid,
+                                                   bcount, NULL, 1);
+            }
+
+            /* Otherwise, pair interaction? */
+            else if (l->t->type == task_type_pair) {
+
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dosub_subset_bh_stars_density(r, finger, bparts, sid,
+                                                     bcount, l->t->cj, 1);
+              else
+                runner_dosub_subset_bh_stars_density(r, finger, bparts, sid,
+                                                     bcount, l->t->ci, 1);
+            } else {
+#ifdef SWIFT_DEBUG_CHECKS
+              error("Invalid sub-type!");
+#endif
+            }
+          }
+        }
+      }
+    }
+
+    if (bcount) {
+      warning(
+          "Star search radius failed to converge for the following BH "
+          "particles:");
+      for (int i = 0; i < bcount; i++) {
+        struct bpart *bp = &bparts[sid[i]];
+        warning("ID: %lld, h_star: %g, wcount: %g", bp->id, bp->h_star,
+                bp->stars_density.wcount);
+      }
+
+      error("Star search radius failed to converge on %i particles.", bcount);
+    }
+
+    /* Be clean */
+    free(left);
+    free(right);
+    free(sid);
+    free(h_0);
+  }
+
+  /* Update h_star_max */
+  c->black_holes.h_star_max = h_max;
+  c->black_holes.h_star_max_active = h_max_active;
+
+  /* The ghost may not always be at the top level.
+   * Therefore we need to update h_max between the super- and top-levels */
+  if (c->black_holes.stars_ghost) {
+    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+      atomic_max_f(&tmp->black_holes.h_star_max, h_max);
+      atomic_max_f(&tmp->black_holes.h_star_max_active, h_max_active);
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_bh_stars_ghost);
+
+#else
+  error(
+      "SWIFT was compiled with a black hole model without star-density "
+      "support.");
+#endif /* BLACK_HOLES_HAVE_STAR_DENSITY */
 }
 
 /**

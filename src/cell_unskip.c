@@ -1202,6 +1202,119 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Traverse a sub-cell task and activate the drift and sort tasks that
+ * are required by a black hole star-density task
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ */
+void cell_activate_subcell_bh_stars_tasks(struct cell *ci, struct cell *cj,
+                                          struct scheduler *s) {
+  const struct engine *e = s->space->e;
+
+  /* Store the current dx_max and h_max values. */
+  ci->black_holes.dx_max_part_old = ci->black_holes.dx_max_part;
+  ci->black_holes.h_star_max_old = ci->black_holes.h_star_max;
+  ci->stars.dx_max_part_old = ci->stars.dx_max_part;
+  ci->stars.h_max_old = ci->stars.h_max;
+
+  if (cj != NULL) {
+    cj->black_holes.dx_max_part_old = cj->black_holes.dx_max_part;
+    cj->black_holes.h_star_max_old = cj->black_holes.h_star_max;
+    cj->stars.dx_max_part_old = cj->stars.dx_max_part;
+    cj->stars.h_max_old = cj->stars.h_max;
+  }
+
+  /* Self interaction? */
+  if (cj == NULL) {
+    /* Do anything? */
+    if (!cell_is_active_black_holes(ci, e) || ci->stars.count == 0 ||
+        ci->black_holes.count == 0)
+      return;
+
+    /* Recurse? */
+    if (cell_can_recurse_in_self_bh_stars_task(ci)) {
+      /* Loop over all progenies and pairs of progenies */
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] != NULL) {
+          cell_activate_subcell_bh_stars_tasks(ci->progeny[j], NULL, s);
+          for (int k = j + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              cell_activate_subcell_bh_stars_tasks(ci->progeny[j],
+                                                   ci->progeny[k], s);
+        }
+      }
+    } else {
+      /* We have reached the bottom of the tree: activate drift */
+      cell_activate_drift_bpart(ci, s);
+      cell_activate_drift_spart(ci, s);
+    }
+  }
+
+  /* Otherwise, pair interaction */
+  else {
+
+    /* Get the orientation of the pair. */
+    double shift[3];
+    const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
+
+    const int ci_active =
+        ci->black_holes.count > 0 && cell_is_active_black_holes(ci, e);
+    const int cj_active =
+        cj->black_holes.count > 0 && cell_is_active_black_holes(cj, e);
+
+    /* Should we even bother? */
+    if (!ci_active && !cj_active) return;
+
+    /* recurse? */
+    if (cell_can_recurse_in_pair_bh_stars_task(ci, cj) &&
+        cell_can_recurse_in_pair_bh_stars_task(cj, ci)) {
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+          cell_activate_subcell_bh_stars_tasks(ci->progeny[pid],
+                                               cj->progeny[pjd], s);
+      }
+    }
+
+    /* Otherwise, activate the sorts and drifts. */
+    else {
+
+      if (ci_active && cj->stars.count > 0) {
+
+        /* We are going to walk the star sorts of cj, so store some values. */
+        atomic_or(&cj->stars.requires_sorts, 1 << sid);
+        cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
+
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
+
+        /* Do we need to sort the cells? */
+        cell_activate_stars_sorts(cj, sid, s);
+      }
+
+      if (cj_active && ci->stars.count > 0) {
+
+        /* We are going to walk the star sorts of ci, so store some values. */
+        atomic_or(&ci->stars.requires_sorts, 1 << sid);
+        ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
+
+        /* Activate the drifts if the cells are local. */
+        if (cj->nodeID == engine_rank) cell_activate_drift_bpart(cj, s);
+        if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
+
+        /* Do we need to sort the cells? */
+        cell_activate_stars_sorts(ci, sid, s);
+      }
+    }
+  } /* Otherwise, pair interaction */
+}
+
+/**
  * @brief Traverse a sub-cell task and activate the sinks drift tasks that
  * are required by a sinks task
  *
@@ -2701,6 +2814,58 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
+  /* Un-skip the star-density tasks involved with this cell. */
+  for (struct link *l = c->black_holes.stars_density; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active =
+        ci->black_holes.count > 0 && cell_is_active_black_holes(ci, e);
+    const int cj_active = (cj != NULL) ? (cj->black_holes.count > 0 &&
+                                          cell_is_active_black_holes(cj, e))
+                                       : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
+      scheduler_activate(s, t);
+
+      /* Store current values of dx_max and h_max. */
+      if (t->type == task_type_self) {
+        cell_activate_subcell_bh_stars_tasks(ci, NULL, s);
+      }
+
+      /* Store current values of dx_max and h_max. */
+      else if (t->type == task_type_pair) {
+        cell_activate_subcell_bh_stars_tasks(ci, cj, s);
+
+        /* Activate bh_in for each cell that is part of
+         * a pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->black_holes.black_holes_in);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->black_holes.black_holes_in);
+      }
+    }
+
+    /* Only interested in pair interactions as of here. */
+    if (t->type == task_type_pair) {
+
+      /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
+      if (cell_need_rebuild_for_bh_stars_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_bh_stars_pair(cj, ci)) rebuild = 1;
+    }
+  }
+
   /* Un-skip the swallow tasks involved with this cell. */
   for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -2806,6 +2971,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   if (cell_is_active_black_holes(c, e)) {
     if (c->black_holes.density_ghost != NULL)
       scheduler_activate(s, c->black_holes.density_ghost);
+    if (c->black_holes.stars_ghost != NULL)
+      scheduler_activate(s, c->black_holes.stars_ghost);
     if (c->black_holes.swallow_ghost_1 != NULL)
       scheduler_activate(s, c->black_holes.swallow_ghost_1);
     if (c->black_holes.swallow_ghost_2 != NULL)

@@ -125,6 +125,7 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
         t->type == task_type_star_formation_sink ||
         t->type == task_type_stars_ghost ||
         t->type == task_type_bh_density_ghost ||
+        t->type == task_type_bh_stars_ghost ||
         t->type == task_type_bh_swallow_ghost2 ||
         t->type == task_type_sink_density_ghost ||
         t->type == task_type_sink_ghost2 ||

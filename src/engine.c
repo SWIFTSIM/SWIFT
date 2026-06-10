@@ -1242,6 +1242,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   if (e->policy & engine_policy_fof) {
     n1 += 2;
   }
+  if ((e->policy & engine_policy_black_holes) && e->with_bh_stars_density) {
+    /* star-density: 1 self + 13 pairs, 1 ghost, 1 extra space */
+    n1 += 16;
+    n2 += 1;
+  }
 #if defined(WITH_CSDS)
   /* each cell logs its particles */
   if (e->policy & engine_policy_csds) {
@@ -2454,6 +2459,16 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
+#ifdef SWIFT_BH_STARS_DENSITY_CHECKS
+  /* Run the brute-force star-density calculation for some black holes */
+  if (e->with_bh_stars_density)
+    black_holes_exact_stars_density_compute(e->s, e);
+
+  /* Check the accuracy of the star-density calculation */
+  if (e->with_bh_stars_density)
+    black_holes_exact_stars_density_check(e->s, e, /*rel_tol=*/1e-2);
+#endif
+
 #ifdef SWIFT_SINK_DENSITY_CHECKS
   /* Run the brute-force sink calculation for some sinks */
   if (e->policy & engine_policy_sinks) sink_exact_density_compute(e->s, e);
@@ -3017,6 +3032,16 @@ int engine_step(struct engine *e) {
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
+#endif
+
+#ifdef SWIFT_BH_STARS_DENSITY_CHECKS
+  /* Run the brute-force star-density calculation for some black holes */
+  if (e->with_bh_stars_density)
+    black_holes_exact_stars_density_compute(e->s, e);
+
+  /* Check the accuracy of the star-density calculation */
+  if (e->with_bh_stars_density)
+    black_holes_exact_stars_density_check(e->s, e, /*rel_tol=*/1e-2);
 #endif
 
 #ifdef SWIFT_SINK_DENSITY_CHECKS
@@ -3620,6 +3645,39 @@ void engine_init(
   e->stars_properties = stars;
   e->black_holes_properties = black_holes;
   e->sink_properties = sinks;
+
+  /* Are we running the loop finding the star neighbours of black holes? */
+  e->with_bh_stars_density = parser_get_opt_param_int(
+      params, "BlackHoles:use_star_neighbour_loop", 0);
+  if (e->with_bh_stars_density) {
+#ifdef BLACK_HOLES_NONE
+    error(
+        "Black holes star neighbour loop requested "
+        "(BlackHoles:use_star_neighbour_loop) but SWIFT was compiled without "
+        "a black hole model. Configure e.g. with --with-black-holes=EAGLE.");
+#endif
+#ifndef BLACK_HOLES_HAVE_STAR_DENSITY
+    error(
+        "Black holes star neighbour loop requested "
+        "(BlackHoles:use_star_neighbour_loop) but SWIFT was compiled with a "
+        "black hole model that does not support it. Use the Default or EAGLE "
+        "model.");
+#endif
+#ifdef WITH_MPI
+    error(
+        "Black holes star neighbour loop "
+        "(BlackHoles:use_star_neighbour_loop) is not yet supported over "
+        "MPI.");
+#endif
+    if (!(e->policy & engine_policy_black_holes))
+      error(
+          "Black holes star neighbour loop requested but the run has no "
+          "black holes!");
+    if (!(e->policy & engine_policy_stars))
+      error(
+          "Black holes star neighbour loop requested but the run has no "
+          "stars!");
+  }
   e->neutrino_properties = neutrinos;
   e->neutrino_response = neutrino_response;
   e->mesh = mesh;

@@ -529,6 +529,9 @@ struct engine {
   /* Properties of the black hole model */
   const struct black_holes_props *black_holes_properties;
 
+  /* Are we running the loop finding the star neighbours of black holes? */
+  int with_bh_stars_density;
+
   /* Properties of the sink model */
   const struct sink_props *sink_properties;
 
