@@ -230,8 +230,12 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     const float z_i = gpi->x[2];
     const float h_i = gravity_get_softening(gpi, grav_props);
 
-    /* Local accumulators for the acceleration and potential */
+    /* Local accumulators for the acceleration, potential, and tidal tensor */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+    float T_xx = 0.f, T_yy = 0.f, T_zz = 0.f;
+    float T_xy = 0.f, T_xz = 0.f, T_yz = 0.f;
+#endif
 
     /* Now, we can start the interactions for that particle */
 
@@ -255,12 +259,27 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
       runner_iact_grav_pm_full(dx_multi, dy_multi, dz_multi, r2_multi, h_i,
                                h_inv_i, &multi_j->m_pole, &f_x, &f_y, &f_z,
                                &pot_ij);
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+      float t_xx = 0.f, t_xy = 0.f, t_xz = 0.f, t_yy = 0.f, t_yz = 0.f,
+            t_zz = 0.f;
+      runner_iact_grav_pm_full_tensors(dx_multi, dy_multi, dz_multi, r2_multi,
+                                       h_i, h_inv_i, &multi_j->m_pole, &t_xx,
+                                       &t_xy, &t_xz, &t_yy, &t_yz, &t_zz);
+#endif
 
       /* Store it back */
       a_x += f_x;
       a_y += f_y;
       a_z += f_z;
       pot += pot_ij;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+      T_xx += t_xx;
+      T_xy += t_xy;
+      T_xz += t_xz;
+      T_yy += t_yy;
+      T_yz += t_yz;
+      T_zz += t_zz;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter */
@@ -328,11 +347,25 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
           runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij,
                                    &pot_ij);
 
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          float tidFac2 = 0.f;
+          runner_iact_grav_pp_full_tensors(r2, h2, h_inv, h_inv_3, mass_j,
+                                           &tidFac2);
+#endif
+
           /* Store it back */
           a_x += f_ij * dx;
           a_y += f_ij * dy;
           a_z += f_ij * dz;
           pot += pot_ij;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          T_xx += -f_ij + dx * dx * tidFac2;
+          T_xy += dx * dy * tidFac2;
+          T_xz += dx * dz * tidFac2;
+          T_yy += -f_ij + dy * dy * tidFac2;
+          T_yz += dy * dz * tidFac2;
+          T_zz += -f_ij + dz * dz * tidFac2;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Update the interaction counter */
@@ -394,12 +427,25 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
           float f_ij, pot_ij;
           runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij,
                                    &pot_ij);
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          float tidFac2 = 0.f;
+          runner_iact_grav_pp_full_tensors(r2, h2, h_inv, h_inv_3, mass_j,
+                                           &tidFac2);
+#endif
 
           /* Store it back */
           a_x += f_ij * dx;
           a_y += f_ij * dy;
           a_z += f_ij * dz;
           pot += pot_ij;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          T_xx += -f_ij + dx * dx * tidFac2;
+          T_xy += dx * dy * tidFac2;
+          T_xz += dx * dz * tidFac2;
+          T_yy += -f_ij + dy * dy * tidFac2;
+          T_yz += dy * dz * tidFac2;
+          T_zz += -f_ij + dz * dz * tidFac2;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Update the interaction counter */
@@ -421,6 +467,14 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     cache_i->a_y[i] += a_y;
     cache_i->a_z[i] += a_z;
     cache_i->pot[i] += pot;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+    cache_i->T_xx[i] += T_xx;
+    cache_i->T_yy[i] += T_yy;
+    cache_i->T_zz[i] += T_zz;
+    cache_i->T_xy[i] += T_xy;
+    cache_i->T_xz[i] += T_xz;
+    cache_i->T_yz[i] += T_yz;
+#endif
     cache_i->active[i] = 1;
   }
 
@@ -501,8 +555,12 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     const float z_i = gpi->x[2];
     const float h_i = gravity_get_softening(gpi, grav_props);
 
-    /* Local accumulators for the acceleration and potential */
+    /* Local accumulators for the acceleration, potential and tidal tensor */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+    float T_xx = 0.f, T_yy = 0.f, T_zz = 0.f;
+    float T_xy = 0.f, T_xz = 0.f, T_yz = 0.f;
+#endif
 
     /* Now, we can start the interactions for that particle */
 
@@ -532,11 +590,27 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
                                     h_inv_i, r_s_inv, &multi_j->m_pole, &f_x,
                                     &f_y, &f_z, &pot_ij);
 
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+      float t_xx = 0.f, t_xy = 0.f, t_xz = 0.f, t_yy = 0.f, t_yz = 0.f,
+            t_zz = 0.f;
+      runner_iact_grav_pm_truncated_tensors(
+          dx_multi, dy_multi, dz_multi, r2_multi, h_i, h_inv_i, r_s_inv,
+          &multi_j->m_pole, &t_xx, &t_xy, &t_xz, &t_yy, &t_yz, &t_zz);
+#endif
+
       /* Store it back */
       a_x += f_x;
       a_y += f_y;
       a_z += f_z;
       pot += pot_ij;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+      T_xx += t_xx;
+      T_xy += t_xy;
+      T_xz += t_xz;
+      T_yy += t_yy;
+      T_yz += t_yz;
+      T_zz += t_zz;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter */
@@ -609,12 +683,25 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
           float f_ij, pot_ij;
           runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
                                         &f_ij, &pot_ij);
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          float tidFac2 = 0.f;
+          runner_iact_grav_pp_truncated_tensors(r2, h2, h_inv, h_inv_3, mass_j,
+                                                r_s_inv, &tidFac2);
+#endif
 
           /* Store it back */
           a_x += f_ij * dx;
           a_y += f_ij * dy;
           a_z += f_ij * dz;
           pot += pot_ij;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          T_xx += -f_ij + dx * dx * tidFac2;
+          T_xy += dx * dy * tidFac2;
+          T_xz += dx * dz * tidFac2;
+          T_yy += -f_ij + dy * dy * tidFac2;
+          T_yz += dy * dz * tidFac2;
+          T_zz += -f_ij + dz * dz * tidFac2;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Update the interaction counter */
@@ -681,12 +768,25 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
           float f_ij, pot_ij;
           runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
                                         &f_ij, &pot_ij);
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          float tidFac2 = 0.f;
+          runner_iact_grav_pp_truncated_tensors(r2, h2, h_inv, h_inv_3, mass_j,
+                                                r_s_inv, &tidFac2);
+#endif
 
           /* Store it back */
           a_x += f_ij * dx;
           a_y += f_ij * dy;
           a_z += f_ij * dz;
           pot += pot_ij;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          T_xx += -f_ij + dx * dx * tidFac2;
+          T_xy += dx * dy * tidFac2;
+          T_xz += dx * dz * tidFac2;
+          T_yy += -f_ij + dy * dy * tidFac2;
+          T_yz += dy * dz * tidFac2;
+          T_zz += -f_ij + dz * dz * tidFac2;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Update the interaction counter */
@@ -709,6 +809,14 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     cache_i->a_y[i] += a_y;
     cache_i->a_z[i] += a_z;
     cache_i->pot[i] += pot;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+    cache_i->T_xx[i] += T_xx;
+    cache_i->T_yy[i] += T_yy;
+    cache_i->T_zz[i] += T_zz;
+    cache_i->T_xy[i] += T_xy;
+    cache_i->T_xz[i] += T_xz;
+    cache_i->T_yz[i] += T_yz;
+#endif
     cache_i->active[i] = 1;
   }
 
@@ -774,8 +882,10 @@ static INLINE void runner_dopair_grav_pp_full(
     const float z_i = ci_cache->z[pid];
     const float h_i = ci_cache->epsilon[pid];
 
-    /* Local accumulators for the acceleration and potential */
+    /* Local accumulators for the acceleration, potential, and tidal tensor */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    float T_xx = 0.f, T_yy = 0.f, T_zz = 0.f;
+    float T_xy = 0.f, T_xz = 0.f, T_yz = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -870,11 +980,23 @@ static INLINE void runner_dopair_grav_pp_full(
       float f_ij, pot_ij;
       runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij, &pot_ij);
 
+      float tidFac2 = 0.f;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+      runner_iact_grav_pp_full_tensors(r2, h2, h_inv, h_inv_3, mass_j,
+                                       &tidFac2);
+#endif
+
       /* Store it back */
       a_x += f_ij * dx;
       a_y += f_ij * dy;
       a_z += f_ij * dz;
       pot += pot_ij;
+      T_xx += -f_ij + dx * dx * tidFac2;
+      T_xy += dx * dy * tidFac2;
+      T_xz += dx * dz * tidFac2;
+      T_yy += -f_ij + dy * dy * tidFac2;
+      T_yz += dy * dz * tidFac2;
+      T_zz += -f_ij + dz * dz * tidFac2;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -898,6 +1020,12 @@ static INLINE void runner_dopair_grav_pp_full(
     ci_cache->a_y[pid] += a_y;
     ci_cache->a_z[pid] += a_z;
     ci_cache->pot[pid] += pot;
+    ci_cache->T_xx[pid] += T_xx;
+    ci_cache->T_yy[pid] += T_yy;
+    ci_cache->T_zz[pid] += T_zz;
+    ci_cache->T_xy[pid] += T_xy;
+    ci_cache->T_xz[pid] += T_xz;
+    ci_cache->T_yz[pid] += T_yz;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     accumulate_add_f(&gparts_i[pid].a_grav_p2p[0], a_x);
@@ -966,8 +1094,10 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const float z_i = ci_cache->z[pid];
     const float h_i = ci_cache->epsilon[pid];
 
-    /* Local accumulators for the acceleration and potential */
+    /* Local accumulators for the acceleration, potential, and tidal tensor */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    float T_xx = 0.f, T_yy = 0.f, T_zz = 0.f;
+    float T_xy = 0.f, T_xz = 0.f, T_yz = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -1063,11 +1193,23 @@ static INLINE void runner_dopair_grav_pp_truncated(
       runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
                                     &f_ij, &pot_ij);
 
+      float tidFac2 = 0.f;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+      runner_iact_grav_pp_truncated_tensors(r2, h2, h_inv, h_inv_3, mass_j,
+                                            r_s_inv, &tidFac2);
+#endif
+
       /* Store it back */
       a_x += f_ij * dx;
       a_y += f_ij * dy;
       a_z += f_ij * dz;
       pot += pot_ij;
+      T_xx += -f_ij + dx * dx * tidFac2;
+      T_xy += dx * dy * tidFac2;
+      T_xz += dx * dz * tidFac2;
+      T_yy += -f_ij + dy * dy * tidFac2;
+      T_yz += dy * dz * tidFac2;
+      T_zz += -f_ij + dz * dz * tidFac2;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -1091,6 +1233,12 @@ static INLINE void runner_dopair_grav_pp_truncated(
     ci_cache->a_y[pid] += a_y;
     ci_cache->a_z[pid] += a_z;
     ci_cache->pot[pid] += pot;
+    ci_cache->T_xx[pid] += T_xx;
+    ci_cache->T_yy[pid] += T_yy;
+    ci_cache->T_zz[pid] += T_zz;
+    ci_cache->T_xy[pid] += T_xy;
+    ci_cache->T_xz[pid] += T_xz;
+    ci_cache->T_yz[pid] += T_yz;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     accumulate_add_f(&gparts_i[pid].a_grav_p2p[0], a_x);
@@ -1138,6 +1286,12 @@ static INLINE void runner_dopair_grav_pm_full(
   swift_declare_aligned_ptr(float, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, pot, ci_cache->pot, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_xx, ci_cache->T_xx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_xy, ci_cache->T_xy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_xz, ci_cache->T_xz, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_yy, ci_cache->T_yy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_yz, ci_cache->T_yz, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_zz, ci_cache->T_zz, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, ci_cache->active,
                             SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, use_mpole, ci_cache->use_mpole,
@@ -1218,11 +1372,24 @@ static INLINE void runner_dopair_grav_pm_full(
     runner_iact_grav_pm_full(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
                              &f_z, &pot_ij);
 
+    float t_xx = 0.f, t_xy = 0.f, t_xz = 0.f, t_yy = 0.f, t_yz = 0.f,
+          t_zz = 0.f;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+    runner_iact_grav_pm_full_tensors(dx, dy, dz, r2, h_i, h_inv_i, multi_j,
+                                     &t_xx, &t_xy, &t_xz, &t_yy, &t_yz, &t_zz);
+#endif
+
     /* Store it back */
     a_x[pid] += f_x;
     a_y[pid] += f_y;
     a_z[pid] += f_z;
     pot[pid] += pot_ij;
+    T_xx[pid] += t_xx;
+    T_xy[pid] += t_xy;
+    T_xz[pid] += t_xz;
+    T_yy[pid] += t_yy;
+    T_yz[pid] += t_yz;
+    T_zz[pid] += t_zz;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Update the interaction counter */
@@ -1289,6 +1456,12 @@ static INLINE void runner_dopair_grav_pm_truncated(
   swift_declare_aligned_ptr(float, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, pot, ci_cache->pot, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_xx, ci_cache->T_xx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_xy, ci_cache->T_xy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_xz, ci_cache->T_xz, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_yy, ci_cache->T_yy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_yz, ci_cache->T_yz, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, T_zz, ci_cache->T_zz, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, ci_cache->active,
                             SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, use_mpole, ci_cache->use_mpole,
@@ -1367,11 +1540,25 @@ static INLINE void runner_dopair_grav_pm_truncated(
     runner_iact_grav_pm_truncated(dx, dy, dz, r2, h_i, h_inv_i, r_s_inv,
                                   multi_j, &f_x, &f_y, &f_z, &pot_ij);
 
+    float t_xx = 0.f, t_xy = 0.f, t_xz = 0.f, t_yy = 0.f, t_yz = 0.f,
+          t_zz = 0.f;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+    runner_iact_grav_pm_truncated_tensors(dx, dy, dz, r2, h_i, h_inv_i, r_s_inv,
+                                          multi_j, &t_xx, &t_xy, &t_xz, &t_yy,
+                                          &t_yz, &t_zz);
+#endif
+
     /* Store it back */
     a_x[pid] += f_x;
     a_y[pid] += f_y;
     a_z[pid] += f_z;
     pot[pid] += pot_ij;
+    T_xx[pid] += t_xx;
+    T_xy[pid] += t_xy;
+    T_xz[pid] += t_xz;
+    T_yy[pid] += t_yy;
+    T_yz[pid] += t_yz;
+    T_zz[pid] += t_zz;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Update the interaction counter */
@@ -1737,8 +1924,10 @@ static INLINE void runner_doself_grav_pp_full(
     const float z_i = ci_cache->z[pid];
     const float h_i = ci_cache->epsilon[pid];
 
-    /* Local accumulators for the acceleration */
+    /* Local accumulators for the acceleration, potential, and tidal tensor */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    float T_xx = 0.f, T_yy = 0.f, T_zz = 0.f;
+    float T_xy = 0.f, T_xz = 0.f, T_yz = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -1813,11 +2002,23 @@ static INLINE void runner_doself_grav_pp_full(
       float f_ij, pot_ij;
       runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij, &pot_ij);
 
+      float tidFac2 = 0.f;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+      runner_iact_grav_pp_full_tensors(r2, h2, h_inv, h_inv_3, mass_j,
+                                       &tidFac2);
+#endif
+
       /* Store it back */
       a_x += f_ij * dx;
       a_y += f_ij * dy;
       a_z += f_ij * dz;
       pot += pot_ij;
+      T_xx += -f_ij + dx * dx * tidFac2;
+      T_xy += dx * dy * tidFac2;
+      T_xz += dx * dz * tidFac2;
+      T_yy += -f_ij + dy * dy * tidFac2;
+      T_yz += dy * dz * tidFac2;
+      T_zz += -f_ij + dz * dz * tidFac2;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -1837,6 +2038,12 @@ static INLINE void runner_doself_grav_pp_full(
     ci_cache->a_y[pid] += a_y;
     ci_cache->a_z[pid] += a_z;
     ci_cache->pot[pid] += pot;
+    ci_cache->T_xx[pid] += T_xx;
+    ci_cache->T_yy[pid] += T_yy;
+    ci_cache->T_zz[pid] += T_zz;
+    ci_cache->T_xy[pid] += T_xy;
+    ci_cache->T_xz[pid] += T_xz;
+    ci_cache->T_yz[pid] += T_yz;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     accumulate_add_f(&gparts[pid].a_grav_p2p[0], a_x);
@@ -1885,8 +2092,10 @@ static INLINE void runner_doself_grav_pp_truncated(
     const float z_i = ci_cache->z[pid];
     const float h_i = ci_cache->epsilon[pid];
 
-    /* Local accumulators for the acceleration and potential */
+    /* Local accumulators for the acceleration, potential, and tidal tensor */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    float T_xx = 0.f, T_yy = 0.f, T_zz = 0.f;
+    float T_xy = 0.f, T_xz = 0.f, T_yz = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -1962,12 +2171,23 @@ static INLINE void runner_doself_grav_pp_truncated(
       float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
                                     &f_ij, &pot_ij);
+      float tidFac2 = 0.f;
+#ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+      runner_iact_grav_pp_truncated_tensors(r2, h2, h_inv, h_inv_3, mass_j,
+                                            r_s_inv, &tidFac2);
+#endif
 
       /* Store it back */
       a_x += f_ij * dx;
       a_y += f_ij * dy;
       a_z += f_ij * dz;
       pot += pot_ij;
+      T_xx += -f_ij + dx * dx * tidFac2;
+      T_xy += dx * dy * tidFac2;
+      T_xz += dx * dz * tidFac2;
+      T_yy += -f_ij + dy * dy * tidFac2;
+      T_yz += dy * dz * tidFac2;
+      T_zz += -f_ij + dz * dz * tidFac2;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
@@ -1987,6 +2207,12 @@ static INLINE void runner_doself_grav_pp_truncated(
     ci_cache->a_y[pid] += a_y;
     ci_cache->a_z[pid] += a_z;
     ci_cache->pot[pid] += pot;
+    ci_cache->T_xx[pid] += T_xx;
+    ci_cache->T_yy[pid] += T_yy;
+    ci_cache->T_zz[pid] += T_zz;
+    ci_cache->T_xy[pid] += T_xy;
+    ci_cache->T_xz[pid] += T_xz;
+    ci_cache->T_yz[pid] += T_yz;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
     accumulate_add_f(&gparts[pid].a_grav_p2p[0], a_x);
