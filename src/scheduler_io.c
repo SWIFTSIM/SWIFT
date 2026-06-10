@@ -691,13 +691,12 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
  * @param step The current step number.
  */
 void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
-                                       int step) {
+                                       int step, const long long cellID) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
 
   const ticks tic = getticks();
 
-  const long long cellID = s->dependency_graph_cellID;
   if (cellID == 0LL) return;
 
   /* Number of possible relations between tasks */
@@ -993,6 +992,23 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #endif /* defined SWIFT_DEBUG_CHECKS || defined CELL_GRAPH */
+}
+
+void scheduler_write_cell_dependencies_debug(struct scheduler *s, int verbose,
+                                             int step, const struct cell *c) {
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+  /* Write the current cell */
+  scheduler_write_cell_dependencies(s, verbose, step, c->cellID);
+
+  /* Write the hydro super */
+  scheduler_write_cell_dependencies(s, verbose, step, c->hydro.super->cellID);
+
+  /* Write the grav super */
+  scheduler_write_cell_dependencies(s, verbose, step, c->grav.super->cellID);
+
+  /* Write the top cell */
+  scheduler_write_cell_dependencies(s, verbose, step, c->top->cellID);
+#endif
 }
 
 /**
