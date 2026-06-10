@@ -56,6 +56,8 @@
 #include "./hydro/REMIX/hydro_parameters.h"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_parameters.h"
+#elif defined(MAGMA_SPH)
+#include "./hydro/MAGMA/hydro_parameters.h"
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro_parameters.h"
 #elif defined(ANARCHY_PU_SPH)
@@ -66,6 +68,12 @@
 
 #if defined(NONE_MHD)
 #include "./mhd/None/mhd_parameters.h"
+#elif defined(DIRECT_INDUCTION_MHD)
+#include "./mhd/DirectInduction/mhd_parameters.h"
+#elif defined(DIRECT_INDUCTION_FEDE_MHD)
+#include "./mhd/DInduction/mhd_parameters.h"
+#elif defined(VECTOR_POTENTIAL_MHD)
+#include "./mhd/VPotential/mhd_parameters.h"
 #else
 #error "Invalid choice of MHD variant"
 #endif

@@ -30,6 +30,21 @@
 #include "./mhd/None/mhd.h"
 #include "./mhd/None/mhd_iact.h"
 #define MHD_IMPLEMENTATION "No MHD scheme"
+#elif defined(DIRECT_INDUCTION_MHD)
+#include "./mhd/DirectInduction/mhd.h"
+#define EXTRA_HYDRO_LOOP
+#include "./mhd/DirectInduction/mhd_iact.h"
+#define MHD_IMPLEMENTATION "MHD scheme using direct induction"
+#elif defined(DIRECT_INDUCTION_FEDE_MHD)
+#include "./mhd/DInduction/mhd.h"
+#include "./mhd/DInduction/mhd_iact.h"
+#define MHD_IMPLEMENTATION "MHD scheme using direct induction BASE"
+#define EXTRA_HYDRO_LOOP
+#elif defined(VECTOR_POTENTIAL_MHD)
+#include "./mhd/VPotential/mhd.h"
+#include "./mhd/VPotential/mhd_iact.h"
+#define MHD_IMPLEMENTATION "Vector potentials"
+#define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of MHD variant"
 #endif
