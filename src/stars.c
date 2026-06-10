@@ -84,6 +84,11 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
 
         const struct part *pj = &s->parts[j];
 
+        /* Skip the placeholder particles used by on-the-fly particle
+         * creation: they sit at the cell locations with zero mass and are
+         * not in the cell counts the tree loops see. */
+        if (pj->time_bin == time_bin_not_created) continue;
+
         /* Compute the pairwise distance. */
         double dx = pj->x[0] - pix[0];
         double dy = pj->x[1] - pix[1];
@@ -301,7 +306,16 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
         wrong_rho++;
       }
 
-      if (!found_inhibited && spi->birth_time > -1 &&
+      /* Note that stars whose smoothing length is pinned at either of the
+       * allowed limits have legitimately truncated kernels and cannot
+       * reach the target neighbour number. Like for the density check
+       * above, we also only consider particles for which the tree and the
+       * brute-force loop disagree on the number of neighbours: the ghost
+       * legitimately accepts a small tail of particles slightly outside
+       * the target window when the local density field is steep. */
+      if (!found_inhibited && spi->N_density_exact != spi->N_density &&
+          spi->birth_time > -1 && spi->h < e->hydro_properties->h_max &&
+          spi->h > e->hydro_properties->h_min &&
           (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
 
         message("N_NGB: id=%lld exact=%f N_true=%d N_swift=%d %d %e", id, N_ngb,
@@ -327,13 +341,13 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   else
     message("Verified %d star particles", counter);
 
-  /* if (wrong_n_ngb) */
-  /*   error( */
-  /*       "N_ngb difference larger than the allowed tolerance for %d " */
-  /*       "star particles! (out of %d particles)", */
-  /*       wrong_n_ngb, counter); */
-  /* else */
-  /*   message("Verified %d star particles", counter); */
+  if (wrong_n_ngb)
+    error(
+        "N_ngb difference larger than the allowed tolerance for %d "
+        "star particles! (out of %d particles)",
+        wrong_n_ngb, counter);
+  else
+    message("Verified the neighbour numbers of %d star particles", counter);
 
   if (e->verbose)
     message("Writting brute-force density files took %.3f %s. ",
