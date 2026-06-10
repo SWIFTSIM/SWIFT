@@ -29,6 +29,7 @@ P0 = 0.0  # Constant additional pressure (should have no impact on the dynamics)
 # ---------------------------------------------------------------
 
 import matplotlib
+
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 import numpy as np
