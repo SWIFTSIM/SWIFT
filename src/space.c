@@ -3333,6 +3333,9 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   /* Loop over particles and perform tree searches to get the density everywhere*/
   assign_densities(cells_top, &e->threadpool, s->nr_cells, box_size, level_check);
 
+  message("Survived the density assignment");
+  sleep(10);
+
   //min_depth = 0;
   int max_gridsize = perform_uniform_calculation(s, min_depth, max_depth, levels);
   message("max_gridsize = %d", max_gridsize);
@@ -5840,16 +5843,16 @@ void initialise_tree_search(struct gpart *part, struct cell *home_cell, struct c
   double x[3] = {pos_x, pos_y, pos_z};
   double width[3] = {home_cell->width[0], home_cell->width[1], home_cell->width[2]}; //Width of constant density cube by which we represent the particle
   //message("We are assigning the width %lf,%lf,%lf", width[0],width[1],width[2]);
-  double pbox[6] = {x[0] - width[0]/2, x[0] + width[0]/2, x[1] - width[1]/2,  x[1] + width[1]/2, x[2] - width[2]/2, x[2] + width[2]/2};
+  double pbox[6] = {x[0], x[0] + width[0], x[1],  x[1] + width[1], x[2], x[2] + width[2]};
   double pbox_shift[6];
 
-  double x_shift[3] = {-boxsize, 0., boxsize};
-  double y_shift[3] = {-boxsize, 0., boxsize};
-  double z_shift[3] = {-boxsize, 0., boxsize};
+  double x_shift[2] = {-boxsize, 0.};
+  double y_shift[2] = {-boxsize, 0.};
+  double z_shift[2] = {-boxsize, 0.};
 
-  for (int i=0; i<3;i++) {
-    for (int j=0; j<3;j++) {
-      for (int k=0; k<3;k++) {
+  for (int i=0; i<2;i++) {
+    for (int j=0; j<2;j++) {
+      for (int k=0; k<2;k++) {
         pbox_shift[0] = pbox[0]+x_shift[i];
         pbox_shift[1] = pbox[1]+x_shift[i];
         pbox_shift[2] = pbox[2]+y_shift[j];
@@ -6203,6 +6206,13 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
     mean_density[i] = get_mean_density(data.rho, grid_sizes[i], 0);
     mean_density[i] *= 4.*M_PI * data.fac*data.fac*data.fac;
   }
+
+  //FILE *density_export;
+  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_density_mapping/CIC_32.txt", "w");
+  //for (int i=0; i<grid_sizes[1]*grid_sizes[1]*grid_sizes[1]; i++) {
+    //fprintf(density_export, "%E \n", rho[1][i]);
+  //}
+  //fclose(density_export);
   
   /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
@@ -6498,9 +6508,10 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
   double delta = box_size/N_max; //Width of a grid cell of the finest level
   double residual; 
   //FILE *residual_export;
-  //residual_export = fopen("/data1/vandervlugt/PythonFiles/convergence_performance/FMG/FMG.txt", "w");
+  //residual_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/convergence_performance/FMG/FMG.txt", "w");
   residual = get_residual(pot, rho, cdim, mean_density, delta);
   //if (N_max==64) fprintf(residual_export, "%E \n", residual);
+  //fprintf(residual_export, "%E \n", residual);
   message("The first residual is %lf", residual);
   const double tolerance = 10e-12; //Choose reasonable value here
   int counter = 0;
@@ -6531,6 +6542,7 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
     }
     residual = get_residual(pot, rho, cdim, mean_density, delta);  
     //if (N_max==64) fprintf(residual_export, "%E \n", residual);  
+    //fprintf(residual_export, "%E \n", residual);  
     V_cycles +=1;
     message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
   }
@@ -6586,7 +6598,10 @@ void apply_GS(const double *rho, double *pot, int cdim[3], double mean_density, 
   message("Applying Gauss-Seidel...");
   int N = cdim[0];
   double delta = box_size/N;
+  //FILE *residual_export;
+  //residual_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/convergence_performance/FMG/Gauss_Seidel_basic.txt", "w");
   double residual = get_residual(pot, rho, cdim, mean_density, delta);
+  //fprintf(residual_export, "%E \n", residual);
   double tolerance = 10e-12; //Choose reasonable value here
   int counter = 0;
   double sum = 0.;
@@ -6594,10 +6609,12 @@ void apply_GS(const double *rho, double *pot, int cdim[3], double mean_density, 
   while (residual >= tolerance) {
     perform_red_black_sweep(pot, rho, cdim, mean_density, delta);
     residual = get_residual(pot, rho, cdim, mean_density, delta);
+    //fprintf(residual_export, "%E \n", residual);
     counter +=1;
     if (counter %50 == 0) message("Did %d steps and the residual is %E", counter, residual);
   }
   message("We needed %d steps to converge", counter);
+  //fclose(residual_export);
 
   /* Set mean of potential to zero */
   sum = 0.;
@@ -7076,8 +7093,9 @@ void set_initial_guess(double *pot, const int cdim[3], int MG) {
   srand(time(NULL));
   for (int i = 0; i<N*N*N; i++){
     //pot[i] += (fmod(rand(),5.) - 10.);
-    pot[i] += fmod(rand(),2000.) - 1000.;
-    if (MG) pot[i] = 0.; //Corresponds to fR = mean(fR) everywhere.
+    //pot[i] += fmod(rand(),2000.) - 1000.;
+    //if (MG) pot[i] = 0.; //Corresponds to fR = mean(fR) everywhere.
+    pot[i] = 0.; //Corresponds to fR = mean(fR) everywhere.
   }
 }
 
