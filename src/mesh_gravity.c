@@ -1038,7 +1038,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   const int N_half = N / 2;
   const double cell_fac = N / box_size;
 
-  int N_MG = 64;
+  int N_MG = 128;
   const int N_half_MG = N_MG / 2;
   const double cell_fac_MG = N_MG / box_size;
 
@@ -1120,6 +1120,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   if (MG) {
     if (N_MG == N) memcpy(rho_MG, rho, N*N*N*sizeof(double));
     else {
+      message("Getting the densities separately");
       data_MG.cells = s->cells_top;
       data_MG.rho = rho_MG;
       data_MG.potential = NULL;
@@ -1139,7 +1140,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
 
   /* MG part from here! */
-  int get_MG_acc = 0;
+  //int get_MG_acc = 0;
   int cell_acc = 0;
 
   double *field_contribution = NULL;
@@ -1177,11 +1178,11 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
         message("Testing the f(R) calculation with a uniform density field.");
         double density_mean = 0.;
         for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-          density_mean += rho[i]/(N_MG*N_MG*N_MG);
+          density_mean += rho_MG[i]/(N_MG*N_MG*N_MG);
         }
         message("The mean density is %lf", density_mean);
         for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-          rho[i] = density_mean;
+          rho_MG[i] = density_mean;
         }
         break;
       case 2:
@@ -1191,11 +1192,11 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
           for (int j=0; j<N_MG; j++) {
             for (int k=0; k<N_MG; k++) {
               if (i==N_MG/2 && j==N_MG/2 && k==N_MG/2) continue;
-              rho[cell_getid(cdim, i, j, k)] = mean_density * (1. - 1e-4);
+              rho_MG[cell_getid(cdim, i, j, k)] = mean_density * (1. - 1e-4);
             }
           }
         }
-        rho[cell_getid(cdim, N_MG/2, N_MG/2, N_MG/2)] = mean_density * (1. + 1e-4*(N_MG*N_MG*N_MG-1.));
+        rho_MG[cell_getid(cdim, N_MG/2, N_MG/2, N_MG/2)] = mean_density * (1. + 1e-4*(N_MG*N_MG*N_MG-1.));
         MG_var.overdensity = 0;
         break;
       case 3:
@@ -1209,7 +1210,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
           for (int j=0; j<N_MG; j++) {
             for (int k=0; k<N_MG; k++) {
               double x_dist = ((double) i) * fac;
-              rho[cell_getid(cdim, i, j, k)] = peak_overdensity(&MG_var, x_dist, fR_mod, s->dim[0]);
+              rho_MG[cell_getid(cdim, i, j, k)] = peak_overdensity(&MG_var, x_dist, fR_mod, s->dim[0]);
               //if (i==1) {
                 //message("Just initialised %E", rho[cell_getid(cdim, i, j, k)]);
                 //sleep(5);
@@ -1227,12 +1228,12 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
             for (int k=0; k<N_MG; k++) {
               if (i==N_MG/2+32 && j==N_MG/2 && k==N_MG/2) continue;
               if (i==N_MG/2-32 && j==N_MG/2 && k==N_MG/2) continue;
-              rho[cell_getid(cdim, i, j, k)] = mean_density * (1. - 1e-4);
+              rho_MG[cell_getid(cdim, i, j, k)] = mean_density * (1. - 1e-4);
             }
           }
         }
-        rho[cell_getid(cdim, N_MG/2+32, N_MG/2, N_MG/2)] = mean_density * (1. + 1e-4*(N_MG*N_MG*N_MG-2.));
-        rho[cell_getid(cdim, N_MG/2-32, N_MG/2, N_MG/2)] = mean_density * (1. + 1e-4*(N_MG*N_MG*N_MG-2.));
+        rho_MG[cell_getid(cdim, N_MG/2+32, N_MG/2, N_MG/2)] = mean_density * (1. + 1e-4*(N_MG*N_MG*N_MG-2.));
+        rho_MG[cell_getid(cdim, N_MG/2-32, N_MG/2, N_MG/2)] = mean_density * (1. + 1e-4*(N_MG*N_MG*N_MG-2.));
         MG_var.overdensity = 0;
         break;
     }
@@ -1244,23 +1245,31 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     int linear = 0;
     int N_min = 32; //Minimum gridsize to be used in multigrid acceleration
     double *rho_copy = malloc(N_MG*N_MG*N_MG *sizeof(double));
-    memcpy(rho_copy, rho, N_MG*N_MG*N_MG*sizeof(double));
+    memcpy(rho_copy, rho_MG, N_MG*N_MG*N_MG*sizeof(double));
+
+    //FILE *density_test_first;
+    //density_test_first = fopen("/net/styx/data1/vandervlugt/PythonFiles/MG_acceleration/pre_sim_test/pre_sim_test_decoupled/MG_dens_128_new.txt", "w");
+    //for (int i=0; i<N_MG*N_MG*N_MG; i++) {
+      //fprintf(density_test_first, "%E \n", rho_copy[i]);
+    //}
+    //fclose(density_test_first);
     //double *rho_copy2 = malloc(N*N*N *sizeof(double));
     //memcpy(rho_copy2, rho, N*N*N*sizeof(double));
     if (!linear) space_get_fR_contribution(s, rho_copy, field_contribution, &MG_var, N_min, N_MG, test); //Out comes u
     else space_get_fR_linear(s, rho_copy, field_contribution, &MG_var, N_min, N_MG); //Out comes delta f_R
     free(rho_copy);
 
-    if (get_MG_acc){
-      for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-        field_contribution[i] = (MG_var.fR_bar)/(MG_var.a*MG_var.a) * (MG_var.c*MG_var.c)/2. * exp(field_contribution[i]);
+    //if (get_MG_acc){
+      //for (int i=0; i<N_MG*N_MG*N_MG; i++) {
+        //field_contribution[i] = (MG_var.fR_bar)/(MG_var.a*MG_var.a) * (MG_var.c*MG_var.c)/2. * exp(field_contribution[i]);
         //else field_contribution[i] = (MG_var.c*MG_var.c)/(2.*MG_var.a*MG_var.a) * (field_contribution[i] + MG_var.fR0 * evo_test* evo_test);
-      }
-      get_cell_acc(acc, field_contribution, N_MG, cell_fac);
-    }
+      //}
+      //get_cell_acc(acc, field_contribution, N_MG, cell_fac);
+    //}
 
     double delta = box_size/N_MG;
     get_rho_mod(rho_MG, field_contribution, &MG_var, delta, N_MG);
+
     //mean_density = 0.;
     //for (int i=0; i<N*N*N; i++) {
       //mean_density += rho_copy2[i]/(N*N*N);
@@ -1415,7 +1424,9 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   /* Let's store it in the structure */
   for (int i=0; i<N*N*N; i++) {
     if (MG && N_MG == N) mesh->potential_global[i] = rho[i] + rho_MG[i];
+    //if (MG && N_MG == N) mesh->potential_global[i] = rho_MG[i];
     else mesh->potential_global[i] = rho[i];
+    //else mesh->potential_global[i] = 0.;
   }
 
   /* message("\n\n\n POTENTIAL"); */
@@ -1485,17 +1496,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     fftw_free(frho_MG);
 
     free(field_contribution);
-
-    //FILE *MG_acc;
-    //MG_acc = fopen("/data1/vandervlugt/PythonFiles/MG_acceleration/pre_sim_test/regular_vel.txt", "w");
-    //for (size_t i=0; i<s->nr_gparts; i++) {
-      //double acc_x = s->gparts[i].a_grav_mesh[0];
-      //double acc_y = s->gparts[i].a_grav_mesh[1];
-      //double acc_z = s->gparts[i].a_grav_mesh[2];
-      //double acc_export = sqrt(acc_x*acc_x + acc_y*acc_y + acc_z*acc_z);
-      //if (s->gparts[i].x[2]<9) fprintf(MG_acc, "%E %E %E %E \n", acc_export,s->gparts[i].x[0], s->gparts[i].x[1], s->gparts[i].x[2]);
-    //}
-    //fclose(MG_acc);
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif

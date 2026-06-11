@@ -5548,7 +5548,7 @@ int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, s
       get_pm_potential(&data, grid_sizes[i], box_size, &s->e->threadpool, cdim);
     }*/
     message("Getting mean density for i=%d", i);
-    mean_density[i] = get_mean_density(rho[i], grid_sizes[i]);
+    mean_density[i] = get_mean_density(rho[i], grid_sizes[i], 0);
   }
 
   /* Set initial guess on the coarsest grid */
@@ -6200,7 +6200,7 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
     //if (i == N_levels-1) {
       //get_pm_potential(&data, N_max, box_size, &e->threadpool, cdim_max);
     //}
-    mean_density[i] = get_mean_density(data.rho, grid_sizes[i]);
+    mean_density[i] = get_mean_density(data.rho, grid_sizes[i], 0);
     mean_density[i] *= 4.*M_PI * data.fac*data.fac*data.fac;
   }
   
@@ -6352,6 +6352,13 @@ void prolongate_solution(const double *pot_coarse, double *pot_fine, const int N
   int cdimh[3] = {N_double, N_double, N_double};
   int cdim[3] = {N,N,N};
 
+  //double coarse_mean = 0.;
+  //double fine_mean = 0.;
+
+  //for (int i=0; i<N*N*N; i++) {
+    //coarse_mean += pot_coarse[i];
+  //}
+
   for (int i = 0; i<N_double; i++) {
     for (int j = 0; j<N_double; j++) {
       for (int k = 0; k<N_double; k++) {
@@ -6370,9 +6377,11 @@ void prolongate_solution(const double *pot_coarse, double *pot_fine, const int N
                                   + (1.-dx)*dy*(1.-dz)*pot_coarse[cell_getid(cdim,iH,jHp,kH)] + (1.-dx)*(1.-dy)*dz*pot_coarse[cell_getid(cdim,iH,jH,kHp)]
                                   + dx*dy*(1.-dz)*pot_coarse[cell_getid(cdim,iHp,jHp,kH)] + dx*(1.-dy)*dz*pot_coarse[cell_getid(cdim,iHp,jH, kHp)]
                                   + (1.-dx)*dy*dz*pot_coarse[cell_getid(cdim,iH,jHp,kHp)]+ dx*dy*dz*pot_coarse[cell_getid(cdim,iHp,jHp,kHp)]);
+        //fine_mean += pot_fine[cell_getid(cdimh,i,j,k)];
       }
     }
   }
+  //message("The coarse mean is %E and the fine mean is %E", coarse_mean/(N*N*N), fine_mean/(N_double*N_double*N_double));
 }
 
 /**
@@ -6433,7 +6442,7 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
   //get_pm_potential(&data, N, box_size, &e->threadpool, cdim);  //PM method to get the potential is implemented here
  
   /* Rescale density to get overdensity and rescale mean density for consistency with FFT */
-  double mean_density = get_mean_density(density_array, N);
+  double mean_density = get_mean_density(density_array, N, 0);
   mean_density *= 4.* M_PI * fac*fac*fac;
   double sum = 0.0;
   double rms = 0.0;
@@ -6488,9 +6497,12 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
 
   double delta = box_size/N_max; //Width of a grid cell of the finest level
   double residual; 
+  //FILE *residual_export;
+  //residual_export = fopen("/data1/vandervlugt/PythonFiles/convergence_performance/FMG/FMG.txt", "w");
   residual = get_residual(pot, rho, cdim, mean_density, delta);
+  //if (N_max==64) fprintf(residual_export, "%E \n", residual);
   message("The first residual is %lf", residual);
-  const double tolerance = 10e-11; //Choose reasonable value here
+  const double tolerance = 10e-12; //Choose reasonable value here
   int counter = 0;
   const int fine_steps = 10; //Choose reasonable value here
   double sum = 0;
@@ -6517,10 +6529,12 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
         perform_red_black_sweep(pot, rho, cdim, mean_density, delta); 
       }
     }
-    residual = get_residual(pot, rho, cdim, mean_density, delta);   
+    residual = get_residual(pot, rho, cdim, mean_density, delta);  
+    //if (N_max==64) fprintf(residual_export, "%E \n", residual);  
     V_cycles +=1;
     message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
   }
+  //fclose(residual_export);
 
   message("Performed %d V-cycle(s) in total", V_cycles);
   
@@ -7063,7 +7077,7 @@ void set_initial_guess(double *pot, const int cdim[3], int MG) {
   for (int i = 0; i<N*N*N; i++){
     //pot[i] += (fmod(rand(),5.) - 10.);
     pot[i] += fmod(rand(),2000.) - 1000.;
-    if (MG) pot[i] = 1.*1e-5 + fmod(rand(),100)*(1e-5); //Corresponds to fR = mean(fR) everywhere plus some randomisation.
+    if (MG) pot[i] = 0.; //Corresponds to fR = mean(fR) everywhere.
   }
 }
 
@@ -7194,7 +7208,7 @@ void get_pm_potential(struct cic_mapper_data* data, const int N, const double bo
  * @param rho Array containing the density in each cell of the grid.
  * @param N Size (1D) of the grid.
  */
-double get_mean_density(double *rho, const int N) {
+double get_mean_density(double *rho, const int N, int MG) {
   double sum = 0.;
   double mean_density = 0.;
 
@@ -7205,6 +7219,24 @@ double get_mean_density(double *rho, const int N) {
   for (int i = 0; i < N*N*N; i++) {
       rho[i] = rho[i] / mean_density;
   }
+
+  if (MG) {
+    for (int i=0; i<N*N*N; i++) {
+      rho[i] -= 1.;
+    }
+
+    double mean_delta = 0.0;
+
+    for (int i=0; i<N*N*N; i++) {
+      mean_delta += rho[i];
+    }
+    mean_delta /= (double)N*N*N;
+
+    for (int i=0; i<N*N*N; i++) {
+      rho[i] -= mean_delta;
+    }
+  }
+
   return mean_density;
 }
 
@@ -7221,7 +7253,7 @@ void space_get_fR_linear(const struct space *s, double *rho, double *u, struct M
     error("Uneven domain for density calculation. Did not apply Gauss-Seidel");
   }
 
-  double mean_density = get_mean_density(rho, N_max);
+  double mean_density = get_mean_density(rho, N_max, 0);
   mean_density *= fac*fac*fac;
 
   /* Set initial guess on the coarsest grid and solve directly */
@@ -7357,7 +7389,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
 
   /* Decide if we need to calculate the mean density */
   if (!MG->overdensity) {
-    mean_density[N_levels-1] = get_mean_density(rho_levels[N_levels-1], grid_sizes[N_levels-1]);
+    mean_density[N_levels-1] = get_mean_density(rho_levels[N_levels-1], grid_sizes[N_levels-1], 1);
     if (test != 2 && test != 4) mean_density[N_levels-1] *= fac*fac*fac;
     message("The mean density is %lf", mean_density[N_levels-1]);
   }
@@ -7440,7 +7472,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
 
     /* Decide if we need to calculate the mean density */
     if (!MG->overdensity) {
-      mean_density[i] = get_mean_density(rho_levels[i], grid_sizes[i]);
+      mean_density[i] = get_mean_density(rho_levels[i], grid_sizes[i], 1);
       if (test != 2 && test != 4) mean_density[i] *= fac_level*fac_level*fac_level;
       message("The mean density on the level with size %d is %lf", grid_sizes[i], mean_density[i]);
     }
@@ -7454,9 +7486,9 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
 
   double sum = 0.;
   for (int i=0; i<N_max*N_max*N_max; i++) {
-    sum += (rho_levels[N_levels-1][i]-1.) * mean_density[N_levels-1];
+    sum += rho_levels[N_levels-1][i] * mean_density[N_levels-1];
   }
-  message("The mean of delta rho is %E", sum);
+  message("The mean of delta rho is %E", sum/(N_max*N_max*N_max));
   
   /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
@@ -7520,39 +7552,38 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
   int N = cdim[0];
   double delta = box_size/N;
   double residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
-  message("Before smoothing the resisdual is %E", residual);
+  message("Before smoothing the residual is %E", residual);
 
   /* Get the mean */
   double sum = 0.;
   for (int i=0; i<N*N*N; i++) {
-    sum += u[i];
+    sum += MG->fR_bar * exp(u[i]);
   }
   message("Before smoothing the mean is %E", sum/(N*N*N));
 
-  double tolerance = 10e-10; //Choose reasonable value here
+  double tolerance = 10e-9; //Choose reasonable value here
   int counter = 0;
   
 
   while (residual >= tolerance) {
     perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density, delta);
-    residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
 
-    /* Check the mean of the solution we are trying to converge to */
-    //double *field_converted_check = malloc(N*N*N *sizeof(double));
-    //memcpy(field_converted_check, u, N*N*N*sizeof(double));
-    /* Convert to the field */
-    //double evo = ((1. + 4. * MG->Omega_ratio)/(MG->a3_inv + 4. * MG->Omega_ratio));
-    //for (int i=0; i<N*N*N; i++) {
-      //field_converted_check[i] = (MG->fR0 * evo* evo * exp(MG->normalisation * u[i]));
-    //}
-    //message("The mean is supposed to be %E", MG->fR0 * evo* evo);
     //sum = 0.;
     //for (int i=0; i<N*N*N; i++) {
-      //sum += field_converted_check[i];
+      //sum += exp(u[i]);
     //}
-    //message("In reality the mean is %E", sum/(N*N*N));
+    //message("After %d step the mean is %E", counter, sum/(N*N*N));
+    //for (int i=0; i<N*N*N; i++) {
+      //u[i] -= log(sum/(N*N*N));
+    //}
 
-    //free(field_converted_check);
+    residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
+
+    //sum = 0.;
+    //for (int i=0; i<N*N*N; i++) {
+      //sum += MG->fR_bar * exp(u[i]);
+    //}
+    //message("The mean is %E", sum/(N*N*N));
 
     if (counter%50 == 0) message("The residual is %E", residual);
     //sleep(2);
@@ -7597,6 +7628,8 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
 void perform_red_black_sweep_fR(double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta) {
   int nbs[6];
 
+  double correction_mean = 0.;
+
   for (int col=0; col<2; col++){
     for (int k=0; k<cdim[2]; k++){
       nbs[4] = (k+1) % cdim[2];
@@ -7613,17 +7646,19 @@ void perform_red_black_sweep_fR(double *u, const double *rho, struct MG_variable
           /* Do we use the equation with density or with overdensity? */
           double density_term;
           if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)]/MG->a;
-          else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.)/MG->a;
+          else density_term = 8. * M_PI * MG->G * mean_density * rho[cell_getid(cdim, i,j,k)]/MG->a;
           
           double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
           double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.)*u[cell_getid(cdim, i,j,k)]));
           double derivative_term = get_derivative(u, MG, cdim, nbs, i, j, k, delta);
 
           u[cell_getid(cdim,i,j,k)] -= (Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term + density_term))/derivative_term;
+          correction_mean += (Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term + density_term))/derivative_term;
         }
       }
     }
   }
+  //message("The mean of the correction is %E", correction_mean/(cdim[0]*cdim[0]*cdim[0]));
 }
 
 /**
@@ -7669,6 +7704,10 @@ double get_residual_fR(const double *u, const double *rho, struct MG_variables *
   int N = cdim[0];
   int nbs[6];
 
+  double density_mean = 0.;
+  double field_mean = 0.;
+  double Laplacian_mean = 0.;
+
   for (int k=0; k<N; k++){
     nbs[4] = (k+1) % N;
     nbs[5] = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
@@ -7682,11 +7721,15 @@ double get_residual_fR(const double *u, const double *rho, struct MG_variables *
         /* Do we use the equation with density or with overdensity? */
         double density_term;
         if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)]/MG->a;
-        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.)/MG->a;
+        else density_term = 8. * M_PI * MG->G * mean_density * rho[cell_getid(cdim, i,j,k)]/MG->a;
 
         double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
         double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.) * u[cell_getid(cdim, i,j,k)]));
         double res = Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term + density_term); 
+
+        Laplacian_mean += Laplacian_exp/(delta*delta);
+        field_mean += (1./(3.*MG->c*MG->c*MG->fR_bar)) * field_term;
+        density_mean += (1./(3.*MG->c*MG->c*MG->fR_bar)) * density_term;
         
         if (verbose) {
           message("The i-index is %d", i);
@@ -7703,6 +7746,8 @@ double get_residual_fR(const double *u, const double *rho, struct MG_variables *
       }
     }
   }
+
+  //message("The means are: Laplacian = %E, field = %E, density = %E", Laplacian_mean/(N*N*N), field_mean/(N*N*N), density_mean/(N*N*N));
   return sqrt(residual);
 }
 
@@ -7738,7 +7783,7 @@ void get_residual_array_fR(const double *u, const double *rho, struct MG_variabl
         /* Do we use the equation with density or with overdensity? */
         double density_term;
         if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)]/MG->a;
-        else density_term = 8. * M_PI * MG->G * mean_density * (rho[cell_getid(cdim, i,j,k)]-1.)/MG->a;
+        else density_term = 8. * M_PI * MG->G * mean_density * rho[cell_getid(cdim, i,j,k)]/MG->a;
 
         double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
         double field_term = MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*u[cell_getid(cdim, i,j,k)]));
@@ -7818,9 +7863,9 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
   residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
   message("The first residual is %E", residual);
   if (V_max == 2) residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 1);
-  const double tolerance = 10e-10; //Choose reasonable value here
+  const double tolerance = 10e-9; //Choose reasonable value here
   int counter = 0;
-  int fine_steps = 10; //Choose reasonable value here
+  int fine_steps = 20; //Choose reasonable value here
   double sum = 0;
 
   int V_cycles=0;
@@ -7834,17 +7879,14 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
       residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
       double mean = 0.;
       for (int j=0; j<N_max*N_max*N_max; j++) {
-        mean += exp(u[i]);
+        mean += exp(u[j]);
       }
       message("The mean is %E and the residual %E", mean/(N_max*N_max*N_max), residual);
-      /*if (mean/(N_max*N_max*N_max) != 1.) {
-        for (int j=0; j<N_max*N_max*N_max; j++) {
-          u[i] -= log(mean/(N_max*N_max*N_max));
-        }
-      }*/
+      if (residual<tolerance) break;
     }
     residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
     get_residual_array_fR(u, rho, MG, cdim, mean_density[0], residual_array, delta);
+    if (residual<tolerance) break;
     
     /* Transfer residual array to get coarse-grid correction */
     message("After pre-smoothing the residual is %E. Going to recurse with V-cycles.", residual);
@@ -7971,7 +8013,7 @@ void FAS_recursive(double *u, const double *residual, struct MG_variables *MG, i
   }
 
   int cdimH[] = {N, N, N}; 
-  double tolerance = 10e-10; //Choose a reasonable value here
+  double tolerance = 10e-9; //Choose a reasonable value here
   int counter = 0;
   double coarser_residual_abs = get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
   message("The first residual on the grid with size %d is %lf", N, coarser_residual_abs);
