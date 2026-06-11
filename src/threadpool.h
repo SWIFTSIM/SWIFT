@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2022 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -104,6 +105,8 @@ void threadpool_clean(struct threadpool *tp);
 #ifdef HAVE_SETAFFINITY
 void threadpool_set_affinity_mask(cpu_set_t *entry_affinity);
 #endif
+void *threadpool_memcpy(struct threadpool *tp, void *dest, void *src, size_t n);
+
 #ifdef SWIFT_DEBUG_THREADPOOL
 void threadpool_reset_log(struct threadpool *tp);
 void threadpool_dump_log(struct threadpool *tp, const char *filename,
