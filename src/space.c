@@ -3333,13 +3333,20 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   /* Loop over particles and perform tree searches to get the density everywhere*/
   assign_densities(cells_top, &e->threadpool, s->nr_cells, box_size, level_check);
 
-  message("Survived the density assignment");
-  sleep(10);
+  //FILE *density_export;
+  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_density_mapping/AMR_32_level6.txt", "w");
+  //for (int i=0; i<levels[1].cell_count; i++) {
+    //fprintf(density_export, "%E \n", levels[1].cells[i]->CIC_density);
+  //}
+  //fclose(density_export);
 
   //min_depth = 0;
   int max_gridsize = perform_uniform_calculation(s, min_depth, max_depth, levels);
   message("max_gridsize = %d", max_gridsize);
   //max_gridsize = 8;
+
+  message("Starting the nonuniform calculation");
+  sleep(5);
 
   perform_nonuniform_calculation(s, min_depth, max_depth, levels, max_gridsize, box_size);
 
@@ -3772,16 +3779,16 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
 }
 
 void CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize, int stop_depth, int calc_acc, double *acc) {
-  double pbox[6] = {x[0]-width[0]/2, x[0] + width[0]/2, x[1]-width[1]/2, x[1]+width[1]/2, x[2]-width[2]/2, x[2] + width[2]/2};
+  double pbox[6] = {x[0], x[0] + width[0], x[1], x[1]+width[1], x[2], x[2] + width[2]};
   double pbox_shift[6];
 
-  double x_shift[3] = {-boxsize, 0., boxsize};
-  double y_shift[3] = {-boxsize, 0., boxsize};
-  double z_shift[3] = {-boxsize, 0., boxsize};
+  double x_shift[2] = {-boxsize, 0.};
+  double y_shift[2] = {-boxsize, 0.};
+  double z_shift[2] = {-boxsize, 0.};
 
-  for (int i=0; i<3;i++) {
-    for (int j=0; j<3;j++) {
-      for (int k=0; k<3;k++) {
+  for (int i=0; i<2;i++) {
+    for (int j=0; j<2;j++) {
+      for (int k=0; k<2;k++) {
         pbox_shift[0] = pbox[0]+x_shift[i];
         pbox_shift[1] = pbox[1]+x_shift[i];
         pbox_shift[2] = pbox[2]+y_shift[j];
@@ -4587,13 +4594,22 @@ void to_finer_patch(struct AMR_levels *levels, int target_depth, int active_dept
     if (current_cell->parent->mask_value<=0) continue;
 
     double offset[3] = {current_cell->loc[0] - parent->loc[0], current_cell->loc[1] - parent->loc[1], current_cell->loc[2] - parent->loc[2]};
-    int nbx = (offset[0] > 0) ? 0 : 1;
-    int nby = (offset[1] > 0) ? 2 : 3;
-    int nbz = (offset[2] > 0) ? 4 : 5;
-    double temp = ((27./64.)*parent->conv_residual + (9./64.)*(parent->neighbours[nbx]->conv_residual 
-                    + parent->neighbours[nby]->conv_residual + parent->neighbours[nbz]->conv_residual)
-                    + (3./64.)*(parent->neighbours[nbx]->neighbours[nby]->conv_residual + parent->neighbours[nbx]->neighbours[nbz]->conv_residual
-                    + parent->neighbours[nby]->neighbours[nbz]->conv_residual) + (1./64.)*parent->neighbours[nbx]->neighbours[nby]->neighbours[nbz]->conv_residual);
+    double dx = (offset[0] > 0) ? 0.5 : 0.;
+    double dy = (offset[1] > 0) ? 0.5 : 0.;
+    double dz = (offset[2] > 0) ? 0.5 : 0.;
+    //message("The offsets are (%lf, %lf, %lf) and we calculated (%lf,%lf,%lf)", offset[0], offset[1], offset[2], dx, dy, dz);
+
+    if (parent->neighbours[0] == NULL) message("Neighbour 0 null for cell %d", i);
+    if (parent->neighbours[2] == NULL) message("Neighbour 2 null for cell %d", i);
+    if (parent->neighbours[4] == NULL) message("Neighbour 4 null for cell %d", i);
+    if (parent->neighbours[0]->neighbours[2] == NULL) message("Neighbour 0,2 null for cell %d", i);
+    if (parent->neighbours[0]->neighbours[4] == NULL) message("Neighbour 0,4 null for cell %d", i);
+    if (parent->neighbours[2]->neighbours[4] == NULL) message("Neighbour 2,4 null for cell %d", i);
+    if (parent->neighbours[0]->neighbours[2]->neighbours[4] == NULL) message("Neighbour 0,2,4 null for cell %d", i);
+    double temp = ((1.-dx)*(1.-dy)*(1.-dz)*parent->conv_residual + dx*(1.-dy)*(1.-dz)*parent->neighbours[0]->conv_residual
+                              + (1.-dx)*dy*(1.-dz)*parent->neighbours[2]->conv_residual + (1.-dx)*(1.-dy)*dz*parent->neighbours[4]->conv_residual
+                              + dx*dy*(1.-dz)*parent->neighbours[0]->neighbours[2]->conv_residual + dx*(1.-dy)*dz*parent->neighbours[0]->neighbours[4]->conv_residual
+                              + (1.-dx)*dy*dz*parent->neighbours[2]->neighbours[4]->conv_residual+ dx*dy*dz*parent->neighbours[0]->neighbours[2]->neighbours[4]->conv_residual);
 
     if (target_depth<active_depth) {
       current_cell->conv_residual += temp;
@@ -4926,7 +4942,7 @@ void extrapolate_mask_values(struct AMR_levels *coarse) {
       coarse->cells[i]->mask_value = (coarse->cells[i]->mask_value)/8.;
     }
   }
-  if (coarse->depth == 2) message("The mask value of cell zero is %lf", coarse->cells[0]->mask_value);
+  //if (coarse->depth == 2) message("The mask value of cell zero is %lf", coarse->cells[0]->mask_value);
 }
 
 void initialise_link_neighbours(struct AMR_levels *fine, double box_size, int gridsize) {
@@ -5230,29 +5246,28 @@ void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine) {
 
     /* Get the location/offset */
     double offset[3] = {child->loc[0] - parent->loc[0], child->loc[1] - parent->loc[1], child->loc[2] - parent->loc[2]};
-
-    int nbx = (offset[0] > 0) ? 0 : 1;
-    int nby = (offset[1] > 0) ? 2 : 3;
-    int nbz = (offset[2] > 0) ? 4 : 5;
+    double dx = (offset[0] > 0) ? 0.5 : 0.;
+    double dy = (offset[1] > 0) ? 0.5 : 0.;
+    double dz = (offset[2] > 0) ? 0.5 : 0.;
     //message("The offsets are (%lf, %lf, %lf) and we calculated (%lf,%lf,%lf)", offset[0], offset[1], offset[2], dx, dy, dz);
 
-    if (parent->neighbours[nbx] == NULL) message("Neighbour x null for cell %d", i);
-    if (parent->neighbours[nby] == NULL) message("Neighbour y null for cell %d", i);
-    if (parent->neighbours[nbz] == NULL) message("Neighbour z null for cell %d", i);
-    if (parent->neighbours[nbx]->neighbours[nby] == NULL) message("Neighbour x,y null for cell %d", i);
-    if (parent->neighbours[nbx]->neighbours[nbz] == NULL) message("Neighbour x,z null for cell %d", i);
-    if (parent->neighbours[nby]->neighbours[nbz] == NULL) message("Neighbour y,z null for cell %d", i);
-    if (parent->neighbours[nbx]->neighbours[nby]->neighbours[nbz] == NULL) message("Neighbour x,y,z null for cell %d", i);
-
-    child->CIC_potential = ((27./64.)*parent->CIC_potential + (9./64.)*(parent->neighbours[nbx]->CIC_potential 
-                              + parent->neighbours[nby]->CIC_potential + parent->neighbours[nbz]->CIC_potential)
-                              + (3./64.)*(parent->neighbours[nbx]->neighbours[nby]->CIC_potential + parent->neighbours[nbx]->neighbours[nbz]->CIC_potential
-                              + parent->neighbours[nby]->neighbours[nbz]->CIC_potential) + (1./64.)*parent->neighbours[nbx]->neighbours[nby]->neighbours[nbz]->CIC_potential);
+    if (parent->neighbours[0] == NULL) message("Neighbour 0 null for cell %d", i);
+    if (parent->neighbours[2] == NULL) message("Neighbour 2 null for cell %d", i);
+    if (parent->neighbours[4] == NULL) message("Neighbour 4 null for cell %d", i);
+    if (parent->neighbours[0]->neighbours[2] == NULL) message("Neighbour 0,2 null for cell %d", i);
+    if (parent->neighbours[0]->neighbours[4] == NULL) message("Neighbour 0,4 null for cell %d", i);
+    if (parent->neighbours[2]->neighbours[4] == NULL) message("Neighbour 2,4 null for cell %d", i);
+    if (parent->neighbours[0]->neighbours[2]->neighbours[4] == NULL) message("Neighbour 0,2,4 null for cell %d", i);
+    child->CIC_potential = ((1.-dx)*(1.-dy)*(1.-dz)*parent->CIC_potential + dx*(1.-dy)*(1.-dz)*parent->neighbours[0]->CIC_potential
+                              + (1.-dx)*dy*(1.-dz)*parent->neighbours[2]->CIC_potential + (1.-dx)*(1.-dy)*dz*parent->neighbours[4]->CIC_potential
+                              + dx*dy*(1.-dz)*parent->neighbours[0]->neighbours[2]->CIC_potential + dx*(1.-dy)*dz*parent->neighbours[0]->neighbours[4]->CIC_potential
+                              + (1.-dx)*dy*dz*parent->neighbours[2]->neighbours[4]->CIC_potential+ dx*dy*dz*parent->neighbours[0]->neighbours[2]->neighbours[4]->CIC_potential);
 
     if (!child->ghost) child->mask_value = 1.;
     //else message("Set ghost at loc (%lf, %lf, %lf) to value %lf", child->loc[0], child->loc[1], child->loc[2], child->CIC_potential);
   }
 }
+
 
 void create_ghost(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *parent, size_t search_id, double fac_coarse, int min_depth, int which_neighbour, int check_parent, int verbose) {
   int ghost_count = fine->ghost_count;
@@ -5726,6 +5741,7 @@ void assign_densities(struct cell *cells_top, struct threadpool *tp, int nr_cell
       //message("Going to do this");
       for (int j=0;j<8;j++) {
         check_lower_level(cells_top[i].progeny[j], cells_top, boxsize, nr_cells, &level, level_check);
+        //sleep(2);
       }
     }
     else {
@@ -5733,7 +5749,8 @@ void assign_densities(struct cell *cells_top, struct threadpool *tp, int nr_cell
       //message("At least one top level cell is not split");
       int nr_gparts = cells_top[i].grav.count;
       for (int j=0; j<nr_gparts; j++) {
-        initialise_tree_search(&(cells_top[i].grav.parts[j]), &(cells_top[i]), cells_top, boxsize, nr_cells, level_check, 0);
+        initialise_tree_search(&(cells_top[i].grav.parts[j]), &(cells_top[i]), cells_top, boxsize, nr_cells, level_check, 1);
+        //sleep(3);
         //for (int k=0; k<6; k++) {
           //if (tot_assigned[k]>41.564) error("Too large density assigned at level %d!", k);
         //}
@@ -5841,6 +5858,7 @@ void initialise_tree_search(struct gpart *part, struct cell *home_cell, struct c
   double pos_z = box_wrap(part->x[2], 0., boxsize);
 
   double x[3] = {pos_x, pos_y, pos_z};
+  //message("Particle is at (%lf, %lf, %lf)", x[0], x[1], x[2]);
   double width[3] = {home_cell->width[0], home_cell->width[1], home_cell->width[2]}; //Width of constant density cube by which we represent the particle
   //message("We are assigning the width %lf,%lf,%lf", width[0],width[1],width[2]);
   double pbox[6] = {x[0], x[0] + width[0], x[1],  x[1] + width[1], x[2], x[2] + width[2]};
@@ -5861,7 +5879,7 @@ void initialise_tree_search(struct gpart *part, struct cell *home_cell, struct c
         pbox_shift[5] = pbox[5]+z_shift[k];
         if (pbox_shift[1]<0. || pbox_shift[3] <0. || pbox_shift[5]<0.) continue;
         else if (pbox_shift[0] > boxsize || pbox_shift[2] > boxsize || pbox_shift[4] > boxsize) continue;
-        //if (verbose) message("Initialising for i=%d, j=%d, k=%d", i, j, k);
+        if (verbose) message("Initialising for i=%d, j=%d, k=%d", i, j, k);
         search_tree(part, pbox_shift, cells_top, width[0], nr_topcells, &temp, level_check, 0, verbose, 0);
       }
     }
@@ -5902,7 +5920,7 @@ void search_tree(struct gpart *part, double pbox[6], struct cell *cells_top, dou
     if (overlap == 0.) continue;
     if (overlap<0.) error("Overlap smaller than zero detected..");
     if (!reverse) {
-      //if (verbose) message("Assigning to top cell %d", i);
+      if (verbose) message("Assigning fractional overlap %E to top cell %d", overlap/(width*width*width), i);
       atomic_add_d(&(cells_top[i].CIC_density), part->mass*overlap/(width*width*width));
     }
     //message("Succesfully added a value");
@@ -5940,7 +5958,7 @@ void assign_lower_level(struct gpart *part, double pbox[6], struct cell *parent,
     if (overlap<0.) error("Overlap smaller than zero detected..");
     //if (*level>5) message("Assigning at level %d", *level);
     if (!reverse) {
-      //if (verbose) message("Assigning to progeny %d at level %d", i, *level);
+      if (verbose) message("Found fractional overlap %E with progeny %d at level %d and location (%lf, %lf, %lf)", overlap/(width*width*width), i, *level, parent->progeny[i]->loc[0], parent->progeny[i]->loc[1], parent->progeny[i]->loc[2]);
       atomic_add_d(&(parent->progeny[i]->CIC_density), part->mass * overlap/(width*width*width));
     }
     //parent->progeny[i]->CIC_density += part->mass * overlap/(width*width*width);
@@ -5993,16 +6011,19 @@ void check_lower_level(struct cell *parent, struct cell *cells_top, const double
     }
   }
   else { 
+    //message("Reached the desired depth %d", *level);
     //if (*level == 4) message("Initialising tree search at level %d", *level);
     //if (*level>5) message("Finding particles at level %d", *level);
     int nr_gparts = parent->grav.count;
     for (int j=0;j<nr_gparts;j++) {
       //double tot_assigned[6] = {0.};
-      if (*level == 4) {
-        verbose = 0;
-        //message("Doing particle number %d", j);
-      }
+      //if (*level == 4) {
+        //verbose = 0;
+      //message("Doing particle number %d", j);
+      //}
+      //verbose = 1;
       initialise_tree_search(&(parent->grav.parts[j]), parent, cells_top, boxsize, nr_topcells, level_check, verbose);
+      //sleep(2);
       //for (int k=0; k<6; k++) {
         //if (tot_assigned[k]>41.564) error("Too large density assigned at level %d!", k);
       //}
@@ -6199,6 +6220,14 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
     data.fac = grid_sizes[i]/box_size;
     gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
 
+    //if (i==0) {
+      //FILE *density_export;
+      //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_density_mapping/CIC_16.txt", "w");
+      //for (int j=0; j<grid_sizes[0]*grid_sizes[0]*grid_sizes[0]; j++) {
+        //fprintf(density_export, "%E \n", rho[0][j]);
+      //}
+      //fclose(density_export);
+    //}
     /* Get pm potential for verification of FMG method */
     //if (i == N_levels-1) {
       //get_pm_potential(&data, N_max, box_size, &e->threadpool, cdim_max);
@@ -6206,13 +6235,6 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
     mean_density[i] = get_mean_density(data.rho, grid_sizes[i], 0);
     mean_density[i] *= 4.*M_PI * data.fac*data.fac*data.fac;
   }
-
-  //FILE *density_export;
-  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_density_mapping/CIC_32.txt", "w");
-  //for (int i=0; i<grid_sizes[1]*grid_sizes[1]*grid_sizes[1]; i++) {
-    //fprintf(density_export, "%E \n", rho[1][i]);
-  //}
-  //fclose(density_export);
   
   /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
