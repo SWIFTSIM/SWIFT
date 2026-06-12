@@ -81,6 +81,9 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
                      zp->region_upper_bounds, 3);
   io_write_attribute(h_zoom, "InternalCenter", DOUBLE, internal_center, 3);
   io_write_attribute_i(h_zoom, "Depth", zp->zoom_cell_depth);
+  if (zp->zoom_cell_min_cdim > 0)
+    io_write_attribute_i(h_zoom, "RequestedMinimumCDim",
+                         zp->zoom_cell_min_cdim);
 
   /* If we are running with cosmology write out the scale factor at the
    * last shift */

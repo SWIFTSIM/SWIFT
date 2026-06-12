@@ -270,6 +270,8 @@ DomainDecomposition:
   minfrac:          0.9       # (Optional) Fractional of all particles that should be updated in previous step when
                               # using CPU time trigger
   usemetis:         0         # Use serial METIS when ParMETIS is also available.
+  metis_seed:       -1        # (Optional) Seed for reproducible METIS/ParMETIS partitions. Negative values keep automatic seed selection.
+                              # ParMETIS initial partitioning tries 10 seeds, using metis_seed + i.
   adaptive:         1         # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
   itr:              100       # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
                               # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
@@ -1116,7 +1118,8 @@ Lightcone1:
 # Parameters defining a zoom region (only used for running zoom simulations with --zoom runtime flag)
 ZoomRegion:
   region_pad_factor:          1.1    # How much larger the zoom region will be than the high res particle distribution in the ICs?
-  zoom_top_level_depth:       2     # The depth of the zoom top level cells in a single background cell.
+  zoom_top_level_depth:       2      # The depth of the zoom top level cells in a single background cell.
+  zoom_min_top_level_cells:   -1     # (Optional) Minimum target zoom cdim. If positive, this overrides zoom_top_level_depth and the required depth is derived.
   bkg_top_level_cells:        -1     # How many cells should the background be resolved with? (This is treated as gospel, but if it is set to -1 we will try and find the optimal value to minimise the padding around the zoom region)
   buffer_cell_depth:          0      # (Optional, only used when buffer cells are needed) The depth of the top level buffer cells in a single background cell. (default: 0)
   neighbour_max_tree_depth:   2      # (Optional) The depth of the cell trees neighbouring the zoom region (default: -1)

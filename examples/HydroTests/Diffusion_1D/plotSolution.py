@@ -48,7 +48,7 @@ def solve_analytic(u_0, u_1, t_0, t_1, alpha=0.1):
 
     from time t0 to t1.
 
-    + alpha is the gradient term 
+    + alpha is the gradient term
     + u_0 is the "low" state
     + u_1 is the "high" state.
     """
@@ -194,7 +194,7 @@ def extract_plottables_x(data_list):
 def extract_plottables_rho(data_list):
     """
     Extracts the plottables for pressure. Returns:
-    mean, stdev, max, min * 1e6 deviations from mean density 
+    mean, stdev, max, min * 1e6 deviations from mean density
     """
 
     P = [x.gas.densities.value for x in data_list]
@@ -207,7 +207,7 @@ def extract_plottables_rho(data_list):
 def extract_plottables_diff(data_list):
     """
     Extracts the plottables for pressure. Returns:
-    mean, stdev, max, min * 1e6 deviations from mean density 
+    mean, stdev, max, min * 1e6 deviations from mean density
     """
 
     P = [x.gas.diffusion.value for x in data_list]

@@ -1738,6 +1738,19 @@ If ParMETIS and METIS are not available then only an initial partition will be
 performed. So the balance will be compromised by the quality of the initial
 partition.
 
+When using METIS or ParMETIS, the optional::
+
+  DomainDecomposition:
+    metis_seed:
+
+parameter can be used to fix the partition seed for reproducibility. Any
+non-negative value forces that seed to be used. Negative values keep the
+automatic behaviour and generate a fresh seed for each partitioning event.
+Serial METIS uses that seed directly. ParMETIS repartitioning also uses that
+seed directly, but ParMETIS initial partitioning tries 10 candidate seeds using
+``metis_seed + i`` and keeps the best partition. When running with verbose
+output, SWIFT prints the seed that was used for the partition it kept.
+
 Repartitioning:
 ^^^^^^^^^^^^^^^
 
@@ -1999,7 +2012,8 @@ The ``ZoomRegion`` parameter block is used to define the properties of the zoom 
 
   ZoomRegion:
     region_pad_factor: 1.1
-    zoom_top_level_cells: 8
+    zoom_top_level_depth: 2
+    zoom_min_top_level_cells: -1
     bkg_top_level_cells: 8
     region_buffer_cell_ratio: 2
     neighbour_max_tree_depth: -1
@@ -2013,12 +2027,23 @@ These 5 parameters alone control the construction of the cell hierarchy which en
 
  It's important to note that the value of ``region_pad_factor`` will be modified slightly during cell construction to ensure the zoom region tesselates the parent volume correctly in each cell scenario (:doc:`discussed here <cell_structures>`). The padding factor after tesselation is reported by the code. Should the requested cell geometry lead to a substantial increase in the padding factor then an error will be thrown, at which point you should review the parameters you have set. You probably need to increase the background resolution and/or include buffer cells (more below).
 
-``zoom_top_level_cells``
+``zoom_top_level_depth``
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-This replaces ``Scheduler:max_top_level_cells`` (which is ignored when running a zoom) and defines the number of zoom cells along each axis of the zoom region.
+This defines the depth of the zoom top level cells within a single background cell. Zoom cells are constructed by dividing the parent cell in half along each axis, so the number of zoom cells along each axis of the zoom region is given by ``nr_parent_cells * 2^zoom_top_level_depth``.
 
-This value is always respected during cell construction (although it can be later modified in a regrid if the hydrodynamics demand it).
+Reasonable values for this parameter depend on the exact zoom resolution and the geometry of the region but a good intial guess could be 2 or 3 (depending on the number of void cells above the zoom region). The deeper you push this the more cells will exist within the tree above the zoom region which can eventually begin to harm performance. However, if you have a very high resolution zoom region then pushing this deeper can be beneficial as it allows for more zoom cells and therefore a better zoom cell resolution (which is particularly helpful when running over MPI as it allows for better partitioning).
+
+
+
+``zoom_min_top_level_cells``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This optionally replaces ``zoom_top_level_depth`` and defines the minimum target number of zoom cells along each axis of the zoom region. If this is positive, SWIFT derives the required ``zoom_top_level_depth`` and ignores any explicitly provided depth.
+
+Only values that can be written as ``nr_parent_cells * 2^zoom_top_level_depth`` are exactly reachable. If the requested value cannot be matched exactly, SWIFT uses the smallest depth that does not undershoot the requested cdim and emits a warning.
+
+Reasonable values for this parameter depend on the exact zoom resolution and the geometry of the region but a good intial guess could be 8 or 16 (assuming an even number of void cells above the zoom region). In higher resolution simulations pushing this larger could make sense, especially running with MPI where the extra zoom cell resolution can help with partitioning.
 
 ``bkg_top_level_cells``
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -2039,7 +2064,7 @@ You can set this to ``-1`` to enable automatic optimization, which will search f
 
 This defines the number of buffer cells that tesselate the zoom region and should only be used for small zoom regions. When set to 0 buffer cells won't be made (i.e. there will only be background and zoom cells).
 
-When ``region_buffer_cell_ratio > 0`` ``zoom_top_level_cells`` should be a power of 2 multiplied by ``region_buffer_cell_ratio`` to ensure the cell edges align. If this is not the case an error will be thrown. If ``region_buffer_cell_ratio`` is non-zero in a situation it shouldn't be an error will also be thrown.
+When ``region_buffer_cell_ratio > 0`` ``zoom_min_top_level_cells`` should be a power of 2 multiplied by ``region_buffer_cell_ratio`` to ensure the cell edges align. If this is not the case an error will be thrown. If ``region_buffer_cell_ratio`` is non-zero in a situation it shouldn't be an error will also be thrown.
 
 ``neighbour_max_tree_depth``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
