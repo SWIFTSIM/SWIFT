@@ -47,6 +47,6 @@ def analytic(
 
     # Additional arrays
     u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
-    s_s = P_s / rho_s ** gas_gamma  # entropic function
+    s_s = P_s / rho_s**gas_gamma  # entropic function
 
     return dict(x=x_s + 1.0, v=v_s, rho=rho_s, P=P_s, u=u_s, S=s_s)

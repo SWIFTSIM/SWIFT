@@ -200,13 +200,11 @@ def plot_gas(filename, fullbox=False, extent=0.1, scatter=False):
 if __name__ == "__main__":
 
     # Setup arguments and parse them.
-    parser = argparse.ArgumentParser(
-        description="""
+    parser = argparse.ArgumentParser(description="""
     Plots halo disk face-on and edge-on.
     Provide snapshot number as cmdline arg to plot a single snapshot.
     Alternatively, this script will plot all snapshots available in this dir.
-    """
-    )
+    """)
 
     parser.add_argument(
         "snap", nargs="?", help="snapshot file name or integer index", default=None

@@ -553,7 +553,7 @@ void space_free_buff_sort_indices(struct space *s) {
 
   /* Early exit if we have no hydro or star particles, as we won't have
    * allocated any sort arrays. */
-  if (s->nr_parts == 0 && s->nr_sparts == 0) return;
+  if (s->e->total_nr_parts == 0 && s->e->total_nr_sparts == 0) return;
 
   const ticks tic = getticks();
 

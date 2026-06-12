@@ -59,13 +59,10 @@ def get_number_densities(Temp, XH, XHe):
 
         # Dielectronic recombination rate for He+ in units of cm^3 s^-1
         A_d = (
-            1.9e-3
-            / T ** 1.5
-            * np.exp(-470000.0 / T)
-            * (1.0 + 0.3 * np.exp(-94000.0 / T))
+            1.9e-3 / T**1.5 * np.exp(-470000.0 / T) * (1.0 + 0.3 * np.exp(-94000.0 / T))
         )
         # Recombination rate for He+ in units of cm^3 s^-1
-        A_Hep = 1.5e-10 / T ** 0.6353
+        A_Hep = 1.5e-10 / T**0.6353
         # Recombination rate for He++ in units of cm^3 s^-1
         A_Hepp = (
             3.36e-10
@@ -171,9 +168,9 @@ def get_number_densities_array(Temp, XH, XHe):
         8.40e-11 / np.sqrt(T) * (T * 1e-3) ** (-0.2) * 1.0 / (1.0 + (T * 1e-6) ** 0.7)
     )
     # Dielectronic recombination rate for He+ in units of cm^3 s^-1
-    A_d = 1.9e-3 / T ** 1.5 * np.exp(-470000.0 / T) * (1.0 + 0.3 * np.exp(-94000.0 / T))
+    A_d = 1.9e-3 / T**1.5 * np.exp(-470000.0 / T) * (1.0 + 0.3 * np.exp(-94000.0 / T))
     # Recombination rate for He+ in units of cm^3 s^-1
-    A_Hep = 1.5e-10 / T ** 0.6353
+    A_Hep = 1.5e-10 / T**0.6353
     # Recombination rate for He++ in units of cm^3 s^-1
     A_Hepp = (
         3.36e-10 / np.sqrt(T) * (T * 1e-3) ** (-0.2) * 1.0 / (1.0 + (T * 1e-6) ** 0.7)
@@ -288,7 +285,7 @@ def get_soundspeed_from_density_pressure(data):
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp
@@ -315,7 +312,7 @@ def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
 
 def gas_temperature(u, mu, gamma):
     """
-    Compute the gas temperature given the specific internal 
+    Compute the gas temperature given the specific internal
     energy u and the mean molecular weight mu
     """
 
@@ -329,7 +326,7 @@ def gas_temperature(u, mu, gamma):
 
 def get_snapshot_list(snapshot_basename="output", plot_all=True, snapnr=0):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -356,7 +353,7 @@ def get_snapshot_list(snapshot_basename="output", plot_all=True, snapnr=0):
 def get_imf(scheme, data):
     """
     Get the ion mass fraction (imf) according to the scheme.
-    return a class with ion mass fraction for species X, 
+    return a class with ion mass fraction for species X,
     including HI, HII, HeI, HeII, HeIII:
     The ion mass function can be accessed through: imf.X
     The unit is in m_X/m_tot, where m_X is the mass in species X
@@ -385,7 +382,7 @@ def get_imf(scheme, data):
 def get_abundances(scheme, data):
     """
     Get the species abundance according to the scheme
-    return a class with normalized number densities for abunance X, 
+    return a class with normalized number densities for abunance X,
     including HI, HII, HeI, HeII, HeIII:
     The abundances can be accessed through: sA.X
     The unit is in n_X/n_H, where n_X is the number density of species X

@@ -68,13 +68,11 @@ def create_group_array(group_sizes: np.array) -> np.array:
 if __name__ == "__main__":
     import argparse as ap
 
-    PARSER = ap.ArgumentParser(
-        description="""
+    PARSER = ap.ArgumentParser(description="""
         Makes many plots comparing the virial temperature and the
         temperature of halos. Requires the velociraptor files and
         the SWIFT snapshot.
-        """
-    )
+        """)
 
     PARSER.add_argument(
         "-s",

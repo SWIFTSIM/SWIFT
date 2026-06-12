@@ -1,0 +1,9 @@
+# Define the parameters of the zoom region
+ZoomRegion:
+  region_pad_factor: 1.25 # How much larger the zoom region will be than the high res particle distribution in the ICs?
+  zoom_top_level_depth: 1 # Overridden by zoom_min_top_level_cells when both are set.
+  zoom_min_top_level_cells: 12 # Requested minimum zoom cdim; resolves to 16 for this geometry.
+  bkg_top_level_cells: 16 # How many cells should the background be resolved with?
+
+Gravity:
+  mesh_side_length: 512
