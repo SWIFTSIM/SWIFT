@@ -330,12 +330,12 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
 float compute_magnetic_injection_field_strength (
     const float dx[3], const float m[3], 
     const struct feedback_props *feedback_props,
-    const float wi);
+    const float wi, const float sp_h);
 
 void compute_magnetic_injection_field(
     float *B_inj, const float B_inj_norm, const float dx[3], 
     const float m[3], const struct feedback_props *feedback_props, 
-    const float wi);
+    const float wi, const float sp_h);
 
 void feedback_clean(struct feedback_props *fp);
 

@@ -115,33 +115,38 @@ double eagle_feedback_energy_fraction(const struct spart *sp,
 INLINE float compute_magnetic_injection_field_strength (
     const float dx[3], const float m[3], 
     const struct feedback_props *feedback_props,
-    const float wi) {
+    const float wi, const float sp_h) {
 
   float B_inj[3] = {0.f, 0.f, 0.f};
   double B_inj_abs = 0.f;
 
   float r = sqrtf(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
   float m_abs = sqrtf(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
+
+  /* dot product magnetic moment and unit vector dx / r */
+  float m_dot_r = (m[0] * dx[0] + 
+                   m[1] * dx[1] + 
+                   m[2] * dx[2]) / r;
     
   switch (feedback_props->magnetic_injection_model) {
 
-    case SNII_magnetic_const_toroidal_injection:
+    case SNII_magnetic_const_toroidal_injection:{
 
       /* for this mode the magnetic field has constant 
        * strength in the toroid */
       B_inj_abs = 1.;
 
       break;
-      
-    case SNII_magnetic_kernel_softened_toroidal_injection:
+    }  
+    case SNII_magnetic_kernel_softened_toroidal_injection:{
 
       /* for this mode the magnetic field has a strength 
        * defined by the kernel */
       B_inj_abs = wi;
 
       break;
-
-    case SNII_magnetic_kernel_softened_actual_toroidal_injection:
+    }
+    case SNII_magnetic_kernel_softened_actual_toroidal_injection:{
 
       B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
       B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
@@ -152,16 +157,11 @@ INLINE float compute_magnetic_injection_field_strength (
                              B_inj[2]*B_inj[2]);
 
       break;
-
-    case SNII_magnetic_dipole_injection:
+    }
+    case SNII_magnetic_dipole_injection:{
 
       /* the softening length */
       const float r_soft = feedback_props->r_softening;
-
-      /* dot product magnetic moment and unit vector dx / r */
-      float m_dot_r = (m[0] * dx[0] + 
-                       m[1] * dx[1] + 
-                       m[2] * dx[2]) / r;
 
       /* absolute value of the field (note that m is assumed to be of
        * length 1)*/
@@ -170,12 +170,50 @@ INLINE float compute_magnetic_injection_field_strength (
                         pow((r + r_soft), 4);
 
       break;
-        
-    default:
+    }
+    case SNII_magnetic_current_loop_injection:{
+
+      /* the current loop scale distance */
+      float rs = sp_h / feedback_props->r_fact_currentloop;
+
+      /* cylindrical coordinates with respect to m 
+       * technically z = -m_dot_r*r but only terms of z**2 appear */
+      const float z = m_dot_r*r;
+      const float R = sqrtf(r*r - z*z);
+
+      /* calculating the current loop */
+      if (R != 0) {
+        B_inj[0] = 3.*dx[0]*(m_dot_r * r + (m[0]*dx[0] + m[1]*dx[1])*(rs/R)) +
+                  (2*rs*rs - r*r + rs*R) * m[0];
+        B_inj[1] = 3.*dx[1]*(m_dot_r * r + (m[0]*dx[0] + m[1]*dx[1])*(rs/R)) +
+                  (2*rs*rs - r*r + rs*R) * m[1];
+        B_inj[2] = 3.*dx[2]*(m_dot_r * r + (m[0]*dx[0] + m[1]*dx[1])*(rs/R)) +
+                  (2*rs*rs - r*r + rs*R) * m[2];
+      } 
+      else {
+        B_inj[0] = 3.*dx[0]*(m_dot_r * r) +
+                  (2*rs*rs - r*r + rs*R) * m[0];
+        B_inj[1] = 3.*dx[1]*(m_dot_r * r) +
+                  (2*rs*rs - r*r + rs*R) * m[1];
+        B_inj[2] = 3.*dx[2]*(m_dot_r * r) +
+                  (2*rs*rs - r*r + rs*R) * m[2];
+      }
+
+      for (size_t i = 0; i < 3; i++) {
+        B_inj[i] /= pow(((rs + R)*(rs + R) + z*z), 5.f/2.f);
+      }
+
+      B_inj_abs = sqrtf(B_inj[0]*B_inj[0] + 
+                        B_inj[1]*B_inj[1] + 
+                        B_inj[2]*B_inj[2]);
+
+      break;
+    }    
+    default:{
          
       error("wrong magnetic injection field specified");
-
     }
+  }
 
   return B_inj_abs;
 }
@@ -193,20 +231,25 @@ INLINE float compute_magnetic_injection_field_strength (
 INLINE void compute_magnetic_injection_field(
     float *B_inj, const float B_inj_norm, const float dx[3], 
     const float m[3], const struct feedback_props *feedback_props, 
-    const float wi) {
+    const float wi, const float sp_h) {
 
   float B_inj_temp[3] = {0.f, 0.f, 0.f};
   float B_inj_rescale;
 
   /* the seperation vector (si - pj)*/
-  float r = sqrtf(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
+  const float r = sqrtf(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
+
+  /* dot product magnetic moment and unit vector dx / r */
+  const float m_dot_r = (m[0] * dx[0] + 
+                         m[1] * dx[1] + 
+                         m[2] * dx[2]) / r;
 
   /* the softening length */
   const float r_soft = feedback_props->r_softening;
     
   switch (feedback_props->magnetic_injection_model) {
 
-    case SNII_magnetic_const_toroidal_injection:
+    case SNII_magnetic_const_toroidal_injection:{
 
       /* toroidal direction */
       B_inj_temp[0] = dx[1]*m[2] - dx[2]*m[1];
@@ -224,8 +267,8 @@ INLINE void compute_magnetic_injection_field(
       }
 
       break;
-      
-    case SNII_magnetic_kernel_softened_toroidal_injection:
+    }  
+    case SNII_magnetic_kernel_softened_toroidal_injection:{
 
 	    /* toroidal direction */
       B_inj_temp[0] = dx[1]*m[2] - dx[2]*m[1];
@@ -242,8 +285,8 @@ INLINE void compute_magnetic_injection_field(
       }
 
       break;
-
-    case SNII_magnetic_kernel_softened_actual_toroidal_injection:
+    }
+    case SNII_magnetic_kernel_softened_actual_toroidal_injection:{
 
       /* toroidal direction */
       B_inj_temp[0] = dx[1]*m[2] - dx[2]*m[1];
@@ -255,13 +298,8 @@ INLINE void compute_magnetic_injection_field(
       }
       
       break;
-
-    case SNII_magnetic_dipole_injection:
-
-      /* dot product magnetic moment and unit vector dx / r */
-      float m_dot_r = (m[0] * dx[0] + 
-                       m[1] * dx[1] + 
-                       m[2] * dx[2]) / r;
+    }
+    case SNII_magnetic_dipole_injection:{
 
       /* calculate the magnetic dipole field */
       B_inj_temp[0] = 3. * dx[0] * m_dot_r - (r - 2*r_soft) * m[0];
@@ -273,17 +311,51 @@ INLINE void compute_magnetic_injection_field(
       }
 
       break;
-        
-    default:
+    }
+    case SNII_magnetic_current_loop_injection:{
+
+      /* the current loop scale distance */
+      const float rs = sp_h / feedback_props->r_fact_currentloop;
+
+      /* cylindrical coordinates with respect to m 
+       * technically z = -m_dot_r*r but only terms of z**2 appear */
+      const float z = m_dot_r*r;
+      const float R = sqrtf(r*r - z*z);
+
+      /* calculating the current loop */
+      if (R != 0) {
+        B_inj_temp[0] = 3.*dx[0]*(m_dot_r * r + (m[0]*dx[0] + m[1]*dx[1])*(rs/R)) +
+                  (2*rs*rs - r*r + rs*R) * m[0];
+        B_inj_temp[1] = 3.*dx[1]*(m_dot_r * r + (m[0]*dx[0] + m[1]*dx[1])*(rs/R)) +
+                  (2*rs*rs - r*r + rs*R) * m[1];
+        B_inj_temp[2] = 3.*dx[2]*(m_dot_r * r + (m[0]*dx[0] + m[1]*dx[1])*(rs/R)) +
+                  (2*rs*rs - r*r + rs*R) * m[2];
+      } 
+      else {
+        B_inj_temp[0] = 3.*dx[0]*(m_dot_r * r) +
+                  (2*rs*rs - r*r + rs*R) * m[0];
+        B_inj_temp[1] = 3.*dx[1]*(m_dot_r * r) +
+                  (2*rs*rs - r*r + rs*R) * m[1];
+        B_inj_temp[2] = 3.*dx[2]*(m_dot_r * r) +
+                  (2*rs*rs - r*r + rs*R) * m[2];
+      }
+
+      for (size_t i = 0; i < 3; i++) {
+        B_inj_temp[i] /= pow(((rs + R)*(rs + R) + z*z), 5.f/2.f);
+      }
+
+      break;
+    }    
+    default:{
          
       error("wrong magnetic injection field specified");
-
     }
+  }
 
-    /* return the magnetic field */
-    B_inj[0] = B_inj_norm * B_inj_temp[0];
-    B_inj[1] = B_inj_norm * B_inj_temp[1];
-    B_inj[2] = B_inj_norm * B_inj_temp[2];
+  /* return the magnetic field */
+  B_inj[0] = B_inj_norm * B_inj_temp[0];
+  B_inj[1] = B_inj_norm * B_inj_temp[1];
+  B_inj[2] = B_inj_norm * B_inj_temp[2];
 }
 
 /** 
@@ -991,6 +1063,11 @@ void feedback_props_init(struct feedback_props *fp,
       /* dipole softening length  */
       fp->r_softening = parser_get_param_float(params,
           "EAGLEFeedback:SNII_magnetic_dipole_softening_length");
+    }
+    else if (strcmp(B_injection_model, "current_loop") == 0) {
+      fp->magnetic_injection_model = SNII_magnetic_current_loop_injection;
+      fp->r_fact_currentloop = parser_get_param_float(params,
+          "EAGLEFeedback:SNII_magnetic_current_loop_scalefactor");
     }
     else
       error("Invalid magnetic injection model '%s'", B_injection_model);

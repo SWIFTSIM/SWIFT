@@ -108,7 +108,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   float magnetic_moment[3] = {0.f, 0.f, 1.f};
   switch (fb_props->magnetic_orientation_model) {
 
-    case SNII_magnetic_orientation_random_model:
+    case SNII_magnetic_orientation_random_model:{
 
       /* CHECK THAT THESE ARE DIFFERENT DIRECTIONS THAN THE RAYS */
       const double rand_theta_m = random_unit_interval_part_ID_and_index(
@@ -130,26 +130,25 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
       magnetic_moment[0] = sin(theta_m) * cos(phi_m);
       magnetic_moment[1] = sin(theta_m) * sin(phi_m);
       magnetic_moment[2] = cos_theta_m;
-
+      
       break;
-
-    case SNII_magnetic_orientation_constant_model:
+    }
+    case SNII_magnetic_orientation_constant_model:{
 
       magnetic_moment[0] = fb_props->magnetic_moment[0];
       magnetic_moment[1] = fb_props->magnetic_moment[1];
       magnetic_moment[2] = fb_props->magnetic_moment[2];
 
       break; 
-    
-    default:
-
+    }
+    default:{
       /* use the magnetic moment as initialised */
-
+    }
   }
 
   /* compute the normalisation of the magnetic field */
   const float B_inj_abs = compute_magnetic_injection_field_strength(
-    dx, magnetic_moment, fb_props, wi);
+    dx, magnetic_moment, fb_props, wi, hi);
 
   if (rho != 0.f)
     si->feedback_data.to_collect_mhd.ngb_B_inj += B_inj_abs * B_inj_abs * mj / 
@@ -476,9 +475,8 @@ runner_iact_nonsym_feedback_apply(
 
     /* Find out how many rays this gas particle has received. */
     for (int i = 0; i < N_of_SNII_thermal_energy_inj; i++) {
-      if (pj->id == si->feedback_data.SNII_rays[i].id_min_length) {
+      if (pj->id == si->feedback_data.SNII_rays[i].id_min_length)
         N_of_SNII_energy_inj_received_by_gas++;
-      }
     }
 
     /* current magnetic field */
@@ -493,7 +491,7 @@ runner_iact_nonsym_feedback_apply(
     float B_inj[3] = {0.f, 0.f, 0.f}; /* originally double */
     compute_magnetic_injection_field(B_inj, 
         si->feedback_data.to_distribute.ngb_B_inj_abs, dx, m, 
-        fb_props, wi);
+        fb_props, wi, hi);
 
     /* inject the magnetic field */
     const float B_final[3] = {B0[0] + B_inj[0],

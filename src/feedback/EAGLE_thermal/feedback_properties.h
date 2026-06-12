@@ -52,7 +52,8 @@ enum SNII_magnetic_injection_model {
   SNII_magnetic_const_toroidal_injection, /*< constant field in phi direction */
   SNII_magnetic_kernel_softened_toroidal_injection,
   SNII_magnetic_kernel_softened_actual_toroidal_injection,
-  SNII_magnetic_dipole_injection          /*< (softened) dipole injection */
+  SNII_magnetic_dipole_injection,          /*< (softened) dipole injection */
+  SNII_magnetic_current_loop_injection
 };
 
 /**
@@ -341,6 +342,9 @@ struct feedback_props {
 
   /* dipole softening length */
   float r_softening;
+
+  /* current loop radius divider */
+  float r_fact_currentloop;
 
   /* Energy fraction used for magnetic field injection */
   float f_E_B;
