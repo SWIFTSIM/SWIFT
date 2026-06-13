@@ -3333,13 +3333,6 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   /* Loop over particles and perform tree searches to get the density everywhere*/
   assign_densities(cells_top, &e->threadpool, s->nr_cells, box_size, level_check);
 
-  //FILE *density_export;
-  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_density_mapping/AMR_32_level6.txt", "w");
-  //for (int i=0; i<levels[1].cell_count; i++) {
-    //fprintf(density_export, "%E \n", levels[1].cells[i]->CIC_density);
-  //}
-  //fclose(density_export);
-
   //min_depth = 0;
   int max_gridsize = perform_uniform_calculation(s, min_depth, max_depth, levels);
   message("max_gridsize = %d", max_gridsize);
@@ -3349,6 +3342,18 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   sleep(5);
 
   perform_nonuniform_calculation(s, min_depth, max_depth, levels, max_gridsize, box_size);
+
+  //FILE *density_export;
+  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/density_maps/AMR_32_level4.txt", "w");
+  //double fac = s->dim[0]/levels[4].cdim;
+  //int cdim_exp[3] = {levels[4].cdim, levels[4].cdim, levels[4].cdim};
+  //for (int i=0; i<levels[4].cell_count; i++) {
+    //int cell_i = (int) ((levels[4].cells[i]->loc[0]+0.0001)/fac);
+    //int cell_j = (int) ((levels[4].cells[i]->loc[1]+0.0001)/fac);
+    //int cell_k = (int) ((levels[4].cells[i]->loc[2]+0.0001)/fac);
+    //fprintf(density_export, "%E %lu \n", levels[4].cells[i]->CIC_potential, cell_getid(cdim_exp, cell_i, cell_j, cell_k));
+  //}
+  //fclose(density_export);
 
   //perform_nonuniform_calculation(s, cells_top, min_depth, max_depth, max_gridsize, box_size);
 
@@ -3894,6 +3899,18 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
       //message("The potential of cell %d at (%lf, %lf, %lf) is %lf", j, c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
     //}
   }
+
+  //FILE *density_export;
+  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/density_maps/AMR_32_level2_ghosts_valued.txt", "w");
+  //double fac_exp = s->dim[0]/levels[2].cdim;
+  //int cdim_exp[3] = {levels[2].cdim, levels[2].cdim, levels[2].cdim};
+  //for (int j=levels[2].cell_count; j<levels[2].cell_count+levels[2].ghost_count; j++) {
+    //int cell_i = (int) ((levels[2].cells[j]->loc[0]+0.0001)/fac_exp);
+    //int cell_j = (int) ((levels[2].cells[j]->loc[1]+0.0001)/fac_exp);
+    //int cell_k = (int) ((levels[2].cells[j]->loc[2]+0.0001)/fac_exp);
+    //if (levels[2].cells[j]->ghost) fprintf(density_export, "%E, %lu \n", levels[2].cells[j]->CIC_potential, cell_getid(cdim_exp, cell_i, cell_j, cell_k));
+  //}
+  //fclose(density_export);
 
   int export = 0;
   if (export) {
@@ -5093,18 +5110,18 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
   }
   message("In total, %d ghosts were created", fine->ghost_count);
 
-  for (int i=0; i<nr_cells; i++) {
-    struct cell *c = fine->cells[i];
-    for (int j=0; j<6; j++) {
-      struct cell *b = c->neighbours[j];
-      int dir = (j%2 == 0) ? j : j-1;
-      int check[4] = {(dir + 2)%6, (dir + 3)%6, (dir + 4)%6, (dir + 5)%6};
-      int nr_neighbours = 4;
+  //for (int i=0; i<nr_cells; i++) {
+    //struct cell *c = fine->cells[i];
+    //for (int j=0; j<6; j++) {
+      //struct cell *b = c->neighbours[j];
+      //int dir = (j%2 == 0) ? j : j-1;
+      //int check[4] = {(dir + 2)%6, (dir + 3)%6, (dir + 4)%6, (dir + 5)%6};
+      //int nr_neighbours = 4;
       //message("Going to do the diagonal for the cell at (%lf, %lf, %lf) using neighbour at (%lf, %lf, %lf) with ghost value %d", c->loc[0], c->loc[1], c->loc[2], b->loc[0], b->loc[1], b->loc[2], b->ghost);
-      check_diagonal1(s, coarse, fine, b, nr_neighbours, check, min_depth, 0);
+      //check_diagonal1(s, coarse, fine, b, nr_neighbours, check, min_depth, 0);
       //sleep(15);
-    }
-  }
+    //}
+  //}
   message("In total, %d ghosts were created", fine->ghost_count);
   //sleep(15);
   
