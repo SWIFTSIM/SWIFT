@@ -3088,13 +3088,13 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
   }
 
   /* Split neighbouring cells desired_depth times */
-  /*int i_loc = 16;
+  int i_loc = 16;
   int j_loc = 16;
   int k_loc = 16;
-  int offset[3] = {-1, 0, 1};
-  for (int i=0; i<3; i++) {
-    for (int j=0; j<3; j++) {
-      for (int k=0; k<3; k++) {
+  int offset[2] = {-1, 0};
+  for (int i=0; i<2; i++) {
+    for (int j=0; j<2; j++) {
+      for (int k=0; k<2; k++) {
         struct cell *c = &s->cells_top[cell_getid(s->cdim, i_loc+offset[i], j_loc+offset[j], k_loc+offset[k])];
         message("Going to do the cell with loc (%lf, %lf, %lf)", c->loc[0], c->loc[1], c->loc[2]);
         if (i==1 && j==1 && k==1) continue;
@@ -3103,7 +3103,7 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
         c->maxdepth = desired_depth;
       }
     }
-  }*/
+  }
 
 
   //sleep(15);
@@ -3344,7 +3344,7 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   perform_nonuniform_calculation(s, min_depth, max_depth, levels, max_gridsize, box_size);
 
   //FILE *density_export;
-  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/density_maps/AMR_32_level4.txt", "w");
+  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/density_maps/AMR_32_level4_morecells.txt", "w");
   //double fac = s->dim[0]/levels[4].cdim;
   //int cdim_exp[3] = {levels[4].cdim, levels[4].cdim, levels[4].cdim};
   //for (int i=0; i<levels[4].cell_count; i++) {
@@ -3360,10 +3360,13 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   message("The minimum depth is %d", min_depth);
   get_cell_accelerations(s, min_depth, max_depth, levels);
 
-  //potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
+  potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
+
+  message("Survived interpolation to the fake particles");
+  sleep(5);
   
-  message("Passing potential to the particles");
-  potential_to_gparts(s, min_depth, max_depth, levels);
+  //message("Passing potential to the particles");
+  //potential_to_gparts(s, min_depth, max_depth, levels);
 
   /* Free memory of the pointer array to the cells */
   for (int i=0; i<max_depth+1; i++) {
@@ -3373,7 +3376,6 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
 
 /* Three-point stencil to get the accelerations in the cells */
 void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]) {
-  double scale_factor = 0.5;
   for (int i=min_depth; i<max_depth+1; i++) {
     for (int j=0; j<levels[i].cell_count; j++) {
       struct cell *c = levels[i].cells[j];
@@ -3384,15 +3386,15 @@ void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struc
       for (int k=0; k<3; k++) {
         c->CIC_acc[k] = 0.;
       }
-      c->CIC_acc[0] = (c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential) * scale_factor;
-      c->CIC_acc[1] = (c->neighbours[3]->CIC_potential - c->neighbours[2]->CIC_potential) * scale_factor;
-      c->CIC_acc[2] = (c->neighbours[5]->CIC_potential - c->neighbours[4]->CIC_potential) * scale_factor;
-      if (i==1 && j==0) {
-        message("The difference was %lf and the scale factor %lf", c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential, scale_factor);
-        message("Assigned (%lf, %lf, %lf) to cell 0", c->CIC_acc[0], c->CIC_acc[1], c->CIC_acc[2]);
-      }
+      double fac = levels[i].cdim/s->dim[0];
+      c->CIC_acc[0] = (c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential) * fac/2;
+      c->CIC_acc[1] = (c->neighbours[3]->CIC_potential - c->neighbours[2]->CIC_potential) * fac/2;
+      c->CIC_acc[2] = (c->neighbours[5]->CIC_potential - c->neighbours[4]->CIC_potential) * fac/2;
+      //if (i==1 && j==0) {
+        //message("The difference was %lf and the scale factor %lf", c->neighbours[1]->CIC_potential - c->neighbours[0]->CIC_potential, scale_factor);
+        //message("Assigned (%lf, %lf, %lf) to cell 0", c->CIC_acc[0], c->CIC_acc[1], c->CIC_acc[2]);
+      //}
     }
-    scale_factor *= 2.;
   }
 }
 
@@ -3407,7 +3409,7 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 
   /* Create array of particle locations */
   double part_loc[N_parts_new][3];
-  double r_parts = 10.;
+  double r_parts = 20.;
   //for (int i=0; i<9; i++) {
     //r_parts += 0.5 * (int) i;
     generate_particles(s, N_parts_new, part_loc, r_parts,0, part);
@@ -3622,6 +3624,8 @@ void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_
 }
 
 void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels) {
+  FILE *acc_export;
+  acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/acceleration/AMR_32_level4_morecells_larger.txt", "w");
   //message("Calling this function");
   /* Loop over the levels. At each level loop over the cells and then over the particles in each cell */
   //for (int i=max_depth-2; i<max_depth+1; i++) {
@@ -3643,13 +3647,24 @@ void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct A
       //if (nr_gparts>0) message("Going to do cell %d with loc (%lf, %lf, %lf) \n", j, c->loc[0], c->loc[1], c->loc[2]);
       for (int k=0; k<nr_gparts; k++) {
         struct gpart *gp = &(c->grav.parts[k]);
-        //message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
+        message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
         get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
         //get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
         //message("The assigned potential is %lf", c->grav.parts[k].potential_mesh);
+        double dx = fabs(gp->x[0]-s->dim[0]/2);
+        double dy = fabs(gp->x[1]-s->dim[0]/2);
+        double dz = fabs(gp->x[2]-s->dim[0]/2);
+        double r = sqrt(dx*dx + dy*dy + dz*dz);
+
+        double acc_x = gp->a_grav_mesh[0];
+        double acc_y = gp->a_grav_mesh[1];
+        double acc_z = gp->a_grav_mesh[2];
+        double acc = sqrt(acc_x*acc_x + acc_y*acc_y + acc_z*acc_z);
+        fprintf(acc_export, "%E %.15g \n", acc, r);
       }
     }
   }
+  fclose(acc_export);
 }
 
 void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr) {
@@ -3670,9 +3685,9 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
   struct cell *home_cell = levels[current_depth].cells[cell_nr];
   double offset[3] = {pos_x - home_cell->loc[0], pos_y - home_cell->loc[1], pos_z - home_cell->loc[2]};
 
-  int nbx = (offset[0] > 0) ? 0 : 1;
-  int nby = (offset[1] > 0) ? 2 : 3;
-  int nbz = (offset[2] > 0) ? 4 : 5;
+  int nbx = 0;
+  int nby = 2;
+  int nbz = 4;
   /* Check if the particle cloud lies entirely within this level */
   for (int i=0; i<current_depth+1; i++) {
     if (pos_x == dim[0]/2 && pos_y == dim[1]/2 && pos_z == dim[2]/2) {
@@ -3751,9 +3766,9 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
   CIC_get_AMR(s, gp, x, width, boxsize, stop_depth, calc_acc, acc_part);
   //message("Adding %lf to potential with value %lf", acc, gp->potential_mesh);
   gp->potential_mesh += pot_part;
-  gp->a_grav_mesh[0] = (1./2.) * acc_part[0];
-  gp->a_grav_mesh[1] = (1./2.) * acc_part[1];
-  gp->a_grav_mesh[2] = (1./2.) * acc_part[2];
+  gp->a_grav_mesh[0] = acc_part[0];
+  gp->a_grav_mesh[1] = acc_part[1];
+  gp->a_grav_mesh[2] = acc_part[2];
 
   /* 3-point stencil along each axis for the accelerations */
   /*x[0] = fmod(x[0] + width[0], boxsize);
@@ -3901,14 +3916,14 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
   }
 
   //FILE *density_export;
-  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/density_maps/AMR_32_level2_ghosts_valued.txt", "w");
-  //double fac_exp = s->dim[0]/levels[2].cdim;
-  //int cdim_exp[3] = {levels[2].cdim, levels[2].cdim, levels[2].cdim};
-  //for (int j=levels[2].cell_count; j<levels[2].cell_count+levels[2].ghost_count; j++) {
-    //int cell_i = (int) ((levels[2].cells[j]->loc[0]+0.0001)/fac_exp);
-    //int cell_j = (int) ((levels[2].cells[j]->loc[1]+0.0001)/fac_exp);
-    //int cell_k = (int) ((levels[2].cells[j]->loc[2]+0.0001)/fac_exp);
-    //if (levels[2].cells[j]->ghost) fprintf(density_export, "%E, %lu \n", levels[2].cells[j]->CIC_potential, cell_getid(cdim_exp, cell_i, cell_j, cell_k));
+  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/density_maps/AMR_32_level4_ghosts_morecells.txt", "w");
+  //double fac_exp = s->dim[0]/levels[4].cdim;
+  //int cdim_exp[3] = {levels[4].cdim, levels[4].cdim, levels[4].cdim};
+  //for (int j=levels[4].cell_count; j<levels[4].cell_count+levels[4].ghost_count; j++) {
+    //int cell_i = (int) ((levels[4].cells[j]->loc[0]+0.0001)/fac_exp);
+    //int cell_j = (int) ((levels[4].cells[j]->loc[1]+0.0001)/fac_exp);
+    //int cell_k = (int) ((levels[4].cells[j]->loc[2]+0.0001)/fac_exp);
+    //if (levels[4].cells[j]->ghost) fprintf(density_export, "%lu \n", cell_getid(cdim_exp, cell_i, cell_j, cell_k));
   //}
   //fclose(density_export);
 
@@ -6281,6 +6296,13 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
     data.dim[2] = s->dim[2];
     data.const_G = s->e->physical_constants->const_newton_G;
     mesh_to_gpart_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
+
+    //FILE *acc_export;
+    //acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/acceleration/acceleration_test/FMG_acc_16.txt", "w");
+    //for (int i=0; i<100; i++) {
+      //fprintf(acc_export, "%E \n", s->gparts[i].a_grav_mesh[0]);
+    //}
+    //fclose(acc_export);
   }
 
   else {
