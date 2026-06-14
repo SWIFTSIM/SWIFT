@@ -3080,7 +3080,7 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
     c->maxdepth = 0;
     int nr_gparts = c->grav.count;
     if (nr_gparts > 0) { 
-      message("The gpart was found in cell %d with location (%lf, %lf, %lf)", i, c->loc[0], c->loc[1], c->loc[2]);
+      //message("The gpart was found in cell %d with location (%lf, %lf, %lf)", i, c->loc[0], c->loc[1], c->loc[2]);
       int curr_depth = 0;
       get_progeny(s, c, desired_depth, &curr_depth);
       c->maxdepth = desired_depth;
@@ -3096,7 +3096,7 @@ void init_test_single_particle(struct engine *e, int desired_depth) {
     for (int j=0; j<2; j++) {
       for (int k=0; k<2; k++) {
         struct cell *c = &s->cells_top[cell_getid(s->cdim, i_loc+offset[i], j_loc+offset[j], k_loc+offset[k])];
-        message("Going to do the cell with loc (%lf, %lf, %lf)", c->loc[0], c->loc[1], c->loc[2]);
+        //message("Going to do the cell with loc (%lf, %lf, %lf)", c->loc[0], c->loc[1], c->loc[2]);
         if (i==1 && j==1 && k==1) continue;
         int curr_depth = 0;
         get_progeny(s, c, desired_depth, &curr_depth);
@@ -3343,6 +3343,23 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
 
   perform_nonuniform_calculation(s, min_depth, max_depth, levels, max_gridsize, box_size);
 
+  message("The mean density is %E", levels[0].mean_density);
+  //FILE *acc_export;
+  //acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/acceleration/potential_test/AMR_pot_16.txt", "w");
+  //int cdim_max[3] = {levels[0].cdim, levels[0].cdim, levels[0].cdim};
+  //for (int i=0; i<levels[0].cdim; i++) {
+    //for (int j=0; j<levels[0].cdim; j++) {
+      //for (int k=0; k<levels[0].cdim; k++) {
+        //double dx = fabs((double)(i-levels[0].cdim/2));
+        //double dy = fabs((double)(j-levels[0].cdim/2));
+        //double dz = fabs((double)(k-levels[0].cdim/2));
+        //double r = box_size/levels[0].cdim * sqrt(dx*dx + dy*dy + dz*dz);
+        //fprintf(acc_export, "%E %.15g \n", levels[0].cells[cell_getid(cdim_max, i, j, k)]->CIC_potential, r);
+      //}
+    //}
+  //}
+  //fclose(acc_export);
+
   //FILE *density_export;
   //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/density_maps/AMR_32_level4_morecells.txt", "w");
   //double fac = s->dim[0]/levels[4].cdim;
@@ -3409,7 +3426,7 @@ void potential_to_fake_gparts(struct space *s, int min_depth, int max_depth, str
 
   /* Create array of particle locations */
   double part_loc[N_parts_new][3];
-  double r_parts = 20.;
+  double r_parts = 10.;
   //for (int i=0; i<9; i++) {
     //r_parts += 0.5 * (int) i;
     generate_particles(s, N_parts_new, part_loc, r_parts,0, part);
@@ -3625,7 +3642,7 @@ void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_
 
 void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels) {
   FILE *acc_export;
-  acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/acceleration/AMR_32_level4_morecells_larger.txt", "w");
+  acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/acceleration/AMR_32_level2_morecells.txt", "w");
   //message("Calling this function");
   /* Loop over the levels. At each level loop over the cells and then over the particles in each cell */
   //for (int i=max_depth-2; i<max_depth+1; i++) {
@@ -3683,7 +3700,7 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
 
   /* CIC for the potential: Get overlap with the cell it is in and 7 others */
   struct cell *home_cell = levels[current_depth].cells[cell_nr];
-  double offset[3] = {pos_x - home_cell->loc[0], pos_y - home_cell->loc[1], pos_z - home_cell->loc[2]};
+  //double offset[3] = {pos_x - home_cell->loc[0], pos_y - home_cell->loc[1], pos_z - home_cell->loc[2]};
 
   int nbx = 0;
   int nby = 2;
@@ -5574,6 +5591,7 @@ int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, s
   /* Initialise arrays for density calculation. */
   for (int i=0; i<array_size; i++) {
     message("Doing i=%d",i);
+    double fac = grid_sizes[i]/s->dim[0];
     //cells_uniform[i] = calloc()
     rho[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
     pot[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
@@ -5599,6 +5617,7 @@ int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, s
     }*/
     message("Getting mean density for i=%d", i);
     mean_density[i] = get_mean_density(rho[i], grid_sizes[i], 0);
+    mean_density[i] *= 4.*M_PI * fac*fac*fac;
   }
 
   /* Set initial guess on the coarsest grid */
@@ -6286,6 +6305,98 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max, i
       cdim[2] = N;
       apply_multigrid(rho[i], pot[i], cdim, mean_density[i], box_size, N_min, N, 15);
     }
+
+    int get_cell_acc = 0;
+    if (get_cell_acc) {
+      double const_G = s->e->physical_constants->const_newton_G;
+      const double dx = s->dim[0]/N_max;
+
+      int cdim_max[3] = {N_max, N_max, N_max};
+
+      double *acc[3];
+      for (int d = 0; d < 3; d++) {
+        acc[d] = malloc((size_t)N_max * N_max * N_max * sizeof(double));
+      }
+
+      for (int i = 0; i < N_max; i++) {
+        int ip = (i + 1) % N_max;
+        int im = (i - 1 + N_max) % N_max;
+        for (int j = 0; j < N_max; j++) {
+          int jp = (j + 1) % N_max;
+          int jm = (j - 1 + N_max) % N_max;
+          for (int k = 0; k < N_max; k++) {
+
+            int kp = (k + 1) % N_max;
+            int km = (k - 1 + N_max) % N_max;
+
+            int cid    = cell_getid(cdim_max, i,  j,  k);
+
+            int cid_xp = cell_getid(cdim_max, ip, j,  k);
+            int cid_xm = cell_getid(cdim_max, im, j,  k);
+
+            int cid_yp = cell_getid(cdim_max, i,  jp, k);
+            int cid_ym = cell_getid(cdim_max, i,  jm, k);
+
+            int cid_zp = cell_getid(cdim_max, i,  j,  kp);
+            int cid_zm = cell_getid(cdim_max, i,  j,  km);
+
+            acc[0][cid] =
+                -const_G *
+                (pot[N_levels-1][cid_xp] - pot[N_levels-1][cid_xm])
+                / (2.0 * dx);
+
+            acc[1][cid] =
+                -const_G *
+                (pot[N_levels-1][cid_yp] - pot[N_levels-1][cid_ym])
+                / (2.0 * dx);
+
+            acc[2][cid] =
+                -const_G *
+                (pot[N_levels-1][cid_zp] - pot[N_levels-1][cid_zm])
+                / (2.0 * dx);
+          }
+        }
+      }
+      FILE *acc_export;
+      acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/acceleration/potential_test/FMG_acc_64.txt", "w");
+      for (int i=0; i<N_max; i++) {
+        for (int j=0; j<N_max; j++) {
+          for (int k=0; k<N_max; k++) {
+            double dx1 = fabs((double)(i-N_max/2));
+            double dy1 = fabs((double)(j-N_max/2));
+            double dz1 = fabs((double)(k-N_max/2));
+            double r = box_size/N_max * sqrt(dx1*dx1 + dy1*dy1 + dz1*dz1);
+
+            double acc_x = acc[0][cell_getid(cdim_max, i, j, k)];
+            double acc_y = acc[1][cell_getid(cdim_max, i, j, k)];  
+            double acc_z = acc[2][cell_getid(cdim_max, i, j, k)];
+            double acc_exp = sqrt(acc_x*acc_x + acc_y*acc_y + acc_z*acc_z); 
+            fprintf(acc_export, "%E %.15g \n", acc_exp, r);
+          }
+        }
+      }
+      fclose(acc_export);
+      for (int d = 0; d < 3; d++) {
+        free(acc[d]);
+      }
+    }
+  
+
+    //FILE *acc_export;
+    //acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/acceleration/potential_test/FMG_pot_16.txt", "w");
+    //int cdim_max[3] = {N_max, N_max, N_max};
+    //for (int i=0; i<N_max; i++) {
+      //for (int j=0; j<N_max; j++) {
+        //for (int k=0; k<N_max; k++) {
+          //double dx = fabs((double)(i-N_max/2));
+          //double dy = fabs((double)(j-N_max/2));
+          //double dz = fabs((double)(k-N_max/2));
+          //double r = box_size/N_max * sqrt(dx*dx + dy*dy + dz*dz);
+          //fprintf(acc_export, "%E %.15g \n", pot[N_levels-1][cell_getid(cdim_max, i, j, k)], r);
+        //}
+      //}
+    //}
+    //fclose(acc_export);
 
     /* Now calculate the accelerations from the potential */
     data.rho = NULL;
