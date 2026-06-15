@@ -1514,12 +1514,22 @@ AC_ARG_WITH([agama],
 )
 if test "x$with_agama" != "xno"; then
    if test "x$with_agama" != "xyes" -a "x$with_agama" != "x"; then
-      # Agama headers may live under src/ (build tree) or usr/include/agama/
-      # (installed tree). Detect which layout is present.
+      # Agama headers may live under usr/include/agama/ (installed tree, via
+      # 'make install') or src/ (build tree). In both cases the #include must
+      # use <agama/interface_c.h>, so the -I flag must point to the directory
+      # that *contains* the agama/ subdirectory:
+      #   installed : -I$with_agama/usr/include  (agama/ subdir exists there)
+      #   build tree: -I$with_agama              (src/ acts as agama/ via symlink
+      #                                           or we create one at configure time)
       if test -f "$with_agama/usr/include/agama/interface_c.h"; then
          AGAMA_INCS="-I$with_agama/usr/include"
       elif test -f "$with_agama/src/interface_c.h"; then
-         AGAMA_INCS="-I$with_agama/src"
+         # Build-tree layout: create an 'agama' symlink next to src/ so that
+         # #include <agama/interface_c.h> resolves correctly.
+         AC_MSG_NOTICE([Agama build-tree layout detected: creating agama -> src symlink])
+         AS_IF([test ! -e "$with_agama/agama"],
+               [ln -s "$with_agama/src" "$with_agama/agama"])
+         AGAMA_INCS="-I$with_agama"
       else
          AC_MSG_ERROR([Cannot find Agama headers under $with_agama/usr/include/agama/ or $with_agama/src/.])
       fi

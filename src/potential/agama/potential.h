@@ -22,7 +22,7 @@
 
 /* Config parameters. */
 #include <config.h>
-#include "/home/revaz/work/Agama/usr/include/agama/interface_c.h"
+#include <agama/interface_c.h>
 
 /* Some standard headers. */
 #include <float.h>
