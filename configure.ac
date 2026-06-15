@@ -1497,6 +1497,61 @@ AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
 AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
 
+# Check for Agama (All-purpose Galaxy Modelling Architecture).
+# See https://agama.software/ for details.
+# Agama is linked as a static archive (agama.a) and requires two companion
+# static libraries from its extras/lib/ directory (libunsio.a and libnemo.a),
+# plus -lstdc++ -lm -lgomp -lgsl at link time.
+# Usage: --with-agama=PATH  where PATH is the root of the Agama installation
+# (the directory that contains agama.a and the src/ and extras/ sub-directories).
+have_agama="no"
+AC_ARG_WITH([agama],
+    [AS_HELP_STRING([--with-agama=PATH],
+       [root directory where agama is installed (contains agama.a and src/) @<:@yes/no@:>@]
+    )],
+    [with_agama="$withval"],
+    [with_agama="no"]
+)
+if test "x$with_agama" != "xno"; then
+   if test "x$with_agama" != "xyes" -a "x$with_agama" != "x"; then
+      # Headers live in src/ inside the Agama root directory.
+      AGAMA_INCS="-I$with_agama/src"
+      # Link the main static archive with the -l: form so the linker accepts a
+      # full filename rather than the usual lib<name>.so/.a search.
+      # The two companion static libraries from extras/lib/ must follow.
+      AGAMA_LIBS="$with_agama/agama.a \
+                  $with_agama/extras/lib/libunsio.a \
+                  $with_agama/extras/lib/libnemo.a \
+                  -lstdc++ -lm -lgomp -lgsl"
+   else
+      AC_MSG_ERROR([--with-agama requires an explicit installation PATH (e.g. --with-agama=/path/to/Agama).])
+   fi
+
+   # Verify that the static archive is actually present.
+   AC_MSG_CHECKING([for agama.a in $with_agama])
+   if test -f "$with_agama/agama.a"; then
+      AC_MSG_RESULT([yes])
+      have_agama="yes"
+      AC_DEFINE([HAVE_AGAMA],1,[The AGAMA library appears to be present.])
+   else
+      AC_MSG_RESULT([no])
+      AC_MSG_ERROR([Cannot find $with_agama/agama.a. Please check your Agama installation (https://agama.software/).])
+   fi
+
+   # Verify the companion extras libraries are present.
+   AC_MSG_CHECKING([for agama extras libraries (libunsio.a, libnemo.a)])
+   if test -f "$with_agama/extras/lib/libunsio.a" -a -f "$with_agama/extras/lib/libnemo.a"; then
+      AC_MSG_RESULT([yes])
+   else
+      AC_MSG_RESULT([no])
+      AC_MSG_ERROR([Cannot find libunsio.a or libnemo.a under $with_agama/extras/lib/.])
+   fi
+
+fi
+AC_SUBST([AGAMA_LIBS])
+AC_SUBST([AGAMA_INCS])
+AM_CONDITIONAL([HAVEAGAMA],[test "$have_agama" = "yes"])
+
 # Check for VELOCIraptor, non-MPI.
 have_velociraptor="no"
 AC_ARG_WITH([velociraptor],
@@ -3443,6 +3498,7 @@ AC_MSG_RESULT([
    HEALPix C enabled    : $have_chealpix
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
+   AGAMA enabled        : $have_agama
    Sundials enabled     : $have_sundials
    Special allocators   : $have_special_allocator
    CPU profiler         : $have_profiler
