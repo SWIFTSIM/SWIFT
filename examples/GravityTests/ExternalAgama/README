@@ -1,0 +1,4 @@
+
+./configure --with-agama=/home/revaz/local/local2023/forge/python-3.10/Agama --with-ext-potential=agama
+
+

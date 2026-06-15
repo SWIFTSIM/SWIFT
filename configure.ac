@@ -1514,8 +1514,15 @@ AC_ARG_WITH([agama],
 )
 if test "x$with_agama" != "xno"; then
    if test "x$with_agama" != "xyes" -a "x$with_agama" != "x"; then
-      # Headers live in src/ inside the Agama root directory.
-      AGAMA_INCS="-I$with_agama/src"
+      # Agama headers may live under src/ (build tree) or usr/include/agama/
+      # (installed tree). Detect which layout is present.
+      if test -f "$with_agama/usr/include/agama/interface_c.h"; then
+         AGAMA_INCS="-I$with_agama/usr/include"
+      elif test -f "$with_agama/src/interface_c.h"; then
+         AGAMA_INCS="-I$with_agama/src"
+      else
+         AC_MSG_ERROR([Cannot find Agama headers under $with_agama/usr/include/agama/ or $with_agama/src/.])
+      fi
       # Link the main static archive with the -l: form so the linker accepts a
       # full filename rather than the usual lib<name>.so/.a search.
       # The two companion static libraries from extras/lib/ must follow.
@@ -1992,6 +1999,14 @@ if test "$enable_warn" != "no"; then
     # are an error.
     AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes],[CFLAGS="$CFLAGS -Wstrict-prototypes"],
                           [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
+fi
+
+# Agama's interface_c.h uses empty () prototypes which are not valid in C99
+# and trigger -Wstrict-prototypes. Since we cannot modify the upstream header,
+# append -Wno-strict-prototypes here, *after* -Wstrict-prototypes has been
+# added above, so the suppression flag always comes last and wins.
+if test "$have_agama" = "yes"; then
+   CFLAGS="$CFLAGS -Wno-strict-prototypes"
 fi
 
 # Second part of the NUMA library checks. We now decide if we need to use
@@ -3041,7 +3056,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, agama, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -3079,6 +3094,9 @@ case "$with_potential" in
    ;;
    MWPotential2014)
       AC_DEFINE([EXTERNAL_POTENTIAL_MWPotential2014], [1], [Milky-Way like potential composed of a Navarro-Frenk-White + Miyamoto-Nagai disk + Power spherical cuttoff external potential.])
+   ;;
+   agama)
+      AC_DEFINE([EXTERNAL_POTENTIAL_AGAMA], [1], [Potential generated from the AGAMA library (https://agama.software/).])
    ;;
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
