@@ -63,6 +63,95 @@ runner_iact_nonsym_stars_density(const float r2, const float dx[3],
 #endif
 }
 
+#ifdef EXTRA_STAR_LOOPS_1
+/* #error "ERROR" */
+/**
+ * @brief prep1 interaction between two particles (non-symmetric).
+ *
+ * Empty imlementation
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sparticle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_prep1(const float r2, const float dx[3],
+                               const float hi, const float hj, struct spart *si,
+                               const struct part *pj, const float a,
+                               const float H) {}
+#endif
+
+#ifdef EXTRA_STAR_LOOPS_2
+/**
+ * @brief prep2 interaction between two particles (non-symmetric).
+ *
+ * Empty imlementation
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sparticle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_prep2(const float r2, const float dx[3],
+                               const float hi, const float hj, struct spart *si,
+                               const struct part *pj, const float a,
+                               const float H) {}
+#endif
+
+#ifdef EXTRA_STAR_LOOPS_3
+/**
+ * @brief prep3 interaction between two particles (non-symmetric).
+ *
+ * Empty imlementation
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sparticle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_prep3(const float r2, const float dx[3],
+                               const float hi, const float hj, struct spart *si,
+                               const struct part *pj, const float a,
+                               const float H) {}
+#endif
+
+#ifdef EXTRA_STAR_LOOPS_4
+/**
+ * @brief prep4 interaction between two particles (non-symmetric).
+ *
+ * Empty imlementation
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sparticle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_prep4(const float r2, const float dx[3],
+                               const float hi, const float hj, struct spart *si,
+                               const struct part *pj, const float a,
+                               const float H) {}
+#endif
+
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
  *
