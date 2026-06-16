@@ -42,11 +42,11 @@
  */
 struct external_potential {
 
+  /* Potential object */
+  agama_Potential *agama_potential;
+
   /*! Position of the point mass */
   double x[3];
-
-  /*! Mass */
-  double mass;
 
   /*! Time-step condition pre-factor */
   float timestep_mult;
@@ -67,28 +67,11 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct phys_const *restrict phys_const,
     const struct gpart *restrict g) {
 
-  const float G_newton = phys_const->const_newton_G;
-  const float dx = g->x[0] - potential->x[0];
-  const float dy = g->x[1] - potential->x[1];
-  const float dz = g->x[2] - potential->x[2];
-  const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
-  const float rinv2 = rinv * rinv;
-  const float rinv3 = rinv2 * rinv;
-  const float drdv = (g->x[0] - potential->x[0]) * (g->v_full[0]) +
-                     (g->x[1] - potential->x[1]) * (g->v_full[1]) +
-                     (g->x[2] - potential->x[2]) * (g->v_full[2]);
-  const float dota_x = G_newton * potential->mass * rinv3 *
-                       (-g->v_full[0] + 3.f * rinv2 * drdv * dx);
-  const float dota_y = G_newton * potential->mass * rinv3 *
-                       (-g->v_full[1] + 3.f * rinv2 * drdv * dy);
-  const float dota_z = G_newton * potential->mass * rinv3 *
-                       (-g->v_full[2] + 3.f * rinv2 * drdv * dz);
-  const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
-  const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
-                    g->a_grav[2] * g->a_grav[2];
+  const float a_2 = g->a_grav[0]*g->a_grav[0] + g->a_grav[1]*g->a_grav[1] + g->a_grav[2]*g->a_grav[2];
+  const float v_2 = g->v_full[0]*g->v_full[0] + g->v_full[1]*g->v_full[1] + g->v_full[2]*g->v_full[2];
 
-  if (fabsf(dota_2) > 0.f)
-    return potential->timestep_mult * sqrtf(a_2 / dota_2);
+  if (fabsf(a_2) > 0.f)
+    return potential->timestep_mult * sqrtf(v_2 / a_2);
   else
     return FLT_MAX;
 }
@@ -111,16 +94,25 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential *restrict potential,
     const struct phys_const *restrict phys_const, struct gpart *restrict g) {
 
+
+  double pot;
+  double t=0;
+  double deriv[3];
+  double deriv2[6];
+
+  /* Center the potential */
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
-  const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
-  const float rinv3 = rinv * rinv * rinv;
+  double xyz[3] = {dx, dy, dz};
 
-  g->a_grav[0] += -potential->mass * dx * rinv3;
-  g->a_grav[1] += -potential->mass * dy * rinv3;
-  g->a_grav[2] += -potential->mass * dz * rinv3;
-  gravity_add_comoving_potential(g, -potential->mass * rinv);
+  /* Compute potential and forces */  
+  pot = agama_evalPotential(potential->agama_potential, xyz, t, deriv, deriv2);
+
+  g->a_grav[0] += -deriv[0];
+  g->a_grav[1] += -deriv[1];
+  g->a_grav[2] += -deriv[2];
+  gravity_add_comoving_potential(g, pot);
 }
 
 /**
@@ -137,11 +129,21 @@ external_gravity_get_potential_energy(
     double time, const struct external_potential *potential,
     const struct phys_const *const phys_const, const struct gpart *g) {
 
+  double pot;
+  double t=0;
+  double deriv[3];
+  double deriv2[6];
+  
+  /* Center the potential */
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
-  const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
-  return -phys_const->const_newton_G * potential->mass * rinv;
+  double xyz[3] = {dx, dy, dz};
+
+  /* Compute potential and forces */  
+  pot = agama_evalPotential(potential->agama_potential, xyz, t, deriv, deriv2);
+  
+  return pot;
 }
 
 /**
@@ -160,49 +162,28 @@ static INLINE void potential_init_backend(
     struct external_potential *potential) {
 
 
-  agama_Potential *agama_potential;
-  agama_potential = agama_createPotential("file=potential.txt");
+
+  /* Read in the name of the AGAMA potential file */
+  char agama_potential_filename[32];
+  parser_get_param_string(parameter_file, "AGAMAPotential:filename",
+                                agama_potential_filename);
 
 
-
-
-  // Evaluate potential at (x, y, z) = (1, 0, 0)
-  double xyz[3] = {0.1, 0.1, 0.1};
-  double pot;
-  double t=0;
-  double deriv[3];
-  double deriv2[6];
-  pot = agama_evalPotential(agama_potential, xyz, t, deriv, deriv2);
-
-  printf("Phi(1,0,0) = %f\n", pot);
-  printf("grad = (%f, %f, %f)\n", deriv[0], deriv[1], deriv[2]);
-
-  // Free the object
-  agama_deletePotential(agama_potential);
-  
-  message("------------>");
-  exit(-1);
-
-  
   /* Read in the position of the centre of potential */
-  parser_get_param_double_array(parameter_file, "PointMassPotential:position",
+  parser_get_param_double_array(parameter_file, "AGAMAPotential:position",
                                 3, potential->x);
 
-  /* Is the position absolute or relative to the centre of the box? */
-  const int useabspos =
-      parser_get_param_int(parameter_file, "PointMassPotential:useabspos");
+  
+  char param_string[40]; // "file=" (5) + filename (up to 31) + null terminator
+  snprintf(param_string, sizeof(param_string), "file=%s", agama_potential_filename);
 
-  if (!useabspos) {
-    potential->x[0] += s->dim[0] / 2.;
-    potential->x[1] += s->dim[1] / 2.;
-    potential->x[2] += s->dim[2] / 2.;
-  }
+  /* Create the AGAMA potential */
+  potential->agama_potential = agama_createPotential(param_string);
+
 
   /* Read the other parameters of the model */
-  potential->mass =
-      parser_get_param_double(parameter_file, "PointMassPotential:mass");
   potential->timestep_mult = parser_get_opt_param_float(
-      parameter_file, "PointMassPotential:timestep_mult", FLT_MAX);
+      parameter_file, "AGAMAPotential:timestep_mult", FLT_MAX);
 }
 
 /**
@@ -214,9 +195,9 @@ static INLINE void potential_print_backend(
     const struct external_potential *potential) {
 
   message(
-      "External potential is 'Point mass' with properties (x,y,z) = (%e, %e, "
-      "%e), M = %e timestep multiplier = %e.",
-      potential->x[0], potential->x[1], potential->x[2], potential->mass,
+      "External potential is 'AGAMA' with properties (x,y,z) = (%e, %e, "
+      "%e), timestep multiplier = %e.",
+      potential->x[0], potential->x[1], potential->x[2],
       potential->timestep_mult);
 }
 

@@ -1,0 +1,38 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e33    # M_sun
+  UnitLength_in_cgs:   3.08567758e21 # kpc
+  UnitVelocity_in_cgs: 1e5           # km/s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   8.    # The end time of the simulation (in internal units).
+  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  subdir:              snap      # Directory in which to write snapshots
+  basename:            snapshot  # Common part of the name of output files
+  time_first:          0.        # Time of the first output (in internal units)
+  delta_time:          0.02      # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-2 # Time between statistics output
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  plummer.hdf5        # The file to read
+  periodic:   0
+  shift:      [40.,40.,40.]         # A shift to apply to all particles read from the ICs (in internal units).
+
+# External potential parameters
+AGAMAPotential:
+  filename:        potential.txt # file name of an AGAMA potential
+  position:        [40.,40.,40.]    # location of external point mass in internal units
+  timestep_mult:   0.03     # controls time step
+  

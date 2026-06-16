@@ -1,4 +1,34 @@
+# Context
 
-./configure --with-agama=/home/revaz/local/local2023/forge/python-3.10/Agama --with-ext-potential=agama
+This example tests the usage of an external potential provided by the AGAMA library (https://agama.software/). 
+
+# How to run this example
+
+In a terminal at the root of the "swiftsim" directory, type:
+
+`./autogen.sh`
+
+Then, configure swift to take into account external potentials. Type:
+
+`./configure --with-agama=path_to_agama_directory --with-ext-potential=agama`
+
+Feel free to adapt other configurations parameters depending on your system. Then, build the code by typing:
+
+`make`
+
+Finally, to run this example, open a terminal in the present directory and type:
+
+`./run.sh`
+
+
+Note that the AGAMA potential file `potiential.txt` can be created by running:
+
+`./makePlummerPotential.py`
+
+The initial conditions are obtained with:
+
+`ic_plummer   -N 100000 --Mtot 1e-2 -a 0.1 --Rmax 20 -t swift -o plummer.hdf5`
+
+
 
 
