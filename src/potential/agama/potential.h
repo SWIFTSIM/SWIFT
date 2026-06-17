@@ -20,8 +20,8 @@
 #define SWIFT_POTENTIAL_AGAMA_H
 
 /* Config parameters. */
-#include <config.h>
 #include <agama/interface_c.h>
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -45,7 +45,7 @@ struct external_potential {
   agama_Potential *agama_potential;
 
   /* AGAMA potential parameter */
-  char param_string[40]; 
+  char param_string[40];
 
   /*! Position of the point mass */
   double x[3];
@@ -68,8 +68,8 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     double time, const struct external_potential *restrict potential,
     const struct phys_const *restrict phys_const,
     const struct gpart *restrict g) {
-  
-  double t=0;
+
+  double t = 0;
   double deriv[3];
   double deriv2[6];
 
@@ -79,15 +79,18 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const float dz = g->x[2] - potential->x[2];
   const double xyz[3] = {dx, dy, dz};
 
-  /* Compute potential and forces */  
-  const double pot = agama_evalPotential(potential->agama_potential, xyz, t, deriv, deriv2);
-  
-  const float a_2 = g->a_grav[0]*g->a_grav[0] + g->a_grav[1]*g->a_grav[1] + g->a_grav[2]*g->a_grav[2];
-  const float vp_2 = -pot;
-  const float vv_2 = g->v_full[0]*g->v_full[0] + g->v_full[1]*g->v_full[1] + g->v_full[2]*g->v_full[2];
+  /* Compute potential and forces */
+  const double pot =
+      agama_evalPotential(potential->agama_potential, xyz, t, deriv, deriv2);
 
-  const float v_2 = max(vv_2,vp_2);
-  
+  const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
+                    g->a_grav[2] * g->a_grav[2];
+  const float vp_2 = -pot;
+  const float vv_2 = g->v_full[0] * g->v_full[0] + g->v_full[1] * g->v_full[1] +
+                     g->v_full[2] * g->v_full[2];
+
+  const float v_2 = max(vv_2, vp_2);
+
   if (fabsf(a_2) > 0.f)
     return potential->timestep_mult * sqrtf(v_2 / a_2);
   else
@@ -113,8 +116,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     const struct phys_const *restrict phys_const, struct gpart *restrict g) {
 
   const float G_newton = phys_const->const_newton_G;
-  
-  double t=0;
+
+  double t = 0;
   double deriv[3];
   double deriv2[6];
 
@@ -124,12 +127,13 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   const float dz = g->x[2] - potential->x[2];
   const double xyz[3] = {dx, dy, dz};
 
-  /* Compute potential and forces */  
-  const double pot = agama_evalPotential(potential->agama_potential, xyz, t, deriv, deriv2);
+  /* Compute potential and forces */
+  const double pot =
+      agama_evalPotential(potential->agama_potential, xyz, t, deriv, deriv2);
 
-  g->a_grav[0] -= deriv[0]/G_newton;
-  g->a_grav[1] -= deriv[1]/G_newton;
-  g->a_grav[2] -= deriv[2]/G_newton;
+  g->a_grav[0] -= deriv[0] / G_newton;
+  g->a_grav[1] -= deriv[1] / G_newton;
+  g->a_grav[2] -= deriv[2] / G_newton;
   gravity_add_comoving_potential(g, pot);
 }
 
@@ -149,19 +153,21 @@ external_gravity_get_potential_energy(
 
   const float G_newton = phys_const->const_newton_G;
 
-  double t=0;
+  double t = 0;
   double deriv[3];
   double deriv2[6];
-  
+
   /* Center the potential */
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
   const double xyz[3] = {dx, dy, dz};
 
-  /* Compute potential and forces */  
-  const double pot = agama_evalPotential(potential->agama_potential, xyz, t, deriv, deriv2)/G_newton;
-  
+  /* Compute potential and forces */
+  const double pot =
+      agama_evalPotential(potential->agama_potential, xyz, t, deriv, deriv2) /
+      G_newton;
+
   return pot;
 }
 
@@ -180,23 +186,20 @@ static INLINE void potential_init_backend(
     const struct unit_system *us, const struct space *s,
     struct external_potential *potential) {
 
-
-
   /* Read in the name of the AGAMA potential file */
   char agama_potential_filename[32];
   parser_get_param_string(parameter_file, "AGAMAPotential:filename",
-                                agama_potential_filename);
-
+                          agama_potential_filename);
 
   /* Read in the position of the centre of potential */
-  parser_get_param_double_array(parameter_file, "AGAMAPotential:position",
-                                3, potential->x);
+  parser_get_param_double_array(parameter_file, "AGAMAPotential:position", 3,
+                                potential->x);
 
-    snprintf(potential->param_string, sizeof(potential->param_string), "file=%s", agama_potential_filename);
+  snprintf(potential->param_string, sizeof(potential->param_string), "file=%s",
+           agama_potential_filename);
 
   /* Create the AGAMA potential */
   potential->agama_potential = agama_createPotential(potential->param_string);
-
 
   /* Read the other parameters of the model */
   potential->timestep_mult = parser_get_opt_param_float(
@@ -215,7 +218,7 @@ static INLINE void potential_print_backend(
       "External potential is 'AGAMA' with properties (x,y,z) = (%e, %e, "
       "%e), timestep multiplier = %e, parameter = %s",
       potential->x[0], potential->x[1], potential->x[2],
-      potential->timestep_mult,potential->param_string);
+      potential->timestep_mult, potential->param_string);
 }
 
 #endif /* SWIFT_POTENTIAL_AGAMA_H */

@@ -4,7 +4,7 @@
 if [ ! -e plummer.hdf5 ]
 then
     echo "Generating initial conditions for the AGAMA potential example..."
-    python3 makeIC.py 10000
+    ic_plummer   -N 10000 --Mtot 1e-2 -a 0.1 --Rmax 20 -t swift -o plummer.hdf5
 fi
 
 ../../../swift --external-gravity --threads=1 params.yml 2>&1 | tee output.log

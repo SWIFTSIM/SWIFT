@@ -34,7 +34,7 @@ InitialConditions:
 AGAMAPotential:
   filename:        potential.txt    # file name of an AGAMA potential
   position:        [40.,40.,40.]    # location of the potential center in internal units
-  timestep_mult:   0.01             # controls time step
+  timestep_mult:   0.01             # controls the time step
 
 
 # Parameters for the self-gravity scheme
