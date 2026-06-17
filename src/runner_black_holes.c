@@ -592,9 +592,14 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     }
 
     /* --- Single pass: accumulate total stellar mass and find nearest star --- */
+    /* --- Also get mean velocity --- */
     double M_total = 0.0;
     double nearest_r2 = aperture_comoving2;
     struct spart *nearest_sp = NULL;
+    int star_count = 0;
+    double v_mean_x = 0.0;
+    double v_mean_y = 0.0;
+    double v_mean_z = 0.0;
     for (size_t j = 0; j < s->nr_sparts; j++) {
       struct spart *sp = &s->sparts[j];
       if (spart_is_inhibited(sp, e)) continue;
@@ -610,15 +615,126 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
       }
 
       const double r2 = dx * dx + dy * dy + dz * dz;
-      if (r2 < aperture_comoving2) M_total += sp->mass;
+      if (r2 < aperture_comoving2) {
+        M_total += sp->mass;
+        v_mean_x += sp->v[0] - bp->v_full[0];
+			  v_mean_y += sp->v[1] - bp->v_full[1];
+        v_mean_z += sp->v[2] - bp->v_full[2];
+        star_count++;
+      }  
       if (r2 < nearest_r2) {
         nearest_r2 = r2;
         nearest_sp = sp;
       }
     }
+    /* finished pass, calculate mean velocity */
+    v_mean_x /= star_count;
+    v_mean_y /= star_count;
+    v_mean_z /= star_count;
+
+    /* --- Single pass 2: get density and velocity dispersion profiles by binning --- */
+    /* Create log-spaced bins */
+    int n_bins = 50;        // This is a variable to decide on
+    double start = log10(dist_inner_internal);
+    double stop = log10(dist_threshold_internal);
+    double step = (stop - start) / n_bins;
+    double bin_edges[n_bins + 1];
+    double bin_centres[n_bins];
+    for (int i = 0; i < n_bins + 1; i++){
+        bin_edges[i] = pow(10, (start + step*i));
+    }
+
+    /* Initialize arrays */
+    double mass_per_shell[n_bins];
+    double density_per_shell[n_bins];
+    double v_rel_x = 0.0;
+    double v_rel_y = 0.0;
+    double v_rel_z = 0.0;
+    double count_per_shell[n_bins]; 
+    double sig_per_shell_x[n_bins];
+    double sig_per_shell_y[n_bins];
+    double sig_per_shell_z[n_bins];
+    double sig_per_shell[n_bins];
+    double sig_total_x = 0.0;
+    double sig_total_y = 0.0;
+    double sig_total_z = 0.0;
+    double sig_total = 0.0;
+    for (int i = 0; i < n_bins; i++){
+      bin_centres[i] = (bin_edges[i] + bin_edges[i+1]) / 2;
+      count_per_shell[i] = 0.0;
+      mass_per_shell[i] = 0.0;
+      sig_per_shell_x[i] = 0.0;
+      sig_per_shell_y[i] = 0.0;
+      sig_per_shell_z[i] = 0.0;
+      sig_per_shell[i] = 0.0;
+    }
+
+    /* Do second pass */
+    for (size_t j = 0; j < s->nr_sparts; j++) {
+      struct spart *sp = &s->sparts[j];
+      if (spart_is_inhibited(sp, e)) continue;
+
+      double dx = bp->x[0] - sp->x[0];
+      double dy = bp->x[1] - sp->x[1];
+      double dz = bp->x[2] - sp->x[2];
+
+      if (periodic) {
+        dx = nearest(dx, s->dim[0]);
+        dy = nearest(dy, s->dim[1]);
+        dz = nearest(dz, s->dim[2]);
+      }
+
+      const double r2 = dx * dx + dy * dy + dz * dz;
+      const double r1 = sqrt(r2)
+      if (r2 < aperture_comoving2) {
+			  v_rel_x = sp->v[0] - bp->v_full[0] - v_mean_x;
+			  v_rel_y = sp->v[1] - bp->v_full[1] - v_mean_y;
+			  v_rel_z = sp->v[2] - bp->v_full[2] - v_mean_z;
+
+			  /* Binwise calculate velocity dispersion, mass-weighted */
+        /* Bin stellar masses */
+			  for (int j = 0; j < n_bins; j++){
+			    if (r1 >= bin_edges[j] && r1 < bin_edges[j+1]){
+            count_per_shell[j]++;
+            mass_per_shell[j] += sp->mass;
+            sig_per_shell_x[j] += v_rel_x * v_rel_x * sp->mass;
+            sig_per_shell_y[j] += v_rel_y * v_rel_y * sp->mass;
+            sig_per_shell_z[j] += v_rel_z * v_rel_z * sp->mass;
+            sig_total_x += v_rel_x * v_rel_x * sp->mass;
+            sig_total_y += v_rel_y * v_rel_y * sp->mass;
+            sig_total_z += v_rel_z * v_rel_z * sp->mass;
+			  	}
+			  }
+      }
+    }
+
+    /* With all particles binned, we loop over bins for density and final velocity dispersion */
+    for (int i = 0; i < n_bins; i++){
+      double shellvolume = (4.0/3.0) * M_PI * (pow(bin_edges[i+1], 3) - pow(bin_edges[i], 3));
+    density_per_shell[i] = mass_per_shell[i] / shellvolume;
+
+    if (count_per_shell[i] < 5){
+      sig_per_shell[i] = NAN;
+    } else{
+      sig_per_shell_x[i] /= mass_per_shell[i];
+      sig_per_shell_y[i] /= mass_per_shell[i];
+      sig_per_shell_z[i] /= mass_per_shell[i];
+      sig_per_shell[i] = sqrt((sig_per_shell_x[i] + sig_per_shell_y[i] + sig_per_shell_z[i]) / 3.0);
+    }
+    }
+
+    /* Compute total velocity dispersion */
+    sig_total_x /= M_total;
+    sig_total_y /= M_total;
+    sig_total_z /= M_total;
+    sig_total = sqrt((sig_total_x + sig_total_y + sig_total_z) / 3.0);
+
 
     /* Store physical stellar mass density on the BH. */
     bp->rho_stellar = (M_total > 0.0) ? (float)(M_total / aperture_volume) : 0.f;
+
+    /* Store stellar density profile, sigma profile and total sigma on the BH. */
+    /* Can we do this? (store arrays) */
 
     /* Nothing to nibble if no star found. */
     if (nearest_sp == NULL) continue;
