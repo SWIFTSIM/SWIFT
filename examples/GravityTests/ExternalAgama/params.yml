@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   8.    # The end time of the simulation (in internal units).
+  time_end:   1.    # The end time of the simulation (in internal units).
   dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
@@ -18,7 +18,7 @@ Snapshots:
   subdir:              snap      # Directory in which to write snapshots
   basename:            snapshot  # Common part of the name of output files
   time_first:          0.        # Time of the first output (in internal units)
-  delta_time:          0.02      # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.1       # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -32,7 +32,16 @@ InitialConditions:
 
 # External potential parameters
 AGAMAPotential:
-  filename:        potential.txt # file name of an AGAMA potential
-  position:        [40.,40.,40.]    # location of external point mass in internal units
-  timestep_mult:   0.03     # controls time step
-  
+  filename:        potential.txt    # file name of an AGAMA potential
+  position:        [40.,40.,40.]    # location of the potential center in internal units
+  timestep_mult:   0.01             # controls time step
+
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                           0.002      # Constant dimensionless multiplier for time integration.
+  MAC:                           geometric  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                   0.001      # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:                      0.7        # Opening angle for the purely gemoetric criterion.
+  max_physical_DM_softening:     0.005      # Physical softening length (in internal units).
+

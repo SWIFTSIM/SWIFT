@@ -22,10 +22,10 @@ nb = ic.plummer(n,1,1,1,Rc,Rmax,Mtot)
 
 # Define the physical units used in the code: the choice below corresponds to
 # length scale = 1 kpc, velocity = 1e5 km/s, mass = 1e10 Msun
-agama.setUnits(mass=1e10,length=1,velocity=1e5)
+agama.setUnits(mass=1e20,length=1,velocity=1e5)
 
-# Create a potential based on the particle distribution
-potential = agama.Potential(type='multipole',particles=(nb.pos, nb.mass),lmax=4, symmetry='nq',rmin=0., rmax=Rmax)
+# Create a spherical potential based on the particle distribution
+potential = agama.Potential(type='multipole',particles=(nb.pos, nb.mass),lmax=4, symmetry='s',rmin=0., rmax=Rmax)
 
 potential.export("potential.txt")
 print('Done, enjoy your potential!')
