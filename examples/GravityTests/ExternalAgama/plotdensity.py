@@ -14,7 +14,7 @@ parser.add_argument(
     "-a", type=float, default=0.1, help="Softening length of theoretical model"
 )
 parser.add_argument(
-    "-M", type=float, default=1.0e8, help="Total Mass of theoretical model"
+    "-M", type=float, default=1.0e-2, help="Total Mass of theoretical model"
 )
 parser.add_argument("-Rmin", type=float, default=0.01, help="Min Radius")
 parser.add_argument("-Rmax", type=float, default=10, help="Max Radius")
