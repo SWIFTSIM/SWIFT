@@ -30,7 +30,7 @@
 /* Import the right external potential definition */
 #if defined(EXTERNAL_POTENTIAL_NONE)
 #include "./potential/none/potential.h"
-#elif defined(EXTERNAL_POTENTIAL_POINTMASS$)
+#elif defined(EXTERNAL_POTENTIAL_POINTMASS)
 #include "./potential/point_mass/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_ISOTHERMAL)
 #include "./potential/isothermal/potential.h"
