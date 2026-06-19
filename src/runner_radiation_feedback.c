@@ -168,7 +168,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     if (spart_is_inhibited(si, e)) continue;
     if (!spart_is_active(si, e)) continue;
     if (!feedback_is_HII_ionization_active(si, e)) continue;
-    message("Star %lld can do ionization!", si->id);
+    message("Star %lld can do ionization! r_hii = %e", si->id, si->h_hii*kernel_gamma);
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
     if (si->ti_drift != ti_current)
@@ -286,8 +286,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     }
 #ifdef SWIFT_DEBUG_CHECKS    
     if (feedback_get_star_ionization_rate(si) <= 0.0) {
-      message("Star %lld has exhausted all its ionizing photons!",
-	      si->id);
+      message("Star %lld has exhausted all its ionizing photons! r_hii = %e",
+	      si->id, si->h_hii*kernel_gamma);
     } else {
       message("Star %lld has NOT exhausted all its ionizing photons! Remaining: %e, search_radius = %e, sp->h_hii = %e",
 	      si->id, feedback_get_star_ionization_rate(si), interaction_limit, kernel_gamma*si->h_hii);
