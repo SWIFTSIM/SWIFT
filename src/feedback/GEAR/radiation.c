@@ -232,7 +232,7 @@ radiation_get_star_physical_radiation_pressure(
 
   const float tau_IR =
       radiation_get_physical_IR_optical_depth(sp, us, phys_const, cosmo);
-  const float L_bol = sp->feedback_data.radiation.L_bol; /* In physical units */
+  const float L_bol = sp->feedback_data.radiation.L_bol;
   const float c = phys_const->const_speed_light_c;
 
   return Delta_t * L_bol / c * (1 + tau_IR);
