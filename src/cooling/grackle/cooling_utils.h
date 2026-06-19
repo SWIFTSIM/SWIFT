@@ -26,6 +26,7 @@
 #include "chemistry.h"
 #include "cooling_properties.h"
 #include "hydro.h"
+#include "units.h"
 
 /**
  * Compute the Hydrogen mass fraction.
@@ -83,6 +84,52 @@ cooling_get_helium_mass_fraction(const struct cooling_function_data *cooling,
 /**
  * Compute gas mean molecular weight.
  *
+ * @param u Internal energy in physical units
+ * @param phys_const Physical constants.
+ * @param cosmo The current cosmological model.
+ * @param hydro_properties The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Mean molecular weight.
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_get_equilibrium_mean_molecular_weight(const float u, const struct phys_const *phys_const,
+                                  const struct hydro_props *hydro_props,
+                                  const struct cooling_function_data *cooling) {
+
+  const double m_H = phys_const->const_proton_mass;
+
+  /* Grackle mode 0: Use temperature-based molecular weight calculation */
+  const double k_B = phys_const->const_boltzmann_k;
+  const double H_frac = cooling->HydrogenFractionByMass;
+
+  /* Internal energy and temperature-to-mean molecular weight calculation for
+   * mode 0 */
+  const double T_over_mu =
+      (hydro_gamma_minus_one * u * m_H) / k_B;
+
+  const double T_transition = hydro_props->hydrogen_ionization_temperature;
+  const double mu_neutral = hydro_props->mu_neutral;
+  const double mu_ionised = hydro_props->mu_ionised;
+  const double mu_transition = 4.0 / (8.0 - 5.0 * (1.0 - H_frac));
+
+  double mu = 0;
+
+  /* Are we above or below the HII -> HI transition? */
+  if (T_over_mu > (T_transition + 1.0) / mu_ionised) {
+    mu = mu_ionised;
+  } else if (T_over_mu < (T_transition - 1.) / mu_neutral) {
+    mu = mu_neutral;
+  } else {
+    mu = mu_transition;
+  }
+  return mu;
+}
+
+/**
+ * Compute gas mean molecular weight.
+ *
  * @param phys_const Physical constants.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
@@ -101,35 +148,10 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
                                   const struct part *p,
                                   const struct xpart *xp) {
 
-  const double m_H = phys_const->const_proton_mass;
-
   /* Grackle mode 0: Use temperature-based molecular weight calculation */
 #if COOLING_GRACKLE_MODE == 0
-  const double k_B = phys_const->const_boltzmann_k;
-  const double H_frac =
-      cooling->HydrogenFractionByMass;  // Hydrogen fraction from metadata
-
-  /* Internal energy and temperature-to-mean molecular weight calculation for
-   * mode 0 */
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
-  const double T_over_mu =
-      (hydro_gamma_minus_one * u * m_H) / k_B;  // Adjust this as needed
-
-  const double T_transition = hydro_props->hydrogen_ionization_temperature;
-  const double mu_neutral = hydro_props->mu_neutral;
-  const double mu_ionised = hydro_props->mu_ionised;
-  const double mu_transition = 4.0 / (8.0 - 5.0 * (1.0 - H_frac));
-
-  double mu = 0;
-
-  /* Are we above or below the HII -> HI transition? */
-  if (T_over_mu > (T_transition + 1.0) / mu_ionised) {
-    mu = mu_ionised;
-  } else if (T_over_mu < (T_transition - 1.) / mu_neutral) {
-    mu = mu_neutral;
-  } else {
-    mu = mu_transition;
-  }
+  const double mu = cooling_get_equilibrium_mean_molecular_weight(u, phys_const, hydro_props, cooling);
   return mu;
 
   /* Grackle mode 1: Only HI, HII, HeI, HeII, and HeIII species */
