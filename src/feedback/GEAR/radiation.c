@@ -340,70 +340,77 @@ float radiation_get_individual_star_luminosity(
 }
 
 /**
- * @brief Get the #spart ionizing photon emission rate using a fit on the
- * Blackbody spectrum (from Gizmo).
+ * @brief Get the #spart ionizing photon emission rate using an analytical series
+ * expansion of the Blackbody spectrum.
  *
- * This function get the value for an individual star. For a SSP, this function
- * is used to compute and IMF-average.
+ * This provides a physically justified, highly accurate formulation for an
+ * individual stellar source without relying on crude empirical fitting curves 
+ * or fixed average photon energy assumptions.
  *
- * @param sp The #spart to consider.
+ * @param mass Mass of the star particle.
  * @param us The unit system.
  * @param phys_const The #phys_const.
- * @return N_dot_ion The ionizing photon emission rate in code units
- * [photons/U_T].
+ * @return N_dot_ion The ionizing photon emission rate in code units [photons/U_T].
  */
 double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
     const float mass, const struct unit_system *us,
     const struct phys_const *phys_const) {
 
   /* Get star properties in internal units */
-  /* const float T = radiation_get_individual_star_temperature(sp, us,
-   * phys_const); */
   const float R = radiation_get_individual_star_radius(mass, us, phys_const);
-  const float L =
-      radiation_get_individual_star_luminosity(mass, us, phys_const);
+  const float L = radiation_get_individual_star_luminosity(mass, us, phys_const);
+
+  if (R <= 0.f || L <= 0.f) {
+    return 0.0;
+  }
 
   const float R_in_R_sun = R / phys_const->const_solar_radius;
   const float L_in_L_sun = L / phys_const->const_solar_luminosity;
 
-  if (R <= 0.f || L <= 0.f) {
-    // TODO: print a warning or an error
-    return 0.f;
-  }
-
   /* Get the Blackbody effective temperature in K */
-  const double T_K = 5780 *
-                     powf((L_in_L_sun) / (R_in_R_sun * R_in_R_sun), 0.25) /
+  const double T_K = 5780.0 *
+                     pow((double)(L_in_L_sun / (R_in_R_sun * R_in_R_sun)), 0.25) /
                      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
-  /* Compute dimensionless photon cutoff x_0 = h*nu / kT for 13.6 eV. Note :
-     13.6 eV = 2.17872e-11 erg to be converted to internal unit */
-  const double x_0 =
-      (2.17872e-11 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY)) /
-      (phys_const->const_boltzmann_k * T_K);
+  /* Compute dimensionless photon cutoff x_0 = h*nu_0 / k_B T for 13.605 eV */
+  const double E_threshold_internal = 13.605 * phys_const->const_electron_volt;
+  const double x_0 = E_threshold_internal / (phys_const->const_boltzmann_k * T_K);
 
-  /* Fit for fraction of ionizing luminosity */
-  if (x_0 < 30.f) {
-    const double q =
-        18.0 / (x_0 * x_0) + 1.0 / (8.0 + x_0 + 20.0 * expf(-x_0 / 10.0));
-    const double f_ion = expf(-1.0 / q);
-
-    /* Ionizing luminosity in internal units */
-    const double L_ion =
-        f_ion * L;  //* units_cgs_conversion_factor(us, UNIT_CONV_POWER);
-
-    /* Assume average ionizing photon energy ~ 20 eV = 20 * 1.60218e-12 erg */
-    const double photon_energy_cgs = 20.0 * 1.60218e-12;
-    const double photon_energy_internal =
-        photon_energy_cgs / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-
-    const double N_dot_ion = L_ion / photon_energy_internal;
-
-    /* message("mass = %e, N_dot_ion = %e", mass, N_dot_ion); */
-    return N_dot_ion;
-  } else {
+  /* If x_0 is highly elevated, the stellar temperature is too low to produce 
+     any significant UV-ionizing radiation. (e.g., x_0 > 45 means exp(-x_0) < 1e-20) */
+  if (x_0 > 45.0) {
     return 0.0;
   }
+
+  /* Evaluate the integral using a fast-converging series expansion
+     Integral(x^2 / (e^x - 1)) =
+                  Sum_{n=1}^inf [ e^(-n*x_0)/n * (x_0^2 + 2x_0/n + 2/n^2) ] */
+  double photon_integral_sum = 0.0;
+  const int max_terms = 5;
+
+  for (int n = 1; n <= max_terms; ++n) {
+    const double exp_term = exp(-((double)n) * x_0);
+
+    /* Break early if subsequent terms underflow our interest bounds */
+    if (exp_term < 1e-10) {
+      break;
+    }
+
+    const double n_double = (double)n;
+    const double term = (exp_term / n_double) * (x_0 * x_0 + (2.0 * x_0) / n_double + 2.0 / (n_double * n_double));
+    photon_integral_sum += term;
+  }
+
+  /* Prefactor for the blackbody photon number density fraction. Normalized
+   * via 15 / pi^4 */
+  const double prefactor = 15.0 / (M_PI * M_PI * M_PI * M_PI);
+
+  /* Total photon production rate above the ionization edge:
+                 N_dot = (L / (k_B * T)) * (15 / pi^4) * photon_integral_sum
+  */
+  const double N_dot_ion = (L / (phys_const->const_boltzmann_k * T_K)) * prefactor * photon_integral_sum;
+
+  return N_dot_ion;
 }
 
 /******************************************************************************/
