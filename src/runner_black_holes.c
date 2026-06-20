@@ -570,6 +570,11 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
   const double aperture_volume =
       (4.0 / 3.0) * M_PI * aperture_phys * aperture_phys * aperture_phys;
 
+  /* Define inner aperture radius for binning*/
+  const double aperture_inner_phys = 0.35 * aperture_phys;
+  const double aperture_inner_comoving = aperture_inner_phys / cosmo->a;
+  const double aperture_inner_comoving2 = aperture_inner_comoving * aperture_inner_comoving;
+
   /* Half-life for TDE mass loss: star loses 50% of available mass per Gyr. */
   const double gyr_in_cgs = 3.15576e16; /* 1 Gyr in seconds */
   const double t_half = gyr_in_cgs / us->UnitTime_in_cgs;
@@ -635,8 +640,8 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     /* --- Single pass 2: get density and velocity dispersion profiles by binning --- */
     /* Create log-spaced bins */
     int n_bins = 50;        // This is a variable to decide on
-    double start = log10(dist_inner_internal);
-    double stop = log10(dist_threshold_internal);
+    double start = log10(aperture_inner_comoving);
+    double stop = log10(aperture_comoving);
     double step = (stop - start) / n_bins;
     double bin_edges[n_bins + 1];
     double bin_centres[n_bins];
@@ -685,7 +690,7 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
       }
 
       const double r2 = dx * dx + dy * dy + dz * dz;
-      const double r1 = sqrt(r2)
+      const double r1 = sqrt(r2);
       if (r2 < aperture_comoving2) {
 			  v_rel_x = sp->v[0] - bp->v_full[0] - v_mean_x;
 			  v_rel_y = sp->v[1] - bp->v_full[1] - v_mean_y;
@@ -711,16 +716,15 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     /* With all particles binned, we loop over bins for density and final velocity dispersion */
     for (int i = 0; i < n_bins; i++){
       double shellvolume = (4.0/3.0) * M_PI * (pow(bin_edges[i+1], 3) - pow(bin_edges[i], 3));
-    density_per_shell[i] = mass_per_shell[i] / shellvolume;
-
-    if (count_per_shell[i] < 5){
-      sig_per_shell[i] = NAN;
-    } else{
-      sig_per_shell_x[i] /= mass_per_shell[i];
-      sig_per_shell_y[i] /= mass_per_shell[i];
-      sig_per_shell_z[i] /= mass_per_shell[i];
-      sig_per_shell[i] = sqrt((sig_per_shell_x[i] + sig_per_shell_y[i] + sig_per_shell_z[i]) / 3.0);
-    }
+      density_per_shell[i] = mass_per_shell[i] / shellvolume;
+      if (count_per_shell[i] < 5){
+        sig_per_shell[i] = NAN;
+      } else{
+        sig_per_shell_x[i] /= mass_per_shell[i];
+        sig_per_shell_y[i] /= mass_per_shell[i];
+        sig_per_shell_z[i] /= mass_per_shell[i];
+        sig_per_shell[i] = sqrt((sig_per_shell_x[i] + sig_per_shell_y[i] + sig_per_shell_z[i]) / 3.0);
+      }
     }
 
     /* Compute total velocity dispersion */
@@ -734,7 +738,40 @@ void runner_do_bh_stellar_accretion(struct runner *r, struct cell *c,
     bp->rho_stellar = (M_total > 0.0) ? (float)(M_total / aperture_volume) : 0.f;
 
     /* Store stellar density profile, sigma profile and total sigma on the BH. */
-    /* Can we do this? (store arrays) */
+    bp->sig_stellar_total = sig_total
+    bp->sig_stellar_profile = sig_per_shell
+    bp->rho_stellar_profile = density_per_shell
+
+    /* --- output into output.log for analysis --- */
+    message("BH (ID %lld), tde_calculations: # ti_current, t, redshift, scale factor, star_count, within radius (kpc), bh dynamical mass, bh subgrid mass, 1D velocity dispersion)", id);
+    message("BH (ID %lld), tde_calculations: %lld, %e, %f, %f, %d, %.2f, %f, %f, %f", id, e->ti_current, e->ti_current * e->time_base, cosmo->z, cosmo->a, star_count, threshold_kpc, bh_dynamical_mass, bh_subgrid_mass, sig_total);
+
+    /* Print profiles as arrays */
+    char buf[3201];
+    int offset = 0;
+    for (int j = 0; j < n_bins; j++){
+    offset += snprintf(buf + offset, sizeof(buf) - offset, "%.4f ", density_per_shell[j]);
+    }
+    message("BH (ID %lld), tde_calculations: density [%s]",
+        id, buf);
+
+    offset = 0;
+    for (int j = 0; j < n_bins; j++){
+    offset += snprintf(buf + offset, sizeof(buf) - offset, "%.4f ", sig_per_shell[j]);
+    }
+    message("BH (ID %lld), tde_calculations: sigma [%s]",
+        id, buf);
+
+    offset = 0;
+    for (int j = 0; j < n_bins; j++){
+    offset += snprintf(buf + offset, sizeof(buf) - offset, "%f ", bin_centres[j]);
+    }
+    message("BH (ID %lld), tde_calculations: radii [%s]", id, buf);
+
+    message("BH (ID %lld), tde_calculations: mean_velocity (%f, %f, %f)",
+            id, v_mean_x, v_mean_y, v_mean_z);
+    }
+    /* --------------------------------- */
 
     /* Nothing to nibble if no star found. */
     if (nearest_sp == NULL) continue;
