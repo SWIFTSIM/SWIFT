@@ -1223,7 +1223,8 @@ void engine_compute_next_ps_time(struct engine *e) {
  * @param params The #swift_params.
  */
 void engine_init_output_lists(struct engine *e, struct swift_params *params,
-                              const struct output_options *output_options) {
+                              const struct output_options *output_options,
+                              const int restart) {
 
   /* Deal with snapshots */
   e->output_list_snapshots = NULL;
@@ -1238,7 +1239,7 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
     if (e->output_list_snapshots->select_output_on)
       output_list_check_selection(e->output_list_snapshots, output_options);
 
-    engine_compute_next_snapshot_time(e, /*restart=*/0);
+    engine_compute_next_snapshot_time(e, restart);
 
     if (e->policy & engine_policy_cosmology)
       e->a_first_snapshot =
