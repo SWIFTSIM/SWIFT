@@ -149,6 +149,10 @@ enum {
   timer_do_rt_collect_times,
   timer_do_sync,
   timer_neutrino_weighting,
+  timer_doself_hydro_sinks_density,
+  timer_dopair_hydro_sinks_density,
+  timer_dosub_self_hydro_sinks_density,
+  timer_dosub_pair_hydro_sinks_density,
   timer_count,
 };
 

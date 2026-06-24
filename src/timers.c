@@ -149,6 +149,10 @@ const char *timers_names[timer_count] = {
     "rt_collect_times",
     "do_sync",
     "neutrino_weighting",
+    "doself_hydro_sinks_density",
+    "dopair_hydro_sinks_density",
+    "dosub_self_hydro_sinks_density",
+    "dosub_pair_hydro_sinks_density",
 };
 
 /* File to store the timers */
