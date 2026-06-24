@@ -256,6 +256,11 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
                              any other value with this one. So no need to put
                              it to the max of float. */
   cpd->is_overlapping_sink = 0;
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  cpd->N_check_formation = 0;
+  cpd->N_check_formation_exact = 0;
+#endif
 }
 
 /**
@@ -1215,26 +1220,22 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
 /**
  * @brief Compute all quantities required for the formation of a sink such as
  * kinetic energy, potential energy, etc. This function works on the
- * neighbouring gas particles.
+ * neighbouring gas particles j.
  *
- * @param e The #engine.
+ * @param with_self_gravity Whether self-gravity is enabled.
  * @param pi The #part for which we compute the quantities.
- * @param xpi The #xpart data of the particle #pi.
  * @param pj A neighbouring #part of #pi.
- * @param xpj The #xpart data of the particle #pj.
- * @param cosmo The cosmological parameters and properties.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct engine *e, struct part *restrict pi, struct xpart *restrict xpi,
-    const struct part *restrict pj, struct xpart *restrict xpj,
-    const struct cosmology *cosmo, const struct sink_props *sink_props) {
+    const int with_self_gravity, struct part *restrict pi,
+    const struct part *restrict pj, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
 
   const float a = cosmo->a;
   const float H = cosmo->H;
   const float a2H = a * a * H;
-  const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
   /* If for some reason the particle has been flagged to not form sink,
      do not continue and save some computationnal ressources. */
