@@ -22,7 +22,18 @@
 /**
  * @brief Sink-related fields carried by each *gas* particle.
  */
-struct sink_part_data {};
+struct sink_part_data {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+
+  /* Integer number of gas neighbours in the formation loop (optimised) */
+  int N_check_formation;
+
+  /* Integer number of gas neighbours in the formation loop (brute-force) */
+  int N_check_formation_exact;
+
+#endif
+};
 
 /**
  * @brief Sink-related fields carried by each *sink* particle.

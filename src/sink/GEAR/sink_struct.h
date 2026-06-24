@@ -46,26 +46,31 @@ struct sink_part_data {
   /*! Maximal potential among the neighbours */
   float max_potential;
 
-  /*! Total kinetic energy of the neigbouring gas particles (i.e. inside
-   * sink_cut_off_radius) */
+  /*! Kinetic energy of the neighbours within r_acc */
   float E_kin_neighbours;
 
-  /*! Total interal energy of the neigbouring gas particles (i.e. inside
-   * sink_cut_off_radius) */
+  /*! Internal energy of the neighbours within r_acc */
   float E_int_neighbours;
 
-  /*! Total potential energy of the neigbouring gas particles (i.e. inside
-   * sink_cut_off_radius) */
+  /*! Gravitational potential energy of the neighbours within r_acc */
   float E_pot_neighbours;
 
-  /*! Total rotational energy per component (x, y and z) of the neigbouring gas
-   * particles  (i.e. inside sink_cut_off_radius) */
+  /*! Rotational energy of the neighbours per Cartesian component (x,y,z) */
   float E_rot_neighbours[3];
 
-  /*! Mechanical energy between the part and the sink with swallow_id.
-   * This is used to check that this part is, out of all sinks, the most bound
-   * to the sink with swallow_id. */
+  /*! Total mechanical energy bound to the particle (E_kin + E_int + E_pot).
+   * Negative means gravitationally bound. */
   float E_mec_bound;
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+
+  /* Integer number of gas neighbours in the formation loop (optimised) */
+  int N_check_formation;
+
+  /* Integer number of gas neighbours in the formation loop (brute-force) */
+  int N_check_formation_exact;
+
+#endif
 };
 
 /**
