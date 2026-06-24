@@ -339,3 +339,163 @@ void sink_exact_density_check(struct space *s, const struct engine *e,
   error("Sink checking function called without the corresponding flag.");
 #endif
 }
+
+/**
+ * @brief Mapper function for the exact sink formation count checks.
+ *
+ * @param map_data Pointer to gas particles array.
+ * @param nr_parts Number of gas particles.
+ * @param extra_data Pointers to space and engine.
+ */
+void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
+                                               void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+
+  struct part *restrict parts = (struct part *)map_data;
+  struct exact_density_data *data = (struct exact_density_data *)extra_data;
+  const struct space *s = data->s;
+  const struct engine *e = data->e;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double r_cut = e->sink_properties->r_cut_sink;
+  const double r_cut2 = r_cut * r_cut;
+  int counter = 0;
+
+  for (int i = 0; i < nr_parts; ++i) {
+
+    struct part *pi = &parts[i];
+    const long long id = pi->id;
+
+    /* Is the particle part of the subset to be tested? */
+    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0) {
+
+      /* Get position of gas particle i */
+      const double pix[3] = {pi->x[0], pi->x[1], pi->x[2]};
+
+      /* Brute-force count: loop over all gas particles */
+      int N_formation_exact = 0;
+
+      for (int j = 0; j < (int)s->nr_parts; ++j) {
+
+        if (i == j) continue;
+
+        const struct part *pj = &s->parts[j];
+
+        /* Compute pairwise distance */
+        double dx = pj->x[0] - pix[0];
+        double dy = pj->x[1] - pix[1];
+        double dz = pj->x[2] - pix[2];
+
+        /* Apply periodic BC */
+        if (periodic) {
+          dx = nearest(dx, dim[0]);
+          dy = nearest(dy, dim[1]);
+          dz = nearest(dz, dim[2]);
+        }
+
+        const double r2 = dx * dx + dy * dy + dz * dz;
+
+        /* Count if within fixed aperture */
+        if (r2 < r_cut2) {
+          N_formation_exact++;
+        }
+      }
+
+      /* Store the exact count */
+      pi->sink_data.N_check_formation_exact = N_formation_exact;
+      counter++;
+    }
+  }
+  atomic_add(&data->counter_global, counter);
+
+#else
+  error("Formation count checking function called without the corresponding flag.");
+#endif
+}
+
+/**
+ * @brief Compute exact gas-gas neighbor counts for a selection of gas particles
+ * by running a brute-force loop over all particles in the simulation.
+ *
+ * @param s The space.
+ * @param e The engine.
+ */
+void sink_exact_formation_count_compute(struct space *s, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+
+  const ticks tic = getticks();
+
+  struct exact_density_data data;
+  data.e = e;
+  data.s = s;
+  data.counter_global = 0;
+
+  threadpool_map(&s->e->threadpool, sink_exact_formation_count_compute_mapper,
+                 s->parts, s->nr_parts, sizeof(struct part), 0, &data);
+
+  if (e->verbose)
+    message("Computed exact formation neighbor counts for %d gas particles "
+            "(took %.3f %s).",
+            data.counter_global, clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#else
+  error("Formation count checking function called without the corresponding flag.");
+#endif
+}
+
+/**
+ * @brief Check gas particles' gas-gas neighbor counts (formation loop) against
+ * values obtained via brute-force summation.
+ *
+ * @param s The space.
+ * @param e The engine.
+ */
+void sink_exact_formation_count_check(struct space *s, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+
+  const ticks tic = getticks();
+
+  const struct part *parts = s->parts;
+  const size_t nr_parts = s->nr_parts;
+
+  int wrong_count = 0;
+  int counter = 0;
+
+  for (size_t i = 0; i < nr_parts; ++i) {
+
+    const struct part *pi = &parts[i];
+    const long long id = pi->id;
+
+    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0) {
+
+      counter++;
+
+      const int N_formation = pi->sink_data.N_check_formation;
+      const int N_formation_exact = pi->sink_data.N_check_formation_exact;
+
+      if (N_formation != N_formation_exact) {
+        message("FORMATION_COUNT: id=%lld optimised=%d exact=%d", id, N_formation,
+                N_formation_exact);
+        wrong_count++;
+      }
+    }
+  }
+
+  if (wrong_count)
+    error("Gas-gas formation neighbor count mismatch for %d particles "
+          "(out of %d checked).",
+          wrong_count, counter);
+  else if (counter > 0)
+    message("Verified formation neighbor counts for %d gas particles.", counter);
+
+  if (e->verbose)
+    message("Formation count checks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#else
+  error("Formation count checking function called without the corresponding flag.");
+#endif
+}
