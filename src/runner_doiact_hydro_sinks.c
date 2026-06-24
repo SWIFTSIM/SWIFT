@@ -27,14 +27,13 @@
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"
-#include "runner_doiact_sinks.h"
+#include "runner_doiact_hydro_sinks.h"
 #include "sink_iact.h"
-#include "sink_properties.h"
 #include "space_getsid.h"
 #include "timers.h"
 
-/* Import the density loop functions. */
-#define FUNCTION density
-#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+/* Import the sink formation loop functions. */
+#define FUNCTION formation
+#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_FORMATION
 #include "runner_doiact_functions_hydro_sinks.h"
 #include "runner_doiact_undef.h"

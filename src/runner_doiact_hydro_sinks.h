@@ -120,42 +120,58 @@
 #define TIMER_DOSUB_PAIR_HYDRO_SINKS _TIMER_DOSUB_PAIR_HYDRO_SINKS(FUNCTION)
 
 #define _TIMER_DOSELF_SUBSET_HYDRO_SINKS(f) PASTE(timer_doself_subset_hydro_sinks, f)
-#define TIMER_DOSELF_SUBSET_HYDRO_SINKS _TIMER_DOSELF_SUBSET(FUNCTION)
+#define TIMER_DOSELF_SUBSET_HYDRO_SINKS _TIMER_DOSELF_SUBSET_HYDRO_SINKS(FUNCTION)
 
 #define _TIMER_DOPAIR_SUBSET_HYDRO_SINKS(f) PASTE(timer_dopair_subset_hydro_sinks, f)
 #define TIMER_DOPAIR_SUBSET_HYDRO_SINKS _TIMER_DOPAIR_SUBSET_HYDRO_SINKS(FUNCTION)
 
-void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
-                    const int limit_min_h, const int limit_max_h);
-void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
-                    const int limit_min_h, const int limit_max_h);
+/* Active/drifted status macros for the sink formation loop. */
+#define PART_IS_ACTIVE part_is_active
+#define CELL_IS_ACTIVE cell_is_active_hydro
+#define CELL_ARE_PART_DRIFTED cell_are_part_drifted
+#define DO_DRIFT_DEBUG_CHECKS 1
+#define GET_MU0() \
+  {               \
+  }
 
-void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
-                    const int limit_min_h, const int limit_max_h);
-void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
-                    const int limit_min_h, const int limit_max_h);
+void DOSELF1_BRANCH_HYDRO_SINKS(struct runner *r, const struct cell *c,
+                                 const float r_cut);
+void DOSELF2_BRANCH_HYDRO_SINKS(struct runner *r, const struct cell *c,
+                                 const float r_cut);
 
-void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
-                 const int gettimer);
-void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
-                 const int gettimer);
+void DOPAIR1_BRANCH_HYDRO_SINKS(struct runner *r, struct cell *ci,
+                                 struct cell *cj, const float r_cut);
+void DOPAIR2_BRANCH_HYDRO_SINKS(struct runner *r, struct cell *ci,
+                                 struct cell *cj, const float r_cut);
 
-void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
-                 int recurse_below_h_max, const int gettimer);
-void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
-                 int recurse_below_h_max, const int gettimer);
+void DOSUB_SELF1_HYDRO_SINKS(struct runner *r, struct cell *c,
+                              const float r_cut, const int gettimer);
+void DOSUB_SELF2_HYDRO_SINKS(struct runner *r, struct cell *c,
+                              const float r_cut, const int gettimer);
 
-void DOSELF_SUBSET_BRANCH(struct runner *r, const struct cell *ci,
-                          struct part *restrict parts, const int *ind,
-                          const int count);
+void DOSUB_PAIR1_HYDRO_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
+                              const float r_cut, const int gettimer);
+void DOSUB_PAIR2_HYDRO_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
+                              const float r_cut, const int gettimer);
 
-void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
-                          struct part *restrict parts_i, const int *ind,
-                          const int count, struct cell *restrict cj);
+void DOSELF_SUBSET_BRANCH_HYDRO_SINKS(struct runner *r, const struct cell *ci,
+                                       struct part *restrict parts,
+                                       const int *ind, const int count,
+                                       const float r_cut);
 
-void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                       const int *ind, const int count, struct cell *cj,
-                       const int gettimer);
+void DOPAIR_SUBSET_BRANCH_HYDRO_SINKS(struct runner *r,
+                                       const struct cell *restrict ci,
+                                       struct part *restrict parts_i,
+                                       const int *ind, const int count,
+                                       struct cell *restrict cj,
+                                       const float r_cut);
 
-void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                       const int *ind, const int count, const int gettimer);
+void DOSUB_PAIR_SUBSET_HYDRO_SINKS(struct runner *r, struct cell *ci,
+                                    struct part *parts, const int *ind,
+                                    const int count, struct cell *cj,
+                                    const float r_cut, const int gettimer);
+
+void DOSUB_SELF_SUBSET_HYDRO_SINKS(struct runner *r, struct cell *ci,
+                                    struct part *parts, const int *ind,
+                                    const int count, const float r_cut,
+                                    const int gettimer);
