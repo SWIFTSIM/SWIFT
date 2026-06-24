@@ -112,6 +112,102 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 }
 
 /**
+ * @brief Gas-gas sink formation interaction (symmetric).
+ *
+ * Runs inside the fixed-aperture gas-gas neighbour loop.  The sole distance
+ * cutoff is the loop's geometric r_cut; no per-particle smoothing-length
+ * check is applied here.
+ *
+ * In GEAR: prevents a gas particle from forming a sink if a neighbour within
+ * r_cut has a lower gravitational potential.  Then accumulates formation
+ * energies into BOTH pi (gathering pj's contribution) and pj (gathering pi's
+ * contribution), since both particles are active.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_hydro_sinks_formation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  pi->sink_data.N_check_formation++;
+  pj->sink_data.N_check_formation++;
+#endif
+
+  const float potential_i = pi->sink_data.potential;
+  const float potential_j = pj->sink_data.potential;
+
+  if (potential_i > potential_j) {
+    pi->sink_data.can_form_sink = 0;
+  } else if (potential_j > potential_i) {
+    pj->sink_data.can_form_sink = 0;
+  }
+
+  /* Accumulate formation energies for both active particles. */
+  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj,
+                                                cosmo, sink_props);
+  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pj, pi,
+                                                cosmo, sink_props);
+}
+
+/**
+ * @brief Gas-gas sink formation interaction (non-symmetric).
+ *
+ * Runs inside the fixed-aperture gas-gas neighbour loop.  The sole distance
+ * cutoff is the loop's geometric r_cut; no per-particle smoothing-length
+ * check is applied here.
+ *
+ * In GEAR: prevents pi from forming a sink if neighbour pj has a lower
+ * gravitational potential. Also computes properties needed for sink formation
+ * decisions.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_hydro_sinks_formation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  pi->sink_data.N_check_formation++;
+#endif
+
+  const float potential_i = pi->sink_data.potential;
+  const float potential_j = pj->sink_data.potential;
+
+  if (potential_i > potential_j) pi->sink_data.can_form_sink = 0;
+
+  /* Accumulate formation energies into pi, with pj as neighbour. */
+  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj,
+                                                cosmo, sink_props);
+}
+
+/**
  * @brief Density interaction between two particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
