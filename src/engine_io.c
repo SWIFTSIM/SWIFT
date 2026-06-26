@@ -1392,17 +1392,11 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
           error("Invalid time to deduct! %e", time_to_remove);
 #endif
 
-        /* Note that we need to use a separate array (not the raw
-         * e->snapshot_recording_triggers_part) as we only want to
-         * update one entry */
-        int my_temp_array[num_snapshot_triggers_part];
-        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_part);
-        my_temp_array[i] = 1;
-
-        tracers_after_timestep_part(
-            p, xp, e->internal_units, e->physical_constants, with_cosmology,
-            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
-            -time_to_remove, my_temp_array);
+        /* Store -time_to_remove as a deferred correction. On the particle's
+         * next step, tracers_after_timestep_part accumulates only the
+         * in-window fraction using a single consistent SFR value, avoiding
+         * a mismatch between the SFR at trigger time and at step completion. */
+        tracers_after_recording_trigger_part(xp, i, time_to_remove);
       }
     }
   }
@@ -1513,16 +1507,12 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
           error("Invalid time to deduct! %e", time_to_remove);
 #endif
 
-        /* Note that we need to use a separate array (not the raw
-         * e->snapshot_recording_triggers_part) as we only want to
-         * update one entry */
-        int my_temp_array[num_snapshot_triggers_bpart];
-        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_bpart);
-        my_temp_array[i] = 1;
-
-        tracers_after_timestep_bpart(
-            bp, e->internal_units, e->physical_constants, with_cosmology,
-            e->cosmology, -time_to_remove, my_temp_array);
+        /* Store -time_to_remove as a deferred correction. On the black hole's
+         * next step, tracers_after_timestep_bpart accumulates only the
+         * in-window fraction using a single consistent accretion rate value,
+         * avoiding a mismatch between the rate at trigger time and at step
+         * completion. */
+        tracers_after_recording_trigger_bpart(bp, i, time_to_remove);
       }
     }
   }
