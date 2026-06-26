@@ -1798,7 +1798,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
     c->hydro.sorts =
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
 
-    if (with_feedback || (with_black_holes && e->with_bh_stars_density)) {
+    if (with_feedback) {
       c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
                                          task_subtype_none, 0, 0, c, NULL);
     }
@@ -2930,8 +2930,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_bh_stars_density);
         scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_bh_stars_density);
-        scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                            t_bh_stars_density);
         if (ci->hydro.super->stars.stars_in != NULL)
           scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
                               t_bh_stars_density);
@@ -3328,8 +3326,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_bh_stars_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_bh_stars_density);
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_bh_stars_density);
           if (ci->hydro.super->stars.stars_in != NULL)
             scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
                                 t_bh_stars_density);
@@ -3511,8 +3507,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
                                 t_bh_stars_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.drift,
-                                t_bh_stars_density);
-            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                                 t_bh_stars_density);
             if (cj->hydro.super->stars.stars_in != NULL)
               scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,

@@ -190,200 +190,10 @@ static void runner_dopair_bh_stars_density_naive_one_sided(
 }
 
 /**
- * @brief Compute the star density around the #bpart of both cells of a pair,
- * walking the star sort arrays.
- *
- * The black holes themselves are not sorted: for each (rare) black hole we
- * compute its position along the pair axis directly and walk the (sorted)
- * star list of the other cell only over the range that can be within reach.
- *
- * @param r The #runner.
- * @param ci The first #cell (will have been sorted to be the low-d cell).
- * @param cj The second #cell.
- * @param sid The direction of the pair.
- * @param shift The periodic shift vector to apply to the particles in ci.
- * @param timer 1 if the time is to be recorded.
- */
-static void runner_dopair_bh_stars_density_sorted(struct runner *r,
-                                                  struct cell *restrict ci,
-                                                  struct cell *restrict cj,
-                                                  const int sid,
-                                                  const double shift[3]) {
-
-  const struct engine *e = r->e;
-
-  /* Get the cutoff shift. */
-  double rshift = 0.0;
-  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
-
-  const int do_ci = (ci->nodeID == e->nodeID) &&
-                    (ci->black_holes.count != 0) && (cj->stars.count != 0) &&
-                    cell_is_active_black_holes(ci, e);
-  const int do_cj = (cj->nodeID == e->nodeID) &&
-                    (cj->black_holes.count != 0) && (ci->stars.count != 0) &&
-                    cell_is_active_black_holes(cj, e);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->dmin != cj->dmin) error("Cells of different size!");
-#endif
-
-  if (do_ci) {
-
-    /* Pick-out the sorted list of the star particles in cj. */
-    const struct sort_entry *restrict sort_j = cell_get_stars_sorts(cj, sid);
-
-    const int bcount_i = ci->black_holes.count;
-    const int scount_j = cj->stars.count;
-    struct bpart *restrict bparts_i = ci->black_holes.parts;
-    struct spart *restrict sparts_j = cj->stars.parts;
-    const double dj_min = sort_j[0].d;
-    const float dx_max = cj->stars.dx_max_sort;
-
-    /* Loop over the bparts in ci. They are not sorted, but they are few. */
-    for (int bid = 0; bid < bcount_i; bid++) {
-
-      /* Get a hold of the ith bpart in ci. */
-      struct bpart *restrict bi = &bparts_i[bid];
-
-      /* Skip inhibited particles */
-      if (bpart_is_inhibited(bi, e)) continue;
-
-      /* Skip inactive particles */
-      if (!bpart_is_active(bi, e)) continue;
-
-      const float hi = bi->h_star;
-
-      /* Distance of the BH along the pair axis, in the same (absolute
-       * position) convention as the star sort entries. The BH position is
-       * current (drifted), so no staleness term is needed on this side. */
-      const double d_bh = bi->x[0] * runner_shift[sid][0] +
-                          bi->x[1] * runner_shift[sid][1] +
-                          bi->x[2] * runner_shift[sid][2];
-
-      /* Is there anything we need to interact with ? */
-      const double di = d_bh + hi * kernel_gamma + dx_max - rshift;
-      if (di < dj_min) continue;
-
-      /* Get some additional information about bi */
-      const float hig2 = hi * hi * kernel_gamma2;
-      const float bix = bi->x[0] - (cj->loc[0] + shift[0]);
-      const float biy = bi->x[1] - (cj->loc[1] + shift[1]);
-      const float biz = bi->x[2] - (cj->loc[2] + shift[2]);
-
-      /* Loop over the sparts in cj within reach (on the axis). */
-      for (int sjd = 0; sjd < scount_j && sort_j[sjd].d < di; sjd++) {
-
-        /* Recover sj */
-        struct spart *sj = &sparts_j[sort_j[sjd].i];
-
-        /* Skip inhibited particles. */
-        if (spart_is_inhibited(sj, e)) continue;
-
-        const float sjx = sj->x[0] - cj->loc[0];
-        const float sjy = sj->x[1] - cj->loc[1];
-        const float sjz = sj->x[2] - cj->loc[2];
-
-        /* Compute the pairwise distance. */
-        const float dx[3] = {bix - sjx, biy - sjy, biz - sjz};
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Check that particles have been drifted to the current time */
-        if (bi->ti_drift != e->ti_current)
-          error("Particle bi not drifted to current time");
-        if (sj->ti_drift != e->ti_current)
-          error("Particle sj not drifted to current time");
-#endif
-
-        /* Hit or miss? */
-        if (r2 < hig2) {
-          runner_iact_nonsym_bh_stars_density(r2, dx, hi, bi, sj);
-        }
-      } /* loop over the sparts in cj. */
-    } /* loop over the bparts in ci. */
-  } /* do_ci */
-
-  if (do_cj) {
-
-    /* Pick-out the sorted list of the star particles in ci. */
-    const struct sort_entry *restrict sort_i = cell_get_stars_sorts(ci, sid);
-
-    const int scount_i = ci->stars.count;
-    const int bcount_j = cj->black_holes.count;
-    struct spart *restrict sparts_i = ci->stars.parts;
-    struct bpart *restrict bparts_j = cj->black_holes.parts;
-    const double di_max = sort_i[scount_i - 1].d - rshift;
-    const float dx_max = ci->stars.dx_max_sort;
-
-    /* Loop over the bparts in cj. They are not sorted, but they are few. */
-    for (int bjd = 0; bjd < bcount_j; bjd++) {
-
-      /* Get a hold of the jth bpart in cj. */
-      struct bpart *restrict bj = &bparts_j[bjd];
-
-      /* Skip inhibited particles */
-      if (bpart_is_inhibited(bj, e)) continue;
-
-      /* Skip inactive particles */
-      if (!bpart_is_active(bj, e)) continue;
-
-      const float hj = bj->h_star;
-
-      /* Distance of the BH along the pair axis (see the do_ci branch). */
-      const double d_bh = bj->x[0] * runner_shift[sid][0] +
-                          bj->x[1] * runner_shift[sid][1] +
-                          bj->x[2] * runner_shift[sid][2];
-
-      /* Is there anything we need to interact with ? */
-      const double dj = d_bh - hj * kernel_gamma - dx_max + rshift;
-      if (dj - rshift > di_max) continue;
-
-      /* Get some additional information about bj */
-      const float hjg2 = hj * hj * kernel_gamma2;
-      const float bjx = bj->x[0] - cj->loc[0];
-      const float bjy = bj->x[1] - cj->loc[1];
-      const float bjz = bj->x[2] - cj->loc[2];
-
-      /* Loop over the sparts in ci within reach (on the axis). */
-      for (int sid_i = scount_i - 1; sid_i >= 0 && sort_i[sid_i].d > dj;
-           sid_i--) {
-
-        /* Recover si */
-        struct spart *si = &sparts_i[sort_i[sid_i].i];
-
-        /* Skip inhibited particles. */
-        if (spart_is_inhibited(si, e)) continue;
-
-        const float six = si->x[0] - (cj->loc[0] + shift[0]);
-        const float siy = si->x[1] - (cj->loc[1] + shift[1]);
-        const float siz = si->x[2] - (cj->loc[2] + shift[2]);
-
-        /* Compute the pairwise distance. */
-        const float dx[3] = {bjx - six, bjy - siy, bjz - siz};
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Check that particles have been drifted to the current time */
-        if (bj->ti_drift != e->ti_current)
-          error("Particle bj not drifted to current time");
-        if (si->ti_drift != e->ti_current)
-          error("Particle si not drifted to current time");
-#endif
-
-        /* Hit or miss? */
-        if (r2 < hjg2) {
-          runner_iact_nonsym_bh_stars_density(r2, dx, hj, bj, si);
-        }
-      } /* loop over the sparts in ci. */
-    } /* loop over the bparts in cj. */
-  } /* do_cj */
-}
-
-/**
  * @brief Compute the star density around the #bpart of both cells of a pair.
  *
- * Walks the star sort arrays when they are available and valid, and falls
- * back to the naive loops otherwise.
+ * The black holes are not sorted (they are rare), so this simply runs the
+ * naive one-sided loop once in each direction.
  *
  * @param r The #runner.
  * @param ci The first #cell.
@@ -399,7 +209,7 @@ void runner_dopair_bh_stars_density(struct runner *r, struct cell *ci,
 
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
-  const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
+  space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
   const int do_ci = (ci->nodeID == e->nodeID) &&
                     (ci->black_holes.count != 0) && (cj->stars.count != 0) &&
@@ -420,34 +230,12 @@ void runner_dopair_bh_stars_density(struct runner *r, struct cell *ci,
       (!cell_are_bpart_drifted(cj, e) || !cell_are_spart_drifted(ci, e)))
     error("Interacting undrifted cells.");
 
-  /* Can we use the star sort arrays? */
-  const int ci_stars_sorted =
-      (ci->stars.sorted & (1 << sid)) &&
-      (ci->stars.dx_max_sort_old <= space_maxreldx * ci->dmin);
-  const int cj_stars_sorted =
-      (cj->stars.sorted & (1 << sid)) &&
-      (cj->stars.dx_max_sort_old <= space_maxreldx * cj->dmin);
-
-#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
-  const int force_naive = 1;
-#else
-  const int force_naive = 0;
-#endif
-
-  if (force_naive || (do_ci && !cj_stars_sorted) ||
-      (do_cj && !ci_stars_sorted)) {
-
-    /* Fall back to the naive loops. Note that
-     * runner_dopair_bh_stars_density_naive_one_sided() applies the wrapping
-     * shift to the cell holding the black holes, i.e. the ci argument. */
-    runner_dopair_bh_stars_density_naive_one_sided(r, ci, cj, shift);
-    const double shift_inv[3] = {-shift[0], -shift[1], -shift[2]};
-    runner_dopair_bh_stars_density_naive_one_sided(r, cj, ci, shift_inv);
-
-  } else {
-
-    runner_dopair_bh_stars_density_sorted(r, ci, cj, sid, shift);
-  }
+  /* The black holes are not sorted, so we always use the naive loops. Note
+   * that runner_dopair_bh_stars_density_naive_one_sided() applies the wrapping
+   * shift to the cell holding the black holes, i.e. the ci argument. */
+  runner_dopair_bh_stars_density_naive_one_sided(r, ci, cj, shift);
+  const double shift_inv[3] = {-shift[0], -shift[1], -shift[2]};
+  runner_dopair_bh_stars_density_naive_one_sided(r, cj, ci, shift_inv);
 
   if (timer) TIMER_TOC(timer_dopair_bh_stars_density);
 }

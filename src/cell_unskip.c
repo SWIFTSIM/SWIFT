@@ -1202,7 +1202,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
- * @brief Traverse a sub-cell task and activate the drift and sort tasks that
+ * @brief Traverse a sub-cell task and activate the drift tasks that
  * are required by a black hole star-density task
  *
  * @param ci The first #cell we recurse in.
@@ -1280,35 +1280,22 @@ void cell_activate_subcell_bh_stars_tasks(struct cell *ci, struct cell *cj,
       }
     }
 
-    /* Otherwise, activate the sorts and drifts. */
+    /* Otherwise, activate the drifts. The black holes are not sorted and the
+     * naive loops do not use the star sorts, so no sorts are activated. */
     else {
 
       if (ci_active && cj->stars.count > 0) {
 
-        /* We are going to walk the star sorts of cj, so store some values. */
-        atomic_or(&cj->stars.requires_sorts, 1 << sid);
-        cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
-
         /* Activate the drifts if the cells are local. */
         if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
         if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
-
-        /* Do we need to sort the cells? */
-        cell_activate_stars_sorts(cj, sid, s);
       }
 
       if (cj_active && ci->stars.count > 0) {
 
-        /* We are going to walk the star sorts of ci, so store some values. */
-        atomic_or(&ci->stars.requires_sorts, 1 << sid);
-        ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
-
         /* Activate the drifts if the cells are local. */
         if (cj->nodeID == engine_rank) cell_activate_drift_bpart(cj, s);
         if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
-
-        /* Do we need to sort the cells? */
-        cell_activate_stars_sorts(ci, sid, s);
       }
     }
   } /* Otherwise, pair interaction */
