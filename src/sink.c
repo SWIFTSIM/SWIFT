@@ -377,9 +377,11 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
 
       for (int j = 0; j < (int)s->nr_parts; ++j) {
 
-        if (i == j) continue;
-
         const struct part *pj = &s->parts[j];
+
+        /* Skip self-interaction: compare pointers, not chunk-local index,
+         * because map_data may start mid-array when threadpool chunks work. */
+        if (pj == pi) continue;
 
         /* Compute pairwise distance */
         double dx = pj->x[0] - pix[0];
