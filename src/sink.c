@@ -397,9 +397,25 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
 
         const double r2 = dx * dx + dy * dy + dz * dz;
 
-        /* Count if within fixed aperture */
-        if (r2 < r_cut2 && !part_is_inhibited(pj, e)) {
-          N_formation_exact++;
+        /* Count if within fixed aperture.
+         * Particles swallowed *during this step* (by the swallow task,
+         * which runs after the formation loop) must be counted: the
+         * formation loop saw them as live.  Such particles were drifted
+         * to ti_current at the start of the step (before being inhibited),
+         * so pj->ti_drift == e->ti_current distinguishes them from
+         * particles that were already inhibited before this step
+         * (pj->ti_drift < e->ti_current, drift was skipped for them).
+         * In non-debug builds ti_drift is unavailable; fall back to
+         * excluding all inhibited particles (may produce false alarms
+         * when swallowing occurs between rebuilds). */
+        if (r2 < r_cut2) {
+#ifdef SWIFT_DEBUG_CHECKS
+          const int skip = part_is_inhibited(pj, e) &&
+                           (pj->ti_drift != e->ti_current);
+#else
+          const int skip = part_is_inhibited(pj, e);
+#endif
+          if (!skip) N_formation_exact++;
         }
       }
 
