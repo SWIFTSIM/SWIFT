@@ -34,6 +34,7 @@
 #include "engine.h"
 #include "feedback.h"
 #include "scheduler.h"
+#include "sink_properties.h"
 #include "space_getsid.h"
 #include "timers.h"
 
@@ -218,8 +219,11 @@ void *runner_main(void *data) {
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
-          else if (t->subtype == task_subtype_density)
+          else if (t->subtype == task_subtype_density) {
             runner_dosub_self1_density(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self1_hydro_sinks_formation(
+                r, ci, r->e->sink_properties->cut_off_radius, /*gettimer=*/1);
+          }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
@@ -277,8 +281,12 @@ void *runner_main(void *data) {
         case task_type_pair:
           if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_density)
+          else if (t->subtype == task_subtype_density) {
             runner_dosub_pair1_density(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair1_hydro_sinks_formation(
+                r, ci, cj, r->e->sink_properties->cut_off_radius,
+                /*gettimer=*/1);
+	  }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
