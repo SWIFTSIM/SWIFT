@@ -125,6 +125,12 @@
 #include "runner_doiact_sinks.h"
 #include "runner_doiact_undef.h"
 
+/* Import the sink formation gas loop functions. */
+#define FUNCTION formation
+#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_FORMATION
+#include "runner_doiact_hydro_sinks.h"
+#include "runner_doiact_undef.h"
+
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_GRADIENT
