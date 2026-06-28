@@ -357,7 +357,7 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
   const struct engine *e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double r_cut = e->sink_properties->r_cut_sink;
+  const double r_cut = e->sink_properties->cut_off_radius;
   const double r_cut2 = r_cut * r_cut;
   int counter = 0;
 
@@ -367,7 +367,7 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
     const long long id = pi->id;
 
     /* Is the particle part of the subset to be tested? */
-    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0) {
+    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0 && part_is_starting(pi, e)) {
 
       /* Get position of gas particle i */
       const double pix[3] = {pi->x[0], pi->x[1], pi->x[2]};
@@ -396,7 +396,7 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
         const double r2 = dx * dx + dy * dy + dz * dz;
 
         /* Count if within fixed aperture */
-        if (r2 < r_cut2) {
+        if (r2 < r_cut2 && !part_is_inhibited(pj, e)) {
           N_formation_exact++;
         }
       }
@@ -469,7 +469,7 @@ void sink_exact_formation_count_check(struct space *s, const struct engine *e) {
     const struct part *pi = &parts[i];
     const long long id = pi->id;
 
-    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0) {
+    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0 && part_is_starting(pi, e)) {
 
       counter++;
 

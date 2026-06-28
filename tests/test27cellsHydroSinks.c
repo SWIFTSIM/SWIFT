@@ -80,7 +80,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_hydro_sinks_test_formation(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const int with_self_gravity,
+    const struct cosmology *cosmo, const struct sink_props *sink_props) {
   pi->density.wcount += 1.0f;
 }
 
@@ -88,7 +89,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_hydro_sinks_test_formation(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const int with_self_gravity,
+    const struct cosmology *cosmo, const struct sink_props *sink_props) {
   pi->density.wcount += 1.0f;
   pj->density.wcount += 1.0f;
 }
@@ -343,7 +345,10 @@ void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
 
       if (r2 < r_cut2) {
         runner_iact_nonsym_hydro_sinks_test_formation(r2, dx, pi->h, pj->h,
-                                                      pi, pj, a, H);
+                                                      pi, pj, a, H,
+                                                      /*with_self_gravity=*/0,
+                                                      /*cosmo=*/NULL,
+                                                      /*sink_props=*/NULL);
       }
     }
   }
@@ -367,7 +372,10 @@ void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
 
       if (r2 < r_cut2) {
         runner_iact_nonsym_hydro_sinks_test_formation(r2, mdx, pj->h, pi->h,
-                                                      pj, pi, a, H);
+                                                      pj, pi, a, H,
+                                                      /*with_self_gravity=*/0,
+                                                      /*cosmo=*/NULL,
+                                                      /*sink_props=*/NULL);
       }
     }
   }
@@ -414,14 +422,16 @@ void self_all_hydro_sinks(struct runner *r, struct cell *c,
       if (r2 < r_cut2) {
         /* Update active pi with contribution from pj. */
         if (pi_active) {
-          runner_iact_nonsym_hydro_sinks_test_formation(r2, dx, pi->h, pj->h,
-                                                        pi, pj, a, H);
+          runner_iact_nonsym_hydro_sinks_test_formation(
+              r2, dx, pi->h, pj->h, pi, pj, a, H, /*with_self_gravity=*/0,
+              /*cosmo=*/NULL, /*sink_props=*/NULL);
         }
         /* Update active pj with contribution from pi. */
         if (pj_active) {
           const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
-          runner_iact_nonsym_hydro_sinks_test_formation(r2, mdx, pj->h, pi->h,
-                                                        pj, pi, a, H);
+          runner_iact_nonsym_hydro_sinks_test_formation(
+              r2, mdx, pj->h, pi->h, pj, pi, a, H, /*with_self_gravity=*/0,
+              /*cosmo=*/NULL, /*sink_props=*/NULL);
         }
       }
     }

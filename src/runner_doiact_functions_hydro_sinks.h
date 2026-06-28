@@ -94,6 +94,13 @@ void DOPAIR1_NAIVE_HYDRO_SINKS(struct runner *r,
   struct part *restrict parts_i = ci->hydro.parts;
   struct part *restrict parts_j = cj->hydro.parts;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->dmin != cj->dmin) error("Cells of different size!");
+  if (r_cut > ci->dmin || r_cut > cj->dmin)
+    error("Cell sizes (%e, %e) smaller than r_cut (%e)", ci->dmin, cj->dmin,
+          r_cut);  
+#endif  
+
   /* Get the relative distance between the cell pair, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
   for (int k = 0; k < 3; k++) {
@@ -202,6 +209,13 @@ void DOPAIR2_NAIVE_HYDRO_SINKS(struct runner *r,
   struct part *restrict parts_i = ci->hydro.parts;
   struct part *restrict parts_j = cj->hydro.parts;
 
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r_cut > ci->dmin || r_cut > cj->dmin)
+    error("Cell sizes (%e, %e) smaller than r_cut (%e)", ci->dmin, cj->dmin,
+          r_cut);  
+#endif
+  
   /* Get the relative distance between the cell pair, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
   for (int k = 0; k < 3; k++) {
@@ -307,6 +321,12 @@ void DOSELF1_NAIVE_HYDRO_SINKS(struct runner *r, const struct cell *c,
   const float H = cosmo->H;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r_cut > c->dmin)
+    error("Cell size (%e) smaller than r_cut (%e)", c->dmin, r_cut);  
+#endif
+  
+
   /* Loop over the parts in c. */
   for (int pid = 0; pid < count; pid++) {
 
@@ -394,6 +414,11 @@ void DOSELF2_NAIVE_HYDRO_SINKS(struct runner *r, const struct cell *c,
   const float H = cosmo->H;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r_cut > c->dmin)
+    error("Cell size (%e) smaller than r_cut (%e)", c->dmin, r_cut);
+#endif
+  
   /* Loop over the parts in c. */
   for (int pid = 0; pid < count; pid++) {
 
@@ -493,6 +518,12 @@ void DOPAIR_SUBSET_NOSORT_HYDRO_SINKS(struct runner *r,
   const float H = cosmo->H;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r_cut > ci->dmin || r_cut > cj->dmin)
+    error("Cell sizes (%e, %e) smaller than r_cut (%e)", ci->dmin, cj->dmin,
+          r_cut);  
+#endif
+  
   /* Get the periodic shift between the two cell centres. */
   double shift[3] = {0.0, 0.0, 0.0};
   for (int k = 0; k < 3; k++) {
@@ -586,6 +617,12 @@ void DOPAIR_SUBSET_NAIVE_HYDRO_SINKS(struct runner *r,
   const float H = cosmo->H;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r_cut > ci->dmin || r_cut > cj->dmin)
+    error("Cell sizes (%e, %e) smaller than r_cut (%e)", ci->dmin, cj->dmin,
+          r_cut);  
+#endif
+  
   /* Loop over the active particles in the subset. */
   for (int pid = 0; pid < count; pid++) {
 
@@ -680,6 +717,12 @@ void DOPAIR_SUBSET_HYDRO_SINKS(struct runner *r, const struct cell *restrict ci,
   const float H = cosmo->H;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r_cut > ci->dmin || r_cut > cj->dmin)
+    error("Cell sizes (%e, %e) smaller than r_cut (%e)", ci->dmin, cj->dmin,
+          r_cut);  
+#endif
+  
   /* Sorted list along the pair direction for cj. */
   const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
   const float dxj = cj->hydro.dx_max_sort;
@@ -835,9 +878,14 @@ void DOPAIR_SUBSET_BRANCH_HYDRO_SINKS(struct runner *r,
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  const int force_naive = 1;
+#else
+  const int force_naive = 0;
+#endif
+  
+  if (force_naive)
   DOPAIR_SUBSET_NAIVE_HYDRO_SINKS(r, ci, parts_i, ind, count, cj, r_cut,
                                    shift);
-#else
   if (!is_sorted) {
     DOPAIR_SUBSET_NAIVE_HYDRO_SINKS(r, ci, parts_i, ind, count, cj, r_cut,
                                      shift);
@@ -845,7 +893,6 @@ void DOPAIR_SUBSET_BRANCH_HYDRO_SINKS(struct runner *r,
     DOPAIR_SUBSET_HYDRO_SINKS(r, ci, parts_i, ind, count, cj, r_cut, sid,
                                flipped, shift);
   }
-#endif
 }
 
 /* ============================================================
@@ -1024,6 +1071,12 @@ void DOPAIR1_HYDRO_SINKS(struct runner *r, const struct cell *restrict ci,
   const float H = cosmo->H;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r_cut > ci->dmin || r_cut > cj->dmin)
+    error("Cell sizes (%e, %e) smaller than r_cut (%e)", ci->dmin, cj->dmin,
+          r_cut);  
+#endif
+  
   /* ---- Update active particles in ci from all pj within r_cut. ---- */
   if (CELL_IS_ACTIVE(ci, e)) {
 
@@ -1185,8 +1238,11 @@ void DOPAIR1_BRANCH_HYDRO_SINKS(struct runner *r, struct cell *ci,
 #endif
 
   /* Get the pair direction and apply the canonical cell ordering. */
+#if !defined(SWIFT_USE_NAIVE_INTERACTIONS)
   double shift[3];
   const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
+#endif  
+
 
 #ifndef SWIFT_USE_NAIVE_INTERACTIONS
   /* Sorted lists must be valid before calling the sorted variant. */
@@ -1199,7 +1255,7 @@ void DOPAIR1_BRANCH_HYDRO_SINKS(struct runner *r, struct cell *ci,
     error("Interacting unsorted cells (cj).");
 #endif
 
-#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)  
   DOPAIR1_NAIVE_HYDRO_SINKS(r, ci, cj, r_cut);
 #else
   DOPAIR1_HYDRO_SINKS(r, ci, cj, r_cut, sid, shift);
@@ -1306,6 +1362,11 @@ void DOSELF1_HYDRO_SINKS(struct runner *r, const struct cell *c,
   const float H = cosmo->H;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r_cut > c->dmin)
+    error("Cell size (%e) smaller than r_cut (%e)", c->dmin, r_cut);  
+#endif
+  
   /* Main loop: iterate until the active window is exhausted. */
   for (int pid = 0; pid < count && firstdt < countdt; pid++) {
 
