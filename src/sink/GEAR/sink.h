@@ -259,7 +259,12 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
 
 #ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
   cpd->N_check_formation = 0;
-  cpd->N_check_formation_exact = 0;
+  /* Sentinel: -2 means "sink_init_part ran this step; brute-force should run."
+   * The brute-force mapper skips particles whose value is not -2, so only
+   * particles that were properly initialised (cell in the drift task graph)
+   * are ever checked.  This prevents spurious mismatches for limiter-woken
+   * particles whose cell was absent from the task graph. */
+  cpd->N_check_formation_exact = -2;
 #endif
 }
 
