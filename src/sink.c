@@ -357,8 +357,12 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
   const struct engine *e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double r_cut = e->sink_properties->cut_off_radius;
-  const double r_cut2 = r_cut * r_cut;
+  /* Use float precision to match the formation loop, which computes
+   * r_cut2 = r_cut * r_cut and dx/r2 all in float.  Using double here
+   * would give a more precise r_cut2 and could exclude particles that
+   * the formation loop (at float precision) correctly included. */
+  const float r_cut = (float)e->sink_properties->cut_off_radius;
+  const float r_cut2 = r_cut * r_cut;
   int counter = 0;
 
   for (int i = 0; i < nr_parts; ++i) {
@@ -367,9 +371,20 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
     const long long id = pi->id;
 
     /* Is the particle part of the subset to be tested? */
-    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0 && part_is_starting(pi, e)) {
+    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0 &&
+        part_is_starting(pi, e)) {
 
-      /* Get position of gas particle i */
+      /* Only process particles for which sink_init_part ran this step.
+       * sink_init_part sets N_check_formation_exact = -2 as a sentinel.
+       * If that sentinel is absent the particle's cell was not in the drift
+       * task graph (e.g. it was woken by the limiter after the graph was
+       * built) so N_check_formation is stale — skip it. */
+      if (pi->sink_data.N_check_formation_exact != -2) {
+        counter++;
+        continue;
+      }
+
+      /* Get position of gas particle i (in double for nearest() accuracy) */
       const double pix[3] = {pi->x[0], pi->x[1], pi->x[2]};
 
       /* Brute-force count: loop over all gas particles */
@@ -383,19 +398,27 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
          * because map_data may start mid-array when threadpool chunks work. */
         if (pj == pi) continue;
 
-        /* Compute pairwise distance */
-        double dx = pj->x[0] - pix[0];
-        double dy = pj->x[1] - pix[1];
-        double dz = pj->x[2] - pix[2];
+        /* Compute pairwise distance.  Subtract in double (like the self-cell
+         * formation loop: `(float)(pi->x[k] - pj->x[k])`), apply periodic BC
+         * in double for accuracy, then cast to float before squaring so that
+         * the r2 < r_cut2 comparison uses the same float precision as the
+         * formation loop.  This prevents spurious mismatches from particles
+         * sitting exactly on the r_cut boundary. */
+        double ddx = pj->x[0] - pix[0];
+        double ddy = pj->x[1] - pix[1];
+        double ddz = pj->x[2] - pix[2];
 
-        /* Apply periodic BC */
+        /* Apply periodic BC in double */
         if (periodic) {
-          dx = nearest(dx, dim[0]);
-          dy = nearest(dy, dim[1]);
-          dz = nearest(dz, dim[2]);
+          ddx = nearest(ddx, dim[0]);
+          ddy = nearest(ddy, dim[1]);
+          ddz = nearest(ddz, dim[2]);
         }
 
-        const double r2 = dx * dx + dy * dy + dz * dz;
+        const float dx = (float)ddx;
+        const float dy = (float)ddy;
+        const float dz = (float)ddz;
+        const float r2 = dx * dx + dy * dy + dz * dz;
 
         /* Count if within fixed aperture.
          * Particles swallowed *during this step* (by the swallow task,
@@ -410,8 +433,8 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
          * when swallowing occurs between rebuilds). */
         if (r2 < r_cut2) {
 #ifdef SWIFT_DEBUG_CHECKS
-          const int skip = part_is_inhibited(pj, e) &&
-                           (pj->ti_drift != e->ti_current);
+          const int skip =
+              part_is_inhibited(pj, e) && (pj->ti_drift != e->ti_current);
 #else
           const int skip = part_is_inhibited(pj, e);
 #endif
@@ -427,7 +450,9 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
   atomic_add(&data->counter_global, counter);
 
 #else
-  error("Formation count checking function called without the corresponding flag.");
+  error(
+      "Formation count checking function called without the corresponding "
+      "flag.");
 #endif
 }
 
@@ -438,7 +463,8 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
  * @param s The space.
  * @param e The engine.
  */
-void sink_exact_formation_count_compute(struct space *s, const struct engine *e) {
+void sink_exact_formation_count_compute(struct space *s,
+                                        const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
 
@@ -453,13 +479,16 @@ void sink_exact_formation_count_compute(struct space *s, const struct engine *e)
                  s->parts, s->nr_parts, sizeof(struct part), 0, &data);
 
   if (e->verbose)
-    message("Computed exact formation neighbor counts for %d gas particles "
-            "(took %.3f %s).",
-            data.counter_global, clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message(
+        "Computed exact formation neighbor counts for %d gas particles "
+        "(took %.3f %s).",
+        data.counter_global, clocks_from_ticks(getticks() - tic),
+        clocks_getunit());
 
 #else
-  error("Formation count checking function called without the corresponding flag.");
+  error(
+      "Formation count checking function called without the corresponding "
+      "flag.");
 #endif
 }
 
@@ -487,33 +516,44 @@ void sink_exact_formation_count_check(struct space *s, const struct engine *e) {
     const struct part *pi = &parts[i];
     const long long id = pi->id;
 
-    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0 && part_is_starting(pi, e)) {
+    if (id % SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS == 0 &&
+        part_is_starting(pi, e)) {
 
       counter++;
 
       const int N_formation = pi->sink_data.N_check_formation;
       const int N_formation_exact = pi->sink_data.N_check_formation_exact;
 
+      /* Skip particles with a negative N_check_formation_exact:
+       *   -2  brute-force skipped this particle (sink_init_part didn't run)
+       *   -1  limiter-woken sentinel (timestep_limit_part)
+       * In both cases N_check_formation is stale — skip the comparison. */
+      if (N_formation_exact < 0) continue;
+
       if (N_formation != N_formation_exact) {
-        message("FORMATION_COUNT: id=%lld optimised=%d exact=%d", id, N_formation,
-                N_formation_exact);
+        message("FORMATION_COUNT: id=%lld optimised=%d exact=%d", id,
+                N_formation, N_formation_exact);
         wrong_count++;
       }
     }
   }
 
   if (wrong_count)
-    error("Gas-gas formation neighbor count mismatch for %d particles "
-          "(out of %d checked).",
-          wrong_count, counter);
+    error(
+        "Gas-gas formation neighbor count mismatch for %d particles "
+        "(out of %d checked).",
+        wrong_count, counter);
   else if (counter > 0)
-    message("Verified formation neighbor counts for %d gas particles.", counter);
+    message("Verified formation neighbor counts for %d gas particles.",
+            counter);
 
   if (e->verbose)
     message("Formation count checks took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #else
-  error("Formation count checking function called without the corresponding flag.");
+  error(
+      "Formation count checking function called without the corresponding "
+      "flag.");
 #endif
 }
