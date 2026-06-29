@@ -37,11 +37,15 @@ To use tidal softening, configure with
 
 .. code-block:: bash
 
-   ./configure --with-adaptive-softening=tidal --enable-gravitational-tidal-tensors=yes
+   ./configure --with-adaptive-softening=tidal --enable-gravitational-tidal-tensors=yes --with-kernel=wendland-C2
 
 As this scheme is purely gravitational, it can be unambiguously used for all particle types. It is currently implemented for the following particles:
-   gas (SPHENIX)
-   dark matter 
-   star particles (basic, EAGLE),
+
+* gas (SPHENIX)
+
+* dark matter 
+
+* star particles (basic, EAGLE),
+
 and requires the Wendland-C2 kernel as well as the multi-softening gravity scheme.
 
