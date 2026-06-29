@@ -47,6 +47,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
+  /* TODO: Move this to the runner_iact_hydro_sinks_formation() */
+  
   /* In order to prevent the formation of two sink particles too close together,
    * we keep only gas particles with the smallest potential. The distance at
    * which to prevent sink formation is the cutoff radius if this is fixed, or
@@ -93,6 +95,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
 
+  /* TODO: Move this to the runner_iact_nonsym_hydro_sinks_formation() */
+  
   /* In order to prevent the formation of two sink particles too close together,
    * we keep only gas particles with the smallest potential. The distance at
    * which to prevent sink formation is the cutoff radius if this is fixed, or
