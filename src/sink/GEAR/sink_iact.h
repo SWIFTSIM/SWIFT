@@ -48,7 +48,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float H) {
 
   /* TODO: Move this to the runner_iact_hydro_sinks_formation() */
-  
+
   /* In order to prevent the formation of two sink particles too close together,
    * we keep only gas particles with the smallest potential. The distance at
    * which to prevent sink formation is the cutoff radius if this is fixed, or
@@ -96,7 +96,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float H) {
 
   /* TODO: Move this to the runner_iact_nonsym_hydro_sinks_formation() */
-  
+
   /* In order to prevent the formation of two sink particles too close together,
    * we keep only gas particles with the smallest potential. The distance at
    * which to prevent sink formation is the cutoff radius if this is fixed, or
@@ -140,11 +140,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @param sink_props Sink properties.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_hydro_sinks_formation(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const int with_self_gravity, const struct cosmology *cosmo,
-    const struct sink_props *sink_props) {
+runner_iact_hydro_sinks_formation(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  struct part *restrict pi,
+                                  struct part *restrict pj, const float a,
+                                  const float H, const int with_self_gravity,
+                                  const struct cosmology *cosmo,
+                                  const struct sink_props *sink_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
   pi->sink_data.N_check_formation++;

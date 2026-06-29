@@ -40,7 +40,8 @@ void sink_exact_density_compute(struct space *s, const struct engine *e);
 void sink_exact_density_check(struct space *s, const struct engine *e,
                               const double rel_tol);
 
-void sink_exact_formation_count_compute(struct space *s, const struct engine *e);
+void sink_exact_formation_count_compute(struct space *s,
+                                        const struct engine *e);
 void sink_exact_formation_count_check(struct space *s, const struct engine *e);
 
 #endif /* SWIFT_SINK_H */

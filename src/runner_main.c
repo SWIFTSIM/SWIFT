@@ -292,7 +292,7 @@ void *runner_main(void *data) {
             runner_dosub_pair1_hydro_sinks_formation(
                 r, ci, cj, r->e->sink_properties->cut_off_radius,
                 /*gettimer=*/1);
-	  }
+          }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2

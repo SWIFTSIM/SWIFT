@@ -80,8 +80,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_hydro_sinks_test_formation(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H, const int with_self_gravity,
-    const struct cosmology *cosmo, const struct sink_props *sink_props) {
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
   pi->density.wcount += 1.0f;
 }
 
@@ -89,8 +89,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_hydro_sinks_test_formation(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const int with_self_gravity,
-    const struct cosmology *cosmo, const struct sink_props *sink_props) {
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {
   pi->density.wcount += 1.0f;
   pj->density.wcount += 1.0f;
 }
@@ -99,10 +99,11 @@ runner_iact_hydro_sinks_test_formation(
  * Instantiate the loop template with the test iact.
  *
  * IACT_NONSYM_HYDRO_SINKS / IACT_HYDRO_SINKS are defined in
- * runner_doiact_hydro_sinks.h (included by runner_doiact_functions_hydro_sinks.h)
- * and expand to runner_iact_nonsym_hydro_sinks_FUNCTION /
- * runner_iact_hydro_sinks_FUNCTION.  With FUNCTION=test_formation they resolve
- * to the test functions above, so the generated loops count neighbours.
+ * runner_doiact_hydro_sinks.h (included by
+ * runner_doiact_functions_hydro_sinks.h) and expand to
+ * runner_iact_nonsym_hydro_sinks_FUNCTION / runner_iact_hydro_sinks_FUNCTION.
+ * With FUNCTION=test_formation they resolve to the test functions above, so the
+ * generated loops count neighbours.
  *
  * space_getsid_and_swap_cells is used internally by the pair functions; pull
  * in its declaration here just as runner_doiact_hydro_sinks.c does.
@@ -256,16 +257,17 @@ void dump_particle_fields(const char *fileName, struct cell *main_cell,
   if (!file) error("Could not open output file '%s'.", fileName);
 
   /* Header. */
-  fprintf(file, "# %6s %10s %10s %10s %10s\n", "ID", "pos_x", "pos_y",
-          "pos_z", "wcount");
+  fprintf(file, "# %6s %10s %10s %10s %10s\n", "ID", "pos_x", "pos_y", "pos_z",
+          "wcount");
 
-  fprintf(file, "# Main cell ------------------------------------------------\n");
+  fprintf(file,
+          "# Main cell ------------------------------------------------\n");
 
   /* Main cell particles. */
   for (int pid = 0; pid < main_cell->hydro.count; pid++) {
     const struct part *p = &main_cell->hydro.parts[pid];
-    fprintf(file, "%8llu %10.6f %10.6f %10.6f %10.6f\n", p->id,
-            p->x[0], p->x[1], p->x[2], p->density.wcount);
+    fprintf(file, "%8llu %10.6f %10.6f %10.6f %10.6f\n", p->id, p->x[0],
+            p->x[1], p->x[2], p->density.wcount);
   }
 
   /* Neighbouring cells. */
@@ -274,13 +276,14 @@ void dump_particle_fields(const char *fileName, struct cell *main_cell,
       for (int k = 0; k < 3; ++k) {
         struct cell *cj = cells[i * 9 + j * 3 + k];
         if (cj == main_cell) continue;
-        fprintf(file,
-                "# Offset: [%2d %2d %2d] ------------------------------------\n",
-                i - 1, j - 1, k - 1);
+        fprintf(
+            file,
+            "# Offset: [%2d %2d %2d] ------------------------------------\n",
+            i - 1, j - 1, k - 1);
         for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
           const struct part *p = &cj->hydro.parts[pjd];
-          fprintf(file, "%8llu %10.6f %10.6f %10.6f %10.6f\n", p->id,
-                  p->x[0], p->x[1], p->x[2], p->density.wcount);
+          fprintf(file, "%8llu %10.6f %10.6f %10.6f %10.6f\n", p->id, p->x[0],
+                  p->x[1], p->x[2], p->density.wcount);
         }
       }
     }
@@ -310,7 +313,7 @@ void dump_particle_fields(const char *fileName, struct cell *main_cell,
  * @param r_cut The fixed aperture radius.
  */
 void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
-                            const float r_cut) {
+                           const float r_cut) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -337,15 +340,14 @@ void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
       struct part *pj = &cj->hydro.parts[j];
       if (part_is_inhibited(pj, e)) continue;
 
-      const float dx[3] = {
-          (float)(pi->x[0] - pj->x[0] - shift[0]),
-          (float)(pi->x[1] - pj->x[1] - shift[1]),
-          (float)(pi->x[2] - pj->x[2] - shift[2])};
+      const float dx[3] = {(float)(pi->x[0] - pj->x[0] - shift[0]),
+                           (float)(pi->x[1] - pj->x[1] - shift[1]),
+                           (float)(pi->x[2] - pj->x[2] - shift[2])};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       if (r2 < r_cut2) {
-        runner_iact_nonsym_hydro_sinks_test_formation(r2, dx, pi->h, pj->h,
-                                                      pi, pj, a, H,
+        runner_iact_nonsym_hydro_sinks_test_formation(r2, dx, pi->h, pj->h, pi,
+                                                      pj, a, H,
                                                       /*with_self_gravity=*/0,
                                                       /*cosmo=*/NULL,
                                                       /*sink_props=*/NULL);
@@ -364,15 +366,14 @@ void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
       if (part_is_inhibited(pi, e)) continue;
 
       /* dx points from pi to pj (pj is the receiver). */
-      const float mdx[3] = {
-          (float)(pj->x[0] - pi->x[0] + shift[0]),
-          (float)(pj->x[1] - pi->x[1] + shift[1]),
-          (float)(pj->x[2] - pi->x[2] + shift[2])};
+      const float mdx[3] = {(float)(pj->x[0] - pi->x[0] + shift[0]),
+                            (float)(pj->x[1] - pi->x[1] + shift[1]),
+                            (float)(pj->x[2] - pi->x[2] + shift[2])};
       const float r2 = mdx[0] * mdx[0] + mdx[1] * mdx[1] + mdx[2] * mdx[2];
 
       if (r2 < r_cut2) {
-        runner_iact_nonsym_hydro_sinks_test_formation(r2, mdx, pj->h, pi->h,
-                                                      pj, pi, a, H,
+        runner_iact_nonsym_hydro_sinks_test_formation(r2, mdx, pj->h, pi->h, pj,
+                                                      pi, a, H,
                                                       /*with_self_gravity=*/0,
                                                       /*cosmo=*/NULL,
                                                       /*sink_props=*/NULL);
@@ -392,8 +393,7 @@ void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
  * @param c The #cell.
  * @param r_cut The fixed aperture radius.
  */
-void self_all_hydro_sinks(struct runner *r, struct cell *c,
-                           const float r_cut) {
+void self_all_hydro_sinks(struct runner *r, struct cell *c, const float r_cut) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -415,8 +415,8 @@ void self_all_hydro_sinks(struct runner *r, struct cell *c,
       const int pj_active = part_is_active(pj, e);
 
       const float dx[3] = {(float)(pi->x[0] - pj->x[0]),
-                            (float)(pi->x[1] - pj->x[1]),
-                            (float)(pi->x[2] - pj->x[2])};
+                           (float)(pi->x[1] - pj->x[1]),
+                           (float)(pi->x[2] - pj->x[2])};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       if (r2 < r_cut2) {
@@ -581,8 +581,8 @@ int main(int argc, char *argv[]) {
             make_cell(particles, offset, size, h_frac, &partId, perturbation);
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
-        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0,
-                             0, 0);
+        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0, 0,
+                             0);
       }
     }
   }
@@ -646,8 +646,8 @@ int main(int argc, char *argv[]) {
           clocks_from_ticks(face_time / runs), clocks_getunit());
   message("Self calculations took:    %.3f %s.",
           clocks_from_ticks(self_time / runs), clocks_getunit());
-  message("SWIFT total took:          %.3f %s.",
-          clocks_from_ticks(time / runs), clocks_getunit());
+  message("SWIFT total took:          %.3f %s.", clocks_from_ticks(time / runs),
+          clocks_getunit());
 
   /* ---- Brute-force reference run ---- */
 

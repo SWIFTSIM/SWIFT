@@ -480,7 +480,7 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
 
   /* TODO: Remove the gas loop once we use the neew neighbour loop.
    * TODO: Pay attention to call the function on self if needed. */
-  
+
   /* Loop over all particles to find the neighbours within r_acc. Then,
      compute all quantities you need.  */
   for (int j = 0; j < count; j++) {
