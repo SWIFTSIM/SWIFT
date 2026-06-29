@@ -2213,11 +2213,23 @@ case "$with_gravity" in
    ;;
    basic)
       AC_DEFINE([DEFAULT_GRAVITY], [1], [Basic gravity scheme])
+      AC_DEFINE([SWIFT_GRAVITY_NO_TIDAL_TENSORS],1,[Disable calculation of the gravitational tidal tensors])
    ;;
    *)
       AC_MSG_ERROR([Unknown gravity scheme: $with_gravity])
    ;;
 esac
+
+AC_ARG_ENABLE([gravitational-tidal-tensors],
+   [AS_HELP_STRING([--enable-gravitational-tidal-tensors],
+     [Enable calculation of the gravitational tidal tensors.]
+   )],
+   [enable_gravitational_tidal_tensors="$enableval"],
+   [enable_gravitational_tidal_tensors="no"]
+)
+if test "$enable_gravitational_tidal_tensors" = "no"; then
+   AC_DEFINE([SWIFT_GRAVITY_NO_TIDAL_TENSORS],1,[Disable calculation of the gravitational tidal tensors])
+fi
 
 AC_ARG_ENABLE([gravitational-potential],
    [AS_HELP_STRING([--disable-gravitational-potential],
@@ -2499,8 +2511,8 @@ esac
 
 # Adaptive softening
 AC_ARG_WITH([adaptive-softening],
-   [AS_HELP_STRING([--with-adaptive-softening=<yes/no>],
-      [Adaptive softening @<:@no, yes, default: no@:>@]
+   [AS_HELP_STRING([--with-adaptive-softening=<yes/no/tidal>],
+      [Adaptive softening @<:@no, yes, tidal, default: no@:>@]
    )],
    [with_adaptive_softening="$withval"],
    [with_adaptive_softening="no"]
@@ -2510,7 +2522,10 @@ case "$with_adaptive_softening" in
       AC_DEFINE([FIXED_SOFTENING], [1], [No adaptive softening])
    ;;
    yes)
-      AC_DEFINE([ADAPTIVE_SOFTENING], [1], [Adaptive softening])
+      AC_DEFINE([ADAPTIVE_SOFTENING], [1], [Adaptive softening with smoothing length])
+   ;;
+   tidal)
+      AC_DEFINE([ADAPTIVE_SOFTENING_TIDAL], [1], [Adaptive softening with tidal tensor])
    ;;
    *)
       AC_MSG_ERROR([Unknown adaptive softening: $with_adaptive_softening])
@@ -2520,10 +2535,12 @@ esac
 if test "x$with_adaptive_softening" = "xyes" -a "$with_kernel" != "wendland-C2"; then
   AC_MSG_ERROR([Adaptive softening scheme requires the usage of the Wendland-C2 kernel!])
 fi
-if test "x$with_adaptive_softening" = "xyes" -a "$with_gravity" != "with-multi-softening"; then
+if test "x$with_adaptive_softening" != "xno" -a "$with_gravity" != "with-multi-softening"; then
   AC_MSG_ERROR([Adaptive softening scheme requires the usage of the multi-softening gravity scheme!])
 fi
-
+if test "x$with_adaptive_softening" = "xtidal" -a "$enable_gravitational_tidal_tensors" != "yes"; then
+  AC_MSG_ERROR([Adaptive softening with tidal tensors scheme requires gravitational tensors to be enabled!])
+fi
 
 #  Riemann solver
 AC_ARG_WITH([riemann-solver],
@@ -3033,6 +3050,10 @@ case "$with_potential" in
    ;;
 esac
 
+if test "$with_potential" != "none" -a "$with_potential" != "hernquist" -a "$with_potential" != "hernquist-sdmh05" -a "x$enable_gravitational_tidal_tensors" = "xyes"; then
+   AC_MSG_ERROR([Tidal tensor contribution from the $with_potential potential is not yet implemented!])
+fi
+
 #  Entropy floor
 AC_ARG_WITH([entropy-floor],
     [AS_HELP_STRING([--with-entropy-floor=<floor>],
@@ -3461,13 +3482,14 @@ AC_MSG_RESULT([
    SPMHD scheme       : $with_spmhd
    Adaptive softening : $with_adaptive_softening
 
-   Gravity scheme      : $with_gravity
-   Multipole order     : $with_multipole_order
-   Compute potential   : $enable_gravitational_potential
-   No gravity below ID : $no_gravity_below_id
-   Make gravity glass  : $gravity_glass_making
-   External potential  : $with_potential
-   Forcing terms       : $with_forcing
+   Gravity scheme        : $with_gravity
+   Multipole order       : $with_multipole_order
+   Compute potential     : $enable_gravitational_potential
+   Compute tidal tensors : $enable_gravitational_tidal_tensors
+   No gravity below ID   : $no_gravity_below_id
+   Make gravity glass    : $gravity_glass_making
+   External potential    : $with_potential
+   Forcing terms         : $with_forcing
 
    Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor

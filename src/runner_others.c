@@ -38,6 +38,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "adaptive_softening.h"
 #include "active.h"
 #include "cell.h"
 #include "chemistry.h"
@@ -106,6 +107,10 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       /* Is this part within the time step? */
       if (gpart_is_active(gp, e)) {
         external_gravity_acceleration(time, potential, constants, gp);
+
+        #ifndef SWIFT_GRAVITY_NO_TIDAL_TENSORS
+          external_gravity_tidal_tensor(time, potential, constants, gp);
+        #endif
       }
     }
   }
@@ -939,6 +944,10 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
         /* Apply the forcing terms (if any) */
         forcing_grav_terms_apply(id, e->forcing_terms, gp);
+
+#ifdef ADAPTIVE_SOFTENING_TIDAL
+        gravity_update_softening_tidal(gp, e->gravity_properties);
+#endif
 
 #ifdef SWIFT_MAKE_GRAVITY_GLASS
 

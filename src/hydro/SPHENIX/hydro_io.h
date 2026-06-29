@@ -180,6 +180,23 @@ INLINE static void convert_diffusion(const struct engine *e,
   ret[0] = p->diffusion.alpha;
 }
 
+INLINE static void convert_part_tidal_tensors(const struct engine* e,
+                                               const struct part* p,
+                                               const struct xpart* xp,
+                                               float *ret) {
+  if (p->gpart != NULL){
+    gravity_get_comoving_tidal_tensor(p->gpart, &ret[0], &ret[1], &ret[2],
+                                      &ret[3], &ret[4], &ret[5]);}
+  else {
+    ret[0] = 0.f;
+    ret[1] = 0.f;
+    ret[2] = 0.f;
+    ret[3] = 0.f;
+    ret[4] = 0.f;
+    ret[5] = 0.f;
+  }
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -192,7 +209,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 16;
+  *num_fields = 17;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -275,6 +292,13 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_softening,
       "Co-moving gravitational Plummer-equivalent softenings of the particles");
+
+  list[16] = io_make_output_field_convert_part(
+      "TidalTensors", FLOAT, 6, UNIT_CONV_TIDAL_TENSOR, -3.f, parts, xparts,
+      convert_part_tidal_tensors,
+      "Components of co-moving the tidal tensor (Hessian matrix of the "
+      "gravitational potential). Since the matrix is symmetric, only 6 values "
+      "per tensor are stored (xx, yy, zz, xy, xz, yz)");
 }
 
 /**

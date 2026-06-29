@@ -135,6 +135,31 @@ INLINE static void convert_spart_potential(const struct engine *e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_spart_tidal_tensors(const struct engine *e,
+                                               const struct spart *sp,
+                                               float *ret) {
+  if (sp->gpart != NULL)
+    gravity_get_comoving_tidal_tensor(sp->gpart, &ret[0], &ret[1], &ret[2],
+                                      &ret[3], &ret[4], &ret[5]);
+  else {
+    ret[0] = 0.f;
+    ret[1] = 0.f;
+    ret[2] = 0.f;
+    ret[3] = 0.f;
+    ret[4] = 0.f;
+    ret[5] = 0.f;
+  }
+}
+
+INLINE static void convert_spart_soft(const struct engine* e,
+                                      const struct spart* sp, float* ret) {
+  if (sp->gpart != NULL)
+    ret[0] = kernel_gravity_softening_plummer_equivalent_inv *
+           gravity_get_softening(sp->gpart, e->gravity_properties);
+  else
+    ret[0] = 0.f;
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -147,7 +172,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list, int *num_fields,
                                          const int with_cosmology) {
   /* Say how much we want to write */
-  *num_fields = 14;
+  *num_fields = 16;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -230,6 +255,17 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[13] = io_make_output_field_convert_spart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
       convert_spart_potential, "Gravitational potentials of the particles");
+
+  list[14] = io_make_output_field_convert_spart(
+      "TidalTensors", FLOAT, 6, UNIT_CONV_TIDAL_TENSOR, -3.f, sparts,
+      convert_spart_tidal_tensors,
+      "Components of co-moving the tidal tensor (Hessian matrix of the "
+      "gravitational potential). Since the matrix is symmetric, only 6 values "
+      "per tensor are stored (xx, yy, zz, xy, xz, yz)");
+
+  list[15] = io_make_output_field_convert_spart(
+      "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, convert_spart_soft,
+      "Co-moving Plummer-equivalent softening lengths of the particles.");
 }
 
 /**

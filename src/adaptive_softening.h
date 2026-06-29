@@ -27,6 +27,7 @@
 #include "gravity_properties.h"
 #include "inline.h"
 #include "kernel_hydro.h"
+#include "gravity.h"
 
 #ifdef ADAPTIVE_SOFTENING
 
@@ -109,6 +110,18 @@ INLINE static void adaptive_softening_end_density(
   p->adaptive_softening_data.zeta *= 0.5f * props->G_Newton;
 }
 
+/**
+ * @brief Update the gravity softening based on the local tidal tensor.
+ * 
+ * Nothing to do here
+ *
+ * @param gp the #gpart to update.
+ * @param p The #part.
+ * @param grav_props The properties of the gravity scheme.
+ */
+INLINE static void gravity_update_softening_tidal(
+    struct gpart* gp, const struct gravity_props* grav_props) {}
+
 #else
 
 /* Gravity tasks can take place at the same time as hydro */
@@ -146,6 +159,64 @@ INLINE static void adaptive_softening_init_part(struct part *p) {}
  */
 INLINE static void adaptive_softening_end_density(
     struct part *p, const struct gravity_props *props) {}
+
+#ifdef ADAPTIVE_SOFTENING_TIDAL
+
+/* Verify we are using the correct gravity scheme */
+#ifndef MULTI_SOFTENING_GRAVITY
+#error \
+    "Adaptive softening only implemented for the Multi-softening gravity scheme."
+#endif
+
+/**
+ * @brief Update the gravity softening based on the local tidal tensor.
+ *
+ * @param gp the #gpart to update.
+ * @param p The #part.
+ * @param grav_props The properties of the gravity scheme.
+ */
+INLINE static void gravity_update_softening_tidal(
+    struct gpart* gp, const struct gravity_props* grav_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gp != p->gpart) error("Unlinked part and gpart!");
+#endif
+
+  /* Calculate new softening length */
+  float T_xx = 0.f, T_yy = 0.f, T_zz = 0.f, T_xy = 0.f, T_xz = 0.f, T_yz = 0.f;
+  gravity_get_comoving_tidal_tensor(gp, &T_xx, &T_yy, &T_zz, &T_xy, &T_xz, &T_yz);
+
+  const float half_offdiag_T = T_xy * T_xy + T_xz * T_xz + T_yz * T_yz;
+  const float diag_T = T_xx * T_xx + T_yy * T_yy + T_zz * T_zz;
+  const float norm_T = sqrt(diag_T + 2 * half_offdiag_T);
+  const float new_softening = kernel_gravity_softening_plummer_equivalent *
+                          cbrt(grav_props->G_Newton * gp->mass / norm_T);
+
+  // const float new_softening = grav_props->G_Newton;
+
+  /* Update the softening but respect limits */
+  if (new_softening > grav_props->max_adaptive_softening)
+    gp->epsilon = grav_props->max_adaptive_softening;
+  else if (new_softening < grav_props->min_adaptive_softening)
+    gp->epsilon = grav_props->min_adaptive_softening;
+  else
+    gp->epsilon = new_softening;
+}
+
+#else
+/**
+ * @brief Update the gravity softening based on the local tidal tensor.
+ *
+ * Nothing to do
+ * 
+ * @param gp the #gpart to update.
+ * @param p The #part.
+ * @param grav_props The properties of the gravity scheme.
+ */
+INLINE static void gravity_update_softening_tidal(
+    struct gpart* gp, const struct gravity_props* grav_props) {}
+
+#endif /* ADAPTIVE_SOFTENING_TIDAL */
 
 #endif /* ADAPTIVE_SOFTENING */
 
