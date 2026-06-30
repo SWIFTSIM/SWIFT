@@ -125,10 +125,10 @@
 #include "runner_doiact_sinks.h"
 #include "runner_doiact_undef.h"
 
-/* Import the sink formation gas loop functions. */
-#define FUNCTION formation
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_FORMATION
-#include "runner_doiact_hydro_sinks.h"
+/* Import the sink formation gas loop function declarations. */
+#define FUNCTION prep_sink_formation
+#define FUNCTION_TASK_LOOP TASK_LOOP_PREP_SINK_FORMATION
+#include "runner_doiact_hydro_aperture.h"
 #include "runner_doiact_undef.h"
 
 /* Import the RT gradient loop functions */
@@ -234,7 +234,7 @@ void *runner_main(void *data) {
             runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_density) {
             runner_dosub_self1_density(r, ci, /*below_h_max=*/0, 1);
-            runner_dosub_self1_hydro_sinks_formation(
+	    runner_dosub_self1_hydro_aperture_prep_sink_formation(
                 r, ci, sink_cut_off_radius, /*gettimer=*/1);
           }
 #ifdef EXTRA_HYDRO_LOOP
@@ -296,7 +296,7 @@ void *runner_main(void *data) {
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_density) {
             runner_dosub_pair1_density(r, ci, cj, /*below_h_max=*/0, 1);
-            runner_dosub_pair1_hydro_sinks_formation(
+	    runner_dosub_pair1_hydro_aperture_prep_sink_formation(
                 r, ci, cj, sink_cut_off_radius,
                 /*gettimer=*/1);
           }
