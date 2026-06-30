@@ -481,18 +481,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
   return p->force.v_sig;
 }
 /**
- * @brief sets the signal velocity
- *
- * @brief p  the particle
- * @brief p  signal velocity of the particle
- */
-__attribute__((always_inline)) INLINE static void hydro_set_signal_velocity(
-    struct part* p, const float v_sig) {
-
-  p->force.v_sig = v_sig;
-}
-
-/**
  * @brief returns the div_v
  *
  * @brief p  the particle
@@ -614,8 +602,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-    struct part* p, const struct cosmology* c,
-    const struct pressure_floor_props* pressure_floor) {
+    struct part *p) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -767,7 +754,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Update other variables. */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-  get_sym_matrix_from_matrix(&p->force.c_matrix, (const float (*)[3]) c_matrix_temp);
+  get_sym_matrix_from_matrix(&p->force.c_matrix, c_matrix_temp);
 }
 
 /**

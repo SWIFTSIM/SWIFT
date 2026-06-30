@@ -117,6 +117,9 @@
 #define _IACT_MHD(f) PASTE(runner_iact_mhd, f)
 #define IACT_MHD _IACT_MHD(FUNCTION)
 
+#define GET_MU0() \
+  const double mu_0 = e->physical_constants->const_vacuum_permeability;
+
 #else
 
 #define IACT_NONSYM_MHD(x1, x2, x3, x4, x5, x6, x7, x8, x9) \
@@ -124,6 +127,9 @@
   }
 #define IACT_MHD(x1, x2, x3, x4, x5, x6, x7, x8, x9) \
   {                                                  \
+  }
+#define GET_MU0() \
+  {               \
   }
 #endif
 
