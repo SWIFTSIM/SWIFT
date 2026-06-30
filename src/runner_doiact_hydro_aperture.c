@@ -27,13 +27,13 @@
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"
-#include "runner_doiact_hydro_sinks.h"
+#include "runner_doiact_hydro_aperture.h"
 #include "sink_iact.h"
 #include "space_getsid.h"
 #include "timers.h"
 
 /* Import the sink formation loop functions. */
-#define FUNCTION formation
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_FORMATION
-#include "runner_doiact_functions_hydro_sinks.h"
+#define FUNCTION prep_sink_formation
+#define FUNCTION_TASK_LOOP TASK_LOOP_PREP_SINK_FORMATION
+#include "runner_doiact_functions_hydro_aperture.h"
 #include "runner_doiact_undef.h"

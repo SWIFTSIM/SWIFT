@@ -28,22 +28,22 @@
  * function, making the loop generic and independent of any particular subgrid
  * sink model.
  *
- * Before including this file, define FUNCTION (e.g. "formation") and
- * FUNCTION_TASK_LOOP (e.g. TASK_LOOP_SINK_FORMATION).  The macro expansion
- * creates the following set of functions:
- *   runner_dopair1_naive_hydro_sinks_FUNCTION   (brute-force reference)
- *   runner_doself1_naive_hydro_sinks_FUNCTION   (brute-force reference)
- *   runner_dopair1_hydro_sinks_FUNCTION         (sorted, optimised)
- *   runner_dopair1_branch_hydro_sinks_FUNCTION  (dispatch)
- *   runner_doself1_hydro_sinks_FUNCTION         (optimised, active-list)
- *   runner_doself1_branch_hydro_sinks_FUNCTION  (dispatch)
- *   runner_dosub_pair1_hydro_sinks_FUNCTION     (recursive pair)
- *   runner_dosub_self1_hydro_sinks_FUNCTION     (recursive self)
+ * Before including this file, define FUNCTION (e.g. "prep_sink_formation") and
+ * FUNCTION_TASK_LOOP (e.g. TASK_LOOP_PREP_SINK_FORMATION).  The macro
+ * expansion creates the following set of functions:
+ *   runner_dopair1_naive_hydro_aperture_FUNCTION   (brute-force reference)
+ *   runner_doself1_naive_hydro_aperture_FUNCTION   (brute-force reference)
+ *   runner_dopair1_hydro_aperture_FUNCTION         (sorted, optimised)
+ *   runner_dopair1_branch_hydro_aperture_FUNCTION  (dispatch)
+ *   runner_doself1_hydro_aperture_FUNCTION         (optimised, active-list)
+ *   runner_doself1_branch_hydro_aperture_FUNCTION  (dispatch)
+ *   runner_dosub_pair1_hydro_aperture_FUNCTION     (recursive pair)
+ *   runner_dosub_self1_hydro_aperture_FUNCTION     (recursive self)
  *
- * Interaction calls are dispatched via the IACT_NONSYM_HYDRO_SINKS and
- * IACT_HYDRO_SINKS macros defined in runner_doiact_hydro_sinks.h, which
- * expand to runner_iact_nonsym_hydro_sinks_FUNCTION and
- * runner_iact_hydro_sinks_FUNCTION respectively.
+ * Interaction calls are dispatched via the IACT_NONSYM_HYDRO_APERTURE and
+ * IACT_HYDRO_APERTURE macros defined in runner_doiact_hydro_aperture.h, which
+ * expand to runner_iact_nonsym_hydro_aperture_FUNCTION and
+ * runner_iact_hydro_aperture_FUNCTION respectively.
  *
  * Only non-symmetric (_1_) variants are provided.  The formation loop uses a
  * pure gather pattern — each active particle independently accumulates from
@@ -57,10 +57,10 @@
  *   anyway), so the leaf pair/self function is called at that level instead
  *   of descending to the true leaf cells. */
 
-#include "runner_doiact_hydro_sinks.h"
+#include "runner_doiact_hydro_aperture.h"
 
 /* ============================================================
- * DOPAIR1_NAIVE_HYDRO_SINKS
+ * DOPAIR1_NAIVE_HYDRO_APERTURE
  * Brute-force non-symmetric pair interaction.
  * ============================================================ */
 
@@ -78,7 +78,7 @@
  * @param cj The second #cell.
  * @param r_cut The fixed aperture radius for interactions.
  */
-void DOPAIR1_NAIVE_HYDRO_SINKS(struct runner *r, const struct cell *restrict ci,
+void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
                                const struct cell *restrict cj,
                                const float r_cut) {
 
@@ -161,22 +161,22 @@ void DOPAIR1_NAIVE_HYDRO_SINKS(struct runner *r, const struct cell *restrict ci,
 
       /* Hit or miss? */
       if (pi_active && r2 < r_cut2) {
-        IACT_NONSYM_HYDRO_SINKS(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
+        IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
                                 cosmo, e->sink_properties);
       }
       if (pj_active && r2 < r_cut2) {
         float mdx[3] = {-dx[0], -dx[1], -dx[2]};
-        IACT_NONSYM_HYDRO_SINKS(r2, mdx, hj, hi, pj, pi, a, H,
+        IACT_NONSYM_HYDRO_APERTURE(r2, mdx, hj, hi, pj, pi, a, H,
                                 with_self_gravity, cosmo, e->sink_properties);
       }
     }
   }
 
-  TIMER_TOC(TIMER_DOPAIR_HYDRO_SINKS);
+  TIMER_TOC(TIMER_DOPAIR_HYDRO_APERTURE);
 }
 
 /* ============================================================
- * DOSELF1_NAIVE_HYDRO_SINKS
+ * DOSELF1_NAIVE_HYDRO_APERTURE
  * Brute-force non-symmetric self interaction.
  * ============================================================ */
 
@@ -191,7 +191,7 @@ void DOPAIR1_NAIVE_HYDRO_SINKS(struct runner *r, const struct cell *restrict ci,
  * @param c The #cell.
  * @param r_cut The fixed aperture radius for interactions.
  */
-void DOSELF1_NAIVE_HYDRO_SINKS(struct runner *r, const struct cell *c,
+void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
                                const float r_cut) {
 
   const struct engine *e = r->e;
@@ -252,23 +252,23 @@ void DOSELF1_NAIVE_HYDRO_SINKS(struct runner *r, const struct cell *c,
       /* Hit or miss? */
       if (r2 < r_cut2) {
         if (pi_active) {
-          IACT_NONSYM_HYDRO_SINKS(r2, dx, hi, hj, pi, pj, a, H,
+          IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
                                   with_self_gravity, cosmo, e->sink_properties);
         }
         if (pj_active) {
           float mdx[3] = {-dx[0], -dx[1], -dx[2]};
-          IACT_NONSYM_HYDRO_SINKS(r2, mdx, hj, hi, pj, pi, a, H,
+          IACT_NONSYM_HYDRO_APERTURE(r2, mdx, hj, hi, pj, pi, a, H,
                                   with_self_gravity, cosmo, e->sink_properties);
         }
       }
     }
   }
 
-  TIMER_TOC(TIMER_DOSELF_HYDRO_SINKS);
+  TIMER_TOC(TIMER_DOSELF_HYDRO_APERTURE);
 }
 
 /* ============================================================
- * DOPAIR1_HYDRO_SINKS
+ * DOPAIR1_HYDRO_APERTURE
  * Sorted non-symmetric pair interaction with fixed aperture r_cut.
  * ============================================================ */
 
@@ -295,7 +295,7 @@ void DOSELF1_NAIVE_HYDRO_SINKS(struct runner *r, const struct cell *c,
  * @param sid The direction index of the pair.
  * @param shift The shift vector to apply to @p ci particles.
  */
-void DOPAIR1_HYDRO_SINKS(struct runner *r, const struct cell *restrict ci,
+void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
                          const struct cell *restrict cj, const float r_cut,
                          const int sid, const double shift[3]) {
 
@@ -396,7 +396,7 @@ void DOPAIR1_HYDRO_SINKS(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < r_cut2) {
-          IACT_NONSYM_HYDRO_SINKS(r2, dx, hi, hj, pi, pj, a, H,
+          IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
                                   with_self_gravity, cosmo, e->sink_properties);
         }
       }
@@ -460,18 +460,18 @@ void DOPAIR1_HYDRO_SINKS(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < r_cut2) {
           /* Note: dx points from pi to pj, so pj is the accumulator. */
-          IACT_NONSYM_HYDRO_SINKS(r2, dx, hj, hi, pj, pi, a, H,
+          IACT_NONSYM_HYDRO_APERTURE(r2, dx, hj, hi, pj, pi, a, H,
                                   with_self_gravity, cosmo, e->sink_properties);
         }
       }
     }
   }
 
-  TIMER_TOC(TIMER_DOPAIR_HYDRO_SINKS);
+  TIMER_TOC(TIMER_DOPAIR_HYDRO_APERTURE);
 }
 
 /* ============================================================
- * DOPAIR1_BRANCH_HYDRO_SINKS
+ * DOPAIR1_BRANCH_HYDRO_APERTURE
  * Dispatch to sorted or naive DOPAIR1.
  * ============================================================ */
 
@@ -479,15 +479,15 @@ void DOPAIR1_HYDRO_SINKS(struct runner *r, const struct cell *restrict ci,
  * @brief Dispatch to the appropriate DOPAIR1 variant for this cell pair.
  *
  * Computes the pair direction SID, checks that sorted lists are up to date,
- * and calls either the sorted DOPAIR1_HYDRO_SINKS or the brute-force
- * DOPAIR1_NAIVE_HYDRO_SINKS variant.
+ * and calls either the sorted DOPAIR1_HYDRO_APERTURE or the brute-force
+ * DOPAIR1_NAIVE_HYDRO_APERTURE variant.
  *
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
  * @param r_cut The fixed aperture radius for interactions.
  */
-void DOPAIR1_BRANCH_HYDRO_SINKS(struct runner *r, struct cell *ci,
+void DOPAIR1_BRANCH_HYDRO_APERTURE(struct runner *r, struct cell *ci,
                                 struct cell *cj, const float r_cut) {
 
   const struct engine *e = r->e;
@@ -520,14 +520,14 @@ void DOPAIR1_BRANCH_HYDRO_SINKS(struct runner *r, struct cell *ci,
 #endif
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
-  DOPAIR1_NAIVE_HYDRO_SINKS(r, ci, cj, r_cut);
+  DOPAIR1_NAIVE_HYDRO_APERTURE(r, ci, cj, r_cut);
 #else
-  DOPAIR1_HYDRO_SINKS(r, ci, cj, r_cut, sid, shift);
+  DOPAIR1_HYDRO_APERTURE(r, ci, cj, r_cut, sid, shift);
 #endif
 }
 
 /* ============================================================
- * DOSELF1_HYDRO_SINKS
+ * DOSELF1_HYDRO_APERTURE
  * Optimised non-symmetric self interaction with active-particle list.
  * ============================================================ */
 
@@ -554,7 +554,7 @@ void DOPAIR1_BRANCH_HYDRO_SINKS(struct runner *r, struct cell *ci,
  * @param c The #cell.
  * @param r_cut The fixed aperture radius for interactions.
  */
-void DOSELF1_HYDRO_SINKS(struct runner *r, const struct cell *c,
+void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
                          const float r_cut) {
 
   const struct engine *e = r->e;
@@ -627,7 +627,7 @@ void DOSELF1_HYDRO_SINKS(struct runner *r, const struct cell *c,
 
         /* Hit or miss? */
         if (r2 < r_cut2) {
-          IACT_NONSYM_HYDRO_SINKS(r2, dx, hj, hi, pj, pi, a, H,
+          IACT_NONSYM_HYDRO_APERTURE(r2, dx, hj, hi, pj, pi, a, H,
                                   with_self_gravity, cosmo, e->sink_properties);
         }
       }
@@ -665,11 +665,11 @@ void DOSELF1_HYDRO_SINKS(struct runner *r, const struct cell *c,
         if (r2 < r_cut2) {
           if (PART_IS_ACTIVE(pj, e)) {
             /* Both active: symmetric call updates both pi and pj. */
-            IACT_HYDRO_SINKS(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
+            IACT_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
                              cosmo, e->sink_properties);
           } else {
             /* Only pi is active. */
-            IACT_NONSYM_HYDRO_SINKS(r2, dx, hi, hj, pi, pj, a, H,
+            IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
                                     with_self_gravity, cosmo,
                                     e->sink_properties);
           }
@@ -680,11 +680,11 @@ void DOSELF1_HYDRO_SINKS(struct runner *r, const struct cell *c,
 
   free(indt);
 
-  TIMER_TOC(TIMER_DOSELF_HYDRO_SINKS);
+  TIMER_TOC(TIMER_DOSELF_HYDRO_APERTURE);
 }
 
 /* ============================================================
- * DOSELF1_BRANCH_HYDRO_SINKS
+ * DOSELF1_BRANCH_HYDRO_APERTURE
  * Dispatch to optimised or naive DOSELF1.
  * ============================================================ */
 
@@ -692,13 +692,13 @@ void DOSELF1_HYDRO_SINKS(struct runner *r, const struct cell *c,
  * @brief Dispatch to the appropriate DOSELF1 variant for this cell.
  *
  * Checks that the cell is active and drifted, then calls either the optimised
- * DOSELF1_HYDRO_SINKS or the brute-force DOSELF1_NAIVE_HYDRO_SINKS variant.
+ * DOSELF1_HYDRO_APERTURE or the brute-force DOSELF1_NAIVE_HYDRO_APERTURE variant.
  *
  * @param r The #runner.
  * @param c The #cell.
  * @param r_cut The fixed aperture radius for interactions.
  */
-void DOSELF1_BRANCH_HYDRO_SINKS(struct runner *r, const struct cell *c,
+void DOSELF1_BRANCH_HYDRO_APERTURE(struct runner *r, const struct cell *c,
                                 const float r_cut) {
 
   const struct engine *e = r->e;
@@ -713,14 +713,14 @@ void DOSELF1_BRANCH_HYDRO_SINKS(struct runner *r, const struct cell *c,
 #endif
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
-  DOSELF1_NAIVE_HYDRO_SINKS(r, c, r_cut);
+  DOSELF1_NAIVE_HYDRO_APERTURE(r, c, r_cut);
 #else
-  DOSELF1_HYDRO_SINKS(r, c, r_cut);
+  DOSELF1_HYDRO_APERTURE(r, c, r_cut);
 #endif
 }
 
 /* ============================================================
- * DOSUB_PAIR1_HYDRO_SINKS
+ * DOSUB_PAIR1_HYDRO_APERTURE
  * Recursive sub-cell pair interaction.
  * ============================================================ */
 
@@ -730,7 +730,7 @@ void DOSELF1_BRANCH_HYDRO_SINKS(struct runner *r, const struct cell *c,
  * Recurses while @c r_cut < 0.5 * ci->dmin — i.e. while the fixed aperture
  * is smaller than a sub-cell.  Once the aperture equals or exceeds half the
  * cell's minimum dimension, all sub-cell progeny pairs would interact and
- * no pruning is possible, so DOPAIR1_BRANCH_HYDRO_SINKS is called at this
+ * no pruning is possible, so DOPAIR1_BRANCH_HYDRO_APERTURE is called at this
  * level instead of descending further.
  *
  * This is the fixed-aperture analogue of the variable-h hydro loop's
@@ -743,7 +743,7 @@ void DOSELF1_BRANCH_HYDRO_SINKS(struct runner *r, const struct cell *c,
  * @param r_cut The fixed aperture radius for interactions.
  * @param gettimer Whether to record a timer for this call.
  */
-void DOSUB_PAIR1_HYDRO_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci, struct cell *cj,
                              const float r_cut, const int gettimer) {
 
   struct space *s = r->e->s;
@@ -780,7 +780,7 @@ void DOSUB_PAIR1_HYDRO_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
                            /*rt_requests_sort=*/0, /*clock=*/0);
     }
 
-    DOPAIR1_BRANCH_HYDRO_SINKS(r, ci, cj, r_cut);
+    DOPAIR1_BRANCH_HYDRO_APERTURE(r, ci, cj, r_cut);
 
   } else {
 
@@ -791,17 +791,17 @@ void DOSUB_PAIR1_HYDRO_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
-        DOSUB_PAIR1_HYDRO_SINKS(r, ci->progeny[pid], cj->progeny[pjd], r_cut,
+        DOSUB_PAIR1_HYDRO_APERTURE(r, ci->progeny[pid], cj->progeny[pjd], r_cut,
                                 /*gettimer=*/0);
       }
     }
   }
 
-  if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR_HYDRO_SINKS);
+  if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR_HYDRO_APERTURE);
 }
 
 /* ============================================================
- * DOSUB_SELF1_HYDRO_SINKS
+ * DOSUB_SELF1_HYDRO_APERTURE
  * Recursive sub-cell self interaction.
  * ============================================================ */
 
@@ -810,15 +810,15 @@ void DOSUB_PAIR1_HYDRO_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
  *
  * Recurses while @c r_cut < 0.5 * c->dmin — i.e. while the fixed aperture
  * is smaller than a sub-cell.  At the leaf level (or once the aperture covers
- * the sub-cell scale), calls DOSELF1_BRANCH_HYDRO_SINKS for the self part
- * and DOSUB_PAIR1_HYDRO_SINKS for the cross-progeny part.
+ * the sub-cell scale), calls DOSELF1_BRANCH_HYDRO_APERTURE for the self part
+ * and DOSUB_PAIR1_HYDRO_APERTURE for the cross-progeny part.
  *
  * @param r The #runner.
  * @param c The #cell.
  * @param r_cut The fixed aperture radius for interactions.
  * @param gettimer Whether to record a timer for this call.
  */
-void DOSUB_SELF1_HYDRO_SINKS(struct runner *r, struct cell *c,
+void DOSUB_SELF1_HYDRO_APERTURE(struct runner *r, struct cell *c,
                              const float r_cut, const int gettimer) {
 
   TIMER_TIC;
@@ -831,7 +831,7 @@ void DOSUB_SELF1_HYDRO_SINKS(struct runner *r, struct cell *c,
   if (!c->split || c->hydro.count < space_recurse_size_self_hydro ||
       r_cut >= 0.5f * c->dmin) {
 
-    DOSELF1_BRANCH_HYDRO_SINKS(r, c, r_cut);
+    DOSELF1_BRANCH_HYDRO_APERTURE(r, c, r_cut);
 
   } else {
 
@@ -842,12 +842,12 @@ void DOSUB_SELF1_HYDRO_SINKS(struct runner *r, struct cell *c,
       if (c->progeny[k] != NULL) {
 
         /* Self interactions within this progeny. */
-        DOSUB_SELF1_HYDRO_SINKS(r, c->progeny[k], r_cut, /*gettimer=*/0);
+        DOSUB_SELF1_HYDRO_APERTURE(r, c->progeny[k], r_cut, /*gettimer=*/0);
 
         /* Pair interactions with all subsequent progeny. */
         for (int j = k + 1; j < 8; j++) {
           if (c->progeny[j] != NULL) {
-            DOSUB_PAIR1_HYDRO_SINKS(r, c->progeny[k], c->progeny[j], r_cut,
+            DOSUB_PAIR1_HYDRO_APERTURE(r, c->progeny[k], c->progeny[j], r_cut,
                                     /*gettimer=*/0);
           }
         }
@@ -855,5 +855,5 @@ void DOSUB_SELF1_HYDRO_SINKS(struct runner *r, struct cell *c,
     }
   }
 
-  if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF_HYDRO_SINKS);
+  if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF_HYDRO_APERTURE);
 }

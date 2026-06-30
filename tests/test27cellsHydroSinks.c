@@ -21,8 +21,8 @@
  *
  * Generates 27 cells arranged in a 3x3x3 grid, fills them with gas particles,
  * and verifies that the optimised pair and self interaction functions
- *   runner_dopair1_branch_hydro_sinks_test_formation()
- *   runner_doself1_branch_hydro_sinks_test_formation()
+ *   runner_dopair1_branch_hydro_aperture_test_formation()
+ *   runner_doself1_branch_hydro_aperture_test_formation()
  * produce exactly the same neighbour count (density.wcount) as the reference
  * brute-force implementation that loops over all pairs within the fixed
  * aperture radius r_cut.
@@ -77,7 +77,7 @@
  * ============================================================ */
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_hydro_sinks_test_formation(
+runner_iact_nonsym_hydro_aperture_test_formation(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H, const int with_self_gravity, const struct cosmology *cosmo,
@@ -86,7 +86,7 @@ runner_iact_nonsym_hydro_sinks_test_formation(
 }
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_hydro_sinks_test_formation(
+runner_iact_hydro_aperture_test_formation(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const int with_self_gravity, const struct cosmology *cosmo,
@@ -98,25 +98,25 @@ runner_iact_hydro_sinks_test_formation(
 /* ============================================================
  * Instantiate the loop template with the test iact.
  *
- * IACT_NONSYM_HYDRO_SINKS / IACT_HYDRO_SINKS are defined in
- * runner_doiact_hydro_sinks.h (included by
- * runner_doiact_functions_hydro_sinks.h) and expand to
- * runner_iact_nonsym_hydro_sinks_FUNCTION / runner_iact_hydro_sinks_FUNCTION.
+ * IACT_NONSYM_HYDRO_APERTURE / IACT_HYDRO_APERTURE are defined in
+ * runner_doiact_hydro_aperture.h (included by
+ * runner_doiact_functions_hydro_aperture.h) and expand to
+ * runner_iact_nonsym_hydro_aperture_FUNCTION / runner_iact_hydro_aperture_FUNCTION.
  * With FUNCTION=test_formation they resolve to the test functions above, so the
  * generated loops count neighbours.
  *
  * space_getsid_and_swap_cells is used internally by the pair functions; pull
- * in its declaration here just as runner_doiact_hydro_sinks.c does.
+ * in its declaration here just as runner_doiact_hydro_aperture.c does.
  * ============================================================ */
 #include "space_getsid.h"
 #define FUNCTION test_formation
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_FORMATION
-#include "runner_doiact_functions_hydro_sinks.h"
+#define FUNCTION_TASK_LOOP TASK_LOOP_PREP_SINK_FORMATION
+#include "runner_doiact_functions_hydro_aperture.h"
 #include "runner_doiact_undef.h"
 
 /* The locally instantiated function names (used directly below). */
-#define DOSELF1_NAME "runner_doself1_branch_hydro_sinks_test_formation"
-#define DOPAIR1_NAME "runner_dopair1_branch_hydro_sinks_test_formation"
+#define DOSELF1_NAME "runner_doself1_branch_hydro_aperture_test_formation"
+#define DOPAIR1_NAME "runner_dopair1_branch_hydro_aperture_test_formation"
 
 /* ============================================================
  * Cell construction helper.
@@ -346,7 +346,7 @@ void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       if (r2 < r_cut2) {
-        runner_iact_nonsym_hydro_sinks_test_formation(r2, dx, pi->h, pj->h, pi,
+        runner_iact_nonsym_hydro_aperture_test_formation(r2, dx, pi->h, pj->h, pi,
                                                       pj, a, H,
                                                       /*with_self_gravity=*/0,
                                                       /*cosmo=*/NULL,
@@ -372,7 +372,7 @@ void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
       const float r2 = mdx[0] * mdx[0] + mdx[1] * mdx[1] + mdx[2] * mdx[2];
 
       if (r2 < r_cut2) {
-        runner_iact_nonsym_hydro_sinks_test_formation(r2, mdx, pj->h, pi->h, pj,
+        runner_iact_nonsym_hydro_aperture_test_formation(r2, mdx, pj->h, pi->h, pj,
                                                       pi, a, H,
                                                       /*with_self_gravity=*/0,
                                                       /*cosmo=*/NULL,
@@ -422,14 +422,14 @@ void self_all_hydro_sinks(struct runner *r, struct cell *c, const float r_cut) {
       if (r2 < r_cut2) {
         /* Update active pi with contribution from pj. */
         if (pi_active) {
-          runner_iact_nonsym_hydro_sinks_test_formation(
+          runner_iact_nonsym_hydro_aperture_test_formation(
               r2, dx, pi->h, pj->h, pi, pj, a, H, /*with_self_gravity=*/0,
               /*cosmo=*/NULL, /*sink_props=*/NULL);
         }
         /* Update active pj with contribution from pi. */
         if (pj_active) {
           const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
-          runner_iact_nonsym_hydro_sinks_test_formation(
+          runner_iact_nonsym_hydro_aperture_test_formation(
               r2, mdx, pj->h, pi->h, pj, pi, a, H, /*with_self_gravity=*/0,
               /*cosmo=*/NULL, /*sink_props=*/NULL);
         }
@@ -607,7 +607,7 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 27; ++j) {
       if (cells[j] != main_cell) {
         const ticks sub_tic = getticks();
-        runner_dopair1_branch_hydro_sinks_test_formation(&runner, main_cell,
+        runner_dopair1_branch_hydro_aperture_test_formation(&runner, main_cell,
                                                          cells[j], r_cut);
         timings[j] += getticks() - sub_tic;
       }
@@ -615,7 +615,7 @@ int main(int argc, char *argv[]) {
 
     /* Self interaction. */
     const ticks self_tic = getticks();
-    runner_doself1_branch_hydro_sinks_test_formation(&runner, main_cell, r_cut);
+    runner_doself1_branch_hydro_aperture_test_formation(&runner, main_cell, r_cut);
     timings[13] += getticks() - self_tic;
 
     time += getticks() - tic;
