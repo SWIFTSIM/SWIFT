@@ -20,8 +20,10 @@
 #define SWIFT_POTENTIAL_AGAMA_H
 
 /* Config parameters. */
-#include <agama/interface_c.h>
 #include <config.h>
+
+/* Agama library */
+#include <agama/interface_c.h>
 
 /* Some standard headers. */
 #include <float.h>
