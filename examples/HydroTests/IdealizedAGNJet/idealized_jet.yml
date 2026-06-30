@@ -1,0 +1,56 @@
+# Define some meta-data about the simulation
+MetaData:
+  run_name:   IdealizedAGNJet
+
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08566e21    # 1 kpc in 
+  UnitVelocity_in_cgs: 1e5           # 1 km/s in cm/s
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:        0.       # The starting time of the simulation (in internal units).
+  time_end:          0.10228  # The end time of the simulation (in internal units).
+  dt_min:            1e-14    # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2     # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:              output      # Common part of the name of output files
+  time_first:            0.          # Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time:            0.005114    # Time difference between consecutive outputs (in internal units). 5 Myr here
+
+Restarts:
+  delta_hours:           0.5
+
+Scheduler:
+  max_top_level_cells:   12
+    
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1.0228e-4     # Time between statistics output
+  time_first:              0     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:               ICs.hdf5 # The file to read
+  periodic:                1            # Are we running with periodic ICs?
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.2      # Courant-Friedrich-Levy condition for time integration.
+  h_min_ratio:           0.01     # Minimal smoothing in units of softening.
+  h_max:                 20       # Increase if many particles are at the limit
+  minimal_temperature:   100.
+
+# Forcing to implement idealized AGN jet launching
+BoundaryParticles:
+    boundary_particle_max_id:        10000000  # Particles with ID <= boundary_particle_max_id are treated as boundary particles.
+    enable_fixed_position:           1         # Whether or not boundary particles are fixed in place.
+    jet_power:                       1.56e8    # 1e45 erg/s (in internal units). Make sure it is consistent with the ICs script
+    jet_duration:                    0.10228   # 100 Myr (in internal units). Make sure it is consistent with the ICs script
+    jet_velocity:                    7.5e3     # 7.5e3 km/s (in internal units). Make sure it is consistent with the ICs script

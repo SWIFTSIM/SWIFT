@@ -51,7 +51,7 @@ int equal(float a, float b) {
  * @param b Second value
  * @param s String used to identify this check in messages
  */
-void check_value(float a, float b, const char* s) {
+void check_value(float a, float b, const char *s) {
   if (fabsf(a - b) / fabsf(a + b) > 1.e-5f && fabsf(a - b) > 1.e-5f) {
     error("Values are inconsistent: %g %g (%s)!", a, b, s);
   } else {
@@ -79,9 +79,9 @@ struct riemann_statevector {
  * @param Whalf Expected solution
  * @param s String used to identify this check in messages
  */
-void check_riemann_solution(struct riemann_statevector* WL,
-                            struct riemann_statevector* WR,
-                            struct riemann_statevector* Whalf, const char* s) {
+void check_riemann_solution(struct riemann_statevector *WL,
+                            struct riemann_statevector *WR,
+                            struct riemann_statevector *Whalf, const char *s) {
   float WLarr[5], WRarr[5], Whalfarr[5], n_unit[3];
 
   n_unit[0] = 1.0f;
@@ -317,7 +317,7 @@ void check_riemann_symmetry(void) {
 /**
  * @brief Check the TRRS Riemann solver
  */
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* check the TRRS Riemann solver */
   check_riemann_trrs();
@@ -330,5 +330,5 @@ int main(int argc, char* argv[]) {
 }
 
 #else
-int main(int argc, char* argv[]) { return 0; }
+int main(int argc, char *argv[]) { return 0; }
 #endif /* !RIEMANN_SOLVER_NONE */

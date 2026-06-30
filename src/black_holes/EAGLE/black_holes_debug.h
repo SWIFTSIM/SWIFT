@@ -20,7 +20,7 @@
 #define SWIFT_BLACK_HOLES_EAGLE_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void black_holes_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+    const struct part *p, const struct xpart *xp) {
 
   warning("[PID%lld] black_holes_part_data:", p->id);
   warning("[PID%lld] swallow_id = %lld, potential = %.3e", p->id,

@@ -16,7 +16,10 @@ TimeIntegration:
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1e-2 # Time between statistics output
-  
+
+Scheduler:
+  tasks_per_cell: 100
+
 # Parameters governing the snapshots
 Snapshots:
   basename:            Hydrostatic  # Common part of the name of output files
@@ -35,7 +38,9 @@ InitialConditions:
   
 # External potential parameters
 IsothermalPotential:
-  vrot:            200.     # rotation speed of isothermal potential in internal units
+  vrot:            200.          # rotation speed of isothermal potential in internal units
   epsilon:         1.0
-  timestep_mult:   0.03     # controls time step
+  timestep_mult:   0.03          # controls time step
+  useabspos:       0             # Centre the halo in the box
+  position:        [0., 0., 0.]
 

@@ -471,7 +471,7 @@ INLINE_ELAPSED(inline)
 typedef uint64_t ticks;
 
 static inline ticks getticks(void) {
-  static uint64_t* addr = 0;
+  static uint64_t *addr = 0;
 
   if (addr == 0) {
     uint32_t rq_addr = 0x10030000;
@@ -486,7 +486,7 @@ static inline ticks getticks(void) {
     }
     addr = mmap(0, pgsize, PROT_READ, MAP_SHARED, fd, rq_addr);
     close(fd);
-    if (addr == (uint64_t*)-1) {
+    if (addr == (uint64_t *)-1) {
       perror("mmap");
       return NULL;
     }

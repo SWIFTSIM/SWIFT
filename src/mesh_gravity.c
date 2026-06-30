@@ -101,7 +101,7 @@ __attribute__((always_inline, const)) INLINE static double CIC_get(
  * @param value The value to interpolate.
  */
 __attribute__((always_inline)) INLINE static void CIC_set(
-    double* mesh, const int N, const int i, const int j, const int k,
+    double *mesh, const int N, const int i, const int j, const int k,
     const double tx, const double ty, const double tz, const double dx,
     const double dy, const double dz, const double value) {
 
@@ -134,10 +134,10 @@ __attribute__((always_inline)) INLINE static void CIC_set(
  * @param dim The dimensions of the simulation box.
  * @param nu_model Struct with neutrino constants
  */
-INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
+INLINE static void gpart_to_mesh_CIC(const struct gpart *gp, double *rho,
                                      const int N, const double fac,
                                      const double dim[3],
-                                     const struct neutrino_model* nu_model) {
+                                     const struct neutrino_model *nu_model) {
 
   /* Box wrap the multipole's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
@@ -192,12 +192,12 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
  * @param dim The dimensions of the simulation box.
  * @param nu_model Struct with neutrino constants
  */
-void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
+void cell_gpart_to_mesh_CIC(const struct cell *c, double *rho, const int N,
                             const double fac, const double dim[3],
-                            const struct neutrino_model* nu_model) {
+                            const struct neutrino_model *nu_model) {
 
   const int gcount = c->grav.count;
-  const struct gpart* gparts = c->grav.parts;
+  const struct gpart *gparts = c->grav.parts;
 
   /* Assign all the gpart of that cell to the mesh */
   for (int i = 0; i < gcount; ++i) {
@@ -211,28 +211,28 @@ void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
  * pool.
  */
 struct cic_mapper_data {
-  const struct cell* cells;
-  double* rho;
-  double* potential;
+  const struct cell *cells;
+  double *rho;
+  double *potential;
   int N;
   int use_local_patches;
   double fac;
   double dim[3];
   float const_G;
-  struct neutrino_model* nu_model;
+  struct neutrino_model *nu_model;
 };
 
-void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
+void gpart_to_mesh_CIC_mapper(void *map_data, int num, void *extra) {
 
-  const struct cic_mapper_data* data = (struct cic_mapper_data*)extra;
-  double* rho = data->rho;
+  const struct cic_mapper_data *data = (struct cic_mapper_data *)extra;
+  double *rho = data->rho;
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
-  const struct neutrino_model* nu_model = data->nu_model;
+  const struct neutrino_model *nu_model = data->nu_model;
 
   /* Pointer to the chunk to be processed */
-  const struct gpart* gparts = (const struct gpart*)map_data;
+  const struct gpart *gparts = (const struct gpart *)map_data;
 
   for (int i = 0; i < num; ++i) {
     if (gparts[i].time_bin == time_bin_inhibited) continue;
@@ -247,19 +247,19 @@ void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
  * @param num The number of cells in the chunk.
  * @param extra The information about the mesh and cells.
  */
-void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
+void cell_gpart_to_mesh_CIC_mapper(void *map_data, int num, void *extra) {
 
   /* Unpack the shared information */
-  const struct cic_mapper_data* data = (struct cic_mapper_data*)extra;
-  const struct cell* cells = data->cells;
-  double* rho = data->rho;
+  const struct cic_mapper_data *data = (struct cic_mapper_data *)extra;
+  const struct cell *cells = data->cells;
+  double *rho = data->rho;
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
-  const struct neutrino_model* nu_model = data->nu_model;
+  const struct neutrino_model *nu_model = data->nu_model;
 
   /* Pointer to the chunk to be processed */
-  int* local_cells = (int*)map_data;
+  int *local_cells = (int *)map_data;
 
   /* A temporary patch of the global mesh */
   struct pm_mesh_patch patch;
@@ -268,7 +268,7 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   for (int i = 0; i < num; ++i) {
 
     /* Pointer to local cell */
-    const struct cell* c = &cells[local_cells[i]];
+    const struct cell *c = &cells[local_cells[i]];
 
     /* Skip empty cells */
     if (c->grav.count == 0) continue;
@@ -305,7 +305,7 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
  * @param fac width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-void mesh_to_gpart_CIC(struct gpart* gp, const double* pot, const int N,
+void mesh_to_gpart_CIC(struct gpart *gp, const double *pot, const int N,
                        const double fac, const double dim[3]) {
 
   /* Box wrap the gpart's position */
@@ -393,17 +393,17 @@ void mesh_to_gpart_CIC(struct gpart* gp, const double* pot, const int N,
   gravity_add_comoving_mesh_potential(gp, p);
 }
 
-void cell_mesh_to_gpart_CIC(const struct cell* c, const double* potential,
+void cell_mesh_to_gpart_CIC(const struct cell *c, const double *potential,
                             const int N, const double fac, const float const_G,
                             const double dim[3]) {
 
   const int gcount = c->grav.count;
-  struct gpart* gparts = c->grav.parts;
+  struct gpart *gparts = c->grav.parts;
 
   /* Assign all the gpart of that cell to the mesh */
   for (int i = 0; i < gcount; ++i) {
 
-    struct gpart* gp = &gparts[i];
+    struct gpart *gp = &gparts[i];
 
     if (gp->time_bin == time_bin_inhibited) continue;
 
@@ -425,23 +425,23 @@ void cell_mesh_to_gpart_CIC(const struct cell* c, const double* potential,
   }
 }
 
-void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
+void mesh_to_gpart_CIC_mapper(void *map_data, int num, void *extra) {
 
   /* Unpack the shared information */
-  const struct cic_mapper_data* data = (struct cic_mapper_data*)extra;
-  const double* const potential = data->potential;
+  const struct cic_mapper_data *data = (struct cic_mapper_data *)extra;
+  const double *const potential = data->potential;
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
   const float const_G = data->const_G;
 
   /* Pointer to the chunk to be processed */
-  struct gpart* gparts = (struct gpart*)map_data;
+  struct gpart *gparts = (struct gpart *)map_data;
 
   /* Loop over the elements assigned to this thread */
   for (int i = 0; i < num; ++i) {
 
-    struct gpart* gp = &gparts[i];
+    struct gpart *gp = &gparts[i];
     if (gp->time_bin == time_bin_inhibited) continue;
 
     gp->a_grav_mesh[0] = 0.f;
@@ -469,25 +469,25 @@ void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
  * @param num The number of cells in the chunk.
  * @param extra The information about the mesh and cells.
  */
-void cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
+void cell_mesh_to_gpart_CIC_mapper(void *map_data, int num, void *extra) {
 
   /* Unpack the shared information */
-  const struct cic_mapper_data* data = (struct cic_mapper_data*)extra;
-  const struct cell* cells = data->cells;
-  const double* const potential = data->potential;
+  const struct cic_mapper_data *data = (struct cic_mapper_data *)extra;
+  const struct cell *cells = data->cells;
+  const double *const potential = data->potential;
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
   const float const_G = data->const_G;
 
   /* Pointer to the chunk to be processed */
-  int* local_cells = (int*)map_data;
+  int *local_cells = (int *)map_data;
 
   /* Loop over the elements assigned to this thread */
   for (int i = 0; i < num; ++i) {
 
     /* Pointer to local cell */
-    const struct cell* c = &cells[local_cells[i]];
+    const struct cell *c = &cells[local_cells[i]];
 
     /* Assign this cell's content to the mesh */
     cell_mesh_to_gpart_CIC(c, potential, N, fac, const_G, dim);
@@ -501,7 +501,7 @@ void cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
 struct Green_function_data {
 
   int N;
-  fftw_complex* frho;
+  fftw_complex *frho;
   double green_fac;
   double a_smooth2;
   double k_fac;
@@ -516,13 +516,13 @@ struct Green_function_data {
  * @param num The number of elements to iterate on (along the x-axis).
  * @param extra The properties of the Green function.
  */
-void mesh_apply_Green_function_mapper(void* map_data, const int num,
-                                      void* extra) {
+void mesh_apply_Green_function_mapper(void *map_data, const int num,
+                                      void *extra) {
 
-  struct Green_function_data* data = (struct Green_function_data*)extra;
+  struct Green_function_data *data = (struct Green_function_data *)extra;
 
   /* Unpack the array */
-  fftw_complex* const frho = data->frho;
+  fftw_complex *const frho = data->frho;
   const int N = data->N;
   const int N_half = N / 2;
 
@@ -535,7 +535,7 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
   const int slice_offset = data->slice_offset;
 
   /* Range of x coordinates in the full mesh handled by this call */
-  const int i_start = ((fftw_complex*)map_data - frho) + slice_offset;
+  const int i_start = ((fftw_complex *)map_data - frho) + slice_offset;
   const int i_end = i_start + num;
 
   /* Loop over the x range corresponding to this thread */
@@ -608,7 +608,7 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
  * @param r_s The Green function smoothing scale.
  * @param box_size The physical size of the simulation box.
  */
-void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
+void mesh_apply_Green_function(struct threadpool *tp, fftw_complex *frho,
                                const int slice_offset, const int slice_width,
                                const int N, const double r_s,
                                const double box_size) {
@@ -657,8 +657,8 @@ void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
  * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
-void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
-                                   struct threadpool* tp, const int verbose) {
+void compute_potential_distributed(struct pm_mesh *mesh, const struct space *s,
+                                   struct threadpool *tp, const int verbose) {
 
 #if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
 
@@ -679,7 +679,7 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
   ticks tic = getticks();
 
   /* Create an array of mesh patches. One per local top-level cell. */
-  struct pm_mesh_patch* local_patches = (struct pm_mesh_patch*)malloc(
+  struct pm_mesh_patch *local_patches = (struct pm_mesh_patch *)malloc(
       nr_local_cells * sizeof(struct pm_mesh_patch));
   if (local_patches == NULL)
     error("Could not allocate array of local mesh patches!");
@@ -714,7 +714,7 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
    *
    * Note: nalloc is the number of *complex* values.
    */
-  double* rho_slice = (double*)fftw_malloc(2 * nalloc * sizeof(double));
+  double *rho_slice = (double *)fftw_malloc(2 * nalloc * sizeof(double));
   memset(rho_slice, 0, 2 * nalloc * sizeof(double));
 
   tic = getticks();
@@ -731,8 +731,8 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
   tic = getticks();
 
   /* Allocate storage for the slices of the FFT of the density mesh */
-  fftw_complex* frho_slice =
-      (fftw_complex*)fftw_malloc(nalloc * sizeof(fftw_complex));
+  fftw_complex *frho_slice =
+      (fftw_complex *)fftw_malloc(nalloc * sizeof(fftw_complex));
 
   /* Carry out the MPI Fourier transform. We can save a bit of time
    * if we allow FFTW to transpose the first two dimensions of the output.
@@ -841,15 +841,15 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
  * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
-void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
-                              struct threadpool* tp, const int verbose) {
+void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
+                              struct threadpool *tp, const int verbose) {
 
 #ifdef HAVE_FFTW
 
   const double r_s = mesh->r_s;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int* local_cells = s->local_cells_top;
+  const int *local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
 
   if (r_s <= 0.) error("Invalid value of a_smooth");
@@ -863,12 +863,12 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   const double cell_fac = N / box_size;
 
   /* Use the memory allocated for the potential to temporarily store rho */
-  double* restrict rho = mesh->potential_global;
+  double *restrict rho = mesh->potential_global;
   if (rho == NULL) error("Error allocating memory for density mesh");
 
   /* Allocates some memory for the mesh in Fourier space */
-  fftw_complex* restrict frho =
-      (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * N * N * (N_half + 1));
+  fftw_complex *restrict frho =
+      (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * N * N * (N_half + 1));
   if (frho == NULL)
     error("Error allocating memory for transform of density mesh");
   memuse_log_allocation("fftw_frho", frho, 1,
@@ -911,15 +911,15 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
      * directly loop over the particles */
     threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts,
                    sizeof(struct gpart), threadpool_auto_chunk_size,
-                   (void*)&data);
+                   (void *)&data);
 
   } else { /* Normal case */
 
     /* Do a parallel CIC mesh assignment of the gparts but only using
      * the local top-level cells */
-    threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
+    threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void *)local_cells,
                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                   (void*)&data);
+                   (void *)&data);
   }
 
   if (verbose)
@@ -1014,15 +1014,15 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
      * directly loop over the particles */
     threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
                    sizeof(struct gpart), threadpool_auto_chunk_size,
-                   (void*)&data);
+                   (void *)&data);
 
   } else { /* Normal case */
 
     /* Do a parallel CIC mesh interpolation onto the gparts but only using
        the local top-level cells */
-    threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
+    threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void *)local_cells,
                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                   (void*)&data);
+                   (void *)&data);
   }
 
   if (verbose)
@@ -1055,8 +1055,8 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
  * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
-void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
-                               struct threadpool* tp, const int verbose) {
+void pm_mesh_compute_potential(struct pm_mesh *mesh, const struct space *s,
+                               struct threadpool *tp, const int verbose) {
   if (mesh->distributed_mesh) {
     compute_potential_distributed(mesh, s, tp, verbose);
   } else {
@@ -1069,7 +1069,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
  *
  * @param mesh The #pm_mesh structure.
  */
-void pm_mesh_allocate(struct pm_mesh* mesh) {
+void pm_mesh_allocate(struct pm_mesh *mesh) {
 
 #ifdef HAVE_FFTW
 
@@ -1079,7 +1079,7 @@ void pm_mesh_allocate(struct pm_mesh* mesh) {
     const int N = mesh->N;
 
     /* Allocate the memory for the combined density and potential array */
-    mesh->potential_global = (double*)fftw_malloc(sizeof(double) * N * N * N);
+    mesh->potential_global = (double *)fftw_malloc(sizeof(double) * N * N * N);
     if (mesh->potential_global == NULL)
       error("Error allocating memory for the long-range gravity mesh.");
     memuse_log_allocation("fftw_mesh.potential", mesh->potential_global, 1,
@@ -1095,7 +1095,7 @@ void pm_mesh_allocate(struct pm_mesh* mesh) {
  *
  * @param mesh The #pm_mesh structure.
  */
-void pm_mesh_free(struct pm_mesh* mesh) {
+void pm_mesh_free(struct pm_mesh *mesh) {
 
 #ifdef HAVE_FFTW
 
@@ -1139,7 +1139,7 @@ void initialise_fftw(int N, int nr_threads) {
  * @param dim The (comoving) side-lengths of the simulation volume.
  * @param nr_threads The number of threads on this MPI rank.
  */
-void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
+void pm_mesh_init(struct pm_mesh *mesh, const struct gravity_props *props,
                   const double dim[3], int nr_threads) {
 
 #ifdef HAVE_FFTW
@@ -1197,7 +1197,7 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
  * @param mesh The #pm_mesh to initialise.
  * @param dim The (comoving) side-lengths of the simulation volume.
  */
-void pm_mesh_init_no_mesh(struct pm_mesh* mesh, double dim[3]) {
+void pm_mesh_init_no_mesh(struct pm_mesh *mesh, double dim[3]) {
 
   bzero(mesh, sizeof(struct pm_mesh));
 
@@ -1217,7 +1217,7 @@ void pm_mesh_init_no_mesh(struct pm_mesh* mesh, double dim[3]) {
 /**
  * @brief Frees the memory allocated for the long-range mesh.
  */
-void pm_mesh_clean(struct pm_mesh* mesh) {
+void pm_mesh_clean(struct pm_mesh *mesh) {
 
 #ifdef HAVE_THREADED_FFTW
   fftw_cleanup_threads();
@@ -1235,8 +1235,8 @@ void pm_mesh_clean(struct pm_mesh* mesh) {
  * @param mesh the struct
  * @param stream the file stream
  */
-void pm_mesh_struct_dump(const struct pm_mesh* mesh, FILE* stream) {
-  restart_write_blocks((void*)mesh, sizeof(struct pm_mesh), 1, stream,
+void pm_mesh_struct_dump(const struct pm_mesh *mesh, FILE *stream) {
+  restart_write_blocks((void *)mesh, sizeof(struct pm_mesh), 1, stream,
                        "gravity", "gravity props");
 }
 
@@ -1247,9 +1247,9 @@ void pm_mesh_struct_dump(const struct pm_mesh* mesh, FILE* stream) {
  * @param mesh the struct
  * @param stream the file stream
  */
-void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
+void pm_mesh_struct_restore(struct pm_mesh *mesh, FILE *stream) {
 
-  restart_read_blocks((void*)mesh, sizeof(struct pm_mesh), 1, stream, NULL,
+  restart_read_blocks((void *)mesh, sizeof(struct pm_mesh), 1, stream, NULL,
                       "gravity props");
 
   if (mesh->periodic) {

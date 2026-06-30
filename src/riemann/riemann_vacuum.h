@@ -24,7 +24,7 @@
  * @brief Check if the given input states are vacuum or will generate vacuum
  */
 __attribute__((always_inline)) INLINE static int riemann_is_vacuum(
-    const float* WL, const float* WR, float vL, float vR, float aL, float aR) {
+    const float *WL, const float *WR, float vL, float vR, float aL, float aR) {
 
   /* vacuum */
   if (!WL[0] || !WR[0]) return 1;
@@ -53,8 +53,8 @@ __attribute__((always_inline)) INLINE static int riemann_is_vacuum(
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
-    const float* WL, const float* WR, float vL, float vR, float aL, float aR,
-    float* Whalf, const float* n_unit) {
+    const float *WL, const float *WR, float vL, float vR, float aL, float aR,
+    float *Whalf, const float *n_unit) {
 
   float SL, SR;
   float vhalf;
@@ -202,8 +202,8 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
  * @brief Solve the vacuum Riemann problem and return the fluxes
  */
 __attribute__((always_inline)) INLINE static void riemann_solve_vacuum_flux(
-    const float* WL, const float* WR, float vL, float vR, float aL, float aR,
-    const float* n_unit, const float* vij, float* totflux) {
+    const float *WL, const float *WR, float vL, float vR, float aL, float aR,
+    const float *n_unit, const float *vij, float *totflux) {
 
   float Whalf[5];
   float flux[5][3];

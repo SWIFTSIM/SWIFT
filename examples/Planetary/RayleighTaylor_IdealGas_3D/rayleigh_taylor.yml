@@ -43,3 +43,7 @@ EoS:
     
 ConstantPotential:
     g_cgs: [0, -0.5, 0]
+
+BoundaryParticles:
+    boundary_particle_max_id:        20992 # Particles with ID <= boundary_particle_max_id are treated as boundary particles.
+    enable_fixed_position:           1     # Whether or not boundary particles are fixed in place.

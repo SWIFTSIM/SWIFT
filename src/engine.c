@@ -136,7 +136,8 @@ const char *engine_policy_names[] = {"none",
                                      "rt",
                                      "power spectra",
                                      "moving mesh",
-                                     "moving mesh hydro"};
+                                     "moving mesh hydro",
+                                     "no_io"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
@@ -1579,6 +1580,7 @@ int engine_prepare(struct engine *e) {
   const ticks tic = getticks();
 
   int drifted_all = 0;
+  int ran_fof_for_seeding = 0;
   int repartitioned = 0;
 
   /* Unskip active tasks and check for rebuild */
@@ -1600,12 +1602,16 @@ int engine_prepare(struct engine *e) {
   if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
       e->run_fof && e->fof_properties->seed_black_holes_enabled) {
 
-    /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    /* Let's start by drifting everybody to the current time.
+     * Do not initialise the particles as we need their drifted
+     * properties for th FOF (BH seeding in particular) */
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/0);
     drifted_all = 1;
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
+
+    ran_fof_for_seeding = 1;
 
     if (e->dump_catalogue_when_seeding) e->snapshot_output_count++;
   }
@@ -1615,7 +1621,8 @@ int engine_prepare(struct engine *e) {
   if (!e->restarting && e->forcerebuild && !e->forcerepart && e->step > 1) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     engine_split_gas_particles(e);
@@ -1625,7 +1632,7 @@ int engine_prepare(struct engine *e) {
   if (e->forcerepart) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e, /*drift_mpole=*/0);
+    engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
     drifted_all = 1;
 
     /* Free the PM grid */
@@ -1645,12 +1652,19 @@ int engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!e->restarting && !drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     drifted_all = 1;
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
+  }
+
+  if (ran_fof_for_seeding) {
+
+    /* Now, we can init all the active particles to prepare them for the step */
+    engine_init_all_particles(e);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1940,6 +1954,33 @@ void engine_first_init_particles(struct engine *e) {
 }
 
 /**
+ * @brief Call the initialisation on all local particles.
+ *
+ * @param e The #engine.
+ */
+void engine_init_all_particles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  /* Set the particles in a state where they are ready for time-step
+   * Note that a drift *MUST* have been run. */
+  for (int i = 0; i < e->s->nr_local_cells; ++i) {
+    struct cell *c = &e->s->cells_top[e->s->local_cells_top[i]];
+
+    /* Initialise each type */
+    cell_init_part(c, e);
+    cell_init_gpart(c, e);
+    cell_init_spart(c, e);
+    cell_init_bpart(c, e);
+    cell_init_sink(c, e);
+  }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
  * @brief Compute the maximal ID of any #part in the run.
  *
  * @param e The #engine.
@@ -1965,7 +2006,7 @@ void engine_synchronize_times(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  const ticks tic = getticks();
+  const ticks tic_start = getticks();
 
   /* Collect which top-level cells have been updated */
   MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
@@ -1984,7 +2025,7 @@ void engine_synchronize_times(struct engine *e) {
 
   if (e->verbose)
     message("Gathering and activating tend took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+            clocks_from_ticks(getticks() - tic_start), clocks_getunit());
 
   TIMER_TIC;
   engine_launch(e, "tend");
@@ -2266,6 +2307,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       (e->policy & engine_policy_temperature))
     cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
                    e->cooling_func, e->s, e->time);
+
+  /* Update the forcing terms */
+  forcing_update(e->forcing_terms, e->time_old);
 
   if (e->policy & engine_policy_rt)
     rt_props_update(e->rt_props, e->internal_units, e->cosmology);
@@ -2681,7 +2725,8 @@ int engine_step(struct engine *e) {
   e->ti_current_subcycle = e->ti_end_min;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
+  if (e->restarting)
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -2722,6 +2767,9 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Update the forcing terms */
+  forcing_update(e->forcing_terms, e->time_old);
 
   /* Update the rt properties */
   if (e->policy & engine_policy_rt)
@@ -2810,7 +2858,7 @@ int engine_step(struct engine *e) {
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
-    engine_drift_all(e, /*drift_mpole=*/1);
+    engine_drift_all(e, /*drift_mpole=*/1, /*init_particles=*/1);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
@@ -2889,7 +2937,8 @@ int engine_step(struct engine *e) {
       e->mesh->ti_end_mesh_next == e->ti_current) {
 
     /* We might need to drift things */
-    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all)
+      engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/1);
 
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
@@ -3422,7 +3471,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
-    const struct forcing_terms *forcing_terms,
+    struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -3477,6 +3526,10 @@ void engine_init(
     parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
                                   num_snapshot_triggers_bpart,
                                   e->snapshot_recording_triggers_desired_bpart);
+  if (num_snapshot_triggers_sink)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_sink",
+                                  num_snapshot_triggers_sink,
+                                  e->snapshot_recording_triggers_desired_sink);
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =
@@ -3725,7 +3778,7 @@ void engine_print_policy(struct engine *e) {
   if (e->nodeID == 0) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
-    for (int k = 0; k <= engine_maxpolicy; k++)
+    for (int k = 0; k < engine_maxpolicy; k++)
       if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
@@ -3733,7 +3786,7 @@ void engine_print_policy(struct engine *e) {
 #else
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
-  for (int k = 0; k <= engine_maxpolicy; k++)
+  for (int k = 0; k < engine_maxpolicy; k++)
     if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
@@ -4022,6 +4075,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
     free((void *)e->neutrino_properties);
+    free((void *)e->neutrino_response);
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);
@@ -4105,7 +4159,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_dump(e->lightcone_array_properties, stream);
+#endif
   ic_info_struct_dump(e->ics_metadata, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
@@ -4282,9 +4338,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->los_properties = los_properties;
 
   struct lightcone_array_props *lightcone_array_properties =
-      (struct lightcone_array_props *)malloc(
-          sizeof(struct lightcone_array_props));
+      (struct lightcone_array_props *)calloc(
+          1, sizeof(struct lightcone_array_props));
+#ifdef WITH_LIGHTCONE
   lightcone_array_struct_restore(lightcone_array_properties, stream);
+#endif
   e->lightcone_array_properties = lightcone_array_properties;
 
   struct ic_info *ics_metadata =

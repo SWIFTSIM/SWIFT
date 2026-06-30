@@ -104,9 +104,9 @@ struct external_potential {
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float external_gravity_timestep(
-    double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const,
-    const struct gpart* restrict g) {
+    double time, const struct external_potential *restrict potential,
+    const struct phys_const *restrict phys_const,
+    const struct gpart *restrict g) {
 
   /* initilize time step to disc dynamical time */
   const float dt_dyn = potential->dynamical_time;
@@ -166,8 +166,8 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
-    double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const, struct gpart* restrict g) {
+    double time, const struct external_potential *restrict potential,
+    const struct phys_const *restrict phys_const, struct gpart *restrict g) {
 
   const float dx = g->x[0] - potential->x_disc;
   const float abs_dx = fabsf(dx);
@@ -227,8 +227,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    double time, const struct external_potential* potential,
-    const struct phys_const* const phys_const, const struct gpart* gp) {
+    double time, const struct external_potential *potential,
+    const struct phys_const *const phys_const, const struct gpart *gp) {
 
   const float dx = gp->x[0] - potential->x_disc;
   const float abs_dx = fabsf(dx);
@@ -275,9 +275,9 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    struct swift_params* parameter_file, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct space* s,
-    struct external_potential* potential) {
+    struct swift_params *parameter_file, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct space *s,
+    struct external_potential *potential) {
 
   potential->surface_density = parser_get_param_double(
       parameter_file, "DiscPatchPotential:surface_density");
@@ -332,7 +332,7 @@ static INLINE void potential_init_backend(
  * @param  potential The external potential properties.
  */
 static INLINE void potential_print_backend(
-    const struct external_potential* potential) {
+    const struct external_potential *potential) {
 
   message(
       "External potential is 'Disk-patch' with Sigma=%f, x_disc=%f, b=%f and "

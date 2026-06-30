@@ -37,15 +37,37 @@
  */
 
 __attribute__((always_inline)) INLINE void
-sink_set_sink_birth_time_or_scale_factor(struct sink* restrict sink,
+sink_set_sink_birth_time_or_scale_factor(struct sink *restrict sink,
                                          const float birth_time,
                                          const float birth_scale_factor,
                                          const int with_cosmology) {
   if (with_cosmology) {
-    sink->birth_scale_factor = birth_scale_factor;
+    sink->birth_data.scale_factor = birth_scale_factor;
   } else {
-    sink->birth_time = birth_time;
+    sink->birth_data.time = birth_time;
   }
+}
+
+/**
+ * @brief Set the birth density of a sink particle.
+ *
+ * @param sink The #sink.
+ * @param birth_density Birth density of the star.
+ */
+__attribute__((always_inline)) INLINE void sink_set_sink_birth_density(
+    struct sink *restrict sink, const float birth_density) {
+  sink->birth_data.density = birth_density;
+}
+
+/**
+ * @brief Set the birth temperature of a sink particle.
+ *
+ * @param sink The #sink.
+ * @param birth_temperature Birth temperature of the sink.
+ */
+__attribute__((always_inline)) INLINE void sink_set_sink_birth_temperature(
+    struct sink *restrict sink, const float birth_temperature) {
+  sink->birth_data.temperature = birth_temperature;
 }
 
 /**
@@ -57,15 +79,15 @@ sink_set_sink_birth_time_or_scale_factor(struct sink* restrict sink,
  * @param e The #engine
  * @param star_counter The star loop counter.
  */
-INLINE static void sink_update_target_mass(struct sink* sink,
-                                           const struct sink_props* sink_props,
-                                           const struct engine* e,
+INLINE static void sink_update_target_mass(struct sink *sink,
+                                           const struct sink_props *sink_props,
+                                           const struct engine *e,
                                            int star_counter) {
 
   float random_number = random_unit_interval_part_ID_and_index(
       sink->id, star_counter, e->ti_current, random_number_sink_formation);
 
-  const struct feedback_props* feedback_props = e->feedback_props;
+  const struct feedback_props *feedback_props = e->feedback_props;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metal =
@@ -74,7 +96,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
 
   /* If metal < threshold, then the sink generates first star particles. */
   const int is_first_star = metal < threshold;
-  const struct stellar_model* model;
+  const struct stellar_model *model;
   double minimal_discrete_mass_Msun;
 
   /* Take the correct values if your are a first star or not. */
@@ -87,7 +109,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
         sink_props->minimal_discrete_mass_first_stars_Msun;
   }
 
-  const struct initial_mass_function* imf = &model->imf;
+  const struct initial_mass_function *imf = &model->imf;
 
   if (random_number < imf->sink_Pc) {
     /* We are dealing with the continous part of the IMF. */

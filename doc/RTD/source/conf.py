@@ -19,13 +19,13 @@
 # -- Project information -----------------------------------------------------
 
 project = "SWIFT: SPH With Inter-dependent Fine-grained Tasking"
-copyright = "2014-2023, SWIFT Collaboration"
+copyright = "2014-2026, SWIFT Collaboration"
 author = "SWIFT Team"
 
 # The short X.Y version
-version = "2025.04"
+version = "2026.01"
 # The full version, including alpha/beta/rc tags
-release = "2025.04"
+release = "2026.01"
 
 # -- Find additional scripts to run as part of the documentation build -------
 import glob

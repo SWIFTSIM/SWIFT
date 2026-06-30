@@ -20,7 +20,7 @@
 #define SWIFT_COOLING_PS2020_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void cooling_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+    const struct part *p, const struct xpart *xp) {
 
   warning("[PID%lld] cooling_part_data:", p->id);
   warning("[PID%lld] subgrid_temp=%.3e, subgrid_dens=%.3e", p->id,

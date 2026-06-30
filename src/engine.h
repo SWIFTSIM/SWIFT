@@ -91,8 +91,9 @@ enum engine_policy {
   engine_policy_power_spectra = (1 << 27),
   engine_policy_grid = (1 << 28),
   engine_policy_grid_hydro = (1 << 29),
+  engine_policy_no_io = (1 << 30),
 };
-#define engine_maxpolicy 30
+#define engine_maxpolicy 31
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -375,6 +376,10 @@ struct engine {
   double snapshot_recording_triggers_desired_bpart[num_snapshot_triggers_bpart];
   int snapshot_recording_triggers_started_bpart[num_snapshot_triggers_bpart];
 
+  double snapshot_recording_triggers_sink[num_snapshot_triggers_sink];
+  double snapshot_recording_triggers_desired_sink[num_snapshot_triggers_sink];
+  int snapshot_recording_triggers_started_sink[num_snapshot_triggers_sink];
+
   /* Metadata from the ICs */
   struct ic_info *ics_metadata;
 
@@ -546,7 +551,7 @@ struct engine {
   const struct external_potential *external_potential;
 
   /* Properties of the hydrodynamics forcing terms */
-  const struct forcing_terms *forcing_terms;
+  struct forcing_terms *forcing_terms;
 
   /* Properties of the cooling scheme */
   struct cooling_function_data *cooling_func;
@@ -703,7 +708,9 @@ void engine_compute_next_ps_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_unskip_rt_sub_cycle(struct engine *e);
-void engine_drift_all(struct engine *e, const int drift_mpoles);
+void engine_drift_all(struct engine *e, const int drift_mpoles,
+                      const int init_particles);
+void engine_init_all_particles(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_allocate_foreign_particles(struct engine *e, const int fof);
@@ -733,7 +740,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
-    const struct forcing_terms *forcing_terms,
+    struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -749,6 +756,7 @@ void engine_config(int restart, int fof, struct engine *e,
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
 void engine_run_rt_sub_cycles(struct engine *e);
+void engine_first_init_particles(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
 int engine_step(struct engine *e);
@@ -764,6 +772,14 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
+void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
+                      const int proxy_type);
+void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
+                               const struct cell *cj, const int nodeID);
+int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
+                          const int i, const int j, const int k,
+                          const struct cell *cj, const int ii, const int jj,
+                          const int kk, const double r_max);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);

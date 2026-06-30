@@ -179,7 +179,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
         /* Do the kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
                   dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
-                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
+                  entropy_floor, e->chemistry, ti_begin, ti_end, ti_begin_mesh,
+                  ti_end_mesh);
 
         /* Update the accelerations to be used in the drift for hydro */
         if (p->gpart != NULL) {
@@ -453,7 +454,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
                   dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
-                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
+                  entropy_floor, e->chemistry, ti_begin, ti_end, ti_begin_mesh,
+                  ti_end_mesh);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -1097,6 +1099,78 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
           /* What is the next starting point for this cell ? */
           ti_black_holes_beg_max = max(ti_beg, ti_black_holes_beg_max);
+          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+        }
+      }
+    }
+
+    /* Loop over the sink particles in this cell. */
+    for (int k = 0; k < sink_count; k++) {
+
+      /* Get a handle on the part. */
+      struct sink *restrict sink = &sinks[k];
+
+      /* need to be updated ? */
+      if (sink_is_active(sink, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Current end of time-step */
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, sink->time_bin);
+
+        if (ti_end != ti_current)
+          error("Computing time-step of rogue particle.");
+#endif
+        /* Old time-step length in physical units */
+        const integertime_t ti_old_step = get_integer_timestep(sink->time_bin);
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current - ti_old_step, e->ti_current);
+        } else {
+          old_time_step_length = get_timestep(sink->time_bin, e->time_base);
+        }
+
+        /* Get new time-step */
+        const integertime_t ti_new_step = get_sink_timestep(sink, e);
+
+        /* Update particle */
+        sink->time_bin = get_time_bin(ti_new_step);
+        sink->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Update the tracers properties */
+        tracers_after_timestep_sink(
+            sink, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, old_time_step_length,
+            e->snapshot_recording_triggers_started_sink);
+
+        /* Number of updated sink-particles */
+        sink_updated++;
+        g_updated++;
+
+        ti_sinks_end_min = min(ti_current + ti_new_step, ti_sinks_end_min);
+        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+
+        /* What is the next starting point for this cell ? */
+        ti_sinks_beg_max = max(ti_current, ti_sinks_beg_max);
+        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+
+        /* star particle is inactive but not inhibited */
+      } else {
+
+        if (!sink_is_inhibited(sink, e)) {
+
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, sink->time_bin);
+
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, sink->time_bin);
+
+          ti_sinks_end_min = min(ti_end, ti_sinks_end_min);
+          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+
+          /* What is the next starting point for this cell ? */
+          ti_sinks_beg_max = max(ti_beg, ti_sinks_beg_max);
           ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
         }
       }

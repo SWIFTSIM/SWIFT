@@ -29,8 +29,8 @@
  * @param list The list of i/o properties to read.
  * @returns num_fields The number of i/o fields readed.
  */
-INLINE static int mhd_read_particles(struct part* parts,
-                                     struct io_props* list) {
+INLINE static int mhd_read_particles(struct part *parts,
+                                     struct io_props *list) {
 
   return 0;
 }
@@ -43,9 +43,9 @@ INLINE static int mhd_read_particles(struct part* parts,
  * @param list The list of i/o properties to write.
  * @return The number of i/o fields to write.
  */
-INLINE static int mhd_write_particles(const struct part* parts,
-                                      const struct xpart* xparts,
-                                      struct io_props* list) {
+INLINE static int mhd_write_particles(const struct part *parts,
+                                      const struct xpart *xparts,
+                                      struct io_props *list) {
 
   return 0;
 }

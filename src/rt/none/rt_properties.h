@@ -37,7 +37,7 @@ struct rt_props {};
  * @param rtp The #rt_props
  */
 __attribute__((always_inline)) INLINE static void rt_props_print(
-    const struct rt_props* rtp) {
+    const struct rt_props *rtp) {
 
   /* Only the master print */
   if (engine_rank != 0) return;
@@ -55,13 +55,13 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void rt_props_init(
-    struct rt_props* rtp, const struct phys_const* phys_const,
-    const struct unit_system* us, struct swift_params* params,
-    struct cosmology* cosmo) {}
+    struct rt_props *rtp, const struct phys_const *phys_const,
+    const struct unit_system *us, struct swift_params *params,
+    struct cosmology *cosmo) {}
 
 __attribute__((always_inline)) INLINE static void rt_props_update(
-    struct rt_props* rtp, const struct unit_system* us,
-    struct cosmology* cosmo) {}
+    struct rt_props *rtp, const struct unit_system *us,
+    struct cosmology *cosmo) {}
 
 /**
  * @brief Write an RT properties struct to the given FILE as a
@@ -71,9 +71,9 @@ __attribute__((always_inline)) INLINE static void rt_props_update(
  * @param stream the file stream
  */
 __attribute__((always_inline)) INLINE static void rt_struct_dump(
-    const struct rt_props* props, FILE* stream) {
+    const struct rt_props *props, FILE *stream) {
 
-  restart_write_blocks((void*)props, sizeof(struct rt_props), 1, stream,
+  restart_write_blocks((void *)props, sizeof(struct rt_props), 1, stream,
                        "RT props", "RT properties struct");
 }
 
@@ -87,10 +87,10 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
  * @param us The internal unit system.
  */
 __attribute__((always_inline)) INLINE static void rt_struct_restore(
-    struct rt_props* props, FILE* stream, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct cosmology* restrict cosmo) {
+    struct rt_props *props, FILE *stream, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cosmology *restrict cosmo) {
 
-  restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
+  restart_read_blocks((void *)props, sizeof(struct rt_props), 1, stream, NULL,
                       "RT properties struct");
 }
 

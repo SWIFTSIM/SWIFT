@@ -80,8 +80,8 @@ rt_get_emission_this_step_IlievTest(
     double emission_this_step[RT_NGROUPS], float M, const double dt,
     const double photon_number_integral[RT_NGROUPS],
     const double average_photon_energy[RT_NGROUPS],
-    const struct phys_const* phys_const,
-    const struct unit_system* internal_units) {
+    const struct phys_const *phys_const,
+    const struct unit_system *internal_units) {
 
   /* Note that this model uses the halo mass to determine the luminosity
    * of a source. I'm cheating the system here by storing the required halo

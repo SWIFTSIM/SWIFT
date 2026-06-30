@@ -177,7 +177,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Compute the next timestep (forcing terms condition) */
   const float new_dt_forcing = forcing_terms_timestep(
-      e->time, e->forcing_terms, e->physical_constants, p, xp);
+      e->time, e->forcing_terms, e->s, e->physical_constants, p, xp);
 
   /* Compute the next timestep (chemistry condition, e.g. diffusion) */
   const float new_dt_chemistry =
@@ -305,8 +305,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
 
   /* Stellar time-step */
   float new_dt_stars = stars_compute_timestep(
-      sp, e->stars_properties, (e->policy & engine_policy_cosmology),
-      e->cosmology, e->time);
+      sp, e->stars_properties, e->feedback_props, e->physical_constants,
+      e->internal_units, (e->policy & engine_policy_cosmology), e->cosmology,
+      e->ti_current, e->time, e->time_base);
 
   /* Gravity time-step */
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
