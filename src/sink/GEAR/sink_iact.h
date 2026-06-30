@@ -200,7 +200,12 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
                                   const float hi, const float hj,
                                   struct sink *restrict si,
                                   struct sink *restrict sj,
-                                  const struct gravity_props *grav_props) {
+                                  const struct gravity_props *grav_props,
+                                  const struct sink_props *sink_properties) {
+
+  /* Convert the smoothing length back into a cutoff radius */
+  const float hig = hi * kernel_gamma;
+  const float f_acc_r_acc = sink_properties->f_acc * hig;
 
   /* Neighbour's (drifted) velocity in the frame of the sink i
    * (we don't include a Hubble term since we are interested in the
@@ -210,7 +215,7 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
   const float dv_norm = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
 
   /* Get the gravitional softening */
-  const float eps = sink_get_softening(si, grav_props);
+  const float eps = f_acc_r_acc;
   const float eps2 = eps * eps;
   const float eps_inv = 1.f / eps;
   const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -283,7 +288,8 @@ runner_iact_nonsym_sinks_sink_swallow(
      they are both dead, we do not want to restrict the timesteps for 2-body
      encounters since they won't merge. */
   if (!si_is_dead || !sj_is_dead) {
-    sink_collect_properties_from_sink(r2, dx, hi, hj, si, sj, grav_props);
+    sink_collect_properties_from_sink(r2, dx, hi, hj, si, sj, grav_props,
+                                      sink_properties);
   }
 
   /* If si is dead, do not swallow sj. However, sj can swallow si if it alive.
@@ -354,7 +360,7 @@ runner_iact_nonsym_sinks_sink_swallow(
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
-    const float eps = sink_get_softening(si, grav_props);
+    const float eps = f_acc_r_acc_i;
     const float eps2 = eps * eps;
     const float eps_inv = 1.f / eps;
     const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -539,8 +545,9 @@ runner_iact_nonsym_sinks_gas_swallow(
     float E_kin_relative_gas = 0.5f * dv_physical_squared;
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
-       gas particle */
-    const float eps = sink_get_softening(si, grav_props);
+       gas particle. Use the f_acc*r_acc scale for the softening. This ensures
+       the potential is deep enough outside f_acc*r_acc. */
+    const float eps = f_acc_r_acc;
     const float eps2 = eps * eps;
     const float eps_inv = 1.f / eps;
     const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -563,7 +570,9 @@ runner_iact_nonsym_sinks_gas_swallow(
     const float E_mec_sink_part = E_kin_relative_gas + E_pot_gas + E_therm;
 
     /* To be accreted, the gas must be gravitationally bound to the sink. */
-    if (E_mec_sink_part >= 0) return;
+    if (E_mec_sink_part >= 0.0) {
+      return;
+    }
 
     /* To be accreted, the gas smoothing length must be smaller than the sink
        smoothing length. This is similar to AMR codes requesting the maximum
