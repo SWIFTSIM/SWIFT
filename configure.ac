@@ -2956,6 +2956,8 @@ case "$with_sink" in
     ;;
    GEAR)
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
+    AC_DEFINE_UNQUOTED([SINKS_WITH_FIXED_CUTOFF_RADIUS], [1], [Does this model
+   defines a fixed cutoff radius `cut_off_radius`?])
     ;;
     *)
       AC_MSG_ERROR([Unknown sink particle model model: $with_sink])

@@ -159,6 +159,13 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
 
+#ifdef SINKS_WITH_FIXED_CUTOFF_RADIUS
+  const struct sink_props *sink_properties = e->sink_properties;
+  const float sink_cut_off_radius = sink_properties->cut_off_radius;
+#else
+  const float sink_cut_off_radius = -1;
+#endif
+
 #ifdef WITH_LIKWID
   swift_likwid_marker_start_region("runner_main");
 #endif
@@ -228,7 +235,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_density) {
             runner_dosub_self1_density(r, ci, /*below_h_max=*/0, 1);
             runner_dosub_self1_hydro_sinks_formation(
-                r, ci, r->e->sink_properties->cut_off_radius, /*gettimer=*/1);
+                r, ci, sink_cut_off_radius, /*gettimer=*/1);
           }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
@@ -290,7 +297,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_density) {
             runner_dosub_pair1_density(r, ci, cj, /*below_h_max=*/0, 1);
             runner_dosub_pair1_hydro_sinks_formation(
-                r, ci, cj, r->e->sink_properties->cut_off_radius,
+                r, ci, cj, sink_cut_off_radius,
                 /*gettimer=*/1);
           }
 #ifdef EXTRA_HYDRO_LOOP
