@@ -66,9 +66,9 @@ divB = sim["/PartType0/MagneticDivergences"][:]
 h = sim["/PartType0/SmoothingLengths"][:]
 
 r = np.sqrt((x - 1) ** 2 + (y - 1) ** 2 + (z - 1) ** 2)
-v = -np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
-Bnorm = np.sqrt(Bx ** 2 + By ** 2 + Bz ** 2)
-Pmag = 0.5 * Bnorm ** 2
+v = -np.sqrt(vx**2 + vy**2 + vz**2)
+Bnorm = np.sqrt(Bx**2 + By**2 + Bz**2)
+Pmag = 0.5 * Bnorm**2
 err = np.log10(abs(divB * h / Bnorm))
 
 # Bin the data
@@ -81,22 +81,20 @@ Pmag_bin, _, _ = stats.binned_statistic(r, Pmag, statistic="mean", bins=r_bin_ed
 S_bin, _, _ = stats.binned_statistic(r, S, statistic="mean", bins=r_bin_edge)
 u_bin, _, _ = stats.binned_statistic(r, u, statistic="mean", bins=r_bin_edge)
 err_bin, _, _ = stats.binned_statistic(r, err, statistic="mean", bins=r_bin_edge)
-rho2_bin, _, _ = stats.binned_statistic(r, rho ** 2, statistic="mean", bins=r_bin_edge)
-v2_bin, _, _ = stats.binned_statistic(r, v ** 2, statistic="mean", bins=r_bin_edge)
-P2_bin, _, _ = stats.binned_statistic(r, P ** 2, statistic="mean", bins=r_bin_edge)
-Pmag2_bin, _, _ = stats.binned_statistic(
-    r, Pmag ** 2, statistic="mean", bins=r_bin_edge
-)
-S2_bin, _, _ = stats.binned_statistic(r, S ** 2, statistic="mean", bins=r_bin_edge)
-u2_bin, _, _ = stats.binned_statistic(r, u ** 2, statistic="mean", bins=r_bin_edge)
-err2_bin, _, _ = stats.binned_statistic(r, err ** 2, statistic="mean", bins=r_bin_edge)
-rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
-v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
-P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
-Pmag_sigma_bin = np.sqrt(Pmag2_bin - Pmag_bin ** 2)
-S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
-u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
-err_sigma_bin = np.sqrt(err2_bin - err_bin ** 2)
+rho2_bin, _, _ = stats.binned_statistic(r, rho**2, statistic="mean", bins=r_bin_edge)
+v2_bin, _, _ = stats.binned_statistic(r, v**2, statistic="mean", bins=r_bin_edge)
+P2_bin, _, _ = stats.binned_statistic(r, P**2, statistic="mean", bins=r_bin_edge)
+Pmag2_bin, _, _ = stats.binned_statistic(r, Pmag**2, statistic="mean", bins=r_bin_edge)
+S2_bin, _, _ = stats.binned_statistic(r, S**2, statistic="mean", bins=r_bin_edge)
+u2_bin, _, _ = stats.binned_statistic(r, u**2, statistic="mean", bins=r_bin_edge)
+err2_bin, _, _ = stats.binned_statistic(r, err**2, statistic="mean", bins=r_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+Pmag_sigma_bin = np.sqrt(Pmag2_bin - Pmag_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
+err_sigma_bin = np.sqrt(err2_bin - err_bin**2)
 
 
 # Analytic solution
@@ -114,9 +112,7 @@ rs = us * time
 
 # Post-shock values
 rho_s[np.abs(x_s) < rs] = rho0 * ((gas_gamma + 1) / (gas_gamma - 1)) ** 3
-P_s[np.abs(x_s) < rs] = (
-    0.5 * rho0 * v0 ** 2 * (gas_gamma + 1) ** 3 / (gas_gamma - 1) ** 2
-)
+P_s[np.abs(x_s) < rs] = 0.5 * rho0 * v0**2 * (gas_gamma + 1) ** 3 / (gas_gamma - 1) ** 2
 v_s[np.abs(x_s) < rs] = 0.0
 
 # Pre-shock values
@@ -127,7 +123,7 @@ v_s[x_s <= -rs] = v0
 
 # Additional arrays
 u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
-s_s = P_s / rho_s ** gas_gamma  # entropic function
+s_s = P_s / rho_s**gas_gamma  # entropic function
 
 # Plot the interesting quantities
 plt.figure(figsize=(7, 7 / 1.6))

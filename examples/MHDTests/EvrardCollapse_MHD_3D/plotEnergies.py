@@ -29,9 +29,9 @@ for snap in range(snaps):
     rho = sim["/PartType0/Densities"][:]
     phi = sim["/PartType0/Potentials"][:]
 
-    e_kin_i = 0.5 * (vx ** 2 + vy ** 2 + vz ** 2)
+    e_kin_i = 0.5 * (vx**2 + vy**2 + vz**2)
     e_therm_i = u
-    e_mag_i = 0.5 * (Bx ** 2 + By ** 2 + Bz ** 2) / rho
+    e_mag_i = 0.5 * (Bx**2 + By**2 + Bz**2) / rho
     e_grav_i = phi
 
     e_kin[snap] = np.sum(e_kin_i)

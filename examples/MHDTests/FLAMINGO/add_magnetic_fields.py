@@ -18,7 +18,7 @@ B0 = 0.01
 fileInputName = sys.argv[1]
 fileOutputName = sys.argv[2]
 
-# Read in relevant information                                                                                                                                               
+# Read in relevant information
 infile = h5py.File(fileInputName, "r")
 head = infile["/Header"]
 N_in = head.attrs["NumPart_Total"][0]
@@ -26,7 +26,7 @@ infile.close()
 
 # Set magnetic field
 B = np.zeros((N_in, 3))
-B[:,2] = B0
+B[:, 2] = B0
 
 os.system("cp " + fileInputName + " " + fileOutputName)
 

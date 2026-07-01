@@ -314,7 +314,7 @@ def solve_MHD_Riemann_problem(riemann_problem_dict, verbose=True):
         # convert from comoving to physical coordinates
         prim = get_primitives(gamma, states)
         a = a_from_t(0.0)
-        prim["rho"] /= a ** 3
+        prim["rho"] /= a**3
         prim["u"] /= a
         prim["v"] /= a
         prim["w"] /= a
@@ -324,9 +324,9 @@ def solve_MHD_Riemann_problem(riemann_problem_dict, verbose=True):
         prim["w"] -= H_0 * xs * a
         """
         prim["p"] /= a ** (3 * gamma)
-        prim["Bx"] /= a ** 2
-        prim["By"] /= a ** 2
-        prim["Bz"] /= a ** 2
+        prim["Bx"] /= a**2
+        prim["By"] /= a**2
+        prim["Bz"] /= a**2
         states = get_states(gamma, prim)
 
     # time integration loop
@@ -348,7 +348,7 @@ def solve_MHD_Riemann_problem(riemann_problem_dict, verbose=True):
             a = a_from_t(istep * dt)
             stepdx = dx * a
             # use actual time rather than rescaled time for the integration
-            stepdt = dt * a ** 2
+            stepdt = dt * a**2
         else:
             stepdx = dx
             stepdt = dt
@@ -356,7 +356,7 @@ def solve_MHD_Riemann_problem(riemann_problem_dict, verbose=True):
         dtmax = 0.8 * stepdx / vmax
         if comoving:
             # convert the maximum dt to rescaled time
-            dtmax /= a ** 2
+            dtmax /= a**2
         if verbose:
             print(f"step {istep+1} out of {Nstep}, dtmax: {dtmax}", end="\r")
         if dtmax < dt:
@@ -393,7 +393,7 @@ def solve_MHD_Riemann_problem(riemann_problem_dict, verbose=True):
     if comoving:
         # convert back to co-moving variables
         a = a_from_t(Nstep * dt)
-        primitives["rho"] *= a ** 3
+        primitives["rho"] *= a**3
         primitives["u"] *= a
         primitives["v"] *= a
         primitives["w"] *= a
@@ -403,9 +403,9 @@ def solve_MHD_Riemann_problem(riemann_problem_dict, verbose=True):
         primitives["w"] += H_0 * xs * a
         """
         primitives["p"] *= a ** (3 * gamma)
-        primitives["Bx"] *= a ** 2
-        primitives["By"] *= a ** 2
-        primitives["Bz"] *= a ** 2
+        primitives["Bx"] *= a**2
+        primitives["By"] *= a**2
+        primitives["Bz"] *= a**2
 
     return xs, primitives
 

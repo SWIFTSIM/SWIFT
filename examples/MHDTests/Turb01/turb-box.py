@@ -8,7 +8,6 @@ from libs.const import G, msol, parsec
 from libs.utils import save_particles
 from libs.options_parser import OptionsParser
 
-
 if __name__ == "__main__":
 
     op = OptionsParser()

@@ -106,13 +106,11 @@ h_in = h_in / cx_in
 
 vol = lx * ly * lz
 
-pos_out_f = pos_out[
-    (pos_out[:, 0] - lx_c) ** 2 + (pos_out[:, 1] - ly_c) ** 2 > r_in ** 2
-]
-pos_in_f = pos_in[(pos_in[:, 0] - lx_c) ** 2 + (pos_in[:, 1] - ly_c) ** 2 < r_in ** 2]
+pos_out_f = pos_out[(pos_out[:, 0] - lx_c) ** 2 + (pos_out[:, 1] - ly_c) ** 2 > r_in**2]
+pos_in_f = pos_in[(pos_in[:, 0] - lx_c) ** 2 + (pos_in[:, 1] - ly_c) ** 2 < r_in**2]
 
-h_out_f = h_out[(pos_out[:, 0] - lx_c) ** 2 + (pos_out[:, 1] - ly_c) ** 2 > r_in ** 2]
-h_in_f = h_in[(pos_in[:, 0] - lx_c) ** 2 + (pos_in[:, 1] - ly_c) ** 2 < r_in ** 2]
+h_out_f = h_out[(pos_out[:, 0] - lx_c) ** 2 + (pos_out[:, 1] - ly_c) ** 2 > r_in**2]
+h_in_f = h_in[(pos_in[:, 0] - lx_c) ** 2 + (pos_in[:, 1] - ly_c) ** 2 < r_in**2]
 h_in_f = h_in_f[pos_in_f[:, 2] < lz]
 
 pos_in_f = pos_in_f[pos_in_f[:, 2] < lz]

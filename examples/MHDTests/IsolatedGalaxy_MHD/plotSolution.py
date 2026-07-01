@@ -30,9 +30,9 @@ neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
 
 
 # Constants
-G = 6.67430e-11 * unyt.m ** 3 / unyt.kg / unyt.s ** 2  # 6.67430e-8
-G = G.to(unyt.cm ** 3 / unyt.g / unyt.s ** 2)
-mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.statA ** 2)
+G = 6.67430e-11 * unyt.m**3 / unyt.kg / unyt.s**2  # 6.67430e-8
+G = G.to(unyt.cm**3 / unyt.g / unyt.s**2)
+mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s**2 * unyt.statA**2)
 
 # First create a mass-weighted temperature dataset
 r = data.gas.coordinates - center
@@ -54,7 +54,7 @@ print("Number of particles %E" % len(data.gas.masses))
 print("Total mass %E Msol" % np.sum(data.gas.masses.to(unyt.Msun).value))
 print("Gas particle mass %E Msol" % np.mean(data.gas.masses.to(unyt.Msun).value))
 
-plasmaBeta = data.gas.pressures / (normB ** 2 / (2 * mu0))
+plasmaBeta = data.gas.pressures / (normB**2 / (2 * mu0))
 
 data.gas.mass_weighted_densities = data.gas.masses * data.gas.densities
 data.gas.mass_weighted_error = data.gas.masses * np.log10(
@@ -334,7 +334,7 @@ vy_map_xy = mass_weighted_vy_map_xy / mass_map_xy
 
 vx_map_xy = vx_map_xy.value
 vy_map_xy = vy_map_xy.value
-vplanenorm_map_xy = np.sqrt(vx_map_xy ** 2 + vy_map_xy ** 2)
+vplanenorm_map_xy = np.sqrt(vx_map_xy**2 + vy_map_xy**2)
 vx_map_xy /= vplanenorm_map_xy
 vy_map_xy /= vplanenorm_map_xy
 
@@ -352,7 +352,7 @@ ax[0, 1].quiver(
     color="black",
     scale=1.5 / step,
     scale_units="xy",  # Fixes the arrow length in data coordinates
-    pivot="middle"
+    pivot="middle",
     # density=1.0,
     # linewidth=0.2,
     # arrowsize=0.4,
@@ -368,7 +368,7 @@ vz_map = mass_weighted_vz_map / mass_map
 
 vx_map = vx_map.value
 vz_map = vz_map.value
-vplanenorm_map = np.sqrt(vx_map ** 2 + vz_map ** 2)
+vplanenorm_map = np.sqrt(vx_map**2 + vz_map**2)
 vx_map /= vplanenorm_map
 vz_map /= vplanenorm_map
 
@@ -387,7 +387,7 @@ ax[0, 0].quiver(
     color="black",
     scale=1.5 / step,
     scale_units="xy",  # Fixes the arrow length in data coordinates
-    pivot="middle"
+    pivot="middle",
     # density=1.0,
     # linewidth=0.2,
     # arrowsize=0.4,
@@ -404,7 +404,7 @@ By_map_xy = mass_weighted_By_map_xy / mass_map_xy
 
 Bx_map_xy = Bx_map_xy.value
 By_map_xy = By_map_xy.value
-Bplanenorm_map_xy = np.sqrt(Bx_map_xy ** 2 + By_map_xy ** 2)
+Bplanenorm_map_xy = np.sqrt(Bx_map_xy**2 + By_map_xy**2)
 Bx_map_xy /= Bplanenorm_map_xy
 By_map_xy /= Bplanenorm_map_xy
 
@@ -422,7 +422,7 @@ ax[1, 1].quiver(
     color="black",
     scale=1.5 / step,
     scale_units="xy",  # Fixes the arrow length in data coordinates
-    pivot="middle"
+    pivot="middle",
     # density=1.0,
     # linewidth=0.2,
     # arrowsize=0.4,
@@ -437,7 +437,7 @@ Bz_map = mass_weighted_Bz_map / mass_map
 
 Bx_map = Bx_map.value
 Bz_map = Bz_map.value
-Bplanenorm_map = np.sqrt(Bx_map ** 2 + Bz_map ** 2)
+Bplanenorm_map = np.sqrt(Bx_map**2 + Bz_map**2)
 Bx_map /= Bplanenorm_map
 Bz_map /= Bplanenorm_map
 
@@ -456,7 +456,7 @@ ax[1, 0].quiver(
     color="black",
     scale=1.5 / step,
     scale_units="xy",  # Fixes the arrow length in data coordinates
-    pivot="middle"
+    pivot="middle",
     # density=1.0,
     # linewidth=0.2,
     # arrowsize=0.4,
