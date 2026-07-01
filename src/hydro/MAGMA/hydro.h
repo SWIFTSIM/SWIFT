@@ -590,7 +590,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-								     struct part *p, const struct cosmology *cosmo,
+    struct part *p, const struct cosmology *cosmo,
     const struct pressure_floor_props *pressure_floor) {
 
   /* Some smoothing length multiples. */
