@@ -189,6 +189,9 @@ static INLINE void tracers_after_timestep_sink(
     const struct cosmology *cosmo, const double time_step_length,
     const int *const tracers_triggers_started) {}
 
+static INLINE void tracers_after_recording_trigger_sink(
+    struct sink *sink, const int trigger_index, const double time_to_remove) {}
+
 /**
  * @brief Initialise the tracer data at the start of a calculation.
  *

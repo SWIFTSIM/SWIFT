@@ -1563,16 +1563,10 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
           error("Invalid time to deduct! %e", time_to_remove);
 #endif
 
-        /* Note that we need to use a separate array (not the raw
-         * e->snapshot_recording_triggers_part) as we only want to
-         * update one entry */
-        int my_temp_array[num_snapshot_triggers_sink];
-        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_sink);
-        my_temp_array[i] = 1;
-
-        tracers_after_timestep_sink(
-            sink, e->internal_units, e->physical_constants, with_cosmology,
-            e->cosmology, -time_to_remove, my_temp_array);
+        /* Store -time_to_remove as a deferred correction. On the sink's
+         * next step, tracers_after_timestep_sink accumulates only the
+         * in-window fraction using a single consistent rate value. */
+        tracers_after_recording_trigger_sink(sink, i, time_to_remove);
       }
     }
   }
