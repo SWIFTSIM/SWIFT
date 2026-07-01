@@ -93,7 +93,7 @@ def parse_options():
         help="output filename",
     )
 
-    (options, args) = parser.parse_args()
+    options, args = parser.parse_args()
 
     files = args
 
@@ -122,11 +122,11 @@ UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
 np.random.seed(1)
 
 # Number of particles
-N = (2 ** opt.level) ** 3  # number of particles
+N = (2**opt.level) ** 3  # number of particles
 
 # Mean density
 rho = opt.rho  # atom/cc
-rho = rho * constants.m_p / units.cm ** 3
+rho = rho * constants.m_p / units.cm**3
 
 # Gas particle mass
 m = opt.gas_mass * units.Msun  # in solar mass
@@ -149,14 +149,14 @@ print("Number of particles                   : {}".format(N))
 m = m.to(UnitMass).value
 sm = sm.to(UnitMass).value
 L = L.to(UnitLength).value
-rho = rho.to(UnitMass / UnitLength ** 3).value
+rho = rho.to(UnitMass / UnitLength**3).value
 sigma = (opt.sigma * units.km / units.s).to(UnitVelocity).value
 
 # Generate the particles
 pos = np.random.random([N, 3]) * np.array([L, L, L])
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
-u = np.ones(N) * sigma ** 2
+u = np.ones(N) * sigma**2
 ids = np.arange(N)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
 rho = np.ones(N) * rho
@@ -177,7 +177,7 @@ sink_mass = np.array([sm])
 sink_ids = np.array([2 * ids[-1]])
 sink_h = np.array([3 * L / N ** (1 / 3.0)])
 
-gas_cs = np.sqrt(sigma ** 2 * 5.0 / 3.0 * ((5.0 / 3.0) - 1))
+gas_cs = np.sqrt(sigma**2 * 5.0 / 3.0 * ((5.0 / 3.0) - 1))
 
 sink_vel = np.zeros([NSINK, 3])
 sink_vel[:, 0] += gas_cs * opt.sink_mach

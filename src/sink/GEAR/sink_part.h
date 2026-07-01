@@ -21,6 +21,7 @@
 #define SWIFT_GEAR_SINK_PART_H
 
 #include "timeline.h"
+#include "tracers_struct.h"
 
 #define sink_need_unique_id 1
 
@@ -118,6 +119,9 @@ struct sink {
     /*! Density of the gas surrounding the sink. */
     float rho_gas;
 
+    /*! Smoothed internal_energy of the gas surrounding the sink. */
+    float internal_energy_gas;
+
     /*! Smoothed sound speed of the gas surrounding the sink. */
     float sound_speed_gas;
 
@@ -176,6 +180,9 @@ struct sink {
 
   /*! sink merger information (e.g. merging ID) */
   struct sink_sink_data merger_data;
+
+  /*! Tracer structure */
+  struct tracers_sink_data tracers_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

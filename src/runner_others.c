@@ -217,7 +217,12 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
   struct sink *restrict sinks = c->sinks.parts;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
   const struct unit_system *restrict us = e->internal_units;
+  struct cooling_function_data *restrict cooling = e->cooling_func;
+
+  const double time_base = e->time_base;
+  const integertime_t ti_current = e->ti_current;
   const int current_stars_count = c->stars.count;
 
   TIMER_TIC;
@@ -229,8 +234,12 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
   /* Anything to do here? */
   if (count == 0 || !cell_is_active_sinks(c, e)) {
+    star_formation_logger_log_inactive_cell(&c->stars.sfh);
     return;
   }
+
+  /* Reset the SFR */
+  star_formation_logger_init(&c->stars.sfh);
 
   /* Recurse? */
   if (c->split) {
@@ -241,6 +250,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
         /* Do the recursion */
         runner_do_star_formation_sink(r, cp, 0);
+
+        /* Update current cell using child cells */
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
         /* Update the h_max */
         c->stars.h_max = max(c->stars.h_max, cp->stars.h_max);
@@ -257,41 +269,44 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct sink *restrict s = &sinks[k];
+      struct sink *restrict sink = &sinks[k];
 
       /* Only work on active particles */
-      if (sink_is_active(s, e)) {
+      if (sink_is_active(sink, e)) {
 
 #ifdef WITH_CSDS
         error("TODO");
 #endif
 
         /* Update the sink properties before spwaning stars */
-        sink_update_sink_properties_before_star_formation(s, e, sink_props,
+        sink_update_sink_properties_before_star_formation(sink, e, sink_props,
                                                           phys_const);
 
         /* Spawn as many stars as necessary
            - loop counter for the random seed.
            - Start by 1 as 0 is used at init (sink_copy_properties) */
         for (int star_counter = 1; sink_spawn_star(
-                 s, e, sink_props, cosmo, with_cosmology, phys_const, us);
+                 sink, e, sink_props, cosmo, with_cosmology, phys_const, us);
              star_counter++) {
 
           /* Create a new star with a mass s->target_mass */
-          struct spart *sp = cell_spawn_new_spart_from_sink(e, c, s);
+          struct spart *sp = cell_spawn_new_spart_from_sink(e, c, sink);
           if (sp == NULL)
             error("Run out of available star particles or gparts");
 
           float displacement[3] = {0.0, 0.0, 0.0};
 
           /* Copy the properties to the star particle */
-          sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
-                                       with_cosmology, phys_const, us,
-                                       displacement);
+          sink_copy_properties_to_star(sink, sp, e, sink_props, hydro_props,
+                                       cooling, cosmo, with_cosmology,
+                                       phys_const, us, displacement);
 
           sp->x_diff[0] += displacement[0];
           sp->x_diff[1] += displacement[1];
           sp->x_diff[2] += displacement[2];
+
+          /* Update the Star formation history */
+          star_formation_logger_log_new_spart(sp, &c->stars.sfh);
 
           /* Verify that we do not have too many stars in the leaf for
            * the sort task to be able to act. */
@@ -332,15 +347,38 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
           /* Update sink properties */
           sink_update_sink_properties_during_star_formation(
-              s, sp, e, sink_props, phys_const, star_counter);
+              sink, sp, e, sink_props, phys_const, star_counter);
+
         } /* Loop over the stars to spawn */
 
         /* Update the sink after star formation */
         sink_update_sink_properties_after_star_formation(
-            s, with_cosmology, cosmo, sink_props, phys_const, e->ti_current,
+            sink, with_cosmology, cosmo, sink_props, phys_const, e->ti_current,
             e->time, e->time_base);
 
-      } /* if sink_is_active */
+        /* Time-step size for this particle */
+        double dt_star;
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(sink->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, sink->time_bin);
+
+          dt_star =
+              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+
+        } else {
+          dt_star = get_timestep(sink->time_bin, time_base);
+        }
+
+        /* Add the SFR and SFR*dt to the SFH struct of this cell */
+        star_formation_logger_log_active_sink(sink, &c->stars.sfh, dt_star);
+
+      } else { /* if sink_is_active */
+               /* Check if the particle is not inhibited */
+        if (!sink_is_inhibited(sink, e)) {
+          star_formation_logger_log_inactive_sink(sink, &c->stars.sfh);
+        }
+      }
     } /* Loop over the particles */
   }
 

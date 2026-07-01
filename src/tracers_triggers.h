@@ -38,6 +38,16 @@
 #define num_snapshot_triggers_spart 0
 #define num_snapshot_triggers_bpart 2
 #define num_snapshot_triggers_sink 0
+#elif defined(TRACERS_FLAMINGO)
+#define num_snapshot_triggers_part 0
+#define num_snapshot_triggers_spart 0
+#define num_snapshot_triggers_bpart 0
+#define num_snapshot_triggers_sink 0
+#elif defined(TRACERS_GEAR)
+#define num_snapshot_triggers_part 0
+#define num_snapshot_triggers_spart 0
+#define num_snapshot_triggers_bpart 0
+#define num_snapshot_triggers_sink 3
 #else
 #error "Invalid choice of tracers."
 #endif

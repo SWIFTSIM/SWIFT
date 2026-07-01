@@ -1,7 +1,6 @@
 import h5py as h5
 import numpy as np
 
-
 f = h5.File("bh_swallowing_serial_0001.hdf5", "r")
 f_mpi = h5.File("bh_swallowing_mpi_0001.hdf5", "r")
 f_ics = h5.File("bh_swallowing.hdf5", "r")

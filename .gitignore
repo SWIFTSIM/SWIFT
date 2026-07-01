@@ -5,6 +5,7 @@
 Makefile
 Makefile.in
 INSTALL
+config.cache
 config.guess
 config.h
 config.status
@@ -206,6 +207,7 @@ tests/testNeutrinoCosmology
 tests/testNeutrinoFermiDirac
 tests/testLog
 tests/testTimeline
+tests/testMeshGravityRebuildCheck
 tests/*.png
 tests/*.txt
 

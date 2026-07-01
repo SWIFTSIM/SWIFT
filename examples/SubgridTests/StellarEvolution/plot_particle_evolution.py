@@ -35,6 +35,7 @@ import os.path
 
 style.use("../../../tools/stylesheets/mnras.mplstyle")
 
+
 # Function to find index in array a for each element in array b
 def find_indices(a, b):
     result = np.zeros(len(b))
@@ -70,8 +71,8 @@ unit_energy_in_cgs = unit_mass_in_cgs * unit_vel_in_cgs * unit_vel_in_cgs
 unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
-unit_density_in_cgs = unit_mass_in_cgs * unit_length_in_cgs ** -3
-unit_pressure_in_cgs = unit_mass_in_cgs / unit_length_in_cgs * unit_time_in_cgs ** -2
+unit_density_in_cgs = unit_mass_in_cgs * unit_length_in_cgs**-3
+unit_pressure_in_cgs = unit_mass_in_cgs / unit_length_in_cgs * unit_time_in_cgs**-2
 unit_int_energy_in_cgs = unit_energy_in_cgs / unit_mass_in_cgs
 unit_entropy_in_cgs = unit_energy_in_cgs / unit_temp_in_cgs
 Myr_in_cgs = 3.154e13
@@ -83,7 +84,7 @@ x = pos[:, 0] - boxSize / 2
 y = pos[:, 1] - boxSize / 2
 z = pos[:, 2] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:, :]
-r = sqrt(x ** 2 + y ** 2 + z ** 2)
+r = sqrt(x**2 + y**2 + z**2)
 v_r = (x * vel[:, 0] + y * vel[:, 1] + z * vel[:, 2]) / r
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
@@ -116,7 +117,7 @@ for i in range(n_snapshots):
     y = pos[:, 1] - boxSize / 2
     z = pos[:, 2] - boxSize / 2
     vel = sim["/PartType0/Velocities"][:, :]
-    r = sqrt(x ** 2 + y ** 2 + z ** 2)
+    r = sqrt(x**2 + y**2 + z**2)
     v_r = (x * vel[:, 0] + y * vel[:, 1] + z * vel[:, 2]) / r
     u = sim["/PartType0/InternalEnergies"][:]
     S = sim["/PartType0/Entropies"][:]
