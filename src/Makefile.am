@@ -224,7 +224,7 @@ AM_SOURCES += swift_lustre_api.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h
-nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h matrix.h
+nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h
 nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h
 nobase_noinst_HEADERS += runner_doiact_functions_limiter.h runner_doiact_functions_sinks.h runner_doiact_limiter.h units.h swift_intrinsics.h minmax.h
@@ -240,6 +240,7 @@ nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_csds.h
 nobase_noinst_HEADERS += equation_of_state.h
 nobase_noinst_HEADERS += equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h equation_of_state/barotropic/equation_of_state.h
 nobase_noinst_HEADERS += signal_velocity.h
+nobase_noinst_HEADERS += symmetric_matrix.h
 nobase_noinst_HEADERS += hydro.h hydro_io.h hydro_csds.h hydro_parameters.h
 nobase_noinst_HEADERS += hydro/None/hydro.h hydro/None/hydro_iact.h hydro/None/hydro_io.h
 nobase_noinst_HEADERS += hydro/None/hydro_debug.h hydro/None/hydro_part.h
