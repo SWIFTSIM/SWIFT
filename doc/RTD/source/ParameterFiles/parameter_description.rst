@@ -1994,8 +1994,3 @@ A complete specification of the model looks like
 	 matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.
 
 .. [#f4] https://wiki.lustre.org/Main_Page
-
-.. [#f5] We add a per-output random integer to the OST value such that we don't
-	 generate a bias towards low OSTs. This averages the load over all OSTs
-	 over the course of a run even if the number of OSTs does not divide the
-	 number of files and vice-versa.

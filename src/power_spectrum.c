@@ -1373,7 +1373,7 @@ void power_spectrum_init(struct power_spectrum_data *p,
   const int kcutn = (p->windoworder >= 3) ? 90 : 70;
   const int kcutleft = (int)(p->Ngrid / 256.0 * kcutn);
   const int kcutright = (int)(p->Ngrid / 256.0 * (double)kcutn / p->foldfac);
-  if (kcutright < 10 || (kcutleft - kcutright) < 30)
+  if ((p->Nfold > 1) && (kcutright < 10 || (kcutleft - kcutright) < 30))
     error(
         "Combination of power grid size and fold factor do not allow for "
         "enough overlap between foldings!");

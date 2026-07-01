@@ -83,7 +83,7 @@ def parse_interpolation_data(line, verbose):
 
 def parse_stellar_properties(line, verbose):
     """
-    Extract the stellar mass, metallicity and the given preSN.
+    Extract the stellar mass, metallicity and the given winds.
     """
     pattern = re.compile(
         r"Star_type=(?P<type>continuous|single).*"

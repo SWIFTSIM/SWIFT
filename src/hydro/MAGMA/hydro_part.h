@@ -20,28 +20,25 @@
 #define SWIFT_MAGMA_HYDRO_PART_H
 
 /**
- * @file Minimal/hydro_part.h
- * @brief Minimal conservative implementation of SPH (Particle definition)
+ * @file MAGMA/hydro_part.h
+ * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (Particle
+ * definition)
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch. No thermal conduction
- * term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
+ * The thermal variable is the internal energy (u). MI1 implementation using
+ * only 1st-order reconstruction of v and u at the interface and a diffusion
+ * signal velocity compatible with gravity.
  */
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
-#include "matrix.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
 #include "sink_struct.h"
 #include "star_formation_struct.h"
+#include "symmetric_matrix.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 
@@ -190,7 +187,7 @@ struct part {
     float soundspeed;
 
     /*! Particle signal velocity */
-    float v_sig;
+    float mu_tilde;
 
     /*! Time derivative of smoothing length  */
     float h_dt;
@@ -239,6 +236,9 @@ struct part {
 
   /*! RT sub-cycling time stepping data */
   struct rt_timestepping_data rt_time_data;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   /*! Time-step length */
   timebin_t time_bin;

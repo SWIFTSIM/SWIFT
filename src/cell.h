@@ -733,6 +733,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const int use_rebuild_data, const int is_tree_walk);
 int cell_can_use_mesh(struct engine *e, const struct cell *ci,
                       const struct cell *cj);
+int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
+                                       const struct cell *cj);
 int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
                                const struct cell *cj);
 void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e);

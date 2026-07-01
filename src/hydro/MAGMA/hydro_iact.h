@@ -20,16 +20,10 @@
 #define SWIFT_MAGMA_HYDRO_IACT_H
 
 /**
- * @file Minimal/hydro_iact.h
- * @brief Minimal conservative implementation of SPH (Neighbour loop equations)
+ * @file MAGMA/hydro_part.h
+ * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (Particle
+ * interactions)
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch. No thermal conduction
- * term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
 #include "adiabatic_index.h"
@@ -105,8 +99,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @brief Calculate the gradient interaction between particle i and particle j:
  * non-symmetric version
  *
- * Nothing to do here in this scheme.
- *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
@@ -147,11 +139,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   /* The inverse of the C-matrix. eq. 6
    * It's symmetric so recall we only store the 6 useful terms. */
   pi->gradient.c_matrix_inv.xx += common_term * dx[0] * dx[0];
+#if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
   pi->gradient.c_matrix_inv.yy += common_term * dx[1] * dx[1];
-  pi->gradient.c_matrix_inv.zz += common_term * dx[2] * dx[2];
   pi->gradient.c_matrix_inv.xy += common_term * dx[0] * dx[1];
+#endif
+#if defined(HYDRO_DIMENSION_3D)
+  pi->gradient.c_matrix_inv.zz += common_term * dx[2] * dx[2];
   pi->gradient.c_matrix_inv.xz += common_term * dx[0] * dx[2];
   pi->gradient.c_matrix_inv.yz += common_term * dx[1] * dx[2];
+#endif
 
   /* Gradient of v (recall dx is pi - pj), eq. 18 */
   pi->gradient.gradient_vx[0] -= common_term * vij[0] * dx[0];
@@ -173,8 +169,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j
- *
- * Nothing to do here in this scheme.
  *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
@@ -221,7 +215,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Cosmological factors entering the EoMs */
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  // const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   /* Get r and 1/r. */
@@ -265,11 +259,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute signal velocity */
   const float v_sig =
       signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
+  /* Compute signal velocity (eq. 36) modified to add dimension on the
+   * denominator */
+  const float mu_tilde_i = hi * omega_ij / (r * r + 0.0001f * hi * hi);
 
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
   const float eta_i[3] = {dx[0] / hi, dx[1] / hi, dx[2] / hi};
@@ -296,27 +292,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float eta_crit = 1.0f;
 
   /* Van Leer limiter fraction (eq. 22) */
-  const float A_ij_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
-                         pi->force.gradient_vx[1] * dx[0] * dx[1] +
-                         pi->force.gradient_vx[2] * dx[0] * dx[2] +
-                         pi->force.gradient_vy[0] * dx[1] * dx[0] +
-                         pi->force.gradient_vy[1] * dx[1] * dx[1] +
-                         pi->force.gradient_vy[2] * dx[1] * dx[2] +
-                         pi->force.gradient_vz[0] * dx[2] * dx[0] +
-                         pi->force.gradient_vz[1] * dx[2] * dx[1] +
-                         pi->force.gradient_vz[2] * dx[2] * dx[2];
+  const float A_ij_vel_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
+                             pi->force.gradient_vx[1] * dx[0] * dx[1] +
+                             pi->force.gradient_vx[2] * dx[0] * dx[2] +
+                             pi->force.gradient_vy[0] * dx[1] * dx[0] +
+                             pi->force.gradient_vy[1] * dx[1] * dx[1] +
+                             pi->force.gradient_vy[2] * dx[1] * dx[2] +
+                             pi->force.gradient_vz[0] * dx[2] * dx[0] +
+                             pi->force.gradient_vz[1] * dx[2] * dx[1] +
+                             pi->force.gradient_vz[2] * dx[2] * dx[2];
 
-  const float A_ij_den = pj->force.gradient_vx[0] * dx[0] * dx[0] +
-                         pj->force.gradient_vx[1] * dx[0] * dx[1] +
-                         pj->force.gradient_vx[2] * dx[0] * dx[2] +
-                         pj->force.gradient_vy[0] * dx[1] * dx[0] +
-                         pj->force.gradient_vy[1] * dx[1] * dx[1] +
-                         pj->force.gradient_vy[2] * dx[1] * dx[2] +
-                         pj->force.gradient_vz[0] * dx[2] * dx[0] +
-                         pj->force.gradient_vz[1] * dx[2] * dx[1] +
-                         pj->force.gradient_vz[2] * dx[2] * dx[2];
+  const float A_ij_vel_den = pj->force.gradient_vx[0] * dx[0] * dx[0] +
+                             pj->force.gradient_vx[1] * dx[0] * dx[1] +
+                             pj->force.gradient_vx[2] * dx[0] * dx[2] +
+                             pj->force.gradient_vy[0] * dx[1] * dx[0] +
+                             pj->force.gradient_vy[1] * dx[1] * dx[1] +
+                             pj->force.gradient_vy[2] * dx[1] * dx[2] +
+                             pj->force.gradient_vz[0] * dx[2] * dx[0] +
+                             pj->force.gradient_vz[1] * dx[2] * dx[1] +
+                             pj->force.gradient_vz[2] * dx[2] * dx[2];
 
-  const float A_ij = A_ij_den != 0.f ? A_ij_num / A_ij_den : 0.f;
+  const float A_ij_vel =
+      A_ij_vel_den != 0.f ? A_ij_vel_num / A_ij_vel_den : 0.f;
 
   /* Slope limiter exponential term (eq. 21, right term) */
   const float exp_term =
@@ -325,30 +322,33 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
           : 1.f;
 
   /* Van Leer limiter (eq. 21) */
-  const float fraction =
-      (A_ij != -1.f) ? 4.f * A_ij / ((1.f + A_ij) * (1.f + A_ij)) : 1.f;
-  const float Phi_ij = fmaxf(0.f, fminf(1.f, fraction)) * exp_term;
+  const float fraction_vel =
+      (A_ij_vel != -1.f)
+          ? 4.f * A_ij_vel / ((1.f + A_ij_vel) * (1.f + A_ij_vel))
+          : 1.f;
+
+  const float Phi_ij_vel = fmaxf(0.f, fminf(1.f, fraction_vel)) * exp_term;
 
   /* Mid-point reconstruction, first order (eq. 17) */
-  v_rec_i[0] += Phi_ij * pi->force.gradient_vx[0] * delta_i[0];
-  v_rec_i[0] += Phi_ij * pi->force.gradient_vx[1] * delta_i[1];
-  v_rec_i[0] += Phi_ij * pi->force.gradient_vx[2] * delta_i[2];
-  v_rec_i[1] += Phi_ij * pi->force.gradient_vy[0] * delta_i[0];
-  v_rec_i[1] += Phi_ij * pi->force.gradient_vy[1] * delta_i[1];
-  v_rec_i[1] += Phi_ij * pi->force.gradient_vy[2] * delta_i[2];
-  v_rec_i[2] += Phi_ij * pi->force.gradient_vz[0] * delta_i[0];
-  v_rec_i[2] += Phi_ij * pi->force.gradient_vz[1] * delta_i[1];
-  v_rec_i[2] += Phi_ij * pi->force.gradient_vz[2] * delta_i[2];
+  v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[0] * delta_i[0];
+  v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[1] * delta_i[1];
+  v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[2] * delta_i[2];
+  v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[0] * delta_i[0];
+  v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[1] * delta_i[1];
+  v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[2] * delta_i[2];
+  v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[0] * delta_i[0];
+  v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[1] * delta_i[1];
+  v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[2] * delta_i[2];
 
-  v_rec_j[0] += Phi_ij * pj->force.gradient_vx[0] * delta_j[0];
-  v_rec_j[0] += Phi_ij * pj->force.gradient_vx[1] * delta_j[1];
-  v_rec_j[0] += Phi_ij * pj->force.gradient_vx[2] * delta_j[2];
-  v_rec_j[1] += Phi_ij * pj->force.gradient_vy[0] * delta_j[0];
-  v_rec_j[1] += Phi_ij * pj->force.gradient_vy[1] * delta_j[1];
-  v_rec_j[1] += Phi_ij * pj->force.gradient_vy[2] * delta_j[2];
-  v_rec_j[2] += Phi_ij * pj->force.gradient_vz[0] * delta_j[0];
-  v_rec_j[2] += Phi_ij * pj->force.gradient_vz[1] * delta_j[1];
-  v_rec_j[2] += Phi_ij * pj->force.gradient_vz[2] * delta_j[2];
+  v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[0] * delta_j[0];
+  v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[1] * delta_j[1];
+  v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[2] * delta_j[2];
+  v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[0] * delta_j[0];
+  v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[1] * delta_j[1];
+  v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[2] * delta_j[2];
+  v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[0] * delta_j[0];
+  v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[1] * delta_j[1];
+  v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[2] * delta_j[2];
 
 #endif
 
@@ -368,15 +368,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_j = fminf(0.f, vel_rel_j / (eta_square_j + eps_squared));
 
   /* Eq. 14 */
-  const float Qi =
-      1.f * rhoi *
-      (-const_viscosity_alpha * ci * mu_i + const_viscosity_beta * mu_i * mu_i);
-  const float Qj =
-      1.f * rhoj *
-      (-const_viscosity_alpha * cj * mu_j + const_viscosity_beta * mu_j * mu_j);
+  const float Qi = rhoi * (-const_viscosity_alpha * ci * mu_i +
+                           const_viscosity_beta * mu_i * mu_i);
+  const float Qj = rhoj * (-const_viscosity_alpha * cj * mu_j +
+                           const_viscosity_beta * mu_j * mu_j);
 
   /* Construct the gradient functions (eq. 4 and 5) */
-  float G_i[3], G_j[3];
+  float G_i[3] = {0.f}, G_j[3] = {0.f};
   sym_matrix_multiply_by_vector(G_i, &pi->force.c_matrix, dx);
   sym_matrix_multiply_by_vector(G_j, &pj->force.c_matrix, dx);
 
@@ -399,7 +397,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[2] = wj_dr * r_inv * dx[2];
 #endif
 
-#ifdef I_LOVE_GASOLINE
+#ifdef TRADITIONAL_SPH_ACCELERATION_TERM
+
+  /* Compute pressure terms */
+  const float P_over_rho2_i = (pressurei + Qi) / (rhoi * rhoi);
+  const float P_over_rho2_j = (pressurej + Qj) / (rhoj * rhoj);
+
+  /* Raw fluid acceleration (eq. 2) */
+  pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
+  pi->a_hydro[1] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
+  pi->a_hydro[2] -= mj * (P_over_rho2_i * G_i[2] + P_over_rho2_j * G_j[2]);
+
+  /* Equivalent of div v */
+  const float v_ij_dot_G_i =
+      v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
+
+  /* Raw change in internal energy (eq. 3) */
+  pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
+
+#else /* Gasoline-like mixing */
 
   const float G_ij[3] = {0.5f * (G_i[0] + G_j[0]), 0.5f * (G_i[1] + G_j[1]),
                          0.5f * (G_i[2] + G_j[2])};
@@ -419,24 +435,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Raw change in internal energy (eq. 11) */
   pi->u_dt += du_term * mj * v_ij_dot_G_ij;
 
-#else
-
-  /* Compute pressure terms */
-  const float P_over_rho2_i = (pressurei + Qi) / (rhoi * rhoi);
-  const float P_over_rho2_j = (pressurej + Qj) / (rhoj * rhoj);
-
-  /* Raw fluid acceleration (eq. 2) */
-  pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
-  pi->a_hydro[1] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
-  pi->a_hydro[2] -= mj * (P_over_rho2_i * G_i[2] + P_over_rho2_j * G_j[2]);
-
-  /* Equivalent of div v */
-  const float v_ij_dot_G_i =
-      v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
-
-  /* Raw change in internal energy (eq. 3) */
-  pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
-
 #endif
 
   /* Reconstructed internal energies at the mid-point (before reconstruction) */
@@ -445,14 +443,36 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
 #ifndef USE_ZEROTH_ORDER_VELOCITIES
 
-  /* Mid-point reconstruction, first order (eq. 17) */
-  u_rec_i += pi->force.gradient_u[0] * delta_i[0];
-  u_rec_i += pi->force.gradient_u[1] * delta_i[1];
-  u_rec_i += pi->force.gradient_u[2] * delta_i[2];
+  const float A_ij_u_num = pi->force.gradient_u[0] * dx[0] +
+                           pi->force.gradient_u[1] * dx[1] +
+                           pi->force.gradient_u[2] * dx[2];
 
-  u_rec_j += pj->force.gradient_u[0] * delta_j[0];
-  u_rec_j += pj->force.gradient_u[1] * delta_j[1];
-  u_rec_j += pj->force.gradient_u[2] * delta_j[2];
+  const float A_ij_u_den = pj->force.gradient_u[0] * dx[0] +
+                           pj->force.gradient_u[1] * dx[1] +
+                           pj->force.gradient_u[2] * dx[2];
+
+  const float A_ij_u = A_ij_u_den != 0.f ? A_ij_u_num / A_ij_u_den : 0.f;
+
+  /* Van Leer limiter (eq. 21) */
+  const float fraction_u =
+      (A_ij_u != -1.f) ? 4.f * A_ij_u / ((1.f + A_ij_u) * (1.f + A_ij_u)) : 1.f;
+
+  const float Phi_ij_u = fmaxf(0.f, fminf(1.f, fraction_u)) * exp_term;
+
+  /* Mid-point reconstruction, first order (eq. 17) */
+  u_rec_i += Phi_ij_u * pi->force.gradient_u[0] * delta_i[0];
+  u_rec_i += Phi_ij_u * pi->force.gradient_u[1] * delta_i[1];
+  u_rec_i += Phi_ij_u * pi->force.gradient_u[2] * delta_i[2];
+
+  u_rec_j += Phi_ij_u * pj->force.gradient_u[0] * delta_j[0];
+  u_rec_j += Phi_ij_u * pj->force.gradient_u[1] * delta_j[1];
+  u_rec_j += Phi_ij_u * pj->force.gradient_u[2] * delta_j[2];
+
+  /* Simple limiter preventing problem inversion */
+  // if ((pi->u > pj->u && u_rec_i < u_rec_j) ||
+  //     (pi->u < pj->u && u_rec_i > u_rec_j)) {
+  // u_rec_i = u_rec_j = 0.5f * (pi->u + pj->u);
+  //}
 
 #endif
 
@@ -481,7 +501,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dx * hi_inv * hid_inv;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  pi->force.mu_tilde = max(pi->force.mu_tilde, mu_tilde_i);
 }
 
 /**

@@ -10,7 +10,7 @@ Z=${Z:=2e-3} # Metallicity (not in solar metallicity)
 
 ################## makeIC constant parameters ##################
 level=${level:=6}  # Number of particles = 2^(3*level)
-jeans_length=${jeans_length:=1}  # Jeans wavelenght in unit of the boxsize
+T=${T:=200}  # Gas temperature
 gas_density=${gas_density:=0.1} # Gas density in atom/cm^3
 gas_particle_mass=${gas_particle_mass:=10} # Mass of the gas particles
 num_star=${num_star:=1} # number of stars
@@ -63,7 +63,7 @@ fi
 
 # Generate the Initial Conditions
 echo "Generating initial conditions to run the example..."
-python3 ../makeIC.py --level $level --lJ $jeans_length --rho $gas_density \
+python3 ../makeIC.py --level $level --T $T --rho $gas_density \
     --mass $gas_particle_mass --star_mass $star_mass \
     --star_type $star_type --num_star $num_star \
     -o ICs_homogeneous_box.hdf5
@@ -71,9 +71,9 @@ python3 ../makeIC.py --level $level --lJ $jeans_length --rho $gas_density \
 # Start the simulation
 echo "Starting simulation"
 if [[ "$2" == "SN" ]]; then
-    ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:supernovae_efficiency:0.1" --param="GEARFeedback:pre_supernovae_efficiency:$coeff" ../params.yml 2>&1 | tee output.log
+    ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:supernovae_efficiency:0.1" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../params.yml 2>&1 | tee output.log
 else 
-    ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:pre_supernovae_efficiency:$coeff" ../params.yml 2>&1 | tee output.log
+    ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../params.yml 2>&1 | tee output.log
 fi
 cd ..
 python3 verification.py --verbose "$str/output.log" | tee verification.txt
