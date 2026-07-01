@@ -215,7 +215,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Cosmological factors entering the EoMs */
-  // const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   /* Get r and 1/r. */
@@ -262,7 +262,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Compute signal velocity (eq. 36) modified to add dimension on the
    * denominator */
-  const float mu_tilde_i = hi * omega_ij / (r * r + 0.0001f * hi * hi);
+  const float mu_tilde_i = fac_mu * hi * omega_ij / (r * r + 0.0001f * hi * hi);
 
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
   const float eta_i[3] = {dx[0] / hi, dx[1] / hi, dx[2] / hi};
