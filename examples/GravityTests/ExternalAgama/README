@@ -24,7 +24,7 @@ Then, configure swift to take into account external potentials. Type:
 
 `./configure --with-agama=path_to_agama_directory --with-ext-potential=agama`
 
-where `path_to_agama_directory` is the AGAMA root directory that must contains `libagama.so`.
+where `path_to_agama_directory` is the AGAMA root directory that must contains `agama.so` and `agama.a`.
 See the next section to check how to complile this library.
 
 Feel free to adapt other configurations parameters depending on your system. Then, build the code by typing:
@@ -49,12 +49,13 @@ The initial conditions are obtained with the pNbody script:
 
 1. clone AGAMA from the official repository
 2. use pip to compile and install it
-
+3. check that the folder where pip installed AGAMA contains : `agama.a`, `agama.so` and `agama/interface_c.h`
 ```
 git clone https://github.com/GalacticDynamics-Oxford/Agama.git 
 cd Agama
 pip install --no-build-isolation .
 ```
+
 
 
 
