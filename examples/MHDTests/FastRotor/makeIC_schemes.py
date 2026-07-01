@@ -21,7 +21,7 @@ fileOutputName = "FastRotor.hdf5"
 
 ###---------------------------###
 
-glass = h5py.File("glassCube_16.hdf5", "r")
+glass = h5py.File("glassCube_32.hdf5", "r")
 
 unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell = glass["/PartType0/SmoothingLength"][:]
