@@ -27,7 +27,7 @@ unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell = glass["/PartType0/SmoothingLength"][:]
 
 N_unit_cell = len(h_unit_cell)
-times = 4
+times = 3
 
 ratio = np.cbrt(rho_in_0 / rho_out_0)
 

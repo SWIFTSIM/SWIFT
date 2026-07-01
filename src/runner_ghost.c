@@ -1050,7 +1050,11 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Finish the gradient calculation */
+#ifndef MAGMA_SPH
         hydro_end_gradient(p, cosmo, pressure_floor);
+#else
+        hydro_end_gradient(p, cosmo);
+#endif
         chemistry_end_gradient(p, e->chemistry);
         mhd_end_gradient(p, mu_0);
 
