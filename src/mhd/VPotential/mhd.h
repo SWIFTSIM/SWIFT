@@ -25,6 +25,8 @@
 
 #include <float.h>
 
+#include "symmetric_matrix.h"
+
 /**
  * @brief Returns the magnetic energy contained in the particle.
  *

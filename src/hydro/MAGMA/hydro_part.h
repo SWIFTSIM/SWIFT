@@ -78,10 +78,10 @@ struct xpart {
   /* Additional data used by the tracers */
   struct star_formation_xpart_data sf_data;
 
-  /*! Additional data used by the feedback */
+  /* Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
 
-  /*! Additional data used by the MHD scheme */
+  /* Additional data used by the MHD scheme */
   struct mhd_xpart_data mhd_data;
 
 } SWIFT_STRUCT_ALIGN;
@@ -212,7 +212,11 @@ struct part {
     float balsara;
 
   } force;
-
+  
+  struct {
+  /* Signal Speed for MHD */
+    float v_sig;
+  } viscosity;
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
 

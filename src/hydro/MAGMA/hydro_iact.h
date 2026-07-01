@@ -260,7 +260,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
 
-  /* Compute signal velocity (eq. 36) modified to add dimension on the
+  /* Compute signal velocity (eq. 37) modified to add dimension on the
    * denominator */
   const float mu_tilde_i = hi * omega_ij / (r * r + 0.0001f * hi * hi);
 
