@@ -2233,7 +2233,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu, magma2 default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2313,15 +2313,6 @@ AC_ARG_WITH([spmhd],
 case "$with_spmhd" in
    none)
       AC_DEFINE([NONE_MHD], [1], [No mhd])
-   ;;
-   direct-induction)
-      AC_DEFINE([DIRECT_INDUCTION_MHD], [1], [MHD using a direct induction method])
-   ;;
-   direct-induction-fede)
-      AC_DEFINE([DIRECT_INDUCTION_FEDE_MHD], [1], [MHD using yet another direct induction method (To dissapear)])
-   ;;
-   vector-potential)
-      AC_DEFINE([VECTOR_POTENTIAL_MHD], [1], [MHD using Vector Potentials])
    ;;
    *)
       AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_spmhd])
