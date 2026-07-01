@@ -56,18 +56,6 @@
 /* Rosswog 2020 (eq. 24) constant terms */
 #define const_diffusion_alpha 0.05f
 
-/* The viscosity that the particles are reset to after being hit by a
- * feedback event. This should be set to the same value as the
- * hydro_props_default_viscosity_alpha in fixed schemes, and likely
- * to hydro_props_default_viscosity_alpha_max in variable schemes. */
-#define hydro_props_default_viscosity_alpha_feedback_reset 0.8f
-
-/* Viscosity paramaters -- Defaults; can be changed at run-time */
-
-/* The "initial" hydro viscosity, or the fixed value for non-variable
- * schemes. This usually takes the value 0.8. */
-#define hydro_props_default_viscosity_alpha 0.8f
-
 /* Structs that store the relevant variables */
 
 /*! Artificial viscosity parameters */
