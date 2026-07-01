@@ -1581,9 +1581,8 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         /* Update the tracers properties */
         tracers_after_timestep_part(
             p, xp, e->internal_units, e->physical_constants, with_cosmology,
-            e->cosmology, e->hydro_properties, e->cooling_func,
-            e->time, old_time_step_length,
-            e->snapshot_recording_triggers_started_part);
+            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+            old_time_step_length, e->snapshot_recording_triggers_started_part);
 
         /* Note that at this moment the new RT time step is only used to
          * limit the hydro time step here. */

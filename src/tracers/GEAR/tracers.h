@@ -174,9 +174,10 @@ static INLINE void tracers_after_timestep_sink(
   const float sfr = sink_get_SFR(sink);
 
   /* Accumulate average accretion rate and SFR. If averaged_SFR[i] < 0 this is
-   * the first step after the trigger fired: the stored value is -time_to_remove,
-   * so (time_step_length + averaged_SFR[i]) gives only the in-window fraction,
-   * using a single consistent rate value and never going negative. */
+   * the first step after the trigger fired: the stored value is
+   * -time_to_remove, so (time_step_length + averaged_SFR[i]) gives only the
+   * in-window fraction, using a single consistent rate value and never going
+   * negative. */
   for (int i = 0; i < num_snapshot_triggers_sink; ++i) {
     if (tracers_triggers_started[i]) {
       if (sink->tracers_data.averaged_SFR[i] < 0.f) {
