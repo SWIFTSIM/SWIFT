@@ -63,6 +63,65 @@ enum lossy_compression_schemes compression_scheme_from_name(const char *name) {
 #ifdef HAVE_HDF5
 
 /**
+ * @brief Warns if a lossy compression filter is incompatible with a field's
+ * declared type.
+ *
+ * Filters that unconditionally overwrite the HDF5 type will silently produce
+ * the wrong output type if mismatched. This function emits a warning for each
+ * such mismatch so the user can correct their output_fields.yml.
+ *
+ * @param type The declared IO_DATA_TYPE of the field.
+ * @param comp The lossy compression scheme to be applied.
+ * @param field_name The name of the field (for the warning message).
+ */
+void io_check_field_compression(const enum IO_DATA_TYPE type,
+                                const enum lossy_compression_schemes comp,
+                                const char *field_name) {
+
+  const int is_float_filter = (comp == compression_write_f_mantissa_9 ||
+                               comp == compression_write_f_mantissa_13 ||
+                               comp == compression_write_half_float ||
+                               comp == compression_write_bfloat_16);
+
+  const int is_dmantissa_filter = (comp == compression_write_d_mantissa_9 ||
+                                   comp == compression_write_d_mantissa_13 ||
+                                   comp == compression_write_d_mantissa_21);
+
+  const int is_nbit_filter =
+      (comp == compression_write_Nbit_32 || comp == compression_write_Nbit_36 ||
+       comp == compression_write_Nbit_40 || comp == compression_write_Nbit_44 ||
+       comp == compression_write_Nbit_48 || comp == compression_write_Nbit_56);
+
+  const int is_dscale_filter = (comp == compression_write_d_scale_1 ||
+                                comp == compression_write_d_scale_2 ||
+                                comp == compression_write_d_scale_3 ||
+                                comp == compression_write_d_scale_4 ||
+                                comp == compression_write_d_scale_5 ||
+                                comp == compression_write_d_scale_6);
+
+  const int is_float_type = (type == FLOAT || type == DOUBLE);
+
+  if (is_float_filter && type != FLOAT)
+    error("Applying float compression filter '%s' to non-float field '%s'.",
+          lossy_compression_schemes_names[comp], field_name);
+
+  if (is_dmantissa_filter && type != DOUBLE)
+    error(
+        "Applying DMantissa compression filter '%s' to non-double field '%s'.",
+        lossy_compression_schemes_names[comp], field_name);
+
+  if (is_nbit_filter && type != LONGLONG)
+    error("Applying Nbit compression filter '%s' to non-longlong field '%s'.",
+          lossy_compression_schemes_names[comp], field_name);
+
+  if (is_dscale_filter && !is_float_type)
+    error(
+        "Applying DScale compression filter '%s' to non-floating-point field "
+        "'%s'.",
+        lossy_compression_schemes_names[comp], field_name);
+}
+
+/**
  * @brief Sets the properties and type of an HDF5 dataspace to apply a given
  * lossy compression scheme.
  *
