@@ -1730,6 +1730,19 @@ If ParMETIS and METIS are not available then only an initial partition will be
 performed. So the balance will be compromised by the quality of the initial
 partition.
 
+When using METIS or ParMETIS, the optional::
+
+  DomainDecomposition:
+    metis_seed:
+
+parameter can be used to fix the partition seed for reproducibility. Any
+non-negative value forces that seed to be used. Negative values keep the
+automatic behaviour and generate a fresh seed for each partitioning event.
+Serial METIS uses that seed directly. ParMETIS repartitioning also uses that
+seed directly, but ParMETIS initial partitioning tries 10 candidate seeds using
+``metis_seed + i`` and keeps the best partition. When running with verbose
+output, SWIFT prints the seed that was used for the partition it kept.
+
 Repartitioning:
 ^^^^^^^^^^^^^^^
 

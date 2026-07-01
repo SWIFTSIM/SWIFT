@@ -93,34 +93,34 @@ v_bin, _, _ = stats.binned_statistic(x, v, statistic="mean", bins=x_bin_edge)
 P_bin, _, _ = stats.binned_statistic(x, P, statistic="mean", bins=x_bin_edge)
 S_bin, _, _ = stats.binned_statistic(x, S, statistic="mean", bins=x_bin_edge)
 u_bin, _, _ = stats.binned_statistic(x, u, statistic="mean", bins=x_bin_edge)
-rho2_bin, _, _ = stats.binned_statistic(x, rho ** 2, statistic="mean", bins=x_bin_edge)
-v2_bin, _, _ = stats.binned_statistic(x, v ** 2, statistic="mean", bins=x_bin_edge)
-P2_bin, _, _ = stats.binned_statistic(x, P ** 2, statistic="mean", bins=x_bin_edge)
-S2_bin, _, _ = stats.binned_statistic(x, S ** 2, statistic="mean", bins=x_bin_edge)
-u2_bin, _, _ = stats.binned_statistic(x, u ** 2, statistic="mean", bins=x_bin_edge)
-rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
-v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
-P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
-S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
-u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
+rho2_bin, _, _ = stats.binned_statistic(x, rho**2, statistic="mean", bins=x_bin_edge)
+v2_bin, _, _ = stats.binned_statistic(x, v**2, statistic="mean", bins=x_bin_edge)
+P2_bin, _, _ = stats.binned_statistic(x, P**2, statistic="mean", bins=x_bin_edge)
+S2_bin, _, _ = stats.binned_statistic(x, S**2, statistic="mean", bins=x_bin_edge)
+u2_bin, _, _ = stats.binned_statistic(x, u**2, statistic="mean", bins=x_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
 if plot_diffusion:
     alpha_diff_bin, _, _ = stats.binned_statistic(
         x, diffusion, statistic="mean", bins=x_bin_edge
     )
     alpha2_diff_bin, _, _ = stats.binned_statistic(
-        x, diffusion ** 2, statistic="mean", bins=x_bin_edge
+        x, diffusion**2, statistic="mean", bins=x_bin_edge
     )
-    alpha_diff_sigma_bin = np.sqrt(alpha2_diff_bin - alpha_diff_bin ** 2)
+    alpha_diff_sigma_bin = np.sqrt(alpha2_diff_bin - alpha_diff_bin**2)
 
 if plot_viscosity:
     alpha_visc_bin, _, _ = stats.binned_statistic(
         x, viscosity, statistic="mean", bins=x_bin_edge
     )
     alpha2_visc_bin, _, _ = stats.binned_statistic(
-        x, viscosity ** 2, statistic="mean", bins=x_bin_edge
+        x, viscosity**2, statistic="mean", bins=x_bin_edge
     )
-    alpha_visc_sigma_bin = np.sqrt(alpha2_visc_bin - alpha_visc_bin ** 2)
+    alpha_visc_sigma_bin = np.sqrt(alpha2_visc_bin - alpha_visc_bin**2)
 
 # Prepare reference solution
 solver = RiemannSolver(gas_gamma)
@@ -131,7 +131,7 @@ rho_s, v_s, P_s, _ = solver.solve(rho_L, v_L, P_L, rho_R, v_R, P_R, x_s / time)
 
 # Additional arrays
 u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
-s_s = P_s / rho_s ** gas_gamma  # entropic function
+s_s = P_s / rho_s**gas_gamma  # entropic function
 
 # Plot the interesting quantities
 figure(figsize=(7, 7 / 1.6))
