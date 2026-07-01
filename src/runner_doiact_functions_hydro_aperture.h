@@ -78,9 +78,10 @@
  * @param cj The second #cell.
  * @param r_cut The fixed aperture radius for interactions.
  */
-void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
-                               const struct cell *restrict cj,
-                               const float r_cut) {
+void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r,
+                                  const struct cell *restrict ci,
+                                  const struct cell *restrict cj,
+                                  const float r_cut) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -161,13 +162,15 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *restrict 
 
       /* Hit or miss? */
       if (pi_active && r2 < r_cut2) {
-        IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
-                                cosmo, e->sink_properties);
+        IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
+                                   with_self_gravity, cosmo,
+                                   e->sink_properties);
       }
       if (pj_active && r2 < r_cut2) {
         float mdx[3] = {-dx[0], -dx[1], -dx[2]};
         IACT_NONSYM_HYDRO_APERTURE(r2, mdx, hj, hi, pj, pi, a, H,
-                                with_self_gravity, cosmo, e->sink_properties);
+                                   with_self_gravity, cosmo,
+                                   e->sink_properties);
       }
     }
   }
@@ -192,7 +195,7 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *restrict 
  * @param r_cut The fixed aperture radius for interactions.
  */
 void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
-                               const float r_cut) {
+                                  const float r_cut) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -253,12 +256,14 @@ void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
       if (r2 < r_cut2) {
         if (pi_active) {
           IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
-                                  with_self_gravity, cosmo, e->sink_properties);
+                                     with_self_gravity, cosmo,
+                                     e->sink_properties);
         }
         if (pj_active) {
           float mdx[3] = {-dx[0], -dx[1], -dx[2]};
           IACT_NONSYM_HYDRO_APERTURE(r2, mdx, hj, hi, pj, pi, a, H,
-                                  with_self_gravity, cosmo, e->sink_properties);
+                                     with_self_gravity, cosmo,
+                                     e->sink_properties);
         }
       }
     }
@@ -296,8 +301,8 @@ void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
  * @param shift The shift vector to apply to @p ci particles.
  */
 void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
-                         const struct cell *restrict cj, const float r_cut,
-                         const int sid, const double shift[3]) {
+                            const struct cell *restrict cj, const float r_cut,
+                            const int sid, const double shift[3]) {
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -397,7 +402,8 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < r_cut2) {
           IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
-                                  with_self_gravity, cosmo, e->sink_properties);
+                                     with_self_gravity, cosmo,
+                                     e->sink_properties);
         }
       }
     }
@@ -461,7 +467,8 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
         if (r2 < r_cut2) {
           /* Note: dx points from pi to pj, so pj is the accumulator. */
           IACT_NONSYM_HYDRO_APERTURE(r2, dx, hj, hi, pj, pi, a, H,
-                                  with_self_gravity, cosmo, e->sink_properties);
+                                     with_self_gravity, cosmo,
+                                     e->sink_properties);
         }
       }
     }
@@ -488,7 +495,7 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
  * @param r_cut The fixed aperture radius for interactions.
  */
 void DOPAIR1_BRANCH_HYDRO_APERTURE(struct runner *r, struct cell *ci,
-                                struct cell *cj, const float r_cut) {
+                                   struct cell *cj, const float r_cut) {
 
   const struct engine *e = r->e;
 
@@ -555,7 +562,7 @@ void DOPAIR1_BRANCH_HYDRO_APERTURE(struct runner *r, struct cell *ci,
  * @param r_cut The fixed aperture radius for interactions.
  */
 void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
-                         const float r_cut) {
+                            const float r_cut) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -628,7 +635,8 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
         /* Hit or miss? */
         if (r2 < r_cut2) {
           IACT_NONSYM_HYDRO_APERTURE(r2, dx, hj, hi, pj, pi, a, H,
-                                  with_self_gravity, cosmo, e->sink_properties);
+                                     with_self_gravity, cosmo,
+                                     e->sink_properties);
         }
       }
 
@@ -666,12 +674,12 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
           if (PART_IS_ACTIVE(pj, e)) {
             /* Both active: symmetric call updates both pi and pj. */
             IACT_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
-                             cosmo, e->sink_properties);
+                                cosmo, e->sink_properties);
           } else {
             /* Only pi is active. */
             IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
-                                    with_self_gravity, cosmo,
-                                    e->sink_properties);
+                                       with_self_gravity, cosmo,
+                                       e->sink_properties);
           }
         }
       }
@@ -692,14 +700,15 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
  * @brief Dispatch to the appropriate DOSELF1 variant for this cell.
  *
  * Checks that the cell is active and drifted, then calls either the optimised
- * DOSELF1_HYDRO_APERTURE or the brute-force DOSELF1_NAIVE_HYDRO_APERTURE variant.
+ * DOSELF1_HYDRO_APERTURE or the brute-force DOSELF1_NAIVE_HYDRO_APERTURE
+ * variant.
  *
  * @param r The #runner.
  * @param c The #cell.
  * @param r_cut The fixed aperture radius for interactions.
  */
 void DOSELF1_BRANCH_HYDRO_APERTURE(struct runner *r, const struct cell *c,
-                                const float r_cut) {
+                                   const float r_cut) {
 
   const struct engine *e = r->e;
 
@@ -743,8 +752,9 @@ void DOSELF1_BRANCH_HYDRO_APERTURE(struct runner *r, const struct cell *c,
  * @param r_cut The fixed aperture radius for interactions.
  * @param gettimer Whether to record a timer for this call.
  */
-void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci, struct cell *cj,
-                             const float r_cut, const int gettimer) {
+void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci,
+                                struct cell *cj, const float r_cut,
+                                const int gettimer) {
 
   struct space *s = r->e->s;
   const struct engine *e = r->e;
@@ -792,7 +802,7 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci, struct cell *
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
         DOSUB_PAIR1_HYDRO_APERTURE(r, ci->progeny[pid], cj->progeny[pjd], r_cut,
-                                /*gettimer=*/0);
+                                   /*gettimer=*/0);
       }
     }
   }
@@ -819,7 +829,7 @@ void DOSUB_PAIR1_HYDRO_APERTURE(struct runner *r, struct cell *ci, struct cell *
  * @param gettimer Whether to record a timer for this call.
  */
 void DOSUB_SELF1_HYDRO_APERTURE(struct runner *r, struct cell *c,
-                             const float r_cut, const int gettimer) {
+                                const float r_cut, const int gettimer) {
 
   TIMER_TIC;
 
@@ -848,7 +858,7 @@ void DOSUB_SELF1_HYDRO_APERTURE(struct runner *r, struct cell *c,
         for (int j = k + 1; j < 8; j++) {
           if (c->progeny[j] != NULL) {
             DOSUB_PAIR1_HYDRO_APERTURE(r, c->progeny[k], c->progeny[j], r_cut,
-                                    /*gettimer=*/0);
+                                       /*gettimer=*/0);
           }
         }
       }

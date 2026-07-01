@@ -101,9 +101,9 @@ runner_iact_hydro_aperture_test_formation(
  * IACT_NONSYM_HYDRO_APERTURE / IACT_HYDRO_APERTURE are defined in
  * runner_doiact_hydro_aperture.h (included by
  * runner_doiact_functions_hydro_aperture.h) and expand to
- * runner_iact_nonsym_hydro_aperture_FUNCTION / runner_iact_hydro_aperture_FUNCTION.
- * With FUNCTION=test_formation they resolve to the test functions above, so the
- * generated loops count neighbours.
+ * runner_iact_nonsym_hydro_aperture_FUNCTION /
+ * runner_iact_hydro_aperture_FUNCTION. With FUNCTION=test_formation they
+ * resolve to the test functions above, so the generated loops count neighbours.
  *
  * space_getsid_and_swap_cells is used internally by the pair functions; pull
  * in its declaration here just as runner_doiact_hydro_aperture.c does.
@@ -346,11 +346,11 @@ void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       if (r2 < r_cut2) {
-        runner_iact_nonsym_hydro_aperture_test_formation(r2, dx, pi->h, pj->h, pi,
-                                                      pj, a, H,
-                                                      /*with_self_gravity=*/0,
-                                                      /*cosmo=*/NULL,
-                                                      /*sink_props=*/NULL);
+        runner_iact_nonsym_hydro_aperture_test_formation(
+            r2, dx, pi->h, pj->h, pi, pj, a, H,
+            /*with_self_gravity=*/0,
+            /*cosmo=*/NULL,
+            /*sink_props=*/NULL);
       }
     }
   }
@@ -372,11 +372,11 @@ void pairs_all_hydro_sinks(struct runner *r, struct cell *ci, struct cell *cj,
       const float r2 = mdx[0] * mdx[0] + mdx[1] * mdx[1] + mdx[2] * mdx[2];
 
       if (r2 < r_cut2) {
-        runner_iact_nonsym_hydro_aperture_test_formation(r2, mdx, pj->h, pi->h, pj,
-                                                      pi, a, H,
-                                                      /*with_self_gravity=*/0,
-                                                      /*cosmo=*/NULL,
-                                                      /*sink_props=*/NULL);
+        runner_iact_nonsym_hydro_aperture_test_formation(
+            r2, mdx, pj->h, pi->h, pj, pi, a, H,
+            /*with_self_gravity=*/0,
+            /*cosmo=*/NULL,
+            /*sink_props=*/NULL);
       }
     }
   }
@@ -608,14 +608,15 @@ int main(int argc, char *argv[]) {
       if (cells[j] != main_cell) {
         const ticks sub_tic = getticks();
         runner_dopair1_branch_hydro_aperture_test_formation(&runner, main_cell,
-                                                         cells[j], r_cut);
+                                                            cells[j], r_cut);
         timings[j] += getticks() - sub_tic;
       }
     }
 
     /* Self interaction. */
     const ticks self_tic = getticks();
-    runner_doself1_branch_hydro_aperture_test_formation(&runner, main_cell, r_cut);
+    runner_doself1_branch_hydro_aperture_test_formation(&runner, main_cell,
+                                                        r_cut);
     timings[13] += getticks() - self_tic;
 
     time += getticks() - tic;

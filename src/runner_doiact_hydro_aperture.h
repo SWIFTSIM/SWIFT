@@ -75,12 +75,10 @@
 #define _IACT_HYDRO_APERTURE(f) PASTE(runner_iact_hydro_aperture, f)
 #define IACT_HYDRO_APERTURE _IACT_HYDRO_APERTURE(FUNCTION)
 
-#define _TIMER_DOSELF_HYDRO_APERTURE(f) \
-  PASTE(timer_doself_hydro_aperture, f)
+#define _TIMER_DOSELF_HYDRO_APERTURE(f) PASTE(timer_doself_hydro_aperture, f)
 #define TIMER_DOSELF_HYDRO_APERTURE _TIMER_DOSELF_HYDRO_APERTURE(FUNCTION)
 
-#define _TIMER_DOPAIR_HYDRO_APERTURE(f) \
-  PASTE(timer_dopair_hydro_aperture, f)
+#define _TIMER_DOPAIR_HYDRO_APERTURE(f) PASTE(timer_dopair_hydro_aperture, f)
 #define TIMER_DOPAIR_HYDRO_APERTURE _TIMER_DOPAIR_HYDRO_APERTURE(FUNCTION)
 
 #define _TIMER_DOSUB_SELF_HYDRO_APERTURE(f) \
