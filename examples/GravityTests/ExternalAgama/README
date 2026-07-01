@@ -24,6 +24,9 @@ Then, configure swift to take into account external potentials. Type:
 
 `./configure --with-agama=path_to_agama_directory --with-ext-potential=agama`
 
+where `path_to_agama_directory` is the AGAMA root directory that must contains `libagama.so`.
+See the next section to check how to complile this library.
+
 Feel free to adapt other configurations parameters depending on your system. Then, build the code by typing:
 
 `make`
@@ -40,4 +43,18 @@ Note that the AGAMA potential file `potiential.txt` can be created by running:
 The initial conditions are obtained with the pNbody script:
 
 `ic_plummer   -N 10000 --Mtot 1e-2 -a 0.1 --Rmax 20 -t swift -o plummer.hdf5`
+
+
+# How to compile AGAMA
+
+1. clone AGAMA from the official repository
+2. use pip to compile and install it
+
+```
+git clone https://github.com/GalacticDynamics-Oxford/Agama.git 
+cd Agama
+pip install --no-build-isolation .
+```
+
+
 
