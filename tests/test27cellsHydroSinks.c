@@ -230,6 +230,87 @@ void clean_up(struct cell *ci) {
   free(ci);
 }
 
+/**
+ * @brief Build a single split cell with 8 leaf progeny (one level of
+ *        octree), for testing the DOSUB_{SELF1,PAIR1}_HYDRO_APERTURE
+ *        recursive entry points (T2: DOSUB recursion completeness).
+ *
+ * Progeny are indexed exactly as space_split.c does (idx = 4*i + 2*j + k for
+ * x/y/z bit i/j/k in {0,1}), so cell_split_pairs lookups inside the DOSUB
+ * pair recursion (were it to recurse further) would remain valid. Here the
+ * progeny are leaves (one level deep is enough to exercise the recursion),
+ * so DOSUB_PAIR1's cross-progeny calls fall straight to the sorted leaf
+ * branch, relying on its inline "sort if not already sorted" fallback --
+ * hence the explicit extra_sort_lock initialisation below, which the
+ * flat/leaf-only 27-cell test above never needs (it pre-sorts and calls the
+ * branch functions directly with lock=0).
+ *
+ * @param n Cube root of the number of particles per progeny.
+ * @param offset Position of the top cell's corner relative to (0,0,0).
+ * @param size Physical side length of the top cell (progeny get size/2).
+ * @param h_frac Smoothing length in units of the inter-particle spacing.
+ * @param partId Running counter for unique particle IDs.
+ * @param pert Position perturbation amplitude in units of spacing.
+ */
+struct cell *build_split_cell(size_t n, double *offset, double size,
+                              double h_frac, long long *partId, double pert) {
+  struct cell *top = NULL;
+  if (posix_memalign((void **)&top, cell_align, sizeof(struct cell)) != 0)
+    error("Couldn't allocate cell.");
+  bzero(top, sizeof(struct cell));
+
+  const double half = size * 0.5;
+  int total_count = 0;
+  float h_max = 0.f;
+
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      for (int k = 0; k < 2; k++) {
+        const int idx = i * 4 + j * 2 + k;
+        double sub_offset[3] = {offset[0] + i * half, offset[1] + j * half,
+                                offset[2] + k * half};
+        struct cell *progeny =
+            make_cell(n, sub_offset, half, h_frac, partId, pert);
+        progeny->parent = top;
+        if (lock_init(&progeny->hydro.extra_sort_lock) != 0)
+          error("Failed to init progeny extra_sort_lock.");
+        top->progeny[idx] = progeny;
+        total_count += progeny->hydro.count;
+        h_max = fmaxf(h_max, progeny->hydro.h_max);
+      }
+    }
+  }
+
+  top->split = 1;
+  top->dmin = size;
+  top->width[0] = size;
+  top->width[1] = size;
+  top->width[2] = size;
+  top->loc[0] = offset[0];
+  top->loc[1] = offset[1];
+  top->loc[2] = offset[2];
+  top->hydro.count = total_count;
+  top->hydro.h_max = h_max;
+  top->hydro.super = top;
+  top->hydro.ti_old_part = 8;
+  top->hydro.ti_end_min = 8;
+  top->grav.ti_old_part = 8;
+  top->grav.ti_end_min = 8;
+  top->nodeID = NODE_ID;
+
+  return top;
+}
+
+/**
+ * @brief Free a split cell tree built by build_split_cell().
+ */
+void free_split_cell(struct cell *top) {
+  for (int idx = 0; idx < 8; idx++) {
+    if (top->progeny[idx] != NULL) clean_up(top->progeny[idx]);
+  }
+  free(top);
+}
+
 /* ============================================================
  * Field reset and dump helpers.
  * ============================================================ */
@@ -674,6 +755,81 @@ int main(int argc, char *argv[]) {
 
   message("Brute-force calculation took: %.3f %s.",
           clocks_from_ticks(toc - tic), clocks_getunit());
+
+  /* ---- T2: DOSUB recursion completeness across a split cell ----
+   *
+   * The tests above only exercise leaf (split=0) cells, calling the branch
+   * functions directly. This section builds a genuinely split top cell (8
+   * leaf progeny) and drives it through the *recursive* entry point
+   * runner_dosub_self1_hydro_aperture_test_formation(), which internally
+   * recurses into runner_dosub_self1/pair1_hydro_aperture_test_formation()
+   * for the self and cross-progeny parts. The particle count per progeny is
+   * fixed (independent of -n) so that the top cell's count reliably clears
+   * space_recurse_size_self_hydro (default 100) and the recursion is
+   * actually exercised, regardless of how this binary is invoked. */
+  {
+    const size_t n_tree = 5;
+    const size_t count_per_progeny = n_tree * n_tree * n_tree;
+    const float r_cut_tree = (float)(R_CUT_FRACTION * size);
+    double tree_offset[3] = {0., 0., 0.};
+
+    struct cell *tree_top = build_split_cell(n_tree, tree_offset, size, h_frac,
+                                             &partId, perturbation);
+
+    float *opt_wcount = malloc(8 * count_per_progeny * sizeof(float));
+    if (opt_wcount == NULL) error("Failed to allocate opt_wcount buffer.");
+
+    /* Optimised: the recursive entry point. */
+    for (int k = 0; k < 8; k++) zero_particle_fields(tree_top->progeny[k]);
+    runner_dosub_self1_hydro_aperture_test_formation(&runner, tree_top,
+                                                     r_cut_tree,
+                                                     /*gettimer=*/0);
+    for (int k = 0; k < 8; k++)
+      for (size_t i = 0; i < count_per_progeny; i++)
+        opt_wcount[k * count_per_progeny + i] =
+            tree_top->progeny[k]->hydro.parts[i].density.wcount;
+
+    /* Brute-force reference on the exact same particle data: self within
+       each progeny + every distinct cross-progeny pair. */
+    for (int k = 0; k < 8; k++) zero_particle_fields(tree_top->progeny[k]);
+    for (int k = 0; k < 8; k++) {
+      self_all_hydro_sinks(&runner, tree_top->progeny[k], r_cut_tree);
+      for (int j = k + 1; j < 8; j++)
+        pairs_all_hydro_sinks(&runner, tree_top->progeny[k],
+                              tree_top->progeny[j], r_cut_tree);
+    }
+
+    int mismatches = 0;
+    for (int k = 0; k < 8; k++) {
+      for (size_t i = 0; i < count_per_progeny; i++) {
+        const float opt = opt_wcount[k * count_per_progeny + i];
+        const float brute = tree_top->progeny[k]->hydro.parts[i].density.wcount;
+        if (opt != brute) {
+          message(
+              "DOSUB mismatch: progeny=%d particle=%zu optimised=%.1f "
+              "brute=%.1f",
+              k, i, opt, brute);
+          mismatches++;
+        }
+      }
+    }
+
+    if (mismatches > 0)
+      error(
+          "T2 (DOSUB recursion completeness) FAILED: %d particle(s) "
+          "mismatched.",
+          mismatches);
+
+    message(
+        "T2 (DOSUB recursion completeness) passed: 8 progeny, "
+        "%zu particles/progeny, r_cut=%.3f (top dmin=%.3f, progeny "
+        "dmin=%.3f).",
+        count_per_progeny, r_cut_tree, tree_top->dmin,
+        tree_top->progeny[0]->dmin);
+
+    free(opt_wcount);
+    free_split_cell(tree_top);
+  }
 
   /* ---- Clean up ---- */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);

@@ -33,6 +33,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh test27cellsHydroSinks.sh testHydroMPIrules \
+        testSinkApertureRebuild testSinkFormationGasCompleteness \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline  # testMatrixInversion
@@ -47,6 +48,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
+		 testSinkApertureRebuild testSinkFormationGasCompleteness \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
@@ -107,6 +109,10 @@ test27cellsStars_subset_SOURCES = test27cellsStars.c
 test27cellsStars_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
 
 test27cellsHydroSinks_SOURCES = test27cellsHydroSinks.c
+
+testSinkApertureRebuild_SOURCES = testSinkApertureRebuild.c
+
+testSinkFormationGasCompleteness_SOURCES = testSinkFormationGasCompleteness.c
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 
