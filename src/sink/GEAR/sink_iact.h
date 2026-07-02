@@ -161,11 +161,14 @@ runner_iact_hydro_aperture_prep_sink_formation(
     pj->sink_data.can_form_sink = 0;
   }
 
-  /* Accumulate formation energies for both active particles. */
-  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj,
-                                                cosmo, sink_props);
-  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pj, pi,
-                                                cosmo, sink_props);
+  /* Accumulate formation energies for both active particles. dx = pi - pj,
+     so the first call (pi, pj) uses dx as-is; the second call swaps the
+     particle order and therefore needs the negated vector. */
+  const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
+  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj, r2,
+                                                dx, cosmo, sink_props);
+  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pj, pi, r2,
+                                                mdx, cosmo, sink_props);
 }
 
 /**
@@ -207,9 +210,10 @@ runner_iact_nonsym_hydro_aperture_prep_sink_formation(
 
   if (potential_i > potential_j) pi->sink_data.can_form_sink = 0;
 
-  /* Accumulate formation energies into pi, with pj as neighbour. */
-  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj,
-                                                cosmo, sink_props);
+  /* Accumulate formation energies into pi, with pj as neighbour. dx = pi -
+     pj already matches the convention expected below. */
+  sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj, r2,
+                                                dx, cosmo, sink_props);
 }
 
 /**

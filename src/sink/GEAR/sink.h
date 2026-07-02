@@ -1269,13 +1269,17 @@ INLINE static void sink_prepare_part_sink_formation_self_contribution(
  * @param with_self_gravity Whether self-gravity is enabled.
  * @param pi The #part for which we compute the quantities.
  * @param pj A neighbouring #part of #pi.
+ * @param r2 Comoving square distance between pi and pj, already wrapped for
+ * periodicity by the caller.
+ * @param dx Comoving vector separating both particles (pi - pj), already
+ * wrapped for periodicity by the caller.
  * @param cosmo The cosmological parameters and properties.
  * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     const int with_self_gravity, struct part *restrict pi,
-    const struct part *restrict pj, const struct cosmology *cosmo,
-    const struct sink_props *sink_props) {
+    const struct part *restrict pj, const float r2, const float dx[3],
+    const struct cosmology *cosmo, const struct sink_props *sink_props) {
 
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -1287,41 +1291,32 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     return;
   }
 
-  /* Physical accretion radius of part p */
-  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
-
-  /* Comoving distance of particl p */
-  const float pix[3] = {(float)(pi->x[0]), (float)(pi->x[1]),
-                        (float)(pi->x[2])};
-
   /* No need to check if the particle has been flagged to form a sink or
      not. This is done in runner_prepare_part_sink_formation(). */
 
-  /* Compute the pairwise physical distance */
-  const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
-                        (float)(pj->x[2])};
+  /* dx/r2 are comoving and already periodicity-wrapped by the caller (see
+     runner_doiact_functions_hydro_aperture.h); convert to physical here
+     instead of recomputing from raw particle positions. */
+  const float dx_physical[3] = {dx[0] * a, dx[1] * a, dx[2] * a};
+  const float r2_physical = r2 * a * a;
 
-  const float dx[3] = {pjx[0] - pix[0], pjx[1] - pix[1], pjx[2] - pix[2]};
-  const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
-                                dx[2] * cosmo->a};
-  const float r2_physical = dx_physical[0] * dx_physical[0] +
-                            dx_physical[1] * dx_physical[1] +
-                            dx_physical[2] * dx_physical[2];
-
-  /* Checks that this part is a neighbour */
-  if ((r2_physical > r_acc_p * r_acc_p) || (r2_physical == 0.0)) {
+  /* Physical accretion radius of part p. The geometric r_cut applied by the
+     aperture loop already enforces this bound; kept as a defensive check. */
+  const float r_acc_p = sink_props->cut_off_radius * a;
+  if (r2_physical > r_acc_p * r_acc_p) {
     return;
   }
 
   const float mj = hydro_get_mass(pj);
   const float u_inter_j = hydro_get_drifted_physical_internal_energy(pj, cosmo);
 
-  /* Compute the relative comoving velocity between p and pi */
-  const float dv[3] = {pj->v[0] - pi->v[0], pj->v[1] - pi->v[1],
-                       pj->v[2] - pi->v[2]};
+  /* Compute the relative comoving velocity between pi and pj, matching the
+     dx = pi - pj convention. */
+  const float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
 
   /* Calculate the velocity with the Hubble flow */
-  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], -a2H * dx[1] + dv[1],
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
                                   a2H * dx[2] + dv[2]};
 
   /* Compute the physical relative velocity between the particles */
@@ -1354,28 +1349,27 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
         max(pi->sink_data.max_potential, pj->sink_data.potential);
   }
 
-  if (pi != pj) {
-    /* Compute rotation energies per component */
-    const float Dx = dx_physical[0];
-    const float Dy = dx_physical[1];
-    const float Dz = dx_physical[2];
-    const float R_yz = sqrtf(Dy * Dy + Dz * Dz);
-    const float R_xz = sqrtf(Dx * Dx + Dz * Dz);
-    const float R_xy = sqrtf(Dx * Dx + Dy * Dy);
-    const float L_x2 =
-        specific_angular_momentum[0] * specific_angular_momentum[0];
-    const float L_y2 =
-        specific_angular_momentum[1] * specific_angular_momentum[1];
-    const float L_z2 =
-        specific_angular_momentum[2] * specific_angular_momentum[2];
+  /* Compute rotation energies per component */
+  const float Dx = dx_physical[0];
+  const float Dy = dx_physical[1];
+  const float Dz = dx_physical[2];
+  const float R_yz = sqrtf(Dy * Dy + Dz * Dz);
+  const float R_xz = sqrtf(Dx * Dx + Dz * Dz);
+  const float R_xy = sqrtf(Dx * Dx + Dy * Dy);
+  const float L_x2 =
+      specific_angular_momentum[0] * specific_angular_momentum[0];
+  const float L_y2 =
+      specific_angular_momentum[1] * specific_angular_momentum[1];
+  const float L_z2 =
+      specific_angular_momentum[2] * specific_angular_momentum[2];
 
-    /* Limiting behaviour when R=0:
-                 L = R*v_phi => E_rot = 0.5*m*L^2/R = 0.5*m*R*v_phi^2.
-       So, if R = 0, then E_rot = 0. */
-    if (R_yz > 0.0) pi->sink_data.E_rot_neighbours[0] += 0.5 * mj * L_x2 / R_yz;
-    if (R_xz > 0.0) pi->sink_data.E_rot_neighbours[1] += 0.5 * mj * L_y2 / R_xz;
-    if (R_xy > 0.0) pi->sink_data.E_rot_neighbours[2] += 0.5 * mj * L_z2 / R_xy;
-  }
+  /* Limiting behaviour when R=0:
+               L = R*v_phi => E_rot = 0.5*m*L^2/R = 0.5*m*R*v_phi^2.
+     So, if R = 0, then E_rot = 0. */
+  if (R_yz > 0.0) pi->sink_data.E_rot_neighbours[0] += 0.5 * mj * L_x2 / R_yz;
+  if (R_xz > 0.0) pi->sink_data.E_rot_neighbours[1] += 0.5 * mj * L_y2 / R_xz;
+  if (R_xy > 0.0) pi->sink_data.E_rot_neighbours[2] += 0.5 * mj * L_z2 / R_xy;
+
   /* Shall we reset the values of the energies for the next timestep? No, it is
      done in cell_drift.c and space_init.c, for active particles. The
      potential is set in runner_others.c->runner_do_end_grav_force() */
