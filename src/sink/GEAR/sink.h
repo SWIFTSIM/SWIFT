@@ -1223,6 +1223,45 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
 }
 
 /**
+ * @brief Fold the candidate particle's own mass, internal energy, and
+ * self-potential into its sink-formation totals.
+ *
+ * sink_prepare_part_sink_formation_gas_criteria() only runs on genuine
+ * neighbour pairs found by the fixed-aperture gas-gas neighbour loop, so
+ * pi's own contribution to M_tot, E_int_neighbours and E_pot_neighbours is
+ * otherwise missing. E_kin_neighbours and E_rot_neighbours[] need no self
+ * term (pi has zero velocity/rotation relative to itself), and
+ * max_potential is already seeded with pi's own potential in
+ * sink_init_part(). This function must be called exactly once per active
+ * candidate particle, before sink_is_forming() is evaluated.
+ *
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param pi The #part for which we compute the quantities.
+ * @param cosmo The cosmological parameters and properties.
+ */
+INLINE static void sink_prepare_part_sink_formation_self_contribution(
+    const int with_self_gravity, struct part *restrict pi,
+    const struct cosmology *cosmo) {
+
+  /* If for some reason the particle has been flagged to not form sink,
+     do not continue and save some computationnal ressources. */
+  if (!pi->sink_data.can_form_sink) {
+    return;
+  }
+
+  const float mi = hydro_get_mass(pi);
+  const float u_inter_i = hydro_get_drifted_physical_internal_energy(pi, cosmo);
+
+  pi->sink_data.M_tot += mi;
+  pi->sink_data.E_int_neighbours += mi * u_inter_i;
+
+  if (with_self_gravity) {
+    pi->sink_data.E_pot_neighbours +=
+        0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
+  }
+}
+
+/**
  * @brief Compute all quantities required for the formation of a sink such as
  * kinetic energy, potential energy, etc. This function works on the
  * neighbouring gas particles j.

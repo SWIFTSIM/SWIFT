@@ -466,35 +466,17 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct sink_props *sink_props = e->sink_properties;
-
-  /* Loop over gas particles in this cell. Note that it means we are missing
-   *gas particles in other cells.
-   *
-   * TODO (Darwin): This will be improved in the future with a proper self/pair
-   *task search.
-   */
-  const int count = c->hydro.count;
-  struct part *restrict parts = c->hydro.parts;
-
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
-  /* TODO: Remove the gas loop once we use the neew neighbour loop.
-   * TODO: Pay attention to call the function on self if needed. */
-
-  /* Loop over all particles to find the neighbours within r_acc. Then,
-     compute all quantities you need.  */
-  for (int j = 0; j < count; j++) {
-
-    /* Get a handle on the part */
-    struct part *restrict pj = &parts[j];
-
-    /* Ignore inhibited particles */
-    if (part_is_inhibited(pj, e)) continue;
-
-    /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_gas_criteria(with_self_gravity, pi, pj,
-                                                  cosmo, sink_props);
-  } /* End of gas neighbour loop */
+  /* The neighbouring gas particles within r_acc have already been
+     accumulated onto pi->sink_data by the fixed-aperture sink-formation gas
+     loop (runner_do{self,pair}1_hydro_aperture_prep_sink_formation), which
+     runs earlier in the task graph and correctly searches across cell
+     boundaries. That loop only visits genuine neighbour pairs, so it never
+     folds in pi's own mass, internal energy and self-potential. Do that
+     here. */
+  sink_prepare_part_sink_formation_self_contribution(with_self_gravity, pi,
+                                                     cosmo);
 
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
