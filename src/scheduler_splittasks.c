@@ -31,6 +31,7 @@
 /* Local headers. */
 #include "engine.h"
 #include "error.h"
+#include "sink_properties.h"
 #include "sort_part.h"
 #include "space.h"
 #include "space_getsid.h"
@@ -51,6 +52,16 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
   const int with_sinks = (s->space->e->policy & engine_policy_sinks);
   const int with_black_holes =
       (s->space->e->policy & engine_policy_black_holes);
+
+  /* If the sink-formation gas-gas preparation loop is active, fold its
+     fixed aperture radius into the split predicate below so that the
+     shared hydro decomposition -- and hence hydro.super -- never goes
+     finer than the aperture. 0.f is the neutral element: it leaves the
+     predicate unchanged when the loop is not active. */
+  const struct sink_props *sink_properties = s->space->e->sink_properties;
+  const float r_cut = sink_formation_gas_loop_is_active(sink_properties)
+                          ? sink_formation_gas_loop_r_cut(sink_properties)
+                          : 0.f;
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -99,7 +110,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       }
 
       /* Is this cell even split and the task does not violate h ? */
-      if (cell_can_split_self_hydro_task(ci)) {
+      if (cell_can_split_self_hydro_task(ci, r_cut)) {
         /* Make a sub? */
         if (scheduler_dosub && (ci->hydro.count < space_subsize_self_hydro) &&
             (ci->stars.count < space_subsize_self_stars)) {
@@ -178,8 +189,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 #endif
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_hydro_task(ci) &&
-          cell_can_split_pair_hydro_task(cj)) {
+      if (cell_can_split_pair_hydro_task(ci, r_cut) &&
+          cell_can_split_pair_hydro_task(cj, r_cut)) {
 
         const int h_count_i = ci->hydro.count;
         const int h_count_j = cj->hydro.count;
@@ -209,6 +220,14 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
               s_count_j * sid_scale[sid] < space_subsize_pair_stars / h_count_i;
         }
 
+        /* Note: the fixed-aperture sink-formation gas-gas loop piggybacks
+           these same leaves (it is created post-split, in the extra
+           hydroloop mapper, and never passes through this function). No
+           change is needed here: cell_can_split_pair_hydro_task() above
+           already folds the aperture radius into its sinks.h_max term, so
+           this decomposition never goes finer than the aperture and the
+           corner/cell_split_pairs logic below stays within its
+           adjacency-completeness window for that loop too. */
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
             (do_sub_hydro && do_sub_stars_i && do_sub_stars_j) &&

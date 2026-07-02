@@ -1148,9 +1148,14 @@ cell_can_recurse_in_self_sinks_task(const struct cell *c) {
  * sub-tasks.
  *
  * @param c The #cell.
+ * @param r_cut The fixed aperture radius used by the sink-formation gas-gas
+ * preparation loop (0.f if that loop is not active for this run). Folding it
+ * in here makes the shared hydro decomposition -- and hence hydro.super --
+ * respect the aperture, so the formation_gas tasks that piggyback these
+ * leaves stay complete. See sink_formation_gas_loop_r_cut().
  */
 __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
-    const struct cell *c) {
+    const struct cell *c, const float r_cut) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
@@ -1160,7 +1165,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
+         (space_stretch * max(kernel_gamma * c->sinks.h_max, r_cut) <
+          0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
@@ -1169,9 +1175,12 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
  * sub-tasks.
  *
  * @param c The #cell.
+ * @param r_cut The fixed aperture radius used by the sink-formation gas-gas
+ * preparation loop (0.f if that loop is not active for this run). See
+ * cell_can_split_pair_hydro_task().
  */
 __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
-    const struct cell *c) {
+    const struct cell *c, const float r_cut) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
@@ -1181,7 +1190,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
+         (space_stretch * max(kernel_gamma * c->sinks.h_max, r_cut) <
+          0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
