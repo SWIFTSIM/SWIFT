@@ -29,6 +29,7 @@
 #include "active.h"
 #include "engine.h"
 #include "feedback.h"
+#include "sink_properties.h"
 #include "space_getsid.h"
 
 extern int engine_star_resort_task_depth;
@@ -2838,6 +2839,96 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 }
 
 /**
+ * @brief Traverse a sub-cell task and activate the gas drift/sort tasks
+ * required by the fixed-aperture gas-gas sink formation preparation loop.
+ *
+ * Unlike the h-based sink recursion, this function uses r_cut (a fixed global
+ * aperture) as the recursion threshold, mirroring DOSUB_{SELF,PAIR}1_HYDRO_
+ * APERTURE (runner_doiact_functions_hydro_aperture.h): recurse while the
+ * cell is split, has enough particles to be worth recursing into, and
+ * r_cut < 0.5 * dmin. At the leaf, this is the exact analogue of
+ * cell_activate_subcell_hydro_tasks() for the density loop: the pair branch
+ * uses sorted interactions, so it must activate the sorts (not just the
+ * drifts) on both cells, while the self branch is naive and only needs the
+ * drift.
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in (NULL for self).
+ * @param s The task #scheduler.
+ * @param r_cut The fixed aperture radius used by the formation loop.
+ */
+void cell_activate_subcell_hydro_aperture_sink_formation_tasks(
+    struct cell *ci, struct cell *cj, struct scheduler *s, const float r_cut) {
+  const struct engine *e = s->space->e;
+
+  /* Self interaction? */
+  if (cj == NULL) {
+    const int ci_active = cell_is_active_hydro(ci, e);
+    if (!ci_active || ci->hydro.count == 0) return;
+
+    /* Recurse while split, large enough, and r_cut < 0.5 * dmin (matches
+       DOSUB_SELF1_HYDRO_APERTURE). */
+    if (ci->split && (ci->hydro.count >= space_recurse_size_self_hydro) &&
+        (r_cut < 0.5f * ci->dmin)) {
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] != NULL) {
+          cell_activate_subcell_hydro_aperture_sink_formation_tasks(
+              ci->progeny[j], NULL, s, r_cut);
+          for (int k = j + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              cell_activate_subcell_hydro_aperture_sink_formation_tasks(
+                  ci->progeny[j], ci->progeny[k], s, r_cut);
+        }
+      }
+    } else {
+      /* Leaf: naive self loop, no sort needed. Activate gas drift. */
+      cell_activate_drift_part(ci, s);
+    }
+  }
+
+  /* Pair interaction. */
+  else {
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = cell_is_active_hydro(cj, e);
+    if (!ci_active && !cj_active) return;
+
+    /* Get the orientation of the pair, as the branch/leaf below needs the
+       sid regardless of whether we recurse further. */
+    double shift[3];
+    const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
+
+    /* Recurse while both cells are split, large enough, and r_cut < 0.5 *
+       dmin (matches DOSUB_PAIR1_HYDRO_APERTURE). */
+    if (ci->split && (ci->hydro.count >= space_recurse_size_pair_hydro) &&
+        cj->split && (cj->hydro.count >= space_recurse_size_pair_hydro) &&
+        (r_cut < 0.5f * ci->dmin)) {
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+          cell_activate_subcell_hydro_aperture_sink_formation_tasks(
+              ci->progeny[pid], cj->progeny[pjd], s, r_cut);
+      }
+    } else {
+      /* Leaf: sorted pair loop. Store the sid we interact in, activate the
+         drifts, and activate the sorts, exactly as the density loop's
+         cell_activate_subcell_hydro_tasks() does for its own leaf. */
+      atomic_or(&ci->hydro.requires_sorts, 1 << sid);
+      atomic_or(&cj->hydro.requires_sorts, 1 << sid);
+      ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+      cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+      if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+      if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+
+      cell_activate_hydro_sorts(ci, sid, s);
+      cell_activate_hydro_sorts(cj, sid, s);
+    }
+  }
+}
+
+/**
  * @brief Un-skips all the sinks tasks associated with a given cell and
  * checks if the space needs to be rebuilt.
  *
@@ -3012,6 +3103,62 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
+  /* Un-skip the formation_gas tasks (gas-gas fixed-aperture loop). */
+  {
+    const float r_cut = e->sink_properties->cut_off_radius;
+    for (struct link *l = c->sinks.formation_gas; l != NULL; l = l->next) {
+      struct task *t = l->t;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+
+#ifdef WITH_MPI
+      const int ci_nodeID = ci->nodeID;
+      const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+      const int ci_nodeID = nodeID;
+      const int cj_nodeID = nodeID;
+#endif
+
+      const int ci_active = cell_is_active_hydro(ci, e);
+      const int cj_active = (cj != NULL) && cell_is_active_hydro(cj, e);
+
+      /* Only activate tasks that involve a local active cell. */
+      if ((ci_active || cj_active) &&
+          (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+        scheduler_activate(s, t);
+
+        if (t->type == task_type_self) {
+          cell_activate_subcell_hydro_aperture_sink_formation_tasks(ci, NULL, s,
+                                                                    r_cut);
+          cell_activate_drift_part(ci, s);
+        } else if (t->type == task_type_pair) {
+          cell_activate_subcell_hydro_aperture_sink_formation_tasks(ci, cj, s,
+                                                                    r_cut);
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+          /* Activate prep_ghost_in/out for each super-cell in the pair. */
+          if (ci_nodeID == nodeID) {
+            scheduler_activate(s, ci->hydro.super->sinks.prep_ghost_in);
+            scheduler_activate(s, ci->hydro.super->sinks.prep_ghost_out);
+          }
+          if (cj_nodeID == nodeID) {
+            scheduler_activate(s, cj->hydro.super->sinks.prep_ghost_in);
+            scheduler_activate(s, cj->hydro.super->sinks.prep_ghost_out);
+          }
+
+          /* Check whether there was too much particle motion, i.e. the
+             cell neighbour conditions required by the fixed aperture were
+             violated (Fix C). */
+          if (cell_need_rebuild_for_hydro_aperture_pair(ci, cj, r_cut))
+            rebuild = 1;
+          if (cell_need_rebuild_for_hydro_aperture_pair(cj, ci, r_cut))
+            rebuild = 1;
+        }
+      }
+    }
+  }
+
   /* Unskip all the other task types. */
   if (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e)) {
     /* Activate the ghosts */
@@ -3021,6 +3168,11 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       scheduler_activate(s, c->sinks.sink_ghost1);
     if (c->sinks.sink_ghost2 != NULL)
       scheduler_activate(s, c->sinks.sink_ghost2);
+    /* Activate prep_ghost barriers. */
+    if (c->sinks.prep_ghost_in != NULL)
+      scheduler_activate(s, c->sinks.prep_ghost_in);
+    if (c->sinks.prep_ghost_out != NULL)
+      scheduler_activate(s, c->sinks.prep_ghost_out);
   }
   if (c->nodeID == nodeID &&
       (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e))) {

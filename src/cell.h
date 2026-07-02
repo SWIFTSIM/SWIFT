@@ -661,6 +661,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_timestep_sync);
+void cell_activate_subcell_hydro_aperture_sink_formation_tasks(
+    struct cell *ci, struct cell *cj, struct scheduler *s, const float r_cut);
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
@@ -1333,6 +1335,30 @@ cell_need_rebuild_for_sinks_pair(const struct cell *ci, const struct cell *cj) {
   if (max(kernel_gamma * ci->sinks.h_max, kernel_gamma * cj->hydro.h_max) +
           ci->sinks.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * @brief Have gas particles in a pair of cells moved too much, invalidating
+ * the fixed-aperture gas-gas sink formation preparation loop's completeness
+ * criterion (Fix B: cell_can_split_{pair,self}_hydro_task guarantees
+ * r_cut < 0.5 * dmin at build time, this checks whether drift has since
+ * eroded that margin)?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param r_cut The fixed aperture radius used by the formation loop.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_need_rebuild_for_hydro_aperture_pair(const struct cell *ci,
+                                          const struct cell *cj,
+                                          const float r_cut) {
+
+  /* Is the aperture plus the max distance the parts in both cells have moved
+     larger than the cell size? Note ci->dmin == cj->dmin. */
+  if (r_cut + ci->hydro.dx_max_part + cj->hydro.dx_max_part > cj->dmin) {
     return 1;
   }
   return 0;

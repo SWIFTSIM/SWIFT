@@ -2469,12 +2469,17 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
-  /* Run the brute-force gas-gas formation neighbor count for some particles */
-  if (e->policy & engine_policy_sinks)
+  /* Run the brute-force gas-gas formation neighbor count for some particles.
+     Only meaningful when the fixed-aperture gas-gas preparation loop is
+     actually active -- otherwise there is no "optimised" count to compare
+     against. */
+  if ((e->policy & engine_policy_sinks) &&
+      sink_formation_gas_loop_is_active(e->sink_properties))
     sink_exact_formation_count_compute(e->s, e);
 
   /* Check the accuracy of the formation neighbor count */
-  if (e->policy & engine_policy_sinks)
+  if ((e->policy & engine_policy_sinks) &&
+      sink_formation_gas_loop_is_active(e->sink_properties))
     sink_exact_formation_count_check(e->s, e);
 #endif
 
@@ -3044,12 +3049,17 @@ int engine_step(struct engine *e) {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
-  /* Run the brute-force gas-gas formation neighbor count for some particles */
-  if (e->policy & engine_policy_sinks)
+  /* Run the brute-force gas-gas formation neighbor count for some particles.
+     Only meaningful when the fixed-aperture gas-gas preparation loop is
+     actually active -- otherwise there is no "optimised" count to compare
+     against. */
+  if ((e->policy & engine_policy_sinks) &&
+      sink_formation_gas_loop_is_active(e->sink_properties))
     sink_exact_formation_count_compute(e->s, e);
 
   /* Check the accuracy of the formation neighbor count */
-  if (e->policy & engine_policy_sinks)
+  if ((e->policy & engine_policy_sinks) &&
+      sink_formation_gas_loop_is_active(e->sink_properties))
     sink_exact_formation_count_check(e->s, e);
 #endif
 
