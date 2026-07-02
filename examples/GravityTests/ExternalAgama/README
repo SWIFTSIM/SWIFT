@@ -40,10 +40,6 @@ Note that the AGAMA potential file `potiential.txt` can be created by running:
 
 `./makePlummerPotential.py`
 
-The initial conditions are obtained with the pNbody script:
-
-`ic_plummer   -N 10000 --Mtot 1e-2 -a 0.1 --Rmax 20 -t swift -o plummer.hdf5`
-
 
 # How to compile AGAMA
 
