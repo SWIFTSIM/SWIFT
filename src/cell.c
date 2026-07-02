@@ -716,6 +716,7 @@ void cell_clean_links(struct cell *c, void *data) {
   c->sinks.density = NULL;
   c->sinks.do_sink_swallow = NULL;
   c->sinks.do_gas_swallow = NULL;
+  c->sinks.formation_gas = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
   c->black_holes.do_gas_swallow = NULL;

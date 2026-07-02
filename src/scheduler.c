@@ -529,6 +529,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
           cost = 1.f * (wscale * sink_count_i) * sink_count_i;
+        } else if (t->subtype == task_subtype_sink_formation_gas) {
+          cost = 1.f * (wscale * count_i) * count_i;
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
@@ -600,6 +602,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * wscale *
                    (sink_count_i * sink_count_j + sink_count_j * sink_count_i) *
                    sid_scale[t->flags];
+          }
+        } else if (t->subtype == task_subtype_sink_formation_gas) {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           }
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
