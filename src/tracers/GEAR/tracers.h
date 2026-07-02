@@ -173,9 +173,10 @@ static INLINE void tracers_after_timestep_sink(
   const float accr_rate = sink_get_accretion_rate(sink);
   const float sfr = sink_get_SFR(sink);
 
-  /* Accumulate average accretion rate and SFR. If averaged_SFR[i] < 0 this is
-   * the first step after the trigger fired: the stored value is
-   * -time_to_remove, so (time_step_length + averaged_SFR[i]) gives only the
+  /* Accumulate average accretion rate and SFR. Each array carries its own
+   * sentinel: if averaged_SFR[i] < 0 (resp. averaged_accretion_rate[i] < 0)
+   * this is the first step after the trigger fired, so the stored value is
+   * -time_to_remove and (time_step_length + averaged_*[i]) gives only the
    * in-window fraction, using a single consistent rate value and never going
    * negative. */
   for (int i = 0; i < num_snapshot_triggers_sink; ++i) {
@@ -184,9 +185,15 @@ static INLINE void tracers_after_timestep_sink(
         const double in_window =
             time_step_length + sink->tracers_data.averaged_SFR[i];
         sink->tracers_data.averaged_SFR[i] = sfr * in_window;
-        sink->tracers_data.averaged_accretion_rate[i] = accr_rate * in_window;
       } else {
         sink->tracers_data.averaged_SFR[i] += sfr * time_step_length;
+      }
+
+      if (sink->tracers_data.averaged_accretion_rate[i] < 0.f) {
+        const double in_window =
+            time_step_length + sink->tracers_data.averaged_accretion_rate[i];
+        sink->tracers_data.averaged_accretion_rate[i] = accr_rate * in_window;
+      } else {
         sink->tracers_data.averaged_accretion_rate[i] +=
             accr_rate * time_step_length;
       }
@@ -197,6 +204,8 @@ static INLINE void tracers_after_timestep_sink(
 static INLINE void tracers_after_recording_trigger_sink(
     struct sink *sink, const int trigger_index, const double time_to_remove) {
   sink->tracers_data.averaged_SFR[trigger_index] = -(float)time_to_remove;
+  sink->tracers_data.averaged_accretion_rate[trigger_index] =
+      -(float)time_to_remove;
 }
 
 /**
