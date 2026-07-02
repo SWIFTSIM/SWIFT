@@ -570,10 +570,11 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
-  space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL, parts, gparts,
-             sinks, sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart,
-             Nnupart, periodic, replicate, /*remap_ids=*/0,
-             /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
+  space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL,
+             /*sink_properties=*/NULL, parts, gparts, sinks, sparts, bparts,
+             Ngas, Ngpart, Nsink, Nspart, Nbpart, Nnupart, periodic, replicate,
+             /*remap_ids=*/0, /*generate_gas_in_ics=*/0,
+             /*hydro=*/N_total[0] > 0, /*gravity=*/1,
              /*with_star_formation=*/0, /*sink=*/N_total[swift_type_sink],
              with_DM_particles, with_DM_background_particles, with_neutrinos,
              talking, /*dry_run=*/0, nr_nodes);

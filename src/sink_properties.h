@@ -22,6 +22,9 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Local headers. */
+#include "inline.h"
+
 /* Select the correct sink model */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_properties.h"
@@ -32,5 +35,50 @@
 #else
 #error "Invalid choice of sink model"
 #endif
+
+/**
+ * @brief Is the fixed-aperture gas-gas sink-formation preparation loop
+ * (task subtype sink_formation_gas) active?
+ *
+ * The loop only makes sense when the sink model uses a single, fixed,
+ * global aperture radius (GEAR's cut_off_radius). With a variable/h-based
+ * cutoff there is no single radius to make the task graph respect, so the
+ * loop must not be used and sink formation keeps its original path.
+ *
+ * This is the single gate for all formation_gas-related code: task
+ * creation, dependency wiring, barrier creation, unskip activation, and the
+ * various task-count/skip bookkeeping in the engine.
+ *
+ * @param sink_properties The #sink_props of this run, or NULL.
+ */
+__attribute__((always_inline)) INLINE static int
+sink_formation_gas_loop_is_active(const struct sink_props *sink_properties) {
+#ifdef SINKS_WITH_FIXED_CUTOFF_RADIUS
+  return (sink_properties != NULL) && (sink_properties->use_fixed_r_cut != 0);
+#else
+  (void)sink_properties;
+  return 0;
+#endif
+}
+
+/**
+ * @brief Return the fixed aperture radius used by the sink-formation gas-gas
+ * preparation loop.
+ *
+ * Only meaningful once sink_formation_gas_loop_is_active() has returned a
+ * true value for the same #sink_props; returns a negative value otherwise
+ * (mirrors the convention already used in runner_main.c).
+ *
+ * @param sink_properties The #sink_props of this run.
+ */
+__attribute__((always_inline)) INLINE static float
+sink_formation_gas_loop_r_cut(const struct sink_props *sink_properties) {
+#ifdef SINKS_WITH_FIXED_CUTOFF_RADIUS
+  return sink_properties->cut_off_radius;
+#else
+  (void)sink_properties;
+  return -1.f;
+#endif
+}
 
 #endif /* SWIFT_SINK_PROPERTIES_H */
