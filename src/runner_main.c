@@ -159,6 +159,12 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
 
+  /* Note: this selects r_cut purely at compile time (SINKS_WITH_FIXED_
+     CUTOFF_RADIUS), unlike task creation which additionally gates on the
+     runtime flag (sink_formation_gas_loop_is_active(), see
+     sink_properties.h). This asymmetry is harmless: when the runtime gate
+     is off, no sink_formation_gas task is ever created, so this dispatch
+     value is never read. */
 #ifdef SINKS_WITH_FIXED_CUTOFF_RADIUS
   const struct sink_props *sink_properties = e->sink_properties;
   const float sink_cut_off_radius = sink_properties->cut_off_radius;
@@ -234,8 +240,6 @@ void *runner_main(void *data) {
             runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_density) {
             runner_dosub_self1_density(r, ci, /*below_h_max=*/0, 1);
-            runner_dosub_self1_hydro_aperture_prep_sink_formation(
-                r, ci, sink_cut_off_radius, /*gettimer=*/1);
           }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
@@ -286,6 +290,9 @@ void *runner_main(void *data) {
             runner_do_sinks_gas_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_sink_formation_gas)
+            runner_dosub_self1_hydro_aperture_prep_sink_formation(
+                r, ci, sink_cut_off_radius, /*gettimer=*/1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -296,9 +303,6 @@ void *runner_main(void *data) {
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_density) {
             runner_dosub_pair1_density(r, ci, cj, /*below_h_max=*/0, 1);
-            runner_dosub_pair1_hydro_aperture_prep_sink_formation(
-                r, ci, cj, sink_cut_off_radius,
-                /*gettimer=*/1);
           }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
@@ -348,6 +352,9 @@ void *runner_main(void *data) {
             runner_do_sinks_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sink_formation_gas)
+            runner_dosub_pair1_hydro_aperture_prep_sink_formation(
+                r, ci, cj, sink_cut_off_radius, /*gettimer=*/1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
