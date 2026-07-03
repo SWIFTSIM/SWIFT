@@ -53,6 +53,13 @@ INLINE static void convert_part_averaged_SFR(const struct engine *e,
                e->snapshot_recording_triggers_part[i];
     else
       ret[i] = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ret[i] < 0.f)
+      error(
+          "Negative averaged SFR for gas particle id=%lld trigger=%d value=%e",
+          p->id, i, ret[i]);
+#endif
   }
 }
 
@@ -68,6 +75,13 @@ INLINE static void convert_spart_averaged_SFR(const struct engine *e,
                e->snapshot_recording_triggers_part[i];
     else
       ret[i] = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ret[i] < 0.f)
+      error(
+          "Negative averaged SFR for star particle id=%lld trigger=%d value=%e",
+          sp->id, i, ret[i]);
+#endif
   }
 }
 
@@ -81,6 +95,14 @@ INLINE static void convert_bpart_averaged_accretion_rate(const struct engine *e,
                e->snapshot_recording_triggers_bpart[i];
     else
       ret[i] = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ret[i] < 0.f)
+      error(
+          "Negative averaged accretion rate for black hole id=%lld trigger=%d "
+          "value=%e",
+          bp->id, i, ret[i]);
+#endif
   }
 }
 
