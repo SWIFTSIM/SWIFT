@@ -165,12 +165,9 @@ void *runner_main(void *data) {
      sink_properties.h). This asymmetry is harmless: when the runtime gate
      is off, no sink_formation_gas task is ever created, so this dispatch
      value is never read. */
-#ifdef SINKS_WITH_FIXED_CUTOFF_RADIUS
   const struct sink_props *sink_properties = e->sink_properties;
-  const float sink_cut_off_radius = sink_properties->cut_off_radius;
-#else
-  const float sink_cut_off_radius = -1;
-#endif
+  const float sink_cut_off_radius =
+      sink_formation_gas_loop_r_cut(sink_properties);
 
 #ifdef WITH_LIKWID
   swift_likwid_marker_start_region("runner_main");
