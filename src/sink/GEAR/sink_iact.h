@@ -27,11 +27,18 @@
 #include "sink_properties.h"
 
 /**
- * @brief do sink computation after the runner_iact_density (symmetric
- * version)
+ * @brief Accumulate the potential-minimum reduction from the standard SPH
+ * density loop (symmetric version).
  *
- * In GEAR: This function deactivates the sink formation ability of #part not
- * at a potential minimum.
+ * The fixed-aperture gas-gas neighbour loop (task_subtype_sink_formation_gas)
+ * only exists when the sink model uses a single, fixed, global aperture
+ * radius (see sink_formation_gas_loop_is_active()). With a variable/h-based
+ * cutoff there is no such loop, so this function -- running inside the
+ * regular density self/pair tasks, using the adaptive smoothing length -- is
+ * the only source of neighbour potentials for the potential-minimum
+ * criterion checked in sink_is_forming(). It contributes to the same
+ * min_neighbour_potential reduction the aperture loop uses, so the two
+ * sources compose correctly regardless of which (or both) are active.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -47,39 +54,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
-  /* TODO: Move this to the runner_iact_hydro_aperture_prep_sink_formation() */
-
-  /* In order to prevent the formation of two sink particles too close together,
-   * we keep only gas particles with the smallest potential. The distance at
-   * which to prevent sink formation is the cutoff radius if this is fixed, or
-   * it is the variable smoothing length times gamma. */
-
   const float r = sqrtf(r2);
   const float rmax = max(hi, hj) * kernel_gamma;
 
   if (r < rmax) {
-    float potential_i = pi->sink_data.potential;
-    float potential_j = pj->sink_data.potential;
-
-    /* prevent the particle with the largest potential to form a sink */
-    if (potential_i > potential_j) {
-      pi->sink_data.can_form_sink = 0;
-      return;
-    }
-
-    if (potential_j > potential_i) {
-      pj->sink_data.can_form_sink = 0;
-      return;
-    }
+    pi->sink_data.min_neighbour_potential =
+        min(pi->sink_data.min_neighbour_potential, pj->sink_data.potential);
+    pj->sink_data.min_neighbour_potential =
+        min(pj->sink_data.min_neighbour_potential, pi->sink_data.potential);
   }
 }
 
 /**
- * @brief do sink computation after the runner_iact_density (non symmetric
- * version)
+ * @brief Accumulate the potential-minimum reduction from the standard SPH
+ * density loop (non-symmetric version).
  *
- * In GEAR: This function deactivates the sink formation ability of #part not
- * at a potential minimum.
+ * See runner_iact_sink() for the rationale. Only pi is updated.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -95,24 +85,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
 
-  /* TODO: Move this to the
-   * runner_iact_nonsym_hydro_aperture_prep_sink_formation() */
-
-  /* In order to prevent the formation of two sink particles too close together,
-   * we keep only gas particles with the smallest potential. The distance at
-   * which to prevent sink formation is the cutoff radius if this is fixed, or
-   * it is the variable smoothing length times gamma. */
-
   const float r = sqrtf(r2);
   const float rmax = max(hi, hj) * kernel_gamma;
 
   if (r < rmax) {
-    float potential_i = pi->sink_data.potential;
-    float potential_j = pj->sink_data.potential;
-
-    /* if the potential is larger
-     * prevent the particle to form a sink */
-    if (potential_i > potential_j) pi->sink_data.can_form_sink = 0;
+    pi->sink_data.min_neighbour_potential =
+        min(pi->sink_data.min_neighbour_potential, pj->sink_data.potential);
   }
 }
 
