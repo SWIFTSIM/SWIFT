@@ -1281,20 +1281,23 @@ INLINE static void sink_prepare_part_sink_formation(
  * kinetic energy, potential energy, etc. This function works on the
  * neighbouring gas particles j.
  *
+ * The caller is solely responsible for only invoking this function on pairs
+ * already known to be within the applicable accretion radius (the fixed
+ * aperture loop filters by r_cut before calling; the adaptive-h density loop
+ * filters by kernel_gamma*max(hi,hj) before calling) -- this function does
+ * not re-check the distance itself.
+ *
  * @param with_self_gravity Whether self-gravity is enabled.
  * @param pi The #part for which we compute the quantities.
  * @param pj A neighbouring #part of #pi.
- * @param r2 Comoving square distance between pi and pj, already wrapped for
- * periodicity by the caller.
  * @param dx Comoving vector separating both particles (pi - pj), already
  * wrapped for periodicity by the caller.
  * @param cosmo The cosmological parameters and properties.
- * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     const int with_self_gravity, struct part *restrict pi,
-    const struct part *restrict pj, const float r2, const float dx[3],
-    const struct cosmology *cosmo, const struct sink_props *sink_props) {
+    const struct part *restrict pj, const float dx[3],
+    const struct cosmology *cosmo) {
 
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -1309,18 +1312,10 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   /* No need to check if the particle has been flagged to form a sink or
      not. This is done in runner_prepare_part_sink_formation(). */
 
-  /* dx/r2 are comoving and already periodicity-wrapped by the caller (see
+  /* dx is comoving and already periodicity-wrapped by the caller (see
      runner_doiact_functions_hydro_aperture.h); convert to physical here
      instead of recomputing from raw particle positions. */
   const float dx_physical[3] = {dx[0] * a, dx[1] * a, dx[2] * a};
-  const float r2_physical = r2 * a * a;
-
-  /* Physical accretion radius of part p. The geometric r_cut applied by the
-     aperture loop already enforces this bound; kept as a defensive check. */
-  const float r_acc_p = sink_props->cut_off_radius * a;
-  if (r2_physical > r_acc_p * r_acc_p) {
-    return;
-  }
 
   const float mj = hydro_get_mass(pj);
   const float u_inter_j = hydro_get_drifted_physical_internal_energy(pj, cosmo);

@@ -37,11 +37,15 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {}
 
 /**
  * @brief Gas particle interactions relevant for sinks, to run in hydro density
@@ -55,11 +59,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param with_self_gravity Whether self-gravity is enabled.
+ * @param cosmo The cosmology.
+ * @param sink_props Sink properties.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {}
+    const float H, const int with_self_gravity, const struct cosmology *cosmo,
+    const struct sink_props *sink_props) {}
 
 /**
  * @brief Gas-gas sink formation interaction (symmetric).
