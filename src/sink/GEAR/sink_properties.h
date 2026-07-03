@@ -288,10 +288,16 @@ INLINE static void sink_props_init(
       (char)parser_get_param_int(params, "GEARSink:use_fixed_cut_off_radius");
 
   /* The property cut_off_radius is now only used in the GEAR model.
-   * It is ignored if use_fixed_r_cut is 0. */
+   * It is ignored if use_fixed_r_cut is 0: set it to a sentinel so any
+   * accidental unguarded read is an obvious, deterministic wrong value
+   * instead of uninitialised memory. Code that needs an accretion radius
+   * in the adaptive case must use kernel_gamma * h of the relevant
+   * particle/sink instead. */
   if (sp->use_fixed_r_cut) {
     sp->cut_off_radius =
         parser_get_param_float(params, "GEARSink:cut_off_radius");
+  } else {
+    sp->cut_off_radius = -1.f;
   }
 
   sp->f_acc = parser_get_opt_param_float(params, "GEARSink:f_acc",

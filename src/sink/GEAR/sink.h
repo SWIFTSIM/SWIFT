@@ -547,8 +547,13 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-  /* Smoothing length criterion */
-  if ((sink_props->sink_formation_smoothing_length_criterion) &&
+  /* Smoothing length criterion. Only meaningful when the accretion radius is
+     fixed: it checks whether the local resolution (kernel_gamma * h) is
+     coarse relative to the externally-imposed target cut_off_radius. In the
+     adaptive case the accretion radius *is* kernel_gamma * h by definition,
+     so the comparison would be a tautology; skip the criterion instead. */
+  if (sink_props->use_fixed_r_cut &&
+      (sink_props->sink_formation_smoothing_length_criterion) &&
       (kernel_gamma * h >= sink_cut_off_radius)) {
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("[%lld] Size criterion failed!", p->id);
@@ -1419,8 +1424,14 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     return;
   }
 
-  /* Physical accretion radius of part p */
-  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
+  /* Physical accretion radius of part p. In the fixed-r_cut case this is the
+     configured cut_off_radius; in the adaptive case there is no such global
+     value (sink_props->cut_off_radius is a -1 sentinel), so use what pi's
+     own accretion radius would become upon formation instead. */
+  const float r_acc_p =
+      (sink_props->use_fixed_r_cut ? sink_props->cut_off_radius
+                                   : kernel_gamma * pi->h) *
+      cosmo->a;
 
   /* Physical accretion radius of sink si */
   const float rmax = sj->h * kernel_gamma;
