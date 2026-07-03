@@ -217,6 +217,7 @@ struct part {
   /* Signal Speed for MHD */
     float v_sig;
   } viscosity;
+	  
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
 

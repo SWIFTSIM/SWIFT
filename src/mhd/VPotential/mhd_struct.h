@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2022 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2022 Federico Stasyszyn (fstasyszyn@unc.edu.ar)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,6 +22,8 @@
 /**
  * @brief Particle-carried fields for the MHD scheme.
  */
+#include "symmetric_matrix.h"
+
 struct mhd_part_data {
 
   /*! Predicted Bfield */
@@ -73,6 +75,12 @@ struct mhd_part_data {
 
   /* Laplacian A */
   float Delta_A[3];
+
+  struct {
+    struct sym_matrix d_mat_inv;
+    
+    float Mat_b[3][3];
+  } dens;
 };
 
 /**

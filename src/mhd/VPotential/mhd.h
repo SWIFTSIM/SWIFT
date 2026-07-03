@@ -25,6 +25,8 @@
 
 #include <float.h>
 
+#include "symmetric_matrix.h"
+
 /**
  * @brief Returns the magnetic energy contained in the particle.
  *
@@ -132,6 +134,12 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           ? afac_divB * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
+  float dt_divA =
+      p->mhd_data.divB != 0.0f
+          ? afac_divB * hydro_properties->CFL_condition * p->h *
+                sqrtf(p->rho / (p->mhd_data.divA * p->mhd_data.divA) * mu_0)
+          : FLT_MAX;
+  dt_divB = fminf(dt_divA, dt_divB);
   const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
                            ? afac_resistive * hydro_properties->CFL_condition *
@@ -261,14 +269,14 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
     const struct part *restrict p, const struct cosmology *c, const float mu0) {
 
   const float Gauge = p->mhd_data.Gau;
-  const float v_sig = mhd_get_comoving_magnetosonic_speed(p);
+  const float v_sig = 0.5f * hydro_get_signal_velocity(p);
   const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
   const float afac2 = pow(c->a, (c->a_factor_sound_speed + 1.f));
 
   /* Hyperbolic term */
-  const float Source_Term = 2.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
+  const float Source_Term = 1.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
   /* Parabolic evolution term */
-  const float Damping_Term = 4.f * afac2 * v_sig * Gauge / p->h;
+  const float Damping_Term = 1.f * afac2 * v_sig * Gauge / p->h;
   /* Density change term */
   const float DivV_Term = hydro_get_div_v(p) * Gauge;
   /* Cosmological term */
@@ -289,8 +297,15 @@ __attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
 __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *p) {
 
-  p->mhd_data.divA = 0.f;
-  for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
+//  p->mhd_data.divA = 0.f;
+//  for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
+  
+  zero_sym_matrix(&p->mhd_data.dens.d_mat_inv);
+  for (int i = 0; i < 3; ++i) 
+    for (int j = 0; j < 3; ++j){ 
+      p->mhd_data.dens.Mat_b[i][j] = 0.f;
+//      p->mhd_data.grad.Mat_da[i][j] = 0.f;
+      }
 }
 
 /**
@@ -309,12 +324,58 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
 __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
 
-  const float h_inv_dim_plus_one =
-      pow_dimension_plus_one(1.f / p->h); /*1/h^(d+1) */
-  const float rho_inv = 1.f / p->rho;
-  p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
-  for (int i = 0; i < 3; i++)
-    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
+//  const float h_inv_dim_plus_one =
+//      pow_dimension_plus_one(1.f / p->h); /*1/h^(d+1) */
+//  const float rho_inv = 1.f / p->rho;
+//  p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
+//  for (int i = 0; i < 3; i++)
+//    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
+  
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
+
+  /* Finish the construction of the inverse of the c-matrix by
+   * multiplying in the factors of h coming from W */
+  for (int i = 0; i < 6; ++i) {
+    p->mhd_data.dens.d_mat_inv.elements[i] *= h_inv_dim;
+  }
+  /* Finish the construction of the inverse of the A gradient
+   * multiplying in the factors of h coming from W */
+  for (int i = 0; i < 3; ++i) 
+    for (int j = 0; j < 3; ++j) {
+      p->mhd_data.dens.Mat_b[i][j] *= h_inv_dim;
+//      p->mhd_data.grad.Mat_da[i][j] *= h_inv_dim;
+      }
+  /* Invert the c-matrix */
+  float d_mat_temp[3][3];
+  get_matrix_from_sym_matrix(d_mat_temp, &p->mhd_data.dens.d_mat_inv);
+  int res = invert_dimension_by_dimension_matrix(d_mat_temp);
+  if (res) {
+    sym_matrix_print(&p->mhd_data.dens.d_mat_inv);
+    error("Error inverting D matrix");
+  }
+  const float g_b[3][3] = {
+  {p->mhd_data.dens.Mat_b[0][0], p->mhd_data.dens.Mat_b[0][1], p->mhd_data.dens.Mat_b[0][2]},
+  {p->mhd_data.dens.Mat_b[1][0], p->mhd_data.dens.Mat_b[1][1], p->mhd_data.dens.Mat_b[1][2]},
+  {p->mhd_data.dens.Mat_b[2][0], p->mhd_data.dens.Mat_b[2][1], p->mhd_data.dens.Mat_b[2][2]}};
+  
+  
+  for (int i = 0; i < 3; i++) 
+    for (int j = 0; j < 3; j++){ 
+         p->mhd_data.dens.Mat_b[i][j] = 0.f;
+      for (int k = 0; k < 3; k++){ 
+         p->mhd_data.dens.Mat_b[i][j] += d_mat_temp[j][k] * g_b[i][k];
+	 }
+  }
+  
+  for (int i = 0; i < 3; i++) 
+     p->mhd_data.BPred[i] =
+         p->mhd_data.dens.Mat_b[(i+2)%3][(i+1)%3] - p->mhd_data.dens.Mat_b[(i+1)%3][(i+2)%3];
+  p->mhd_data.divA = p->mhd_data.dens.Mat_b[0][0] + p->mhd_data.dens.Mat_b[1][1] +
+                     p->mhd_data.dens.Mat_b[2][2];
+
 }
 
 /**
