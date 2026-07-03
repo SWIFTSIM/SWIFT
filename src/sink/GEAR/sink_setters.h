@@ -38,8 +38,8 @@
 
 __attribute__((always_inline)) INLINE void
 sink_set_sink_birth_time_or_scale_factor(struct sink *restrict sink,
-                                         const float birth_time,
-                                         const float birth_scale_factor,
+                                         const double birth_time,
+                                         const double birth_scale_factor,
                                          const int with_cosmology) {
   if (with_cosmology) {
     sink->birth_data.scale_factor = birth_scale_factor;
