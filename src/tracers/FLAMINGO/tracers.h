@@ -116,6 +116,9 @@ static INLINE void tracers_after_timestep_part(
   }
 }
 
+static INLINE void tracers_after_recording_trigger_part(
+    struct xpart *xp, const int trigger_index, const double time_to_remove) {}
+
 /**
  * @brief Update the star particle tracers just after its time-step has been
  * computed.
@@ -162,6 +165,9 @@ static INLINE void tracers_after_timestep_bpart(
     const struct cosmology *cosmo, const double time_step_length,
     const int *const tracers_triggers_started) {}
 
+static INLINE void tracers_after_recording_trigger_bpart(
+    struct bpart *bp, const int trigger_index, const double time_to_remove) {}
+
 /**
  * @brief Update the sink particle tracers just after its time-step has
  * been computed.
@@ -182,6 +188,9 @@ static INLINE void tracers_after_timestep_sink(
     const struct phys_const *phys_const, const int with_cosmology,
     const struct cosmology *cosmo, const double time_step_length,
     const int *const tracers_triggers_started) {}
+
+static INLINE void tracers_after_recording_trigger_sink(
+    struct sink *sink, const int trigger_index, const double time_to_remove) {}
 
 /**
  * @brief Initialise the tracer data at the start of a calculation.
