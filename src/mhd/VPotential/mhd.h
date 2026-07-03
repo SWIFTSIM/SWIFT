@@ -544,7 +544,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.dAdt[2] = 0.0f;
 
   const float v_sig = p->viscosity.v_sig; 
-  p->mhd_data.Gau_dt = - v_sig * v_sig * p->mhd_data.divA;
+  p->mhd_data.Gau_dt = - 0.5f * v_sig * v_sig * p->mhd_data.divA;
 
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
@@ -639,6 +639,16 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
+  
+  p->mhd_data.dAdt[0] -= ( p->mhd_data.APred[0] * p->force.gradient_vx[0] + 
+  			   p->mhd_data.APred[1] * p->force.gradient_vy[0] + 
+  			   p->mhd_data.APred[2] * p->force.gradient_vz[0] ) ;
+  p->mhd_data.dAdt[1] -= ( p->mhd_data.APred[0] * p->force.gradient_vx[1] + 
+  			   p->mhd_data.APred[1] * p->force.gradient_vy[1] + 
+  			   p->mhd_data.APred[2] * p->force.gradient_vz[1] ) ;
+  p->mhd_data.dAdt[2] -= ( p->mhd_data.APred[0] * p->force.gradient_vx[2] + 
+  			   p->mhd_data.APred[1] * p->force.gradient_vy[2] + 
+  			   p->mhd_data.APred[2] * p->force.gradient_vz[2] ) ;
 
   /* Save forces*/
   for (int k = 0; k < 3; k++) {

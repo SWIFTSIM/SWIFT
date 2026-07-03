@@ -525,6 +525,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   float SAi = sourceAi + a * a * dGau;
   float SAj = sourceAj + a * a * dGau;
+  SAi = a * a * dGau;
+  SAj = a * a * dGau;
 
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
@@ -541,8 +543,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.dAdt[i] -=
         mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * dA[i];
   }
-  pi->mhd_data.Gau_dt -= mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dGau;
-  pj->mhd_data.Gau_dt += mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * dGau;
+  pi->mhd_data.Gau_dt -= mj * 1.0 * pi->mhd_data.resistive_eta * mag_Disi * dGau;
+  pj->mhd_data.Gau_dt += mi * 1.0 * pj->mhd_data.resistive_eta * mag_Disj * dGau;
   
   float dB[3];
   dB[0] = Bi[0] - Bj[0];
@@ -687,8 +689,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   //const float sourceAi = - (dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
 
   float SAi = sourceAi + a * a * dGau;
+  SAi = a * a * dGau;
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
+
   /// DISSSIPATION
   const float mag_Disi =
       (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
@@ -696,7 +700,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.dAdt[i] +=
         mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
   
-  pi->mhd_data.Gau_dt -= mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dGau;
+  pi->mhd_data.Gau_dt -= mj * 1.0 * pi->mhd_data.resistive_eta * mag_Disi * dGau;
   
   float dB[3];
   dB[0] = Bi[0] - Bj[0];
