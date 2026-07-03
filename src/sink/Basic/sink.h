@@ -624,7 +624,7 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param pi The #part for which we compute the quantities.
  * @param cosmo The cosmological parameters and properties.
  */
-INLINE static void sink_prepare_part_sink_formation_self_contribution(
+INLINE static void sink_prepare_part_sink_formation(
     const int with_self_gravity, struct part *restrict pi,
     const struct cosmology *cosmo) {}
 

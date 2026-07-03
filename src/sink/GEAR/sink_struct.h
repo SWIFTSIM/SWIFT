@@ -46,6 +46,10 @@ struct sink_part_data {
   /*! Maximal potential among the neighbours */
   float max_potential;
 
+  /*! Minimal potential among the neighbours (used to check whether this
+   * particle sits at a local potential minimum) */
+  float min_neighbour_potential;
+
   /*! Kinetic energy of the neighbours within r_acc */
   float E_kin_neighbours;
 

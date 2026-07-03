@@ -235,6 +235,7 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   cpd->N_neighbours = 0;
   cpd->M_tot = 0.0;
   cpd->max_potential = cpd->potential;
+  cpd->min_neighbour_potential = FLT_MAX;
 
   cpd->E_kin_neighbours = 0.f;
   cpd->E_int_neighbours = 0.f;
@@ -244,12 +245,13 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   cpd->E_rot_neighbours[2] = 0.f;
 
   /* Do not reset the potential to 0. Keep the value computed at the end of the
-  last step. This value is used in runner_iact_nonsym_sink() and
-  runner_iact_sink() to check which particle is at a potential minimum. If you
-  set this value to 0, then we break the check. This value is used instead of
-  gpart->potential because:
+  last step. This value is used to determine whether this particle sits at a
+  local potential minimum (see sink_is_forming() and
+  sink_prepare_part_sink_formation_gas_criteria()). This value is used
+  instead of gpart->potential because:
   1) cpd->potential does not break MPI, while gpart->potential does
-  2) gpart->potential is not yet computed in runner_iact_X_sink(). */
+  2) gpart->potential is not yet computed at the time the sink-formation
+  neighbour loop runs. */
   /* cpd->potential = 0.f; */
   cpd->E_mec_bound = 0.f; /* Gravitationally bound particles will have
                              E_mec_bound < 0. This is checked before comparing
@@ -579,10 +581,15 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-  /* Minimum of the potential criterion */
-  /* Done in density loop. The gas is then flagged through
-     sink_data.can_form_sink to not form sink. The check is done at the
-     beginning. */
+  /* Potential minimum criterion: only allow this particle to form a sink if
+     its own potential is the lowest among its gas neighbours within r_acc
+     (accumulated in sink_prepare_part_sink_formation_gas_criteria()). */
+  if (sink_data->potential > sink_data->min_neighbour_potential) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    message("[%lld] Potential minimum criterion failed!", p->id);
+#endif
+    return 0;
+  }
 
   /* Overlapping existing sinks criterion */
   if (sink_props->sink_formation_overlapping_sink_criterion &&
@@ -1232,14 +1239,17 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * otherwise missing. E_kin_neighbours and E_rot_neighbours[] need no self
  * term (pi has zero velocity/rotation relative to itself), and
  * max_potential is already seeded with pi's own potential in
- * sink_init_part(). This function must be called exactly once per active
- * candidate particle, before sink_is_forming() is evaluated.
+ * sink_init_part(). min_neighbour_potential must NOT include self (it is a
+ * neighbours-only reduction, checked explicitly in sink_is_forming()), so
+ * this function deliberately does not touch it. This function must be
+ * called exactly once per active candidate particle, before
+ * sink_is_forming() is evaluated.
  *
  * @param with_self_gravity Whether self-gravity is enabled.
  * @param pi The #part for which we compute the quantities.
  * @param cosmo The cosmological parameters and properties.
  */
-INLINE static void sink_prepare_part_sink_formation_self_contribution(
+INLINE static void sink_prepare_part_sink_formation(
     const int with_self_gravity, struct part *restrict pi,
     const struct cosmology *cosmo) {
 
@@ -1347,6 +1357,8 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
         0.5 * mj * pj->sink_data.potential * cosmo->a_inv;
     pi->sink_data.max_potential =
         max(pi->sink_data.max_potential, pj->sink_data.potential);
+    pi->sink_data.min_neighbour_potential =
+        min(pi->sink_data.min_neighbour_potential, pj->sink_data.potential);
   }
 
   /* Compute rotation energies per component */

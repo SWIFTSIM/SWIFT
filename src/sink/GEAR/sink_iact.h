@@ -123,10 +123,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * cutoff is the loop's geometric r_cut; no per-particle smoothing-length
  * check is applied here.
  *
- * In GEAR: prevents a gas particle from forming a sink if a neighbour within
- * r_cut has a lower gravitational potential.  Then accumulates formation
- * energies into BOTH pi (gathering pj's contribution) and pj (gathering pi's
- * contribution), since both particles are active.
+ * In GEAR: accumulates formation energies (including the running minimum of
+ * the neighbours' potential, used by sink_is_forming() to test whether a
+ * particle sits at a local potential minimum) into BOTH pi (gathering pj's
+ * contribution) and pj (gathering pi's contribution), since both particles
+ * are active.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -152,15 +153,6 @@ runner_iact_hydro_aperture_prep_sink_formation(
   pj->sink_data.N_check_formation++;
 #endif
 
-  const float potential_i = pi->sink_data.potential;
-  const float potential_j = pj->sink_data.potential;
-
-  if (potential_i > potential_j) {
-    pi->sink_data.can_form_sink = 0;
-  } else if (potential_j > potential_i) {
-    pj->sink_data.can_form_sink = 0;
-  }
-
   /* Accumulate formation energies for both active particles. dx = pi - pj,
      so the first call (pi, pj) uses dx as-is; the second call swaps the
      particle order and therefore needs the negated vector. */
@@ -178,9 +170,9 @@ runner_iact_hydro_aperture_prep_sink_formation(
  * cutoff is the loop's geometric r_cut; no per-particle smoothing-length
  * check is applied here.
  *
- * In GEAR: prevents pi from forming a sink if neighbour pj has a lower
- * gravitational potential. Also computes properties needed for sink formation
- * decisions.
+ * In GEAR: accumulates formation energies into pi (including the running
+ * minimum of the neighbours' potential, used by sink_is_forming() to test
+ * whether pi sits at a local potential minimum).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -204,11 +196,6 @@ runner_iact_nonsym_hydro_aperture_prep_sink_formation(
 #ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
   pi->sink_data.N_check_formation++;
 #endif
-
-  const float potential_i = pi->sink_data.potential;
-  const float potential_j = pj->sink_data.potential;
-
-  if (potential_i > potential_j) pi->sink_data.can_form_sink = 0;
 
   /* Accumulate formation energies into pi, with pj as neighbour. dx = pi -
      pj already matches the convention expected below. */

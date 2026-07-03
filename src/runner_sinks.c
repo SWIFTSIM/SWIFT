@@ -475,8 +475,7 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
      boundaries. That loop only visits genuine neighbour pairs, so it never
      folds in pi's own mass, internal energy and self-potential. Do that
      here. */
-  sink_prepare_part_sink_formation_self_contribution(with_self_gravity, pi,
-                                                     cosmo);
+  sink_prepare_part_sink_formation(with_self_gravity, pi, cosmo);
 
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
