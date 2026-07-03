@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2022 Federico Stasyszyn (fstasyszyn@unc.edu.ar)
+ * Copyright (c) 2022 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,6 @@
  ******************************************************************************/
 #ifndef SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
 #define SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
-////#define VP_ADV_GAUGE
 
 #include "periodic.h"
 
@@ -59,67 +58,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
 
+  /* Now we need to compute the div terms */
+  const float r_inv = r ? 1.0f / r : 0.0f;
+  const float faci = mj * wi_dx * r_inv;
+  const float facj = mi * wj_dx * r_inv;
+
+  double dA[3];
+  for (int i = 0; i < 3; ++i)
+    dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
+
+  const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
+  pi->mhd_data.divA -= faci * dAdr;
+  pj->mhd_data.divA -= facj * dAdr;
   /////
   // bi = dj ak - dk aj
   // bj = dk ai - di ak
   // bk = di aj - dj ai
-  /////
-  
-  /* Vect Potential difference */
-  const float Aij[3] = {pj->mhd_data.APred[0] - pi->mhd_data.APred[0],
-                        pj->mhd_data.APred[1] - pi->mhd_data.APred[1],
-                        pj->mhd_data.APred[2] - pi->mhd_data.APred[2]};
-#ifdef VP_ADV_GAUGE
-  const float DAij[3] = {(pj->v[0] - pi->v[0]),
-                         (pj->v[1] - pi->v[1]),
-                         (pj->v[2] - pi->v[2])};
-  const float PI[3]  = {-pi->mhd_data.APred[0],
-                        -pi->mhd_data.APred[1],
-                        -pi->mhd_data.APred[2]};
-  const float PJ[3]  = {-pj->mhd_data.APred[0],
-                        -pj->mhd_data.APred[1],
-                        -pj->mhd_data.APred[2]};
-#else
-  const float DAij[3] = {(pj->mhd_data.APred[0] - pi->mhd_data.APred[0]),
-                         (pj->mhd_data.APred[1] - pi->mhd_data.APred[1]),
-                         (pj->mhd_data.APred[2] - pi->mhd_data.APred[2])};
-  const float PI[3]  = {pi->v[0],
-                        pi->v[1],
-                        pi->v[2]};
-  const float PJ[3]  = {pj->v[0],
-                        pj->v[1],
-                        pj->v[2]};
-#endif
-  const float DGau = pj->mhd_data.Gau - pi->mhd_data.Gau;
-  
-  const float common_term_i = wi_dx * mj;
-  const float common_term_j = wj_dx * mi;
-
-  pi->mhd_data.dens.d_mat_inv.xx += common_term_i * dx[0] * dx[0];
-  pi->mhd_data.dens.d_mat_inv.yy += common_term_i * dx[1] * dx[1];
-  pi->mhd_data.dens.d_mat_inv.zz += common_term_i * dx[2] * dx[2];
-  pi->mhd_data.dens.d_mat_inv.xy += common_term_i * dx[0] * dx[1];
-  pi->mhd_data.dens.d_mat_inv.xz += common_term_i * dx[0] * dx[2];
-  pi->mhd_data.dens.d_mat_inv.yz += common_term_i * dx[1] * dx[2];
-  
-  pj->mhd_data.dens.d_mat_inv.xx += common_term_j * dx[0] * dx[0];
-  pj->mhd_data.dens.d_mat_inv.yy += common_term_j * dx[1] * dx[1];
-  pj->mhd_data.dens.d_mat_inv.zz += common_term_j * dx[2] * dx[2];
-  pj->mhd_data.dens.d_mat_inv.xy += common_term_j * dx[0] * dx[1];
-  pj->mhd_data.dens.d_mat_inv.xz += common_term_j * dx[0] * dx[2];
-  pj->mhd_data.dens.d_mat_inv.yz += common_term_j * dx[1] * dx[2];
-
-  
-  for (int i = 0; i < 3; i++) 
-    for (int j = 0; j < 3; j++) {
-      pi->mhd_data.dens.Mat_b[i][j] -= common_term_i * Aij[i] * dx[j];
-      pi->mhd_data.grad.Mat_da[i][j] -= common_term_i * PI[i] * DAij[i] * dx[j];
-      pi->mhd_data.grad.Mat_da[i][j] += common_term_i * DGau * dx[j];
-      pj->mhd_data.dens.Mat_b[i][j] -= common_term_j * Aij[i] * dx[j];
-      pj->mhd_data.grad.Mat_da[i][j] -= common_term_j * PJ[i] * DAij[i] * dx[j];
-      pj->mhd_data.grad.Mat_da[i][j] += common_term_j * DGau * dx[j];
-    }
-  
+  //
+  for (int i = 0; i < 3; ++i) {
+    pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+                                     dA[(i + 2) % 3] * dx[(i + 1) % 3]);
+    pj->mhd_data.BPred[i] += facj * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+                                     dA[(i + 2) % 3] * dx[(i + 1) % 3]);
+  }
 }
 
 /**
@@ -155,42 +116,19 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
 
   kernel_deval(ui, &wi, &wi_dx);
 
-  const float Aij[3] = {pj->mhd_data.APred[0] - pi->mhd_data.APred[0],
-                        pj->mhd_data.APred[1] - pi->mhd_data.APred[1],
-                        pj->mhd_data.APred[2] - pi->mhd_data.APred[2]};
-#ifdef VP_ADV_GAUGE
-  const float DAij[3] = {(pj->v[0] - pi->v[0]),
-                         (pj->v[1] - pi->v[1]),
-                         (pj->v[2] - pi->v[2])};
-  const float PI[3]  = {-pi->mhd_data.APred[0],
-                        -pi->mhd_data.APred[1],
-                        -pi->mhd_data.APred[2]};
-#else
-  const float DAij[3] = {(pj->mhd_data.APred[0] - pi->mhd_data.APred[0]),
-                         (pj->mhd_data.APred[1] - pi->mhd_data.APred[1]),
-                         (pj->mhd_data.APred[2] - pi->mhd_data.APred[2])};
-  const float PI[3]  = {pi->v[0],
-                        pi->v[1],
-                        pi->v[2]};
-#endif
-  const float DGau = pj->mhd_data.Gau - pi->mhd_data.Gau;
-  
-  const float common_term_i = wi_dx * mj;
+  /* Now we need to compute the div terms */
+  const float r_inv = r ? 1.0f / r : 0.0f;
+  const float faci = mj * wi_dx * r_inv;
 
-  pi->mhd_data.dens.d_mat_inv.xx += common_term_i * dx[0] * dx[0];
-  pi->mhd_data.dens.d_mat_inv.yy += common_term_i * dx[1] * dx[1];
-  pi->mhd_data.dens.d_mat_inv.zz += common_term_i * dx[2] * dx[2];
-  pi->mhd_data.dens.d_mat_inv.xy += common_term_i * dx[0] * dx[1];
-  pi->mhd_data.dens.d_mat_inv.xz += common_term_i * dx[0] * dx[2];
-  pi->mhd_data.dens.d_mat_inv.yz += common_term_i * dx[1] * dx[2];
+  double dA[3];
+  for (int i = 0; i < 3; ++i)
+    dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
 
-  
-  for (int i = 0; i < 3; i++) 
-    for (int j = 0; j < 3; j++) {
-      pi->mhd_data.dens.Mat_b[i][j] -= common_term_i * Aij[i] * dx[j];
-      pi->mhd_data.grad.Mat_da[i][j] -= common_term_i * PI[i] * DAij[i] * dx[j];
-      pi->mhd_data.grad.Mat_da[i][j] += common_term_i * DGau * dx[j];
-    }
+  const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
+  pi->mhd_data.divA -= faci * dAdr;
+  for (int i = 0; i < 3; ++i)
+    pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+                                     dA[(i + 2) % 3] * dx[(i + 1) % 3]);
 }
 
 /**
@@ -239,25 +177,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr_tmp = hid_inv * wi_dx;
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
   const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr_tmp = hjd_inv * wj_dx;
+  const float wj_dr = hjd_inv * wj_dx;
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
-  const float wi_dr = (wi_dr_tmp * 0.5 + wj_dr_tmp * 0.5 * f_ji / f_ij);
-  const float wj_dr = (wj_dr_tmp * 0.5 + wi_dr_tmp * 0.5 * f_ij / f_ji);
-
+  /* B dot r. */
+  const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
+  const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
   /* Compute gradient terms */
   const float over_rho_i = 1.0f / rhoi * f_ij;
   const float over_rho_j = 1.0f / rhoj * f_ji;
+
+  /* Calculate divergence term */
+  float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
+  float B_mon_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
+  pi->mhd_data.divB += mj * B_mon_i;
+  pj->mhd_data.divB += mi * B_mon_j;
 
   /* dB */
   float dB[3];
@@ -273,7 +217,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.curl_B[k] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[k];
     pj->mhd_data.curl_B[k] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[k];
+    pi->mhd_data.BSmooth[k] += mj * wi * Bi[k];
+    pj->mhd_data.BSmooth[k] += mi * wj * Bj[k];
   }
+  /* calculate the weights */
+  pi->mhd_data.Q0 += pj->mass * wi;
+  pj->mhd_data.Q0 += pi->mass * wj;
   /* Calculate gradient of B tensor */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -293,54 +242,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     pj->mhd_data.mean_grad_SPH_err[k] -=
         mi * over_rho_j * wj_dr * r_inv * dx[k];
   }
-
-  /* Vect Potential difference */
-  const float Bij[3] = {pj->mhd_data.BPred[0] - pi->mhd_data.BPred[0],
-                        pj->mhd_data.BPred[1] - pi->mhd_data.BPred[1],
-                        pj->mhd_data.BPred[2] - pi->mhd_data.BPred[2]};
-  
-  float MM_i[3][3], MM_j[3][3], DFmax[3][3];
-  ///////////////////////////// FORCE MAXWELL TENSOR
-  for (int i = 0; i < 3; i++)
-    for (int j = 0; j < 3; j++) {
-      MM_i[i][j] = Bi[i] * Bi[j];
-      MM_j[i][j] = Bj[i] * Bj[j];
-    }
-  for (int j = 0; j < 3; j++) {
-    MM_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
-    MM_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
-  }
-  for (int i = 0; i < 3; i++){
-    for (int j = 0; j < 3; j++){
-       DFmax[i][j] = (MM_j[i][j] - MM_i[i][j]) / mu_0;
-    }
-  }
-
-  const float common_term_i = wi * mj / rhoj;
-  const float common_term_j = wj * mi / rhoi;
-
-  pi->mhd_data.grad.c_mat_inv.xx += common_term_i * dx[0] * dx[0];
-  pi->mhd_data.grad.c_mat_inv.yy += common_term_i * dx[1] * dx[1];
-  pi->mhd_data.grad.c_mat_inv.zz += common_term_i * dx[2] * dx[2];
-  pi->mhd_data.grad.c_mat_inv.xy += common_term_i * dx[0] * dx[1];
-  pi->mhd_data.grad.c_mat_inv.xz += common_term_i * dx[0] * dx[2];
-  pi->mhd_data.grad.c_mat_inv.yz += common_term_i * dx[1] * dx[2];
-  pj->mhd_data.grad.c_mat_inv.xx += common_term_j * dx[0] * dx[0];
-  pj->mhd_data.grad.c_mat_inv.yy += common_term_j * dx[1] * dx[1];
-  pj->mhd_data.grad.c_mat_inv.zz += common_term_j * dx[2] * dx[2];
-  pj->mhd_data.grad.c_mat_inv.xy += common_term_j * dx[0] * dx[1];
-  pj->mhd_data.grad.c_mat_inv.xz += common_term_j * dx[0] * dx[2];
-  pj->mhd_data.grad.c_mat_inv.yz += common_term_j * dx[1] * dx[2];
-
-  for (int i = 0; i < 3; i++) 
-    for (int j = 0; j < 3; j++) {
-      pi->mhd_data.grad.Mat_b[i][j] -= common_term_i * Bij[i] * dx[j];
-      pi->mhd_data.grad.Mat_F[i][j] -= common_term_i * DFmax[i][j] * dx[j];
-      pj->mhd_data.grad.Mat_b[i][j] -= common_term_j * Bij[i] * dx[j];
-      pj->mhd_data.grad.Mat_F[i][j] -= common_term_j * DFmax[i][j] * dx[j];
-    }
-
-
 }
 
 /**
@@ -371,16 +272,13 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Define kernel variables */
   float wi, wi_dx;
-  float wj, wj_dx;
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Get the mass. */
-  const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
-  const float rhoj = pj->rho;
 
   float Bi[3], Bj[3];
   for (int i = 0; i < 3; ++i) {
@@ -393,23 +291,21 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr_tmp = hid_inv * wi_dx;
-
-  /* Get the kernel for hi. */
-  const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
-  const float xj = r * hj_inv;
-  kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr_tmp = hjd_inv * wj_dx;
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
 
-  const float wi_dr = (wi_dr_tmp * 0.5 + wj_dr_tmp * 0.5 * f_ji / f_ij);
+  /* B dot r. */
+  const float Bri = (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]);
+  const float Brj = (Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2]);
 
   /* Compute gradient terms */
   const float over_rho_i = 1.0f / rhoi * f_ij;
+
+  /* Calculate divergence term */
+  float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
+  pi->mhd_data.divB += mj * B_mon_i;
 
   /* dB */
   float dB[3];
@@ -424,7 +320,10 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Calculate Curl */
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.curl_B[k] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[k];
+    pi->mhd_data.BSmooth[k] += mj * wi * Bi[k];
   }
+  /* calculate the weights */
+  pi->mhd_data.Q0 += pj->mass * wi;
   /* Calculate gradient of B tensor */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -439,44 +338,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
   }
-
-  /* Vect Potential difference */
-  const float Bij[3] = {pj->mhd_data.BPred[0] - pi->mhd_data.BPred[0],
-                        pj->mhd_data.BPred[1] - pi->mhd_data.BPred[1],
-                        pj->mhd_data.BPred[2] - pi->mhd_data.BPred[2]};
-  float MM_i[3][3], MM_j[3][3], DFmax[3][3];
-  ///////////////////////////// FORCE MAXWELL TENSOR
-  for (int i = 0; i < 3; i++)
-    for (int j = 0; j < 3; j++) {
-      MM_i[i][j] = Bi[i] * Bi[j];
-      MM_j[i][j] = Bj[i] * Bj[j];
-    }
-  for (int j = 0; j < 3; j++) {
-    MM_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
-    MM_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
-  }
-  for (int i = 0; i < 3; i++){
-    for (int j = 0; j < 3; j++){
-       DFmax[i][j] = (MM_j[i][j] - MM_i[i][j]) / mu_0;
-    }
-  }
-
-  const float common_term = wi * mj / rhoj;
-
-  /* The inverse of the C-matrix. eq. 6
-   * It's symmetric so recall we only store the 6 useful terms. */
-  pi->mhd_data.grad.c_mat_inv.xx += common_term * dx[0] * dx[0];
-  pi->mhd_data.grad.c_mat_inv.yy += common_term * dx[1] * dx[1];
-  pi->mhd_data.grad.c_mat_inv.zz += common_term * dx[2] * dx[2];
-  pi->mhd_data.grad.c_mat_inv.xy += common_term * dx[0] * dx[1];
-  pi->mhd_data.grad.c_mat_inv.xz += common_term * dx[0] * dx[2];
-  pi->mhd_data.grad.c_mat_inv.yz += common_term * dx[1] * dx[2];
-
-  for (int i = 0; i < 3; i++) 
-    for (int j = 0; j < 3; j++){
-      pi->mhd_data.grad.Mat_b[i][j] -= common_term * Bij[i] * dx[j];
-      pi->mhd_data.grad.Mat_F[i][j] -= common_term * DFmax[i][j] * dx[j];
-    }
 }
 
 /**
@@ -515,7 +376,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr_tmp = hid_inv * wi_dx;
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
@@ -523,15 +384,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr_tmp = hjd_inv * wj_dx;
+  const float wj_dr = hjd_inv * wj_dx;
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
   const float rho_ij = rhoi + rhoj;
-
-  const float wi_dr = (wi_dr_tmp * 0.5 + wj_dr_tmp * 0.5 * f_ji / f_ij);
-  const float wj_dr = (wj_dr_tmp * 0.5 + wi_dr_tmp * 0.5 * f_ij / f_ji);
 
   const float a_fac =
       pow(a, 2.f * mhd_comoving_factor + 3.f * (hydro_gamma - 1.f));
@@ -545,6 +403,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
   }
+  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
+  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
+
   ///////////////////////////// FORCE MAXWELL TENSOR
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
@@ -555,8 +416,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
-  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
-  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
 
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
   const float plasma_beta_j = B2j != 0.0f ? 2.0f * mu_0 * Pj / B2j : FLT_MAX;
@@ -568,7 +427,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
 
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
-/*  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       pi->a_hydro[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
@@ -578,7 +437,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
       pj->a_hydro[i] += mi * Bj[i] * tensile_correction_scale_j *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
-    }*/
+    }
+
   /* Save forces*/
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -586,21 +446,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
       pj->mhd_data.tot_mag_F[i] -=
           mi * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->mhd_data.tot_mag_F[i] -= tensile_correction_scale_i *
+      pi->mhd_data.tot_mag_F[i] -=
           mj * Bi[i] * (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
-      pj->mhd_data.tot_mag_F[i] += tensile_correction_scale_j *
+      pj->mhd_data.tot_mag_F[i] +=
           mi * Bj[i] * (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   }
+
   /////////////////////////// VP evolution
-  const float mag_VPIndi = f_ij * wi_dr * r_inv / rhoi;
-  const float mag_VPIndj = f_ji * wj_dr * r_inv / rhoj;
+  const float mag_VPIndi = wi_dr * r_inv / rhoi;
+  const float mag_VPIndj = wj_dr * r_inv / rhoj;
   // Normal Gauge
   double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-#ifdef VP_ADV_GAUGE
-  float dv[3];
+  /*float dv[3];
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
@@ -609,55 +469,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                          dv[2] * pi->mhd_data.APred[2];
   const float sourceAj = dv[0] * pj->mhd_data.APred[0] +
                          dv[1] * pj->mhd_data.APred[1] +
-                         dv[2] * pj->mhd_data.APred[2];
-#else
-  const float sourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
-  const float sourceAj =
-      -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
-#endif
+                         dv[2] * pj->mhd_data.APred[2];*/
+  const float sourceAi = - (dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
+  const float sourceAj = - (dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
+
   float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   float SAj = sourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  SAi = a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  SAj = a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
-/*  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 3; i++) {
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
     pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
-  }*/
+  }
   /// DISSSIPATION
   const float mag_Disi =
-      (f_ij * wi_dr + f_ji * wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
+      (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   const float mag_Disj =
-      (f_ji * wj_dr + f_ij * wi_dr) / 2.f * r_inv * rhoj / (rho_ij * rho_ij);
+      (wj_dr + wi_dr) / 2.f * r_inv * rhoj / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dAdt[i] +=
-        mj * 0.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
+        mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
     pj->mhd_data.dAdt[i] -=
-        mi * 0.0 * pj->mhd_data.resistive_eta * mag_Disj * dA[i];
+        mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * dA[i];
   }
-
-  /* Artificial resistivity */
-  const float alpha_AR = 0.5f * (pi->mhd_data.alpha_AR + pj->mhd_data.alpha_AR);
-
-  const float vsig_AR =
-      0.5f * (pi->mhd_data.Alfven_speed + pj->mhd_data.Alfven_speed);
-
-  const float rhoij = 0.5f * (rhoi + rhoj);
-  const float rhoij2 = rhoij * rhoij;
-  const float rhoij2_inv = 1.0f / rhoij2;
-
-  const float grad_term = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
-
-  const float art_diff_pref = alpha_AR * vsig_AR * rhoij2_inv * grad_term;
-
-  pi->mhd_data.dAdt[0] += mj * art_diff_pref * dA[0];
-  pi->mhd_data.dAdt[1] += mj * art_diff_pref * dA[1];
-  pi->mhd_data.dAdt[2] += mj * art_diff_pref * dA[2];
-
-  pj->mhd_data.dAdt[0] -= mi * art_diff_pref * dA[0];
-  pj->mhd_data.dAdt[1] -= mi * art_diff_pref * dA[1];
-  pj->mhd_data.dAdt[2] -= mi * art_diff_pref * dA[2];
 
   /* Save induction sources */
   for (int i = 0; i < 3; i++) {
@@ -710,7 +543,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr_tmp = hid_inv * wi_dx;
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
@@ -718,15 +551,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr_tmp = hjd_inv * wj_dx;
+  const float wj_dr = hjd_inv * wj_dx;
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
   const float rho_ij = rhoi + rhoj;
-
-  const float wi_dr = (wi_dr_tmp * 0.5 + wj_dr_tmp * 0.5 * f_ji / f_ij);
-  const float wj_dr = (wj_dr_tmp * 0.5 + wi_dr_tmp * 0.5 * f_ij / f_ji);
 
   const float a_fac =
       pow(a, 2.f * mhd_comoving_factor + 3.f * (hydro_gamma - 1.f));
@@ -740,6 +570,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
   }
+  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
 
   ///////////////////////////// FORCE MAXWELL TENSOR
   for (int i = 0; i < 3; i++)
@@ -751,78 +582,54 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
-  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
+
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
-/*  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       pi->a_hydro[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
       pi->a_hydro[i] -= mj * Bi[i] * tensile_correction_scale_i *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
-    }*/
+    }
+
   /* Save forces*/
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       pi->mhd_data.tot_mag_F[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->mhd_data.tot_mag_F[i] -= tensile_correction_scale_i *
+      pi->mhd_data.tot_mag_F[i] -=
           mj * Bi[i] * (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   }
 
   /////////////////////////// VP INDUCTION
-  const float mag_VPIndi = f_ij * wi_dr * r_inv / rhoi;
+  const float mag_VPIndi = wi_dr * r_inv / rhoi;
   // Normal Gauge
   double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-
-#ifdef VP_ADV_GAUGE
-  float dv[3];
+  /*float dv[3];
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
   const float sourceAi = dv[0] * pi->mhd_data.APred[0] +
                          dv[1] * pi->mhd_data.APred[1] +
-                         dv[2] * pi->mhd_data.APred[2];
-#else
-  const float sourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
-#endif
-  float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  SAi = a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-/*  for (int i = 0; i < 3; i++) {
+                         dv[2] * pi->mhd_data.APred[2];*/
+  const float sourceAi = - (dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
 
+  float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
-  }*/
   /// DISSSIPATION
   const float mag_Disi =
-      (f_ij * wi_dr + f_ji * wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
+      (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] +=
-        mj * 0.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
-  /* Artificial resistivity */
-  const float alpha_AR = 0.5f * (pi->mhd_data.alpha_AR + pj->mhd_data.alpha_AR);
-
-  const float vsig_AR =
-      0.5f * (pi->mhd_data.Alfven_speed + pj->mhd_data.Alfven_speed);
-
-  const float rhoij = 0.5f * (rhoi + rhoj);
-  const float rhoij2 = rhoij * rhoij;
-  const float rhoij2_inv = 1.0f / rhoij2;
-
-  const float grad_term = 0.5f * (f_ij * wi_dr + f_ji * wj_dr);
-
-  const float art_diff_pref = alpha_AR * vsig_AR * rhoij2_inv * grad_term;
-
-  pi->mhd_data.dAdt[0] += mj * art_diff_pref * dA[0];
-  pi->mhd_data.dAdt[1] += mj * art_diff_pref * dA[1];
-  pi->mhd_data.dAdt[2] += mj * art_diff_pref * dA[2];
-
+        mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
   /* Save induction sources */
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_A_source[i] += mj * mag_VPIndi * SAi * dx[i];

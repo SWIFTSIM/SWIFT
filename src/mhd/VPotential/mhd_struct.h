@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2022 Federico Stasyszyn (fstasyszyn@unc.edu.ar)
+ * Copyright (c) 2022 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,15 +22,13 @@
 /**
  * @brief Particle-carried fields for the MHD scheme.
  */
-#include "symmetric_matrix.h"
-
 struct mhd_part_data {
 
   /*! Predicted Bfield */
   float BPred[3];
 
-  /*! Predicted Current */
-  float JPred[3];
+  /*! Predicted BSmooth */
+  float BSmooth[3];
 
   /* Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
    * current time */
@@ -57,57 +55,24 @@ struct mhd_part_data {
   /* VP evolution */
   float dAdt[3];
 
-  /* Artificial resistivity gradient based switch */
-  float alpha_AR;
-
+  /* mute variable */
+  float Q0;
   /* Resistive Eta */
   float resistive_eta;
-
   /* SPH <1> error */
   float mean_SPH_err;
-
   /* SPH <grad1> error */
   float mean_grad_SPH_err[3];
-
   /* Magnetic force */
   float tot_mag_F[3];
 
   /* A advection source */
   float Adv_A_source[3];
-
   /* B total diffusion source */
   float Diff_A_source[3];
 
   /* Laplacian A */
   float Delta_A[3];
-
-  struct {
-    struct sym_matrix d_mat_inv;
-    
-    float Mat_b[3][3];
-  } dens;
-
-  struct {
-
-    /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
-    struct sym_matrix c_mat_inv;
-    struct sym_matrix d_mat;
-
-    /*! Gradient per component of the Afield means Bfield*/
-    float Mat_b[3][3];
-    /*! Gradient per component of the dAdt*/
-    float Mat_da[3][3];
-    /*! Gradient per component of Lorentz Force*/
-    float Mat_F[3][3];
-
-  } grad;
-
-  struct {
-
-    /*! The 'correction matrix' (e.q. 6) - It's symmetric */
-    struct sym_matrix c_mat;
-
-  } force;
 };
 
 /**

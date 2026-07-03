@@ -51,7 +51,7 @@ cp ../$WHAT ./sw_run
 cat <<-EOF > ./run.sh
 	#!/bin/bash
 	# Run SWIFT
-	./sw_run --hydro --threads=12 ../FastRotor_simple.yml 2>&1 > out.log 
+	./sw_run --hydro --threads=16 ../FastRotor_simple.yml 2>&1 > out.log 
 	
 	# Plot the evolution
 	python3 ../plot_schemes.py 0 16 2>&1 > plot.log

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2022 Federico Stasyszyn (fstasyszyn@unc.edu.ar)
+ * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk)
  *
  *
  * This program is free software: you can redistribute it and/or modify
@@ -69,6 +69,9 @@ struct mhd_global_data {
 /* Functions for reading from parameter file */
 
 /* Forward declartions */
+// struct swift_params;
+// struct phys_const;
+// struct unit_system;
 
 /* Viscosity */
 
@@ -125,7 +128,7 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data *mhd_data) {
 
   io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
-  io_write_attribute_f(h_grpsph, "MHD Comoving exponent", mhd_comoving_factor);
+  io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif
 

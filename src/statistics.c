@@ -263,7 +263,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
         fmaxf(stats.divB_error_max, mhd_get_divB_error(p, xp));
 
     /* Collect square of magnetic field vector norm */
-    stats.Brms += mhd_get_Bms(p, xp);
+    stats.Brms += mhd_get_Bms(p);
   }
 
   /* Now write back to memory */
