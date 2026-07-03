@@ -49,6 +49,9 @@ void test(void) {
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
   struct chemistry_global_data chemistry_data;
+  struct sink_props sink_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  const int with_self_gravity = 1;
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
@@ -96,7 +99,8 @@ void test(void) {
   runner_iact_nonsym_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_star_formation(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
-  runner_iact_nonsym_sink(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_sink(r2, dx, pi.h, pj.h, &pi, &pj, a, H, with_self_gravity,
+                          &cosmo, &sink_props);
 
   /* Check whether pj has been modified */
   j_not_ok = memcmp(&pj, &pj2, sizeof(struct part));
