@@ -140,6 +140,23 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                 sqrtf(p->rho / (p->mhd_data.divA * p->mhd_data.divA) * mu_0)
           : FLT_MAX;
   dt_divB = fminf(dt_divA, dt_divB);
+  /*
+  const float dAdt2 = ( p->mhd_data.dAdt[0] * p->mhd_data.dAdt[0] +
+  			p->mhd_data.dAdt[1] * p->mhd_data.dAdt[1] +
+  			p->mhd_data.dAdt[2] * p->mhd_data.dAdt[2]);
+  const float A2 = (    p->mhd_data.APred[0] * p->mhd_data.APred[0] +
+  			p->mhd_data.APred[1] * p->mhd_data.APred[1] +
+  			p->mhd_data.APred[2] * p->mhd_data.APred[2]);
+  float dt_dAdt = dAdt2 != 0.0f ? 
+           0.5 * hydro_properties->CFL_condition * sqrt(A2/dAdt2)
+                           : FLT_MAX;
+  dt_dAdt = fmaxf(5e-9, dt_dAdt);
+  dt_divB = fminf(dt_dAdt, dt_divB);*/
+  /*float dt_Gau = p->mhd_data.Gau != 0.f && p->mhd_data.Gau_dt != 0.f ?
+           0.5 * hydro_properties->CFL_condition * fabs(p->mhd_data.Gau/p->mhd_data.Gau_dt)
+                           : FLT_MAX;
+  dt_divB = fminf(dt_Gau, dt_divB);
+*/
   const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
                            ? afac_resistive * hydro_properties->CFL_condition *
@@ -265,25 +282,25 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param p The particle of interest
  * @param Gauge Gauge
  */
-__attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
-    const struct part *restrict p, const struct cosmology *c, const float mu0) {
-
-  const float Gauge = p->mhd_data.Gau;
-  const float v_sig = 0.5f * hydro_get_signal_velocity(p);
-  const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
-  const float afac2 = pow(c->a, (c->a_factor_sound_speed + 1.f));
-
-  /* Hyperbolic term */
-  const float Source_Term = 1.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
-  /* Parabolic evolution term */
-  const float Damping_Term = 1.f * afac2 * v_sig * Gauge / p->h;
-  /* Density change term */
-  const float DivV_Term = hydro_get_div_v(p) * Gauge;
-  /* Cosmological term */
-  const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
-
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * c->a * c->a;
-}
+//__attribute__((always_inline)) INLINE static float mhd_get_dGau_dt(
+//    const struct part *restrict p, const struct cosmology *c, const float mu0) {
+//
+// // const float Gauge = p->mhd_data.Gau;
+//  const float v_sig = 0.5f * hydro_get_signal_velocity(p);
+//  const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
+//  const float afac2 = pow(c->a, (c->a_factor_sound_speed + 1.f));
+//
+//  /* Hyperbolic term */
+//  const float Source_Term = 1.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
+//  /* Parabolic evolution term */
+//  const float Damping_Term = 1.f * afac2 * v_sig * Gauge / p->h;
+//  /* Density change term */
+//  const float DivV_Term = hydro_get_div_v(p) * Gauge;
+//  /* Cosmological term */
+//  const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
+//
+//  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * c->a * c->a;
+//}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -526,6 +543,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.dAdt[1] = 0.0f;
   p->mhd_data.dAdt[2] = 0.0f;
 
+  const float v_sig = p->viscosity.v_sig; 
+  p->mhd_data.Gau_dt = - v_sig * v_sig * p->mhd_data.divA;
+
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] = 0.0f;
@@ -612,7 +632,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
     const struct hydro_props *hydro_props, const float mu_0) {
 
   /* Get time derivative of Dedner scalar */
-  p->mhd_data.Gau_dt = mhd_get_dGau_dt(p, cosmo, mu_0);
+  // p->mhd_data.Gau_dt = mhd_get_dGau_dt(p, cosmo, mu_0);
 
   /* Hubble expansion contribution to induction equation */
   float a_fac = (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;

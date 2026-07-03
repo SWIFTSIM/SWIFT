@@ -507,6 +507,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
+  double dGau = pi->mhd_data.Gau - pj->mhd_data.Gau;
   //advective gauge
   float dv[3];
   dv[0] = pi->v[0] - pj->v[0];
@@ -522,8 +523,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   //const float sourceAi = - (dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
   //const float sourceAj = - (dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
 
-  float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  float SAj = sourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAi = sourceAi + a * a * dGau;
+  float SAj = sourceAj + a * a * dGau;
 
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
@@ -540,6 +541,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.dAdt[i] -=
         mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * dA[i];
   }
+  pi->mhd_data.Gau_dt -= mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dGau;
+  pj->mhd_data.Gau_dt += mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * dGau;
+  
+  float dB[3];
+  dB[0] = Bi[0] - Bj[0];
+  dB[1] = Bi[1] - Bj[1];
+  dB[2] = Bi[2] - Bj[2];
+
+  const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
+  pi->u_dt -=
+      0.5f * pi->mhd_data.resistive_eta * mj * mag_Disi * dB_2;
+  pj->u_dt -=
+      0.5f * pj->mhd_data.resistive_eta * mi * mag_Disj * dB_2;
 
   /* Save induction sources */
   for (int i = 0; i < 3; i++) {
@@ -661,6 +675,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
+  double dGau = pi->mhd_data.Gau - pj->mhd_data.Gau;
   float dv[3];
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
@@ -671,7 +686,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   // GradA
   //const float sourceAi = - (dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
 
-  float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAi = sourceAi + a * a * dGau;
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
   /// DISSSIPATION
@@ -680,6 +695,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] +=
         mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
+  
+  pi->mhd_data.Gau_dt -= mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dGau;
+  
+  float dB[3];
+  dB[0] = Bi[0] - Bj[0];
+  dB[1] = Bi[1] - Bj[1];
+  dB[2] = Bi[2] - Bj[2];
+
+  const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
+  pi->u_dt -=
+      0.5f * pi->mhd_data.resistive_eta * mj * mag_Disi * dB_2;
   /* Save induction sources */
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_A_source[i] += mj * mag_VPIndi * SAi * dx[i];
