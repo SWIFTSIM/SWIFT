@@ -1497,6 +1497,78 @@ AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
 AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
 
+# Check for Agama (All-purpose Galaxy Modelling Architecture).
+# See https://agama.software/ for details.
+# Agama is linked as a static archive (agama.a) and requires two companion
+# static libraries from its extras/lib/ directory (libunsio.a and libnemo.a),
+# plus -lstdc++ -lm -lgomp -lgsl at link time.
+# Usage: --with-agama=PATH  where PATH is the root of the Agama installation
+# (the directory that contains agama.a and the src/ and extras/ sub-directories).
+have_agama="no"
+AC_ARG_WITH([agama],
+    [AS_HELP_STRING([--with-agama=PATH],
+       [root directory where agama is installed (contains agama.a and src/) @<:@yes/no@:>@]
+    )],
+    [with_agama="$withval"],
+    [with_agama="no"]
+)
+if test "x$with_agama" != "xno"; then
+   if test "x$with_agama" != "xyes" -a "x$with_agama" != "x"; then
+      # Agama headers may live under usr/include/agama/ (installed tree, via
+      # 'make install') or src/ (build tree). In both cases the #include must
+      # use <agama/interface_c.h>, so the -I flag must point to the directory
+      # that *contains* the agama/ subdirectory:
+      #   installed : -I$with_agama/usr/include  (agama/ subdir exists there)
+      #   build tree: -I$with_agama              (src/ acts as agama/ via symlink
+      #                                           or we create one at configure time)
+      if test -f "$with_agama/usr/include/agama/interface_c.h"; then
+         AGAMA_INCS="-I$with_agama/usr/include"
+      elif test -f "$with_agama/src/interface_c.h"; then
+         # Build-tree layout: create an 'agama' symlink next to src/ so that
+         # #include <agama/interface_c.h> resolves correctly.
+         AC_MSG_NOTICE([Agama build-tree layout detected: creating agama -> src symlink])
+         AS_IF([test ! -e "$with_agama/agama"],
+               [ln -s "$with_agama/src" "$with_agama/agama"])
+         AGAMA_INCS="-I$with_agama"
+      else
+         AC_MSG_ERROR([Cannot find Agama headers under $with_agama/usr/include/agama/ or $with_agama/src/.])
+      fi
+      # Link the main static archive with the -l: form so the linker accepts a
+      # full filename rather than the usual lib<name>.so/.a search.
+      # The two companion static libraries from extras/lib/ must follow.
+      AGAMA_LIBS="$with_agama/agama.a \
+                  $with_agama/extras/lib/libunsio.a \
+                  $with_agama/extras/lib/libnemo.a \
+                  -lstdc++ -lm -lgomp -lgsl"
+   else
+      AC_MSG_ERROR([--with-agama requires an explicit installation PATH (e.g. --with-agama=/path/to/Agama).])
+   fi
+
+   # Verify that the static archive is actually present.
+   AC_MSG_CHECKING([for agama.a in $with_agama])
+   if test -f "$with_agama/agama.a"; then
+      AC_MSG_RESULT([yes])
+      have_agama="yes"
+      AC_DEFINE([HAVE_AGAMA],1,[The AGAMA library appears to be present.])
+   else
+      AC_MSG_RESULT([no])
+      AC_MSG_ERROR([Cannot find $with_agama/agama.a. Please check your Agama installation (https://agama.software/).])
+   fi
+
+   # Verify the companion extras libraries are present.
+   AC_MSG_CHECKING([for agama extras libraries (libunsio.a, libnemo.a)])
+   if test -f "$with_agama/extras/lib/libunsio.a" -a -f "$with_agama/extras/lib/libnemo.a"; then
+      AC_MSG_RESULT([yes])
+   else
+      AC_MSG_RESULT([no])
+      AC_MSG_ERROR([Cannot find libunsio.a or libnemo.a under $with_agama/extras/lib/.])
+   fi
+
+fi
+AC_SUBST([AGAMA_LIBS])
+AC_SUBST([AGAMA_INCS])
+AM_CONDITIONAL([HAVEAGAMA],[test "$have_agama" = "yes"])
+
 # Check for VELOCIraptor, non-MPI.
 have_velociraptor="no"
 AC_ARG_WITH([velociraptor],
@@ -1937,6 +2009,14 @@ if test "$enable_warn" != "no"; then
     # are an error.
     AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes],[CFLAGS="$CFLAGS -Wstrict-prototypes"],
                           [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
+fi
+
+# Agama's interface_c.h uses empty () prototypes which are not valid in C99
+# and trigger -Wstrict-prototypes. Since we cannot modify the upstream header,
+# append -Wno-strict-prototypes here, *after* -Wstrict-prototypes has been
+# added above, so the suppression flag always comes last and wins.
+if test "$have_agama" = "yes"; then
+   CFLAGS="$CFLAGS -Wno-strict-prototypes"
 fi
 
 # Second part of the NUMA library checks. We now decide if we need to use
@@ -2986,7 +3066,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, agama, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -3024,6 +3104,9 @@ case "$with_potential" in
    ;;
    MWPotential2014)
       AC_DEFINE([EXTERNAL_POTENTIAL_MWPotential2014], [1], [Milky-Way like potential composed of a Navarro-Frenk-White + Miyamoto-Nagai disk + Power spherical cuttoff external potential.])
+   ;;
+   agama)
+      AC_DEFINE([EXTERNAL_POTENTIAL_AGAMA], [1], [Potential generated from the AGAMA library (https://agama.software/).])
    ;;
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
@@ -3443,6 +3526,7 @@ AC_MSG_RESULT([
    HEALPix C enabled    : $have_chealpix
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
+   AGAMA enabled        : $have_agama
    Sundials enabled     : $have_sundials
    Special allocators   : $have_special_allocator
    CPU profiler         : $have_profiler
