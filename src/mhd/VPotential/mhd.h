@@ -391,7 +391,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   for (int i = 0; i < 3; ++i) 
     for (int j = 0; j < 3; ++j){ 
       p->mhd_data.grad.Mat_db[i][j] = 0.f;
-      p->mhd_data.grad.Mat_b2[i] = 0.f;
+      p->mhd_data.grad.Grad_b2[i] = 0.f;
       }
   /* Curl B*/
   for (int k = 0; k < 3; k++) p->mhd_data.curl_B[k] = 0.f;
@@ -445,7 +445,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
       p->mhd_data.grad.Mat_db[i][j] *= h_inv_dim;
       }
   for (int i = 0; i < 3; ++i) 
-      p->mhd_data.grad.Mat_b2[i] *= h_inv_dim;
+      p->mhd_data.grad.Grad_b2[i] *= h_inv_dim;
   /* Invert the c-matrix */
   float c_mat_temp[3][3];
   get_matrix_from_sym_matrix(c_mat_temp, &p->mhd_data.grad.c_mat_inv);
@@ -461,7 +461,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   {p->mhd_data.grad.Mat_db[2][0], p->mhd_data.grad.Mat_db[2][1], p->mhd_data.grad.Mat_db[2][2]}};
 
   const float g_b2[3] = 
-  {p->mhd_data.grad.Mat_b2[0], p->mhd_data.grad.Mat_b2[1], p->mhd_data.grad.Mat_b2[2]};
+  {p->mhd_data.grad.Grad_b2[0], p->mhd_data.grad.Grad_b2[1], p->mhd_data.grad.Grad_b2[2]};
   for (int i = 0; i < 3; i++) 
     for (int j = 0; j < 3; j++){ 
          p->mhd_data.grad.Mat_db[i][j] = 0.f;
@@ -470,9 +470,9 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 	 }
   }
   for (int i = 0; i < 3; i++){ 
-         p->mhd_data.grad.Mat_b2[i] = 0.f;
+         p->mhd_data.grad.Grad_b2[i] = 0.f;
       for (int k = 0; k < 3; k++){
-         p->mhd_data.grad.Mat_b2[i] += c_mat_temp[i][k] * g_b2[k];
+         p->mhd_data.grad.Grad_b2[i] += c_mat_temp[i][k] * g_b2[k];
 	 }
       }
 
@@ -636,9 +636,6 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
 
-  /* Get time derivative of Dedner scalar */
-  // p->mhd_data.Gau_dt = mhd_get_dGau_dt(p, cosmo, mu_0);
-
   /* Hubble expansion contribution to induction equation */
   float a_fac = (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
@@ -650,7 +647,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   (p->mhd_data.BPred[0]*p->mhd_data.grad.Mat_db[0][k]+
    p->mhd_data.BPred[1]*p->mhd_data.grad.Mat_db[1][k]+
    p->mhd_data.BPred[2]*p->mhd_data.grad.Mat_db[2][k])
-   - 1.f/2.f * p->mhd_data.grad.Mat_b2[k] 
+   - 1.f/2.f * p->mhd_data.grad.Grad_b2[k] 
    - p->mhd_data.divB*p->mhd_data.BPred[k]);
 
   p->mhd_data.dAdt[0] -= ( p->mhd_data.APred[0] * p->force.gradient_vx[0] + 

@@ -91,7 +91,7 @@ struct mhd_part_data {
     /*! Gradient per component of the Bfield*/
     float Mat_db[3][3];
     /*! Gradient per component of the Bfield2*/
-    float Mat_b2[3];
+    float Grad_b2[3];
 
   } grad;
 };
