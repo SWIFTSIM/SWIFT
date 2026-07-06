@@ -36,7 +36,7 @@
  */
 __attribute__((always_inline)) INLINE static void
 particle_splitting_mark_part_as_not_split(
-    struct particle_splitting_data* restrict splitting_data, long long id) {
+    struct particle_splitting_data *restrict splitting_data, long long id) {
 
   splitting_data->progenitor_id = id;
   splitting_data->split_tree = 0;
@@ -60,10 +60,10 @@ particle_splitting_mark_part_as_not_split(
  */
 __attribute__((always_inline)) INLINE static void
 particle_splitting_update_binary_tree(
-    struct particle_splitting_data* restrict sdi,
-    struct particle_splitting_data* restrict sdj, const long long id_i,
-    const long long id_j, FILE* extra_split_logger,
-    swift_lock_type* file_lock) {
+    struct particle_splitting_data *restrict sdi,
+    struct particle_splitting_data *restrict sdj, const long long id_i,
+    const long long id_j, FILE *extra_split_logger,
+    swift_lock_type *file_lock) {
 
   /* Print warnings if we have split these particles more
    * than the number of times the tree can accommodate.
@@ -121,9 +121,9 @@ particle_splitting_update_binary_tree(
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int particle_splitting_write_particles(const struct part* parts,
-                                                     const struct xpart* xparts,
-                                                     struct io_props* list,
+INLINE static int particle_splitting_write_particles(const struct part *parts,
+                                                     const struct xpart *xparts,
+                                                     struct io_props *list,
                                                      const int with_cosmology) {
 
   list[0] = io_make_output_field(
@@ -159,7 +159,7 @@ INLINE static int particle_splitting_write_particles(const struct part* parts,
  * @return Returns the number of fields to write.
  */
 INLINE static int particle_splitting_write_sparticles(
-    const struct spart* sparts, struct io_props* list) {
+    const struct spart *sparts, struct io_props *list) {
 
   list[0] = io_make_output_field(
       "ProgenitorParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
@@ -196,7 +196,7 @@ INLINE static int particle_splitting_write_sparticles(
  * @return Returns the number of fields to write.
  */
 INLINE static int particle_splitting_write_bparticles(
-    const struct bpart* bparts, struct io_props* list) {
+    const struct bpart *bparts, struct io_props *list) {
   list[0] = io_make_output_field(
       "ProgenitorParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       split_data.progenitor_id,
@@ -230,8 +230,8 @@ INLINE static int particle_splitting_write_bparticles(
  * @param xp Extra particle data.
  */
 __attribute__((always_inline)) INLINE static void
-particle_splitting_debug_particle(const struct part* p,
-                                  const struct xpart* xp) {
+particle_splitting_debug_particle(const struct part *p,
+                                  const struct xpart *xp) {
 
   if (xp != NULL) {
     warning("[PID%lld] particle_splitting_data:", p->id);

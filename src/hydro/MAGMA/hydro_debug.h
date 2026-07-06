@@ -20,21 +20,12 @@
 #define SWIFT_MAGMA_HYDRO_DEBUG_H
 
 /**
- * @file Minimal/hydro_debug.h
- * @brief Minimal conservative implementation of SPH (Debugging routines)
- *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch. No thermal conduction
- * term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
- * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
- * pp. 759-794.
+ * @file MAGMA/hydro_part.h
+ * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (debug routine)
  */
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+    const struct part *p, const struct xpart *xp) {
   warning("[PID%lld] part:", p->id);
   warning(
       "[PID%lld] "
@@ -45,7 +36,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "dh_drho=%.3g, time_bin=%d wakeup=%d",
       p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
       p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->mass, p->u, p->u_dt,
-      hydro_get_comoving_pressure(p), p->force.soundspeed, p->force.v_sig, p->h,
+      hydro_get_comoving_pressure(p), p->force.soundspeed, 0.f, p->h,
       p->force.h_dt, p->density.wcount, p->rho, p->density.rho_dh, p->time_bin,
       p->limiter_data.wakeup);
   if (xp != NULL) {

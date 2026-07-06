@@ -30,9 +30,9 @@ neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
 
 
 # Constants
-G = 6.67430e-11 * unyt.m ** 3 / unyt.kg / unyt.s ** 2  # 6.67430e-8
-G = G.to(unyt.cm ** 3 / unyt.g / unyt.s ** 2)
-mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.A ** 2)
+G = 6.67430e-11 * unyt.m**3 / unyt.kg / unyt.s**2  # 6.67430e-8
+G = G.to(unyt.cm**3 / unyt.g / unyt.s**2)
+mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s**2 * unyt.A**2)
 
 # First create a mass-weighted temperature dataset
 r = data.gas.coordinates - center

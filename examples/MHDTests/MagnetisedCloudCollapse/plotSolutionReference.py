@@ -15,14 +15,14 @@ data = load(filename)
 center = 0.5 * data.metadata.boxsize
 
 # Constants
-G = 6.67430e-11 * unyt.m ** 3 / unyt.kg / unyt.s ** 2  # 6.67430e-8
-G = G.to(unyt.cm ** 3 / unyt.g / unyt.s ** 2)
-mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.A ** 2)
+G = 6.67430e-11 * unyt.m**3 / unyt.kg / unyt.s**2  # 6.67430e-8
+G = G.to(unyt.cm**3 / unyt.g / unyt.s**2)
+mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s**2 * unyt.A**2)
 
 # Parameters (taken from Hopkins 2016)
 R0 = 4.628516371e16 * unyt.cm
 M = 1.99e33 * unyt.g  # total mass of the sphere
-rhocloud0 = M / (4 / 3 * np.pi * R0 ** 3)
+rhocloud0 = M / (4 / 3 * np.pi * R0**3)
 rhouniform = rhocloud0 / 360
 t_ff = np.sqrt(3 / (2 * np.pi * G * rhocloud0)) * unyt.s
 tsim = data.metadata.time
@@ -61,7 +61,7 @@ rotation_matrix = [[1,0,0],
 rotation_matrix = [[0, 0, 1], [0, 1, 0], [-1, 0, 0]]
 
 Lslice_AU = 1000
-Lslice = Lslice_AU * 1.49597871 * 10 ** 13 * unyt.cm
+Lslice = Lslice_AU * 1.49597871 * 10**13 * unyt.cm
 
 visualise_region_xy = [
     center[0] - Lslice,
@@ -124,7 +124,7 @@ density_map_xy.convert_to_units(unyt.g * unyt.cm ** (-3))
 density_map.convert_to_units(unyt.g * unyt.cm ** (-3))
 vr_map.convert_to_units(unyt.km / unyt.s)
 Bz_map.convert_to_units(1e-7 * unyt.g / (unyt.A * unyt.s * unyt.s))
-J_map.convert_to_units(unyt.A / (unyt.m ** 2))
+J_map.convert_to_units(unyt.A / (unyt.m**2))
 
 fig, ax = plt.subplots(3, 2, sharey=True, figsize=(10, 15))
 

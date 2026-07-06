@@ -122,6 +122,10 @@ struct space {
   /*! Are we doing hydrodynamics? */
   int with_hydro;
 
+  /*! Are we splitting any gas? */
+  int with_hydro_splitting;
+  int splitting_need_unique_id;
+
   /*! Are we doing gravity? */
   int with_self_gravity;
 
@@ -378,6 +382,7 @@ struct space {
 
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
+void space_free_sort_indices(struct space *s);
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset);
 void space_gparts_sort(struct gpart *gparts, struct part *parts,

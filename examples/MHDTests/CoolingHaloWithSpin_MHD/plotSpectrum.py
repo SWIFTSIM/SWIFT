@@ -7,7 +7,6 @@ import argparse
 from swiftsimio import load
 from swiftsimio.visualisation.volume_render import render_gas
 
-
 # Parse command line arguments
 argparser = argparse.ArgumentParser()
 argparser.add_argument("input")
@@ -47,7 +46,7 @@ divB = data.gas.magnetic_divergences
 minh = np.min(h.value)
 
 # Renormalize quantities
-mu0 = 1.25663706127e-6 * unyt.kg * unyt.m / (unyt.s ** 2 * unyt.statA ** 2)
+mu0 = 1.25663706127e-6 * unyt.kg * unyt.m / (unyt.s**2 * unyt.statA**2)
 # note that older swiftsimio version is using statA even if swift has MF as A
 # mu0 = 1.25663706127e-1 * unyt.g * unyt.cm / (unyt.s ** 2 * unyt.statA ** 2)
 v = v * (rho[:, None] / 2) ** 0.5
@@ -126,8 +125,8 @@ Bz_cube = mass_weighted_Bz_cube / mass_cube
 
 error_cube = mass_weighted_error_cube / mass_cube
 
-unit_energy = unyt.g * unyt.cm ** 2 / unyt.s ** 2
-unit_energy_density = unit_energy / unyt.cm ** 3
+unit_energy = unyt.g * unyt.cm**2 / unyt.s**2
+unit_energy_density = unit_energy / unyt.cm**3
 unit_sqrt_energy_density = (unit_energy_density) ** 0.5
 unit_length = 1e3 * unyt.pc
 
@@ -163,7 +162,7 @@ def compute_power_spectrum_scal(Q, dx, nbins):
 
     # Create 3D arrays of wavevectors
     KX, KY, KZ = np.meshgrid(kx, ky, kz, indexing="ij")
-    k_mag = np.sqrt(KX ** 2 + KY ** 2 + KZ ** 2)
+    k_mag = np.sqrt(KX**2 + KY**2 + KZ**2)
 
     # Flatten arrays for binning
     k_mag_flat = k_mag.flatten()
@@ -192,7 +191,7 @@ def compute_power_spectrum_scal(Q, dx, nbins):
 def compute_power_spectrum_vec(Qx, Qy, Qz, dx, nbins):
     # Ensure all arrays are unyt arrays with same units
     dx = dx  # .to(unyt.pc)
-    volume_element = dx ** 3  # single cell volume in cm^3
+    volume_element = dx**3  # single cell volume in cm^3
 
     # Get shape
     Nx, Ny, Nz = Qx.shape
@@ -217,13 +216,13 @@ def compute_power_spectrum_vec(Qx, Qy, Qz, dx, nbins):
     ky = np.fft.fftfreq(Ny, d=dx.value) * 2 * np.pi / dx.units  # unyt.cm**-1
     kz = np.fft.fftfreq(Nz, d=dx.value) * 2 * np.pi / dx.units  # unyt.cm**-1
     KX, KY, KZ = np.meshgrid(kx, ky, kz, indexing="ij")
-    k_mag = np.sqrt(KX ** 2 + KY ** 2 + KZ ** 2)
+    k_mag = np.sqrt(KX**2 + KY**2 + KZ**2)
 
     # Calculate monopole component
     Q_dot_k = Qx_k * KX + Qy_k * KY + Qz_k * KZ
-    Qx_k_div = KX * Q_dot_k / k_mag ** 2
-    Qy_k_div = KY * Q_dot_k / k_mag ** 2
-    Qz_k_div = KZ * Q_dot_k / k_mag ** 2
+    Qx_k_div = KX * Q_dot_k / k_mag**2
+    Qy_k_div = KY * Q_dot_k / k_mag**2
+    Qz_k_div = KZ * Q_dot_k / k_mag**2
     Pk_div = (
         np.abs(Qx_k_div) ** 2 + np.abs(Qy_k_div) ** 2 + np.abs(Qz_k_div) ** 2
     )  # .to(unyt.g/(unyt.s**2)*unyt.cm**5)  # or appropriate units
@@ -247,8 +246,8 @@ def compute_power_spectrum_vec(Qx, Qy, Qz, dx, nbins):
     Pk_div_flat = Pk_div_flat[1:]
 
     # converting to Energy per unit wavevector
-    Ek_flat = 4 * np.pi * k_flat ** 2 * Pk_flat
-    Ek_div_flat = 4 * np.pi * k_flat ** 2 * Pk_div_flat
+    Ek_flat = 4 * np.pi * k_flat**2 * Pk_flat
+    Ek_div_flat = 4 * np.pi * k_flat**2 * Pk_div_flat
 
     k_bin_centers = 0.5 * (k_bins[1:] + k_bins[:-1])
 
@@ -325,7 +324,7 @@ Emock = Eright * (ksmock / kright) ** (p)
 Emock.convert_to_units(unyt.erg * (1e3 * unyt.pc))
 ax.plot(ksmock, Emock, color="black", linestyle="dashed")  # ,label = '$k^{-5/3}$')
 
-klabel = ksoft / 10 ** 0.45
+klabel = ksoft / 10**0.45
 klabel.convert_to_units(1e-3 / unyt.pc)
 Elabel = Eright * (klabel / kright) ** (p)
 Elabel.convert_to_units(unyt.erg * (1e3 * unyt.pc))
@@ -344,7 +343,7 @@ Emock = Eleft * (ksmock / kleft) ** (p)
 Emock.convert_to_units(unyt.erg * (1e3 * unyt.pc))
 ax.plot(ksmock, Emock, color="black", linestyle="dashed")  # ,label = '$k^{-5/3}$')
 
-klabel = k_slice / 10 ** 0.15
+klabel = k_slice / 10**0.15
 klabel.convert_to_units(1e-3 / unyt.pc)
 Elabel = Eleft * (klabel / kleft) ** (p)
 Elabel.convert_to_units(unyt.erg * (1e3 * unyt.pc))

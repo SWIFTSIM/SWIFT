@@ -63,10 +63,10 @@ vol = Lx * Ly * Lz
 
 # Direction of propagation of wave
 sina = 2.0 / 3.0
-cosa = np.sqrt(1 - sina ** 2)
+cosa = np.sqrt(1 - sina**2)
 
 sinb = 2.0 / np.sqrt(5)
-cosb = np.sqrt(1 - sinb ** 2)
+cosb = np.sqrt(1 - sinb**2)
 
 Rotation = np.array(
     [

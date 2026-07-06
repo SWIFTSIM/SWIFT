@@ -133,13 +133,72 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
+  /* Retrieve and compute relevant cosmological factors */
+  const float a = cosmo->a;
+  const float a2 = a * a;
+
+  /* Retrieve relevant particle attributes */
+  const float rho = p->rho;
+
+  float B_over_rho[3];
+  float B_over_rho_dt[3];
+  for (int k = 0; k < 3; k++) {
+    B_over_rho[k] = p->mhd_data.B_over_rho[k];
+    B_over_rho_dt[k] = p->mhd_data.B_over_rho_dt[k];
+  }
+
+  const float psi_over_ch = p->mhd_data.psi_over_ch;
+  const float psi_over_ch_dt = p->mhd_data.psi_over_ch_dt;
+
+  /* Compute the norm squared of vectors of interest */
+  float B_over_rho2 = 0.0f;
+  for (int k = 0; k < 3; k++) {
+    B_over_rho2 += B_over_rho[k] * B_over_rho[k];
+  }
+
+  /* Compute metric to evaluate dynamical significance of Dedner scalar field */
+  const float vpsi_tp_vB =
+      B_over_rho2 ? fabsf(psi_over_ch) / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
+
+  /* Condition to limit the per time-step change in the magnitude of the
+   * magnetic field */
+  const float maxRelChangeBoverRho = hydro_properties->mhd.maxRelChangeBoverRho;
+
+  float denum_dt_deltaB2 = 0.f;
+  for (int k = 0; k < 3; k++) {
+    denum_dt_deltaB2 += B_over_rho_dt[k] * B_over_rho_dt[k];
+  }
+
+  const float dt_deltaB =
+      B_over_rho2 && denum_dt_deltaB2
+          ? maxRelChangeBoverRho * a2 * sqrtf(B_over_rho2 / denum_dt_deltaB2)
+          : FLT_MAX;
+
+  /* Condition to limit the per time-step change in the magnitude of the Dedner
+   * scalar field */
+  const float maxRelChangePsiOverCh =
+      hydro_properties->mhd.maxRelChangePsiOverCh;
+  const float R_ePsi_to_eB = hydro_properties->mhd.R_ePsi_to_eB;
+
+  const float denum_dt_deltaPsi = fabsf(psi_over_ch_dt);
+
+  const float dt_deltaPsi =
+      (vpsi_tp_vB > R_ePsi_to_eB) && (denum_dt_deltaPsi != 0.0f)
+          ? maxRelChangePsiOverCh * a2 * fabsf(psi_over_ch) / denum_dt_deltaPsi
+          : FLT_MAX;
+
+  /* Keep the minimum of two preious conditions */
+  const float dt_deltaField = fminf(dt_deltaB, dt_deltaPsi);
+
+  /* Compute new time-step because of physical diffusion */
   const float dt_eta = p->mhd_data.resistive_eta+p->mhd_data.eta_OWAR != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
                                  cosmo->a * p->h * p->h /
                                  (p->mhd_data.resistive_eta+p->mhd_data.eta_OWAR)
                            : FLT_MAX;
 
-  return dt_eta;
+  /* Keep the minimum of all MHD time-steps */
+  return fminf(dt_deltaField, dt_eta);
 }
 
 /**
@@ -170,7 +229,8 @@ mhd_get_comoving_Alfven_speed(const struct part *restrict p, const float mu_0) {
 __attribute__((always_inline)) INLINE static float
 mhd_get_comoving_magnetosonic_speed(const struct part *restrict p) {
 
-  /* Compute square of fast magnetosonic speed */
+  /* Compute fast magnetosonic speed, the Pythagorean addition of the sound
+   * speed and Alfven speed */
   const float cs = hydro_get_comoving_soundspeed(p);
   const float cs2 = cs * cs;
 
@@ -239,6 +299,11 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
 
+  /* Compute pairwise MHD signal velocity,
+   * the sum of two particles' fast magnetosonic speeds
+   * (i.e. the Pythagorean addition of their sound speed and Alfven speed),
+   * and a von Neumann-type correction. */
+
   const float v_sigi = mhd_get_comoving_magnetosonic_speed(pi);
   const float v_sigj = mhd_get_comoving_magnetosonic_speed(pj);
 
@@ -248,7 +313,8 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 }
 
 /**
- * @brief Adapts signal velocity to change in drifted physical internal energy of a particle at feedback events
+ * @brief Adapts signal velocity to change in drifted physical internal energy
+ * of a particle at feedback events
  *
  * @param p The particle of interest.
  */
@@ -271,20 +337,19 @@ mhd_set_drifted_physical_internal_energy(struct part *p) {
  */
 __attribute__((always_inline)) INLINE static void
 mhd_set_v_sig_based_on_velocity_kick(struct part *p,
-                                       const struct cosmology *cosmo,
-                                       const float dv_phys) {
+                                     const struct cosmology *cosmo,
+                                     const float dv_phys) {
 
   /* Compute the velocity kick in comoving coordinates */
   const float dv = dv_phys / cosmo->a_factor_sound_speed;
 
   /* Fast magnetosonic speed */
   const float cms = mhd_get_comoving_magnetosonic_speed(p);
-  
+
   /* Update the signal velocity */
   p->viscosity.v_sig =
       fmaxf(2.f * cms, p->viscosity.v_sig + const_viscosity_beta * dv);
 }
-
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -430,21 +495,22 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   }
 
   const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
-    
+
   /* Finalise local plasma beta mean square calculation */
   const float Pmag_inv = B2 ? 2.0f * mu_0 / B2 : FLT_MAX;
   const float plasma_beta = P * Pmag_inv;
 
   p->mhd_data.neighbour_number += 1.0f;
-  p->mhd_data.plasma_beta_rms += plasma_beta * plasma_beta; 
+  p->mhd_data.plasma_beta_rms += plasma_beta * plasma_beta;
 
-  p->mhd_data.plasma_beta_rms = sqrtf(p->mhd_data.plasma_beta_rms / p->mhd_data.neighbour_number); /* Divisor guaranteed to be strictly positive */ 
-  
+  p->mhd_data.plasma_beta_rms = sqrtf(
+      p->mhd_data.plasma_beta_rms /
+      p->mhd_data
+          .neighbour_number); /* Divisor guaranteed to be strictly positive */
 
   /* eta OWAR averaging */
   p->mhd_data.eta_OWAR_avrg += p->mhd_data.eta_OWAR * p->mass / p->rho * kernel_root;
   p->mhd_data.eta_OWAR_avrg *= pow_dimension(1.f / (p->h));
-
 
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;

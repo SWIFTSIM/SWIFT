@@ -213,7 +213,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {}
+    struct part *p, const float mu_0) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.

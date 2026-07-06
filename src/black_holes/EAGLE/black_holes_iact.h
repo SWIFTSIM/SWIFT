@@ -810,7 +810,7 @@ runner_iact_nonsym_bh_gas_feedback(
       hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
                                                  u_new);
       mhd_set_drifted_physical_internal_energy(pj);
-      
+
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
 

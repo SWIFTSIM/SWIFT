@@ -30,11 +30,11 @@ c_200 = 7.2
 spin_lambda = 0.05
 nH_max_cgs = 1e2
 M_200_cgs = 1e12 * MSOL_IN_CGS
-rhoc_cgs = 3 * H_0_cgs ** 2 / (8 * np.pi * CONST_G_CGS)
+rhoc_cgs = 3 * H_0_cgs**2 / (8 * np.pi * CONST_G_CGS)
 r_200_cgs = (3 * M_200_cgs / (4 * np.pi * rhoc_cgs * 200)) ** (1 / 3)
 v_200_cgs = np.sqrt(CONST_G_CGS * M_200_cgs / r_200_cgs)
 v_200 = v_200_cgs / const_unit_velocity_in_cgs
-T_200_cgs = m_H_cgs * v_200_cgs ** 2 / (2 * kb_cgs)
+T_200_cgs = m_H_cgs * v_200_cgs**2 / (2 * kb_cgs)
 
 const_unit_mass_in_cgs = M_200_cgs
 const_unit_length_in_cgs = r_200_cgs
@@ -98,9 +98,9 @@ axis_dist = (
     + coords_center[:, 1] * e_r[:, 1]
     + coords_center[:, 2] * e_r[:, 2]
 )
-j = v_phi * radius ** 2 / axis_dist
+j = v_phi * radius**2 / axis_dist
 omega = v_phi / axis_dist
-Jtot = np.sum(omega * axis_dist ** 2 * m)
+Jtot = np.sum(omega * axis_dist**2 * m)
 
 P = data.gas.pressures
 T = data.gas.temperatures
@@ -114,10 +114,8 @@ errB = np.log10(h * abs(divB) / normB)
 
 rho_units = unyt.g * unyt.cm ** (-3)
 r_units = 1e3 * PARSEC_IN_CGS * unyt.cm
-P_units = (
-    MSOL_IN_CGS / PARSEC_IN_CGS / GYR_IN_CGS ** 2 * (unyt.g / (unyt.cm * unyt.s ** 2))
-)
-j_units = (1e3 * PARSEC_IN_CGS) / GYR_IN_CGS * (unyt.cm ** 2 / unyt.s)
+P_units = MSOL_IN_CGS / PARSEC_IN_CGS / GYR_IN_CGS**2 * (unyt.g / (unyt.cm * unyt.s**2))
+j_units = (1e3 * PARSEC_IN_CGS) / GYR_IN_CGS * (unyt.cm**2 / unyt.s)
 nH_units = unyt.cm ** (-3)
 
 rho.convert_to_units(rho_units)
@@ -161,7 +159,7 @@ axs[1].set_yscale("log")
 
 
 def rho(r, pars):
-    """ 
+    """
     Calculate the density profile at given positions
     param: r - distance to the center
     param: pars - parameter dict for density profile.

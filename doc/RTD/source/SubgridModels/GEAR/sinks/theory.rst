@@ -49,6 +49,7 @@ In the following, we always refer to physical quantities. In non-cosmological si
 * :math:`\rho_p = \rho_c/a^3`
 * :math:`\Phi_p = \Phi_c/a + c(a)`
 * :math:`u_p = u_c/a^{3(\gamma -1)}`
+* :math:`\nabla_p = \frac{1}{a} \nabla_c`
 
 
 Here, :math:`H` is the Hubble constant at any redshift, :math:`c(a)` is the potential normalization constant and :math:`\gamma` the gas adiabatic index. Notice that the potential normalization constant has been chosen to be :math:`c(a) = 0`.
@@ -94,7 +95,7 @@ Some criteria are *optional* and can be *deactivated*. By default, they are all 
 
 * :math:`E_{\text{therm}} = \displaystyle \sum_j m_j u_{j, p}`
 * :math:`E_{\text{kin}} = \displaystyle \frac{1}{2} \sum_j m_j (\mathbf{v}_{i, p} - \mathbf{v}_{j, p})^2`
-* :math:`E_{\text{pot}} = \displaystyle \frac{G_N}{2} \sum_j m_i m_j \Phi_{j, p}`
+* :math:`E_{\text{pot}} = \displaystyle \frac{1}{2} \sum_j m_j \Phi_{j, p} - \frac{1}{2} M_\text{tot} \max_j\left(\Phi_{j, p} \right)`
 * :math:`E_{\text{rot}} = \displaystyle \sqrt{E_{\text{rot}, x}^2 + E_{\text{rot}, y}^2 + E_{\text{rot}, z}^2}`
 * :math:`E_{\text{rot}, x} = \displaystyle \frac{1}{2} \sum_j m_j \frac{L_{ij, x}^2}{\sqrt{(y_{i, p} - y_{j, p})^2 + (z_{i,p} - z_{j, p})^2}}`
 * :math:`E_{\text{rot}, y} = \displaystyle \frac{1}{2} \sum_j m_j \frac{L_{ij, y}^2}{\sqrt{(x_{i,p} - x_{j,p})^2 + (z_{i,p} - z_{j,p})^2}}`
@@ -108,12 +109,17 @@ Some criteria are *optional* and can be *deactivated*. By default, they are all 
 
    The :math:`p` subscript is to recall that we are using physical quantities to compute energies.
 
-   Here, the potential is retrieved from the gravity solver. 
+   Here, the potential is retrieved from the gravity solver.
 
+.. note::
+   Currently, only the following hydro schemes are compatible: SPHENIX, Gadget2, minimal SPH, Gasoline-2, Pressure-Energy, GIZMO MFV and GIZMO MFM. These schemes are also the ones compatible with *GEAR star formation scheme*.
+   Implementing the other hydro schemes is not complicated but requires some careful thinking about the cosmological terms in the definition of the velocity divergence (comoving vs non comoving coordinates and if the Hubble flow is included or not).
 
 Some comments about the criteria:
 
 The third criterion is mainly here to prevent two sink particles from forming at a distance smaller than the sink accretion radius. Since we allow sinks to merge, such a situation raises the question of which sink should swallow the other. This can depend on the order of the tasks, which is not a desirable property. As a result, this criterion is enforced.
+
+The senveth criterion is equivalent to a Jeans Mass criterion.
 
 The tenth criterion prevents the formation of spurious sinks. Experiences have shown that removing gas within the accretion radius biases the hydro density estimates: the gas feels a force toward the sink. At some point, there is an equilibrium and gas particles accumulate at the edge of the accretion radius, which can then spawn sink particles that do not fall onto the primary sink and never merge. Moreover, the physical reason behind this criterion is that a sink represents a region of collapse. As a result, there is no need to have many sinks occupying the same space volume. They would compete for gas accretion without necessarily merging. This criterion is particularly meaningful in cosmological simulations to ensure proper sampling of the IMF. *This criterion can be disabled*.
 
@@ -148,7 +154,7 @@ The physical specific angular momenta and the total energy are given by:
 * :math:`E_{\text{tot}} = \frac{1}{2}  (\mathbf{v}_{s, p} - \mathbf{x}_{i, p})^2 - G_N \Phi(|\mathbf{x}_{s, p} - \mathbf{x}_{i, p}|) + m_i u_{i, p}`.
 
 .. note::
-   Here the potential is the softened potential of Swift.
+   Here the potential is the softened potential of Swift. The softening is set to :math:`f_\text{acc} r_\text{acc}`.
 
 Those criteria are similar to `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_ and `Grudic et al. (2021) <https://academic.oup.com/mnras/article/506/2/2199/6276745>`_, with the addition of the internal energy. This term ensures that the gas is cold enough to be accreted. Its main purpose is to avoid gas accretion and star spawning in hot regions far from sink/star-forming regions, which can happen, e.g., if a sink leaves a galaxy.
 
@@ -226,7 +232,7 @@ As explained at the beginning of this section, GEAR uses two IMFs for the popula
 Star spawning
 ~~~~~~~~~~~~~
 
-Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. The star is placed randomly within the sink's accretion radius. We draw the star's velocity components from a Gaussian distribution with mean :math:`\mu = 0` and standard deviation :math:`\sigma` determined as follows:
+Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. The star is placed randomly within the sink's smoothing length. We draw the star's velocity components from a Gaussian distribution with mean :math:`\mu = 0` and standard deviation :math:`\sigma` determined as follows:
 
 .. math::
    \sigma = f \cdot \sqrt{\frac{G_N M_s}{r_{\text{acc}}}} \; ,

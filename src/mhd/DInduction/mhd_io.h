@@ -29,8 +29,8 @@
  * @param list The list of i/o properties to read.
  * @return number of fields readed
  */
-INLINE static int mhd_read_particles(struct part* parts,
-                                     struct io_props* list) {
+INLINE static int mhd_read_particles(struct part *parts,
+                                     struct io_props *list) {
 
   list[0] =
       io_make_input_field("MagneticFluxDensities", FLOAT, 3, COMPULSORY,
@@ -38,8 +38,8 @@ INLINE static int mhd_read_particles(struct part* parts,
   return 1;
 }
 
-INLINE static void convert_B(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
+INLINE static void convert_B(const struct engine *e, const struct part *p,
+                             const struct xpart *xp, float *ret) {
   ret[0] = p->mhd_data.BPred[0];
   ret[1] = p->mhd_data.BPred[1];
   ret[2] = p->mhd_data.BPred[2];
@@ -47,8 +47,8 @@ INLINE static void convert_B(const struct engine* e, const struct part* p,
 
 /* Calculate error metrics*/
 
-INLINE static void calculate_R0(const struct engine* e, const struct part* p,
-                                const struct xpart* xp, float* ret) {
+INLINE static void calculate_R0(const struct engine *e, const struct part *p,
+                                const struct xpart *xp, float *ret) {
 
   /* Calculate R0 error metric */
   const float B[3] = {p->mhd_data.BPred[0], p->mhd_data.BPred[1],
@@ -78,8 +78,8 @@ INLINE static void calculate_R0(const struct engine* e, const struct part* p,
   if (divB_abs < signal_to_noise * divB_err_abs) ret[0] = 0.f;
 }
 
-INLINE static void calculate_R1(const struct engine* e, const struct part* p,
-                                const struct xpart* xp, float* ret) {
+INLINE static void calculate_R1(const struct engine *e, const struct part *p,
+                                const struct xpart *xp, float *ret) {
 
   /* Calculate R1 error metric */
   const float B[3] = {p->mhd_data.BPred[0], p->mhd_data.BPred[1],
@@ -151,8 +151,8 @@ INLINE static void calculate_R1(const struct engine* e, const struct part* p,
   }
 }
 
-INLINE static void calculate_R2(const struct engine* e, const struct part* p,
-                                const struct xpart* xp, float* ret) {
+INLINE static void calculate_R2(const struct engine *e, const struct part *p,
+                                const struct xpart *xp, float *ret) {
 
   /* Calculate R2 error metric */
   const float curlB[3] = {p->mhd_data.curlB[0], p->mhd_data.curlB[1],
@@ -198,8 +198,8 @@ INLINE static void calculate_R2(const struct engine* e, const struct part* p,
   }
 }
 
-INLINE static void calculate_R3(const struct engine* e, const struct part* p,
-                                const struct xpart* xp, float* ret) {
+INLINE static void calculate_R3(const struct engine *e, const struct part *p,
+                                const struct xpart *xp, float *ret) {
 
   /* Calculate R3 error metric */
 
@@ -240,9 +240,9 @@ INLINE static void calculate_R3(const struct engine* e, const struct part* p,
   }
 }
 
-INLINE static void calculate_OW_trigger(const struct engine* e,
-                                        const struct part* p,
-                                        const struct xpart* xp, float* ret) {
+INLINE static void calculate_OW_trigger(const struct engine *e,
+                                        const struct part *p,
+                                        const struct xpart *xp, float *ret) {
 
   /* Calculate overwinding trigger */
 
@@ -296,10 +296,10 @@ INLINE static void calculate_OW_trigger(const struct engine* e,
   ret[0] = Rm_local * sign_prefactor * Laplace_ratio;
 }
 
-INLINE static void calculate_effective_resistivity(const struct engine* e,
-                                                   const struct part* p,
-                                                   const struct xpart* xp,
-                                                   float* ret) {
+INLINE static void calculate_effective_resistivity(const struct engine *e,
+                                                   const struct part *p,
+                                                   const struct xpart *xp,
+                                                   float *ret) {
 
   /* Calculate effective resistivity of the code (physical+numerical) */
 
@@ -326,9 +326,9 @@ INLINE static void calculate_effective_resistivity(const struct engine* e,
   ret[0] = effective_resistivity;
 }
 
-INLINE static void calculate_Rm_local(const struct engine* e,
-                                      const struct part* p,
-                                      const struct xpart* xp, float* ret) {
+INLINE static void calculate_Rm_local(const struct engine *e,
+                                      const struct part *p,
+                                      const struct xpart *xp, float *ret) {
 
   /* Calculate local magnetic Reynolds number */
 
@@ -363,9 +363,9 @@ INLINE static void calculate_Rm_local(const struct engine* e,
  * @param list The list of i/o properties to write.
  * @return num_fields The number of i/o fields to write.
  */
-INLINE static int mhd_write_particles(const struct part* parts,
-                                      const struct xpart* xparts,
-                                      struct io_props* list) {
+INLINE static int mhd_write_particles(const struct part *parts,
+                                      const struct xpart *xparts,
+                                      struct io_props *list) {
 
   list[0] = io_make_output_field("MagneticFluxDensities", FLOAT, 3,
                                  UNIT_CONV_MAGNETIC_FIELD, mhd_comoving_factor,

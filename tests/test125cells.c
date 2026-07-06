@@ -390,7 +390,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
     defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||            \
     defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
-    defined(GASOLINE_SPH) || defined(REMIX_SPH)
+    defined(GASOLINE_SPH) || defined(REMIX_SPH) || defined(MAGMA_SPH)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
@@ -692,7 +692,7 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 125; ++j)
       runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0, 0);
 
-      /* Do the density calculation */
+    /* Do the density calculation */
 
 /* Initialise the particle cache. */
 #ifdef WITH_VECTORIZATION
@@ -740,7 +740,10 @@ int main(int argc, char *argv[]) {
                                     /*limit_h_max=*/0);
 
     /* Ghost to finish everything on the central cells */
-    for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
+    for (int j = 0; j < 27; ++j)
+      runner_do_ghost(&runner, inner_cells[j],
+                      /*offset=*/0, /*ntasks=*/1,
+                      /*timer=*/0);
 
 #ifdef EXTRA_HYDRO_LOOP
     /* We need to do the gradient loop and the extra ghost! */
@@ -802,7 +805,7 @@ int main(int argc, char *argv[]) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-      /* Do the force calculation */
+    /* Do the force calculation */
 
 #ifdef WITH_VECTORIZATION
     /* Initialise the cache. */
@@ -939,7 +942,10 @@ int main(int argc, char *argv[]) {
   for (int j = 0; j < 27; ++j) self_all_density(&runner, inner_cells[j]);
 
   /* Ghost to finish everything on the central cells */
-  for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
+  for (int j = 0; j < 27; ++j)
+    runner_do_ghost(&runner, inner_cells[j],
+                    /*offset=*/0, /*ntasks=*/1,
+                    /*timer=*/0);
 
 #ifdef EXTRA_HYDRO_LOOP
   /* We need to do the gradient loop and the extra ghost! */

@@ -191,13 +191,13 @@ before you can build it.
                              ==================
 
 The SWIFT source code uses a variation of 'Google' style. The script
-'format.sh' in the root directory applies the clang-format-18 tool with our
+'format.sh' in the root directory applies the clang-format-20 tool with our
 style choices to all the SWIFT C source file. Please apply the formatting
 script to the files before submitting a merge request.
 
 The Python scripts in the repository use default formatting enforced by
 'black'. Since 'black' formatting still strongly depends on the version,
-we currently enforce use of 'black==19.3b0' using a virtual environment.
+we currently enforce use of 'black==26.3.1' using a virtual environment.
 The setup of the virtual environment and formatting of all PYthon
 scripts is done automatically by the Python formatting script
 'format_python.sh'. Please apply this script before submitting a merge

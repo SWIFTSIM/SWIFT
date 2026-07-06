@@ -14,7 +14,15 @@ Wendland C2 kernel with ~100 neighbours.
 Some examples of configuration options with different hydro schemes:
 
 REMIX:
-`--with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --with-ext-potential=constant --enable-boundary-particles=22369`
+`--with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --with-ext-potential=constant --with-forcing=boundary-particles`
 
 "Traditional" SPH (tSPH):
-`--with-hydro=planetary --with-equation-of-state=planetary --with-kernel=wendland-C2 --with-ext-potential=constant --enable-boundary-particles=22369`
+`--with-hydro=planetary --with-equation-of-state=planetary --with-kernel=wendland-C2 --with-ext-potential=constant --with-forcing=boundary-particles`
+
+The flag `--with-forcing=boundary-particles` requires that the maximum boundary particle ID is
+specified in the parameter file, for example:
+
+BoundaryParticles:
+  boundary_particle_max_id:        22368
+
+This value is provided by the script makeIC.py and depends on the resolution.

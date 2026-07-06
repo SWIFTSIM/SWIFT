@@ -64,8 +64,8 @@ P = sim["/PartType0/Pressures"][:]
 rho = sim["/PartType0/Densities"][:]
 
 r = np.sqrt((x - 1) ** 2 + (y - 1) ** 2 + (z - 1) ** 2)
-v = -np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
-Pmag = 0.5 * (Bx ** 2 + By ** 2 + Bz ** 2)
+v = -np.sqrt(vx**2 + vy**2 + vz**2)
+Pmag = 0.5 * (Bx**2 + By**2 + Bz**2)
 
 # Bin the data
 r_bin_edge = np.arange(0.0, 1.0, 0.02)
@@ -76,20 +76,18 @@ P_bin, _, _ = stats.binned_statistic(r, P, statistic="mean", bins=r_bin_edge)
 Pmag_bin, _, _ = stats.binned_statistic(r, Pmag, statistic="mean", bins=r_bin_edge)
 S_bin, _, _ = stats.binned_statistic(r, S, statistic="mean", bins=r_bin_edge)
 u_bin, _, _ = stats.binned_statistic(r, u, statistic="mean", bins=r_bin_edge)
-rho2_bin, _, _ = stats.binned_statistic(r, rho ** 2, statistic="mean", bins=r_bin_edge)
-v2_bin, _, _ = stats.binned_statistic(r, v ** 2, statistic="mean", bins=r_bin_edge)
-P2_bin, _, _ = stats.binned_statistic(r, P ** 2, statistic="mean", bins=r_bin_edge)
-Pmag2_bin, _, _ = stats.binned_statistic(
-    r, Pmag ** 2, statistic="mean", bins=r_bin_edge
-)
-S2_bin, _, _ = stats.binned_statistic(r, S ** 2, statistic="mean", bins=r_bin_edge)
-u2_bin, _, _ = stats.binned_statistic(r, u ** 2, statistic="mean", bins=r_bin_edge)
-rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
-v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
-P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
-Pmag_sigma_bin = np.sqrt(Pmag2_bin - Pmag_bin ** 2)
-S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
-u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
+rho2_bin, _, _ = stats.binned_statistic(r, rho**2, statistic="mean", bins=r_bin_edge)
+v2_bin, _, _ = stats.binned_statistic(r, v**2, statistic="mean", bins=r_bin_edge)
+P2_bin, _, _ = stats.binned_statistic(r, P**2, statistic="mean", bins=r_bin_edge)
+Pmag2_bin, _, _ = stats.binned_statistic(r, Pmag**2, statistic="mean", bins=r_bin_edge)
+S2_bin, _, _ = stats.binned_statistic(r, S**2, statistic="mean", bins=r_bin_edge)
+u2_bin, _, _ = stats.binned_statistic(r, u**2, statistic="mean", bins=r_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+Pmag_sigma_bin = np.sqrt(Pmag2_bin - Pmag_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
 
 # Analytic solution
@@ -107,9 +105,7 @@ rs = us * time
 
 # Post-shock values
 rho_s[np.abs(x_s) < rs] = rho0 * ((gas_gamma + 1) / (gas_gamma - 1)) ** 3
-P_s[np.abs(x_s) < rs] = (
-    0.5 * rho0 * v0 ** 2 * (gas_gamma + 1) ** 3 / (gas_gamma - 1) ** 2
-)
+P_s[np.abs(x_s) < rs] = 0.5 * rho0 * v0**2 * (gas_gamma + 1) ** 3 / (gas_gamma - 1) ** 2
 v_s[np.abs(x_s) < rs] = 0.0
 
 # Pre-shock values
@@ -120,7 +116,7 @@ v_s[x_s <= -rs] = v0
 
 # Additional arrays
 u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
-s_s = P_s / rho_s ** gas_gamma  # entropic function
+s_s = P_s / rho_s**gas_gamma  # entropic function
 
 # Plot the interesting quantities
 plt.figure(figsize=(7, 7 / 1.6))
@@ -196,7 +192,7 @@ plt.ylim(-0.05, 0.2)
 # Magnetic Pressure -------------------------------
 plt.subplot(235)
 plt.semilogy(r, Pmag / (1.256637e01 * u), **scatter_props)
-plt.semilogy(r, Pmag / (1.256637e01 * 0.5 * v ** 2), **scatter_props)
+plt.semilogy(r, Pmag / (1.256637e01 * 0.5 * v**2), **scatter_props)
 # plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
 # plt.errorbar(r_bin, Pmag_bin, yerr=Pmag_sigma_bin, **errorbar_props)
 plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)

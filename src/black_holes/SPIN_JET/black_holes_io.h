@@ -32,9 +32,9 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void black_holes_read_particles(struct bpart* bparts,
-                                              struct io_props* list,
-                                              int* num_fields) {
+INLINE static void black_holes_read_particles(struct bpart *bparts,
+                                              struct io_props *list,
+                                              int *num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 9;
@@ -61,10 +61,10 @@ INLINE static void black_holes_read_particles(struct bpart* bparts,
                                 angular_momentum_direction);
 }
 
-INLINE static void convert_bpart_pos(const struct engine* e,
-                                     const struct bpart* bp, double* ret) {
+INLINE static void convert_bpart_pos(const struct engine *e,
+                                     const struct bpart *bp, double *ret) {
 
-  const struct space* s = e->s;
+  const struct space *s = e->s;
   if (s->periodic) {
     ret[0] = box_wrap(bp->x[0], 0.0, s->dim[0]);
     ret[1] = box_wrap(bp->x[1], 0.0, s->dim[1]);
@@ -76,11 +76,11 @@ INLINE static void convert_bpart_pos(const struct engine* e,
   }
 }
 
-INLINE static void convert_bpart_vel(const struct engine* e,
-                                     const struct bpart* bp, float* ret) {
+INLINE static void convert_bpart_vel(const struct engine *e,
+                                     const struct bpart *bp, float *ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -98,7 +98,7 @@ INLINE static void convert_bpart_vel(const struct engine* e,
   }
 
   /* Extrapolate the velocites to the current time */
-  const struct gpart* gp = bp->gpart;
+  const struct gpart *gp = bp->gpart;
   ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
   ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
@@ -109,8 +109,8 @@ INLINE static void convert_bpart_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
-INLINE static void convert_bpart_potential(const struct engine* e,
-                                           const struct bpart* bp, float* ret) {
+INLINE static void convert_bpart_potential(const struct engine *e,
+                                           const struct bpart *bp, float *ret) {
 
   if (bp->gpart != NULL)
     ret[0] = gravity_get_comoving_potential(bp->gpart);
@@ -118,10 +118,10 @@ INLINE static void convert_bpart_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
-INLINE static void convert_bpart_gas_vel(const struct engine* e,
-                                         const struct bpart* bp, float* ret) {
+INLINE static void convert_bpart_gas_vel(const struct engine *e,
+                                         const struct bpart *bp, float *ret) {
 
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
 
   /* Convert relative velocities to physical units */
   ret[0] = bp->velocity_gas[0] * cosmo->a_inv;
@@ -129,11 +129,11 @@ INLINE static void convert_bpart_gas_vel(const struct engine* e,
   ret[2] = bp->velocity_gas[2] * cosmo->a_inv;
 }
 
-INLINE static void convert_bpart_gas_circular_vel(const struct engine* e,
-                                                  const struct bpart* bp,
-                                                  float* ret) {
+INLINE static void convert_bpart_gas_circular_vel(const struct engine *e,
+                                                  const struct bpart *bp,
+                                                  float *ret) {
 
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
 
   /* Conversion from internal to physical units */
   ret[0] = bp->circular_velocity_gas[0] * cosmo->a_inv;
@@ -141,21 +141,21 @@ INLINE static void convert_bpart_gas_circular_vel(const struct engine* e,
   ret[2] = bp->circular_velocity_gas[2] * cosmo->a_inv;
 }
 
-INLINE static void convert_bpart_gas_velocity_dispersion(const struct engine* e,
-                                                         const struct bpart* bp,
-                                                         float* ret) {
+INLINE static void convert_bpart_gas_velocity_dispersion(const struct engine *e,
+                                                         const struct bpart *bp,
+                                                         float *ret) {
 
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
 
   /* Conversion from internal to physical units */
   ret[0] = bp->velocity_dispersion_gas * cosmo->a_inv;
 }
 
-INLINE static void convert_bpart_gas_velocity_curl(const struct engine* e,
-                                                   const struct bpart* bp,
-                                                   float* ret) {
+INLINE static void convert_bpart_gas_velocity_curl(const struct engine *e,
+                                                   const struct bpart *bp,
+                                                   float *ret) {
 
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
 
   /* Conversion from internal to physical units */
   ret[0] = bp->curl_v_gas[0] * cosmo->a2_inv;
@@ -163,12 +163,12 @@ INLINE static void convert_bpart_gas_velocity_curl(const struct engine* e,
   ret[2] = bp->curl_v_gas[2] * cosmo->a2_inv;
 }
 
-INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
-                                                  const struct bpart* bp,
-                                                  float* ret) {
+INLINE static void convert_bpart_gas_temperatures(const struct engine *e,
+                                                  const struct bpart *bp,
+                                                  float *ret) {
 
-  const struct black_holes_props* props = e->black_holes_properties;
-  const struct cosmology* cosmo = e->cosmology;
+  const struct black_holes_props *props = e->black_holes_properties;
+  const struct cosmology *cosmo = e->cosmology;
 
   /* Conversion from specific internal energy to temperature */
   ret[0] = bp->internal_energy_gas * cosmo->a_factor_internal_energy /
@@ -183,9 +183,9 @@ INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
  * @param num_fields The number of i/o fields to write.
  * @param with_cosmology Are we running a cosmological simulation?
  */
-INLINE static void black_holes_write_particles(const struct bpart* bparts,
-                                               struct io_props* list,
-                                               int* num_fields,
+INLINE static void black_holes_write_particles(const struct bpart *bparts,
+                                               struct io_props *list,
+                                               int *num_fields,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */

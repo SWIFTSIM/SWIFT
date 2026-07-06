@@ -28,8 +28,8 @@
  * @param list The list of i/o properties to read.
  * @return number of fields readed
  */
-INLINE static int mhd_read_particles(struct part* parts,
-                                     struct io_props* list) {
+INLINE static int mhd_read_particles(struct part *parts,
+                                     struct io_props *list) {
 
   list[0] =
       io_make_input_field("MagneticFluxDensities", FLOAT, 3, COMPULSORY,
@@ -38,8 +38,8 @@ INLINE static int mhd_read_particles(struct part* parts,
   return 1;
 }
 
-INLINE static void convert_B(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
+INLINE static void convert_B(const struct engine *e, const struct part *p,
+                             const struct xpart *xp, float *ret) {
 
   ret[0] = p->mhd_data.B_over_rho[0] * p->rho;
   ret[1] = p->mhd_data.B_over_rho[1] * p->rho;
@@ -52,8 +52,8 @@ INLINE static void convert_B(const struct engine* e, const struct part* p,
  * This is div(B) * h / B and only triggers if above a fixed signal-to-noise
  * ratio. The noise is estimated from the SPH approximation to grad(1).
  */
-INLINE static void calculate_R0(const struct engine* e, const struct part* p,
-                                const struct xpart* xp, float* ret) {
+INLINE static void calculate_R0(const struct engine *e, const struct part *p,
+                                const struct xpart *xp, float *ret) {
 
   /* Calculate R0 error metric */
   const float B[3] = {xp->mhd_data.B_over_rho_full[0] * p->rho,
@@ -84,8 +84,8 @@ INLINE static void calculate_R0(const struct engine* e, const struct part* p,
   if (divB_abs < signal_to_noise * divB_err_abs) ret[0] = 0.f;
 }
 
-INLINE static void calculate_R1(const struct engine* e, const struct part* p,
-                                const struct xpart* xp, float* ret) {
+INLINE static void calculate_R1(const struct engine *e, const struct part *p,
+                                const struct xpart *xp, float *ret) {
 
   /* Calculate R1 error metric */
   const float B[3] = {xp->mhd_data.B_over_rho_full[0] * p->rho,
@@ -158,8 +158,8 @@ INLINE static void calculate_R1(const struct engine* e, const struct part* p,
   }
 }
 
-INLINE static void calculate_R2(const struct engine* e, const struct part* p,
-                                const struct xpart* xp, float* ret) {
+INLINE static void calculate_R2(const struct engine *e, const struct part *p,
+                                const struct xpart *xp, float *ret) {
 
   /* Calculate R2 error metric */
   const float curlB[3] = {p->mhd_data.curl_B[0], p->mhd_data.curl_B[1],
@@ -206,8 +206,8 @@ INLINE static void calculate_R2(const struct engine* e, const struct part* p,
   }
 }
 
-INLINE static void calculate_R3(const struct engine* e, const struct part* p,
-                                const struct xpart* xp, float* ret) {
+INLINE static void calculate_R3(const struct engine *e, const struct part *p,
+                                const struct xpart *xp, float *ret) {
 
   /* Calculate R3 error metric */
 
@@ -249,9 +249,9 @@ INLINE static void calculate_R3(const struct engine* e, const struct part* p,
   }
 }
 
-INLINE static void calculate_OW_trigger(const struct engine* e,
-                                        const struct part* p,
-                                        const struct xpart* xp, float* ret) {
+INLINE static void calculate_OW_trigger(const struct engine *e,
+                                        const struct part *p,
+                                        const struct xpart *xp, float *ret) {
 
   /* Calculate overwinding trigger */
 
@@ -307,10 +307,10 @@ INLINE static void calculate_OW_trigger(const struct engine* e,
   ret[0] = Rm_local * sign_prefactor * Laplace_ratio;
 }
 
-INLINE static void calculate_effective_resistivity(const struct engine* e,
-                                                   const struct part* p,
-                                                   const struct xpart* xp,
-                                                   float* ret) {
+INLINE static void calculate_effective_resistivity(const struct engine *e,
+                                                   const struct part *p,
+                                                   const struct xpart *xp,
+                                                   float *ret) {
 
   /* Calculate effective resistivity of the code (physical+numerical) */
 
@@ -338,9 +338,9 @@ INLINE static void calculate_effective_resistivity(const struct engine* e,
   ret[0] = effective_resistivity;
 }
 
-INLINE static void calculate_Rm_local(const struct engine* e,
-                                      const struct part* p,
-                                      const struct xpart* xp, float* ret) {
+INLINE static void calculate_Rm_local(const struct engine *e,
+                                      const struct part *p,
+                                      const struct xpart *xp, float *ret) {
 
   /* Calculate local magnetic Reynolds number */
 
@@ -481,6 +481,109 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
 
 
 
+INLINE static void compute_dt_cfl(const struct engine *e, const struct part *p,
+                                  const struct xpart *xp, float *ret) {
+
+  /* Retrieve some information */
+  const float CFL_constant = e->hydro_properties->CFL_condition;
+  const float a = e->cosmology->a;
+  const float a_factor_sound_speed = e->cosmology->a_factor_sound_speed;
+
+  /* CFL condition, taking v_sig to be the max over neighbours of pairwise MHD
+   * signal velocities, themselves being the sums of two particles' fast
+   * magnetosonic speeds (i.e. the Pythagorean addition of their sound speed and
+   * Alfven speed), and a von Neumann-type correction. */
+
+  const float dt_cfl = 2.f * kernel_gamma * CFL_constant * a * p->h /
+                       (a_factor_sound_speed * p->viscosity.v_sig);
+
+  ret[0] = dt_cfl;
+}
+
+INLINE static void compute_dt_deltaB(const struct engine *e,
+                                     const struct part *p,
+                                     const struct xpart *xp, float *ret) {
+
+  /* Retrieve and compute relevant cosmological factors */
+  const float a = e->cosmology->a;
+  const float a2 = a * a;
+
+  /* Retrieve relevant particle attributes */
+  float B_over_rho[3];
+  float B_over_rho_dt[3];
+  for (int k = 0; k < 3; k++) {
+    B_over_rho[k] = p->mhd_data.B_over_rho[k];
+    B_over_rho_dt[k] = p->mhd_data.B_over_rho_dt[k];
+  }
+
+  /* Compute the norm squared of vectors of interest */
+  float B_over_rho2 = 0.0f;
+  for (int k = 0; k < 3; k++) {
+    B_over_rho2 += B_over_rho[k] * B_over_rho[k];
+  }
+
+  /* Condition to limit the per time-step change in the magnitude of the
+   * magnetic field */
+  const float maxRelChangeBoverRho =
+      e->hydro_properties->mhd.maxRelChangeBoverRho;
+
+  float denum_dt_deltaB2 = 0.f;
+  for (int k = 0; k < 3; k++) {
+    denum_dt_deltaB2 += B_over_rho_dt[k] * B_over_rho_dt[k];
+  }
+
+  const float dt_deltaB =
+      denum_dt_deltaB2
+          ? maxRelChangeBoverRho * a2 * sqrtf(B_over_rho2 / denum_dt_deltaB2)
+          : FLT_MAX;
+
+  ret[0] = dt_deltaB;
+}
+
+INLINE static void compute_dt_deltaPsi(const struct engine *e,
+                                       const struct part *p,
+                                       const struct xpart *xp, float *ret) {
+
+  /* Retrieve and compute relevant cosmological factors */
+  const float a = e->cosmology->a;
+  const float a2 = a * a;
+
+  /* Retrieve relevant particle attributes */
+  const float rho = p->rho;
+
+  float B_over_rho[3];
+  for (int k = 0; k < 3; k++) {
+    B_over_rho[k] = p->mhd_data.B_over_rho[k];
+  }
+
+  const float psi_over_ch = p->mhd_data.psi_over_ch;
+  const float psi_over_ch_dt = p->mhd_data.psi_over_ch_dt;
+
+  /* Compute the norm squared of vectors of interest */
+  float B_over_rho2 = 0.0f;
+  for (int k = 0; k < 3; k++) {
+    B_over_rho2 += B_over_rho[k] * B_over_rho[k];
+  }
+
+  /* Compute metric to evaluate dynamical significance of Dedner scalar field */
+  const float vpsi_tp_vB =
+      B_over_rho2 ? fabsf(psi_over_ch) / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
+
+  /* Condition to limit the per time-step change in the magnitude of the Dedner
+   * scalar field */
+  const float maxRelChangePsiOverCh =
+      e->hydro_properties->mhd.maxRelChangePsiOverCh;
+  const float R_ePsi_to_eB = e->hydro_properties->mhd.R_ePsi_to_eB;
+
+  const float denum_dt_deltaPsi = fabsf(psi_over_ch_dt);
+
+  const float dt_deltaPsi =
+      (vpsi_tp_vB > R_ePsi_to_eB) && (denum_dt_deltaPsi != 0.0f)
+          ? maxRelChangePsiOverCh * a2 * fabsf(psi_over_ch) / denum_dt_deltaPsi
+          : FLT_MAX;
+
+  ret[0] = dt_deltaPsi;
+}
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -490,9 +593,9 @@ INLINE static void calculate_InductionDecomposition(const struct engine* e,
  * @param list The list of i/o properties to write.
  * @return num_fields The number of i/o fields to write.
  */
-INLINE static int mhd_write_particles(const struct part* parts,
-                                      const struct xpart* xparts,
-                                      struct io_props* list) {
+INLINE static int mhd_write_particles(const struct part *parts,
+                                      const struct xpart *xparts,
+                                      struct io_props *list) {
 
   list[0] = io_make_output_field_convert_part(
       "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
@@ -584,36 +687,46 @@ INLINE static int mhd_write_particles(const struct part* parts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
   list[16] = io_make_output_field_convert_part(
+      "Timestep_CFL", FLOAT, 1, UNIT_CONV_TIME, 0.f, parts, xparts,
+      compute_dt_cfl, "CFL time-step size");
+
+  list[17] = io_make_output_field_convert_part(
+      "Timestep_DeltaB", FLOAT, 1, UNIT_CONV_TIME, 0.f, parts, xparts,
+      compute_dt_deltaB, "Change in magnetic field time-step size");
+
+  list[18] = io_make_output_field_convert_part(
+      "Timestep_DeltaPsi", FLOAT, 1, UNIT_CONV_TIME, 0.f, parts, xparts,
+      compute_dt_deltaPsi,
+      "Change in divergence cleaning scalar time-step size");
+
+  list[19] = io_make_output_field_convert_part(
       "FlowDecompositionTest", FLOAT, 4, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_InductionDecomposition, " Testing flow decomposition ratios and new OW ");
-  list[17] = io_make_output_field(
+  list[20] = io_make_output_field(
       "OWARResistivitiesAvrg", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY,
       0, parts, mhd_data.eta_OWAR_avrg,
       "OWAR averaged values");
-  list[18] = io_make_output_field(
+  list[21] = io_make_output_field(
       "OWARResistivities", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY,
       0, parts, mhd_data.eta_OWAR,
       "OWAR instant values");
-
-  list[19] = io_make_output_field(
+  list[22] = io_make_output_field(
       "RMSNweight", FLOAT, 1, UNIT_CONV_NO_UNITS,
       0, parts, mhd_data.r_ms_Nweight,
       "mean square number weighted neighbor distance over h_a");
-  list[20] = io_make_output_field(
+  list[23] = io_make_output_field(
       "RMSKweight", FLOAT, 1, UNIT_CONV_NO_UNITS,
       0, parts, mhd_data.r_ms_Kweight,
       "mean square density weighted neighbor distance over h_a");
-
-  list[21] = io_make_output_field(
+  list[24] = io_make_output_field(
       "RCMNweight", FLOAT, 1, UNIT_CONV_NO_UNITS,
       0, parts, mhd_data.r_cm_abs_Nweight,
       "center of mass number weighted neighbor distance over h_a");
-  list[22] = io_make_output_field(
+  list[25] = io_make_output_field(
       "RCMKweight", FLOAT, 1, UNIT_CONV_NO_UNITS,
       0, parts, mhd_data.r_cm_abs_Kweight,
       "center of mass weighted neighbor distance over h_a");
-
-  return 23;
+  return 26;
 }
 
 /**

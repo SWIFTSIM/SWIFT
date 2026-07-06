@@ -72,7 +72,7 @@ y -= 0.5 * boxSize
 z -= 0.5 * boxSize
 
 # Derived parameters
-rho_0 = m.sum() / (boxSize ** 3)  # critical density of the box
+rho_0 = m.sum() / (boxSize**3)  # critical density of the box
 lambda_i = boxSize  # wavelength of the perturbation
 
 unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
@@ -224,7 +224,7 @@ plt.ylabel("${\\rm{Peculiar~velocity}}~v_z~{\\rm{(km/s)}}$", labelpad=0)
 
 # Temperature profile -------------------------
 plt.subplot(3, 3, 7)  # , yscale="log")
-u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
+u *= unit_length_in_si**2 / unit_time_in_si**2
 u /= a ** (3 * (gas_gamma - 1.0))
 T = (gas_gamma - 1.0) * u * mH_in_kg / k_in_J_K
 print("z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean()))

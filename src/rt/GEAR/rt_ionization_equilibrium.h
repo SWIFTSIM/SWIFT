@@ -45,9 +45,9 @@
  * @param XHeIII (return) mass fraction of HeII
  */
 __attribute__((always_inline)) INLINE static void
-rt_ion_equil_mass_fractions_from_T(double T, float X, float Y, float* XHI,
-                                   float* XHII, float* XHeI, float* XHeII,
-                                   float* XHeIII) {
+rt_ion_equil_mass_fractions_from_T(double T, float X, float Y, float *XHI,
+                                   float *XHII, float *XHeI, float *XHeII,
+                                   float *XHeIII) {
 
   if (fabsf(X + Y - 1.f) > 1e-4)
     error("mass fractions don't add up to one: X=%.3e, Y=%.3e", X, Y);
@@ -157,14 +157,14 @@ rt_ion_equil_mass_fractions_from_T(double T, float X, float Y, float* XHI,
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void
-rt_ion_equil_get_mass_fractions(float* XHI, float* XHII, float* XHeI,
-                                float* XHeII, float* XHeIII,
-                                struct part* restrict p,
-                                const struct rt_props* rt_props,
-                                const struct hydro_props* hydro_props,
-                                const struct phys_const* restrict phys_const,
-                                const struct unit_system* restrict us,
-                                const struct cosmology* restrict cosmo) {
+rt_ion_equil_get_mass_fractions(float *XHI, float *XHII, float *XHeI,
+                                float *XHeII, float *XHeIII,
+                                struct part *restrict p,
+                                const struct rt_props *rt_props,
+                                const struct hydro_props *hydro_props,
+                                const struct phys_const *restrict phys_const,
+                                const struct unit_system *restrict us,
+                                const struct cosmology *restrict cosmo) {
 
   /* get conversions and constants */
   const double internal_energy_to_cgs =

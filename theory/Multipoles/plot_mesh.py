@@ -60,24 +60,24 @@ r_max = 1.5e2
 r = logspace(log10(r_min), log10(r_max), 401)
 r_rs = r / r_s
 
-k = logspace(log10(r_min / r_s ** 2), log10(r_max / r_s ** 2), 401)
+k = logspace(log10(r_min / r_s**2), log10(r_max / r_s**2), 401)
 k_rs = k * r_s
 
 # Newtonian solution
 phi_newton = 1.0 / r
-phit_newton = 1.0 / k ** 2
-force_newton = 1.0 / r ** 2
+phit_newton = 1.0 / k**2
+force_newton = 1.0 / r**2
 
 
 def my_exp(x):
     return (
         1.0
         + x
-        + (x ** 2 / 2.0)
-        + (x ** 3 / 6.0)
-        + (x ** 4 / 24.0)
-        + (x ** 5 / 120.0)
-        + (x ** 6 / 720.0)
+        + (x**2 / 2.0)
+        + (x**3 / 6.0)
+        + (x**4 / 24.0)
+        + (x**5 / 120.0)
+        + (x**6 / 720.0)
     )
     # return exp(x)
 
@@ -142,7 +142,7 @@ corr_short_swift = swift_corr(r / (2.0 * r_s))
 corr_short_swift2 = swift_corr2(r / (2.0 * r_s))
 eta_short_gadget2 = special.erfc(r / (2.0 * r_s)) + (
     r / (r_s * math.sqrt(math.pi))
-) * exp(-r ** 2 / (4.0 * r_s ** 2))
+) * exp(-(r**2) / (4.0 * r_s**2))
 eta_short_swift = (
     4.0 * (r / r_s) * d_sigmoid(2.0 * r / r_s) - 2.0 * sigmoid(2 * r / r_s) + 2.0
 )
@@ -158,22 +158,22 @@ eta_short_swift2 = (
 # force_corr = abs(force_corr)
 
 # Corection in Fourier space
-corr_long_gadget2 = exp(-k ** 2 * r_s ** 2)
+corr_long_gadget2 = exp(-(k**2) * r_s**2)
 corr_long_swift = math.pi * k * r_s * csch(0.5 * math.pi * r_s * k) / 2.0
 
 # Shortrange term
 phi_short_gadget2 = (1.0 / r) * (1.0 - corr_short_gadget2)
 phi_short_swift = (1.0 / r) * (1.0 - corr_short_swift)
 phi_short_swift2 = (1.0 / r) * (1.0 - corr_short_swift2)
-force_short_gadget2 = (1.0 / r ** 2) * eta_short_gadget2
-force_short_swift = (1.0 / r ** 2) * eta_short_swift
-force_short_swift2 = (1.0 / r ** 2) * eta_short_swift2
+force_short_gadget2 = (1.0 / r**2) * eta_short_gadget2
+force_short_swift = (1.0 / r**2) * eta_short_swift
+force_short_swift2 = (1.0 / r**2) * eta_short_swift2
 
 # Long-range term
 phi_long_gadget2 = (1.0 / r) * corr_short_gadget2
 phi_long_swift = (1.0 / r) * corr_short_swift
-phit_long_gadget2 = corr_long_gadget2 / k ** 2
-phit_long_swift = corr_long_swift / k ** 2
+phit_long_gadget2 = corr_long_gadget2 / k**2
+phit_long_swift = corr_long_swift / k**2
 
 
 figure()
@@ -201,13 +201,13 @@ plot(r_rs, 1.0 - corr_short_swift, "-", lw=1.4, color=colors[3])
 plot(r_rs, 1.0 - corr_short_swift2, ":", lw=1.4, color=colors[3])
 plot(r_rs, np.ones(np.size(r)) * 0.01, "k-.", alpha=0.5, lw=0.5)
 plot([1.0, 1.0], [-1e5, 1e5], "k-.", alpha=0.5, lw=0.5)
-plot([-1, -1], [-1, -1], "k-", lw=1.2, label="${\mathrm{Exact}~e^x}$")
+plot([-1, -1], [-1, -1], "k-", lw=1.2, label=r"${\mathrm{Exact}~e^x}$")
 plot(
     [-1, -1],
     [-1, -1],
     "k:",
     lw=1.2,
-    label="${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
+    label=r"${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
 )
 
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
@@ -254,7 +254,7 @@ plot(r_rs, force_short_swift2, ":", lw=1.4, color=colors[3])
 plot([1.0, 1.0], [1e-5, 1e5], "k-.", alpha=0.5, lw=0.5)
 
 xlim(1.1 * r_min / r_s, 0.9 * r_max / r_s)
-ylim(1.1 / r_max ** 2, 0.9 / r_min ** 2)
+ylim(1.1 / r_max**2, 0.9 / r_min**2)
 ylabel("$|\\mathbf{f}_s(r)|$", labelpad=-3)
 yticks([1e-4, 1e-2, 1e0, 1e2], ["$10^{-4}$", "$10^{-2}$", "$10^{0}$", "$10^{2}$"])
 
@@ -274,13 +274,13 @@ plot(
     [-1, -1],
     "k:",
     lw=1.2,
-    label="${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
+    label=r"${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
 )
 
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
 xlim(1.1 * r_min / r_s, 0.9 * r_max / r_s)
 ylim(3e-3, 1.5)
-ylabel("$|\mathbf{f}_s(r)|\\times r^2$", labelpad=-2)
+ylabel(r"$|\mathbf{f}_s(r)|\times r^2$", labelpad=-2)
 
 legend(
     loc="center left", frameon=False, handletextpad=0.3, handlelength=1.6, fontsize=7
@@ -298,7 +298,7 @@ plot(r_rs, np.ones(np.size(r)) * 0.01, "k-.", alpha=0.5, lw=0.5)
 
 xlim(1.1 * r_min / r_s, 0.9 * r_max / r_s)
 ylim(3e-3, 1.5)
-ylabel("$1 - |\mathbf{f}_s(r)|\\times r^2$", labelpad=-3)
+ylabel(r"$1 - |\mathbf{f}_s(r)|\times r^2$", labelpad=-3)
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
 xlabel("$r / r_s$", labelpad=1)
 
@@ -318,7 +318,7 @@ plot([1.0, 1.0], [1e-5, 1e5], "k-.", alpha=0.5, lw=0.5)
 legend(loc="lower left", frameon=True, handletextpad=0.3, handlelength=1.6, fontsize=8)
 
 xlim(1.1 * r_min / r_s, 0.9 * r_max / r_s)
-ylim(1.1 / r_max ** 2, 0.9 / r_min ** 2)
+ylim(1.1 / r_max**2, 0.9 / r_min**2)
 ylabel("$\\tilde{\\varphi_l}(k)$", labelpad=-3)
 yticks([1e-4, 1e-2, 1e0, 1e2], ["$10^{-4}$", "$10^{-2}$", "$10^{0}$", "$10^{2}$"])
 
@@ -327,7 +327,7 @@ subplot(312, xscale="log", yscale="log")
 # Potential normalized
 plot(
     k_rs,
-    phit_newton * k ** 2,
+    phit_newton * k**2,
     "--",
     lw=1.4,
     label="${\\rm Newtonian}$",
@@ -335,15 +335,13 @@ plot(
 )
 plot(
     k_rs,
-    phit_long_gadget2 * k ** 2,
+    phit_long_gadget2 * k**2,
     "-",
     lw=1.4,
     label="${\\rm Gadget}$",
     color=colors[2],
 )
-plot(
-    k_rs, phit_long_swift * k ** 2, "-", lw=1.4, label="${\\rm SWIFT}$", color=colors[3]
-)
+plot(k_rs, phit_long_swift * k**2, "-", lw=1.4, label="${\\rm SWIFT}$", color=colors[3])
 plot([1.0, 1.0], [1e-5, 1e5], "k-.", alpha=0.5, lw=0.5)
 plot(r_rs, np.ones(np.size(r)) * 0.01, "k-.", alpha=0.5, lw=0.5)
 
@@ -356,7 +354,7 @@ subplot(313, xscale="log", yscale="log")
 
 plot(
     k_rs,
-    1.0 - phit_long_gadget2 * k ** 2,
+    1.0 - phit_long_gadget2 * k**2,
     "-",
     lw=1.4,
     label="${\\rm Gadget}$",
@@ -364,7 +362,7 @@ plot(
 )
 plot(
     k_rs,
-    1.0 - phit_long_swift * k ** 2,
+    1.0 - phit_long_swift * k**2,
     "-",
     lw=1.4,
     label="${\\rm SWIFT}$",

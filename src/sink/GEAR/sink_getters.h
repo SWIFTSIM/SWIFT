@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_SINK_GETTERS_H
 
 #include "cosmology.h"
+#include "gravity.h"
 #include "sink_part.h"
 
 /**
@@ -38,20 +39,20 @@
  */
 
 __attribute__((always_inline)) INLINE double sink_get_sink_age(
-    const struct sink* restrict sink, const int with_cosmology,
-    const struct cosmology* cosmo, const double time) {
+    const struct sink *restrict sink, const int with_cosmology,
+    const struct cosmology *cosmo, const double time) {
   double sink_age;
   if (with_cosmology) {
 
     /* Deal with rounding issues */
-    if (sink->birth_scale_factor >= cosmo->a) {
+    if (sink->birth_data.scale_factor >= cosmo->a) {
       sink_age = 0.;
     } else {
       sink_age = cosmology_get_delta_time_from_scale_factors(
-          cosmo, sink->birth_scale_factor, cosmo->a);
+          cosmo, sink->birth_data.scale_factor, cosmo->a);
     }
   } else {
-    sink_age = time - sink->birth_time;
+    sink_age = time - sink->birth_data.time;
   }
   return sink_age;
 }
@@ -66,7 +67,7 @@ __attribute__((always_inline)) INLINE double sink_get_sink_age(
  *
  */
 INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
-    const struct part* restrict p) {
+    const struct part *restrict p) {
   double E_rot_x = p->sink_data.E_rot_neighbours[0];
   double E_rot_y = p->sink_data.E_rot_neighbours[1];
   double E_rot_z = p->sink_data.E_rot_neighbours[2];
@@ -82,7 +83,7 @@ INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
  *
  */
 INLINE static float sink_get_physical_div_v_from_part(
-    const struct part* restrict p) {
+    const struct part *restrict p, const struct cosmology *cosmo) {
 
   float div_v = 0.0;
 
@@ -108,6 +109,16 @@ INLINE static float sink_get_physical_div_v_from_part(
                        p->viscosity.velocity_gradient[2][2]);
 #elif HOPKINS_PU_SPH
   div_v = p->density.div_v;
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+  float dummy[3], gradvx[3], gradvy[3], gradvz[3];
+  hydro_part_get_gradients(p, dummy, gradvx, gradvy, gradvz, dummy);
+  div_v = gradvx[0] + gradvy[1] + gradvz[2];
+
+  /* Multiply by the missing scale factors */
+  div_v *= cosmo->a2_inv;
+
+  /* Add the missing term */
+  div_v += hydro_dimension * cosmo->H;
 #else
 #error \
     "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."
@@ -136,8 +147,8 @@ INLINE static float sink_get_physical_div_v_from_part(
 __attribute__((always_inline)) INLINE static void
 sink_compute_angular_momenta_criterion(
     const float dx[3], const float dv_plus_H_flow[3], const float r,
-    const float r_cut_i, const float mass_i, const struct cosmology* cosmo,
-    const struct gravity_props* grav_props, float* L2_kepler, float* L2_j) {
+    const float r_cut_i, const float mass_i, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props, float *L2_kepler, float *L2_j) {
 
   /* Compute the physical relative velocity between the particles */
   const float dv_physical[3] = {dv_plus_H_flow[0] * cosmo->a_inv,
@@ -166,6 +177,29 @@ sink_compute_angular_momenta_criterion(
 
   /*Keplerian angular momentum squared */
   *L2_kepler = (r_cut_i * r_cut_i * r_cut_i * r_cut_i) * omega_acc_2;
+}
+
+/**
+ * @brief Return the current instantaneous accretion rate of the sink.
+ *
+ * @param sink the #sink.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_accretion_rate(
+    const struct sink *sink) {
+  return sink->accretion_rate;
+}
+
+/**
+ * @brief Return the star formation rate of a particle.
+ *
+ * @param sink the #sink.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_SFR(
+    const struct sink *sink) {
+  if (sink->SFR <= 0.0)
+    return 0.0;
+  else
+    return sink->SFR;
 }
 
 #endif /* SWIFT_GEAR_SINK_GETTERS_H */

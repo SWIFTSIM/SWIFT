@@ -69,7 +69,7 @@ Bz = sim["/PartType0/MagneticFluxDensities"][:, 2]
 
 
 # Derived parameters
-rho_0 = m.sum() / (boxSize ** 3)  # critical density of the box
+rho_0 = m.sum() / (boxSize**3)  # critical density of the box
 lambda_i = boxSize  # wavelength of the perturbation
 
 unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
@@ -140,7 +140,7 @@ plt.xlabel("${\\rm{Comoving~position}}~x~{\\rm{(Mpc)}}$", labelpad=0)
 
 # Temperature profile -------------------------
 plt.subplot(334)  # , yscale="log")
-u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
+u *= unit_length_in_si**2 / unit_time_in_si**2
 u /= a ** (3 * (gas_gamma - 1.0))
 T = (gas_gamma - 1.0) * u * mH_in_kg / k_in_J_K
 print("z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean()))
@@ -235,7 +235,7 @@ divB /= a ** (3 * gas_gamma / 2)  # In ODI
 divB *= (a / a_i) ** 2  # for comoving
 ## In FDI, need to add: divB *= a**0.5
 ## In VP,  need to add: divB *= a**0.5  AND  divB /= a_i
-B = np.sqrt(Bx ** 2 + By ** 2 + Bz ** 2)
+B = np.sqrt(Bx**2 + By**2 + Bz**2)
 # Smoothing length h
 h = sim["/PartType0/SmoothingLengths"]
 

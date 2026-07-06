@@ -48,21 +48,21 @@
 #endif
 
 /* General functions defined in the source file */
-void starformation_init(struct swift_params* parameter_file,
-                        const struct phys_const* phys_const,
-                        const struct unit_system* us,
-                        const struct hydro_props* hydro_props,
-                        const struct cosmology* cosmo,
-                        const struct entropy_floor_properties* entropy_floor,
-                        struct star_formation* starform);
+void starformation_init(struct swift_params *parameter_file,
+                        const struct phys_const *phys_const,
+                        const struct unit_system *us,
+                        const struct hydro_props *hydro_props,
+                        const struct cosmology *cosmo,
+                        const struct entropy_floor_properties *entropy_floor,
+                        struct star_formation *starform);
 
-void starformation_print(const struct star_formation* starform);
+void starformation_print(const struct star_formation *starform);
 
 /* Dump store */
-void starformation_struct_dump(const struct star_formation* starform,
-                               FILE* stream);
+void starformation_struct_dump(const struct star_formation *starform,
+                               FILE *stream);
 
-void starformation_struct_restore(const struct star_formation* starform,
-                                  FILE* stream);
+void starformation_struct_restore(const struct star_formation *starform,
+                                  FILE *stream);
 
 #endif /* SWIFT_STAR_FORMATION_H */

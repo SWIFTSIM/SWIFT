@@ -36,6 +36,7 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#include "forcing_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
@@ -87,6 +88,9 @@ struct xpart {
   /*! Additional data used by the MHD scheme */
   struct mhd_xpart_data mhd_data;
 
+  /* Additional data used by the forcing scheme */
+  struct forcing_xpart_data forcing_data;
+
 } SWIFT_STRUCT_ALIGN;
 
 /**
@@ -102,7 +106,7 @@ struct part {
   long long id;
 
   /*! Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  struct gpart *gpart;
 
   /*! Particle position. */
   double x[3];
