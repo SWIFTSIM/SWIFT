@@ -76,21 +76,22 @@ struct mhd_part_data {
   /* Laplacian A */
   float Delta_A[3];
 
-  struct {
-    struct sym_matrix d_mat_inv;
+/*  struct {
+    struct sym_matrix c_mat_inv;
     
-    float Mat_b[3][3];
   } dens;
-
+*/
   struct {
 
     /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_mat_inv;
-    struct sym_matrix d_mat;
+    struct sym_matrix c_mat;
 
+    /*! Gradient per component of the Afield*/
+    float Mat_dA[3][3];
     /*! Gradient per component of the Bfield*/
     float Mat_db[3][3];
-    /*! Gradient per component of the Bfield2*/
+    /*! Gradient per Bfield2*/
     float Grad_b2[3];
 
   } grad;
