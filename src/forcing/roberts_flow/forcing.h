@@ -104,7 +104,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
       v_Rob[0] = u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
       v_Rob[1] = -u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
-      v_Rob[2] = u0 * M_SQRT2 * sin(k0 * p->x[0]) * sin(k0 * p->x[1]);
+      v_Rob[2] = u0 * sin(k0 * p->x[0]) * sin(k0 * p->x[1]);
       break;
 
     case Roberts_flow_2:
@@ -112,7 +112,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
 
       v_Rob[0] = u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
       v_Rob[1] = -u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
-      v_Rob[2] = u0 * M_SQRT2 * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      v_Rob[2] = u0 * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
       break;
 
     case Roberts_flow_3:
@@ -121,7 +121,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
       v_Rob[0] = u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
       v_Rob[1] = -u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
       v_Rob[2] =
-          u0 * M_SQRT1_2 * (cos(2 * k0 * p->x[0]) + cos(2 * k0 * p->x[1]));
+          u0 * 0.5f * (cos(2 * k0 * p->x[0]) + cos(2 * k0 * p->x[1]));
       break;
 
     case Roberts_flow_4:

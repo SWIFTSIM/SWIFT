@@ -179,7 +179,6 @@ def add_other_particle_properties(
             v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
             v[:, 2] = (
                 Vz_factor
-                * np.sqrt(2)
                 * np.sin(kv0 * pos[:, 1])
                 * np.sin(kv0 * pos[:, 0])
             )
@@ -188,7 +187,6 @@ def add_other_particle_properties(
             v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
             v[:, 2] = (
                 Vz_factor
-                * np.sqrt(2)
                 * np.cos(kv0 * pos[:, 0])
                 * np.cos(kv0 * pos[:, 1])
             )
@@ -198,7 +196,7 @@ def add_other_particle_properties(
             v[:, 2] = (
                 Vz_factor
                 * (np.cos(2 * kv0 * pos[:, 0]) + np.cos(2 * kv0 * pos[:, 1]))
-                / np.sqrt(2)
+                * 0.5
             )
         elif Flow_kind == 4:
             v[:, 0] = np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
