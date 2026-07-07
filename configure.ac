@@ -2311,6 +2311,15 @@ AC_ARG_WITH([spmhd],
 )
 
 case "$with_spmhd" in
+   direct-induction)
+      AC_DEFINE([DIRECT_INDUCTION_MHD], [1], [MHD using a direct induction method])
+   ;;
+   direct-induction-fede)
+      AC_DEFINE([DIRECT_INDUCTION_FEDE_MHD], [1], [MHD using yet another direct induction method (To dissapear)])
+   ;;
+   vector-potential)
+      AC_DEFINE([VECTOR_POTENTIAL_MHD], [1], [MHD using Vector Potentials])
+   ;;
    none)
       AC_DEFINE([NONE_MHD], [1], [No mhd])
    ;;
