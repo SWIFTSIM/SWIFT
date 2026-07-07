@@ -110,7 +110,6 @@ void calc_all_power_spectra(struct power_spectrum_data* pow_data,
                             const struct space* s, struct threadpool* tp,
                             const int verbose, int direct_mapping);
 void power_clean(struct power_spectrum_data* pow_data);
-void power_spectrum_stripped(const struct space *s, struct threadpool *tp, const double *rho, const int Ngrid, const int verbose);
 
 /* Dump/restore. */
 void power_spectrum_struct_dump(const struct power_spectrum_data* p,
