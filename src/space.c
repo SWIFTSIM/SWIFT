@@ -3333,13 +3333,25 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   /* Loop over particles and perform tree searches to get the density everywhere*/
   assign_densities(cells_top, &e->threadpool, s->nr_cells, box_size, level_check);
 
-  //min_depth = 0;
   int max_gridsize = perform_uniform_calculation(s, min_depth, max_depth, levels);
   message("max_gridsize = %d", max_gridsize);
   //max_gridsize = 8;
 
+  //FILE *potential_export;
+  //potential_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_density_mapping/AMR_16_5levels.txt", "w");
+  //double fac_exp = s->dim[0]/levels[1].cdim;
+  //int cdim_exp[3] = {levels[1].cdim, levels[1].cdim, levels[1].cdim};
+  //for (int j=0; j<levels[0].cell_count+levels[0].ghost_count; j++) {
+    //int cell_i = (int) ((levels[1].cells[j]->loc[0]+0.0001)/fac_exp);
+    //int cell_j = (int) ((levels[1].cells[j]->loc[1]+0.0001)/fac_exp);
+    //int cell_k = (int) ((levels[1].cells[j]->loc[2]+0.0001)/fac_exp);
+    //fprintf(potential_export, "%E \n", levels[0].cells[j]->CIC_density);
+  //}
+  //fclose(potential_export);
+  //message("Done exporting");
+
   message("Starting the nonuniform calculation");
-  sleep(5);
+  sleep(1);
 
   perform_nonuniform_calculation(s, min_depth, max_depth, levels, max_gridsize, box_size);
 
@@ -3361,29 +3373,38 @@ void space_get_AMR_density(struct space *s, struct engine *e, int level_check, i
   //fclose(acc_export);
 
   //FILE *density_export;
-  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/density_maps/AMR_32_level4_morecells.txt", "w");
-  //double fac = s->dim[0]/levels[4].cdim;
-  //int cdim_exp[3] = {levels[4].cdim, levels[4].cdim, levels[4].cdim};
-  //for (int i=0; i<levels[4].cell_count; i++) {
-    //int cell_i = (int) ((levels[4].cells[i]->loc[0]+0.0001)/fac);
-    //int cell_j = (int) ((levels[4].cells[i]->loc[1]+0.0001)/fac);
-    //int cell_k = (int) ((levels[4].cells[i]->loc[2]+0.0001)/fac);
-    //fprintf(density_export, "%E %lu \n", levels[4].cells[i]->CIC_potential, cell_getid(cdim_exp, cell_i, cell_j, cell_k));
+  //FILE *ghost_export;
+  //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_cosmo_box/split_cells/locs_level2.txt", "w");
+  //ghost_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_cosmo_box/split_cells/ghost_locs_level2.txt", "w");
+  //double fac = s->dim[0]/levels[2].cdim;
+  //int cdim_exp[3] = {levels[2].cdim, levels[2].cdim, levels[2].cdim};
+  //for (int i=0; i<levels[2].cell_count; i++) {
+    //int cell_i = (int) ((levels[2].cells[i]->loc[0]+0.0001)/fac);
+    //int cell_j = (int) ((levels[2].cells[i]->loc[1]+0.0001)/fac);
+    //int cell_k = (int) ((levels[2].cells[i]->loc[2]+0.0001)/fac);
+    //fprintf(density_export, "%lu \n", cell_getid(cdim_exp, cell_i, cell_j, cell_k));
+  //}
+  //for (int i=levels[2].cell_count; i<levels[2].cell_count+levels[2].ghost_count; i++) {
+    //int cell_i = (int) ((levels[2].cells[i]->loc[0]+0.0001)/fac);
+    //int cell_j = (int) ((levels[2].cells[i]->loc[1]+0.0001)/fac);
+    //int cell_k = (int) ((levels[2].cells[i]->loc[2]+0.0001)/fac);
+    //fprintf(ghost_export, "%lu \n", cell_getid(cdim_exp, cell_i, cell_j, cell_k));
   //}
   //fclose(density_export);
+  //fclose(ghost_export);
 
   //perform_nonuniform_calculation(s, cells_top, min_depth, max_depth, max_gridsize, box_size);
 
   message("The minimum depth is %d", min_depth);
   get_cell_accelerations(s, min_depth, max_depth, levels);
 
-  potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
+  //potential_to_fake_gparts(s, min_depth, max_depth, levels, desired_depth);
 
-  message("Survived interpolation to the fake particles");
-  sleep(5);
+  //message("Survived interpolation to the fake particles");
+  //sleep(5);
   
-  //message("Passing potential to the particles");
-  //potential_to_gparts(s, min_depth, max_depth, levels);
+  message("Passing potential to the particles");
+  potential_to_gparts(s, min_depth, max_depth, levels);
 
   /* Free memory of the pointer array to the cells */
   for (int i=0; i<max_depth+1; i++) {
@@ -3642,7 +3663,8 @@ void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_
 
 void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels) {
   FILE *acc_export;
-  acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/acceleration/AMR_32_level2_morecells.txt", "w");
+  acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_cosmo_box/acceleration/AMR_acc_16_5.txt", "w");
+  //acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/acceleration/AMR_32_level2_morecells.txt", "w");
   //message("Calling this function");
   /* Loop over the levels. At each level loop over the cells and then over the particles in each cell */
   //for (int i=max_depth-2; i<max_depth+1; i++) {
@@ -3656,7 +3678,7 @@ void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct A
       //if (i==0 && !c->split && c->grav.count>0) message("Calling cell %d", j);
       if (c->split && level->depth < max_depth) {
       //if (c->split && level->depth<2) {
-        if (i==0) message("Cell %d is split", j);
+        //if (i==0) message("Cell %d is split", j);
         continue;
       } ///Means we have already done CIC with the particles on another level
       int nr_gparts = c->grav.count;
@@ -3664,27 +3686,33 @@ void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct A
       //if (nr_gparts>0) message("Going to do cell %d with loc (%lf, %lf, %lf) \n", j, c->loc[0], c->loc[1], c->loc[2]);
       for (int k=0; k<nr_gparts; k++) {
         struct gpart *gp = &(c->grav.parts[k]);
-        message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
-        get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
+        //message("Going to get the potential for the particle at (%lf, %lf, %lf)", gp->x[0], gp->x[1], gp->x[2]);
+        int CIC_depth = get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
         //get_AMR_potential(s, max_depth, max_depth-i, levels, gp, j);
         //message("The assigned potential is %lf", c->grav.parts[k].potential_mesh);
-        double dx = fabs(gp->x[0]-s->dim[0]/2);
-        double dy = fabs(gp->x[1]-s->dim[0]/2);
-        double dz = fabs(gp->x[2]-s->dim[0]/2);
-        double r = sqrt(dx*dx + dy*dy + dz*dz);
+        //double dx = fabs(gp->x[0]-s->dim[0]/2);
+        //double dy = fabs(gp->x[1]-s->dim[0]/2);
+        //double dz = fabs(gp->x[2]-s->dim[0]/2);
+        //double r = sqrt(dx*dx + dy*dy + dz*dz);
+
+        //double acc_x = gp->a_grav_mesh[0];
+        //double acc_y = gp->a_grav_mesh[1];
+        //double acc_z = gp->a_grav_mesh[2];
+        //double acc = sqrt(acc_x*acc_x + acc_y*acc_y + acc_z*acc_z);
+        //fprintf(acc_export, "%E %.15g \n", acc, r);
 
         double acc_x = gp->a_grav_mesh[0];
         double acc_y = gp->a_grav_mesh[1];
         double acc_z = gp->a_grav_mesh[2];
         double acc = sqrt(acc_x*acc_x + acc_y*acc_y + acc_z*acc_z);
-        fprintf(acc_export, "%E %.15g \n", acc, r);
+        fprintf(acc_export, "%E %.15g %.15g %.15g %d \n", acc, gp->x[0], gp->x[1], gp->x[2], CIC_depth);
       }
     }
   }
   fclose(acc_export);
 }
 
-void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr) {
+int get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr) {
   double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   double boxsize = dim[0];
   int stop_depth = current_depth;
@@ -3813,6 +3841,7 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
   gp->a_grav_mesh[2] *= const_G;
   gp->potential_mesh *= const_G;
   //message("After, we have %lf", gp->potential_mesh);
+  return stop_depth;
 }
 
 void CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize, int stop_depth, int calc_acc, double *acc) {
@@ -3931,6 +3960,24 @@ void perform_nonuniform_calculation(struct space *s, int min_depth, int max_dept
       //message("The potential of cell %d at (%lf, %lf, %lf) is %lf", j, c->loc[0], c->loc[1], c->loc[2], c->CIC_potential);
     //}
   }
+
+  //FILE *potential_export;
+  //FILE *potential_export_ghost;
+  //potential_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_almost_uniform/AMR_16_nonuniform.txt", "w");
+  //potential_export_ghost = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_almost_uniform/AMR_16_nonuniform_ghosts.txt", "w");
+  //double fac_exp = s->dim[0]/levels[1].cdim;
+  //int cdim_exp[3] = {levels[1].cdim, levels[1].cdim, levels[1].cdim};
+  //for (int j=0; j<levels[1].cell_count+levels[1].ghost_count; j++) {
+    //int cell_i = (int) ((levels[1].cells[j]->loc[0]+0.0001)/fac_exp);
+    //int cell_j = (int) ((levels[1].cells[j]->loc[1]+0.0001)/fac_exp);
+    //int cell_k = (int) ((levels[1].cells[j]->loc[2]+0.0001)/fac_exp);
+    //if (levels[1].cells[j]->parent->loc[0]<0.1 &&  levels[1].cells[j]->parent->loc[1]<0.1 && levels[1].cells[j]->parent->loc[2]<0.1) fprintf(potential_export_ghost, "%E %lu \n", levels[1].cells[j]->CIC_potential, cell_getid(cdim_exp, cell_i, cell_j, cell_k));
+    //fprintf(potential_export, "%E %lu \n", levels[1].cells[j]->CIC_density, cell_getid(cdim_exp, cell_i, cell_j, cell_k));
+    //else fprintf(potential_export, "%E %lu \n", levels[1].cells[j]->CIC_potential, cell_getid(cdim_exp, cell_i, cell_j, cell_k));
+  //}
+  //fclose(potential_export);
+  //fclose(potential_export_ghost);
+  //message("Done exporting");
 
   //FILE *density_export;
   //density_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_single_particle/density_maps/AMR_32_level4_ghosts_morecells.txt", "w");
@@ -4383,22 +4430,28 @@ void get_patch_density(struct space *s, struct AMR_levels *level) {
 }
 
 void perform_multigrid_acceleration(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1], int current_depth) {
-  double tolerance = 10e-8;
+  double tolerance = 10e-10;
+  //if (current_depth == 6) tolerance = 10e-9;
   int V_cycles = 0;
   double delta = s->dim[0]/(levels[current_depth].cdim);
   message("The value of delta is %lf", delta);
   int V_max = 10;
+  //int print_depth =6;
+  //FILE *multigrid_res;
+  //multigrid_res = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_cosmo_box/residuals/all_depth6.txt", "w");
 
   message("The mean density of the current level is %lf", levels[current_depth].mean_density);
 
   double residual = get_patch_residual(levels[current_depth], delta);
-  message("The first residual is %lf", residual);
+  message("The first residual is %E", residual);
+  //if (current_depth==print_depth) fprintf(multigrid_res, "%E \n", residual);
 
   while (residual>tolerance && V_cycles < V_max) {
     /* Pre-smoothing for 10 steps */
     for (int i=0; i<10; i++) {
       perform_patch_sweep(&levels[current_depth], delta);
       residual = get_patch_residual(levels[current_depth], delta);
+      //if (current_depth==print_depth) fprintf(multigrid_res, "%E \n", residual);
       double msq = 0;
       for (int j=0; j<levels[current_depth].cell_count; j++) {
         msq += fabs(levels[current_depth].cells[j]->CIC_potential);
@@ -4413,18 +4466,23 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
     //int nr_cells = levels[1].cell_count;
 
     /* Initialise V-cycle recursion */
-    transfer_residual_array(levels[current_depth], &levels[current_depth-1],delta);
-    to_coarser_patch(levels, delta, current_depth-1, max_depth, current_depth);
-    residual = get_patch_residual(levels[current_depth], delta);
-    message("Directly after transferring the residual is %lf", residual);
+    //if (current_depth != print_depth) {
+      transfer_residual_array(levels[current_depth], &levels[current_depth-1],delta);
+      to_coarser_patch(levels, delta, current_depth-1, max_depth, current_depth);
+      residual = get_patch_residual(levels[current_depth], delta);
+      message("Directly after transferring the residual is %E", residual);
+    //}
     /* Post-smoothing for 10 steps */
     for (int i=0; i<10; i++) {
       perform_patch_sweep(&levels[current_depth], delta);
+      residual = get_patch_residual(levels[current_depth], delta);
+      //if (current_depth==print_depth) fprintf(multigrid_res, "%E \n", residual);
     }
-    residual = get_patch_residual(levels[current_depth], delta);
+    //if (current_depth==print_depth) fprintf(multigrid_res, "%E \n", residual);
     V_cycles += 1;
-    message("After %d V_cycle the residual is %lf", V_cycles, residual);
+    message("After %d V_cycle the residual is %E", V_cycles, residual);
   }
+  //fclose(multigrid_res);
 
   /* Some extra convergence if the V-cycles weren't enough */
   int counter_post_smoothing = 0;
@@ -4432,10 +4490,14 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
     counter_post_smoothing += 1;
     perform_patch_sweep(&levels[current_depth], delta);
     residual = get_patch_residual(levels[current_depth], delta);
-    if (counter_post_smoothing % 100 == 0) message("Did %d steps in post-smoothing and the residual is %lf", counter_post_smoothing, residual);
+    //if (current_depth==print_depth) fprintf(multigrid_res, "%E \n", residual);  
+    if (counter_post_smoothing % 100 == 0) message("Did %d steps in post-smoothing and the residual is %E", counter_post_smoothing, residual);
   }
-  message("Had to do post-smoothing on level %d for %d steps and the residual is %lf", current_depth, counter_post_smoothing, residual);
-
+  message("Had to do post-smoothing on level %d for %d steps and the residual is %E", current_depth, counter_post_smoothing, residual);
+  //if (current_depth == print_depth) {
+    //message("Exported residuals for depth %d", print_depth);
+    //sleep(10);
+  //}
   int normalise = 0;
   if (normalise) {
 
@@ -4443,6 +4505,10 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
     double pot_mean = 0.;
 
     for (int i=0; i<levels[current_depth].cell_count; i++) {
+      //if (levels[current_depth].cells[i]->parent->loc[0]<0.1 &&  levels[current_depth].cells[i]->parent->loc[1]<0.1 && levels[current_depth].cells[i]->parent->loc[2]<0.1) {
+        //message("Skipping cells zero");
+        //continue;
+      //}  
       pot_mean += levels[current_depth].cells[i]->CIC_potential;
     }
     pot_mean /= levels[current_depth].cell_count;
@@ -4451,6 +4517,10 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
 
     /* Subtract the mean potential from the values on the finest level */
     for (int i=0; i<levels[current_depth].cell_count; i++) {
+      //if (levels[current_depth].cells[i]->parent->loc[0]<0.1 &&  levels[current_depth].cells[i]->parent->loc[1]<0.1 && levels[current_depth].cells[i]->parent->loc[2]<0.1) {
+        //message("Skipping cells zero");
+        //continue;
+      //}
       levels[current_depth].cells[i]->CIC_potential -= (pot_mean - levels[current_depth].mean_potential);
     }
   }
@@ -4483,13 +4553,14 @@ void perform_multigrid_acceleration(struct space *s, int min_depth, int max_dept
 void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth, int max_depth, int active_depth) {
   //message("Converging on level %d", current_depth);
   delta *= 2.0;
-  double tolerance = 10e-6;
-  double conv_tolerance = 0.9999;
+  double tolerance = 10e-10;
+  double conv_tolerance = 0.999;
   //double conv_tolerance2 = 0.1;
   int counter = 0;
   int counter_abs=0;
+  int counter_res = 0;
   //double msq = 0;
-  //int nr_steps = 10;
+  int nr_steps = 10;
 
   double residual_old = 0.;
   double residual_new = 1.;
@@ -4521,11 +4592,14 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
   msq = msq/nr_active;
   message("The initial mean density of level %d is %lf", current_depth, msq);
   if (current_depth == 0) { //On the coarsest grid, so solve the equation exactly 
+    FILE *residual_exp;
+    residual_exp = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_cosmo_box/residuals/level0_test.txt", "w");
     while (residual_new > tolerance) {
       counter +=1;
       counter_abs +=1;
       perform_masked_patch_sweep(&levels[current_depth], delta);
       residual_new = get_masked_residual(levels[current_depth], delta, nr_active, counter);
+      fprintf(residual_exp, "%E %d\n", residual_new, 2);
       //message("After step %d the residual is %lf", counter_abs, residual_new);
       //msq = get_solution_magnitude(levels[current_depth]);
       msq = 0;
@@ -4537,26 +4611,41 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
       msq = msq/nr_active;
       //message("The msq potential of level %d after %d step is %lf", current_depth, counter, msq);
       //message("The msq of the current solution is %lf", sqrt(msq/nr_active));
-      //if (counter_abs>1) {
+      if (counter_abs>1) {
         //message("Doing this :(");
-        //message("The previous residual was %lf and the new one is %lf", residual_old, residual_new);
-        //if (residual_new/residual_old>conv_tolerance && counter_abs >20) {
-          //converge_first_order(&levels[current_depth], delta, nr_steps);
-          //message("Finished with first order convergence");
-          //counter =0;
+        message("The previous residual was %E and the new one is %E", residual_old, residual_new);
+        if (residual_new/residual_old>conv_tolerance && counter_abs >10) {
+          message("Residuals not descreasing fast enough on depth 0! Going to do first-order convergence.");
+          sleep(5);
+          converge_first_order(&levels[current_depth], delta, nr_steps, residual_exp);
+          message("Finished with first order convergence");
+          counter_res +=1;
+          if (counter_res == 30) {
+            fclose(residual_exp);
+            message("Closed file");
+            sleep(30);
+          }
           //to_finer_patch(levels, current_depth+1, active_depth);
           //sleep(5);
           //return;
           //error("Residuals diverging during exact solving at depth %d", current_depth);
-        //}
-      //}
+          counter_abs = 0;
+        }
+      }
       residual_old = residual_new;
     }  
     message("Going back to level %d", current_depth+1);
+    fclose(residual_exp);
+    if (counter_res != 0) {
+      message("Closed file");   
+      sleep(30);
+    }
     to_finer_patch(levels, current_depth+1, active_depth);
   }
 
   else {
+    FILE *useless;
+    useless = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_cosmo_box/residuals/divergence_useless.txt", "w");
     //message("Calling this block for level %d", current_depth);
     for (int i=0;i<20;i++) {
       perform_masked_patch_sweep(&levels[current_depth], delta);
@@ -4571,9 +4660,11 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
       //message("The msq potential of level %d after %d step is %lf", current_depth, i, msq);
       //msq = get_solution_magnitude(levels[current_depth]);
       if (i>0) {
-        //message("The previous residual was %lf and the new one is %lf", residual_old, residual_new);
-        if (residual_new/residual_old>conv_tolerance && counter_abs>20) {
-          //converge_first_order(&levels[current_depth], delta, nr_steps);
+        message("The previous residual was %E and the new one is %E", residual_old, residual_new);
+        if (residual_new/residual_old>conv_tolerance && counter_abs>5) {
+          message("Need to do first-order convergence on depth %d", current_depth);
+          sleep(5);
+          converge_first_order(&levels[current_depth], delta, nr_steps, useless);
           //message("Finished with first order convergence");
           break;
         }
@@ -4609,6 +4700,7 @@ void to_coarser_patch(struct AMR_levels *levels, double delta, int current_depth
     message("Going back to level %d", current_depth+1);
     if (current_depth<max_depth) to_finer_patch(levels, current_depth+1, active_depth);
     //message("Survived");
+    fclose(useless);
   }
 
   //double msq_pot = 0;
@@ -4669,13 +4761,14 @@ void to_finer_patch(struct AMR_levels *levels, int target_depth, int active_dept
   }
 }
 
-void converge_first_order(struct AMR_levels *level, double delta, int nr_steps) {
+void converge_first_order(struct AMR_levels *level, double delta, int nr_steps, FILE *file) {
   double residual;
-  for (int i=0; i<nr_steps+100; i++) {
+  for (int i=0; i<nr_steps; i++) {
     first_order_sweep(level, delta);
     residual = get_first_order_residual(level, delta);
+    fprintf(file, "%E %d \n", residual, 1);
   }
-  message("The residual after %d 1st order steps is %lf", nr_steps+100,residual);
+  message("The residual after %d 1st order steps is %E", nr_steps,residual);
 }
 
 double get_first_order_residual(struct AMR_levels *level, double delta) {
@@ -4930,6 +5023,10 @@ double get_patch_residual(struct AMR_levels level, double delta) {
       if (current_cell->neighbours[4] == NULL) message("Neighbour 4 is NULL");
       if (current_cell->neighbours[5] == NULL) message("Neighbour 5 is NULL");
     }
+    //if (level.cells[i]->parent->loc[0]<0.1 &&  level.cells[i]->parent->loc[1]<0.1 && level.cells[i]->parent->loc[2]<0.1) {
+        //message("Skipping cells zero");
+        //continue;
+      //}
     double res = ((current_cell->neighbours[0]->CIC_potential + current_cell->neighbours[1]->CIC_potential + 
                   current_cell->neighbours[2]->CIC_potential + current_cell->neighbours[3]->CIC_potential + 
                   current_cell->neighbours[4]->CIC_potential + current_cell->neighbours[5]->CIC_potential - 
@@ -4943,6 +5040,7 @@ double get_patch_residual(struct AMR_levels level, double delta) {
     residual += res*res;
   }
   double final_res = sqrt(residual/(level.cell_count));
+  //double final_res = sqrt(residual/(level.cell_count-8));
   //message("The mean residual is %lf", mean_res/level.cell_count);
   //message("The residual is %lf", final_res);
   //sleep(15);
@@ -4962,6 +5060,10 @@ void perform_patch_sweep(struct AMR_levels *level, double delta) {
         if (level->cells[i]->neighbours[j] == NULL) message("Neighbour %d nonexistent", j);
         //if (level->cells[i]->neighbours[j]->ghost) message("Neighbour %d of (%lf, %lf, %lf) is a ghost with location (%lf, %lf, %lf) and potential %lf", j, level->cells[i]->loc[0], level->cells[i]->loc[1], level->cells[i]->loc[2],level->cells[i]->neighbours[j]->loc[0], level->cells[i]->neighbours[j]->loc[1], level->cells[i]->neighbours[j]->loc[2], level->cells[i]->neighbours[j]->CIC_potential);
       }
+      //if (level->cells[i]->parent->loc[0]<0.1 &&  level->cells[i]->parent->loc[1]<0.1 && level->cells[i]->parent->loc[2]<0.1) {
+        //message("Skipping cells zero with value %E", level->cells[i]->CIC_potential);
+        //continue;
+      //}
       level->cells[i]->CIC_potential = ((current_cell->neighbours[0]->CIC_potential + current_cell->neighbours[1]->CIC_potential + 
                                           current_cell->neighbours[2]->CIC_potential + current_cell->neighbours[3]->CIC_potential +
                                           current_cell->neighbours[4]->CIC_potential + current_cell->neighbours[5]->CIC_potential - 
@@ -4969,6 +5071,8 @@ void perform_patch_sweep(struct AMR_levels *level, double delta) {
       //message("Set cell %d with loc (%lf, %lf, %lf) to %lf", i, level->cells[i]->loc[0], level->cells[i]->loc[1], level->cells[i]->loc[2],level->cells[i]->CIC_potential);
     }
   }
+  //message("\n");
+  //sleep(2);
 }
 
 void extrapolate_mask_values(struct AMR_levels *coarse) {
@@ -5615,6 +5719,17 @@ int perform_uniform_calculation(struct space *s, int min_depth, int max_depth, s
       int cdim[3] = {grid_sizes[i], grid_sizes[i], grid_sizes[i]};
       get_pm_potential(&data, grid_sizes[i], box_size, &s->e->threadpool, cdim);
     }*/
+
+    //struct cic_mapper_data data;
+    //data.dim[0] = s->dim[0];
+    //data.dim[1] = s->dim[1];
+    //data.dim[2] = s->dim[2];
+    /* Assign densities to all arrays */ 
+    //data.N = grid_sizes[i];
+    //data.rho = rho[i];
+    //data.fac = grid_sizes[i]/box_size;
+    //gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);
+    //message("Reassigned the density");
     message("Getting mean density for i=%d", i);
     mean_density[i] = get_mean_density(rho[i], grid_sizes[i], 0);
     mean_density[i] *= 4.*M_PI * fac*fac*fac;
@@ -5796,11 +5911,12 @@ void assign_densities(struct cell *cells_top, struct threadpool *tp, int nr_cell
       }
     }
     else {
+      //if (i%100==0) message("Doing top cell %d", i);
       //message("Initialising tree search at level %d", level);
       //message("At least one top level cell is not split");
       int nr_gparts = cells_top[i].grav.count;
       for (int j=0; j<nr_gparts; j++) {
-        initialise_tree_search(&(cells_top[i].grav.parts[j]), &(cells_top[i]), cells_top, boxsize, nr_cells, level_check, 1);
+        initialise_tree_search(&(cells_top[i].grav.parts[j]), &(cells_top[i]), cells_top, boxsize, nr_cells, level_check, 0);
         //sleep(3);
         //for (int k=0; k<6; k++) {
           //if (tot_assigned[k]>41.564) error("Too large density assigned at level %d!", k);
@@ -6668,6 +6784,7 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
  */
 void apply_multigrid(const double *rho, double *pot, int cdim[3], const double mean_density, const double box_size, const int N_min, const int N_max, const int V_max) {
   message("Applying the multigrid method...");
+  //int N_print = 256;
 
   /* Allocate the memory for the residual array on the finest level */
   double *residual_array = NULL;
@@ -6680,12 +6797,12 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
   double delta = box_size/N_max; //Width of a grid cell of the finest level
   double residual; 
   //FILE *residual_export;
-  //residual_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/convergence_performance/FMG/FMG.txt", "w");
+  //residual_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/AMR_cosmo_box/residuals/FMG_256.txt", "w");
   residual = get_residual(pot, rho, cdim, mean_density, delta);
-  //if (N_max==64) fprintf(residual_export, "%E \n", residual);
+  //if (N_max==N_print) fprintf(residual_export, "%E \n", residual);
   //fprintf(residual_export, "%E \n", residual);
   message("The first residual is %lf", residual);
-  const double tolerance = 10e-12; //Choose reasonable value here
+  const double tolerance = 10e-10; //Choose reasonable value here
   int counter = 0;
   const int fine_steps = 10; //Choose reasonable value here
   double sum = 0;
@@ -6713,7 +6830,7 @@ void apply_multigrid(const double *rho, double *pot, int cdim[3], const double m
       }
     }
     residual = get_residual(pot, rho, cdim, mean_density, delta);  
-    //if (N_max==64) fprintf(residual_export, "%E \n", residual);  
+    //if (N_max==N_print) fprintf(residual_export, "%E \n", residual);  
     //fprintf(residual_export, "%E \n", residual);  
     V_cycles +=1;
     message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
@@ -7266,8 +7383,10 @@ void set_initial_guess(double *pot, const int cdim[3], int MG) {
   for (int i = 0; i<N*N*N; i++){
     //pot[i] += (fmod(rand(),5.) - 10.);
     //pot[i] += fmod(rand(),2000.) - 1000.;
-    //if (MG) pot[i] = 0.; //Corresponds to fR = mean(fR) everywhere.
+    //if (MG) pot[i] += (fmod(rand(),2000.) - 1000.)/1000; //Corresponds to fR = mean(fR) everywhere.
+    //else pot[i] = 0.; //Corresponds to fR = mean(fR) everywhere.
     pot[i] = 0.; //Corresponds to fR = mean(fR) everywhere.
+    //message("The first entries are %E and %E", pot[0], pot[1]);
   }
 }
 
@@ -7627,7 +7746,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
         break;
       case 3:
         /* Change the density field to represent a 1D sinusoid in the box */
-        double fR_mod = MG->fR_bar/2;
+        double fR_mod = MG->fR_bar;
         double delta = s->dim[0]/N;
         for (int i2=0; i2<N; i2++) {
           for (int j=0; j<N; j++) {
@@ -7683,6 +7802,13 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
   /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
   set_initial_guess(u_levels[0], cdim, /*MG=*/1);
+  //int N_exp = 32;
+  //FILE *uniform_exp;
+  //uniform_exp = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/MG_uniform_box/exp_u_128_init.txt", "w");
+  //for (int i=0; i<N_exp*N_exp*N_exp; i++) {
+    //fprintf(uniform_exp, "%lf \n", exp(u_levels[0][i]));
+  //}
+  //fclose(uniform_exp);
   apply_NGS(rho_levels[0], u_levels[0], MG, cdim, mean_density[0], box_size);
   message("Finished applying Gauss-Seidel");
 
@@ -7701,8 +7827,9 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     cdim[2] = N;
     apply_multigrid_fR(rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, 15);
   }
-  /*
-  if (test==3) { //Test whether the theoretical sine is a solution
+
+  
+  /*if (test==3) { //Test whether the theoretical sine is a solution
     message("\n Testing the theoretical sine wave");
     //double evo_term_half = ((1.+4.*MG->Omega_ratio)/(MG->a3_inv + 4.*MG->Omega_ratio));
     //double evo_term = evo_term_half*evo_term_half;
@@ -7713,15 +7840,15 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
           double dx = fabs((double)(i) * box_size/N_max);
           size_t cid = cell_getid(cdim_max, i, j, k);
           //message("The argument is %E", sin((2.*M_PI*dx)/box_size)-2.); 
-          u_levels[N_levels-1][cid] = log((2. - sin((2.*M_PI*dx)/box_size))/2.); 
+          u_levels[N_levels-1][cid] = log((2. - sin((2.*M_PI*dx)/box_size))); 
         }
       }
     }
-    double mean_density_copy[N_levels]; //Copy of mean_density containing the densities of the grid at level i to level 0
-    for (int j=0; j<N_levels; j++) {
-      mean_density_copy[j] = mean_density[N_levels-1-j];
-    }
-    apply_multigrid_fR(rho_levels[N_levels-1], u_levels[N_levels-1], MG, cdim_max, mean_density_copy, box_size, N_min, N_max, 15);
+    //double mean_density_copy[N_levels]; //Copy of mean_density containing the densities of the grid at level i to level 0
+    //for (int j=0; j<N_levels; j++) {
+      //mean_density_copy[j] = mean_density[N_levels-1-j];
+    //}
+    //apply_multigrid_fR(rho_levels[N_levels-1], u_levels[N_levels-1], MG, cdim_max, mean_density_copy, box_size, N_min, N_max, 15);
   }*/
 }
 
@@ -7739,9 +7866,12 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
  */
 void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3], double mean_density, double box_size) {
   message("Applying Newton-Gauss-Seidel...");
+  //FILE *residual_exp;
+  //residual_exp = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/MG_convergence/cosmo_NGS_e4.txt", "w");
   int N = cdim[0];
   double delta = box_size/N;
   double residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
+  //fprintf(residual_exp, "%E \n", residual);
   message("Before smoothing the residual is %E", residual);
 
   /* Get the mean */
@@ -7768,6 +7898,7 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
     //}
 
     residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
+    //fprintf(residual_exp, "%E \n", residual);
 
     //sum = 0.;
     //for (int i=0; i<N*N*N; i++) {
@@ -7783,6 +7914,7 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
 
   residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
   message("The residual is %E", residual);
+  //fclose(residual_exp);
 
   /* Check the mean of the solution we found */
   double *field_converted = malloc(N*N*N *sizeof(double));
@@ -8050,12 +8182,16 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
 
   double delta = box_size/N_max; //Width of a grid cell of the finest level
   double residual; 
+  //FILE *residual_exp;
+  //residual_exp = fopen("/net/styx//data1/vandervlugt/PythonFiles/final_plots/MG_convergence/cosmo_e-6_NGS_z50.txt", "w");
   residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
   message("The first residual is %E", residual);
+  //if (N_max == 128) fprintf(residual_exp, "%E \n", residual);
   if (V_max == 2) residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 1);
-  const double tolerance = 10e-9; //Choose reasonable value here
+  double tolerance = 10e-9; //Choose reasonable value here
+  //if (N_max != 128) tolerance = 10e-9;
   int counter = 0;
-  int fine_steps = 20; //Choose reasonable value here
+  int fine_steps = 10; //Choose reasonable value here
   double sum = 0;
 
   int V_cycles=0;
@@ -8067,6 +8203,7 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
     for (int i=0; i<fine_steps; i++) {
       perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density[0], delta);
       residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+      //if (N_max == 128) fprintf(residual_exp, "%E \n", residual);
       double mean = 0.;
       for (int j=0; j<N_max*N_max*N_max; j++) {
         mean += exp(u[j]);
@@ -8079,8 +8216,10 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
     if (residual<tolerance) break;
     
     /* Transfer residual array to get coarse-grid correction */
-    message("After pre-smoothing the residual is %E. Going to recurse with V-cycles.", residual);
-    FAS_recursive(u, residual_array, MG, cdim, delta, N_min, &depth);
+    //if (N_max != 128) {
+      message("After pre-smoothing the residual is %E. Going to recurse with V-cycles.", residual);
+      FAS_recursive(u, residual_array, MG, cdim, delta, N_min, &depth);
+    //}
 
     /* Post-smoothing if needed */
     residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
@@ -8088,6 +8227,8 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
     if (residual > tolerance) {
       for (int i=0; i<fine_steps; i++) {
         perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density[0], delta);
+        residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+        //if (N_max == 128) fprintf(residual_exp, "%E \n", residual);
       }
     }
     residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
@@ -8096,16 +8237,25 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
   }
 
   message("Performed %d V-cycle(s) in total", V_cycles);
+  //fclose(residual_exp);
   
   /* Post-smoothing until convergence. Should not be necessary! */
   while (residual > tolerance) {
     perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density[0], delta);
     residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+    //if (N_max == 64) fprintf(residual_exp, "%E \n", residual);
     counter +=1;
+    message("The counter is %d and the residual %E", counter, residual);
+    //if (counter > 500) {
+      //fclose(residual_exp);
+      //sleep(10);
+    //}
   }
   residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+  //if (N_max == 128) fprintf(residual_exp, "%E \n", residual);
   message("Needed to do %d step(s) in post-smoothing after which the residual was %lf", counter, residual);
   free(residual_array);
+  //sleep(10);
 
   /* Check the mean of the solution we found */
   double *field_converted = malloc(N_max*N_max*N_max *sizeof(double));
@@ -8128,7 +8278,7 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
   /*if (N_max == 128) {
     FILE *delta_exp;
     delta_exp = fopen("/data1/vandervlugt/PythonFiles/MG_density/z05/rho_rhoeff.txt", "w");
-    for (int i=0; i<N_max; i++) {
+    for (int i=0; i<N_max; i++) {appl
       for (int j=0; j<N_max; j++) {
         for (int k=0; k<N_max; k++) {
           fprintf(delta_exp, "%E %E \n", rho_copy2[cell_getid(cdim, i, j, k)] - mean_density, rho[cell_getid(cdim, i, j, k)]);
@@ -8434,7 +8584,7 @@ void perform_red_black_sweep_NGS(double *pot, const double *rho, int cdim[3], do
 double peak_overdensity(struct MG_variables *MG, double delta_x, double fR_mean, double box_size) {
   double period = (2.*M_PI)/box_size;
   double term1 = 3. * fR_mean * sin(period*delta_x) * period*period *(MG->c*MG->c);
-  double term2 = MG->a*MG->a*MG->R * (sqrt((2./(2.-sin(period*delta_x)))) - 1.);
+  double term2 = MG->a*MG->a*MG->R * (sqrt((1./(2.-sin(period*delta_x)))) - 1.);
   //if (delta_x>0.1 && delta_x<2) {
     //message("Setting the value %E", 1/(3.*MG->c*MG->c*MG->fR_bar) * (term2 - term1));
     //message("We used c = %E, fR_mean = %E, period = %E, a = %E, R = %E", MG->c, fR_mean, period, MG->a, MG->R);

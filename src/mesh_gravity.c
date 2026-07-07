@@ -935,25 +935,35 @@ void overdensity_to_gparts(struct space *s, double *rho, double mean_density, in
 }
 
 void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, double lambda) {
+  //double Omega_lambda = 0.724000;
+  //double Omega_m = 0.276000;
+  //double H0 = 7.030000e+01;
+  //double h = 0.703;
   MG->a = cosmo->a;
   //MG->a = 1.;
   MG->fR0 = fR0;
   MG->n = n;
   MG->a3_inv = (1./(MG->a*MG->a*MG->a));
+  //MG->Omega_ratio = Omega_lambda/(Omega_m);
   MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
   //MG->Omega_ratio = 0.;
+  //message("The Hubble parameter is %E and little h is %E", cosmo->H0, cosmo->h);
+  //MG->m = H0 * H0 * (Omega_m);
   MG->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
   MG->R = (3.*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
   //MG->R = (3.*MG->m*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
-  message("The value of R is %E", MG->R);
+  //message("The value of R is %E", MG->R);
   MG->c = s->e->physical_constants->const_speed_light_c;
   MG->G = s->e->physical_constants->const_newton_G;
+  //MG->h = h;
   MG->h = cosmo->h;
   MG->overdensity = 0; //Do we know the overdensity instead of the density?
   MG->lambda = lambda;
 }
 
 void get_rho_mod(double *rho, double *u, struct MG_variables *MG, double delta, int N) {
+  //FILE *single_exp;
+  //single_exp = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/MG_density_mod/rho_rhoeff_e-5.txt", "w");
   double mean_density = 0.;
   for (int i=0; i<N*N*N; i++) {
     mean_density += rho[i]/(N*N*N);
@@ -961,10 +971,14 @@ void get_rho_mod(double *rho, double *u, struct MG_variables *MG, double delta, 
   //message("We found the mean density %E", mean_density);
   for (int i=0; i<N*N*N; i++) {
     rho[i] -= mean_density;
+    //double temp = rho[i];
     rho[i] *= (1./3.);
     rho[i] += (MG->R*MG->a*MG->a*MG->a)/(24.*M_PI*MG->G) * (delta*delta*delta)*(1. - exp(-(1./2.)*u[i]));
+    //if (exp(u[i])<0.2) message("The second tem is %E", (MG->R*MG->a*MG->a*MG->a)/(24.*M_PI*MG->G) * (delta*delta*delta)*(1. - exp(-(1./2.)*u[i])));
+    //fprintf(single_exp, "%E %E \n", temp, rho[i]);
     //rho[i] += mean_density;
   }
+  //fclose(single_exp);
 }
 
 void get_cell_acc(double **acc, double *rho, int N, double fac) {
@@ -1022,6 +1036,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
 #ifdef HAVE_FFTW
   message("Doing this");
   const double r_s = mesh->r_s;
+  //const double r_s = 0.;
   const double r_s_MG = 0.;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -1158,7 +1173,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
 
   if (MG) { //Assume n=1 for now
     int test = 0; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
-    if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
+    //if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
 
     struct MG_variables MG_var;
     double fR0 = -1e-5;
@@ -1204,8 +1219,8 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
         message("Testing the f(R) calculation with a 1D sine wave.");
         double fR_mod = MG_var.fR_bar;
         double fac = s->dim[0]/N_MG;
-        MG_var.fR0 = 2. * fR_mod;
-        MG_var.fR_bar *= 2.;
+        //MG_var.fR0 = 2. * fR_mod;
+        //MG_var.fR_bar *= 2.;
         for (int i=0; i<N_MG; i++) {
           for (int j=0; j<N_MG; j++) {
             for (int k=0; k<N_MG; k++) {
@@ -1259,6 +1274,18 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     else space_get_fR_linear(s, rho_copy, field_contribution, &MG_var, N_min, N_MG); //Out comes delta f_R
     free(rho_copy);
 
+    //FILE *single_exp;
+    //single_exp = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/MG_sine_wave/minfR_e-6_z05.txt", "w");
+    //for (int i=0; i<N_MG; i++) {
+      //for (int j=0; j<N_MG; j++) {
+        //for (int k=0; k<N_MG; k++) {
+          //double dx = ((double)(i)) * s->dim[0]/N_MG;
+          //if (j==0 && k==0) fprintf(single_exp, "%E %.15g \n", -1.*MG_var.fR_bar*exp(field_contribution[cell_getid(cdim, i, j, k)]), dx);
+        //}
+      //}
+    //}
+    //fclose(single_exp);
+
     //if (get_MG_acc){
       //for (int i=0; i<N_MG*N_MG*N_MG; i++) {
         //field_contribution[i] = (MG_var.fR_bar)/(MG_var.a*MG_var.a) * (MG_var.c*MG_var.c)/2. * exp(field_contribution[i]);
@@ -1305,7 +1332,12 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   }
 
   if (power) {
-    int direct_mapping = 1;
+    int direct_mapping = 0;
+    if (MG) {
+      for (int i=0; i<N*N*N; i++) {
+        rho[i] += rho_MG[i];
+      }
+    }
     if (direct_mapping) {
       if (e->power_data->Ngrid != N) error("Mesh sizes of FFT and power spectrum do not match");
       e->power_data->MG_dens = rho;
@@ -1352,6 +1384,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
 
   const int deconvolve = 1;
   const int discrete_symbol = 0;
+  //message("Deconvolve? %d Discrete symbol? %d", deconvolve, discrete_symbol);
 
   /* Now de-convolve the CIC kernel and apply the Green function */
   mesh_apply_Green_function(tp, frho, /*slice_offset=*/0, /*slice_width=*/N,
@@ -1420,6 +1453,13 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     free(acc[j]);
     acc[j] = NULL;
   }
+
+  //FILE *field_exp;
+  //field_exp = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/MG_field/pot_z0_e-5.txt", "w");
+  //for (int i=0; i<N*N*N; i++) {
+    //fprintf(field_exp, "%E \n", rho[i]);
+  //}
+  //fclose(field_exp);
 
   /* Let's store it in the structure */
   for (int i=0; i<N*N*N; i++) {

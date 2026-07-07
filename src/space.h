@@ -593,7 +593,7 @@ void perform_masked_patch_sweep(struct AMR_levels *level, double delta);
 double get_masked_residual(struct AMR_levels level, double delta, int nr_active, int step_nr);
 void link_uniform_level(struct AMR_levels *level);
 double get_solution_magnitude(struct AMR_levels level);
-void converge_first_order(struct AMR_levels *level, double delta, int nr_steps);
+void converge_first_order(struct AMR_levels *level, double delta, int nr_steps, FILE *file);
 void first_order_sweep(struct AMR_levels *level, double delta);
 double get_first_order_residual(struct AMR_levels *level, double delta);
 void to_finer_patch(struct AMR_levels *levels, int target_depth, int active_depth);
@@ -606,7 +606,7 @@ int search_neighbours(struct AMR_levels *level, double search_loc[3], double fac
 void mark_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);
 void create_link(struct space *s, struct AMR_levels *level, struct cell **cells, int nr_cells, int which_neighbour, int verbose);
 void potential_to_gparts(struct space *s, int min_depth, int max_depth, struct AMR_levels *levels);
-void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr);
+int get_AMR_potential(struct space *s, int max_depth, int current_depth, struct AMR_levels *levels, struct gpart *gp, int cell_nr);
 void CIC_get_AMR(struct space *s, struct gpart *gp, double x[3], double width[3], double boxsize, int stop_depth, int calc_acc, double *acc);
 void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_index, int link_nr);
 void interpolate_trilinear(struct AMR_levels *coarse, struct AMR_levels *fine);

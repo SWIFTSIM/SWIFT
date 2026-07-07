@@ -1628,24 +1628,38 @@ int main(int argc, char *argv[]) {
     message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
-    /* Relaxation for the Poisson equation */
-    //space_apply_FMG(&e, 16, 64, 0);
-    //space_get_density(&e, 64, 1);
+    //message("Going to remove particles");
+    //init_test_single_particle(&e, 2);
+    //message("Initialised test");
 
-    //pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1, /*power=*/0);
+    //space_apply_FMG(&e, 16, 256, 0);
+    //space_get_density(&e, 32, 1);
+
+    pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1, /*power=*/1);
+    //FILE *acc_export;
+    //acc_export = fopen("/net/styx/data1/vandervlugt/PythonFiles/final_plots/MG_accelerations/reg_acc_e-4.txt", "w");
+    //for (size_t i=0; i<s.nr_gparts; i++) {
+      //struct gpart *gp = &(s.gparts[i]);
+      //double acc_x = gp->a_grav[0];
+      //double acc_y = gp->a_grav[1];
+      //double acc_z = gp->a_grav[2];
+      //double acc = sqrt(acc_x*acc_x + acc_y*acc_y + acc_z*acc_z);
+      //fprintf(acc_export, "%E \n", acc);
+    //}
+    //fclose(acc_export);
     //space_get_AMR_density(&s, &e, 1000, 1000);
 
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
-    if (with_cosmology && with_self_gravity && !dry_run) {
+    //if (with_cosmology && with_self_gravity && !dry_run) {
       /* Only check neutrino particle masses if we have neutrino particles
        * and if the masses are stored unweighted. */
-      const int check_neutrinos =
-          s.with_neutrinos && !neutrino_properties.use_delta_f;
-      space_check_cosmology(&s, &cosmo, with_hydro, myrank, check_neutrinos);
-      neutrino_check_cosmology(&s, &cosmo, &prog_const, params,
-                               &neutrino_properties, myrank, verbose);
-    }
+      //const int check_neutrinos =
+        //  s.with_neutrinos && !neutrino_properties.use_delta_f;
+      //space_check_cosmology(&s, &cosmo, with_hydro, myrank, check_neutrinos);
+      //neutrino_check_cosmology(&s, &cosmo, &prog_const, params,
+                 //              &neutrino_properties, myrank, verbose);
+    //}
 
     /* Write the state of the system before starting time integration. */
 #ifdef WITH_CSDS

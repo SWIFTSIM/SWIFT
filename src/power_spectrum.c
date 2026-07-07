@@ -1301,7 +1301,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   char outputfileBase[200] = "";
   char outputfileName[256] = "";
 
-  sprintf(outputfileBase, "power_MG_new_R_%s", get_powtype_filename(type1));
+  sprintf(outputfileBase, "power_MGreal_final_e5_z05_%s", get_powtype_filename(type1));
   if (type1 != type2) {
     const int length = strlen(outputfileBase);
     sprintf(outputfileBase + length, "-%s", get_powtype_filename(type2));
