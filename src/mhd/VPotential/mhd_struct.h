@@ -93,6 +93,8 @@ struct mhd_part_data {
     float Mat_db[3][3];
     /*! Gradient per Bfield2*/
     float Grad_b2[3];
+    /*! Gradient per Bfield2*/
+    float Grad_Gau[3];
 
   } grad;
 };

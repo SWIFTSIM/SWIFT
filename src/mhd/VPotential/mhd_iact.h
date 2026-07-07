@@ -510,12 +510,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
       (f_ij * wi_dr + f_ji * wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   const float mag_Disj =
       (f_ji * wj_dr + f_ij * wi_dr) / 2.f * r_inv * rhoj / (rho_ij * rho_ij);
-  /*for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 3; i++) {
     pi->mhd_data.dAdt[i] +=
         mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
     pj->mhd_data.dAdt[i] -=
         mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * dA[i];
   }
+  /*
   pi->mhd_data.Gau_dt -= mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dGau;
   pj->mhd_data.Gau_dt += mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * dGau;
   */ 
@@ -546,6 +547,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                         pj->mhd_data.BPred[2] - pi->mhd_data.BPred[2]};
   const float B2 = Bj[0]*Bj[0] + Bj[1]*Bj[1] + Bj[2]*Bj[2] 
   		 - Bi[0]*Bi[0] - Bi[1]*Bi[1] - Bi[2]*Bi[2] ;
+  const float GAUij = pj->mhd_data.Gau - pi->mhd_data.Gau;
 
   const float common_term_i = wi * mj / rhoj;
   const float common_term_j = wj * mi / rhoi;
@@ -558,6 +560,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   for (int i = 0; i < 3; i++){ 
       pi->mhd_data.grad.Grad_b2[i] -= common_term_i * B2 * dx[i];
       pj->mhd_data.grad.Grad_b2[i] -= common_term_j * B2 * dx[i];
+      pi->mhd_data.grad.Grad_Gau[i] -= common_term_i * GAUij * dx[i];
+      pj->mhd_data.grad.Grad_Gau[i] -= common_term_j * GAUij * dx[i];
     }
 }
 
@@ -687,10 +691,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /// DISSSIPATION
   const float mag_Disi =
       (f_ij * wi_dr + f_ji * wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
-  /*for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] +=
         mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
-  
+ /* 
   pi->mhd_data.Gau_dt -= mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dGau;
   */
   float dB[3];
@@ -713,6 +717,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                         pj->mhd_data.BPred[2] - pi->mhd_data.BPred[2]};
   const float B2 = Bj[0]*Bj[0] + Bj[1]*Bj[1] + Bj[2]*Bj[2] 
   		 - Bi[0]*Bi[0] - Bi[1]*Bi[1] - Bi[2]*Bi[2] ;
+  const float GAUij = pj->mhd_data.Gau - pi->mhd_data.Gau;
 
   const float common_term_i = wi * mj / rhoj;
   
@@ -722,6 +727,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     }
   for (int i = 0; i < 3; i++){ 
       pi->mhd_data.grad.Grad_b2[i] -= common_term_i * B2 * dx[i];
+      pi->mhd_data.grad.Grad_Gau[i] -= common_term_i * GAUij * dx[i];
     }
 }
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */

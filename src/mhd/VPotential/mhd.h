@@ -534,6 +534,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   
   for (int i = 0; i < 3; ++i){ 
     p->mhd_data.grad.Grad_b2[i] = 0.f;
+    p->mhd_data.grad.Grad_Gau[i] = 0.f;
     for (int j = 0; j < 3; ++j)
       p->mhd_data.grad.Mat_db[i][j] = 0.f;
     }
@@ -543,7 +544,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.dAdt[2] = 0.0f;
 
   const float v_sig = p->viscosity.v_sig; 
-  p->mhd_data.Gau_dt = - 0.5f * v_sig * v_sig * p->mhd_data.divA;
+  p->mhd_data.Gau_dt = - 1.f * v_sig * v_sig * p->mhd_data.divA
+  			- 2.f * v_sig / p->h * p->mhd_data.Gau;
 
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
@@ -643,6 +645,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
       }
   for (int i = 0; i < 3; ++i) 
       p->mhd_data.grad.Grad_b2[i] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) 
+      p->mhd_data.grad.Grad_Gau[i] *= h_inv_dim;
   
   /* Invert the c-matrix */
   float c_mat_temp[3][3];
@@ -659,6 +663,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   {p->mhd_data.grad.Mat_db[2][0], p->mhd_data.grad.Mat_db[2][1], p->mhd_data.grad.Mat_db[2][2]}};
   const float g_b2[3] = { p->mhd_data.grad.Grad_b2[0], p->mhd_data.grad.Grad_b2[1], 
                           p->mhd_data.grad.Grad_b2[2]}; 
+  const float g_Gau[3] = { p->mhd_data.grad.Grad_Gau[0], p->mhd_data.grad.Grad_Gau[1], 
+                           p->mhd_data.grad.Grad_Gau[2]}; 
 
   for (int i = 0; i < 3; i++) 
     for (int j = 0; j < 3; j++){ 
@@ -667,11 +673,14 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
          p->mhd_data.grad.Mat_db[i][j] += c_mat_temp[j][k] * g_db[i][k];
 	 }
   }
-  for (int i = 0; i < 3; i++) 
+  for (int i = 0; i < 3; i++){ 
+      p->mhd_data.grad.Grad_b2[i] = 0.f;
+      p->mhd_data.grad.Grad_Gau[i] = 0.f;
       for (int k = 0; k < 3; k++){ 
          p->mhd_data.grad.Grad_b2[i] += c_mat_temp[i][k] * g_b2[k];
+         p->mhd_data.grad.Grad_Gau[i] += c_mat_temp[i][k] * g_Gau[k];
 	 }
-
+  }
   p->mhd_data.divB = p->mhd_data.grad.Mat_db[0][0] + p->mhd_data.grad.Mat_db[1][1] +
                      p->mhd_data.grad.Mat_db[2][2];
 
@@ -680,6 +689,9 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
+  p->mhd_data.dAdt[0] -= p->mhd_data.grad.Grad_Gau[0];
+  p->mhd_data.dAdt[1] -= p->mhd_data.grad.Grad_Gau[1];
+  p->mhd_data.dAdt[2] -= p->mhd_data.grad.Grad_Gau[2];
   
   p->mhd_data.dAdt[0] -= ( p->mhd_data.APred[0] * p->force.gradient_vx[0] + 
   			   p->mhd_data.APred[1] * p->force.gradient_vy[0] + 
@@ -690,11 +702,27 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.dAdt[2] -= ( p->mhd_data.APred[0] * p->force.gradient_vx[2] + 
   			   p->mhd_data.APred[1] * p->force.gradient_vy[2] + 
   			   p->mhd_data.APred[2] * p->force.gradient_vz[2] ) ;
+  /*p->mhd_data.dAdt[0] += ( p->v[0] * p->mhd_data.grad.Mat_dA[0][0] + 
+  			   p->v[1] * p->mhd_data.grad.Mat_dA[1][0] + 
+  			   p->v[2] * p->mhd_data.grad.Mat_dA[2][0] ); 
+  p->mhd_data.dAdt[1] += ( p->v[0] * p->mhd_data.grad.Mat_dA[0][1] + 
+  			   p->v[1] * p->mhd_data.grad.Mat_dA[1][1] + 
+  			   p->v[2] * p->mhd_data.grad.Mat_dA[2][1] ); 
+  p->mhd_data.dAdt[2] += ( p->v[0] * p->mhd_data.grad.Mat_dA[0][2] + 
+  			   p->v[1] * p->mhd_data.grad.Mat_dA[1][2] + 
+  			   p->v[2] * p->mhd_data.grad.Mat_dA[2][2] ); */
+  /*p->mhd_data.dAdt[0] -= ( p->mhd_data.APred[1] * (p->force.gradient_vy[0] - p->force.gradient_vx[1]) - 
+  			   p->mhd_data.APred[2] * (p->force.gradient_vx[2] - p->force.gradient_vz[0])); 
+  p->mhd_data.dAdt[1] -= ( p->mhd_data.APred[2] * (p->force.gradient_vz[1] - p->force.gradient_vy[2]) - 
+  			   p->mhd_data.APred[0] * (p->force.gradient_vy[0] - p->force.gradient_vx[1])); 
+  p->mhd_data.dAdt[2] -= ( p->mhd_data.APred[0] * (p->force.gradient_vx[2] - p->force.gradient_vz[0]) - 
+  			   p->mhd_data.APred[1] * (p->force.gradient_vz[1] - p->force.gradient_vy[2])); 
+  */
   /*for (int k = 0; k < 3; k++) 
   p->a_hydro[k] += 1.f/(mu_0 * p->rho)*(
-  (p->mhd_data.BPred[0]*p->mhd_data.grad.Mat_db[0][k]+
-   p->mhd_data.BPred[1]*p->mhd_data.grad.Mat_db[1][k]+
-   p->mhd_data.BPred[2]*p->mhd_data.grad.Mat_db[2][k])
+  (p->mhd_data.BPred[0]*p->mhd_data.grad.Mat_db[k][0]+
+   p->mhd_data.BPred[1]*p->mhd_data.grad.Mat_db[k][1]+
+   p->mhd_data.BPred[2]*p->mhd_data.grad.Mat_db[k][2])
    - 1.f/2.f * p->mhd_data.grad.Grad_b2[k] 
    - p->mhd_data.divB*p->mhd_data.BPred[k]);
 */
