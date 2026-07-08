@@ -430,12 +430,15 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float norm_a = p->a_hydro[0] * p->a_hydro[0] +
                        p->a_hydro[1] * p->a_hydro[1] +
                        p->a_hydro[2] * p->a_hydro[2];
-  const float dt_acc = sqrtf(cosmo->a * p->h / sqrtf(norm_a));  // MATTHIEU: CHECK acceleration a-factor.
+  const float dt_acc =
+      sqrtf(cosmo->a * p->h /
+            sqrtf(norm_a));  // MATTHIEU: CHECK acceleration a-factor.
 
   /* Criterion based on acceleration (eq. 35) */
   const float c = p->force.soundspeed;
-  const float dt_Courant = cosmo->a * 
-      p->h / (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
+  const float dt_Courant =
+      cosmo->a * p->h /
+      (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
 
   return CFL_condition * fminf(dt_acc, dt_Courant);
 }
@@ -684,9 +687,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
       pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
-  
+
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   /* Invert the c-matrix */
   sym_matrix_invert(&p->force.c_matrix, &p->gradient.c_matrix_inv);
@@ -756,7 +760,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
       pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
 
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   /* Update variables */
   p->force.pressure = pressure_including_floor;
@@ -826,7 +831,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
       pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
 
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;

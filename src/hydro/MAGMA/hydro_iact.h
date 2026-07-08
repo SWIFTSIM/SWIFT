@@ -362,11 +362,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Includes the hubble flow term; not used for du/dt */
   const float vel_rel_Hubble_i = vel_rel_i + a2_Hubble * r2;
   const float vel_rel_Hubble_j = vel_rel_j + a2_Hubble * r2;
-  
+
   /* Terms entering the viscosity (eq. 15) */
   const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;
-  const float mu_i = fminf(0.f, vel_rel_Hubble_i / (eta_square_i + eps_squared));
-  const float mu_j = fminf(0.f, vel_rel_Hubble_j / (eta_square_j + eps_squared));
+  const float mu_i =
+      fminf(0.f, vel_rel_Hubble_i / (eta_square_i + eps_squared));
+  const float mu_j =
+      fminf(0.f, vel_rel_Hubble_j / (eta_square_j + eps_squared));
 
   /* Eq. 14 */
   const float Qi = rhoi * (-const_viscosity_alpha * ci * mu_i +
@@ -399,7 +401,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
 #ifdef TRADITIONAL_SPH_ACCELERATION_TERM
-  
+
   /* Compute pressure terms */
   float P_over_rho2_i = (pressurei + Qi) / (rhoi * rhoi);
   const float P_over_rho2_j = (pressurej + Qj) / (rhoj * rhoj);
@@ -413,8 +415,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float v_ij_dot_G_i =
       v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
 
-  //P_over_rho2_i = (pressurei) / (rhoi * rhoi);
-  
+  // P_over_rho2_i = (pressurei) / (rhoi * rhoi);
+
   /* Raw change in internal energy (eq. 3) */
   pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
 
