@@ -36,6 +36,7 @@
 
 #define TRADITIONAL_SPH_ACCELERATION_TERM
 #define GRAVITY_DIFF_VELOCITY
+//#define USE_ZEROTH_ORDER_VELOCITIES
 
 /**
  * @file MAGMA/hydro_parameters.h

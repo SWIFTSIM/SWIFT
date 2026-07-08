@@ -403,7 +403,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #ifdef TRADITIONAL_SPH_ACCELERATION_TERM
 
   /* Compute pressure terms */
-  float P_over_rho2_i = (pressurei + Qi) / (rhoi * rhoi);
+  const float P_over_rho2_i = (pressurei + Qi) / (rhoi * rhoi);
   const float P_over_rho2_j = (pressurej + Qj) / (rhoj * rhoj);
 
   /* Raw fluid acceleration (eq. 2) */
@@ -414,8 +414,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Equivalent of div v */
   const float v_ij_dot_G_i =
       v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
-
-  // P_over_rho2_i = (pressurei) / (rhoi * rhoi);
 
   /* Raw change in internal energy (eq. 3) */
   pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
