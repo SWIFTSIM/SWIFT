@@ -274,7 +274,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Qi, Qj;
   float visc_signal_velocity, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
-                  pj, dx);
+                  pj, dx, a, H);
 
   /* Pressure terms to be used in evolution equations */
   const float P_i_term = pressurei * rhoi_inv * rhoj_inv;
@@ -305,6 +305,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Internal energy time derivative */
   pi->u_dt += mj * (P_i_term + Q_i_term) * dvdotG;
   pj->u_dt += mi * (P_j_term + Q_j_term) * dvdotG;
+
+  /* Additional term from cosmology */
+  const float drdotG = dx[0] * G_mean[0] +
+                       dx[1] * G_mean[1] +
+                       dx[2] * G_mean[2];
+
+  const float H_a2 = H * a * a;
+  pi->u_dt += H_a2 * mj * Q_i_term * drdotG;
+  pj->u_dt += H_a2 * mi * Q_j_term * drdotG;
 
   /* Density time derivative */
   pi->drho_dt += mj * (rhoi * rhoj_inv) * dvdotG;
@@ -338,12 +347,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
   const float alpha_norm = const_remix_norm_alpha;
-  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
+
+  /* Add cosmology terms */
+  float drho_dt_norm_and_difn_i = alpha_norm  *
                                   pi->force.vac_switch *
-                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
-  float drho_dt_norm_and_difn_j = alpha_norm * mi * v_sig_norm *
+                                  (pi->m0 * rhoi - rhoi) * (v_sig_norm + hubble_flow_times_a2* r) * (mj * mod_G * mean_rho_inv);
+                        
+  float drho_dt_norm_and_difn_j = alpha_norm  *
                                   pj->force.vac_switch *
-                                  (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
+                                  (pj->m0 * rhoj - rhoj) * (v_sig_norm + hubble_flow_times_a2 * r) * (mi * mod_G * mean_rho_inv);
 
   /* Only include diffusion for same-material particle pair */
   if (pi->mat_id == pj->mat_id) {
@@ -368,8 +380,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                mean_rho_inv;
 
     /* Add artificial diffusion to evolution of internal energy */
-    pi->u_dt += du_dt_difn_i;
-    pj->u_dt += du_dt_difn_j;
+    pi->u_dt += (pi->diffusion.omega * pj->diffusion.omega) * du_dt_difn_i;
+    pj->u_dt += (pi->diffusion.omega * pj->diffusion.omega) * du_dt_difn_j;
 
     /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
     drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
@@ -446,7 +458,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Qi, Qj;
   float visc_signal_velocity, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
-                  pj, dx);
+                  pj, dx, a, H);
 
   /* Pressure terms to be used in evolution equations */
   const float P_i_term = pressurei * rhoi_inv * rhoj_inv;
@@ -469,6 +481,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Internal energy time derivative */
   pi->u_dt += mj * (P_i_term + Q_i_term) * dvdotG;
+
+  /* Additional term from cosmology */
+  const float drdotG = dx[0] * G_mean[0] +
+                       dx[1] * G_mean[1] +
+                       dx[2] * G_mean[2];
+
+  const float hubble_flow_times_a2 = H * a * a;
+  pi->u_dt += hubble_flow_times_a2 * mj * Q_i_term * drdotG;
 
   /* Density time derivative */
   pi->drho_dt += mj * (rhoi * rhoj_inv) * dvdotG;
@@ -500,9 +520,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
   const float alpha_norm = const_remix_norm_alpha;
-  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
+  float drho_dt_norm_and_difn_i = alpha_norm * 
                                   pi->force.vac_switch *
-                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
+                                  (pi->m0 * rhoi - rhoi) * (v_sig_norm + hubble_flow_times_a2 * r) * (mj * mod_G * mean_rho_inv);
 
   /* Only include diffusion for same-material particle pair */
   if (pi->mat_id == pj->mat_id) {
@@ -524,7 +544,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                mean_rho_inv;
 
     /* Add artificial diffusion to evolution of internal energy */
-    pi->u_dt += du_dt_difn_i;
+    pi->u_dt += (pi->diffusion.omega * pj->diffusion.omega)* du_dt_difn_i;
 
     /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
     drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
