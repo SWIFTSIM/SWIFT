@@ -530,12 +530,17 @@ mhd_get_comoving_fast_magnetosonic_wave_phase_velocity(const float dx[3],
  */
 __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
     const float dx[3], const struct part *pi, const struct part *pj,
-    const float mu_ij, const float beta) {
+    const float mu_ij, const float beta, const float mu_0) {
 
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
+  /* Compute pairwise MHD signal velocity,
+   * the sum of two particles' fast magnetosonic speeds
+   * (i.e. the Pythagorean addition of their sound speed and Alfven speed),
+   * and a von Neumann-type correction. */
 
-  return ci + cj - beta * mu_ij;
+  const float v_sigi = mhd_get_comoving_magnetosonic_speed(pi, mu_0);
+  const float v_sigj = mhd_get_comoving_magnetosonic_speed(pj, mu_0);
+
+  return v_sigi + v_sigj - beta * mu_ij;
 }
 
 /**
@@ -824,6 +829,16 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Update variables */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* MHD variables ----------------------------------------------*/
+
+  /* Re-set the predicted magnetic flux densities */
+  p->mhd.B_over_rho[0] = xp->mhd.B_over_rho_full[0];
+  p->mhd.B_over_rho[1] = xp->mhd.B_over_rho_full[1];
+  p->mhd.B_over_rho[2] = xp->mhd.B_over_rho_full[2];
+
+  p->mhd.psi_over_ch = xp->mhd.psi_over_ch_full;
+  // Need to reset v_sig??
 }
 
 /**
@@ -891,6 +906,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* MHD variables ----------------------------------------------*/
+
+  /* Predict the magnetic flux density */
+  p->mhd.B_over_rho[0] += p->mhd.B_over_rho_dt[0] * dt_therm;
+  p->mhd.B_over_rho[1] += p->mhd.B_over_rho_dt[1] * dt_therm;
+  p->mhd.B_over_rho[2] += p->mhd.B_over_rho_dt[2] * dt_therm;
+
+  p->mhd.psi_over_ch += p->mhd.psi_over_ch_dt * dt_therm;
+  // Need to reset v_sig??
 }
 
 /**
