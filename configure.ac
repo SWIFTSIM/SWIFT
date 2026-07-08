@@ -2289,6 +2289,12 @@ case "$with_hydro" in
    magma2)
       AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
    ;;
+   magma2-mhd-di)
+      AC_DEFINE([MAGMA_SPMHD_DI], [1], [MAGMA SPMHD DI])
+   ;;
+   magma2-mhd-vp)
+      AC_DEFINE([MAGMA_SPMHD_VP], [1], [MAGMA SPMHD VP])
+   ;;
    gasoline)
       AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])
    ;;

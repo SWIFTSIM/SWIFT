@@ -82,6 +82,14 @@
 #include "./hydro/MAGMA/hydro.h"
 #include "./hydro/MAGMA/hydro_iact.h"
 #define SPH_IMPLEMENTATION "MAGMA-2 (Rosswog+ 2020)"
+#elif defined(MAGMA_SPMHD_DI)
+#include "./hydro/MAGMA_MHD_DI/hydro.h"
+#include "./hydro/MAGMA_MHD_DI/hydro_iact.h"
+#define SPH_IMPLEMENTATION "MAGMA-2 (Rosswog+ 2020) with direct induction MHD"
+#elif defined(MAGMA_SPMHD_VP)
+#include "./hydro/MAGMA_MHD_VP/hydro.h"
+#include "./hydro/MAGMA_MHD_VP/hydro_iact.h"
+#define SPH_IMPLEMENTATION "MAGMA-2 (Rosswog+ 2020) with vector potential MHD"
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro.h"
 #include "./hydro/Gasoline/hydro_iact.h"

@@ -80,6 +80,10 @@
 #include "./hydro/SPHENIX/hydro_debug.h"
 #elif defined(MAGMA_SPH)
 #include "./hydro/MAGMA/hydro_debug.h"
+#elif defined(MAGMA_SPMHD_DI)
+#include "./hydro/MAGMA_MHD_DI/hydro_debug.h"
+#elif defined(MAGMA_SPMHD_VP)
+#include "./hydro/MAGMA_MHD_VP/hydro_debug.h"
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro_debug.h"
 #elif defined(ANARCHY_PU_SPH)

@@ -94,6 +94,14 @@ struct threadpool;
 #include "./hydro/MAGMA/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
+#elif defined(MAGMA_SPMHD_DI)
+#include "./hydro/MAGMA_MHD_DI/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
+#elif defined(MAGMA_SPMHD_VP)
+#include "./hydro/MAGMA_MHD_VP/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro_part.h"
 #define hydro_need_extra_init_loop 0
