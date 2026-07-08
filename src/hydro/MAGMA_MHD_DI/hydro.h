@@ -934,6 +934,27 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
+  
+  /* MHD variables ----------------------------------------------*/
+  
+  /* Get time derivative of Dedner scalar */
+  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
+      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
+
+  /* Hubble expansion contribution to induction equation */
+  const float Hubble_induction_pref =
+      cosmo->a * cosmo->a * cosmo->H * (1.5f * hydro_gamma - 2.f);
+  p->mhd_data.B_over_rho_dt[0] +=
+      Hubble_induction_pref * p->mhd_data.B_over_rho[0];
+  p->mhd_data.B_over_rho_dt[1] +=
+      Hubble_induction_pref * p->mhd_data.B_over_rho[1];
+  p->mhd_data.B_over_rho_dt[2] +=
+      Hubble_induction_pref * p->mhd_data.B_over_rho[2];
+
+  /* Save forces*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.tot_mag_F[k] *= p->mass;
+  }
 }
 
 /**
@@ -980,6 +1001,20 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->u_full = energy_min;
     p->u_dt = 0.f;
   }
+  
+  /* MHD variables ----------------------------------------------*/
+  
+  /* Integrate the magnetic flux density forward in time */
+  const float delta_Bx = p->mhd_data.B_over_rho_dt[0] * dt_therm;
+  const float delta_By = p->mhd_data.B_over_rho_dt[1] * dt_therm;
+  const float delta_Bz = p->mhd_data.B_over_rho_dt[2] * dt_therm;
+
+  /* Do not decrease the magnetic flux density by more than a factor of 2*/
+  xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
+  xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
+  xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
+
+  xp->mhd_data.psi_over_ch_full += p->mhd_data.psi_over_ch_dt * dt_therm;
 }
 
 /**
@@ -1026,6 +1061,13 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->force.soundspeed = soundspeed;
 
   /* MHD variables ----------------------------------------------*/
+  
+  /* Set Restitivity Eta */
+  p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
+  /* Set Monopole subtraction factor */
+  p->mhd_data.monopole_beta = hydro_props->mhd.monopole_subtraction;
+  /* Set Artificial Difussion */
+  p->mhd_data.art_diff_beta = hydro_props->mhd.art_diffusion;
 
   /* Convert B into B/rho */
   p->mhd.B_over_rho[0] /= p->rho;
