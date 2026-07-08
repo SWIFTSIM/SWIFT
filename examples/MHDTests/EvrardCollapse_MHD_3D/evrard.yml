@@ -1,0 +1,47 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1   # Grams
+  UnitLength_in_cgs:   1   # Centimeters
+  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   3.0   # The end time of the simulation (in internal units).
+  dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            evrard # Common part of the name of output files
+  time_first:          0.     # Time of the first output (in internal units)
+  delta_time:          0.1     # Time difference between consecutive outputs (in internal units)
+  compression:         1
+  
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-2 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.3663      # 1.2348   # Target h in units of mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.3       # Courant-Friedrich-Levy condition for time integration.
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                0.025
+  MAC:                adaptive
+  theta_cr:           0.7
+  epsilon_fmm:        0.001
+  max_physical_baryon_softening: 0.001    # Physical softening length (in internal units).
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./evrard.hdf5       # The file to read
+  periodic:   0
+  
+PhysicalConstants:
+  G: 1.
+  mu_0: 1.

@@ -47,13 +47,15 @@
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
  * @param pj Second particle.
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
@@ -131,13 +133,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
  * @param pj Second particle (not updated).
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, const struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
   float wi, wi_dx;
 
@@ -199,13 +203,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    const float a, const float H) {}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j:
@@ -220,13 +226,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    const float a, const float H) {}
 
 /**
  * @brief Force interaction between two particles.
@@ -237,13 +245,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
  * @param pj Second particle.
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -305,7 +315,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
 
   /* Grab balsara switches */
   const float balsara_i = pi->force.balsara;
@@ -372,13 +383,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
  * @param pj Second particle (not updated).
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, const struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -440,7 +453,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
 
   /* Grab balsara switches */
   const float balsara_i = pi->force.balsara;
