@@ -41,7 +41,7 @@ INLINE static void hydro_read_particles(struct part *parts,
                                         struct io_props *list,
                                         int *num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 9;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -60,6 +60,9 @@ INLINE static void hydro_read_particles(struct part *parts,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
+  list[8] =
+      io_make_input_field("MagneticFluxDensities", FLOAT, 3, COMPULSORY,
+                          UNIT_CONV_MAGNETIC_FIELD, parts, mhd.B_over_rho);
 }
 
 INLINE static void convert_S(const struct engine *e, const struct part *p,
@@ -72,6 +75,14 @@ INLINE static void convert_P(const struct engine *e, const struct part *p,
                              const struct xpart *xp, float *ret) {
 
   ret[0] = hydro_get_comoving_pressure(p);
+}
+
+INLINE static void convert_B(const struct engine *e, const struct part *p,
+                             const struct xpart *xp, float *ret) {
+
+  ret[0] = p->mhd.B_over_rho[0] * p->rho;
+  ret[1] = p->mhd.B_over_rho[1] * p->rho;
+  ret[2] = p->mhd.B_over_rho[2] * p->rho;
 }
 
 INLINE static void convert_part_pos(const struct engine *e,
@@ -180,7 +191,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 14;
+  *num_fields = 21;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -240,6 +251,41 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_softening,
       "Co-moving gravitational Plummer-equivalent softenings of the particles");
+
+  list[14] = io_make_output_field_convert_part(
+      "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
+      -1.5f * hydro_gamma, parts, xparts, convert_B,
+      "Magnetic flux densities of the particles");
+
+  list[15] = io_make_output_field("MagneticDivergences", FLOAT, 1,
+                                  UNIT_CONV_MAGNETIC_DIVERGENCE,
+                                  -1.5f * hydro_gamma - 1.f, parts, mhd.divB,
+                                  "co-moving DivB  of the particle");
+
+  list[16] = io_make_output_field(
+      "DednerScalarsOverCleaningSpeeds", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
+      -1.5f * hydro_gamma - 1.f, parts, mhd.psi_over_ch,
+      "Dedner scalars over cleaning speeds of the particles");
+
+  list[17] = io_make_output_field("DednerScalarsOverCleaningSpeedsdt", FLOAT, 1,
+                                  UNIT_CONV_MAGNETIC_FIELD_PER_TIME, 1.f, parts,
+                                  mhd.psi_over_ch_dt,
+                                  "Time derivative of Dedner scalars over "
+                                  "cleaning speeds of the particles");
+
+  list[18] = io_make_output_field(
+      "MagneticFluxDensitiesdt", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
+      1.f, parts, mhd.B_over_rho_dt,
+      "Time derivative of Magnetic flux densities of the particles");
+
+  list[19] = io_make_output_field(
+      "MagneticFluxCurl", FLOAT, 3, UNIT_CONV_MAGNETIC_CURL,
+      -1.5f * hydro_gamma - 1.f, parts, mhd.curl_B,
+      "The curl of Magnetic flux densities of the particles");
+
+  list[20] = io_make_output_field(
+      "AlphaAR", FLOAT, 1, UNIT_CONV_NO_UNITS, 1.f, parts, mhd.alpha_AR,
+      "Artificial resistivity switch of the particles");
 }
 
 /**

@@ -826,8 +826,8 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
    * creation */
   for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins) {
-      hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props,
-                               floor);
+      hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props, floor,
+                               mu_0);
       mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props, mu_0);
     }
   }

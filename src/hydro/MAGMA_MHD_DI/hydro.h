@@ -438,6 +438,85 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 }
 
 /**
+ * @brief Compute Alfven speed
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_comoving_Alfven_speed(const struct part *p, const float mu_0) {
+
+  /* Recover some data */
+  const float rho = p->rho;
+  const float B[3] = {p->mhd.B_over_rho[0] * rho, p->mhd.B_over_rho[1] * rho,
+                      p->mhd.B_over_rho[2] * rho};
+
+  /* B squared */
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+
+  /* Square of Alfven speed */
+  const float vA2 = B2 / (mu_0 * rho);
+
+  return sqrtf(vA2);
+}
+
+/**
+ * @brief Compute magnetosonic speed
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_comoving_magnetosonic_speed(const struct part *p, const float mu_0) {
+
+  /* Compute fast magnetosonic speed, the Pythagorean addition of the sound
+   * speed and Alfven speed */
+  const float cs = hydro_get_comoving_soundspeed(p);
+  const float cs2 = cs * cs;
+
+  const float vA = mhd_get_comoving_Alfven_speed(p, mu_0);
+  const float vA2 = vA * vA;
+
+  const float cms2 = cs2 + vA2;
+
+  return sqrtf(cms2);
+}
+
+/**
+ * @brief Compute fast magnetosonic wave phase veolcity
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_comoving_fast_magnetosonic_wave_phase_velocity(const float dx[3],
+                                                       const struct part *p,
+                                                       const float a,
+                                                       const float mu_0) {
+
+  /* Get r and 1/r. */
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  /* Recover some data */
+  const float rho = p->rho;
+  const float B[3] = {
+      p->mhd.B_over_rho[0] * rho,
+      p->mhd.B_over_rho[1] * rho,
+      p->mhd.B_over_rho[2] * rho,
+  };
+
+  /* B dot r. */
+  const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
+  const float permeability_inv = 1.0f / mu_0;
+
+  /* Compute effective sound speeds */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float c_ms = mhd_get_comoving_magnetosonic_speed(p, mu_0);
+  const float c_ms2 = c_ms * c_ms;
+  const float projection_correction = c_ms2 * c_ms2 - 4.0f * permeability_inv *
+                                                          cs2 * Br * r_inv *
+                                                          Br * r_inv / rho;
+
+  const float v_fmsw2 = 0.5f * (c_ms2 + sqrtf(projection_correction));
+
+  return sqrtf(v_fmsw2);
+}
+
+/**
  * @brief Compute the signal velocity between two gas particles
  *
  * This is eq. (103) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
@@ -890,11 +969,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param xp The extended particle to act upon
  * @param cosmo The cosmological model.
  * @param hydro_props The constants used in the scheme.
+ * @param mu_0 Vacuum permeability constant
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor) {
+    const struct pressure_floor_props *pressure_floor, const float mu_0) {
 
   /* Convert the physcial internal energy to the comoving one. */
   /* u' = a^(3(g-1)) u */
@@ -919,6 +999,29 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* MHD variables ----------------------------------------------*/
+
+  /* Convert B into B/rho */
+  p->mhd.B_over_rho[0] /= p->rho;
+  p->mhd.B_over_rho[1] /= p->rho;
+  p->mhd.B_over_rho[2] /= p->rho;
+
+  /* Convert to co-moving B/rho */
+  p->mhd.B_over_rho[0] *= powf(cosmo->a, 1.5f * hydro_gamma);
+  p->mhd.B_over_rho[1] *= powf(cosmo->a, 1.5f * hydro_gamma);
+  p->mhd.B_over_rho[2] *= powf(cosmo->a, 1.5f * hydro_gamma);
+
+  /* Instantiate full step magnetic field */
+  xp->mhd.B_over_rho_full[0] = p->mhd.B_over_rho[0];
+  xp->mhd.B_over_rho_full[1] = p->mhd.B_over_rho[1];
+  xp->mhd.B_over_rho_full[2] = p->mhd.B_over_rho[2];
+
+  /* Instantiate full step magnetic Dedner scalar */
+  xp->mhd.psi_over_ch_full = p->mhd.psi_over_ch;
+
+  /* Instantiate Alfven speed */
+  p->mhd.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
 }
 
 /**

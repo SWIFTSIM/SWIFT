@@ -1166,11 +1166,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param cosmo The cosmological model.
  * @param hydro_props The constants used in the scheme.
  * @param pressure_floor The properties of the pressure floor.
+ * @param mu_0 Vacuum permeability constant
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor) {
+    const struct pressure_floor_props *pressure_floor, const float mu_0) {
 
   /* Convert the physcial internal energy to the comoving one. */
   /* u' = a^(3(g-1)) u */

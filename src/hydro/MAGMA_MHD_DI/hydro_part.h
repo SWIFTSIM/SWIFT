@@ -66,6 +66,16 @@ struct xpart {
   /*! Internal energy at the last full step. */
   float u_full;
 
+  struct {
+
+    /* Full step magnetic field over density */
+    float B_over_rho_full[3];
+
+    /* Full step dedner scalar over divergence cleaning speed */
+    float psi_over_ch_full;
+
+  } mhd;
+
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
@@ -124,6 +134,35 @@ struct part {
 
   /*! Particle density. */
   float rho;
+
+  struct {
+
+    /*! Predicted magnetic field over density */
+    float B_over_rho[3];
+
+    /*! Time derivative of magnetic field over density */
+    float B_over_rho_dt[3];
+
+    /*! Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
+     * current time */
+    float Alfven_speed;
+
+    /*! Divergence of the magnetic field */
+    float divB;
+
+    /*! Curl of the magnetic field */
+    float curl_B[3];
+
+    /*! Predicted Dedner scalar over divergence cleaning speed */
+    float psi_over_ch;
+
+    /*! Time derivative of Dedner scalar over divergence cleaning speed */
+    float psi_over_ch_dt;
+
+    /*! Artificial resistivity gradient based switch */
+    float alpha_AR;
+
+  } mhd;
 
   /**
    * @brief Structure for the variables only used in the density loop over
