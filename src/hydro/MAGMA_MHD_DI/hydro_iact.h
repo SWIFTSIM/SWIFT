@@ -582,13 +582,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   sph_acc_term_i[k] +=
       0.5f * B2j * permeability_inv * over_rho2_j * G_j[k];
   /* Anisotropic MHD term */
-  sph_acc_term_i[k] +=
-      -1.f * over_rho2_i * permeability_inv * Bri * Bi[k];
-  sph_acc_term_i[k] +=
-      -1.f * over_rho2_j * permeability_inv * Brj * Bj[k];
+  sph_acc_term_i[k] -= 1.f *
+       over_rho2_i * permeability_inv * Bri * Bi[k];
+  sph_acc_term_i[k] -= 1.f *
+       over_rho2_j * permeability_inv * Brj * Bj[k];
   }  
   /* monopole cleaning term */
-  const float monopole_beta = pi->mhd.monopole_beta;
+  const float monopole_beta = 1.f * pi->mhd.monopole_beta;
 
   const float plasma_beta_i = pi->mhd.plasma_beta_rms;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
@@ -635,7 +635,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;
 
   /* Artificial resistivity */
-  const float alpha_AR = 0.5f * (pi->mhd.alpha_AR + pj->mhd.alpha_AR);
+  const float alpha_AR = 0.0f * (pi->mhd.alpha_AR + pj->mhd.alpha_AR);
 
   const float vsig_AR =
       0.5f * (pi->mhd.Alfven_speed + pj->mhd.Alfven_speed);
@@ -646,9 +646,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->mhd.B_over_rho_dt[1] += mj * art_diff_pref * dB[1];
   pi->mhd.B_over_rho_dt[2] += mj * art_diff_pref * dB[2];
   
-  /* Dedner cleaning */
-  const float vsig_Dedner_i = 0.5f * pi->mhd.v_sig;
-  const float vsig_Dedner_j = 0.5f * pj->mhd.v_sig;
+  /* Dedner cleaning */ //BAD
+  const float vsig_Dedner_i = 0.0f * pi->mhd.v_sig;
+  const float vsig_Dedner_j = 0.0f * pj->mhd.v_sig;
 
   for (int k = 0; k < 3; k++) {
      pi->mhd.B_over_rho_dt[k] -= mj * (G_i[k] * psi_over_ch_i * vsig_Dedner_i * over_rho2_i + 

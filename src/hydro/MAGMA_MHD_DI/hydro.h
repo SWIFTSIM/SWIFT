@@ -995,16 +995,16 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   float tmp_Grad_in[3], tmp_Grad_out[3];
   for (int i = 0; i < 3; i++){
      for (int j = 0; j < 3; j++) 
-        tmp_Grad_in[j] =p->mhd.grad_B_tensor[i][j];
+        tmp_Grad_in[j] = p->mhd.grad_B_tensor[i][j];
      sym_matrix_multiply_by_vector(tmp_Grad_out, &p->force.c_matrix,
                                 tmp_Grad_in);
      for (int j = 0; j < 3; j++) 
 	p->mhd.grad_B_tensor[i][j] = tmp_Grad_out[j] ;
   }
   p->mhd.divB = p->mhd.grad_B_tensor[0][0] + p->mhd.grad_B_tensor[1][1] + p->mhd.grad_B_tensor[2][2];
-  p->mhd.curl_B[0] = p->mhd.grad_B_tensor[1][2] - p->mhd.grad_B_tensor[2][1];
-  p->mhd.curl_B[1] = p->mhd.grad_B_tensor[2][0] - p->mhd.grad_B_tensor[0][2];
-  p->mhd.curl_B[2] = p->mhd.grad_B_tensor[0][1] - p->mhd.grad_B_tensor[1][0];
+  p->mhd.curl_B[0] = p->mhd.grad_B_tensor[2][1] - p->mhd.grad_B_tensor[1][2];
+  p->mhd.curl_B[1] = p->mhd.grad_B_tensor[0][2] - p->mhd.grad_B_tensor[2][0];
+  p->mhd.curl_B[2] = p->mhd.grad_B_tensor[1][0] - p->mhd.grad_B_tensor[0][1];
   
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -1045,7 +1045,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* MHD variables ----------------------------------------------*/
   
   /* Zero the fields updated by the mhd force loop */
-  p->mhd.divB = 0.0f;
 
   p->mhd.B_over_rho_dt[0] = 0.0f;
   p->mhd.B_over_rho_dt[1] = 0.0f;
@@ -1223,7 +1222,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
       Hubble_induction_pref * p->mhd.B_over_rho[1];
   p->mhd.B_over_rho_dt[2] +=
       Hubble_induction_pref * p->mhd.B_over_rho[2];
+ 
+  /*const float plasma_beta_i = p->mhd.plasma_beta_rms;
+  const float scale_i = 0.125f * (10.0f - plasma_beta_i);
+  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
+  for (int i = 0; i < 3; i++){
+     p->a_hydro[i] += 1.f / (mu_0) * ( 
+        p->mhd.B_over_rho[0] * p->mhd.grad_B_tensor[i][0] +
+        p->mhd.B_over_rho[1] * p->mhd.grad_B_tensor[i][1] +
+        p->mhd.B_over_rho[2] * p->mhd.grad_B_tensor[i][2]
+        - tensile_correction_scale_i * p->mhd.divB * p->mhd.B_over_rho[i]);
+ }*/ 
   /* END MHD variables -------------------------------------------*/
 }
 
