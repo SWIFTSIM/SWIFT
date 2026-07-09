@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static void zero_sym_matrix(
 }
 
 /**
- * @brief Construc the identity matrix
+ * @brief Construct the identity matrix
  */
 __attribute__((always_inline)) INLINE static void sym_matrix_identity(
     struct sym_matrix *M) {
@@ -93,6 +93,18 @@ __attribute__((always_inline)) INLINE static void sym_matrix_identity(
   M->xz = 0.f;
   M->xz = 0.f;
 #endif
+}
+
+/**
+ * @brief Check whether this is the null matrix
+ */
+__attribute__((always_inline)) INLINE static int sym_matrix_is_null(
+    const struct sym_matrix *M) {
+
+  for (int i = 0; i < hydro_dimension_integer; ++i) {
+    if (M->elements[i] != 0.f) return 0;
+  }
+  return 1;
 }
 
 /**
