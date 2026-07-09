@@ -49,26 +49,26 @@ for ii in range(nini, nfin):
 
     mhdflavour = data.metadata.hydro_scheme["MHD Flavour"]
     mhd_scheme = data.metadata.hydro_scheme["MHD Scheme"]
-    mhdeta = data.metadata.hydro_scheme["Resistive Eta"]
+    mhdeta = data.metadata.hydro_scheme["Resistive Eta"][0]
     git = data.metadata.code["Git Revision"]
     gitBranch = data.metadata.code["Git Branch"]
     scheme = data.metadata.hydro_scheme["Scheme"]
     kernel = data.metadata.hydro_scheme["Kernel function"]
-    neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
+    neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"][0]
 
     try:
-        dedhyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
-        dedpar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
+        dedhyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"][0]
+        dedpar = data.metadata.hydro_scheme["Dedner Parabolic Constant"][0]
     except:
         dedhyp = 0.0
         dedpar = 0.0
 
     try:
-        deddivV = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"]
+        deddivV = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"][0]
         tensile = data.metadata.hydro_scheme[
             "MHD Tensile Instability Correction Prefactor"
-        ]
-        artdiff = data.metadata.hydro_scheme["Artificial Diffusion Constant"]
+        ][0]
+        artdiff = data.metadata.hydro_scheme["Artificial Diffusion Constant"][0]
     except:
         deddivV = 0.0
         artdiff = 0.0
@@ -78,12 +78,14 @@ for ii in range(nini, nfin):
 
     B = data.gas.magnetic_flux_densities
     divB = data.gas.magnetic_divergences
+    #divB = data.gas.vector_potential_divergences
     P_mag = (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2) / 2
     h = data.gas.smoothing_lengths
 
     normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
 
     data.gas.DivB_error = np.maximum(h * abs(divB) / normB, 1e-10)
+    #data.gas.DivB_error = np.maximum(abs(divB) / normB, 1e-10)
 
     # Then create a mass-weighted B error dataset
     data.gas.mass_weighted_magnetic_divB_error = data.gas.masses * data.gas.DivB_error
