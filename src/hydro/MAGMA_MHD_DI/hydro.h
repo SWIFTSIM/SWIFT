@@ -882,6 +882,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->mhd.plasma_beta_rms = sqrtf(
       p->mhd.plasma_beta_rms /
       p->mhd.neighbour_number); /* Divisor guaranteed to be strictly positive */
+  
+  for (int i = 0; i < 3; ++i) 
+    for (int j = 0; j < 3; ++j) 
+      p->mhd.grad_B_tensor[i][j] *= h_inv_dim;
 
   /* END MHD variables -------------------------------------------*/
 }
@@ -986,7 +990,22 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float normB = sqrtf(B2);
 
   float grad_B_mean_square = 0.0f;
-
+  
+  /* Finish computation of Grad_B gradient (eq. 18) */
+  float tmp_Grad_in[3], tmp_Grad_out[3];
+  for (int i = 0; i < 3; i++){
+     for (int j = 0; j < 3; j++) 
+        tmp_Grad_in[j] =p->mhd.grad_B_tensor[i][j];
+     sym_matrix_multiply_by_vector(tmp_Grad_out, &p->force.c_matrix,
+                                tmp_Grad_in);
+     for (int j = 0; j < 3; j++) 
+	p->mhd.grad_B_tensor[i][j] = tmp_Grad_out[j] ;
+  }
+  p->mhd.divB = p->mhd.grad_B_tensor[0][0] + p->mhd.grad_B_tensor[1][1] + p->mhd.grad_B_tensor[2][2];
+  p->mhd.curl_B[0] = p->mhd.grad_B_tensor[1][2] - p->mhd.grad_B_tensor[2][1];
+  p->mhd.curl_B[1] = p->mhd.grad_B_tensor[2][0] - p->mhd.grad_B_tensor[0][2];
+  p->mhd.curl_B[2] = p->mhd.grad_B_tensor[0][1] - p->mhd.grad_B_tensor[1][0];
+  
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       grad_B_mean_square +=
