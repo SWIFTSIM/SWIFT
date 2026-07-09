@@ -70,6 +70,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   float h_max_active = 0.0f;
   float stars_h_max = 0.f;
   float stars_h_max_active = 0.f;
+  float stars_h_hii_max = 0.f;
+  float stars_h_hii_max_active = 0.f;
   float black_holes_h_max = 0.f;
   float black_holes_h_max_active = 0.f;
   float sinks_h_max = 0.f;
@@ -240,6 +242,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.dx_max_sort = 0.f;
       cp->stars.h_max = 0.f;
       cp->stars.h_max_active = 0.f;
+      cp->stars.h_hii_max = 0.f;
+      cp->stars.h_hii_max_active = 0.f;
       cp->stars.dx_max_part = 0.f;
       cp->stars.dx_max_sort = 0.f;
       cp->sinks.h_max = 0.f;
@@ -304,6 +308,9 @@ void space_split_recursive(struct space *s, struct cell *c,
         h_max_active = max(h_max_active, cp->hydro.h_max_active);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
         stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
+        stars_h_hii_max = max(stars_h_hii_max, cp->stars.h_hii_max);
+        stars_h_hii_max_active =
+            max(stars_h_hii_max_active, cp->stars.h_hii_max_active);
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         black_holes_h_max_active =
             max(black_holes_h_max_active, cp->black_holes.h_max_active);
@@ -558,9 +565,12 @@ void space_split_recursive(struct space *s, struct cell *c,
       ti_stars_beg_max = max(ti_stars_beg_max, ti_beg);
 
       stars_h_max = max(stars_h_max, sparts[k].h);
+      stars_h_hii_max = max(stars_h_hii_max, sparts[k].h_hii);
 
-      if (spart_is_active(&sparts[k], e))
+      if (spart_is_active(&sparts[k], e)) {
         stars_h_max_active = max(stars_h_max_active, sparts[k].h);
+        stars_h_hii_max_active = max(stars_h_hii_max_active, sparts[k].h_hii);
+      }
 
       cell_set_spart_h_depth(&sparts[k], c);
 
@@ -682,6 +692,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->stars.ti_beg_max = ti_stars_beg_max;
   c->stars.h_max = stars_h_max;
   c->stars.h_max_active = stars_h_max_active;
+  c->stars.h_hii_max = stars_h_hii_max;
+  c->stars.h_hii_max_active = stars_h_hii_max_active;
   c->sinks.ti_end_min = ti_sinks_end_min;
   c->sinks.ti_beg_max = ti_sinks_beg_max;
   c->sinks.h_max = sinks_h_max;

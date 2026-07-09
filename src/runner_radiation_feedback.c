@@ -106,6 +106,8 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
         struct cell *restrict cp = c->progeny[k];
         runner_do_stars_hii_ionization_feedback(r, cp, 0);
         c->stars.h_hii_max = max(c->stars.h_hii_max, cp->stars.h_hii_max);
+        c->stars.h_hii_max_active =
+            max(c->stars.h_hii_max_active, cp->stars.h_hii_max_active);
         c->stars.h_max_active =
             max(c->stars.h_max_active, cp->stars.h_max_active);
       }
@@ -266,7 +268,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
              num_retry_full_buffer < max_retry_full_buffer);
 
     c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
-    c->stars.h_max_active = max(c->stars.h_max_active, si->h_hii);
+    c->stars.h_hii_max_active = max(c->stars.h_hii_max_active, si->h_hii);
 
     /*****************************************/
     /* Update the star after HII ionization */
