@@ -33,6 +33,7 @@
 #include "error.h"
 #include "inline.h"
 
+#if !(defined(MAGMA_SPMHD_DI) || defined(MAGMA_SPMHD_VP))
 /**
  * @file None/mhd_parameters.h
  * @brief NO MHD but default parameters for other schemes
@@ -74,6 +75,7 @@ static INLINE void mhd_print(const struct mhd_global_data *mhd) {}
  **/
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data *mhd_data) {}
+#endif
 #endif
 
 #endif /* SWIFT_NONE_MHD_PARAMETERS_H */

@@ -1050,7 +1050,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Finish the gradient calculation */
-        hydro_end_gradient(p, cosmo, pressure_floor);
+        hydro_end_gradient(p, cosmo, pressure_floor, mu_0);
         chemistry_end_gradient(p, e->chemistry);
         mhd_end_gradient(p, mu_0);
 
@@ -1284,7 +1284,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
             /* The force variables are set in the extra ghost. */
 
             /* Compute variables required for the gradient loop */
-            hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
+            hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor,mu_0);
             mhd_prepare_gradient(p, xp, cosmo, hydro_props, mu_0);
 
             /* The particle gradient values are now set.  Do _NOT_
@@ -1478,7 +1478,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
         /* The force variables are set in the extra ghost. */
 
         /* Compute variables required for the gradient loop */
-        hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
+        hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor, mu_0);
         mhd_prepare_gradient(p, xp, cosmo, hydro_props, mu_0);
 
         /* The particle gradient values are now set.  Do _NOT_
@@ -1515,7 +1515,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
 
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, dt_alpha,
-                            dt_therm);
+                            dt_therm, mu_0);
         chemistry_prepare_force(p, xp, cosmo, dt_alpha, dt_therm, e->chemistry);
         mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, mu_0);
         timestep_limiter_prepare_force(p, xp);

@@ -19,6 +19,7 @@
 #ifndef SWIFT_NONE_MHD_STRUCT_H
 #define SWIFT_NONE_MHD_STRUCT_H
 
+#if !(defined(MAGMA_SPMHD_DI) || defined(MAGMA_SPMHD_VP))
 /**
  * @brief Particle-carried fields for the MHD scheme.
  */
@@ -28,5 +29,6 @@ struct mhd_part_data {};
  * @brief Particle-carried extra fields for the MHD scheme.
  */
 struct mhd_xpart_data {};
+#endif
 
 #endif /* SWIFT_NONE_MHD_STRUCT_H */

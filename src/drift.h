@@ -185,7 +185,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
 
   /* Predict the values of the extra fields */
   hydro_predict_extra(p, xp, dt_drift, dt_therm, dt_kick_grav, cosmo,
-                      hydro_props, entropy_floor, pressure_floor);
+                      hydro_props, entropy_floor, pressure_floor, mu_0);
   mhd_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props,
                     entropy_floor, mu_0);
   chemistry_predict_extra(p, xp, dt_drift, dt_therm, cosmo, e->chemistry);

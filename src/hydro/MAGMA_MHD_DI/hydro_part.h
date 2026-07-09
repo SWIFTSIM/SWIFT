@@ -91,9 +91,6 @@ struct xpart {
   /*! Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
 
-  /*! Additional data used by the MHD scheme */
-  struct mhd_xpart_data mhd_data;
-
 } SWIFT_STRUCT_ALIGN;
 
 /**
@@ -146,6 +143,9 @@ struct part {
     /*! Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
      * current time */
     float Alfven_speed;
+    
+    /* MHD Signal Velosity */
+    float v_sig;
 
     /*! Divergence of the magnetic field */
     float divB;
@@ -161,6 +161,31 @@ struct part {
 
     /*! Artificial resistivity gradient based switch */
     float alpha_AR;
+    
+    /*! resistivity per particle */
+    float resistive_eta;
+
+    /* Spatial gradient tensor of the magnetic field */
+    float grad_B_tensor[3][3];
+
+    /* Local plasma beta mean square and its normalising factor */
+    float plasma_beta_rms;
+    float neighbour_number;
+  
+    /* Artifical resistivity multiplicative prefactor */
+    float art_diff_beta;
+  
+    /* Tensile instability correction multiplicative prefactor */
+    float monopole_beta;
+  
+    /*! Artificial resistivity contribution to the time derivative of magnetic
+     *! field over density */
+    float B_over_rho_dt_AR[3];
+
+    /* Artificial resistivity contribution to the time derivative of thermal
+     * energy */
+    float u_dt_AR;
+
 
   } mhd;
 
@@ -251,9 +276,6 @@ struct part {
     float balsara;
 
   } force;
-
-  /*! Additional data used by the MHD scheme */
-  struct mhd_part_data mhd_data;
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;

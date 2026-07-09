@@ -463,7 +463,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 #endif
 
         /* Prepare the values to be drifted */
-        hydro_reset_predicted_values(p, xp, cosmo, pressure_floor);
+        hydro_reset_predicted_values(p, xp, cosmo, pressure_floor, mu_0);
         mhd_reset_predicted_values(p, xp, cosmo, mu_0);
       }
     }
