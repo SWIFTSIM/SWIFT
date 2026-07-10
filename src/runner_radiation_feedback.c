@@ -159,6 +159,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
   if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
     return;
 
+  const struct stars_props *star_props = e->stars_properties;
+  const int max_retry_full_buffer = star_props->max_HII_retry_full_buffer;
+
   struct hii_neighbor ngb_buffer[max_ngbs];
 
   for (int i = 0; i < scount; i++) {
@@ -286,15 +289,19 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       /* Log when this HII region was (re)built */
       si->feedback_data.radiation.HII_region_last_rebuild = star_age_beg_step;
     }
-#ifdef SWIFT_DEBUG_CHECKS    
+#ifdef SWIFT_DEBUG_CHECKS
     if (feedback_get_star_ionization_rate(si) <= 0.0) {
       message("Star %lld has exhausted all its ionizing photons! r_hii = %e",
 	      si->id, si->h_hii*kernel_gamma);
     } else {
-      message("Star %lld has NOT exhausted all its ionizing photons! Remaining: %e, search_radius = %e, sp->h_hii = %e",
-	      si->id, feedback_get_star_ionization_rate(si), interaction_limit, kernel_gamma*si->h_hii);
+      message(
+          "Star %lld has NOT exhausted all its ionizing photons! Remaining: "
+          "%e, search_radius = %e, sp->h_hii = %e, num_retry_full_buffer = "
+          "%d",
+          si->id, feedback_get_star_ionization_rate(si), interaction_limit,
+          kernel_gamma * si->h_hii, num_retry_full_buffer);
     }
-#endif    
+#endif
   } /* Loop over sparts */
 }
 
@@ -369,12 +376,12 @@ void runner_do_stars_hii_ionization_feedback_branch(
       message("[%lld, %lld] Doing naive interaction! %i", ci->cellID,
               cj->cellID, cj->hydro.sorted & (1 << sid));
       runner_dopair_naive_stars_hii_ionization_feedback(
-          r, ci, cj, shift, si, search_radius, ngb_buffer, max_ngbs,
+          r, ci, cj, shift, si, search_radius, ngb_buffer, max_size,
           count_found);
     } else {
       runner_dopair_stars_hii_ionization_feedback(
           r, ci, cj, sid, flipped, shift, si, search_radius, ngb_buffer,
-          max_ngbs, count_found);
+          max_size, count_found);
     }
   }
 }

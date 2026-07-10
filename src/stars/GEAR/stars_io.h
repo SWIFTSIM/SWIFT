@@ -306,6 +306,16 @@ INLINE static void stars_props_init(struct stars_props *sp,
   /* Read the maximal search radius */
   sp->max_HII_search_radius =
       parser_get_param_float(params, "Stars:max_HII_search_radius");
+
+  /* Read the HII full-buffer retry count. Default matches the value this
+   * used to be hardcoded to, so existing parameter files keep working
+   * unchanged. Tune this up for higher gas mass resolution or denser
+   * regions (e.g. cosmological zoom-ins) where a single HII search pass
+   * may need several passes to cover all gas within the search radius
+   * (the per-pass buffer capacity, max_HII_ngbs, is a compile-time
+   * constant -- see runner_radiation_feedback.h). */
+  sp->max_HII_retry_full_buffer =
+      parser_get_opt_param_int(params, "Stars:max_HII_retry_full_buffer", 10);
 #endif
 }
 

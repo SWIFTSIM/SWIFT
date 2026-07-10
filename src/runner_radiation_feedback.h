@@ -35,8 +35,16 @@ struct runner;
 struct cell;
 
 #define search_radius_factor 1.2f
-#define max_ngbs 128
-#define max_retry_full_buffer 10
+/* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
+ * compile-time constant by design -- see runner_dosub_stars_hii_ionization_
+ * feedback()). Sized to comfortably cover a single rebuild's typical new
+ * shell of gas at gas_mass=0.01-resolution test problems without needing
+ * many retries (empirically ~a few thousand particles per shell in
+ * StromgrenSphere); denser regions (e.g. clumps in a cosmological zoom-in)
+ * rely on Stars:max_HII_retry_full_buffer (struct stars_props, runtime-
+ * configurable) to cover the rest across several passes at the same
+ * search radius. */
+#define max_ngbs 1024
 
 /**
  * @brief Temporary structure to store gas particles found within the HII

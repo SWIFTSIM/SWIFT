@@ -106,3 +106,4 @@ Stars:
   max_timestep_young_Myr:               0.5     # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1       # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
   max_HII_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm (in internal units).
+  max_HII_retry_full_buffer: 30                 # Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. Increased from the default (10): at gas_mass=0.01 resolution, a single new shell of gas can hold several thousand particles -- far more than one pass of the (compile-time) neighbour buffer can hold -- so more retries are needed to actually cover it. (Default: 10)
