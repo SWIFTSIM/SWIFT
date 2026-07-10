@@ -160,8 +160,8 @@ if opt.level is not None:
 else:
     if opt.boxsize is not None:
         L = opt.boxsize*units.kpc
-        M = (rho*L).to(u.Msun)
-        N = M / m
+        M = (rho*L**3).to(units.Msun)
+        N = int(np.ceil(M / m))
     else:
         raise RuntimeError("If the opt.level and opt.boxsize are None, then we cannot determine the number of particles")
 
