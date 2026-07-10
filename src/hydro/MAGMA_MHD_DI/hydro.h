@@ -1225,6 +1225,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   p->mhd.B_over_rho_dt[2] +=
       Hubble_induction_pref * p->mhd.B_over_rho[2];
 
+  p->mhd.B_over_rho_dt[0] +=
+      p->mhd.B_over_rho[0]*p->force.gradient_vx[0]+
+      p->mhd.B_over_rho[1]*p->force.gradient_vx[1]+
+      p->mhd.B_over_rho[2]*p->force.gradient_vx[2];
+  p->mhd.B_over_rho_dt[1] +=
+      p->mhd.B_over_rho[0]*p->force.gradient_vy[0]+
+      p->mhd.B_over_rho[1]*p->force.gradient_vy[1]+
+      p->mhd.B_over_rho[2]*p->force.gradient_vy[2];
+  p->mhd.B_over_rho_dt[2] +=
+      p->mhd.B_over_rho[0]*p->force.gradient_vz[0]+
+      p->mhd.B_over_rho[1]*p->force.gradient_vz[1]+
+      p->mhd.B_over_rho[2]*p->force.gradient_vz[2];
   /*const float divV = 
   p->force.gradient_vx[0]+
   p->force.gradient_vy[1]+
