@@ -581,9 +581,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       pi->a_hydro[i] +=
-          mj * (mm_i[i][j] * G_i[j] + mm_j[i][j] * G_j[j]) / (mu_0 * rhoi * rhoj);
+          mj * (mm_i[i][j] * G_i[j]/(rhoi*rhoi) + mm_j[i][j] * G_j[j]/(rhoj*rhoj)) / (mu_0);
       pi->a_hydro[i] -= mj * Bi[i] * t_corr *
-                        (Bi[j] * G_i[j]+ Bj[j] * G_j[j]) / (mu_0 * rhoi * rhoj);
+                        (Bi[j] * G_i[j]/(rhoi*rhoi)+ Bj[j] * G_j[j]/rhoj/rhoj) / (mu_0);
     }
 
   /* Induction Equation*/
@@ -591,9 +591,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   // comoving integration>
   //const float mag_Indi = wi_dr * r_inv / rhoi;
   //const float mag_Disi = (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
-  //const float psi_i = pi->mhd.psi_over_ch * pi->mhd.v_sig * 0.f;
-  //const float psi_j = pj->mhd.psi_over_ch * pj->mhd.v_sig * 0.f;
-/*  for (int i = 0; i < 3; i++) {
+  /*const float psi_i = pi->mhd.psi_over_ch * pi->mhd.v_sig * 1.f;
+  const float psi_j = pj->mhd.psi_over_ch * pj->mhd.v_sig * 1.f;
+  for (int i = 0; i < 3; i++) {
     pi->mhd.B_over_rho_dt[i] +=
         mj / (rhoi * rhoi) *
         ((Bi[i] * v_ij[(i + 1) % 3] - Bi[(i + 1) % 3] * v_ij[i]) * G_i[(i + 1) % 3] +
@@ -603,14 +603,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
  // pi->mhd_data.dBdt[i] +=
  //     mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * (Bi[i] - Bj[i]);
   }
- */ 
+  */
  /* Induction Equation*/
   const float over_rho2_i = 1.0f / (rhoi * rhoi);
 
   const float dB_dt_pref_i = over_rho2_i;
 
   const float Bri = Bi[0] * G_i[0] + Bi[1] * G_i[1] + Bi[2] * G_i[2];
-  /* */
   float dB_dt_i[3];
   dB_dt_i[0] = -Bri * v_ij[0];
   dB_dt_i[1] = -Bri * v_ij[1];
@@ -619,7 +618,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->mhd.B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
   pi->mhd.B_over_rho_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
   pi->mhd.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
-
 
   /* Physical resistivity */
   const float resistive_eta_i = 1.f * pi->mhd.resistive_eta;

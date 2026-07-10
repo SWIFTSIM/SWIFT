@@ -695,8 +695,9 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float hyp_divv = hydro_props->mhd.hyp_dedner_divv;
   const float par = hydro_props->mhd.par_dedner;
 
+  const float divV = p->force.gradient_vx[0] + p->force.gradient_vy[1] + p->force.gradient_vz[2];
   const float div_B = p->mhd.divB;
-  const float div_v = a * a * hydro_get_div_v(p) - 3.0f * a * a * H;
+  const float div_v = a * a * divV - 3.0f * a * a * H;
   const float psi_over_ch = p->mhd.psi_over_ch;
 
   const float cp = ch;
@@ -1213,6 +1214,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   p->mhd.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
       p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
 
+
   /* Hubble expansion contribution to induction equation */
   const float Hubble_induction_pref =
       cosmo->a * cosmo->a * cosmo->H * (1.5f * hydro_gamma - 2.f);
@@ -1222,6 +1224,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
       Hubble_induction_pref * p->mhd.B_over_rho[1];
   p->mhd.B_over_rho_dt[2] +=
       Hubble_induction_pref * p->mhd.B_over_rho[2];
+
+  /*const float divV = 
+  p->force.gradient_vx[0]+
+  p->force.gradient_vy[1]+
+  p->force.gradient_vz[2];
+
+  p->mhd.B_over_rho_dt[0] -=
+      divV * p->mhd.B_over_rho[0];
+  p->mhd.B_over_rho_dt[1] -=
+      divV * p->mhd.B_over_rho[1];
+  p->mhd.B_over_rho_dt[2] -=
+      divV * p->mhd.B_over_rho[2];*/
  /*
   const float plasma_beta_i = p->mhd.plasma_beta_rms;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
