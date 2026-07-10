@@ -41,7 +41,7 @@ INLINE static void hydro_read_particles(struct part *parts,
                                         struct io_props *list,
                                         int *num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 10;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -60,6 +60,12 @@ INLINE static void hydro_read_particles(struct part *parts,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
+  list[8] =
+      io_make_input_field("MagneticFluxDensities", FLOAT, 3, COMPULSORY,
+                          UNIT_CONV_MAGNETIC_FIELD, parts, mhd_data.BPred);
+  list[9] = io_make_input_field(
+      "MagneticVectorPotentials", FLOAT, 3, COMPULSORY,
+      UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL, parts, mhd_data.APred);
 }
 
 INLINE static void convert_S(const struct engine *e, const struct part *p,
@@ -180,7 +186,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 14;
+  *num_fields = 19;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -240,6 +246,33 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_softening,
       "Co-moving gravitational Plummer-equivalent softenings of the particles");
+  list[14] = io_make_output_field("MagneticFluxDensities", FLOAT, 3,
+                                 UNIT_CONV_MAGNETIC_FIELD, mhd_comoving_factor,
+                                 parts, mhd_data.BPred,
+                                 "Co-moving Magnetic flux of the particles");
+
+  list[15] = io_make_output_field(
+      "MagneticDivergences", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
+      mhd_comoving_factor - 1.f, parts, mhd_data.divB,
+      "co-moving Magnetic divergences of the particles");
+
+  list[16] = io_make_output_field(
+      "MagneticVectorPotentials", FLOAT, 3,
+      UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL, mhd_comoving_factor + 1.f,
+      parts, mhd_data.APred,
+      "Co-moving Magnetic Vector Potentials of the particles");
+
+  list[17] = io_make_output_field("VectorPotentialScalarGauges", FLOAT, 1,
+                                 UNIT_CONV_MAGNETIC_FIELD,
+                                 mhd_comoving_factor + 2.f, parts, mhd_data.Gau,
+                                 "Co-coving gauge scalar associated to the "
+                                 "magnetic vector potentials per particle");
+
+  list[18] = io_make_output_field(
+      "VectorPotentialDivergences", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
+      mhd_comoving_factor, parts, mhd_data.divA,
+      "Co-moving vector potential divergences of particles");
+
 }
 
 /**

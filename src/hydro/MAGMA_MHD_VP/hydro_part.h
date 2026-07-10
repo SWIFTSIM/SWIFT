@@ -66,6 +66,16 @@ struct xpart {
   /*! Internal energy at the last full step. */
   float u_full;
 
+  struct {
+
+    /* Full step magnetic vector potential */
+    float A_full[3];
+
+    /* Full step dedner scalar over divergence cleaning speed */
+    float Gau_full;
+
+  } mhd;
+
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
@@ -124,6 +134,45 @@ struct part {
 
   /*! Particle density. */
   float rho;
+
+  struct {
+    /* predicted VPotencial */
+    float APred[3];
+
+    /* predicted step Gauge, divA */
+    float Gau, divA;
+
+    /* Time derivative of Gauge */
+    float Gau_dt;
+
+    /*! Predicted magnetic field */
+    float BPred[3];
+
+    /* VP evolution */
+    float dAdt[3];
+    
+    /*! Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
+     * current time */
+    float Alfven_speed;
+    
+    /* MHD Signal Velosity */
+    float v_sig;
+
+    /*! Divergence of the magnetic field */
+    float divB;
+
+    /*! Curl of the magnetic field */
+    float curl_B[3];
+    
+    /*! resistivity per particle */
+    float resistive_eta;
+
+    /* Spatial gradient tensor of the magnetic field */
+    float grad_B_tensor[3][3];
+
+    /* Spatial gradient tensor of the Potential Field */
+    float grad_A_tensor[3][3];
+  } mhd;
 
   /**
    * @brief Structure for the variables only used in the density loop over
@@ -212,9 +261,6 @@ struct part {
     float balsara;
 
   } force;
-
-  /*! Additional data used by the MHD scheme */
-  struct mhd_part_data mhd_data;
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;

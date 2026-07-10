@@ -30,6 +30,7 @@
 #endif
 
 /* Local headers */
+#include "adiabatic_index.h"
 #include "common_io.h"
 #include "error.h"
 #include "inline.h"
@@ -178,5 +179,74 @@ static INLINE void diffusion_print_snapshot(
   io_write_attribute_f(h_grpsph, "Alpha diffusion", const_diffusion_alpha);
 }
 #endif
+
+/* MHD variables ----------------------------------------------*/
+/* Freedom to choose the way the Comoving Bfield behaves
+ * the comoving conversion goes like:
+ * B_phi = a^MHD_COMOVING_FACTOR * B_co
+ */
+#define mhd_comoving_factor -2.f
+// #define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f)
+
+/* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
+/* Magnetic Diffusion, if set to 0 IDEAL mhd
+ *  */
+#define mhd_propos_default_resistive_eta 0.0f
+
+/* Structs that store the relevant variables */
+
+/*! MHD parameters */
+struct mhd_global_data {
+  /*! For the fixed, simple case of direct induction. */
+  float mhd_eta;
+};
+
+/* Functions for reading from parameter file */
+
+
+/*! MHD parameters */
+struct mhd_global_data {
+  float mhd_eta;
+};
+
+/* Functions for reading from parameter file */
+static INLINE void mhd_init(struct swift_params *params,
+                            const struct unit_system *us,
+                            const struct phys_const *phys_const,
+                            struct mhd_global_data *mhd) {
+
+  /* Read the mhd parameters from the file, if they exist,
+   * otherwise set them to the defaults defined above. */
+
+  mhd->mhd_eta = parser_get_param_float(params, "MHD:resistive_eta",mhd_propos_default_resistive_eta);
+}
+
+/**
+ * @brief Prints out the MHD parameters at the start of a run.
+ *
+ * @param mhd: pointer to the mhd_global_data struct found in
+ *                   hydro_properties
+ **/
+static INLINE void mhd_print(const struct mhd_global_data *mhd) {
+
+  message("MHD global Resistive Eta: %.3f", mhd->mhd_eta);
+}
+
+#if defined(HAVE_HDF5)
+/**
+ * @brief Prints the MHD information to the snapshot when writing.
+ *
+ * @param h_grpsph: the SPH group in the ICs to write attributes to.
+ * @param mhd_data: pointer to the mhd_global_data struct.
+ **/
+static INLINE void mhd_print_snapshot(hid_t h_grpsph,
+                                      const struct mhd_global_data *mhd_data) {
+
+  io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
+  io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
+}
+#endif
+
+/* END MHD variables ------------------------------------------*/
 
 #endif /* SWIFT_MAGMA_HYDRO_PARAMETERS_H */

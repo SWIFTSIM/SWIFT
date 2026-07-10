@@ -68,10 +68,6 @@ struct mhd_global_data {
 
 /* Functions for reading from parameter file */
 
-/* Forward declartions */
-// struct swift_params;
-// struct phys_const;
-// struct unit_system;
 
 /* Viscosity */
 
