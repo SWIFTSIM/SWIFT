@@ -18,6 +18,7 @@
  ******************************************************************************/
 #ifndef SWIFT_MAGMA_HYDRO_IACT_H
 #define SWIFT_MAGMA_HYDRO_IACT_H
+#define USE_STANDARD_KERNEL_GRADIENTS 1
 
 /**
  * @file MAGMA/hydro_part.h
