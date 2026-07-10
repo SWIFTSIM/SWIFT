@@ -574,7 +574,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   
   const float plasma_beta_i = pi->mhd.plasma_beta_rms;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  //const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
   const float t_corr = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
 
@@ -635,13 +634,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float vsig_AR = pi->h *
       0.5f * (pi->mhd.Alfven_speed + pj->mhd.Alfven_speed );
 
-  //const float rhoij = 0.5f * (rhoi + rhoj);
-  //const float rhoij2 = rhoij * rhoij;
-  //const float rhoij2_inv = 1.0f / rhoij2;
-
   const float art_diff_pref = alpha_AR * vsig_AR * rho_term_PR * norm_sum_G;
   for (int k = 0; k < 3; k++) 
      pi->mhd.B_over_rho_dt[k] += mj * art_diff_pref * dB[k];
+  
+  pi->u_dt -=
+      0.5f * permeability_inv * mj * art_diff_pref * dB_2;
+
   /* END MHD variables ------------------------------------------*/
 }
 

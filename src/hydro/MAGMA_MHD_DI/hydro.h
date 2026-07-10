@@ -634,7 +634,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
 __attribute__((always_inline)) INLINE static float hydro_get_div_v(
     const struct part *p) {
 
-  return 0.;
+  const float divV = p->force.gradient_vx[0]+ p->force.gradient_vy[1]+ p->force.gradient_vz[2];
+  return divV;
 }
 
 /**
@@ -1237,29 +1238,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
       p->mhd.B_over_rho[0]*p->force.gradient_vz[0]+
       p->mhd.B_over_rho[1]*p->force.gradient_vz[1]+
       p->mhd.B_over_rho[2]*p->force.gradient_vz[2];
-  /*const float divV = 
-  p->force.gradient_vx[0]+
-  p->force.gradient_vy[1]+
-  p->force.gradient_vz[2];
-
-  p->mhd.B_over_rho_dt[0] -=
-      divV * p->mhd.B_over_rho[0];
-  p->mhd.B_over_rho_dt[1] -=
-      divV * p->mhd.B_over_rho[1];
-  p->mhd.B_over_rho_dt[2] -=
-      divV * p->mhd.B_over_rho[2];*/
- /*
-  const float plasma_beta_i = p->mhd.plasma_beta_rms;
-  const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
-
-  for (int i = 0; i < 3; i++){
-     p->a_hydro[i] += 1.f / (mu_0) * ( 
-        p->mhd.B_over_rho[0] * p->mhd.grad_B_tensor[i][0] +
-        p->mhd.B_over_rho[1] * p->mhd.grad_B_tensor[i][1] +
-        p->mhd.B_over_rho[2] * p->mhd.grad_B_tensor[i][2]
-        - tensile_correction_scale_i * p->mhd.divB * p->mhd.B_over_rho[i]);
- }*/ 
   /* END MHD variables -------------------------------------------*/
 }
 
