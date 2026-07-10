@@ -207,14 +207,16 @@ static INLINE void diffusion_print_snapshot(
 #define mhd_props_artificial_diffusion_beta 1.0f
 
 /* Prefactor for per time-step change in B constraint */
-#define mhd_props_default_dt_deltaB_prefactor FLT_MAX
+//#define mhd_props_default_dt_deltaB_prefactor FLT_MAX
+#define mhd_props_default_dt_deltaB_prefactor 0.125f
 
 /* Prefactor for per time-step change in psi constraint */
-#define mhd_props_default_dt_deltaPsi_prefactor FLT_MAX
+#define mhd_props_default_dt_deltaPsi_prefactor 1.0f
 
 /* Default ratio of specific energy in psi to specific energy in B beyond which
  * per time-step change in psi constraint is applied */
-#define mhd_props_default_R_ePsi_to_eB FLT_MAX
+//#define mhd_props_default_R_ePsi_to_eB FLT_MAX
+#define mhd_props_default_R_ePsi_to_eB 0.0078
 
 /* Structs that store the relevant variables */
 
