@@ -552,63 +552,64 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   dB[1] = Bi[1] - Bj[1];
   dB[2] = Bi[2] - Bj[2];
   
-  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
-  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
-
   const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
   
-  const float psi_over_ch_i = pi->mhd.psi_over_ch;
-  const float psi_over_ch_j = pj->mhd.psi_over_ch;
-
+  float mm_i[3][3], mm_j[3][3];
+  
   const float permeability_inv = 1.0f / mu_0;
+  //const float mhd_comoving_factor = 3.f;
+  //const float a_fac =
+  //    pow(a, 2.f * mhd_comoving_factor + 3.f * (hydro_gamma - 1.f));
 
-  /* B dot r. */
-  //const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
-  //const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
-  const float Bri = Bi[0] * G_i[0] + Bi[1] * G_i[1] + Bi[2] * G_i[2];
-  const float Brj = Bj[0] * G_j[0] + Bj[1] * G_j[1] + Bj[2] * G_j[2];
-  
-  /* SPH acceleration term in x direction, i_th particle */
-  float sph_acc_term_i[3] = {0.f, 0.f, 0.f};
-  
-  /* Compute gradient terms */
-  const float over_rho2_i = 1.0f / (rhoi * rhoi);
-  const float over_rho2_j = 1.0f / (rhoj * rhoj);
-  
-  for (int k = 0; k < 3; k++) {
-  /* Isotropic MHD pressure term */
-  sph_acc_term_i[k] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * G_i[k];
-  sph_acc_term_i[k] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * G_j[k];
-  /* Anisotropic MHD term */
-  sph_acc_term_i[k] -= 1.f *
-       over_rho2_i * permeability_inv * Bri * Bi[k];
-  sph_acc_term_i[k] -= 1.f *
-       over_rho2_j * permeability_inv * Brj * Bj[k];
-  }  
-  /* monopole cleaning term */
-  const float monopole_beta = 1.f * pi->mhd.monopole_beta;
-
-  const float plasma_beta_i = pi->mhd.plasma_beta_rms;
-  const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
-  
-  for (int k = 0; k < 3; k++) {
-  sph_acc_term_i[k] += monopole_beta * over_rho2_i * permeability_inv *
-                       Bri * Bi[k] * tensile_correction_scale_i;
-  sph_acc_term_i[k] += monopole_beta * over_rho2_j * permeability_inv *
-                       Brj * Bi[k] * tensile_correction_scale_i;
+ ///////////////////////////// FORCE MAXWELL TENSOR
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) {
+      mm_i[i][j] = Bi[i] * Bi[j];
+      mm_j[i][j] = Bj[i] * Bj[j];
+    }
+  for (int j = 0; j < 3; j++) {
+    mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
+    mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
   
-  /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
-  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
-  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
-  
+  const float plasma_beta_i = pi->mhd.plasma_beta_rms;
+  const float scale_i = 0.125f * (10.0f - plasma_beta_i);
+  //const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  const float t_corr = fmaxf(0.0f, fminf(scale_i, 1.0f));
+
+
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) {
+      pi->a_hydro[i] +=
+          mj * (mm_i[i][j] * G_i[j] + mm_j[i][j] * G_j[j]) / (mu_0 * rhoi * rhoj);
+      pi->a_hydro[i] -= mj * Bi[i] * t_corr *
+                        (Bi[j] * G_i[j]+ Bj[j] * G_j[j]) / (mu_0 * rhoi * rhoj);
+    }
+
   /* Induction Equation*/
+  /////////////////////////// DIRECT INDUCTION
+  // comoving integration>
+  //const float mag_Indi = wi_dr * r_inv / rhoi;
+  //const float mag_Disi = (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
+  //const float psi_i = pi->mhd.psi_over_ch * pi->mhd.v_sig * 0.f;
+  //const float psi_j = pj->mhd.psi_over_ch * pj->mhd.v_sig * 0.f;
+/*  for (int i = 0; i < 3; i++) {
+    pi->mhd.B_over_rho_dt[i] +=
+        mj / (rhoi * rhoi) *
+        ((Bi[i] * v_ij[(i + 1) % 3] - Bi[(i + 1) % 3] * v_ij[i]) * G_i[(i + 1) % 3] +
+         (Bi[i] * v_ij[(i + 2) % 3] - Bi[(i + 2) % 3] * v_ij[i]) * G_i[(i + 2) % 3]);
+    pi->mhd.B_over_rho_dt[i] +=  mj / (rhoi * rhoi) * a * a *
+                            (psi_i - psi_j) * G_i[i];
+ // pi->mhd_data.dBdt[i] +=
+ //     mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * (Bi[i] - Bj[i]);
+  }
+ */ 
+ /* Induction Equation*/
+  const float over_rho2_i = 1.0f / (rhoi * rhoi);
+
   const float dB_dt_pref_i = over_rho2_i;
 
+  const float Bri = Bi[0] * G_i[0] + Bi[1] * G_i[1] + Bi[2] * G_i[2];
   /* */
   float dB_dt_i[3];
   dB_dt_i[0] = -Bri * v_ij[0];
@@ -618,9 +619,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->mhd.B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
   pi->mhd.B_over_rho_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
   pi->mhd.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
-  
+
+
   /* Physical resistivity */
-  const float resistive_eta_i = pi->mhd.resistive_eta;
+  const float resistive_eta_i = 1.f * pi->mhd.resistive_eta;
 
   const float rho_term_PR = 1.0f / (rhoi * rhoj);
 
@@ -633,27 +635,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   
   pi->u_dt -=
       0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;
-
-  /* Artificial resistivity */
-  const float alpha_AR = 0.0f * (pi->mhd.alpha_AR + pj->mhd.alpha_AR);
-
-  const float vsig_AR =
-      0.5f * (pi->mhd.Alfven_speed + pj->mhd.Alfven_speed);
   
-  const float art_diff_pref = alpha_AR * vsig_AR * 4.0 * rho_term_PR * rho_term_PR *norm_sum_G;
-  
-  pi->mhd.B_over_rho_dt[0] += mj * art_diff_pref * dB[0];
-  pi->mhd.B_over_rho_dt[1] += mj * art_diff_pref * dB[1];
-  pi->mhd.B_over_rho_dt[2] += mj * art_diff_pref * dB[2];
-  
-  /* Dedner cleaning */ //BAD
-  const float vsig_Dedner_i = 0.0f * pi->mhd.v_sig;
-  const float vsig_Dedner_j = 0.0f * pj->mhd.v_sig;
-
-  for (int k = 0; k < 3; k++) {
-     pi->mhd.B_over_rho_dt[k] -= mj * (G_i[k] * psi_over_ch_i * vsig_Dedner_i * over_rho2_i + 
-  				       G_j[k] * psi_over_ch_j * vsig_Dedner_j * over_rho2_j);
-  } 
 
   /* END MHD variables ------------------------------------------*/
 }

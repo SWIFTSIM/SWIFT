@@ -1222,8 +1222,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
       Hubble_induction_pref * p->mhd.B_over_rho[1];
   p->mhd.B_over_rho_dt[2] +=
       Hubble_induction_pref * p->mhd.B_over_rho[2];
- 
-  /*const float plasma_beta_i = p->mhd.plasma_beta_rms;
+ /*
+  const float plasma_beta_i = p->mhd.plasma_beta_rms;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
