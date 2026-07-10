@@ -591,21 +591,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   // comoving integration>
   //const float mag_Indi = wi_dr * r_inv / rhoi;
   //const float mag_Disi = (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
-  /*const float psi_i = pi->mhd.psi_over_ch * pi->mhd.v_sig * 1.f;
-  const float psi_j = pj->mhd.psi_over_ch * pj->mhd.v_sig * 1.f;
+  const float psi_i = pi->mhd.psi_over_ch * pi->mhd.v_sig * 0.f;
+  const float psi_j = pj->mhd.psi_over_ch * pj->mhd.v_sig * 0.f;
   for (int i = 0; i < 3; i++) {
-    pi->mhd.B_over_rho_dt[i] +=
-        mj / (rhoi * rhoi) *
-        ((Bi[i] * v_ij[(i + 1) % 3] - Bi[(i + 1) % 3] * v_ij[i]) * G_i[(i + 1) % 3] +
-         (Bi[i] * v_ij[(i + 2) % 3] - Bi[(i + 2) % 3] * v_ij[i]) * G_i[(i + 2) % 3]);
-    pi->mhd.B_over_rho_dt[i] +=  mj / (rhoi * rhoi) * a * a *
-                            (psi_i - psi_j) * G_i[i];
+     pi->mhd.B_over_rho_dt[i] +=  mj * (psi_i/(rhoi * rhoi) * G_i[i] + psi_j/(rhoj*rhoj) * G_j[i]);
+     //pi->mhd.B_over_rho_dt[i] +=  mj * (psi_i-psi_j)/(rhoi * rhoi) * G_i[i];
  // pi->mhd_data.dBdt[i] +=
  //     mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * (Bi[i] - Bj[i]);
   }
-  */
+  
  /* Induction Equation*/
-  const float over_rho2_i = 1.0f / (rhoi * rhoi);
+/*  const float over_rho2_i = 1.0f / (rhoi * rhoi);
 
   const float dB_dt_pref_i = over_rho2_i;
 
@@ -618,9 +614,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->mhd.B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
   pi->mhd.B_over_rho_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
   pi->mhd.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
-
+*/
   /* Physical resistivity */
-  const float resistive_eta_i = 1.f * pi->mhd.resistive_eta;
+  const float resistive_eta_i = pi->mhd.resistive_eta;
 
   const float rho_term_PR = 1.0f / (rhoi * rhoj);
 
@@ -634,7 +630,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt -=
       0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;
   
+  const float alpha_AR = 0.0f * (pi->mhd.alpha_AR + pj->mhd.alpha_AR);
 
+  const float vsig_AR = pi->h *
+      0.5f * (pi->mhd.Alfven_speed + pj->mhd.Alfven_speed );
+
+  //const float rhoij = 0.5f * (rhoi + rhoj);
+  //const float rhoij2 = rhoij * rhoij;
+  //const float rhoij2_inv = 1.0f / rhoij2;
+
+  const float art_diff_pref = alpha_AR * vsig_AR * rho_term_PR * norm_sum_G;
+  for (int k = 0; k < 3; k++) 
+     pi->mhd.B_over_rho_dt[k] += mj * art_diff_pref * dB[k];
   /* END MHD variables ------------------------------------------*/
 }
 
