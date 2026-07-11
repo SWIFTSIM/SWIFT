@@ -627,18 +627,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Finish the construction of the inverse of the internal energy gradient
    * multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] *= h_inv_dim;
-
-  /* /\* Special case when there are no neighbours *\/ */
-  /* if (sym_matrix_is_null(&p->gradient.c_matrix_inv) || */
-  /*     sym_matrix_is_singular(&p->gradient.c_matrix_inv, p->id == 24026)) { */
-  /*   sym_matrix_identity(&p->gradient.c_matrix_inv); */
-  /*   message("ID=%lld matrix is treated for being weird!", p->id); */
-  /* } */
-
-  /* if (p->id == 24026) { */
-  /*   message("p->id=%lld c_matrix_inv:", p->id); */
-  /*   sym_matrix_print(&p->gradient.c_matrix_inv); */
-  /* } */
 }
 
 /**
@@ -716,8 +704,18 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     p->use_base_SPH = 1;
   }
 
+  /* The particle has h close to h_max
+   * --> Rever to base SPH, no reconstruction to the interface. */
   if (p->h > 0.99 * hydro_props->h_max) {
     p->use_base_SPH = 1;
+  }
+
+  /* Be verbose about this */
+  if (p->use_base_SPH) {
+    warning(
+        "Gas particle with ID %lld will use base SPH terms (h=%e h_max=%e)." p
+            ->id,
+        p->h, hydro_props->h_max);
   }
 
   /* Finish computation of velocity gradient (eq. 18) */
