@@ -39,6 +39,7 @@
 
 /* System includes */
 #include <string.h>
+#include <float.h>
 
 /**
  * @brief Returns the comoving internal energy of a particle at the last
@@ -419,7 +420,8 @@ hydro_diffusive_feedback_reset(struct part *p) {
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
+    const float mu_0) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
@@ -431,16 +433,112 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   /* Criterion based on acceleration (eq. 35) */
   const float c = p->force.soundspeed;
-  const float dt_Courant =
+  float dt_Courant =
       p->h / (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
+  
+  /* MHD variables ----------------------------------------------*/
+  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  const float afac_resistive = cosmo->a * cosmo->a;
+
+  float dt_divB =
+      p->mhd.divB != 0.0f
+          ? afac_divB *
+                sqrtf(p->rho / (p->mhd.divB * p->mhd.divB) * mu_0)
+          : FLT_MAX;
+  const float resistive_eta = p->mhd.resistive_eta;
+  const float dt_eta = resistive_eta != 0.0f
+                           ? afac_resistive * p->h * p->h / resistive_eta
+                           : FLT_MAX;
+  float dt_mhd = fminf(dt_eta, dt_divB);
+  
+  dt_Courant = fminf(dt_Courant, dt_mhd);
+
+  /* END MHD variables -------------------------------------------*/
 
   return CFL_condition * fminf(dt_acc, dt_Courant);
 }
 
 /**
+ * @brief Compute Alfven speed
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_comoving_Alfven_speed(const struct part *p, const float mu_0) {
+
+  /* Recover some data */
+  const float rho = p->rho;
+
+  /* B squared */
+  const float B2 = (p->mhd.BPred[0] * p->mhd.BPred[0] +
+                    p->mhd.BPred[1] * p->mhd.BPred[1] +
+                    p->mhd.BPred[2] * p->mhd.BPred[2]);
+
+  /* Square of Alfven speed */
+  const float vA2 = B2 / (mu_0 * rho);
+
+  return sqrtf(vA2);
+}
+
+/**
+ * @brief Compute magnetosonic speed
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_comoving_magnetosonic_speed(const struct part *p, const float mu_0) {
+
+  /* Compute fast magnetosonic speed, the Pythagorean addition of the sound
+   * speed and Alfven speed */
+  const float cs = hydro_get_comoving_soundspeed(p);
+  const float cs2 = cs * cs;
+
+  const float vA = mhd_get_comoving_Alfven_speed(p, mu_0);
+  const float vA2 = vA * vA;
+
+  const float cms2 = cs2 + vA2;
+
+  return sqrtf(cms2);
+}
+
+/**
+ * @brief Compute fast magnetosonic wave phase veolcity
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_comoving_fast_magnetosonic_wave_phase_velocity(const float dx[3],
+                                                       const struct part *p,
+                                                       const float a,
+                                                       const float mu_0) {
+
+  /* Get r and 1/r. */
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  /* Recover some data */
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd.BPred[0];
+  B[1] = p->mhd.BPred[1];
+  B[2] = p->mhd.BPred[2];
+
+  /* B dot r. */
+  const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
+  const float permeability_inv = 1.0f / mu_0;
+
+  /* Compute effective sound speeds */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float c_ms = mhd_get_comoving_magnetosonic_speed(p, mu_0);
+  const float c_ms2 = c_ms * c_ms;
+  const float projection_correction = c_ms2 * c_ms2 - 4.0f * permeability_inv *
+                                                          cs2 * Br * r_inv *
+                                                          Br * r_inv / rho;
+
+  const float v_fmsw2 = 0.5f * (c_ms2 + sqrtf(projection_correction));
+
+  return sqrtf(v_fmsw2);
+}
+
+/**
  * @brief Compute the signal velocity between two gas particles
  *
- * This is eq. (103) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
  *
  * @param dx Comoving vector separating both particles (pi - pj).
  * @brief pi The first #part.
@@ -451,12 +549,17 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  */
 __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
     const float dx[3], const struct part *pi, const struct part *pj,
-    const float mu_ij, const float beta) {
+    const float mu_ij, const float beta, const float mu_0) {
 
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
+  /* Compute pairwise MHD signal velocity,
+   * the sum of two particles' fast magnetosonic speeds
+   * (i.e. the Pythagorean addition of their sound speed and Alfven speed),
+   * and a von Neumann-type correction. */
 
-  return ci + cj - beta * mu_ij;
+  const float v_sigi = mhd_get_comoving_magnetosonic_speed(pi, mu_0);
+  const float v_sigj = mhd_get_comoving_magnetosonic_speed(pj, mu_0);
+
+  return v_sigi + v_sigj - beta * mu_ij;
 }
 
 /**
@@ -477,7 +580,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
 __attribute__((always_inline)) INLINE static float hydro_get_div_v(
     const struct part *p) {
 
-  return 0.;
+  const float divV = p->force.gradient_vx[0]+ p->force.gradient_vy[1]+ p->force.gradient_vz[2];
+  return divV;
 }
 
 /**
@@ -558,7 +662,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor) {}
+    const struct pressure_floor_props *pressure_floor, const float mu_0) {
+  /* MHD variables ----------------------------------------------*/
+  p->mhd.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+  /* END MHD variables ------------------------------------------*/
+  }
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.
@@ -577,6 +685,16 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] = 0.f;
+
+  /* MHD variables ----------------------------------------------*/
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      p->mhd.grad_A_tensor[i][j] = 0.0f;
+    }
+  }
+
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -591,7 +709,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part *p, const struct cosmology *cosmo,
-    const struct pressure_floor_props *pressure_floor) {
+    const struct pressure_floor_props *pressure_floor, const float mu_0) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -611,6 +729,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Finish the construction of the inverse of the internal energy gradient
    * multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] *= h_inv_dim;
+  
+  /* MHD variables ----------------------------------------------*/
+  
+  for (int i = 0; i < 3; ++i) 
+    for (int j = 0; j < 3; ++j) 
+      p->mhd.grad_A_tensor[i][j] *= h_inv_dim;
+
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -642,6 +768,13 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
+  
+  /* MHD variables ----------------------------------------------*/
+  
+  p->mhd.divB = 0.0f;
+  p->mhd.divA = 0.0f;
+  
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -692,6 +825,25 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Update other variables. */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+  
+  /* MHD variables ----------------------------------------------*/
+
+  /* Finish computation of Grad_B gradient (eq. 18) */
+  float tmp_Grad_in[3], tmp_Grad_out[3];
+  for (int i = 0; i < 3; i++){
+     for (int j = 0; j < 3; j++) 
+        tmp_Grad_in[j] = p->mhd.grad_A_tensor[i][j];
+     sym_matrix_multiply_by_vector(tmp_Grad_out, &p->force.c_matrix,
+                                tmp_Grad_in);
+     for (int j = 0; j < 3; j++) 
+	p->mhd.grad_A_tensor[i][j] = tmp_Grad_out[j] ;
+  }
+  p->mhd.divA = p->mhd.grad_A_tensor[0][0] + p->mhd.grad_A_tensor[1][1] + p->mhd.grad_A_tensor[2][2];
+  p->mhd.BPred[0] = p->mhd.grad_A_tensor[2][1] - p->mhd.grad_A_tensor[1][2];
+  p->mhd.BPred[1] = p->mhd.grad_A_tensor[0][2] - p->mhd.grad_A_tensor[2][0];
+  p->mhd.BPred[2] = p->mhd.grad_A_tensor[1][0] - p->mhd.grad_A_tensor[0][1];
+
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -714,6 +866,17 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
   p->force.mu_tilde = 0.0f;
+  
+  /* MHD variables ----------------------------------------------*/
+  
+  /* Zero the fields updated by the mhd force loop */
+
+  p->mhd.dAdt[0] = 0.0f;
+  p->mhd.dAdt[1] = 0.0f;
+  p->mhd.dAdt[2] = 0.0f;
+  p->mhd.divB = 0.f;
+
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -726,7 +889,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
-    const struct pressure_floor_props *pressure_floor) {
+    const struct pressure_floor_props *pressure_floor, const float mu_0) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -745,6 +908,22 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Update variables */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* MHD variables ----------------------------------------------*/
+
+  /* Re-set the predicted magnetic flux densities */
+  p->mhd.APred[0] = xp->mhd.A_full[0];
+  p->mhd.APred[1] = xp->mhd.A_full[1];
+  p->mhd.APred[2] = xp->mhd.A_full[2];
+
+  p->mhd.Gau = xp->mhd.Gau_full;
+  
+  p->mhd.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+  /* Re-set MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p, mu_0);
+  p->mhd.v_sig = fmaxf(p->mhd.v_sig, 2.0f * cms);
+  
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -770,7 +949,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     float dt_kick_grav, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
-    const struct pressure_floor_props *pressure_floor) {
+    const struct pressure_floor_props *pressure_floor, const float mu_0) {
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
@@ -812,6 +991,22 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* MHD variables ----------------------------------------------*/
+
+  /* Predict the magnetic flux density */
+  p->mhd.APred[0] += p->mhd.dAdt[0] * dt_therm;
+  p->mhd.APred[1] += p->mhd.dAdt[1] * dt_therm;
+  p->mhd.APred[2] += p->mhd.dAdt[2] * dt_therm;
+
+  p->mhd.Gau += p->mhd.Gau_dt * dt_therm;
+  
+  p->mhd.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+  /* Initialise MHD signal velocity */
+  const float cms = mhd_get_comoving_magnetosonic_speed(p, mu_0);
+  p->mhd.v_sig = fmaxf(p->mhd.v_sig, 2.0f * cms);
+  
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -827,9 +1022,32 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part *p, const struct cosmology *cosmo) {
+    struct part *p, const struct cosmology *cosmo, const struct hydro_props * hydro_props, 
+    const float mu_0) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
+  
+  /* MHD variables ----------------------------------------------*/
+  
+  /* Hubble expansion contribution to induction equation */
+  float a_fac = (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
+  p->mhd.dAdt[0] -= a_fac * p->mhd.APred[0];
+  p->mhd.dAdt[1] -= a_fac * p->mhd.APred[1];
+  p->mhd.dAdt[2] -= a_fac * p->mhd.APred[2];
+
+  p->mhd.dAdt[0] -=
+      p->mhd.APred[0]*p->force.gradient_vx[0]+
+      p->mhd.APred[1]*p->force.gradient_vy[0]+
+      p->mhd.APred[2]*p->force.gradient_vz[0];
+  p->mhd.dAdt[1] -=
+      p->mhd.APred[0]*p->force.gradient_vx[1]+
+      p->mhd.APred[1]*p->force.gradient_vy[1]+
+      p->mhd.APred[2]*p->force.gradient_vz[1];
+  p->mhd.dAdt[2] -=
+      p->mhd.APred[0]*p->force.gradient_vx[2]+
+      p->mhd.APred[1]*p->force.gradient_vy[2]+
+      p->mhd.APred[2]*p->force.gradient_vz[2];
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -876,6 +1094,17 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->u_full = energy_min;
     p->u_dt = 0.f;
   }
+  
+  /* MHD variables ----------------------------------------------*/
+  
+  /* Integrate the magnetic flux density forward in time */
+  xp->mhd.A_full[0] += p->mhd.dAdt[0] * dt_therm;
+  xp->mhd.A_full[1] += p->mhd.dAdt[1] * dt_therm;
+  xp->mhd.A_full[2] += p->mhd.dAdt[2] * dt_therm;
+
+  xp->mhd.Gau_full += p->mhd.Gau_dt * dt_therm;
+
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -890,11 +1119,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param xp The extended particle to act upon
  * @param cosmo The cosmological model.
  * @param hydro_props The constants used in the scheme.
+ * @param mu_0 Vacuum permeability constant
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor) {
+    const struct pressure_floor_props *pressure_floor, const float mu_0) {
 
   /* Convert the physcial internal energy to the comoving one. */
   /* u' = a^(3(g-1)) u */
@@ -919,6 +1149,24 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* MHD variables ----------------------------------------------*/
+  
+  const float a_fact = pow(cosmo->a, -mhd_comoving_factor - 1.f);
+  /* Set Restitivity Eta */
+  p->mhd.resistive_eta = hydro_props->mhd.mhd_eta;
+  
+  p->mhd.APred[0] *= a_fact;
+  p->mhd.APred[1] *= a_fact;
+  p->mhd.APred[2] *= a_fact;
+  /* Full Step */
+  xp->mhd.A_full[0] = p->mhd.APred[0];
+  xp->mhd.A_full[1] = p->mhd.APred[1];
+  xp->mhd.A_full[2] = p->mhd.APred[2];
+
+  /* Instantiate Alfven speed */
+  p->mhd.Alfven_speed = mhd_get_comoving_Alfven_speed(p, mu_0);
+  /* END MHD variables -------------------------------------------*/
 }
 
 /**
@@ -939,6 +1187,13 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
+  
+  /* MHD variables ----------------------------------------------*/
+  xp->mhd.Gau_full = 0.0f;
+  p->mhd.Gau = 0.0f;
+  p->mhd.divB = 0.0f;
+  p->mhd.divA = 0.0f;
+  /* END MHD variables -------------------------------------------*/
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

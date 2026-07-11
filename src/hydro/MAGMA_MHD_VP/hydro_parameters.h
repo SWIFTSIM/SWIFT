@@ -218,7 +218,7 @@ static INLINE void mhd_init(struct swift_params *params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  mhd->mhd_eta = parser_get_param_float(params, "MHD:resistive_eta",mhd_propos_default_resistive_eta);
+  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:resistive_eta",mhd_propos_default_resistive_eta);
 }
 
 /**

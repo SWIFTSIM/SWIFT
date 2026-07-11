@@ -166,6 +166,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->gradient.gradient_u[0] -= common_term * uij * dx[0];
   pi->gradient.gradient_u[1] -= common_term * uij * dx[1];
   pi->gradient.gradient_u[2] -= common_term * uij * dx[2];
+
+  /* MHD variables ----------------------------------------------*/
+  float Ai[3], Aj[3];
+  for (int k = 0; k < 3; k++) {
+    Ai[k] = pi->mhd.APred[k];
+    Aj[k] = pj->mhd.APred[k];
+  }
+  
+  float dA[3];
+  for (int i = 0; i < 3; ++i) dA[i] = Ai[i] - Aj[i];
+  
+  /* Compute local plasma beta mean square */
+  
+  pi->mhd.grad_A_tensor[0][0] -= common_term * dA[0] * dx[0];
+  pi->mhd.grad_A_tensor[0][1] -= common_term * dA[0] * dx[1];
+  pi->mhd.grad_A_tensor[0][2] -= common_term * dA[0] * dx[2];
+  
+  pi->mhd.grad_A_tensor[1][0] -= common_term * dA[1] * dx[0];
+  pi->mhd.grad_A_tensor[1][1] -= common_term * dA[1] * dx[1];
+  pi->mhd.grad_A_tensor[1][2] -= common_term * dA[1] * dx[2];
+  
+  pi->mhd.grad_A_tensor[2][0] -= common_term * dA[2] * dx[0];
+  pi->mhd.grad_A_tensor[2][1] -= common_term * dA[2] * dx[1];
+  pi->mhd.grad_A_tensor[2][2] -= common_term * dA[2] * dx[2];
+  
+  /* END MHD variables ------------------------------------------*/
 }
 
 /**
@@ -500,6 +526,56 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.mu_tilde = max(pi->force.mu_tilde, mu_tilde_i);
+  
+  /* MHD variables ----------------------------------------------*/
+  float Bi[3], Bj[3];//, dB[3];
+  
+  Bi[0] = pi->mhd.BPred[0];
+  Bi[1] = pi->mhd.BPred[1];
+  Bi[2] = pi->mhd.BPred[2];
+  Bj[0] = pj->mhd.BPred[0];
+  Bj[1] = pj->mhd.BPred[1];
+  Bj[2] = pj->mhd.BPred[2];
+  
+  //dB[0] = Bi[0] - Bj[0];
+  //dB[1] = Bi[1] - Bj[1];
+  //dB[2] = Bi[2] - Bj[2];
+  
+  //const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
+  
+  float mm_i[3][3], mm_j[3][3];
+  
+  //const float permeability_inv = 1.0f / mu_0;
+  //const float mhd_comoving_factor = 3.f;
+  //const float a_fac =
+  //    pow(a, 2.f * mhd_comoving_factor + 3.f * (hydro_gamma - 1.f));
+
+ ///////////////////////////// FORCE MAXWELL TENSOR
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) {
+      mm_i[i][j] = Bi[i] * Bi[j];
+      mm_j[i][j] = Bj[i] * Bj[j];
+    }
+  for (int j = 0; j < 3; j++) {
+    mm_i[j][j] -= 0.5 * (Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2]);
+    mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
+  }
+  
+  const float plasma_beta_i = pressurei/
+  	sqrt((Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2])/rhoi/mu_0);
+  ;
+  const float scale_i = 0.125f * (10.0f - plasma_beta_i);
+  const float t_corr = fmaxf(0.0f, fminf(scale_i, 1.0f));
+
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) {
+      pi->a_hydro[i] +=
+          mj * (mm_i[i][j] * G_i[j]/(rhoi*rhoi) + mm_j[i][j] * G_j[j]/(rhoj*rhoj)) / (mu_0);
+      pi->a_hydro[i] -= mj * Bi[i] * t_corr *
+                        (Bi[j] * G_i[j]/(rhoi*rhoi)+ Bj[j] * G_j[j]/rhoj/rhoj) / (mu_0);
+    }
+
+  /* Induction Equation*/
 }
 
 /**
