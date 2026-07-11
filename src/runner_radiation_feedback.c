@@ -585,12 +585,15 @@ void runner_dopair_stars_hii_ionization_feedback(
   const float dx_max = cj->hydro.dx_max_sort + ci->stars.dx_max_sort;
 
   /* Project the star onto the sorting axis.
-   * We follow the SWIFT paradigm: shift the star to bring it into cj's frame,
-   * then project along the runner_shift axis. */
-  const double shift_sign = flipped ? -1.0 : 1.0;
-  const double pix[3] = {si->x[0] + shift_sign * shift[0],
-                         si->x[1] + shift_sign * shift[1],
-                         si->x[2] + shift_sign * shift[2]};
+   * The gas particle projections (sort_j[].d) and the r2 distances below both
+   * use ABSOLUTE gas positions (pj->x), so the star must be expressed in that
+   * same absolute frame: the periodic shift brings cj adjacent to ci, hence a
+   * gas particle at pj->x sits at effective position pj->x + shift, and the
+   * correct minimum-image separation is (si->x - shift) - pj->x. The star is
+   * therefore ALWAYS shifted by -shift, independent of `flipped` (which only
+   * selects the sorted-scan direction below). */
+  const double pix[3] = {si->x[0] - shift[0], si->x[1] - shift[1],
+                         si->x[2] - shift[2]};
 
   double di_star = 0.0;
   for (int k = 0; k < 3; k++) {
@@ -698,11 +701,16 @@ __attribute__((always_inline)) INLINE int runner_hii_check_cell_can_be_reached(
 
   const float dx_max = cj->hydro.dx_max_sort + ci->stars.dx_max_sort;
 
-  /* Project the star onto the sorting axis, applying periodic shift */
-  const double shift_sign = flipped ? -1.0 : 1.0;
-  const double pix[3] = {si->x[0] + shift_sign * shift[0],
-                         si->x[1] + shift_sign * shift[1],
-                         si->x[2] + shift_sign * shift[2]};
+  /* Project the star onto the sorting axis. The cell extent below (dj_min/
+   * dj_max) is built from cj's ABSOLUTE geometry (cj->loc), so the star must
+   * be expressed in that same absolute frame: shift brings cj adjacent to ci,
+   * hence the star is ALWAYS shifted by -shift, independent of `flipped`.
+   * (Must match the identical convention in
+   * runner_dopair_stars_hii_ionization_feedback; a flipped-dependent sign here
+   * offsets the reach window by 2*shift and wrongly skips wrapped neighbours.)
+   */
+  const double pix[3] = {si->x[0] - shift[0], si->x[1] - shift[1],
+                         si->x[2] - shift[2]};
 
   double di_star = 0.0;
   for (int k = 0; k < 3; k++) {
