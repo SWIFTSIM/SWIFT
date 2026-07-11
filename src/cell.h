@@ -615,6 +615,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                             const int with_star_formation,
                             const int with_star_formation_sink);
+int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
+                                const int with_star_formation,
+                                const int with_star_formation_sink);
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                          const int sub_cycle);
@@ -1379,8 +1382,8 @@ cell_need_rebuild_for_radiation_pair(const struct cell *ci,
                                      const struct cell *cj) {
 
   /* Note ci->dmin == cj->dmin */
-  if (kernel_gamma * max3(ci->stars.h_hii_max, ci->stars.h_max,
-                          cj->hydro.h_max) +
+  if (kernel_gamma *
+              max3(ci->stars.h_hii_max, ci->stars.h_max, cj->hydro.h_max) +
           ci->stars.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {
     return 1;

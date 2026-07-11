@@ -1231,10 +1231,22 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
           sp->mass, us, phys_const);
 
-  /* message("[%lld, %d, %e] N_dot_ion = %e, L_bol = %e", */
-  /* 	   sp->id, sp->star_type, sp->mass, */
-  /* 	  sp->feedback_data.radiation.dot_N_ion,
-   * sp->feedback_data.radiation.L_bol); */
+#ifdef IONIZATION_FEEDBACK_DEBUG_NDOT_MULTIPLIER
+  /* Debug-only: artificially boost the photon budget so h_hii grows much
+   * faster/farther within the star's lifetime, making any directional
+   * (e.g. corner) reach bias in the neighbour search much more obvious to
+   * spot than the small, slow growth the real photon rate gives. */
+  sp->feedback_data.radiation.dot_N_ion *=
+      (double)IONIZATION_FEEDBACK_DEBUG_NDOT_MULTIPLIER;
+#endif
+
+  message(
+      "[id=%lld, type=%d] mass = %e Msun, N_dot_ion = %e /s, L_bol = %e "
+      "internal",
+      sp->id, sp->star_type, sp->mass / phys_const->const_solar_mass,
+      sp->feedback_data.radiation.dot_N_ion *
+          units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
+      sp->feedback_data.radiation.L_bol);
 
   /*****************************************/
   /* Stellar winds */

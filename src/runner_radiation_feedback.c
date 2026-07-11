@@ -151,7 +151,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
   const double time = e->time;
-  
+
   struct spart *restrict sparts = c->stars.parts;
   const int scount = c->stars.count;
 
@@ -173,7 +173,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     if (spart_is_inhibited(si, e)) continue;
     if (!spart_is_active(si, e)) continue;
     if (!feedback_is_HII_ionization_active(si, e)) continue;
-    message("Star %lld can do ionization! r_hii = %e", si->id, si->h_hii*kernel_gamma);
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
     if (si->ti_drift != ti_current)
@@ -276,15 +275,14 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     /*****************************************/
     /* Update the star after HII ionization */
 
-    /* TODO: Move into a function */    
+    /* TODO: Move into a function */
     if (feedback_is_HII_ionization_active(si, e)) {
       /* Compute the times */
       double star_age_beg_step = 0;
-      double dt_enrichment = 0;    
+      double dt_enrichment = 0;
       integertime_t ti_begin = 0;
-      compute_time(si, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-		   &ti_begin, ti_current, time_base, time);
-    
+      compute_time(si, with_cosmology, cosmo, &star_age_beg_step,
+                   &dt_enrichment, &ti_begin, ti_current, time_base, time);
 
       /* Log when this HII region was (re)built */
       si->feedback_data.radiation.HII_region_last_rebuild = star_age_beg_step;
@@ -292,7 +290,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 #ifdef SWIFT_DEBUG_CHECKS
     if (feedback_get_star_ionization_rate(si) <= 0.0) {
       message("Star %lld has exhausted all its ionizing photons! r_hii = %e",
-	      si->id, si->h_hii*kernel_gamma);
+              si->id, si->h_hii * kernel_gamma);
     } else {
       message(
           "Star %lld has NOT exhausted all its ionizing photons! Remaining: "
@@ -359,28 +357,47 @@ void runner_do_stars_hii_ionization_feedback_branch(
     /* Let's first lock the cell */
     lock_lock(&cj->hydro.extra_sort_lock);
 
-    const int is_sorted =
-        (cj->hydro.sorted & (1 << sid)) &&
-        (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
+    /* The sorted-window prune is only a pre-filter: it projects gas and star
+     * onto runner_shift[use_sid] (unit vector) and keeps particles within the
+     * [di_min, di_max] slab; the exact r2 < search_radius^2 test inside the
+     * dopair then decides ionization. Since the projection difference never
+     * exceeds the 3D distance, the slab is conservative for ANY of the 13
+     * sids, so the ionized set is invariant to which sid we use -- only speed
+     * changes. We therefore prefer the carried coarse sid, but if cj is not
+     * sorted along it (the common case for a progeny leaf, whose own pair
+     * tasks use different sub-sids) we fall back to ANY sid cj is sorted
+     * along rather than to the O(N) naive search. The freshness gate
+     * (dx_max_sort_old) is per-cell, hence valid for any sid. */
+    int use_sid = -1;
+    int use_flipped = flipped;
+    if (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin) {
+      if (cj->hydro.sorted & (1 << sid)) {
+        use_sid = sid; /* keep flipped: preserves near-end early-start */
+      } else {
+        for (int s = 0; s < 13; s++) {
+          if (cj->hydro.sorted & (1 << s)) {
+            use_sid = s;
+            use_flipped = 0; /* forward scan is valid for any sorted sid */
+            break;
+          }
+        }
+      }
+    }
 
-    /* Unlock if it wasn't sorted as we will not use the sort array */
+    /* Unlock now that we have read the sort state. */
     if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
       error("Impossible to unlock cell!");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
-    const int force_naive = 1;
-#else
-    const int force_naive = 0;
+    use_sid = -1; /* force the naive path */
 #endif
-    if (force_naive || !is_sorted) {
-      message("[%lld, %lld] Doing naive interaction! %i", ci->cellID,
-              cj->cellID, cj->hydro.sorted & (1 << sid));
+    if (use_sid < 0) {
       runner_dopair_naive_stars_hii_ionization_feedback(
           r, ci, cj, shift, si, search_radius, ngb_buffer, max_size,
           count_found);
     } else {
       runner_dopair_stars_hii_ionization_feedback(
-          r, ci, cj, sid, flipped, shift, si, search_radius, ngb_buffer,
+          r, ci, cj, use_sid, use_flipped, shift, si, search_radius, ngb_buffer,
           max_size, count_found);
     }
   }

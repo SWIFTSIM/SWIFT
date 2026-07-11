@@ -3680,6 +3680,21 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
       engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
       engine_addlink(e, &cj->stars.radiation_out, t_star_radiation_out);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Invariant: a radiation_in PAIR must connect two DISTINCT
+       * radiation_level regions. If ci and cj share a radiation_level, both
+       * sides below wire the SAME hii_ionization_feedback / drift tasks ->
+       * duplicate unlocks (otherwise only caught cryptically, and late, in
+       * scheduler_set_unlocks). This fires the moment a radiation pair is left
+       * below radiation_level -- e.g. an intra-cell sub-pair, or a neighbour
+       * pair split past where the self task stopped. */
+      if (ci->stars.radiation_level == cj->stars.radiation_level)
+        error(
+            "radiation_in pair shares radiation_level (depth %d): "
+            "ci depth=%d cj depth=%d",
+            ci->stars.radiation_level->depth, ci->depth, cj->depth);
+#endif
+
       /* ci and cj are distinct radiation_level cells with disjoint
        * subtrees, so the per-hydro.super wiring for each side never
        * produces duplicate unlocks. Each side is wired only if local. */
@@ -3713,8 +3728,7 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
                                          with_cooling);
 
         scheduler_addunlock(
-            sched, t,
-            cj->stars.radiation_level->stars.hii_ionization_feedback);
+            sched, t, cj->stars.radiation_level->stars.hii_ionization_feedback);
 
         scheduler_addunlock(
             sched, cj->stars.radiation_level->stars.hii_ionization_feedback,

@@ -336,55 +336,36 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
 
       /* Is this cell even split and the task does not violate h ? */
       if (cell_can_split_self_radiation_subgrid_task(ci)) {
-        /* Make a sub? */
-        if (scheduler_dosub && (ci->hydro.count < space_subsize_self_hydro) &&
-            (ci->stars.count < space_subsize_self_stars)) {
+        /* Radiation splits PURELY on the geometric criterion down to
+         * radiation_level -- no size-based (space_subsize) gate. Descend by
+         * recycling this self task into sub-self tasks over the progeny.
+         *
+         * Crucially, we do NOT create the internal progeny-pair tasks that
+         * hydro/stars build here. The single hii_ionization_feedback task at
+         * radiation_level already covers a cell's whole subtree: its flat
+         * radiation_in walk hits the self entry, and runner_doself iterates
+         * over ALL of the cell's gas (parts are stored contiguously for the
+         * whole subtree). Intra-cell pair tasks below radiation_level would
+         * therefore never appear in that flat walk -- they are dead work, and
+         * (sharing a coarser radiation_level with their siblings) were the
+         * source of duplicate dependency unlocks at gas_mass=0.01. */
+        redo = 1;
 
-          /* Nothing to do here */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
 
-          /* Otherwise, make tasks explicitly. */
-        } else {
-          /* Take a step back (we're going to recycle the current task)... */
-          redo = 1;
+        t->ci = ci->progeny[first_child];
+        cell_set_flag(t->ci, cell_flag_has_tasks);
 
-          /* Add the self tasks. */
-          int first_child = 0;
-          while (ci->progeny[first_child] == NULL) first_child++;
-
-          t->ci = ci->progeny[first_child];
-          cell_set_flag(t->ci, cell_flag_has_tasks);
-
-          for (int k = first_child + 1; k < 8; k++) {
-            /* Do we have a non-empty progenitor? */
-            if (ci->progeny[k] != NULL &&
-                (ci->progeny[k]->hydro.count ||
-                 (with_stars && ci->progeny[k]->stars.count))) {
-              scheduler_splittask_radiation_subgrid(
-                  scheduler_addtask(s, task_type_self, t->subtype, 0, 1,
-                                    ci->progeny[k], NULL),
-                  s);
-            }
-          }
-
-          /* Make a task for each pair of progeny */
-          for (int j = 0; j < 8; j++) {
-            /* Do we have a non-empty progenitor? */
-            if (ci->progeny[j] != NULL &&
-                (ci->progeny[j]->hydro.count ||
-                 (with_feedback && ci->progeny[j]->stars.count))) {
-              for (int k = j + 1; k < 8; k++) {
-                /* Do we have a second non-empty progenitor? */
-                if (ci->progeny[k] != NULL &&
-                    (ci->progeny[k]->hydro.count ||
-                     (with_feedback && ci->progeny[k]->stars.count))) {
-                  scheduler_splittask_radiation_subgrid(
-                      scheduler_addtask(s, task_type_pair, t->subtype,
-                                        sub_sid_flag[j][k], 1, ci->progeny[j],
-                                        ci->progeny[k]),
-                      s);
-                }
-              }
-            }
+        for (int k = first_child + 1; k < 8; k++) {
+          /* Do we have a non-empty progenitor? */
+          if (ci->progeny[k] != NULL &&
+              (ci->progeny[k]->hydro.count ||
+               (with_stars && ci->progeny[k]->stars.count))) {
+            scheduler_splittask_radiation_subgrid(
+                scheduler_addtask(s, task_type_self, t->subtype, 0, 1,
+                                  ci->progeny[k], NULL),
+                s);
           }
         }
       }
@@ -413,78 +394,49 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
               t->flags);
 #endif
 
-      /* Should this task be split-up? */
+      /* Should this task be split-up? Radiation splits PURELY on the geometric
+       * criterion (cell_can_split_pair_radiation_subgrid_task, identical to the
+       * self criterion), so every radiation_in task -- self and pair alike --
+       * comes to rest at exactly the same level: radiation_level.
+       *
+       * We deliberately do NOT apply the size-based (do_sub / space_subsize)
+       * descent that hydro and stars use. The single hii_ionization_feedback
+       * task per radiation_level already walks the whole neighbour search, so
+       * task granularity BELOW radiation_level buys no parallelism -- and, more
+       * importantly, letting pairs descend below where the self task stops puts
+       * ci and cj under a shared, coarser radiation_level, which makes both
+       * sides wire the SAME hii_ionization_feedback / drift tasks -> duplicate
+       * unlocks (fatal under --enable-debugging-checks).
+       *
+       * We also do NOT force-split corner pairs (no !sort_is_corner(sid)):
+       * radiation's flat neighbour walk at radiation_level needs all 26
+       * neighbour pairs, corners included, to live AT radiation_level (dropping
+       * them below is the corner-miss bug). */
       if (cell_can_split_pair_radiation_subgrid_task(ci) &&
           cell_can_split_pair_radiation_subgrid_task(cj)) {
 
-        const int h_count_i = ci->hydro.count;
-        const int h_count_j = cj->hydro.count;
+        /* The cells are still coarse enough that we must descend one level to
+         * reach radiation_level. Take a step back (recycle the current
+         * task)... */
+        redo = 1;
 
-        const int s_count_i = ci->stars.count;
-        const int s_count_j = cj->stars.count;
+        /* Loop over the sub-cell pairs for the current sid and add new tasks
+         * for them. */
+        struct cell_split_pair *csp = &cell_split_pairs[sid];
 
-        int do_sub_hydro = 1;
-        int do_sub_stars_i = 1;
-        int do_sub_stars_j = 1;
-        if (h_count_i > 0 && h_count_j > 0) {
+        t->ci = ci->progeny[csp->pairs[0].pid];
+        t->cj = cj->progeny[csp->pairs[0].pjd];
+        if (t->ci != NULL) cell_set_flag(t->ci, cell_flag_has_tasks);
+        if (t->cj != NULL) cell_set_flag(t->cj, cell_flag_has_tasks);
 
-          /* Note: Use division to avoid integer overflow. */
-          do_sub_hydro =
-              h_count_i * sid_scale[sid] < space_subsize_pair_hydro / h_count_j;
-        }
-        if (s_count_i > 0 && h_count_j > 0) {
-
-          /* Note: Use division to avoid integer overflow. */
-          do_sub_stars_i =
-              s_count_i * sid_scale[sid] < space_subsize_pair_stars / h_count_j;
-        }
-        if (s_count_j > 0 && h_count_i > 0) {
-
-          /* Note: Use division to avoid integer overflow. */
-          do_sub_stars_j =
-              s_count_j * sid_scale[sid] < space_subsize_pair_stars / h_count_i;
-        }
-
-        /* Replace by a single sub-task? */
-        /* Note: unlike hydro, radiation does NOT force-split corner pairs
-         * (no !sort_is_corner(sid) here). Radiation's search walks a flat
-         * link list at radiation_level and needs ALL 26 neighbour pairs
-         * (corners included) to live AT radiation_level; force-splitting
-         * corners pushes them below radiation_level, dropping them from
-         * the flat list (the corner-miss bug). Corners now obey the same
-         * size criterion as faces/edges and stay at radiation_level. The
-         * dependency wiring (engine_make_extra_radiationloop_tasks_mapper)
-         * is made robust to radiation_level sitting above hydro.super via
-         * a collect_hydro_supers enumeration, so the old NULL-hydro.super
-         * concern no longer applies. */
-        if (scheduler_dosub &&
-            (do_sub_hydro && do_sub_stars_i && do_sub_stars_j)) {
-
-          /* Nothing to do here! */
-
-          /* Otherwise, split it. */
-        } else {
-          /* Take a step back (we're going to recycle the current task)... */
-          redo = 1;
-
-          /* Loop over the sub-cell pairs for the current sid and add new tasks
-           * for them. */
-          struct cell_split_pair *csp = &cell_split_pairs[sid];
-
-          t->ci = ci->progeny[csp->pairs[0].pid];
-          t->cj = cj->progeny[csp->pairs[0].pjd];
-          if (t->ci != NULL) cell_set_flag(t->ci, cell_flag_has_tasks);
-          if (t->cj != NULL) cell_set_flag(t->cj, cell_flag_has_tasks);
-
-          t->flags = csp->pairs[0].sid;
-          for (int k = 1; k < csp->count; k++) {
-            scheduler_splittask_radiation_subgrid(
-                scheduler_addtask(s, task_type_pair, t->subtype,
-                                  csp->pairs[k].sid, 1,
-                                  ci->progeny[csp->pairs[k].pid],
-                                  cj->progeny[csp->pairs[k].pjd]),
-                s);
-          }
+        t->flags = csp->pairs[0].sid;
+        for (int k = 1; k < csp->count; k++) {
+          scheduler_splittask_radiation_subgrid(
+              scheduler_addtask(s, task_type_pair, t->subtype,
+                                csp->pairs[k].sid, 1,
+                                ci->progeny[csp->pairs[k].pid],
+                                cj->progeny[csp->pairs[k].pjd]),
+              s);
         }
 
         /* Otherwise, break it up if it is too large? */
