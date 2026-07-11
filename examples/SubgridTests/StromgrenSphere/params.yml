@@ -51,7 +51,7 @@ Statistics:
 InitialConditions:
   file_name:          ICs_homogeneous_box.hdf5
   periodic:                 1    # Are we running with periodic ICs?
-  shift:              [0.025, 0.025, 0.025] #[-0.00833333, -0.00833333, -0.00833333] #[0.0,0.0,0.0]
+  shift:              [0.00833333, 0.00833333, 0.00833333] #[0.025, 0.025, 0.025] #[-0.00833333, -0.00833333, -0.00833333] #[0.0,0.0,0.0]
 
 # Parameters for the hydrodynamics scheme
 SPH:
