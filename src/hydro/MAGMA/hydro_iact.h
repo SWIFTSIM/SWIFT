@@ -231,6 +231,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float pressurej = pj->force.pressure;
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
+  const int use_base_SPH_i = pi->use_base_SPH;
+  const int use_base_SPH_j = pj->use_base_SPH;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -278,76 +280,121 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float v_rec_i[3] = {pi->v[0], pi->v[1], pi->v[2]};
   float v_rec_j[3] = {pj->v[0], pj->v[1], pj->v[2]};
 
-#ifndef USE_ZEROTH_ORDER_VELOCITIES
+  /* Reconstructed internal energies at the mid-point (before reconstruction) */
+  float u_rec_i = pi->u;
+  float u_rec_j = pj->u;
 
-  /* Vectors from the particles to the mid-point */
-  const float delta_i[3] = {-0.5f * dx[0], -0.5f * dx[1], -0.5f * dx[2]};
-  const float delta_j[3] = {-delta_i[0], -delta_i[1], -delta_i[2]};
-
-  /* Terms entering the limiter (eq. 23) */
-  const float eta_ij = sqrtf(fminf(eta_square_i, eta_square_j));
-  const float eta_crit = 1.0f;
-
-  /* Van Leer limiter fraction (eq. 22) */
-  const float A_ij_vel_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
-                             pi->force.gradient_vx[1] * dx[0] * dx[1] +
-                             pi->force.gradient_vx[2] * dx[0] * dx[2] +
-                             pi->force.gradient_vy[0] * dx[1] * dx[0] +
-                             pi->force.gradient_vy[1] * dx[1] * dx[1] +
-                             pi->force.gradient_vy[2] * dx[1] * dx[2] +
-                             pi->force.gradient_vz[0] * dx[2] * dx[0] +
-                             pi->force.gradient_vz[1] * dx[2] * dx[1] +
-                             pi->force.gradient_vz[2] * dx[2] * dx[2];
-
-  const float A_ij_vel_den = pj->force.gradient_vx[0] * dx[0] * dx[0] +
-                             pj->force.gradient_vx[1] * dx[0] * dx[1] +
-                             pj->force.gradient_vx[2] * dx[0] * dx[2] +
-                             pj->force.gradient_vy[0] * dx[1] * dx[0] +
-                             pj->force.gradient_vy[1] * dx[1] * dx[1] +
-                             pj->force.gradient_vy[2] * dx[1] * dx[2] +
-                             pj->force.gradient_vz[0] * dx[2] * dx[0] +
-                             pj->force.gradient_vz[1] * dx[2] * dx[1] +
-                             pj->force.gradient_vz[2] * dx[2] * dx[2];
-
-  const float A_ij_vel =
-      A_ij_vel_den != 0.f ? A_ij_vel_num / A_ij_vel_den : 0.f;
-
-  /* Slope limiter exponential term (eq. 21, right term) */
-  const float exp_term =
-      eta_ij < eta_crit
-          ? expf(-25.f * (eta_ij - eta_crit) * (eta_ij - eta_crit))
-          : 1.f;
-
-  /* Van Leer limiter (eq. 21) */
-  const float fraction_vel =
-      (A_ij_vel != -1.f)
-          ? 4.f * A_ij_vel / ((1.f + A_ij_vel) * (1.f + A_ij_vel))
-          : 1.f;
-
-  const float Phi_ij_vel = fmaxf(0.f, fminf(1.f, fraction_vel)) * exp_term;
-
-  /* Mid-point reconstruction, first order (eq. 17) */
-  v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[0] * delta_i[0];
-  v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[1] * delta_i[1];
-  v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[2] * delta_i[2];
-  v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[0] * delta_i[0];
-  v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[1] * delta_i[1];
-  v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[2] * delta_i[2];
-  v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[0] * delta_i[0];
-  v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[1] * delta_i[1];
-  v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[2] * delta_i[2];
-
-  v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[0] * delta_j[0];
-  v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[1] * delta_j[1];
-  v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[2] * delta_j[2];
-  v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[0] * delta_j[0];
-  v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[1] * delta_j[1];
-  v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[2] * delta_j[2];
-  v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[0] * delta_j[0];
-  v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[1] * delta_j[1];
-  v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[2] * delta_j[2];
-
+#ifdef USE_ZEROTH_ORDER_VELOCITIES
+  const int force_zeroth_order = 1;
+#else
+  const int force_zeroth_order = 0;
 #endif
+
+  /* Reconstruct v and u at the interface unless one of the particles is weird
+   */
+  if (!use_base_SPH_i && !use_base_SPH_j && !force_zeroth_order) {
+
+    /* Vectors from the particles to the mid-point */
+    const float delta_i[3] = {-0.5f * dx[0], -0.5f * dx[1], -0.5f * dx[2]};
+    const float delta_j[3] = {-delta_i[0], -delta_i[1], -delta_i[2]};
+
+    /* Terms entering the limiter (eq. 23) */
+    const float eta_ij = sqrtf(fminf(eta_square_i, eta_square_j));
+    const float eta_crit = 1.0f;
+
+    /* Van Leer limiter fraction (eq. 22) */
+    const float A_ij_vel_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
+                               pi->force.gradient_vx[1] * dx[0] * dx[1] +
+                               pi->force.gradient_vx[2] * dx[0] * dx[2] +
+                               pi->force.gradient_vy[0] * dx[1] * dx[0] +
+                               pi->force.gradient_vy[1] * dx[1] * dx[1] +
+                               pi->force.gradient_vy[2] * dx[1] * dx[2] +
+                               pi->force.gradient_vz[0] * dx[2] * dx[0] +
+                               pi->force.gradient_vz[1] * dx[2] * dx[1] +
+                               pi->force.gradient_vz[2] * dx[2] * dx[2];
+
+    const float A_ij_vel_den = pj->force.gradient_vx[0] * dx[0] * dx[0] +
+                               pj->force.gradient_vx[1] * dx[0] * dx[1] +
+                               pj->force.gradient_vx[2] * dx[0] * dx[2] +
+                               pj->force.gradient_vy[0] * dx[1] * dx[0] +
+                               pj->force.gradient_vy[1] * dx[1] * dx[1] +
+                               pj->force.gradient_vy[2] * dx[1] * dx[2] +
+                               pj->force.gradient_vz[0] * dx[2] * dx[0] +
+                               pj->force.gradient_vz[1] * dx[2] * dx[1] +
+                               pj->force.gradient_vz[2] * dx[2] * dx[2];
+
+    const float A_ij_vel =
+        A_ij_vel_den != 0.f ? A_ij_vel_num / A_ij_vel_den : 0.f;
+
+    /* Slope limiter exponential term (eq. 21, right term) */
+    const float exp_term =
+        eta_ij < eta_crit
+            ? expf(-25.f * (eta_ij - eta_crit) * (eta_ij - eta_crit))
+            : 1.f;
+
+    /* Van Leer limiter (eq. 21) */
+    const float fraction_vel =
+        (A_ij_vel != -1.f)
+            ? 4.f * A_ij_vel / ((1.f + A_ij_vel) * (1.f + A_ij_vel))
+            : 1.f;
+
+    const float Phi_ij_vel = fmaxf(0.f, fminf(1.f, fraction_vel)) * exp_term;
+
+    /* Mid-point reconstruction, first order (eq. 17) */
+    v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[0] * delta_i[0];
+    v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[1] * delta_i[1];
+    v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[2] * delta_i[2];
+    v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[0] * delta_i[0];
+    v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[1] * delta_i[1];
+    v_rec_i[1] += Phi_ij_vel * pi->force.gradient_vy[2] * delta_i[2];
+    v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[0] * delta_i[0];
+    v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[1] * delta_i[1];
+    v_rec_i[2] += Phi_ij_vel * pi->force.gradient_vz[2] * delta_i[2];
+
+    v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[0] * delta_j[0];
+    v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[1] * delta_j[1];
+    v_rec_j[0] += Phi_ij_vel * pj->force.gradient_vx[2] * delta_j[2];
+    v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[0] * delta_j[0];
+    v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[1] * delta_j[1];
+    v_rec_j[1] += Phi_ij_vel * pj->force.gradient_vy[2] * delta_j[2];
+    v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[0] * delta_j[0];
+    v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[1] * delta_j[1];
+    v_rec_j[2] += Phi_ij_vel * pj->force.gradient_vz[2] * delta_j[2];
+
+    /* Now, same for the internal energy */
+
+    const float A_ij_u_num = pi->force.gradient_u[0] * dx[0] +
+                             pi->force.gradient_u[1] * dx[1] +
+                             pi->force.gradient_u[2] * dx[2];
+
+    const float A_ij_u_den = pj->force.gradient_u[0] * dx[0] +
+                             pj->force.gradient_u[1] * dx[1] +
+                             pj->force.gradient_u[2] * dx[2];
+
+    const float A_ij_u = A_ij_u_den != 0.f ? A_ij_u_num / A_ij_u_den : 0.f;
+
+    /* Van Leer limiter (eq. 21) */
+    const float fraction_u =
+        (A_ij_u != -1.f) ? 4.f * A_ij_u / ((1.f + A_ij_u) * (1.f + A_ij_u))
+                         : 1.f;
+
+    const float Phi_ij_u = fmaxf(0.f, fminf(1.f, fraction_u)) * exp_term;
+
+    /* Mid-point reconstruction, first order (eq. 17) */
+    u_rec_i += Phi_ij_u * pi->force.gradient_u[0] * delta_i[0];
+    u_rec_i += Phi_ij_u * pi->force.gradient_u[1] * delta_i[1];
+    u_rec_i += Phi_ij_u * pi->force.gradient_u[2] * delta_i[2];
+
+    u_rec_j += Phi_ij_u * pj->force.gradient_u[0] * delta_j[0];
+    u_rec_j += Phi_ij_u * pj->force.gradient_u[1] * delta_j[1];
+    u_rec_j += Phi_ij_u * pj->force.gradient_u[2] * delta_j[2];
+
+    /* Simple limiter preventing problem inversion */
+    // if ((pi->u > pj->u && u_rec_i < u_rec_j) ||
+    //     (pi->u < pj->u && u_rec_i > u_rec_j)) {
+    // u_rec_i = u_rec_j = 0.5f * (pi->u + pj->u);
+    //}
+  }
 
   /* Difference in velocity at the mid-point */
   const float v_rec_ij[3] = {v_rec_i[0] - v_rec_j[0], v_rec_i[1] - v_rec_j[1],
@@ -390,15 +437,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[2] *= -wj * hjd_inv;
 
 #ifdef USE_STANDARD_KERNEL_GRADIENTS
-  const float wi_dr = hid_inv * hi_inv * wi_dx;
-  const float wj_dr = hjd_inv * hj_inv * wj_dx;
-  G_i[0] = wi_dr * r_inv * dx[0];
-  G_i[1] = wi_dr * r_inv * dx[1];
-  G_i[2] = wi_dr * r_inv * dx[2];
-  G_j[0] = wj_dr * r_inv * dx[0];
-  G_j[1] = wj_dr * r_inv * dx[1];
-  G_j[2] = wj_dr * r_inv * dx[2];
+  const int force_standard_kernel = 1;
+#else
+  const int force_standard_kernel = 0;
 #endif
+
+  /* Default to the traditional SPH gradW term if one of the particles is weird
+   */
+  if (use_base_SPH_i || use_base_SPH_j || force_standard_kernel) {
+
+    const float wi_dr = hid_inv * hi_inv * wi_dx;
+    const float wj_dr = hjd_inv * hj_inv * wj_dx;
+    G_i[0] = wi_dr * r_inv * dx[0];
+    G_i[1] = wi_dr * r_inv * dx[1];
+    G_i[2] = wi_dr * r_inv * dx[2];
+    G_j[0] = wj_dr * r_inv * dx[0];
+    G_j[1] = wj_dr * r_inv * dx[1];
+    G_j[2] = wj_dr * r_inv * dx[2];
+  }
 
 #ifdef TRADITIONAL_SPH_ACCELERATION_TERM
 
@@ -437,45 +493,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Raw change in internal energy (eq. 11) */
   pi->u_dt += du_term * mj * v_ij_dot_G_ij;
-
-#endif
-
-  /* Reconstructed internal energies at the mid-point (before reconstruction) */
-  float u_rec_i = pi->u;
-  float u_rec_j = pj->u;
-
-#ifndef USE_ZEROTH_ORDER_VELOCITIES
-
-  const float A_ij_u_num = pi->force.gradient_u[0] * dx[0] +
-                           pi->force.gradient_u[1] * dx[1] +
-                           pi->force.gradient_u[2] * dx[2];
-
-  const float A_ij_u_den = pj->force.gradient_u[0] * dx[0] +
-                           pj->force.gradient_u[1] * dx[1] +
-                           pj->force.gradient_u[2] * dx[2];
-
-  const float A_ij_u = A_ij_u_den != 0.f ? A_ij_u_num / A_ij_u_den : 0.f;
-
-  /* Van Leer limiter (eq. 21) */
-  const float fraction_u =
-      (A_ij_u != -1.f) ? 4.f * A_ij_u / ((1.f + A_ij_u) * (1.f + A_ij_u)) : 1.f;
-
-  const float Phi_ij_u = fmaxf(0.f, fminf(1.f, fraction_u)) * exp_term;
-
-  /* Mid-point reconstruction, first order (eq. 17) */
-  u_rec_i += Phi_ij_u * pi->force.gradient_u[0] * delta_i[0];
-  u_rec_i += Phi_ij_u * pi->force.gradient_u[1] * delta_i[1];
-  u_rec_i += Phi_ij_u * pi->force.gradient_u[2] * delta_i[2];
-
-  u_rec_j += Phi_ij_u * pj->force.gradient_u[0] * delta_j[0];
-  u_rec_j += Phi_ij_u * pj->force.gradient_u[1] * delta_j[1];
-  u_rec_j += Phi_ij_u * pj->force.gradient_u[2] * delta_j[2];
-
-  /* Simple limiter preventing problem inversion */
-  // if ((pi->u > pj->u && u_rec_i < u_rec_j) ||
-  //     (pi->u < pj->u && u_rec_i > u_rec_j)) {
-  // u_rec_i = u_rec_j = 0.5f * (pi->u + pj->u);
-  //}
 
 #endif
 
