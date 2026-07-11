@@ -713,9 +713,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Be verbose about this */
   if (p->use_base_SPH) {
     warning(
-        "Gas particle with ID %lld will use base SPH terms (h=%e h_max=%e)." p
-            ->id,
-        p->h, hydro_props->h_max);
+        "Gas particle with ID %lld will use base SPH terms (h=%e h_max=%e).",
+        p->id, p->h, hydro_props->h_max);
   }
 
   /* Finish computation of velocity gradient (eq. 18) */
