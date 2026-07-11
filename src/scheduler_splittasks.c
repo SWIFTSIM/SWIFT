@@ -446,7 +446,17 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
         }
 
         /* Replace by a single sub-task? */
-        /* Note: Contrary to hydro, we keep the corners */
+        /* Note: unlike hydro, radiation does NOT force-split corner pairs
+         * (no !sort_is_corner(sid) here). Radiation's search walks a flat
+         * link list at radiation_level and needs ALL 26 neighbour pairs
+         * (corners included) to live AT radiation_level; force-splitting
+         * corners pushes them below radiation_level, dropping them from
+         * the flat list (the corner-miss bug). Corners now obey the same
+         * size criterion as faces/edges and stay at radiation_level. The
+         * dependency wiring (engine_make_extra_radiationloop_tasks_mapper)
+         * is made robust to radiation_level sitting above hydro.super via
+         * a collect_hydro_supers enumeration, so the old NULL-hydro.super
+         * concern no longer applies. */
         if (scheduler_dosub &&
             (do_sub_hydro && do_sub_stars_i && do_sub_stars_j)) {
 

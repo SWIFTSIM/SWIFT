@@ -3547,6 +3547,54 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   }
 }
 
+#ifdef IONIZATION_FEEDBACK_LOOP
+/**
+ * @brief Wire the drift/sort/cooling/feedback dependencies of a radiation
+ * task to EVERY hydro.super cell beneath @p c.
+ *
+ * A radiation_in/out task lives at radiation_level, which may sit ABOVE
+ * hydro.super (radiation coarsens independently of hydro -- see
+ * cell_can_split_pair_radiation_subgrid_task). Its single
+ * hii_ionization_feedback task reads+writes gas across the whole subtree,
+ * so it must depend on the drift/sorts/cooling_out/stars.drift/
+ * feedback_ghost of every hydro.super it covers, and its radiation_out
+ * must unlock every covered stars_out. This recurses down until it hits a
+ * cell that is itself covered by a single hydro.super (c->hydro.super !=
+ * NULL, i.e. c is at or below that super -- its whole subtree shares it),
+ * or descends further when c is a strict ancestor of several supers
+ * (c->hydro.super == NULL). Each super is visited exactly once (disjoint
+ * subtrees), so no duplicate unlocks are produced.
+ *
+ * @param sched The #scheduler.
+ * @param c The cell whose covered hydro.supers to wire (ci or cj of the task).
+ * @param t_in The radiation_in task (gets unlocked by the super's tasks).
+ * @param t_out The radiation_out task (unlocks the super's stars_out).
+ * @param with_cooling Whether the cooling policy is active.
+ */
+static void engine_radiation_wire_super_deps(struct scheduler *sched,
+                                             struct cell *c, struct task *t_in,
+                                             struct task *t_out,
+                                             const int with_cooling) {
+  if (c->hydro.super != NULL) {
+    /* c is covered by a single hydro.super: wire it and stop. */
+    struct cell *super = c->hydro.super;
+    scheduler_addunlock(sched, super->hydro.drift, t_in);
+    scheduler_addunlock(sched, super->hydro.sorts, t_in);
+    if (with_cooling)
+      scheduler_addunlock(sched, super->hydro.cooling_out, t_in);
+    scheduler_addunlock(sched, super->stars.drift, t_in);
+    scheduler_addunlock(sched, super->stars.feedback_ghost, t_in);
+    scheduler_addunlock(sched, t_out, super->stars.stars_out);
+    return;
+  }
+  /* c is a strict ancestor of several supers: recurse to each. */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      engine_radiation_wire_super_deps(sched, c->progeny[k], t_in, t_out,
+                                       with_cooling);
+}
+#endif /* IONIZATION_FEEDBACK_LOOP */
+
 /**
  * @brief Duplicates the first hydro loop and construct all the
  * dependencies for the hydro part
@@ -3591,10 +3639,6 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
     if (t_type == task_type_self &&
         t_subtype == task_subtype_stars_radiation_in) {
 
-      /* Make all density tasks depend on the drift and sorts. */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-
       t_star_radiation_out = scheduler_addtask(sched, task_type_self,
                                                task_subtype_stars_radiation_out,
                                                flags, 1, ci, NULL);
@@ -3602,14 +3646,11 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
 
-      scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
-      scheduler_addunlock(sched, ci->hydro.super->stars.sorts, t);
-
-      if (with_cooling) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out, t);
-      }
-
-      scheduler_addunlock(sched, ci->hydro.super->stars.feedback_ghost, t);
+      /* Wire drift/sorts/cooling_out/stars.drift/feedback_ghost -> t and
+       * t_out -> stars_out for EVERY hydro.super beneath ci (ci is the
+       * radiation_level cell, which may sit above hydro.super). */
+      engine_radiation_wire_super_deps(sched, ci, t, t_star_radiation_out,
+                                       with_cooling);
 
       scheduler_addunlock(
           sched, t, ci->stars.radiation_level->stars.hii_ionization_feedback);
@@ -3618,9 +3659,9 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
           sched, ci->stars.radiation_level->stars.hii_ionization_feedback,
           t_star_radiation_out);
 
-      scheduler_addunlock(sched, t_star_radiation_out,
-                          ci->hydro.super->stars.stars_out);
-
+      /* timestep_sync lives at ci->super (the main super, always an
+       * ancestor-or-self of radiation_level -> non-NULL), so it stays
+       * wired once here rather than per hydro.super. */
       if (with_timestep_sync) {
         scheduler_addunlock(sched, t_star_radiation_out,
                             ci->super->timestep_sync);
@@ -3631,25 +3672,6 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
     else if (t_type == task_type_pair &&
              t_subtype == task_subtype_stars_radiation_in) {
 
-      /* Make all density tasks depend on the drift */
-      /* Note: We are doing feedback, so we do it for local and foreign cell
-       * stars */
-
-      /* TODO: Determine why this happens */
-      /* scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t); */
-      /* if (ci->stars.radiation_level != cj->stars.radiation_level) { */
-      /* 	scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t); */
-      /* } */
-
-      /* message("DEBUG: [%lld, %lld] received a drift", ci->cellID,
-       * cj->cellID); */
-
-      /* Make all density tasks depend on the sorts */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-      if (ci->stars.radiation_level != cj->stars.radiation_level) {
-        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
-      }
-
       t_star_radiation_out =
           scheduler_addtask(sched, task_type_pair,
                             task_subtype_stars_radiation_out, flags, 1, ci, cj);
@@ -3658,38 +3680,15 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
       engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
       engine_addlink(e, &cj->stars.radiation_out, t_star_radiation_out);
 
-      /* Now, build all the dependencies for the radiation for the cells */
-      /* that are local and are not descendant of the same radiation_level-cells
-       */
-      /* if (ci->nodeID == nodeID) { */
-      /* 	/\* engine_make_hydro_loops_dependencies(sched, t, t_force,
-       * t_limiter, ci, *\/ */
-      /* 	/\*                                      with_cooling, *\/ */
-      /* 	/\*                                      with_timestep_limiter);
-       * *\/ */
-
-      /* } */
-      /* if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
-       */
-      /* 	/\* engine_make_hydro_loops_dependencies(sched, t, t_force,
-       * t_limiter, cj, *\/ */
-      /* 	/\*                                      with_cooling, *\/ */
-      /* 	/\*                                      with_timestep_limiter);
-       * *\/ */
-
-      /* } */
-
+      /* ci and cj are distinct radiation_level cells with disjoint
+       * subtrees, so the per-hydro.super wiring for each side never
+       * produces duplicate unlocks. Each side is wired only if local. */
       if (ci->nodeID == nodeID) {
 
-        /* Check if this dep must be local only */
-        if (with_cooling) {
-          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out, t);
-        }
-
-        /* scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t); */
-        /* scheduler_addunlock(sched, ci->hydro.super->stars.drift, t); */
-
-        scheduler_addunlock(sched, ci->hydro.super->stars.feedback_ghost, t);
+        /* drift/sorts/cooling_out/stars.drift/feedback_ghost -> t and
+         * t_out -> stars_out, for every hydro.super beneath ci. */
+        engine_radiation_wire_super_deps(sched, ci, t, t_star_radiation_out,
+                                         with_cooling);
 
         scheduler_addunlock(
             sched, t, ci->stars.radiation_level->stars.hii_ionization_feedback);
@@ -3698,43 +3697,28 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
             sched, ci->stars.radiation_level->stars.hii_ionization_feedback,
             t_star_radiation_out);
 
-        scheduler_addunlock(sched, t_star_radiation_out,
-                            ci->hydro.super->stars.stars_out);
-
         if (with_timestep_sync) {
           scheduler_addunlock(sched, t_star_radiation_out,
                               ci->super->timestep_sync);
         }
 
-      } else /* ci->nodeID != nodeID */ {
+      } else /* ci->nodeID != nodeID (MPI, not yet supported) */ {
 
         scheduler_addunlock(sched, ci->hydro.super->stars.sorts, t);
       }
 
       if (cj->nodeID == nodeID) {
 
-        if (ci->stars.radiation_level != cj->stars.radiation_level) {
+        engine_radiation_wire_super_deps(sched, cj, t, t_star_radiation_out,
+                                         with_cooling);
 
-          if (with_cooling) {
-            scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out, t);
-          }
+        scheduler_addunlock(
+            sched, t,
+            cj->stars.radiation_level->stars.hii_ionization_feedback);
 
-          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
-          scheduler_addunlock(sched, cj->hydro.super->stars.drift, t);
-
-          scheduler_addunlock(sched, cj->hydro.super->stars.feedback_ghost, t);
-
-          scheduler_addunlock(
-              sched, t,
-              cj->stars.radiation_level->stars.hii_ionization_feedback);
-
-          scheduler_addunlock(
-              sched, cj->stars.radiation_level->stars.hii_ionization_feedback,
-              t_star_radiation_out);
-
-          scheduler_addunlock(sched, t_star_radiation_out,
-                              cj->hydro.super->stars.stars_out);
-        }
+        scheduler_addunlock(
+            sched, cj->stars.radiation_level->stars.hii_ionization_feedback,
+            t_star_radiation_out);
 
         if (ci->super != cj->super) {
           if (with_timestep_sync) {
@@ -3742,7 +3726,7 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
                                 cj->super->timestep_sync);
           }
         }
-      } else /* cj->nodeID != nodeID */ {
+      } else /* cj->nodeID != nodeID (MPI, not yet supported) */ {
         if (with_feedback) {
           scheduler_addunlock(sched, cj->hydro.super->stars.sorts, t);
         }

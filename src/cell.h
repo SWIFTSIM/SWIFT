@@ -1160,10 +1160,14 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   /* the sub-cell sizes ? */
   /* Note that since tasks are create after a rebuild no need to take */
   /* into account any part motion (i.e. dx_max == 0 here) */
+  /* Note: hydro splitting is a PURE hydro concept -- h_hii_max is
+   * deliberately NOT here. Radiation decouples via its own criterion
+   * (cell_can_split_pair_radiation_subgrid_task) so that radiation_level
+   * may sit at or ABOVE hydro.super without coupling hydro's own task
+   * granularity to the fast/jumpy h_hii. */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
@@ -1182,10 +1186,11 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   /* the sub-cell sizes ? */
   /* Note: No need for more checks here as all the sub-pairs and sub-self */
   /* tasks will be created. So no need to check for h_max */
+  /* Note: h_hii_max deliberately NOT here -- hydro splitting is pure
+   * hydro; radiation decouples (see cell_can_split_pair_hydro_task()). */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
@@ -1199,15 +1204,20 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
 
-  /* Is the cell split ? */
-  /* If so, is the cut-off radius with some leeway smaller than */
-  /* the sub-cell sizes ? */
-  /* Note that since tasks are create after a rebuild no need to take */
-  /* into account any part motion (i.e. dx_max == 0 here) */
+  /* Radiation's OWN split criterion, decoupled from hydro. Same hydro
+   * terms PLUS h_hii_max: radiation stops splitting (stays coarse) as soon
+   * as the cell is too small to contain the h_hii search radius, so
+   * radiation_level lands at or ABOVE hydro.super (coarser-or-equal, never
+   * finer). When h_hii is small the h_hii term is inert and this matches
+   * hydro (radiation_level == hydro.super); when h_hii grows large,
+   * radiation_level rises toward the top level so the 27-neighbour stencil
+   * at that level still covers the search radius. */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1219,15 +1229,14 @@ cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
 
-  /* Is the cell split ? */
-  /* If so, is the cut-off radius with some leeway smaller than */
-  /* the sub-cell sizes ? */
-  /* Note: No need for more checks here as all the sub-pairs and sub-self */
-  /* tasks will be created. So no need to check for h_max */
+  /* Radiation's own criterion -- see
+   * cell_can_split_pair_radiation_subgrid_task() above. */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1345,6 +1354,33 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
+          ci->stars.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * @brief Have star particles in a pair of cells moved too much, or has
+ * h_hii grown too much, to invalidate the radiation_in pair task's pruning
+ * and require a rebuild?
+ *
+ * Separate from cell_need_rebuild_for_stars_pair() because h_hii can grow
+ * far larger than the ordinary stellar smoothing length h, and that
+ * function is also used by non-radiation stars logic that should not pick
+ * up h_hii semantics.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_need_rebuild_for_radiation_pair(const struct cell *ci,
+                                     const struct cell *cj) {
+
+  /* Note ci->dmin == cj->dmin */
+  if (kernel_gamma * max3(ci->stars.h_hii_max, ci->stars.h_max,
+                          cj->hydro.h_max) +
           ci->stars.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {
     return 1;
