@@ -430,9 +430,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float norm_a = p->a_hydro[0] * p->a_hydro[0] +
                        p->a_hydro[1] * p->a_hydro[1] +
                        p->a_hydro[2] * p->a_hydro[2];
+  // MATTHIEU: CHECK acceleration a-factor.
   const float dt_acc =
-      sqrtf(cosmo->a * p->h /
-            sqrtf(norm_a));  // MATTHIEU: CHECK acceleration a-factor.
+      norm_a ? sqrtf(cosmo->a * p->h / sqrtf(norm_a)) : FLT_MAX;
 
   /* Criterion based on acceleration (eq. 35) */
   const float c = p->force.soundspeed;
@@ -524,6 +524,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
+  p->use_base_SPH = 0;
 }
 
 /**
@@ -626,6 +627,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Finish the construction of the inverse of the internal energy gradient
    * multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] *= h_inv_dim;
+
+  /* /\* Special case when there are no neighbours *\/ */
+  /* if (sym_matrix_is_null(&p->gradient.c_matrix_inv) || */
+  /*     sym_matrix_is_singular(&p->gradient.c_matrix_inv, p->id == 24026)) { */
+  /*   sym_matrix_identity(&p->gradient.c_matrix_inv); */
+  /*   message("ID=%lld matrix is treated for being weird!", p->id); */
+  /* } */
+
+  /* if (p->id == 24026) { */
+  /*   message("p->id=%lld c_matrix_inv:", p->id); */
+  /*   sym_matrix_print(&p->gradient.c_matrix_inv); */
+  /* } */
 }
 
 /**
@@ -693,7 +706,19 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   /* Invert the c-matrix */
-  sym_matrix_invert(&p->force.c_matrix, &p->gradient.c_matrix_inv);
+  const int res =
+      sym_matrix_invert(&p->force.c_matrix, &p->gradient.c_matrix_inv);
+
+  /* The matrix could not be inverted
+   * --> Revert to base SPH, no reconstruction to the interface. */
+  if (res) {
+    sym_matrix_identity(&p->force.c_matrix);
+    p->use_base_SPH = 1;
+  }
+
+  if (p->h > 0.99 * hydro_props->h_max) {
+    p->use_base_SPH = 1;
+  }
 
   /* Finish computation of velocity gradient (eq. 18) */
   sym_matrix_multiply_by_vector(p->force.gradient_vx, &p->force.c_matrix,
@@ -882,7 +907,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
 
-  /* Do not decrease the energy by more than a factor of 2*/
+  /* Do not decrease the energy by more than a factor of 2 */
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
 
   /* Check against entropy floor */

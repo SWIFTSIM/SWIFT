@@ -233,6 +233,9 @@ struct part {
   /*! RT sub-cycling time stepping data */
   struct rt_timestepping_data rt_time_data;
 
+  /*! Should this particle interact using base SPH? */
+  char use_base_SPH;
+
   /*! Tree-depth at which size / 2 <= h * gamma < size */
   char depth_h;
 
