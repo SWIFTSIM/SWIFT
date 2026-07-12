@@ -1207,20 +1207,40 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
 
-  /* Radiation's OWN split criterion, decoupled from hydro. Same hydro
-   * terms PLUS h_hii_max: radiation stops splitting (stays coarse) as soon
-   * as the cell is too small to contain the h_hii search radius, so
-   * radiation_level lands at or ABOVE hydro.super (coarser-or-equal, never
-   * finer). When h_hii is small the h_hii term is inert and this matches
-   * hydro (radiation_level == hydro.super); when h_hii grows large,
-   * radiation_level rises toward the top level so the 27-neighbour stencil
-   * at that level still covers the search radius. */
-  return c->split &&
-         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
+  /* Radiation never splits below the top level (pinned).
+   *
+   * The flat radiation_in walk at radiation_level relies on doself() to
+   * cover a self-task cell's ENTIRE subtree, and on the 26 top-level
+   * radiation_in pairs for everything outside it. Splitting a self-task
+   * breaks that: scheduler_splittask_radiation_subgrid deliberately does
+   * NOT create intra-parent sibling pair tasks when it recurses a self
+   * task into sub-selfs (see that function's comment -- sibling pairs
+   * were tried and caused a duplicate-unlock crash at gas_mass=0.01,
+   * since sub-radiation_level tasks would then share a coarser
+   * radiation_level with their siblings). So once a self-task splits,
+   * its siblings within the same parent cell are searched by NEITHER a
+   * pair task NOR doself -- a permanent blind spot, reproduced and
+   * confirmed both at a degenerate corner star position and a clean
+   * interior (box-centre) star position, independent of any per-
+   * interaction pruning/gather logic (confirmed via a brute-force
+   * bypass of the reach-check and sorted-search paths -- the deficit
+   * persisted unchanged).
+   *
+   * Pinning radiation_level at the top level (never split) sidesteps the
+   * whole problem: the 26 top-level pairs + 1 top-level self already
+   * form a complete, non-overlapping stencil, and the existing
+   * multi-hydro-super dependency-wiring (engine_radiation_wire_super_deps)
+   * already supports radiation_level sitting above hydro.super, so this
+   * is well-trodden ground. Cost: radiation task granularity is coupled
+   * to the top-level grid instead of hydro.super, which may be coarser
+   * than desirable for parallelism -- deferred pending profiling, per
+   * the same "correct first, optimise later" call made earlier in this
+   * effort for the hydro/h_hii coupling question. Re-enabling splitting
+   * requires re-adding intra-parent sibling pairs AND solving the
+   * duplicate-unlock problem properly (not just removing the pairs
+   * again). */
+  (void)c;
+  return 0;
 }
 
 /**
@@ -1232,14 +1252,10 @@ cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
 
-  /* Radiation's own criterion -- see
-   * cell_can_split_pair_radiation_subgrid_task() above. */
-  return c->split &&
-         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
+  /* Radiation never splits below the top level (pinned) -- see
+   * cell_can_split_pair_radiation_subgrid_task() above for why. */
+  (void)c;
+  return 0;
 }
 
 /**

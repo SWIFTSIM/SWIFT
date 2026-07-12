@@ -29,9 +29,9 @@
  * radiation rebuild/split predicates set, everything else zeroed.
  */
 static void setup_pair(struct cell *ci, struct cell *cj, float dmin,
-                        float stars_h_max, float stars_h_hii_max,
-                        float hydro_h_max, float stars_dx_max_part,
-                        float hydro_dx_max_part) {
+                       float stars_h_max, float stars_h_hii_max,
+                       float hydro_h_max, float stars_dx_max_part,
+                       float hydro_dx_max_part) {
   bzero(ci, sizeof(struct cell));
   bzero(cj, sizeof(struct cell));
 
@@ -56,8 +56,9 @@ int main(int argc, char *argv[]) {
              /*stars_h_hii_max=*/0.01f, /*hydro_h_max=*/0.01f,
              /*stars_dx_max_part=*/0.0f, /*hydro_dx_max_part=*/0.0f);
   if (cell_need_rebuild_for_stars_pair(&ci, &cj))
-    error("Unexpected rebuild flagged by cell_need_rebuild_for_stars_pair "
-          "for a small, static configuration.");
+    error(
+        "Unexpected rebuild flagged by cell_need_rebuild_for_stars_pair "
+        "for a small, static configuration.");
   if (cell_need_rebuild_for_radiation_pair(&ci, &cj))
     error(
         "Unexpected rebuild flagged by cell_need_rebuild_for_radiation_pair "
@@ -104,12 +105,17 @@ int main(int argc, char *argv[]) {
         "cell_need_rebuild_for_radiation_pair failed to flag a rebuild "
         "after dx_max_part drift pushed the pair past the cell size.");
 
-  /* Now check the cell_can_split_pair/self_*_task() delegation: the
-   * radiation_subgrid split criteria must always agree exactly with the
-   * hydro split criteria, for any combination of fields, since
-   * radiation_level == hydro.super is guaranteed by radiation calling
-   * through to hydro's functions rather than duplicating the terms (see
-   * cell.h). If this ever diverges, the delegation was broken. */
+  /* Now check cell_can_split_pair/self_radiation_subgrid_task(): radiation
+   * is pinned and must NEVER split below the top level, for any
+   * combination of fields (including large h_max/h_hii_max that WOULD
+   * make hydro's own criterion allow splitting). This is deliberate: once
+   * a radiation self-task splits, its siblings within the same parent
+   * cell are covered by neither a pair task (none are created for
+   * intra-parent siblings -- see scheduler_splittasks.c) nor doself
+   * (which only walks its own subtree), leaving a permanent search blind
+   * spot. See cell_can_split_pair_radiation_subgrid_task()'s docstring in
+   * cell.h for the full history (a duplicate-unlock crash at
+   * gas_mass=0.01 previously ruled out re-adding those sibling pairs). */
   struct cell c;
   const float dmins[] = {0.5f, 1.0f, 2.0f};
   const float h_values[] = {0.0f, 0.01f, 0.3f, 1.0f, 5.0f};
@@ -125,33 +131,26 @@ int main(int argc, char *argv[]) {
         c.sinks.h_max = h_values[ih];
         c.black_holes.h_max = h_values[ih];
 
-        const int pair_hydro = cell_can_split_pair_hydro_task(&c);
-        const int pair_rad = cell_can_split_pair_radiation_subgrid_task(&c);
-        if (pair_hydro != pair_rad)
+        if (cell_can_split_pair_radiation_subgrid_task(&c))
           error(
-              "cell_can_split_pair_radiation_subgrid_task diverged from "
-              "cell_can_split_pair_hydro_task (split=%d dmin=%e h=%e "
-              "h_hii=%e): hydro=%d radiation=%d",
-              c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max, pair_hydro,
-              pair_rad);
+              "cell_can_split_pair_radiation_subgrid_task must always "
+              "return false (radiation is pinned at the top level) "
+              "(split=%d dmin=%e h=%e h_hii=%e).",
+              c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max);
 
-        const int self_hydro = cell_can_split_self_hydro_task(&c);
-        const int self_rad = cell_can_split_self_radiation_subgrid_task(&c);
-        if (self_hydro != self_rad)
+        if (cell_can_split_self_radiation_subgrid_task(&c))
           error(
-              "cell_can_split_self_radiation_subgrid_task diverged from "
-              "cell_can_split_self_hydro_task (split=%d dmin=%e h=%e "
-              "h_hii=%e): hydro=%d radiation=%d",
-              c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max, self_hydro,
-              self_rad);
+              "cell_can_split_self_radiation_subgrid_task must always "
+              "return false (radiation is pinned at the top level) "
+              "(split=%d dmin=%e h=%e h_hii=%e).",
+              c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max);
       }
     }
   }
 
-  /* And confirm h_hii_max is actually load-bearing in hydro's own
-   * criteria (Solution 0): growing it alone, with everything else small
-   * and c.split set, must flip cell_can_split_pair_hydro_task() from
-   * splittable to not-splittable. */
+  /* Confirm hydro's own split criteria stay decoupled from h_hii_max:
+   * growing h_hii_max alone must NOT change cell_can_split_pair_hydro_task
+   * -- hydro splitting is a pure hydro concept (see cell.h). */
   bzero(&c, sizeof(struct cell));
   c.split = 1;
   c.dmin = 1.0f;
@@ -161,14 +160,15 @@ int main(int argc, char *argv[]) {
   c.sinks.h_max = 0.01f;
   c.black_holes.h_max = 0.01f;
   if (!cell_can_split_pair_hydro_task(&c))
-    error("Expected cell_can_split_pair_hydro_task to allow splitting for "
-          "a small configuration.");
-  c.stars.h_hii_max = 2.0f;
-  if (cell_can_split_pair_hydro_task(&c))
     error(
-        "cell_can_split_pair_hydro_task did not stop splitting once "
-        "h_hii_max grew past the cell size -- Solution 0's coupling is not "
-        "load-bearing any more, check cell.h.");
+        "Expected cell_can_split_pair_hydro_task to allow splitting for "
+        "a small configuration.");
+  c.stars.h_hii_max = 2.0f;
+  if (!cell_can_split_pair_hydro_task(&c))
+    error(
+        "cell_can_split_pair_hydro_task must stay decoupled from "
+        "h_hii_max -- it should still allow splitting after h_hii_max "
+        "alone grew past the cell size.");
 
   return 0;
 }

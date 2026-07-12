@@ -173,6 +173,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     if (spart_is_inhibited(si, e)) continue;
     if (!spart_is_active(si, e)) continue;
     if (!feedback_is_HII_ionization_active(si, e)) continue;
+    message("Star %lld can do ionization! r_hii = %e", si->id,
+            si->h_hii * kernel_gamma);
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
     if (si->ti_drift != ti_current)
