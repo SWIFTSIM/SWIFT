@@ -195,6 +195,19 @@ struct stars_props {
    * gas mass resolution without recompiling (e.g. across regions of a
    * cosmological zoom-in). */
   int max_HII_retry_full_buffer;
+
+  /*! Maximal number of search-radius expansions per HII search pass. Once
+   * a pass finds every not-yet-ionized particle within the current radius
+   * (buffer not full) and photons still remain, the radius itself -- not
+   * the buffer -- is the bottleneck: growing it (up to this many times,
+   * see HII_radius_expansion_factor) lets the star claim its full reach
+   * within one pass, instead of waiting on the unrelated h_max term to
+   * drift the next rebuild's radius outward over many cycles. */
+  int max_HII_radius_expansion_tries;
+
+  /*! Growth factor applied to the search radius on each expansion above
+   * (e.g. 1.1 = 10% larger per try). Bounded by max_HII_search_radius. */
+  float HII_radius_expansion_factor;
 };
 
 #endif /* SWIFT_GEAR_STAR_PART_H */

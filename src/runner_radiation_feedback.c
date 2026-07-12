@@ -131,10 +131,23 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
  * (`radiation_in`) to discover interacting neighbor branches. Once neighbors
  * are gathered, it *tags* them as ionized through atomic operations.
  *
+ * A star that still has photons left after one pass retries in one of two
+ * ways, chosen by why the pass fell short: if the neighbour buffer filled
+ * up, more candidates may exist within the SAME search radius (bumped out
+ * by the nearest-max_ngbs cut), so it retries there
+ * (Stars:max_HII_retry_full_buffer); if the buffer did NOT fill up (every
+ * reachable candidate was already found and ionized) the radius itself is
+ * the bottleneck, so it is expanded
+ * (Stars:max_HII_radius_expansion_tries, Stars:HII_radius_expansion_factor)
+ * and the pass retried at the larger radius. Both retries are scoped to
+ * the individual star inside the loop below: a star that exhausts its
+ * budget on the first pass costs nothing extra, and only a star that
+ * genuinely needs more reach pays for the additional passes.
+ *
  * @param r The #runner thread.
  * @param c The working-level #cell containing the active stars to process.
- * @param interaction_limit The calculated maximum search range boundary for
- * neighbor mapping.
+ * @param interaction_limit The initial search range boundary for neighbor
+ * mapping, before any retry-driven radius expansion.
  */
 void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
                                                 struct cell *c,
@@ -161,6 +174,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
   const struct stars_props *star_props = e->stars_properties;
   const int max_retry_full_buffer = star_props->max_HII_retry_full_buffer;
+  const int max_radius_expansion_tries =
+      star_props->max_HII_radius_expansion_tries;
+  const float radius_expansion_factor = star_props->HII_radius_expansion_factor;
+  const float max_search_radius = star_props->max_HII_search_radius;
 
   struct hii_neighbor ngb_buffer[max_ngbs];
 
@@ -186,18 +203,39 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           si->id, c->cellID, c->super->cellID);
 #endif
 
-    /* Logic: If the buffer was full, there might be more neighbors just
-     * outside the current R_max of the buffer. We retry until the buffer
-     * is no longer maxed out OR the star runs out of photons. */
-    int buffer_was_full = 0;
+    /* Logic: a pass can fall short of exhausting the star's photon budget
+     * for two DIFFERENT reasons, which need two different retries:
+     *
+     * 1. The buffer filled up (count_found == max_ngbs): there may be MORE
+     *    candidates within the SAME radius that got bumped out by the
+     *    nearest-max_ngbs cut. Retry at the same radius (cheap: the
+     *    volume searched doesn't grow) -- existing max_retry_full_buffer
+     *    mechanism.
+     * 2. The buffer did NOT fill up (every not-yet-ionized particle within
+     *    the current radius was found and processed) but photons remain:
+     *    the RADIUS itself is the bottleneck, not the buffer. Retrying at
+     *    the same radius would just re-find nothing new. Only expanding
+     *    the radius can make progress -- max_HII_radius_expansion_tries.
+     *
+     * Conflating these (retrying the same radius regardless of which
+     * happened) leaves a star stalled whenever case 2 occurs: with no
+     * further growth this pass, the only remaining way for the search
+     * radius to grow is the NEXT rebuild's interaction_limit, which is
+     * only pulled forward by h_hii itself (unchanged here, since nothing
+     * new was found) or by the unrelated h_max term drifting up over
+     * possibly many rebuild cycles. Expanding immediately keeps this
+     * confined to the one star that actually needs it: neither retry
+     * kind touches the outer loop over sparts, so a star that already
+     * exhausts its budget on the first pass costs nothing extra. */
+    float dynamic_search_radius = interaction_limit;
     int num_retry_full_buffer = 0;
-    do {
+    int num_radius_expansions = 0;
+    while (1) {
       int count_found = 0;
-      buffer_was_full = 0;
 
       /* First loop over particles in the current cell */
       runner_doself_stars_hii_ionization_feedback(
-          r, c, si, interaction_limit, ngb_buffer, max_ngbs, &count_found);
+          r, c, si, dynamic_search_radius, ngb_buffer, max_ngbs, &count_found);
 
       /* Now loop over particles in the neighboring cells via task links */
       for (struct link *l = c->stars.radiation_level->stars.radiation_in;
@@ -231,12 +269,11 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         sid = sortlistID[sid];
 
         runner_do_stars_hii_ionization_feedback_branch(
-            r, c, cj, sid, flipped, shift, si, interaction_limit, ngb_buffer,
-            max_ngbs, &count_found);
+            r, c, cj, sid, flipped, shift, si, dynamic_search_radius,
+            ngb_buffer, max_ngbs, &count_found);
       } /* Neighbour search */
 
-      /* Flag if we hit the limit */
-      if (count_found == max_ngbs) buffer_was_full = 1;
+      const int buffer_was_full = (count_found == max_ngbs);
 
       /***************************************************/
       /* It's time to sort the gas particles */
@@ -266,12 +303,26 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
         } /* Loop over the sorted particles */
       }
-      /* If the star still has photons and we previously filled the buffer,
-       * we must go again to find the neighbors that were 'bumped out'. Repeat
-       * max_retry_full_buffer times. */
-      ++num_retry_full_buffer;
-    } while (buffer_was_full && feedback_get_star_ionization_rate(si) > 0 &&
-             num_retry_full_buffer < max_retry_full_buffer);
+
+      /* Fully exhausted: nothing more to do this pass. */
+      if (feedback_get_star_ionization_rate(si) <= 0.0) break;
+
+      if (buffer_was_full) {
+        /* Case 1: more candidates may exist within the SAME radius. */
+        if (num_retry_full_buffer >= max_retry_full_buffer) break;
+        ++num_retry_full_buffer;
+      } else {
+        /* Case 2: genuinely nothing left within the current radius, but
+         * photons remain -- expand the radius, bounded by the configured
+         * ceiling. If we're already at that ceiling, expanding again
+         * would just re-search the identical volume, so stop. */
+        if (num_radius_expansions >= max_radius_expansion_tries) break;
+        if (dynamic_search_radius >= max_search_radius) break;
+        dynamic_search_radius = min(
+            dynamic_search_radius * radius_expansion_factor, max_search_radius);
+        ++num_radius_expansions;
+      }
+    }
 
     c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
     c->stars.h_hii_max_active = max(c->stars.h_hii_max_active, si->h_hii);
@@ -293,15 +344,19 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     }
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     if (feedback_get_star_ionization_rate(si) <= 0.0) {
-      message("Star %lld has exhausted all its ionizing photons! r_hii = %e",
-              si->id, si->h_hii * kernel_gamma);
+      message(
+          "Star %lld has exhausted all its ionizing photons! r_hii = %e, "
+          "num_retry_full_buffer = %d, num_radius_expansions = %d",
+          si->id, si->h_hii * kernel_gamma, num_retry_full_buffer,
+          num_radius_expansions);
     } else {
       message(
           "Star %lld has NOT exhausted all its ionizing photons! Remaining: "
-          "%e, search_radius = %e, sp->h_hii = %e, num_retry_full_buffer = "
-          "%d",
-          si->id, feedback_get_star_ionization_rate(si), interaction_limit,
-          kernel_gamma * si->h_hii, num_retry_full_buffer);
+          "%e, final_search_radius = %e, sp->h_hii = %e, "
+          "num_retry_full_buffer = %d, num_radius_expansions = %d",
+          si->id, feedback_get_star_ionization_rate(si), dynamic_search_radius,
+          kernel_gamma * si->h_hii, num_retry_full_buffer,
+          num_radius_expansions);
     }
 #endif
   } /* Loop over sparts */
