@@ -1400,6 +1400,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /*****************************************/
   /* Stellar winds */
+
+  if (!with_stellar_winds) return;
+
   /* Compute the initial mass. The initial mass is different if the star
      particle is of type 'star_population' or
      'star_population_continuous_IMF'. The function call treats both cases. */
