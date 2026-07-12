@@ -338,17 +338,28 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
       if (cell_can_split_self_radiation_subgrid_task(ci)) {
         /* Radiation splits PURELY on the geometric criterion down to
          * radiation_level -- no size-based (space_subsize) gate. Descend by
-         * recycling this self task into sub-self tasks over the progeny.
+         * recycling this self task into sub-self tasks over the progeny,
+         * AND create the intra-parent sibling pair tasks between them
+         * (mirroring hydro/stars): once this self splits, each progeny's
+         * own hii_ionization_feedback task only reaches gas within that
+         * progeny's own subtree (doself) plus whatever pair tasks connect
+         * it to the rest of the 27-neighbour stencil -- without sibling
+         * pairs, siblings within the same parent would be searched by
+         * neither a pair task nor doself, a permanent blind spot found
+         * and fixed this session.
          *
-         * Crucially, we do NOT create the internal progeny-pair tasks that
-         * hydro/stars build here. The single hii_ionization_feedback task at
-         * radiation_level already covers a cell's whole subtree: its flat
-         * radiation_in walk hits the self entry, and runner_doself iterates
-         * over ALL of the cell's gas (parts are stored contiguously for the
-         * whole subtree). Intra-cell pair tasks below radiation_level would
-         * therefore never appear in that flat walk -- they are dead work, and
-         * (sharing a coarser radiation_level with their siblings) were the
-         * source of duplicate dependency unlocks at gas_mass=0.01. */
+         * NOTE (2026-07-12): each sibling progeny's own
+         * cell_can_split_self/pair_radiation_subgrid_task() is evaluated
+         * independently one level down, but that predicate is also gated on
+         * c->hydro.super == NULL (see cell.h). cell_set_super_hydro()
+         * stamps the SAME hydro.super pointer onto every progeny of a
+         * subtree once it is found, so all siblings under a splitting
+         * parent share an identical hydro.super and therefore stop
+         * splitting together, by construction -- no separate
+         * synchronisation pass is needed. The SWIFT_DEBUG_CHECKS invariant
+         * in engine_make_extra_radiationloop_tasks_mapper
+         * (ci->stars.radiation_level == cj->stars.radiation_level) is kept
+         * as a regression tripwire for this. */
         redo = 1;
 
         int first_child = 0;
@@ -366,6 +377,25 @@ static void scheduler_splittask_radiation_subgrid(struct task *t,
                 scheduler_addtask(s, task_type_self, t->subtype, 0, 1,
                                   ci->progeny[k], NULL),
                 s);
+          }
+        }
+
+        /* Make a pair task for each pair of non-empty progeny. */
+        for (int j = 0; j < 8; j++) {
+          if (ci->progeny[j] != NULL &&
+              (ci->progeny[j]->hydro.count ||
+               (with_stars && ci->progeny[j]->stars.count))) {
+            for (int k = j + 1; k < 8; k++) {
+              if (ci->progeny[k] != NULL &&
+                  (ci->progeny[k]->hydro.count ||
+                   (with_stars && ci->progeny[k]->stars.count))) {
+                scheduler_splittask_radiation_subgrid(
+                    scheduler_addtask(s, task_type_pair, t->subtype,
+                                      sub_sid_flag[j][k], 1, ci->progeny[j],
+                                      ci->progeny[k]),
+                    s);
+              }
+            }
           }
         }
       }

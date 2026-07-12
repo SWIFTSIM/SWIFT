@@ -106,19 +106,21 @@ int main(int argc, char *argv[]) {
         "after dx_max_part drift pushed the pair past the cell size.");
 
   /* Now check cell_can_split_pair/self_radiation_subgrid_task(): radiation
-   * is pinned and must NEVER split below the top level, for any
-   * combination of fields (including large h_max/h_hii_max that WOULD
-   * make hydro's own criterion allow splitting). This is deliberate: once
-   * a radiation self-task splits, its siblings within the same parent
-   * cell are covered by neither a pair task (none are created for
-   * intra-parent siblings -- see scheduler_splittasks.c) nor doself
-   * (which only walks its own subtree), leaving a permanent search blind
-   * spot. See cell_can_split_pair_radiation_subgrid_task()'s docstring in
-   * cell.h for the full history (a duplicate-unlock crash at
-   * gas_mass=0.01 previously ruled out re-adding those sibling pairs). */
+   * must NEVER split once the cell is at or below hydro.super (non-NULL),
+   * for any combination of the other fields (including small h_max/
+   * h_hii_max that would otherwise geometrically allow splitting). This is
+   * the fix for the duplicate-unlock crash at gas_mass=0.01: once a cell
+   * IS (or lies below) a hydro.super, cell_set_super_hydro() has already
+   * stamped that SAME hydro.super pointer onto every one of its progeny,
+   * so splitting further would only produce sibling radiation tasks that
+   * all wire dependencies to the identical hydro.super. See
+   * cell_can_split_pair_radiation_subgrid_task()'s docstring in cell.h for
+   * the full history. */
   struct cell c;
   const float dmins[] = {0.5f, 1.0f, 2.0f};
   const float h_values[] = {0.0f, 0.01f, 0.3f, 1.0f, 5.0f};
+  struct cell dummy_super;
+  bzero(&dummy_super, sizeof(struct cell));
   for (int is = 0; is < 2; ++is) {
     for (int id = 0; id < 3; ++id) {
       for (int ih = 0; ih < 5; ++ih) {
@@ -131,19 +133,53 @@ int main(int argc, char *argv[]) {
         c.sinks.h_max = h_values[ih];
         c.black_holes.h_max = h_values[ih];
 
+        /* With hydro.super already set (at-or-below hydro.super), must
+         * always refuse to split regardless of geometry. */
+        c.hydro.super = &dummy_super;
         if (cell_can_split_pair_radiation_subgrid_task(&c))
           error(
-              "cell_can_split_pair_radiation_subgrid_task must always "
-              "return false (radiation is pinned at the top level) "
+              "cell_can_split_pair_radiation_subgrid_task must never "
+              "split once hydro.super is set "
               "(split=%d dmin=%e h=%e h_hii=%e).",
               c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max);
 
         if (cell_can_split_self_radiation_subgrid_task(&c))
           error(
-              "cell_can_split_self_radiation_subgrid_task must always "
-              "return false (radiation is pinned at the top level) "
+              "cell_can_split_self_radiation_subgrid_task must never "
+              "split once hydro.super is set "
               "(split=%d dmin=%e h=%e h_hii=%e).",
               c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max);
+
+        /* With hydro.super still NULL (strictly above any hydro.super),
+         * splitting must be governed purely by the geometric criterion --
+         * identical to what the (now-removed) NULL-gated call would have
+         * returned before this test replaced it. */
+        c.hydro.super = NULL;
+        const int expect_geometric =
+            c.split &&
+            (space_stretch * kernel_gamma * c.hydro.h_max < 0.5f * c.dmin) &&
+            (space_stretch * kernel_gamma * c.stars.h_max < 0.5f * c.dmin) &&
+            (space_stretch * kernel_gamma * c.stars.h_hii_max <
+             0.5f * c.dmin) &&
+            (space_stretch * kernel_gamma * c.sinks.h_max < 0.5f * c.dmin) &&
+            (space_stretch * kernel_gamma * c.black_holes.h_max <
+             0.5f * c.dmin);
+
+        if (cell_can_split_pair_radiation_subgrid_task(&c) != expect_geometric)
+          error(
+              "cell_can_split_pair_radiation_subgrid_task disagreed with "
+              "the geometric criterion while hydro.super == NULL "
+              "(split=%d dmin=%e h=%e h_hii=%e expected=%d).",
+              c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max,
+              expect_geometric);
+
+        if (cell_can_split_self_radiation_subgrid_task(&c) != expect_geometric)
+          error(
+              "cell_can_split_self_radiation_subgrid_task disagreed with "
+              "the geometric criterion while hydro.super == NULL "
+              "(split=%d dmin=%e h=%e h_hii=%e expected=%d).",
+              c.split, c.dmin, c.hydro.h_max, c.stars.h_hii_max,
+              expect_geometric);
       }
     }
   }
