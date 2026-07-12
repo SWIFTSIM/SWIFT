@@ -22,6 +22,9 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Local includes */
+#include "part_type.h"
+
 #if defined(HAVE_HDF5)
 #include <hdf5.h>
 #endif
@@ -109,12 +112,18 @@ struct gravity_props {
    * co-moving softening length of the low-res. particles (DM + baryons) */
   float mean_inter_particle_fraction_high_res;
 
+  /*! Maximal comoving softening in the case of adaptive softening for gas */
+  float max_adaptive_softening;
+
+  /*! Minimal comoving softening in the case of adaptive softening for gas */
+  float min_adaptive_softening;
+
   /* ------------- Properties of the time integration  ----------------- */
 
   /*! Frequency of tree-rebuild in units of #gpart updates. */
   float rebuild_frequency;
 
-  /*! Fraction of active #gparts needed to trigger a tree-rebuild */
+  /*! Fraction of active #gpart needed to trigger a tree-rebuild */
   float rebuild_active_fraction;
 
   /*! Time integration dimensionless multiplier */
@@ -148,6 +157,11 @@ struct gravity_props {
 
   /*! Inverse of the long-range gravity mesh scale. */
   float r_s_inv;
+
+  /* ------------- Exact gravity checks--------------------------------- */
+
+  /*! The type of particles to check in the N^2 exact gravity routines */
+  int exact_gravity_to_check_types[swift_type_count];
 
   /* ------------- Physical constants ---------------------------------- */
 

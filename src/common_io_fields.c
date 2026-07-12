@@ -25,6 +25,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "io_compression.h"
 #include "io_properties.h"
 #include "output_options.h"
 #include "units.h"
@@ -39,7 +40,7 @@
  *
  * @return The (integer) particle type of the parameter.
  */
-int io_get_param_ptype(const char* name) {
+int io_get_param_ptype(const char *name) {
 
   const int name_len = strlen(name);
 
@@ -69,7 +70,7 @@ int io_get_param_ptype(const char* name) {
  *
  * @return The total number of fields that can be written for the ptype.
  */
-int io_get_ptype_fields(const int ptype, struct io_props* list,
+int io_get_ptype_fields(const int ptype, struct io_props *list,
                         const int with_cosmology, const int with_fof,
                         const int with_stf) {
 
@@ -124,14 +125,14 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
  * @param with_stf Are we running with on-the-fly structure finder?
  * @param verbose The verbose level
  */
-void io_prepare_output_fields(struct output_options* output_options,
+void io_prepare_output_fields(struct output_options *output_options,
                               const int with_cosmology, const int with_fof,
                               const int with_stf, int verbose) {
 
   const int MAX_NUM_PTYPE_FIELDS = 100;
 
   /* Parameter struct for the output options */
-  struct swift_params* params = output_options->select_output;
+  struct swift_params *params = output_options->select_output;
 
   /* Get all possible outputs per particle type */
   int ptype_num_fields_total[swift_type_count] = {0};
@@ -201,7 +202,7 @@ void io_prepare_output_fields(struct output_options* output_options,
     for (int param_id = 0; param_id < params->paramCount; param_id++) {
 
       /* Full name of the parameter to check */
-      const char* param_name = params->data[param_id].name;
+      const char *param_name = params->data[param_id].name;
 
       /* Check whether the file still contains the old, now inappropriate
        * 'SelectOutput' section */
@@ -283,6 +284,13 @@ void io_prepare_output_fields(struct output_options* output_options,
         error("Choice of output selection parameter %s ('%s') is invalid.",
               param_name, param_value);
 
+#ifdef HAVE_HDF5
+      if (param_is_known)
+        io_check_field_compression(field_list[param_ptype][field_id].type,
+                                   (enum lossy_compression_schemes)value_id,
+                                   field_list[param_ptype][field_id].name);
+#endif
+
       /* Adjust number of fields to be written for param_ptype, if this field's
        * status is different from default and it is a known one. */
       if (param_is_known) {
@@ -357,10 +365,10 @@ void io_prepare_output_fields(struct output_options* output_options,
  * @param with_fof Use fof?
  * @param with_stf Using Velociraptor STF?
  */
-void io_write_output_field_parameter(const char* filename, int with_cosmology,
+void io_write_output_field_parameter(const char *filename, int with_cosmology,
                                      int with_fof, int with_stf) {
 
-  FILE* file = fopen(filename, "w");
+  FILE *file = fopen(filename, "w");
   if (file == NULL) error("Error opening file '%s'", filename);
 
   /* Create a fake unit system for the snapshots */
@@ -400,8 +408,9 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology,
         strcpy(&comment_write_buffer[PARSER_MAX_LINE_SIZE / 2 - 4], "...");
       }
 
-      fprintf(file, "  %s_%s: %s  # %s : %s\n", list[i].name,
-              part_type_names[ptype], "on", comment_write_buffer, unit_buffer);
+      fprintf(file, "  %s_%s: %s  # (%dD - %zd bytes / dim) %s : %s\n",
+              list[i].name, part_type_names[ptype], "on", list[i].dimension,
+              io_sizeof_type(list[i].type), comment_write_buffer, unit_buffer);
     }
 
     fprintf(file, "\n");

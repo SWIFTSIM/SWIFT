@@ -218,7 +218,7 @@ INLINE static void star_formation_logger_init_log_file(
       " (5)            (6)            (7)\n");
   fprintf(
       fp,
-      "#            Time             a            z        total M_stars  SFR "
+      "# Step       Time             a            z        total M_stars  SFR "
       "(active)  SFR*dt (active)  SFR (total)\n");
 }
 
@@ -256,5 +256,30 @@ INLINE static void star_formation_logger_log_inactive_part(
   /* Add the SFR to the logger file */
   sf->SFR_inactive += max(xp->sf_data.SFR, 0.f);
 }
+
+/**
+ * @brief Add the SFR tracer to the total active SFR of this cell
+ *
+ * Nothing to do here
+ *
+ * @param sink the #sink
+ * @param sf the SFH logger struct
+ * @param dt_star The length of the time-step in physical internal units.
+ */
+INLINE static void star_formation_logger_log_active_sink(
+    const struct sink *sink, struct star_formation_history *sf,
+    const double dt_star) {}
+
+/**
+ * @brief Add the SFR tracer to the total inactive SFR of this cell as long as
+ * the SFR tracer is larger than 0
+ *
+ * Nothing to do here
+ *
+ * @param sink the #sink
+ * @param sf the SFH logger struct
+ */
+INLINE static void star_formation_logger_log_inactive_sink(
+    const struct sink *sink, struct star_formation_history *sf) {}
 
 #endif /* SWIFT_EAGLE_STARFORMATION_LOGGER_H */

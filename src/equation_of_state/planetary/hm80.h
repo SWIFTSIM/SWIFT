@@ -42,7 +42,7 @@
 // Hubbard & MacFarlane (1980) parameters
 struct HM80_params {
   float *table_log_P_rho_u;
-  int date, num_rho, num_u;
+  int version_date, num_rho, num_u;
   float log_rho_min, log_rho_max, log_rho_step, inv_log_rho_step, log_u_min,
       log_u_max, log_u_step, inv_log_u_step, bulk_mod, P_min_for_c_min;
   enum eos_planetary_material_id mat_id;
@@ -54,29 +54,29 @@ INLINE static void set_HM80_HHe(struct HM80_params *mat,
   mat->mat_id = mat_id;
   mat->bulk_mod = 0.f;
   mat->P_min_for_c_min = 1e3f;
-  mat->date = 20201003;
+  mat->version_date = 20230710;
 }
 INLINE static void set_HM80_ice(struct HM80_params *mat,
                                 enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->bulk_mod = 2.0e9f;
   mat->P_min_for_c_min = 0.f;
-  mat->date = 20201003;
+  mat->version_date = 20230710;
 }
 INLINE static void set_HM80_rock(struct HM80_params *mat,
                                  enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->bulk_mod = 3.49e10f;
   mat->P_min_for_c_min = 0.f;
-  mat->date = 20201003;
+  mat->version_date = 20230710;
 }
 
 // Read the table from file
 INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
 
   /* File contents:
-  header (five lines)
-  date
+  header (11 lines)
+  version_date
   log_rho_min  log_rho_max  num_rho  log_u_min  log_u_max  num_u  (SI)
   P_0_0   P_0_1   ...     P_0_num_u           # Array of pressures (Pa)
   P_1_0   ...     ...     P_1_num_u
@@ -94,21 +94,21 @@ INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
 
   // Ignore header lines
   char buffer[100];
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 11; i++) {
     if (fgets(buffer, 100, f) == NULL)
       error("Failed to read the HM80 EoS file header %s", table_file);
   }
 
   // Table properties
-  int date;
-  int c = fscanf(f, "%d", &date);
+  int version_date;
+  int c = fscanf(f, "%d", &version_date);
   if (c != 1) error("Failed to read the HM80 EoS table %s", table_file);
-  if (date != mat->date)
+  if (version_date != mat->version_date)
     error(
-        "EoS file %s date %d does not match expected %d"
+        "EoS file %s version_date %d does not match expected %d"
         "\nPlease download the file using "
         "examples/Planetary/EoSTables/get_eos_tables.sh",
-        table_file, date, mat->date);
+        table_file, version_date, mat->version_date);
   c = fscanf(f, "%f %f %d %f %f %d", &mat->log_rho_min, &mat->log_rho_max,
              &mat->num_rho, &mat->log_u_min, &mat->log_u_max, &mat->num_u);
   if (c != 6) error("Failed to read the HM80 EoS table %s", table_file);
@@ -179,7 +179,7 @@ INLINE static void convert_units_HM80(struct HM80_params *mat,
 
 // gas_internal_energy_from_entropy
 INLINE static float HM80_internal_energy_from_entropy(
-    float density, float entropy, const struct HM80_params *mat) {
+    const float density, const float entropy, const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -187,7 +187,8 @@ INLINE static float HM80_internal_energy_from_entropy(
 }
 
 // gas_pressure_from_entropy
-INLINE static float HM80_pressure_from_entropy(float density, float entropy,
+INLINE static float HM80_pressure_from_entropy(const float density,
+                                               const float entropy,
                                                const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
@@ -196,7 +197,8 @@ INLINE static float HM80_pressure_from_entropy(float density, float entropy,
 }
 
 // gas_entropy_from_pressure
-INLINE static float HM80_entropy_from_pressure(float density, float pressure,
+INLINE static float HM80_entropy_from_pressure(const float density,
+                                               const float pressure,
                                                const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
@@ -206,7 +208,7 @@ INLINE static float HM80_entropy_from_pressure(float density, float pressure,
 
 // gas_soundspeed_from_entropy
 INLINE static float HM80_soundspeed_from_entropy(
-    float density, float entropy, const struct HM80_params *mat) {
+    const float density, const float entropy, const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -215,29 +217,25 @@ INLINE static float HM80_soundspeed_from_entropy(
 
 // gas_entropy_from_internal_energy
 INLINE static float HM80_entropy_from_internal_energy(
-    float density, float u, const struct HM80_params *mat) {
+    const float density, const float u, const struct HM80_params *mat) {
 
   return 0.f;
 }
 
 // gas_pressure_from_internal_energy
 INLINE static float HM80_pressure_from_internal_energy(
-    float density, float u, const struct HM80_params *mat) {
-
-  float log_P, log_P_1, log_P_2, log_P_3, log_P_4;
+    const float density, const float u, const struct HM80_params *mat) {
 
   if (u <= 0.f) {
     return 0.f;
   }
 
-  int idx_rho, idx_u;
-  float intp_rho, intp_u;
   const float log_rho = logf(density);
   const float log_u = logf(u);
 
   // 2D interpolation (bilinear with log(rho), log(u)) to find P(rho, u)
-  idx_rho = floor((log_rho - mat->log_rho_min) * mat->inv_log_rho_step);
-  idx_u = floor((log_u - mat->log_u_min) * mat->inv_log_u_step);
+  int idx_rho = floor((log_rho - mat->log_rho_min) * mat->inv_log_rho_step);
+  int idx_u = floor((log_u - mat->log_u_min) * mat->inv_log_u_step);
 
   // If outside the table then extrapolate from the edge and edge-but-one values
   if (idx_rho <= -1) {
@@ -251,26 +249,31 @@ INLINE static float HM80_pressure_from_internal_energy(
     idx_u = mat->num_u - 2;
   }
 
-  intp_rho = (log_rho - mat->log_rho_min - idx_rho * mat->log_rho_step) *
-             mat->inv_log_rho_step;
-  intp_u =
+  const float intp_rho =
+      (log_rho - mat->log_rho_min - idx_rho * mat->log_rho_step) *
+      mat->inv_log_rho_step;
+  const float intp_u =
       (log_u - mat->log_u_min - idx_u * mat->log_u_step) * mat->inv_log_u_step;
 
   // Table values
-  log_P_1 = mat->table_log_P_rho_u[idx_rho * mat->num_u + idx_u];
-  log_P_2 = mat->table_log_P_rho_u[idx_rho * mat->num_u + idx_u + 1];
-  log_P_3 = mat->table_log_P_rho_u[(idx_rho + 1) * mat->num_u + idx_u];
-  log_P_4 = mat->table_log_P_rho_u[(idx_rho + 1) * mat->num_u + idx_u + 1];
+  const float log_P_1 = mat->table_log_P_rho_u[idx_rho * mat->num_u + idx_u];
+  const float log_P_2 =
+      mat->table_log_P_rho_u[idx_rho * mat->num_u + idx_u + 1];
+  const float log_P_3 =
+      mat->table_log_P_rho_u[(idx_rho + 1) * mat->num_u + idx_u];
+  const float log_P_4 =
+      mat->table_log_P_rho_u[(idx_rho + 1) * mat->num_u + idx_u + 1];
 
-  log_P = (1.f - intp_rho) * ((1.f - intp_u) * log_P_1 + intp_u * log_P_2) +
-          intp_rho * ((1.f - intp_u) * log_P_3 + intp_u * log_P_4);
+  const float log_P =
+      (1.f - intp_rho) * ((1.f - intp_u) * log_P_1 + intp_u * log_P_2) +
+      intp_rho * ((1.f - intp_u) * log_P_3 + intp_u * log_P_4);
 
   return expf(log_P);
 }
 
 // gas_internal_energy_from_pressure
 INLINE static float HM80_internal_energy_from_pressure(
-    float density, float P, const struct HM80_params *mat) {
+    const float density, const float P, const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -279,9 +282,9 @@ INLINE static float HM80_internal_energy_from_pressure(
 
 // gas_soundspeed_from_internal_energy
 INLINE static float HM80_soundspeed_from_internal_energy(
-    float density, float u, const struct HM80_params *mat) {
+    const float density, const float u, const struct HM80_params *mat) {
 
-  float c, P;
+  float c;
 
   // Bulk modulus
   if (mat->bulk_mod != 0) {
@@ -289,10 +292,10 @@ INLINE static float HM80_soundspeed_from_internal_energy(
   }
   // Ideal gas
   else {
-    P = HM80_pressure_from_internal_energy(density, u, mat);
+    const float P = HM80_pressure_from_internal_energy(density, u, mat);
     c = sqrtf(hydro_gamma * P / density);
 
-    if (c <= 0) {
+    if (c <= 0.f) {
       c = sqrtf(hydro_gamma * mat->P_min_for_c_min / density);
     }
   }
@@ -302,7 +305,35 @@ INLINE static float HM80_soundspeed_from_internal_energy(
 
 // gas_soundspeed_from_pressure
 INLINE static float HM80_soundspeed_from_pressure(
-    float density, float P, const struct HM80_params *mat) {
+    const float density, const float P, const struct HM80_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_entropy_from_internal_energy
+INLINE static float HM80_temperature_from_internal_energy(
+    const float density, const float u, const struct HM80_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_temperature
+INLINE static float HM80_density_from_pressure_and_temperature(
+    const float P, const float T, const struct HM80_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_internal_energy
+INLINE static float HM80_density_from_pressure_and_internal_energy(
+    const float P, const float u, const float rho_ref, const float rho_sph,
+    const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 

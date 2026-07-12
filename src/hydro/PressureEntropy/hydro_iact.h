@@ -19,6 +19,7 @@
 #ifndef SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H
 #define SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H
 
+#include "adaptive_softening_iact.h"
 #include "hydro_parameters.h"
 #include "signal_velocity.h"
 
@@ -80,6 +81,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.pressure_dh -=
       mj * pj->entropy_one_over_gamma * (hydro_dimension * wi + ui * wi_dx);
 
+  /* Compute contribution to the adpative softening correction */
+  adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
+
   /* Compute the kernel function for pj */
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
@@ -97,6 +101,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->rho_bar += mi * pi->entropy_one_over_gamma * wj;
   pj->density.pressure_dh -=
       mi * pi->entropy_one_over_gamma * (hydro_dimension * wj + uj * wj_dx);
+
+  /* Compute contribution to the adpative softening correction */
+  adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);
 
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
@@ -168,6 +175,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->rho_bar += mj * pj->entropy_one_over_gamma * wi;
   pi->density.pressure_dh -=
       mj * pj->entropy_one_over_gamma * (hydro_dimension * wi + ui * wi_dx);
+
+  /* Compute contribution to the adpative softening correction */
+  adaptive_softening_add_correction_term(pi, ui, h_inv, mj);
 
   const float fac = mj * wi_dx * r_inv;
 
@@ -314,8 +324,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       (S_gamma_j / S_gamma_i - f_i / S_gamma_i) * P_over_rho2_i * wi_dr +
       (S_gamma_i / S_gamma_j - f_j / S_gamma_j) * P_over_rho2_j * wj_dr;
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term =
+      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_i, f_j, r_inv);
+
   /* Eventually got the acceleration */
-  const float acc = (visc_term + sph_term) * r_inv;
+  const float acc = (visc_term + sph_term) * r_inv + adapt_soft_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];
@@ -424,8 +438,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       (S_gamma_j / S_gamma_i - f_i / S_gamma_i) * P_over_rho2_i * wi_dr +
       (S_gamma_i / S_gamma_j - f_j / S_gamma_j) * P_over_rho2_j * wj_dr;
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term =
+      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_i, f_j, r_inv);
+
   /* Eventually got the acceleration */
-  const float acc = (visc_term + sph_term) * r_inv;
+  const float acc = (visc_term + sph_term) * r_inv + adapt_soft_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];

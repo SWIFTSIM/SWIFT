@@ -1,0 +1,58 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e21 # kpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   1.0  # The end time of the simulation (in internal units).
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     0.1  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            snapshot # Common part of the name of output files
+  time_first:          0.       # Time of the first output (in internal units)
+  delta_time:          2e-2     # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-3 # Time between statistics output
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                       0.05    # Constant dimensionless multiplier for time integration.
+  MAC:                       geometric
+  theta_cr:                  0.7     
+  comoving_DM_softening:     0.01 # Comoving softening length (in internal units).
+  max_physical_DM_softening: 0.01    # Physical softening length (in internal units).
+  comoving_baryon_softening:     0.01 # Comoving softening length (in internal units).
+  max_physical_baryon_softening: 0.01    # Physical softening length (in internal units).
+  
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10.      # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./nfw.hdf5     # The file to read
+  periodic:   0                     # Non-periodic BCs
+  shift:    [0,0,0]   # Centre the box
+
+NFWPotential:
+  useabspos:       0              # 0 -> positions based on centre, 1 -> absolute positions
+  position:        [0.,0.,0.]     # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  M_200:            9.5          # M200 of the galaxy disk
+  h:               0.72          # reduced Hubble constant (value does not specify the used units!)
+  concentration:   17.0            # concentration of the Halo
+  diskfraction:    0.15          # Disk mass fraction (here this is the gas)
+  bulgefraction:   0.0            # Bulge mass fraction
+  timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+  epsilon:         0.001            # Softening size (internal units)

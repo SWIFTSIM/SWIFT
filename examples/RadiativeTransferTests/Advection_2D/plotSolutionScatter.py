@@ -63,7 +63,7 @@ mpl.rcParams["text.usetex"] = True
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -100,7 +100,7 @@ def plot_photons(filename):
     data = swiftsimio.load(filename)
     meta = data.metadata
 
-    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
     xlabel_units_str = meta.boxsize.units.latex_representation()
     x_coordinates = data.gas.coordinates[:, 0]
 

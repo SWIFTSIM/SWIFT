@@ -48,9 +48,10 @@ struct hydro_props;
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
+#define space_grid_split_threshold_default 400
 #define space_extra_parts_default 0
-#define space_extra_gparts_default 0
-#define space_extra_sparts_default 100
+#define space_extra_gparts_default 200
+#define space_extra_sparts_default 200
 #define space_extra_bparts_default 0
 #define space_extra_sinks_default 0
 #define space_expected_max_nr_strays_default 100
@@ -60,6 +61,14 @@ struct hydro_props;
 #define space_subsize_self_stars_default 32000
 #define space_subsize_pair_grav_default 256000000
 #define space_subsize_self_grav_default 32000
+#define space_recurse_size_self_hydro_default 100
+#define space_recurse_size_pair_hydro_default 100
+#define space_recurse_size_self_stars_default 100
+#define space_recurse_size_pair_stars_default 100
+#define space_recurse_size_self_black_holes_default 100
+#define space_recurse_size_pair_black_holes_default 100
+#define space_recurse_size_self_sinks_default 100
+#define space_recurse_size_pair_sinks_default 100
 #define space_subdepth_diff_grav_default 4
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
@@ -72,6 +81,7 @@ struct hydro_props;
  * restore these. */
 extern int space_splitsize;
 extern int space_maxsize;
+extern int space_grid_split_threshold;
 extern int space_subsize_pair_hydro;
 extern int space_subsize_self_hydro;
 extern int space_subsize_pair_stars;
@@ -79,6 +89,14 @@ extern int space_subsize_self_stars;
 extern int space_subsize_pair_grav;
 extern int space_subsize_self_grav;
 extern int space_subdepth_diff_grav;
+extern int space_recurse_size_self_hydro;
+extern int space_recurse_size_pair_hydro;
+extern int space_recurse_size_self_stars;
+extern int space_recurse_size_pair_stars;
+extern int space_recurse_size_self_black_holes;
+extern int space_recurse_size_pair_black_holes;
+extern int space_recurse_size_self_sinks;
+extern int space_recurse_size_pair_sinks;
 extern int space_extra_parts;
 extern int space_extra_gparts;
 extern int space_extra_sparts;
@@ -103,6 +121,10 @@ struct space {
 
   /*! Are we doing hydrodynamics? */
   int with_hydro;
+
+  /*! Are we splitting any gas? */
+  int with_hydro_splitting;
+  int splitting_need_unique_id;
 
   /*! Are we doing gravity? */
   int with_self_gravity;
@@ -329,6 +351,9 @@ struct space {
   /*! Structure dealing with the computation of a unique ID */
   struct unique_id unique_id;
 
+  /*! Have the top-level cells' time-steps been updated? */
+  char *cells_top_updated;
+
 #ifdef WITH_MPI
 
   /*! Buffers for parts that we will receive from foreign cells. */
@@ -336,7 +361,8 @@ struct space {
   size_t nr_parts_foreign, size_parts_foreign;
 
   /*! Buffers for g-parts that we will receive from foreign cells. */
-  struct gpart *gparts_foreign;
+  struct gpart_foreign *gparts_foreign;
+  struct gpart_fof_foreign *gparts_fof_foreign;
   size_t nr_gparts_foreign, size_gparts_foreign;
 
   /*! Buffers for s-parts that we will receive from foreign cells. */
@@ -347,11 +373,16 @@ struct space {
   struct bpart *bparts_foreign;
   size_t nr_bparts_foreign, size_bparts_foreign;
 
+  /*! Buffers for sink-parts that we will receive from foreign cells. */
+  struct sink *sinks_foreign;
+  size_t nr_sinks_foreign, size_sinks_foreign;
+
 #endif
 };
 
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
+void space_free_sort_indices(struct space *s);
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset);
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
@@ -426,8 +457,10 @@ void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
 void space_after_snap_tracer(struct space *s, int verbose);
+void space_mark_cell_as_updated(struct space *s, const struct cell *c);
 void space_convert_quantities(struct space *s, int verbose);
 void space_convert_rt_quantities(struct space *s, int verbose);
+void space_post_init_parts(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole);

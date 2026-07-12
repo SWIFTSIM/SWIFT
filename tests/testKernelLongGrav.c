@@ -39,7 +39,7 @@ const int num_tests = 1 << 10;
  * @param r Distance tested (for error messages).
  * @param r_s Mesh size tested (for error messages).
  */
-void check_value(double a, double b, const char* s, const double tol,
+void check_value(double a, double b, const char *s, const double tol,
                  const double r, const double r_s) {
   if (fabs(a - b) / fabs(a + b) > tol)
     error(
@@ -48,7 +48,7 @@ void check_value(double a, double b, const char* s, const double tol,
         a, b, fabs(a - b) / fabs(a + b), s, r_s, r / r_s);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

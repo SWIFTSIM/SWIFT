@@ -26,46 +26,94 @@
 #include "cell.h"
 
 /* Local headers. */
+#include "active.h"
 #include "engine.h"
 #include "hydro.h"
+#include "memswap.h"
 #include "sink_properties.h"
 
 /**
  * @brief Recursively update the pointer and counter for #spart after the
  * addition of a new particle.
  *
+ * Recall that the particles are in depth-first ordering. This means all
+ * the leaves' content is next to each other in memory.
+ * To insert a empty spot in the desired leaf (the one at the bottom of
+ * the progeny list), we can:
+ * (1) take the first particle in a leaf and move it to the
+ * start of the next leaf.
+ * (2a) If the leaf is the one where we want the gap, increase the particle
+ * counter.
+ * (2b) If not, shift the particle array pointer by one spot to account
+ * for the gap which was created on the main progeny branch.
+ * (3) Since we know the delta a spart is moved, we can update its #gpart
+ * connection at the same time.
+ * (4) Since all the cells beyond the insertion point have had their
+ * particle order altered, we need to void the sort arrays.
+ * (5) In cells that are not leaves, don't touch the particles, but move the
+ * counter or pointer.
+ *
  * @param c The cell we are working on.
  * @param progeny_list The list of the progeny index at each level for the
  * leaf-cell where the particle was added.
- * @param main_branch Are we in a cell directly above the leaf where the new
- * particle was added?
+ * @param main_branch Are we in a cell directly above the leaf where we
+ * want to create a gap?
+ * @param spart_to_insert The #spart to insert at the start of the next
+ * leaf encountered in the hierarchy.
  */
 void cell_recursively_shift_sparts(struct cell *c,
                                    const int progeny_list[space_cell_maxdepth],
-                                   const int main_branch) {
+                                   const int main_branch,
+                                   struct spart *const spart_to_insert) {
+
+  /* Recurse to the lower levels */
   if (c->split) {
-    /* No need to recurse in progenies located before the insestion point */
+
+    /* No need to recurse in progenies located before the insertion point */
     const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
 
     for (int k = first_progeny; k < 8; ++k) {
-      if (c->progeny[k] != NULL)
+      if (c->progeny[k] != NULL) {
+
+        /* Is the progeny on the main branch? */
+        const int progeny_on_main_branch = main_branch && (k == first_progeny);
+
         cell_recursively_shift_sparts(c->progeny[k], progeny_list,
-                                      main_branch && (k == first_progeny));
+                                      progeny_on_main_branch, spart_to_insert);
+      }
     }
   }
 
-  /* When directly above the leaf with the new particle: increase the particle
-   * count */
-  /* When after the leaf with the new particle: shift by one position */
+  /* Indicate that the cell is not sorted and cancel the pointer sorting
+   * arrays. */
+  c->stars.sorted = 0;
+  cell_free_stars_sorts(c);
+
+  /* If we are in a leaf, we can operate on the particle arrays */
+  if (!c->split) {
+
+    /* If we are in a leaf, then we want to:
+     * - Swap the first particle in the array with the one in our copy buffer
+     * - Update the gpart link of the new particle in the buffer since we know
+     * where it is going (it is moving by exactly the cell's content).
+     */
+    if (c->stars.count > 0) {
+
+      memswap(c->stars.parts, spart_to_insert, sizeof(struct spart));
+      spart_to_insert->gpart->id_or_neg_offset -= c->stars.count;
+
+    } else {
+      /* Nothing to do */
+    }
+  }
+
+  /* Now we can increase the cell counter or shift the pointer*/
   if (main_branch) {
+
     c->stars.count++;
 
-    /* Indicate that the cell is not sorted and cancel the pointer sorting
-     * arrays. */
-    c->stars.sorted = 0;
-    cell_free_stars_sorts(c);
-
   } else {
+
     c->stars.parts++;
   }
 }
@@ -153,6 +201,7 @@ void cell_recursively_shift_gparts(struct cell *c,
  * time bin.
  */
 struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
+
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
   if (c->stars.ti_old_part != e->ti_current) error("Undrifted cell!");
@@ -204,38 +253,36 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
     return NULL;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Number of particles to shift in order to get a free space. */
   const size_t n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
-
-#ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.parts + n_copy > top->stars.parts + top->stars.count)
     error("Copying beyond the allowed range");
 #endif
 
-  if (n_copy > 0) {
-    // MATTHIEU: This can be improved. We don't need to copy everything, just
-    // need to swap a few particles.
-    memmove(&c->stars.parts[1], &c->stars.parts[0],
-            n_copy * sizeof(struct spart));
-
-    /* Update the spart->gpart links (shift by 1) */
-    for (size_t i = 0; i < n_copy; ++i) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (c->stars.parts[i + 1].gpart == NULL) {
-        error("Incorrectly linked spart!");
-      }
-#endif
-      c->stars.parts[i + 1].gpart->id_or_neg_offset--;
-    }
-  }
-
   /* Recursively shift all the stars to get a free spot at the start of the
-   * current cell*/
-  cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
+   * current cell */
+  struct spart temp;
+#ifdef SWIFT_DEBUG_CHECKS
+  bzero(&temp, sizeof(struct spart));
+  temp.id = 666;
+#endif
+  cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1, &temp);
+
+  /* Finish all the operations by putting the last particle
+   * we have in hands in the first spot beyond the top-level cell's
+   * current range.
+   * Note that top->stars.count has been updated in the recursion */
+  struct spart *final_spart = top->stars.parts + (top->stars.count - 1);
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that we are indeed overwriting an 'extra' spart */
+  if (final_spart->id != -42)
+    error("Incorrect shift beyond the original top-level range");
+#endif
+  memcpy(final_spart, &temp, sizeof(struct spart));
 
   /* Make sure the gravity will be recomputed for this particle in the next
-   * step
-   */
+   * step */
   struct cell *top2 = c;
   while (top2->parent != NULL) {
     top2->stars.ti_old_part = e->ti_current;
@@ -249,6 +296,9 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* We now have an empty spart as the first particle in that cell */
   struct spart *sp = &c->stars.parts[0];
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->id != 666) error("Did not get the right particle!");
+#endif
   bzero(sp, sizeof(struct spart));
 
   /* Give it a decent position */
@@ -263,6 +313,9 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Specify it was drifted to this point */
   sp->ti_drift = e->ti_current;
 #endif
+
+  /* Give the new particle the correct depth */
+  cell_set_spart_h_depth(sp, c);
 
   /* Register that we used one of the free slots. */
   const size_t one = 1;
@@ -288,7 +341,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding sink on a foreign node");
-  if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+  if (c->sinks.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->split) error("Addition of sink performed above the leaf level");
 
   /* Progeny number at each level */
@@ -353,6 +406,11 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
 
     /* Update the sink->gpart links (shift by 1) */
     for (size_t i = 0; i < n_copy; ++i) {
+
+      // TODO: Matthieu figure out whether this is strictly needed
+      /* Skip inhibited (swallowed) sink particles */
+      if (sink_is_inhibited(&c->sinks.parts[i + 1], e)) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (c->sinks.parts[i + 1].gpart == NULL) {
         error("Incorrectly linked sink!");
@@ -396,6 +454,9 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
   /* Specify it was drifted to this point */
   sp->ti_drift = e->ti_current;
 #endif
+
+  /* Give the new particle the correct depth */
+  cell_set_sink_h_depth(sp, c);
 
   /* Register that we used one of the free slots. */
   const size_t one = 1;
@@ -489,6 +550,10 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
     /* Update the gpart->spart links (shift by 1) */
     struct gpart *gparts = c->grav.parts;
     for (size_t i = 0; i < n_copy; ++i) {
+
+      /* Skip inhibited particles */
+      if (gpart_is_inhibited(&c->grav.parts[i + 1], e)) continue;
+
       if (gparts[i + 1].type == swift_type_gas) {
         s->parts[-gparts[i + 1].id_or_neg_offset].gpart++;
       } else if (gparts[i + 1].type == swift_type_stars) {
@@ -572,7 +637,7 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   /* Mark the gpart as inhibited and stand-alone */
   if (p->gpart) {
     p->gpart->time_bin = time_bin_inhibited;
-    p->gpart->id_or_neg_offset = p->id;
+    p->gpart->id_or_neg_offset = 1;
     p->gpart->type = swift_type_dark_matter;
   }
 
@@ -645,7 +710,7 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   sp->time_bin = time_bin_inhibited;
   if (sp->gpart) {
     sp->gpart->time_bin = time_bin_inhibited;
-    sp->gpart->id_or_neg_offset = sp->id;
+    sp->gpart->id_or_neg_offset = 1;
     sp->gpart->type = swift_type_dark_matter;
   }
 
@@ -684,7 +749,7 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
   bp->time_bin = time_bin_inhibited;
   if (bp->gpart) {
     bp->gpart->time_bin = time_bin_inhibited;
-    bp->gpart->id_or_neg_offset = bp->id;
+    bp->gpart->id_or_neg_offset = 1;
     bp->gpart->type = swift_type_dark_matter;
   }
 
@@ -722,7 +787,7 @@ void cell_remove_sink(const struct engine *e, struct cell *c,
   sink->time_bin = time_bin_inhibited;
   if (sink->gpart) {
     sink->gpart->time_bin = time_bin_inhibited;
-    sink->gpart->id_or_neg_offset = sink->id;
+    sink->gpart->id_or_neg_offset = 1;
     sink->gpart->type = swift_type_dark_matter;
   }
 
@@ -905,6 +970,9 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
   /* Set a smoothing length */
   sp->h = p->h;
 
+  /* Give the new particle the correct depth */
+  cell_set_spart_h_depth(sp, c);
+
   /* Here comes the Sun! */
   return sp;
 }
@@ -983,6 +1051,9 @@ struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
   /* Set a smoothing length */
   sp->h = p->h;
 
+  /* Give the new particle the correct depth */
+  cell_set_spart_h_depth(sp, c);
+
   /* Here comes the Sun! */
   return sp;
 }
@@ -1051,10 +1122,9 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   sp->ti_kick = gp->ti_kick;
   gp->ti_drift = sp->ti_drift;
-#endif
 
-  /* Set a smoothing length */
-  sp->r_cut = e->sink_properties->cut_off_radius;
+  message("A new sink (%lld) is born !", sp->id);
+#endif
 
   /* Here comes the Sink! */
   return sp;
@@ -1130,7 +1200,10 @@ struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
 #endif
 
   /* Set a smoothing length */
-  sp->h = s->r_cut;
+  sp->h = s->h;
+
+  /* Give the new particle the correct depth */
+  cell_set_spart_h_depth(sp, c);
 
   /* Here comes the Sun! */
   return sp;

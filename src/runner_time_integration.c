@@ -179,7 +179,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
         /* Do the kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
                   dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
-                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
+                  entropy_floor, e->chemistry, ti_begin, ti_end, ti_begin_mesh,
+                  ti_end_mesh);
 
         /* Update the accelerations to be used in the drift for hydro */
         if (p->gpart != NULL) {
@@ -452,7 +453,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
                   dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
-                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
+                  entropy_floor, e->chemistry, ti_begin, ti_end, ti_begin_mesh,
+                  ti_end_mesh);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -676,18 +678,14 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   int updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
       b_updated = 0;
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
-                ti_hydro_beg_max = 0;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_rt_min_step_size = max_nr_timesteps;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
-                ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
-                ti_stars_beg_max = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_end_max = 0,
-                ti_sinks_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
+                ti_black_holes_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -740,6 +738,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
          * debugging/consistency check. */
         rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,
                                     e->max_nr_rt_subcycles, e->time_base);
+
+        if (ti_rt_new_step <= 0LL)
+          error("Got integer time step <= 0? %lld %lld",
+                get_part_rt_timestep(p, xp, e), ti_new_step);
 #endif
 
         /* Update particle */
@@ -758,7 +760,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
-        ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
 
         /* What is the next starting point for this cell ? */
         ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
@@ -768,8 +769,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
           /* What is the next sync-point ? */
           ti_gravity_end_min =
               min(ti_current + ti_new_step, ti_gravity_end_min);
-          ti_gravity_end_max =
-              max(ti_current + ti_new_step, ti_gravity_end_max);
 
           /* What is the next starting point for this cell ? */
           ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
@@ -798,7 +797,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
           /* What is the next sync-point ? */
           ti_hydro_end_min = min(ti_end, ti_hydro_end_min);
-          ti_hydro_end_max = max(ti_end, ti_hydro_end_max);
 
           /* What is the next starting point for this cell ? */
           ti_hydro_beg_max = max(ti_beg, ti_hydro_beg_max);
@@ -828,7 +826,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
             /* What is the next sync-point ? */
             ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-            ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
             /* What is the next starting point for this cell ? */
             ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
@@ -872,8 +869,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
           /* What is the next sync-point ? */
           ti_gravity_end_min =
               min(ti_current + ti_new_step, ti_gravity_end_min);
-          ti_gravity_end_max =
-              max(ti_current + ti_new_step, ti_gravity_end_max);
 
           /* What is the next starting point for this cell ? */
           ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
@@ -887,7 +882,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
             /* What is the next sync-point ? */
             ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-            ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
             const integertime_t ti_beg =
                 get_integer_time_begin(ti_current + 1, gp->time_bin);
@@ -952,9 +946,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         g_updated++;
 
         ti_stars_end_min = min(ti_current + ti_new_step, ti_stars_end_min);
-        ti_stars_end_max = max(ti_current + ti_new_step, ti_stars_end_max);
         ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
-        ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
 
         /* What is the next starting point for this cell ? */
         ti_stars_beg_max = max(ti_current, ti_stars_beg_max);
@@ -972,72 +964,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
               get_integer_time_begin(ti_current + 1, sp->time_bin);
 
           ti_stars_end_min = min(ti_end, ti_stars_end_min);
-          ti_stars_end_max = max(ti_end, ti_stars_end_max);
           ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
           /* What is the next starting point for this cell ? */
           ti_stars_beg_max = max(ti_beg, ti_stars_beg_max);
-          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
-        }
-      }
-    }
-
-    /* Loop over the sink particles in this cell. */
-    for (int k = 0; k < sink_count; k++) {
-
-      /* Get a handle on the part. */
-      struct sink *restrict sink = &sinks[k];
-
-      /* need to be updated ? */
-      if (sink_is_active(sink, e)) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Current end of time-step */
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, sink->time_bin);
-
-        if (ti_end != ti_current)
-          error("Computing time-step of rogue particle.");
-#endif
-        /* Get new time-step */
-        const integertime_t ti_new_step = get_sink_timestep(sink, e);
-
-        /* Update particle */
-        sink->time_bin = get_time_bin(ti_new_step);
-        sink->gpart->time_bin = get_time_bin(ti_new_step);
-
-        /* Number of updated sink-particles */
-        sink_updated++;
-        g_updated++;
-
-        ti_sinks_end_min = min(ti_current + ti_new_step, ti_sinks_end_min);
-        ti_sinks_end_max = max(ti_current + ti_new_step, ti_sinks_end_max);
-        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
-        ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
-
-        /* What is the next starting point for this cell ? */
-        ti_sinks_beg_max = max(ti_current, ti_sinks_beg_max);
-        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
-
-        /* sink particle is inactive but not inhibited */
-      } else {
-
-        if (!sink_is_inhibited(sink, e)) {
-
-          const integertime_t ti_end =
-              get_integer_time_end(ti_current, sink->time_bin);
-
-          const integertime_t ti_beg =
-              get_integer_time_begin(ti_current + 1, sink->time_bin);
-
-          ti_sinks_end_min = min(ti_end, ti_sinks_end_min);
-          ti_sinks_end_max = max(ti_end, ti_sinks_end_max);
-          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
-
-          /* What is the next starting point for this cell ? */
-          ti_sinks_beg_max = max(ti_beg, ti_sinks_beg_max);
           ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
         }
       }
@@ -1089,10 +1019,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         ti_black_holes_end_min =
             min(ti_current + ti_new_step, ti_black_holes_end_min);
-        ti_black_holes_end_max =
-            max(ti_current + ti_new_step, ti_black_holes_end_max);
         ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
-        ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
 
         /* What is the next starting point for this cell ? */
         ti_black_holes_beg_max = max(ti_current, ti_black_holes_beg_max);
@@ -1110,12 +1037,82 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
               get_integer_time_begin(ti_current + 1, bp->time_bin);
 
           ti_black_holes_end_min = min(ti_end, ti_black_holes_end_min);
-          ti_black_holes_end_max = max(ti_end, ti_black_holes_end_max);
           ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
           /* What is the next starting point for this cell ? */
           ti_black_holes_beg_max = max(ti_beg, ti_black_holes_beg_max);
+          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+        }
+      }
+    }
+
+    /* Loop over the sink particles in this cell. */
+    for (int k = 0; k < sink_count; k++) {
+
+      /* Get a handle on the part. */
+      struct sink *restrict sink = &sinks[k];
+
+      /* need to be updated ? */
+      if (sink_is_active(sink, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Current end of time-step */
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, sink->time_bin);
+
+        if (ti_end != ti_current)
+          error("Computing time-step of rogue particle.");
+#endif
+        /* Old time-step length in physical units */
+        const integertime_t ti_old_step = get_integer_timestep(sink->time_bin);
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current - ti_old_step, e->ti_current);
+        } else {
+          old_time_step_length = get_timestep(sink->time_bin, e->time_base);
+        }
+
+        /* Get new time-step */
+        const integertime_t ti_new_step = get_sink_timestep(sink, e);
+
+        /* Update particle */
+        sink->time_bin = get_time_bin(ti_new_step);
+        sink->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Update the tracers properties */
+        tracers_after_timestep_sink(
+            sink, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, old_time_step_length,
+            e->snapshot_recording_triggers_started_sink);
+
+        /* Number of updated sink-particles */
+        sink_updated++;
+        g_updated++;
+
+        ti_sinks_end_min = min(ti_current + ti_new_step, ti_sinks_end_min);
+        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+
+        /* What is the next starting point for this cell ? */
+        ti_sinks_beg_max = max(ti_current, ti_sinks_beg_max);
+        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+
+        /* star particle is inactive but not inhibited */
+      } else {
+
+        if (!sink_is_inhibited(sink, e)) {
+
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, sink->time_bin);
+
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, sink->time_bin);
+
+          ti_sinks_end_min = min(ti_end, ti_sinks_end_min);
+          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+
+          /* What is the next starting point for this cell ? */
+          ti_sinks_beg_max = max(ti_beg, ti_sinks_beg_max);
           ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
         }
       }
@@ -1162,6 +1159,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       }
     }
   }
+
+  /* Flag something may have changed */
+  if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
   /* Store the values. */
   c->hydro.updated = updated;
@@ -1290,6 +1290,9 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
     }
   }
 
+  /* Flag something may have changed */
+  if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
+
   /* Store the collected values in the cell. */
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -1336,10 +1339,8 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
   if (c->nodeID != engine_rank) error("Limiting dt of a foreign cell is nope.");
 #endif
 
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
-                ti_hydro_beg_max = 0;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
-                ti_gravity_beg_max = 0;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
 
   /* Limit irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_hydro_limiter));
@@ -1369,6 +1370,9 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
       }
     }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1431,7 +1435,6 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
 
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_end_new, ti_hydro_end_min);
-        ti_hydro_end_max = max(ti_end_new, ti_hydro_end_max);
 
         /* What is the next starting point for this cell ? */
         ti_hydro_beg_max = max(ti_beg_new, ti_hydro_beg_max);
@@ -1444,13 +1447,15 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
 
           /* What is the next sync-point ? */
           ti_gravity_end_min = min(ti_end_new, ti_gravity_end_min);
-          ti_gravity_end_max = max(ti_end_new, ti_gravity_end_max);
 
           /* What is the next starting point for this cell ? */
           ti_gravity_beg_max = max(ti_beg_new, ti_gravity_beg_max);
         }
       }
     }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1493,10 +1498,8 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   if (c->nodeID != engine_rank) error("Syncing of a foreign cell is nope.");
 #endif
 
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
-                ti_hydro_beg_max = 0;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
-                ti_gravity_beg_max = 0;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
 
   /* Limit irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_hydro_sync));
@@ -1525,6 +1528,9 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
       }
     }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1556,8 +1562,27 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
 
       if (p->limiter_data.to_be_synchronized) {
 
+        /* Old time-step length in physical units, computed before
+         * timestep_process_sync_part changes p->time_bin. */
+        const integertime_t ti_old_beg =
+            get_integer_time_begin(ti_current, p->time_bin);
+        const integertime_t ti_old_step = ti_current - ti_old_beg;
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, ti_current - ti_old_step, ti_current);
+        } else {
+          old_time_step_length = ti_old_step * e->time_base;
+        }
+
         /* Finish this particle's time-step */
         timestep_process_sync_part(p, xp, e, cosmo);
+
+        /* Update the tracers properties */
+        tracers_after_timestep_part(
+            p, xp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+            old_time_step_length, e->snapshot_recording_triggers_started_part);
 
         /* Note that at this moment the new RT time step is only used to
          * limit the hydro time step here. */
@@ -1580,25 +1605,9 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         new_time_bin = min(new_time_bin, e->max_active_bin);
         ti_new_step = get_integer_timestep(new_time_bin);
 
-        /* Time-step length in physical units */
-        // MATTHIEU: TODO: think about this one!
-        double time_step_length;
-        if (with_cosmology) {
-          time_step_length = cosmology_get_delta_time(
-              e->cosmology, e->ti_current, e->ti_current + ti_new_step);
-        } else {
-          time_step_length = get_timestep(new_time_bin, e->time_base);
-        }
-
         /* Update particle */
         p->time_bin = new_time_bin;
         if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
-
-        /* Update the tracers properties */
-        tracers_after_timestep_part(
-            p, xp, e->internal_units, e->physical_constants, with_cosmology,
-            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
-            0 * time_step_length, e->snapshot_recording_triggers_started_part);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
         p->limited_part = 1;
@@ -1606,7 +1615,6 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
 
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
-        ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
 
         /* What is the next starting point for this cell ? */
         ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
@@ -1620,14 +1628,15 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
           /* What is the next sync-point ? */
           ti_gravity_end_min =
               min(ti_current + ti_new_step, ti_gravity_end_min);
-          ti_gravity_end_max =
-              max(ti_current + ti_new_step, ti_gravity_end_max);
 
           /* What is the next starting point for this cell ? */
           ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
         }
       }
     }
+
+    /* Flag something may have changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1736,6 +1745,8 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 void runner_do_collect_rt_times(struct runner *r, struct cell *c,
                                 const int timer) {
 
+  TIMER_TIC;
+
   const struct engine *e = r->e;
   size_t rt_updated = 0;
 
@@ -1752,7 +1763,12 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
      * rt_advanced_cell_time should be called exactly once before
      * collect times. Except on the first subcycle, because the
      * collect_rt_times task shouldn't be called in the main steps.
-     * In that case, it should be exactly 2. */
+     * In that case, it should be exactly 2.
+     * This is only valid if the cell has been active this step.
+     * Otherwise, rt_advance_cell_time will not have run, yet the
+     * rt_collect_cell_times call may still be executed if the top
+     * level cell is above the super level cell. */
+    if (!cell_is_rt_active(c, e)) return;
     if (e->ti_current_subcycle - c->rt.ti_rt_end_min == e->ti_current) {
       /* This is the first subcycle */
       if (c->rt.advanced_time != 2)

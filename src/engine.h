@@ -54,6 +54,7 @@
 struct black_holes_properties;
 struct extra_io_properties;
 struct external_potential;
+struct forcing_terms;
 
 /**
  * @brief The different policies the #engine can follow.
@@ -88,8 +89,11 @@ enum engine_policy {
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
   engine_policy_power_spectra = (1 << 27),
+  engine_policy_grid = (1 << 28),
+  engine_policy_grid_hydro = (1 << 29),
+  engine_policy_no_io = (1 << 30),
 };
-#define engine_maxpolicy 28
+#define engine_maxpolicy 31
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -119,6 +123,7 @@ enum engine_step_properties {
 #define engine_foreign_alloc_margin_default 1.05
 #define engine_default_energy_file_name "statistics"
 #define engine_default_timesteps_file_name "timesteps"
+#define engine_default_rt_subcycles_file_name "rtsubcycles"
 #define engine_max_parts_per_ghost_default 1000
 #define engine_max_sparts_per_ghost_default 1000
 #define engine_max_parts_per_cooling_default 10000
@@ -346,7 +351,9 @@ struct engine {
   float snapshot_subsample_fraction[swift_type_count];
   int snapshot_run_on_dump;
   int snapshot_distributed;
-  int snapshot_lustre_OST_count;
+  int snapshot_lustre_OST_checks;
+  int snapshot_lustre_OST_free;
+  int snapshot_lustre_OST_test;
   int snapshot_compression;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
@@ -368,6 +375,10 @@ struct engine {
   double snapshot_recording_triggers_bpart[num_snapshot_triggers_bpart];
   double snapshot_recording_triggers_desired_bpart[num_snapshot_triggers_bpart];
   int snapshot_recording_triggers_started_bpart[num_snapshot_triggers_bpart];
+
+  double snapshot_recording_triggers_sink[num_snapshot_triggers_sink];
+  double snapshot_recording_triggers_desired_sink[num_snapshot_triggers_sink];
+  int snapshot_recording_triggers_started_sink[num_snapshot_triggers_sink];
 
   /* Metadata from the ICs */
   struct ic_info *ics_metadata;
@@ -428,6 +439,9 @@ struct engine {
 
   /* File handle for the timesteps information */
   FILE *file_timesteps;
+
+  /* File handle for the Radiative Transfer sub-cycling information */
+  FILE *file_rt_subcycles;
 
   /* File handle for the SFH logger file */
   FILE *sfh_logger;
@@ -536,6 +550,9 @@ struct engine {
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
 
+  /* Properties of the hydrodynamics forcing terms */
+  struct forcing_terms *forcing_terms;
+
   /* Properties of the cooling scheme */
   struct cooling_function_data *cooling_func;
 
@@ -579,8 +596,16 @@ struct engine {
   /* Whether to dump restart files after the last step. */
   int restart_onexit;
 
-  /* Number of Lustre OSTs on the system to use as rank-based striping offset */
-  int restart_lustre_OST_count;
+  /* Perform OST checks and assign each restart file a stripe on the basis of
+   * most free space first. */
+  int restart_lustre_OST_checks;
+
+  /* Free space that an OST should have to be used, -1 makes this
+   * the rss size. In MiB so we can use an int and human sized. */
+  int restart_lustre_OST_free;
+
+  /* Whether to check is OSTs are writable, if not then they are not used. */
+  int restart_lustre_OST_test;
 
   /* Do we free the foreign data before writing restart files? */
   int free_foreign_when_dumping_restart;
@@ -674,7 +699,7 @@ struct engine {
 /* Function prototypes, engine.c. */
 void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
-void engine_compute_next_snapshot_time(struct engine *e);
+void engine_compute_next_snapshot_time(struct engine *e, const int restart);
 void engine_compute_next_stf_time(struct engine *e);
 void engine_compute_next_fof_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
@@ -683,7 +708,9 @@ void engine_compute_next_ps_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_unskip_rt_sub_cycle(struct engine *e);
-void engine_drift_all(struct engine *e, const int drift_mpoles);
+void engine_drift_all(struct engine *e, const int drift_mpoles,
+                      const int init_particles);
+void engine_init_all_particles(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_allocate_foreign_particles(struct engine *e, const int fof);
@@ -692,10 +719,11 @@ void engine_io(struct engine *e);
 void engine_io_check_snapshot_triggers(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_collect_end_of_sub_cycle(struct engine *e);
-void engine_dump_snapshot(struct engine *e);
+void engine_dump_snapshot(struct engine *e, const int fof);
 void engine_run_on_dump(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params,
-                              const struct output_options *output_options);
+                              const struct output_options *output_options,
+                              const int restart);
 void engine_init(
     struct engine *e, struct space *s, struct swift_params *params,
     struct output_options *output_options, long long Ngas, long long Ngparts,
@@ -713,6 +741,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
+    struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -728,6 +757,7 @@ void engine_config(int restart, int fof, struct engine *e,
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
 void engine_run_rt_sub_cycles(struct engine *e);
+void engine_first_init_particles(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
 int engine_step(struct engine *e);
@@ -738,10 +768,19 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             size_t *Ngpart, const size_t offset_sparts,
                             const int *ind_spart, size_t *Nspart,
                             const size_t offset_bparts, const int *ind_bpart,
-                            size_t *Nbpart);
+                            size_t *Nbpart, const size_t offset_sinks,
+                            const int *ind_sink, size_t *Nsink);
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
+void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
+                      const int proxy_type);
+void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
+                               const struct cell *cj, const int nodeID);
+int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
+                          const int i, const int j, const int k,
+                          const struct cell *cj, const int ii, const int jj,
+                          const int kk, const double r_max);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);
@@ -755,6 +794,7 @@ void engine_fof(struct engine *e, const int dump_results,
                 const int dump_debug_results, const int seed_black_holes,
                 const int foreign_buffers_allocated);
 void engine_activate_gpart_comms(struct engine *e);
+void engine_activate_fof_attach_tasks(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
@@ -762,11 +802,9 @@ void engine_maketasks(struct engine *e);
 /* Function prototypes, engine_maketasks.c. */
 void engine_make_fof_tasks(struct engine *e);
 
-/* Function prototypes, engine_marktasks.c. */
-int engine_marktasks(struct engine *e);
-
 /* Function prototypes, engine_split_particles.c. */
 void engine_split_gas_particles(struct engine *e);
+void engine_init_split_gas_particles(struct engine *e);
 
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);
@@ -777,5 +815,8 @@ void engine_numa_policies(int rank, int verbose);
 void engine_struct_dump(struct engine *e, FILE *stream);
 void engine_struct_restore(struct engine *e, FILE *stream);
 int engine_dump_restarts(struct engine *e, int drifted_all, int force);
+
+/* dev/debug */
+void engine_dump_diagnostic_data(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */

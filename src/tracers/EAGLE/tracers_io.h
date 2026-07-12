@@ -24,6 +24,7 @@
 #include <config.h>
 
 /* Local includes */
+#include "black_holes_properties.h"
 #include "io_properties.h"
 #include "tracers.h"
 
@@ -41,10 +42,10 @@ __attribute__((always_inline)) INLINE static void tracers_write_flavour(
 }
 #endif
 
-INLINE static void convert_part_averaged_SFR(const struct engine* e,
-                                             const struct part* p,
-                                             const struct xpart* xp,
-                                             float* ret) {
+INLINE static void convert_part_averaged_SFR(const struct engine *e,
+                                             const struct part *p,
+                                             const struct xpart *xp,
+                                             float *ret) {
 
   for (int i = 0; i < num_snapshot_triggers_part; ++i) {
     if (e->snapshot_recording_triggers_started_part[i])
@@ -52,12 +53,19 @@ INLINE static void convert_part_averaged_SFR(const struct engine* e,
                e->snapshot_recording_triggers_part[i];
     else
       ret[i] = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ret[i] < 0.f)
+      error(
+          "Negative averaged SFR for gas particle id=%lld trigger=%d value=%e",
+          p->id, i, ret[i]);
+#endif
   }
 }
 
-INLINE static void convert_spart_averaged_SFR(const struct engine* e,
-                                              const struct spart* sp,
-                                              float* ret) {
+INLINE static void convert_spart_averaged_SFR(const struct engine *e,
+                                              const struct spart *sp,
+                                              float *ret) {
 
   /* Note: We use the 'part' trigger here as the SF would have started when the
    * particle was still in gas form */
@@ -67,12 +75,19 @@ INLINE static void convert_spart_averaged_SFR(const struct engine* e,
                e->snapshot_recording_triggers_part[i];
     else
       ret[i] = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ret[i] < 0.f)
+      error(
+          "Negative averaged SFR for star particle id=%lld trigger=%d value=%e",
+          sp->id, i, ret[i]);
+#endif
   }
 }
 
-INLINE static void convert_bpart_averaged_accretion_rate(const struct engine* e,
-                                                         const struct bpart* bp,
-                                                         float* ret) {
+INLINE static void convert_bpart_averaged_accretion_rate(const struct engine *e,
+                                                         const struct bpart *bp,
+                                                         float *ret) {
 
   for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
     if (e->snapshot_recording_triggers_started_bpart[i])
@@ -80,6 +95,14 @@ INLINE static void convert_bpart_averaged_accretion_rate(const struct engine* e,
                e->snapshot_recording_triggers_bpart[i];
     else
       ret[i] = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ret[i] < 0.f)
+      error(
+          "Negative averaged accretion rate for black hole id=%lld trigger=%d "
+          "value=%e",
+          bp->id, i, ret[i]);
+#endif
   }
 }
 
@@ -94,7 +117,7 @@ INLINE static void convert_bpart_averaged_accretion_rate(const struct engine* e,
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int tracers_write_particles(
-    const struct part* parts, const struct xpart* xparts, struct io_props* list,
+    const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
   list[0] = io_make_output_field(
@@ -103,9 +126,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "Maximal temperatures ever reached by the particles");
 
   if (with_cosmology) {
-    list[1] = io_make_output_field(
+    list[1] = io_make_physical_output_field(
         "MaximalTemperatureScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         xparts, tracers_data.maximum_temperature_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the maximal temperature was reached");
 
   } else {
@@ -136,39 +160,44 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
                                  "Total amount of thermal energy from AGN "
                                  "feedback events received by the particles.");
 
-  list[5] = io_make_output_field(
+  list[5] = io_make_physical_output_field(
       "DensitiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, xparts,
       tracers_data.density_before_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical density (not subgrid) of the gas fetched before the last AGN "
       "feedback event that hit the particles. -1 if the particles have never "
       "been heated.");
 
-  list[6] = io_make_output_field(
+  list[6] = io_make_physical_output_field(
       "EntropiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS,
       0.f, xparts, tracers_data.entropy_before_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical entropy (not subgrid) per unit mass of the gas fetched before "
       "the last AGN feedback event that hit the particles. -1 if the particles "
       "have never been heated.");
 
-  list[7] = io_make_output_field(
+  list[7] = io_make_physical_output_field(
       "DensitiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, xparts,
       tracers_data.density_at_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical density (not subgrid) of the gas at the last AGN feedback "
       "event that hit the particles. -1 if the particles have never been "
       "heated.");
 
-  list[8] = io_make_output_field(
+  list[8] = io_make_physical_output_field(
       "EntropiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f,
       xparts, tracers_data.entropy_at_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical entropy (not subgrid) per unit mass of the gas at the last AGN "
       "feedback event that hit the particles. -1 if the particles have never "
       "been heated.");
 
   if (with_cosmology) {
 
-    list[9] = io_make_output_field(
+    list[9] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         xparts, tracers_data.last_AGN_injection_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the particles were last hit by AGN feedback. "
         "-1 if a particle has never been hit by feedback");
 
@@ -187,11 +216,69 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "Star formation rates of the particles averaged over the period set by "
       "the first two snapshot triggers");
 
-  return 11;
+  if (with_jets) {
+    list[11] = io_make_output_field(
+        "KickedByJetFeedback", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+        tracers_data.hit_by_jet_feedback,
+        "Flags the particles that have been directly kicked by"
+        "an AGN jet feedback event at some point in the past. "
+        "If > 0, contains the number of individual events.");
+
+    list[12] = io_make_physical_output_field(
+        "EnergiesReceivedFromJetFeedback", FLOAT, 1, UNIT_CONV_ENERGY, 0.f,
+        xparts, tracers_data.jet_feedback_energy, /*can convert to comoving=*/0,
+        "Total amount of kinetic energy from AGN "
+        "jet feedback events received by the "
+        "particles while they were still gas "
+        "particles.");
+
+    if (with_cosmology) {
+
+      list[13] = io_make_physical_output_field(
+          "LastAGNJetFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+          xparts, tracers_data.last_AGN_jet_feedback_scale_factor,
+          /*can convert to comoving=*/0,
+          "Scale-factors at which the particles were last hit by jet "
+          "feedback while they were still gas particles. "
+          "-1 if a particle has never been hit by feedback");
+
+    } else {
+
+      list[13] = io_make_output_field(
+          "LastAGNJetFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, xparts,
+          tracers_data.last_AGN_jet_feedback_time,
+          "Times at which the particles were last hit by jet"
+          "feedback while they were still gas particles. "
+          "-1 if a particle has never been hit by feedback");
+    }
+
+    list[14] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
+                                    UNIT_CONV_VELOCITY, 0.f, xparts,
+                                    tracers_data.last_jet_kick_velocity,
+                                    "Kick velocity at last AGN jet event.");
+
+    list[15] = io_make_output_field("LastAGNJetKickMode", CHAR, 1,
+                                    UNIT_CONV_NO_UNITS, 0.f, xparts,
+                                    tracers_data.last_jet_kick_accretion_mode,
+                                    "The accretion/feedback mode the BH was "
+                                    "in when it kicked this particle. 0 "
+                                    "corresponds to the thick disc, 1 to the "
+                                    "thin disc and 2 to the slim disc.");
+
+    list[16] = io_make_output_field("LastAGNJetKickBHId", ULONGLONG, 1,
+                                    UNIT_CONV_NO_UNITS, 0.f, xparts,
+                                    tracers_data.last_jet_kick_BH_id,
+                                    "The id of the BH that last kicked this "
+                                    "particle.");
+
+    return 17;
+  } else {
+    return 11;
+  }
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
-    const struct spart* sparts, struct io_props* list,
+    const struct spart *sparts, struct io_props *list,
     const int with_cosmology) {
 
   list[0] = io_make_output_field(
@@ -201,9 +288,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "converted to stars");
 
   if (with_cosmology) {
-    list[1] = io_make_output_field(
+    list[1] = io_make_physical_output_field(
         "MaximalTemperatureScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         sparts, tracers_data.maximum_temperature_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the maximal temperature was reached");
 
   } else {
@@ -228,39 +316,43 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
                            "an AGN feedback event at some point in the past "
                            "when the particle was still a gas particle.");
 
-  list[4] = io_make_output_field(
+  list[4] = io_make_physical_output_field(
       "EnergiesReceivedFromAGNFeedback", FLOAT, 1, UNIT_CONV_ENERGY, 0.f,
-      sparts, tracers_data.AGN_feedback_energy,
+      sparts, tracers_data.AGN_feedback_energy, /*can convert to comoving=*/0,
       "Total amount of thermal energy from AGN feedback events received by the "
       "particles when the particle was still a gas particle.");
 
-  list[5] = io_make_output_field(
+  list[5] = io_make_physical_output_field(
       "DensitiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       tracers_data.density_before_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical density (not subgrid) of the gas fetched before the last AGN "
       "feedback "
       "event that hit the particles when they were still gas particles. -1 if "
       "the particles have never been heated.");
 
-  list[6] = io_make_output_field(
+  list[6] = io_make_physical_output_field(
       "EntropiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS,
       0.f, sparts, tracers_data.entropy_before_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical entropy (not subgrid) per unit mass of the gas fetched before "
       "the last AGN "
       "feedback event that hit the particles when they were still gas "
       "particles."
       " -1 if the particles have never been heated.");
 
-  list[7] = io_make_output_field(
+  list[7] = io_make_physical_output_field(
       "DensitiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       tracers_data.density_at_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical density (not subgrid) of the gas at the last AGN feedback "
       "event that hit the particles when they were still gas particles. -1 if "
       "the particles have never been heated.");
 
-  list[8] = io_make_output_field(
+  list[8] = io_make_physical_output_field(
       "EntropiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f,
       sparts, tracers_data.entropy_at_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical entropy (not subgrid) per unit mass of the gas at the last AGN "
       "feedback event that hit the particles when they were still gas "
       "particles."
@@ -268,9 +360,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 
   if (with_cosmology) {
 
-    list[9] = io_make_output_field(
+    list[9] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         sparts, tracers_data.last_AGN_injection_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the particles were last hit by AGN feedback "
         "when they were still gas particles. -1 if a particle has never been "
         "hit by feedback");
@@ -292,11 +385,69 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "the first two snapshot triggers when the particle was still a gas "
       "particle.");
 
-  return 11;
+  if (with_jets) {
+    list[11] = io_make_output_field(
+        "KickedByJetFeedback", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        tracers_data.hit_by_jet_feedback,
+        "Flags the particles that have been directly kicked by"
+        "an AGN jet feedback event at some point in the past. "
+        "If > 0, contains the number of individual events.");
+
+    list[12] = io_make_output_field("EnergiesReceivedFromJetFeedback", FLOAT, 1,
+                                    UNIT_CONV_ENERGY, 0.f, sparts,
+                                    tracers_data.jet_feedback_energy,
+                                    "Total amount of kinetic energy from AGN "
+                                    "jet feedback events received by the "
+                                    "particles while they were still gas "
+                                    "particles.");
+
+    if (with_cosmology) {
+
+      list[13] = io_make_physical_output_field(
+          "LastAGNJetFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+          sparts, tracers_data.last_AGN_jet_feedback_scale_factor,
+          /*can convert to comoving=*/0,
+          "Scale-factors at which the particles were last hit by jet "
+          "feedback while they were still gas particles. "
+          "-1 if a particle has never been hit by feedback");
+
+    } else {
+
+      list[13] = io_make_output_field(
+          "LastAGNJetFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sparts,
+          tracers_data.last_AGN_jet_feedback_time,
+          "Times at which the particles were last hit by jet"
+          "feedback while they were still gas particles. "
+          "-1 if a particle has never been hit by feedback");
+    }
+
+    list[14] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
+                                    UNIT_CONV_VELOCITY, 0.f, sparts,
+                                    tracers_data.last_jet_kick_velocity,
+                                    "Kick velocity at last AGN jet event.");
+
+    list[15] = io_make_output_field("LastAGNJetKickMode", CHAR, 1,
+                                    UNIT_CONV_NO_UNITS, 0.f, sparts,
+                                    tracers_data.last_jet_kick_accretion_mode,
+                                    "The accretion/feedback mode the BH was "
+                                    "in when it kicked this particle. 0 "
+                                    "corresponds to the thick disc, 1 to the "
+                                    "thin disc and 2 to the slim disc.");
+
+    list[16] = io_make_output_field("LastAGNJetKickBHId", ULONGLONG, 1,
+                                    UNIT_CONV_NO_UNITS, 0.f, sparts,
+                                    tracers_data.last_jet_kick_BH_id,
+                                    "The id of the BH that last kicked this "
+                                    "particle.");
+
+    return 17;
+  } else {
+    return 11;
+  }
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_bparticles(
-    const struct bpart* bparts, struct io_props* list,
+    const struct bpart *bparts, struct io_props *list,
     const int with_cosmology) {
 
   list[0] = io_make_output_field_convert_bpart(
@@ -307,6 +458,12 @@ __attribute__((always_inline)) INLINE static int tracers_write_bparticles(
       "first two snapshot triggers");
 
   return 1;
+}
+
+__attribute__((always_inline)) INLINE static int tracers_write_sinkparticles(
+    const struct sink *sinks, struct io_props *list, const int with_cosmology) {
+
+  return 0;
 }
 
 #endif /* SWIFT_TRACERS_EAGLE_IO_H */

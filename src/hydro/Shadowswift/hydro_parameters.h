@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk)
- *
+ * Copyright (c) 2020 Matthieu Schaller (schaller@strw.leideuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,9 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
-#ifndef SWIFT_SHADOWSWIFT_HYDRO_PARAMETERS_H
-#define SWIFT_SHADOWSWIFT_HYDRO_PARAMETERS_H
+#ifndef SWIFT_NONE_HYDRO_PARAMETERS_H
+#define SWIFT_NONE_HYDRO_PARAMETERS_H
 
 /* Configuration file */
 #include <config.h>
@@ -36,7 +34,7 @@
 
 /**
  * @file Shadowswift/hydro_parameters.h
- * @brief Shadowswift implementation. (default parameters)
+ * @brief Empty implementation
  *
  *        This file defines a number of things that are used in
  *        hydro_properties.c as defaults for run-time parameters
@@ -48,7 +46,6 @@
 /* Cosmology default beta=3.0.
  * Alpha can be set in the parameter file.
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta 3.0f
 
 /* Structs that store the relevant variables */
 
@@ -72,14 +69,14 @@ struct unit_system;
  *        the parameter file, or sets them to defaults.
  *
  * @param params: the pointer to the swift_params file
- * @param unit_system: pointer to the unit system
+ * @param us: pointer to the internal unit system
  * @param phys_const: pointer to the physical constants system
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
-static INLINE void viscosity_init(struct swift_params* params,
-                                  const struct unit_system* us,
-                                  const struct phys_const* phys_const,
-                                  struct viscosity_global_data* viscosity) {}
+static INLINE void viscosity_init(struct swift_params *params,
+                                  const struct unit_system *us,
+                                  const struct phys_const *phys_const,
+                                  struct viscosity_global_data *viscosity) {}
 
 /**
  * @brief Initialises a viscosity struct to sensible numbers for mocking
@@ -88,7 +85,7 @@ static INLINE void viscosity_init(struct swift_params* params,
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
 static INLINE void viscosity_init_no_hydro(
-    struct viscosity_global_data* viscosity) {}
+    struct viscosity_global_data *viscosity) {}
 
 /**
  * @brief Prints out the viscosity parameters at the start of a run.
@@ -97,7 +94,7 @@ static INLINE void viscosity_init_no_hydro(
  *                   hydro_properties
  **/
 static INLINE void viscosity_print(
-    const struct viscosity_global_data* viscosity) {}
+    const struct viscosity_global_data *viscosity) {}
 
 #if defined(HAVE_HDF5)
 /**
@@ -107,9 +104,7 @@ static INLINE void viscosity_print(
  * @param viscosity: pointer to the viscosity_global_data struct.
  **/
 static INLINE void viscosity_print_snapshot(
-    hid_t h_grpsph, const struct viscosity_global_data* viscosity) {
-  io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
-}
+    hid_t h_grpsph, const struct viscosity_global_data *viscosity) {}
 #endif
 
 /* Diffusion */
@@ -119,14 +114,14 @@ static INLINE void viscosity_print_snapshot(
  *        the parameter file, or sets them to defaults.
  *
  * @param params: the pointer to the swift_params file
- * @param unit_system: pointer to the unit system
+ * @param us: pointer to the internal unit system
  * @param phys_const: pointer to the physical constants system
- * @param diffusion_global_data: pointer to the diffusion struct to be filled.
+ * @param diffusion: pointer to the diffusion struct to be filled.
  **/
-static INLINE void diffusion_init(struct swift_params* params,
-                                  const struct unit_system* us,
-                                  const struct phys_const* phys_const,
-                                  struct diffusion_global_data* diffusion) {}
+static INLINE void diffusion_init(struct swift_params *params,
+                                  const struct unit_system *us,
+                                  const struct phys_const *phys_const,
+                                  struct diffusion_global_data *diffusion) {}
 
 /**
  * @brief Initialises a diffusion struct to sensible numbers for mocking
@@ -135,7 +130,7 @@ static INLINE void diffusion_init(struct swift_params* params,
  * @param diffusion: pointer to the diffusion_global_data struct to be filled.
  **/
 static INLINE void diffusion_init_no_hydro(
-    struct diffusion_global_data* diffusion) {}
+    struct diffusion_global_data *diffusion) {}
 
 /**
  * @brief Prints out the diffusion parameters at the start of a run.
@@ -144,7 +139,7 @@ static INLINE void diffusion_init_no_hydro(
  *                   hydro_properties
  **/
 static INLINE void diffusion_print(
-    const struct diffusion_global_data* diffusion) {}
+    const struct diffusion_global_data *diffusion) {}
 
 #ifdef HAVE_HDF5
 /**
@@ -154,7 +149,7 @@ static INLINE void diffusion_print(
  * @param diffusion: pointer to the diffusion_global_data struct.
  **/
 static INLINE void diffusion_print_snapshot(
-    hid_t h_grpsph, const struct diffusion_global_data* diffusion) {}
+    hid_t h_grpsph, const struct diffusion_global_data *diffusion) {}
 #endif
 
-#endif /* SWIFT_SHADOWSWIFT_HYDRO_PARAMETERS_H */
+#endif /* SWIFT_NONE_HYDRO_PARAMETERS_H */

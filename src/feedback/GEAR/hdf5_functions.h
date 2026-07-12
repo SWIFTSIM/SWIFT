@@ -52,7 +52,7 @@ io_read_string_array_attribute(hid_t grp, const char *name, char *data,
     error(
         "Error found a different number of elements than expected (%lli != "
         "%lli) in attribute %s",
-        count, number_element, name);
+        (long long)count, (long long)number_element, name);
   }
 
   /* Get the string length */
@@ -63,7 +63,8 @@ io_read_string_array_attribute(hid_t grp, const char *name, char *data,
 
   /* Check if the size is correct */
   if (sdim > size_per_element) {
-    error("Cannot read string longer than %lli in %s", size_per_element, name);
+    error("Cannot read string longer than %lli in %s",
+          (long long)size_per_element, name);
   }
 
   /* Allocate the temporary array */

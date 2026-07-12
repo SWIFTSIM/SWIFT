@@ -1,0 +1,29 @@
+1D advection test for cosmological radiative transfer.
+
+Test that your method is TVD and the propagation speed of the photons is
+correct. The ICs set up three photon groups: 
+- The first is a top hat function initial distribution where outside values
+  are zero.
+- The second is a top hat function initial distribution where outside values
+  are nonzero. This distinction is important to test because photon energies 
+  can't be negative, so these cases need to be tested individually.
+- the third is a smooth Gaussian. 
+
+This way, you can test multiple initial condition scenarios simultaneously. 
+There are no stars to act as sources. Also make sure that you choose your
+photon frequencies in a way that doesn't interact with gas!
+
+There are 3 parameter files available:
+- rt_advection1D_low_redshift.yml for a test at very low redshift (almost no cosmological expansion)
+- rt_advection1D_medium_redshift.yml for a test at moderate redshift (z=10)
+- rt_advection1D_high_redshift.yml for a test at high redshift (z=110)
+
+Select one and give it to the run.sh script via command line argument:
+    ./run.sh rt_advection1D_[redshift_of_your_choice].yml
+
+
+The ICs are created to be compatible with GEAR_RT and SPHM1RT. Recommended configuration:
+GEAR_RT:
+    --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro-dimension=1 --with-hydro=gizmo-mfv \
+     --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+

@@ -113,7 +113,7 @@ struct cosmology {
   /*! Scale-factor at the previous time-step */
   double a_old;
 
-  /*! Redshit at the previous time-step */
+  /*! Redshift at the previous time-step */
   double z_old;
 
   /*------------------------------------------------------------------ */

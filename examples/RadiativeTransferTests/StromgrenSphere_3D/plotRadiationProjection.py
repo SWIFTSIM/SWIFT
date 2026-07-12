@@ -81,7 +81,7 @@ def get_units(scheme, unit_system="cgs_units"):
         energy_units = unyt.erg
         energy_units_str = "\\rm{erg}"
         if scheme.startswith("GEAR M1closure"):
-            flux_units = 1e-10 * energy_units / unyt.cm ** 2 / unyt.s
+            flux_units = 1e-10 * energy_units / unyt.cm**2 / unyt.s
             flux_units_str = "10^{-10} \\rm{erg} \\ \\rm{cm}^{-2} \\ \\rm{s}^{-1}"
         elif scheme.startswith("SPH M1closure"):
             flux_units = 1e10 * energy_units * unyt.cm / unyt.s
@@ -93,7 +93,7 @@ def get_units(scheme, unit_system="cgs_units"):
         energy_units = 1e50 * unyt.erg
         energy_units_str = "10^{50} \\rm{erg}"
         if scheme.startswith("GEAR M1closure"):
-            flux_units = 1e50 * unyt.erg / unyt.kpc ** 2 / unyt.Gyr
+            flux_units = 1e50 * unyt.erg / unyt.kpc**2 / unyt.Gyr
             flux_units_str = "10^{60} \\rm{erg} \\ \\rm{kpc}^{-2} \\ \\rm{Gyr}^{-1}"
         elif scheme.startswith("SPH M1closure"):
             flux_units = 1e50 * unyt.erg * unyt.kpc / unyt.Gyr
@@ -108,7 +108,7 @@ def get_units(scheme, unit_system="cgs_units"):
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -152,9 +152,9 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     Create the actual plot.
 
     filename: file to work with
-    energy_boundaries:  list of [E_min, E_max] for each photon group. 
+    energy_boundaries:  list of [E_min, E_max] for each photon group.
                         If none, limits are set automatically.
-    flux_boundaries:    list of [F_min, F_max] for each photon group. 
+    flux_boundaries:    list of [F_min, F_max] for each photon group.
                         If none, limits are set automatically.
     """
 
@@ -166,15 +166,15 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
 
     if do_stromgren_sphere:
-        time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
-            scheme, unit_system="stromgren_units"
+        time_units, energy_units, energy_units_str, flux_units, flux_units_str = (
+            get_units(scheme, unit_system="stromgren_units")
         )
     else:
-        time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
-            scheme, unit_system="cgs_units"
+        time_units, energy_units, energy_units_str, flux_units, flux_units_str = (
+            get_units(scheme, unit_system="cgs_units")
         )
 
-    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
     xlabel_units_str = meta.boxsize.units.latex_representation()
 
     global imshow_kwargs
@@ -370,15 +370,15 @@ def get_minmax_vals(snaplist):
         scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
 
         if do_stromgren_sphere:
-            time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
-                scheme, unit_system="stromgren_units"
+            time_units, energy_units, energy_units_str, flux_units, flux_units_str = (
+                get_units(scheme, unit_system="stromgren_units")
             )
         else:
-            time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
-                scheme, unit_system="cgs_units"
+            time_units, energy_units, energy_units_str, flux_units, flux_units_str = (
+                get_units(scheme, unit_system="cgs_units")
             )
 
-        ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+        ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
         emin_group = []
         emax_group = []
         fluxmin_group = []

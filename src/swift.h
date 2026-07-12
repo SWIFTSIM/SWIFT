@@ -24,6 +24,7 @@
 
 /* Local headers. */
 #include "active.h"
+#include "adaptive_softening.h"
 #include "atomic.h"
 #include "black_holes_properties.h"
 #include "cache.h"
@@ -46,6 +47,7 @@
 #include "feedback.h"
 #include "feedback_properties.h"
 #include "fof.h"
+#include "forcing.h"
 #include "gravity.h"
 #include "gravity_derivatives.h"
 #include "gravity_properties.h"
@@ -85,6 +87,7 @@
 #include "scheduler.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "sink_iact.h"
 #include "sink_properties.h"
 #include "space.h"
 #include "star_formation.h"

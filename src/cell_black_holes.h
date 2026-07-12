@@ -55,9 +55,9 @@ struct cell_black_holes {
     struct task *density_ghost;
 
     /*! The ghost tasks related to BH swallowing */
-    struct task *swallow_ghost_0;
     struct task *swallow_ghost_1;
     struct task *swallow_ghost_2;
+    struct task *swallow_ghost_3;
 
     /*! Linked list of the tasks computing this cell's BH density. */
     struct link *density;

@@ -1,0 +1,125 @@
+%\begin{table}
+\begin{center}
+\begin{small}
+\begin{tabular}{p{0.32\textwidth} p{0.42\textwidth} p{0.26\textwidth}}
+
+
+variable  & name & units (cgs) \\[.5em]
+%---------------------------------------------------------------------------------------------------
+\hline \\
+
+$I_\nu (\x, \mathbf{n}, t)$ &
+        specific intensity &
+        $[I_\nu] = \frac{\text{erg}}{\text{cm}^2 \text{ rad Hz s}}$
+\\[.5em]
+$u_\nu (\x, \mathbf{n}, t) = \frac{I_\nu}{c}$ &
+        radiation energy density &
+        $[u_\nu] = \frac{\text{erg}}{\text{cm}^3 \text{ rad Hz}}$
+\\[.5em]
+$E_\nu (\x, t) = \int_{4 \pi} \frac{I_\nu}{c} \de \Omega$ &
+        total energy density &
+        $[E_\nu] = \frac{\text{erg}}{\text{cm}^3 \text{ Hz}}$
+\\[.5em]
+$N_\nu (\x, t) = E_\nu / h$ &
+        photon number density &
+        $[N_\nu] = \frac{1}{\text{cm}^3 \text{ Hz}}$
+\\[.5em]
+$E_{rad} (\x, t) = \int_{0}^{\infty} E_\nu \de \nu$ &
+        total integrated energy density &
+        $[E_{rad}] = \frac{\text{erg}}{\text{cm}^3}$
+\\[.5em]
+$N_{rad} (\x, t) = E_{rad} / h$ &
+        integrated photon number density &
+        $[N_{rad}] = \frac{1}{\text{cm}^3}$
+\\[.5em]
+% $J_\nu (\x, t) = \int_{4 \pi} I_\nu \frac{\de \Omega}{4 \pi}
+%             = \frac{c}{4 \pi} E_\nu$ &
+%             mean radiation specific intensity &
+%             $[J_\nu] = \frac{\text{erg}}{\text{cm}^2 \text{ Hz s}}$
+% \\[.5em]
+$\mathbf{F}_\nu(\x, t) = \int_{4 \pi}  I_\nu \mathbf{n} \de \Omega$ &
+        radiation flux &
+        $[\mathbf{F}_\nu] = \frac{\text{erg}}{\text{cm}^2 \text{ s Hz}}$
+\\[.5em]
+$\mathbf{P}_\nu (\x, t) = \frac{\F_\nu}{c^2}$ &
+        radiation momentum density &
+        $[\mathbf{P}_\nu] = \frac{\text{erg}}{ \text{cm}^4 \text{ s}^{-1} \text{ Hz}}$
+\\[.5em]
+$\mathds{P}_\nu (\x, t) = \int_{4 \pi} \frac{I_\nu}{c} \mathbf{n} \otimes \mathbf{n} \de \Omega$ &
+        radiation pressure tensor &
+        $[\mathds{P}_\nu ] = \frac{\text{erg}}{\text{cm}^3 \text{ Hz}}$
+
+
+\\
+%---------------------------------------------------------------------------------------------------
+\hline\\
+
+
+$\eta_\nu(\x, t)$ &
+        source function (of $I_\nu$)&
+        $[ \eta_\nu ] = \frac{\text{erg}}{\text{cm}^3 \text{ rad Hz s}}$
+\\[.5em]
+$n(\x, t)$ &
+        number density &
+        $[ n ] = \text{cm}^{-3}$
+\\[.5em]
+$\mathcal{J}_\nu(T)$ &
+        (specific intensity of a) spectrum &
+        $[\mathcal{J}_\nu (T)] = \frac{\text{erg}}{\text{cm}^2 \text{ rad Hz s}}$
+\\[.5em]
+$\Gamma_{\nu, j}$ &
+        photoionization rate of species $j$ &
+        $[\Gamma] = \text{s}^{-1}$
+\\[.5em]
+$\mathcal{H}_{\nu,j}$ &
+        (photo)heating rate of species $j$ &
+        $[\mathcal{H}_{\nu,j}] = \frac{\text{erg}}{s\ cm}^{3}$
+\\[.5em]
+$\alpha_\nu = \frac{1}{\lambda_\nu} = \rho \kappa_\nu = n \sigma_\nu$ &
+        absorption coefficient &
+        $[\alpha_\nu] = \text{cm}^{-1}$
+\\[.5em]
+% $\alpha_E = \frac{\int_0^\infty \alpha_\nu E_\nu \de \nu}{\int_0^\infty E_\nu \de \nu}$ &
+% 	 energy mean of abs. coeff. &
+% 	 $[\alpha_E] = \text{cm}^{-1}$
+% \\[.5em]
+% $\alpha_F = \frac{\int_0^\infty \alpha_\nu F_\nu \de \nu}{\int_0^\infty F_\nu \de \nu}$ &
+% 	 flux mean of abs. coeff. &
+% 	 $[\alpha_F] = \text{cm}^{-1}$
+% \\[.5em]
+% $j_\nu $ &
+%         emission coefficient &
+%         $[j_\nu] = \frac{\text{erg}}{\text{cm}^3 \text{rad Hz s}}$
+% \\[.5em]
+$\lambda_\nu $ &
+        mean free path &
+        $[\lambda_\nu] = \text{cm}$
+\\[.5em]
+$\kappa_\nu $ &
+        opacity &
+        $[\kappa_\nu] = \frac{\text{cm}^2}{\text{g}}$
+\\[.5em]
+$\tau_\nu(s) = \int_0^s \alpha_\nu(x) \de x$ &
+        optical depth &
+        $[\tau_\nu] = 1$
+\\[.5em]
+$\sigma_{j\nu}$ &
+        interacton cross section (of species $j$)&
+        $[\sigma_{j\nu}] = \text{cm}^2$
+\\[.5em]
+$\sigma_{ij}^N = \int_{\nu_{i}} N_\nu \ \sigma_{j\nu} \de \nu / \int_{\nu_i} N_\nu \de \nu$ &
+        number weighted average cross section &
+        $[\sigma_{ij}^N] = \text{cm}^2$
+\\[.5em]
+$\sigma_{ij}^E = \int_{\nu i} E_\nu \ \sigma_{j\nu} \de \nu / \int_{\nu i} E_\nu \de \nu$ &
+        energy weighted average cross section &
+        $[\sigma_{ij}^E] = \text{cm}^2$
+%
+
+\end{tabular}
+\end{small}
+\end{center}
+%\caption{Common quantities appearing in the context of radiative transfer, and their units.}
+%\label{tab:rt-variables}
+%\end{table}
+

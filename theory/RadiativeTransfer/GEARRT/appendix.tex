@@ -1,0 +1,288 @@
+%------------------------------------------------
+\section{RT Related Quantities And Their Units}\label{app:variables}
+%------------------------------------------------
+
+It could be helpful to have the commonly used quantities of RT written down
+somewhere along with their units. So here you go.
+
+
+\include*{./tables/rt_variables}
+
+
+
+
+
+
+
+\clearpage
+%--------------------------------------------
+\section{Function Calls of an RT step}
+%--------------------------------------------
+
+
+
+\begin{landscape}
+{\footnotesize
+
+\begin{tabular}[l]{%
+	>{\raggedright\arraybackslash}p{2.6cm}%
+	>{\raggedright\arraybackslash}p{2.8cm}%
+	>{\raggedright\arraybackslash}p{7cm}%
+	>{\raggedright\arraybackslash}p{7cm}%
+}
+\textbf{task} & \textbf{task type} & \textbf{task purpose} & \textbf{function calls} \\[.5em]
+\hline
+\hline
+Injection Prep &
+	Interacting star and gas particles &
+	Gather gas particle neighbour data in preparation for the injection &
+	\texttt{runner\_iact\_rt\_inject\_prep} in \verb|src/rt/method/rt_iact.h| \\
+\hline
+Star Emission Rates &
+	Work on individual star particles &
+	Prepare everything necessary that needs to be done for radiation sources before the radiation sources and the gas interact. &
+	\texttt{rt\_compute\_stellar\_emission\_rate} in \verb|src/rt/method/rt.h| \\
+\hline
+\hline
+RT in &
+	Implicit&
+  Collect dependencies &
+	- \\
+\hline
+Injection &
+	Interacting star and gas particles &
+	Distribute the radiation from star particles onto gas particles &
+	\verb|runner_iact_rt_inject| in \verb|src/rt/method/rt_iact.h| \\
+\hline
+Ghost1 &
+	Work on individual gas particles &
+	Finish up any work that needs to be done for gas particles before the next gas $\leftrightarrow$ gas interaction begins &
+	\texttt{rt\_finalise\_injection} in \verb|src/rt/method/rt.h|\\
+\hline
+Gradient &
+	Interacting gas and gas particles &
+	Compute necessary gradients of the radiation quantities &
+	\verb|rt_gradients_collect| in \verb|src/rt/method/rt_gradients.h| and
+	\verb|rt_gradients_nonsym_collect| in \verb|src/rt/method/rt_gradients.h|\\
+\hline
+Ghost2 &
+	Work on individual gas particles &
+	Finish up any work that needs to be done for gas particles before the next gas $\leftrightarrow$ gas interaction begins &
+	\texttt{rt\_end\_gradient} in \verb|src/rt/method/rt.h|\\
+\hline
+Transport &
+	Interacting gas and gas particles &
+	Compute/exchange fluxes of homogenized equation of radiative transfer. &
+	\verb|runner_iact_rt_transport| in \verb|src/rt/method/rt_iact.h| and
+	\verb|runner_iact_nonsym_rt_transport| in \verb|src/rt/method/rt_iact.h|\\
+\hline
+Transport out &
+	Implicit&
+  Collect dependencies &
+	- \\
+\hline
+Thermochemistry &
+	Work on individual gas particles &
+	Finish up any work that needs to be done for gas particles before the thermochemistry part of the computation can begin. Then do the thermochemistry computation. &
+	\texttt{rt\_finalise\_transport} in \verb|src/rt/method/rt.h|,
+	\verb|rt_do_thermochemistry| in \verb|src/rt/method/rt_thermochemistry.h|\\
+\hline
+RT out &
+	Implicit&
+  Collect dependencies &
+	- \\
+\hline
+\end{tabular}
+
+
+}
+\end{landscape}
+
+
+
+
+
+
+
+
+
+\clearpage
+%-------------------------------------------------------------------------
+\section{Creating Collisional Ionization Equilibrium Initial Conditions}
+%-------------------------------------------------------------------------
+
+
+On startup, GEARRT offers the possibility to generate the ionization mass fractions of the gas
+particles assuming the gas is in collisional ionization equilibrium, composed of Hydrogen and
+Helium, and that there is no radiation present. In order to determine the ionization mass fractions
+of all species (H$^0$, H$^+$, He$^0$, He$^+$, He$^{++}$) for a given specific internal energy $u$,
+an iterative procedure needs to be applied because the gas variables are interconnected:
+
+
+
+Commonly the average particle mass $\overline{m}$ of a gas is expressed using the (unitless) mean
+molecular weight $\mu$ :
+
+\begin{align}
+  \overline{m} = \mu m_u
+\end{align}
+
+where $m_u$ is the atomic mass unit and $\mu$ is given by
+
+\begin{align}
+    \frac{1}{\mu} = \sum_j \frac{X_j}{A_j} (1 + E_j)
+\end{align}
+
+
+Specifically, ionization changes the mass fractions $X_j$ of the species, and therefore also the
+mean molecular weight $\mu$. In turn, the mean molecular weight determines the gas temperature at a
+given specific internal energy:
+
+\begin{align}
+    T = u (\gamma - 1) \mu \frac{m_u}{k}
+\end{align}`
+
+Lastly, the gas temperature determines the collisional ionization and recombination rates, which
+need to be balanced out by the correct number density of the individual species in order to be in
+ionization equilibrium, i.e. at a state where the ionization and recombination rates exactly cancel
+each other out.
+
+We take the ionization and recombination rates from \citet{katzCosmologicalSimulationsTreeSPH1996},
+which are given in Table \ref{tab:coll-ion-rates-katz}. For a gas with density $\rho$, Hydrogen
+mass fraction $X_H$ and Helium mass fraction $X_{He} = 1 - X_H$, the total number densities of all
+hydrogen and helium species are
+
+\begin{align}
+  n_H &= X_H \frac{\rho}{m_u} \\
+  n_{He} &= X_{He}  \frac{\rho}{4 m_u}
+\end{align}
+
+and in equilibrium, the number densities of the individual species are given by
+
+\begin{align}
+    n_{H^0} &=
+        n_H \frac{A_{H^+}}{A_{H^+} + \Gamma_{H^0}} \\
+    n_{H^+} &=
+        n_H - n_{H^0} \\
+    n_{He^+} &=
+        n_{He} \frac{1}{1 + (A_{He^+} + A_d) / \Gamma_{He^0} + \Gamma_{He^+} / A_{He^{++}}} \\
+    n_{He^0} &=
+        n_{He^+} \frac{A_{He^+} + A_d}{\Gamma_{He^0}} \\
+    n_{He^{++}} &=
+        n_{He^+} \frac{\Gamma_{He^+}}{A_{He^+}}
+\end{align}
+
+
+To summarize, the tricky bit here is that the number densities determine the mean molecular weight,
+the mean molecular weight determines the temperature of the gas for a given density and specific
+internal energy, while the temperature determines the number densities of the species.
+
+To find the correct mass fractions, the iterative Newton-Raphson root finding method is used.
+Specifically, using some initial guesses for temperature and mean molecular weights, $T_{guess}$
+and $\mu_{guess}$, in each iteration step we determine the resulting specific internal energy
+$u_{guess} = k T_{guess} / (\gamma - 1) / (\mu_{guess} m_u)$. The function whose root we're looking
+for is
+
+\begin{align}
+  f(T) = u - u_{guess}(T)
+\end{align}
+
+with the derivative
+
+\begin{align}
+  \frac{\del f}{\del T} =  - \frac{\del u}{\del T} (T = T_{guess}) = \frac{k}{(\gamma -
+1) / (\mu_{guess} m_u )}
+\end{align}
+
+where $u$ is the specific internal energy of the gas, which is fixed and provided by the initial
+conditions. We now look for the $T$ at which $f(T) = 0$. The Newton-Raphson method prescribes to
+find the $n+1$th $T_{guess}$ using
+
+\begin{align}
+    T_{n+1} = T_n + \frac{f(T_n)}{\frac{\del f}{\del T}(T_n)}
+\end{align}
+
+During each iteration, the new mass fractions and the resulting mean molecular weight given the
+latest guess for the temperature are computed. At the start, the first guess for the temperature
+$T_{guess}$ is computed assuming a fully neutral gas. Should that gas temperature be above $10^5$ K,
+the first guess is changed to a fully ionized gas. The iteration is concluded once $f(T) \leq
+\epsilon = 10^{-4}$.
+
+
+
+\include*{tables/thermochemistry_rates}
+
+
+
+
+
+
+
+
+
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Converting Photon Number Emission Rates to Photon Energy Emission Rates}
+%-------------------------------------------------------------------------------
+
+Many other, in particular older, codes and papers use photon \emph{number} injection rates $\dot{N}_{\gamma}$ for their emission rates rather than the \emph{energy} injection rates $\dot{E}_\gamma$ or equivalently luminosities $L$.
+
+To convert between these two quantities, we need to assume that the emission follows some spectrum $J(\nu)$.
+
+In the case of a single photon group, the conversion is quite simple: We first need to compute the average photon energy $\overline{E}_\gamma$:
+
+\begin{align*}
+	\overline{E}_\gamma = \frac{\int J(\nu) \ \de \nu }{\int J(\nu) / (h \nu) \ \de \nu}
+\end{align*}
+
+then the emitted luminosity (energy per unit time) is
+
+\begin{align}
+	L = \overline{E}_\gamma \ \dot{N}_{\gamma}
+\end{align}
+
+Note that in many cases, the given emission photon number rate is the number rate of \emph{ionizing} photons. For us, this means that we need to start the integrals at the lowest ionizing frequency $\nu_{\text{ion, min}}$ in order to have the correct translation to the luminosity of the \emph{ionizing} energy:
+
+
+\begin{align}
+	\overline{E}_\gamma = \frac{\int\limits_{\nu_{\text{ion, min}}}^\infty J(\nu) \ \de \nu }{\int\limits_{\nu_{\text{ion, min}}}^\infty J(\nu) / (h \nu) \ \de \nu}
+\end{align}
+
+
+In the case of several photon groups being used, the conversion requires a little adaptation in order to preserve the correct number of photons emitted. For each photon group $i$, the average photon energy is given by
+
+\begin{align}
+	\overline{E}_i = \frac{\int\limits_{\nu_{i \text{, min}}}^{\nu_{i \text{, max}}} J(\nu) \ \de \nu }{\int\limits_{\nu_{i \text{, min}}}^{\nu_{i \text{, max}}} J(\nu) / (h \nu) \ \de \nu}
+\end{align}
+
+
+Secondly, we need to compute the fraction $f_i$ of ionizing photons in each bin, which is given by
+
+\begin{align}
+	f_i = \frac{\int\limits_{\nu_{i \text{, min}}}^{\nu_{i \text{, max}}} J(\nu) / (h \nu)  \ \de \nu }{\int\limits_{\nu_{min}}^{\infty} J(\nu) / (h \nu) \ \de \nu}
+\end{align}
+
+Then the number of emitted photons in each bin is given by
+
+\begin{align}
+\dot{N}_i = f_i\ \dot{N}_\gamma
+\end{align}
+
+And the luminosities are given by
+
+\begin{align}
+	L_i &= \overline{E}_i \ \dot{N}_i \\
+			&= \frac{\int\limits_{\nu_{i \text{, min}}}^{\nu_{i \text{, max}}} J(\nu) \ \de \nu }{\int\limits_{\nu_{min}}^{\infty} J(\nu) / (h \nu) \ \de \nu} \ \dot{N}_\gamma
+\end{align}
+
+
+
+Python scripts to compute and convert photon number rates into luminosities are provided in
+\url{https://github.com/SWIFTSIM/swiftsim-rt-tools}.
+
+
+
+
+
+
+

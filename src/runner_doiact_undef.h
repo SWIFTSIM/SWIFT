@@ -30,6 +30,8 @@
 #undef IACT_STARS
 #undef IACT_BH_GAS
 #undef IACT_BH_BH
+#undef IACT_SINKS_GAS
+#undef IACT_SINKS_SINK
 #undef GET_MU0
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP

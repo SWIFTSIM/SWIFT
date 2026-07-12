@@ -35,7 +35,7 @@
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_init(
-    struct part* restrict p, struct xpart* restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp) {
 
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
@@ -50,8 +50,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_velocities_prepare_force(struct part* restrict p,
-                               const struct xpart* restrict xp) {}
+hydro_velocities_prepare_force(struct part *restrict p,
+                               const struct xpart *restrict xp) {}
 
 /**
  * @brief Set the variables that will be used to update the smoothing length
@@ -60,7 +60,7 @@ hydro_velocities_prepare_force(struct part* restrict p,
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
-    struct part* restrict p) {
+    struct part *restrict p) {
 
   /* Add normalization to h_dt. */
   p->force.h_dt *= p->h * hydro_dimension_inv;
@@ -74,7 +74,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_set(
-    struct part* restrict p, struct xpart* restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp) {
 
   /* Set the velocities: */
   /* We first set the particle velocity */
@@ -100,52 +100,5 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     p->gpart->v_full[2] = xp->v_full[2];
   }
 }
-
-/**
- * @brief Reset the variables used to store the centroid; used for the velocity
- * correction.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static void
-hydro_velocities_reset_centroids(struct part* restrict p) {}
-
-/**
- * @brief Normalise the centroids after the density loop.
- *
- * @param p Particle.
- * @param wcount Wcount for the particle. This is an explicit argument, so that
- * it is clear from the code that wcount needs to be normalised by the time it
- * is used here.
- */
-__attribute__((always_inline)) INLINE static void
-hydro_velocities_normalise_centroid(struct part* restrict p,
-                                    const float wcount) {}
-
-/**
- * @brief Update the centroid with the given contribution, assuming the particle
- * acts as the left particle in the neighbour interaction.
- *
- * @param p Particle (pi).
- * @param dx Distance vector between the particle and its neighbour (dx = pi->x
- * - pj->x).
- * @param w Kernel value at position pj->x.
- */
-__attribute__((always_inline)) INLINE static void
-hydro_velocities_update_centroid_left(struct part* restrict p, const float* dx,
-                                      const float w) {}
-
-/**
- * @brief Update the centroid with the given contribution, assuming the particle
- * acts as the right particle in the neighbour interaction.
- *
- * @param p Particle (pj).
- * @param dx Distance vector between the particle and its neighbour (dx = pi->x
- * - pj->x).
- * @param w Kernel value at position pi->x.
- */
-__attribute__((always_inline)) INLINE static void
-hydro_velocities_update_centroid_right(struct part* restrict p, const float* dx,
-                                       const float w) {}
 
 #endif /* SWIFT_GIZMO_MFM_HYDRO_VELOCITIES_H */

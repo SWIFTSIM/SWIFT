@@ -11,4 +11,4 @@ by creating an issue.
 The code documentation is available on `swiftsim.com/docs <https://swiftsim.com/docs>`_, and
 is also shipped along with the code in the ``docs/RTD`` directory. 
 This onboarding guide is available online as well on 
-`swiftsim.com/onboarding.pdf <http://www.swiftsim.com/onboarding.pdf>`_
+`swiftsim.com/onboarding.pdf <https://swift.strw.leidenuniv.nl/onboarding.pdf>`_

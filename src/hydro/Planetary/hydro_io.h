@@ -47,15 +47,22 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void hydro_read_particles(struct part* parts,
-                                        struct io_props* list,
-                                        int* num_fields) {
+INLINE static void hydro_read_particles(struct part *parts,
+                                        struct io_props *list,
+                                        int *num_fields) {
 
 #ifdef PLANETARY_FIXED_ENTROPY
   *num_fields = 10;
 #else
   *num_fields = 9;
 #endif
+
+  /* Temporary warning to be printed for a few months after the change */
+  message(
+      "\n # Warning: some required field names for initial conditions were"
+      " tweaked in July 2024 to match the GADGET-2 format that SWIFT follows."
+      " Please update your scripts (e.g. download the latest WoMa package) to"
+      " match. Apologies for any inconvenience");
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -64,15 +71,15 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_SPEED, parts, v);
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 parts, mass);
-  list[3] = io_make_input_field("SmoothingLengths", FLOAT, 1, COMPULSORY,
+  list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, h);
-  list[4] = io_make_input_field("InternalEnergies", FLOAT, 1, COMPULSORY,
+  list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
   list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[7] = io_make_input_field("Densities", FLOAT, 1, OPTIONAL,
+  list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
@@ -83,22 +90,22 @@ INLINE static void hydro_read_particles(struct part* parts,
 #endif
 }
 
-INLINE static void convert_S(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
+INLINE static void convert_S(const struct engine *e, const struct part *p,
+                             const struct xpart *xp, float *ret) {
 
   ret[0] = hydro_get_comoving_entropy(p, xp);
 }
 
-INLINE static void convert_P(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
+INLINE static void convert_P(const struct engine *e, const struct part *p,
+                             const struct xpart *xp, float *ret) {
 
   ret[0] = hydro_get_comoving_pressure(p);
 }
 
-INLINE static void convert_part_pos(const struct engine* e,
-                                    const struct part* p,
-                                    const struct xpart* xp, double* ret) {
-  const struct space* s = e->s;
+INLINE static void convert_part_pos(const struct engine *e,
+                                    const struct part *p,
+                                    const struct xpart *xp, double *ret) {
+  const struct space *s = e->s;
   if (s->periodic) {
     ret[0] = box_wrap(p->x[0], 0.0, s->dim[0]);
     ret[1] = box_wrap(p->x[1], 0.0, s->dim[1]);
@@ -115,12 +122,12 @@ INLINE static void convert_part_pos(const struct engine* e,
   }
 }
 
-INLINE static void convert_part_vel(const struct engine* e,
-                                    const struct part* p,
-                                    const struct xpart* xp, float* ret) {
+INLINE static void convert_part_vel(const struct engine *e,
+                                    const struct part *p,
+                                    const struct xpart *xp, float *ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
   const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
@@ -167,9 +174,9 @@ INLINE static void convert_part_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
-INLINE static void convert_part_potential(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, float* ret) {
+INLINE static void convert_part_potential(const struct engine *e,
+                                          const struct part *p,
+                                          const struct xpart *xp, float *ret) {
 
   if (p->gpart != NULL)
     ret[0] = gravity_get_comoving_potential(p->gpart);
@@ -185,10 +192,10 @@ INLINE static void convert_part_potential(const struct engine* e,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-INLINE static void hydro_write_particles(const struct part* parts,
-                                         const struct xpart* xparts,
-                                         struct io_props* list,
-                                         int* num_fields) {
+INLINE static void hydro_write_particles(const struct part *parts,
+                                         const struct xpart *xparts,
+                                         struct io_props *list,
+                                         int *num_fields) {
 
   *num_fields = 11;
 
@@ -208,9 +215,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       -3.f * hydro_gamma_minus_one, parts, u,
       "Thermal energies per unit mass of the particles");
-  list[5] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, id, "Unique IDs of the particles");
+  list[5] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, id,
+      /*can convert to comoving=*/0, "Unique IDs of the particles");
   list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
                                  parts, rho, "Densities of the particles");
   list[7] = io_make_output_field_convert_part(

@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
   if (posix_memalign((void **)&data, 64, num_vals * sizeof(float)) != 0)
     error("Failed to allocted memory for the test");
   for (int k = 0; k < num_vals; k++) {
-    data[k] = (float)rand() / RAND_MAX;
+    data[k] = (float)rand() / (float)RAND_MAX;
     data[k] = (1.0f - data[k]) * range_min + data[k] * range_max;
     if (data[k] == 0.f) k--; /* Skip 0 to avoid spurious mistakes */
   }

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2022 Yves Revaz (yves.revaz@epfl.ch)
+ *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -28,7 +29,43 @@ struct sink_part_data {
   long long swallow_id;
 
   /*! Gravitational potential of the particle */
-  uint8_t can_form_sink;
+  char can_form_sink;
+
+  /*! Does the future sink overalp an existing one ? */
+  char is_overlapping_sink;
+
+  /*! Number of neigbouring particles */
+  int N_neighbours;
+
+  /*! Total mass of the neighbouring particles */
+  float M_tot;
+
+  /*! Potential of the particle copied from the #gpart */
+  float potential;
+
+  /*! Maximal potential among the neighbours */
+  float max_potential;
+
+  /*! Total kinetic energy of the neigbouring gas particles (i.e. inside
+   * sink_cut_off_radius) */
+  float E_kin_neighbours;
+
+  /*! Total interal energy of the neigbouring gas particles (i.e. inside
+   * sink_cut_off_radius) */
+  float E_int_neighbours;
+
+  /*! Total potential energy of the neigbouring gas particles (i.e. inside
+   * sink_cut_off_radius) */
+  float E_pot_neighbours;
+
+  /*! Total rotational energy per component (x, y and z) of the neigbouring gas
+   * particles  (i.e. inside sink_cut_off_radius) */
+  float E_rot_neighbours[3];
+
+  /*! Mechanical energy between the part and the sink with swallow_id.
+   * This is used to check that this part is, out of all sinks, the most bound
+   * to the sink with swallow_id. */
+  float E_mec_bound;
 };
 
 /**
@@ -49,7 +86,7 @@ struct sink_sink_data {
  * @param s_data The #part's #sink_part_data structure.
  */
 __attribute__((always_inline)) INLINE static long long sink_get_part_swallow_id(
-    struct sink_part_data* s_data) {
+    struct sink_part_data *s_data) {
 
   return s_data->swallow_id;
 }
@@ -61,7 +98,7 @@ __attribute__((always_inline)) INLINE static long long sink_get_part_swallow_id(
  * @param s_data The #part's #sink_part_data structure.
  */
 __attribute__((always_inline)) INLINE static void
-sink_mark_part_as_not_swallowed(struct sink_part_data* s_data) {
+sink_mark_part_as_not_swallowed(struct sink_part_data *s_data) {
 
   s_data->swallow_id = -1;
 }
@@ -73,7 +110,7 @@ sink_mark_part_as_not_swallowed(struct sink_part_data* s_data) {
  * @param p_data The #part's #sink_part_data structure.
  */
 __attribute__((always_inline)) INLINE static void sink_mark_part_as_swallowed(
-    struct sink_part_data* s_data) {
+    struct sink_part_data *s_data) {
 
   s_data->swallow_id = -2;
 }
@@ -85,7 +122,7 @@ __attribute__((always_inline)) INLINE static void sink_mark_part_as_swallowed(
  * @param s_data The #sink's #sink_sink_data structure.
  */
 __attribute__((always_inline)) INLINE static void
-sink_mark_sink_as_not_swallowed(struct sink_sink_data* s_data) {
+sink_mark_sink_as_not_swallowed(struct sink_sink_data *s_data) {
 
   s_data->swallow_id = -1;
   s_data->swallow_mass = 0.f;
@@ -98,7 +135,7 @@ sink_mark_sink_as_not_swallowed(struct sink_sink_data* s_data) {
  * @param s_data The #sink's #bsink_sink_data structure.
  */
 __attribute__((always_inline)) INLINE static void sink_mark_sink_as_merged(
-    struct sink_sink_data* s_data) {
+    struct sink_sink_data *s_data) {
 
   s_data->swallow_id = -2;
   s_data->swallow_mass = -1.f;
@@ -110,7 +147,7 @@ __attribute__((always_inline)) INLINE static void sink_mark_sink_as_merged(
  * @param s_data The #sink's #sink_sink_data structure.
  */
 __attribute__((always_inline)) INLINE static long long sink_get_sink_swallow_id(
-    struct sink_sink_data* s_data) {
+    struct sink_sink_data *s_data) {
 
   return s_data->swallow_id;
 }

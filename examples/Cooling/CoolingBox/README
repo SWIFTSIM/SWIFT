@@ -1,0 +1,14 @@
+Runs a uniform box exposed to constant cooling rates computed with 
+the Grackle library.
+
+To run with Grackle mode 0, configure swift with:
+  ./configure --with-cooling=grackle_0 --with-grackle=$GRACKLE_ROOT
+
+To run with Grackle mode 1, configure swift with:
+  ./configure --with-cooling=grackle_1 --with-grackle=$GRACKLE_ROOT
+  
+To run with Grackle mode 2, configure swift with:
+  ./configure --with-cooling=grackle_2 --with-grackle=$GRACKLE_ROOT
+  
+To run with Grackle mode 3, configure swift with:
+  ./configure --with-cooling=grackle_3 --with-grackle=$GRACKLE_ROOT    

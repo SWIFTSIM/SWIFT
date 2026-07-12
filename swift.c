@@ -25,6 +25,10 @@
 /* Config parameters. */
 #include <config.h>
 
+#ifdef WITH_LIKWID
+#include "likwid_wrapper.h"
+#endif
+
 /* Some standard headers. */
 #include <errno.h>
 #include <fenv.h>
@@ -90,6 +94,7 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct forcing_terms forcing_terms;
   struct extra_io_properties extra_io_props;
   struct star_formation starform;
   struct pm_mesh mesh;
@@ -151,6 +156,11 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+#ifdef WITH_LIKWID
+  swift_likwid_marker_init();
+  swift_likwid_marker_register("runner_main");
+#endif
+
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings(/*fof=*/0);
 
@@ -163,6 +173,7 @@ int main(int argc, char *argv[]) {
 
   int with_aff = 0;
   int with_nointerleave = 0;
+  int with_no_io = 0;
   int with_interleave = 0; /* Deprecated. */
   int dry_run = 0;
   int dump_tasks = 0;
@@ -176,6 +187,10 @@ int main(int argc, char *argv[]) {
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
+#ifdef MOVING_MESH
+  int with_grid_hydro = 0;
+  int with_grid = 0;
+#endif
   int with_stars = 0;
   int with_fof = 0;
   int with_lightcone = 0;
@@ -192,6 +207,7 @@ int main(int argc, char *argv[]) {
   int with_sinks = 0;
   int with_qla = 0;
   int with_eagle = 0;
+  int with_flamingo = 0;
   int with_gear = 0;
   int with_agora = 0;
   int with_line_of_sight = 0;
@@ -284,6 +300,12 @@ int main(int argc, char *argv[]) {
           "--star-formation --cooling --feedback --black-holes --fof.",
           NULL, 0, 0),
       OPT_BOOLEAN(
+          0, "flamingo", &with_flamingo,
+          "Run with all the options needed for the FLAMINGO model. This is "
+          "equivalent to --hydro --limiter --sync --self-gravity --stars "
+          "--star-formation --cooling --feedback --black-holes --fof.",
+          NULL, 0, 0),
+      OPT_BOOLEAN(
           0, "gear", &with_gear,
           "Run with all the options needed for the GEAR model. This is "
           "equivalent to --hydro --limiter --sync --self-gravity --stars "
@@ -310,6 +332,8 @@ int main(int argc, char *argv[]) {
                   "time integration. Checks the validity of parameters and IC "
                   "files as well as memory limits.",
                   NULL, 0, 0),
+      OPT_BOOLEAN(0, "no-io", &with_no_io,
+                  "Skip writing snapshots and restart files.", NULL, 0, 0),
       OPT_BOOLEAN('e', "fpe", &with_fp_exceptions,
                   "Enable floating-point exceptions (debugging mode).", NULL, 0,
                   0),
@@ -388,6 +412,18 @@ int main(int argc, char *argv[]) {
     with_black_holes = 1;
     with_fof = 1;
   }
+  if (with_flamingo) {
+    with_hydro = 1;
+    with_timestep_limiter = 1;
+    with_timestep_sync = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
+    with_feedback = 1;
+    with_black_holes = 1;
+    with_fof = 1;
+  }
   if (with_gear) {
     with_hydro = 1;
     with_timestep_limiter = 1;
@@ -408,8 +444,15 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
+#ifdef MOVING_MESH
+  if (with_hydro) {
+    with_grid = 1;
+  }
+#endif
 
   /* Deal with thread numbers */
+  if (nr_threads <= 0)
+    error("Invalid number of threads provided (%d), must be > 0.", nr_threads);
   if (nr_pool_threads == -1) nr_pool_threads = nr_threads;
 
   /* Write output parameter file */
@@ -516,11 +559,17 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_CHECKS
+  if (with_sinks) {
+    pretime_message("Warning: sink particles are are WIP yet with MPI.");
+  }
+#else
   if (with_sinks) {
     pretime_message("Error: sink particles are not available yet with MPI.");
     return 1;
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* WITH_MPI */
 
   if (with_sinks && with_star_formation) {
     pretime_message(
@@ -644,6 +693,9 @@ int main(int argc, char *argv[]) {
     error("Running with radiative transfer but compiled without it!");
   }
 #else
+  if (!with_rt) {
+    error("Running without radiative transfer but compiled with it!");
+  }
   if (with_rt && !with_hydro) {
     error(
         "Error: Cannot use radiative transfer without gas, --hydro must be "
@@ -664,9 +716,6 @@ int main(int argc, char *argv[]) {
   if (with_rt && with_cooling) {
     error("Error: Cannot use radiative transfer and cooling simultaneously.");
   }
-  if (with_rt && with_cosmology) {
-    error("Error: Cannot use run radiative transfer with cosmology (yet).");
-  }
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
@@ -675,10 +724,11 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-#ifdef TRACERS_EAGLE
+#if defined(TRACERS_EAGLE) || defined(TRACERS_FLAMINGO)
   if (!with_cooling && !with_temperature)
     error(
-        "Error: Cannot use EAGLE tracers without --cooling or --temperature.");
+        "Error: Cannot use EAGLE or FLAMINGO tracers without --cooling or "
+        "--temperature.");
 #endif
 
 /* Let's pin the main thread, now we know if affinity will be used. */
@@ -768,18 +818,23 @@ int main(int argc, char *argv[]) {
     message("WARNING: Non-optimal thread barriers are being used.");
 #endif
 
+  if (myrank == 0 && with_no_io)
+    message("WARNING: No snapshots or restart files will be written.");
+
   /* How large are the parts? */
   if (myrank == 0) {
-    message("sizeof(part)        is %4zi bytes.", sizeof(struct part));
-    message("sizeof(xpart)       is %4zi bytes.", sizeof(struct xpart));
-    message("sizeof(sink)        is %4zi bytes.", sizeof(struct sink));
-    message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
-    message("sizeof(bpart)       is %4zi bytes.", sizeof(struct bpart));
-    message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
-    message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
-    message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
-    message("sizeof(task)        is %4zi bytes.", sizeof(struct task));
-    message("sizeof(cell)        is %4zi bytes.", sizeof(struct cell));
+    message("sizeof(part)          is %4zi bytes.", sizeof(struct part));
+    message("sizeof(xpart)         is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(sink)          is %4zi bytes.", sizeof(struct sink));
+    message("sizeof(spart)         is %4zi bytes.", sizeof(struct spart));
+    message("sizeof(bpart)         is %4zi bytes.", sizeof(struct bpart));
+    message("sizeof(gpart)         is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(gpart_foreign) is %4zi bytes.",
+            sizeof(struct gpart_foreign));
+    message("sizeof(multipole)     is %4zi bytes.", sizeof(struct multipole));
+    message("sizeof(grav_tensor)   is %4zi bytes.", sizeof(struct grav_tensor));
+    message("sizeof(task)          is %4zi bytes.", sizeof(struct task));
+    message("sizeof(cell)          is %4zi bytes.", sizeof(struct cell));
   }
 
   /* Read the parameter file */
@@ -822,7 +877,7 @@ int main(int argc, char *argv[]) {
     error("Cannot reconstruct m-poles every step over MPI (yet).");
 #endif
 
-    /* Temporary early aborts for modes not supported with hand-vec. */
+  /* Temporary early aborts for modes not supported with hand-vec. */
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     !defined(CHEMISTRY_NONE)
   error(
@@ -990,7 +1045,7 @@ int main(int argc, char *argv[]) {
       if (myrank == 0)
         message("The restart files don't all contain the same ti_current!");
 
-      for (int i = 0; i < myrank; ++i) {
+      for (int i = 0; i < nr_nodes; ++i) {
         if (myrank == i)
           message("MPI rank %d reading file '%s' found an integer time= %lld",
                   myrank, restart_file, e.ti_current);
@@ -1072,6 +1127,11 @@ int main(int argc, char *argv[]) {
 #ifdef NONE_SPH
       error("Can't run with hydro when compiled without a hydro model!");
 #endif
+#ifdef MOVING_MESH
+      warning(
+          "Moving mesh hydrodynamics is in the process of being merged and "
+          "will not perform as expected right now!");
+#endif
     }
     if (with_stars) {
 #ifdef STARS_NONE
@@ -1150,11 +1210,12 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the sink properties */
     if (with_sinks) {
-      sink_props_init(&sink_properties, &prog_const, &us, params, &cosmo);
+      sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
+                      params, &hydro_properties, &cosmo, with_feedback);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 
-      /* Initialise the cooling function properties */
+    /* Initialise the cooling function properties */
 #ifdef COOLING_NONE
     if (with_cooling) {
       error(
@@ -1206,7 +1267,7 @@ int main(int argc, char *argv[]) {
     /* Initialize power spectra calculation */
     if (with_power) {
 #ifdef HAVE_FFTW
-      power_init(&pow_data, params, nr_threads);
+      power_spectrum_init(&pow_data, params, nr_threads);
 #else
       error("No FFTW library found. Cannot compute power spectra.");
 #endif
@@ -1279,7 +1340,7 @@ int main(int argc, char *argv[]) {
       if (!dry_run && gparts[k].id_or_neg_offset == 0 &&
           (gparts[k].type == swift_type_dark_matter ||
            gparts[k].type == swift_type_dark_matter_background))
-        error("SWIFT does not allow the ID 0.");
+        error("SWIFT does not allow the ID 0 for dark matter.");
     if (!with_stars && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_stars) error("Linking problem");
@@ -1318,7 +1379,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_dark_matter] =
         with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
 
-    MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+    MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = Ngas;
@@ -1413,6 +1474,11 @@ int main(int argc, char *argv[]) {
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
+    /* Initialise the forcing terms */
+    bzero(&forcing_terms, sizeof(struct forcing_terms));
+    forcing_terms_init(params, &prog_const, &us, &s, &forcing_terms);
+    if (myrank == 0) forcing_terms_print(&forcing_terms);
+
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
 #ifdef HAVE_FFTW
@@ -1438,7 +1504,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_sink] = s.nr_sinks;
     N_long[swift_type_black_hole] = s.nr_bparts;
     N_long[swift_type_neutrino] = s.nr_nuparts;
-    MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+    MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = s.nr_parts;
@@ -1498,7 +1564,12 @@ int main(int argc, char *argv[]) {
     if (with_drift_all) engine_policies |= engine_policy_drift_all;
     if (with_mpole_reconstruction)
       engine_policies |= engine_policy_reconstruct_mpoles;
+#ifndef MOVING_MESH
     if (with_hydro) engine_policies |= engine_policy_hydro;
+#else
+    if (with_hydro) engine_policies |= engine_policy_grid_hydro;
+    if (with_grid) engine_policies |= engine_policy_grid;
+#endif
     if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
     if (with_external_gravity)
       engine_policies |= engine_policy_external_gravity;
@@ -1520,6 +1591,7 @@ int main(int argc, char *argv[]) {
     if (with_sinks) engine_policies |= engine_policy_sinks;
     if (with_rt) engine_policies |= engine_policy_rt;
     if (with_power) engine_policies |= engine_policy_power_spectra;
+    if (with_no_io) engine_policies |= engine_policy_no_io;
 
     /* Initialize the engine with the space and policies. */
     engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
@@ -1531,9 +1603,9 @@ int main(int argc, char *argv[]) {
                 &gravity_properties, &stars_properties, &black_holes_properties,
                 &sink_properties, &neutrino_properties, &neutrino_response,
                 &feedback_properties, &pressure_floor_props, &rt_properties,
-                &mesh, &pow_data, &potential, &cooling_func, &starform,
-                &chemistry, &extra_io_props, &fof_properties, &los_properties,
-                &lightcone_array_properties, &ics_metadata);
+                &mesh, &pow_data, &potential, &forcing_terms, &cooling_func,
+                &starform, &chemistry, &extra_io_props, &fof_properties,
+                &los_properties, &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
                   restart_file, &reparttype);
@@ -1622,7 +1694,7 @@ int main(int argc, char *argv[]) {
       if (with_power)
         calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
 
-      engine_dump_snapshot(&e);
+      engine_dump_snapshot(&e, /*fof=*/0);
     }
 
     /* Dump initial state statistics, if not working with an output list */
@@ -1824,7 +1896,7 @@ int main(int argc, char *argv[]) {
     e.step += 1;
     engine_current_step = e.step;
 
-    engine_drift_all(&e, /*drift_mpole=*/0);
+    engine_drift_all(&e, /*drift_mpole=*/0, /*init_particles=*/0);
 
     /* Write final statistics? */
     if (e.output_list_stats) {
@@ -1865,7 +1937,7 @@ int main(int argc, char *argv[]) {
           !e.stf_this_timestep)
         velociraptor_invoke(&e, /*linked_with_snap=*/1);
 #endif
-      engine_dump_snapshot(&e);
+      engine_dump_snapshot(&e, /*fof=*/0);
 #ifdef HAVE_VELOCIRAPTOR
       if (with_structure_finding && e.snapshot_invoke_stf &&
           e.s->gpart_group_data)
@@ -1910,20 +1982,27 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (e.neutrino_properties->use_linear_response)
     neutrino_response_clean(e.neutrino_response);
-  if (with_self_gravity && s.periodic) pm_mesh_clean(e.mesh);
+  if (e.mesh->periodic) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   if (with_rt) rt_clean(e.rt_props, restart);
   if (with_power) power_clean(e.power_data);
+  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
+  forcing_terms_clean(e.forcing_terms);
   extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   if (restart) free(refparams);
+  if (restart) output_options_clean(output_options);
   free(output_options);
 
+#ifdef WITH_LIKWID
+  swift_likwid_marker_close();
+#endif
+
 #ifdef WITH_MPI
+  partition_clean(&initial_partition, &reparttype);
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif

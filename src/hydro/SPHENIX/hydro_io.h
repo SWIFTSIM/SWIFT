@@ -39,9 +39,9 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void hydro_read_particles(struct part* parts,
-                                        struct io_props* list,
-                                        int* num_fields) {
+INLINE static void hydro_read_particles(struct part *parts,
+                                        struct io_props *list,
+                                        int *num_fields) {
 
   *num_fields = 8;
 
@@ -64,23 +64,23 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
-INLINE static void convert_S(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
+INLINE static void convert_S(const struct engine *e, const struct part *p,
+                             const struct xpart *xp, float *ret) {
 
   ret[0] = hydro_get_comoving_entropy(p, xp);
 }
 
-INLINE static void convert_P(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
+INLINE static void convert_P(const struct engine *e, const struct part *p,
+                             const struct xpart *xp, float *ret) {
 
   ret[0] = hydro_get_comoving_pressure(p);
 }
 
-INLINE static void convert_part_pos(const struct engine* e,
-                                    const struct part* p,
-                                    const struct xpart* xp, double* ret) {
+INLINE static void convert_part_pos(const struct engine *e,
+                                    const struct part *p,
+                                    const struct xpart *xp, double *ret) {
 
-  const struct space* s = e->s;
+  const struct space *s = e->s;
   if (s->periodic) {
     ret[0] = box_wrap(p->x[0], 0.0, s->dim[0]);
     ret[1] = box_wrap(p->x[1], 0.0, s->dim[1]);
@@ -97,12 +97,12 @@ INLINE static void convert_part_pos(const struct engine* e,
   }
 }
 
-INLINE static void convert_part_vel(const struct engine* e,
-                                    const struct part* p,
-                                    const struct xpart* xp, float* ret) {
+INLINE static void convert_part_vel(const struct engine *e,
+                                    const struct part *p,
+                                    const struct xpart *xp, float *ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct cosmology* cosmo = e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
   const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
@@ -149,24 +149,34 @@ INLINE static void convert_part_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
-INLINE static void convert_part_potential(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, float* ret) {
+INLINE static void convert_part_potential(const struct engine *e,
+                                          const struct part *p,
+                                          const struct xpart *xp, float *ret) {
   if (p->gpart != NULL)
     ret[0] = gravity_get_comoving_potential(p->gpart);
   else
     ret[0] = 0.f;
 }
 
-INLINE static void convert_viscosity(const struct engine* e,
-                                     const struct part* p,
-                                     const struct xpart* xp, float* ret) {
+INLINE static void convert_part_softening(const struct engine *e,
+                                          const struct part *p,
+                                          const struct xpart *xp, float *ret) {
+  if (p->gpart != NULL)
+    ret[0] = kernel_gravity_softening_plummer_equivalent_inv *
+             gravity_get_softening(p->gpart, e->gravity_properties);
+  else
+    ret[0] = 0.f;
+}
+
+INLINE static void convert_viscosity(const struct engine *e,
+                                     const struct part *p,
+                                     const struct xpart *xp, float *ret) {
   ret[0] = p->viscosity.alpha * p->force.balsara;
 }
 
-INLINE static void convert_diffusion(const struct engine* e,
-                                     const struct part* p,
-                                     const struct xpart* xp, float* ret) {
+INLINE static void convert_diffusion(const struct engine *e,
+                                     const struct part *p,
+                                     const struct xpart *xp, float *ret) {
   ret[0] = p->diffusion.alpha;
 }
 
@@ -177,12 +187,12 @@ INLINE static void convert_diffusion(const struct engine* e,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-INLINE static void hydro_write_particles(const struct part* parts,
-                                         const struct xpart* xparts,
-                                         struct io_props* list,
-                                         int* num_fields) {
+INLINE static void hydro_write_particles(const struct part *parts,
+                                         const struct xpart *xparts,
+                                         struct io_props *list,
+                                         int *num_fields) {
 
-  *num_fields = 15;
+  *num_fields = 16;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -207,9 +217,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
       -3.f * hydro_gamma_minus_one, parts, u,
       "Co-moving thermal energies per unit mass of the particles");
 
-  list[5] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, id, "Unique IDs of the particles");
+  list[5] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, id,
+      /*can convert to comoving=*/0, "Unique IDs of the particles");
 
   list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
                                  parts, rho,
@@ -239,16 +249,17 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Laplacian (del squared) of the Internal Energy per "
       "unit mass of the particles");
 
-  list[12] = io_make_output_field(
+  list[12] = io_make_physical_output_field(
       "VelocityDivergences", FLOAT, 1, UNIT_CONV_FREQUENCY, 0.f, parts,
-      viscosity.div_v,
+      viscosity.div_v, /*can convert to comoving=*/0,
       "Local velocity divergence field around the particles. Provided without "
       "cosmology, as this includes the Hubble flow. To return to a peculiar "
       "velocity divergence, div . v_pec = a^2 (div . v - n_D H)");
 
-  list[13] = io_make_output_field(
+  list[13] = io_make_physical_output_field(
       "VelocityDivergenceTimeDifferentials", FLOAT, 1,
       UNIT_CONV_FREQUENCY_SQUARED, 0.f, parts, viscosity.div_v_dt,
+      /*can convert to comoving=*/0,
       "Time differential (over the previous step) of the "
       "velocity divergence field around the particles. Again, provided without "
       "cosmology as this includes a Hubble flow term. To get back to a "
@@ -259,6 +270,11 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential,
       "Co-moving gravitational potential at position of the particles");
+
+  list[15] = io_make_output_field_convert_part(
+      "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
+      convert_part_softening,
+      "Co-moving gravitational Plummer-equivalent softenings of the particles");
 }
 
 /**

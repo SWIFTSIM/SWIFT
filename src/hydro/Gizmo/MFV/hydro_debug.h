@@ -20,7 +20,7 @@
 #define SWIFT_GIZMO_MFV_HYDRO_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+    const struct part *p, const struct xpart *xp) {
   warning(
       "[PID%lld] x=[%.16e,%.16e,%.16e], "
       "v=[%.3e,%.3e,%.3e], "

@@ -50,7 +50,7 @@
  * @param a The left or right sound speed
  */
 __attribute__((always_inline)) INLINE static float riemann_fb(float p,
-                                                              const float* W,
+                                                              const float *W,
                                                               float a) {
 
   float fval;
@@ -77,7 +77,7 @@ __attribute__((always_inline)) INLINE static float riemann_fb(float p,
  * @param aR The right sound speed
  */
 __attribute__((always_inline)) INLINE static float riemann_f(
-    float p, const float* WL, const float* WR, float vL, float vR, float aL,
+    float p, const float *WL, const float *WR, float vL, float vR, float aL,
     float aR) {
 
   return riemann_fb(p, WL, aL) + riemann_fb(p, WR, aR) + (vR - vL);
@@ -91,7 +91,7 @@ __attribute__((always_inline)) INLINE static float riemann_f(
  * @param a The left or right sound speed
  */
 __attribute__((always_inline)) INLINE static float riemann_fprimeb(
-    float p, const float* W, float a) {
+    float p, const float *W, float a) {
 
   float fval;
   if (p > W[4]) {
@@ -114,7 +114,7 @@ __attribute__((always_inline)) INLINE static float riemann_fprimeb(
  * @param aR The right sound speed
  */
 __attribute__((always_inline)) INLINE static float riemann_fprime(
-    float p, const float* WL, const float* WR, float aL, float aR) {
+    float p, const float *WL, const float *WR, float aL, float aR) {
 
   return riemann_fprimeb(p, WL, aL) + riemann_fprimeb(p, WR, aR);
 }
@@ -126,7 +126,7 @@ __attribute__((always_inline)) INLINE static float riemann_fprime(
  * @param W The left or right state vector
  */
 __attribute__((always_inline)) INLINE static float riemann_gb(float p,
-                                                              const float* W) {
+                                                              const float *W) {
 
   const float A = hydro_two_over_gamma_plus_one / W[0];
   const float B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
@@ -147,7 +147,7 @@ __attribute__((always_inline)) INLINE static float riemann_gb(float p,
  * @param aR The right sound speed
  */
 __attribute__((always_inline)) INLINE static float riemann_guess_p(
-    const float* WL, const float* WR, float vL, float vR, float aL, float aR) {
+    const float *WL, const float *WR, float vL, float vR, float aL, float aR) {
 
   float pguess, pmin, pmax, qmax;
   float ppv;
@@ -187,8 +187,8 @@ __attribute__((always_inline)) INLINE static float riemann_guess_p(
  *
  * @param lower_limit Lower limit for the method (riemann_f(lower_limit) < 0)
  * @param upper_limit Upper limit for the method (riemann_f(upper_limit) > 0)
- * @param lowf ??? Bert?
- * @param upf  ??? Bert?
+ * @param lowf Function value riemann_f(lower_limit)
+ * @param upf  Function value riemann_f(upper_limit)
  * @param error_tol Tolerance used to decide if the solution is converged
  * @param WL Left state vector
  * @param WR Right state vector
@@ -199,18 +199,19 @@ __attribute__((always_inline)) INLINE static float riemann_guess_p(
  */
 __attribute__((always_inline)) INLINE static float riemann_solve_brent(
     float lower_limit, float upper_limit, float lowf, float upf,
-    float error_tol, const float* WL, const float* WR, float vL, float vR,
+    float error_tol, const float *WL, const float *WR, float vL, float vR,
     float aL, float aR) {
 
-  float a, b, c, d, s;
+  float a, b, c, d, e, s;
   float fa, fb, fc, fs;
   float tmp, tmp2;
   int mflag;
 
   a = lower_limit;
   b = upper_limit;
-  c = 0.0f;
-  d = FLT_MAX;
+  c = 0.0f;     // previous value of b: b_{n-1}
+  d = FLT_MAX;  // value of b from two iterations ago: b_{n-2}
+  e = FLT_MAX;  // previous value of a: a_{n-1}
 
   fa = lowf;
   fb = upf;
@@ -243,7 +244,15 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
   fc = fa;
   mflag = 1;
 
-  while (!(fb == 0.0f) && (fabs(a - b) > error_tol * 0.5f * (a + b))) {
+  /* Loop until convergence, i.e. until an exact zero point is found, or the
+   * interval is sufficiently small, or the interval is unchanged since the
+   * previous iteration */
+  int counter = 0;
+  while ((fb != 0.0f) && (fabs(a - b) > error_tol * 0.5f * (a + b)) &&
+         (a != e || b != c)) {
+    counter++;
+    if (counter > 1000) error("Brent's method did not converge!\n");
+
     if ((fa != fc) && (fb != fc)) /* Inverse quadratic interpolation */
       s = a * fb * fc / (fa - fb) / (fa - fc) +
           b * fa * fc / (fb - fa) / (fb - fc) +
@@ -266,6 +275,7 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
     fs = riemann_f(s, WL, WR, vL, vR, aL, aR);
     d = c;
     c = b;
+    e = a;
     fc = fb;
     if (fa * fs < 0.) {
       b = s;
@@ -306,7 +316,7 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solver_solve(
-    const float* WL, const float* WR, float* Whalf, const float* n_unit) {
+    const float *WL, const float *WR, float *Whalf, const float *n_unit) {
 
   /* velocity of the left and right state in a frame aligned with n_unit */
   float vL, vR, vhalf;
@@ -497,9 +507,9 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
  * @param PM Middle state pressure.
  */
 __attribute__((always_inline)) INLINE static void
-riemann_solver_solve_middle_state(const float* WL, const float vL,
-                                  const float* WR, const float vR, float* vM,
-                                  float* PM) {
+riemann_solver_solve_middle_state(const float *WL, const float vL,
+                                  const float *WR, const float vR, float *vM,
+                                  float *PM) {
 
   /* sound speeds */
   float aL, aR;
@@ -565,8 +575,8 @@ riemann_solver_solve_middle_state(const float* WL, const float vL,
 }
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    const float* Wi, const float* Wj, const float* n_unit, const float* vij,
-    float* totflux) {
+    const float *Wi, const float *Wj, const float *n_unit, const float *vij,
+    float *totflux) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_input(Wi, Wj, n_unit, vij);
@@ -623,9 +633,9 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 }
 
 __attribute__((always_inline)) INLINE static void
-riemann_solve_for_middle_state_flux(const float* Wi, const float* Wj,
-                                    const float* n_unit, const float* vij,
-                                    float* totflux) {
+riemann_solve_for_middle_state_flux(const float *Wi, const float *Wj,
+                                    const float *n_unit, const float *vij,
+                                    float *totflux) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_input(Wi, Wj, n_unit, vij);

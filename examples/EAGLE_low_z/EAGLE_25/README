@@ -14,3 +14,24 @@ running these ICs on 64 cores.
 
 MD5 checksum of the ICs: 
 e6a5de0e962d8ffb7589671b9613daa0  EAGLE_ICs_25.hdf5
+
+
+A second example is set up to run with `./run_rt_test.sh`. It makes use
+of the `eagle_25_rt_test.yml` file, and is intended to stress-test the
+RT implementation rather than produce actual physically meaningful results.
+
+
+o   To use GEAR-RT, configure SWIFT with
+
+    --with-stars=basic --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-feedback=none
+
+[technically, any other feedback scheme should work as well.]
+[the .yml file is set up to handle up to 3 photon groups, so
+ you could also be compiling with --with-rt=GEAR_3 if you want
+ to test more photon groups as well.]
+
+
+o   To use the DEBUG RT scheme, configure SWIFT with
+ --with-stars=basic --with-rt=debug --with-feedback=none
+
+[technically, any other feedback scheme should work as well.]

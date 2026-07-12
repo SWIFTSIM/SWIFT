@@ -91,10 +91,10 @@ __attribute__((always_inline)) INLINE static void ray_extra_init(
  * between two points with angular coordinates (theta_1, phi_1) and (theta_2,
  * phi_2)
  *
- * @param theta_1 Polar angle of point 1; \theta \in [-\pi/2, \pi/2]
- * @param phi_1 Azimuthal angle of point 1; \phi \in [-\pi, \pi)
- * @param theta_2 Polar angle of point 2; \theta \in [-\pi/2, \pi/2]
- * @param phi_2 Azimuthal angle of point 2; \phi \in [-\pi, \pi)
+ * @param theta_1 Polar angle of point 1; \f$ \theta \in [-\pi/2, \pi/2] \f$
+ * @param phi_1 Azimuthal angle of point 1; \f$ \phi \in [-\pi, \pi) \f$
+ * @param theta_2 Polar angle of point 2; \f$ \theta \in [-\pi/2, \pi/2] \f$
+ * @param phi_2 Azimuthal angle of point 2; \f$ \phi \in [-\pi, \pi) \f$
  * @param r_sphere Radius of the sphere on which the arc length between the two
  * points is computed
  */
@@ -132,7 +132,7 @@ __attribute__((always_inline)) INLINE static float ray_arclength(
  * @param v Gas particle velocity
  */
 __attribute__((always_inline)) INLINE static void ray_minimise_arclength(
-    const float *dx, const float r, struct ray_data *ray,
+    const float dx[3], const float r, struct ray_data *ray,
     const ray_feedback_type ray_type, const long long gas_part_id,
     const double rand_theta_gen, const double rand_phi_gen, const float m,
     struct ray_data_extra *ray_ext, const float *v) {
@@ -201,8 +201,8 @@ __attribute__((always_inline)) INLINE static void ray_minimise_arclength(
  * @param cosmo The cosmological model
  * @param current_mass Current mass of the gas particle
  * @param v_star Velocity of the stellar particle
- * @param rand_theta_gen Random number to generate \theta_ray
- * @param rand_phi_gen Random number to generate \phi_ray
+ * @param rand_theta_gen Random number to generate \f$ \theta_{ray} \f$
+ * @param rand_phi_gen Random number to generate \f$  \phi_{ray} \f$
  * @param mass_true Unaffected mass of the true particle
  * @param mass_mirror Unaffected mass of the mirror particle
  */

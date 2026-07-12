@@ -1,0 +1,31 @@
+# Intro
+
+This example is an idealised galaxy with a geasous disk, a stellar bulge and disc. The dark matter halo is model using a external Hernquist potential. This example allows the use of sink particles for star formation.
+
+# Configure
+
+To run this example with GEAR model,
+
+```
+./configure --with-ext-potential=hernquist --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-grackle=path/to/grackle
+```
+
+and then
+
+`make -j`
+
+You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
+
+Other sink models can be probed by changing swift configuration and adding the relevant parameters in params.yml.
+
+# ICs
+
+The run.sh script can download the initial conditions at different resolutions by changing `filename=...`. Do not forget to update the name in isolated_galaxy.yml.
+
+# Run
+
+Type `run.sh`, and let's go!
+
+# Changing the cooling
+
+You can change grackle mode to 1,2, or 3 if you want. You may also want to change the simulation end time.

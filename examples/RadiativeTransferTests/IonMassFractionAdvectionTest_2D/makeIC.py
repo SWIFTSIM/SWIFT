@@ -24,8 +24,8 @@
 # initial ions. Run without radiation.
 # ---------------------------------------------------------------------
 
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+import swiftsimio as sw
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 import unyt
 import numpy as np
 import h5py
@@ -43,36 +43,55 @@ if __name__ == "__main__":
 
     # Set up metadata
     unitL = unyt.Mpc
-    edgelen = 2 * 15 * 1e-3 * unitL  # 30 kpc
+    edgelen = 1 * unyt.Mpc
     edgelen = edgelen.to(unitL)
-    boxsize = np.array([1.0, 1.0, 0.0]) * edgelen
 
     xp *= edgelen
     h *= edgelen
 
-    w = Writer(unit_system=cosmo_units, box_size=boxsize, dimension=2)
+    boxsize_cosmo = sw.cosmo_array(
+        [edgelen.value, edgelen.value],
+        edgelen.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
+    w = sw.Writer(unit_system=cosmo_units, boxsize=boxsize_cosmo, dimension=2)
 
     # write particle positions and smoothing lengths
-    w.gas.coordinates = xp
-    w.gas.smoothing_length = h
+    w.gas.coordinates = sw.cosmo_array(
+        xp.value, xp.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    w.gas.smoothing_lengths = sw.cosmo_array(
+        h.value, h.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
 
     # get gas masses
     mpart = 1.6e5 * unyt.Msun
-    masses = np.ones(xp.shape[0], dtype=np.float64) * mpart
+    masses = np.ones(xp.shape[0], dtype=np.float64) * mpart.value
     # change some gas masses
     mask = xp[:, 0] > 0.5 * edgelen
     masses[mask] *= 3
-    w.gas.masses = masses
+    w.gas.masses = sw.cosmo_array(
+        masses, mpart.units, comoving=True, scale_factor=1.0, scale_exponent=0
+    )
 
-    w.gas.internal_energy = (
-        np.ones(xp.shape[0], dtype=np.float64) * 1.25e6 * unyt.m ** 2 / unyt.s ** 2
+    w.gas.internal_energy = sw.cosmo_array(
+        np.ones(xp.shape[0], dtype=np.float64) * 1.25e6,
+        unyt.m**2 / unyt.s**2,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=-2,
     )
 
     # get velocities
+    vel_unit = cosmo_units["length"] / cosmo_units["time"]
     vels = np.zeros((xp.shape[0], 3))
     vels[:, 0] = -1.0
     vels[:, 1] = +1.0
-    w.gas.velocities = vels * 1000 * cosmo_units["length"] / cosmo_units["time"]
+    w.gas.velocities = sw.cosmo_array(
+        vels * 1000, vel_unit, comoving=True, scale_factor=1.0, scale_exponent=0
+    )
 
     w.write(outputfilename)
 

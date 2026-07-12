@@ -34,11 +34,12 @@
  * @brief Names of the compression levels, used in the select_output.yml
  *        parameter file.
  **/
-const char* lossy_compression_schemes_names[compression_level_count] = {
-    "off",        "on",          "DScale1",   "DScale2",    "DScale3",
-    "DScale4",    "DScale5",     "DScale6",   "DMantissa9", "DMantissa13",
-    "FMantissa9", "FMantissa13", "HalfFloat", "BFloat16",   "Nbit32",
-    "Nbit36",     "Nbit40",      "Nbit44",    "Nbit48",     "Nbit56"};
+const char *lossy_compression_schemes_names[compression_level_count] = {
+    "off",         "on",         "DScale1",     "DScale2",    "DScale3",
+    "DScale4",     "DScale5",    "DScale6",     "DMantissa9", "DMantissa13",
+    "DMantissa21", "FMantissa9", "FMantissa13", "HalfFloat",  "BFloat16",
+    "Nbit32",      "Nbit36",     "Nbit40",      "Nbit44",     "Nbit48",
+    "Nbit56"};
 
 /**
  * @brief Returns the lossy compression scheme given its name
@@ -48,7 +49,7 @@ const char* lossy_compression_schemes_names[compression_level_count] = {
  * @param name The name of the filter
  * @return The #lossy_compression_schemes
  */
-enum lossy_compression_schemes compression_scheme_from_name(const char* name) {
+enum lossy_compression_schemes compression_scheme_from_name(const char *name) {
 
   for (int i = 0; i < compression_level_count; ++i) {
     if (strcmp(name, lossy_compression_schemes_names[i]) == 0)
@@ -60,6 +61,65 @@ enum lossy_compression_schemes compression_scheme_from_name(const char* name) {
 }
 
 #ifdef HAVE_HDF5
+
+/**
+ * @brief Warns if a lossy compression filter is incompatible with a field's
+ * declared type.
+ *
+ * Filters that unconditionally overwrite the HDF5 type will silently produce
+ * the wrong output type if mismatched. This function emits a warning for each
+ * such mismatch so the user can correct their output_fields.yml.
+ *
+ * @param type The declared IO_DATA_TYPE of the field.
+ * @param comp The lossy compression scheme to be applied.
+ * @param field_name The name of the field (for the warning message).
+ */
+void io_check_field_compression(const enum IO_DATA_TYPE type,
+                                const enum lossy_compression_schemes comp,
+                                const char *field_name) {
+
+  const int is_float_filter = (comp == compression_write_f_mantissa_9 ||
+                               comp == compression_write_f_mantissa_13 ||
+                               comp == compression_write_half_float ||
+                               comp == compression_write_bfloat_16);
+
+  const int is_dmantissa_filter = (comp == compression_write_d_mantissa_9 ||
+                                   comp == compression_write_d_mantissa_13 ||
+                                   comp == compression_write_d_mantissa_21);
+
+  const int is_nbit_filter =
+      (comp == compression_write_Nbit_32 || comp == compression_write_Nbit_36 ||
+       comp == compression_write_Nbit_40 || comp == compression_write_Nbit_44 ||
+       comp == compression_write_Nbit_48 || comp == compression_write_Nbit_56);
+
+  const int is_dscale_filter = (comp == compression_write_d_scale_1 ||
+                                comp == compression_write_d_scale_2 ||
+                                comp == compression_write_d_scale_3 ||
+                                comp == compression_write_d_scale_4 ||
+                                comp == compression_write_d_scale_5 ||
+                                comp == compression_write_d_scale_6);
+
+  const int is_float_type = (type == FLOAT || type == DOUBLE);
+
+  if (is_float_filter && type != FLOAT)
+    error("Applying float compression filter '%s' to non-float field '%s'.",
+          lossy_compression_schemes_names[comp], field_name);
+
+  if (is_dmantissa_filter && type != DOUBLE)
+    error(
+        "Applying DMantissa compression filter '%s' to non-double field '%s'.",
+        lossy_compression_schemes_names[comp], field_name);
+
+  if (is_nbit_filter && type != LONGLONG)
+    error("Applying Nbit compression filter '%s' to non-longlong field '%s'.",
+          lossy_compression_schemes_names[comp], field_name);
+
+  if (is_dscale_filter && !is_float_type)
+    error(
+        "Applying DScale compression filter '%s' to non-floating-point field "
+        "'%s'.",
+        lossy_compression_schemes_names[comp], field_name);
+}
 
 /**
  * @brief Sets the properties and type of an HDF5 dataspace to apply a given
@@ -74,9 +134,9 @@ enum lossy_compression_schemes compression_scheme_from_name(const char* name) {
  * @param field_name The name of the field to write in the dataspace.
  * @param filter_name (return) The name of the filter (if one is applied).
  */
-void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
+void set_hdf5_lossy_compression(hid_t *h_prop, hid_t *h_type,
                                 const enum lossy_compression_schemes comp,
-                                const char* field_name, char filter_name[32]) {
+                                const char *field_name, char filter_name[32]) {
 
   if (comp == compression_do_not_write) {
     error(
@@ -149,7 +209,7 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     /* Double numbers with 9-bits mantissa and 11-bits exponent
      *
      * This has a relative accuracy of log10(2^(9+1)) = 3.01 decimal digits
-     * and the same range as a regular float.
+     * and the same range as a regular double.
      *
      * This leads to a compression ratio of 3.05 */
 
@@ -205,7 +265,7 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     /* Double numbers with 13-bits mantissa and 11-bits exponent
      *
      * This has a relative accuracy of log10(2^(13+1)) = 4.21 decimal digits
-     * and the same range as a regular float.
+     * and the same range as a regular double.
      *
      * This leads to a compression ratio of 2.56 */
 
@@ -227,6 +287,62 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
 
     H5Tclose(*h_type);
     *h_type = H5Tcopy(H5T_NATIVE_FLOAT);
+    hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
+    if (h_err < 0)
+      error("Error while setting type properties for field '%s'.", field_name);
+
+    h_err = H5Tset_offset(*h_type, offset);
+    if (h_err < 0)
+      error("Error while setting type offset properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_precision(*h_type, precision);
+    if (h_err < 0)
+      error("Error while setting type precision properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_size(*h_type, size);
+    if (h_err < 0)
+      error("Error while setting type size properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_ebias(*h_type, bias);
+    if (h_err < 0)
+      error("Error while setting type bias properties for field '%s'.",
+            field_name);
+
+    h_err = H5Pset_nbit(*h_prop);
+    if (h_err < 0)
+      error("Error while setting n-bit filter for field '%s'.", field_name);
+  }
+
+  else if (comp == compression_write_d_mantissa_21) {
+
+    /* Double numbers with 21-bits mantissa and 11-bits exponent
+     *
+     * This has a relative accuracy of log10(2^(21+1)) = 6.62 decimal digits
+     * and the same range as a regular double.
+     *
+     * This leads to a compression ratio of 1.93 */
+
+    /* Note a regular IEEE-754 double has:
+     * - size = 8
+     * - m_size = 52
+     * - e_size = 11
+     * i.e. 52 + 11 + 1 (the sign bit) == 64 bits (== 8 bytes) */
+
+    const int size = 8;
+    const int m_size = 21;
+    const int e_size = 11;
+    const int offset = 0;
+    const int precision = m_size + e_size + 1;
+    const int e_pos = offset + m_size;
+    const int s_pos = e_pos + e_size;
+    const int m_pos = offset;
+    const int bias = (1 << (e_size - 1)) - 1;
+
+    H5Tclose(*h_type);
+    *h_type = H5Tcopy(H5T_NATIVE_DOUBLE);
     hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
     if (h_err < 0)
       error("Error while setting type properties for field '%s'.", field_name);

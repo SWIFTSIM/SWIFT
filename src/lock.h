@@ -52,8 +52,9 @@
 #define lock_init(l) (*(l) = 0)
 #define lock_destroy(l) 0
 INLINE static int lock_lock(volatile int *l) {
-  while (atomic_cas(l, 0, 1) != 0)
-    ;
+  while (atomic_cas(l, 0, 1) != 0) {
+    /* Nothing to do here. */
+  }
   return 0;
 }
 #define lock_trylock(l) ((*(l)) ? 1 : atomic_cas(l, 0, 1))

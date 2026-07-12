@@ -1,0 +1,45 @@
+\begin{tikzpicture}
+    % Shaded areas
+    \fill[violet, opacity=0.05] (4, 4) rectangle (8, 8) (0, 0) rectangle (4, 4) (8, 0) rectangle (12, 4);
+    \shade[top color=violet,bottom color=white, opacity=0.05] (4, 0) rectangle (8, -1);
+    \fill[orange, opacity=0.1] (8, 2) rectangle (10, 4) (10, 4) rectangle (12, 6) (6, 4) rectangle (8, 6) (8, 6) rectangle (10, 8);
+    \fill[teal, opacity=0.1] (9, 1) rectangle (10, 2) (10, 2) rectangle (11, 3) (10, 0) rectangle (11, 1) (11, 1) rectangle (12, 2);
+    
+    % Grid
+    \draw[line width=1pt] (0,0) grid[step=4] (12,8);
+    \draw[dashed, line width=0.5pt] (4.001,0.0001) grid[step=2] (8.999,7.999);
+    \draw[line width=1pt] (8.001,0.001) grid[step=2] (9.999,7.999);
+    \draw[dashed, line width=0.5pt] (8.001,0.001) grid[step=1] (9.999,7.999);
+    \draw[line width=1pt] (10.001,0.001) grid[step=1] (11.999,7.999);
+    
+    % Arrows
+    \draw[line width=1.5pt, violet] (4, 0) grid[step=4] (8, 4);
+    \draw[violet, ->, line width=1.5pt] (2, 2) to[bend left=15] (5.9, 2);
+    \draw[violet, ->, line width=1.5pt] (10, 2) to[bend right=15] (6.1, 2);
+    \draw[violet, ->, line width=1.5pt] (6, 6) to[bend left=15] (6, 2.1);
+    \draw[violet, ->, line width=1.5pt] (6, -1) to[bend right=15] (6, 1.9);
+
+    \draw[line width=1.5pt, orange] (8, 4) grid[step=2] (10, 6);
+    \draw[orange, ->, line width=1.5pt] (7, 5) to[bend left=15] (8.95, 5);
+    \draw[orange, ->, line width=1.5pt] (9, 7) to[bend left=15] (9, 5.05);
+    \draw[orange, ->, line width=1.5pt] (11, 5) to[bend right=15] (9.05, 5);
+    \draw[orange, ->, line width=1.5pt] (9, 3) to[bend right=15] (9, 4.95);
+    
+    \draw[line width=1.5pt, teal] (10, 1) grid[step=1] (11, 2);
+    \draw[teal, ->, line width=1.25pt] (9.5, 1.5) to[bend left=15] (10.45, 1.5);
+    \draw[teal, <-, line width=1.25pt] (10.5, 1.55) to[bend right=15] (10.5, 2.5);
+    \draw[teal, <-, line width=1.25pt] (10.55, 1.5) to[bend left=15] (11.5, 1.5);
+    \draw[teal, <-, line width=1.25pt] (10.5, 1.45) to[bend left=15] (10.5, 0.5);
+    
+    % Fadings
+    \draw[line width=1pt, path fading=south] (0, -1) grid[step=4] (12, 0);
+    \draw[dashed, line width=0.5pt, path fading=south] (4.1, -1) grid[step=2] (7.9, 0);
+    \draw[dashed, line width=0.5pt, path fading=south] (8.1, -0.95) grid[step=1] (9.9, 0);
+    \draw[line width=1pt, path fading=south] (10, -0.95) grid[step=1] (11.9, 0);
+    \draw[black, line width=1pt, path fading=east] (12, 0) grid[step=1] (12.8, 8);
+    \draw[black, line width=1pt, path fading=north] (0, 8) grid[step=4] (12, 9);
+    \draw[dashed, line width=0.5pt, path fading=north] (4.1, 8) grid[step=2] (7.9, 9);
+    \draw[dashed, line width=0.5pt, path fading=north] (8.1, 8) grid[step=1] (9.9, 8.95);
+    \draw[line width=1pt, path fading=north] (10, 8) grid[step=1] (11.9, 8.95);
+    \draw[black, line width=1pt, path fading=west] (-1, 0) grid[step=4] (0, 8);
+\end{tikzpicture}

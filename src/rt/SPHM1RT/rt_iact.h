@@ -43,7 +43,7 @@
  */
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
+runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
                                      const float hi, const float hj,
                                      struct spart *si, const struct part *pj,
                                      const struct cosmology *cosmo,
@@ -100,9 +100,9 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
-    const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H,
-    const struct rt_props *rt_props) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *restrict si, struct part *restrict pj, const float a,
+    const float H, const struct rt_props *rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -189,10 +189,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
  *
  */
 __attribute__((always_inline)) INLINE static void
-radiation_gradient_loop_function(float r2, const float *dx, float hi, float hj,
+radiation_gradient_loop_function(const float r2, const float dx[3],
+                                 const float hi, const float hj,
                                  struct part *restrict pi,
-                                 struct part *restrict pj, float a, float H,
-                                 int mode) {
+                                 struct part *restrict pj, const float a,
+                                 const float H, int mode) {
 
   struct rt_part_data *rpi = &pi->rt_data;
   struct rt_part_data *rpj = &pj->rt_data;
@@ -311,8 +312,9 @@ radiation_gradient_loop_function(float r2, const float *dx, float hi, float hj,
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
   radiation_gradient_loop_function(r2, dx, hi, hj, pi, pj, a, H, 1);
 }
 
@@ -331,9 +333,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_gradient(float r2, const float *dx, float hi, float hj,
+runner_iact_nonsym_rt_gradient(const float r2, const float dx[3],
+                               const float hi, const float hj,
                                struct part *restrict pi,
-                               struct part *restrict pj, float a, float H) {
+                               struct part *restrict pj, const float a,
+                               const float H) {
   radiation_gradient_loop_function(r2, dx, hi, hj, pi, pj, a, H, 0);
 }
 
@@ -353,8 +357,9 @@ runner_iact_nonsym_rt_gradient(float r2, const float *dx, float hi, float hj,
  *
  */
 __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H, int mode) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, int mode) {
 
   struct rt_part_data *rpi = &pi->rt_data;
   struct rt_part_data *rpj = &pj->rt_data;
@@ -736,8 +741,9 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   radiation_force_loop_function(r2, dx, hi, hj, pi, pj, a, H, 1);
 }
@@ -757,9 +763,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
+runner_iact_nonsym_rt_transport(const float r2, const float dx[3],
+                                const float hi, const float hj,
                                 struct part *restrict pi,
-                                struct part *restrict pj, float a, float H) {
+                                struct part *restrict pj, const float a,
+                                const float H) {
 
   radiation_force_loop_function(r2, dx, hi, hj, pi, pj, a, H, 0);
 }

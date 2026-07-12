@@ -96,8 +96,8 @@ class Rundata(object):
         self.use_const_emission_rate = False
         self.has_stars = False  # assume we don't have stars, check while reading in
         self.has_star_debug_data = (
-            False
-        )  # assume we don't have stars, check while reading in
+            False  # assume we don't have stars, check while reading in
+        )
 
         self.ngroups = 0  # photon frequency groups
         self.const_emission_rates = None
@@ -171,7 +171,7 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             "Compile swift --with-rt=GEAR_N",
         )
 
-    ngroups = int(firstfile.metadata.subgrid_scheme["PhotonGroupNumber"])
+    ngroups = int(firstfile.metadata.subgrid_scheme["PhotonGroupNumber"][0])
     rundata.ngroups = ngroups
 
     luminosity_model = firstfile.metadata.parameters["GEARRT:stellar_luminosity_model"]

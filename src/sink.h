@@ -25,12 +25,19 @@
 /* Select the correct sink model */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink.h"
-#include "./sink/Default/sink_iact.h"
+#elif defined(SINK_BASIC)
+#include "./sink/Basic/sink.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink.h"
-#include "./sink/GEAR/sink_iact.h"
 #else
 #error "Invalid choice of sink model"
 #endif
 
-#endif
+struct engine;
+struct space;
+
+void sink_exact_density_compute(struct space *s, const struct engine *e);
+void sink_exact_density_check(struct space *s, const struct engine *e,
+                              const double rel_tol);
+
+#endif /* SWIFT_SINK_H */

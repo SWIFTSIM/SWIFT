@@ -36,7 +36,7 @@
  * interaction.
  **/
 __attribute__((always_inline)) INLINE static void rt_part_update_mass_fluxes(
-    struct part* restrict pi, struct part* restrict pj, float mass_flux,
+    struct part *restrict pi, struct part *restrict pj, float mass_flux,
     int mode) {
 
   /* If a particle is losing mass, then it loses mass according to

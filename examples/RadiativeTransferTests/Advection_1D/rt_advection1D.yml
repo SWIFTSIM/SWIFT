@@ -28,6 +28,9 @@ Statistics:
   time_first:          0.
   delta_time:          4.e-2 # Time between statistics output
 
+Scheduler:
+  tasks_per_cell:      100
+
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).

@@ -192,7 +192,7 @@ void supernovae_ia_read_yields(struct supernovae_ia *snia,
   io_read_array_attribute(group_id, "data", FLOAT, yields, nval);
 
   /* Read the labels */
-  char *labels = malloc(nval * GEAR_LABELS_SIZE);
+  char *labels = (char *)calloc(nval, GEAR_LABELS_SIZE);
   io_read_string_array_attribute(group_id, "elts", labels, nval,
                                  GEAR_LABELS_SIZE);
 
@@ -335,9 +335,18 @@ void supernovae_ia_init(struct supernovae_ia *snia,
 
   /* Supernovae energy */
   double e_feedback =
-      parser_get_param_double(params, "GEARFeedback:supernovae_energy_erg");
+      parser_get_param_double(params, "GEARFeedback:supernovae_Ia_energy_erg");
   e_feedback /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   snia->energy_per_supernovae = e_feedback;
+}
+
+/**
+ * @brief Zero pointers in supernovae_ia structs
+ *
+ * @param snia supernovae_ia struct in which pointers to tables set to NULL.
+ */
+void supernovae_ia_zero_pointers(struct supernovae_ia *snia) {
+  /* Nothing to do here */
 }
 
 /**

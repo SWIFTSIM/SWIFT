@@ -42,7 +42,7 @@ struct spart {
   long long id;
 
   /*! Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  struct gpart *gpart;
 
   /*! Particle position. */
   double x[3];
@@ -123,6 +123,9 @@ struct spart {
 
   /*! Particle time bin */
   timebin_t time_bin;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   /*! Number of time-steps since the last enrichment step */
   char count_since_last_enrichment;
@@ -251,13 +254,13 @@ struct stars_props {
   double age_threshold_unlimited;
 
   /*! The metallicities (metal mass frac) for the luminosity interpolations */
-  float* lum_tables_Z[luminosity_bands_count];
+  float *lum_tables_Z[luminosity_bands_count];
 
   /*! The age (in Gyr) for the luminosity interpolations */
-  float* lum_tables_ages[luminosity_bands_count];
+  float *lum_tables_ages[luminosity_bands_count];
 
   /*! The luminosities */
-  float* lum_tables_luminosities[luminosity_bands_count];
+  float *lum_tables_luminosities[luminosity_bands_count];
 
   /*! Conversion factor to luminosities */
   double lum_tables_factor;

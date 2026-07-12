@@ -1,0 +1,46 @@
+MetaData:
+  run_name: advect_metals_GEAR
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1   # Grams
+  UnitLength_in_cgs:   1   # Centimeters
+  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   0.1   # The end time of the simulation (in internal units).
+  dt_min:     1e-9  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-1  # The maximal time-step size of the simulation (in internal units).
+
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output # Common part of the name of output files
+  time_first:          0.     # Time of the first output (in internal units)
+  delta_time:          0.1    # Time between snapshots
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  time_first:          0.
+  delta_time:          1e-1   # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./advect_metals.hdf5     # The file to read
+  periodic:   1                        # periodic ICs.
+
+GEARChemistry:
+  initial_metallicity: -1         # Negative values mean that the metallicity will be read from the ICs
+
+AGORAChemistry:
+  initial_metallicity: -1         # Negative values mean that the metallicity will be read from the ICs
+  scale_initial_metallicity: 1    # scale the initial metallicity using solar_abundance_Metals? (needed to prevent crash in writing of metadata)

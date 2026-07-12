@@ -471,7 +471,7 @@ INLINE_ELAPSED(inline)
 typedef uint64_t ticks;
 
 static inline ticks getticks(void) {
-  static uint64_t* addr = 0;
+  static uint64_t *addr = 0;
 
   if (addr == 0) {
     uint32_t rq_addr = 0x10030000;
@@ -486,7 +486,7 @@ static inline ticks getticks(void) {
     }
     addr = mmap(0, pgsize, PROT_READ, MAP_SHARED, fd, rq_addr);
     close(fd);
-    if (addr == (uint64_t*)-1) {
+    if (addr == (uint64_t *)-1) {
       perror("mmap");
       return NULL;
     }
@@ -542,6 +542,43 @@ static inline ticks getticks(void) {
   uint64_t cc = 0;
   asm volatile("mrs %0, PMCCNTR_EL0" : "=r"(cc));
   return cc;
+}
+INLINE_ELAPSED(inline)
+#define HAVE_TICK_COUNTER
+#endif
+
+#if defined(__riscv_xlen) && !defined(HAVE_TICK_COUNTER)
+typedef uint64_t ticks;
+static inline ticks getticks(void) {
+  uint64_t result;
+#if __riscv_xlen == 64
+  asm volatile("rdtime %0" : "=r"(result));
+#elif __riscv_xlen == 32
+  uint32_t l, h, h2;
+  asm volatile(
+      "start:\n"
+      "rdtimeh %0\n"
+      "rdtime %1\n"
+      "rdtimeh %2\n"
+      "bne %0, %2, start\n"
+      : "=r"(h), "=r"(l), "=r"(h2));
+  result = (((uint64_t)h) << 32) | ((uint64_t)l);
+#else
+#error "unknown __riscv_xlen"
+#endif
+  return result;
+}
+INLINE_ELAPSED(inline)
+#define HAVE_TICK_COUNTER
+#endif
+
+#if defined(__loongarch64) && !defined(HAVE_TICK_COUNTER)
+typedef uint64_t ticks;
+static inline ticks getticks(void) {
+  uint64_t counter = 0;
+  uint64_t id = 0;
+  asm volatile("rdtime.d %0, %1" : "=r"(counter), "=r"(id));
+  return counter;
 }
 INLINE_ELAPSED(inline)
 #define HAVE_TICK_COUNTER

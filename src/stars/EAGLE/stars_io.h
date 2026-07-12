@@ -50,9 +50,13 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_LENGTH, sparts, h);
   list[5] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 sparts, mass_init);
-  list[6] =
-      io_make_input_field_default("StellarFormationTime", FLOAT, 1, OPTIONAL,
-                                  UNIT_CONV_NO_UNITS, sparts, birth_time, -1.);
+
+  /* For the birth time, -1 means the stars remain inactive feedback-wise
+     througout the run */
+  const float default_birth_time = -1.f;
+  list[6] = io_make_input_field_default("StellarFormationTime", FLOAT, 1,
+                                        OPTIONAL, UNIT_CONV_NO_UNITS, sparts,
+                                        birth_time, default_birth_time);
   list[7] = io_make_input_field("BirthDensities", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, sparts, birth_density);
   list[8] =
@@ -160,9 +164,9 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  "Masses of the particles at the current point "
                                  "in time (i.e. after stellar losses");
 
-  list[3] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           sparts, id, "Unique ID of the particles");
+  list[3] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, id,
+      /*can convert to comoving=*/0, "Unique ID of the particles");
 
   list[4] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
@@ -173,9 +177,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  "Masses of the star particles at birth time");
 
   if (with_cosmology) {
-    list[6] = io_make_output_field(
+    list[6] = io_make_physical_output_field(
         "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
-        birth_scale_factor, "Scale-factors at which the stars were born");
+        birth_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the stars were born");
   } else {
     list[6] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
                                    sparts, birth_time,
@@ -192,18 +197,18 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       number_of_SNII_events,
       "Number of SNII energy injection events the stars went through.");
 
-  list[9] = io_make_output_field(
-      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts, birth_density,
+  list[9] = io_make_physical_output_field(
+      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, sparts,
+      birth_density, /*can convert to comoving=*/0,
       "Physical densities at the time of birth of the gas particles that "
-      "turned into stars (note that "
-      "we store the physical density at the birth redshift, no conversion is "
-      "needed)");
+      "turned into stars (note that we store the physical density at the birth "
+      "redshift, no conversion is needed)");
 
-  list[10] =
-      io_make_output_field("BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE,
-                           0.f, sparts, birth_temperature,
-                           "Temperatures at the time of birth of the gas "
-                           "particles that turned into stars");
+  list[10] = io_make_physical_output_field(
+      "BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, sparts,
+      birth_temperature, /*can convert to comoving=*/0,
+      "Temperatures at the time of birth of the gas "
+      "particles that turned into stars");
 
   list[11] = io_make_output_field(
       "FeedbackNumberOfHeatingEvents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,

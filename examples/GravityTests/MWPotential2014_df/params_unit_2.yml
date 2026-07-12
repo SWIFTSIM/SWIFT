@@ -1,0 +1,63 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+33 # 10^10 Solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+24 # Mpc
+  UnitVelocity_in_cgs: 1e5       # 1 km / s in cm/s
+  UnitCurrent_in_cgs:  1         # Amperes
+  UnitTemp_in_cgs:     1         # Kelvin
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:          0.      # The starting time of the simulation (in internal units).
+  time_end:            10.0e-3     # The end time of the simulation (in internal units).
+  dt_min:              1e-13    # The minimal time-step size of the simulation (in internal units).
+  dt_max:              1e-3    # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output           # Common part of the name of output files
+  subdir:              output_2         # (Optional) Sub-directory in which to write the snapshots. Defaults to "" (i.e. the directory where SWIFT is run).  time_first:          0.      # Time of the first output (in internal units)
+  delta_time:          1e-5    # Time difference between consecutive outputs (in internal units)
+  UnitMass_in_cgs:     1.98848e+43
+  UnitLength_in_cgs:   3.086e+21
+  UnitVelocity_in_cgs: 1e5
+  UnitCurrent_in_cgs:  1
+  UnitTemp_in_cgs:     1
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1.0    # Time between statistics output
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          IC.hdf5 # The file to read
+  shift:              [0.5,0.5,0.5]
+  periodic:           0
+  
+# NFW_MN_PSC potential parameters
+MWPotential2014Potential:
+  useabspos:       0                 # 0 -> positions based on centre, 1 -> absolute positions 
+  position:        [0.,0.,0.]        #Centre of the potential with respect to centre of the box
+  timestep_mult:   0.0005            # Dimensionless pre-factor for the time-step condition
+  epsilon:         0.001e-3          # Softening size (internal units)
+  with_dynamical_friction:1          # Are we running with dynamical friction ? 0 -> no, 1 -> yes
+  df_lnLambda:        5.0              # Coulomb logarithm
+  df_satellite_mass_in_Msun: 1e10      # Satellite mass in solar mass
+  df_core_radius_in_kpc: 10            # Radius below which the dynamical friction vanishes.  
+  df_timestep_mult:0.1                 # Dimensionless pre-factor for the time-step condition for the dynamical friction force
+  df_polyfit_coeffs00: -2.96536595e-31 # Polynomial fit coefficient for the velocity dispersion model (order 16)
+  df_polyfit_coeffs01:  8.88944631e-28 # Polynomial fit coefficient for the velocity dispersion model (order 15)
+  df_polyfit_coeffs02: -1.18280578e-24 # Polynomial fit coefficient for the velocity dispersion model (order 14)
+  df_polyfit_coeffs03:  9.29479457e-22 # Polynomial fit coefficient for the velocity dispersion model (order 13)
+  df_polyfit_coeffs04: -4.82805265e-19 # Polynomial fit coefficient for the velocity dispersion model (order 12)
+  df_polyfit_coeffs05:  1.75460211e-16 # Polynomial fit coefficient for the velocity dispersion model (order 11)
+  df_polyfit_coeffs06: -4.59976540e-14 # Polynomial fit coefficient for the velocity dispersion model (order 10)
+  df_polyfit_coeffs07:  8.83166045e-12 # Polynomial fit coefficient for the velocity dispersion model (order 9)
+  df_polyfit_coeffs08: -1.24747700e-09 # Polynomial fit coefficient for the velocity dispersion model (order 8)
+  df_polyfit_coeffs09:  1.29060404e-07 # Polynomial fit coefficient for the velocity dispersion model (order 7)
+  df_polyfit_coeffs10: -9.65315026e-06 # Polynomial fit coefficient for the velocity dispersion model (order 6)
+  df_polyfit_coeffs11:  5.10187806e-04 # Polynomial fit coefficient for the velocity dispersion model (order 5)
+  df_polyfit_coeffs12: -1.83800281e-02 # Polynomial fit coefficient for the velocity dispersion model (order 4)
+  df_polyfit_coeffs13:  4.26501444e-01 # Polynomial fit coefficient for the velocity dispersion model (order 3)
+  df_polyfit_coeffs14: -5.78038064e+00 # Polynomial fit coefficient for the velocity dispersion model (order 2)
+  df_polyfit_coeffs15:  3.57956721e+01 # Polynomial fit coefficient for the velocity dispersion model (order 1)
+  df_polyfit_coeffs16:  1.85478908e+02 # Polynomial fit coefficient for the velocity dispersion model (order 0)

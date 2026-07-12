@@ -126,10 +126,13 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  * @param pressure_floor The properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The space data, including a pointer to array of particles
+ * @param time The current system time
  */
-void cooling_update(const struct cosmology *cosmo,
+void cooling_update(const struct phys_const *phys_const,
+                    const struct cosmology *cosmo,
                     const struct pressure_floor_props *pressure_floor,
-                    struct cooling_function_data *cooling, struct space *s) {
+                    struct cooling_function_data *cooling, struct space *s,
+                    const double time) {
 
   /* Current redshift */
   const float redshift = cosmo->z;
@@ -561,6 +564,28 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
  * @param xp Pointer to the #xpart data.
  */
 __attribute__((always_inline)) INLINE void cooling_first_init_part(
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct hydro_props *hydro_props,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, struct xpart *restrict xp) {}
+
+/**
+ * @brief Perform additional init on the cooling properties of the
+ * (x-)particles that requires the density to be known.
+ *
+ * Nothing to do here.
+ *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo The current cosmological model.
+ * @param cooling The properties of the cooling function.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE void cooling_post_init_part(
     const struct phys_const *restrict phys_const,
     const struct unit_system *restrict us,
     const struct hydro_props *hydro_props,
@@ -1068,7 +1093,8 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
   /* Force a re-read of the cooling tables */
   cooling->z_index = -10;
   cooling->previous_z_index = qla_eagle_cooling_N_redshifts - 2;
-  cooling_update(cosmo, /*pfloor=*/NULL, cooling, /*space=*/NULL);
+  cooling_update(/*phys_const=*/NULL, cosmo, /*pfloor=*/NULL, cooling,
+                 /*space=*/NULL, /*time=*/0);
 }
 
 /**

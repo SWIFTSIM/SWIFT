@@ -23,6 +23,8 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#include "forcing_struct.h"
+#include "fvpm_geometry_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
 #include "sink_struct.h"
@@ -59,6 +61,9 @@ struct xpart {
 
   /* Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
+
+  /* Additional data used by the forcing scheme */
+  struct forcing_xpart_data forcing_data;
 
 } SWIFT_STRUCT_ALIGN;
 

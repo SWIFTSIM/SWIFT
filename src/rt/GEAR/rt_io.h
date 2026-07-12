@@ -35,8 +35,8 @@
  *
  * @return Returns the number of fields to read.
  */
-INLINE static int rt_read_particles(const struct part* parts,
-                                    struct io_props* list) {
+INLINE static int rt_read_particles(const struct part *parts,
+                                    struct io_props *list) {
 
   /* List what we want to read */
 
@@ -80,8 +80,8 @@ INLINE static int rt_read_particles(const struct part* parts,
  *
  * @return Returns the number of fields to read.
  */
-INLINE static int rt_read_stars(const struct spart* sparts,
-                                struct io_props* list) {
+INLINE static int rt_read_stars(const struct spart *sparts,
+                                struct io_props *list) {
   return 0;
 }
 
@@ -94,10 +94,10 @@ INLINE static int rt_read_stars(const struct spart* sparts,
  * @param xpart the according xpart to extract data from
  * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_radiation_energies(const struct engine* engine,
-                                                 const struct part* part,
-                                                 const struct xpart* xpart,
-                                                 float* ret) {
+INLINE static void rt_convert_radiation_energies(const struct engine *engine,
+                                                 const struct part *part,
+                                                 const struct xpart *xpart,
+                                                 float *ret) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     ret[g] = part->rt_data.radiation[g].energy_density * part->geometry.volume;
@@ -113,10 +113,10 @@ INLINE static void rt_convert_radiation_energies(const struct engine* engine,
  * @param xpart the according xpart to extract data from
  * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_radiation_fluxes(const struct engine* engine,
-                                               const struct part* part,
-                                               const struct xpart* xpart,
-                                               float* ret) {
+INLINE static void rt_convert_radiation_fluxes(const struct engine *engine,
+                                               const struct part *part,
+                                               const struct xpart *xpart,
+                                               float *ret) {
 
   int i = 0;
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -135,10 +135,10 @@ INLINE static void rt_convert_radiation_fluxes(const struct engine* engine,
  * @param xpart the according xpart to extract data from
  * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_mass_fractions(const struct engine* engine,
-                                             const struct part* part,
-                                             const struct xpart* xpart,
-                                             float* ret) {
+INLINE static void rt_convert_mass_fractions(const struct engine *engine,
+                                             const struct part *part,
+                                             const struct xpart *xpart,
+                                             float *ret) {
 
   ret[0] = part->rt_data.tchem.mass_fraction_HI;
   ret[1] = part->rt_data.tchem.mass_fraction_HII;
@@ -156,18 +156,21 @@ INLINE static void rt_convert_mass_fractions(const struct engine* engine,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int rt_write_particles(const struct part* parts,
-                                     struct io_props* list) {
+INLINE static int rt_write_particles(const struct part *parts,
+                                     struct io_props *list) {
 
   int num_elements = 3;
 
-  list[0] = io_make_output_field_convert_part(
+  list[0] = io_make_physical_output_field_convert_part(
       "PhotonEnergies", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY, 0, parts,
-      /*xparts=*/NULL, rt_convert_radiation_energies,
+      /*xparts=*/NULL,
+      /*convertible to comoving=*/1, rt_convert_radiation_energies,
       "Photon Energies (all groups)");
-  list[1] = io_make_output_field_convert_part(
+
+  list[1] = io_make_physical_output_field_convert_part(
       "PhotonFluxes", FLOAT, 3 * RT_NGROUPS, UNIT_CONV_RADIATION_FLUX, 0, parts,
-      /*xparts=*/NULL, rt_convert_radiation_fluxes,
+      /*xparts=*/NULL,
+      /*convertible to comoving=*/1, rt_convert_radiation_fluxes,
       "Photon Fluxes (all groups; x, y, and z coordinates)");
   list[2] = io_make_output_field_convert_part(
       "IonMassFractions", FLOAT, 5, UNIT_CONV_NO_UNITS, 0, parts,
@@ -224,8 +227,8 @@ INLINE static int rt_write_particles(const struct part* parts,
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int rt_write_stars(const struct spart* sparts,
-                                 struct io_props* list) {
+INLINE static int rt_write_stars(const struct spart *sparts,
+                                 struct io_props *list) {
   int num_elements = 0;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -261,10 +264,10 @@ INLINE static int rt_write_stars(const struct spart* sparts,
  * @param rtp The #rt_props
  */
 INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
-                                    const struct engine* e,
-                                    const struct unit_system* internal_units,
-                                    const struct unit_system* snapshot_units,
-                                    const struct rt_props* rtp) {
+                                    const struct engine *e,
+                                    const struct unit_system *internal_units,
+                                    const struct unit_system *snapshot_units,
+                                    const struct rt_props *rtp) {
 
 #if defined(HAVE_HDF5)
 
@@ -312,6 +315,8 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   io_write_attribute_f(dset, "h-scale exponent", 0.f);
   io_write_attribute_f(dset, "a-scale exponent", 0.f);
   io_write_attribute_s(dset, "Expression for physical CGS units", buffer);
+  io_write_attribute_b(dset, "Value stored as physical", 1);
+  io_write_attribute_b(dset, "Property can be converted to comoving", 0);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -413,6 +418,8 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   io_write_attribute_f(dset_cred, "a-scale exponent", 0.f);
   io_write_attribute_s(dset_cred, "Expression for physical CGS units",
                        buffer_cred);
+  io_write_attribute_b(dset_cred, "Value stored as physical", 1);
+  io_write_attribute_b(dset_cred, "Property can be converted to comoving", 0);
 
   /* Write the actual number this conversion factor corresponds to */
   /* TODO Mladen: check cosmology. reduced_speed_of_light is physical only for

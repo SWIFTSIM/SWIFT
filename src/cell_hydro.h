@@ -77,7 +77,7 @@ struct cell_hydro {
     struct task *ghost_out;
 
     /*! The ghost task itself */
-    struct task *ghost;
+    struct task *ghost[HYDRO_GHOST_NTASK];
 
     /*! The hydro ghost task related to kinetic feedback */
     struct task *prep1_ghost;
@@ -95,7 +95,7 @@ struct cell_hydro {
     struct task *cooling_out;
 
     /*! Task for cooling */
-    struct task *cooling;
+    struct task *cooling[HYDRO_COOLING_NTASK];
 
     /*! Task for star formation */
     struct task *star_formation;
@@ -105,6 +105,9 @@ struct cell_hydro {
 
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
+
+    /*! Spin-lock for the case where we do an extra sort of the cell. */
+    swift_lock_type extra_sort_lock;
 
     /*! Max smoothing length of active particles in this cell. */
     float h_max_active;

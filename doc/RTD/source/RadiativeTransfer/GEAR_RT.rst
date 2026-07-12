@@ -30,13 +30,24 @@ Compiling for GEAR RT
     you to select a hydro Riemann solver, e.g ``--with-riemann-solver=hllc``.
 
 -   The thermochemistry requires the `grackle <https://github.com/grackle-project/grackle>`_ 
-    library version 3.2. Grackle is a chemistry and cooling library presented in 
+    library version above 3.2.1. [#f4]_ Grackle is a chemistry and cooling library presented in 
     `B. Smith et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.466.2217S>`_.
     Please note that the current implementation is not (yet) as
     advanced as the :ref:`GEAR subgrid model grackle cooling <gear_grackle_cooling>`, 
     and the parameters listed as available there are not applicable for the 
     grackle cooling in combination with GEAR RT. You can however follow the Grackle 
     installation instructions documented there.
+
+.. warning::
+    (State 2023) Grackle is experiencing current development, and the API is subject
+    to changes in the future. For convenience, a frozen version is hosted as a fork
+    on github here: https://github.com/mladenivkovic/grackle-swift .
+    The version available there will be tried and tested and ensured to work with
+    GEAR-RT. 
+
+    Additionally, that repository hosts files necessary to install that specific 
+    version of grackle with spack.
+
 
 
 
@@ -468,3 +479,10 @@ useful:
    `I. Iliev et al. 2006 <https://ui.adsabs.harvard.edu/abs/2006MNRAS.369.1625I>`_ 
    paper, but that is very specialized and shouldn't have much use in real 
    applications.
+
+.. [#f4] Grackle version 3.2.1 still contained a bug related to the use of their
+   "threadsafe functions" that could lead to disastrous outcomes. That was fixed
+   in commit `a59489f`. So versions after 3.2.1 should work as expected.
+   To be safe, we recommend you use the forked grackle repository specifically
+   intended to freeze a stable version for use with SWIFT. You can find that fork
+   on github: https://github.com/mladenivkovic/grackle-swift .

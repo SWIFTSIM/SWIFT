@@ -37,7 +37,7 @@
  * @param cred reduced speed of light in (comoving) code unit
  */
 __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
-    float* energy_density, float flux[3], const float e_old, const float cred) {
+    float *energy_density, float flux[3], const float e_old, const float cred) {
 
   /* Check for negative energies */
   /* Note to self for printouts: Maximal allowable F = E * c.
@@ -95,7 +95,7 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
  * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_check_unphysical_elem_spec(
-    struct part* restrict p, const struct rt_props* rt_props) {
+    struct part *restrict p, const struct rt_props *rt_props) {
 
   /*************************/
   /* check mass fraction   */

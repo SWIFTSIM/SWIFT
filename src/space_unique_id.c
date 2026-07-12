@@ -44,11 +44,12 @@
  */
 void space_update_unique_id(struct space *s) {
   /* Do we need unique IDs? */
-  if (!star_formation_need_unique_id && !sink_need_unique_id) {
+  if (!star_formation_need_unique_id && !sink_need_unique_id &&
+      !s->splitting_need_unique_id) {
     return;
   }
 
-  const int require_new_batch = s->unique_id.next_batch.current == 0;
+  int require_new_batch = s->unique_id.next_batch.current == 0;
 
 #ifdef WITH_MPI
   const struct engine *e = s->e;
@@ -82,9 +83,10 @@ void space_update_unique_id(struct space *s) {
 #endif  // WITH_MPI
 
   /* Compute the size of each batch. */
-  const long long batch_size = (space_extra_parts + space_extra_sparts +
-                                space_extra_gparts + space_extra_bparts) *
-                               s->nr_cells;
+  const long long batch_size =
+      (space_extra_parts + space_extra_sparts + space_extra_gparts +
+       space_extra_bparts + space_extra_sinks) *
+      s->nr_cells;
 
   /* Get a new batch. */
   if (require_new_batch) {
@@ -116,7 +118,8 @@ void space_update_unique_id(struct space *s) {
  */
 long long space_get_new_unique_id(struct space *s) {
   /* Do we need unique IDs? */
-  if (!star_formation_need_unique_id && !sink_need_unique_id) {
+  if (!star_formation_need_unique_id && !sink_need_unique_id &&
+      !s->splitting_need_unique_id) {
     error("The scheme selected does not seem to use unique ID.");
   }
 
@@ -166,7 +169,8 @@ long long space_get_new_unique_id(struct space *s) {
  */
 void space_init_unique_id(struct space *s, int nr_nodes) {
   /* Do we need unique IDs? */
-  if (!star_formation_need_unique_id && !sink_need_unique_id) {
+  if (!star_formation_need_unique_id && !sink_need_unique_id &&
+      !s->splitting_need_unique_id) {
     return;
   }
 
@@ -210,9 +214,10 @@ void space_init_unique_id(struct space *s, int nr_nodes) {
   s->unique_id.global_next_id++;
 
   /* Compute the size of each batch. */
-  const long long batch_size = (space_extra_parts + space_extra_sparts +
-                                space_extra_gparts + space_extra_bparts) *
-                               s->nr_cells;
+  const long long batch_size =
+      (space_extra_parts + space_extra_sparts + space_extra_gparts +
+       space_extra_bparts + space_extra_sinks) *
+      s->nr_cells;
 
   /* Compute the initial batchs (each rank has 2 batchs). */
   if (s->unique_id.global_next_id > LLONG_MAX - 2 * engine_rank * batch_size) {

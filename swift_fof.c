@@ -323,15 +323,18 @@ int main(int argc, char *argv[]) {
 
   /* How large are the parts? */
   if (myrank == 0) {
-    message("sizeof(part)        is %4zi bytes.", sizeof(struct part));
-    message("sizeof(xpart)       is %4zi bytes.", sizeof(struct xpart));
-    message("sizeof(sink)        is %4zi bytes.", sizeof(struct sink));
-    message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
-    message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
-    message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
-    message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
-    message("sizeof(task)        is %4zi bytes.", sizeof(struct task));
-    message("sizeof(cell)        is %4zi bytes.", sizeof(struct cell));
+    message("sizeof(part)          is %4zi bytes.", sizeof(struct part));
+    message("sizeof(xpart)         is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(sink)          is %4zi bytes.", sizeof(struct sink));
+    message("sizeof(spart)         is %4zi bytes.", sizeof(struct spart));
+    message("sizeof(bpart)         is %4zi bytes.", sizeof(struct bpart));
+    message("sizeof(gpart)         is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(gpart_foreign) is %4zi bytes.",
+            sizeof(struct gpart_foreign));
+    message("sizeof(multipole)     is %4zi bytes.", sizeof(struct multipole));
+    message("sizeof(grav_tensor)   is %4zi bytes.", sizeof(struct grav_tensor));
+    message("sizeof(task)          is %4zi bytes.", sizeof(struct task));
+    message("sizeof(cell)          is %4zi bytes.", sizeof(struct cell));
   }
 
   /* Read the parameter file. */
@@ -525,7 +528,7 @@ int main(int argc, char *argv[]) {
   N_long[swift_type_black_hole] = Nbpart;
   N_long[swift_type_neutrino] = Nnupart;
   N_long[swift_type_count] = Ngpart;
-  MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+  MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                 MPI_SUM, MPI_COMM_WORLD);
 #else
   N_total[swift_type_gas] = Ngas;
@@ -613,7 +616,7 @@ int main(int argc, char *argv[]) {
   N_long[swift_type_stars] = s.nr_sparts;
   N_long[swift_type_black_hole] = s.nr_bparts;
   N_long[swift_type_neutrino] = s.nr_nuparts;
-  MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+  MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                 MPI_SUM, MPI_COMM_WORLD);
 #else
   N_total[swift_type_gas] = s.nr_parts;
@@ -660,6 +663,7 @@ int main(int argc, char *argv[]) {
       /*neutrino_response=*/NULL, /*feedback_properties=*/NULL,
       /*pressure_floor_properties=*/NULL,
       /*rt_properties=*/NULL, &mesh, /*pow_data=*/NULL, /*potential=*/NULL,
+      /*forcing_terms=*/NULL,
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
       /*extra_io_props=*/NULL, &fof_properties, /*los_properties=*/NULL,
       /*lightcone_properties=*/NULL, &ics_metadata);
@@ -692,6 +696,10 @@ int main(int argc, char *argv[]) {
   engine_split(&e, &initial_partition);
 #endif
 
+  /* Start by setting the particles in a good state */
+  if (myrank == 0) message("Setting particles to a valid state...");
+  engine_first_init_particles(&e);
+
 #ifdef SWIFT_DEBUG_TASKS
   e.tic_step = getticks();
 #endif
@@ -715,7 +723,7 @@ int main(int argc, char *argv[]) {
   if (with_sinks) e.policy |= engine_policy_sinks;
 
   /* Write output. */
-  engine_dump_snapshot(&e);
+  engine_dump_snapshot(&e, /*fof=*/1);
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
@@ -768,17 +776,18 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-#ifdef WITH_MPI
-  if ((res = MPI_Finalize()) != MPI_SUCCESS)
-    error("call to MPI_Finalize failed with error %i.", res);
-#endif
-
   /* Clean everything */
   cosmology_clean(&cosmo);
   pm_mesh_clean(&mesh);
   engine_clean(&e, /*fof=*/1, /*restart=*/0);
   free(params);
   free(output_options);
+
+#ifdef WITH_MPI
+  partition_clean(&initial_partition, &reparttype);
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");

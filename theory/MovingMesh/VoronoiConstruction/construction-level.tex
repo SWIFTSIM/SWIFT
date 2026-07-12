@@ -1,0 +1,61 @@
+
+
+\section{Setting the construction level for the Voronoi grid}
+
+Like (almost) everything, the construction of the Voronoi grid in SWIFT happens at the granularity of SWIFT cells. 
+No global Voronoi grid is constructed, but parts of the Voronoi grid are constructed independently for SWIFT cells ensuring that neighbouring cells' Voronoi grids mesh together properly.
+
+The chosen construction algorithm, stores the grid information in a cell-global data structure (earlier attempts storing the grid information in the particles resulted in an unusably large memory overhead and very slow performance). 
+This means that the Voronoi grid must be stored at some unique level in the AMR tree of SWIFT cells at every location.
+Special care must be taken when selecting this level. The following constraints \emph{must} be fulfilled:
+\begin{enumerate}
+    \item The cell has neighbouring cells on the same level in every direction
+    \item The part of the Voronoi grid of the SWIFT cell only depends on the locations of the particles of the SWIFT cell and those of its neighbours.
+\end{enumerate}
+
+Specifically, these constraints are needed to be able to identify the neighbouring particles of faces between a local particle of a cell and a particle of a neighbouring cell, which we will call \emph{ghost particles}, e.g. when exchanging fluxes. While this can be achieved using pointers on a single node application, when running SWIFT on multiple nodes over MPI, these pointers would no longer be valid when they are sent to the other node, so we instead store the \texttt{sid} of the neighbouring cell and the index of the ghost particle in that neighbouring cell in the faces.
+
+Besides those constraints, we also try to balance the following opposing effects:
+\begin{itemize}
+    \item We want to construct the parts of the Voronoi grid at a low enough level to achieve fine grained tasking and good load balancing
+    \item Constructing the Voronoi grid in very small parts (i.e. at a very low level in the AMR tree) increases overhead, as faces between neighbouring SWIFT cells (boundary faces) are constructed twice (once for the part of the Voronoi grid of each cell). The fewer particles there are in the SWIFT cells, the more boundary faces relative to internal faces. 
+\end{itemize}
+
+\subsection{The definition of completeness}
+We define a SWIFT cell as \emph{complete} if it satisfies both of the above constraints. 
+It is intuitively clear that if there are not enough particles in the cells, it could happen that information from particles two cells over might be needed to correctly construct the Voronoi grid of a SWIFT cell. Figure \ref{fig:problem-completeness} shows an example in 2D where the second constrained is not fulfilled.
+It can be proven that a sufficient condition for completeness in three dimensions, and for cubic cells, is that a SWIFT cell and its neighbours all have at least one particle in every $1/27^\text{th}$ sub-cube obtained by dividing the cell in three along every direction.
+
+\begin{figure}
+    \centering
+    \input{VoronoiConstruction/figures/problem.tex}
+    \caption{2D example of a problematic configuration arising from SWIFT cells containing too few particles. The dual Delaunay tessellation of the Voronoi grid is drawn. Any particle inside the red circle could influence the Voronoi cell of particle A in the blue SWIFT cell, even particle D, which is not part of a directly neighbouring SWIFT cell of the blue cell, violating the second constraint.}
+    \label{fig:problem-completeness}
+\end{figure}
+
+To determine the completeness of every cell in the AMR tree, we first set the \emph{self-completeness} for every cell. This is just whether the cell itself has at least one particle in every $1/27^\text{th}$ sub-cube. This is done recursively: once all 8 subcells of a SWIFT cell are self-complete, the cell itself is also self complete.
+The self-completeness flag should be invalidated when drifting the particles.
+
+Once the self-completeness flags have been set, and communicated over MPI if necessary, each cell's completeness (\texttt{true} or \texttt{false}) is initialized according to its self-completeness flag. We then recursively check all pairs of neighbouring cells and invalidate the completeness flag of a cell as soon as one of its neighbours is not self-complete. Note that technically, the cell might in theory still be complete at this point (i.e. only depend on particles from its neighbouring cells), but there is no easy way to check this in practice, so we impose this slightly more stringent constraint.
+
+If the \texttt{SHADOWSWIFT\_RELAXED\_COMPLETENESS} directive is defined, we use a slightly more relaxed condition. We only invalidate the completeness of a SWIFT cell \texttt{ci}, if it has a neighbouring cell \texttt{cj} that is not self-complete \emph{and} the maximal search radius of any particle in \texttt{ci} is smaller than half the width of \texttt{cj}, indicating there are still enough particles close-by to completely determine \texttt{ci}'s Voronoi grid and consider the pair (\texttt{ci}, \texttt{cj}) complete.
+
+
+\subsection{Setting the construction level based on completeness} \label{sec:construction-level}
+
+Once the completeness is set for every swift cell in the AMR tree, the \emph{construction level}, i.e. the level at which the Voronoi grid will be stored and constructed, can be decided. This is again done recursively. Starting from the top level cells, we recurse down and set the construction level at the the first level where one of the following conditions is true:
+\begin{enumerate}
+    \item The current cell does not have subcells
+    \item The current cell does not have 8 complete subcells
+    \item The current cell has fewer than \texttt{grid\_split\_threshold} particles
+\end{enumerate} 
+Cells below the construction level store a pointer to their parent cell on the construction level, cells above the construction level store \texttt{NULL} (similar to how the \texttt{super} levels work, but note that the construction level is decided \emph{before} any tasks are constructed).
+Ideally, to have the most flexibility when setting the construction level, \texttt{grid\_split\_threshold} should be larger than \texttt{cell\_split\_size} and the latter should be set to a pretty small value (e.g. 40 instead of the default 400). An example of the resulting configuration of construction levels is shown in Figure \ref{fig:construction-level}
+
+\begin{figure}
+    \centering
+    \input{VoronoiConstruction/figures/construction_level}
+    \caption{Example configuration.  Thick colored borders indicate a level on which the Voronoi grid will be constructed and the appropriately colored shaded areas depict the neighbouring used for construction. Cells always and only use information of neighbouring cells on the same level in the AMR tree (diagonal dependencies have been omitted for clarity). Grid construction may happen at any level in the AMR tree depending on the conditions discussed in \S\ref{sec:construction-level}.}
+    \label{fig:construction-level}
+\end{figure}
+

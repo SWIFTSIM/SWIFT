@@ -36,7 +36,7 @@
  */
 __attribute__((always_inline)) INLINE static void
 particle_splitting_mark_part_as_not_split(
-    struct particle_splitting_data* restrict splitting_data, int id) {
+    struct particle_splitting_data *restrict splitting_data, long long id) {
 
   splitting_data->progenitor_id = id;
   splitting_data->split_tree = 0;
@@ -53,30 +53,61 @@ particle_splitting_mark_part_as_not_split(
  *           the splitting event.
  * @param sdj second particle_splitting_data* resulting from
  *           the splitting event.
+ * @param id_i ID of the first particle.
+ * @param id_j ID of the first particle.
+ * @param extra_split_logger File pointer (opened) where to log
+ *           the resetting of the split counters.
  */
 __attribute__((always_inline)) INLINE static void
 particle_splitting_update_binary_tree(
-    struct particle_splitting_data* restrict sdi,
-    struct particle_splitting_data* restrict sdj) {
+    struct particle_splitting_data *restrict sdi,
+    struct particle_splitting_data *restrict sdj, const long long id_i,
+    const long long id_j, FILE *extra_split_logger,
+    swift_lock_type *file_lock) {
+
+  /* Print warnings if we have split these particles more
+   * than the number of times the tree can accommodate.
+   * Warning is only printed once for each particle */
+  if (sdi->split_count > 0 &&
+      sdi->split_count % (8 * sizeof(sdi->split_tree)) == 0) {
+    message(
+        "Warning: Particle (%lld) with progenitor ID %lld with binary tree "
+        "%lld has been split over the maximum %zu times, making its binary "
+        "tree invalid.",
+        id_i, sdi->progenitor_id, sdi->split_tree, sizeof(sdi->split_tree));
+
+    /* Are we logging this? */
+    if (extra_split_logger != NULL) {
+
+      /* Log the old state before reseting. Use the lock to prevent multiple
+       * threads from writing at the same time. */
+      lock_lock(file_lock);
+      fprintf(extra_split_logger, "  %12d %20lld %20lld %20d %20lld\n",
+              engine_current_step, id_i, sdi->progenitor_id, sdi->split_count,
+              sdi->split_tree);
+      fflush(extra_split_logger);
+
+      /* Release the lock and continue in parallel */
+      if (lock_unlock(file_lock) != 0)
+        error("Impossible to unlock particle splitting");
+    }
+
+    /* Reset both counters and trees */
+    sdi->split_tree = 0LL;
+    sdj->split_tree = 0LL;
+
+    /* Set both particles as having particle i as their progenitor */
+    sdi->progenitor_id = id_i;
+    sdj->progenitor_id = id_i;
+  }
 
   /* Update the binary tree */
-  sdj->split_tree |= 1LL << sdj->split_count;
+  sdj->split_tree |= 1LL << sdj->split_count % (8 * sizeof(sdi->split_tree));
 
   /* Increase counters on both; sdi implicitly has a zero
    * in the relevant spot in its binary tree */
   sdj->split_count++;
   sdi->split_count++;
-
-  /* Print warnings if we have split these particles more
-   * than the number of times the tree can accommodate.
-   * Warning is only printed once for each particle */
-  if (sdi->split_count == 8 * sizeof(sdi->split_tree)) {
-    message(
-        "Warning: Particle with progenitor ID %lld with binary tree %lld has "
-        "been split over the maximum %zu times, making its binary tree "
-        "invalid.",
-        sdi->progenitor_id, sdi->split_tree, sizeof(sdi->split_tree));
-  }
 }
 
 /**
@@ -90,9 +121,9 @@ particle_splitting_update_binary_tree(
  *
  * @return Returns the number of fields to write.
  */
-INLINE static int particle_splitting_write_particles(const struct part* parts,
-                                                     const struct xpart* xparts,
-                                                     struct io_props* list,
+INLINE static int particle_splitting_write_particles(const struct part *parts,
+                                                     const struct xpart *xparts,
+                                                     struct io_props *list,
                                                      const int with_cosmology) {
 
   list[0] = io_make_output_field(
@@ -107,9 +138,7 @@ INLINE static int particle_splitting_write_particles(const struct part* parts,
       "SplitCounts", UINT8, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
       split_data.split_count,
       "Number of times this particle has been split. Note that both particles "
-      "that take part in the splitting have counter incremented, so the "
-      "number of splitting events in an entire simulation is half of the sum "
-      "of all of these numbers.");
+      "that take part in the splitting have their counter incremented.");
 
   list[2] = io_make_output_field(
       "SplitTrees", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
@@ -130,7 +159,7 @@ INLINE static int particle_splitting_write_particles(const struct part* parts,
  * @return Returns the number of fields to write.
  */
 INLINE static int particle_splitting_write_sparticles(
-    const struct spart* sparts, struct io_props* list) {
+    const struct spart *sparts, struct io_props *list) {
 
   list[0] = io_make_output_field(
       "ProgenitorParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
@@ -146,8 +175,7 @@ INLINE static int particle_splitting_write_sparticles(
       split_data.split_count,
       "Number of times the gas particle that turned into this star particle "
       "was split. Note that both particles that take part in the splitting "
-      "have this counter incremented, so the number of splitting events in an "
-      "entire simulation is half of the sum of all of these numbers.");
+      "have their counter incremented.");
 
   list[2] = io_make_output_field(
       "SplitTrees", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
@@ -168,7 +196,7 @@ INLINE static int particle_splitting_write_sparticles(
  * @return Returns the number of fields to write.
  */
 INLINE static int particle_splitting_write_bparticles(
-    const struct bpart* bparts, struct io_props* list) {
+    const struct bpart *bparts, struct io_props *list) {
   list[0] = io_make_output_field(
       "ProgenitorParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       split_data.progenitor_id,
@@ -183,8 +211,7 @@ INLINE static int particle_splitting_write_bparticles(
       split_data.split_count,
       "Number of times the gas particle that became this BH seed "
       "was split. Note that both particles that take part in the splitting "
-      "have this counter incremented, so the number of splitting events in an "
-      "entire simulation is half of the sum of all of these numbers.");
+      "have their counter incremented.");
 
   list[2] = io_make_output_field(
       "SplitTrees", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
@@ -203,8 +230,8 @@ INLINE static int particle_splitting_write_bparticles(
  * @param xp Extra particle data.
  */
 __attribute__((always_inline)) INLINE static void
-particle_splitting_debug_particle(const struct part* p,
-                                  const struct xpart* xp) {
+particle_splitting_debug_particle(const struct part *p,
+                                  const struct xpart *xp) {
 
   if (xp != NULL) {
     warning("[PID%lld] particle_splitting_data:", p->id);

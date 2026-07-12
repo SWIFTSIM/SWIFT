@@ -36,7 +36,7 @@
 ticks timers[timer_count];
 
 /* Timer names. */
-const char* timers_names[timer_count] = {
+const char *timers_names[timer_count] = {
     "none",
     "prepare",
     "init",
@@ -61,7 +61,8 @@ const char* timers_names[timer_count] = {
     "doself_bh_swallow",
     "doself_bh_feedback",
     "doself_grav_pp",
-    "doself_sink_swallow",
+    "doself_sinks_density",
+    "doself_sinks_swallow",
     "dopair_density",
     "dopair_gradient",
     "dopair_force",
@@ -73,7 +74,8 @@ const char* timers_names[timer_count] = {
     "dopair_bh_feedback",
     "dopair_grav_mm",
     "dopair_grav_pp",
-    "dopair_sink_swallow",
+    "dopair_sinks_density",
+    "dopair_sinks_swallow",
     "dograv_external",
     "dograv_down",
     "dograv_mesh",
@@ -89,7 +91,8 @@ const char* timers_names[timer_count] = {
     "dosub_self_bh_swallow",
     "dosub_self_bh_feedback",
     "dosub_self_grav",
-    "dosub_self_sink_swallow",
+    "dosub_self_sinks_density",
+    "dosub_self_sinks_swallow",
     "dosub_pair_density",
     "dosub_pair_gradient",
     "dosub_pair_force",
@@ -100,7 +103,8 @@ const char* timers_names[timer_count] = {
     "dosub_pair_bh_swallow",
     "dosub_pair_bh_feedback",
     "dosub_pair_grav",
-    "dosub_pair_sink_swallow",
+    "dosub_pair_sinks_density",
+    "dosub_pair_sinks_swallow",
     "doself_subset",
     "dopair_subset",
     "dopair_subset_naive",
@@ -109,6 +113,7 @@ const char* timers_names[timer_count] = {
     "do_extra_ghost",
     "do_stars_ghost",
     "do_black_holes_ghost",
+    "do_sinks_ghost",
     "dorecv_part",
     "dorecv_gpart",
     "dorecv_spart",
@@ -142,10 +147,12 @@ const char* timers_names[timer_count] = {
     "rt_tchem",
     "rt_advance_cell_time",
     "rt_collect_times",
+    "do_sync",
+    "neutrino_weighting",
 };
 
 /* File to store the timers */
-static FILE* timers_file;
+static FILE *timers_file;
 
 /**
  * @brief Re-set all the timers.

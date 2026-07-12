@@ -70,9 +70,9 @@ struct external_potential {
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float external_gravity_timestep(
-    double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const,
-    const struct gpart* restrict g) {
+    double time, const struct external_potential *restrict potential,
+    const struct phys_const *restrict phys_const,
+    const struct gpart *restrict g) {
 
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
@@ -97,7 +97,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   return potential->timestep_mult * sqrtf(a_2 / dota_2);
 }
 
-/**
+/**c
  * @brief Computes the gravitational acceleration from an isothermal potential.
  *
  * Note that the accelerations are multiplied by Newton's G constant
@@ -113,8 +113,8 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
-    double time, const struct external_potential* potential,
-    const struct phys_const* const phys_const, struct gpart* g) {
+    double time, const struct external_potential *potential,
+    const struct phys_const *const phys_const, struct gpart *g) {
 
   const float G = phys_const->const_newton_G;
   const float dx = g->x[0] - potential->x[0];
@@ -138,7 +138,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  * @brief Computes the gravitational potential energy of a particle in an
  * isothermal potential.
  *
- * phi = -0.5 * vrot^2 * ln(r^2 + epsilon^2)
+ * phi = 0.5 * vrot^2 * ln(r^2 + epsilon^2)
  *
  * @param time The current time (unused here).
  * @param potential The #external_potential used in the run.
@@ -147,14 +147,14 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    double time, const struct external_potential* potential,
-    const struct phys_const* const phys_const, const struct gpart* g) {
+    double time, const struct external_potential *potential,
+    const struct phys_const *const phys_const, const struct gpart *g) {
 
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
 
-  return potential->vrot * potential->vrot *
+  return 0.5f * potential->vrot * potential->vrot *
          logf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
 }
 
@@ -168,9 +168,9 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    struct swift_params* parameter_file, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct space* s,
-    struct external_potential* potential) {
+    struct swift_params *parameter_file, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct space *s,
+    struct external_potential *potential) {
 
   /* Read in the position of the centre of potential */
   parser_get_param_double_array(parameter_file, "IsothermalPotential:position",
@@ -203,7 +203,7 @@ static INLINE void potential_init_backend(
  * @param  potential The external potential properties.
  */
 static INLINE void potential_print_backend(
-    const struct external_potential* potential) {
+    const struct external_potential *potential) {
 
   message(
       "External potential is 'Isothermal' with properties are (x,y,z) = (%e, "

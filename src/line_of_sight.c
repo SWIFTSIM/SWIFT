@@ -152,6 +152,40 @@ void los_init(const double dim[3], struct los_props *los_params,
       los_params->range_when_shooting_down_axis[2]);
 }
 
+void los_io_output_check(const struct engine *e) {
+
+  /* What kind of run are we working with? */
+  struct swift_params *params = e->parameter_file;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_cooling = e->policy & engine_policy_cooling;
+  const int with_temperature = e->policy & engine_policy_temperature;
+  const int with_fof = e->policy & engine_policy_fof;
+#ifdef HAVE_VELOCIRAPTOR
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
+#else
+  const int with_stf = 0;
+#endif
+  const int with_rt = e->policy & engine_policy_rt;
+
+  int num_fields = 0;
+  struct io_props list[100];
+
+  /* Find all the gas output fields */
+  io_select_hydro_fields(e->s->parts, e->s->xparts, with_cosmology,
+                         with_cooling, with_temperature, with_fof, with_stf,
+                         with_rt, e, &num_fields, list);
+
+  /* Loop over each output field */
+  for (int i = 0; i < num_fields; i++) {
+
+    /* Did the user cancel this field? */
+    char field[PARSER_MAX_LINE_SIZE];
+    sprintf(field, "SelectOutputLOS:%.*s", FIELD_BUFFER_SIZE, list[i].name);
+    parser_get_opt_param_int(params, field, 1);
+  }
+}
+
 /**
  *  @brief Create a #line_of_sight object from its attributes
  */
@@ -272,9 +306,12 @@ void print_los_info(const struct line_of_sight *Los, const int i) {
  * @param j Line of sight ID.
  * @param e The engine.
  * @param grp HDF5 group to write to.
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  */
 void write_los_hdf5_dataset(const struct io_props props, const size_t N,
-                            const int j, const struct engine *e, hid_t grp) {
+                            const int j, const struct engine *e, hid_t grp,
+                            const int is_named_column) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -282,18 +319,32 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = e->snapshot_compression > 0 ? 12 : 18;
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
 
   int rank = 0;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
-  if (props.dimension > 1) {
+
+  /* Set the chunking:
+   * Datasets > 3D are (likely) "named columns": Use Nx1 chunking
+   * Datasets in 1D are chunked Nx1
+   * Datasets in 2D and 3D are chunked NxM as the data is likely accessed as
+   * vectors.
+   * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
+   */
+  if (is_named_column) {
+    rank = 2;
+    shape[0] = N;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << log2_chunk_size;
+    chunk_shape[1] = 1;
+  } else if (props.dimension > 1) {
     rank = 2;
     shape[0] = N;
     shape[1] = props.dimension;
     chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
-  } else {
+  } else { /* props.dimension == 1 */
     rank = 1;
     shape[0] = N;
     shape[1] = 0;
@@ -376,6 +427,9 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -446,10 +500,13 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
     /* Did the user cancel this field? */
     char field[PARSER_MAX_LINE_SIZE];
     sprintf(field, "SelectOutputLOS:%.*s", FIELD_BUFFER_SIZE, list[i].name);
-    int should_write = parser_get_opt_param_int(params, field, 1);
+    const int should_write = parser_get_opt_param_int(params, field, 1);
 
-    /* Write (if selected) */
-    if (should_write) write_los_hdf5_dataset(list[i], N, j, e, grp);
+    /* Write (if selected)
+     * Note: we don't bother with optimal chunking here
+     * given the dataset sizes */
+    if (should_write)
+      write_los_hdf5_dataset(list[i], N, j, e, grp, /*is_named_column=*/0);
   }
 }
 
@@ -551,7 +608,8 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
-  io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units);
+  io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units,
+                     /*fof=*/0);
 
   /* Print the LOS properties */
   h_grp = H5Gcreate(h_file, "/LineOfSightParameters", H5P_DEFAULT, H5P_DEFAULT,
@@ -732,14 +790,21 @@ void do_line_of_sight(struct engine *e) {
 #endif
 
   /* Node 0 creates the HDF5 file. */
-  hid_t h_file = -1, h_grp = -1;
+  hid_t h_file = -1, h_grp = -1, h_props = -1;
   char fileName[256], groupName[200];
 
   if (e->nodeID == 0) {
     sprintf(fileName, "%s_%04i.hdf5", LOS_params->basename,
             e->los_output_count);
     if (verbose) message("Creating LOS file: %s", fileName);
-    h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    /* Set the minimal API version to avoid issues with advanced features */
+    h_props = H5Pcreate(H5P_FILE_ACCESS);
+    hid_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                     HDF5_HIGHEST_FILE_FORMAT_VERSION);
+    if (err < 0) error("Error setting the hdf5 API version");
+
+    h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
     if (h_file < 0) error("Error while opening file '%s'.", fileName);
   }
 
@@ -1044,6 +1109,7 @@ void do_line_of_sight(struct engine *e) {
 
     /* Close HDF5 file */
     H5Fclose(h_file);
+    H5Pclose(h_props);
   }
 
   /* Up the LOS counter. */

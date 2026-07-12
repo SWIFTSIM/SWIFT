@@ -56,13 +56,17 @@
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
+#include "swift_lustre_api.h"
 #include "tools.h"
 #include "units.h"
 #include "version.h"
 #include "xmf.h"
 
 /* Are we timing the i/o? */
-//#define IO_SPEED_MEASUREMENT
+// #define IO_SPEED_MEASUREMENT
+
+/* Max number of entries that can be written for a given particle type */
+static const int io_max_size_output_list = 100;
 
 /**
  * @brief Writes a data array in given HDF5 group.
@@ -77,16 +81,18 @@
  * @param lossy_compression Level of lossy compression to use for this field.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param is_named_column Is this field a named column and thus gets special
+ * chunking?
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
 void write_distributed_array(
-    const struct engine* e, hid_t grp, const char* fileName,
-    const char* partTypeGroupName, const struct io_props props, const size_t N,
+    const struct engine *e, hid_t grp, const char *fileName,
+    const char *partTypeGroupName, const struct io_props props, const size_t N,
     const enum lossy_compression_schemes lossy_compression,
-    const struct unit_system* internal_units,
-    const struct unit_system* snapshot_units) {
+    const struct unit_system *internal_units,
+    const struct unit_system *snapshot_units, const int is_named_column) {
 
 #ifdef IO_SPEED_MEASUREMENT
   const ticks tic_total = getticks();
@@ -98,8 +104,8 @@ void write_distributed_array(
   /* message("Writing '%s' array...", props.name); */
 
   /* Allocate temporary buffer */
-  void* temp = NULL;
-  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
+  void *temp = NULL;
+  if (swift_memalign("writebuff", (void **)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -127,19 +133,32 @@ void write_distributed_array(
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = 20;
+  int log2_chunk_size = HDF5_LOG2_CHUNK_SIZE;
 
   int rank;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
 
-  if (props.dimension > 1) {
+  /* Set the chunking:
+   * - Datasets that are "named columns": Use Nx1 chunking
+   * - Datasets in 1D are chunked Nx1
+   * Other datasets are chunked NxM as the data is likely accessed as
+   * vectors.
+   * (See https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/issues/918)
+   */
+  if (is_named_column) {
+    rank = 2;
+    shape[0] = N;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << log2_chunk_size;
+    chunk_shape[1] = 1;
+  } else if (props.dimension > 1) {
     rank = 2;
     shape[0] = N;
     shape[1] = props.dimension;
     chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
-  } else {
+  } else { /* props.dimension == 1 */
     rank = 1;
     shape[0] = N;
     shape[1] = 0;
@@ -236,6 +255,9 @@ void write_distributed_array(
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -283,13 +305,13 @@ void write_distributed_array(
  * @param N_total The total number of particles to write in this array.
  * @param snapshot_units The units used for the data in this snapshot.
  */
-void write_array_virtual(struct engine* e, hid_t grp, const char* fileName_base,
-                         FILE* xmfFile, char* partTypeGroupName,
+void write_array_virtual(struct engine *e, hid_t grp, const char *fileName_base,
+                         FILE *xmfFile, char *partTypeGroupName,
                          struct io_props props, long long N_total,
-                         const long long* N_counts, const int num_ranks,
+                         const long long *N_counts, const int num_ranks,
                          const int ptype,
                          const enum lossy_compression_schemes lossy_compression,
-                         const struct unit_system* snapshot_units) {
+                         const struct unit_system *snapshot_units) {
 
 #if H5_VERSION_GE(1, 10, 0)
 
@@ -401,6 +423,9 @@ void write_array_virtual(struct engine* e, hid_t grp, const char* fileName_base,
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -452,24 +477,25 @@ void write_array_virtual(struct engine* e, hid_t grp, const char* fileName_base,
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
+ * @param fof Is this a snapshot related to a stand-alone FOF call?
  * @param subsample_any Are any fields being subsampled?
  * @param subsample_fraction The subsampling fraction of each particle type.
  */
-void write_virtual_file(struct engine* e, const char* fileName_base,
-                        const char* xmfFileName,
+void write_virtual_file(struct engine *e, const char *fileName_base,
+                        const char *xmfFileName,
                         const long long N_total[swift_type_count],
-                        const long long* N_counts, const int num_ranks,
+                        const long long *N_counts, const int num_ranks,
                         const int to_write[swift_type_count],
                         const int numFields[swift_type_count],
                         char current_selection_name[FIELD_BUFFER_SIZE],
-                        const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units,
+                        const struct unit_system *internal_units,
+                        const struct unit_system *snapshot_units, const int fof,
                         const int subsample_any,
                         const float subsample_fraction[swift_type_count]) {
 
 #if H5_VERSION_GE(1, 10, 0)
 
-  struct output_options* output_options = e->output_options;
+  struct output_options *output_options = e->output_options;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -482,7 +508,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
 #endif
   const int with_rt = e->policy & engine_policy_rt;
 
-  FILE* xmfFile = 0;
+  FILE *xmfFile = 0;
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
@@ -498,8 +524,14 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
    * specific output */
   xmf_write_outputheader(xmfFile, fileName, e->time);
 
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
   /* Open HDF5 file with the chosen parameters */
-  hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to write simulation properties */
@@ -545,7 +577,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
-  struct tm* timeinfo = localtime(&tm);
+  struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
   io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
@@ -604,7 +636,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
   ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
-  io_write_meta_data(h_file, e, internal_units, snapshot_units);
+  io_write_meta_data(h_file, e, internal_units, snapshot_units, fof);
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
@@ -641,8 +673,8 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
     io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
     int num_fields = 0;
-    struct io_props list[100];
-    bzero(list, 100 * sizeof(struct io_props));
+    struct io_props list[io_max_size_output_list];
+    bzero(list, io_max_size_output_list * sizeof(struct io_props));
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -681,6 +713,15 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
 
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
+    }
+
+    /* Verify we are not going to crash when writing below */
+    if (num_fields >= io_max_size_output_list)
+      error("Too many fields to write for particle type %d", ptype);
+    for (int i = 0; i < num_fields; ++i) {
+      if (!list[i].is_used) error("List of field contains an empty entry!");
+      if (!list[i].dimension)
+        error("Dimension of field '%s' is <= 1!", list[i].name);
     }
 
     /* Did the user specify a non-standard default for the entire particle
@@ -722,8 +763,9 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
   /* Write LXMF file descriptor */
   xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
 
-  /* Close the file for now */
+  /* Close the file */
   H5Fclose(h_file);
+  H5Pclose(h_props);
 
 #else
   error(
@@ -738,6 +780,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
  * @param e The engine containing all the system.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param fof Is this a snapshot related to a stand-alone FOF call?
  * @param mpi_rank The rank number of the calling MPI rank.
  * @param mpi_size the number of MPI ranks.
  * @param comm The communicator used by the MPI ranks.
@@ -748,22 +791,23 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
  * If such files already exist, it is erased and replaced by the new one.
  * The companion XMF file is also updated accordingly.
  */
-void write_output_distributed(struct engine* e,
-                              const struct unit_system* internal_units,
-                              const struct unit_system* snapshot_units,
-                              const int mpi_rank, const int mpi_size,
-                              MPI_Comm comm, MPI_Info info) {
+void write_output_distributed(struct engine *e,
+                              const struct unit_system *internal_units,
+                              const struct unit_system *snapshot_units,
+                              const int fof, const int mpi_rank,
+                              const int mpi_size, MPI_Comm comm,
+                              MPI_Info info) {
 
   hid_t h_file = 0, h_grp = 0;
   int numFiles = mpi_size;
-  const struct part* parts = e->s->parts;
-  const struct xpart* xparts = e->s->xparts;
-  const struct gpart* gparts = e->s->gparts;
-  const struct sink* sinks = e->s->sinks;
-  const struct spart* sparts = e->s->sparts;
-  const struct bpart* bparts = e->s->bparts;
-  struct output_options* output_options = e->output_options;
-  struct output_list* output_list = e->output_list_snapshots;
+  const struct part *parts = e->s->parts;
+  const struct xpart *xparts = e->s->xparts;
+  const struct gpart *gparts = e->s->gparts;
+  const struct sink *sinks = e->s->sinks;
+  const struct spart *sparts = e->s->sparts;
+  const struct bpart *bparts = e->s->bparts;
+  struct output_options *output_options = e->output_options;
+  struct output_list *output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -940,7 +984,7 @@ void write_output_distributed(struct engine* e,
   }
 
   /* Compute offset in the file and total number of particles */
-  const long long N[swift_type_count] = {
+  long long N[swift_type_count] = {
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
       Nstars_written, Nblackholes_written, Ndm_neutrino};
 
@@ -949,8 +993,8 @@ void write_output_distributed(struct engine* e,
   MPI_Allreduce(N, N_total, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
 
   /* Collect the number of particles written by each rank */
-  long long* N_counts =
-      (long long*)malloc(mpi_size * swift_type_count * sizeof(long long));
+  long long *N_counts =
+      (long long *)malloc(mpi_size * swift_type_count * sizeof(long long));
   MPI_Gather(N, swift_type_count, MPI_LONG_LONG_INT, N_counts, swift_type_count,
              MPI_LONG_LONG_INT, 0, comm);
 
@@ -964,26 +1008,59 @@ void write_output_distributed(struct engine* e,
   };
 
   /* Use a single Lustre stripe with a rank-based OST offset? */
-  if (e->snapshot_lustre_OST_count != 0) {
+  if (e->snapshot_lustre_OST_checks != 0) {
 
-    /* Use a random offset to avoid placing things in the same OSTs. We do
-     * this to keep the use of OSTs balanced, much like using -1 for the
-     * stripe. */
-    int offset = rand() % e->snapshot_lustre_OST_count;
-    MPI_Bcast(&offset, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    /* Gather information about the current state of the OSTs. */
+    struct swift_ost_store ost_infos;
 
-    char string[1200];
-    sprintf(string, "lfs setstripe -c 1 -i %d %s",
-            ((e->nodeID + offset) % e->snapshot_lustre_OST_count), fileName);
-    const int result = system(string);
-    if (result != 0) {
-      message("lfs setstripe command returned error code %d", result);
+    /* Select good OSTs sorted by free space. */
+    if (e->nodeID == 0) {
+      swift_ost_select(&ost_infos, fileName, e->snapshot_lustre_OST_free,
+                       e->snapshot_lustre_OST_test, e->verbose);
+    }
+
+    /* Distribute the OST information. */
+    MPI_Bcast(&ost_infos, sizeof(struct swift_ost_store), MPI_BYTE, 0,
+              MPI_COMM_WORLD);
+
+    /* Need to make space for the OSTs and copy those locally. If the count is
+     * zero this is probably not a lustre mount. */
+    if (ost_infos.count > 0) {
+      if (e->nodeID != 0) swift_ost_store_alloc(&ost_infos, ost_infos.size);
+      MPI_Bcast(ost_infos.infos, sizeof(struct swift_ost_info) * ost_infos.size,
+                MPI_BYTE, 0, MPI_COMM_WORLD);
+
+      /* We now know how many OSTs are available, each rank should attempt to
+       * use a different one, but overtime we should try not to use the same
+       * ones. Culling will order things by free space so we should get some
+       * reordering of those if we do this process each time. */
+      int dummy = e->nodeID;
+      int offset = swift_ost_next(&ost_infos, &dummy, 1);
+
+      /* And create the file with a stripe of 1 on the OST. */
+      const int result = swift_create_striped_file(fileName, offset, 1, &dummy);
+      if (result != 0) message("failed to set stripe of snapshot");
+
+      /* Finished with this. */
+      swift_ost_store_free(&ost_infos);
+    } else if (e->nodeID == 0) {
+      swift_ost_store_free(&ost_infos);
+
+      /* Don't try this again until next launch. */
+      e->snapshot_lustre_OST_checks = 0;
+      message("Disabling further lustre OST checks");
     }
   }
 
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
-  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to write simulation properties */
@@ -1033,7 +1110,7 @@ void write_output_distributed(struct engine* e,
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
-  struct tm* timeinfo = localtime(&tm);
+  struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
   io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
@@ -1097,7 +1174,7 @@ void write_output_distributed(struct engine* e,
   ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
-  io_write_meta_data(h_file, e, internal_units, snapshot_units);
+  io_write_meta_data(h_file, e, internal_units, snapshot_units, fof);
 
   /* Now write the top-level cell structure
    * We use a global offset of 0 here. This means that the cells will write
@@ -1144,17 +1221,17 @@ void write_output_distributed(struct engine* e,
     io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
     int num_fields = 0;
-    struct io_props list[100];
-    bzero(list, 100 * sizeof(struct io_props));
+    struct io_props list[io_max_size_output_list];
+    bzero(list, io_max_size_output_list * sizeof(struct io_props));
     size_t Nparticles = 0;
 
-    struct part* parts_written = NULL;
-    struct xpart* xparts_written = NULL;
-    struct gpart* gparts_written = NULL;
-    struct velociraptor_gpart_data* gpart_group_data_written = NULL;
-    struct sink* sinks_written = NULL;
-    struct spart* sparts_written = NULL;
-    struct bpart* bparts_written = NULL;
+    struct part *parts_written = NULL;
+    struct xpart *xparts_written = NULL;
+    struct gpart *gparts_written = NULL;
+    struct velociraptor_gpart_data *gpart_group_data_written = NULL;
+    struct sink *sinks_written = NULL;
+    struct spart *sparts_written = NULL;
+    struct bpart *bparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1176,11 +1253,11 @@ void write_output_distributed(struct engine* e,
           Nparticles = Ngas_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("parts_written", (void**)&parts_written,
+          if (swift_memalign("parts_written", (void **)&parts_written,
                              part_align,
                              Ngas_written * sizeof(struct part)) != 0)
             error("Error while allocating temporary memory for parts");
-          if (swift_memalign("xparts_written", (void**)&xparts_written,
+          if (swift_memalign("xparts_written", (void **)&xparts_written,
                              xpart_align,
                              Ngas_written * sizeof(struct xpart)) != 0)
             error("Error while allocating temporary memory for xparts");
@@ -1215,14 +1292,14 @@ void write_output_distributed(struct engine* e,
           Nparticles = Ndm_written;
 
           /* Allocate temporary array */
-          if (swift_memalign("gparts_written", (void**)&gparts_written,
+          if (swift_memalign("gparts_written", (void **)&gparts_written,
                              gpart_align,
                              Ndm_written * sizeof(struct gpart)) != 0)
             error("Error while allocating temporary memory for gparts");
 
           if (with_stf) {
             if (swift_memalign(
-                    "gpart_group_written", (void**)&gpart_group_data_written,
+                    "gpart_group_written", (void **)&gpart_group_data_written,
                     gpart_align,
                     Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
               error(
@@ -1249,14 +1326,14 @@ void write_output_distributed(struct engine* e,
         Nparticles = Ndm_background;
 
         /* Allocate temporary array */
-        if (swift_memalign("gparts_written", (void**)&gparts_written,
+        if (swift_memalign("gparts_written", (void **)&gparts_written,
                            gpart_align,
                            Ndm_background * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for gparts");
 
         if (with_stf) {
           if (swift_memalign(
-                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  "gpart_group_written", (void **)&gpart_group_data_written,
                   gpart_align,
                   Ndm_background * sizeof(struct velociraptor_gpart_data)) != 0)
             error(
@@ -1283,14 +1360,14 @@ void write_output_distributed(struct engine* e,
         Nparticles = Ndm_neutrino;
 
         /* Allocate temporary array */
-        if (swift_memalign("gparts_written", (void**)&gparts_written,
+        if (swift_memalign("gparts_written", (void **)&gparts_written,
                            gpart_align,
                            Ndm_neutrino * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for gparts");
 
         if (with_stf) {
           if (swift_memalign(
-                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  "gpart_group_written", (void **)&gpart_group_data_written,
                   gpart_align,
                   Ndm_neutrino * sizeof(struct velociraptor_gpart_data)) != 0)
             error(
@@ -1326,7 +1403,7 @@ void write_output_distributed(struct engine* e,
           Nparticles = Nsinks_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("sinks_written", (void**)&sinks_written,
+          if (swift_memalign("sinks_written", (void **)&sinks_written,
                              sink_align,
                              Nsinks_written * sizeof(struct sink)) != 0)
             error("Error while allocating temporary memory for sinks");
@@ -1359,7 +1436,7 @@ void write_output_distributed(struct engine* e,
           Nparticles = Nstars_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("sparts_written", (void**)&sparts_written,
+          if (swift_memalign("sparts_written", (void **)&sparts_written,
                              spart_align,
                              Nstars_written * sizeof(struct spart)) != 0)
             error("Error while allocating temporary memory for sparts");
@@ -1392,7 +1469,7 @@ void write_output_distributed(struct engine* e,
           Nparticles = Nblackholes_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("bparts_written", (void**)&bparts_written,
+          if (swift_memalign("bparts_written", (void **)&bparts_written,
                              bpart_align,
                              Nblackholes_written * sizeof(struct bpart)) != 0)
             error("Error while allocating temporary memory for bparts");
@@ -1413,6 +1490,15 @@ void write_output_distributed(struct engine* e,
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
+    /* Verify we are not going to crash when writing below */
+    if (num_fields >= io_max_size_output_list)
+      error("Too many fields to write for particle type %d", ptype);
+    for (int i = 0; i < num_fields; ++i) {
+      if (!list[i].is_used) error("List of field contains an empty entry!");
+      if (!list[i].dimension)
+        error("Dimension of field '%s' is <= 1!", list[i].name);
+    }
+
     /* Did the user specify a non-standard default for the entire particle
      * type? */
     const enum lossy_compression_schemes compression_level_current_default =
@@ -1431,10 +1517,13 @@ void write_output_distributed(struct engine* e,
               (enum part_type)ptype, compression_level_current_default,
               e->verbose);
 
+      const int is_named_column =
+          io_field_is_named_column(h_file, list[i].name);
+
       if (compression_level != compression_do_not_write) {
         write_distributed_array(e, h_grp, fileName, partTypeGroupName, list[i],
                                 Nparticles, compression_level, internal_units,
-                                snapshot_units);
+                                snapshot_units, is_named_column);
         num_fields_written++;
       }
     }
@@ -1460,6 +1549,7 @@ void write_output_distributed(struct engine* e,
 
   /* Close file */
   H5Fclose(h_file);
+  H5Pclose(h_props);
 
 #if H5_VERSION_GE(1, 10, 0)
 
@@ -1467,7 +1557,7 @@ void write_output_distributed(struct engine* e,
   if (mpi_rank == 0)
     write_virtual_file(e, fileName_base, xmfFileName, N_total, N_counts,
                        mpi_size, to_write, numFields, current_selection_name,
-                       internal_units, snapshot_units, subsample_any,
+                       internal_units, snapshot_units, fof, subsample_any,
                        subsample_fraction);
 
   /* Make sure nobody is allowed to progress until rank 0 is done. */
@@ -1482,8 +1572,13 @@ void write_output_distributed(struct engine* e,
     char fileName_virtual[1030];
     sprintf(fileName_virtual, "%s.hdf5", fileName_base);
 
+    h_props = H5Pcreate(H5P_FILE_ACCESS);
+    err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                               HDF5_HIGHEST_FILE_FORMAT_VERSION);
+    if (err < 0) error("Error setting the hdf5 API version");
+
     /* Open the snapshot on rank 0 */
-    h_file_cells = H5Fopen(fileName_virtual, H5F_ACC_RDWR, H5P_DEFAULT);
+    h_file_cells = H5Fopen(fileName_virtual, H5F_ACC_RDWR, h_props);
     if (h_file_cells < 0)
       error("Error while opening file '%s' on rank %d.", fileName_virtual,
             mpi_rank);
@@ -1511,6 +1606,7 @@ void write_output_distributed(struct engine* e,
   if (mpi_rank == 0) {
     H5Gclose(h_grp_cells);
     H5Fclose(h_file_cells);
+    H5Pclose(h_props);
   }
 
 #endif

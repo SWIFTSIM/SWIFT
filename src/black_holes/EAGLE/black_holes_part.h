@@ -39,7 +39,7 @@ struct bpart {
   long long id;
 
   /*! Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  struct gpart *gpart;
 
   /*! Particle position. */
   double x[3];
@@ -61,6 +61,9 @@ struct bpart {
 
   /*! Particle time bin */
   timebin_t time_bin;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   struct {
 

@@ -30,10 +30,12 @@
  * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
  */
 
+#include "adaptive_softening_struct.h"
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#include "forcing_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
@@ -78,6 +80,9 @@ struct xpart {
   /*! Additional data used by the MHD scheme */
   struct mhd_xpart_data mhd_data;
 
+  /* Additional data used by the forcing scheme */
+  struct forcing_xpart_data forcing_data;
+
 } SWIFT_STRUCT_ALIGN;
 
 /* Data of a single particle. */
@@ -87,7 +92,7 @@ struct part {
   long long id;
 
   /*! Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  struct gpart *gpart;
 
   /*! Particle position. */
   double x[3];
@@ -166,6 +171,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used for adaptive softening */
+  struct adaptive_softening_part_data adaptive_softening_data;
+
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
 
@@ -192,6 +200,9 @@ struct part {
 
   /*! Time-step length */
   timebin_t time_bin;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;

@@ -36,6 +36,10 @@
 #include "./equation_of_state/isothermal/equation_of_state.h"
 #elif defined(EOS_PLANETARY)
 #include "./equation_of_state/planetary/equation_of_state.h"
+#elif defined(EOS_BAROTROPIC_GAS)
+#include "./equation_of_state/barotropic/equation_of_state.h"
+#elif defined(EOS_CONTINUOUS_BAROTROPIC_GAS)
+#include "./equation_of_state/continuous_barotropic/equation_of_state.h"
 #else
 #error "Invalid choice of equation of state"
 #endif
