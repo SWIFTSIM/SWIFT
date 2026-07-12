@@ -1369,6 +1369,29 @@ void cell_set_super_radiation_subgrid(struct cell *c,
   /* Set the super-cell */
   c->stars.radiation_level = super_radiation;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* The flat radiation_in walk in runner_dosub_stars_hii_ionization_feedback
+   * only ever reads radiation_level's OWN link list -- it never descends
+   * into radiation_level's children to pick up links attached deeper. So
+   * every cell that holds a radiation_in link must BE its own
+   * radiation_level; if some ANCESTOR of c was found first (has a link of
+   * its own, e.g. an unsplit pair with a neighbour whose hydro.super sits
+   * at a coarser depth than c's) while c ALSO holds a link (e.g. from c's
+   * own self-splitting or a matching-depth neighbour pair), that ancestor
+   * wins by the "topmost found, propagated down" rule above -- and c's link
+   * becomes permanently invisible to the flat walk. This is a silent,
+   * directional search-completeness bug, not a crash -- see project memory
+   * for the mechanism (mismatched hydro.super depth between neighbouring
+   * regions), verified independently by code-reading, not yet observed in
+   * a running example (uniform-density ICs never trigger the mismatch). */
+  if (c->stars.radiation_in != NULL && c->stars.radiation_level != c)
+    error(
+        "orphaned radiation_in link: cell %lld has its own radiation_in "
+        "link but radiation_level=%lld (a coarser ancestor) -- this link "
+        "is invisible to the flat radiation_in walk from radiation_level.",
+        c->cellID, c->stars.radiation_level->cellID);
+#endif
+
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)

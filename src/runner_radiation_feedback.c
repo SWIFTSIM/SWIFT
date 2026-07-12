@@ -173,8 +173,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     if (spart_is_inhibited(si, e)) continue;
     if (!spart_is_active(si, e)) continue;
     if (!feedback_is_HII_ionization_active(si, e)) continue;
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("Star %lld can do ionization! r_hii = %e", si->id,
             si->h_hii * kernel_gamma);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
     if (si->ti_drift != ti_current)
@@ -289,7 +291,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       /* Log when this HII region was (re)built */
       si->feedback_data.radiation.HII_region_last_rebuild = star_age_beg_step;
     }
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     if (feedback_get_star_ionization_rate(si) <= 0.0) {
       message("Star %lld has exhausted all its ionizing photons! r_hii = %e",
               si->id, si->h_hii * kernel_gamma);

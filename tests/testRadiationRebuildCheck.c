@@ -19,10 +19,19 @@
 #include <config.h>
 
 /* Some standard headers. */
+#include <signal.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 /* Local headers. */
 #include "swift.h"
+
+/* Not declared in cell.h (matches cell_set_super_hydro/_gravity, which are
+ * likewise only called from within cell.c) -- declared here so the
+ * orphaned-link regression test below can exercise it directly. */
+void cell_set_super_radiation_subgrid(struct cell *c,
+                                      struct cell *super_radiation);
 
 /**
  * @brief Build a bare pair of cells with the fields relevant to the
@@ -205,6 +214,89 @@ int main(int argc, char *argv[]) {
         "cell_can_split_pair_hydro_task must stay decoupled from "
         "h_hii_max -- it should still allow splitting after h_hii_max "
         "alone grew past the cell size.");
+
+  /* Regression test for cell_set_super_radiation_subgrid()'s "orphaned
+   * radiation_in link" SWIFT_DEBUG_CHECKS assertion (cell.c). Invariant
+   * discovered 2026-07-12: the flat radiation_in walk in
+   * runner_dosub_stars_hii_ionization_feedback only ever reads
+   * radiation_level's OWN link list -- it never descends into
+   * radiation_level's children to pick up links attached deeper. So every
+   * cell holding a radiation_in link must BE its own radiation_level.
+   * This can be violated when a pair task with one neighbour stops
+   * splitting early (its link lands on a coarse ancestor, e.g. because
+   * that neighbour's hydro.super sits at a shallower depth) while a
+   * DIFFERENT, matching-depth neighbour's pair (or the cell's own
+   * self-splitting) attaches its link to a deeper descendant: the
+   * "topmost link found first wins, propagated to all descendants" rule
+   * in cell_set_super_radiation_subgrid then makes the deeper link
+   * permanently invisible to the flat walk -- a silent, directional
+   * search-completeness bug, not a crash. */
+  {
+    struct cell top, child;
+    struct link top_link, child_link;
+    bzero(&top, sizeof(struct cell));
+    bzero(&child, sizeof(struct cell));
+    bzero(&top_link, sizeof(struct link));
+    bzero(&child_link, sizeof(struct link));
+
+    /* Case A: no orphaning -- only the top cell holds a link (the common,
+     * correct case: a pair/self task that never split below the top
+     * cell). radiation_level must land on top for both cells; no error. */
+    top.split = 1;
+    top.progeny[0] = &child;
+    top.stars.radiation_in = &top_link;
+    child.stars.radiation_in = NULL;
+    cell_set_super_radiation_subgrid(&top, NULL);
+    if (top.stars.radiation_level != &top)
+      error(
+          "cell_set_super_radiation_subgrid: expected radiation_level == "
+          "top for the unsplit case.");
+    if (child.stars.radiation_level != &top)
+      error(
+          "cell_set_super_radiation_subgrid: expected the child to "
+          "inherit radiation_level == top.");
+
+    /* Case B: orphaning -- BOTH top and child hold their own link (top's
+     * simulates an unsplit, mismatched-neighbour pair; child's simulates a
+     * properly-split sibling/neighbour pair or self-task). radiation_level
+     * is pulled to top (topmost wins), silently orphaning child's link.
+     * Must be caught by the SWIFT_DEBUG_CHECKS assertion -- run in a
+     * forked child so the expected abort doesn't kill the test. If this
+     * test binary was built without SWIFT_DEBUG_CHECKS, the assertion
+     * doesn't exist and this case is skipped (nothing to catch it with). */
+#ifdef SWIFT_DEBUG_CHECKS
+    child.stars.radiation_in = &child_link;
+
+    const pid_t pid = fork();
+    if (pid == 0) {
+      /* Child process: silence stderr (the error() message is expected
+       * output, not a test failure), then trigger the assertion. */
+      if (freopen("/dev/null", "w", stderr) == NULL) _exit(43);
+      cell_set_super_radiation_subgrid(&top, NULL);
+      /* Reached only if the assertion did NOT fire -- signal failure with
+       * a distinguishable exit code (real error() exits with status 1). */
+      _exit(42);
+    } else if (pid > 0) {
+      int status;
+      waitpid(pid, &status, 0);
+      /* error() aborts via swift_abort(), which is exit(1) normally but
+       * abort() (SIGABRT) under SWIFT_DEVELOP_MODE -- accept either. */
+      const int exited_with_error =
+          WIFEXITED(status) && WEXITSTATUS(status) == 1;
+      const int aborted = WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT;
+      if (!exited_with_error && !aborted)
+        error(
+            "cell_set_super_radiation_subgrid failed to detect an "
+            "orphaned radiation_in link (WIFEXITED=%d WEXITSTATUS=%d "
+            "WIFSIGNALED=%d WTERMSIG=%d) -- the SWIFT_DEBUG_CHECKS "
+            "assertion did not fire as expected.",
+            WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : -1,
+            WIFSIGNALED(status), WIFSIGNALED(status) ? WTERMSIG(status) : -1);
+    } else {
+      error("fork() failed in the orphaned-link regression test.");
+    }
+#endif
+  }
 
   return 0;
 }
