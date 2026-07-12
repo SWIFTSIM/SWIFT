@@ -94,9 +94,10 @@ cooling_get_helium_mass_fraction(const struct cooling_function_data *cooling,
  * @return Mean molecular weight.
  */
 __attribute__((always_inline)) INLINE static double
-cooling_get_equilibrium_mean_molecular_weight(const float u, const struct phys_const *phys_const,
-                                  const struct hydro_props *hydro_props,
-                                  const struct cooling_function_data *cooling) {
+cooling_get_equilibrium_mean_molecular_weight(
+    const float u, const struct phys_const *phys_const,
+    const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling) {
 
   const double m_H = phys_const->const_proton_mass;
 
@@ -106,8 +107,7 @@ cooling_get_equilibrium_mean_molecular_weight(const float u, const struct phys_c
 
   /* Internal energy and temperature-to-mean molecular weight calculation for
    * mode 0 */
-  const double T_over_mu =
-      (hydro_gamma_minus_one * u * m_H) / k_B;
+  const double T_over_mu = (hydro_gamma_minus_one * u * m_H) / k_B;
 
   const double T_transition = hydro_props->hydrogen_ionization_temperature;
   const double mu_neutral = hydro_props->mu_neutral;
@@ -151,7 +151,8 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   /* Grackle mode 0: Use temperature-based molecular weight calculation */
 #if COOLING_GRACKLE_MODE == 0
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
-  const double mu = cooling_get_equilibrium_mean_molecular_weight(u, phys_const, hydro_props, cooling);
+  const double mu = cooling_get_equilibrium_mean_molecular_weight(
+      u, phys_const, hydro_props, cooling);
   return mu;
 
   /* Grackle mode 1: Only HI, HII, HeI, HeII, and HeIII species */

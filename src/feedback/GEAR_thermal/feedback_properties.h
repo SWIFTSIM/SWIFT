@@ -264,7 +264,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   if (with_photoionization) {
     fp->radiation_policy |= radiation_policy_photoionization;
-    
+
     /* Read the minimal density */
     fp->HII_region_min_density = parser_get_opt_param_float(
         params, "GEARFeedback:HII_region_min_density_Hpcm3",

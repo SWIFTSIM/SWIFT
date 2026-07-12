@@ -112,23 +112,28 @@ float feedback_compute_spart_timestep(
    * feedback_props->HII_region_rebuild_time. */
   const float HII_region_rebuild_dt = feedback_props->HII_region_rebuild_time;
   const double HII_region_max_age = feedback_props->HII_region_max_age;
-  
+
   float dt_HII_safe = FLT_MAX;
 
   if (HII_region_rebuild_dt > 0.0 && star_age_beg_step < HII_region_max_age) {
-    const float HII_region_last_rebuild = sp->feedback_data.radiation.HII_region_last_rebuild;
-    
+    const float HII_region_last_rebuild =
+        sp->feedback_data.radiation.HII_region_last_rebuild;
+
     double next_rebuild_age = 0.0;
     if (HII_region_last_rebuild < 0.0) {
-      /* First time handling this star: force it to rebuild immediately next step */
+      /* First time handling this star: force it to rebuild immediately next
+       * step */
       next_rebuild_age = star_age_beg_step;
     } else {
       /* Calculate the absolute target age for the next rebuild */
       double target = HII_region_last_rebuild + HII_region_rebuild_dt;
-      /* If due to some lag we already passed it, find the next integer interval */
+      /* If due to some lag we already passed it, find the next integer interval
+       */
       if (star_age_beg_step > target) {
-        double intervals = ceil((star_age_beg_step - HII_region_last_rebuild) / HII_region_rebuild_dt);
-        next_rebuild_age = HII_region_last_rebuild + intervals * HII_region_rebuild_dt;
+        double intervals = ceil((star_age_beg_step - HII_region_last_rebuild) /
+                                HII_region_rebuild_dt);
+        next_rebuild_age =
+            HII_region_last_rebuild + intervals * HII_region_rebuild_dt;
       } else {
         next_rebuild_age = target;
       }
@@ -139,16 +144,18 @@ float feedback_compute_spart_timestep(
       next_rebuild_age = HII_region_max_age;
     }
 
-    /* The maximum allowable time-step size to avoid overshooting the rebuild point */
+    /* The maximum allowable time-step size to avoid overshooting the rebuild
+     * point */
     double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
     if (time_to_next_rebuild > 0.0) {
       dt_HII_safe = (float)time_to_next_rebuild;
     } else {
-      /* If we are exactly on it or behind, allow a minimum tiny step or let it trigger */
-      dt_HII_safe = 0.0f; 
+      /* If we are exactly on it or behind, allow a minimum tiny step or let it
+       * trigger */
+      dt_HII_safe = 0.0f;
     }
   }
-  
+
   /*----------------------------------------*/
   /* If the star is dead, do not limit its timestep */
   if (sp->feedback_data.is_dead) {
@@ -278,7 +285,7 @@ void feedback_will_do_feedback(
       sp->feedback_data.winds.energy_ejected != 0. ||
       !sp->feedback_data.is_dead;
 
-  /* TODO: Move all these into a dedicated function...? */  
+  /* TODO: Move all these into a dedicated function...? */
   /* Do we need to do HII ionization feedback? */
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
@@ -289,9 +296,10 @@ void feedback_will_do_feedback(
   /* TODO: Check the units. Tout en Myr ou en internal units */
   /* Only rebuild every HII_region_rebuild time and at the first timestep the
      star is born. If the rebuild time is negative, do it at every step */
-  const float HII_region_last_rebuild = sp->feedback_data.radiation.HII_region_last_rebuild;
+  const float HII_region_last_rebuild =
+      sp->feedback_data.radiation.HII_region_last_rebuild;
   const float HII_region_rebuild_time = feedback_props->HII_region_rebuild_time;
-  
+
   char need_HII_region_rebuild = 0;
   if (HII_region_rebuild_time < 0.0) {
     need_HII_region_rebuild = 1;
@@ -299,24 +307,28 @@ void feedback_will_do_feedback(
     /* Brand new star particle needs a rebuild */
     need_HII_region_rebuild = 1;
   } else {
-    /* Determine if the end of this upcoming step reaches/overshoots the next scheduled point */
-    const double next_rebuild_target = HII_region_last_rebuild + HII_region_rebuild_time;
+    /* Determine if the end of this upcoming step reaches/overshoots the next
+     * scheduled point */
+    const double next_rebuild_target =
+        HII_region_last_rebuild + HII_region_rebuild_time;
     const double eps = 1e-4 * HII_region_rebuild_time;
 
     if (star_age_end_step >= next_rebuild_target - eps) {
       need_HII_region_rebuild = 1;
     }
   }
-  
+
   message(
-      "HII_region_last_rebuild = %e, age_beg_step = %e, age_end_step = %e, next_rebuild_time "
+      "HII_region_last_rebuild = %e, age_beg_step = %e, age_end_step = %e, "
+      "next_rebuild_time "
       "= %e, need_HII_region_rebuild = %i",
       HII_region_last_rebuild, star_age_beg_step, star_age_end_step,
-      HII_region_last_rebuild + HII_region_rebuild_time, need_HII_region_rebuild);
+      HII_region_last_rebuild + HII_region_rebuild_time,
+      need_HII_region_rebuild);
 
   sp->feedback_data.will_do_HII_ionization =
       do_photoionization && (!sp->feedback_data.is_dead && has_enough_photons &&
-                             is_HII_eligible && need_HII_region_rebuild);  
+                             is_HII_eligible && need_HII_region_rebuild);
 
   /* This star stopped doing HII for the rest of its life. Hence, h_hii = 0. If
      we want to keep track of the last h_hii, we can store it in the tracers. */
