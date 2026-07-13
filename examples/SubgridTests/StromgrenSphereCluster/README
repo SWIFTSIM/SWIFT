@@ -1,0 +1,26 @@
+# Intro
+This example consists of a homogeneous and periodic box filled with gas particles of equal mass. Seven individual star particles are hand-placed: one at the center top-level cell of a 3x3x3 grid, and one at each of its 6 face-adjacent cells.
+
+This example tests the GEAR subgrid ionization algorithm under many-way concurrent execution: the center cell is a task-graph neighbour of all 6 surrounding cells simultaneously, making its `hii_ionization_feedback` task a lock-contention point against up to 6 sibling tasks at once -- the strongest available stress test of the `task_lock`/`task_unlock` rollback path for this task type (src/task.c).
+
+# Configure
+To run this example with the GEAR model,
+
+```
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+```
+
+Then, type
+
+```
+make -j
+```
+
+# ICs
+The run.sh script calls the `makeIC_cluster.py` script with default values. Run `python3 makeIC_cluster.py --help` for the list of parameters. `--n_cells` must stay 3, matching `Scheduler:max_top_level_cells` in params.yml -- the center+6-face-neighbours placement pattern requires exactly a 3x3x3 top-level grid.
+
+# Run
+Type run.sh, and let's go!
+
+# Plotting
+`plot_gas_density.py` / `rhoTPlot.py` / `plot_projected_qty.py` are copied from `../StromgrenSphere/` unchanged. `plot_temperature_map.py` is new: a mass-weighted gas temperature projection (companion to `plot_gas_density.py`'s mass projection), same CLI convention (`-s snap/snapshot -i <snapshot index>`).
