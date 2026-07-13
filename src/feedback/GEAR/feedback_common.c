@@ -332,6 +332,15 @@ void feedback_will_do_feedback(
       do_photoionization && (!sp->feedback_data.is_dead && has_enough_photons &&
                              is_HII_eligible && need_HII_region_rebuild);
 
+  /* Reset the accumulated HII-region mass exactly when we're about to redo
+     the search this step, so the value read by anything outside the
+     rebuild step (e.g. a snapshot dump) reflects the last completed
+     rebuild instead of always reading 0 (see feedback_init_spart(), which
+     used to reset this unconditionally every step). */
+  if (sp->feedback_data.will_do_HII_ionization) {
+    sp->feedback_data.radiation.mass_HII_region = 0.0;
+  }
+
   /* This star stopped doing HII for the rest of its life. Hence, h_hii = 0. If
      we want to keep track of the last h_hii, we can store it in the tracers. */
   if ((sp->feedback_data.is_dead || !is_HII_eligible) && sp->h_hii != 0.0) {

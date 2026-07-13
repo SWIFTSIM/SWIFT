@@ -158,8 +158,13 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.enrichment_weight = 0.f;
   sp->feedback_data.num_ngbs = 0;
 
-  /* TODO: Only reset that if do not need to rebuild the HII region */
-  sp->feedback_data.radiation.mass_HII_region = 0.0;
+  /* mass_HII_region is NOT reset here: this function runs every active
+     step for every star, but the HII search only actually reruns on a
+     rebuild step (feedback_will_do_feedback's need_HII_region_rebuild).
+     Resetting unconditionally here wiped the accumulated mass long before
+     any snapshot dump could read it. It is reset instead in
+     feedback_will_do_feedback(), exactly when a fresh rebuild is about to
+     recompute it. */
 
   sp->feedback_data.grad_rho_star[0] = 0.0;
   sp->feedback_data.grad_rho_star[1] = 0.0;
