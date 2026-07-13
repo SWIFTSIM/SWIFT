@@ -244,15 +244,19 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
  *
  * @brief M The symmetric matrix to invert.
  * @brief M_inv (return) the inverse of M.
+ * @param min_cond_num Minimal condition number to attempt an inversion. Smaller
+ * values will trigger the singular matrix case.
  * @return 1 if the inversion has failed. The matrix M_inv is then the null
  * matrix.
  */
 __attribute__((always_inline)) INLINE static int sym_matrix_invert(
-    struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M) {
+    struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M,
+    const float min_cond_num) {
 
   float M_inv_matrix[hydro_dimension_integer][hydro_dimension_integer];
   get_matrix_from_sym_matrix(M_inv_matrix, M);
-  const int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
+  const int res =
+      invert_dimension_by_dimension_matrix(M_inv_matrix, min_cond_num);
 
   M_inv->xx = M_inv_matrix[0][0];
 #if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)

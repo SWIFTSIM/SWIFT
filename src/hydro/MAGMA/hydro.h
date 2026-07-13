@@ -694,8 +694,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   /* Invert the c-matrix */
-  const int res =
-      sym_matrix_invert(&p->force.c_matrix, &p->gradient.c_matrix_inv);
+  const int res = sym_matrix_invert(
+      &p->force.c_matrix, &p->gradient.c_matrix_inv, /*min_cond_num=*/1e-6);
 
   /* The matrix could not be inverted
    * --> Revert to base SPH, no reconstruction to the interface. */

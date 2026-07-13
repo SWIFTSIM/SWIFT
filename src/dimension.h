@@ -180,12 +180,15 @@ __attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
 /**
  * @brief Inverts the given dimension by dimension matrix (in place)
  *
- * @param A A 3x3 matrix of which we want to invert the top left dxd part
+ * @param A 3x3 matrix of which we want to invert the top left dxd part
+ * @param min_cond_num Minimal condition number to attempt an inversion. Smaller
+ * values will trigger the singular matrix case.
  * @return Exit code: 0 for success, 1 if a singular matrix was detected.
  */
 __attribute__((always_inline)) INLINE static int
 invert_dimension_by_dimension_matrix(
-    float A[hydro_dimension_integer][hydro_dimension_integer]) {
+    float A[hydro_dimension_integer][hydro_dimension_integer],
+    const float min_cond_num) {
 
 #if defined(HYDRO_DIMENSION_3D)
 
@@ -222,7 +225,7 @@ invert_dimension_by_dimension_matrix(
       }
     }
 
-    if (Smax < 1.e-8f) {
+    if (Smax < min_cond_num) {
       /* singular matrix. Early abort */
       for (int j = 0; j < 3; j++) {
         for (int k = 0; k < 3; k++) {
@@ -331,7 +334,7 @@ invert_dimension_by_dimension_matrix(
 
   const float detA = A[0][0] * A[1][1] - A[0][1] * A[1][0];
 
-  if (fabsf(detA) < 1e-8f) {
+  if (fabsf(detA) < min_cond_num) {
     for (int j = 0; j < 2; j++) {
       for (int k = 0; k < 2; k++) {
         A[j][k] = 0.0f;
