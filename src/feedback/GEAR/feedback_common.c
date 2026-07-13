@@ -541,12 +541,24 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 
   /* Case 1: Ionization is guaranteed */
   if (Delta_dot_N_ion <= feedback_get_star_ionization_rate(si)) {
-    if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) == 0) {
+    /* No atomics needed: task_lock()/task_unlock() (task.c) serialize any
+       two hii_ionization_feedback tasks whose search footprints could
+       overlap, and the task-graph dependencies serialize this task against
+       every other writer of these two fields --
+       engine_radiation_wire_super_deps() (engine_maketasks.c) wires
+       hydro.cooling_out -> radiation_in (so cooling_ionize_part_subgrid's
+       read/reset of is_ionized always happens-before this write) and
+       radiation_out -> timestep_sync (so the sync task's read of
+       to_be_synchronized always happens-after this write). If a future
+       change to that dependency enumeration ever fails to cover every
+       hydro.super a radiation task touches, this plain read-then-write
+       becomes unsafe again -- re-add the atomics if that invariant is
+       ever in doubt. */
+    if (xpj->tracers_data.HII_region.is_ionized == 0) {
+      xpj->tracers_data.HII_region.is_ionized = 1;
 
-      /* Flag the particle to be synchronized on the timeline.
-         We still use atomic_or here because other stars might be
-         tripping the limiter in feedback loop. */
-      atomic_or(&pj->limiter_data.to_be_synchronized, 1);
+      /* Flag the particle to be synchronized on the timeline. */
+      pj->limiter_data.to_be_synchronized = 1;
 
       /* Add the star ID */
       xpj->tracers_data.HII_region.star_id = si->id;
@@ -558,7 +570,6 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
       si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
       si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
     }
-    /* If CAS failed, someone else grabbed it; just continue. */
   } else {
 
     /* If we cannot fully ionize, compute a probability to determine if
@@ -570,9 +581,11 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 
     /* If we are lucky, do the ionization */
     if (random_number <= proba) {
-      /* We won the roll! Now try to claim the particle. */
-      if (atomic_cas(&xpj->tracers_data.HII_region.is_ionized, 0, 1) == 0) {
-        atomic_or(&pj->limiter_data.to_be_synchronized, 1);
+      /* We won the roll! Claim the particle (see the note above the first
+         branch for why a plain check-then-set is safe here). */
+      if (xpj->tracers_data.HII_region.is_ionized == 0) {
+        xpj->tracers_data.HII_region.is_ionized = 1;
+        pj->limiter_data.to_be_synchronized = 1;
 
         xpj->tracers_data.HII_region.star_id = si->id;
 
