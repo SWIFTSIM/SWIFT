@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    invert_dimension_by_dimension_matrix(A, 1e-8);
+    invert_dimension_by_dimension_matrix(A, /*min_cond_num=*/1e-8);
 
     multiply_matrices(A, B, C);
 
