@@ -528,7 +528,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.mu_tilde = max(pi->force.mu_tilde, mu_tilde_i);
   
   /* MHD variables ----------------------------------------------*/
-  float Bi[3], Bj[3];//, dB[3];
+  float Bi[3], Bj[3], dB[3], dA[3];
   
   Bi[0] = pi->mhd.BPred[0];
   Bi[1] = pi->mhd.BPred[1];
@@ -537,15 +537,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   Bj[1] = pj->mhd.BPred[1];
   Bj[2] = pj->mhd.BPred[2];
   
-  //dB[0] = Bi[0] - Bj[0];
-  //dB[1] = Bi[1] - Bj[1];
-  //dB[2] = Bi[2] - Bj[2];
+  dB[0] = Bi[0] - Bj[0];
+  dB[1] = Bi[1] - Bj[1];
+  dB[2] = Bi[2] - Bj[2];
   
-  //const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
+  dA[0] = pi->mhd.APred[0] - pj->mhd.APred[0];
+  dA[1] = pi->mhd.APred[0] - pj->mhd.APred[1];
+  dA[2] = pi->mhd.APred[0] - pj->mhd.APred[2];
+  
+  const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
   
   float mm_i[3][3], mm_j[3][3];
   
-  //const float permeability_inv = 1.0f / mu_0;
   //const float mhd_comoving_factor = 3.f;
   //const float a_fac =
   //    pow(a, 2.f * mhd_comoving_factor + 3.f * (hydro_gamma - 1.f));
@@ -561,8 +564,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
   
-  const float plasma_beta_i = pressurei/
-  	sqrt((Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2])/rhoi/mu_0);
+  const float plasma_beta_i = 2.f * pressurei/ ((
+  	Bi[0]*Bi[0]+Bi[1]*Bi[1]+Bi[2]*Bi[2])/mu_0);
   ;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float t_corr = fmaxf(0.0f, fminf(scale_i, 1.0f));
@@ -576,6 +579,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     }
 
   /* Induction Equation*/
+  /* Physical resistivity */
+  const float permeability_inv = 1.0f / mu_0;
+  const float resistive_eta_i = pi->mhd.resistive_eta;
+
+  const float rho_term_PR = 1.0f / (rhoi * rhoj);
+
+  const float dB_dt_pref_PR = rho_term_PR * rho_term_PR * rhoi * norm_sum_G;
+
+  for (int k = 0; k < 3; k++) 
+    pi->mhd.dAdt[k] +=
+        resistive_eta_i * mj * dB_dt_pref_PR * dA[k];
+  
+  pi->u_dt -=
+      0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;
 }
 
 /**
