@@ -568,7 +568,20 @@ void task_unlock(struct task *t) {
 
     case task_type_stars_sort:
     case task_type_stars_resort:
+      cell_sunlocktree(ci, /*split_task=*/0);
+      break;
+
     case task_type_stars_hii_ionization_feedback:
+      /* Mirror task_lock: re-walk the same (stable, unchanged between lock
+       * and unlock) radiation_in list to unlock every neighbouring
+       * region's hydro tree, then ci's own hydro and star trees. */
+      for (struct link *l = ci->stars.radiation_in; l != NULL; l = l->next) {
+        struct task *t2 = l->t;
+        if (t2->type != task_type_pair) continue; /* self entry is ci. */
+        struct cell *other = (t2->ci == ci) ? t2->cj : t2->ci;
+        cell_unlocktree(other);
+      }
+      cell_unlocktree(ci);
       cell_sunlocktree(ci, /*split_task=*/0);
       break;
 
@@ -785,9 +798,53 @@ int task_lock(struct task *t) {
 
     case task_type_stars_sort:
     case task_type_stars_resort:
-    case task_type_stars_hii_ionization_feedback:
       if (ci->stars.hold) return 0;
       if (cell_slocktree(ci, /*split_task=*/0) != 0) return 0;
+      break;
+
+    case task_type_stars_hii_ionization_feedback:
+      /* The search reads and writes gas across ci's own subtree plus every
+       * neighbouring radiation_level region reachable through ci's
+       * radiation_in link list (see
+       * runner_dosub_stars_hii_ionization_feedback): each linked pair
+       * task's "other" cell is itself a radiation_level cell, and locking
+       * its hydro tree also blocks any task on its descendants or
+       * ancestors (cell_locktree's hold-counter climb), so one lock per
+       * region is enough to cover its whole subtree -- no per-hydro.super
+       * enumeration needed. Lock order follows radiation_in's link order,
+       * which is fixed per cell but not globally consistent across two
+       * neighbouring regions locking each other in opposite order; that is
+       * the same contention pattern (and the same queue reweight-based
+       * mitigation, see queue_gettask) as any other two-cell pair lock in
+       * this function, not a new risk. */
+      if (ci->stars.hold) return 0;
+      if (cell_slocktree(ci, /*split_task=*/0) != 0) return 0;
+      if (ci->hydro.hold) {
+        cell_sunlocktree(ci, /*split_task=*/0);
+        return 0;
+      }
+      if (cell_locktree(ci) != 0) {
+        cell_sunlocktree(ci, /*split_task=*/0);
+        return 0;
+      }
+      for (struct link *l = ci->stars.radiation_in; l != NULL; l = l->next) {
+        struct task *t2 = l->t;
+        if (t2->type != task_type_pair) continue; /* self entry is ci. */
+        struct cell *other = (t2->ci == ci) ? t2->cj : t2->ci;
+        if (other->hydro.hold || cell_locktree(other) != 0) {
+          /* Roll back every neighbour region locked before this one. */
+          for (struct link *l2 = ci->stars.radiation_in; l2 != l;
+               l2 = l2->next) {
+            struct task *t3 = l2->t;
+            if (t3->type != task_type_pair) continue;
+            struct cell *other2 = (t3->ci == ci) ? t3->cj : t3->ci;
+            cell_unlocktree(other2);
+          }
+          cell_unlocktree(ci);
+          cell_sunlocktree(ci, /*split_task=*/0);
+          return 0;
+        }
+      }
       break;
 
     case task_type_drift_gpart:
