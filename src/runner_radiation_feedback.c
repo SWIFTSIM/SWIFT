@@ -88,11 +88,17 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 
     struct cell *cj = l->t->cj;
     struct cell *ci = l->t->ci;
+    /* ci/cj may sit above their own hydro.super (radiation_level can
+     * coarsen past it), in which case hydro.super is NULL -- print -1
+     * rather than dereferencing it. */
+    const long long ci_super_id =
+        ci->hydro.super != NULL ? ci->hydro.super->cellID : -1;
+    const long long cj_super_id =
+        cj->hydro.super != NULL ? cj->hydro.super->cellID : -1;
     message(
         "[%lld, %lld] hydro super: %lld , %lld | radiation_level: %lld %lld",
-        ci->cellID, cj->cellID, ci->hydro.super->cellID,
-        cj->hydro.super->cellID, ci->stars.radiation_level->cellID,
-        cj->stars.radiation_level->cellID);
+        ci->cellID, cj->cellID, ci_super_id, cj_super_id,
+        ci->stars.radiation_level->cellID, cj->stars.radiation_level->cellID);
   }
 #endif
 
