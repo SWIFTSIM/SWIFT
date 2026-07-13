@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static void zero_sym_matrix(
 }
 
 /**
- * @brief Construc the identity matrix
+ * @brief Construct the identity matrix
  */
 __attribute__((always_inline)) INLINE static void sym_matrix_identity(
     struct sym_matrix *M) {
@@ -93,6 +93,18 @@ __attribute__((always_inline)) INLINE static void sym_matrix_identity(
   M->xz = 0.f;
   M->xz = 0.f;
 #endif
+}
+
+/**
+ * @brief Check whether this is the null matrix
+ */
+__attribute__((always_inline)) INLINE static int sym_matrix_is_null(
+    const struct sym_matrix *M) {
+
+  for (int i = 0; i < hydro_dimension_integer; ++i) {
+    if (M->elements[i] != 0.f) return 0;
+  }
+  return 1;
 }
 
 /**
@@ -230,18 +242,17 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
 /**
  * @brief Compute the inverse of a symmetric matrix.
  *
- * Returns as a symmetric matrix
+ * @brief M The symmetric matrix to invert.
+ * @brief M_inv (return) the inverse of M.
+ * @return 1 if the inversion has failed. The matrix M_inv is then the null
+ * matrix.
  */
-__attribute__((always_inline)) INLINE static void sym_matrix_invert(
+__attribute__((always_inline)) INLINE static int sym_matrix_invert(
     struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M) {
 
   float M_inv_matrix[hydro_dimension_integer][hydro_dimension_integer];
   get_matrix_from_sym_matrix(M_inv_matrix, M);
   const int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
-  if (res) {
-    sym_matrix_print(M);
-    error("Error inverting matrix");
-  }
 
   M_inv->xx = M_inv_matrix[0][0];
 #if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
@@ -253,6 +264,8 @@ __attribute__((always_inline)) INLINE static void sym_matrix_invert(
   M_inv->xz = M_inv_matrix[0][2];
   M_inv->yz = M_inv_matrix[1][2];
 #endif
+
+  return res;
 }
 
 #endif /* SWIFT_SYMMETRIC_MATRIX_H */
