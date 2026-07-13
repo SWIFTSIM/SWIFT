@@ -318,6 +318,7 @@ void feedback_will_do_feedback(
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
       "HII_region_last_rebuild = %e, age_beg_step = %e, age_end_step = %e, "
       "next_rebuild_time "
@@ -325,6 +326,7 @@ void feedback_will_do_feedback(
       HII_region_last_rebuild, star_age_beg_step, star_age_end_step,
       HII_region_last_rebuild + HII_region_rebuild_time,
       need_HII_region_rebuild);
+#endif
 
   sp->feedback_data.will_do_HII_ionization =
       do_photoionization && (!sp->feedback_data.is_dead && has_enough_photons &&
