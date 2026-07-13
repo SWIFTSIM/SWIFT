@@ -41,6 +41,7 @@
 #define hydro_dimension_inv 0.3333333333f
 #define hydro_dimension_unit_sphere ((float)(4. * M_PI / 3.))
 #define hydro_dimension_unit_sphere_inv ((float)(3. * M_1_PI / 4.))
+#define hydro_dimension_integer 3
 
 #elif defined(HYDRO_DIMENSION_2D)
 
@@ -48,6 +49,7 @@
 #define hydro_dimension_inv 0.5f
 #define hydro_dimension_unit_sphere ((float)M_PI)
 #define hydro_dimension_unit_sphere_inv ((float)M_1_PI)
+#define hydro_dimension_integer 2
 
 #elif defined(HYDRO_DIMENSION_1D)
 
@@ -55,6 +57,7 @@
 #define hydro_dimension_inv 1.f
 #define hydro_dimension_unit_sphere 2.f
 #define hydro_dimension_unit_sphere_inv 0.5f
+#define hydro_dimension_integer 1
 
 #else
 
@@ -177,11 +180,15 @@ __attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
 /**
  * @brief Inverts the given dimension by dimension matrix (in place)
  *
- * @param A A 3x3 matrix of which we want to invert the top left dxd part
+ * @param A 3x3 matrix of which we want to invert the top left dxd part
+ * @param min_cond_num Minimal condition number to attempt an inversion. Smaller
+ * values will trigger the singular matrix case.
  * @return Exit code: 0 for success, 1 if a singular matrix was detected.
  */
 __attribute__((always_inline)) INLINE static int
-invert_dimension_by_dimension_matrix(float A[3][3]) {
+invert_dimension_by_dimension_matrix(
+    float A[hydro_dimension_integer][hydro_dimension_integer],
+    const float min_cond_num) {
 
 #if defined(HYDRO_DIMENSION_3D)
 
@@ -218,7 +225,7 @@ invert_dimension_by_dimension_matrix(float A[3][3]) {
       }
     }
 
-    if (Smax < 1.e-8f) {
+    if (Smax < min_cond_num) {
       /* singular matrix. Early abort */
       for (int j = 0; j < 3; j++) {
         for (int k = 0; k < 3; k++) {
@@ -327,7 +334,7 @@ invert_dimension_by_dimension_matrix(float A[3][3]) {
 
   const float detA = A[0][0] * A[1][1] - A[0][1] * A[1][0];
 
-  if (fabsf(detA) < 1e-8f) {
+  if (fabsf(detA) < min_cond_num) {
     for (int j = 0; j < 2; j++) {
       for (int k = 0; k < 2; k++) {
         A[j][k] = 0.0f;
