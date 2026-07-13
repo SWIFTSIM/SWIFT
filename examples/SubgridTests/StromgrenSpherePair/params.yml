@@ -1,0 +1,114 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses 
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc 
+  UnitVelocity_in_cgs: 1e5   # km/s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+Restarts:
+  enable: 1
+  delta_hours: 0.1
+  resubmit_on_exit: 0
+
+# Parameters for the self-gravity scheme
+Gravity:
+  MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
+  eta:          0.025                      # Constant dimensionless multiplier for time integration.
+  max_physical_baryon_softening: 0.005     # Physical softening length (in internal units)
+  mesh_side_length:        32
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          5e-2  # The end time of the simulation (in internal units, ~49 Myr -- long enough for
+                            # both HII regions to grow past R_st and overlap, short of HII_region_max_age_Myr).
+  dt_min:            1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  subdir: snap
+  basename:   snapshot      # Common part of the name of output files
+  time_first: 0.0           # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 2e-3          # Time difference between consecutive outputs (in internal units)
+  recording_triggers_sink:   [-1, -1, -1]  # Recording starts 10M, 1M and 0.1M years before a snapshot
+
+Scheduler:
+  cell_extra_gparts: 10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:  10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  max_top_level_cells: 4     # Cell width = boxsize/4 = 0.04 kpc. makeIC_pair.py places the two stars at
+                              # the centers of two CONSECUTIVE cells (not on any boundary) so their
+                              # radiation_level regions are genuine task-graph neighbours -- keep this in
+                              # sync with makeIC_pair.py's --n_cells (also 4) if you change either.
+  tasks_per_cell: 100
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1e-3     # Time between statistics output
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          ICs_stromgren_pair.hdf5
+  periodic:                 1    # Are we running with periodic ICs?
+  shift:              [0.0, 0.0, 0.0]
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 57Ngbs with the Wendland C2 kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   1
+  initial_temperature:   10
+
+# Cooling with Grackle 3.0
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 0                  # Enable or not the UV background
+  redshift: -1                           # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                  # Enable or not the metal cooling
+  self_shielding_method: -1              # Grackle (<= 3) or Gear self shielding method
+  self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 0
+  maximal_density_Hpcm3: 1e4            # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+
+GEARChemistry:
+  initial_metallicity: 0
+  scale_initial_metallicity: 1
+
+GEARFeedback:
+  supernovae_Ia_energy_erg: 1e51                # supernovae energy, used only for SNIa
+  supernovae_efficiency: 0                      # supernovae energy efficiency, used for both SNIa and SNII
+  with_stellar_wind_feedback: 0
+  yields_table: POPIIsw.h5
+  yields_table_first_stars: POPIIsw.h5
+  discrete_yields: 1
+  imf_transition_metallicity: -5                # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]  # Elements to read in the yields table.
+
+  # Radiation
+  with_photoelectric_heating:    0              # Whether to run with the subgrid photoelectric heating model to mimick Strömgren sphere.
+  with_photoionization:          1              # Whether to run with the subgrid photoionization model to mimick Strömgren sphere.
+  HII_region_min_density_Hpcm3: 1               # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  radiation_pressure_efficiency: 0              # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
+  HII_region_max_age_Myr:        50.0           # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
+  HII_region_rebuild_time_Myr:   0.5            # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
+
+  #Mechanical feedback
+  maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
+  enable_multiple_SN_momentum_correction_factor: 0         # Enable the correction factor to momentum if multiple SN affect a gas particle during one timestep. This factor ensures exact energy conservation in the case of multiple SN. (Default: 0)
+  f_kin_0: 0.28                                            # Fraction of the SN energy available to kinetic energy. The default value is for an idealized Sedov solution in a homogenous background. Only for GEAR-mechanical_2. (Default: 0.28)
+
+Stars:
+  timestep_age_threshold_unlimited_Myr: 11.     # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
+  timestep_age_threshold_Myr:           7.      # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_young_Myr:               0.5     # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_old_Myr:                 1       # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
+  max_HII_search_radius: 0.06                   # Maximal search radius for the Fire-like HII ionization algorithm (in internal units).
+                                                 # Kept below the box half-width (0.08) to avoid periodic self-interaction.
+  max_HII_retry_full_buffer: 30                 # Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. Increased from the default (10): at gas_mass=0.01 resolution, a single new shell of gas can hold several thousand particles -- far more than one pass of the (compile-time) neighbour buffer can hold -- so more retries are needed to actually cover it. (Default: 10)

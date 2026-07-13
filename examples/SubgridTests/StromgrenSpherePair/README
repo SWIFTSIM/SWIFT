@@ -1,0 +1,23 @@
+# Intro
+This example consists of a homogeneous and periodic box filled with gas particles of equal mass. Two individual star particles are hand-placed at the centers of two consecutive top-level cells, so their HII regions grow independently and eventually meet.
+
+This example tests the GEAR subgrid ionization algorithm across two concurrently-active, task-graph-neighbouring `radiation_level` regions -- in particular, the locking that prevents the two regions' `hii_ionization_feedback` tasks from racing on shared gas.
+
+# Configure
+To run this example with the GEAR model,
+
+```
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+```
+
+Then, type
+
+```
+make -j
+```
+
+# ICs
+The run.sh script calls the `makeIC_pair.py` script with default values. Run `python3 makeIC_pair.py --help` for the list of parameters. `--n_cells` must match `Scheduler:max_top_level_cells` in params.yml: the two stars are placed at the centers of two consecutive top-level cells (not symmetric about the box center, which can land exactly on a cell boundary), so the radiation task graph links them as neighbours regardless of search-radius value.
+
+# Run
+Type run.sh, and let's go!
