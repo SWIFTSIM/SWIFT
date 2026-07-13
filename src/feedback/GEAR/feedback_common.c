@@ -27,6 +27,7 @@
 #include "part.h"
 #include "radiation.h"
 #include "stellar_evolution.h"
+#include "timestep_sync_part.h"
 #include "units.h"
 
 /**
@@ -541,24 +542,11 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 
   /* Case 1: Ionization is guaranteed */
   if (Delta_dot_N_ion <= feedback_get_star_ionization_rate(si)) {
-    /* No atomics needed: task_lock()/task_unlock() (task.c) serialize any
-       two hii_ionization_feedback tasks whose search footprints could
-       overlap, and the task-graph dependencies serialize this task against
-       every other writer of these two fields --
-       engine_radiation_wire_super_deps() (engine_maketasks.c) wires
-       hydro.cooling_out -> radiation_in (so cooling_ionize_part_subgrid's
-       read/reset of is_ionized always happens-before this write) and
-       radiation_out -> timestep_sync (so the sync task's read of
-       to_be_synchronized always happens-after this write). If a future
-       change to that dependency enumeration ever fails to cover every
-       hydro.super a radiation task touches, this plain read-then-write
-       becomes unsafe again -- re-add the atomics if that invariant is
-       ever in doubt. */
+    /* No atomics: task locking + task-graph dependencies already serialize
+       every writer of these fields (see project notes). */
     if (xpj->tracers_data.HII_region.is_ionized == 0) {
       xpj->tracers_data.HII_region.is_ionized = 1;
-
-      /* Flag the particle to be synchronized on the timeline. */
-      pj->limiter_data.to_be_synchronized = 1;
+      timestep_sync_part(pj);
 
       /* Add the star ID */
       xpj->tracers_data.HII_region.star_id = si->id;
@@ -581,11 +569,10 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 
     /* If we are lucky, do the ionization */
     if (random_number <= proba) {
-      /* We won the roll! Claim the particle (see the note above the first
-         branch for why a plain check-then-set is safe here). */
+      /* We won the roll! Claim the particle. */
       if (xpj->tracers_data.HII_region.is_ionized == 0) {
         xpj->tracers_data.HII_region.is_ionized = 1;
-        pj->limiter_data.to_be_synchronized = 1;
+        timestep_sync_part(pj);
 
         xpj->tracers_data.HII_region.star_id = si->id;
 
