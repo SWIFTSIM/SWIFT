@@ -842,6 +842,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->mhd.BPred[0] = p->mhd.grad_A_tensor[2][1] - p->mhd.grad_A_tensor[1][2];
   p->mhd.BPred[1] = p->mhd.grad_A_tensor[0][2] - p->mhd.grad_A_tensor[2][0];
   p->mhd.BPred[2] = p->mhd.grad_A_tensor[1][0] - p->mhd.grad_A_tensor[0][1];
+  
+  p->mhd.Gau_dt = - p->mhd.v_sig * p->mhd.v_sig * p->mhd.divA;
 
   /* END MHD variables -------------------------------------------*/
 }
@@ -875,6 +877,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->mhd.dAdt[1] = 0.0f;
   p->mhd.dAdt[2] = 0.0f;
   p->mhd.divB = 0.f;
+  p->mhd.Gau_dt = 0.f;
 
   /* END MHD variables -------------------------------------------*/
 }
