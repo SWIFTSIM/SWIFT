@@ -179,7 +179,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
   
   float dB[3];
-  for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
+  for (int i = 0; i < 3; ++i) dB[i] = Bj[i] - Bi[i];
   
   /* Compute local plasma beta mean square */
   const float Pmagj_inv = B2j ? 2.0f * mu_0 / B2j : FLT_MAX;
@@ -253,7 +253,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Cosmological factors entering the EoMs */
-  // const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   /* Get r and 1/r. */
@@ -300,7 +300,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Compute signal velocity (eq. 36) modified to add dimension on the
    * denominator */
-  const float mu_tilde_i = hi * omega_ij / (r * r + 0.0001f * hi * hi);
+  const float mu_tilde_i = fac_mu * hi * omega_ij / (r * r + 0.0001f * hi * hi);
 
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
   const float eta_i[3] = {dx[0] / hi, dx[1] / hi, dx[2] / hi};
@@ -397,10 +397,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float vel_rel_j = eta_j[0] * -v_rec_ij[0] + eta_j[1] * -v_rec_ij[1] +
                           eta_j[2] * -v_rec_ij[2];
 
+  /* Includes the hubble flow term; not used for du/dt */
+  const float vel_rel_Hubble_i = vel_rel_i + a2_Hubble * r2;
+  const float vel_rel_Hubble_j = vel_rel_j + a2_Hubble * r2;
+
   /* Terms entering the viscosity (eq. 15) */
   const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;
-  const float mu_i = fminf(0.f, vel_rel_i / (eta_square_i + eps_squared));
-  const float mu_j = fminf(0.f, vel_rel_j / (eta_square_j + eps_squared));
+  const float mu_i =
+      fminf(0.f, vel_rel_Hubble_i / (eta_square_i + eps_squared));
+  const float mu_j =
+      fminf(0.f, vel_rel_Hubble_j / (eta_square_j + eps_squared));
 
   /* Eq. 14 */
   const float Qi = rhoi * (-const_viscosity_alpha * ci * mu_i +
