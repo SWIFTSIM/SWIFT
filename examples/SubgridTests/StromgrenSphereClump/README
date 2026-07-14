@@ -1,0 +1,46 @@
+# Intro
+A single star in an otherwise uniform, periodic box of gas, plus a small, dense clump placed close to the star along +x (the center direction of HEALPix nside=1 pixel 4).
+
+This is the only example in the suite that can exercise `GEARFeedback:HII_angular_nside`. Every other StromgrenSphere* example is uniform-density, so nside=0 (spherical, one shared photon budget) and nside=1 (12 HEALPix pixels) are statistically indistinguishable there -- a uniform medium is symmetric under pixel relabeling. Here, the dense clump can absorb a disproportionate share of the budget when drawn from a single shared pool (nside=0), starving the diffuse gas in every direction, including ones nowhere near the clump. Splitting the budget by pixel (nside=1) confines that damage to the clump's own pixel, leaving the other 11 pixels free to ionize on their own share. `clump_anisotropy_check.py` measures whether this actually happens.
+
+Default densities (n_H = 100 cm^-3 background, 1e4 cm^-3 clump) match the test configuration in Smith et al. 2021 (MNRAS 506, 3882), for direct comparison with that paper.
+
+## Clump geometry: why it's set in parsec, not from R_st
+The classical Stromgren radius formula assumes the code's ionization budget accounting matches the textbook relation. A clump-free control run (`--density_factor 1`) shows the ionization front actually plateaus (budget-limited, under NO_COOLING) well short of that analytic radius. So the clump's distance and size are set directly in parsec (`--clump_distance_pc`, `--clump_radius_pc` or `--clump_halfangle_deg`), calibrated against the *measured* front, not the formula. The measured reference values are in `makeIC_clump.py` as `MEASURED_FRONT_REACH_PC` / `MEASURED_FRONT_IONIZED_MASS_MSUN`. If you change `--rho`, `--star_mass`, or `--mass`, re-measure the front with `--density_factor 1` and update those two constants before trusting the geometry defaults.
+
+## Varying the clump size
+`--clump_radius_pc` sets the clump's physical radius directly, overriding the `--clump_halfangle_deg`-derived value, for a size sweep at fixed `--clump_distance_pc` (e.g. a Smith+2021-style comparison). The implied half-angle `atan(radius/distance)` must stay under ~29 degrees (nside=1 pixel 4's inscribed-cap margin around +x) or the clump straddles neighbouring pixels. `makeIC_clump.py` prints a warning if this, the front-reach bound, or the box-margin bound is violated.
+
+The redistribution signal's strength depends on this geometry (and on `--density_factor`), not just on the density contrast -- run `clump_anisotropy_check.py` after each size to check.
+
+# Configure
+```
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix
+```
+`--with-chealpix` (e.g. via pacman/AUR's `healpix` package) is required to run at `nside=1`; `nside=0` (the default) works without it.
+
+```
+make -j
+```
+
+# ICs
+`run.sh` calls `makeIC_clump.py` with default values; run `python3 makeIC_clump.py --help` for the full parameter list. `--n_cells` must match `Scheduler:max_top_level_cells` in `params.yml`: the star sits at the box center, which for an odd cell count falls in the middle of a cell, not on a boundary.
+
+# Run
+`nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh` / `run_name=nside1 ./run.sh` to keep both outputs) compare the two modes. `nside` is passed to `swift` as `-P GEARFeedback:HII_angular_nside:$nside`.
+
+`Stars:max_HII_search_radius` in `params.yml` is set just under the box half-width -- the box itself is small (matched to the measured front reach), so this isn't a looser or tighter choice than the other StromgrenSphere* examples, just scaled to this problem's size.
+
+# Checking the redistribution effect
+```
+python3 clump_anisotropy_check.py \
+    --nside0-snapshot nside0/snap/snapshot_0040.hdf5 \
+    --nside1-snapshot nside1/snap/snapshot_0040.hdf5
+```
+Reports ionized fraction/mass inside the clump's pixel versus the other 11 combined, and a pass/fail verdict on whether nside=1 redistributes the budget as intended. Requires a build with `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` (add to `CFLAGS` before `./configure`) so `IsIonizedFlags` accumulates monotonically instead of being reset every step by cooling -- otherwise the last snapshot alone doesn't reflect the cumulative ionized set.
+
+# Plotting
+```
+python3 plot_temperature_hii.py -s nside1/snap/snapshot -i 40
+```
+Plots a mass-weighted temperature projection and a slice through the star's z-plane, with the star and its `HIIRegionRadii` circle overlaid. Defaults to the last snapshot in `snap/` if `-i` is omitted.
