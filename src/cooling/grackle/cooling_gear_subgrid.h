@@ -115,8 +115,10 @@ ionize
   /* If we have the non-equilibrium cooling, we can also set these values
 and
      let grackle solve the network. */
-  xp->cooling_data.HI_frac = 0;
-  xp->cooling_data.HII_frac = 1;
+  xp->cooling_data.HI_frac = 0.0;
+  xp->cooling_data.HII_frac = 1.0;
+
+  /* Should we provide the rates? */
 #endif
 
   /* Reset the ionization tag */
