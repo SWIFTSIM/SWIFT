@@ -53,6 +53,7 @@
 #include "multipole_accept.h"
 #include "space.h"
 #include "tools.h"
+#include "zoom_mesh_gravity.h"
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -1759,19 +1760,22 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
                       const struct cell *cj) {
 
   struct space *s = e->s;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
-  /* If not periodic then we cannot use the mesh */
-  if (!s->periodic) {
-    return 0;
+  /* First try the regular periodic mesh. */
+  if (s->periodic) {
+    const double max_distance = e->mesh->r_cut_max;
+    const double max_distance2 = max_distance * max_distance;
+
+    /* Minimal distance between any pair of particles */
+    const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
+
+    /* Are we safely beyond the distance where the truncated forces are 0 ?*/
+    if (cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2))
+      return 1;
   }
 
-  /* Minimal distance between any pair of particles */
-  const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
-
-  /* Are we safely beyond the distance where the truncated forces are 0 ?*/
-  return cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
+  /* If present, try the high-resolution zoom mesh. */
+  return zoom_mesh_can_use_mesh(e->zoom_mesh, s, ci, cj);
 }
 
 /**
@@ -1790,21 +1794,24 @@ int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
                                        const struct cell *cj) {
 
   struct space *s = e->s;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
-  /* If not periodic then we cannot use the mesh */
-  if (!s->periodic) {
-    return 0;
+  /* First try the regular periodic mesh. */
+  if (s->periodic) {
+    const double max_distance = e->mesh->r_cut_max;
+    const double max_distance2 = max_distance * max_distance;
+
+    /* Minimal distance between any pair of particles including max
+     * displacement since rebuild */
+    const double min_radius2 =
+        cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
+
+    /* Are we safely beyond the distance where the truncated forces are 0 ?*/
+    if (cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2))
+      return 1;
   }
 
-  /* Minimal distance between any pair of particles including max
-   * displacement since rebuild */
-  const double min_radius2 =
-      cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
-
-  /* Are we safely beyond the distance where the truncated forces are 0 ?*/
-  return cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
+  /* If present, try the high-resolution zoom mesh. */
+  return zoom_mesh_can_use_mesh_between_rebuilds(e->zoom_mesh, s, ci, cj);
 }
 
 /**
