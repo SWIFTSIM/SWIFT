@@ -540,21 +540,24 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  * @param xpj The #xpart (gas) being ionized.
  * @param r2 Squared distance between star and gas.
  * @param pixel The angular pixel this gas particle was assigned to.
- * @param e The #engine.
+ * @param phys_const Physics constants.
+ * @param hydro_props Hydrodynamics properties.
+ * @param us Internal unit system.
+ * @param cosmo Cosmology.
+ * @param cooling Cooling function data.
+ * @param feedback_props The #feedback_props.
  * @param ti_begin Integer time at the start of the step (for RNG).
  */
 __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
-    struct xpart *restrict xpj, float r2, int pixel, const struct engine *e,
-    const integertime_t ti_begin) {
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling,
+    const struct feedback_props *feedback_props, const integertime_t ti_begin) {
 
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct unit_system *us = e->internal_units;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct cooling_function_data *cooling = e->cooling_func;
   const int deterministic_boundary =
-      e->feedback_props->HII_deterministic_boundary_ionization;
+      feedback_props->HII_deterministic_boundary_ionization;
 
   /* If already ionized (by another thread), just move on. */
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;

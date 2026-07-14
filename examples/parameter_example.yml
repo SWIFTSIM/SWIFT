@@ -77,6 +77,9 @@ Stars:
   max_timestep_old_Myr:                 1.0          # (Optional) Maximal time-step length of old stars (in Mega-years). Defaults to FLT_MAX.
   luminosity_filename:                  ./photometry # In the EAGLE model, directory where the photometry tables are stored.
   max_HII_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm (in internal units).
+  max_HII_retry_full_buffer: 10                 # (Optional) Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. (Default: 10)
+  max_HII_radius_expansion_tries: 5              # (Optional) Number of times the HII search radius is allowed to expand within a single pass. (Default: 5)
+  HII_radius_expansion_factor: 1.1               # (Optional) Growth factor applied to the HII search radius at each expansion try. (Default: 1.1)
   
 # Parameters for the self-gravity scheme
 Gravity:
@@ -782,9 +785,11 @@ GEARFeedback:
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   with_photoelectric_heating:    0                         # Whether to run with the subgrid photoelectric heating model to mimick Strömgren sphere. Note this needs to compile with GRACKLE_X, X=1,2 or 3 and will automatically turn on grackle photoelectric parameters. 1: Run with photoelectric heating, 0: Run without. (Default: 0)
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
-  minimal_HII_ionization_density_Hpcm3: 1                  # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  HII_region_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_region_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_region_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
+  HII_angular_nside:             0                         # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), 1 = 12 HEALPix pixels. Requires building with --with-chealpix for nside > 0. (Default: 0)
+  HII_deterministic_boundary_ionization: 0                 # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default: 0)
 
 GEARSupernovaeII:
     interpolation_size:  200                               # Number of elements to keep in the interpolation of the data. (Default: 200)
