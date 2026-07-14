@@ -383,7 +383,10 @@ hydro_set_drifted_physical_internal_energy(
 __attribute__((always_inline)) INLINE static void
 hydro_set_v_sig_based_on_velocity_kick(struct part *p,
                                        const struct cosmology *cosmo,
-                                       const float dv_phys) {}
+                                       const float dv_phys) {
+
+  error("Implement me!!!");
+}
 
 /**
  * @brief Update the value of the viscosity alpha for the scheme.
@@ -420,7 +423,8 @@ hydro_diffusive_feedback_reset(struct part *p) {
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
+    const float mu_0) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
@@ -1083,12 +1087,15 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float pressure_including_floor =
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
 
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   /* Update variables */
-  p->force.pressure = pressure;
+  p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 
   /* MHD variables ----------------------------------------------*/
@@ -1167,11 +1174,14 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Compute the new pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float pressure_including_floor =
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
 
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
-  p->force.pressure = pressure;
+  p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 
   /* MHD variables ----------------------------------------------*/
@@ -1338,11 +1348,14 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float pressure_including_floor =
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
 
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
-  p->force.pressure = pressure;
+  p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 
   /* MHD variables ----------------------------------------------*/
@@ -1417,16 +1430,5 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 
   p->u = u_init;
 }
-
-/**
- * @brief Operations performed when a particle gets removed from the
- * simulation volume.
- *
- * @param p The particle.
- * @param xp The extended particle data.
- * @param time The simulation time.
- */
-__attribute__((always_inline)) INLINE static void hydro_remove_part(
-    const struct part *p, const struct xpart *xp, const double time) {}
 
 #endif /* SWIFT_MAGMA_HYDRO_H */

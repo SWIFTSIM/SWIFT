@@ -422,7 +422,8 @@ hydro_diffusive_feedback_reset(struct part *p) {
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
+    const float mu_0) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
