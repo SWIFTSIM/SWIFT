@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2024 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -236,6 +236,9 @@ struct part {
 
   /*! RT sub-cycling time stepping data */
   struct rt_timestepping_data rt_time_data;
+
+  /*! Should this particle interact using base SPH? */
+  char use_base_SPH;
 
   /*! Tree-depth at which size / 2 <= h * gamma < size */
   char depth_h;
