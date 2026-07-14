@@ -64,7 +64,7 @@ def parse_options():
         "--n_stars",
         type=int,
         default=4,
-        help="Number of co-located ionizing sources at the " "box center",
+        help="Number of ionizing sources clustered at the box center",
     )
     parser.add_argument(
         "--density_factor",
@@ -255,13 +255,31 @@ rho_arr = np.concatenate(
 
 print(f"Total gas particles                                   : {N}")
 
+
 #####################
-# The N_stars co-located sources, at the box center.
+# The N_stars sources, clustered at the box center. SWIFT aborts if two gas
+# particles share a position and warns for gravity particles (engine.c), so
+# the stars are spread on a sphere far smaller than the gas resolution
+# (a fraction of h_diffuse) instead of being placed at the exact same point.
 #####################
+def sphere_points(n, radius):
+    """n points ~evenly spread on a sphere of the given radius (n=1: origin).
+    Uses open-interval y sampling (never +/-1) so no point falls exactly on
+    an axis -- avoids landing back on a cell boundary aligned with it."""
+    if n == 1:
+        return np.zeros((1, 3))
+    golden_angle = np.pi * (3.0 - np.sqrt(5.0))
+    i = np.arange(n)
+    y = 1.0 - 2.0 * (i + 0.5) / n
+    r = np.sqrt(np.maximum(0.0, 1.0 - y * y))
+    theta = golden_angle * i
+    return radius * np.stack([r * np.cos(theta), y, r * np.sin(theta)], axis=1)
+
+
 N_star = opt.n_stars
 M_star_val = (opt.star_mass * units.M_sun).to(UnitMass).value
 M_star = np.ones(N_star) * M_star_val
-pos_star = np.tile(star_pos, (N_star, 1))
+pos_star = star_pos + sphere_points(N_star, 1e-3 * h_diffuse)
 vel_star = np.zeros([N_star, 3])
 h_star = np.ones(N_star) * h_diffuse
 
@@ -271,7 +289,7 @@ star_particle_type = np.ones(N_star) * star_type
 star_id = np.arange(N + 1, N + 1 + N_star)
 star_birth_time = np.zeros(N_star)
 
-print(f"Stars ({N_star}) at (code unit)                             : {pos_star[0]}")
+print(f"Stars ({N_star}) clustered around (code unit)               : {star_pos}")
 print(f"Clump center (code unit)                              : {clump_center}")
 
 fileOutput = h5py.File(opt.outputfilename, "w")
