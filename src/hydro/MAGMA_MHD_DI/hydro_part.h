@@ -159,6 +159,8 @@ struct part {
     /*! Time derivative of Dedner scalar over divergence cleaning speed */
     float psi_over_ch_dt;
 
+    float grad_psi[3];
+
     /*! Artificial resistivity gradient based switch */
     float alpha_AR;
     
@@ -297,6 +299,9 @@ struct part {
 
   /*! RT sub-cycling time stepping data */
   struct rt_timestepping_data rt_time_data;
+
+  /*! Should this particle interact using base SPH? */
+  char use_base_SPH;
 
   /*! Tree-depth at which size / 2 <= h * gamma < size */
   char depth_h;

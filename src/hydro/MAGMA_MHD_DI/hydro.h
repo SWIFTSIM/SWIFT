@@ -818,6 +818,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
   p->mhd.curl_B[2] = 0.0f;
 
   for (int i = 0; i < 3; i++) {
+    p->mhd.grad_psi[i]=0.f;
     for (int j = 0; j < 3; j++) {
       p->mhd.grad_B_tensor[i][j] = 0.0f;
     }
@@ -889,10 +890,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
       p->mhd.plasma_beta_rms /
       p->mhd.neighbour_number); /* Divisor guaranteed to be strictly positive */
   
-  for (int i = 0; i < 3; ++i) 
+  for (int i = 0; i < 3; ++i){ 
+    p->mhd.grad_psi[i] *= h_inv_dim;
     for (int j = 0; j < 3; ++j) 
       p->mhd.grad_B_tensor[i][j] *= h_inv_dim;
-
+  }
   /* END MHD variables -------------------------------------------*/
 }
 
@@ -1007,6 +1009,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
      for (int j = 0; j < 3; j++) 
 	p->mhd.grad_B_tensor[i][j] = tmp_Grad_out[j] ;
   }
+     for (int j = 0; j < 3; j++) 
+        tmp_Grad_in[j] = p->mhd.grad_psi[j];
+     sym_matrix_multiply_by_vector(tmp_Grad_out, &p->force.c_matrix,
+                                tmp_Grad_in);
+     for (int j = 0; j < 3; j++) 
+	p->mhd.grad_psi[j] = tmp_Grad_out[j] ;
+
   p->mhd.divB = p->mhd.grad_B_tensor[0][0] + p->mhd.grad_B_tensor[1][1] + p->mhd.grad_B_tensor[2][2];
   p->mhd.curl_B[0] = p->mhd.grad_B_tensor[2][1] - p->mhd.grad_B_tensor[1][2];
   p->mhd.curl_B[1] = p->mhd.grad_B_tensor[0][2] - p->mhd.grad_B_tensor[2][0];
@@ -1225,7 +1234,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   p->mhd.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
       p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
 
-
   /* Hubble expansion contribution to induction equation */
   const float Hubble_induction_pref =
       cosmo->a * cosmo->a * cosmo->H * (1.5f * hydro_gamma - 2.f);
@@ -1248,6 +1256,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
       p->mhd.B_over_rho[0]*p->force.gradient_vz[0]+
       p->mhd.B_over_rho[1]*p->force.gradient_vz[1]+
       p->mhd.B_over_rho[2]*p->force.gradient_vz[2];
+  p->mhd.B_over_rho_dt[0] -= p->mhd.grad_psi[0]/p->rho;
+  p->mhd.B_over_rho_dt[1] -= p->mhd.grad_psi[1]/p->rho;
+  p->mhd.B_over_rho_dt[2] -= p->mhd.grad_psi[2]/p->rho;
+  
   /* END MHD variables -------------------------------------------*/
 }
 

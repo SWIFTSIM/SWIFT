@@ -547,9 +547,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   dB[1] = Bi[1] - Bj[1];
   dB[2] = Bi[2] - Bj[2];
   
-  dA[0] = pj->mhd.APred[0] - pi->mhd.APred[0];
-  dA[1] = pj->mhd.APred[1] - pi->mhd.APred[1];
-  dA[2] = pj->mhd.APred[2] - pi->mhd.APred[2];
+  dA[0] = pi->mhd.APred[0] - pj->mhd.APred[0];
+  dA[1] = pi->mhd.APred[1] - pj->mhd.APred[1];
+  dA[2] = pi->mhd.APred[2] - pj->mhd.APred[2];
   
   const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
   
@@ -586,7 +586,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Induction Equation*/
   for (int i = 0; i < 3; i++)
-  	pi->mhd.dAdt[i] -= mj * G_i[i] / rhoi *	(pj->mhd.Gau - pi->mhd.Gau);
+  	pi->mhd.dAdt[i] -= mj * (G_i[i] / rhoi * pi->mhd.Gau + G_j[i] / rhoj * pj->mhd.Gau);
+  	//pi->mhd.dAdt[i] -= mj * G_i[i] / rhoi *	(pj->mhd.Gau - pi->mhd.Gau);
   /* Physical resistivity */
   const float permeability_inv = 1.0f / mu_0;
   const float resistive_eta_i = pi->mhd.resistive_eta;
@@ -596,10 +597,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float dt_pref_PR = rho_term_PR * rho_term_PR * rhoi * norm_sum_G;
 
   for (int k = 0; k < 3; k++) 
-    pi->mhd.dAdt[k] -=
+    pi->mhd.dAdt[k] +=
         resistive_eta_i * 8.0 * mj * dt_pref_PR * dA[k];
   
-  pi->mhd.Gau_dt -=
+  pi->mhd.Gau_dt +=
         resistive_eta_i * 8.0 * mj * dt_pref_PR * (pj->mhd.Gau - pi->mhd.Gau);
   
   pi->u_dt -=

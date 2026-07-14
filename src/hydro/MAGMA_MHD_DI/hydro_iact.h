@@ -180,7 +180,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   
   float dB[3];
   for (int i = 0; i < 3; ++i) dB[i] = Bj[i] - Bi[i];
-  
+  const float dpsi = pj->mhd.psi_over_ch * pj->mhd.v_sig - pi->mhd.psi_over_ch * pi->mhd.v_sig;
   /* Compute local plasma beta mean square */
   const float Pmagj_inv = B2j ? 2.0f * mu_0 / B2j : FLT_MAX;
 
@@ -201,6 +201,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->mhd.grad_B_tensor[2][0] -= common_term * dB[2] * dx[0];
   pi->mhd.grad_B_tensor[2][1] -= common_term * dB[2] * dx[1];
   pi->mhd.grad_B_tensor[2][2] -= common_term * dB[2] * dx[2];
+  
+  pi->mhd.grad_psi[0] -= common_term * dpsi * dx[0];
+  pi->mhd.grad_psi[1] -= common_term * dpsi * dx[1];
+  pi->mhd.grad_psi[2] -= common_term * dpsi * dx[2];
   
   /* END MHD variables ------------------------------------------*/
 }
@@ -545,7 +549,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.mu_tilde = max(pi->force.mu_tilde, mu_tilde_i);
   
   /* MHD variables ----------------------------------------------*/
-  float Bi[3], Bj[3], dB[3];
+  float Bi[3], Bj[3];
   
   Bi[0] = pi->mhd.B_over_rho[0] * rhoi;
   Bi[1] = pi->mhd.B_over_rho[1] * rhoi;
@@ -554,15 +558,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   Bj[1] = pj->mhd.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd.B_over_rho[2] * rhoj;
   
-  dB[0] = Bi[0] - Bj[0];
-  dB[1] = Bi[1] - Bj[1];
-  dB[2] = Bi[2] - Bj[2];
+  //float dB[3];
+  //dB[0] = Bi[0] - Bj[0];
+  //dB[1] = Bi[1] - Bj[1];
+  //dB[2] = Bi[2] - Bj[2];
   
-  const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
+  //const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
   
   float mm_i[3][3], mm_j[3][3];
   
-  const float permeability_inv = 1.0f / mu_0;
+  //const float permeability_inv = 1.0f / mu_0;
   //const float mhd_comoving_factor = 3.f;
   //const float a_fac =
   //    pow(a, 2.f * mhd_comoving_factor + 3.f * (hydro_gamma - 1.f));
@@ -582,7 +587,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float t_corr = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
-
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       pi->a_hydro[i] +=
@@ -596,14 +600,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   // comoving integration>
   //const float mag_Indi = wi_dr * r_inv / rhoi;
   //const float mag_Disi = (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
-  const float psi_i = pi->mhd.psi_over_ch * pi->mhd.v_sig * 0.f;
-  const float psi_j = pj->mhd.psi_over_ch * pj->mhd.v_sig * 0.f;
-  for (int i = 0; i < 3; i++) {
-     pi->mhd.B_over_rho_dt[i] +=  mj * (psi_i/(rhoi * rhoi) * G_i[i] + psi_j/(rhoj*rhoj) * G_j[i]);
+  //const float psi_i = pi->mhd.psi_over_ch * pi->mhd.v_sig * 0.f;
+  //const float psi_j = pj->mhd.psi_over_ch * pj->mhd.v_sig * 0.f;
+  //for (int i = 0; i < 3; i++) {
+  //   pi->mhd.B_over_rho_dt[i] +=  mj * (psi_i/(rhoi * rhoi) * G_i[i] + psi_j/(rhoj*rhoj) * G_j[i]);
      //pi->mhd.B_over_rho_dt[i] +=  mj * (psi_i-psi_j)/(rhoi * rhoi) * G_i[i];
  // pi->mhd_data.dBdt[i] +=
  //     mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * (Bi[i] - Bj[i]);
-  }
+  //}
   
  /* Induction Equation*/
 /*  const float over_rho2_i = 1.0f / (rhoi * rhoi);
@@ -623,29 +627,48 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Physical resistivity */
   const float resistive_eta_i = pi->mhd.resistive_eta;
 
-  const float rho_term_PR = 1.0f / (rhoi * rhoj);
+  //const float rho_term_PR = 1.0f / (rhoi + rhoj) / rhoi;
 
-  const float dB_dt_pref_PR = rho_term_PR * norm_sum_G;
+  //const float dB_dt_pref_PR = rho_term_PR * norm_sum_G;
 
-  for (int k = 0; k < 3; k++) {
-    pi->mhd.B_over_rho_dt[k] +=
-        resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
-	}
+  //for (int k = 0; k < 3; k++) {
+  //  pi->mhd.B_over_rho_dt[k] +=
+  //      resistive_eta_i * mj * dB_dt_pref_PR * dB[k];
+  //	}
+  for (int i = 0; i < 3; i++) 
+     pi->mhd.B_over_rho_dt[i] +=  mj * resistive_eta_i * (
+     				(pi->mhd.grad_B_tensor[i][0]/(rhoi * rhoi) * G_i[0] 
+     				+ pj->mhd.grad_B_tensor[i][0]/(rhoj * rhoj) * G_j[0])+
+     				(pi->mhd.grad_B_tensor[i][1]/(rhoi * rhoi) * G_i[1] 
+     				+ pj->mhd.grad_B_tensor[i][1]/(rhoj * rhoj) * G_j[1])+
+     				(pi->mhd.grad_B_tensor[i][2]/(rhoi * rhoi) * G_i[2] 
+     				+ pj->mhd.grad_B_tensor[i][2]/(rhoj * rhoj) * G_j[2])
+				);
   
-  pi->u_dt -=
-      0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;
+  //pi->u_dt -=
+  //    0.5f * permeability_inv * resistive_eta_i * mj * dB_dt_pref_PR * dB_2;
   
-  const float alpha_AR = 0.0f * (pi->mhd.alpha_AR + pj->mhd.alpha_AR);
+  //const float alpha_AR = 0.5f * (pi->mhd.alpha_AR * pi->h + pj->mhd.alpha_AR * pj->h );
+  const float alpha_AR = 0.5f * (pi->mhd.alpha_AR + pj->mhd.alpha_AR );
 
-  const float vsig_AR = pi->h *
+  const float vsig_AR = 
       0.5f * (pi->mhd.Alfven_speed + pj->mhd.Alfven_speed );
 
-  const float art_diff_pref = alpha_AR * vsig_AR * rho_term_PR * norm_sum_G;
-  for (int k = 0; k < 3; k++) 
-     pi->mhd.B_over_rho_dt[k] += mj * art_diff_pref * dB[k];
+  //const float art_diff_pref = alpha_AR * vsig_AR * rho_term_PR * norm_sum_G * r_inv;
+  const float art_diff_pref = alpha_AR * vsig_AR * (pi->h+pj->h)/2.f;
+  for (int i = 0; i < 3; i++) 
+     pi->mhd.B_over_rho_dt[i] += mj * art_diff_pref * (
+     				(pi->mhd.grad_B_tensor[i][0]/(rhoi * rhoi) * G_i[0] 
+     				+ pj->mhd.grad_B_tensor[i][0]/(rhoj * rhoj) * G_j[0])+
+     				(pi->mhd.grad_B_tensor[i][1]/(rhoi * rhoi) * G_i[1] 
+     				+ pj->mhd.grad_B_tensor[i][1]/(rhoj * rhoj) * G_j[1])+
+     				(pi->mhd.grad_B_tensor[i][2]/(rhoi * rhoi) * G_i[2] 
+     				+ pj->mhd.grad_B_tensor[i][2]/(rhoj * rhoj) * G_j[2])
+				);
+
   
-  pi->u_dt -=
-      0.5f * permeability_inv * mj * art_diff_pref * dB_2;
+  //pi->u_dt -=
+  //    0.5f * permeability_inv * mj * art_diff_pref * dB_2;
 
   /* END MHD variables ------------------------------------------*/
 }
