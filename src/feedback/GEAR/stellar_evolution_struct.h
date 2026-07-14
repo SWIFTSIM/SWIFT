@@ -212,6 +212,11 @@ struct radiation {
 
   /*! Number of element in the interpolation array */
   int interpolation_size;
+
+  /*! Number of active angular (HEALPix) pixels the HII ionization budget is
+      split across (1 = spherical/HEALPix disabled). Set from
+      GEARFeedback:HII_angular_nside in radiation_init(). */
+  int n_HII_pixels;
 };
 
 /**

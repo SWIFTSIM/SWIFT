@@ -26,7 +26,12 @@
 /* Config parameters. */
 #include <config.h>
 
+#if defined(HAVE_CHEALPIX)
+#include <chealpix.h>
+#endif
+
 /* Local headers. */
+#include "error.h"
 #include "hydro.h"
 #include "stars.h"
 
@@ -151,6 +156,49 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
     buffer[i + 1].c = c;
 #endif
   }
+}
+
+/**
+ * @brief Compute the angular (HEALPix) pixel a gas candidate falls into,
+ * as seen from the star.
+ *
+ * Hard single-pixel assignment (no fractional/multi-pixel overlap), matching
+ * Smith et al. 2021 -- see project notes for the rationale.
+ *
+ * @param dx Star-minus-particle position offset (dx = x_star - x_particle).
+ * @param n_HII_pixels Number of active pixels for this star (1 = spherical,
+ * HEALPix disabled).
+ * @return Pixel index in [0, n_HII_pixels).
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
+    const float dx[3], int n_HII_pixels) {
+
+  if (n_HII_pixels <= 1) return 0;
+
+#if defined(HAVE_CHEALPIX)
+#ifdef SWIFT_DEBUG_CHECKS
+  if (n_HII_pixels != 12)
+    error("Only nside=1 (12 pixels) is supported, got n_HII_pixels=%d.",
+          n_HII_pixels);
+#endif
+  /* A particle exactly on the star gives a zero-length direction, which is
+     undefined for vec2pix_ring64 -- fall back to pixel 0 (measure-zero in
+     continuous positions, but must not read/write out of bounds). */
+  if (dx[0] == 0.0f && dx[1] == 0.0f && dx[2] == 0.0f) return 0;
+
+  /* Pixels are defined around the star, so the direction of interest is
+     from the star to the particle -- the negation of dx. vec2pix_ring64
+     does not require a normalized vector. */
+  const double dir[3] = {-(double)dx[0], -(double)dx[1], -(double)dx[2]};
+  int64_t ipix = 0;
+  vec2pix_ring64(/*nside=*/1, dir, &ipix);
+  return (int)ipix;
+#else
+  error(
+      "n_HII_pixels > 1 but HAVE_CHEALPIX is not defined -- this should be "
+      "unreachable (radiation_init() validates this at startup).");
+  return 0;
+#endif
 }
 
 /**

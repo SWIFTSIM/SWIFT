@@ -109,17 +109,16 @@ radiation_get_part_rate_to_fully_ionize(
  *
  * @param sp The star.
  * @param dot_N_ion_total The total ionizing photon rate for this star.
+ * @param n_HII_pixels Number of active angular pixels (from
+ * GEARFeedback:HII_angular_nside via #radiation.n_HII_pixels).
  */
 __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
-    struct spart *sp, double dot_N_ion_total) {
+    struct spart *sp, double dot_N_ion_total, int n_HII_pixels) {
 
-  /* No angular splitting yet (Npix=1). Stars:HII_angular_nside wires this
-     up for real -- see project notes. */
-  sp->feedback_data.radiation.n_HII_pixels = 1;
+  sp->feedback_data.radiation.n_HII_pixels = n_HII_pixels;
 
-  const double dot_N_ion_per_pixel =
-      dot_N_ion_total / sp->feedback_data.radiation.n_HII_pixels;
-  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
+  const double dot_N_ion_per_pixel = dot_N_ion_total / n_HII_pixels;
+  for (int p = 0; p < n_HII_pixels; p++) {
     sp->feedback_data.radiation.dot_N_ion_pix[p] = dot_N_ion_per_pixel;
   }
 }
@@ -477,6 +476,26 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
 
   /* Read the data */
   radiation_read_data(rad, params, sm, us, phys_const, /* restart */ 0);
+
+  /* Angular (HEALPix) splitting of the HII ionization budget. Only two
+     values are supported for now: 0 (spherical/HEALPix disabled, today's
+     behaviour) or 1 (the base HEALPix tessellation, 12 pixels). */
+  const int nside =
+      parser_get_opt_param_int(params, "GEARFeedback:HII_angular_nside", 0);
+  if (nside != 0 && nside != 1) {
+    error(
+        "GEARFeedback:HII_angular_nside must be 0 (spherical, HEALPix "
+        "disabled) or 1 (12 HEALPix pixels); got %d.",
+        nside);
+  }
+#ifndef HAVE_CHEALPIX
+  if (nside != 0) {
+    error(
+        "GEARFeedback:HII_angular_nside > 0 requires the HEALPix C API "
+        "(chealpix). Reconfigure with --with-chealpix, or set nside=0.");
+  }
+#endif
+  rad->n_HII_pixels = (nside == 0) ? 1 : 12 * nside * nside;
 }
 
 /**

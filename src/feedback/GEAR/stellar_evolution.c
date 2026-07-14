@@ -1231,7 +1231,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const double dot_N_ion_total =
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
           sp->mass, us, phys_const);
-  radiation_set_ionizing_photon_rate(sp, dot_N_ion_total);
+  radiation_set_ionizing_photon_rate(sp, dot_N_ion_total, sm->rad.n_HII_pixels);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
@@ -1392,7 +1392,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
      active angular pixels. */
   const double dot_N_ion_total =
       dot_N_ion * sp->sf_data.birth_mass / phys_const->const_solar_mass;
-  radiation_set_ionizing_photon_rate(sp, dot_N_ion_total);
+  radiation_set_ionizing_photon_rate(sp, dot_N_ion_total, sm->rad.n_HII_pixels);
 
   /*****************************************/
   /* Stellar winds */

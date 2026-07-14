@@ -539,11 +539,11 @@ void runner_doself_stars_hii_ionization_feedback(
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    /* No angular splitting yet (Npix=1); Phase 2 assigns this from dx via
-       HEALPix. Skipping the insert once a pixel is exhausted stops a dead
-       pixel's candidates from crowding out other pixels' on retry -- see
-       project notes. */
-    const int pixel = 0;
+    /* Skipping the insert once a pixel is exhausted stops a dead pixel's
+       candidates from crowding out other pixels' on retry -- see project
+       notes. */
+    const int pixel =
+        runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
     if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
       runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c,
                                pixel);
@@ -629,9 +629,8 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      /* No angular splitting yet (Npix=1); see runner_doself_stars_hii_
-         ionization_feedback() for the full rationale. */
-      const int pixel = 0;
+      const int pixel =
+          runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
       if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
         runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj,
                                  pixel);
@@ -739,9 +738,8 @@ void runner_dopair_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      /* No angular splitting yet (Npix=1); see runner_doself_stars_hii_
-         ionization_feedback() for the full rationale. */
-      const int pixel = 0;
+      const int pixel =
+          runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
       if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
         runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj,
                                  pixel);
@@ -771,9 +769,8 @@ void runner_dopair_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      /* No angular splitting yet (Npix=1); see runner_doself_stars_hii_
-         ionization_feedback() for the full rationale. */
-      const int pixel = 0;
+      const int pixel =
+          runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
       if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
         runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj,
                                  pixel);
