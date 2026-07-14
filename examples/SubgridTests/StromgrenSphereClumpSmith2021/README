@@ -1,0 +1,28 @@
+# Intro
+A literal reproduction of Smith et al. 2021 (MNRAS 506, 3882), Figure 2: a single star in a uniform 100 cm^-3 background, with a 10 pc-radius, 10^4 cm^-3 clump centered 20 pc away along +x (HEALPix nside=1 pixel 4's center direction). Their test uses 4 sources totalling Q_H ~ 1e49 s^-1 "equivalent to a typical O-type star"; here a single 27 Msun star (Q_H ~ 1.04e49 s^-1) stands in for that combined source.
+
+See `../StromgrenSphereClump/` for the sibling example that instead calibrates clump placement against this code's own measured (not classical) ionization front reach -- useful when reproducing a specific paper's absolute scale isn't the goal.
+
+Density values (100 / 1e4 cm^-3), clump geometry (10 pc radius at 20 pc), gas mass resolution (20 Msun), and `HII_region_rebuild_time_Myr=0.1` all come directly from the paper. They report that a slower rebuild cadence causes the D-type expansion to stall and the region to be severely underestimated in size -- this is a likely reason the sibling example (which defaults to 0.5 Myr) initially showed almost no nside=0-vs-nside=1 signal at these same densities.
+
+Box size (0.1 kpc / 100 pc) and `Stars:max_HII_search_radius` (45 pc) aren't stated explicitly in the paper for this test; chosen here to comfortably contain the clump (30 pc from the star) and its D-type expansion by t=8 Myr (the time of their Figure 2 snapshot) while staying under the box half-width.
+
+# Configure
+```
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix
+```
+
+```
+make -j
+```
+
+# Run
+`nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh` / `run_name=nside1 ./run.sh` to keep both outputs) reproduce the top/bottom panels of Figure 2. At ~175k particles and a 0.1 Myr rebuild cadence, this is a heavier run than `../StromgrenSphereClump/`.
+
+# Checking the redistribution effect and plotting
+Same tools as `../StromgrenSphereClump/`:
+```
+python3 clump_anisotropy_check.py --nside0-snapshot nside0/snap/snapshot_0040.hdf5 --nside1-snapshot nside1/snap/snapshot_0040.hdf5
+python3 plot_temperature_hii.py -s nside1/snap/snapshot -i 40
+```
+`clump_anisotropy_check.py` requires a build with `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` (add to `CFLAGS` before `./configure`) so `IsIonizedFlags` accumulates monotonically instead of resetting every step.

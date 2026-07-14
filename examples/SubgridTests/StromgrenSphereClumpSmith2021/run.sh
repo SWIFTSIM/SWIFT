@@ -5,14 +5,15 @@ set -e
 
 n_threads=${n_threads:=8}          # Number of threads to use
 gas_density=${gas_density:=100}    # Diffuse background gas density in atom/cm^3
-gas_particle_mass=${gas_mass:=0.001} # Mass of the gas particles (diffuse and clump)
-star_mass=${star_mass:=29.7}       # Mass of the star
+gas_particle_mass=${gas_mass:=20.0} # Mass of the gas particles (diffuse and clump);
+                                     # matches Smith et al. 2021's own gas mass resolution
+star_mass=${star_mass:=27.0}       # Mass of the star (Q_H ~ 1e49/s)
 star_type=${star_type:="single_star"}
 density_factor=${density_factor:=100.0} # Clump density, as a multiple of gas_density
-clump_radius_pc=${clump_radius_pc:=""}  # Optional: clump radius in parsec, for a size sweep
-                                         # (see README); empty = use the default half-angle size
+clump_distance_pc=${clump_distance_pc:=20.0} # Clump center distance from the star, in parsec
+clump_radius_pc=${clump_radius_pc:=10.0}     # Clump radius, in parsec
 with_cooling=${with_cooling:=1}
-L=${boxsize:=0.004}                # boxsize in kpc
+L=${boxsize:=0.1}                  # boxsize in kpc
 n_cells=${n_cells:=3}               # must match Scheduler:max_top_level_cells in params.yml
 nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override: 0 (spherical) or 1 (12 pixels)
 run_name=${run_name:=""}
@@ -26,13 +27,11 @@ fi
 if [ ! -e ICs_stromgren_clump.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    clump_radius_arg=""
-    if [ -n "$clump_radius_pc" ]; then
-        clump_radius_arg="--clump_radius_pc $clump_radius_pc"
-    fi
     python3 makeIC_clump.py --boxsize $L --rho $gas_density \
                 --mass $gas_particle_mass --star_mass $star_mass \
-                --density_factor $density_factor $clump_radius_arg \
+                --density_factor $density_factor \
+                --clump_distance_pc $clump_distance_pc \
+                --clump_radius_pc $clump_radius_pc \
                 --n_cells $n_cells --star_type $star_type \
             -o ICs_stromgren_clump.hdf5
 fi
