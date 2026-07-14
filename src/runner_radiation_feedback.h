@@ -162,8 +162,8 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
  * @brief Compute the angular (HEALPix) pixel a gas candidate falls into,
  * as seen from the star.
  *
- * Hard single-pixel assignment (no fractional/multi-pixel overlap), matching
- * Smith et al. 2021 -- see project notes for the rationale.
+ * Hard single-pixel assignment (no fractional/multi-pixel overlap): a
+ * candidate belongs to exactly one pixel, never split across several.
  *
  * @param dx Star-minus-particle position offset (dx = x_star - x_particle).
  * @param n_HII_pixels Number of active pixels for this star (1 = spherical,

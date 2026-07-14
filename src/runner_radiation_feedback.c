@@ -540,8 +540,7 @@ void runner_doself_stars_hii_ionization_feedback(
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     /* Skipping the insert once a pixel is exhausted stops a dead pixel's
-       candidates from crowding out other pixels' on retry -- see project
-       notes. */
+       candidates from crowding out other pixels' on retry. */
     const int pixel =
         runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
     if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)

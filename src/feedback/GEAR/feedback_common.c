@@ -562,8 +562,8 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 
   /* Case 1: Ionization is guaranteed */
   if (Delta_dot_N_ion <= feedback_get_star_ionization_rate(si, pixel)) {
-    /* No atomics: task locking + task-graph dependencies already serialize
-       every writer of these fields (see project notes). */
+    /* No atomics: task_type_stars_hii_ionization_feedback's cell locking
+       (src/task.c) already serializes every writer of these fields. */
     if (xpj->tracers_data.HII_region.is_ionized == 0) {
       xpj->tracers_data.HII_region.is_ionized = 1;
       timestep_sync_part(pj);
