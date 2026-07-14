@@ -104,6 +104,10 @@ GEARFeedback:
   HII_angular_nside:             0              # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical
                                                  # (disabled, one shared budget), 1 = 12 HEALPix pixels. Override on the
                                                  # command line with -P GEARFeedback:HII_angular_nside:1 -- see run.sh.
+  HII_deterministic_boundary_ionization: 0      # How to treat the one gas particle a star's remaining budget can't
+                                                 # fully ionize: 0 = probabilistic (weighted coin flip, unbiased in
+                                                 # expectation), 1 = deterministic (always ionize it). Override with
+                                                 # -P GEARFeedback:HII_deterministic_boundary_ionization:1.
 
   #Mechanical feedback
   maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)

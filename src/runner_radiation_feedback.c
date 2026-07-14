@@ -161,10 +161,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct unit_system *us = e->internal_units;
-  const struct cooling_function_data *cooling = e->cooling_func;
 
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
@@ -308,9 +304,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           const float r2 = ngb_buffer[k].r2;
 
           /* Do the ionization */
-          feedback_iact_HII_ionization(si, pj, xpj, r2, pixel, phys_const,
-                                       hydro_props, us, cosmo, cooling,
-                                       ti_begin);
+          feedback_iact_HII_ionization(si, pj, xpj, r2, pixel, e, ti_begin);
 
         } /* Loop over the sorted particles */
       }

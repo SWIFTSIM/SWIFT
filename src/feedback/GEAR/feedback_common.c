@@ -540,19 +540,21 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  * @param xpj The #xpart (gas) being ionized.
  * @param r2 Squared distance between star and gas.
  * @param pixel The angular pixel this gas particle was assigned to.
- * @param phys_const Physics constants.
- * @param hydro_props Hydrodynamics properties.
- * @param us Internal unit system.
- * @param cosmo Cosmology.
- * @param cooling Cooling function data.
+ * @param e The #engine.
  * @param ti_begin Integer time at the start of the step (for RNG).
  */
 __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
-    struct xpart *restrict xpj, float r2, int pixel,
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const integertime_t ti_begin) {
+    struct xpart *restrict xpj, float r2, int pixel, const struct engine *e,
+    const integertime_t ti_begin) {
+
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct unit_system *us = e->internal_units;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct cooling_function_data *cooling = e->cooling_func;
+  const int deterministic_boundary =
+      e->feedback_props->HII_deterministic_boundary_ionization;
 
   /* If already ionized (by another thread), just move on. */
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
@@ -578,16 +580,32 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
       si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
       si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
     }
-  } else {
+  } else if (deterministic_boundary) {
+    /* Deterministic mode: always ionize the boundary particle, letting the
+       pixel's budget go slightly negative (bounded by one particle's
+       ionization cost). */
+    if (xpj->tracers_data.HII_region.is_ionized == 0) {
+      xpj->tracers_data.HII_region.is_ionized = 1;
+      timestep_sync_part(pj);
 
-    /* If we cannot fully ionize, compute a probability to determine if
-       we fully ionize pj or not and draw the random number.  */
+      xpj->tracers_data.HII_region.star_id = si->id;
+
+      radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
+      si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
+      si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
+    }
+  } else {
+    /* Probabilistic mode: a weighted coin flip decides whether to fully
+       ionize pj. On a win, the full cost is consumed (more than what was
+       left, going slightly negative); on a loss, nothing is consumed, so
+       the budget survives intact to try the next, farther candidate. This
+       keeps the expected photon consumption equal to what's actually
+       available: proba*Delta_dot_N_ion + (1-proba)*0 = dot_N_ion. */
     const double dot_N_ion = feedback_get_star_ionization_rate(si, pixel);
     const float proba = dot_N_ion / Delta_dot_N_ion;
     const float random_number =
         random_unit_interval(si->id, ti_begin, random_number_HII_regions);
 
-    /* If we are lucky, do the ionization */
     if (random_number <= proba) {
       /* We won the roll! Claim the particle. */
       if (xpj->tracers_data.HII_region.is_ionized == 0) {
@@ -596,15 +614,12 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 
         xpj->tracers_data.HII_region.star_id = si->id;
 
-        /* The star is now empty of photons */
         radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
         si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
         si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
       }
-    } else {
-      /* We lost the roll. We still consume the remaining photons. */
-      radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
     }
+    /* Lost the roll: consume nothing, budget carries over. */
   } /* End of probability handling */
 }
 

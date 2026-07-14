@@ -27,6 +27,7 @@
 #define default_HII_region_min_density_Hpcm3 1.0
 #define default_HII_region_max_age_Myr 50.0
 #define default_HII_region_rebuild_time_Myr 0.5
+#define default_HII_deterministic_boundary_ionization 0
 
 /**
  * @brief The different subgrid radiation feedback processes GEAR models.
@@ -80,6 +81,12 @@ struct feedback_props {
   /*! Maximun age of star particle to trigger the HII region algorithm */
   float HII_region_max_age;
 
+  /*! How to treat the boundary gas particle a star's remaining photon
+   * budget cannot fully ionize: 0 = probabilistic (weighted coin flip,
+   * unbiased in expectation), 1 = deterministic (always ionize it,
+   * letting the budget go slightly negative). */
+  char HII_deterministic_boundary_ionization;
+
   /* ------------- Stellar winds properties ------------- */
 
   /*! Pre-supernova feedback energy effectively deposited */
@@ -129,9 +136,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   message("Photoionization                                            = %i",
           do_photoionization);
 
-  if (do_photoionization)
+  if (do_photoionization) {
     message("HII region minimal gas density (internal units)            = %g",
             feedback_props->HII_region_min_density);
+    message("HII boundary ionization mode                               = %s",
+            feedback_props->HII_deterministic_boundary_ionization
+                ? "deterministic"
+                : "probabilistic");
+  }
 
   message(
       "Radiation pressure                                         = %i",
@@ -279,6 +291,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->HII_region_rebuild_time = parser_get_opt_param_float(
         params, "GEARFeedback:HII_region_rebuild_time_Myr",
         default_HII_region_rebuild_time_Myr);
+
+    /* Read the boundary-particle ionization mode */
+    fp->HII_deterministic_boundary_ionization = parser_get_opt_param_int(
+        params, "GEARFeedback:HII_deterministic_boundary_ionization",
+        default_HII_deterministic_boundary_ionization);
 
     /* Convert to internal units */
     const double m_p_cgs = phys_const->const_proton_mass *
