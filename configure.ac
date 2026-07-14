@@ -1618,6 +1618,20 @@ if test "$enable_velociraptor_orphans" = "yes"; then
    AC_DEFINE([HAVE_VELOCIRAPTOR_ORPHANS], 1, [Orphan particles should be written out])
 fi
 
+# Check for healpix (may require cfitsio), independently of lightcone: the
+# GEAR subgrid radiation angular (HEALPix) HII splitting also needs it
+# (Stars:HII_angular_nside), and lightcone maps already needed it before.
+# This sets CHEALPIX_LIBS and CHEALPIX_CFLAGS and #defines HAVE_CHEALPIX.
+# It also adds --with-cfitsio/--with-chealpix flags in case either is
+# installed in a non-standard location.
+GV_FIND_LIBRARY([cfitsio], [CFITSIO], [cfitsio], [cfitsio], [ffclos])
+TMP_LIBS=${LIBS}
+LIBS="${CFITSIO_LIBS} ${LIBS}"
+GV_FIND_LIBRARY([chealpix], [CHEALPIX], [chealpix], [chealpix], [ang2vec])
+LIBS=${TMP_LIBS}
+have_chealpix=${USE_CHEALPIX}
+CHEALPIX_LIBS="${CHEALPIX_LIBS} ${CFITSIO_LIBS}"
+
 # Check if lightcone output is on.
 AC_ARG_ENABLE([lightcone],
    [AS_HELP_STRING([--enable-lightcone],
@@ -1627,17 +1641,6 @@ AC_ARG_ENABLE([lightcone],
    [enable_lightcone="no"]
 )
 if test "$enable_lightcone" = "yes"; then
-   # Check for healpix for lightcone maps. May require cfitsio
-   # This sets CHEALPIX_LIBS and CHEALPIX_CFLAGS and #defines HAVE_CHEALPIX.
-   # It also adds a --with-cfitsio flag in case cfitsio is installed in a
-   # different location from healpix.
-   GV_FIND_LIBRARY([cfitsio], [CFITSIO], [cfitsio], [cfitsio], [ffclos])
-   TMP_LIBS=${LIBS}
-   LIBS="${CFITSIO_LIBS} ${LIBS}"
-   GV_FIND_LIBRARY([chealpix], [CHEALPIX], [chealpix], [chealpix], [ang2vec])
-   LIBS=${TMP_LIBS}
-   have_chealpix=${USE_CHEALPIX}
-   CHEALPIX_LIBS="${CHEALPIX_LIBS} ${CFITSIO_LIBS}"
    AC_DEFINE([WITH_LIGHTCONE], 1, [Enable lightcone outputs])
    if test "$have_chealpix" != "yes"; then
       AC_MSG_ERROR([Lightcone output requires the HEALPix C API. Please configure with --with-chealpix.])
@@ -1646,8 +1649,6 @@ if test "$enable_lightcone" = "yes"; then
    if test "$have_gsl" != "yes"; then
       AC_MSG_ERROR([Lightcone output requires GSL. Please configure with --with-gsl.])
    fi
-else
-   have_chealpix="no"
 fi
 
 # Check for floating-point exception trapping support.
