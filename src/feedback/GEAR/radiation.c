@@ -104,14 +104,36 @@ radiation_get_part_rate_to_fully_ionize(
 }
 
 /**
+ * Set the #spart's ionizing photon rate, split evenly across the active
+ * angular pixels.
+ *
+ * @param sp The star.
+ * @param dot_N_ion_total The total ionizing photon rate for this star.
+ */
+__attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
+    struct spart *sp, double dot_N_ion_total) {
+
+  /* No angular splitting yet (Npix=1). Stars:HII_angular_nside wires this
+     up for real -- see project notes. */
+  sp->feedback_data.radiation.n_HII_pixels = 1;
+
+  const double dot_N_ion_per_pixel =
+      dot_N_ion_total / sp->feedback_data.radiation.n_HII_pixels;
+  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
+    sp->feedback_data.radiation.dot_N_ion_pix[p] = dot_N_ion_per_pixel;
+  }
+}
+
+/**
  * Consume the #spart ionizing photon budget.
  *
  * @param sp The star.
+ * @param pixel The angular pixel to consume from.
  * @param Delta_dot_N_ion The ionizing photon rate to remove.
  */
 __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
-    struct spart *sp, double Delta_dot_N_ion) {
-  sp->feedback_data.radiation.dot_N_ion -= Delta_dot_N_ion;
+    struct spart *sp, int pixel, double Delta_dot_N_ion) {
+  sp->feedback_data.radiation.dot_N_ion_pix[pixel] -= Delta_dot_N_ion;
   return;
 }
 

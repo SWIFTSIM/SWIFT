@@ -64,6 +64,10 @@ struct hii_neighbor {
   /*! Pointer to the gas particle extra data. */
   struct xpart *xp;
 
+  /*! Angular pixel this particle was assigned to (always 0 while angular
+      splitting is disabled). */
+  int pixel;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Pointer to the cell this particle belongs to */
   struct cell *c;
@@ -111,7 +115,7 @@ void runner_dopair_stars_hii_ionization_feedback(
  */
 __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
     struct hii_neighbor *buffer, int max_size, int *count_found, float r2,
-    struct part *p, struct xpart *xp, struct cell *c) {
+    struct part *p, struct xpart *xp, struct cell *c, int pixel) {
 
   /* Case A: Buffer is not yet full */
   if (*count_found < max_size) {
@@ -124,6 +128,7 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
     buffer[i + 1].r2 = r2;
     buffer[i + 1].p = p;
     buffer[i + 1].xp = xp;
+    buffer[i + 1].pixel = pixel;
 #ifdef SWIFT_DEBUG_CHECKS
     buffer[i + 1].c = c;
 #endif
@@ -141,6 +146,7 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
     buffer[i + 1].r2 = r2;
     buffer[i + 1].p = p;
     buffer[i + 1].xp = xp;
+    buffer[i + 1].pixel = pixel;
 #ifdef SWIFT_DEBUG_CHECKS
     buffer[i + 1].c = c;
 #endif

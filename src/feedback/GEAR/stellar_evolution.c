@@ -1226,18 +1226,19 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   sp->feedback_data.radiation.L_bol =
       radiation_get_individual_star_luminosity(sp->mass, us, phys_const);
 
-  /* For the ionizing band, get the number of photons produced. */
-  sp->feedback_data.radiation.dot_N_ion =
+  /* For the ionizing band, get the number of photons produced and split it
+     across the active angular pixels. */
+  const double dot_N_ion_total =
       radiation_get_individual_star_ionizing_photon_emission_rate_fit(
           sp->mass, us, phys_const);
+  radiation_set_ionizing_photon_rate(sp, dot_N_ion_total);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
       "[id=%lld, type=%d] mass = %e Msun, N_dot_ion = %e /s, L_bol = %e "
       "internal",
       sp->id, sp->star_type, sp->mass / phys_const->const_solar_mass,
-      sp->feedback_data.radiation.dot_N_ion *
-          units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
+      dot_N_ion_total * units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
       sp->feedback_data.radiation.L_bol);
 #endif
 
@@ -1387,9 +1388,11 @@ void stellar_evolution_compute_preSN_feedback_spart(
   sp->feedback_data.radiation.L_bol =
       L_bol * sp->sf_data.birth_mass / phys_const->const_solar_mass;
 
-  /* Convert to total ionizing emission rate */
-  sp->feedback_data.radiation.dot_N_ion =
+  /* Convert to total ionizing emission rate and split it across the
+     active angular pixels. */
+  const double dot_N_ion_total =
       dot_N_ion * sp->sf_data.birth_mass / phys_const->const_solar_mass;
+  radiation_set_ionizing_photon_rate(sp, dot_N_ion_total);
 
   /*****************************************/
   /* Stellar winds */

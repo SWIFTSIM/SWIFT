@@ -64,15 +64,16 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
 
 int feedback_is_HII_ionization_active(const struct spart *sp,
                                       const struct engine *e);
-double feedback_get_star_ionization_rate(const struct spart *sp);
+double feedback_get_star_ionization_rate(const struct spart *sp, int pixel);
+double feedback_get_star_ionization_rate_max(const struct spart *sp);
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
 void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
-    struct xpart *restrict xpj, float r2, const struct phys_const *phys_const,
-    const struct hydro_props *hydro_props, const struct unit_system *us,
-    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
-    const integertime_t ti_begin);
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const integertime_t ti_begin);
 
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,

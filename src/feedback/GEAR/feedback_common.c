@@ -290,7 +290,8 @@ void feedback_will_do_feedback(
   /* Do we need to do HII ionization feedback? */
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
-  const char has_enough_photons = feedback_get_star_ionization_rate(sp) > 0.0;
+  const char has_enough_photons =
+      feedback_get_star_ionization_rate_max(sp) > 0.0;
   const char is_HII_eligible =
       star_age_beg_step <= feedback_props->HII_region_max_age;
 
@@ -444,14 +445,32 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
 }
 
 /**
- * Get the #spart ionization photon emission rate.
+ * Get the #spart ionization photon emission rate for a given angular pixel.
  *
  * @param sp The star.
- * @return Ionizing photon rate.
+ * @param pixel The angular pixel.
+ * @return Ionizing photon rate remaining in that pixel.
  */
 __attribute__((always_inline)) INLINE double feedback_get_star_ionization_rate(
-    const struct spart *sp) {
-  return sp->feedback_data.radiation.dot_N_ion;
+    const struct spart *sp, int pixel) {
+  return sp->feedback_data.radiation.dot_N_ion_pix[pixel];
+}
+
+/**
+ * Get the largest remaining ionization photon rate across all of the
+ * #spart's active angular pixels. Used only for loop-termination/retry
+ * decisions -- one exhausted pixel doesn't mean the star is done.
+ *
+ * @param sp The star.
+ * @return Largest remaining ionizing photon rate over all active pixels.
+ */
+__attribute__((always_inline)) INLINE double
+feedback_get_star_ionization_rate_max(const struct spart *sp) {
+  double rate_max = 0.0;
+  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
+    rate_max = max(rate_max, sp->feedback_data.radiation.dot_N_ion_pix[p]);
+  }
+  return rate_max;
 }
 
 /**
@@ -520,6 +539,7 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  * @param pj The #part (gas) being ionized.
  * @param xpj The #xpart (gas) being ionized.
  * @param r2 Squared distance between star and gas.
+ * @param pixel The angular pixel this gas particle was assigned to.
  * @param phys_const Physics constants.
  * @param hydro_props Hydrodynamics properties.
  * @param us Internal unit system.
@@ -529,10 +549,10 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  */
 __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
-    struct xpart *restrict xpj, float r2, const struct phys_const *phys_const,
-    const struct hydro_props *hydro_props, const struct unit_system *us,
-    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
-    const integertime_t ti_begin) {
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const integertime_t ti_begin) {
 
   /* If already ionized (by another thread), just move on. */
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
@@ -541,7 +561,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
       phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
 
   /* Case 1: Ionization is guaranteed */
-  if (Delta_dot_N_ion <= feedback_get_star_ionization_rate(si)) {
+  if (Delta_dot_N_ion <= feedback_get_star_ionization_rate(si, pixel)) {
     /* No atomics: task locking + task-graph dependencies already serialize
        every writer of these fields (see project notes). */
     if (xpj->tracers_data.HII_region.is_ionized == 0) {
@@ -552,7 +572,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
       xpj->tracers_data.HII_region.star_id = si->id;
 
       /* Consume photons from the star */
-      radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+      radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
 
       /* Update HII region properties */
       si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
@@ -562,7 +582,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 
     /* If we cannot fully ionize, compute a probability to determine if
        we fully ionize pj or not and draw the random number.  */
-    const double dot_N_ion = feedback_get_star_ionization_rate(si);
+    const double dot_N_ion = feedback_get_star_ionization_rate(si, pixel);
     const float proba = dot_N_ion / Delta_dot_N_ion;
     const float random_number =
         random_unit_interval(si->id, ti_begin, random_number_HII_regions);
@@ -577,13 +597,13 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
         xpj->tracers_data.HII_region.star_id = si->id;
 
         /* The star is now empty of photons */
-        radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+        radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
         si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
         si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
       }
     } else {
       /* We lost the roll. We still consume the remaining photons. */
-      radiation_consume_ionizing_photons(si, Delta_dot_N_ion);
+      radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
     }
   } /* End of probability handling */
 }
@@ -645,6 +665,12 @@ void feedback_first_init_spart(struct spart *sp,
   sp->feedback_data.supernovae.mass_ejected = 0.0;
   sp->feedback_data.winds.energy_ejected = 0.0;
   sp->feedback_data.winds.mass_ejected = 0.0;
+
+  /* n_HII_pixels bounds the loop in feedback_get_star_ionization_rate_max();
+     set it before the first stellar_evolution call so a population star
+     that returns early (already past the IMF's alive range) never reads
+     it uninitialized. */
+  sp->feedback_data.radiation.n_HII_pixels = 1;
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;

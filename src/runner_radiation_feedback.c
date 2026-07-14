@@ -294,9 +294,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         /* Now let's ionize the gas particles! */
         for (int k = 0; k < count_found; k++) {
 
-          /* No more photons to consume */
-          if (feedback_get_star_ionization_rate(si) <= 0.0) {
-            break;
+          const int pixel = ngb_buffer[k].pixel;
+
+          /* This particle's pixel has no photons left; skip it (not
+             break -- other entries in the buffer may belong to a pixel
+             that still has budget). */
+          if (feedback_get_star_ionization_rate(si, pixel) <= 0.0) {
+            continue;
           }
 
           struct part *pj = ngb_buffer[k].p;
@@ -304,14 +308,15 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           const float r2 = ngb_buffer[k].r2;
 
           /* Do the ionization */
-          feedback_iact_HII_ionization(si, pj, xpj, r2, phys_const, hydro_props,
-                                       us, cosmo, cooling, ti_begin);
+          feedback_iact_HII_ionization(si, pj, xpj, r2, pixel, phys_const,
+                                       hydro_props, us, cosmo, cooling,
+                                       ti_begin);
 
         } /* Loop over the sorted particles */
       }
 
       /* Fully exhausted: nothing more to do this pass. */
-      if (feedback_get_star_ionization_rate(si) <= 0.0) break;
+      if (feedback_get_star_ionization_rate_max(si) <= 0.0) break;
 
       if (buffer_was_full) {
         /* Case 1: more candidates may exist within the SAME radius. */
@@ -349,7 +354,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       si->feedback_data.radiation.HII_region_last_rebuild = star_age_beg_step;
     }
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-    if (feedback_get_star_ionization_rate(si) <= 0.0) {
+    if (feedback_get_star_ionization_rate_max(si) <= 0.0) {
       message(
           "Star %lld has exhausted all its ionizing photons! r_hii = %e, "
           "num_retry_full_buffer = %d, num_radius_expansions = %d",
@@ -360,9 +365,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           "Star %lld has NOT exhausted all its ionizing photons! Remaining: "
           "%e, final_search_radius = %e, sp->h_hii = %e, "
           "num_retry_full_buffer = %d, num_radius_expansions = %d",
-          si->id, feedback_get_star_ionization_rate(si), dynamic_search_radius,
-          kernel_gamma * si->h_hii, num_retry_full_buffer,
-          num_radius_expansions);
+          si->id, feedback_get_star_ionization_rate_max(si),
+          dynamic_search_radius, kernel_gamma * si->h_hii,
+          num_retry_full_buffer, num_radius_expansions);
     }
 #endif
   } /* Loop over sparts */
@@ -534,8 +539,14 @@ void runner_doself_stars_hii_ionization_feedback(
     const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (r2 < r2_max)
-      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c);
+    /* No angular splitting yet (Npix=1); Phase 2 assigns this from dx via
+       HEALPix. Skipping the insert once a pixel is exhausted stops a dead
+       pixel's candidates from crowding out other pixels' on retry -- see
+       project notes. */
+    const int pixel = 0;
+    if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
+      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c,
+                               pixel);
   } /* Loop in current cell */
 }
 
@@ -618,9 +629,12 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      if (r2 < r2_max)
-        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj,
-                                 cj);
+      /* No angular splitting yet (Npix=1); see runner_doself_stars_hii_
+         ionization_feedback() for the full rationale. */
+      const int pixel = 0;
+      if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
+        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj,
+                                 pixel);
     } /* Loop in current cell */
   }
 }
@@ -725,9 +739,12 @@ void runner_dopair_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      if (r2 < r2_max)
-        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj,
-                                 cj);
+      /* No angular splitting yet (Npix=1); see runner_doself_stars_hii_
+         ionization_feedback() for the full rationale. */
+      const int pixel = 0;
+      if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
+        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj,
+                                 pixel);
     }
   } else {
     /* Star is on the 'right' relative to the axis direction.
@@ -754,9 +771,12 @@ void runner_dopair_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      if (r2 < r2_max)
-        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj,
-                                 cj);
+      /* No angular splitting yet (Npix=1); see runner_doself_stars_hii_
+         ionization_feedback() for the full rationale. */
+      const int pixel = 0;
+      if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
+        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj,
+                                 pixel);
     }
   }
 }

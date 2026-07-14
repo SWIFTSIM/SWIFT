@@ -51,7 +51,9 @@ void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj);
 void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj);
 char radiation_is_part_tagged_as_ionized(const struct part *p,
                                          const struct xpart *xpj);
-void radiation_consume_ionizing_photons(struct spart *sp,
+void radiation_set_ionizing_photon_rate(struct spart *sp,
+                                        double dot_N_ion_total);
+void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
                                         double Delta_dot_N_ion);
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);
 
