@@ -1000,6 +1000,39 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
 }
 
 /**
+ * @brief Set up the frontier buffers for BFS splitting.
+ *
+ * @param s The #space.
+ * @param this_level Pointer to the frontier for the current BFS level.
+ * @param next_level Pointer to the frontier for the next BFS level.
+ * @param local_frontiers Pointer to the thread-local frontier buffers.
+ * @param nr_threads Number of threads in the #threadpool.
+ */
+static void space_split_init_frontiers(
+    struct space_split_frontier *this_level,
+    struct space_split_frontier *next_level,
+    struct space_split_frontier **local_frontiers, void *top_mapper_data[2],
+    void *frontier_mapper_data[2], const int nr_threads) {
+
+  /* Two frontier buffers, swapped each level. One holds the cells of the
+   * current frontier level while the other accumulates their surviving
+   * children for the next level.  */
+  *this_level = (struct space_split_frontier){NULL, 0, 0};
+  *next_level = (struct space_split_frontier){NULL, 0, 0};
+  *local_frontiers = (struct space_split_frontier *)swift_malloc(
+      "split_frontier", sizeof(struct space_split_frontier) * nr_threads);
+
+  /* Make sure the thread-local frontier buffers are safe and zeroed. */
+  if (*local_frontiers == NULL)
+    error("Failed to allocate thread-local BFS frontiers.");
+  bzero(*local_frontiers, sizeof(struct space_split_frontier) * nr_threads);
+
+  /* Prepare for the #threadpool mappers. */
+  top_mapper_data[1] = *local_frontiers;
+  frontier_mapper_data[1] = *local_frontiers;
+}
+
+/**
  * @brief Split particles between cells of a hierarchy.
  *
  * BFS-parallel implementation with limited DFS per frontier entry:
@@ -1043,25 +1076,18 @@ void space_split(struct space *s, int verbose) {
     const int nr_threads = tp->num_threads;
     const ticks setup_tic = getticks();
 
-    /* Two frontier buffers, swapped each level. One holds the cells of the
-     * current frontier level while the other accumulates their surviving
-     * children for the next level. The top-level round bypasses the frontier
-     * entirely and runs directly over the local top cells. */
-    struct space_split_frontier this_level_frontier = {NULL, 0, 0};
-    struct space_split_frontier next_level_frontier = {NULL, 0, 0};
-    struct space_split_frontier *local_frontiers =
-        (struct space_split_frontier *)swift_malloc(
-            "split_frontier", sizeof(struct space_split_frontier) * nr_threads);
-    struct space_split_frontier *this_level = &this_level_frontier;
-    struct space_split_frontier *next_level = &next_level_frontier;
+    /* Prepare the frontier buffers for the BFS split phase. */
+    struct space_split_frontier this_level_storage;
+    struct space_split_frontier next_level_storage;
+    struct space_split_frontier *local_frontiers = NULL;
+    struct space_split_frontier *this_level = &this_level_storage;
+    struct space_split_frontier *next_level = &next_level_storage;
+    void *top_mapper_data[2] = {s, NULL};
+    void *frontier_mapper_data[2] = {s, NULL};
+    space_split_init_frontiers(this_level, next_level, &local_frontiers,
+                               top_mapper_data, frontier_mapper_data,
+                               nr_threads);
 
-    if (local_frontiers == NULL)
-      error("Failed to allocate thread-local BFS frontiers.");
-
-    bzero(local_frontiers, sizeof(struct space_split_frontier) * nr_threads);
-
-    void *top_mapper_data[2] = {s, local_frontiers};
-    void *frontier_mapper_data[2] = {s, local_frontiers};
     const ticks setup_toc = getticks();
 
     /* Run the top-level round exactly like master, but append deferred
@@ -1103,15 +1129,15 @@ void space_split(struct space *s, int verbose) {
     /* Release the transient top-level split buffers and the frontier
      * storage. */
     const ticks teardown_tic = getticks();
-    if (this_level_frontier.cells != NULL)
-      swift_free("split_frontier", this_level_frontier.cells);
-    if (next_level_frontier.cells != NULL)
-      swift_free("split_frontier", next_level_frontier.cells);
+    if (this_level->cells != NULL)
+      swift_free("split_frontier", this_level->cells);
+    if (next_level->cells != NULL)
+      swift_free("split_frontier", next_level->cells);
     for (int tid = 0; tid < nr_threads; tid++) {
       if (local_frontiers[tid].cells != NULL)
-        swift_free("split_frontier_local", local_frontiers[tid].cells);
+        swift_free("split_frontier", local_frontiers[tid].cells);
     }
-    swift_free("split_frontier_local", local_frontiers);
+    swift_free("split_frontier", local_frontiers);
     const ticks teardown_toc = getticks();
 
     /* Aggregation phase: walk each top tree from leaves up to combine
