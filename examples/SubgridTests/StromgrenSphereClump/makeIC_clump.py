@@ -38,34 +38,77 @@ def parse_options():
     usage = "usage: %prog [options] file"
     parser = argparse.ArgumentParser(description=usage)
 
-    parser.add_argument("--rho", type=float, default=100,
-                        help="Diffuse background gas density in atom/cm3")
-    parser.add_argument("--mass", type=float, default=0.001,
-                        help="Gas particle mass in solar mass (diffuse and clump)")
-    parser.add_argument("--boxsize", type=float, default=0.004,
-                        help="Boxsize in kpc")
-    parser.add_argument("--star_mass", type=float, default=29.7,
-                        help="Mass of the star in M_sun")
-    parser.add_argument("--density_factor", type=float, default=100.0,
-                        help="Clump density, as a multiple of --rho. Set to "
-                             "1 for a clump-free control run.")
-    parser.add_argument("--clump_distance_pc", type=float, default=0.35,
-                        help="Distance from the star to the clump center, in parsec")
-    parser.add_argument("--clump_halfangle_deg", type=float, default=20.0,
-                        help="Angular half-size of the clump as seen from the "
-                             "star (degrees); sets the clump radius unless "
-                             "--clump_radius_pc is given")
-    parser.add_argument("--clump_radius_pc", type=float, default=None,
-                        help="Clump radius in parsec, overriding "
-                             "--clump_halfangle_deg -- use to vary the "
-                             "clump's size at fixed distance")
-    parser.add_argument("--n_cells", type=int, default=3,
-                        help="Scheduler:max_top_level_cells this IC is meant "
-                             "to be run with")
-    parser.add_argument("--star_type", type=str, default="single_star",
-                        choices=["single_star", "continuous_IMF", "SSP"])
-    parser.add_argument("-o", dest="outputfilename", type=str,
-                        default="ICs_stromgren_clump.hdf5")
+    parser.add_argument(
+        "--rho",
+        type=float,
+        default=100,
+        help="Diffuse background gas density in atom/cm3",
+    )
+    parser.add_argument(
+        "--mass",
+        type=float,
+        default=0.001,
+        help="Gas particle mass in solar mass (diffuse and clump)",
+    )
+    parser.add_argument("--boxsize", type=float, default=0.004, help="Boxsize in kpc")
+    parser.add_argument(
+        "--star_mass", type=float, default=29.7, help="Mass of the star in M_sun"
+    )
+    parser.add_argument(
+        "--density_factor",
+        type=float,
+        default=100.0,
+        help="Clump density, as a multiple of --rho. Set to "
+        "1 for a clump-free control run.",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=10.0,
+        help="Diffuse background temperature in K. The clump "
+        "is set to temperature/density_factor so both "
+        "populations start in pressure equilibrium "
+        "(n*T equal on both sides) -- must match "
+        "SPH:initial_temperature: 0 in params.yml, or "
+        "that parameter overwrites these values.",
+    )
+    parser.add_argument(
+        "--clump_distance_pc",
+        type=float,
+        default=0.35,
+        help="Distance from the star to the clump center, in parsec",
+    )
+    parser.add_argument(
+        "--clump_halfangle_deg",
+        type=float,
+        default=20.0,
+        help="Angular half-size of the clump as seen from the "
+        "star (degrees); sets the clump radius unless "
+        "--clump_radius_pc is given",
+    )
+    parser.add_argument(
+        "--clump_radius_pc",
+        type=float,
+        default=None,
+        help="Clump radius in parsec, overriding "
+        "--clump_halfangle_deg -- use to vary the "
+        "clump's size at fixed distance",
+    )
+    parser.add_argument(
+        "--n_cells",
+        type=int,
+        default=3,
+        help="Scheduler:max_top_level_cells this IC is meant " "to be run with",
+    )
+    parser.add_argument(
+        "--star_type",
+        type=str,
+        default="single_star",
+        choices=["single_star", "continuous_IMF", "SSP"],
+    )
+    parser.add_argument(
+        "-o", dest="outputfilename", type=str, default="ICs_stromgren_clump.hdf5"
+    )
 
     return parser.parse_args()
 
@@ -88,43 +131,60 @@ def pick_clump_geometry(opt):
         R_clump = r_clump * np.tan(halfangle)
     V_clump = (4.0 / 3.0) * np.pi * R_clump**3
 
-    clump_mass = (opt.density_factor * opt.rho / units.cm**3
-                  * constants.m_p * V_clump).to(units.Msun)
-    demand_fraction = (clump_mass / (MEASURED_FRONT_IONIZED_MASS_MSUN * units.Msun)).decompose()
+    clump_mass = (
+        opt.density_factor * opt.rho / units.cm**3 * constants.m_p * V_clump
+    ).to(units.Msun)
+    demand_fraction = (
+        clump_mass / (MEASURED_FRONT_IONIZED_MASS_MSUN * units.Msun)
+    ).decompose()
 
     print("--- Empirically-calibrated clump sizing ---")
     print(f"Measured front reach (reference)      : {MEASURED_FRONT_REACH_PC} pc")
-    print(f"Measured front ionized mass (reference): {MEASURED_FRONT_IONIZED_MASS_MSUN} Msun")
+    print(
+        f"Measured front ionized mass (reference): {MEASURED_FRONT_IONIZED_MASS_MSUN} Msun"
+    )
     print(f"Clump center distance from star        : {r_clump.to(units.pc):.4g}")
     print(f"Clump radius                           : {R_clump.to(units.pc):.4g}")
     print(f"Clump implied half-angle from star      : {np.degrees(halfangle):.4g} deg")
-    print(f"Clump density                          : {opt.density_factor * opt.rho:.4g} atom/cm3")
+    print(
+        f"Clump density                          : {opt.density_factor * opt.rho:.4g} atom/cm3"
+    )
     print(f"Clump mass                             : {clump_mass:.4g}")
     print(f"Clump mass / front ionized mass         : {demand_fraction:.2%}")
     if np.degrees(halfangle) > 29.0:
-        print("  WARNING: clump half-angle exceeds nside=1 pixel 4's ~29 "
-              "degree inscribed-cap margin -- it straddles neighbouring "
-              "pixels, weakening the clean single-pixel signal. Decrease "
-              "--clump_radius_pc / --clump_halfangle_deg or increase "
-              "--clump_distance_pc.")
+        print(
+            "  WARNING: clump half-angle exceeds nside=1 pixel 4's ~29 "
+            "degree inscribed-cap margin -- it straddles neighbouring "
+            "pixels, weakening the clean single-pixel signal. Decrease "
+            "--clump_radius_pc / --clump_halfangle_deg or increase "
+            "--clump_distance_pc."
+        )
     if opt.clump_distance_pc + R_clump.to(units.pc).value > MEASURED_FRONT_REACH_PC:
-        print("  WARNING: clump extends past the measured front reach -- it "
-              "may never be fully reached by the ionization search. Decrease "
-              "--clump_distance_pc, --clump_radius_pc, or --clump_halfangle_deg.")
+        print(
+            "  WARNING: clump extends past the measured front reach -- it "
+            "may never be fully reached by the ionization search. Decrease "
+            "--clump_distance_pc, --clump_radius_pc, or --clump_halfangle_deg."
+        )
     if demand_fraction < 0.1:
-        print("  WARNING: clump mass is small relative to the front's total "
-              "budget -- nside=0 vs nside=1 may not show a clearly "
-              "distinguishable signal. Increase --density_factor.")
+        print(
+            "  WARNING: clump mass is small relative to the front's total "
+            "budget -- nside=0 vs nside=1 may not show a clearly "
+            "distinguishable signal. Increase --density_factor."
+        )
     if demand_fraction > 0.8:
-        print("  WARNING: clump mass is very large relative to the front's "
-              "total budget -- the clump may starve the diffuse gas almost "
-              "completely even at nside=1. Decrease --density_factor.")
+        print(
+            "  WARNING: clump mass is very large relative to the front's "
+            "total budget -- the clump may starve the diffuse gas almost "
+            "completely even at nside=1. Decrease --density_factor."
+        )
 
     half_width = (opt.boxsize / 2.0) * units.kpc
     if (r_clump + R_clump) > 0.5 * half_width:
-        print("  WARNING: clump extends past half the box half-width -- "
-              "risks periodic self-interaction or exceeding "
-              "Stars:max_HII_search_radius.")
+        print(
+            "  WARNING: clump extends past half the box half-width -- "
+            "risks periodic self-interaction or exceeding "
+            "Stars:max_HII_search_radius."
+        )
 
     return r_clump.to(units.kpc).value, R_clump.to(units.kpc).value
 
@@ -145,16 +205,16 @@ np.random.seed(1)
 
 r_clump_kpc, R_clump_kpc = pick_clump_geometry(opt)
 
-rho = opt.rho * constants.m_p / units.cm ** 3
+rho = opt.rho * constants.m_p / units.cm**3
 m = opt.mass * units.Msun
 
 L = opt.boxsize * units.kpc
-M_box = rho * L ** 3
+M_box = rho * L**3
 N_diffuse_target = int(np.ceil((M_box / m).to(units.dimensionless_unscaled).value))
 
 m_code = m.to(UnitMass).value
 L_code = L.to(UnitLength).value
-rho_code = rho.to(UnitMass / UnitLength ** 3).value
+rho_code = rho.to(UnitMass / UnitLength**3).value
 
 star_pos = np.array([L_code / 2.0, L_code / 2.0, L_code / 2.0])
 # +x is HEALPix nside=1 pixel 4's center direction (see README).
@@ -173,15 +233,19 @@ keep = d_to_clump > R_clump_code
 pos_diffuse = pos_diffuse[keep]
 N_diffuse = pos_diffuse.shape[0]
 
-print(f"Diffuse background particles (after clump carve-out): {N_diffuse} "
-      f"(target before carve-out: {N_diffuse_target})")
+print(
+    f"Diffuse background particles (after clump carve-out): {N_diffuse} "
+    f"(target before carve-out: {N_diffuse_target})"
+)
 
 #####################
 # Dense clump, uniform within a sphere of radius R_clump around clump_center.
 #####################
 mass_clump_code = (
-    opt.density_factor * rho * (4.0 / 3.0) * np.pi * (R_clump_kpc * units.kpc) ** 3
-).to(UnitMass).value
+    (opt.density_factor * rho * (4.0 / 3.0) * np.pi * (R_clump_kpc * units.kpc) ** 3)
+    .to(UnitMass)
+    .value
+)
 N_clump = int(np.ceil(mass_clump_code / m_code))
 
 # Uniform sampling within a sphere via rejection (fast enough at this N).
@@ -193,32 +257,64 @@ while n_filled < N_clump:
     r2 = np.sum(cand**2, axis=1)
     cand = cand[r2 <= R_clump_code**2]
     n_take = min(cand.shape[0], N_clump - n_filled)
-    pos_clump[n_filled:n_filled + n_take] = cand[:n_take]
+    pos_clump[n_filled : n_filled + n_take] = cand[:n_take]
     n_filled += n_take
 pos_clump += clump_center
 
 print(f"Clump particles                                       : {N_clump}")
 
 #####################
-# Combine the two gas populations.
+# Combine the two gas populations. Internal energy is set per-population so
+# the clump starts in pressure equilibrium (n*T equal) with the diffuse
+# background, not at the same temperature -- see u_from_temperature().
 #####################
+UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
+
+
+def u_from_temperature(T_kelvin, X_H=0.752, gamma=5.0 / 3.0):
+    """u = k_B*T / (m_p*(gamma-1)*mu) in code units; mu for neutral gas
+    (T stays well below the 1e4 K ionization threshold for both
+    populations here)."""
+    mu = 4.0 / (1.0 + 3.0 * X_H)
+    u_cgs = (constants.k_B * (T_kelvin * units.K)) / (
+        constants.m_p * (gamma - 1.0) * mu
+    )
+    return (u_cgs / UnitVelocity**2).decompose().value
+
+
+u_diffuse_code = u_from_temperature(opt.temperature)
+u_clump_code = u_from_temperature(opt.temperature / opt.density_factor)
+print(
+    f"Diffuse temperature: {opt.temperature:.4g} K, clump temperature: "
+    f"{opt.temperature / opt.density_factor:.4g} K (pressure-equilibrium pair)"
+)
+
 N = N_diffuse + N_clump
 pos = np.vstack([pos_diffuse, pos_clump])
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m_code
-u_therm = np.ones(N)
+u_therm = np.concatenate(
+    [
+        np.ones(N_diffuse) * u_diffuse_code,
+        np.ones(N_clump) * u_clump_code,
+    ]
+)
 ids = np.arange(N)
 
 h_diffuse = 3.0 * L_code / N_diffuse_target ** (1.0 / 3.0)
 h_clump = 3.0 * (2.0 * R_clump_code) / max(N_clump, 1) ** (1.0 / 3.0)
-h = np.concatenate([
-    np.ones(N_diffuse) * h_diffuse,
-    np.ones(N_clump) * h_clump,
-])
-rho_arr = np.concatenate([
-    np.ones(N_diffuse) * rho_code,
-    np.ones(N_clump) * opt.density_factor * rho_code,
-])
+h = np.concatenate(
+    [
+        np.ones(N_diffuse) * h_diffuse,
+        np.ones(N_clump) * h_clump,
+    ]
+)
+rho_arr = np.concatenate(
+    [
+        np.ones(N_diffuse) * rho_code,
+        np.ones(N_clump) * opt.density_factor * rho_code,
+    ]
+)
 
 print(f"Total gas particles                                   : {N}")
 print(f"Diffuse smoothing length guess (code unit)            : {h_diffuse:e}")
@@ -242,8 +338,10 @@ star_birth_time = np.zeros(N_star)
 
 print(f"Star position (code unit)                             : {pos_star[0]}")
 print(f"Clump center (code unit)                              : {clump_center}")
-print(f"Clump-star direction                                  : "
-      f"{(clump_center - pos_star[0]) / np.linalg.norm(clump_center - pos_star[0])}")
+print(
+    f"Clump-star direction                                  : "
+    f"{(clump_center - pos_star[0]) / np.linalg.norm(clump_center - pos_star[0])}"
+)
 
 fileOutput = h5py.File(opt.outputfilename, "w")
 print("{} saved.".format(opt.outputfilename))

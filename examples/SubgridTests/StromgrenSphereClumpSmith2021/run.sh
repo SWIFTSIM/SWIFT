@@ -5,9 +5,11 @@ set -e
 
 n_threads=${n_threads:=8}          # Number of threads to use
 gas_density=${gas_density:=100}    # Diffuse background gas density in atom/cm^3
-gas_particle_mass=${gas_mass:=20.0} # Mass of the gas particles (diffuse and clump);
-                                     # matches Smith et al. 2021's own gas mass resolution
-star_mass=${star_mass:=27.0}       # Mass of the star (Q_H ~ 1e49/s)
+gas_particle_mass=${gas_mass:=4.0} # Mass of the gas particles (diffuse and clump);
+                                    # Hu et al. 2017's coarsest convergence-test resolution.
+                                    # See README for the finer levels.
+star_mass=${star_mass:=19.2}       # Mass of each source in M_sun (Q_H ~ 2.5e48/s)
+n_stars=${n_stars:=4}               # Number of co-located sources at the box center
 star_type=${star_type:="single_star"}
 density_factor=${density_factor:=100.0} # Clump density, as a multiple of gas_density
 clump_distance_pc=${clump_distance_pc:=20.0} # Clump center distance from the star, in parsec
@@ -29,6 +31,7 @@ then
     echo "Generating initial conditions to run the example..."
     python3 makeIC_clump.py --boxsize $L --rho $gas_density \
                 --mass $gas_particle_mass --star_mass $star_mass \
+                --n_stars $n_stars \
                 --density_factor $density_factor \
                 --clump_distance_pc $clump_distance_pc \
                 --clump_radius_pc $clump_radius_pc \

@@ -25,6 +25,7 @@ Usage:
     python3 plot_temperature_hii.py                    # last snapshot in snap/
     python3 plot_temperature_hii.py -s snap/snapshot -i 20
 """
+
 import argparse
 import glob
 
@@ -137,12 +138,18 @@ def make_temperature_projection(data, image_resolution):
     data.gas.mass_weighted_temperature = data.gas.masses * data.gas.temperatures
 
     numerator = project_gas(
-        data, resolution=image_resolution, project="mass_weighted_temperature",
-        parallel=True, periodic=True,
+        data,
+        resolution=image_resolution,
+        project="mass_weighted_temperature",
+        parallel=True,
+        periodic=True,
     )
     denominator = project_gas(
-        data, resolution=image_resolution, project="masses",
-        parallel=True, periodic=True,
+        data,
+        resolution=image_resolution,
+        project="masses",
+        parallel=True,
+        periodic=True,
     )
     with np.errstate(invalid="ignore", divide="ignore"):
         T_map = (numerator / denominator).to(unyt.K)
@@ -159,12 +166,20 @@ def make_temperature_slice(data, image_resolution, z_slice):
     data.gas.mass_weighted_temperature = data.gas.masses * data.gas.temperatures
 
     numerator = slice_gas(
-        data, resolution=image_resolution, z_slice=z_slice,
-        project="mass_weighted_temperature", parallel=True, periodic=True,
+        data,
+        resolution=image_resolution,
+        z_slice=z_slice,
+        project="mass_weighted_temperature",
+        parallel=True,
+        periodic=True,
     )
     denominator = slice_gas(
-        data, resolution=image_resolution, z_slice=z_slice,
-        project="masses", parallel=True, periodic=True,
+        data,
+        resolution=image_resolution,
+        z_slice=z_slice,
+        project="masses",
+        parallel=True,
+        periodic=True,
     )
     with np.errstate(invalid="ignore", divide="ignore"):
         T_map = (numerator / denominator).to(unyt.K)
@@ -197,16 +212,25 @@ def plot_map(T_map, x_edges, y_edges, star_pos, r_hii, title, out_name):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "-s", "--stub", type=str, default="snap/snapshot",
+        "-s",
+        "--stub",
+        type=str,
+        default="snap/snapshot",
         help="Root of the snapshot filenames, without the index/extension "
-             "(default: snap/snapshot).",
+        "(default: snap/snapshot).",
     )
     parser.add_argument(
-        "-i", "--index", type=int, default=None,
+        "-i",
+        "--index",
+        type=int,
+        default=None,
         help="Snapshot index to plot. Default: the last snapshot found.",
     )
     parser.add_argument(
-        "-r", "--resolution", type=int, default=image_resolution,
+        "-r",
+        "--resolution",
+        type=int,
+        default=image_resolution,
         help=f"Image resolution (default: {image_resolution}).",
     )
     args = parser.parse_args()
@@ -226,7 +250,11 @@ def main():
     data_proj = sw.load(filename)
     T_proj, x_edges, y_edges = make_temperature_projection(data_proj, args.resolution)
     plot_map(
-        T_proj, x_edges, y_edges, star_pos, r_hii,
+        T_proj,
+        x_edges,
+        y_edges,
+        star_pos,
+        r_hii,
         title=f"Mass-weighted temperature projection, t={t_myr:.2f} Myr",
         out_name=f"temperature_projection_{suffix}.png",
     )
@@ -235,16 +263,21 @@ def main():
     # there is no star).
     data_slice = sw.load(filename)
     z_slice = (
-        star_pos[2] * unyt.kpc if star_pos is not None
+        star_pos[2] * unyt.kpc
+        if star_pos is not None
         else 0.5 * data_slice.metadata.boxsize[2]
     )
     T_slice, x_edges, y_edges = make_temperature_slice(
         data_slice, args.resolution, z_slice
     )
     plot_map(
-        T_slice, x_edges, y_edges, star_pos, r_hii,
+        T_slice,
+        x_edges,
+        y_edges,
+        star_pos,
+        r_hii,
         title=f"Mass-weighted temperature slice (z={float(z_slice.to('kpc').value if hasattr(z_slice, 'to') else z_slice):.4f} kpc), "
-              f"t={t_myr:.2f} Myr",
+        f"t={t_myr:.2f} Myr",
         out_name=f"temperature_slice_{suffix}.png",
     )
 

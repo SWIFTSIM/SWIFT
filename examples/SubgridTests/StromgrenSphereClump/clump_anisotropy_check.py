@@ -37,6 +37,7 @@ Usage:
         --nside0-snapshot nside0/snap/snapshot_0020.hdf5 \
         --nside1-snapshot nside1/snap/snapshot_0020.hdf5
 """
+
 import argparse
 
 import numpy as np
@@ -100,16 +101,16 @@ def main():
         nargs=3,
         default=[1.0, 0.0, 0.0],
         help="Unit direction from the star to the clump (default: +x, "
-             "matching makeIC_clump.py's placement at HEALPix nside=1 "
-             "pixel 4's center).",
+        "matching makeIC_clump.py's placement at HEALPix nside=1 "
+        "pixel 4's center).",
     )
     parser.add_argument(
         "--pixel-halfangle",
         type=float,
         default=29.0,
         help="Half-angle (degrees) defining the 'clump pixel' bucket. "
-             "Default 29 matches nside=1 pixel 4's inscribed-cap radius "
-             "around its center direction.",
+        "Default 29 matches nside=1 pixel 4's inscribed-cap radius "
+        "around its center direction.",
     )
     args = parser.parse_args()
 

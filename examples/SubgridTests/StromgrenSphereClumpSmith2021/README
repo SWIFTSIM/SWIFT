@@ -1,15 +1,55 @@
 # Intro
-A literal reproduction of Smith et al. 2021 (MNRAS 506, 3882), Figure 2: a single star in a uniform 100 cm^-3 background, with a 10 pc-radius, 10^4 cm^-3 clump centered 20 pc away along +x (HEALPix nside=1 pixel 4's center direction). Their test uses 4 sources totalling Q_H ~ 1e49 s^-1 "equivalent to a typical O-type star"; here a single 27 Msun star (Q_H ~ 1.04e49 s^-1) stands in for that combined source.
+A reproduction of Smith et al. 2021 (MNRAS 506, 3882), Figure 2: four
+co-located ionizing sources in a uniform 100 cm^-3 background, with a
+10 pc-radius, 10^4 cm^-3 clump centered 20 pc away along +x (HEALPix
+nside=1 pixel 4's center direction). Each source is 19.2 Msun
+(Q_H ~ 2.5e48 s^-1), matching the paper's 4 sources totalling
+Q_H ~ 1e49 s^-1 "equivalent to a typical O-type star".
 
-See `../StromgrenSphereClump/` for the sibling example that instead calibrates clump placement against this code's own measured (not classical) ionization front reach -- useful when reproducing a specific paper's absolute scale isn't the goal.
+See `../StromgrenSphereClump/` for the sibling example that instead
+calibrates clump placement against this code's own measured (not
+classical) ionization front reach -- useful when reproducing a specific
+paper's absolute scale isn't the goal.
 
-Density values (100 / 1e4 cm^-3), clump geometry (10 pc radius at 20 pc), gas mass resolution (20 Msun), and `HII_region_rebuild_time_Myr=0.1` all come directly from the paper. They report that a slower rebuild cadence causes the D-type expansion to stall and the region to be severely underestimated in size -- this is a likely reason the sibling example (which defaults to 0.5 Myr) initially showed almost no nside=0-vs-nside=1 signal at these same densities.
+Density values (100 / 1e4 cm^-3), clump geometry (10 pc radius at 20 pc),
+and `HII_region_rebuild_time_Myr=0.1` come directly from the paper. Gas
+mass resolution follows Hu et al. 2017's convergence-test levels instead
+of the paper's own 20 Msun (see Resolution below) since 20 Msun produces
+no ionization at all with this code's algorithm.
+
+The diffuse background and clump are set to different temperatures in
+pressure equilibrium (`n*T` equal on both sides) by `makeIC_clump.py`'s
+`--temperature` (background 1000 K by default, matching the paper).
+`SPH:initial_temperature: 0` in params.yml is required for this --
+otherwise it overwrites the per-particle IC values.
 
 Box size (0.1 kpc / 100 pc) and `Stars:max_HII_search_radius` (45 pc) aren't stated explicitly in the paper for this test; chosen here to comfortably contain the clump (30 pc from the star) and its D-type expansion by t=8 Myr (the time of their Figure 2 snapshot) while staying under the box half-width.
 
+## Resolution
+Gas particle mass defaults to 4 Msun -- the coarsest of the four convergence-test resolutions in Hu et al. 2017 (Appendix A): 4, 0.5, 0.0625, 0.0078125 Msun. At this box size and background density, those correspond to roughly:
+
+| mass [Msun] | diffuse particles | clump particles |      total     |
+|-------------|-------------------|-----------------|----------------|
+| 4.0         | 618k              | 259k            | 877k (default) |
+| 0.5         | 4.9M              | 2.1M            | 7.0M           |
+| 0.0625      | 39.5M             | 16.6M           | 56.1M          |
+| 0.0078125   | 316.3M            | 132.5M          | 448.8M         |
+
+At the default mass=4, the photon budget cannot afford to ionize even a
+single gas particle at this density, so the run produces **zero
+ionization** over the full 8 Myr regardless of `nside`. A finer mass is
+required to see any HII region form. Generate ICs for the finer levels
+with:
+```
+python3 makeIC_clump.py --mass 0.5       -o ICs_stromgren_clump.hdf5
+python3 makeIC_clump.py --mass 0.0625    -o ICs_stromgren_clump.hdf5
+python3 makeIC_clump.py --mass 0.0078125 -o ICs_stromgren_clump.hdf5
+```
+or `gas_mass=0.5 ./run.sh` etc. The two finer levels are cluster-scale runs, not intended to run on a laptop/workstation.
+
 # Configure
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix
 ```
 
 ```
@@ -17,9 +57,10 @@ make -j
 ```
 
 # Run
-`nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh` / `run_name=nside1 ./run.sh` to keep both outputs) reproduce the top/bottom panels of Figure 2. At ~175k particles and a 0.1 Myr rebuild cadence, this is a heavier run than `../StromgrenSphereClump/`.
+`nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh` / `run_name=nside1 ./run.sh` to keep both outputs) run the geometry from Figure 2. At the default mass=4, this does *not* yet reproduce the panels (no ionization occurs -- see Resolution above); a finer mass is needed for that.
 
 # Checking the redistribution effect and plotting
+
 Same tools as `../StromgrenSphereClump/`:
 ```
 python3 clump_anisotropy_check.py --nside0-snapshot nside0/snap/snapshot_0040.hdf5 --nside1-snapshot nside1/snap/snapshot_0040.hdf5

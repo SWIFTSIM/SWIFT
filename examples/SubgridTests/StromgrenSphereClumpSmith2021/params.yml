@@ -60,7 +60,10 @@ SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 57Ngbs with the Wendland C2 kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   1
-  initial_temperature:   1000     # Matches Smith et al. 2021's initial background temperature.
+  initial_temperature:   0        # 0 = use the per-particle InternalEnergy from the IC file rather
+                                   # than overwriting it uniformly; the diffuse gas and the clump are
+                                   # set to different temperatures in pressure equilibrium by
+                                   # makeIC_clump.py's --temperature (background 1000 K by default).
 
 # Cooling with Grackle 3.0
 GrackleCooling:
