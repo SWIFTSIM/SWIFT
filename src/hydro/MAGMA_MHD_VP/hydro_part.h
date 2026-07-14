@@ -147,11 +147,11 @@ struct part {
 
     /* VP evolution */
     float dAdt[3];
-    
+
     /*! Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
      * current time */
     float Alfven_speed;
-    
+
     /* MHD Signal Velosity */
     float v_sig;
 
@@ -160,7 +160,7 @@ struct part {
 
     /*! Curl of the magnetic field */
     float curl_B[3];
-    
+
     /*! resistivity per particle */
     float resistive_eta;
 

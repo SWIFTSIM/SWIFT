@@ -143,7 +143,7 @@ struct part {
     /*! Alfven speed (=sqrt(B2/(mu_0 * rho))) of the particle drifted to the
      * current time */
     float Alfven_speed;
-    
+
     /* MHD Signal Velosity */
     float v_sig;
 
@@ -163,7 +163,7 @@ struct part {
 
     /*! Artificial resistivity gradient based switch */
     float alpha_AR;
-    
+
     /*! resistivity per particle */
     float resistive_eta;
 
@@ -173,13 +173,13 @@ struct part {
     /* Local plasma beta mean square and its normalising factor */
     float plasma_beta_rms;
     float neighbour_number;
-  
+
     /* Artifical resistivity multiplicative prefactor */
     float art_diff_beta;
-  
+
     /* Tensile instability correction multiplicative prefactor */
     float monopole_beta;
-  
+
     /*! Artificial resistivity contribution to the time derivative of magnetic
      *! field over density */
     float B_over_rho_dt_AR[3];
@@ -187,7 +187,6 @@ struct part {
     /* Artificial resistivity contribution to the time derivative of thermal
      * energy */
     float u_dt_AR;
-
 
   } mhd;
 

@@ -68,7 +68,6 @@ struct mhd_global_data {
 
 /* Functions for reading from parameter file */
 
-
 /* Viscosity */
 
 /**

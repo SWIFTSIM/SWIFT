@@ -1284,7 +1284,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
             /* The force variables are set in the extra ghost. */
 
             /* Compute variables required for the gradient loop */
-            hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor,mu_0);
+            hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor,
+                                   mu_0);
             mhd_prepare_gradient(p, xp, cosmo, hydro_props, mu_0);
 
             /* The particle gradient values are now set.  Do _NOT_

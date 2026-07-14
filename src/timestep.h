@@ -146,7 +146,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Compute the next timestep (hydro condition) */
   const float new_dt_hydro =
       hydro_compute_timestep(p, xp, e->hydro_properties, e->cosmology,
-                           e->physical_constants->const_vacuum_permeability);
+                             e->physical_constants->const_vacuum_permeability);
 
   /* Compute the next timestep (MHD condition) */
   const float new_dt_mhd =
