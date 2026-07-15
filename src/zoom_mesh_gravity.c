@@ -130,19 +130,19 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
         side_length, 2 * side_length);
 
   const double r_cut_max =
-      parser_get_param_double(params, "Gravity:zoom_mesh_r_cut_max");
-  if (r_cut_max <= 0.) error("Gravity:zoom_mesh_r_cut_max must be positive.");
+      parser_get_param_double(params, "Gravity:zoom_r_cut_max");
+  if (r_cut_max <= 0.) error("Gravity:zoom_r_cut_max must be positive.");
 
   const double r_cut_min =
-      parser_get_opt_param_double(params, "Gravity:zoom_mesh_r_cut_min", 0.);
-  if (r_cut_min < 0.) error("Gravity:zoom_mesh_r_cut_min must be >= 0.");
+      parser_get_opt_param_double(params, "Gravity:zoom_r_cut_min", 0.);
+  if (r_cut_min < 0.) error("Gravity:zoom_r_cut_min must be >= 0.");
   if (r_cut_min > r_cut_max)
-    error(
-        "Gravity:zoom_mesh_r_cut_min must be <= Gravity:zoom_mesh_r_cut_max.");
+    error("Gravity:zoom_r_cut_min must be <= Gravity:zoom_r_cut_max.");
 
   const int buffer_cells =
-      parser_get_opt_param_int(params, "Gravity:zoom_mesh_buffer_cells", 1);
-  if (buffer_cells < 1) error("Gravity:zoom_mesh_buffer_cells must be >= 1.");
+      parser_get_opt_param_int(params, "Gravity:zoom_mesh_bkg_buffer_cells", 1);
+  if (buffer_cells < 1)
+    error("Gravity:zoom_mesh_bkg_buffer_cells must be >= 1.");
 
   if (s->zoom_props->nr_bkg_cells <= 0 || s->zoom_props->bkg_cells_top == NULL)
     error("Gravity:zoom_mesh requires background top-level cells.");
