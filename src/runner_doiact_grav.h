@@ -76,7 +76,9 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
+  float r_s_inv = e->mesh->r_s_inv;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+    r_s_inv = e->zoom_mesh->r_s_inv;
 
   TIMER_TIC;
 
@@ -144,7 +146,9 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
+  float r_s_inv = e->mesh->r_s_inv;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+    r_s_inv = e->zoom_mesh->r_s_inv;
 
   TIMER_TIC;
 

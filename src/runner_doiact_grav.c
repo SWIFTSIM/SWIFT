@@ -1440,8 +1440,12 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
-  const double min_trunc = e->mesh->r_cut_min;
+  float r_s_inv = e->mesh->r_s_inv;
+  double min_trunc = e->mesh->r_cut_min;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+    r_s_inv = e->zoom_mesh->r_s_inv;
+    min_trunc = e->zoom_mesh->r_cut_min;
+  }
 
   TIMER_TIC;
 
@@ -2035,8 +2039,12 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   /* Recover some useful constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
-  const float r_s_inv = e->mesh->r_s_inv;
-  const double min_trunc = e->mesh->r_cut_min;
+  float r_s_inv = e->mesh->r_s_inv;
+  double min_trunc = e->mesh->r_cut_min;
+  if (zoom_mesh_cell_is_covered(e->zoom_mesh, c, /*use_max_dx=*/0)) {
+    r_s_inv = e->zoom_mesh->r_s_inv;
+    min_trunc = e->zoom_mesh->r_cut_min;
+  }
 
   TIMER_TIC;
 
@@ -2161,7 +2169,9 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
+  float r_s_inv = e->mesh->r_s_inv;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+    r_s_inv = e->zoom_mesh->r_s_inv;
 
   /* Anything to do here? */
   if (!(cell_is_active_gravity(ci, e) && ci->nodeID == e->nodeID)) return;
@@ -2268,7 +2278,9 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double max_distance = e->mesh->r_cut_max;
+  double max_distance = e->mesh->r_cut_max;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+    max_distance = e->zoom_mesh->r_cut_max;
 
   /* Anything to do here? */
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
