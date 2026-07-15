@@ -48,6 +48,23 @@ void space_regrid(struct space *s, int verbose) {
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
+
+  /* h_hii (the star HII ionization search radius) is a fundamentally
+     different, much larger-scale quantity than any ordinary smoothing
+     length, and is allowed to grow far beyond the box's characteristic
+     cell size. Once cdim is already at the periodic minimum of 3
+     cells/axis, the 27-cell radiation stencil wraps around and already
+     covers the entire box, so h_hii cannot miss any gas no matter how
+     large it grows from there. Cap h_hii's own contribution to h_max at
+     the value that would size cells down to exactly that minimum: it can
+     still widen cells toward full h_hii coverage at finer configurations
+     (cdim >= 4), just never push cdim below 3 for a quantity that buys
+     nothing once coverage is already total. Ordinary hydro/star h_max
+     growth is NOT capped -- that remains a genuine problem worth the
+     existing "too few cells" error. */
+  const float dim_min = min3(s->dim[0], s->dim[1], s->dim[2]);
+  const float h_hii_max_for_regrid =
+      0.99f * dim_min / (3.f * kernel_gamma * space_stretch);
   if (nr_parts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
@@ -60,6 +77,9 @@ void space_regrid(struct space *s, int verbose) {
         }
         if (c->stars.h_max > h_max) {
           h_max = c->stars.h_max;
+        }
+        if (min(c->stars.h_hii_max, h_hii_max_for_regrid) > h_max) {
+          h_max = min(c->stars.h_hii_max, h_hii_max_for_regrid);
         }
         if (c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
@@ -79,6 +99,10 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
           h_max = c->stars.h_max;
         }
+        if (c->nodeID == engine_rank &&
+            min(c->stars.h_hii_max, h_hii_max_for_regrid) > h_max) {
+          h_max = min(c->stars.h_hii_max, h_hii_max_for_regrid);
+        }
         if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
@@ -94,6 +118,8 @@ void space_regrid(struct space *s, int verbose) {
       }
       for (size_t k = 0; k < nr_sparts; k++) {
         if (s->sparts[k].h > h_max) h_max = s->sparts[k].h;
+        if (min(s->sparts[k].h_hii, h_hii_max_for_regrid) > h_max)
+          h_max = min(s->sparts[k].h_hii, h_hii_max_for_regrid);
       }
       for (size_t k = 0; k < nr_bparts; k++) {
         if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
