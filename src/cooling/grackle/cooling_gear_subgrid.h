@@ -43,22 +43,15 @@
  * @param xp Pointer to the particle extra data
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
+ * @param time The current simulation time.
  */
 INLINE static void cooling_ionize_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
-    struct xpart *xp, double dt, double dt_therm) {
+    struct xpart *xp, double dt, double dt_therm, double time) {
 #ifndef IONIZATION_FEEDBACK_DEBUG_NO_COOLING
-  /* TODO: Add a timer to the particle so that it stays ionized during Delta t
-   */
-  /* Two possibilities:
-     1. Use star timestep;
-     2. Use a fixed time-interval, like Colibre.
-     Then, ionise during t_part + delta t
-  */
-  /* TODO: Check temperature formula */
   if (!radiation_is_part_tagged_as_ionized(p, xp)) {
     return;
   }
@@ -121,8 +114,12 @@ and
   /* Should we provide the rates? */
 #endif
 
-  /* Reset the ionization tag */
-  radiation_reset_part_ionized_tag(p, xp);
+  /* Keep the particle flagged (and re-floored above, every step) until
+     the ionizing star's next HII rebuild -- reset only once that window
+     has elapsed. */
+  if (time >= radiation_get_part_ionized_end_time(p, xp)) {
+    radiation_reset_part_ionized_tag(p, xp);
+  }
 #endif
 }
 
@@ -141,17 +138,19 @@ and
  * @param xp Pointer to the particle extra data
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
+ * @param time The current simulation time.
  */
 INLINE static void cooling_update_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
-    struct xpart *xp, double dt, double dt_therm) {
+    struct xpart *xp, double dt, double dt_therm, double time) {
 
   /* Apply ionization */
   cooling_ionize_part_subgrid(phys_const, us, cosmo, hydro_props,
-                              pressure_floor, cooling, p, xp, dt, dt_therm);
+                              pressure_floor, cooling, p, xp, dt, dt_therm,
+                              time);
 
   /* TODO (future plan): Apply space-time varying UV background */
 }

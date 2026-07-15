@@ -311,7 +311,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           /* Do the ionization */
           feedback_iact_HII_ionization(si, pj, xpj, r2, pixel, phys_const,
                                        hydro_props, us, cosmo, cooling,
-                                       feedback_props, ti_begin);
+                                       feedback_props, ti_begin, time);
 
         } /* Loop over the sorted particles */
       }

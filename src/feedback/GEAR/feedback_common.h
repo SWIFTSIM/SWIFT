@@ -74,7 +74,8 @@ void feedback_iact_HII_ionization(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
-    const struct feedback_props *feedback_props, const integertime_t ti_begin);
+    const struct feedback_props *feedback_props, const integertime_t ti_begin,
+    const double time);
 
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,

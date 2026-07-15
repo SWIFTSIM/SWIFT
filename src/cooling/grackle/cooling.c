@@ -57,7 +57,7 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
                             const struct pressure_floor_props *pressure_floor,
                             const struct cooling_function_data *cooling,
                             struct part *p, struct xpart *xp, double dt,
-                            double dt_therm);
+                            double dt_therm, double time);
 
 gr_float cooling_time(const struct phys_const *phys_const,
                       const struct unit_system *us,
@@ -382,10 +382,15 @@ void cooling_first_init_part(const struct phys_const *phys_const,
    */
   xp->cooling_data.e_frac = ne;
 
+#endif  // MODE >= 3
+
+#if COOLING_GRACKLE_MODE >= 1
+  /* Consistency check: the species mass fractions accumulated above
+     (whichever tiers are compiled in for this COOLING_GRACKLE_MODE) must
+     sum to the total gas mass fraction. */
   if (fabs(Xtot - 1.0) > 1e-3)
     error("Got total mass fraction of gas = %.6g", Xtot);
-
-#endif  // MODE >= 3
+#endif  // MODE >= 1
 }
 
 /**
@@ -917,6 +922,7 @@ void cooling_apply_self_shielding(
  * @param xp Pointer to the particle extra data
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
+ * @param time The current simulation time.
  *
  * @return du / dt
  */
@@ -927,7 +933,7 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
                             const struct pressure_floor_props *pressure_floor,
                             const struct cooling_function_data *cooling,
                             struct part *p, struct xpart *xp, double dt,
-                            double dt_therm) {
+                            double dt_therm, double time) {
 
   /* set current time */
   code_units units = cooling->units;
@@ -951,7 +957,8 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
 
   /* Do subgrid physics before feeding grackle with the gas properties. */
   cooling_update_part_subgrid(phys_const, us, cosmo, hydro_props,
-                              pressure_floor, cooling, p, xp, dt, dt_therm);
+                              pressure_floor, cooling, p, xp, dt, dt_therm,
+                              time);
 
   /* general particle data */
   gr_float density = cooling_get_physical_density(p, cosmo, cooling);
@@ -1121,8 +1128,9 @@ void cooling_cool_part(const struct phys_const *phys_const,
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
     u_new = u_ad_before;
   } else {
-    u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props,
-                               pressure_floor, cooling, p, xp, dt, dt_therm);
+    u_new =
+        cooling_new_energy(phys_const, us, cosmo, hydro_props, pressure_floor,
+                           cooling, p, xp, dt, dt_therm, time);
   }
 
   /* Get the change in internal energy due to hydro forces */

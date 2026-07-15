@@ -547,6 +547,7 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  * @param cooling Cooling function data.
  * @param feedback_props The #feedback_props.
  * @param ti_begin Integer time at the start of the step (for RNG).
+ * @param time The current simulation time.
  */
 __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
@@ -554,10 +555,22 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
-    const struct feedback_props *feedback_props, const integertime_t ti_begin) {
+    const struct feedback_props *feedback_props, const integertime_t ti_begin,
+    const double time) {
 
   const int deterministic_boundary =
       feedback_props->HII_deterministic_boundary_ionization;
+
+  /* Stay flagged as ionized (and re-floored above the cooling floor, see
+     cooling_ionize_part_subgrid) until this star's next HII rebuild --
+     matches Smith et al. 2021's "forbidden from cooling below 1e4K" and
+     FIRE-2/3's per-rebuild re-evaluation, with no fixed physical
+     timescale of its own. Using the actual time this star's search is
+     running (not a shared/global schedule) keeps this correct even
+     though different stars rebuild on independent, asynchronous
+     cadences. */
+  const double end_time =
+      time + max(feedback_props->HII_region_rebuild_time, 0.0);
 
   /* If already ionized (by another thread), just move on. */
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
@@ -570,11 +583,8 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     /* No atomics: task_type_stars_hii_ionization_feedback's cell locking
        (src/task.c) already serializes every writer of these fields. */
     if (xpj->tracers_data.HII_region.is_ionized == 0) {
-      xpj->tracers_data.HII_region.is_ionized = 1;
+      radiation_tag_part_as_ionized(pj, xpj, si->id, end_time);
       timestep_sync_part(pj);
-
-      /* Add the star ID */
-      xpj->tracers_data.HII_region.star_id = si->id;
 
       /* Consume photons from the star */
       radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
@@ -588,10 +598,8 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
        pixel's budget go slightly negative (bounded by one particle's
        ionization cost). */
     if (xpj->tracers_data.HII_region.is_ionized == 0) {
-      xpj->tracers_data.HII_region.is_ionized = 1;
+      radiation_tag_part_as_ionized(pj, xpj, si->id, end_time);
       timestep_sync_part(pj);
-
-      xpj->tracers_data.HII_region.star_id = si->id;
 
       radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
       si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
@@ -612,10 +620,8 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     if (random_number <= proba) {
       /* We won the roll! Claim the particle. */
       if (xpj->tracers_data.HII_region.is_ionized == 0) {
-        xpj->tracers_data.HII_region.is_ionized = 1;
+        radiation_tag_part_as_ionized(pj, xpj, si->id, end_time);
         timestep_sync_part(pj);
-
-        xpj->tracers_data.HII_region.star_id = si->id;
 
         radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
         si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);

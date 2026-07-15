@@ -141,10 +141,17 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @param star_id The id of the star that ionized this particle.
+ * @param end_time The simulation time until which this particle should
+ * stay flagged as ionized (the ionizing star's next HII rebuild) -- cooling
+ * keeps re-flooring its temperature until then instead of undoing the
+ * ionization on the very next step.
  */
 __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
-    struct part *p, struct xpart *xp) {
+    struct part *p, struct xpart *xp, long long star_id, double end_time) {
   xp->tracers_data.HII_region.is_ionized = 1;
+  xp->tracers_data.HII_region.star_id = star_id;
+  xp->tracers_data.HII_region.end_time = end_time;
   return;
 }
 
@@ -170,6 +177,20 @@ __attribute__((always_inline)) INLINE void radiation_reset_part_ionized_tag(
 __attribute__((always_inline)) INLINE char radiation_is_part_tagged_as_ionized(
     const struct part *p, const struct xpart *xp) {
   return xp->tracers_data.HII_region.is_ionized;
+}
+
+/**
+ * The simulation time until which this #part should stay flagged as
+ * ionized. Only meaningful while radiation_is_part_tagged_as_ionized()
+ * is true.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+__attribute__((always_inline)) INLINE double
+radiation_get_part_ionized_end_time(const struct part *p,
+                                    const struct xpart *xp) {
+  return xp->tracers_data.HII_region.end_time;
 }
 
 /**

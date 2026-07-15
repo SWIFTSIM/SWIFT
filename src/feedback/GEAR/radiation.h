@@ -47,10 +47,13 @@ double radiation_get_part_rate_to_fully_ionize(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp);
 
-void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj);
+void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj,
+                                   long long star_id, double end_time);
 void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj);
 char radiation_is_part_tagged_as_ionized(const struct part *p,
                                          const struct xpart *xpj);
+double radiation_get_part_ionized_end_time(const struct part *p,
+                                           const struct xpart *xpj);
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);
