@@ -84,8 +84,8 @@ Gravity:
   mesh_uses_local_patches:       1         # (Optional) Are we using thread-local patches (1) or direct atomic writes to the global mesh (0) in the non-MPI case?
   zoom_mesh:                     0         # (Optional) Enable the high-resolution zoom gravity mesh correction. Requires a zoom region.
   zoom_mesh_side_length:         128       # Number of cells along each axis for the active zoom gravity mesh. The zero-padded Hockney-Eastwood FFT uses twice this side length.
-  zoom_r_cut_max:                4.5       # Cut-off beyond which FMM forces fully covered by the zoom mesh are replaced by the zoom mesh correction.
-  zoom_r_cut_min:                0.        # (Optional) Cut-off below which no truncation of FMM forces is performed for zoom mesh-covered interactions.
+  zoom_r_cut_max:                4.5       # Cut-off in zoom mesh smoothing scales beyond which FMM forces fully covered by the zoom mesh are replaced by the zoom mesh correction.
+  zoom_r_cut_min:                0.        # (Optional) Cut-off in zoom mesh smoothing scales below which no truncation of FMM forces is performed for zoom mesh-covered interactions.
   zoom_mesh_bkg_buffer_cells:    1         # (Optional) Number of background top-level cell shells added around the zoom region for the zoom gravity mesh.
   eta:                           0.025     # Constant dimensionless multiplier for time integration.
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.

@@ -201,10 +201,10 @@ int main(int argc, char *argv[]) {
   s.e = &e;
 
   const double width[3] = {1., 1., 1.};
-  const double loc_i[3] = {12., 12., 12.};
-  const double loc_j[3] = {16., 12., 12.};
-  const double x_i[3] = {12.5, 12.5, 12.5};
-  const double x_j[3] = {16.5, 12.5, 12.5};
+  const double loc_i[3] = {16., 16., 16.};
+  const double loc_j[3] = {21., 16., 16.};
+  const double x_i[3] = {16.5, 16.5, 16.5};
+  const double x_j[3] = {21.5, 16.5, 16.5};
 
   struct cell ci;
   struct cell cj;
@@ -247,39 +247,36 @@ int main(int argc, char *argv[]) {
 
   /* Check the Hockney solve against the analytic correction kernel sampled
    * with the same finite-difference stencil. */
-  struct gpart *gparts = NULL;
-  if (posix_memalign((void **)&gparts, gpart_align, 2 * sizeof(struct gpart)) !=
-      0)
-    error("Error allocating zoom mesh test gparts");
-  bzero(gparts, 2 * sizeof(struct gpart));
-
   const int source_i = 6;
   const int probe_i = 9;
   const double y_node = zoom_mesh.loc[1] + source_i / zoom_mesh.cell_fac[1];
   const double z_node = zoom_mesh.loc[2] + source_i / zoom_mesh.cell_fac[2];
-  gparts[0].x[0] = zoom_mesh.loc[0] + source_i / zoom_mesh.cell_fac[0];
-  gparts[0].x[1] = y_node;
-  gparts[0].x[2] = z_node;
-  gparts[0].mass = 1.;
-  gparts[0].time_bin = 1;
-  gparts[0].type = swift_type_dark_matter;
 
-  gparts[1].x[0] = zoom_mesh.loc[0] + probe_i / zoom_mesh.cell_fac[0];
-  gparts[1].x[1] = y_node;
-  gparts[1].x[2] = z_node;
-  gparts[1].mass = 0.;
-  gparts[1].time_bin = 1;
-  gparts[1].type = swift_type_dark_matter;
+  struct cell mesh_cells[2];
+  int local_cells_with_particles_top[2] = {0, 1};
+  const double source_x[3] = {zoom_mesh.loc[0] + source_i / zoom_mesh.cell_fac[0],
+                              y_node, z_node};
+  const double probe_x[3] = {zoom_mesh.loc[0] + probe_i / zoom_mesh.cell_fac[0],
+                             y_node, z_node};
+  const double source_loc[3] = {source_x[0] - 0.5, source_x[1] - 0.5,
+                                source_x[2] - 0.5};
+  const double probe_loc[3] = {probe_x[0] - 0.5, probe_x[1] - 0.5,
+                               probe_x[2] - 0.5};
 
-  s.gparts = gparts;
-  s.nr_gparts = 2;
+  setup_cell(&mesh_cells[0], source_loc, width, source_x);
+  setup_cell(&mesh_cells[1], probe_loc, width, probe_x);
+  mesh_cells[1].grav.parts[0].mass = 0.;
+
+  s.cells_top = mesh_cells;
+  s.nr_local_cells_with_particles = 2;
+  s.local_cells_with_particles_top = local_cells_with_particles_top;
 
   threadpool_init(&e.threadpool, /*num_threads=*/1);
   zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
 
   const double expected_ax = zoom_mesh_expected_acceleration_x(
       zoom_mesh.cell_fac[0], source_i, probe_i, zoom_mesh.r_s, mesh.r_s);
-  const double measured_ax = gparts[1].a_grav_mesh[0];
+  const double measured_ax = mesh_cells[1].grav.parts[0].a_grav_mesh[0];
   const double tolerance = 1e-7 * max(1., fabs(expected_ax));
 
   if (fabs(measured_ax - expected_ax) > tolerance)
@@ -287,13 +284,15 @@ int main(int argc, char *argv[]) {
         "Zoom mesh Hockney force mismatch: measured=%e expected=%e diff=%e "
         "tol=%e",
         measured_ax, expected_ax, measured_ax - expected_ax, tolerance);
-  if (fabs(gparts[1].a_grav_mesh[1]) > tolerance ||
-      fabs(gparts[1].a_grav_mesh[2]) > tolerance)
+  if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[1]) > tolerance ||
+      fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[2]) > tolerance)
     error("Zoom mesh force should be aligned with the x-axis");
 
   zoom_mesh_clean(&zoom_mesh);
   threadpool_clean(&e.threadpool);
-  free(gparts);
+
+  free_cell(&mesh_cells[0]);
+  free_cell(&mesh_cells[1]);
 
   free_cell(&ci);
   free_cell(&cj);

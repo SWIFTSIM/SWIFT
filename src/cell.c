@@ -1868,12 +1868,15 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
    * longer do so */
   if (could_use_mesh_at_rebuild && !can_use_mesh_now) {
     struct space *s = e->s;
-    const double max_distance = e->mesh->r_cut_max;
+    const int zoom_mesh_pair =
+        zoom_mesh_can_use_mesh(e->zoom_mesh, s, ci, cj);
+    const double max_distance =
+        zoom_mesh_pair ? e->zoom_mesh->r_cut_max : e->mesh->r_cut_max;
     const double max_distance2 = max_distance * max_distance;
     const double min_radius2_rebuild =
-        cell_min_dist2(ci, cj, s->periodic, s->dim);
-    const double min_radius2 =
-        cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
+        cell_min_dist2(ci, cj, zoom_mesh_pair ? 0 : s->periodic, s->dim);
+    const double min_radius2 = cell_min_dist2_with_max_dx(
+        ci, cj, zoom_mesh_pair ? 0 : s->periodic, s->dim);
     message(
         "Forcing rebuild due to particle motion. Cell pair: "
         "min_radius2_rebuild=%e min_radius2_now=%e max_distance2=%e "

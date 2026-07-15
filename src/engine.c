@@ -4211,10 +4211,13 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
     /* Mesh forces smoothing scale */
     float r_s;
-    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
       r_s = e->mesh->r_s;
-    else
+      if (e->zoom_mesh != NULL && e->zoom_mesh->enabled)
+        r_s = min(r_s, (float)e->zoom_mesh->r_s);
+    } else {
       r_s = FLT_MAX;
+    }
 
     float dt_dm = FLT_MAX, dt_b = FLT_MAX;
 

@@ -129,14 +129,15 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
         "Use N <= 645 until a distributed zoom mesh is implemented.",
         side_length, 2 * side_length);
 
-  const double r_cut_max =
+  const double r_cut_max_ratio =
       parser_get_param_double(params, "Gravity:zoom_r_cut_max");
-  if (r_cut_max <= 0.) error("Gravity:zoom_r_cut_max must be positive.");
+  if (r_cut_max_ratio <= 0.)
+    error("Gravity:zoom_r_cut_max must be positive.");
 
-  const double r_cut_min =
+  const double r_cut_min_ratio =
       parser_get_opt_param_double(params, "Gravity:zoom_r_cut_min", 0.);
-  if (r_cut_min < 0.) error("Gravity:zoom_r_cut_min must be >= 0.");
-  if (r_cut_min > r_cut_max)
+  if (r_cut_min_ratio < 0.) error("Gravity:zoom_r_cut_min must be >= 0.");
+  if (r_cut_min_ratio > r_cut_max_ratio)
     error("Gravity:zoom_r_cut_min must be <= Gravity:zoom_r_cut_max.");
 
   const int buffer_cells =
@@ -146,6 +147,18 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
 
   if (s->zoom_props->nr_bkg_cells <= 0 || s->zoom_props->bkg_cells_top == NULL)
     error("Gravity:zoom_mesh requires background top-level cells.");
+  if (s->zoom_props->nr_zoom_cells <= 0 ||
+      s->zoom_props->zoom_cells_top == NULL)
+    error("Gravity:zoom_mesh requires zoom top-level cells.");
+
+  const double zoom_cell_width[3] = {
+      s->zoom_props->zoom_cells_top[0].width[0],
+      s->zoom_props->zoom_cells_top[0].width[1],
+      s->zoom_props->zoom_cells_top[0].width[2]};
+  if (zoom_cell_width[0] != zoom_cell_width[1] ||
+      zoom_cell_width[0] != zoom_cell_width[2])
+    error("Gravity:zoom_mesh requires cubic zoom top-level cells.");
+  const double zoom_r_s = props->a_smooth * zoom_cell_width[0];
 
   /* Compute the buffer width in each dimension. */
   const double buffer[3] = {
@@ -155,10 +168,10 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
 
   /* Fill in the mesh structure. */
   mesh->enabled = 1;
-  mesh->r_s = r_cut_max / props->r_cut_max_ratio;
+  mesh->r_s = zoom_r_s;
   mesh->r_s_inv = 1. / mesh->r_s;
-  mesh->r_cut_max = r_cut_max;
-  mesh->r_cut_min = r_cut_min;
+  mesh->r_cut_max = mesh->r_s * r_cut_max_ratio;
+  mesh->r_cut_min = mesh->r_s * r_cut_min_ratio;
   mesh->potential_global = NULL;
 
   for (int i = 0; i < 3; ++i) {
@@ -203,9 +216,10 @@ void zoom_mesh_clean(struct zoom_pm_mesh *mesh) {
  */
 static void zoom_mesh_allocate(struct zoom_pm_mesh *mesh) {
 
-#ifdef HAVE_FFTW
   /* Nothing to allocate for a disabled or absent mesh. */
   if (mesh == NULL || !mesh->enabled) return;
+
+#ifdef HAVE_FFTW
 
   /* The zero padded Hockney-Eastwood method embeds the active N^3 mesh in a
    * (2N)^3 FFT domain. */
@@ -234,9 +248,10 @@ static void zoom_mesh_allocate(struct zoom_pm_mesh *mesh) {
  */
 static void zoom_mesh_free(struct zoom_pm_mesh *mesh) {
 
-#ifdef HAVE_FFTW
   /* Nothing to release if the mesh was never allocated. */
   if (mesh == NULL || mesh->potential_global == NULL) return;
+
+#ifdef HAVE_FFTW
 
   /* Update memory accounting before releasing the FFTW allocation. */
   memuse_log_allocation("fftw_zoom_mesh.potential", mesh->potential_global, 0,
@@ -418,7 +433,7 @@ __attribute__((always_inline)) INLINE static int zoom_mesh_gpart_index(
   /* Convert the particle position from box coordinates to mesh coordinates. */
   for (int axis = 0; axis < 3; ++axis) {
     const double x = (gp->x[axis] - mesh->loc[axis]) * mesh->cell_fac[axis];
-    ind[axis] = (int)x;
+    ind[axis] = (int)floor(x);
     d[axis] = x - ind[axis];
     t[axis] = 1. - d[axis];
 
@@ -474,37 +489,37 @@ int zoom_mesh_cells_are_covered(const struct zoom_pm_mesh *mesh,
 }
 
 /**
- * @brief Threadpool mapper function for zoom mesh CIC density assignment.
+ * @brief Recursively deposit covered local cells on the zoom mesh.
  *
- * @param map_data A chunk of #gpart objects.
- * @param num The number of #gpart objects in the chunk.
- * @param extra The shared #zoom_cic_mapper_data.
+ * @param c The #cell to deposit.
+ * @param data The shared CIC mapper data.
  */
-static void zoom_gpart_to_mesh_CIC_mapper(void *map_data, int num,
-                                          void *extra) {
+static void zoom_mesh_deposit_cell(const struct cell *c,
+                                   const struct zoom_cic_mapper_data *data) {
 
-  /* Unpack the shared mapper data. */
-  const struct zoom_cic_mapper_data *data =
-      (const struct zoom_cic_mapper_data *)extra;
-  const struct zoom_pm_mesh *mesh = data->mesh;
-  struct gpart *gparts = (struct gpart *)map_data;
-  double *rho = data->rho;
-  const int M = data->M;
+  /* Recurse until we find covered leaves. */
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) zoom_mesh_deposit_cell(c->progeny[k], data);
+    return;
+  }
 
-  /* Assign all valid particles in this chunk to the density mesh. */
-  for (int n = 0; n < num; ++n) {
+  /* The zoom mesh correction follows the same cell coverage predicate as the
+   * tree split. Particles in partially covered cells keep the global PM split. */
+  if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) return;
+
+  struct gpart *gparts = c->grav.parts;
+  for (int n = 0; n < c->grav.count; ++n) {
     const struct gpart *gp = &gparts[n];
     if (gp->time_bin == time_bin_inhibited) continue;
 
-    /* Particles outside the active zoom mesh are not part of this solve. */
     int ind[3];
     double d[3], t[3];
-    if (!zoom_mesh_gpart_index(mesh, gp, ind, d, t, /*need_stencil=*/0))
-      continue;
+    if (!zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0))
+      error("Covered cell contains a particle outside the zoom mesh.");
 
-    /* Deposit the particle mass onto the mesh. */
-    zoom_mesh_CIC_set(rho, M, ind[0], ind[1], ind[2], t[0], t[1], t[2], d[0],
-                      d[1], d[2], gp->mass);
+    zoom_mesh_CIC_set(data->rho, data->M, ind[0], ind[1], ind[2], t[0], t[1],
+                      t[2], d[0], d[1], d[2], gp->mass);
   }
 }
 
@@ -600,6 +615,78 @@ static void zoom_mesh_to_gpart_CIC_mapper(void *map_data, int num,
 }
 
 /**
+ * @brief Recursively interpolate the zoom mesh correction to covered cells.
+ *
+ * @param c The #cell to update.
+ * @param data The shared CIC mapper data.
+ */
+static void zoom_mesh_interpolate_cell(struct cell *c,
+                                       const struct zoom_cic_mapper_data *data) {
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) zoom_mesh_interpolate_cell(c->progeny[k], data);
+    return;
+  }
+
+  if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) return;
+
+  zoom_mesh_to_gpart_CIC_mapper(c->grav.parts, c->grav.count, (void *)data);
+}
+
+/**
+ * @brief Deposit all local covered cells on the zoom mesh.
+ *
+ * @param s The #space.
+ * @param data The shared CIC mapper data.
+ */
+static void zoom_mesh_deposit_cells(const struct space *s,
+                                    const struct zoom_cic_mapper_data *data) {
+
+  if (s->with_zoom_region && s->zoom_props != NULL) {
+    for (int n = 0; n < s->zoom_props->nr_local_zoom_cells_with_particles; ++n) {
+      const int cid = s->zoom_props->local_zoom_cells_with_particles_top[n];
+      zoom_mesh_deposit_cell(&s->cells_top[cid], data);
+    }
+    for (int n = 0; n < s->zoom_props->nr_local_bkg_cells_with_particles; ++n) {
+      const int cid = s->zoom_props->local_bkg_cells_with_particles_top[n];
+      zoom_mesh_deposit_cell(&s->cells_top[cid], data);
+    }
+  } else if (s->cells_top != NULL) {
+    for (int n = 0; n < s->nr_local_cells_with_particles; ++n) {
+      const int cid = s->local_cells_with_particles_top[n];
+      zoom_mesh_deposit_cell(&s->cells_top[cid], data);
+    }
+  }
+}
+
+/**
+ * @brief Interpolate the zoom mesh correction to all local covered cells.
+ *
+ * @param s The #space.
+ * @param data The shared CIC mapper data.
+ */
+static void zoom_mesh_interpolate_cells(const struct space *s,
+                                        const struct zoom_cic_mapper_data *data) {
+
+  if (s->with_zoom_region && s->zoom_props != NULL) {
+    for (int n = 0; n < s->zoom_props->nr_local_zoom_cells_with_particles; ++n) {
+      const int cid = s->zoom_props->local_zoom_cells_with_particles_top[n];
+      zoom_mesh_interpolate_cell(&s->cells_top[cid], data);
+    }
+    for (int n = 0; n < s->zoom_props->nr_local_bkg_cells_with_particles; ++n) {
+      const int cid = s->zoom_props->local_bkg_cells_with_particles_top[n];
+      zoom_mesh_interpolate_cell(&s->cells_top[cid], data);
+    }
+  } else if (s->cells_top != NULL) {
+    for (int n = 0; n < s->nr_local_cells_with_particles; ++n) {
+      const int cid = s->local_cells_with_particles_top[n];
+      zoom_mesh_interpolate_cell(&s->cells_top[cid], data);
+    }
+  }
+}
+
+/**
  * @brief Construct the zero padded Hockney-Eastwood isolated-convolution kernel.
  *
  * The active zoom mesh has side length N but the FFT domain has side length
@@ -679,6 +766,8 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
                                  const struct space *s, struct threadpool *tp,
                                  int verbose) {
 
+  (void)tp;
+
   /* Nothing to compute if the zoom mesh is disabled. */
   if (mesh == NULL || !mesh->enabled) return;
 
@@ -703,10 +792,9 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   data.M = M;
   data.const_G = 0.f;
 
-  /* Assign the local particles to the active zoom mesh. */
-  threadpool_map(tp, zoom_gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts,
-                 sizeof(struct gpart), threadpool_auto_chunk_size,
-                 (void *)&data);
+  /* Assign the local covered cells to the active zoom mesh. This mirrors the
+   * cell predicate used to select the zoom split in the tree. */
+  zoom_mesh_deposit_cells(s, &data);
 
 #ifdef WITH_MPI
   /* This implementation stores the full mesh on every rank, so sum the mass
@@ -793,9 +881,7 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   data.potential = rho;
   data.const_G = s->e->physical_constants->const_newton_G;
 
-  threadpool_map(tp, zoom_mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
-                 sizeof(struct gpart), threadpool_auto_chunk_size,
-                 (void *)&data);
+  zoom_mesh_interpolate_cells(s, &data);
 
   if (verbose)
     message("Zoom mesh acceleration interpolation took %.3f %s.",
@@ -803,6 +889,26 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
 }
 
 #endif /* HAVE_FFTW */
+
+#ifndef HAVE_FFTW
+/**
+ * @brief Compute the zoom mesh correction to the gravity forces.
+ *
+ * @param mesh The #zoom_pm_mesh.
+ * @param s The #space containing the particles.
+ * @param tp The #threadpool object used for parallelisation.
+ * @param verbose Are we talkative?
+ */
+void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
+                                 const struct space *s, struct threadpool *tp,
+                                 int verbose) {
+
+  /* Disabled zoom meshes must remain harmless in non-FFTW builds. */
+  if (mesh == NULL || !mesh->enabled) return;
+
+  error("No FFTW library found. Cannot compute zoom mesh gravity.");
+}
+#endif
 
 /**
  * @brief Test whether a distance is safely beyond a mesh cutoff.
@@ -840,9 +946,13 @@ __attribute__((nonnull)) static int zoom_mesh_cell_is_inside(
 
   /* Check containment independently along each axis. */
   for (int i = 0; i < 3; ++i) {
-    /* Mesh bounds in box coordinates. */
-    const double mesh_min = mesh->loc[i];
-    const double mesh_max = mesh->loc[i] + mesh->dim[i];
+    /* Mesh bounds in box coordinates, restricted to the active-mesh region
+     * where the five-point force stencil is valid. The negative side needs two
+     * cells for i-2. The positive side needs three cells because the i+2
+     * stencil point is CIC-interpolated and therefore also reads i+3. */
+    const double cell_width = 1. / mesh->cell_fac[i];
+    const double mesh_min = mesh->loc[i] + 2. * cell_width;
+    const double mesh_max = mesh->loc[i] + mesh->dim[i] - 3. * cell_width;
 
     /* Inflate the cell by the maximal particle displacement if requested. */
     const double dx_max = use_max_dx ? c->grav.multipole->dx_max[i] : 0.;
