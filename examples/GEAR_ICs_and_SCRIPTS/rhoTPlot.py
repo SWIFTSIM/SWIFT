@@ -182,8 +182,10 @@ def make_hist(filename, density_bounds, temperature_bounds, bins):
 
     # print(density_bins, temperature_bins)
 
+    density, temperature = get_data(filename)
+
     H, density_edges, temperature_edges = np.histogram2d(
-        *get_data(filename), bins=[density_bins, temperature_bins]
+        density.value, temperature.value, bins=[density_bins, temperature_bins]
     )
 
     return H.T, density_edges, temperature_edges
