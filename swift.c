@@ -1628,7 +1628,7 @@ int main(int argc, char *argv[]) {
     message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
-    pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1, /*power=*/1);
+    pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1);
 
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
