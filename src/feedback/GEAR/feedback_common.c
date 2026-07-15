@@ -562,13 +562,11 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
       feedback_props->HII_deterministic_boundary_ionization;
 
   /* Stay flagged as ionized (and re-floored above the cooling floor, see
-     cooling_ionize_part_subgrid) until this star's next HII rebuild --
-     matches Smith et al. 2021's "forbidden from cooling below 1e4K" and
-     FIRE-2/3's per-rebuild re-evaluation, with no fixed physical
-     timescale of its own. Using the actual time this star's search is
-     running (not a shared/global schedule) keeps this correct even
-     though different stars rebuild on independent, asynchronous
-     cadences. */
+     cooling_ionize_part_subgrid) until this star's next HII rebuild, with
+     no fixed physical timescale of its own. Using the actual time this
+     star's search is running (not a shared/global schedule) keeps this
+     correct even though different stars rebuild on independent,
+     asynchronous cadences. */
   const double end_time =
       time + max(feedback_props->HII_region_rebuild_time, 0.0);
 
