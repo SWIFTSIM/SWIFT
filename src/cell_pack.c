@@ -252,7 +252,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   /* Unpack the current pcell. */
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
-  pc->stars.h_hii_max = c->stars.h_hii_max;
+  c->stars.h_hii_max = pc->stars.h_hii_max;
   c->black_holes.h_max = pc->black_holes.h_max;
   c->sinks.h_max = pc->sinks.h_max;
 
