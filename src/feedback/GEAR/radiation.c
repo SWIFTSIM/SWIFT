@@ -54,11 +54,9 @@ radiation_get_part_number_hydrogen_atoms(
   const float m = hydro_get_mass(p);
   const double m_p = phys_const->const_proton_mass;
   const float X_H = cooling_get_hydrogen_mass_fraction(cooling, p, xp);
-  const float mu = cooling_get_mean_molecular_weight(
-      phys_const, us, cosmo, hydro_props, cooling, p, xp);
 
-  /* Number of hydrogen atoms in b */
-  const double N_H = (X_H * m) / (mu * m_p);
+  /* Number of hydrogen atoms in b (Hu et al. 2017; Smith et al. 2021). */
+  const double N_H = (X_H * m) / m_p;
 
   return N_H;
 }
@@ -82,20 +80,17 @@ radiation_get_part_rate_to_fully_ionize(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  /* const float m = hydro_get_mass(p); */
   const float rho = hydro_get_physical_density(p, cosmo);
   const double beta = phys_const->const_caseb_recomb;
-  const double m_e = phys_const->const_electron_mass;
+  const double m_p = phys_const->const_proton_mass;
   const float X_H = cooling_get_hydrogen_mass_fraction(cooling, p, xp);
-  const float mu = cooling_get_mean_molecular_weight(
-      phys_const, us, cosmo, hydro_props, cooling, p, xp);
 
   /* Number of hydrogen atoms in b */
   const double N_H = radiation_get_part_number_hydrogen_atoms(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
-  /* Electron density assuming full ionization */
-  const double n_e = (X_H * rho) / (mu * m_e);
+  /* Electron density assuming full ionization (n_e ~= n_H). */
+  const double n_e = (X_H * rho) / m_p;
 
   /* Required ionizing rate in [photons / internal time unit] */
   const double Delta_N_dot = N_H * beta * n_e;
