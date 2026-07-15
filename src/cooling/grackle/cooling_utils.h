@@ -159,6 +159,7 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
 #elif COOLING_GRACKLE_MODE == 1
   const struct cooling_xpart_data *cool_data = &xp->cooling_data;
   const double rho = hydro_get_physical_density(p, cosmo);
+  const double m_H = phys_const->const_proton_mass;
 
   /* Extract mass fractions for various species from the cooling data */
   const double XHI = cool_data->HI_frac;
