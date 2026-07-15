@@ -64,7 +64,7 @@ DIR=snap #First test of units conversion
 if [ -d "$DIR" ];
 then
     echo "$DIR directory exists. Its content will be removed."
-    # rm -r $DIR
+    rm -r $DIR
 else
     echo "$DIR directory does not exists. It will be created."
     mkdir $DIR

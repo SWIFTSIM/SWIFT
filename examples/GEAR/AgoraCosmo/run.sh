@@ -1,5 +1,7 @@
 #!/bin/bash
 
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
+
 # Get the initial conditions
 if [ ! -e agora_swift.hdf5 ]
 then
@@ -12,14 +14,14 @@ fi
 if [ ! -e CloudyData_UVB=HM2012_shielded.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    $scripts_location/getGrackleCoolingTable.sh --shielded
 fi
 
 
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
-    ./getChemistryTable.sh
+    $scripts_location/getChemistryTable.sh
 fi
 
 
