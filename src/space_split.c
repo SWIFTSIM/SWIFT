@@ -474,9 +474,9 @@ void space_split_populate_multipole(struct cell *c) {
 /**
  * @brief Allocate and fill temporary sorting buffers for a cell's particles.
  *
- * Only called by the caller when @c buff, @c gbuff, @c sbuff, @c bbuff and
- * @c sink_buff are all NULL; always allocates and fills a buffer here for
- * each non-empty particle family.
+ * Only called by the caller when buff, gbuff, sbuff, bbuff and sink_buff
+ * are all NULL; always allocates and fills a buffer here for each
+ * non-empty particle family.
  *
  * @param c The #cell whose particles populate the buffers.
  * @param buff Pointer to the hydro buffer pointer, allocated in place.
@@ -620,15 +620,15 @@ void space_split_allocate_and_fill_buffers(
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
  * @param buff A buffer for particle sorting, should be of size at least
- *        c->hydro.count or @c NULL.
+ *        c->hydro.count or NULL.
  * @param sbuff A buffer for particle sorting, should be of size at least
- *        c->stars.count or @c NULL.
+ *        c->stars.count or NULL.
  * @param bbuff A buffer for particle sorting, should be of size at least
- *        c->black_holes.count or @c NULL.
+ *        c->black_holes.count or NULL.
  * @param gbuff A buffer for particle sorting, should be of size at least
- *        c->grav.count or @c NULL.
+ *        c->grav.count or NULL.
  * @param sink_buff A buffer for particle sorting, should be of size at least
- *        c->sinks.count or @c NULL.
+ *        c->sinks.count or NULL.
  */
 void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict buff,

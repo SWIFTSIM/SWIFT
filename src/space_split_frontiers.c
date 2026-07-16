@@ -157,20 +157,26 @@ static void space_split_merge_local_frontiers(
  * @brief Recursively split a cell, appending subtrees to a frontier once the
  *        DFS depth budget is exhausted.
  *
- * This is the master recursive split machinery with one extra hook: when a
- * surviving child would recurse past the current DFS budget, that child is
- * appended to @c next instead of being processed immediately. #space_split_
- * frontiers() then redistributes that frontier in a later round.
+ * If buff, sbuff, bbuff, gbuff and sink_buff are all NULL, fresh local
+ * buffers are allocated and populated for this DFS chunk exactly as would be
+ * done at the top level for the DFS approach.
  *
  * @param s The #space.
  * @param next The frontier being produced for the next BFS level.
  * @param c The cell to process.
- * @param buff, sbuff, bbuff, gbuff, sink_buff Buffer slices matching @c c.
- *        If all are NULL, fresh local buffers are allocated and populated for
- *        this DFS chunk exactly as in the master recursive implementation.
+ * @param buff A buffer for particle sorting, should be of size at least
+ *        c->hydro.count or NULL.
+ * @param sbuff A buffer for particle sorting, should be of size at least
+ *        c->stars.count or NULL.
+ * @param bbuff A buffer for particle sorting, should be of size at least
+ *        c->black_holes.count or NULL.
+ * @param gbuff A buffer for particle sorting, should be of size at least
+ *        c->grav.count or NULL.
+ * @param sink_buff A buffer for particle sorting, should be of size at least
+ *        c->sinks.count or NULL.
  * @param tpid The threadpool tid of the calling worker.
  * @param depth_remaining Number of additional DFS levels to descend before
- *        enqueuing survivors (@c space_dfs_levels_per_frontier - 1 on entry
+ *        enqueuing survivors (space_dfs_levels_per_frontier - 1 on entry
  *        from the mapper).
  */
 static void space_split_recursive(
