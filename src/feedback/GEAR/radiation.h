@@ -47,6 +47,14 @@ double radiation_get_part_rate_to_fully_ionize(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp);
 
+double radiation_get_part_ionized_internal_energy(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp);
+
+double radiation_get_case_b_recombination_coefficient_cgs(const double T);
+
 void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj,
                                    long long star_id, double end_time);
 void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj);

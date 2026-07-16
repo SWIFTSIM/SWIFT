@@ -25,9 +25,11 @@
 /* Include header */
 #include "radiation.h"
 
+#include "chemistry.h"
 #include "cooling.h"
 #include "interpolation.h"
 #include "kernel_hydro.h"
+#include "minmax.h"
 #include "stellar_evolution.h"
 #include "stellar_evolution_struct.h"
 #include "units.h"
@@ -62,6 +64,80 @@ radiation_get_part_number_hydrogen_atoms(
 }
 
 /**
+ * Get the specific internal energy this #part would be held at once
+ * ionized: the minimum of the energy needed to fully ionize it and the
+ * metallicity-dependent collisional-equilibrium energy (see
+ * cooling_ionize_part_subgrid in cooling_gear_subgrid.h). Pure
+ * computation, no side effects -- shared by cooling_ionize_part_subgrid
+ * (which actually floors the particle's temperature) and
+ * radiation_get_part_rate_to_fully_ionize (which evaluates the case-B
+ * recombination coefficient at the temperature the gas is actually held
+ * at, instead of a fixed 1e4 K), so the two stay consistent with each
+ * other.
+ *
+ * @param phys_const Physical constants.
+ * @param hydro_properties The #hydro_props.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Specific internal energy (physical, code units).
+ */
+__attribute__((always_inline)) INLINE double
+radiation_get_part_ionized_internal_energy(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  const double m_p = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+
+  const double N_H = radiation_get_part_number_hydrogen_atoms(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const double E_ion =
+      2.17872e-11 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  const double Delta_u_ionized = N_H * E_ion / hydro_get_mass(p);
+
+  const double Z = chemistry_get_total_metal_mass_fraction_for_feedback(p);
+  const double Z_sun = 0.02;
+  const double mu = cooling_get_mean_molecular_weight(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+
+  /* Here we need to treat the cases Z << Z_sun otherwise we have T < 0 */
+  const double ten_to_four_K =
+      1e4 * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  double T_collisional;
+  if (Z >= Z_sun * 1e-3) {
+    const double tmp = 0.86 / (1 + 0.22 * log(Z / Z_sun));
+    T_collisional = ten_to_four_K * min(6.62, tmp);
+  } else {
+    T_collisional = 6.62 * ten_to_four_K; /* High-temp asymptote */
+  }
+
+  const double u_collisional =
+      cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p);
+
+  return min(Delta_u_ionized, u_collisional);
+}
+
+/**
+ * Case-B hydrogen recombination coefficient, temperature-dependent
+ * (Hui & Gnedin 1997, MNRAS 292, 27, Appendix A; their fit to Ferland et
+ * al. 1992, accurate to 0.7% from 1 K to 1e9 K).
+ *
+ * @param T Temperature in Kelvin.
+ * @return alpha_B in cm^3/s (CGS).
+ */
+__attribute__((always_inline)) INLINE double
+radiation_get_case_b_recombination_coefficient_cgs(const double T) {
+  const double lambda = 315614.0 / T;
+  return 2.753e-14 * pow(lambda, 1.5) *
+         pow(1.0 + pow(lambda / 2.740, 0.407), -2.242);
+}
+
+/**
  * Get the gas ionizing rate needed to fully ionize the #part.
  *
  * @param phys_const Physical constants.
@@ -81,8 +157,8 @@ radiation_get_part_rate_to_fully_ionize(
     const struct xpart *xp) {
 
   const float rho = hydro_get_physical_density(p, cosmo);
-  const double beta = phys_const->const_caseb_recomb;
   const double m_p = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
   const float X_H = cooling_get_hydrogen_mass_fraction(cooling, p, xp);
 
   /* Number of hydrogen atoms in b */
@@ -91,6 +167,22 @@ radiation_get_part_rate_to_fully_ionize(
 
   /* Electron density assuming full ionization (n_e ~= n_H). */
   const double n_e = (X_H * rho) / m_p;
+
+  /* Case-B recombination coefficient, evaluated at the temperature this
+     particle is actually held at once ionized (Hui & Gnedin 1997),
+     instead of the fixed 1e4 K convention. */
+  const double u_ionized = radiation_get_part_ionized_internal_energy(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const double mu = cooling_get_mean_molecular_weight(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+  const double T_ionized_K =
+      cooling_temperature_from_internal_energy(u_ionized, mu, k_B, m_p) *
+      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  const double beta_cgs =
+      radiation_get_case_b_recombination_coefficient_cgs(T_ionized_K);
+  const float dimension_alphaB[5] = {0, 3, -1, 0, 0}; /* [cm^3 s^-1] */
+  const double beta =
+      beta_cgs / units_general_cgs_conversion_factor(us, dimension_alphaB);
 
   /* Required ionizing rate in [photons / internal time unit] */
   const double Delta_N_dot = N_H * beta * n_e;
