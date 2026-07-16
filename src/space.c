@@ -1307,7 +1307,7 @@ void space_init(struct space *s, struct swift_params *params,
   space_dfs_levels_per_frontier = parser_get_opt_param_int(
       params, "Scheduler:dfs_levels_per_frontier",
       space_dfs_levels_per_frontier_default);
-  s->enable_bfs_frontiers =
+  s->with_bfs_splitting =
       parser_get_opt_param_int(params, "Scheduler:enable_bfs_frontiers", 0);
   space_grid_split_threshold = parser_get_opt_param_int(
       params, "Scheduler:grid_split_threshold", space_grid_split_threshold);
@@ -1374,7 +1374,7 @@ void space_init(struct space *s, struct swift_params *params,
     message("max_size set to %d split_size set to %d dfs_levels_per_frontier "
             "set to %d",
             space_maxsize, space_splitsize, space_dfs_levels_per_frontier);
-    if (s->enable_bfs_frontiers)
+    if (s->with_bfs_splitting)
       message("Breadth first cell splitting is enabled.");
     message("subdepth_grav set to %d", space_subdepth_diff_grav);
     message("sub_size_pair_hydro set to %d, sub_size_self_hydro set to %d",

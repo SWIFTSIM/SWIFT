@@ -147,7 +147,7 @@ struct space {
   int with_neutrinos;
 
   /*! Do we use the breadth-first frontier algorithm in space_split()? */
-  int enable_bfs_frontiers;
+  int with_bfs_splitting;
 
   /*! Width of the top-level cells. */
   double width[3];
@@ -433,7 +433,7 @@ void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
 void space_split_frontiers(struct space *s, int verbose);
-void space_split_finalize_leaf(struct space *s, struct cell *c);
+void space_split_finalise_leaf(struct space *s, struct cell *c);
 void space_split_accumulate_props(struct cell *c, const struct cell *cp);
 void space_split_populate_multipole(struct cell *c);
 void space_reorder_extras(struct space *s, int verbose);

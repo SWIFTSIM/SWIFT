@@ -44,7 +44,7 @@
  * @param s The #space the cell lives in.
  * @param c The leaf #cell to finalise.
  */
-void space_split_finalize_leaf(struct space *s, struct cell *c) {
+void space_split_finalise_leaf(struct space *s, struct cell *c) {
 
   /* Unpack cell information. */
   const int count = c->hydro.count;
@@ -320,18 +320,14 @@ void space_split_finalize_leaf(struct space *s, struct cell *c) {
 }
 
 /**
- * @brief Fold one surviving child's summary properties into its parent.
- *
- * Assumes @c c's fields have already been reset to the identity of the
- * max/min reduction being performed (0 for the h_max fields, @c
- * max_nr_timesteps for the *_end_min and ti_rt_min_step_size fields, 0 for
- * the *_beg_max fields) before the first child is folded in.
+ * @brief Accumulate the cell level particle properties from progeny.
  *
  * @param c The parent #cell, updated in place.
  * @param cp The child #cell being folded in.
  */
 void space_split_accumulate_props(struct cell *c, const struct cell *cp) {
 
+  /* Smoothing lengths */
   c->hydro.h_max = max(c->hydro.h_max, cp->hydro.h_max);
   c->hydro.h_max_active = max(c->hydro.h_max_active, cp->hydro.h_max_active);
   c->stars.h_max = max(c->stars.h_max, cp->stars.h_max);
@@ -342,6 +338,7 @@ void space_split_accumulate_props(struct cell *c, const struct cell *cp) {
   c->sinks.h_max = max(c->sinks.h_max, cp->sinks.h_max);
   c->sinks.h_max_active = max(c->sinks.h_max_active, cp->sinks.h_max_active);
 
+  /* Time-step information */
   c->hydro.ti_end_min = min(c->hydro.ti_end_min, cp->hydro.ti_end_min);
   c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, cp->hydro.ti_beg_max);
   c->rt.ti_rt_end_min = min(c->rt.ti_rt_end_min, cp->rt.ti_rt_end_min);
@@ -359,17 +356,16 @@ void space_split_accumulate_props(struct cell *c, const struct cell *cp) {
   c->black_holes.ti_beg_max =
       max(c->black_holes.ti_beg_max, cp->black_holes.ti_beg_max);
 
+  /* Star formation history */
   star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 }
 
 /**
  * @brief Build a cell's multipole from its progeny's multipoles (M2M).
  *
- * Resets @c c's multipole, then computes its centre of mass and bulk
- * velocity as the mass-weighted average of its surviving progeny, shifts
- * each progeny's multipole to that centre of mass via #gravity_M2M and
- * sums them, and finally bounds @c r_max by both the progeny-based and
- * geometric upper limits and stores the rebuild-time multipole values.
+ * This function populates a cell's multipole based on the progeny multipoles.
+ * These multipoles are constructed from the bottom up with the leaf cells
+ * populated based on the gparts they hold.
  *
  * @param c The parent #cell whose multipole is (re)built from its progeny.
  */
@@ -498,6 +494,7 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sink_buff,
                            const short int tpid) {
 
+  /* Unpack cell information. */
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -772,7 +769,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   else {
 
     /* Finalise the leaf cell. */
-    space_split_finalize_leaf(s, c);
+    space_split_finalise_leaf(s, c);
 
     /* Store the global max depth */
     if (c->depth == 0) atomic_max(&s->maxdepth, c->maxdepth);
@@ -813,15 +810,18 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
+
+    /* Get this cell and split it recursively. */
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
 
+    /* If we are running with self-gravity, collect the global min/max values of
+     * the multipole properties. */
     if (s->with_self_gravity) {
       min_a_grav =
           min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
       max_softening =
           max(max_softening, c->grav.multipole->m_pole.max_softening);
-
       for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
         max_mpole_power[n] =
             max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
@@ -837,6 +837,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   }
 #endif
 
+  /* Update the global min/max values of the multipole properties. */
   atomic_min_f(&s->min_a_grav, min_a_grav);
   atomic_max_f(&s->max_softening, max_softening);
   for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
@@ -848,7 +849,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  *
  * Only do this for the local non-empty top-level cells.
  *
- * When @c s->enable_bfs_frontiers is set (Scheduler:enable_bfs_frontiers),
+ * When @c s->with_bfs_splitting is set (Scheduler:enable_bfs_frontiers),
  * the breadth-first frontier algorithm in #space_split_frontiers() is used
  * instead of the plain single-pass recursion below: it re-balances work
  * across top-level trees whose subtree sizes are very unequal, at the cost
@@ -863,16 +864,16 @@ void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
+  /* Initialise the global min/max values of the multipole properties. */
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
-  if (s->enable_bfs_frontiers) {
-
+  /* Are we using the breadth-first frontier algorithm or a single depth-first
+   * recursion? */
+  if (s->with_bfs_splitting) {
     space_split_frontiers(s, verbose);
-
   } else {
-
     threadpool_map(&s->e->threadpool, space_split_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
