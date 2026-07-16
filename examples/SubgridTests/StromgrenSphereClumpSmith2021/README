@@ -70,6 +70,14 @@ laptop/workstation.
 `rebuild_time_myr` (default 0.01) and `deterministic` (default 1, i.e.
 `HII_deterministic_boundary_ionization=1`) are also overridable via env
 var, matching `nside`: e.g. `deterministic=0 ./run.sh`.
+`initial_metallicity` (default 0, a Z/Zsun factor since
+`scale_initial_metallicity: 1`) is also overridable, e.g.
+`initial_metallicity=0.231 ./run.sh` gives T_collisional=1e4 K exactly
+(see the theory/GEAR/Radiation/ logbook for why that's a useful
+validation point). `density_factor=1 ./run.sh` degenerates the clump to
+the background density, reproducing the papers' own no-clump reference
+test (their ~20-25 pc-by-8 Myr number) directly instead of only via the
+clumpy run.
 
 # Configure
 ```
