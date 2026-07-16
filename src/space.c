@@ -65,6 +65,7 @@
 /* Split size. */
 int space_splitsize = space_splitsize_default;
 int space_dfs_levels_per_frontier = space_dfs_levels_per_frontier_default;
+int space_enable_bfs_frontiers = space_enable_bfs_frontiers_default;
 int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
 int space_subsize_pair_stars = space_subsize_pair_stars_default;
@@ -1307,6 +1308,9 @@ void space_init(struct space *s, struct swift_params *params,
   space_dfs_levels_per_frontier = parser_get_opt_param_int(
       params, "Scheduler:dfs_levels_per_frontier",
       space_dfs_levels_per_frontier_default);
+  space_enable_bfs_frontiers = parser_get_opt_param_int(
+      params, "Scheduler:enable_bfs_frontiers",
+      space_enable_bfs_frontiers_default);
   space_grid_split_threshold = parser_get_opt_param_int(
       params, "Scheduler:grid_split_threshold", space_grid_split_threshold);
   space_subdepth_diff_grav =
@@ -1372,6 +1376,8 @@ void space_init(struct space *s, struct swift_params *params,
     message("max_size set to %d split_size set to %d dfs_levels_per_frontier "
             "set to %d",
             space_maxsize, space_splitsize, space_dfs_levels_per_frontier);
+    if (space_enable_bfs_frontiers)
+      message("Breadth first cell splitting is enabled.");
     message("subdepth_grav set to %d", space_subdepth_diff_grav);
     message("sub_size_pair_hydro set to %d, sub_size_self_hydro set to %d",
             space_subsize_pair_hydro, space_subsize_self_hydro);
@@ -2635,6 +2641,9 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(&space_dfs_levels_per_frontier, sizeof(int), 1, stream,
                        "space_dfs_levels_per_frontier",
                        "space_dfs_levels_per_frontier");
+  restart_write_blocks(&space_enable_bfs_frontiers, sizeof(int), 1, stream,
+                       "space_enable_bfs_frontiers",
+                       "space_enable_bfs_frontiers");
   restart_write_blocks(&space_maxsize, sizeof(int), 1, stream, "space_maxsize",
                        "space_maxsize");
   restart_write_blocks(&space_grid_split_threshold, sizeof(int), 1, stream,
@@ -2749,6 +2758,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_splitsize");
   restart_read_blocks(&space_dfs_levels_per_frontier, sizeof(int), 1, stream,
                       NULL, "space_dfs_levels_per_frontier");
+  restart_read_blocks(&space_enable_bfs_frontiers, sizeof(int), 1, stream,
+                      NULL, "space_enable_bfs_frontiers");
   restart_read_blocks(&space_maxsize, sizeof(int), 1, stream, NULL,
                       "space_maxsize");
   restart_read_blocks(&space_grid_split_threshold, sizeof(int), 1, stream, NULL,

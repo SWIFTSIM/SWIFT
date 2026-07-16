@@ -35,6 +35,23 @@
 #include "threadpool.h"
 
 /**
+ * @brief DFS depth budget to hand to a fresh top-cell or frontier-cell DFS
+ *        chunk before its survivors are appended to the next frontier.
+ *
+ * When @c space_enable_bfs_frontiers is disabled, a budget of
+ * #space_cell_maxdepth is used instead of @c space_dfs_levels_per_frontier -
+ * 1 so that the depth budget can never be exhausted: every DFS chunk then
+ * runs straight through to the leaves, matching the plain recursive
+ * depth-first split used before the BFS frontier was introduced.
+ */
+static INLINE int space_split_dfs_depth_budget(void) {
+
+  if (space_enable_bfs_frontiers) return space_dfs_levels_per_frontier - 1;
+
+  return space_cell_maxdepth;
+}
+
+/**
  * @brief A frontier of cells waiting to be split.
  *
  * Used as a flat array of cell pointers shared by all workers. Workers
@@ -424,8 +441,11 @@ static void space_split_finalize_leaf(struct space *s, struct cell *c) {
  *        this DFS chunk exactly as in the master recursive implementation.
  * @param tpid The threadpool tid of the calling worker.
  * @param depth_remaining Number of additional DFS levels to descend before
- *        enqueuing survivors (@c space_dfs_levels_per_frontier - 1 on entry
- * from the mapper).
+ *        enqueuing survivors, as returned by #space_split_dfs_depth_budget()
+ *        on entry from the mapper. This is @c space_dfs_levels_per_frontier -
+ *        1 when @c space_enable_bfs_frontiers is set, or
+ *        #space_cell_maxdepth (effectively unlimited) when it is disabled,
+ *        which makes each DFS chunk run straight through to the leaves.
  */
 static void space_split_recursive(
     struct space *s, struct space_split_frontier *next, struct cell *c,
@@ -904,10 +924,12 @@ static void space_split_top_mapper(void *map_data, int num_cells,
   const short int tpid = threadpool_gettid();
   struct space_split_frontier *next = &local_frontiers[tpid];
 
+  const int depth_budget = space_split_dfs_depth_budget();
+
   for (int i = 0; i < num_cells; i++) {
     struct cell *c = &s->cells_top[local_cells_with_particles[i]];
     space_split_recursive(s, next, c, NULL, NULL, NULL, NULL, NULL, tpid,
-                          space_dfs_levels_per_frontier - 1);
+                          depth_budget);
   }
 }
 
@@ -935,9 +957,11 @@ static void space_split_frontier_mapper(void *map_data, int num_cells,
   const short int tpid = threadpool_gettid();
   struct space_split_frontier *next = &local_frontiers[tpid];
 
+  const int depth_budget = space_split_dfs_depth_budget();
+
   for (int i = 0; i < num_cells; i++)
     space_split_recursive(s, next, cells[i], NULL, NULL, NULL, NULL, NULL, tpid,
-                          space_dfs_levels_per_frontier - 1);
+                          depth_budget);
 }
 
 /**
@@ -1045,7 +1069,12 @@ static void space_split_init_frontiers(
  *    frontier. Subsequent rounds process that frontier in parallel, each
  *    frontier cell again starting a fresh DFS chunk with its own local
  *    buffers. This keeps the master-style buffer ownership and recursion
- *    inside each chunk while still re-balancing work between chunks.
+ *    inside each chunk while still re-balancing work between chunks. Setting
+ *    @c space_enable_bfs_frontiers to 0 disables this re-balancing: the depth
+ *    budget is then effectively unlimited, so every DFS chunk started from a
+ *    top cell runs straight through to the leaves and the frontier stays
+ *    empty, matching the plain recursive depth-first split used before the
+ *    BFS frontier was introduced.
  *
  * 2. Aggregation phase: Once all splitting is done, each top cell's
  *    subtree is walked depth-first to combine per-family @c h_max, time-bin
