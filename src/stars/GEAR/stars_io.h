@@ -195,13 +195,18 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "HIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts,
       convert_spart_HII_radius,
       "Co-moving HII region radius of the star particles when the HII was last "
-      "rebuilt");
+      "rebuilt. This is the search/tagging algorithm's own bookkeeping (how "
+      "far the star has claimed gas as ionized), not a measurement of the "
+      "gas's actual physical state -- previously-tagged gas can stay warm "
+      "well past its tag's expiry without being re-tagged, so the true "
+      "thermally-affected extent can be larger than this radius.");
 
   list[9] = io_make_output_field_convert_spart(
       "HIIRegionMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
       convert_spart_HII_mass,
       "Total gas mass ionized by the star particle when the HII region was "
-      "last rebuilt");
+      "last rebuilt. Same caveat as HIIRegionRadii: this is the algorithm's "
+      "bookkeeping, not a direct measurement of the gas's physical state.");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

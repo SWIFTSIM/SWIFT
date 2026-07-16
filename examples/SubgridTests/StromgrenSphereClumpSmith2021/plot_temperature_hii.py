@@ -18,8 +18,13 @@
 ################################################################################
 """
 Plot a mass-weighted temperature slice (through the star's z-plane) and
-projection (integrated along z) of a snapshot, with the star and its
-HIIRegionRadii overlaid as a circle.
+projection (integrated along z) of a snapshot, with two circles overlaid:
+r_HII (the algorithm's own bookkeeping -- how far the star has *tagged*
+gas as ionized, from the HIIRegionRadii field) and r_physics (the largest
+distance to any gas particle actually above the ionized-temperature
+threshold, regardless of tag status). Previously-tagged gas can stay hot
+well past its tag's expiry without being re-tagged, so r_physics can
+exceed r_HII.
 
 Usage:
     python3 plot_temperature_hii.py                    # last snapshot in snap/
@@ -77,6 +82,26 @@ def get_gas_temperatures(data: sw.SWIFTDataset) -> np.array:
     return T
 
 
+def compute_physics_hii_radius(data, star_pos, T_threshold_K=1e4):
+    """Largest distance (kpc) from the star to a gas particle with
+    T > T_threshold_K, regardless of its IsIonizedFlags tag status."""
+    if star_pos is None:
+        return None
+
+    T = get_gas_temperatures(data).to("K").value
+    pos = np.array(data.gas.coordinates.to("kpc").value)
+    box = float(data.metadata.boxsize.to("kpc").value[0])
+
+    disp = pos - star_pos
+    disp -= box * np.round(disp / box)  # periodic wrap
+    r = np.sqrt(np.sum(disp**2, axis=1))
+
+    hot = T > T_threshold_K
+    if not np.any(hot):
+        return 0.0
+    return float(r[hot].max())
+
+
 def find_latest_snapshot(stub):
     files = sorted(glob.glob(f"{stub}_*.hdf5"))
     if not files:
@@ -107,30 +132,36 @@ def get_star_position_and_hii_radius(filename, stub):
     return star_pos[0], peak_r_hii
 
 
-def draw_star_and_hii_circle(ax, star_pos, r_hii):
+def draw_circle(ax, star_pos, r, color, label, text_y_frac):
+    if r is None or r <= 0:
+        return
+    circle = Circle(
+        (star_pos[0], star_pos[1]),
+        r,
+        fill=False,
+        edgecolor=color,
+        linewidth=1.2,
+        linestyle="--",
+        zorder=3,
+    )
+    ax.add_patch(circle)
+    ax.text(
+        star_pos[0],
+        star_pos[1] + r * text_y_frac,
+        f"{label} = {r * 1e3:.2f} pc",
+        color=color,
+        fontsize=6,
+        ha="center",
+        va="bottom",
+    )
+
+
+def draw_star_and_hii_circle(ax, star_pos, r_hii, r_physics):
     if star_pos is None:
         return
     ax.scatter([star_pos[0]], [star_pos[1]], c="limegreen", zorder=3, marker="*", s=60)
-    if r_hii is not None and r_hii > 0:
-        circle = Circle(
-            (star_pos[0], star_pos[1]),
-            r_hii,
-            fill=False,
-            edgecolor="cyan",
-            linewidth=1.2,
-            linestyle="--",
-            zorder=3,
-        )
-        ax.add_patch(circle)
-        ax.text(
-            star_pos[0],
-            star_pos[1] + r_hii * 1.05,
-            f"$r_{{\\rm HII}}$ = {r_hii * 1e3:.2f} pc",
-            color="cyan",
-            fontsize=6,
-            ha="center",
-            va="bottom",
-        )
+    draw_circle(ax, star_pos, r_hii, "cyan", "$r_{\\rm HII}$", 1.05)
+    draw_circle(ax, star_pos, r_physics, "orange", "$r_{\\rm physics}$", 1.15)
 
 
 def make_temperature_projection(data, image_resolution):
@@ -191,7 +222,7 @@ def make_temperature_slice(data, image_resolution, z_slice):
     return T_map.T, x_edges, y_edges
 
 
-def plot_map(T_map, x_edges, y_edges, star_pos, r_hii, title, out_name):
+def plot_map(T_map, x_edges, y_edges, star_pos, r_hii, r_physics, title, out_name):
     fig, ax = plt.subplots(1, figsize=(6, 5), dpi=300)
     ax.set_xlabel("x [kpc]")
     ax.set_ylabel("y [kpc]")
@@ -202,7 +233,7 @@ def plot_map(T_map, x_edges, y_edges, star_pos, r_hii, title, out_name):
     )
     fig.colorbar(mappable, label="Temperature [K]", pad=0)
 
-    draw_star_and_hii_circle(ax, star_pos, r_hii)
+    draw_star_and_hii_circle(ax, star_pos, r_hii, r_physics)
 
     fig.tight_layout()
     fig.savefig(out_name)
@@ -242,6 +273,9 @@ def main():
 
     print(f"Plotting {filename}")
     star_pos, r_hii = get_star_position_and_hii_radius(filename, args.stub)
+    r_physics = compute_physics_hii_radius(sw.load(filename), star_pos)
+    print(f"r_HII (algorithm) = {r_hii * 1e3 if r_hii else 0:.2f} pc, "
+          f"r_physics (T > 1e4 K) = {r_physics * 1e3 if r_physics else 0:.2f} pc")
 
     t_myr = float(sw.load(filename).metadata.time.to("Myr").value)
     suffix = filename.split("/")[-1].replace(".hdf5", "")
@@ -255,6 +289,7 @@ def main():
         y_edges,
         star_pos,
         r_hii,
+        r_physics,
         title=f"Mass-weighted temperature projection, t={t_myr:.2f} Myr",
         out_name=f"temperature_projection_{suffix}.png",
     )
@@ -276,6 +311,7 @@ def main():
         y_edges,
         star_pos,
         r_hii,
+        r_physics,
         title=f"Mass-weighted temperature slice (z={float(z_slice.to('kpc').value if hasattr(z_slice, 'to') else z_slice):.4f} kpc), "
         f"t={t_myr:.2f} Myr",
         out_name=f"temperature_slice_{suffix}.png",
