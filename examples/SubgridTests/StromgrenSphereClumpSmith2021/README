@@ -12,10 +12,12 @@ classical) ionization front reach -- useful when reproducing a specific
 paper's absolute scale isn't the goal.
 
 Density values (100 / 1e4 cm^-3), clump geometry (10 pc radius at 20 pc),
-and `HII_region_rebuild_time_Myr=0.1` come directly from the paper. Gas
-mass resolution follows Hu et al. 2017's convergence-test levels instead
-of the paper's own 20 Msun (see Resolution below) since 20 Msun produces
-no ionization at all with this code's algorithm.
+gas mass resolution (20 Msun), and the ionizing photon rate per source
+come directly from the paper. `HII_region_rebuild_time_Myr=0.01` tracks
+the paper's statement that results are insensitive to refreshing more
+often than every fine timestep, without the cost of a refresh every step;
+`HII_deterministic_boundary_ionization=1` is the default (see
+Resolution below for both env var overrides).
 
 The diffuse background and clump are set to different temperatures in
 pressure equilibrium (`n*T` equal on both sides) by `makeIC_clump.py`'s
@@ -23,29 +25,51 @@ pressure equilibrium (`n*T` equal on both sides) by `makeIC_clump.py`'s
 `SPH:initial_temperature: 0` in params.yml is required for this --
 otherwise it overwrites the per-particle IC values.
 
-Box size (0.1 kpc / 100 pc) and `Stars:max_HII_search_radius` (45 pc) aren't stated explicitly in the paper for this test; chosen here to comfortably contain the clump (30 pc from the star) and its D-type expansion by t=8 Myr (the time of their Figure 2 snapshot) while staying under the box half-width.
+`GEARChemistry:initial_metallicity: 0` matches both papers' effective
+choice for this specific test (Hu et al. 2017 state outright that their
+D-type test medium is pure hydrogen, X_H=1; Smith et al. 2021's
+recombination rate and ionized-temperature floor have no metallicity
+term at all). Unlike either paper's flat 1e4 K floor, this code's ionized
+temperature is metallicity-dependent and reaches ~4.7-6.6e4 K at Z=0 (see
+`cooling_ionize_part_subgrid`) -- since the case-B recombination
+coefficient decreases with temperature, the physically expected effect is
+a *larger* Strömgren/D-type radius than the papers' reference numbers,
+not a smaller one. The case-B recombination coefficient used for the
+photon-budget cost (`phys_const->const_caseb_recomb`) is a fixed constant
+evaluated at the conventional 1e4 K (matching both papers' own
+convention) rather than recomputed at the gas's actual, hotter applied
+temperature, so this boost isn't fully captured yet.
+
+Box size (0.1 kpc / 100 pc) and `Stars:max_HII_search_radius` (45 pc)
+aren't stated explicitly in the paper for this test; chosen here to
+contain the clump (30 pc from the star) and its D-type expansion by
+t=8 Myr. Both are comfortable margins for the spherical (nside=0) case,
+but the HealPix (nside=1) case can grow fast enough to approach the
+45 pc search cap and the 50 pc box half-width before 8 Myr -- widen both
+together (`Stars:max_HII_search_radius` and `--boxsize`) if that matters
+for your comparison.
 
 ## Resolution
-Gas particle mass defaults to 4 Msun -- the coarsest of the four convergence-test resolutions in Hu et al. 2017 (Appendix A): 4, 0.5, 0.0625, 0.0078125 Msun. At this box size and background density, those correspond to roughly:
+Gas particle mass defaults to 20 Msun, matching Smith et al. 2021's own
+gas resolution for this test. At this box size and background density
+that's roughly 175k particles total. Hu et al. 2017's own convergence-test
+levels (Appendix A: 4, 0.5, 0.0625, 0.0078125 Msun) are also available via
+`gas_mass=X ./run.sh`, at roughly:
 
-| mass [Msun] | diffuse particles | clump particles |      total     |
-|-------------|-------------------|-----------------|----------------|
-| 4.0         | 618k              | 259k            | 877k (default) |
-| 0.5         | 4.9M              | 2.1M            | 7.0M           |
-| 0.0625      | 39.5M             | 16.6M           | 56.1M          |
-| 0.0078125   | 316.3M            | 132.5M          | 448.8M         |
+| mass [Msun] | diffuse particles | clump particles |      total      |
+|-------------|-------------------|-----------------|-----------------|
+| 20.0        | 123k              | 52k             | 175k (default)  |
+| 4.0         | 618k              | 259k            | 877k            |
+| 0.5         | 4.9M              | 2.1M            | 7.0M            |
+| 0.0625      | 39.5M             | 16.6M           | 56.1M           |
+| 0.0078125   | 316.3M            | 132.5M          | 448.8M          |
 
-At the default mass=4, the photon budget cannot afford to ionize even a
-single gas particle at this density, so the run produces **zero
-ionization** over the full 8 Myr regardless of `nside`. A finer mass is
-required to see any HII region form. Generate ICs for the finer levels
-with:
-```
-python3 makeIC_clump.py --mass 0.5       -o ICs_stromgren_clump.hdf5
-python3 makeIC_clump.py --mass 0.0625    -o ICs_stromgren_clump.hdf5
-python3 makeIC_clump.py --mass 0.0078125 -o ICs_stromgren_clump.hdf5
-```
-or `gas_mass=0.5 ./run.sh` etc. The two finer levels are cluster-scale runs, not intended to run on a laptop/workstation.
+The two finest levels are cluster-scale runs, not intended to run on a
+laptop/workstation.
+
+`rebuild_time_myr` (default 0.01) and `deterministic` (default 1, i.e.
+`HII_deterministic_boundary_ionization=1`) are also overridable via env
+var, matching `nside`: e.g. `deterministic=0 ./run.sh`.
 
 # Configure
 ```
@@ -57,13 +81,13 @@ make -j
 ```
 
 # Run
-`nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh` / `run_name=nside1 ./run.sh` to keep both outputs) run the geometry from Figure 2. At the default mass=4, this does *not* yet reproduce the panels (no ionization occurs -- see Resolution above); a finer mass is needed for that.
+`nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh` / `run_name=nside1 ./run.sh` to keep both outputs) run the geometry from Figure 2, reproducing the top (spherical) and bottom (HealPix) panels respectively.
 
 # Checking the redistribution effect and plotting
 
 Same tools as `../StromgrenSphereClump/`:
 ```
-python3 clump_anisotropy_check.py --nside0-snapshot nside0/snap/snapshot_0040.hdf5 --nside1-snapshot nside1/snap/snapshot_0040.hdf5
-python3 plot_temperature_hii.py -s nside1/snap/snapshot -i 40
+python3 clump_anisotropy_check.py --nside0-snapshot nside0/snap/snapshot_0042.hdf5 --nside1-snapshot nside1/snap/snapshot_0042.hdf5
+python3 plot_temperature_hii.py -s nside1/snap/snapshot   # defaults to the last snapshot
 ```
 `clump_anisotropy_check.py` requires a build with `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` (add to `CFLAGS` before `./configure`) so `IsIonizedFlags` accumulates monotonically instead of resetting every step.

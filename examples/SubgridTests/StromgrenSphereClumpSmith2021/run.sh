@@ -5,9 +5,9 @@ set -e
 
 n_threads=${n_threads:=8}          # Number of threads to use
 gas_density=${gas_density:=100}    # Diffuse background gas density in atom/cm^3
-gas_particle_mass=${gas_mass:=4.0} # Mass of the gas particles (diffuse and clump);
-                                    # Hu et al. 2017's coarsest convergence-test resolution.
-                                    # See README for the finer levels.
+gas_particle_mass=${gas_mass:=20.0} # Mass of the gas particles (diffuse and clump);
+                                    # Smith et al. 2021's own gas resolution.
+                                    # See README for other levels.
 star_mass=${star_mass:=19.2}       # Mass of each source in M_sun (Q_H ~ 2.5e48/s)
 n_stars=${n_stars:=4}               # Number of co-located sources at the box center
 star_type=${star_type:="single_star"}
@@ -18,6 +18,8 @@ with_cooling=${with_cooling:=1}
 L=${boxsize:=0.1}                  # boxsize in kpc
 n_cells=${n_cells:=3}               # must match Scheduler:max_top_level_cells in params.yml
 nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override: 0 (spherical) or 1 (12 pixels)
+rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_region_rebuild_time_Myr override
+deterministic=${deterministic:=1}   # GEARFeedback:HII_deterministic_boundary_ionization override
 run_name=${run_name:=""}
 restart=${restart:=0}
 
@@ -75,11 +77,15 @@ if [ "$with_cooling" -eq 1 ]; then
 ../../../swift --hydro --stars --external-gravity --feedback --cooling \
                --sync --limiter $runtime_param --threads=$n_threads \
                -P GEARFeedback:HII_angular_nside:$nside \
+               -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
+               -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                params.yml 2>&1 | tee output.log
 else
 ../../../swift --hydro --stars --external-gravity --feedback \
                 --sync --limiter $runtime_param --threads=$n_threads \
                -P GEARFeedback:HII_angular_nside:$nside \
+               -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
+               -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                params.yml 2>&1 | tee output.log
 fi
 

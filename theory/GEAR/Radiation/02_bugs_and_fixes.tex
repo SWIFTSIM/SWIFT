@@ -1,0 +1,85 @@
+\section{Bugs found and fixed}
+\label{sec:bugs}
+
+This section is append-only: entries stay even after being fixed, as
+the record of what was wrong, how it was found, and why the fix is
+correct.
+
+\subsection{2026-07-16: electron mass used instead of proton mass in the recombination cost}
+\label{sec:mass-bug}
+
+\texttt{radiation\_get\_part\_rate\_to\_fully\_ionize}
+(\texttt{src/feedback/GEAR/radiation.c}) computed the electron number
+density as
+\begin{equation}
+  n_e = \frac{X_H \rho}{\mu\, m_e} \qquad (\text{wrong: } m_e = \text{electron mass}),
+\end{equation}
+instead of Eq.~\ref{eq:recomb-cost}'s $n_e = X_H\rho/m_p$. This
+inflated every gas particle's recombination cost -- and hence the
+budget a star was charged to maintain it as ionized -- by a factor of
+$m_p/m_e \approx 1836$ (times a further $O(1$--$2\times)$ factor from
+the spurious $\mu$ described below). At that inflation, a star's
+entire photon budget could not fully afford even one gas particle's
+cost, so every rebuild cycle tagged at most one particle (via the
+deterministic boundary-particle override), then reported the budget
+exhausted.
+
+\textbf{How it was found:} the example
+(\texttt{StromgrenSphereClumpSmith2021}) was reported to show
+essentially no HII region growth. A single-star, no-clump diagnostic
+tracking \texttt{IsIonizedFlags} per particle over time showed exactly
+one particle tagged per rebuild cycle, a different one each time
+(hot-but-untagged and tagged-but-cold particles coexisting at every
+snapshot -- flickering, not a growing core). Given the equilibrium
+Str\"omgren volume at these parameters should sustain
+$\dot N_{\rm ion}/\Delta\dot N_{\rm particle} \approx 20$ particles
+simultaneously, a 20$\times$ shortfall pointed at the cost calculation
+itself. Tracing \texttt{radiation\_get\_part\_rate\_to\_fully\_ionize}
+found the $m_e$-for-$m_p$ swap.
+
+\textbf{Fix:} \texttt{n\_e = (X\_H * rho) / m\_p}. Committed
+\texttt{356ec0cda} (first pass, together with removing $\mu$; see
+below for why $\mu$ went back and forth).
+
+\textbf{Verification:} rebuilt, reran the same single-star diagnostic.
+Tagged-particle count went from pinned at 1 to a smoothly growing
+population (17$\to$59 over $t=0$--0.98\,Myr); $r_{\rm HII}$ grew
+continuously with no plateau (0$\to$4.9\,pc over the same window,
+still accelerating). \texttt{testRadiationRebuildCheck} and
+\texttt{test27cellsStars -n 3 -N 3 -r 5} pass;
+\texttt{StromgrenSphere} acceptance runs at \texttt{gas\_mass=0.1} and
+\texttt{gas\_mass=0.01} both ran clean to completion with no
+regression.
+
+\subsection{2026-07-16: mean-molecular-weight factor -- kept, then removed, after checking the source}
+\label{sec:mu-bug}
+
+The first fix pass also removed a $\mu$ factor from both $N_H$ and
+$n_e$, on the grounds that a hydrogen-atom count has no natural place
+for a mean-particle-mass term. Darwin pointed out that
+\citet{Hopkins2018}, Appendix E, states explicitly
+\[
+  \Delta\dot N_b = N(H)_b\,\beta\,n_{e,b}, \qquad
+  N(H)_b = \frac{X_H m_b}{\mu\, m_p},
+\]
+i.e.\ FIRE-2's own formula \emph{does} include $\mu$. The fix was
+reverted to keep $\mu$, pending a check.
+
+Fetching the actual FIRE-2 PDF and re-deriving from the underlying
+physics resolved it: the recombination rate within a gas element must
+equal $\alpha_B\, n_e\, n_H\, V$, so $N_H \equiv n_H V$ is definitionally
+the raw hydrogen atom count $X_H m/m_p$ -- there is no room for $\mu$
+in that derivation regardless of what FIRE-2's text says. Both
+\citet{Hu2017} (``the number of hydrogen \emph{nuclei}'', explicitly
+$N_H = m_g X_H/m_p$) and \citet{Smith2021}
+($R_{\rm rec}=\beta m\rho(X_H/m_p)^2$) use the $\mu$-free form, and
+\texttt{StromgrenSphereClumpSmith2021} exists specifically to match
+those two papers' numbers. $\mu$ was removed again (final state,
+Eq.~\ref{eq:recomb-cost}), committed as part of \texttt{356ec0cda}.
+
+\textbf{Method note:} this flip-flopped once before landing on the
+derivation-based answer. When a paper's prose labels a quantity in a
+way that doesn't match its role in the surrounding equation (FIRE-2
+calls $N(H)_b$ ``the number of H atoms'' despite the $\mu$ factor
+making it something else), trust the derivation over the label, and
+check against multiple independent sources before committing.

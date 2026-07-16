@@ -1,0 +1,132 @@
+\section{Open items}
+\label{sec:open}
+
+Two checklists: task-graph/algorithm correctness (Section~\ref{sec:todo-task})
+and physical validation (Section~\ref{sec:todo-phys}). Move an item to
+Section~\ref{sec:bugs} (if it was a bug) or
+Section~\ref{sec:validation} (if it's a settled result) once resolved
+-- do not just delete it here.
+
+Several items below carry labels (\texttt{e6}--\texttt{e10}) inherited
+from the pre-existing project memory
+(\texttt{radiation\_feedback\_taskgraph\_plan.md}, sessions predating
+this logbook) to avoid losing that history; new items from this
+session are labelled \texttt{T}\emph{n} (task-graph) and
+\texttt{V}\emph{n} (validation).
+
+\subsection{Task graph / algorithm}
+\label{sec:todo-task}
+
+\begin{itemize}
+  \item[$\square$] \textbf{T1} -- Confirm or rule out the
+    \texttt{radiation\_level} orphaned-link risk
+    (Section~\ref{sec:not-regular}) on the clump examples specifically.
+    It requires two neighbouring regions' \texttt{hydro.super} to land
+    at different tree depths, which uniform-density ICs never trigger
+    but a $100\times$ density clump plausibly could. Rebuild with
+    \texttt{--enable-debugging-checks} and run
+    \texttt{StromgrenSphereClumpSmith2021} at a resolution fine enough
+    to actually split the tree near the clump boundary; the
+    \texttt{error()} at \texttt{cell.c:1387} will fire if it's hit.
+  \item[$\square$] \textbf{e7} -- Interior-recombination-accounting
+    gap: once a particle is ionized it never reappears as a search
+    candidate (it fails the ``cold'' filter in
+    \texttt{feedback\_part\_can\_be\_ionized}) until its tag expires,
+    so its ongoing maintenance recombination cost is never re-charged
+    against a star's budget at any rebuild after the one that first
+    tagged it. This is an \emph{over}-sizing mechanism in principle
+    (the star effectively gets its full fresh budget to spend on new
+    territory every cycle, never paying to hold the interior), the
+    opposite direction from the units bug fixed this session
+    (Section~\ref{sec:mass-bug}). Not re-evaluated since the fix --
+    worth checking whether it's now the dominant remaining effect or
+    still negligible. See the original plan file for two candidate
+    implementation directions (charge interior maintenance explicitly,
+    vs.\ recompute the whole sphere from scratch each rebuild); neither
+    implemented.
+  \item[$\square$] \textbf{e10} -- Verify the D-type (Spitzer) growth
+    curve's \emph{shape}, not just its final-time value.
+    \texttt{stromgren\_analytic\_check.py} (in the sibling
+    \texttt{StromgrenSphere} example) already implements the analytic
+    reference $R(t) = R_{\rm st}(1+7c_st/4R_{\rm st})^{4/7}$
+    \citep{Spitzer1978} and reports a pass/fail relative error at final
+    time for a single isolated star; it does not yet check the
+    trajectory throughout. Run it on a single isolated star (no
+    clump, no co-location) before drawing further conclusions from the
+    8-run matrix's endpoint-only numbers.
+  \item[$\square$] \textbf{T2} -- $\beta$ (case-B recombination
+    coefficient, Eq.~\ref{eq:recomb-cost}) is a fixed constant
+    evaluated at the conventional $10^4\,$K
+    (\texttt{phys\_const->const\_caseb\_recomb}), not recomputed at
+    the gas's actual, metallicity-dependent applied temperature
+    (Section~\ref{sec:metallicity}). Matches both reference papers'
+    own convention, so not a mismatch with them, but it does mean the
+    code is not yet capturing the larger-radius effect that a
+    genuinely hotter floor implies. Would need $\alpha_B(T)$ as a
+    function, not a constant, in
+    \texttt{radiation\_get\_part\_rate\_to\_fully\_ionize}.
+  \item[$\square$] \textbf{T3} -- Decide the example's default for
+    \texttt{HII\_deterministic\_boundary\_ionization}. Currently 1
+    (deterministic), but Section~\ref{sec:validation}'s matrix shows
+    deterministic mode over-ionizes -- mildly for the uniform scheme,
+    severely for the angular scheme (drives it into the search-radius
+    cap). Probabilistic (0) gives the cleanest, uncapped match to both
+    papers. Not yet changed pending a decision on whether the example
+    should default to the setting that best matches the papers, or to
+    whichever setting is intended for production galaxy-scale runs
+    (where the angular-cap interaction may not arise the same way).
+  \item[$\square$] \textbf{T4} -- \texttt{Stars:max\_HII\_search\_radius}
+    (45\,pc) and the box (100\,pc, 50\,pc half-width) are too tight
+    for the angular+deterministic combination, which reaches
+    $\sim$37--45\,pc and gets artificially capped
+    (Table~\ref{tab:matrix}, rows 2/6). Widen both together (e.g.\
+    \citeauthor{Smith2021}'s own \texttt{rion\_max=100\,pc}) and rerun
+    those two rows for an uncapped comparison.
+  \item[$\square$] \textbf{T5} -- MPI is explicitly not supported yet
+    for the radiation loop (\texttt{error("MPI is not yet
+    implemented")} in both \texttt{task.c} and \texttt{cell\_unskip.c}
+    for \texttt{nr\_nodes > 1}). Not a bug, just an explicit gap to be
+    aware of before attempting a multi-node run with this feedback
+    channel active.
+\end{itemize}
+
+\subsection{Physical validation}
+\label{sec:todo-phys}
+
+\begin{itemize}
+  \item[$\square$] \textbf{V1} -- For all 8 matrix configurations
+    (Table~\ref{tab:matrix}), not just the two plotted, check
+    per-star, per-direction reach (clump-facing vs.\ away), not only
+    the scalar max $r_{\rm HII}$ -- a single number can hide an
+    asymmetric front the way it did before the radial-shell
+    temperature check caught the clump's shallow surface erosion.
+  \item[$\square$] \textbf{V2} -- Once T3 is decided, update
+    \texttt{run.sh}/\texttt{params.yml} defaults and rerun the
+    acceptance checklist (build, unit tests, both
+    \texttt{StromgrenSphere} acceptance runs) with the new default.
+  \item[$\square$] \textbf{V3} -- After T4, rerun the angular +
+    deterministic + fast-rebuild configuration (row 2) with a widened
+    cap/box to see its true, uncapped growth -- currently unknown
+    whether it converges near the papers' range or keeps growing.
+  \item[$\square$] \textbf{V4} -- Run e10's curve-shape check (above)
+    before and after any e7 fix, to confirm a fix actually improves
+    the trajectory shape and not just the endpoint by coincidence.
+  \item[$\square$] \textbf{V5} -- Quantify whether the shallow clump
+    surface erosion found this session (star-facing outer skin
+    $\sim$28,000\,K to $\sim$3\,pc deep, interior still cold) grows
+    toward \citeauthor{Smith2021}'s more substantial disruption given
+    more time / the fixed rebuild cadence, or genuinely plateaus short
+    of it -- not yet run long enough or compared quantitatively
+    (their Fig.~2 doesn't give an exact eroded-mass number to target,
+    only a visual).
+  \item[$\square$] \textbf{V6} -- Implement T2 (temperature-dependent
+    $\alpha_B$) and re-run the matrix; check whether it closes any of
+    the residual gap to the papers' $\sim$20--25\,pc reference,
+    per the Section~\ref{sec:metallicity} prediction that it should
+    only ever push our radius \emph{larger}.
+  \item[$\square$] \textbf{V7} -- Pin down \citeauthor{Smith2021}'s
+    actual box size for their idealized D-type test more precisely
+    than the current eyeballed 60--80\,pc estimate (Section
+    \ref{sec:validation}), if an exact box-size comparison becomes
+    load-bearing for some future conclusion.
+\end{itemize}

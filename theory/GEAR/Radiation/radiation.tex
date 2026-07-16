@@ -1,0 +1,41 @@
+\documentclass[fleqn, usenatbib, useAMS, a4paper]{mnras}
+\usepackage{graphicx}
+\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
+\usepackage{times}
+\usepackage{comment}
+\usepackage{hyperref}
+\usepackage[super]{nth}
+
+\newcommand{\todo}[1]{{\textcolor{red}{TODO: #1}\\}}
+\newcommand{\swift}{{\sc Swift}\xspace}
+\newcommand{\D}[2]{\frac{d#1}{d#2}}
+\newcommand{\LL}{\left(}
+\newcommand{\RR}{\right)}
+
+\title{GEAR subgrid HII photoionization: algorithm, bugs found, and validation logbook}
+\author{Darwin Roduit}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This is a living logbook for the GEAR subgrid HII photoionization model
+(\texttt{src/feedback/GEAR/radiation.c} and related files), branch
+\texttt{darwin/gear\_radiation}. It records the algorithm as implemented,
+bugs found and fixed, and the ongoing validation against Hu et al.
+(2017) and Smith et al. (2021). Edit the numbered \texttt{.tex} files
+directly; each covers one topic and is short enough to update on its
+own. Regenerate the PDF with \texttt{./run.sh}.
+\end{abstract}
+
+\input{00_intro}
+\input{01_algorithm}
+\input{02_bugs_and_fixes}
+\input{03_validation}
+\input{04_task_graph}
+\input{05_open_items}
+
+\bibliographystyle{mnras}
+\bibliography{bibliography}
+
+\end{document}

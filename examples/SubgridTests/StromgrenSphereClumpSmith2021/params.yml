@@ -99,15 +99,17 @@ GEARFeedback:
   HII_region_min_density_Hpcm3: 1               # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   radiation_pressure_efficiency: 0              # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   HII_region_max_age_Myr:        50.0           # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
-  HII_region_rebuild_time_Myr:   0.1            # Matches Smith et al. 2021's stated minimum rebuild cadence (they report
-                                                 # stalling/underestimated regions at slower refresh rates). (Default: 0.5)
+  HII_region_rebuild_time_Myr:   0.01           # Smith et al. 2021 report their results are insensitive to refreshing
+                                                 # more often than every fine timestep; 0.01 Myr tracks that closely
+                                                 # without the cost of a refresh every step. Override with
+                                                 # -P GEARFeedback:HII_region_rebuild_time_Myr:X -- see run.sh. (Default: 0.5)
   HII_angular_nside:             0              # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical
                                                  # (disabled, one shared budget), 1 = 12 HEALPix pixels. Override on the
                                                  # command line with -P GEARFeedback:HII_angular_nside:1 -- see run.sh.
-  HII_deterministic_boundary_ionization: 0      # How to treat the one gas particle a star's remaining budget can't
+  HII_deterministic_boundary_ionization: 1      # How to treat the one gas particle a star's remaining budget can't
                                                  # fully ionize: 0 = probabilistic (weighted coin flip, unbiased in
                                                  # expectation), 1 = deterministic (always ionize it). Override with
-                                                 # -P GEARFeedback:HII_deterministic_boundary_ionization:1.
+                                                 # -P GEARFeedback:HII_deterministic_boundary_ionization:0 -- see run.sh.
 
   #Mechanical feedback
   maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)

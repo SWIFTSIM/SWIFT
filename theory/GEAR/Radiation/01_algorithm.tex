@@ -1,0 +1,106 @@
+\section{Algorithm}
+\label{sec:algorithm}
+
+\subsection{Photon budget and recombination cost}
+
+Each active star with ionizing photon rate $\dot N_{\rm ion}$ (from
+\texttt{radiation\_get\_individual\_star\_ionizing\_photon\_emission\_rate\_fit},
+a blackbody mass--luminosity--temperature fit, not a simple linear
+function of stellar mass) gathers candidate gas particles within a
+search radius, sorted by distance, and spends its budget on them
+closest-first. For a candidate particle $b$ of mass $m_b$, hydrogen
+mass fraction $X_H$, and physical density $\rho_b$, the number of
+hydrogen atoms and the recombination rate needed to keep it ionized
+are
+\begin{align}
+  N_{H,b} &= \frac{X_H\, m_b}{m_p}, \\
+  n_{e,b} &= \frac{X_H\, \rho_b}{m_p}, \\
+  \Delta \dot N_b &= N_{H,b}\, \beta\, n_{e,b},
+  \label{eq:recomb-cost}
+\end{align}
+where $m_p$ is the proton mass and $\beta$ is the case-B recombination
+coefficient, a \emph{fixed} constant evaluated at the conventional
+$T=10^4\,$K (\texttt{phys\_const->const\_caseb\_recomb}), matching the
+convention both reference papers use. Equation~\ref{eq:recomb-cost} is
+identical in form to Hu et al.'s $N_H\beta n_H$ (their $N_H$ is called
+``the number of hydrogen nuclei'', an unambiguous atom count) and to
+Smith et al.'s $R_{\rm rec}=\beta m \rho (X_H/m_p)^2$. Neither $N_H$
+nor $n_e$ has a mean-molecular-weight ($\mu$) or metallicity factor;
+see Section~\ref{sec:mu-bug} for why our first attempt at this
+included one.
+
+A particle is a candidate for ionization only if it is not already
+tagged, is denser than \texttt{HII\_region\_min\_density\_Hpcm3}, and
+is not already above $\approx 10^4\,$K
+(\texttt{feedback\_part\_can\_be\_ionized}). The star consumes its
+budget particle by particle until it can no longer afford the next
+one. The last, unaffordable particle is the ``boundary particle'':
+\begin{itemize}
+  \item \texttt{HII\_deterministic\_boundary\_ionization=1}: always
+    ionize it anyway (over-spending the budget for that cycle);
+  \item \texttt{HII\_deterministic\_boundary\_ionization=0}: ionize it
+    with probability equal to the affordable fraction, unbiased in
+    expectation.
+\end{itemize}
+See Section~\ref{sec:validation} for the measured effect of this
+choice -- it turns out to matter a lot more than the name ``one
+boundary particle'' suggests.
+
+\subsection{Angular (HealPix) budget splitting}
+
+To avoid a dense clump near a source absorbing a disproportionate
+share of the photon budget regardless of the small solid angle it
+subtends (``mass-biasing''), \texttt{HII\_angular\_nside} splits the
+budget into $N_{\rm pix} = 12\,{\rm nside}^2$ equal shares
+($\dot N_{\rm ion}/N_{\rm pix}$ each) and assigns each candidate
+particle to exactly one pixel by its direction from the star, hard
+assignment (no fractional overlap, matching both papers' own choice).
+\texttt{nside=0} degenerates to $N_{\rm pix}=1$, i.e.\ today's plain
+spherical behaviour. Only \texttt{nside=0} and \texttt{nside=1}
+($N_{\rm pix}=12$) are currently supported.
+
+\subsection{Temperature floor}
+
+Once a particle is tagged, its internal energy is set (and reset every
+step while tagged, in the cooling task, via
+\texttt{cooling\_ionize\_part\_subgrid}) to
+\begin{equation}
+  u_{\rm new} = \min\left(\Delta u_{\rm ionized},\ u_{\rm collisional}\right),
+  \label{eq:floor}
+\end{equation}
+where $\Delta u_{\rm ionized} = N_H E_{\rm ion}/m_b$ is the specific
+energy needed to fully ionize the particle ($E_{\rm ion}=13.6\,$eV per
+H atom, metallicity-independent), and $u_{\rm collisional}$ comes from
+a metallicity-dependent equilibrium temperature,
+\begin{equation}
+  T_{\rm collisional} = 10^4\,{\rm K} \times
+  \begin{cases}
+    \min\left(6.62,\ \dfrac{0.86}{1+0.22\log_{10}(Z/Z_\odot)}\right) & Z \ge 10^{-3}Z_\odot \\[2mm]
+    6.62 & Z < 10^{-3}Z_\odot.
+  \end{cases}
+  \label{eq:tcollisional}
+\end{equation}
+Neither Hu et al.\ nor Smith et al.\ have a metallicity-dependent floor
+at all -- both simply clamp ionized gas to a flat $10^4\,$K. See
+Section~\ref{sec:metallicity} for the numeric consequence of
+Eq.~\ref{eq:floor}--\ref{eq:tcollisional} at $Z=0$.
+
+\subsection{Persistence}
+
+A tagged particle stays flagged (and re-floored, per
+Eq.~\ref{eq:floor}, every step) until
+\texttt{end\_time = tag\_time + HII\_region\_rebuild\_time}, at which
+point it is unflagged and becomes eligible to compete for budget again
+on the star's next rebuild pass. Each star's rebuild is scheduled
+independently off its own age and its own last-rebuild time
+(\texttt{feedback\_common.c}); there is no cross-star coordination or
+deliberate synchronous/asynchronous toggle like the one
+\citet{Smith2021} implemented (they found no difference between the
+two). For the co-located, simultaneously-born stars in the validation
+example this produces synchronous rebuilds in practice, simply because
+the stars are identical, not because the code enforces it.
+
+There is no carryover of unspent budget or accumulated ``credit''
+between rebuild cycles -- each rebuild resets to the star's full,
+instantaneous $\dot N_{\rm ion}$. This is an equilibrium-rate model,
+not a time-integrated one; see item~e7 in Section~\ref{sec:open}.
