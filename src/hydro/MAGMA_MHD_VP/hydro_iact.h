@@ -145,7 +145,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #endif
 #if defined(HYDRO_DIMENSION_3D)
   pi->gradient.c_matrix_inv.zz += common_term * dx[2] * dx[2];
-  pi->gradient.c_matrix_inv.xy += common_term * dx[0] * dx[1];
   pi->gradient.c_matrix_inv.xz += common_term * dx[0] * dx[2];
   pi->gradient.c_matrix_inv.yz += common_term * dx[1] * dx[2];
 #endif
