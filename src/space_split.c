@@ -35,132 +35,28 @@
 #include "threadpool.h"
 
 /**
- * @brief DFS depth budget to hand to a fresh top-cell or frontier-cell DFS
- *        chunk before its survivors are appended to the next frontier.
- *
- * When @c space_enable_bfs_frontiers is disabled, a budget of
- * #space_cell_maxdepth is used instead of @c space_dfs_levels_per_frontier -
- * 1 so that the depth budget can never be exhausted: every DFS chunk then
- * runs straight through to the leaves, matching the plain recursive
- * depth-first split used before the BFS frontier was introduced.
- */
-static INLINE int space_split_dfs_depth_budget(void) {
-
-  if (space_enable_bfs_frontiers) return space_dfs_levels_per_frontier - 1;
-
-  return space_cell_maxdepth;
-}
-
-/**
- * @brief A frontier of cells waiting to be split.
- *
- * Used as a flat array of cell pointers shared by all workers. Workers
- * read from @c cells, produce next-frontier entries in thread-local buffers,
- * and those local buffers are merged into a new flat frontier after the
- * parallel level finishes.
- */
-struct space_split_frontier {
-
-  /*! Cells to process at this BFS level. */
-  struct cell **cells;
-
-  /*! Number of valid entries in @c cells. */
-  int count;
-
-  /*! Number of slots allocated in @c cells. */
-  int capacity;
-};
-
-/**
- * @brief Grow a frontier so it can hold at least "needed" pointers.
- *
- * @param frontier The frontier to resize.
- * @param needed Required capacity (in pointers).
- */
-static void space_split_frontier_ensure_capacity(
-    struct space_split_frontier *frontier, const int needed) {
-
-  if (needed <= frontier->capacity) return;
-
-  struct cell **new_cells = NULL;
-  if (swift_memalign("split_frontier", (void **)&new_cells,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     sizeof(struct cell *) * needed) != 0)
-    error("Failed to (re)allocate BFS frontier of size %d", needed);
-
-  for (int i = 0; i < frontier->count; i++) new_cells[i] = frontier->cells[i];
-
-  if (frontier->cells != NULL) swift_free("split_frontier", frontier->cells);
-
-  frontier->cells = new_cells;
-  frontier->capacity = needed;
-}
-
-/**
- * @brief Append a cell to a next frontier.
- *
- * @param frontier The frontier being produced.
- * @param c The cell to append.
- */
-__attribute__((always_inline)) static INLINE void space_split_frontier_append(
-    struct space_split_frontier *frontier, struct cell *c) {
-
-  if (frontier->count == frontier->capacity) {
-    const int new_capacity =
-        frontier->capacity == 0 ? 256 : 2 * frontier->capacity;
-    space_split_frontier_ensure_capacity(frontier, new_capacity);
-  }
-
-  frontier->cells[frontier->count++] = c;
-}
-
-/**
- * @brief Merge thread-local next-frontier buffers into a flat frontier.
- *
- * @param next_frontier The flat frontier produced for the next round.
- * @param local_frontiers The per-thread frontier buffers to concatenate.
- * @param nr_threads Number of thread-local frontier buffers.
- */
-static void space_split_merge_local_frontiers(
-    struct space_split_frontier *next_frontier,
-    struct space_split_frontier *local_frontiers, const int nr_threads) {
-
-  int needed = 0;
-  for (int tid = 0; tid < nr_threads; tid++)
-    needed += local_frontiers[tid].count;
-
-  space_split_frontier_ensure_capacity(next_frontier, needed);
-  next_frontier->count = needed;
-
-  int offset = 0;
-  for (int tid = 0; tid < nr_threads; tid++) {
-    struct space_split_frontier *local = &local_frontiers[tid];
-    for (int i = 0; i < local->count; i++)
-      next_frontier->cells[offset + i] = local->cells[i];
-    offset += local->count;
-    local->count = 0;
-  }
-}
-
-/**
  * @brief Finalise a cell that has been determined to remain a leaf.
  *
- * This collects all the per-particle quantities that the leaf cell exposes to
- * the rest of the code: max smoothing lengths (active and total) for each
- * particle family, time-step bounds, RT time-step bounds, star formation
- * logger contributions, particle-side depth metadata and, when running with
- * self-gravity, the leaf-level multipole built directly from the gparts via
- * #gravity_P2M.
+ * This is the base case of the split/aggregate recursion: it collects all
+ * the per-particle quantities that a leaf cell exposes to the rest of the
+ * code directly from its own particles, rather than by reducing the
+ * equivalent quantities from progeny. It computes max smoothing lengths
+ * (active and total) for each particle family, time-step bounds, RT
+ * time-step bounds, star formation logger contributions, particle-side
+ * depth metadata and, when running with self-gravity, the leaf-level
+ * multipole built directly from the gparts via #gravity_P2M.
  *
  * It also resets per-particle drift bookkeeping (@c x_diff) and the cell's
  * progeny pointers, sets @c c->maxdepth to @c c->depth and marks the cell as
- * having no current owner. This is a direct extraction of the leaf branch
- * that previously lived inside #space_split_recursive.
+ * having no current owner. Used by both #space_split_recursive (the
+ * single-pass depth-first split) and the breadth-first frontier split in
+ * space_split_frontiers.c, since a leaf's own summary data does not depend
+ * on how the tree above it was built.
  *
  * @param s The #space the cell lives in.
  * @param c The leaf #cell to finalise.
  */
-static void space_split_finalize_leaf(struct space *s, struct cell *c) {
+void space_split_aggregate_from_leaf(struct space *s, struct cell *c) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -425,34 +321,28 @@ static void space_split_finalize_leaf(struct space *s, struct cell *c) {
 }
 
 /**
- * @brief Recursively split a cell, appending subtrees to a frontier once the
- *        DFS depth budget is exhausted.
+ * @brief Recursively split a cell.
  *
- * This is the master recursive split machinery with one extra hook: when a
- * surviving child would recurse past the current DFS budget, that child is
- * appended to @c next instead of being processed immediately. The outer
- * #space_split function then redistributes that frontier in a later round.
- *
- * @param s The #space.
- * @param next The frontier being produced for the next BFS level.
- * @param c The cell to process.
- * @param buff, sbuff, bbuff, gbuff, sink_buff Buffer slices matching @c c.
- *        If all are NULL, fresh local buffers are allocated and populated for
- *        this DFS chunk exactly as in the master recursive implementation.
- * @param tpid The threadpool tid of the calling worker.
- * @param depth_remaining Number of additional DFS levels to descend before
- *        enqueuing survivors, as returned by #space_split_dfs_depth_budget()
- *        on entry from the mapper. This is @c space_dfs_levels_per_frontier -
- *        1 when @c space_enable_bfs_frontiers is set, or
- *        #space_cell_maxdepth (effectively unlimited) when it is disabled,
- *        which makes each DFS chunk run straight through to the leaves.
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to split recursively.
+ * @param buff A buffer for particle sorting, should be of size at least
+ *        c->hydro.count or @c NULL.
+ * @param sbuff A buffer for particle sorting, should be of size at least
+ *        c->stars.count or @c NULL.
+ * @param bbuff A buffer for particle sorting, should be of size at least
+ *        c->black_holes.count or @c NULL.
+ * @param gbuff A buffer for particle sorting, should be of size at least
+ *        c->grav.count or @c NULL.
+ * @param sink_buff A buffer for particle sorting, should be of size at least
+ *        c->sinks.count or @c NULL.
  */
-static void space_split_recursive(
-    struct space *s, struct space_split_frontier *next, struct cell *c,
-    struct cell_buff *restrict buff, struct cell_buff *restrict sbuff,
-    struct cell_buff *restrict bbuff, struct cell_buff *restrict gbuff,
-    struct cell_buff *restrict sink_buff, const short int tpid,
-    const int depth_remaining) {
+void space_split_recursive(struct space *s, struct cell *c,
+                           struct cell_buff *restrict buff,
+                           struct cell_buff *restrict sbuff,
+                           struct cell_buff *restrict bbuff,
+                           struct cell_buff *restrict gbuff,
+                           struct cell_buff *restrict sink_buff,
+                           const short int tpid) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -461,15 +351,32 @@ static void space_split_recursive(
   const int sink_count = c->sinks.count;
   const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
+  int maxdepth = 0;
+  float h_max = 0.0f;
+  float h_max_active = 0.0f;
+  float stars_h_max = 0.f;
+  float stars_h_max_active = 0.f;
+  float black_holes_h_max = 0.f;
+  float black_holes_h_max_active = 0.f;
+  float sinks_h_max = 0.f;
+  float sinks_h_max_active = 0.f;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+  integertime_t ti_rt_min_step_size = max_nr_timesteps;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_beg_max = 0;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct sink *sinks = c->sinks.parts;
 
-  /* Top-level cells inherit the worker's tpid (preserves the legacy
-   * behaviour where a top cell's progeny share its tpid). */
-  if (c->depth == 0) c->tpid = tpid;
+  /* Set the top level cell tpid. Doing it here ensures top level cells
+   * have the same tpid as their progeny. */
+  if (depth == 0) c->tpid = tpid;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
@@ -650,6 +557,7 @@ static void space_split_recursive(
                      *progeny_sink_buff = sink_buff;
 
     for (int k = 0; k < 8; k++) {
+
       /* Get the progenitor */
       struct cell *cp = c->progeny[k];
 
@@ -662,12 +570,9 @@ static void space_split_recursive(
 
       } else {
 
-        if (depth_remaining > 0)
-          space_split_recursive(s, next, cp, progeny_buff, progeny_sbuff,
-                                progeny_bbuff, progeny_gbuff, progeny_sink_buff,
-                                tpid, depth_remaining - 1);
-        else
-          space_split_frontier_append(next, cp);
+        /* Recurse */
+        space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
+                              progeny_gbuff, progeny_sink_buff, tpid);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -675,12 +580,192 @@ static void space_split_recursive(
         progeny_sbuff += cp->stars.count;
         progeny_bbuff += cp->black_holes.count;
         progeny_sink_buff += cp->sinks.count;
+
+        /* Update the cell-wide properties */
+        h_max = max(h_max, cp->hydro.h_max);
+        h_max_active = max(h_max_active, cp->hydro.h_max_active);
+        stars_h_max = max(stars_h_max, cp->stars.h_max);
+        stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
+        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
+        black_holes_h_max_active =
+            max(black_holes_h_max_active, cp->black_holes.h_max_active);
+        sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
+        sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
+
+        ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+        ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
+        ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
+        ti_rt_min_step_size =
+            min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
+        ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
+        ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+        ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+        ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
+        ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+        ti_black_holes_end_min =
+            min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+        ti_black_holes_beg_max =
+            max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+
+        /* Increase the depth */
+        maxdepth = max(maxdepth, cp->maxdepth);
       }
     }
 
-  } else {
+    /* Deal with the multipole */
+    if (s->with_self_gravity) {
 
-    space_split_finalize_leaf(s, c);
+      /* Reset everything */
+      gravity_reset(c->grav.multipole);
+
+      /* Compute CoM and bulk velocity from all progenies */
+      double CoM[3] = {0., 0., 0.};
+      double vel[3] = {0., 0., 0.};
+      float max_delta_vel[3] = {0.f, 0.f, 0.f};
+      float min_delta_vel[3] = {0.f, 0.f, 0.f};
+      double mass = 0.;
+
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) {
+          const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
+
+          mass += m->m_pole.M_000;
+
+          CoM[0] += m->CoM[0] * m->m_pole.M_000;
+          CoM[1] += m->CoM[1] * m->m_pole.M_000;
+          CoM[2] += m->CoM[2] * m->m_pole.M_000;
+
+          vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+          vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+          vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+          max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+          max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+          max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+          min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+          min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+          min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
+        }
+      }
+
+      /* Final operation on the CoM and bulk velocity */
+      const double inv_mass = 1. / mass;
+      c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
+      c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
+      c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
+      c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
+      c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
+      c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
+
+      /* Min max velocity along each axis */
+      c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+      c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+      c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+      c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+      c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+      c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
+
+      /* Now shift progeny multipoles and add them up */
+      struct multipole temp;
+      double r_max = 0.;
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) {
+          const struct cell *cp = c->progeny[k];
+          const struct multipole *m = &cp->grav.multipole->m_pole;
+
+          /* Contribution to multipole */
+          gravity_M2M(&temp, m, c->grav.multipole->CoM,
+                      cp->grav.multipole->CoM);
+          gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
+
+          /* Upper limit of max CoM<->gpart distance */
+          const double dx =
+              c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
+          const double dy =
+              c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
+          const double dz =
+              c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
+          const double r2 = dx * dx + dy * dy + dz * dz;
+          r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
+        }
+      }
+
+      /* Alternative upper limit of max CoM<->gpart distance */
+      const double dx =
+          c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+              ? c->grav.multipole->CoM[0] - c->loc[0]
+              : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
+      const double dy =
+          c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+              ? c->grav.multipole->CoM[1] - c->loc[1]
+              : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
+      const double dz =
+          c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+              ? c->grav.multipole->CoM[2] - c->loc[2]
+              : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
+
+      /* Take minimum of both limits */
+      c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+
+      /* Store the value at rebuild time */
+      c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+      c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+      c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+      c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+      c->grav.multipole->dx_max[0] = 0.f;
+      c->grav.multipole->dx_max[1] = 0.f;
+      c->grav.multipole->dx_max[2] = 0.f;
+
+      /* Compute the multipole power */
+      gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
+    } /* Deal with gravity */
+
+    /* Set the values for this cell. */
+    c->hydro.h_max = h_max;
+    c->hydro.h_max_active = h_max_active;
+    c->hydro.ti_end_min = ti_hydro_end_min;
+    c->hydro.ti_beg_max = ti_hydro_beg_max;
+    c->rt.ti_rt_end_min = ti_rt_end_min;
+    c->rt.ti_rt_beg_max = ti_rt_beg_max;
+    c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
+    c->grav.ti_end_min = ti_gravity_end_min;
+    c->grav.ti_beg_max = ti_gravity_beg_max;
+    c->stars.ti_end_min = ti_stars_end_min;
+    c->stars.ti_beg_max = ti_stars_beg_max;
+    c->stars.h_max = stars_h_max;
+    c->stars.h_max_active = stars_h_max_active;
+    c->sinks.ti_end_min = ti_sinks_end_min;
+    c->sinks.ti_beg_max = ti_sinks_beg_max;
+    c->sinks.h_max = sinks_h_max;
+    c->sinks.h_max_active = sinks_h_max_active;
+    c->black_holes.ti_end_min = ti_black_holes_end_min;
+    c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+    c->black_holes.h_max = black_holes_h_max;
+    c->black_holes.h_max_active = black_holes_h_max_active;
+    c->maxdepth = maxdepth;
+
+    /* No runner owns this cell yet. We assign those during scheduling. */
+    c->owner = -1;
+
+    /* Store the global max depth */
+    if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
+
+  } /* Split or let it be? */
+
+  /* Otherwise, this cell remains a leaf: finalise it directly from its own
+   * particles instead of aggregating from progeny. */
+  else {
+
+    space_split_aggregate_from_leaf(s, c);
+
+    /* Store the global max depth */
+    if (c->depth == 0) atomic_max(&s->maxdepth, c->maxdepth);
   }
 
   /* Clean up. */
@@ -694,304 +779,32 @@ static void space_split_recursive(
 }
 
 /**
- * @brief Recursively aggregate per-cell summary data from the leaves up.
+ * @brief #threadpool mapper function to split cells if they contain
+ *        too many particles.
  *
- * After the BFS split phase, each leaf cell already has its summary fields
- * (@c h_max, @c ti_*_end_min, multipole, @c maxdepth, etc.) finalised by
- * #space_split_finalize_leaf. This function walks any non-leaf cell's
- * progeny depth-first and reduces their summaries into @c c.
- *
- * Aggregation is the same set of operations that the split branch of the
- * old @c space_split_recursive performed after recursing into its
- * progeny, with one structural difference: the leaf branch is empty here,
- * because leaves have already been finalised.
- *
- * @param s The #space the cell lives in.
- * @param c The cell to aggregate.
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
  */
-static void space_split_aggregate_recursive(struct space *s, struct cell *c) {
+void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
-  /* Leaves were already finalised during the BFS split phase. */
-  if (!c->split) return;
-
-  /* Aggregate progeny first. */
-  for (int k = 0; k < 8; k++) {
-    if (c->progeny[k] != NULL)
-      space_split_aggregate_recursive(s, c->progeny[k]);
-  }
-
-  /* Reduce per-family h_max, time-bin bounds and SF logger across
-   * surviving progeny. */
-  float h_max = 0.f, h_max_active = 0.f;
-  float stars_h_max = 0.f, stars_h_max_active = 0.f;
-  float black_holes_h_max = 0.f, black_holes_h_max_active = 0.f;
-  float sinks_h_max = 0.f, sinks_h_max_active = 0.f;
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
-  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
-  integertime_t ti_rt_min_step_size = max_nr_timesteps;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_beg_max = 0;
-  int maxdepth = 0;
-
-  for (int k = 0; k < 8; k++) {
-    const struct cell *cp = c->progeny[k];
-    if (cp == NULL) continue;
-
-    h_max = max(h_max, cp->hydro.h_max);
-    h_max_active = max(h_max_active, cp->hydro.h_max_active);
-    stars_h_max = max(stars_h_max, cp->stars.h_max);
-    stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
-    black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
-    black_holes_h_max_active =
-        max(black_holes_h_max_active, cp->black_holes.h_max_active);
-    sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
-    sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
-
-    ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-    ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-    ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
-    ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
-    ti_rt_min_step_size = min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
-    ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-    ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
-    ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-    ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
-    ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-    ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
-    ti_black_holes_end_min =
-        min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-    ti_black_holes_beg_max =
-        max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
-
-    star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
-
-    maxdepth = max(maxdepth, cp->maxdepth);
-  }
-
-  /* Build this cell's multipole from its children (M2M). */
-  if (s->with_self_gravity) {
-
-    gravity_reset(c->grav.multipole);
-
-    double CoM[3] = {0., 0., 0.};
-    double vel[3] = {0., 0., 0.};
-    float max_delta_vel[3] = {0.f, 0.f, 0.f};
-    float min_delta_vel[3] = {0.f, 0.f, 0.f};
-    double mass = 0.;
-
-    for (int k = 0; k < 8; ++k) {
-      if (c->progeny[k] != NULL) {
-        const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
-
-        mass += m->m_pole.M_000;
-
-        CoM[0] += m->CoM[0] * m->m_pole.M_000;
-        CoM[1] += m->CoM[1] * m->m_pole.M_000;
-        CoM[2] += m->CoM[2] * m->m_pole.M_000;
-
-        vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
-        vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
-        vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
-
-        max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
-        max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
-        max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
-
-        min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
-        min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
-        min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
-      }
-    }
-
-    /* Final operation on the CoM and bulk velocity. */
-    const double mass_inv = 1. / mass;
-    c->grav.multipole->CoM[0] = CoM[0] * mass_inv;
-    c->grav.multipole->CoM[1] = CoM[1] * mass_inv;
-    c->grav.multipole->CoM[2] = CoM[2] * mass_inv;
-    c->grav.multipole->m_pole.vel[0] = vel[0] * mass_inv;
-    c->grav.multipole->m_pole.vel[1] = vel[1] * mass_inv;
-    c->grav.multipole->m_pole.vel[2] = vel[2] * mass_inv;
-
-    /* Min max velocity along each axis */
-    c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
-    c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
-    c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
-    c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
-    c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
-    c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
-
-    /* Now shift progeny multipoles and add them up */
-    struct multipole temp;
-    double r_max = 0.;
-    for (int k = 0; k < 8; ++k) {
-      if (c->progeny[k] != NULL) {
-        const struct cell *cp = c->progeny[k];
-        const struct multipole *m = &cp->grav.multipole->m_pole;
-
-        /* Contribution to multipole */
-        gravity_M2M(&temp, m, c->grav.multipole->CoM, cp->grav.multipole->CoM);
-        gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
-
-        /* Upper limit of max CoM<->gpart distance */
-        const double dx =
-            c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
-        const double dy =
-            c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
-        const double dz =
-            c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
-        const double r2 = dx * dx + dy * dy + dz * dz;
-        r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
-      }
-    }
-
-    /* Alternative upper limit of max CoM<->gpart distance */
-    const double dx = c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
-                          ? c->grav.multipole->CoM[0] - c->loc[0]
-                          : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-    const double dy = c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
-                          ? c->grav.multipole->CoM[1] - c->loc[1]
-                          : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-    const double dz = c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
-                          ? c->grav.multipole->CoM[2] - c->loc[2]
-                          : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
-
-    /* Take minimum of both limits */
-    c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-
-    /* Store the value at rebuild time */
-    c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
-    c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
-    c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
-    c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-    c->grav.multipole->dx_max[0] = 0.f;
-    c->grav.multipole->dx_max[1] = 0.f;
-    c->grav.multipole->dx_max[2] = 0.f;
-
-    /* Compute the multipole power */
-    gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-  }
-
-  /* Write the reduced values back to this cell. */
-  c->hydro.h_max = h_max;
-  c->hydro.h_max_active = h_max_active;
-  c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->rt.ti_rt_end_min = ti_rt_end_min;
-  c->rt.ti_rt_beg_max = ti_rt_beg_max;
-  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
-  c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_beg_max = ti_gravity_beg_max;
-  c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_beg_max = ti_stars_beg_max;
-  c->stars.h_max = stars_h_max;
-  c->stars.h_max_active = stars_h_max_active;
-  c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->sinks.h_max = sinks_h_max;
-  c->sinks.h_max_active = sinks_h_max_active;
-  c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
-  c->black_holes.h_max = black_holes_h_max;
-  c->black_holes.h_max_active = black_holes_h_max_active;
-  c->maxdepth = maxdepth;
-  c->owner = -1;
-}
-
-/**
- * @brief #threadpool mapper function for the top-level DFS round.
- *
- * Each chunk is a contiguous range of local top-cell indices. Each top cell
- * starts a master-style DFS chunk with freshly allocated local buffers. When
- * the DFS depth budget is exhausted, surviving subtrees are appended to a
- * thread-local frontier for later BFS rounds.
- *
- * @param map_data Pointer to the start of a chunk of top-cell indices.
- * @param num_cells Number of top cells in this chunk.
- * @param extra_data Pointer to an array containing the #space and the
- *        thread-local next frontier buffers.
- */
-static void space_split_top_mapper(void *map_data, int num_cells,
-                                   void *extra_data) {
-
-  void **mapper_data = (void **)extra_data;
-  struct space *s = (struct space *)mapper_data[0];
-  struct space_split_frontier *local_frontiers =
-      (struct space_split_frontier *)mapper_data[1];
-  int *local_cells_with_particles = (int *)map_data;
-  const short int tpid = threadpool_gettid();
-  struct space_split_frontier *next = &local_frontiers[tpid];
-
-  const int depth_budget = space_split_dfs_depth_budget();
-
-  for (int i = 0; i < num_cells; i++) {
-    struct cell *c = &s->cells_top[local_cells_with_particles[i]];
-    space_split_recursive(s, next, c, NULL, NULL, NULL, NULL, NULL, tpid,
-                          depth_budget);
-  }
-}
-
-/**
- * @brief #threadpool mapper function for one BFS level.
- *
- * Each chunk of work is a contiguous range of cells from the
- * @c current frontier. Each worker appends produced cells to its own
- * thread-local frontier, which is merged into the flat next frontier after
- * the parallel level completes.
- *
- * @param map_data Pointer to the start of a chunk of cell pointers.
- * @param num_cells Number of cells in this chunk.
- * @param extra_data Pointer to an array containing the #space and the
- *        thread-local next frontier buffers.
- */
-static void space_split_frontier_mapper(void *map_data, int num_cells,
-                                        void *extra_data) {
-
-  void **mapper_data = (void **)extra_data;
-  struct space *s = (struct space *)mapper_data[0];
-  struct space_split_frontier *local_frontiers =
-      (struct space_split_frontier *)mapper_data[1];
-  struct cell **cells = (struct cell **)map_data;
-  const short int tpid = threadpool_gettid();
-  struct space_split_frontier *next = &local_frontiers[tpid];
-
-  const int depth_budget = space_split_dfs_depth_budget();
-
-  for (int i = 0; i < num_cells; i++)
-    space_split_recursive(s, next, cells[i], NULL, NULL, NULL, NULL, NULL, tpid,
-                          depth_budget);
-}
-
-/**
- * @brief #threadpool mapper function for the upward aggregation pass.
- *
- * Each chunk is a contiguous range of top-level cell indices. The
- * aggregation walks each top cell's subtree depth-first via
- * #space_split_aggregate_recursive and then folds in the global
- * top-level multipole statistics (@c min_a_grav, @c max_softening,
- * @c max_mpole_power) using atomic min/max reductions.
- *
- * @param map_data Pointer to the start of a chunk of cell indices.
- * @param num_cells Number of indices in this chunk.
- * @param extra_data Pointer to the parent #space.
- */
-static void space_split_aggregate_mapper(void *map_data, int num_cells,
-                                         void *extra_data) {
-
+  /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
+  /* Collect some global information about the top-level m-poles */
   float min_a_grav = FLT_MAX;
   float max_softening = 0.f;
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
 
+  /* Threadpool id of current thread. */
+  short int tpid = threadpool_gettid();
+
+  /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-
-    space_split_aggregate_recursive(s, c);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
 
     if (s->with_self_gravity) {
       min_a_grav =
@@ -1003,13 +816,10 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
         max_mpole_power[n] =
             max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
     }
-
-    /* The deepest cell in this top tree determines the contribution to
-     * the global max depth. */
-    atomic_max(&s->maxdepth, c->maxdepth);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* All cells and particles should have consistent h_max values. */
   for (int ind = 0; ind < num_cells; ind++) {
     int depth = 0;
     const struct cell *c = &cells_top[local_cells_with_particles[ind]];
@@ -1024,67 +834,17 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
 }
 
 /**
- * @brief Set up the frontier buffers for BFS splitting.
- *
- * @param s The #space.
- * @param this_level Pointer to the frontier for the current BFS level.
- * @param next_level Pointer to the frontier for the next BFS level.
- * @param local_frontiers Pointer to the thread-local frontier buffers.
- * @param nr_threads Number of threads in the #threadpool.
- */
-static void space_split_init_frontiers(
-    struct space_split_frontier *this_level,
-    struct space_split_frontier *next_level,
-    struct space_split_frontier **local_frontiers, void *top_mapper_data[2],
-    void *frontier_mapper_data[2], const int nr_threads) {
-
-  /* Two frontier buffers, swapped each level. One holds the cells of the
-   * current frontier level while the other accumulates their surviving
-   * children for the next level.  */
-  *this_level = (struct space_split_frontier){NULL, 0, 0};
-  *next_level = (struct space_split_frontier){NULL, 0, 0};
-  *local_frontiers = (struct space_split_frontier *)swift_malloc(
-      "split_frontier", sizeof(struct space_split_frontier) * nr_threads);
-
-  /* Make sure the thread-local frontier buffers are safe and zeroed. */
-  if (*local_frontiers == NULL)
-    error("Failed to allocate thread-local BFS frontiers.");
-  bzero(*local_frontiers, sizeof(struct space_split_frontier) * nr_threads);
-
-  /* Prepare for the #threadpool mappers. */
-  top_mapper_data[1] = *local_frontiers;
-  frontier_mapper_data[1] = *local_frontiers;
-}
-
-/**
  * @brief Split particles between cells of a hierarchy.
  *
- * BFS-parallel implementation with limited DFS per frontier entry:
+ * Only do this for the local non-empty top-level cells.
  *
- * 1. Hybrid split phase: The top-level round is run exactly like the
- *    master implementation: a #threadpool mapper over the local top cells,
- *    with each top cell starting a DFS chunk that allocates and frees its
- *    own local split buffers. When a DFS chunk reaches its depth budget
- *    (@c space_dfs_levels_per_frontier), surviving subtrees are appended to a
- *    frontier. Subsequent rounds process that frontier in parallel, each
- *    frontier cell again starting a fresh DFS chunk with its own local
- *    buffers. This keeps the master-style buffer ownership and recursion
- *    inside each chunk while still re-balancing work between chunks. Setting
- *    @c space_enable_bfs_frontiers to 0 disables this re-balancing: the depth
- *    budget is then effectively unlimited, so every DFS chunk started from a
- *    top cell runs straight through to the leaves and the frontier stays
- *    empty, matching the plain recursive depth-first split used before the
- *    BFS frontier was introduced.
- *
- * 2. Aggregation phase: Once all splitting is done, each top cell's
- *    subtree is walked depth-first to combine per-family @c h_max, time-bin
- *    bounds and multipoles from the leaves up to the top via
- *    #space_split_aggregate_recursive. This phase is parallel over top cells;
- *    each subtree is independent.
- *
- * Frontier storage is thread-local during production and merged after each
- * round, so there is no shared append counter or global over-allocation to a
- * pessimistic worst-case size.
+ * When @c space_enable_bfs_frontiers is set (Scheduler:enable_bfs_frontiers),
+ * the breadth-first frontier algorithm in #space_split_frontiers() is used
+ * instead of the plain single-pass recursion below: it re-balances work
+ * across top-level trees whose subtree sizes are very unequal, at the cost
+ * of an extra upward aggregation pass. See space_split_frontiers.c for
+ * details. This is done in parallel using threads in the #threadpool either
+ * way.
  *
  * @param s The #space.
  * @param verbose Are we talkative ?
@@ -1097,97 +857,16 @@ void space_split(struct space *s, int verbose) {
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
-  const int nr_local_cells = s->nr_local_cells_with_particles;
+  if (space_enable_bfs_frontiers) {
 
-  if (nr_local_cells > 0) {
+    space_split_frontiers(s, verbose);
 
-    struct threadpool *tp = &s->e->threadpool;
-    const int nr_threads = tp->num_threads;
-    const ticks setup_tic = getticks();
+  } else {
 
-    /* Prepare the frontier buffers for the BFS split phase. */
-    struct space_split_frontier this_level_storage;
-    struct space_split_frontier next_level_storage;
-    struct space_split_frontier *local_frontiers = NULL;
-    struct space_split_frontier *this_level = &this_level_storage;
-    struct space_split_frontier *next_level = &next_level_storage;
-    void *top_mapper_data[2] = {s, NULL};
-    void *frontier_mapper_data[2] = {s, NULL};
-    space_split_init_frontiers(this_level, next_level, &local_frontiers,
-                               top_mapper_data, frontier_mapper_data,
-                               nr_threads);
-
-    const ticks setup_toc = getticks();
-
-    /* Run the top-level round exactly like master, but append deferred
-     * subtrees to the first frontier instead of always recursing to the
-     * leaves. */
-    const ticks bfs_tic = getticks();
-    threadpool_map(tp, space_split_top_mapper,
-                   s->local_cells_with_particles_top, nr_local_cells,
-                   sizeof(int), threadpool_auto_chunk_size, top_mapper_data);
-
-    space_split_merge_local_frontiers(this_level, local_frontiers, nr_threads);
-
-    int frontier_level = 1;
-    if (verbose)
-      message("Frontier level %d has %d cells.", frontier_level,
-              this_level->count);
-
-    while (this_level->count > 0) {
-
-      threadpool_map(tp, space_split_frontier_mapper, this_level->cells,
-                     this_level->count, sizeof(struct cell *),
-                     threadpool_auto_chunk_size, frontier_mapper_data);
-
-      space_split_merge_local_frontiers(next_level, local_frontiers,
-                                        nr_threads);
-
-      /* Swap frontiers. */
-      struct space_split_frontier *tmp = this_level;
-      this_level = next_level;
-      next_level = tmp;
-      frontier_level += 1;
-
-      if (verbose && this_level->count > 0)
-        message("Frontier level %d has %d cells.", frontier_level,
-                this_level->count);
-    }
-    const ticks bfs_toc = getticks();
-
-    /* Release the transient top-level split buffers and the frontier
-     * storage. */
-    const ticks teardown_tic = getticks();
-    if (this_level->cells != NULL)
-      swift_free("split_frontier", this_level->cells);
-    if (next_level->cells != NULL)
-      swift_free("split_frontier", next_level->cells);
-    for (int tid = 0; tid < nr_threads; tid++) {
-      if (local_frontiers[tid].cells != NULL)
-        swift_free("split_frontier", local_frontiers[tid].cells);
-    }
-    swift_free("split_frontier", local_frontiers);
-    const ticks teardown_toc = getticks();
-
-    /* Aggregation phase: walk each top tree from leaves up to combine
-     * per-family h_max, time-bin bounds and multipoles. */
-    const ticks aggregate_tic = getticks();
-    threadpool_map(tp, space_split_aggregate_mapper,
-                   s->local_cells_with_particles_top, nr_local_cells,
-                   sizeof(int), threadpool_auto_chunk_size, s);
-    const ticks aggregate_toc = getticks();
-
-    if (verbose) {
-      message("Split setup: %.3f %s.", clocks_from_ticks(setup_toc - setup_tic),
-              clocks_getunit());
-      message("BFS split loop: %.3f %s.", clocks_from_ticks(bfs_toc - bfs_tic),
-              clocks_getunit());
-      message("Split teardown: %.3f %s.",
-              clocks_from_ticks(teardown_toc - teardown_tic), clocks_getunit());
-      message("Aggregate pass: %.3f %s.",
-              clocks_from_ticks(aggregate_toc - aggregate_tic),
-              clocks_getunit());
-    }
+    threadpool_map(&s->e->threadpool, space_split_mapper,
+                   s->local_cells_with_particles_top,
+                   s->nr_local_cells_with_particles, sizeof(int),
+                   threadpool_auto_chunk_size, s);
   }
 
   if (verbose) {
