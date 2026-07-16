@@ -4583,6 +4583,10 @@ void coarser_red_black_mapper(void *map_data, int num, void* extra) {
   const double delta = data->delta;
   const int col = data->col;
 
+  // Matthieu's dirty trick part 1
+  struct mesh_plane *planes_start = data->planes;
+  ptrdiff_t offset = ((struct mesh_plane*) map_data) - planes_start;
+  
   const int cdim[3] = {N,N,N};
 
   /* Pointer to the chunk to be processed */
@@ -4590,7 +4594,11 @@ void coarser_red_black_mapper(void *map_data, int num, void* extra) {
 
   /* Loop over the elements assigned to this thread */
   for (int p=0; p<num; p++) {
-    const int k = planes[p].k; //Which plane are we working on?
+    //const int k = planes[p].k; //Which plane are we working on?
+
+      // Matthieu's dirty trick part 2
+    const int k = offset + p;
+    
     //message("Doing k-plane %d", k);
     int nbs[6];
     nbs[4] = (k+1) % cdim[2];
@@ -4636,12 +4644,15 @@ void perform_red_black_sweep_coarser(struct threadpool *tp, double *coarser_solu
   data.MG = MG;
   data.delta = delta;
   data.N = N;
-
+  
   struct mesh_plane *planes = malloc(N*sizeof(struct mesh_plane));
   for (int k=0; k<N; k++) {
     planes[k].k = k;
   }
 
+  // Matthieu's dirty trick part 3
+  data.planes = planes;
+  
   for (int col=0; col<2; col++) {
     data.col = col;
     threadpool_map(tp, coarser_red_black_mapper, planes, N, sizeof(struct mesh_plane), threadpool_auto_chunk_size, (void*)&data);
