@@ -43,7 +43,7 @@ unit_mass = units.attrs["Unit mass in cgs (U_M)"]
 unit_length = units.attrs["Unit length in cgs (U_L)"]
 unit_time = units.attrs["Unit time in cgs (U_t)"]
 
-G = 6.67408e-8 * unit_mass * unit_time ** 2 / unit_length ** 3
+G = 6.67408e-8 * unit_mass * unit_time**2 / unit_length**3
 
 # Read the header
 header = f["Header"]

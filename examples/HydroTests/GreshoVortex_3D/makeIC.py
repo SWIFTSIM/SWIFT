@@ -41,7 +41,7 @@ numPart = size(h)
 fileInput.close()
 
 # Now generate the rest
-m = ones(numPart) * rho0 * boxSize ** 3 / numPart
+m = ones(numPart) * rho0 * boxSize**3 / numPart
 u = zeros(numPart)
 v = zeros((numPart, 3))
 

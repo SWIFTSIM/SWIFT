@@ -7,7 +7,7 @@ import unyt as u
 
 def plot_peak_quantities_vs_time(log_file_path, args):
     """
-    Reads radial_peak_positions.txt and plots simulation data vs. 
+    Reads radial_peak_positions.txt and plots simulation data vs.
     two sets of theoretical models (Book vs. Article).
     """
     if not os.path.exists(log_file_path):
