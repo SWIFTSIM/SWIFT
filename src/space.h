@@ -49,7 +49,7 @@ struct hydro_props;
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
-#define space_dfs_levels_per_frontier_default 3
+#define space_dfs_levels_per_bfs_frontier_default 3
 #define space_grid_split_threshold_default 400
 #define space_extra_parts_default 0
 #define space_extra_gparts_default 200
@@ -82,7 +82,7 @@ struct hydro_props;
 /* Globals needed in contexts without a space struct. Remember to dump and
  * restore these. */
 extern int space_splitsize;
-extern int space_dfs_levels_per_frontier;
+extern int space_dfs_levels_per_bfs_frontier;
 extern int space_maxsize;
 extern int space_grid_split_threshold;
 extern int space_subsize_pair_hydro;

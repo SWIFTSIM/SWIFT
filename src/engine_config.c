@@ -949,9 +949,9 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_sub_size_self_grav", space_subsize_self_grav);
     space_splitsize = parser_get_opt_param_int(
         params, "Scheduler:cell_split_size", space_splitsize);
-    space_dfs_levels_per_frontier =
-        parser_get_opt_param_int(params, "Scheduler:dfs_levels_per_frontier",
-                                 space_dfs_levels_per_frontier);
+    space_dfs_levels_per_bfs_frontier = parser_get_opt_param_int(
+        params, "Scheduler:dfs_levels_per_bfs_frontier",
+        space_dfs_levels_per_bfs_frontier);
     space_subdepth_diff_grav =
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);

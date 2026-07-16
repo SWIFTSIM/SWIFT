@@ -944,7 +944,7 @@ static void space_split_dfs(struct space *s, int verbose) {
  * in single top level cells which yields poor parallelisation. The BFS frontier
  * algorithm introduces "frontiers" where collections of cells at the same depth
  * are split in parallel with a depth-first search of N levels (dictated by
- * space_dfs_levels_per_frontier). Once N levels have been split, the next
+ * space_dfs_levels_per_bfs_frontier). Once N levels have been split, the next
  * frontier is populated with the next level of cells that require splitting,
  * and these can then be split in parallel, allowing for parallelisation across
  * subcells of the same trees. This allows for better parallelisation of the

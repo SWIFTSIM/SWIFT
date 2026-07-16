@@ -176,7 +176,7 @@ static void space_split_merge_local_frontiers(
  *        c->sinks.count or NULL.
  * @param tpid The threadpool tid of the calling worker.
  * @param depth_remaining Number of additional DFS levels to descend before
- *        enqueuing survivors (space_dfs_levels_per_frontier - 1 on entry
+ *        enqueuing survivors (space_dfs_levels_per_bfs_frontier - 1 on entry
  *        from the mapper).
  */
 static void space_split_recursive(
@@ -457,7 +457,7 @@ static void space_split_frontier_mapper(void *map_data, int num_cells,
 
     /* Split this cell recursively. */
     space_split_recursive(s, next, cells[i], NULL, NULL, NULL, NULL, NULL, tpid,
-                          space_dfs_levels_per_frontier - 1);
+                          space_dfs_levels_per_bfs_frontier - 1);
   }
 }
 
@@ -585,7 +585,7 @@ static void space_split_init_frontiers(
  * 1. Hybrid split phase: The initial frontier is just the local top-level
  * cells. Each round, the current frontier is distributed over threads and
  * each of its cells is recursed into with a depth-first search (DFS) of
- * space_dfs_levels_per_frontier levels. Once that depth is reached, any
+ * space_dfs_levels_per_bfs_frontier levels. Once that depth is reached, any
  * surviving children are appended to a thread-local next frontier buffer. After
  * all threads have finished, the local frontiers are merged into a single flat
  * frontier for the next round. This process then repeats until the frontier is
@@ -641,7 +641,7 @@ void space_split_bfs_frontiers(struct space *s, int verbose) {
   int frontier_level = 0;
 
   /* Keep splitting successive frontiers of cells in parallel (each cell
-   * recursing DFS-style for space_dfs_levels_per_frontier levels before any
+   * recursing DFS-style for space_dfs_levels_per_bfs_frontier levels before any
    * surviving children are deferred to the next frontier) until nothing is left
    * to split. */
   while (this_level->count > 0) {
