@@ -467,7 +467,7 @@ static void space_split_frontier_mapper(void *map_data, int num_cells,
  *
  * This function will loop over all top level cells and call
  * #space_split_aggregate_recursive on each one, which will recurse all the way
- * to the leaves and accumulate cell properties and popualte multipoles from the
+ * to the leaves and accumulate cell properties and populate multipoles from the
  * bottom up.
  *
  * @param map_data Pointer to the start of a chunk of cell indices.

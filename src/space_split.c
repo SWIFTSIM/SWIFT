@@ -323,6 +323,11 @@ void space_split_finalise_leaf(struct space *s, struct cell *c) {
 /**
  * @brief Accumulate the cell level particle properties from progeny.
  *
+ * This takes the max/min of c's current fields against cp's, so c's relevant
+ * fields must already be reset to the min/max for the reduction (0 for the
+ * h_max fields, max_nr_timesteps for the *_end_min and ti_rt_min_step_size
+ * fields, 0 for the *_beg_max fields) before calling this function.
+ *
  * @param c The parent #cell, updated in place.
  * @param cp The child #cell being folded in.
  */
@@ -929,7 +934,7 @@ static void space_split_dfs(struct space *s, int verbose) {
  * the breadth-first frontier algorithm in #space_split_bfs_frontiers() is
  * used instead of the DFS recursion in #space_split_dfs().
  *
- * The DFS recursion crease particles sorting buffers at the top level and
+ * The DFS recursion creates particle sorting buffers at the top level and
  * reuses them as we recurse down the tree. This is extremely performant
  * and works well when the box is relatively uniform.
  *
