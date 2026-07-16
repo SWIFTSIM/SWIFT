@@ -110,9 +110,9 @@ temperature used to price its recombination cost can never disagree.
 \textbf{Verification:} clean build (\code{-Werror}, both \code{swift}
 and \code{swift\_mpi}); \code{testRadiationRebuildCheck} and
 \code{test27cellsStars -n 3 -N 3 -r 5} pass;
-\code{StromgrenSphere} \code{gas\_mass=0.1} acceptance run in progress
-at time of writing, not yet confirmed clean (\todo{confirm and update
-this line once it finishes}). Physical effect on row 4 of the validation matrix
+\code{StromgrenSphere} \code{gas\_mass=0.1} acceptance run completed to
+\code{time\_end} with no crash/assertion, no regression. Physical
+effect on row 4 of the validation matrix
 (Table~\ref{tab:matrix}): $r_{\rm HII}$ at $t=8\,$Myr went from
 23.2--25.2\,pc to 42.9--44.9\,pc, confirming the predicted direction
 and rough magnitude -- but this new result is very likely capped by
