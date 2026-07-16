@@ -952,8 +952,6 @@ void engine_config(int restart, int fof, struct engine *e,
     space_dfs_levels_per_frontier = parser_get_opt_param_int(
         params, "Scheduler:dfs_levels_per_frontier",
         space_dfs_levels_per_frontier);
-    space_enable_bfs_frontiers = parser_get_opt_param_int(
-        params, "Scheduler:enable_bfs_frontiers", space_enable_bfs_frontiers);
     space_subdepth_diff_grav =
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);
