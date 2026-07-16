@@ -3,6 +3,7 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2026 Will J. Roper (w.roper@sussex.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -471,6 +472,149 @@ void space_split_populate_multipole(struct cell *c) {
 }
 
 /**
+ * @brief Allocate and fill temporary sorting buffers for a cell's particles.
+ *
+ * Only called by the caller when @c buff, @c gbuff, @c sbuff, @c bbuff and
+ * @c sink_buff are all NULL; always allocates and fills a buffer here for
+ * each non-empty particle family.
+ *
+ * @param c The #cell whose particles populate the buffers.
+ * @param buff Pointer to the hydro buffer pointer, allocated in place.
+ * @param gbuff Pointer to the gravity buffer pointer, allocated in place.
+ * @param sbuff Pointer to the star buffer pointer, allocated in place.
+ * @param bbuff Pointer to the black hole buffer pointer, allocated in place.
+ * @param sink_buff Pointer to the sink buffer pointer, allocated in place.
+ */
+void space_split_allocate_and_fill_buffers(
+    struct cell *c, struct cell_buff *restrict *buff,
+    struct cell_buff *restrict *gbuff, struct cell_buff *restrict *sbuff,
+    struct cell_buff *restrict *bbuff, struct cell_buff *restrict *sink_buff) {
+
+  /* Unpack counts and particle arrays. */
+  const int count = c->hydro.count;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
+  const int bcount = c->black_holes.count;
+  const int sink_count = c->sinks.count;
+  struct part *parts = c->hydro.parts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
+  struct bpart *bparts = c->black_holes.parts;
+  struct sink *sinks = c->sinks.parts;
+
+  /* Only allocate part arrays if we have parts. */
+  if (count > 0) {
+
+    /* Allocate the temporary buffer for hydro parts. */
+    if (swift_memalign("tempbuff", (void **)buff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * count) != 0)
+      error("Failed to allocate temporary indices.");
+
+    /* Fill the temporary buffer for hydro parts. */
+    for (int k = 0; k < count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (parts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (parts[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      (*buff)[k].x[0] = parts[k].x[0];
+      (*buff)[k].x[1] = parts[k].x[1];
+      (*buff)[k].x[2] = parts[k].x[2];
+    }
+  }
+
+  /* Only allocate part arrays if we have gparts. */
+  if (gcount > 0) {
+
+    /* Allocate the temporary buffer for gravity parts. */
+    if (swift_memalign("tempgbuff", (void **)gbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * gcount) != 0)
+      error("Failed to allocate temporary indices.");
+
+    /* Fill the temporary buffer for gravity parts. */
+    for (int k = 0; k < gcount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (gparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (gparts[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      (*gbuff)[k].x[0] = gparts[k].x[0];
+      (*gbuff)[k].x[1] = gparts[k].x[1];
+      (*gbuff)[k].x[2] = gparts[k].x[2];
+    }
+  }
+
+  /* Only allocate part arrays if we have sparts. */
+  if (scount > 0) {
+
+    /* Allocate the temporary buffer for star parts. */
+    if (swift_memalign("tempsbuff", (void **)sbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * scount) != 0)
+      error("Failed to allocate temporary indices.");
+
+    /* Fill the temporary buffer for star parts. */
+    for (int k = 0; k < scount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (sparts[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      (*sbuff)[k].x[0] = sparts[k].x[0];
+      (*sbuff)[k].x[1] = sparts[k].x[1];
+      (*sbuff)[k].x[2] = sparts[k].x[2];
+    }
+  }
+
+  /* Only allocate part arrays if we have bparts. */
+  if (bcount > 0) {
+
+    /* Allocate the temporary buffer for black hole parts. */
+    if (swift_memalign("tempbbuff", (void **)bbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * bcount) != 0)
+      error("Failed to allocate temporary indices.");
+
+    /* Fill the temporary buffer for black hole parts. */
+    for (int k = 0; k < bcount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (bparts[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (bparts[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      (*bbuff)[k].x[0] = bparts[k].x[0];
+      (*bbuff)[k].x[1] = bparts[k].x[1];
+      (*bbuff)[k].x[2] = bparts[k].x[2];
+    }
+  }
+
+  /* Only allocate part arrays if we have sinks. */
+  if (sink_count > 0) {
+
+    /* Allocate the temporary buffer for sink parts. */
+    if (swift_memalign("temp_sink_buff", (void **)sink_buff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * sink_count) != 0)
+      error("Failed to allocate temporary indices.");
+
+    /* Fill the temporary buffer for sink parts. */
+    for (int k = 0; k < sink_count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sinks[k].time_bin == time_bin_inhibited)
+        error("Inhibited particle present in space_split()");
+      if (sinks[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
+#endif
+      (*sink_buff)[k].x[0] = sinks[k].x[0];
+      (*sink_buff)[k].x[1] = sinks[k].x[1];
+      (*sink_buff)[k].x[2] = sinks[k].x[2];
+    }
+  }
+}
+
+/**
  * @brief Recursively split a cell.
  *
  * @param s The #space in which the cell lives.
@@ -498,106 +642,20 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
-  const int bcount = c->black_holes.count;
-  const int sink_count = c->sinks.count;
   const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
   int maxdepth = 0;
-  struct part *parts = c->hydro.parts;
-  struct gpart *gparts = c->grav.parts;
-  struct spart *sparts = c->stars.parts;
-  struct bpart *bparts = c->black_holes.parts;
-  struct sink *sinks = c->sinks.parts;
 
   /* Set the top level cell tpid. Doing it here ensures top level cells
    * have the same tpid as their progeny. */
   if (depth == 0) c->tpid = tpid;
 
-  /* If the buff is NULL, allocate it, and remember to free it. */
+  /* Do we need to allocate the sorting buffers? If so, do it here. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
                                bbuff == NULL && sink_buff == NULL);
   if (allocate_buffer) {
-    if (count > 0) {
-      if (swift_memalign("tempbuff", (void **)&buff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * count) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < count; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (parts[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (parts[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        buff[k].x[0] = parts[k].x[0];
-        buff[k].x[1] = parts[k].x[1];
-        buff[k].x[2] = parts[k].x[2];
-      }
-    }
-    if (gcount > 0) {
-      if (swift_memalign("tempgbuff", (void **)&gbuff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * gcount) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < gcount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (gparts[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (gparts[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        gbuff[k].x[0] = gparts[k].x[0];
-        gbuff[k].x[1] = gparts[k].x[1];
-        gbuff[k].x[2] = gparts[k].x[2];
-      }
-    }
-    if (scount > 0) {
-      if (swift_memalign("tempsbuff", (void **)&sbuff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * scount) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < scount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (sparts[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (sparts[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        sbuff[k].x[0] = sparts[k].x[0];
-        sbuff[k].x[1] = sparts[k].x[1];
-        sbuff[k].x[2] = sparts[k].x[2];
-      }
-    }
-    if (bcount > 0) {
-      if (swift_memalign("tempbbuff", (void **)&bbuff, SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * bcount) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < bcount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (bparts[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (bparts[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        bbuff[k].x[0] = bparts[k].x[0];
-        bbuff[k].x[1] = bparts[k].x[1];
-        bbuff[k].x[2] = bparts[k].x[2];
-      }
-    }
-    if (sink_count > 0) {
-      if (swift_memalign("temp_sink_buff", (void **)&sink_buff,
-                         SWIFT_STRUCT_ALIGNMENT,
-                         sizeof(struct cell_buff) * sink_count) != 0)
-        error("Failed to allocate temporary indices.");
-      for (int k = 0; k < sink_count; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (sinks[k].time_bin == time_bin_inhibited)
-          error("Inhibited particle present in space_split()");
-        if (sinks[k].time_bin == time_bin_not_created)
-          error("Extra particle present in space_split()");
-#endif
-        sink_buff[k].x[0] = sinks[k].x[0];
-        sink_buff[k].x[1] = sinks[k].x[1];
-        sink_buff[k].x[2] = sinks[k].x[2];
-      }
-    }
+    space_split_allocate_and_fill_buffers(c, &buff, &gbuff, &sbuff, &bbuff,
+                                          &sink_buff);
   }
 
   /* If the depth is too large, we have a problem and should stop. */
@@ -744,7 +802,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         /* Update the cell-wide properties */
         space_split_accumulate_props(c, cp);
 
-        /* Increase the depth */
+        /* Update the maximum depth */
         maxdepth = max(maxdepth, cp->maxdepth);
       }
     }
@@ -775,7 +833,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (c->depth == 0) atomic_max(&s->maxdepth, c->maxdepth);
   }
 
-  /* Clean up. */
+  /* Clean up the sorting buffers if we allocated them here. */
   if (allocate_buffer) {
     if (buff != NULL) swift_free("tempbuff", buff);
     if (gbuff != NULL) swift_free("tempgbuff", gbuff);
@@ -800,7 +858,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
-  /* Collect some global information about the top-level m-poles */
+  /* Initialise some global information about the top-level m-poles */
   float min_a_grav = FLT_MAX;
   float max_softening = 0.f;
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
@@ -845,17 +903,48 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /**
+ * @brief Recursively split cells in a depth-first search pattern.
+ *
+ * This function is included for symmetry with the breadth-first frontier
+ * approach in space_split_bfs_frontiers. Here we simply wrap the
+ * #threadpool_map() call to space_split_mapper() which does the actual work.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative ?
+ */
+static void space_split_dfs(struct space *s, int verbose) {
+
+  threadpool_map(&s->e->threadpool, space_split_mapper,
+                 s->local_cells_with_particles_top,
+                 s->nr_local_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, s);
+}
+
+/**
  * @brief Split particles between cells of a hierarchy.
  *
  * Only do this for the local non-empty top-level cells.
  *
- * When @c s->with_bfs_splitting is set (Scheduler:enable_bfs_frontiers),
- * the breadth-first frontier algorithm in #space_split_frontiers() is used
- * instead of the plain single-pass recursion below: it re-balances work
- * across top-level trees whose subtree sizes are very unequal, at the cost
- * of an extra upward aggregation pass. See space_split_frontiers.c for
- * details. This is done in parallel using threads in the #threadpool either
- * way.
+ * When s->with_bfs_splitting is true (Scheduler:enable_bfs_frontiers:1),
+ * the breadth-first frontier algorithm in #space_split_bfs_frontiers() is
+ * used instead of the DFS recursion in #space_split_dfs().
+ *
+ * The DFS recursion crease particles sorting buffers at the top level and
+ * reuses them as we recurse down the tree. This is extremely performant
+ * and works well when the box is relatively uniform.
+ *
+ * The BFS frontier algorithm is a combination of a breadth-first search and a
+ * depth-first search. When the box is less uniform and some areas of the box
+ * split deeper than others, the DFS recursion can create very deep recursions
+ * in single top level cells which yields poor parallelisation. The BFS frontier
+ * algorithm introduces "frontiers" where collections of cells at the same depth
+ * are split in parallel with a depth-first search of N levels (dictated by
+ * space_dfs_levels_per_frontier). Once N levels have been split, the next
+ * frontier is populated with the next level of cells that require splitting,
+ * and these can then be split in parallel, allowing for parallelisation across
+ * subcells of the same trees. This allows for better parallelisation of the
+ * splitting process without losing the particle sorting efficiency of the DFS
+ * recursion.
  *
  * @param s The #space.
  * @param verbose Are we talkative ?
@@ -872,14 +961,12 @@ void space_split(struct space *s, int verbose) {
   /* Are we using the breadth-first frontier algorithm or a single depth-first
    * recursion? */
   if (s->with_bfs_splitting) {
-    space_split_frontiers(s, verbose);
+    space_split_bfs_frontiers(s, verbose);
   } else {
-    threadpool_map(&s->e->threadpool, space_split_mapper,
-                   s->local_cells_with_particles_top,
-                   s->nr_local_cells_with_particles, sizeof(int),
-                   threadpool_auto_chunk_size, s);
+    space_split_dfs(s, verbose);
   }
 
+  /* Report what we have split. */
   if (verbose) {
     message("Max tree depth after split: %d", s->maxdepth);
     message("Have %d cells including subcells (cell footprint: %zd MB)",

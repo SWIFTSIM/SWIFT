@@ -39,6 +39,7 @@
 
 /* Avoid cyclic inclusions */
 struct cell;
+struct cell_buff;
 struct cosmology;
 struct gravity_props;
 struct star_formation;
@@ -432,10 +433,14 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
-void space_split_frontiers(struct space *s, int verbose);
+void space_split_bfs_frontiers(struct space *s, int verbose);
 void space_split_finalise_leaf(struct space *s, struct cell *c);
 void space_split_accumulate_props(struct cell *c, const struct cell *cp);
 void space_split_populate_multipole(struct cell *c);
+void space_split_allocate_and_fill_buffers(
+    struct cell *c, struct cell_buff *restrict *buff,
+    struct cell_buff *restrict *gbuff, struct cell_buff *restrict *sbuff,
+    struct cell_buff *restrict *bbuff, struct cell_buff *restrict *sink_buff);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
