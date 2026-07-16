@@ -8,8 +8,8 @@ correct.
 \subsection{2026-07-16: electron mass used instead of proton mass in the recombination cost}
 \label{sec:mass-bug}
 
-\texttt{radiation\_get\_part\_rate\_to\_fully\_ionize}
-(\texttt{src/feedback/GEAR/radiation.c}) computed the electron number
+\code{radiation\_get\_part\_rate\_to\_fully\_ionize}
+(\code{src/feedback/GEAR/radiation.c}) computed the electron number
 density as
 \begin{equation}
   n_e = \frac{X_H \rho}{\mu\, m_e} \qquad (\text{wrong: } m_e = \text{electron mass}),
@@ -25,30 +25,30 @@ deterministic boundary-particle override), then reported the budget
 exhausted.
 
 \textbf{How it was found:} the example
-(\texttt{StromgrenSphereClumpSmith2021}) was reported to show
+(\code{StromgrenSphereClumpSmith2021}) was reported to show
 essentially no HII region growth. A single-star, no-clump diagnostic
-tracking \texttt{IsIonizedFlags} per particle over time showed exactly
+tracking \code{IsIonizedFlags} per particle over time showed exactly
 one particle tagged per rebuild cycle, a different one each time
 (hot-but-untagged and tagged-but-cold particles coexisting at every
 snapshot -- flickering, not a growing core). Given the equilibrium
 Str\"omgren volume at these parameters should sustain
 $\dot N_{\rm ion}/\Delta\dot N_{\rm particle} \approx 20$ particles
 simultaneously, a 20$\times$ shortfall pointed at the cost calculation
-itself. Tracing \texttt{radiation\_get\_part\_rate\_to\_fully\_ionize}
+itself. Tracing \code{radiation\_get\_part\_rate\_to\_fully\_ionize}
 found the $m_e$-for-$m_p$ swap.
 
 \textbf{Fix:} \texttt{n\_e = (X\_H * rho) / m\_p}. Committed
-\texttt{356ec0cda} (first pass, together with removing $\mu$; see
+\code{356ec0cda} (first pass, together with removing $\mu$; see
 below for why $\mu$ went back and forth).
 
 \textbf{Verification:} rebuilt, reran the same single-star diagnostic.
 Tagged-particle count went from pinned at 1 to a smoothly growing
 population (17$\to$59 over $t=0$--0.98\,Myr); $r_{\rm HII}$ grew
 continuously with no plateau (0$\to$4.9\,pc over the same window,
-still accelerating). \texttt{testRadiationRebuildCheck} and
+still accelerating). \code{testRadiationRebuildCheck} and
 \texttt{test27cellsStars -n 3 -N 3 -r 5} pass;
-\texttt{StromgrenSphere} acceptance runs at \texttt{gas\_mass=0.1} and
-\texttt{gas\_mass=0.01} both ran clean to completion with no
+\code{StromgrenSphere} acceptance runs at \code{gas\_mass=0.1} and
+\code{gas\_mass=0.01} both ran clean to completion with no
 regression.
 
 \subsection{2026-07-16: mean-molecular-weight factor -- kept, then removed, after checking the source}
@@ -73,9 +73,9 @@ in that derivation regardless of what FIRE-2's text says. Both
 \citet{Hu2017} (``the number of hydrogen \emph{nuclei}'', explicitly
 $N_H = m_g X_H/m_p$) and \citet{Smith2021}
 ($R_{\rm rec}=\beta m\rho(X_H/m_p)^2$) use the $\mu$-free form, and
-\texttt{StromgrenSphereClumpSmith2021} exists specifically to match
+\code{StromgrenSphereClumpSmith2021} exists specifically to match
 those two papers' numbers. $\mu$ was removed again (final state,
-Eq.~\ref{eq:recomb-cost}), committed as part of \texttt{356ec0cda}.
+Eq.~\ref{eq:recomb-cost}), committed as part of \code{356ec0cda}.
 
 \textbf{Method note:} this flip-flopped once before landing on the
 derivation-based answer. When a paper's prose labels a quantity in a
@@ -83,3 +83,38 @@ way that doesn't match its role in the surrounding equation (FIRE-2
 calls $N(H)_b$ ``the number of H atoms'' despite the $\mu$ factor
 making it something else), trust the derivation over the label, and
 check against multiple independent sources before committing.
+
+\subsection{2026-07-16: case-B recombination coefficient made temperature-dependent}
+\label{sec:caseB-fix}
+
+$\beta$ in Eq.~\ref{eq:recomb-cost} was a fixed constant,
+$\alpha_B(10^4\,{\rm K})$, matching both reference papers' own
+convention but not this model's own metallicity-dependent temperature
+floor (Eq.~\ref{eq:floor}--\ref{eq:tcollisional}), which holds ionized
+gas well above $10^4\,$K at low metallicity ($\approx$47,500\,K at
+$Z=0$). Section~\ref{sec:beta-temperature} quantified this as a
+$\sim$75\% overestimate of the true recombination cost at this
+example's $Z=0$ default.
+
+\textbf{Fix:} \code{radiation\_get\_part\_rate\_to\_fully\_ionize}
+(\code{src/feedback/GEAR/radiation.c}) now evaluates
+\citet{HuiGnedin1997}'s $\alpha_B(T)$ fit
+(Eq.~\ref{eq:alphaB-huignedin}) at the particle's own applied ionized
+temperature, instead of the fixed constant. That temperature
+computation (previously inlined separately in
+\code{cooling\_ionize\_part\_subgrid}) was factored out into
+\code{radiation\_get\_part\_ionized\_internal\_energy}, shared by both
+functions, so the temperature used to floor a particle and the
+temperature used to price its recombination cost can never disagree.
+
+\textbf{Verification:} clean build (\code{-Werror}, both \code{swift}
+and \code{swift\_mpi}); \code{testRadiationRebuildCheck} and
+\code{test27cellsStars -n 3 -N 3 -r 5} pass;
+\code{StromgrenSphere} \code{gas\_mass=0.1} acceptance run in progress
+at time of writing, not yet confirmed clean (\todo{confirm and update
+this line once it finishes}). Physical effect on row 4 of the validation matrix
+(Table~\ref{tab:matrix}): $r_{\rm HII}$ at $t=8\,$Myr went from
+23.2--25.2\,pc to 42.9--44.9\,pc, confirming the predicted direction
+and rough magnitude -- but this new result is very likely capped by
+\code{Stars:max\_HII\_search\_radius}, not converged; see
+Section~\ref{sec:caseB-fix-validation} and item~V10.

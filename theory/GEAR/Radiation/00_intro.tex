@@ -1,6 +1,6 @@
 \section{Context and goal}
 
-Branch \texttt{darwin/gear\_radiation} implements a Fire-2-style
+Branch \code{darwin/gear\_radiation} implements a Fire-2-style
 \citep{Hopkins2018} subgrid HII photoionization model for the GEAR
 feedback scheme: each active star sorts nearby gas particles by
 distance and spends a photon-rate budget on them, closest first, until
@@ -10,7 +10,7 @@ next rebuild. The model is validated against two published, closely
 related reference algorithms:
 \begin{itemize}
   \item \citet{Hu2017}, Appendix A: the four-source D-type expansion
-    convergence test that our own ``spherical'' (\texttt{nside=0})
+    convergence test that our own ``spherical'' (\code{nside=0})
     mode reproduces directly;
   \item \citet{Smith2021}, Section 3.3.3--3.3.4 and Figs.~1--2: the
     same D-type test, plus an angular (HealPix) budget-splitting
@@ -19,7 +19,7 @@ related reference algorithms:
     regardless of the small solid angle it subtends.
 
   Both papers is the ground truth this branch is being validated
-  against; the example \texttt{examples/SubgridTests/\allowbreak
+  against; the example \code{examples/SubgridTests/\allowbreak
   StromgrenSphereClumpSmith2021/} reproduces their exact test
   geometry (four 19.2\,M$_\odot$ co-located sources, $n=100\,\rm
   cm^{-3}$ background, a $10^4\,\rm cm^{-3}$ clump 20\,pc away).
@@ -28,7 +28,7 @@ related reference algorithms:
 \subsection{Where things stand (2026-07-16)}
 
 The angular-splitting feature (Phase 1--3 of the original
-implementation plan) and the space\_regrid $h_{\rm hii}$-awareness fix
+implementation plan) and the \code{space\_regrid} $h_{\rm hii}$-awareness fix
 were completed and validated in earlier sessions on this branch. This
 logbook picks up from there: Darwin reported that the example produced
 essentially no HII region growth at all, which led to finding and
@@ -42,23 +42,23 @@ ongoing validation campaign against the two papers
 Each numbered file covers one topic and should stay short enough to
 read and edit in one sitting:
 \begin{itemize}
-  \item \texttt{01\_algorithm.tex} -- the algorithm and its formulas,
+  \item \code{01\_algorithm.tex} -- the algorithm and its formulas,
     update only when the code's physics actually changes;
-  \item \texttt{02\_bugs\_and\_fixes.tex} -- a dated log of bugs found
-    and fixed, append-only (do not delete old entries once fixed, they
-    are the record of what was wrong and why);
-  \item \texttt{03\_validation.tex} -- the running comparison against
-    Hu/Smith: tables, figures, and their interpretation. Replace
-    superseded numbers rather than accumulating them once a fix makes
-    old numbers wrong (unlike 02, this section describes the current
-    best understanding, not a history);
-  \item \texttt{04\_task\_graph.tex} -- how the search is wired into
+  \item \code{02\_task\_graph.tex} -- how the search is wired into
     the task graph (task types, unlocking, activation, locking,
     run-time recursion); update when the task-graph implementation
     itself changes, not for validation results;
-  \item \texttt{05\_open\_items.tex} -- what remains undecided or
-    undone. Move an item out once it's resolved, into either 02 or 03
+  \item \code{03\_bugs\_and\_fixes.tex} -- a dated log of bugs found
+    and fixed, append-only (do not delete old entries once fixed, they
+    are the record of what was wrong and why);
+  \item \code{04\_validation.tex} -- the running comparison against
+    Hu/Smith: tables, figures, and their interpretation. Replace
+    superseded numbers rather than accumulating them once a fix makes
+    old numbers wrong (unlike 03, this section describes the current
+    best understanding, not a history);
+  \item \code{05\_open\_items.tex} -- what remains undecided or
+    undone. Move an item out once it's resolved, into either 03 or 04
     as appropriate.
 \end{itemize}
-Figures live in \texttt{Figures/}, named
-\texttt{<config>\_<slice-or-projection>.png}.
+Figures live in \code{Figures/}, named
+\code{<config>\_<slice-or-projection>.png}.

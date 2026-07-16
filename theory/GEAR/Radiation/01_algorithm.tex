@@ -3,8 +3,13 @@
 
 \subsection{Photon budget and recombination cost}
 
-Each active star with ionizing photon rate $\dot N_{\rm ion}$ (from
-\texttt{radiation\_get\_individual\_star\_ionizing\_photon\_emission\_rate\_fit},
+The whole algorithm -- one-shot, distance-sorted photon-budget spending
+on the nearest candidate gas particles, closest-first, until exhausted
+-- is the FIRE-2 subgrid photoionization scheme
+\citep[Appendix~E]{Hopkins2018}; Hu et al.\ and Smith et al.\ (and this
+branch) build directly on it. Each active star with ionizing photon
+rate $\dot N_{\rm ion}$ (from
+\code{radiation\_get\_individual\_star\_ionizing\_photon\_emission\_rate\_fit},
 a blackbody mass--luminosity--temperature fit, not a simple linear
 function of stellar mass) gathers candidate gas particles within a
 search radius, sorted by distance, and spends its budget on them
@@ -20,7 +25,7 @@ are
 \end{align}
 where $m_p$ is the proton mass and $\beta$ is the case-B recombination
 coefficient, a \emph{fixed} constant evaluated at the conventional
-$T=10^4\,$K (\texttt{phys\_const->const\_caseb\_recomb}), matching the
+$T=10^4\,$K (\code{phys\_const->const\_caseb\_recomb}), matching the
 convention both reference papers use. Equation~\ref{eq:recomb-cost} is
 identical in form to Hu et al.'s $N_H\beta n_H$ (their $N_H$ is called
 ``the number of hydrogen nuclei'', an unambiguous atom count) and to
@@ -29,16 +34,79 @@ nor $n_e$ has a mean-molecular-weight ($\mu$) or metallicity factor;
 see Section~\ref{sec:mu-bug} for why our first attempt at this
 included one.
 
+\subsection{Temperature dependence of $\beta$}
+\label{sec:beta-temperature}
+
+\citet{HuiGnedin1997}, Appendix A, give a fit to the case-B H\,{\sc
+ii} recombination coefficient (from \citealt{Ferland1992}'s data,
+accurate to 0.7\% from 1\,K to $10^9\,$K -- effectively exact for our
+purposes):
+\begin{equation}
+  \alpha_B(T) = 2.753\times10^{-14}\,
+  \frac{\lambda^{1.500}}{\left[1+(\lambda/2.740)^{0.407}\right]^{2.242}}
+  \ {\rm cm^3\,s^{-1}}, \qquad
+  \lambda = \frac{315614\,{\rm K}}{T}.
+  \label{eq:alphaB-huignedin}
+\end{equation}
+This was already implemented correctly elsewhere in \swift --
+identically in \code{src/rt/SPHM1RT/rt\_cooling\_rates.h}, and inside
+grackle's own \code{k2\_rate()} (which GEAR-RT delegates to for its own
+case-B recombination, via the \code{CaseBRecombination} flag -- GEAR-RT
+has no case-B formula of its own) -- and \textbf{is now also
+implemented here (2026-07-16)}: $\beta$ in Eq.~\ref{eq:recomb-cost} is
+Eq.~\ref{eq:alphaB-huignedin} evaluated at $T$, not a fixed constant.
+$T$ is the particle's own applied ionized temperature -- the same
+$u_{\rm new}$ from Eq.~\ref{eq:floor}, converted to a temperature via
+its own $\mu$ -- so the recombination cost charged against a star's
+budget is always consistent with the temperature that particle is
+actually being held at
+(\code{radiation\_get\_part\_ionized\_internal\_energy}, shared between
+\code{radiation\_get\_part\_rate\_to\_fully\_ionize} and
+\code{cooling\_ionize\_part\_subgrid} to guarantee the two never
+disagree; \code{radiation\_get\_case\_b\_recombination\_\allowbreak
+coefficient\_cgs} implements Eq.~\ref{eq:alphaB-huignedin} itself).
+
+For reference, evaluating Eq.~\ref{eq:alphaB-huignedin} across the
+range this model's own temperature floor
+(Eq.~\ref{eq:floor}--\ref{eq:tcollisional}) applies --
+$\approx$8,600\,K at $Z=Z_\odot$ up to $\approx$47,500\,K at $Z=0$ --
+against the value $\beta$ used to take everywhere before this fix
+($2.6\times10^{-13}\,{\rm cm^3\,s^{-1}}$, $\alpha_B(10^4\,{\rm K})$ to
++0.3\%):
+\begin{center}
+\begin{tabular}{lrr}
+  \hline
+  $T$ [K] & $\alpha_B(T)$ [cm$^3$ s$^{-1}$] & vs.\ the old fixed value \\
+  \hline
+  8,600 ($Z=Z_\odot$)  & $2.94\times10^{-13}$ & $+13\%$ \\
+  10,000 (old fixed value's own $T$) & $2.59\times10^{-13}$ & $-0.3\%$ \\
+  20,000               & $1.43\times10^{-13}$ & $-45\%$ \\
+  47,500 ($Z=0$)        & $6.42\times10^{-14}$ & $-75\%$ \\
+  \hline
+\end{tabular}
+\end{center}
+Since $\alpha_B(T)$ falls with rising $T$, the old fixed value used to
+\emph{overestimate} the recombination cost at low metallicity by a
+factor of $\sim$4 at this example's $Z=0$ default -- the star's budget
+was spent roughly 4$\times$ faster than physically necessary, which
+artificially shrank the achieved $r_{\rm HII}$ in exactly the direction
+that could explain part of the residual gap to
+\citet{Hu2017}/\citet{Smith2021}'s reference numbers
+(Section~\ref{sec:metallicity}). At $Z=Z_\odot$ the effect was smaller
+and opposite in sign ($+13\%$, i.e.\ a mild \emph{under}estimate). See
+Section~\ref{sec:validation} for the measured effect of this fix on the
+validation matrix.
+
 A particle is a candidate for ionization only if it is not already
-tagged, is denser than \texttt{HII\_region\_min\_density\_Hpcm3}, and
+tagged, is denser than \code{HII\_region\_min\_density\_Hpcm3}, and
 is not already above $\approx 10^4\,$K
-(\texttt{feedback\_part\_can\_be\_ionized}). The star consumes its
+(\code{feedback\_part\_can\_be\_ionized}). The star consumes its
 budget particle by particle until it can no longer afford the next
 one. The last, unaffordable particle is the ``boundary particle'':
 \begin{itemize}
-  \item \texttt{HII\_deterministic\_boundary\_ionization=1}: always
+  \item \code{HII\_deterministic\_boundary\_ionization=1}: always
     ionize it anyway (over-spending the budget for that cycle);
-  \item \texttt{HII\_deterministic\_boundary\_ionization=0}: ionize it
+  \item \code{HII\_deterministic\_boundary\_ionization=0}: ionize it
     with probability equal to the affordable fraction, unbiased in
     expectation.
 \end{itemize}
@@ -50,20 +118,20 @@ boundary particle'' suggests.
 
 To avoid a dense clump near a source absorbing a disproportionate
 share of the photon budget regardless of the small solid angle it
-subtends (``mass-biasing''), \texttt{HII\_angular\_nside} splits the
+subtends (``mass-biasing''), \code{HII\_angular\_nside} splits the
 budget into $N_{\rm pix} = 12\,{\rm nside}^2$ equal shares
 ($\dot N_{\rm ion}/N_{\rm pix}$ each) and assigns each candidate
 particle to exactly one pixel by its direction from the star, hard
 assignment (no fractional overlap, matching both papers' own choice).
-\texttt{nside=0} degenerates to $N_{\rm pix}=1$, i.e.\ today's plain
-spherical behaviour. Only \texttt{nside=0} and \texttt{nside=1}
+\code{nside=0} degenerates to $N_{\rm pix}=1$, i.e.\ today's plain
+spherical behaviour. Only \code{nside=0} and \code{nside=1}
 ($N_{\rm pix}=12$) are currently supported.
 
 \subsection{Temperature floor}
 
 Once a particle is tagged, its internal energy is set (and reset every
 step while tagged, in the cooling task, via
-\texttt{cooling\_ionize\_part\_subgrid}) to
+\code{cooling\_ionize\_part\_subgrid}) to
 \begin{equation}
   u_{\rm new} = \min\left(\Delta u_{\rm ionized},\ u_{\rm collisional}\right),
   \label{eq:floor}
@@ -71,7 +139,11 @@ step while tagged, in the cooling task, via
 where $\Delta u_{\rm ionized} = N_H E_{\rm ion}/m_b$ is the specific
 energy needed to fully ionize the particle ($E_{\rm ion}=13.6\,$eV per
 H atom, metallicity-independent), and $u_{\rm collisional}$ comes from
-a metallicity-dependent equilibrium temperature,
+a metallicity-dependent equilibrium temperature. Unlike the rest of
+Section~\ref{sec:algorithm}, Eq.~\ref{eq:tcollisional} is not from
+FIRE-2 -- FIRE-2 clamps ionized gas to a flat $10^4\,$K -- but from
+its successor, \citet[][the metallicity-dependent photoionization
+temperature fit]{Hopkins2023}:
 \begin{equation}
   T_{\rm collisional} = 10^4\,{\rm K} \times
   \begin{cases}
@@ -89,11 +161,12 @@ Eq.~\ref{eq:floor}--\ref{eq:tcollisional} at $Z=0$.
 
 A tagged particle stays flagged (and re-floored, per
 Eq.~\ref{eq:floor}, every step) until
-\texttt{end\_time = tag\_time + HII\_region\_rebuild\_time}, at which
+\texttt{end\_time = tag\_time\allowbreak{} + HII\_region\_rebuild\_time},
+at which
 point it is unflagged and becomes eligible to compete for budget again
 on the star's next rebuild pass. Each star's rebuild is scheduled
 independently off its own age and its own last-rebuild time
-(\texttt{feedback\_common.c}); there is no cross-star coordination or
+(\code{feedback\_common.c}); there is no cross-star coordination or
 deliberate synchronous/asynchronous toggle like the one
 \citet{Smith2021} implemented (they found no difference between the
 two). For the co-located, simultaneously-born stars in the validation
