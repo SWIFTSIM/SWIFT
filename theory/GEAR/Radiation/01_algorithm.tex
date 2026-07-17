@@ -174,6 +174,23 @@ at all -- both simply clamp ionized gas to a flat $10^4\,$K. See
 Section~\ref{sec:metallicity} for the numeric consequence of
 Eq.~\ref{eq:floor}--\ref{eq:tcollisional} at $Z=0$.
 
+\textbf{Bug found and fixed (2026-07-18):} Eq.~\ref{eq:tcollisional} is
+$\log_{10}$, but \code{radiation.c} computed it with C's \code{log()}
+(natural log) until this fix. This silently applied the wrong base
+everywhere $Z \ge 10^{-3}Z_\odot$, including at this project's own
+$Z/Z_\odot\approx0.231$ validation-matrix reference point (item~V8,
+Section~\ref{sec:open}), chosen specifically because $\log_{10}$ makes
+$T_{\rm collisional}=10^4\,$K there. With the natural-log bug, the code
+actually applied $T_{\rm collisional}\approx12{,}700\,$K at that same
+point -- not the intended, papers-matching $10^4\,$K -- which also
+shifted the case-B $\beta$ (Section~\ref{sec:beta-temperature}, evaluated
+at this same temperature whenever $u_{\rm collisional} < \Delta
+u_{\rm ionized}$). Every result in this logbook computed at
+$Z/Z_\odot\approx0.231$ (the whole validation matrix,
+Sections~\ref{sec:matrix-gas20}--\ref{sec:matrix-gas95}, T8's e10 check)
+was therefore run at the wrong reference temperature; see item~T12,
+Section~\ref{sec:open}.
+
 \subsection{Persistence}
 
 A tagged particle stays flagged (and re-floored, per

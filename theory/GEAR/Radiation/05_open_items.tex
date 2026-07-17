@@ -247,6 +247,41 @@ session are labelled \code{T}\emph{n} (task-graph) and
     if verification (re-running \code{stromgren\_analytic\_check.py},
     and a \code{StromgrenSphereClumpSmith2021} stress test given its
     explicit density inhomogeneity) shows this proxy is insufficient.
+  \item[$\square$] \textbf{T12 -- bug fixed (2026-07-18), matrix rerun
+    still needed} -- \code{radiation.c}'s $T_{\rm collisional}$
+    (Eq.~\ref{eq:tcollisional}) used C's \code{log()} (natural log)
+    instead of \code{log10()}, silently applying the wrong base for
+    every $Z \ge 10^{-3}Z_\odot$ case -- including this project's own
+    $Z/Z_\odot\approx0.231$ validation-matrix reference point (V8),
+    chosen specifically because $\log_{10}$ makes $T_{\rm
+    collisional}=10^4\,$K there. The buggy code instead applied
+    $\approx$12,700\,K at that point. Fixed
+    (\code{log}$\to$\code{log10}); build clean,
+    \code{testRadiationRebuildCheck} and
+    \code{test27cellsStars -n 3 -N 3 -r 5} both pass. \textbf{Not yet
+    done:} every $Z/Z_\odot\approx0.231$ result in this logbook (the
+    whole validation matrix, Sections~\ref{sec:matrix-gas20}--
+    \ref{sec:matrix-gas95}; T8's e10 curve-shape check; V8, V9, V12) was
+    produced under the wrong $T_{\rm collisional}$ and needs rerunning
+    against this fix before being treated as current. Plausible partial
+    explanation for V12's finding that no rebuild cadence reproduced the
+    papers at \code{gas\_mass=95} resolution, and for part of T8's
+    curve-shape gap -- not confirmed, needs the rerun to check.
+  \item[$\square$] \textbf{T13} -- Gather-time pixel-budget starvation
+    guard (design doc:
+    \code{/home/darwinr/.claude/plans/sleepy-honking-pascal.md}, Phase
+    2) is confirmed shipped and live: all four
+    \code{runner\_hii\_buffer\_insert} call sites in
+    \code{runner\_radiation\_feedback.c} (self, dopair-naive, and both
+    branches of the sorted dopair) gate the insert on
+    \code{feedback\_get\_star\_ionization\_rate(si, pixel) > 0.0}
+    before adding a candidate, so a pixel with an exhausted budget can
+    no longer monopolize buffer slots on retry. No further action
+    needed for the deadlock case this guard targets. The milder,
+    deliberately-deferred residual (two live pixels, one much denser,
+    slowing not deadlocking the sparse one's service rate) remains
+    unaddressed, per the plan's own note -- only worth revisiting if a
+    clumpy test shows it matters in practice.
 \end{itemize}
 
 \subsection{Physical validation}

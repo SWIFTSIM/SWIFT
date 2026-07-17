@@ -110,7 +110,12 @@ radiation_get_part_ionized_internal_energy(
       1e4 * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
   double T_collisional;
   if (Z >= Z_sun * 1e-3) {
-    const double tmp = 0.86 / (1 + 0.22 * log(Z / Z_sun));
+    /* Hopkins (2023)'s fit is in log10(Z/Z_sun), not ln -- using log()
+       here silently applied the wrong base and shifted T_collisional
+       (e.g. ~12,700 K instead of the intended 10,000 K at this branch's
+       own Z/Zsun~0.231 reference point, see
+       theory/GEAR/Radiation/01_algorithm.tex, Eq. tcollisional). */
+    const double tmp = 0.86 / (1 + 0.22 * log10(Z / Z_sun));
     T_collisional = ten_to_four_K * min(6.62, tmp);
   } else {
     T_collisional = 6.62 * ten_to_four_K; /* High-temp asymptote */
