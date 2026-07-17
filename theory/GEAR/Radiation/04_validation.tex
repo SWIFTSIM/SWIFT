@@ -723,15 +723,79 @@ match look like a mismatch.
 
 A single-star run (no clump, no co-location, matching e10's
 requirement) needed a box wide enough to contain the equilibrium
-radius and a long enough \code{time\_end} to see the curve plateau
-without extending past the star's own ionizing lifetime -- the
-example's own defaults (25\,pc box half-width, $R_{\rm st}=26.4\,$pc
-for the default $29.7\,{\rm M}_\odot$ star) do not satisfy the first
-condition, so this run uses \code{boxsize=0.08} (80\,pc) and
-\code{time\_end=1.2e-2} ($\approx$11.7\,Myr) instead, via new
-\code{run.sh} overrides added for this check.
+radius and a \code{time\_end} that stays within the star's own
+ionizing lifetime -- the example's own defaults (25\,pc box
+half-width, $R_{\rm st}=26.4\,$pc for the default
+$29.7\,{\rm M}_\odot$ star) do not satisfy the first condition, so
+this run uses \code{boxsize=0.08} (80\,pc) via a new \code{run.sh}
+override added for this check. Metallicity matters here too: at this
+example's own $Z=0$ default, the corrected (Section~\ref{sec:beta-temperature})
+temperature-dependent $\alpha_B$ pushes $R_{\rm st}$ to 42\,pc, larger
+than even the widened 40\,pc box half-width -- so this check runs at
+$Z/Z_\odot\approx0.231$ (the papers' own $10^4\,$K convention,
+Section~\ref{sec:metallicity}), which keeps $R_{\rm st}=26.4\,$pc
+comfortably inside the box. \code{time\_end=5.5e-3} ($\approx$5.4\,Myr)
+also required lowering \code{dt\_max} to \code{1e-3} via a new
+\code{run.sh} override -- the example's default \code{dt\_max=1e-2}
+exceeds a \code{time\_end} shortened this far, and
+\code{engine\_config()} correctly refuses to start rather than
+silently accept it.
 
-\todo{Run in progress at time of writing
-(\code{run\_name=e10\_fixed\_box\_and\_time}). Fill in the
-simulated-vs-analytic comparison, pass/fail, and a plot once it
-completes.}
+\textbf{Result: FAIL -- the growth curve's \emph{shape} does not
+match the D-type solution, not just its endpoint.}
+Figure~\ref{fig:e10-dtype} shows $r_{\rm HII}(t)$ against the analytic
+curve. The final-time relative error is 41.7\% (41.6\,pc simulated vs.\
+71.3\,pc analytic at $t=5.38\,$Myr) -- already a clear fail against the
+default 30\% tolerance -- but the shape mismatch is more informative
+than that one number: the simulated curve is a \emph{staircase}, flat
+between rebuilds and jumping at each one, while the analytic curve is
+smooth and already past $R_{\rm st}$ from very early times. The
+simulated curve does not even first cross $R_{\rm st}$ until
+$t\approx3.8\,$Myr -- more than 80\% of the run -- whereas the D-type
+solution reaches $R_{\rm st}$ essentially at $t=0$ by construction
+(the classical solution assumes the R-type phase that establishes
+$R_{\rm st}$ is effectively instantaneous, then D-type expansion
+proceeds from there).
+
+\textbf{Likely mechanism: per-rebuild search-radius growth is
+geometrically bounded, not radius-following.} This run's
+\code{used\_parameters.yml} confirms \code{HII\_region\_rebuild\_time\_Myr=0.5},
+\code{max\_HII\_radius\_expansion\_tries=5}, and
+\code{HII\_radius\_expansion\_factor=1.1} -- so within a single
+rebuild's pass, the search radius can expand at most
+$1.1^5\approx1.61\times$ beyond its starting point
+(Section~\ref{sec:algorithm}'s retry logic,
+\code{runner\_dosub\_stars\_hii\_ionization\_feedback}), and the
+starting point for the \emph{next} rebuild is set from
+\code{h\_hii\_max} achieved at the \emph{end} of the current one. The
+observed step sizes (0$\to$5, 5$\to$10, 10$\to$19, 19$\to$24, 24$\to$36\,pc)
+are consistent with this compounding, capped-per-cycle growth, and the
+occasional multi-cycle plateaus (e.g.\ stuck at 24\,pc for
+$\sim$3 rebuild cycles) are consistent with cycles where the
+buffer-retry path (Stars:max\_HII\_retry\_full\_buffer) fired instead
+of the radius-expansion path, making no radius progress that cycle.
+This is a plausible, parameter-grounded explanation, not a fully
+diagnosed root cause -- confirming it would need per-rebuild
+instrumentation of which retry branch fires and why (not done here).
+\textbf{The practical implication: an HII region's growth toward its
+equilibrium size is retry/rebuild-cadence-limited, not
+recombination-physics-limited, for a significant fraction of its early
+growth.} At this example's own \code{rebuild\_time\_myr=0.5\,Myr} that
+delay is several Myr; a faster rebuild cadence (e.g.\ this project's
+usual \code{0.01\,Myr}) would shrink but not eliminate it, since the
+$1.61\times$-per-cycle cap is unrelated to the cadence itself. Recorded
+as a new open item (T8, Section~\ref{sec:open}) rather than fixed
+here.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/e10_dtype_growth_curve}
+  \caption{Simulated $r_{\rm HII}(t)$ (blue, algorithm bookkeeping) vs.\
+    the analytic Spitzer (1978) D-type solution (orange dashed) and the
+    equilibrium $R_{\rm st}$ (grey dotted), single isolated star,
+    $Z/Z_\odot\approx0.231$, \texttt{rebuild\_time\_myr=0.5}. The
+    simulated curve's staircase shape and $\sim$3.8\,Myr delay to first
+    reach $R_{\rm st}$ show the mismatch is in the trajectory, not just
+    the final value.}
+  \label{fig:e10-dtype}
+\end{figure}

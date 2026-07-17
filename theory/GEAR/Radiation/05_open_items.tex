@@ -47,16 +47,15 @@ session are labelled \code{T}\emph{n} (task-graph) and
     \code{tag\_time + HII\_region\_rebuild\_time}, to cover cases
     where SWIFT's own timestepping forces a rebuild slightly earlier
     than the nominal cadence -- untested, low priority given the above.
-  \item[$\square$] \textbf{e10} -- Verify the D-type (Spitzer) growth
-    curve's \emph{shape}, not just its final-time value.
-    \code{stromgren\_analytic\_check.py} (in the sibling
-    \code{StromgrenSphere} example) already implements the analytic
-    reference $R(t) = R_{\rm st}(1+7c_st/4R_{\rm st})^{4/7}$
-    \citep{Spitzer1978} and reports a pass/fail relative error at final
-    time for a single isolated star; it does not yet check the
-    trajectory throughout. Run it on a single isolated star (no
-    clump, no co-location) before drawing further conclusions from the
-    8-run matrix's endpoint-only numbers.
+  \item[$\boxtimes$] \textbf{e10 -- done: shape does NOT match
+    (2026-07-17)} -- Ran \code{stromgren\_analytic\_check.py} on a
+    single isolated star at $Z/Z_\odot\approx0.231$
+    (Section~\ref{sec:e10}): 41.7\% final-time error, and more
+    tellingly, the simulated $r_{\rm HII}(t)$ is a rebuild-cadence
+    staircase that doesn't first reach $R_{\rm st}$ until
+    $t\approx3.8\,$Myr, vs.\ the analytic solution's near-instant
+    R-type establishment. Likely mechanism and follow-up tracked as T8
+    below.
   \item[$\boxtimes$] \textbf{T2 -- implemented (2026-07-16)} -- $\beta$
     (case-B recombination coefficient, Eq.~\ref{eq:recomb-cost}) was a
     fixed constant evaluated at the conventional $10^4\,$K
@@ -168,6 +167,29 @@ session are labelled \code{T}\emph{n} (task-graph) and
     Not attempted this session -- flagging so a future non-GEAR build
     isn't silently assumed to work. Pre-existing gap, not introduced by
     this session's nside=2 work.
+  \item[$\square$] \textbf{T8} -- e10 (above, Section~\ref{sec:e10})
+    found the simulated $r_{\rm HII}(t)$ growth curve's \emph{shape}
+    does not match the analytic D-type solution: it takes
+    $\approx$3.8\,Myr to first reach $R_{\rm st}$, where the analytic
+    solution reaches it almost immediately. The parameter-grounded
+    hypothesis is that per-rebuild search-radius growth is capped at
+    $\text{HII\_radius\_expansion\_factor}^{\text{max\_HII\_radius\_expansion\_tries}}$
+    ($1.1^5\approx1.61\times$ at this example's defaults) per cycle,
+    decoupled from the rebuild cadence itself -- so even a much faster
+    \code{HII\_region\_rebuild\_time\_Myr} would shrink but not
+    eliminate the delay. Not confirmed by direct instrumentation (which
+    retry branch -- buffer-full vs.\ radius-expansion -- fires on each
+    rebuild cycle, and why growth stalls for several cycles at a time,
+    e.g.\ the 24\,pc plateau in Figure~\ref{fig:e10-dtype}). If this
+    matters for production runs (an HII region reaching its true size
+    several Myr later than the physics would predict), the fix
+    direction is likely either raising
+    \code{max\_HII\_radius\_expansion\_tries}/\code{HII\_radius\_expansion\_factor}
+    so a single rebuild can catch up to the star's actual budget-implied
+    reach, or seeding the post-rebuild search radius from something
+    better-informed than the previous cycle's achieved $h_{\rm hii}$
+    (e.g.\ an analytic $R_{\rm st}$ estimate). Not attempted this
+    session.
 \end{itemize}
 
 \subsection{Physical validation}
