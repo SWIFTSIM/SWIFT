@@ -34,6 +34,22 @@ nor $n_e$ has a mean-molecular-weight ($\mu$) or metallicity factor;
 see Section~\ref{sec:mu-bug} for why our first attempt at this
 included one.
 
+\textbf{Known approximation: $n_e \approx n_H$.} Equation~\ref{eq:recomb-cost}
+(and every other electron-density calculation in this model, including
+the still-unimplemented adaptive rebuild cadence's recombination
+timescale, item~T11, Section~\ref{sec:open}) assumes one free electron
+per hydrogen nucleus -- it does not track helium's ionization state at all.
+For a standard cosmic He mass fraction ($\sim$24--28\%, $\sim$8--10\%
+by number relative to H), singly-ionized He alone (needs $>24.6\,$eV,
+present in any O-star spectrum energetic enough to ionize H at all)
+underestimates $n_e$ by $\sim$8--10\% if ignored; doubly-ionized He
+($>54.4\,$eV, only the hottest O stars) up to $\sim$16--20\%. This is a
+structural simplification of the whole model (this branch does not add
+or remove it), not something any single feature here fixes -- any
+future recombination-timescale or electron-density calculation added
+to this model inherits the same approximation; see item~T10,
+Section~\ref{sec:open}.
+
 \subsection{Temperature dependence of $\beta$}
 \label{sec:beta-temperature}
 

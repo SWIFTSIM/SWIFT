@@ -190,6 +190,63 @@ session are labelled \code{T}\emph{n} (task-graph) and
     better-informed than the previous cycle's achieved $h_{\rm hii}$
     (e.g.\ an analytic $R_{\rm st}$ estimate). Not attempted this
     session.
+  \item[$\square$] \textbf{T9} -- Step 4
+    (Section~\ref{sec:space-regrid-hhii}, folding \code{h\_hii} into
+    \code{space\_regrid}'s top-level cell sizing, committed
+    \code{d7f4644cf}) has one unbuilt follow-up: a dedicated
+    large-\code{h\_hii}/\code{cdim>=4} regression case to confirm the
+    \emph{feature} itself (cells correctly coarsening to preserve
+    \code{h\_hii} coverage) works, not just that the crash-avoidance cap
+    (added in the same commit) avoids a spurious ``must have at least 3
+    cells'' error. The existing StromgrenSphere acceptance runs
+    (\code{gas\_mass=0.1}/\code{0.01} at \code{max\_top\_level\_cells: 3})
+    are permanently pinned at the periodic floor and can only test the
+    latter.
+  \item[$\square$] \textbf{T10} -- This model assumes $n_e \approx n_H$
+    throughout (Section~\ref{sec:algorithm}), i.e.\ it does not track
+    helium's ionization state at all. For a standard cosmic He mass
+    fraction ($\sim$24--28\%, $\sim$8--10\% by number relative to H),
+    singly-ionized He alone (needs $>24.6\,$eV, present in any O-star
+    field that ionizes H at all) underestimates $n_e$ by $\sim$8--10\%
+    if ignored; doubly-ionized He ($>54.4\,$eV, only the hottest O
+    stars) up to $\sim$16--20\%. This affects the recombination-cost
+    calculation, cooling, and (T11 below) the adaptive rebuild cadence's
+    recombination timescale. Not attempted: would need a new
+    per-particle He ionization state (not just the binary
+    ionized/not-ionized tag this model has today), separate
+    photon-count integrals above 24.6\,eV/54.4\,eV in the $\dot N_{\rm
+    ion}$ fit, and a self-consistent H/He budget-sharing scheme -- a
+    standalone physics feature at least as large as the angular-pixel-
+    splitting work, not a small addition. GEAR\_10 chemistry already
+    tracks He \emph{mass fraction} per particle (one of its 10
+    elements) -- the gap is specifically ionization \emph{state}, not
+    composition data. Worth checking whether \citet{Hu2017}/
+    \citet{Smith2021} themselves track He ionization before investing
+    here, since matching their convention matters more for this
+    model's validation purpose than matching real ISM physics in
+    isolation.
+  \item[$\square$] \textbf{T11} -- Physically-derived, adaptive,
+    per-star HII rebuild cadence
+    (\code{GEARFeedback:HII\_adaptive\_rebuild\_cadence}), replacing
+    the fixed \code{HII\_region\_rebuild\_time\_Myr} with
+    $f_{\rm safety} \times \min(t_{\rm rec,\,pixel\text{-}min},
+    t_{\rm cross})$, directly motivated by T8's finding that the fixed
+    cadence produces a D-type growth curve that doesn't match the
+    analytic shape. Full design in
+    \code{/home/darwinr/.claude/plans/sleepy-honking-pascal.md} (Phase
+    5) -- not yet implemented. Opt-in, default off, so all
+    already-validated results in this logbook stay reproducible. One
+    deliberate scope decision to revisit later, not before: the
+    density sample for $t_{\rm rec}$ is drawn only from not-yet-tagged
+    front candidates (gas at the active ionization front), not from
+    gas already tagged by this star in an earlier rebuild -- simpler,
+    no changes needed to \code{feedback\_part\_can\_be\_ionized}/the
+    gather functions, and arguably the physically right population for
+    recombination risk anyway (front gas is the marginal population,
+    not the already-robustly-ionized interior). Revisit specifically
+    if verification (re-running \code{stromgren\_analytic\_check.py},
+    and a \code{StromgrenSphereClumpSmith2021} stress test given its
+    explicit density inhomogeneity) shows this proxy is insufficient.
 \end{itemize}
 
 \subsection{Physical validation}
