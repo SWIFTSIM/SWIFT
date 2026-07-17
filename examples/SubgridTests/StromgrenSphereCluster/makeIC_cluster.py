@@ -43,25 +43,41 @@ def parse_options():
     usage = "usage: %prog [options] file"
     parser = argparse.ArgumentParser(description=usage)
 
-    parser.add_argument("--rho", type=float, default=5,
-                        help="Mean gas density in atom/cm3")
-    parser.add_argument("--mass", type=float, default=1.0,
-                        help="Gas particle mass in solar mass")
-    parser.add_argument("--boxsize", type=float, default=0.24,
-                        help="Boxsize in kpc (default gives a half-width of 0.12 "
-                             "kpc, ~4.5x the fiducial 29.7 Msun star's equilibrium "
-                             "Stromgren radius at rho=5 atom/cc, ~0.0266 kpc)")
-    parser.add_argument("--star_mass", type=float, default=29.7,
-                        help="Mass of each star in M_sun")
-    parser.add_argument("--n_cells", type=int, default=3,
-                        help="Scheduler:max_top_level_cells this IC is meant to "
-                             "be run with. Must be 3: stars sit at the center "
-                             "cell and its 6 face-adjacent cells of a 3x3x3 "
-                             "top-level grid.")
-    parser.add_argument("--star_type", type=str, default="single_star",
-                        choices=["single_star", "continuous_IMF", "SSP"])
-    parser.add_argument("-o", dest="outputfilename", type=str,
-                        default="ICs_stromgren_cluster.hdf5")
+    parser.add_argument(
+        "--rho", type=float, default=5, help="Mean gas density in atom/cm3"
+    )
+    parser.add_argument(
+        "--mass", type=float, default=1.0, help="Gas particle mass in solar mass"
+    )
+    parser.add_argument(
+        "--boxsize",
+        type=float,
+        default=0.24,
+        help="Boxsize in kpc (default gives a half-width of 0.12 "
+        "kpc, ~4.5x the fiducial 29.7 Msun star's equilibrium "
+        "Stromgren radius at rho=5 atom/cc, ~0.0266 kpc)",
+    )
+    parser.add_argument(
+        "--star_mass", type=float, default=29.7, help="Mass of each star in M_sun"
+    )
+    parser.add_argument(
+        "--n_cells",
+        type=int,
+        default=3,
+        help="Scheduler:max_top_level_cells this IC is meant to "
+        "be run with. Must be 3: stars sit at the center "
+        "cell and its 6 face-adjacent cells of a 3x3x3 "
+        "top-level grid.",
+    )
+    parser.add_argument(
+        "--star_type",
+        type=str,
+        default="single_star",
+        choices=["single_star", "continuous_IMF", "SSP"],
+    )
+    parser.add_argument(
+        "-o", dest="outputfilename", type=str, default="ICs_stromgren_cluster.hdf5"
+    )
 
     return parser.parse_args()
 
@@ -69,8 +85,9 @@ def parse_options():
 opt = parse_options()
 
 if opt.n_cells != 3:
-    raise ValueError("--n_cells must be 3 for the center+6-face-neighbours "
-                      "cluster pattern.")
+    raise ValueError(
+        "--n_cells must be 3 for the center+6-face-neighbours " "cluster pattern."
+    )
 
 UnitMass_in_cgs = 1.988409870698051e43
 UnitLength_in_cgs = 3.0856775814913673e21
@@ -84,11 +101,11 @@ UnitLength = UnitLength_in_cgs * units.cm
 
 np.random.seed(1)
 
-rho = opt.rho * constants.m_p / units.cm ** 3
+rho = opt.rho * constants.m_p / units.cm**3
 m = opt.mass * units.Msun
 
 L = opt.boxsize * units.kpc
-M = rho * L ** 3
+M = rho * L**3
 N = int(np.ceil((M / m).to(units.dimensionless_unscaled).value))
 
 print("Boxsize                               : {}".format(L.to(units.kpc)))
@@ -97,7 +114,7 @@ print("Number of gas particles                : {}".format(N))
 
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
-rho_code = rho.to(UnitMass / UnitLength ** 3).value
+rho_code = rho.to(UnitMass / UnitLength**3).value
 
 pos = np.random.random([N, 3]) * np.array([L, L, L])
 vel = np.zeros([N, 3])
@@ -118,10 +135,13 @@ centers = (np.arange(opt.n_cells) + 0.5) * cell_width  # [0.5, 1.5, 2.5] * cell_
 
 center_idx = np.array([1, 1, 1])
 offsets = [
-    (0, 0, 0),   # center
-    (-1, 0, 0), (1, 0, 0),
-    (0, -1, 0), (0, 1, 0),
-    (0, 0, -1), (0, 0, 1),
+    (0, 0, 0),  # center
+    (-1, 0, 0),
+    (1, 0, 0),
+    (0, -1, 0),
+    (0, 1, 0),
+    (0, 0, -1),
+    (0, 0, 1),
 ]
 
 pos_star = []

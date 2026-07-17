@@ -134,7 +134,7 @@ SUBTYPES = [
     "rt_gradient",
     "rt_transport",
     "stars_radiation_in",
-    "stars_radiation_out"
+    "stars_radiation_out",
     #  "count",
 ]
 

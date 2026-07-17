@@ -37,8 +37,6 @@ def list_snapshots(folder_path):
     return sorted(snapshots)
 
 
-
-
 # %%
 if __name__ == "__main__":
     # Parent directory containing multiple runs
@@ -56,8 +54,13 @@ if __name__ == "__main__":
     all_simulations_metal_flux_hists = []
 
     for base_folder in base_folders:
-        run_folders = sorted([os.path.join(base_folder, d) for d in os.listdir(
-            base_folder) if os.path.isdir(os.path.join(base_folder, d))])
+        run_folders = sorted(
+            [
+                os.path.join(base_folder, d)
+                for d in os.listdir(base_folder)
+                if os.path.isdir(os.path.join(base_folder, d))
+            ]
+        )
         all_metal_flux_hists = []
 
         if not run_folders:
@@ -80,14 +83,16 @@ if __name__ == "__main__":
 
                         # Find the particles ids that received feedback at injection time and get the metals
                         I = np.argwhere(
-                            data.gas.metal_mass_fractions.metals > 0).flatten()
-                        m_metals = data.gas.metal_mass_fractions.metals[I] * \
-                            data.gas.masses[I]
+                            data.gas.metal_mass_fractions.metals > 0
+                        ).flatten()
+                        m_metals = (
+                            data.gas.metal_mass_fractions.metals[I] * data.gas.masses[I]
+                        )
                         ids = data.gas.particle_ids[I]
 
                         # Get the snapshots
                         snapshot_injection = snapshot
-                        snapshot_injection_1 = snapshots[index-1]
+                        snapshot_injection_1 = snapshots[index - 1]
                         break
 
                 ###################################
@@ -96,36 +101,43 @@ if __name__ == "__main__":
                 # Load the data
                 data = sw.load(snapshot_injection)
 
-                
-
                 # Do an histogram
                 cos_theta_midpoints, metal_flux_hist = compute_flux_by_cos_theta(
-                    star_pos, pos[mask], m_metals_flux[mask], 20)
+                    star_pos, pos[mask], m_metals_flux[mask], 20
+                )
                 all_metal_flux_hists.append(metal_flux_hist)
 
             all_simulations_metal_flux_hists.append(all_metal_flux_hists)
 
-# %%
+    # %%
     # Plot
     fig, ax = plt.subplots()
     ax.set_xlabel(r"$|\cos(\theta)|$", fontsize=14)
     ax.set_ylabel("Metal Flux", fontsize=14)
-    for metal_flux_hist, plot_label, color in zip(all_simulations_metal_flux_hists, plot_labels, colors):
+    for metal_flux_hist, plot_label, color in zip(
+        all_simulations_metal_flux_hists, plot_labels, colors
+    ):
 
         # Compute mean and standard deviation
         median_flux_hist = np.median(metal_flux_hist, axis=0)
         std_flux_hist = np.std(metal_flux_hist, axis=0)
 
         # Plot
-        ax.plot(cos_theta_midpoints, median_flux_hist,
-                label=plot_label, color=color, linewidth=2)
+        ax.plot(
+            cos_theta_midpoints,
+            median_flux_hist,
+            label=plot_label,
+            color=color,
+            linewidth=2,
+        )
 
     ax.legend(fontsize=12)
     ax.grid(True, linestyle="--", alpha=0.6)
     fig.tight_layout()
     plt.show()
-    plt.savefig("isotropy_check_comparison.png",
-                format="png", bbox_inches='tight', dpi=300)
+    plt.savefig(
+        "isotropy_check_comparison.png", format="png", bbox_inches="tight", dpi=300
+    )
 
     # Write the data
     with h5py.File(data_output_filename, "w") as f:
@@ -134,6 +146,7 @@ if __name__ == "__main__":
 
             if "metal_flux_hist" in simulation_group:
                 # Assign values from output
-                f.create_dataset("metal_flux_hist",
-                                 data=all_simulations_metal_flux_hists[i])
+                f.create_dataset(
+                    "metal_flux_hist", data=all_simulations_metal_flux_hists[i]
+                )
                 f.create_dataset("cos_theta", data=cos_theta_midpoints)

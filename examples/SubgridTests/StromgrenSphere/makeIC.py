@@ -32,6 +32,7 @@ class store_as_array(argparse._StoreAction):
         values = np.array(values)
         return super().__call__(parser, namespace, values, option_string)
 
+
 def parse_options():
 
     usage = "usage: %prog [options] file"
@@ -73,26 +74,31 @@ def parse_options():
         help="Boxzise in kpc",
     )
 
-    parser.add_argument("--star_mass",
-                        action="store",
-                        type=float,
-                        default=29.7,
-                        help="Mass of the star in M_sun")
+    parser.add_argument(
+        "--star_mass",
+        action="store",
+        type=float,
+        default=29.7,
+        help="Mass of the star in M_sun",
+    )
 
-    parser.add_argument("--star_pos",
-                        action=store_as_array,
-                        nargs=3,
-                        type=float,
-                        default=None,
-                        help="Position of the star in internal units. By default, places the star at the center of the box")
+    parser.add_argument(
+        "--star_pos",
+        action=store_as_array,
+        nargs=3,
+        type=float,
+        default=None,
+        help="Position of the star in internal units. By default, places the star at the center of the box",
+    )
 
-    parser.add_argument("--star_type",
-                        action="store",
-                        type=str,
-                        default="single_star",
-                        choices=["single_star", "continuous_IMF","SSP"],
-                        help="Type of the star for the GEAR model.")
-
+    parser.add_argument(
+        "--star_type",
+        action="store",
+        type=str,
+        default="single_star",
+        choices=["single_star", "continuous_IMF", "SSP"],
+        help="Type of the star for the GEAR model.",
+    )
 
     parser.add_argument(
         "-o",
@@ -103,8 +109,7 @@ def parse_options():
         help="output filename",
     )
 
-
-#Ajouter mass etoile, position. Dans le code, dire que c'est une etoile discrete
+    # Ajouter mass etoile, position. Dans le code, dire que c'est une etoile discrete
     options = parser.parse_args()
     return options
 
@@ -132,11 +137,11 @@ np.random.seed(1)
 
 # Number of particles
 if opt.level is not None:
-    N = (2 ** opt.level) ** 3
+    N = (2**opt.level) ** 3
 
 # Mean density
 rho = opt.rho  # atom/cc
-rho = rho * constants.m_p / units.cm ** 3
+rho = rho * constants.m_p / units.cm**3
 
 # Gas particle mass
 m = opt.mass  # in solar mass
@@ -151,7 +156,7 @@ if opt.level is not None:
         L = (M / rho) ** (1 / 3.0)
     else:
         # If we fixed the boxsize, then the number of particles might change
-        L = opt.boxsize*units.kpc
+        L = opt.boxsize * units.kpc
         M = rho * L**3
 
         print(M.to(units.Msun))
@@ -159,11 +164,13 @@ if opt.level is not None:
         print(N)
 else:
     if opt.boxsize is not None:
-        L = opt.boxsize*units.kpc
-        M = (rho*L**3).to(units.Msun)
+        L = opt.boxsize * units.kpc
+        M = (rho * L**3).to(units.Msun)
         N = int(np.ceil(M / m))
     else:
-        raise RuntimeError("If the opt.level and opt.boxsize are None, then we cannot determine the number of particles")
+        raise RuntimeError(
+            "If the opt.level and opt.boxsize are None, then we cannot determine the number of particles"
+        )
 
 
 # Gravitational constant
@@ -176,7 +183,7 @@ print("Number of particles                   : {}".format(N))
 # Convert to code units
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
-rho = rho.to(UnitMass / UnitLength ** 3).value
+rho = rho.to(UnitMass / UnitLength**3).value
 
 # Generate the particles
 pos = np.random.random([N, 3]) * np.array([L, L, L])
@@ -194,21 +201,21 @@ print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 # Now, take care of the star
 #####################
 N_star = 1
-M_star = opt.star_mass*units.M_sun
+M_star = opt.star_mass * units.M_sun
 pos_star = opt.star_pos
 
 # Convert the star mass to internal units
 M_star = [M_star.to(UnitMass).value]
-print('Mass of the star (internal units)     : {:e}'.format(M_star[0]))
+print("Mass of the star (internal units)     : {:e}".format(M_star[0]))
 
 # If no position was given, place the star at the center of the box
 if pos_star is None:
-    pos_star = np.ones([N_star, 3]) * L/2
+    pos_star = np.ones([N_star, 3]) * L / 2
 
-#Remaining required data
+# Remaining required data
 # vel_star = np.zeros([N_star, 3])
 vel_star = np.zeros([N_star, 3])
-h_star = np.ones(N_star) * 3 * L / N ** (1 / 3.0) # Same as the gas particles
+h_star = np.ones(N_star) * 3 * L / N ** (1 / 3.0)  # Same as the gas particles
 
 if opt.star_type == "single_star":
     star_type = 0
@@ -219,7 +226,7 @@ elif opt.star_type == "SSP":
 else:
     raise ValueError(f"Star type {opt.star_type} is not known!")
 
-star_particle_type = np.ones(N_star)*star_type
+star_particle_type = np.ones(N_star) * star_type
 star_id = [N + N_star]
 star_birth_time = np.zeros(N_star)
 

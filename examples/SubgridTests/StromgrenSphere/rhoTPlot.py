@@ -38,7 +38,7 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
     gas = data.gas
 
     # Get rho
-    rho = gas.densities.to(unyt.g / unyt.cm ** 3)  # self.Rho(units='g/cm3')
+    rho = gas.densities.to(unyt.g / unyt.cm**3)  # self.Rho(units='g/cm3')
 
     # hydrogen mass in gram
     mh.convert_to_cgs()
@@ -102,7 +102,7 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
             H_frac = float(
                 data.metadata.parameters["GrackleCooling:HydrogenFractionByMass"]
             )
-        except KeyError: # Happend when running without cooling
+        except KeyError:  # Happend when running without cooling
             H_frac = 1.0
 
         # Compute T/mu
@@ -124,7 +124,7 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
 
 def get_gas_temperatures(data: sw.SWIFTDataset) -> np.array:
     """
-        Compute the temperature of the gas.
+    Compute the temperature of the gas.
     """
     from unyt.physical_constants import kboltz_cgs as k_B
     from unyt.physical_constants import mh
@@ -161,7 +161,7 @@ def get_data(filename):
     """
     data = sw.SWIFTDataset(filename)
 
-    data.gas.densities = data.gas.densities.to(mh / (cm ** 3))
+    data.gas.densities = data.gas.densities.to(mh / (cm**3))
     data.gas.temperatures = get_gas_temperatures(data)
     data.gas.temperatures.convert_to_cgs()
 
@@ -332,14 +332,12 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
 if __name__ == "__main__":
     import argparse as ap
 
-    parser = ap.ArgumentParser(
-        description="""
+    parser = ap.ArgumentParser(description="""
              Plotting script for making a rho-T plot.
              Takes the filename handle, start, and (optionally) stop
              snapshots. If stop is not given, png plot is produced for
              that snapshot. If given, a movie is made.
-             """
-    )
+             """)
 
     parser.add_argument(
         "-i",

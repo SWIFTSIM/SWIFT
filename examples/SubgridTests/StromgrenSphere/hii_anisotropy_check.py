@@ -39,6 +39,7 @@ re-ionization) -- see the configure line in the project's memory/plan notes.
 Usage:
     python3 hii_anisotropy_check.py [-s snap/snapshot_*.hdf5] [-r 0.02]
 """
+
 import argparse
 import glob
 
@@ -65,9 +66,9 @@ def find_peak_hii_and_star_position(snapshot_glob):
         r = float(np.max(data.stars.hiiregion_radii).to("kpc").value)
         if r > peak_r_hii:
             peak_r_hii = r
-            star_pos = np.array(
-                data.stars.coordinates.to("kpc").value
-            )[np.argmax(data.stars.hiiregion_radii)]
+            star_pos = np.array(data.stars.coordinates.to("kpc").value)[
+                np.argmax(data.stars.hiiregion_radii)
+            ]
 
     return peak_r_hii, star_pos, files[-1]
 
@@ -145,7 +146,9 @@ def main():
         n_miss = int(np.sum(mask & not_ion_within))
         signs = [("-", "+")[b] for b in [(oct_i >> 2) & 1, (oct_i >> 1) & 1, oct_i & 1]]
         pct = 100 * n_miss / n_tot if n_tot else float("nan")
-        print(f"  ({signs[0]}x,{signs[1]}y,{signs[2]}z): {n_miss}/{n_tot} missing ({pct:.2f}%)")
+        print(
+            f"  ({signs[0]}x,{signs[1]}y,{signs[2]}z): {n_miss}/{n_tot} missing ({pct:.2f}%)"
+        )
 
     # Per-axis breakdown (collapses the other two axes) -- highlights a
     # single-axis asymmetry (e.g. +x vs -x) more directly than the octant

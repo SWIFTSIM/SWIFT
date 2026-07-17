@@ -37,6 +37,7 @@ after death/ineligibility, instead of dropping back to zero.
 Usage:
     python3 plot_h_hii_vs_time.py [-s snap/snapshot] [-o out.png]
 """
+
 import argparse
 import glob
 

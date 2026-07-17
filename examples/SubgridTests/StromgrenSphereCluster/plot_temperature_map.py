@@ -49,9 +49,7 @@ def make_temperature_projection(filename, image_resolution):
     # Avoid 0/0 in empty pixels; mask them out instead of showing bogus T.
     with np.errstate(invalid="ignore", divide="ignore"):
         mean_temperature = (numerator / denominator).to(unyt.K)
-    mean_temperature = np.where(
-        denominator.value > 0, mean_temperature.value, np.nan
-    )
+    mean_temperature = np.where(denominator.value > 0, mean_temperature.value, np.nan)
 
     boxsize = data.metadata.boxsize
     x_edges = np.linspace(0 * unyt.kpc, boxsize[0], image_resolution)
@@ -78,8 +76,11 @@ def make_single_image(filename, image_resolution):
         ax.scatter(star_pos[:, 0], star_pos[:, 1], c="limegreen", zorder=1, marker="*")
 
     ax.text(
-        0.7, 0.95, "$N_{\\mathrm{star}}" + " = {}$".format(len(star_pos)),
-        transform=ax.transAxes, fontsize=7,
+        0.7,
+        0.95,
+        "$N_{\\mathrm{star}}" + " = {}$".format(len(star_pos)),
+        transform=ax.transAxes,
+        fontsize=7,
         bbox=dict(facecolor="white", alpha=0.8),
     )
 

@@ -49,32 +49,48 @@ def parse_options():
     usage = "usage: %prog [options] file"
     parser = argparse.ArgumentParser(description=usage)
 
-    parser.add_argument("--rho", type=float, default=5,
-                        help="Mean gas density in atom/cm3")
-    parser.add_argument("--mass", type=float, default=0.1,
-                        help="Gas particle mass in solar mass")
-    parser.add_argument("--boxsize", type=float, default=0.16,
-                        help="Boxsize in kpc (default gives a half-width of 0.08 "
-                             "kpc, ~3x the fiducial 29.7 Msun star's equilibrium "
-                             "Stromgren radius at rho=5 atom/cc, ~0.0266 kpc -- "
-                             "enough margin to avoid periodic self-interaction "
-                             "while both HII regions grow and meet)")
-    parser.add_argument("--star_mass", type=float, default=29.7,
-                        help="Mass of each star in M_sun")
-    parser.add_argument("--n_cells", type=int, default=4,
-                        help="Scheduler:max_top_level_cells this IC is meant to be "
-                             "run with. Stars are placed at the centers of two "
-                             "CONSECUTIVE top-level cells along x (not symmetric "
-                             "about the box center, which can land exactly on a "
-                             "cell boundary): the radiation task graph only links "
-                             "directly-adjacent top-level cells (26-neighbour "
-                             "stencil), so this is the only placement that "
-                             "guarantees the two stars' regions are graph "
-                             "neighbours regardless of search-radius value.")
-    parser.add_argument("--star_type", type=str, default="single_star",
-                        choices=["single_star", "continuous_IMF", "SSP"])
-    parser.add_argument("-o", dest="outputfilename", type=str,
-                        default="ICs_stromgren_pair.hdf5")
+    parser.add_argument(
+        "--rho", type=float, default=5, help="Mean gas density in atom/cm3"
+    )
+    parser.add_argument(
+        "--mass", type=float, default=0.1, help="Gas particle mass in solar mass"
+    )
+    parser.add_argument(
+        "--boxsize",
+        type=float,
+        default=0.16,
+        help="Boxsize in kpc (default gives a half-width of 0.08 "
+        "kpc, ~3x the fiducial 29.7 Msun star's equilibrium "
+        "Stromgren radius at rho=5 atom/cc, ~0.0266 kpc -- "
+        "enough margin to avoid periodic self-interaction "
+        "while both HII regions grow and meet)",
+    )
+    parser.add_argument(
+        "--star_mass", type=float, default=29.7, help="Mass of each star in M_sun"
+    )
+    parser.add_argument(
+        "--n_cells",
+        type=int,
+        default=4,
+        help="Scheduler:max_top_level_cells this IC is meant to be "
+        "run with. Stars are placed at the centers of two "
+        "CONSECUTIVE top-level cells along x (not symmetric "
+        "about the box center, which can land exactly on a "
+        "cell boundary): the radiation task graph only links "
+        "directly-adjacent top-level cells (26-neighbour "
+        "stencil), so this is the only placement that "
+        "guarantees the two stars' regions are graph "
+        "neighbours regardless of search-radius value.",
+    )
+    parser.add_argument(
+        "--star_type",
+        type=str,
+        default="single_star",
+        choices=["single_star", "continuous_IMF", "SSP"],
+    )
+    parser.add_argument(
+        "-o", dest="outputfilename", type=str, default="ICs_stromgren_pair.hdf5"
+    )
 
     return parser.parse_args()
 
@@ -94,11 +110,11 @@ UnitTime = UnitTime_in_cgs * units.s
 
 np.random.seed(1)
 
-rho = opt.rho * constants.m_p / units.cm ** 3
+rho = opt.rho * constants.m_p / units.cm**3
 m = opt.mass * units.Msun
 
 L = opt.boxsize * units.kpc
-M = rho * L ** 3
+M = rho * L**3
 N = int(np.ceil((M / m).to(units.dimensionless_unscaled).value))
 
 print("Boxsize                               : {}".format(L.to(units.kpc)))
@@ -107,7 +123,7 @@ print("Number of gas particles                : {}".format(N))
 
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
-rho_code = rho.to(UnitMass / UnitLength ** 3).value
+rho_code = rho.to(UnitMass / UnitLength**3).value
 
 pos = np.random.random([N, 3]) * np.array([L, L, L])
 vel = np.zeros([N, 3])
@@ -135,10 +151,12 @@ mid_cell_lo = opt.n_cells // 2 - 1  # index of the first of the two middle cells
 x_a = (mid_cell_lo + 0.5) * cell_width
 x_b = (mid_cell_lo + 1.5) * cell_width
 yz = L / 2.0
-pos_star = np.array([
-    [x_a, yz, yz],
-    [x_b, yz, yz],
-])
+pos_star = np.array(
+    [
+        [x_a, yz, yz],
+        [x_b, yz, yz],
+    ]
+)
 separation_code = x_b - x_a
 
 print("Cell width (code unit)                : {:e}".format(cell_width))

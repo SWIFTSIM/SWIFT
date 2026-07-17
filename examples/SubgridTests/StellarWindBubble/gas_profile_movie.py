@@ -35,7 +35,7 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
     gas = data.gas
 
     # Get rho
-    rho = gas.densities.to(unyt.g / unyt.cm ** 3)
+    rho = gas.densities.to(unyt.g / unyt.cm**3)
 
     # hydrogen mass in gram
     mh.convert_to_cgs()
@@ -121,7 +121,7 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
 
 def get_gas_temperatures(data: sw.SWIFTDataset) -> np.array:
     """
-        Compute the temperature of the gas.
+    Compute the temperature of the gas.
     """
 
     # Use unyt's physical constants
@@ -220,14 +220,14 @@ def get_data(filename):
 
 def extract_stellar_feedback(log_file_path: str):
     """
-    Reads a text file and extracts the total cumulative energy and mass ejected 
+    Reads a text file and extracts the total cumulative energy and mass ejected
     from stars by summing up the rates (Energy[erg/yr] and Mass_ejected[Msol/yr])
     found in each matching log line.
 
-    Expected line format: 
+    Expected line format:
     [TIME] ... Energy[erg/yr]=<VALUE_E> Mass_ejected[Msol/yr]=<VALUE_M>
-    
-    Returns: (total_energy, total_mass) in the cumulative units (erg, Msol), 
+
+    Returns: (total_energy, total_mass) in the cumulative units (erg, Msol),
              or (None, None) if the file cannot be read.
     """
 
@@ -376,7 +376,7 @@ def calculate_snowplow_phase(energy_rate, time, mu, wind_velocity, mass_loss):
     R_time_end = (
         0.88
         * (energy_rate.value / mu / GLOBAL_ISM_DENSITY / mH_in_g) ** (1 / 5)
-        * (GLOBAL_LIFETIME * 10 ** 6 * yr_to_s) ** (3 / 5)
+        * (GLOBAL_LIFETIME * 10**6 * yr_to_s) ** (3 / 5)
         * cm_to_kpc
     )
     R_p = (
@@ -393,7 +393,7 @@ def calculate_snowplow_phase(energy_rate, time, mu, wind_velocity, mass_loss):
     R_b_time_end = (
         28
         * (L36 / mu / GLOBAL_ISM_DENSITY) ** (1 / 5)
-        * (GLOBAL_LIFETIME * 10 ** 6 * yr_to_s) ** (3 / 5)
+        * (GLOBAL_LIFETIME * 10**6 * yr_to_s) ** (3 / 5)
     ).value * cm_to_kpc
     R_b_p = (
         5.0 * (L36 * v3 / GLOBAL_ISM_DENSITY) ** (1 / 4) * (t6.value) ** (1 / 2)
@@ -403,7 +403,7 @@ def calculate_snowplow_phase(energy_rate, time, mu, wind_velocity, mass_loss):
     v_time_end = (
         17
         * (L36 / mu / GLOBAL_ISM_DENSITY) ** (1 / 5)
-        * (GLOBAL_LIFETIME * 10 ** 6 * yr_to_s) ** (-2 / 5)
+        * (GLOBAL_LIFETIME * 10**6 * yr_to_s) ** (-2 / 5)
     ).value
     v_p = (
         7.9 * (L36 / v3 / GLOBAL_ISM_DENSITY) ** (1 / 4) * (t6.value) ** (-1 / 2)
@@ -536,7 +536,16 @@ def write_quantities(
     peak_data += f"\t{temp_at_rho_peak:.4f}\t{temp_at_v_peak:.4f}"
 
     # theoretical part
-    R_e, R_p, R_b_e, R_b_p, v_e, v_p, T_e, n_e, = calculate_snowplow_phase(
+    (
+        R_e,
+        R_p,
+        R_b_e,
+        R_b_p,
+        v_e,
+        v_p,
+        T_e,
+        n_e,
+    ) = calculate_snowplow_phase(
         energy_rate, time, np.mean(mu), wind_velocity, mass_loss
     )
 
@@ -679,7 +688,7 @@ def main(file_list, log_path):
         else:
             ax.set_xlabel("r [kpc]")  # Only set the label on the bottom plot
 
-        line, = ax.plot([], [], "k.", markersize=1.0, alpha=0.5)
+        (line,) = ax.plot([], [], "k.", markersize=1.0, alpha=0.5)
 
         GLOBAL_LINES[name] = line
         # GLOBAL_TITLES[name] = ax.set_title(f"Time: 0.00 Myr")

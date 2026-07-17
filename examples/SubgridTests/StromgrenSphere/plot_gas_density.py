@@ -35,7 +35,7 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
     gas = data.gas
 
     # Get rho
-    rho = gas.densities.to(unyt.g / unyt.cm ** 3)  # self.Rho(units='g/cm3')
+    rho = gas.densities.to(unyt.g / unyt.cm**3)  # self.Rho(units='g/cm3')
 
     # hydrogen mass in gram
     mh.convert_to_cgs()
@@ -120,7 +120,7 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
 
 def get_gas_temperatures(data: sw.SWIFTDataset) -> np.array:
     """
-        Compute the temperature of the gas.
+    Compute the temperature of the gas.
     """
     from unyt.physical_constants import kboltz_cgs as k_B
 
@@ -158,7 +158,7 @@ def get_sink_and_stars_positions(filename):
     except AttributeError:
         print("No sink found! Skipping them")
         sink_pos = np.empty(shape=(0))
-        
+
     star_pos = data.stars.coordinates
 
     return sink_pos, star_pos
@@ -184,7 +184,7 @@ def make_projection(filename, image_resolution):
     y_edges = np.linspace(0 * unyt.kpc, boxsize[1], image_resolution)
 
     # Convert to 1/cm**2
-    projected_mass = projected_mass.to(mh / (cm ** 2))
+    projected_mass = projected_mass.to(mh / (cm**2))
 
     return projected_mass.T, x_edges, y_edges
 
@@ -388,14 +388,12 @@ def make_movie(args, image_resolution):
 if __name__ == "__main__":
     import argparse as ap
 
-    parser = ap.ArgumentParser(
-        description="""
+    parser = ap.ArgumentParser(description="""
              Plotting script for making a mass projection plot.
              Takes the filename handle, start, and (optionally) stop
              snapshots. If stop is not given, png plot is produced for
              that snapshot. If given, a movie is made.
-             """
-    )
+             """)
 
     parser.add_argument(
         "-i",

@@ -37,6 +37,7 @@ that file if the fit ever changes.
 Usage:
     python3 stromgren_analytic_check.py [-s snap/snapshot] [-o out.png]
 """
+
 import argparse
 import glob
 import os
@@ -112,9 +113,7 @@ def ionizing_photon_rate(mass_msun):
         exp_term = np.exp(-n * x_0)
         if exp_term < 1e-10:
             break
-        photon_integral_sum += (exp_term / n) * (
-            x_0**2 + (2.0 * x_0) / n + 2.0 / n**2
-        )
+        photon_integral_sum += (exp_term / n) * (x_0**2 + (2.0 * x_0) / n + 2.0 / n**2)
 
     prefactor = 15.0 / np.pi**4
     N_dot_ion = (L / (const.k_B * T)) * prefactor * photon_integral_sum
@@ -142,11 +141,7 @@ def alpha_b_hui_gnedin(T):
     (src/feedback/GEAR/radiation.c)."""
     lam = 315614.0 / T.to(u.K).value
     return (
-        2.753e-14
-        * lam**1.5
-        / (1.0 + (lam / 2.740) ** 0.407) ** 2.242
-        * u.cm**3
-        / u.s
+        2.753e-14 * lam**1.5 / (1.0 + (lam / 2.740) ** 0.407) ** 2.242 * u.cm**3 / u.s
     )
 
 
@@ -229,9 +224,7 @@ def read_simulated_r_hii(snapshot_glob):
                 "GrackleCooling:HydrogenFractionByMass"
             )
             X_H = float(X_H_raw) if X_H_raw is not None else 0.716
-            n_H_atom_cc = (
-                rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p
-            ).to(1 / u.cm**3)
+            n_H_atom_cc = (rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p).to(1 / u.cm**3)
 
     return (
         u.Quantity(times, u.Myr),
@@ -305,8 +298,10 @@ def main():
     print(f"Star mass          : {star_mass_msun:.3f} Msun")
     print(f"n_H                : {n_H:.4g}")
     print(f"Q_H                : {Q_H:.4g}")
-    print(f"T_ionized (applied): {T_IONIZED_K:.4g}  ->  alpha_B = {ALPHA_B:.4g}, "
-          f"c_s = {C_S_IONIZED:.4g}")
+    print(
+        f"T_ionized (applied): {T_IONIZED_K:.4g}  ->  alpha_B = {ALPHA_B:.4g}, "
+        f"c_s = {C_S_IONIZED:.4g}"
+    )
     print(f"Equilibrium R_st   : {R_st.to(u.pc):.4g} = {R_st.to(u.kpc):.4g}")
     print(f"Box half-width     : {box_half_width.to(u.pc):.4g}")
     if R_st > box_half_width:
@@ -327,9 +322,7 @@ def main():
     tail = slice(-args.n_tail, None)
     r_sim_final = np.max(r_sim[tail])
     t_sim_final = t_sim[tail][np.argmax(r_sim[tail])]
-    r_analytic_final = dtype_expansion_radius(t_sim_final, R_st, C_S_IONIZED).to(
-        u.kpc
-    )
+    r_analytic_final = dtype_expansion_radius(t_sim_final, R_st, C_S_IONIZED).to(u.kpc)
     rel_error = float(
         (np.abs(r_sim_final - r_analytic_final) / r_analytic_final).decompose()
     )
