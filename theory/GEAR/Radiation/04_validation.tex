@@ -296,6 +296,44 @@ at every configuration tested, and is this example's clearest evidence
 that angular is the physically correct choice for clumpy/anisotropic
 geometries, independent of whether it also produces a bigger $r_{\rm HII}$.
 
+\textbf{The radial density profile makes the mechanism visible
+directly, and confirms the aggregate numbers are not noise.}
+Figure~\ref{fig:clump-radial-profile} bins gas by distance from the
+clump's own centre and plots the median $n_H$ at $t=0$ against
+$t=8\,$Myr, for both schemes, at \code{rebuild=0.01\,Myr}. At
+$Z/Z_\odot\approx0.231$ (left pair of panels) the uniform and angular
+curves are visually indistinguishable from each other at every
+radius, at both resolutions -- exactly consistent with the $\sim$1\,pp
+difference in the mass table above being real but small. At $Z=0$
+(right pair of panels) the two schemes diverge sharply, and not just
+at the clump's outer edge: uniform's profile sits \emph{at or above}
+the $t=0$ curve out to $r\sim10$--13\,pc (\code{gas\_mass=20}) --
+the clump's density has been driven \emph{up} relative to its initial
+condition across nearly its entire radius, consistent with the
+over-ionized surrounding bubble's pressure compressing the clump
+rather than gently stripping its edge -- before falling sharply beyond
+that. Angular's profile, in contrast, tracks the unperturbed $t=0$
+curve closely at small radius and only departs from it in the outer
+few parsecs, much closer to the mild, edge-only erosion seen at
+$Z/Z_\odot\approx0.231$. This means uniform's clump disturbance at
+$Z=0$ is not simply ``more erosion at the same location'' -- it is a
+qualitatively different, more invasive perturbation of the clump's
+whole structure that angular does not produce.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/clump_radial_profile_matrix}
+  \caption{Median $n_H$ vs.\ radius from the clump centre, at $t=0$
+    (IC, dashed black) and $t=8\,$Myr (uniform, orange; angular,
+    green), \texttt{rebuild=0.01\,Myr}. At $Z/Z_\odot\approx0.231$ (1st
+    and 3rd panels) the two schemes overlap almost exactly. At $Z=0$
+    (2nd and 4th panels) uniform sits well above the $t=0$ profile
+    across most of the clump's radius -- compression, not just
+    edge erosion -- while angular stays close to the unperturbed
+    profile.}
+  \label{fig:clump-radial-profile}
+\end{figure}
+
 \begin{figure}
   \centering
   \includegraphics[width=\linewidth]{Figures/gas95_z0231_matrix}
