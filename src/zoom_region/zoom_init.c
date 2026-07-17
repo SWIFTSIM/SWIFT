@@ -578,126 +578,6 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
 }
 
 /**
- * @brief Calculate the half-width of the retained box after truncation.
- *
- * This uses a simple geometric argument based on the tidal scaling
- * `(L / R)^3`, where `L` is the protected high-resolution region size and `R`
- * is the distance to the omitted background mass. The returned value is the
- * half-width of the retained cubic domain centred on the high-resolution
- * region.
- *
- * @param protected_dim The protected high-resolution region dimensions.
- * @param tidal_factor The tidal factor accounting for anisotropies in the
- *     background (>1, higher means more background preserved, i.e. more
- *     accurate).
- * @param epsilon The tolerated fractional tidal error across the protected
- *     region.
- * @return The truncation half-width.
- */
-static double zoom_compute_bkg_truncate_half_width(const double protected_dim,
-                                                   const double tidal_factor,
-                                                   const double epsilon) {
-
-  return tidal_factor * protected_dim / pow(epsilon, 1.0 / 3.0);
-}
-
-/**
- * @brief Truncate the simulation volume to remove distant background.
- *
- * This removes background particles outside a cubic region centred on the
- * high-resolution particle distribution. The half-width of the retained box is
- * computed with zoom_compute_bkg_truncate_half_width().
- *
- * @param s The #space.
- * @param verbose Whether to be verbose or not.
- */
-void zoom_truncate_bkg(struct space *s, const int verbose) {
-
-  const ticks tic = getticks();
-
-  /* Extract some useful pointers and information. */
-  double tidal_factor = s->zoom_props->tidal_factor;
-  double epsilon = s->zoom_props->truncate_epsilon;
-
-  /* Protect twice the measured high-resolution radius. This corresponds to a
-   * protected diameter twice the high-resolution particle extent. */
-  const double high_res_dim =
-      max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
-           s->zoom_props->part_dim[2]);
-  const double protected_dim = 2.0 * high_res_dim;
-
-  /* Compute the retained half-box width. */
-  const double retained_half_width = zoom_compute_bkg_truncate_half_width(
-      protected_dim, tidal_factor, epsilon);
-
-  if (verbose)
-    message(
-        "Computed a truncation half-width of %.2f internal units for a "
-        "protected high-resolution extent of %.2f (with %.2f x %.2f / "
-        "(%.1e)^(1/3))",
-        retained_half_width, protected_dim, tidal_factor, protected_dim,
-        epsilon);
-
-  /* If the retained box exceeds the original box we can't truncate. */
-  if (retained_half_width * 2.0 >=
-      fmin(s->dim[0], fmin(s->dim[1], s->dim[2]))) {
-    error(
-        "Truncation half-width (%.2e) exceeds box size (%.2e), cannot "
-        "truncate. "
-        "You probably don't need truncation in this case, turn off "
-        "ZoomRegion:truncate_background.",
-        retained_half_width * 2, fmin(s->dim[0], fmin(s->dim[1], s->dim[2])));
-  }
-
-  /* Include the shift needed for truncation with the shift we just calculated
-   * to centre the zoom region. */
-  const double box_mid[3] = {s->dim[0] / 2.0, s->dim[1] / 2.0, s->dim[2] / 2.0};
-  s->zoom_props->zoom_shift[0] += -(box_mid[0] - retained_half_width);
-  s->zoom_props->zoom_shift[1] += -(box_mid[1] - retained_half_width);
-  s->zoom_props->zoom_shift[2] += -(box_mid[2] - retained_half_width);
-
-  /* Set the new box dimensions. */
-  for (int i = 0; i < 3; i++) {
-    s->dim[i] = 2.0 * retained_half_width;
-  }
-
-  /* Loop over all the gparts and inhibit background particles that are
-   * further away than the truncation distance. */
-  size_t ntrunc = 0;
-  size_t nbkg = 0;
-  for (size_t k = 0; k < s->nr_gparts; k++) {
-
-    /* Skip non-background particles. */
-    if (s->gparts[k].type != swift_type_dark_matter_background) {
-      continue;
-    }
-
-    /* Account for any initial shift. */
-    double pos[3];
-    for (int i = 0; i < 3; i++) {
-      pos[i] = s->gparts[k].x[i] + s->zoom_props->zoom_shift[i];
-    }
-
-    /* Inhibit background particles that are too far away. */
-    for (int i = 0; i < 3; i++) {
-      if (pos[i] < 0.0 || pos[i] > s->dim[i]) {
-        s->gparts[k].time_bin = time_bin_inhibited;
-        s->nr_inhibited_gparts++;
-        ntrunc++;
-        break;
-      }
-    }
-    nbkg++;
-  }
-
-  if (verbose) {
-    message("Removing %zu background particles out of %zu.", ntrunc, nbkg);
-    message("Truncating the box took %f %s",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
-}
-
-/**
  * @brief Compute the void region geometry.
  *
  * The void region is the region covered by background cells above the zoom
@@ -1126,13 +1006,10 @@ void zoom_region_init(struct space *s, const int regridding,
    * to check if we need to regrid so we skip it here. */
   if (!regridding) zoom_get_region_dim_and_shift(s, verbose);
 
-  /* Are we truncating the background? This is only applied when initialising
-   * the zoom geometry, not during restart handling above. */
-  if (s->zoom_props->truncate_background && s->e != NULL) {
-    zoom_truncate_bkg(s, verbose);
-  }
-
-  /* Apply the zoom shift to the particles. */
+  /* Apply the zoom shift to the particles. (If the background was truncated
+   * this was already done, along with the truncation itself, at the end of
+   * space_init in zoom_truncate_bkg; the shift computed above will then be
+   * negligible.) */
   zoom_apply_zoom_shift_to_particles(s, verbose);
 
   /* The maximal particle extent is the initial dimensions of
@@ -1140,6 +1017,19 @@ void zoom_region_init(struct space *s, const int regridding,
   const double ini_dim =
       max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
            s->zoom_props->part_dim[2]);
+
+  /* If the background was truncated the accuracy bound was derived for a
+   * fixed protected extent and the box cannot be re-truncated, so warn if the
+   * high-resolution region has outgrown the protection. */
+  if (s->zoom_props->truncate_background &&
+      s->zoom_props->truncate_protected_dim > 0.0 &&
+      ini_dim > s->zoom_props->truncate_protected_dim) {
+    warning(
+        "The high-resolution region (extent %.2e) has outgrown the extent "
+        "protected by the background truncation (%.2e). The requested tidal "
+        "accuracy (ZoomRegion:truncate_epsilon) is no longer guaranteed.",
+        ini_dim, s->zoom_props->truncate_protected_dim);
+  }
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->user_region_pad_factor;

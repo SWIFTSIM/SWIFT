@@ -1515,6 +1515,14 @@ void space_init(struct space *s, struct swift_params *params,
           if (sinks[k].x[j] < 0 || sinks[k].x[j] >= s->dim[j])
             error("Not all sink-particles are within the specified domain.");
     }
+
+    /* If requested, truncate the background of a zoom simulation now:
+     * everything downstream (the gravity properties, the PM mesh, the
+     * neutrino response, line-of-sight properties, ...) is derived from the
+     * box dimensions, so the box must take its final size before space_init
+     * returns. */
+    if (s->with_zoom_region && s->zoom_props->truncate_background)
+      zoom_truncate_bkg(params, s, verbose);
   }
 
   /* Allocate the extra parts array for the gas particles. */
