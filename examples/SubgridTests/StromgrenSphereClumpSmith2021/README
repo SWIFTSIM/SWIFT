@@ -13,11 +13,9 @@ paper's absolute scale isn't the goal.
 
 Density values (100 / 1e4 cm^-3), clump geometry (10 pc radius at 20 pc),
 gas mass resolution (20 Msun), and the ionizing photon rate per source
-come directly from the paper. `HII_region_rebuild_time_Myr=0.01` tracks
-the paper's statement that results are insensitive to refreshing more
-often than every fine timestep, without the cost of a refresh every step;
-`HII_deterministic_boundary_ionization=1` is the default (see
-Resolution below for both env var overrides).
+come directly from the paper. Defaults: `HII_region_rebuild_time_Myr=0.01`,
+`HII_deterministic_boundary_ionization=0` (probabilistic; validated as
+the better default -- see `theory/GEAR/Radiation/`), `initial_metallicity=0`.
 
 The diffuse background and clump are set to different temperatures in
 pressure equilibrium (`n*T` equal on both sides) by `makeIC_clump.py`'s
@@ -25,59 +23,80 @@ pressure equilibrium (`n*T` equal on both sides) by `makeIC_clump.py`'s
 `SPH:initial_temperature: 0` in params.yml is required for this --
 otherwise it overwrites the per-particle IC values.
 
-`GEARChemistry:initial_metallicity: 0` matches both papers' effective
-choice for this specific test (Hu et al. 2017 state outright that their
-D-type test medium is pure hydrogen, X_H=1; Smith et al. 2021's
-recombination rate and ionized-temperature floor have no metallicity
-term at all). Unlike either paper's flat 1e4 K floor, this code's ionized
-temperature is metallicity-dependent and reaches ~4.7-6.6e4 K at Z=0 (see
-`cooling_ionize_part_subgrid`) -- since the case-B recombination
-coefficient decreases with temperature, the physically expected effect is
-a *larger* Strömgren/D-type radius than the papers' reference numbers,
-not a smaller one. The case-B recombination coefficient used for the
-photon-budget cost (`phys_const->const_caseb_recomb`) is a fixed constant
-evaluated at the conventional 1e4 K (matching both papers' own
-convention) rather than recomputed at the gas's actual, hotter applied
-temperature, so this boost isn't fully captured yet.
+## Metallicity
+`initial_metallicity=0`, `gas_mass=20` is this example's default and the
+configuration to run if you just want to see the code's own behaviour
+(`./run.sh`, no overrides). It matches both papers' effective choice
+(pure hydrogen; neither algorithm has a metallicity term) at their own
+gas resolution. Unlike their flat 1e4 K ionized-gas floor, this code's
+floor is metallicity-dependent and reaches ~47,500 K at Z=0, which both
+lowers the recombination cost and raises the D-type driving sound speed
+-- so Z=0 runs land systematically *above* the papers' reference numbers
+(expected, not a bug), and `r_HII` can approach
+`Stars:max_HII_search_radius` (45 pc) and the 50 pc box half-width for
+several rebuild cadences (see `theory/GEAR/Radiation/`, Section
+"Validation" for the full matrix and the numeric breakdown of the two
+effects). For a direct apples-to-apples comparison at the papers' own
+fixed-1e4K convention -- and to stay well inside those defaults -- run
+`initial_metallicity=0.231 ./run.sh` (the Z/Zsun that makes
+T_collisional=1e4K exactly): this reproduces their reference closely
+without needing a larger box or search radius.
 
-Box size (0.1 kpc / 100 pc) and `Stars:max_HII_search_radius` (45 pc)
-aren't stated explicitly in the paper for this test; chosen here to
-contain the clump (30 pc from the star) and its D-type expansion by
-t=8 Myr. Both are comfortable margins for the spherical (nside=0) case,
-but the HealPix (nside=1) case can grow fast enough to approach the
-45 pc search cap and the 50 pc box half-width before 8 Myr -- widen both
-together (`Stars:max_HII_search_radius` and `--boxsize`) if that matters
-for your comparison.
+## Reproducing the validation matrix
+The full $2\times2\times3$ sweep (scheme $\times$ metallicity $\times$
+rebuild cadence) documented in `theory/GEAR/Radiation/` was generated
+with:
+```
+for nside in 0 1; do
+  for rebuild_time_myr in 0.01 0.05 0.1; do
+    run_name=gas${gas_mass}_z${z_label}_nside${nside}_rebuild${rebuild_time_myr/./p} \
+      nside=$nside rebuild_time_myr=$rebuild_time_myr \
+      initial_metallicity=$initial_metallicity gas_mass=$gas_mass ./run.sh
+  done
+done
+```
+run once with `gas_mass=20 initial_metallicity=0` (this example's
+default) and `gas_mass=20 initial_metallicity=0.231` (paper
+convention), and again at `gas_mass=95` (this project's zoom-in
+resolution) for both metallicities. `z_label`/`gas_mass` above are just
+naming placeholders, not real env vars -- substitute the actual values
+by hand or in your own wrapper.
 
 ## Resolution
 Gas particle mass defaults to 20 Msun, matching Smith et al. 2021's own
-gas resolution for this test. At this box size and background density
-that's roughly 175k particles total. Hu et al. 2017's own convergence-test
-levels (Appendix A: 4, 0.5, 0.0625, 0.0078125 Msun) are also available via
-`gas_mass=X ./run.sh`, at roughly:
+gas resolution for this test -- roughly 175k particles total. Hu et
+al. 2017's own convergence-test levels (Appendix A: 4, 0.5, 0.0625,
+0.0078125 Msun) are also available via `gas_mass=X ./run.sh`; particle
+count scales as `1/gas_mass`, and the two finest levels are cluster-scale,
+not laptop-scale.
 
-| mass [Msun] | diffuse particles | clump particles |      total      |
-|-------------|-------------------|-----------------|-----------------|
-| 20.0        | 123k              | 52k             | 175k (default)  |
-| 4.0         | 618k              | 259k            | 877k            |
-| 0.5         | 4.9M              | 2.1M            | 7.0M            |
-| 0.0625      | 39.5M             | 16.6M           | 56.1M           |
-| 0.0078125   | 316.3M            | 132.5M          | 448.8M          |
+`rebuild_time_myr`, `deterministic`, `nside`, `initial_metallicity`, and
+`density_factor` are all overridable via env var (see run.sh).
+`density_factor=1 ./run.sh` degenerates the clump to the background
+density, reproducing the papers' own no-clump reference test directly.
 
-The two finest levels are cluster-scale runs, not intended to run on a
-laptop/workstation.
-
-`rebuild_time_myr` (default 0.01) and `deterministic` (default 1, i.e.
-`HII_deterministic_boundary_ionization=1`) are also overridable via env
-var, matching `nside`: e.g. `deterministic=0 ./run.sh`.
-`initial_metallicity` (default 0, a Z/Zsun factor since
-`scale_initial_metallicity: 1`) is also overridable, e.g.
-`initial_metallicity=0.231 ./run.sh` gives T_collisional=1e4 K exactly
-(see the theory/GEAR/Radiation/ logbook for why that's a useful
-validation point). `density_factor=1 ./run.sh` degenerates the clump to
-the background density, reproducing the papers' own no-clump reference
-test (their ~20-25 pc-by-8 Myr number) directly instead of only via the
-clumpy run.
+## Is the angular (nside=1) scheme actually better than uniform (nside=0)?
+Yes, but conditionally, not unconditionally -- see
+`theory/GEAR/Radiation/` for the full evidence. At this example's own
+resolution (`gas_mass=20`) with a fast rebuild cadence
+(`rebuild_time_myr=0.01`), angular genuinely reproduces
+Smith et al. 2021's Fig. 2 HealPix panel (intact clump, asymmetric
+notch) where uniform does not -- the mass-biasing fix does what it is
+meant to do. But that advantage is fragile: it degrades sharply at
+slower rebuild cadences (0.05, 0.1 Myr), falling back close to
+uniform's own numbers, and at zoom-in resolution (`gas_mass=95`)
+neither scheme reliably reproduces the reference at any cadence, with
+some of angular's apparently larger `r_HII` values there being a
+bookkeeping artifact (one far, stale-tagged particle inflating the
+reported radius) rather than real growth. Angular's own `r_HII` also
+generally overestimates the physically-hot region (`r_physics`) by more
+than uniform does, independent of metallicity. **Net: prefer
+`nside=1` specifically when reproducing a clumpy/anisotropic reference
+result at a fast rebuild cadence; don't assume it is a free
+improvement over `nside=0` at other cadences or resolutions.** The
+default here stays `nside=0` for that reason -- it is the safer,
+less cadence-sensitive choice; use `nside=1` deliberately, per the
+tradeoffs above.
 
 # Configure
 ```

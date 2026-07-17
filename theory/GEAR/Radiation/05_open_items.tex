@@ -70,53 +70,67 @@ session are labelled \code{T}\emph{n} (task-graph) and
     Section~\ref{sec:beta-temperature} for the implementation and
     Section~\ref{sec:validation} for its measured effect on the
     matrix.
-  \item[$\square$] \textbf{T3} -- Decide the example's default for
-    \code{HII\_deterministic\_boundary\_ionization}. Currently 1
-    (deterministic), but Section~\ref{sec:validation}'s matrix shows
-    deterministic mode over-ionizes -- mildly for the uniform scheme,
-    severely for the angular scheme (drives it into the search-radius
-    cap). Probabilistic (0) gives the cleanest, uncapped match to both
-    papers. Not yet changed pending a decision on whether the example
-    should default to the setting that best matches the papers, or to
-    whichever setting is intended for production galaxy-scale runs
-    (where the angular-cap interaction may not arise the same way).
-  \item[$\square$] \textbf{T4 -- now confirmed to bind, not just rows
-    2/6} -- \code{Stars:max\_HII\_search\_radius} (45\,pc) and the box
-    (100\,pc, 50\,pc half-width) are too tight for the
-    angular+deterministic combination, which reaches
-    $\sim$37--45\,pc and gets artificially capped
-    (Table~\ref{tab:matrix}, rows 2/6). Widen both together (e.g.\
-    \citeauthor{Smith2021}'s own \code{rion\_max=100\,pc}) and rerun
-    those two rows for an uncapped comparison. Since T2 (below), row 4
-    -- previously comfortably uncapped -- now also hits this same
-    ceiling (Section~\ref{sec:caseB-fix-validation}), so this item now
-    blocks getting a converged T2 result too, not just rows 2/6.
+  \item[$\boxtimes$] \textbf{T3 -- decided: probabilistic (2026-07-16)}
+    -- \code{HII\_deterministic\_boundary\_ionization} defaults to 0
+    now (was 1) in this example's \code{run.sh} and \code{params.yml}:
+    the matrix (Section~\ref{sec:validation}) showed deterministic mode
+    over-ionizes -- mildly for the uniform scheme, severely for the
+    angular scheme (drives it straight into the search-radius cap) --
+    with no compensating benefit, so probabilistic is simply the better
+    default, not a papers-vs-production tradeoff. The code's own
+    default (\code{default\_HII\_deterministic\_boundary\_ionization},
+    \code{src/feedback/GEAR\_thermal/feedback\_properties.h:30}) was
+    already 0 -- only this example's explicit override needed fixing.
+    No code changed, so no acceptance re-run needed (see V2).
+  \item[$\boxtimes$] \textbf{T4 -- resolved: validate at
+    $Z/Z_\odot\approx0.231$ instead of widening (2026-07-16)} --
+    \code{Stars:max\_HII\_search\_radius} (45\,pc) and the box (100\,pc,
+    50\,pc half-width) are too tight for a $Z=0$ run once it grows fast
+    (Section~\ref{sec:metallicity}): seen both for the old deterministic
+    matrix and for a $Z=0$ post-T2 test. \textbf{From the code}: the cap
+    (\code{Stars:max\_HII\_search\_radius}, \code{stars\_io.h:315-316})
+    is read as a plain user-set float with \emph{no internal check at
+    all} against the box size -- nothing warns or errors if it exceeds
+    the periodic half-width, so an inconsistent setup fails silently
+    (the search radius just never gets to expand that far,
+    indistinguishable from a genuinely converged result without an
+    external comparison). Rather than widening the box/cap (which would
+    multiply the particle count for no physical benefit), the
+    validation matrix now runs at $Z/Z_\odot\approx0.231$
+    (Section~\ref{sec:metallicity}), which avoids the overshoot -- and
+    therefore the capping -- entirely, by construction. The underlying
+    code gap (no box-size safety check) remains and is tracked
+    separately as T6.
   \item[$\square$] \textbf{T5} -- MPI is explicitly not supported yet
     for the radiation loop (\texttt{error("MPI is not yet
     implemented")} in both \code{task.c} and \code{cell\_unskip.c}
     for \texttt{nr\_nodes > 1}). Not a bug, just an explicit gap to be
     aware of before attempting a multi-node run with this feedback
     channel active.
+  \item[$\square$] \textbf{T6} -- Add a startup warning (or error) when
+    \code{Stars:max\_HII\_search\_radius} exceeds the periodic box's
+    half-width, per T4's finding that no such check currently exists.
+    Would surface silent capping immediately at launch instead of
+    requiring an external comparison to notice.
 \end{itemize}
 
 \subsection{Physical validation}
 \label{sec:todo-phys}
 
 \begin{itemize}
-  \item[$\square$] \textbf{V1} -- For all 8 matrix configurations
-    (Table~\ref{tab:matrix}), not just the two plotted, check
-    per-star, per-direction reach (clump-facing vs.\ away), not only
-    the scalar max $r_{\rm HII}$ -- a single number can hide an
-    asymmetric front the way it did before the radial-shell
-    temperature check caught the clump's shallow surface erosion.
-  \item[$\square$] \textbf{V2} -- Once T3 is decided, update
-    \code{run.sh}/\code{params.yml} defaults and rerun the
-    acceptance checklist (build, unit tests, both
-    \code{StromgrenSphere} acceptance runs) with the new default.
-  \item[$\square$] \textbf{V3} -- After T4, rerun the angular +
-    deterministic + fast-rebuild configuration (row 2) with a widened
-    cap/box to see its true, uncapped growth -- currently unknown
-    whether it converges near the papers' range or keeps growing.
+  \item[$\square$] \textbf{V1} -- For all configurations in the current
+    matrix (Section~\ref{sec:matrix-gas20}/\ref{sec:matrix-gas95}), not
+    just the ones plotted, check per-star, per-direction reach
+    (clump-facing vs.\ away), not only the scalar max $r_{\rm HII}$ --
+    a single number can hide an asymmetric front the way it did before
+    the radial-shell temperature check caught the clump's shallow
+    surface erosion.
+  \item[$\boxtimes$] \textbf{V2 -- done (2026-07-16)} -- T3 decided;
+    \code{run.sh}/\code{params.yml} defaults updated. No acceptance
+    re-run needed -- this only changes an example's own default
+    parameter value, not code, so it isn't covered by the
+    build/tests/acceptance-run checklist (that already re-ran clean
+    after the actual code change, T2's implementation).
   \item[$\square$] \textbf{V4} -- Run e10's curve-shape check (above)
     before and after any future algorithm change to this model (e.g.\
     T2, or e7's optional \code{end\_time} margin if that's ever
@@ -129,50 +143,74 @@ session are labelled \code{T}\emph{n} (task-graph) and
     more time / the fixed rebuild cadence, or genuinely plateaus short
     of it -- not yet run long enough or compared quantitatively
     (their Fig.~2 doesn't give an exact eroded-mass number to target,
-    only a visual).
-  \item[$\square$] \textbf{V6} -- T2 is implemented
-    (Section~\ref{sec:beta-temperature}); row 4 has been re-run with it
-    (Section~\ref{sec:validation}). Re-run the \emph{remaining} 7 rows
-    of Table~\ref{tab:matrix} to check whether T2 closes any of the
-    residual gap to the papers' $\sim$20--25\,pc reference across the
-    whole matrix, per the Section~\ref{sec:metallicity} prediction that
-    it should only ever push our radius \emph{larger}.
+    only a visual). \textbf{New candidate explanation (2026-07-16,
+    not yet tested):} \citeauthor{Smith2021} use AREPO, a moving-mesh
+    Godunov (finite-volume) code; we use SPH. Their Fig.~2 shows
+    visibly better mixing at the clump boundary than ours -- plausibly
+    an SPH-vs-Godunov contact-discontinuity/mixing difference (a
+    long-known SPH weakness) rather than anything specific to this
+    subgrid model. Testable by re-running the same example with
+    \swift's Gizmo MFV or MFM solver instead of SPH and comparing
+    clump erosion directly -- would isolate ``subgrid algorithm
+    difference'' from ``hydro solver difference'' as the cause of any
+    remaining mixing gap. Not attempted yet.
+  \item[$\boxtimes$] \textbf{V6 -- superseded by the
+    $Z/Z_\odot\approx0.231$ matrix (2026-07-16)} -- T2 is implemented
+    (Section~\ref{sec:beta-temperature}). The $Z/Z_\odot\approx0.231$
+    matrix (Sections~\ref{sec:matrix-gas20}--\ref{sec:matrix-gas95}) is
+    now the current post-T2 validation, and the right one to draw
+    scheme/rebuild conclusions from -- but since matrix runs at this
+    metallicity have the $\beta$/sound-speed channels neutralized by
+    construction (Section~\ref{sec:metallicity}), they are not the
+    right place to look for T2's own effect specifically; a dedicated
+    $Z=0$ rerun would still be needed for that (not done).
   \item[$\square$] \textbf{V7} -- Pin down \citeauthor{Smith2021}'s
     actual box size for their idealized D-type test more precisely
     than the current eyeballed 60--80\,pc estimate (Section
     \ref{sec:validation}), if an exact box-size comparison becomes
     load-bearing for some future conclusion.
-  \item[$\boxtimes$] \textbf{V8} -- Run the Smith clump example at the
-    metallicity that makes $T_{\rm collisional}=10^4\,$K exactly
-    ($Z/Z_\odot\approx0.231$, Eq.~\ref{eq:tcollisional}), isolating a
-    validation point where the fixed-$\beta$ approximation
-    (Section~\ref{sec:beta-temperature}) is exact by construction --
-    cleanly separating ``is T2 the cause of any residual gap'' from
-    other candidate causes, without needing to implement T2 first.
-    Done 2026-07-16, see Section~\ref{sec:validation}.
-  \item[$\square$] \textbf{V9} -- Root-cause the no-clump overshoot
-    (Section~\ref{sec:no-clump}): removing the clump
-    (\code{density\_factor=1}) from the row-4 configuration gives
-    32.6--35.6\,pc at $t=8\,$Myr, \emph{larger} than the papers'
-    $\sim$20--25\,pc no-clump reference, whereas the clumpy version of
-    the same row lands right in that range. A clump can only remove
-    budget from the diffuse medium, so its absence should not by
-    itself produce an overshoot -- candidate explanations not yet
-    checked: whether Hu/Smith report a spherically-averaged radius
-    rather than our per-star, max-over-angular-pixel $r_{\rm HII}$;
-    whether 4 literally co-located sources searching/consuming
-    independently behaves differently from one combined-luminosity
-    source; or a genuine resolution/box-size effect.
-  \item[$\square$] \textbf{V10 -- priority follow-up to T2} -- Rerun
-    row 4 with T2 applied at a widened
-    \code{Stars:max\_HII\_search\_radius}/box (T4) to get an uncapped
-    post-fix result: the current 42.9--44.9\,pc
-    (Section~\ref{sec:caseB-fix-validation}) is very likely a lower
-    bound, not a converged value (all four stars sit at or within
-    2\,pc of the 45\,pc cap and none has flattened by $t=8\,$Myr). Only
-    once uncapped can this be honestly compared to the papers'
-    $\sim$20--25\,pc reference -- right now it is already well above
-    that reference \emph{before} even reaching convergence, which on
-    its own is worth flagging as a possible over-correction, but not
-    yet confirmed as one.
+  \item[$\boxtimes$] \textbf{V8 -- confirmed:
+    $Z/Z_\odot\approx0.231$ reproduces the papers (2026-07-16)} -- An
+    initial single-row test at the metallicity that makes
+    $T_{\rm collisional}=10^4\,$K exactly (Eq.~\ref{eq:tcollisional})
+    gave $r_{\rm HII}=24.7$--$27.7\,$pc at $t=8\,$Myr, right at the edge
+    of the papers' $\sim$20--25\,pc reference -- confirming this
+    metallicity is the right choice for an apples-to-apples comparison.
+    This is now the standard metallicity for the whole validation
+    matrix (Section~\ref{sec:metallicity}), superseding this item as a
+    one-off test.
+  \item[$\square$] \textbf{V9} -- An earlier, $Z=0$, pre-T2 no-clump
+    test gave $r_{\rm HII}=32.6$--$35.6\,$pc, \emph{larger} than the
+    papers' $\sim$20--25\,pc no-clump reference. Not an anomaly: the
+    sound-speed channel (Section~\ref{sec:metallicity}), independent of
+    $\beta$/T2, alone predicts a $\sim$1.56$\times$ larger radius from
+    $Z=0$'s hotter ($\approx$47,500\,K vs.\ the papers' $10^4\,$K)
+    applied temperature -- in the same ballpark as the measured
+    $\sim$1.4--1.6$\times$. Still open: confirming this \emph{is} the
+    dominant mechanism would need a controlled comparison, e.g.\ a
+    no-clump run at $Z/Z_\odot\approx0.231$ where both channels are
+    neutralized, checking the result lands at the papers' reference
+    instead of over/under-shooting -- not yet done at time of writing.
+  \item[$\square$] \textbf{V11} -- Test the AREPO-vs-SPH mixing
+    hypothesis from V5: rerun \code{StromgrenSphereClumpSmith2021} with
+    \swift's Gizmo MFV or MFM hydro solver instead of SPH and compare
+    clump-boundary mixing/erosion against the uniform-vs-angular
+    temperature slices (Section~\ref{sec:matrix-gas20}) and
+    \citeauthor{Smith2021}'s Fig.~2. Would tell us whether the residual
+    clump-disruption gap to \citeauthor{Smith2021} is a hydro solver
+    difference (AREPO's moving-mesh Godunov scheme vs.\ our SPH) rather
+    than anything specific to this subgrid radiation model.
+  \item[$\boxtimes$] \textbf{V12 -- done: no rebuild cadence reproduces
+    the papers at this resolution (2026-07-16)} -- Swept
+    \code{gas\_mass=95} over scheme $\times$ \code{rebuild\_time\_myr}
+    $\in\{0.01,0.05,0.1\}$ at $Z/Z_\odot\approx0.231$
+    (Section~\ref{sec:matrix-gas95}): unlike at \code{gas\_mass=20}
+    (Section~\ref{sec:matrix-gas20}), no combination reliably reaches
+    the papers' $\sim$20--25\,pc reference -- the uniform scheme is
+    consistently low and the angular scheme's apparently-better numbers
+    are mostly a bookkeeping artifact, not real. This session's D-type
+    test geometry is therefore not a reliable calibration point at
+    zoom-in resolution regardless of rebuild cadence; picking a
+    fiducial cadence for production runs needs a different diagnostic
+    than this test.
 \end{itemize}

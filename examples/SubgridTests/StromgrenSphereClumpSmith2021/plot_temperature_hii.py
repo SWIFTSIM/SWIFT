@@ -192,6 +192,23 @@ def make_temperature_projection(data, image_resolution):
     return T_map.T, x_edges, y_edges
 
 
+def make_density_slice(data, image_resolution, z_slice):
+    """Mass surface density at the same slice, in H atoms/cm^3, to mark the
+    clump boundary (its temperature alone -- 10 K -- is indistinguishable
+    from empty space on the temperature colour scale)."""
+    rho_map = slice_gas(
+        data,
+        resolution=image_resolution,
+        z_slice=z_slice,
+        project="masses",
+        parallel=True,
+        periodic=True,
+    )
+    X_H = float(data.metadata.parameters["GrackleCooling:HydrogenFractionByMass"])
+    n_H = (rho_map.to_physical().to(unyt.g / unyt.cm**3) * X_H / mh).to(1 / unyt.cm**3)
+    return n_H.value.T
+
+
 def make_temperature_slice(data, image_resolution, z_slice):
     data.gas.temperatures = get_gas_temperatures(data)
     data.gas.mass_weighted_temperature = data.gas.masses * data.gas.temperatures
@@ -222,7 +239,9 @@ def make_temperature_slice(data, image_resolution, z_slice):
     return T_map.T, x_edges, y_edges
 
 
-def plot_map(T_map, x_edges, y_edges, star_pos, r_hii, r_physics, title, out_name):
+def plot_map(
+    T_map, x_edges, y_edges, star_pos, r_hii, r_physics, title, out_name, n_H_map=None
+):
     fig, ax = plt.subplots(1, figsize=(6, 5), dpi=300)
     ax.set_xlabel("x [kpc]")
     ax.set_ylabel("y [kpc]")
@@ -232,6 +251,21 @@ def plot_map(T_map, x_edges, y_edges, star_pos, r_hii, r_physics, title, out_nam
         x_edges, y_edges, T_map, cmap=cmap, norm=LogNorm(vmin=10, vmax=2e4)
     )
     fig.colorbar(mappable, label="Temperature [K]", pad=0)
+
+    if n_H_map is not None:
+        # Clump boundary: n_H well above the 100 cm^-3 background but
+        # below the clump's 10^4 cm^-3 core, drawn regardless of the
+        # clump's own temperature (10 K, invisible on the map above).
+        with np.errstate(invalid="ignore"):
+            ax.contour(
+                x_edges,
+                y_edges,
+                n_H_map,
+                levels=[1000.0],
+                colors="deepskyblue",
+                linewidths=0.8,
+                linestyles="solid",
+            )
 
     draw_star_and_hii_circle(ax, star_pos, r_hii, r_physics)
 
@@ -305,6 +339,7 @@ def main():
     T_slice, x_edges, y_edges = make_temperature_slice(
         data_slice, args.resolution, z_slice
     )
+    n_H_slice = make_density_slice(sw.load(filename), args.resolution, z_slice)
     plot_map(
         T_slice,
         x_edges,
@@ -315,6 +350,7 @@ def main():
         title=f"Mass-weighted temperature slice (z={float(z_slice.to('kpc').value if hasattr(z_slice, 'to') else z_slice):.4f} kpc), "
         f"t={t_myr:.2f} Myr",
         out_name=f"temperature_slice_{suffix}.png",
+        n_H_map=n_H_slice,
     )
 
 

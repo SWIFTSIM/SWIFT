@@ -10,6 +10,7 @@ star_mass=${star_mass:=29.7} #Mass of the gas particles
 star_type=${star_type:="single_star"}
 with_cooling=${with_cooling:=1}
 L=${boxsize:=0.05} #boxsize in kpc
+time_end=${time_end:=2e-2} #TimeIntegration:time_end override (internal units)
 run_name=${run_name:=""}
 restart=${restart:=0}
 
@@ -65,11 +66,12 @@ fi
 
 if [ "$with_cooling" -eq 1 ]; then
 ../../../swift --hydro --stars --external-gravity --feedback --cooling \
-		   --sync --limiter $runtime_param --threads=$n_threads params.yml 2>&1 | tee output.log
+		   --sync --limiter $runtime_param --threads=$n_threads \
+		   -P TimeIntegration:time_end:$time_end params.yml 2>&1 | tee output.log
 else
 ../../../swift --hydro --stars --external-gravity --feedback \
 		--sync --limiter $runtime_param --threads=$n_threads \
-	       params.yml 2>&1 | tee output.log
+	       -P TimeIntegration:time_end:$time_end params.yml 2>&1 | tee output.log
 fi
 
 #Do some data analysis to show what's in this box

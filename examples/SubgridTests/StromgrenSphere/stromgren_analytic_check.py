@@ -124,13 +124,41 @@ def ionizing_photon_rate(mass_msun):
 # -----------------------------------------------------------------------------
 # Analytic Stromgren-sphere solution
 # -----------------------------------------------------------------------------
-# Case-B recombination coefficient at T ~ 1e4 K (src/physical_constants_cgs.h,
-# const_caseb_recomb_cgs).
-ALPHA_B = 2.6e-13 * u.cm**3 / u.s
+# This code's own ionized-gas temperature floor is metallicity-dependent
+# (min(Delta_u_ionized, u_collisional), src/cooling/grackle/
+# cooling_gear_subgrid.h), unlike the classical D-type solution's flat
+# 1e4 K assumption. At this example's default Z=0, the applied temperature
+# is ~47,500 K (Delta_u_ionized binds; see theory/GEAR/Radiation/,
+# Section "Metallicity is not the explanation..."), not 1e4 K -- both
+# alpha_B (now temperature-dependent since the Hui & Gnedin 1997 fix,
+# src/feedback/GEAR/radiation.c) and the isothermal sound speed driving
+# the D-type expansion should be evaluated there, not at the classical
+# 1e4 K reference point, or this analytic comparison is systematically
+# biased low.
+T_IONIZED_K = 47500.0 * u.K
 
-# Isothermal sound speed of photoionized (T ~ 1e4 K) hydrogen gas, the
-# standard value used in the classical D-type expansion solution.
-C_S_IONIZED = 12.85 * u.km / u.s
+
+def alpha_b_hui_gnedin(T):
+    """Case-B recombination coefficient (Hui & Gnedin 1997, MNRAS 292, 27,
+    Appendix A), the same fit now used in
+    radiation_get_case_b_recombination_coefficient_cgs
+    (src/feedback/GEAR/radiation.c)."""
+    lam = 315614.0 / T.to(u.K).value
+    return (
+        2.753e-14
+        * lam**1.5
+        / (1.0 + (lam / 2.740) ** 0.407) ** 2.242
+        * u.cm**3
+        / u.s
+    )
+
+
+ALPHA_B = alpha_b_hui_gnedin(T_IONIZED_K)
+
+# Isothermal sound speed of photoionized hydrogen gas, scaled from the
+# standard 1e4 K reference value (12.85 km/s) to this run's actual applied
+# ionized temperature (c_s ~ sqrt(T) for an ideal gas at fixed composition).
+C_S_IONIZED = 12.85 * u.km / u.s * np.sqrt(T_IONIZED_K / (1e4 * u.K))
 
 
 def stromgren_radius(Q_H, n_H):
@@ -235,6 +263,8 @@ def main():
     print(f"Star mass          : {star_mass_msun:.3f} Msun")
     print(f"n_H                : {n_H:.4g}")
     print(f"Q_H                : {Q_H:.4g}")
+    print(f"T_ionized (applied): {T_IONIZED_K:.4g}  ->  alpha_B = {ALPHA_B:.4g}, "
+          f"c_s = {C_S_IONIZED:.4g}")
     print(f"Equilibrium R_st   : {R_st.to(u.pc):.4g} = {R_st.to(u.kpc):.4g}")
     print(f"Box half-width     : {box_half_width.to(u.pc):.4g}")
     if R_st > box_half_width:

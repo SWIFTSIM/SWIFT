@@ -111,10 +111,11 @@ temperature used to price its recombination cost can never disagree.
 and \code{swift\_mpi}); \code{testRadiationRebuildCheck} and
 \code{test27cellsStars -n 3 -N 3 -r 5} pass;
 \code{StromgrenSphere} \code{gas\_mass=0.1} acceptance run completed to
-\code{time\_end} with no crash/assertion, no regression. Physical
-effect on row 4 of the validation matrix
-(Table~\ref{tab:matrix}): $r_{\rm HII}$ at $t=8\,$Myr went from
-23.2--25.2\,pc to 42.9--44.9\,pc, confirming the predicted direction
-and rough magnitude -- but this new result is very likely capped by
-\code{Stars:max\_HII\_search\_radius}, not converged; see
-Section~\ref{sec:caseB-fix-validation} and item~V10.
+\code{time\_end} with no crash/assertion, no regression. An early,
+$Z=0$ test of this fix confirmed the predicted direction (a
+temperature-dependent $\beta$ measurably grows $r_{\rm HII}$) but also
+showed $Z=0$ runs can now approach
+\code{Stars:max\_HII\_search\_radius} -- this is why the validation
+matrix (Section~\ref{sec:validation}) runs at
+$Z/Z_\odot\approx0.231$ instead, which avoids the issue entirely
+(Section~\ref{sec:metallicity}).

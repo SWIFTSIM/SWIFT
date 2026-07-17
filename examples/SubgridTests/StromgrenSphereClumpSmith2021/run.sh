@@ -19,7 +19,7 @@ L=${boxsize:=0.1}                  # boxsize in kpc
 n_cells=${n_cells:=3}               # must match Scheduler:max_top_level_cells in params.yml
 nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override: 0 (spherical) or 1 (12 pixels)
 rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_region_rebuild_time_Myr override
-deterministic=${deterministic:=1}   # GEARFeedback:HII_deterministic_boundary_ionization override
+deterministic=${deterministic:=0}   # GEARFeedback:HII_deterministic_boundary_ionization override
 initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override
                                     # (Z/Zsun with scale_initial_metallicity: 1 below)
 run_name=${run_name:=""}
