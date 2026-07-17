@@ -90,7 +90,15 @@ matching \citeauthor{Smith2021}'s HealPix panel. At
 (13.2--20.5\,pc, only one of four stars reaching the reference band),
 and at \code{rebuild=0.1\,Myr} it collapses to the same
 $\approx$13\,pc as the uniform scheme -- \emph{the angular scheme's
-entire benefit over uniform disappears at slow rebuild cadences.} This
+entire benefit over uniform disappears at slow rebuild cadences, not
+just numerically.} Comparing the \code{rebuild=0.1\,Myr} slices
+directly (Figure~\ref{fig:gas20-slices}, right column): uniform and
+angular show the \emph{same} shape -- a round bubble flattened right at
+the clump boundary, $r_{\rm HII}$ within 0.5\,pc of each other
+(13.60\,pc vs.\ 14.04\,pc). The per-pixel budget floor that protects
+angular from total clump monopolization at a fast cadence provides no
+visible protection once the cadence is slow enough that a starved pixel
+has nothing left to spend for most of a rebuild cycle regardless. This
 makes physical sense: each of the 12 angular pixels holds only
 $\dot N_{\rm ion}/12$ of the budget: at a slow cadence a pixel that
 exhausts its small share early has nothing left to spend until the next
@@ -167,7 +175,11 @@ occasional large single-star value (31.1\,pc, 28.0\,pc) is a
 \emph{bookkeeping artifact}, not a genuinely larger ionized region --
 $r_{\rm physics}$ (the temperature-threshold measurement) stays at
 $\approx$14\,pc for those same snapshots, matching the visibly compact
-bubble in the slice. At \code{gas\_mass=95} an angular pixel has too
+bubble in the slice, and matching uniform's own $r_{\rm physics}$ to
+within 0.6\,pc (14.23\,pc angular vs.\ 14.85\,pc uniform, both at
+\code{rebuild=0.01\,Myr}) -- the two schemes are producing essentially
+the \emph{same} true ionized region here, not a better one for angular;
+only $r_{\rm HII}$'s own bookkeeping disagrees. At \code{gas\_mass=95} an angular pixel has too
 few nearby candidate particles for its budget to be reliably spent
 locally; when a pixel's search radius keeps expanding hunting for
 affordable particles, it can eventually tag one isolated, far-away
@@ -186,6 +198,26 @@ apparent occasional matches are not real. This is itself a useful
 result for production use: it says the D-type test in this exact
 geometry is not a reliable calibration point at zoom-in resolution, not
 that a particular rebuild cadence is preferred over another there.
+
+\textbf{Is angular better than uniform in general?} The mechanism is
+real and structurally sound: each pixel's guaranteed budget share means
+the clump can never fully monopolize a star's photon supply the way it
+can under uniform's single shared budget, which is exactly the failure
+mode both reference papers designed HealPix splitting to avoid
+(Section~\ref{sec:angular-splitting}). But across this matrix, that
+mechanism translates into a demonstrably \emph{larger true ionized
+region} in exactly one place: \code{gas\_mass=20} at
+\code{rebuild=0.01\,Myr} (Section~\ref{sec:matrix-gas20}). Everywhere
+else tested here -- \code{gas\_mass=20} at slower cadences,
+\code{gas\_mass=95} at any cadence -- the true ionized region
+($r_{\rm physics}$) is essentially the same size for both schemes; only
+angular's own $r_{\rm HII}$ bookkeeping is noisier (both understating
+it, Section~\ref{sec:matrix-gas20}, and overstating it, this section,
+depending on resolution and cadence). \textbf{The isotropy/mass-bias
+protection is a real, always-present property of the mechanism; a
+measurably larger ionized region is not a given consequence of it at
+every resolution or cadence tested so far, and $r_{\rm HII}$ itself
+should be trusted less, not more, when the angular scheme is in use.}
 
 \begin{figure}
   \centering
@@ -425,6 +457,69 @@ same way: \textbf{$Z/Z_\odot\approx0.231$ remains the more diagnostic
 configuration for judging the angular scheme's clump-erosion behaviour
 by eye; the $Z=0$ matrix here is this example's actual default
 behaviour, not a cleaner comparison.}
+
+\subsubsection{Reproducibility check and a direct \texttt{gas\_mass=95} $Z=0$ vs.\ $Z/Z_\odot\approx0.231$ comparison}
+
+The six \code{gas\_mass=95}, $Z=0$ configurations above were rerun from
+scratch (fresh initial conditions, fresh \code{run\_name=*\_retry}
+output directories, originals untouched) as an independent check. Every
+retry reproduced its original run's $r_{\rm HII}$ range to within
+0.3\,pc for all four stars, e.g.\ uniform/rebuild=0.01\,Myr:
+20.98--21.05\,pc originally vs.\ 20.74--21.03\,pc on retry -- the
+Section~\ref{sec:matrix-z0} table above is confirmed, not a one-off.
+
+\begin{center}
+\begin{tabular}{llrrr}
+  \hline
+  & scheme & rebuild=0.01\,Myr & rebuild=0.05\,Myr & rebuild=0.1\,Myr \\
+  \hline
+  \multirow{2}{*}{$Z/Z_\odot\approx0.231$}
+    & uniform & 14.7--15.7\,pc & 14.0--14.7\,pc & 12.6--14.7\,pc \\
+    & angular & 16.4--31.1\,pc & 18.0--28.0\,pc & 14.5--15.4\,pc \\
+  \multirow{2}{*}{$Z=0$}
+    & uniform & 21.0--21.1\,pc & 18.0--18.7\,pc & 17.4--18.0\,pc \\
+    & angular & 31.4--40.1\,pc & 18.8--24.2\,pc & 17.3--30.5\,pc \\
+  \hline
+\end{tabular}
+\end{center}
+
+At every matched (scheme, cadence) pair, $Z=0$'s $r_{\rm HII}$ range
+sits at or above $Z/Z_\odot\approx0.231$'s -- the same lower-$\beta(T)$
+budget effect quantified in Section~\ref{sec:matrix-z0} for
+\code{gas\_mass=20} operates identically at this coarser resolution.
+The $r_{\rm physics}$ contamination is, if anything, more severe here:
+for uniform/rebuild=0.01\,Myr, $r_{\rm physics}=46.78\,$pc at $Z=0$
+against $r_{\rm HII}=21.05\,$pc (more than double, and worse than the
+equivalent \code{gas\_mass=20} case's 44.87/21.25\,pc), while at
+$Z/Z_\odot\approx0.231$ the same star gives $r_{\rm
+physics}=14.85\,$pc against $r_{\rm HII}=15.72\,$pc -- close agreement,
+same pattern as Figure~\ref{fig:z0-vs-z0231-slice}.
+Figure~\ref{fig:gas95-z0-vs-z0231-slice} shows this directly.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.48\linewidth]{Figures/tslice_gas95_nside0_rebuild0p01}
+  \includegraphics[width=0.48\linewidth]{Figures/tslice_gas95z0_nside0_rebuild0p01}
+  \caption{\texttt{gas\_mass=95}, uniform, rebuild=0.01\,Myr, at
+    $Z/Z_\odot\approx0.231$ (left, $r_{\rm HII}=15.72\,$pc,
+    $r_{\rm physics}=14.85\,$pc) versus $Z=0$ (right,
+    $r_{\rm HII}=21.05\,$pc, $r_{\rm physics}=46.78\,$pc). Same pattern
+    as the \texttt{gas\_mass=20} comparison
+    (Figure~\ref{fig:z0-vs-z0231-slice}): clean black background and
+    close $r_{\rm HII}$/$r_{\rm physics}$ agreement at
+    $Z/Z_\odot\approx0.231$, box-wide warm contamination and a
+    2--3$\times$ $r_{\rm physics}$/$r_{\rm HII}$ mismatch at $Z=0$.}
+  \label{fig:gas95-z0-vs-z0231-slice}
+\end{figure}
+
+\textbf{Conclusion: at \code{gas\_mass=95} as at \code{gas\_mass=20},
+$Z=0$ is not a cleaner or more favourable configuration than
+$Z/Z_\odot\approx0.231$ for judging this algorithm's behaviour -- it
+is this example's actual default, reproduced here for its own sake,
+and both of $Z=0$'s systematic effects (larger $r_{\rm HII}$ from the
+lower recombination coefficient, and a $r_{\rm physics}$ diagnostic
+contaminated by box-wide residual heating) are confirmed present at
+this resolution too, not specific to \code{gas\_mass=20}.}
 
 \subsection{D-type growth curve shape (e10)}
 \label{sec:e10}

@@ -75,29 +75,6 @@ not laptop-scale.
 `density_factor=1 ./run.sh` degenerates the clump to the background
 density, reproducing the papers' own no-clump reference test directly.
 
-## Is the angular (nside=1) scheme actually better than uniform (nside=0)?
-Yes, but conditionally, not unconditionally -- see
-`theory/GEAR/Radiation/` for the full evidence. At this example's own
-resolution (`gas_mass=20`) with a fast rebuild cadence
-(`rebuild_time_myr=0.01`), angular genuinely reproduces
-Smith et al. 2021's Fig. 2 HealPix panel (intact clump, asymmetric
-notch) where uniform does not -- the mass-biasing fix does what it is
-meant to do. But that advantage is fragile: it degrades sharply at
-slower rebuild cadences (0.05, 0.1 Myr), falling back close to
-uniform's own numbers, and at zoom-in resolution (`gas_mass=95`)
-neither scheme reliably reproduces the reference at any cadence, with
-some of angular's apparently larger `r_HII` values there being a
-bookkeeping artifact (one far, stale-tagged particle inflating the
-reported radius) rather than real growth. Angular's own `r_HII` also
-generally overestimates the physically-hot region (`r_physics`) by more
-than uniform does, independent of metallicity. **Net: prefer
-`nside=1` specifically when reproducing a clumpy/anisotropic reference
-result at a fast rebuild cadence; don't assume it is a free
-improvement over `nside=0` at other cadences or resolutions.** The
-default here stays `nside=0` for that reason -- it is the safer,
-less cadence-sensitive choice; use `nside=1` deliberately, per the
-tradeoffs above.
-
 # Configure
 ```
 ./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix
