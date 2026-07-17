@@ -106,11 +106,18 @@ session are labelled \code{T}\emph{n} (task-graph) and
     for \texttt{nr\_nodes > 1}). Not a bug, just an explicit gap to be
     aware of before attempting a multi-node run with this feedback
     channel active.
-  \item[$\square$] \textbf{T6} -- Add a startup warning (or error) when
-    \code{Stars:max\_HII\_search\_radius} exceeds the periodic box's
-    half-width, per T4's finding that no such check currently exists.
-    Would surface silent capping immediately at launch instead of
-    requiring an external comparison to notice.
+  \item[$\boxtimes$] \textbf{T6 -- implemented (2026-07-18)} -- Added a
+    startup warning in \code{engine\_config()}
+    (\code{src/engine\_config.c}, right after \code{stars\_props\_print})
+    when \code{Stars:max\_HII\_search\_radius} exceeds the periodic
+    box's half-width, per T4's finding that no such check existed.
+    Guarded behind \code{IONIZATION\_FEEDBACK\_LOOP} (only compiled for
+    GEAR feedback), fires once on rank~0, only if \code{e->s->periodic}.
+    Verified directly: an isolated \code{StromgrenSpherePair} copy with
+    \code{max\_HII\_search\_radius} deliberately set above the box's
+    half-width prints the warning at startup as expected; build clean,
+    \code{testRadiationRebuildCheck} and
+    \code{test27cellsStars -n 3 -N 3 -r 5} both pass.
   \item[$\square$] \textbf{T7} -- The codebase does not actually
     compile with any feedback model other than GEAR today, despite
     radiation being GEAR-specific functionality that generic files
@@ -267,7 +274,8 @@ session are labelled \code{T}\emph{n} (task-graph) and
     explanation for V12's finding that no rebuild cadence reproduced the
     papers at \code{gas\_mass=95} resolution, and for part of T8's
     curve-shape gap -- not confirmed, needs the rerun to check.
-  \item[$\square$] \textbf{T13} -- Gather-time pixel-budget starvation
+  \item[$\boxtimes$] \textbf{T13 -- confirmed done (2026-07-18)} --
+    Gather-time pixel-budget starvation
     guard (design doc:
     \code{/home/darwinr/.claude/plans/sleepy-honking-pascal.md}, Phase
     2) is confirmed shipped and live: all four

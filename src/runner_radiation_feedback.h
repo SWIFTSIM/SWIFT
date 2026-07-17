@@ -25,7 +25,6 @@
 
 /* Config parameters. */
 #include <config.h>
-
 #include <math.h>
 
 #if defined(HAVE_CHEALPIX)
