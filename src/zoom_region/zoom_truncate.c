@@ -34,19 +34,20 @@
 #include "zoom.h"
 
 /**
- * @brief Calculate the half-width of the retained box after truncation.
+ * @brief Calculate the half-width of the box after truncation.
  *
  * Truncation removes all background beyond a cube of half-width R centred on
- * the high-resolution region and adopts the retained cube as the new periodic
- * volume (period D = 2R). The error this introduces in the tidal field across
- * the protected high-resolution region is bounded as follows.
+ * the high-resolution region and adopts the truncated cube as the new periodic
+ * volume. The error this introduces in the tidal field across the protected
+ * high-resolution region is bounded as described below assuming a uniform
+ * distribution of background mass.
  *
  * The mean background density exerts no tidal field across the region (shell
  * theorem), so removing distant, statistically uniform background loses
  * nothing at zeroth order; masses therefore never enter the criterion. The
  * dominant residual error is the spurious tidal field from the periodic
  * images of the retained volume (whose internal structure is dominated by the
- * high-resolution region itself, mass M) at the new, shorter period D:
+ * high-resolution region itself, mass M) at the new truncated box size D = 2 R.
  *
  *   - The nearest image pair at +/- D produces a differential (tidal)
  *     acceleration across the protected half-extent l of
@@ -65,7 +66,9 @@
  *
  * Note that truncation also (deliberately) discards the real large-scale
  * tidal field sourced beyond R. That loss is a physical choice inherent to
- * truncating and is *not* controlled by epsilon.
+ * truncating and is *not* controlled by epsilon due to the consequences of the
+ * shell theorem. Note that these assumptions breakdown if the uniformity
+ * assumption is violated.
  *
  * @param protected_half_extent The half-extent l of the protected region.
  * @param tidal_factor Safety factor (>=1) for anisotropies and the more
@@ -89,6 +92,11 @@ static double zoom_compute_bkg_truncate_half_width(
  * (smaller) periodic simulation volume. The half-width of the retained cube
  * is computed with zoom_compute_bkg_truncate_half_width().
  *
+ * Note that this truncation process requires the assumption that the background
+ * is statistically uniform and isotropic, so that the tidal field across the
+ * high-resolution region is dominated by the nearest periodic images of the
+ * retained volume.
+ *
  * This must be called at the end of space_init(), before anything downstream
  * consumes the box dimensions (the gravity properties, the PM mesh, the
  * neutrino response, line-of-sight properties, etc. are all derived from
@@ -110,8 +118,9 @@ void zoom_truncate_bkg(struct swift_params *params, struct space *s,
 
   /* Truncation redefines the periodic volume; it cannot be applied to a
    * non-periodic box. */
-  if (!s->periodic)
+  if (!s->periodic) {
     error("ZoomRegion:truncate_background requires a periodic box.");
+  }
 
   /* Extract some useful information. */
   const double tidal_factor = s->zoom_props->tidal_factor;
@@ -139,21 +148,23 @@ void zoom_truncate_bkg(struct swift_params *params, struct space *s,
   const double retained_half_width = zoom_compute_bkg_truncate_half_width(
       protected_half_extent, tidal_factor, epsilon);
 
-  if (verbose)
+  if (verbose) {
     message(
         "Computed a truncation half-width of %.2f internal units for a "
         "protected high-resolution extent of %.2f (with %.2f x %.2f x "
         "(2 x %.1e)^(-1/3))",
-        retained_half_width, protected_dim, tidal_factor,
-        protected_half_extent, epsilon);
+        retained_half_width, protected_dim, tidal_factor, protected_half_extent,
+        epsilon);
+  }
 
   /* The retained box must comfortably contain the protected region. */
-  if (2.0 * retained_half_width <= protected_dim)
+  if (2.0 * retained_half_width <= protected_dim) {
     error(
         "The truncated box (%.2e) does not contain the protected "
         "high-resolution region (extent %.2e). Lower "
         "ZoomRegion:truncate_epsilon.",
         2.0 * retained_half_width, protected_dim);
+  }
 
   /* If the retained box exceeds the original box we can't truncate. */
   if (retained_half_width * 2.0 >=
@@ -236,7 +247,8 @@ void zoom_truncate_bkg(struct swift_params *params, struct space *s,
   /* The gravity mesh scale is derived from the box size, so refresh the
    * neighbour distance for the truncated volume (same calculation as in
    * zoom_props_init, which ran before the box was resized). */
-  const int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+  const int mesh_size =
+      parser_get_param_int(params, "Gravity:mesh_side_length");
   const float a_smooth =
       parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
   const float r_cut_max_ratio =
