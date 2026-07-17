@@ -25,6 +25,21 @@ initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicit
                                     # (Z/Zsun with scale_initial_metallicity: 1 below)
 run_name=${run_name:=""}
 restart=${restart:=0}
+run_analysis=${run_analysis:=1}         # Run plot_temperature_hii.py on this run's final snapshot
+run_matrix_analysis=${run_matrix_analysis:=0} # Also run the full-matrix erosion scripts
+                                         # (clump_erosion_matrix.py, clump_hemisphere_erosion.py,
+                                         # clump_radial_profile.py); only set this to 1 once every
+                                         # cell of the matrix you care about has been run -- they
+                                         # glob every gas${gas_mass}_z${z_label}_nside${nside}_
+                                         # rebuild${rebuild_time_myr} directory in the current
+                                         # directory and fail loudly if part of it is missing.
+only_analysis=${only_analysis:=0}       # Skip IC generation and the simulation entirely, only run
+                                         # the analysis steps below (run_analysis/run_matrix_analysis)
+                                         # against whatever already exists -- e.g.
+                                         # `only_analysis=1 run_matrix_analysis=1 ./run.sh` once a
+                                         # sweep is done, without paying for a redundant simulation.
+
+if [ "$only_analysis" -eq 0 ]; then
 
 if [ -e ICs_stromgren_clump.hdf5 ]
 then
@@ -94,9 +109,9 @@ else
                params.yml 2>&1 | tee output.log
 fi
 
-if [ -z "$run_name" ]; then
-    echo "run_name is empty."
-else
+fi # only_analysis
+
+if [ "$only_analysis" -eq 0 ] && [ -n "$run_name" ]; then
     if [ -d "$run_name" ]; then
         echo "$run_name directory exists. Nothing will be moved."
     else
@@ -109,4 +124,27 @@ else
         mv unused_parameters.yml $run_name
         mv used_parameters.yml $run_name
     fi
+elif [ -z "$run_name" ]; then
+    echo "run_name is empty."
+fi
+
+# Where this run's snapshots actually ended up: $run_name/snap if a
+# run_name is set and that move already happened (this call or a
+# previous one, relevant for only_analysis=1), otherwise the plain
+# top-level snap/ from this call.
+output_dir="."
+if [ -n "$run_name" ] && [ -d "$run_name/snap" ]; then
+    output_dir="$run_name"
+fi
+
+if [ "$run_analysis" -eq 1 ]; then
+    echo "Running plot_temperature_hii.py on the final snapshot..."
+    python3 plot_temperature_hii.py -s "$output_dir/snap/snapshot"
+fi
+
+if [ "$run_matrix_analysis" -eq 1 ]; then
+    echo "Running full-matrix erosion analysis scripts..."
+    python3 clump_erosion_matrix.py
+    python3 clump_hemisphere_erosion.py
+    python3 clump_radial_profile.py
 fi

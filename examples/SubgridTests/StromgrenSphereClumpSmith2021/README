@@ -54,13 +54,20 @@ for nside in 0 1; do
       initial_metallicity=$initial_metallicity gas_mass=$gas_mass ./run.sh
   done
 done
+# Once every cell of the matrix you care about has been run this way (all
+# gas_mass/metallicity combinations, not just one inner loop):
+only_analysis=1 run_analysis=0 run_matrix_analysis=1 ./run.sh
 ```
 run once with `gas_mass=20 initial_metallicity=0` (this example's
 default) and `gas_mass=20 initial_metallicity=0.231` (paper
 convention), and again at `gas_mass=95` (this project's zoom-in
 resolution) for both metallicities. `z_label`/`gas_mass` above are just
 naming placeholders, not real env vars -- substitute the actual values
-by hand or in your own wrapper.
+by hand or in your own wrapper. `only_analysis=1` skips IC generation and
+the simulation entirely -- it runs the analysis steps only, against
+whatever run directories already exist, instead of paying for a
+redundant simulation just to trigger them; see "Measuring clump erosion"
+below.
 
 ## Resolution
 Gas particle mass defaults to 20 Msun, matching Smith et al. 2021's own
@@ -87,18 +94,34 @@ make -j
 # Run
 `nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh` / `run_name=nside1 ./run.sh` to keep both outputs) run the geometry from Figure 2, reproducing the top (spherical) and bottom (HealPix) panels respectively.
 
-# Checking the redistribution effect and plotting
+`run.sh` runs `plot_temperature_hii.py` on the run's own final snapshot
+automatically (`run_analysis=1` by default; set `run_analysis=0` to skip
+it). It prints `r_HII`/`r_physics` and writes
+`temperature_{projection,slice}_<snapshot>.png` next to the run's own
+output (inside `$run_name/` if set).
 
-Same tools as `../StromgrenSphereClump/`:
+# Checking the redistribution effect
+
+`clump_anisotropy_check.py` is not run automatically -- it needs a
+`-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` build (add to `CFLAGS` before
+`./configure`, so `IsIonizedFlags` accumulates monotonically instead of
+resetting every step) and two specific runs (`nside=0`/`nside=1`) at
+once, matching `../StromgrenSphereClump/`:
 ```
 python3 clump_anisotropy_check.py --nside0-snapshot nside0/snap/snapshot_0042.hdf5 --nside1-snapshot nside1/snap/snapshot_0042.hdf5
-python3 plot_temperature_hii.py -s nside1/snap/snapshot   # defaults to the last snapshot
 ```
-`clump_anisotropy_check.py` requires a build with `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` (add to `CFLAGS` before `./configure`) so `IsIonizedFlags` accumulates monotonically instead of resetting every step.
 
 # Measuring clump erosion (ID-tracked)
 
-Run after the full `run_name=gas${gas_mass}_z${z_label}_nside${nside}_rebuild${rebuild_time_myr}` sweep above (each script globs run directories by that naming convention in the current directory):
+`run.sh` also runs the three full-matrix erosion scripts when
+`run_matrix_analysis=1` (default 0 -- they glob every
+`gas${gas_mass}_z${z_label}_nside${nside}_rebuild${rebuild_time_myr}`
+directory in the current directory by that naming convention and fail
+loudly if part of the matrix is missing, so only set this once every
+cell you care about has actually been run; see the sweep recipe above
+for the `only_analysis=1 run_matrix_analysis=1 ./run.sh` invocation that
+runs analysis only, without a redundant simulation). Equivalently, call
+them by hand:
 
 ```
 python3 clump_erosion_matrix.py       # total mass remaining, full matrix, bar chart
