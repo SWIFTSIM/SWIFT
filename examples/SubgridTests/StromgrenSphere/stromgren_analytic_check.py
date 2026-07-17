@@ -135,9 +135,6 @@ def ionizing_photon_rate(mass_msun):
 # the D-type expansion should be evaluated there, not at the classical
 # 1e4 K reference point, or this analytic comparison is systematically
 # biased low.
-T_IONIZED_K = 47500.0 * u.K
-
-
 def alpha_b_hui_gnedin(T):
     """Case-B recombination coefficient (Hui & Gnedin 1997, MNRAS 292, 27,
     Appendix A), the same fit now used in
@@ -153,21 +150,21 @@ def alpha_b_hui_gnedin(T):
     )
 
 
-ALPHA_B = alpha_b_hui_gnedin(T_IONIZED_K)
+def sound_speed_ionized(T_ionized):
+    """Isothermal sound speed of photoionized hydrogen gas, scaled from the
+    standard 1e4 K reference value (12.85 km/s) to the actual applied
+    ionized temperature (c_s ~ sqrt(T) for an ideal gas at fixed
+    composition)."""
+    return 12.85 * u.km / u.s * np.sqrt(T_ionized / (1e4 * u.K))
 
-# Isothermal sound speed of photoionized hydrogen gas, scaled from the
-# standard 1e4 K reference value (12.85 km/s) to this run's actual applied
-# ionized temperature (c_s ~ sqrt(T) for an ideal gas at fixed composition).
-C_S_IONIZED = 12.85 * u.km / u.s * np.sqrt(T_IONIZED_K / (1e4 * u.K))
 
-
-def stromgren_radius(Q_H, n_H):
+def stromgren_radius(Q_H, n_H, alpha_B):
     """Equilibrium (Stromgren) radius: R_st = (3 Q_H / (4 pi alpha_B n_H^2))^(1/3)."""
-    R_st3 = 3.0 * Q_H / (4.0 * np.pi * ALPHA_B * n_H**2)
+    R_st3 = 3.0 * Q_H / (4.0 * np.pi * alpha_B * n_H**2)
     return R_st3.to(u.cm**3) ** (1.0 / 3.0)
 
 
-def dtype_expansion_radius(t, R_st, c_s=C_S_IONIZED):
+def dtype_expansion_radius(t, R_st, c_s):
     """Spitzer (1978) D-type expansion: R(t) = R_st (1 + 7 c_s t / (4 R_st))^(4/7)."""
     return R_st * (1.0 + 7.0 * c_s * t / (4.0 * R_st)) ** (4.0 / 7.0)
 
@@ -247,7 +244,34 @@ def main():
         default=0.3,
         help="Relative-error tolerance at the final time for a pass (default: 0.3).",
     )
+    parser.add_argument(
+        "--T-ionized-K",
+        type=float,
+        default=47500.0,
+        dest="T_ionized_K",
+        help="Applied ionized-gas temperature floor to evaluate alpha_B and "
+        "c_s at (default: 47500, this code's own Z=0 floor -- see the "
+        "module docstring above alpha_b_hui_gnedin). Pass 1e4 for a run "
+        "at the Z/Zsun~0.231 metallicity that reproduces the papers' "
+        "classical 1e4 K convention.",
+    )
+    parser.add_argument(
+        "--n-tail",
+        type=int,
+        default=5,
+        dest="n_tail",
+        help="Number of trailing snapshots to max-envelope for the "
+        "'final' r_sim comparison point (default: 5). HIIRegionRadii is "
+        "algorithm bookkeeping that can reset to 0 between rebuilds even "
+        "while the star is still actively ionizing, so comparing a single "
+        "last sample is noise-prone; this takes the max over the last "
+        "n_tail samples instead.",
+    )
     args = parser.parse_args()
+
+    T_IONIZED_K = args.T_ionized_K * u.K
+    ALPHA_B = alpha_b_hui_gnedin(T_IONIZED_K)
+    C_S_IONIZED = sound_speed_ionized(T_IONIZED_K)
 
     t_sim, r_sim, star_mass_msun, n_H, boxsize = read_simulated_r_hii(
         args.snapshot_glob
@@ -257,7 +281,7 @@ def main():
         raise RuntimeError("Could not infer star mass / n_H from the snapshots.")
 
     Q_H = ionizing_photon_rate(star_mass_msun)
-    R_st = stromgren_radius(Q_H, n_H)
+    R_st = stromgren_radius(Q_H, n_H, ALPHA_B)
     box_half_width = 0.5 * boxsize
 
     print(f"Star mass          : {star_mass_msun:.3f} Msun")
@@ -276,16 +300,25 @@ def main():
             "mismatch alone does not indicate a code bug."
         )
 
-    r_analytic = dtype_expansion_radius(t_sim, R_st).to(u.kpc)
+    r_analytic = dtype_expansion_radius(t_sim, R_st, C_S_IONIZED).to(u.kpc)
 
-    # Relative error at the final simulated time.
+    # Relative error at the final simulated time, using a max-envelope over
+    # the trailing n_tail samples so a single bookkeeping reset (r_hii
+    # dropping to 0 between rebuilds, or after star death) doesn't produce
+    # a spurious FAIL -- see --n-tail help.
+    tail = slice(-args.n_tail, None)
+    r_sim_final = np.max(r_sim[tail])
+    t_sim_final = t_sim[tail][np.argmax(r_sim[tail])]
+    r_analytic_final = dtype_expansion_radius(t_sim_final, R_st, C_S_IONIZED).to(
+        u.kpc
+    )
     rel_error = float(
-        (np.abs(r_sim[-1] - r_analytic[-1]) / r_analytic[-1]).decompose()
+        (np.abs(r_sim_final - r_analytic_final) / r_analytic_final).decompose()
     )
     verdict = "PASS" if rel_error <= args.tol else "FAIL"
     print(
-        f"Final time: t={t_sim[-1]:.4g}  r_sim={r_sim[-1]:.4g}  "
-        f"r_analytic={r_analytic[-1]:.4g}  rel_error={rel_error:.2%}  [{verdict}]"
+        f"Final time: t={t_sim_final:.4g}  r_sim={r_sim_final:.4g}  "
+        f"r_analytic={r_analytic_final:.4g}  rel_error={rel_error:.2%}  [{verdict}]"
     )
 
     fig, ax = plt.subplots()
