@@ -1716,11 +1716,38 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
 }
 
 /**
+ * @brief Test whether a cell pair is beyond the PM truncation cutoff.
+ *
+ * This is a conservative test which compares the minimal pair separation
+ * between any two particles in the cells to the PM cutoff distance,
+ * importantly, with a tolernace to account for floating point round-off. When
+ * comparing distances very close to the cutoff, we have managed to find cases
+ * where the round-off causes the pair to be treated as being beyond the cutoff
+ * in one call and within the cutoff in another call, leading to erroneous
+ * rebuild signals. This test is designed to prevent such cases from being
+ * treated as beyond the cutoff, and thus prevent erroneous rebuilds.
+ *
+ * Note that the tolerence employed here is much smaller than the smallest
+ * possible cell size (2^52 of a top-level cell).
+ *
+ * @param min_radius2 The squared minimal pair separation.
+ * @param max_distance2 The squared PM truncation cutoff distance.
+ * @return 1 if the pair is safely beyond the cutoff, 0 otherwise.
+ */
+__attribute__((const)) INLINE static int cell_mesh_distance_is_above_cutoff(
+    const double min_radius2, const double max_distance2) {
+
+  /* Derive a scale aware tolerance. (128 is arbitrarily "big enough") */
+  const double scale = fmax(1.0, fmax(fabs(min_radius2), fabs(max_distance2)));
+  const double tol = 128.0 * DBL_EPSILON * scale;
+
+  return min_radius2 > max_distance2 + tol;
+}
+
+/**
  * @brief Test whether two cells can use PM interactions.
  *
- * This will test if particles in the two cells are far enough apart to use
- * the mesh for their interaction. If so we won't need an expensive pair
- * task or multipole-multipole interaction.
+ * This is the rebuild-time predicate used when creating the task graph.
  *
  * @param e The #engine.
  * @param ci The first #cell.
@@ -1743,8 +1770,41 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
 
-  /* Are we beyond the distance where the truncated forces are 0 ?*/
-  return (min_radius2 > max_distance2);
+  /* Are we safely beyond the distance where the truncated forces are 0 ?*/
+  return cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
+}
+
+/**
+ * @brief Test whether two cells can use PM interactions between rebuilds.
+ *
+ * This uses the current cell geometry and inflates the occupied region by the
+ * maximal particle displacement since the last rebuild.
+ *
+ * @param e The #engine.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ *
+ * @return 1 if the mesh can be used, 0 otherwise.
+ */
+int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
+                                       const struct cell *cj) {
+
+  struct space *s = e->s;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* If not periodic then we cannot use the mesh */
+  if (!s->periodic) {
+    return 0;
+  }
+
+  /* Minimal distance between any pair of particles including max
+   * displacement since rebuild */
+  const double min_radius2 =
+      cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
+
+  /* Are we safely beyond the distance where the truncated forces are 0 ?*/
+  return cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
 }
 
 /**
@@ -1778,15 +1838,6 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
         cj->grav.ti_old_multipole, e->ti_current);
 #endif
 
-  struct space *s = e->s;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
-
-  /* If not periodic then we cannot use the mesh */
-  if (!s->periodic) {
-    return 0;
-  }
-
   /* Could we use the mesh at rebuild time? */
   const int could_use_mesh_at_rebuild = cell_can_use_mesh(e, ci, cj);
 
@@ -1795,29 +1846,33 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
     return 0;
   }
 
-  /*Minimal distance between any pair of particles including max
-   * displacement since rebuild */
-  const double min_radius2 =
-      cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
-
-  /* Are we beyond the distance where the truncated forces are 0 ?*/
-  const int can_use_mesh_now = (min_radius2 > max_distance2);
+  const int can_use_mesh_now = cell_can_use_mesh_between_rebuilds(e, ci, cj);
 
   /* Report related information if we could use the mesh at rebuild but can no
    * longer do so */
   if (could_use_mesh_at_rebuild && !can_use_mesh_now) {
+    struct space *s = e->s;
+    const double max_distance = e->mesh->r_cut_max;
+    const double max_distance2 = max_distance * max_distance;
+    const double min_radius2_rebuild =
+        cell_min_dist2(ci, cj, s->periodic, s->dim);
+    const double min_radius2 =
+        cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
     message(
         "Forcing rebuild due to particle motion. Cell pair: "
-        "min_radius2=%e ci->grav.multipole->r_max=%e "
+        "min_radius2_rebuild=%e min_radius2_now=%e max_distance2=%e "
+        "delta_rebuild=% .17e delta_now=% .17e "
+        "ci->grav.multipole->r_max=%e "
         "ci->grav.multipole->r_max_rebuild=%e ci->grav.multipole->dx_max=%e %e "
         "%e ci->nodeID=%d "
         "cj->grav.multipole->r_max=%e cj->grav.multipole->r_max_rebuild=%e "
         "cj->grav.multipole->dx_max=%e %e %e, ci->grav.count=%d "
         "cj->grav.count=%d cj->nodeID=%d",
-        min_radius2, ci->grav.multipole->r_max,
-        ci->grav.multipole->r_max_rebuild, ci->grav.multipole->dx_max[0],
-        ci->grav.multipole->dx_max[1], ci->grav.multipole->dx_max[2],
-        ci->nodeID, cj->grav.multipole->r_max,
+        min_radius2_rebuild, min_radius2, max_distance2,
+        min_radius2_rebuild - max_distance2, min_radius2 - max_distance2,
+        ci->grav.multipole->r_max, ci->grav.multipole->r_max_rebuild,
+        ci->grav.multipole->dx_max[0], ci->grav.multipole->dx_max[1],
+        ci->grav.multipole->dx_max[2], ci->nodeID, cj->grav.multipole->r_max,
         cj->grav.multipole->r_max_rebuild, cj->grav.multipole->dx_max[0],
         cj->grav.multipole->dx_max[1], cj->grav.multipole->dx_max[2],
         ci->grav.count, cj->grav.count, cj->nodeID);

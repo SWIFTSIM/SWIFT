@@ -420,6 +420,10 @@ struct zoom_region_properties {
   /*! The depth of the zoom cells within a background cell. */
   int zoom_cell_depth;
 
+  /*! The requested minimum number of top level zoom cells. Will override
+   * the zoom depth parameter if stated. */
+  int zoom_cell_min_cdim;
+
   /*! Space dimensions in number of top level zoom cells. */
   int cdim[3];
 

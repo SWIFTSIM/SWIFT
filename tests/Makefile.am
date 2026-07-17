@@ -196,6 +196,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh \
-              testZoomInit.sh zoom_params_small.yml zoom_params_large.yml testGetZoomIJKFunc.sh \
-              testZoomRegrid.sh testZoomVoidTree.sh testZoomTruncation.sh \
-              zoom_truncation_base.yml zoom_truncation_tight.yml zoom_truncation_strong.yml
+             testZoomInit.sh zoom_params_small.yml zoom_params_large.yml zoom_params_cells.yml zoom_params_cells_exact.yml testGetZoomIJKFunc.sh \
+             testZoomRegrid.sh testZoomVoidTree.sh testZoomTruncation.sh \
+             zoom_truncation_base.yml zoom_truncation_tight.yml zoom_truncation_strong.yml

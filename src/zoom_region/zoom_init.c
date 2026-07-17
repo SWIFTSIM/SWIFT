@@ -50,9 +50,57 @@ int zoom_bkg_subdepth_diff_grav = zoom_bkg_subdepth_diff_grav_default;
  */
 void zoom_parse_params(struct swift_params *params,
                        struct zoom_region_properties *props) {
-  /* Set the zoom cdim. */
+
+  /* Do we have a zoom cell depth provided? */
+  const int has_zoom_cell_depth =
+      parser_does_param_exist(params, "ZoomRegion:zoom_top_level_depth");
+
+  /* Set the zoom cell depth. */
   props->zoom_cell_depth =
       parser_get_opt_param_int(params, "ZoomRegion:zoom_top_level_depth", 2);
+
+  /* Ensure we have a non-zero positive zoom cell depth if provided. */
+  if (has_zoom_cell_depth && props->zoom_cell_depth <= 0) {
+    error(
+        "ZoomRegion:zoom_top_level_depth must be positive if provided, not %d",
+        props->zoom_cell_depth);
+  }
+
+  /* Warn if we are provided a suspicious zoom cell depth. */
+  if (props->zoom_cell_depth > 10) {
+    warning(
+        "ZoomRegion:zoom_top_level_depth is set to %d, that is suspiciously "
+        "deep. Are you sure this is what you want? There will be a lot of sub "
+        "cells.",
+        props->zoom_cell_depth);
+  }
+
+  /* Set the minimum zoom cdim. If provided, this overrides the depth. */
+  props->zoom_cell_min_cdim = parser_get_opt_param_int(
+      params, "ZoomRegion:zoom_min_top_level_cells", -1);
+
+  /* Check the provided zoom cdim is valid. */
+  if (props->zoom_cell_min_cdim == 0 || props->zoom_cell_min_cdim < -1) {
+    error("ZoomRegion:zoom_min_top_level_cells must be positive if provided.");
+  }
+
+  /* Warn if we are provided a suspicious zoom cdim. */
+  if (props->zoom_cell_min_cdim > 100) {
+    warning(
+        "ZoomRegion:zoom_min_top_level_cells is set to %d, that is "
+        "suspiciously high. Are you sure this is what you want? There will be "
+        "a lot of top-level cells.",
+        props->zoom_cell_min_cdim);
+  }
+
+  /* Be clear if both the depth and cdim are provided, the cdim will override
+   * the depth. */
+  if (props->zoom_cell_min_cdim > 0 && has_zoom_cell_depth) {
+    warning(
+        "Both ZoomRegion:zoom_min_top_level_cells and "
+        "ZoomRegion:zoom_top_level_depth are set. The requested zoom cdim "
+        "will override the depth.");
+  }
 
   /* Set the target background cdim. Default -1 means we auto-optimize to find
    * the best value that minimizes padding waste and total cell count. */
@@ -712,28 +760,99 @@ int zoom_get_void_geometry(struct space *s, const double region_dim) {
 }
 
 /**
- * @brief Compute the number of child cells in a single parent cell at a given
- * depth.
+ * @brief Compute the number of void cells along one axis of the region.
+ *
+ * @param region_dim The dimension of the region.
+ * @param parent_void The width of the void cell.
+ *
+ * @return The number of void cells along one axis of the region.
+ */
+static int zoom_get_void_cdim(const double region_dim,
+                              const double void_width) {
+
+  /* How many void_widths are in the region? (ensure correct rounding) */
+  return floor((region_dim + (0.1 * void_width)) / void_width);
+}
+
+/**
+ * @brief Compute the zoom cdim obtained by splitting parent cells to a depth.
  *
  * @param region_dim The dimension of the region.
  * @param parent_width The width of the parent cell.
- * @param child_depth The depth of the child cell within the parent.
+ * @param child_depth The depth of the child cells within each parent cell.
  *
- * @return The number of child cells in a single parent cell.
+ * @return The number of zoom cells along one axis of the region.
  */
-static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
-                                  int child_depth) {
+static int zoom_get_cdim_at_depth(const double region_dim,
+                                  const double parent_width,
+                                  const int child_depth) {
 
-  /* How many parent_widths are in the region? (ensure correct rounding) */
-  int region_parent_cdim =
-      floor((region_dim + (0.1 * parent_width)) / parent_width);
+  /* Get the number of background void cells along an axis of the region. */
+  const int void_cdim = zoom_get_void_cdim(region_dim, parent_width);
 
   /* We now know how many parent cells we have in the region, use this and the
    * depth of the zoom region to calculate the cdim (the number of parents times
    * the number of children in a parent. */
-  return region_parent_cdim * integer_pow(2, child_depth);
+  return void_cdim * integer_pow(2, child_depth);
 }
 
+/**
+ * @brief Compute the depth required to reach a target zoom cdim.
+ *
+ * The exact target may not be reachable because zoom cells are produced by
+ * splitting background parent cells by powers of two. In that case we return
+ * the smallest depth that does not undershoot the requested cdim.
+ *
+ * @param region_dim The dimension of the region.
+ * @param parent_width The width of the parent cell.
+ * @param target_cdim The requested number of top level zoom cells.
+ * @param resolved_cdim The actual cdim reached at the returned depth.
+ *
+ * @return The depth required to reach the target cdim.
+ */
+static int zoom_get_depth_for_cdim(const double region_dim,
+                                   const double parent_width,
+                                   const int target_cdim, int *resolved_cdim) {
+
+  /* Get the number of background void cells along an axis of the region. */
+  const int void_cdim = zoom_get_void_cdim(region_dim, parent_width);
+
+  /* Ensure the void cdim is valid. */
+  if (void_cdim <= 0) {
+    error("Cannot derive zoom cell depth for a region with no parent cells.");
+  }
+
+  /* Iterate until we have a depth that gives us at least the target cdim. */
+  int depth = 0;
+  int cdim = void_cdim;
+  while (cdim < target_cdim) {
+    depth++;
+    cdim = void_cdim * integer_pow(2, depth);
+  }
+
+  /* If the caller wants to know the actual cdim we reached, return it. */
+  if (resolved_cdim != NULL) *resolved_cdim = cdim;
+
+  /* Warn if we couldn't match the target cdim exactly. */
+  if (cdim != target_cdim) {
+    warning(
+        "Requested ZoomRegion:zoom_min_top_level_cells=%d cannot be matched "
+        "exactly. Using zoom_top_level_depth=%d, giving Zoom cdim=%d.",
+        target_cdim, depth, cdim);
+  }
+
+  return depth;
+}
+
+/**
+ * @brief Compute the zoom region geometry.
+ *
+ * This copies the void-region bounds into the zoom-region bounds, computes the
+ * zoom dimensions, resolves the zoom cell depth from a requested target cdim if
+ * one was provided, and sets the final zoom cdim and cell widths.
+ *
+ * @param s The #space.
+ */
 static void zoom_get_geometry(struct space *s) {
 
   /* Match the zoom region bounds to the void region bounds. */
@@ -746,6 +865,13 @@ static void zoom_get_geometry(struct space *s) {
   for (int i = 0; i < 3; i++) {
     s->zoom_props->dim[i] = s->zoom_props->region_upper_bounds[i] -
                             s->zoom_props->region_lower_bounds[i];
+  }
+
+  /* Derive the zoom depth from the requested cdim if supplied. */
+  if (s->zoom_props->zoom_cell_min_cdim > 0) {
+    s->zoom_props->zoom_cell_depth =
+        zoom_get_depth_for_cdim(s->zoom_props->dim[0], s->width[0],
+                                s->zoom_props->zoom_cell_min_cdim, NULL);
   }
 
   /* Compute the number of zoom cells in the void region. */
@@ -812,6 +938,10 @@ void zoom_report_cell_properties(const struct space *s) {
 
   /* Depths */
   message("%28s = %d", "Zoom Top Level Depth", zoom_props->zoom_cell_depth);
+  if (zoom_props->zoom_cell_min_cdim > 0) {
+    message("%28s = %d", "Requested Minimum Zoom cdim",
+            zoom_props->zoom_cell_min_cdim);
+  }
   message("%28s = %d", "Neighbour Max Tree Depth",
           zoom_props->neighbour_max_tree_depth);
 
@@ -923,10 +1053,17 @@ static void zoom_optimise_bkg_cells(struct space *s, const double ini_dim,
     /* Actual padding ratio */
     double actual_pad = void_dim / ini_dim;
 
-    /* Zoom cell count: zoom_cdim = nr_parents * 2^depth */
-    int nr_parents =
-        (int)floor((void_dim + (0.1 * test_bkg_width)) / test_bkg_width);
-    int zoom_cdim = nr_parents * (1 << s->zoom_props->zoom_cell_depth);
+    /* Zoom cell count: zoom_cdim = nr_parents * 2^depth. If a target cdim is
+     * supplied, derive the depth for this candidate background grid. */
+    int zoom_cdim = 0;
+    if (s->zoom_props->zoom_cell_min_cdim > 0) {
+      const int void_cdim = zoom_get_void_cdim(void_dim, test_bkg_width);
+      zoom_cdim = void_cdim;
+      while (zoom_cdim < s->zoom_props->zoom_cell_min_cdim) zoom_cdim *= 2;
+    } else {
+      const int nr_parents = zoom_get_void_cdim(void_dim, test_bkg_width);
+      zoom_cdim = nr_parents * integer_pow(2, s->zoom_props->zoom_cell_depth);
+    }
     int nr_zoom_cells = zoom_cdim * zoom_cdim * zoom_cdim;
 
     /* Total cells */
@@ -1060,7 +1197,8 @@ void zoom_region_init(struct space *s, const int regridding,
     error(
         "Found a zoom region smaller than the high resolution particle "
         "distribution! Adjust the cell structure "
-        "(ZoomRegion:bkg_top_level_cells, ZoomRegion:zoom_top_level_cells)");
+        "(ZoomRegion:bkg_top_level_cells, ZoomRegion:zoom_top_level_depth, "
+        "ZoomRegion:zoom_min_top_level_cells)");
   }
 
   /* Let's be safe and warn if we have drastically changed the size of the
@@ -1329,6 +1467,8 @@ void zoom_dump_geometry(const struct engine *e) {
             z->void_upper_bounds[0], z->void_upper_bounds[1],
             z->void_upper_bounds[2]);
     fprintf(f_meta, "ZoomCellDepth: %d\n", z->zoom_cell_depth);
+    if (z->zoom_cell_min_cdim > 0)
+      fprintf(f_meta, "RequestedMinimumZoomCdim: %d\n", z->zoom_cell_min_cdim);
     fprintf(f_meta, "NeighbourMaxTreeDepth: %d\n", z->neighbour_max_tree_depth);
     fprintf(f_meta, "RegionPadFactor: %.15e\n", z->region_pad_factor);
     fprintf(f_meta, "AppliedZoomShift: [%.15e, %.15e, %.15e]\n",

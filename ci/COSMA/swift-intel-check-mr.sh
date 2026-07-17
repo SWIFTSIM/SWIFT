@@ -49,6 +49,52 @@ do_make clean
 
 #  Formatting only from the tests.
 do_make check TESTS=testFormat.sh
+do_make clean
+
+# exit
+
+echo
+echo "-----------"
+echo "EAGLE build"
+echo "-----------"
+do_configure --with-subgrid=EAGLE --with-hydro=sphenix --disable-hand-vec
+do_make
+do_make clean
+
+echo
+echo "-----------"
+echo "EAGLE build"
+echo "-----------"
+do_configure --with-subgrid=SPIN_JET_EAGLE --with-hydro=sphenix --disable-hand-vec
+do_make
+do_make clean
+
+echo
+echo "--------------"
+echo "FLAMINGO build"
+echo "--------------"
+do_configure --with-subgrid=FLAMINGO --with-hydro=sphenix --disable-hand-vec
+do_make
+do_make clean
+
+echo
+echo "----------------------"
+echo "GEAR + grackle 0 build"
+echo "----------------------"
+# Load grackle
+module load grackle-swift/3.3.dev1
+
+do_configure --with-subgrid=GEAR --with-hydro=sphenix --disable-hand-vec --with-grackle=${GRACKLE_HOME}/lib
+do_make
+do_make clean
+
+echo
+echo "----------------------"
+echo "GEAR + grackle 3 build"
+echo "----------------------"
+do_configure --with-subgrid=GEAR-G3 --with-hydro=sphenix --disable-hand-vec --with-grackle=${GRACKLE_HOME}/lib
+do_make
+do_make clean
 
 #  Keep simple, may have a number of these happening.
 exit

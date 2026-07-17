@@ -10,7 +10,7 @@ You will need:
 """
 
 from pygadgetreader import *
-from swiftsimio import Writer
+import swiftsimio as sw
 import numpy as np
 import unyt
 
@@ -25,9 +25,17 @@ energy_per_unit_mass = (length / time) ** 2
 
 nifty_units = unyt.UnitSystem("nifty", 1e3 * length, mass, time)
 
-writer = Writer(
+bs = readheader(filename, "boxsize") * length
+boxsize_cosmo = sw.cosmo_array(
+    [bs.value, bs.value, bs.value],
+    bs.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
+writer = sw.Writer(
     unit_system=nifty_units,
-    box_size=readheader(filename, "boxsize") * length,
+    boxsize=boxsize_cosmo,
     dimension=3,
     compress=True,
     extra_header={
@@ -38,24 +46,49 @@ writer = Writer(
     },
 )
 
-writer.gas.coordinates = unyt.unyt_array(readsnap(filename, "pos", 0), length)
+gas_coords = unyt.unyt_array(readsnap(filename, "pos", 0), length)
+writer.gas.coordinates = sw.cosmo_array(
+    gas_coords.value,
+    gas_coords.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
 
-writer.gas.velocities = unyt.unyt_array(readsnap(filename, "vel", 0), velocity)
+gas_vel = unyt.unyt_array(readsnap(filename, "vel", 0), velocity)
+writer.gas.velocities = sw.cosmo_array(
+    gas_vel.value, gas_vel.units, comoving=True, scale_factor=1.0, scale_exponent=0
+)
 
-writer.gas.masses = unyt.unyt_array(readsnap(filename, "mass", 0), mass)
+gas_mass = unyt.unyt_array(readsnap(filename, "mass", 0), mass)
+writer.gas.masses = sw.cosmo_array(
+    gas_mass.value, gas_mass.units, comoving=True, scale_factor=1.0, scale_exponent=0
+)
 
-writer.gas.internal_energy = unyt.unyt_array(
-    readsnap(filename, "u", 0), energy_per_unit_mass
+gas_u = unyt.unyt_array(readsnap(filename, "u", 0), energy_per_unit_mass)
+writer.gas.internal_energy = sw.cosmo_array(
+    gas_u.value, gas_u.units, comoving=True, scale_factor=1.0, scale_exponent=-2
 )
 
 # We must roll our own smoothing lengths.
-n_part = len(writer.gas.masses)
-x_range = writer.gas.coordinates.max() - writer.gas.coordinates.min()
+n_part = len(gas_coords)
+x_range = gas_coords.max() - gas_coords.min()
 mean_interparticle_sep = x_range / n_part ** (1 / 3)
+writer.gas.smoothing_lengths = sw.cosmo_array(
+    np.ones(n_part, dtype=float) * mean_interparticle_sep.value,
+    mean_interparticle_sep.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
 
-writer.gas.smoothing_length = np.ones(n_part, dtype=float) * mean_interparticle_sep
-
-writer.gas.particle_ids = unyt.unyt_array(readsnap(filename, "pid", 0), None)
+writer.gas.particle_ids = sw.cosmo_array(
+    readsnap(filename, "pid", 0),
+    unyt.dimensionless,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=0,
+)
 
 
 def read_dm_quantity(name, unit, parttype):
@@ -70,12 +103,32 @@ def read_dm_quantity(name, unit, parttype):
 for name, parttype in {"dark_matter": [1], "boundary": [2, 3, 5]}.items():
     writer_value = getattr(writer, name)
 
-    writer_value.coordinates = read_dm_quantity("pos", length, parttype)
+    dm_coords = read_dm_quantity("pos", length, parttype)
+    writer_value.coordinates = sw.cosmo_array(
+        dm_coords.value,
+        dm_coords.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
 
-    writer_value.velocities = read_dm_quantity("vel", velocity, parttype)
+    dm_vel = read_dm_quantity("vel", velocity, parttype)
+    writer_value.velocities = sw.cosmo_array(
+        dm_vel.value, dm_vel.units, comoving=True, scale_factor=1.0, scale_exponent=0
+    )
 
-    writer_value.masses = read_dm_quantity("mass", mass, parttype)
+    dm_mass = read_dm_quantity("mass", mass, parttype)
+    writer_value.masses = sw.cosmo_array(
+        dm_mass.value, dm_mass.units, comoving=True, scale_factor=1.0, scale_exponent=0
+    )
 
-    writer_value.particle_ids = read_dm_quantity("pid", 1, parttype)
+    dm_pids = read_dm_quantity("pid", unyt.dimensionless, parttype)
+    writer_value.particle_ids = sw.cosmo_array(
+        dm_pids.value,
+        unyt.dimensionless,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
 
 writer.write("nifty.hdf5")
