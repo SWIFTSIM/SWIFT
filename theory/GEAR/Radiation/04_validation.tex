@@ -221,10 +221,32 @@ erosion that happens preferentially on the clump's near (star-facing)
 hemisphere -- the density contour used in the slice figures throughout
 this section can still look intact even when a meaningful fraction of
 the clump's own mass has dropped below the density threshold. The
-direct measurement is the clump's own gas mass: sum the mass of every
-gas particle within 10\,pc of the clump's centre (its nominal radius)
-with $n_H>1000\,{\rm cm^{-3}}$ (the clump's own IC density) at
-$t=8\,$Myr, as a fraction of the same quantity at $t=0$.
+direct measurement is the clump's own gas mass, tracked by
+\emph{particle ID}: identify, once, at $t=0$, every gas particle
+within 10\,pc of the clump's centre (its nominal radius) with
+$n_H>1000\,{\rm cm^{-3}}$ (the clump's own IC density), then at
+$t=8\,$Myr look up those exact same particles -- wherever they have
+since moved to -- and ask what fraction of their $t=0$ mass is still
+above that same density threshold. ``Still dense'' is therefore a
+wholesale-declumping metric: it does not register mild dilution, only
+a particle actually being taken well below the clump's own density
+scale.
+
+Fixing the selection to the original particle IDs matters: an earlier
+version of this measurement instead \emph{re-selected} gas by position
+and density at $t=8\,$Myr (same 10\,pc, same threshold, recomputed
+fresh each time), which implicitly assumes the clump neither drifts
+nor has non-clump gas swept into its old spatial footprint. Neither
+holds here -- the result was internally inconsistent (the ``far''
+hemisphere below showed \emph{more} than 100\% of its $t=0$ mass
+remaining under uniform, which is impossible for a fixed set of
+particles under mass conservation) and is now replaced throughout this
+section with the ID-tracked measurement. A direct sanity check
+confirms the fix: summing the $t=8\,$Myr mass of the original
+particle IDs, with no density cut at all, returns 100.0\% in every
+configuration tested -- no gas particle is created, destroyed, or
+lost track of, so any deviation from 100\% in the tables below is
+real density evolution on real clump particles, not bookkeeping noise.
 
 \begin{center}
 \begin{tabular}{llrrr}
@@ -232,17 +254,17 @@ $t=8\,$Myr, as a fraction of the same quantity at $t=0$.
   & scheme & rebuild=0.01\,Myr & rebuild=0.05\,Myr & rebuild=0.1\,Myr \\
   \hline
   \multirow{2}{*}{\code{gas\_mass=20}, $Z/Z_\odot\approx0.231$}
-    & uniform & 88.4\% & 88.4\% & 88.6\% \\
-    & angular & 89.4\% & 88.7\% & 88.8\% \\
+    & uniform & 98.9\% & 98.9\% & 99.0\% \\
+    & angular & 99.1\% & 99.0\% & 99.0\% \\
   \multirow{2}{*}{\code{gas\_mass=20}, $Z=0$}
-    & uniform & \textbf{83.3\%} & 97.5\% & 99.0\% \\
-    & angular & 99.6\% & 99.9\% & 100.0\% \\
+    & uniform & \textbf{97.1\%} & 98.8\% & 99.4\% \\
+    & angular & 99.6\% & 99.8\% & 99.9\% \\
   \multirow{2}{*}{\code{gas\_mass=95}, $Z/Z_\odot\approx0.231$}
-    & uniform & 87.8\% & 87.1\% & 87.2\% \\
-    & angular & 88.1\% & 87.1\% & 87.1\% \\
-  \multirow{2}{*}{\code{gas\_mass=95}, $Z=0$}
-    & uniform & \textbf{93.4\%} & 98.7\% & 99.5\% \\
+    & uniform & 99.9\% & 100.0\% & 100.0\% \\
     & angular & 99.9\% & 100.0\% & 100.0\% \\
+  \multirow{2}{*}{\code{gas\_mass=95}, $Z=0$}
+    & uniform & \textbf{97.8\%} & 99.0\% & 99.6\% \\
+    & angular & 99.9\% & 100.0\% & 99.9\% \\
   \hline
 \end{tabular}
 \end{center}
@@ -250,142 +272,123 @@ $t=8\,$Myr, as a fraction of the same quantity at $t=0$.
 \begin{figure}
   \centering
   \includegraphics[width=\linewidth]{Figures/clump_erosion_matrix}
-  \caption{Clump mass remaining at $t=8\,$Myr (\% of $t=0$, gas within
-    10\,pc of the clump centre above its own IC density threshold),
-    across the full matrix. Angular is never worse than uniform, and at
-    $Z=0$, this example's actual default, the gap is large and
-    systematic.}
+  \caption{Clump mass remaining at $t=8\,$Myr (\% of $t=0$, ID-tracked,
+    still above the clump's own IC density threshold), across the full
+    matrix. Note the $y$-axis starts at 90\%: angular is never worse
+    than uniform, and the gap is small in absolute terms but
+    consistent and, at $Z=0$, systematic.}
   \label{fig:clump-erosion}
 \end{figure}
 
-\textbf{This settles the question the extent measurements could not:
-angular is never worse than uniform at protecting the clump, and at
-$Z=0$ the advantage is large, not marginal, and holds at every rebuild
-cadence tested -- unlike the $r_{\rm HII}$-extent advantage
-(Section~\ref{sec:matrix-gas20}), which was fast-cadence-only.} At
-$Z/Z_\odot\approx0.231$ the two schemes are close (uniform loses
-11--13\% of the clump's mass, angular loses slightly less, 10--12\%) --
-consistent with the earlier observation that the difference is ``not
-that pronounced'' at this metallicity. At $Z=0$, uniform's erosion is
-both larger and strongly rebuild-dependent: 16.7\% of the clump's mass
-gone by \code{rebuild=0.01\,Myr} (\code{gas\_mass=20}), dropping to
-under 1\% at \code{rebuild=0.1\,Myr}. Angular, in contrast, loses
-essentially nothing (0.0--0.4\%) at \emph{any} cadence, at either
-resolution. The likely mechanism: consumption is closest-first and
-distance-sorted, not cheapest-first; a dense clump packs far more
-candidate particles per unit distance than the diffuse background, so
-under uniform's shared budget the clump can absorb a share of the
-budget wildly disproportionate to the small solid angle it subtends --
-exactly the mass-biasing failure mode Section~\ref{sec:angular-splitting}
-describes. At $Z=0$ the lower recombination coefficient
-(Section~\ref{sec:beta-temperature}) makes every particle cheaper to
-hold ionized, so a single uniform budget reaches disproportionately
-deeper into the clump before exhausting -- explaining why the gap is
-largest exactly where this example actually runs by default. Angular's
-$1/12$ per-pixel cap bounds this regardless of how cheap ionization
-gets, which is why it stays protective at every cadence and every
-metallicity tested.
+\textbf{Angular is never worse than uniform at protecting the clump,
+at any configuration tested -- but the effect is modest, not large.}
+At $Z/Z_\odot\approx0.231$ both schemes retain essentially all of the
+clump's mass (98.9--100.0\%); the two are within 0.2\,pp of each
+other at every cadence and resolution, i.e.\ no meaningful difference.
+At $Z=0$ a real, consistent gap opens: uniform loses 0.6--2.9\% of the
+clump's mass depending on cadence and resolution (worst at
+\code{rebuild=0.01\,Myr}), while angular loses at most 0.4\%. The gap
+shrinks as the rebuild cadence slows, the same qualitative pattern
+seen in the (unrelated, and separately cadence-fragile)
+$r_{\rm HII}$-extent measurements of Section~\ref{sec:matrix-gas20}.
 
-This is a different, and more decisive, result than the $r_{\rm HII}$
-comparisons above: those showed angular's extent advantage is
-cadence- and resolution-dependent, and that its own bookkeeping is
-sometimes unreliable (Section~\ref{sec:matrix-gas95}). The clump-mass
-measurement shows the mechanism angular was actually built for --
-not being eaten alive by a nearby density contrast -- works robustly,
-at every configuration tested, and is this example's clearest evidence
-that angular is the physically correct choice for clumpy/anisotropic
-geometries, independent of whether it also produces a bigger $r_{\rm HII}$.
+This section originally reported much larger numbers here (up to
+16.7\% lost under uniform, and an 11--13\% gap even at
+$Z/Z_\odot\approx0.231$) from the pre-ID-tracking measurement
+described above; those numbers were the position-based selection
+artifact, not the model's actual behaviour, and are retracted. The
+qualitative conclusion they were built on -- angular protects the
+clump at least as well as uniform, with a real advantage specifically
+at $Z=0$ -- survives the correction; only the claimed magnitude does
+not.
 
-\textbf{The radial density profile makes the mechanism visible
-directly, and confirms the aggregate numbers are not noise.}
-Figure~\ref{fig:clump-radial-profile} bins gas by distance from the
-clump's own centre and plots the median $n_H$ at $t=0$ against
-$t=8\,$Myr, for both schemes, at \code{rebuild=0.01\,Myr}. At
-$Z/Z_\odot\approx0.231$ (left pair of panels) the uniform and angular
-curves are visually indistinguishable from each other at every
-radius, at both resolutions -- exactly consistent with the $\sim$1\,pp
-difference in the mass table above being real but small. At $Z=0$
-(right pair of panels) the two schemes diverge sharply, and not just
-at the clump's outer edge: uniform's profile sits \emph{at or above}
-the $t=0$ curve out to $r\sim10$--13\,pc (\code{gas\_mass=20}) --
-the clump's density has been driven \emph{up} relative to its initial
-condition across nearly its entire radius, consistent with the
-over-ionized surrounding bubble's pressure compressing the clump
-rather than gently stripping its edge -- before falling sharply beyond
-that. Angular's profile, in contrast, tracks the unperturbed $t=0$
-curve closely at small radius and only departs from it in the outer
-few parsecs, much closer to the mild, edge-only erosion seen at
-$Z/Z_\odot\approx0.231$. This means uniform's clump disturbance at
-$Z=0$ is not simply ``more erosion at the same location'' -- it is a
-qualitatively different, more invasive perturbation of the clump's
-whole structure that angular does not produce.
-
-\begin{figure}
-  \centering
-  \includegraphics[width=\linewidth]{Figures/clump_radial_profile_matrix}
-  \caption{Median $n_H$ vs.\ radius from the clump centre, at $t=0$
-    (IC, dashed black) and $t=8\,$Myr (uniform, orange; angular,
-    green), \texttt{rebuild=0.01\,Myr}. At $Z/Z_\odot\approx0.231$ (1st
-    and 3rd panels) the two schemes overlap almost exactly. At $Z=0$
-    (2nd and 4th panels) uniform sits well above the $t=0$ profile
-    across most of the clump's radius -- compression, not just
-    edge erosion -- while angular stays close to the unperturbed
-    profile.}
-  \label{fig:clump-radial-profile}
-\end{figure}
-
-\textbf{The total-mass number is a headline metric, not a test of the
-mechanism -- splitting it by direction is.} Mass-biasing
-(Section~\ref{sec:angular-splitting}) is specifically a
-\emph{directional} failure: one shared budget over-serves whichever
-gas happens to be closest, which for this geometry means the clump's
-star-facing hemisphere. A single aggregate number cannot distinguish
-that from an isotropic effect, and the radial-profile result above
-already showed the $Z=0$ disturbance is partly bulk compression, not
-pure photon-driven stripping -- so the aggregate ``mass above
-threshold'' statistic conflates two different physical processes.
-The direct test: split the clump's own gas by the star$\to$clump axis
-(known exactly -- the clump sits at $+x$ from the star, HealPix
-\code{nside=1} pixel 4's centre, Section~\ref{sec:angular-splitting})
-into a near (star-facing) and far half, and measure mass-remaining in
-each half separately, at $Z=0$, \code{rebuild=0.01\,Myr}.
+\textbf{The hemisphere split is what shows this is a real, mechanism-consistent
+effect and not noise.} Mass-biasing (Section~\ref{sec:angular-splitting})
+is specifically a \emph{directional} failure: one shared budget
+over-serves whichever gas happens to be closest, which for this
+geometry means the clump's star-facing hemisphere. An isotropic cause
+(bulk heating, clump settling) would erode both hemispheres equally; a
+directional cause would not. Splitting the same ID-tracked measurement
+by the star$\to$clump axis (known exactly -- the clump sits at $+x$
+from the star, HealPix \code{nside=1} pixel 4's centre,
+Section~\ref{sec:angular-splitting}) into a near (star-facing) and far
+half, at $Z=0$, \code{rebuild=0.01\,Myr}:
 
 \begin{figure}
   \centering
   \includegraphics[width=\linewidth]{Figures/clump_hemisphere_erosion}
-  \caption{Clump mass remaining at $t=8\,$Myr, split into the
-    star-facing (near) and opposite (far) hemisphere, $Z=0$,
-    \texttt{rebuild=0.01\,Myr}. Uniform strips the near hemisphere
-    almost completely (10--25\% remaining) while the far hemisphere
-    \emph{gains} mass (108--161\% of $t=0$); angular's near/far split
-    stays close to symmetric (90--92\% vs.\ 108--110\%).}
+  \caption{Clump mass remaining at $t=8\,$Myr (ID-tracked), split into
+    the star-facing (near) and opposite (far) hemisphere, $Z=0$,
+    \texttt{rebuild=0.01\,Myr}. $y$-axis starts at 90\%. The far
+    hemisphere is unaffected (100.0\%) under both schemes, in both
+    resolutions; all of the loss is on the near, star-facing side, and
+    is smaller under angular.}
   \label{fig:clump-hemisphere}
 \end{figure}
 
-The split confirms the mechanism directly and sharpens it beyond what
-the aggregate number or the radial profile alone showed. Under
-uniform, the near hemisphere collapses to 10\% (\code{gas\_mass=20})
-or 25\% (\code{gas\_mass=95}) of its initial mass -- the budget is
-being spent almost entirely on the star-facing side, exactly as the
-mass-biasing failure mode predicts -- while the far hemisphere's mass
-\emph{increases} to 156--161\% of its initial value. That rules out
-``uniform erosion, just more of it'': the far-side gain shows the
-near-side gas is not simply vanishing, it is being pushed through and
-piling up on the far side, i.e.\ the over-ionized surrounding bubble
-is driving a compression wave through the clump from the near side --
-consistent with the radial-profile finding
-(Figure~\ref{fig:clump-radial-profile}) that uniform's $t=8\,$Myr
-profile sits \emph{above} the $t=0$ profile through most of the
-clump's radius. Angular still shows a small near/far asymmetry (91\%
-vs.\ 108\%, \code{gas\_mass=20}; 90\% vs.\ 110\%, \code{gas\_mass=95})
--- the clump still occupies mostly one HealPix pixel, so its nearest
-particles are still consumed first within that pixel's own budget --
-but the swing is an order of magnitude smaller than uniform's, and the
-near hemisphere is never gutted the way it is under uniform. This is
-the clearest evidence yet that angular's protection is not just a
-smaller version of the same disturbance: it changes the disturbance
-from a directional stripping-and-compression event into a mild,
-roughly symmetric one.
+The far hemisphere shows \emph{zero} measurable erosion -- exactly
+100.0\% in all four cases -- under both schemes, at both resolutions:
+gas shielded by the rest of the clump from the star's direct line of
+sight is simply never touched, regardless of scheme. All of the
+erosion is on the near, star-facing side: uniform loses 4.5--5.9\% of
+the near hemisphere's mass, while angular loses only 0.3--0.8\%. That
+near/far asymmetry, present only under uniform and much smaller under
+angular, is the direct signature of the mass-biasing mechanism working
+as described -- and it is direct evidence the effect is real, just an
+order of magnitude smaller than the retracted position-based numbers
+implied.
+
+\textbf{The radial density profile, done the same ID-tracked way,
+cannot separate the two schemes -- which is itself informative.}
+Figure~\ref{fig:clump-radial-profile} bins the original clump
+particles by their $t=0$ distance from the clump centre and plots the
+median $n_H$ of those same particles at $t=0$ against $t=8\,$Myr, for
+both schemes, at \code{rebuild=0.01\,Myr}. At every metallicity and
+resolution the uniform and angular curves lie essentially on top of
+each other throughout the clump's radius -- the aggregate, direction-blind
+view dilutes the near/far asymmetry the hemisphere split isolates
+above (far, where the two schemes agree completely, dominates the
+bin counts at most radii), so it cannot resolve a few-percent,
+one-sided effect. This is the same lesson as the retracted
+compression narrative in the previous version of this section, arrived
+at more carefully: a spatially/radially aggregated diagnostic is not
+sensitive enough to test a directional mechanism, which is why the
+hemisphere split above, not this profile, is the right tool for that
+question. One feature is real and present in \emph{both} schemes
+equally at $Z=0$: the median density at small radius sits somewhat
+\emph{above} the $t=0$ profile by $t=8\,$Myr. Because it appears
+identically under uniform and angular, it does not distinguish the
+schemes and is not further interpreted here; a plausible cause is the
+over-ionized ambient bubble (common to both schemes at $Z=0$)
+pressure-confining the clump, but that is not isolated or tested by
+this measurement.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/clump_radial_profile_matrix}
+  \caption{ID-tracked median $n_H$, binned by each particle's $t=0$
+    distance from the clump centre, at $t=0$ (IC, dashed black) and
+    $t=8\,$Myr (uniform, orange; angular, green),
+    \texttt{rebuild=0.01\,Myr}. The two schemes are visually
+    indistinguishable at every radius, at every metallicity and
+    resolution -- this diagnostic cannot resolve the few-percent,
+    near-hemisphere-only effect Figure~\ref{fig:clump-hemisphere}
+    isolates.}
+  \label{fig:clump-radial-profile}
+\end{figure}
+
+\textbf{Caveat on generality.} All of the above is measured in one
+idealized, static, single-clump geometry (Smith et al.\ 2021's own
+test problem) with a fixed source and no self-gravity-driven clump
+evolution beyond what the radiation itself induces. It demonstrates
+that the mass-biasing mechanism angular was built to fix is real and
+measurable, and that angular never makes it worse -- it is not a
+claim about the size of this effect in a cosmological zoom-in, where
+sources, clumps, and gas are all simultaneously moving, multiple
+sources overlap, and clump geometry is not a clean sphere at a fixed
+offset. Whether the few-percent, near-hemisphere effect measured here
+matters at zoom-in resolution is a separate question this idealized
+test cannot answer.
 
 \begin{figure}
   \centering
@@ -630,7 +633,8 @@ direct clump-mass measurement
 (Section~\ref{sec:angular-vs-uniform-erosion}) does not have this
 problem and shows unambiguously that at $Z=0$ the erosion difference
 between schemes is in fact the \emph{most} pronounced of anywhere in
-this matrix (up to 16.7\,pp), simply not visible in a 2D slice for the
+this matrix (up to 2.9\,pp of clump mass, concentrated entirely on the
+star-facing hemisphere), simply not visible in a 2D slice for the
 reasons above.
 
 \subsubsection{Reproducibility check and a direct \texttt{gas\_mass=95} $Z=0$ vs.\ $Z/Z_\odot\approx0.231$ comparison}
