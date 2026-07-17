@@ -2882,6 +2882,18 @@ AC_ARG_WITH([number-of-AGN-rays],
 	    [with_number_of_AGN_rays="50"])
 AC_DEFINE_UNQUOTED([FEEDBACK_NR_RAYS_AGN], [$with_number_of_AGN_rays], [Number of rays to use for the AGN feedback])
 
+# GEAR's subgrid HII photoionization can split a star's ionizing photon
+# budget across HealPix angular pixels (GEARFeedback:HII_angular_nside at
+# runtime); each star carries a fixed-size array sized for the worst case
+# nside a build can support, so let users pick that bound instead of
+# paying for pixels they'll never request. 12 matches nside=1 (Smith et
+# al. 2021's own tessellation), the default before this option existed.
+AC_ARG_WITH([number-of-hii-angular-pixels],
+	    [AS_HELP_STRING([--with-number-of-hii-angular-pixels], [Maximum number of HealPix angular pixels (12*nside^2) the GEAR subgrid HII photoionization budget can be split across; bounds GEARFeedback:HII_angular_nside at runtime (default: 12, i.e. nside<=1)])],
+	    [with_number_of_hii_angular_pixels="$withval"],
+	    [with_number_of_hii_angular_pixels="12"])
+AC_DEFINE_UNQUOTED([HII_MAX_ANGULAR_PIXELS], [$with_number_of_hii_angular_pixels], [Maximum number of HealPix angular pixels the GEAR subgrid HII photoionization budget can be split across])
+
 
 # Black hole model.
 AC_ARG_WITH([black-holes],

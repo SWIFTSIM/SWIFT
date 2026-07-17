@@ -585,16 +585,34 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
   /* Read the data */
   radiation_read_data(rad, params, sm, us, phys_const, /* restart */ 0);
 
-  /* Angular (HEALPix) splitting of the HII ionization budget. Only two
-     values are supported for now: 0 (spherical/HEALPix disabled, today's
-     behaviour) or 1 (the base HEALPix tessellation, 12 pixels). */
+  /* Angular (HEALPix) splitting of the HII ionization budget. nside=0 means
+     spherical (HEALPix disabled, today's behaviour, n_HII_pixels=1); any
+     nside>=1 means the standard HEALPix RING-scheme tessellation
+     (n_HII_pixels=12*nside^2) -- RING, unlike NEST, has no power-of-2
+     restriction on nside, so any positive integer is mathematically valid
+     here (see /usr/include/chealpix.h). The practical ceiling is memory,
+     not geometry: every star carries a fixed-size
+     dot_N_ion_pix[HII_MAX_ANGULAR_PIXELS] array
+     (src/feedback/GEAR_thermal/feedback_struct.h) sized by
+     ./configure --with-number-of-hii-angular-pixels (default 12, i.e.
+     nside<=1); a run requesting more pixels than that build was
+     configured for errors clearly below rather than overflowing the
+     array. */
   const int nside =
       parser_get_opt_param_int(params, "GEARFeedback:HII_angular_nside", 0);
-  if (nside != 0 && nside != 1) {
+  if (nside < 0) {
+    error("GEARFeedback:HII_angular_nside must be >= 0; got %d.", nside);
+  }
+  const int n_HII_pixels_requested = (nside == 0) ? 1 : 12 * nside * nside;
+  if (n_HII_pixels_requested > HII_MAX_ANGULAR_PIXELS) {
     error(
-        "GEARFeedback:HII_angular_nside must be 0 (spherical, HEALPix "
-        "disabled) or 1 (12 HEALPix pixels); got %d.",
-        nside);
+        "GEARFeedback:HII_angular_nside=%d requires %d HealPix pixels, but "
+        "this build only supports up to HII_MAX_ANGULAR_PIXELS=%d. "
+        "Reconfigure with "
+        "--with-number-of-hii-angular-pixels=%d (or higher) and rebuild, "
+        "or lower HII_angular_nside.",
+        nside, n_HII_pixels_requested, HII_MAX_ANGULAR_PIXELS,
+        n_HII_pixels_requested);
   }
 #ifndef HAVE_CHEALPIX
   if (nside != 0) {
@@ -603,7 +621,7 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
         "(chealpix). Reconfigure with --with-chealpix, or set nside=0.");
   }
 #endif
-  rad->n_HII_pixels = (nside == 0) ? 1 : 12 * nside * nside;
+  rad->n_HII_pixels = n_HII_pixels_requested;
 }
 
 /**

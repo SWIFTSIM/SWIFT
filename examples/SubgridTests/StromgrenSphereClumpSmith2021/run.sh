@@ -17,7 +17,8 @@ clump_radius_pc=${clump_radius_pc:=10.0}     # Clump radius, in parsec
 with_cooling=${with_cooling:=1}
 L=${boxsize:=0.1}                  # boxsize in kpc
 n_cells=${n_cells:=3}               # must match Scheduler:max_top_level_cells in params.yml
-nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override: 0 (spherical), 1 (12 pixels), or 2 (48 pixels)
+nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override: 0 (spherical) or N (12*N^2 pixels);
+                                     # must fit the build's --with-number-of-hii-angular-pixels (default 12, i.e. N<=1)
 rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_region_rebuild_time_Myr override
 deterministic=${deterministic:=0}   # GEARFeedback:HII_deterministic_boundary_ionization override
 initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override

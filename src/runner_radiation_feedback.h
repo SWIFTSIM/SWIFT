@@ -26,6 +26,8 @@
 /* Config parameters. */
 #include <config.h>
 
+#include <math.h>
+
 #if defined(HAVE_CHEALPIX)
 #include <chealpix.h>
 #endif
@@ -176,10 +178,19 @@ __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
   if (n_HII_pixels <= 1) return 0;
 
 #if defined(HAVE_CHEALPIX)
+  /* n_HII_pixels = 12*nside^2 for every value radiation_init() accepts
+     (src/feedback/GEAR/radiation.c, validated against the build's
+     HII_MAX_ANGULAR_PIXELS); invert it to recover nside for
+     vec2pix_ring64, which takes nside, not a pixel count. Only exact
+     values reach here, so this is exact integer arithmetic, not a
+     rounded approximation, for any nside the build supports. */
+  const int nside = (int)lround(sqrt(n_HII_pixels / 12.0));
 #ifdef SWIFT_DEBUG_CHECKS
-  if (n_HII_pixels != 12)
-    error("Only nside=1 (12 pixels) is supported, got n_HII_pixels=%d.",
-          n_HII_pixels);
+  if (n_HII_pixels != 12 * nside * nside)
+    error(
+        "n_HII_pixels=%d does not correspond to any nside supported by "
+        "radiation_init() -- got non-integer or unrecognised nside=%d.",
+        n_HII_pixels, nside);
 #endif
   /* A particle exactly on the star gives a zero-length direction, which is
      undefined for vec2pix_ring64 -- fall back to pixel 0 (measure-zero in
@@ -191,7 +202,7 @@ __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
      does not require a normalized vector. */
   const double dir[3] = {-(double)dx[0], -(double)dx[1], -(double)dx[2]};
   int64_t ipix = 0;
-  vec2pix_ring64(/*nside=*/1, dir, &ipix);
+  vec2pix_ring64(nside, dir, &ipix);
   return (int)ipix;
 #else
   error(

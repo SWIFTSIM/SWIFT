@@ -22,10 +22,19 @@
 #include "chemistry_struct.h"
 
 /*! Maximum number of HEALPix angular pixels the HII ionization budget can
-    be split across. Exactly nside=1's pixel count (12*nside^2) -- no
-    speculative headroom for finer nside; widen together with the
-    Stars:HII_angular_nside validation if a finer split is ever needed. */
-#define HII_MAX_ANGULAR_PIXELS 12
+    be split across (12*nside_max^2). Every star carries a fixed-size
+    array of this length regardless of the run's actual
+    GEARFeedback:HII_angular_nside, so this is a memory/generality
+    trade-off, not a physics one -- set via
+    ./configure --with-number-of-hii-angular-pixels=N (default 12, i.e.
+    nside<=1) rather than hardcoded here, so builds that only ever need
+    nside<=1 don't pay for a finer split they'll never request.
+    radiation_init() (src/feedback/GEAR/radiation.c) errors clearly at
+    startup if GEARFeedback:HII_angular_nside implies more pixels than
+    this build was configured for. */
+#ifndef HII_MAX_ANGULAR_PIXELS
+#error "HII_MAX_ANGULAR_PIXELS should be defined by configure (config.h)"
+#endif
 
 /**
  * @brief Feedback fields carried by each hydro particles

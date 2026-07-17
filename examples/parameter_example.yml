@@ -788,7 +788,7 @@ GEARFeedback:
   HII_region_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_region_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_region_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
-  HII_angular_nside:             0                         # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), 1 = 12 HEALPix pixels. Requires building with --with-chealpix for nside > 0. (Default: 0)
+  HII_angular_nside:             0                         # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), N>=1 = 12*N^2 HEALPix pixels. Requires building with --with-chealpix for nside > 0; the requested pixel count must also fit the build's --with-number-of-hii-angular-pixels (default 12, i.e. nside<=1). (Default: 0)
   HII_deterministic_boundary_ionization: 0                 # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default: 0)
 
 GEARSupernovaeII:
