@@ -19,6 +19,7 @@ dt_max=${dt_max:=1e-2} #TimeIntegration:dt_max override (internal units). Must s
                         #below time_end (engine_config() errors otherwise) -- lower
                         #this if you shorten time_end below the default 1e-2.
 initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override
+rebuild_time_myr=${rebuild_time_myr:=0.5} #GEARFeedback:HII_region_rebuild_time_Myr override
 run_name=${run_name:=""}
 restart=${restart:=0}
 
@@ -77,13 +78,15 @@ if [ "$with_cooling" -eq 1 ]; then
 		   --sync --limiter $runtime_param --threads=$n_threads \
 		   -P TimeIntegration:time_end:$time_end \
 		   -P TimeIntegration:dt_max:$dt_max \
-		   -P GEARChemistry:initial_metallicity:$initial_metallicity params.yml 2>&1 | tee output.log
+		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
+		   -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr params.yml 2>&1 | tee output.log
 else
 ../../../swift --hydro --stars --external-gravity --feedback \
 		--sync --limiter $runtime_param --threads=$n_threads \
 	       -P TimeIntegration:time_end:$time_end \
 	       -P TimeIntegration:dt_max:$dt_max \
-	       -P GEARChemistry:initial_metallicity:$initial_metallicity params.yml 2>&1 | tee output.log
+	       -P GEARChemistry:initial_metallicity:$initial_metallicity \
+	       -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr params.yml 2>&1 | tee output.log
 fi
 
 #Do some data analysis to show what's in this box

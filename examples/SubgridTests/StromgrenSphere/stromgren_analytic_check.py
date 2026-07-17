@@ -203,14 +203,32 @@ def read_simulated_r_hii(snapshot_glob):
         r_hii.append(float(np.max(data.stars.hiiregion_radii).to("kpc").value))
 
         if star_mass_msun is None:
+            n_stars = len(data.stars.masses)
+            if n_stars != 1:
+                raise RuntimeError(
+                    f"Expected exactly 1 star (this check assumes "
+                    f"star_type=single_star, matching the Q_H(mass) fit "
+                    f"reimplemented below), found {n_stars}. Re-run with "
+                    f"star_type=single_star, n_stars=1, or fix this script's "
+                    f"Q_H fit for whatever star_type was actually used before "
+                    f"trusting this comparison."
+                )
             star_mass_msun = float(np.max(data.stars.masses).to("Msun").value)
         if n_H_atom_cc is None:
             # Hydrogen number density from the gas density and the
-            # Grackle-reported hydrogen mass fraction (see output.log:
-            # "grackle_chemistry_data.HydrogenFractionByMass"). Fall back to
-            # the primordial default if it can't be inferred from the data.
+            # Grackle-reported hydrogen mass fraction. Read the actual value
+            # this run used (GrackleCooling:HydrogenFractionByMass, stored in
+            # every snapshot's Parameters group) rather than assuming a
+            # fixed constant -- a previous version hardcoded 0.716 here,
+            # silently disagreeing with e.g. this example's actual 0.76 and
+            # biasing n_H (and R_st ~ n_H^{-2/3}) by a few percent. Only fall
+            # back to the primordial default if the run used a different
+            # cooling backend that doesn't expose this parameter.
             rho_g_cm3 = float(np.mean(data.gas.densities).to("g/cm**3").value)
-            X_H = 0.716
+            X_H_raw = data.metadata.parameters.get(
+                "GrackleCooling:HydrogenFractionByMass"
+            )
+            X_H = float(X_H_raw) if X_H_raw is not None else 0.716
             n_H_atom_cc = (
                 rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p
             ).to(1 / u.cm**3)
