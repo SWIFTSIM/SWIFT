@@ -1,7 +1,11 @@
 #!/bin/bash
 
-# make run.sh fail if a subcommand fails
-set -e
+# make run.sh fail if a subcommand fails. pipefail matters here specifically:
+# swift's own exit code is piped into `tee output.log`, and without it a
+# crashed/errored swift run still lets the pipeline "succeed" (tee's own
+# exit code), silently producing a run_name output directory that looks
+# complete but only contains a startup-error log.
+set -eo pipefail
 
 n_threads=${n_threads:=8}  #Number of threads to use
 gas_density=${gas_density:=5} #Gas density in atom/cm^3
@@ -11,6 +15,9 @@ star_type=${star_type:="single_star"}
 with_cooling=${with_cooling:=1}
 L=${boxsize:=0.05} #boxsize in kpc
 time_end=${time_end:=2e-2} #TimeIntegration:time_end override (internal units)
+dt_max=${dt_max:=1e-2} #TimeIntegration:dt_max override (internal units). Must stay
+                        #below time_end (engine_config() errors otherwise) -- lower
+                        #this if you shorten time_end below the default 1e-2.
 initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override
 run_name=${run_name:=""}
 restart=${restart:=0}
@@ -69,11 +76,13 @@ if [ "$with_cooling" -eq 1 ]; then
 ../../../swift --hydro --stars --external-gravity --feedback --cooling \
 		   --sync --limiter $runtime_param --threads=$n_threads \
 		   -P TimeIntegration:time_end:$time_end \
+		   -P TimeIntegration:dt_max:$dt_max \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity params.yml 2>&1 | tee output.log
 else
 ../../../swift --hydro --stars --external-gravity --feedback \
 		--sync --limiter $runtime_param --threads=$n_threads \
 	       -P TimeIntegration:time_end:$time_end \
+	       -P TimeIntegration:dt_max:$dt_max \
 	       -P GEARChemistry:initial_metallicity:$initial_metallicity params.yml 2>&1 | tee output.log
 fi
 
