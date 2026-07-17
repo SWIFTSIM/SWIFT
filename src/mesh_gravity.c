@@ -886,8 +886,9 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
  * @param MG_var The relevant #MG_variables.
  * @param fR0 Free parameter in Hu-Sawicki models; background field at redshift 0.
  * @param n Free parameter in Hu-Sawicki models. Should be > 0.
+ * @param timing Do we print timing information?
  */
-void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG_var, double fR0, int n) {
+void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG_var, double fR0, int n, int timing) {
   MG_var->a = cosmo->a;
   MG_var->fR0 = fR0;
   MG_var->n = n;
@@ -899,6 +900,7 @@ void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, str
   MG_var->G = s->e->physical_constants->const_newton_G;
   MG_var->h = cosmo->h;
   MG_var->overdensity = 0; //Do we know the overdensity instead of the density? Relevant for test cases.
+  MG_var->timing = timing;
 }
 
 /**
@@ -985,6 +987,7 @@ void get_cell_acc(double **acc, double *pot, int N, double fac) {
  * @param N_MG Side length in grid cells of the mesh on which to solve the field equation.
  */
 void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, const struct cosmology *cosmo, double *rho_MG, int N_MG) {
+  ticks toc = getticks();
   const double box_size = s->dim[0];
   int N_min = 32; //Minimum gridsize to be used in multigrid acceleration
   double delta = box_size/N_MG;
@@ -1005,7 +1008,8 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
   struct MG_variables MG_var;
   double fR0 = -1e-5;
   int n = 1;
-  initialise_MG_variables(s, cosmo, &MG_var, fR0, n);
+  int timing = 0;
+  initialise_MG_variables(s, cosmo, &MG_var, fR0, n, timing);
 
   double fR_evo = ((1. + 4. * MG_var.Omega_ratio)/(MG_var.a3_inv + 4. * MG_var.Omega_ratio));
   MG_var.fR_bar = MG_var.fR0 * fR_evo * fR_evo;
@@ -1103,6 +1107,8 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
 
   free(rho_copy);
   free(f_R);
+  if (MG_var.timing) message("Solving the field equation took %.3f %s.",
+            clocks_from_ticks(getticks() - toc), clocks_getunit());
 }
 
 /**

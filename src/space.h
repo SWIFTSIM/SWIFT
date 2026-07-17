@@ -409,7 +409,7 @@ struct MG_variables {
   double fR_bar;
   double h;
   double m;
-  double lambda;
+  int timing;
 };
 
 /* Function prototypes. */

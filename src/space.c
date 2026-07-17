@@ -3814,6 +3814,7 @@ struct sweep_mapper_data {
   double delta;
   double mean_density;
   int col;
+  double *planes;
 };
 
 struct coarser_sweep_mapper_data {
@@ -3825,6 +3826,7 @@ struct coarser_sweep_mapper_data {
   double *residual;
   double delta;
   int col;
+  double *planes;
 };
 
 struct mesh_plane {
@@ -3974,7 +3976,10 @@ void space_get_fR_contribution(const struct space *s, struct threadpool *tp, dou
   /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
   set_initial_guess(u_levels[0], cdim, /*MG=*/1);
+  ticks tic = getticks();
   apply_NGS(tp, rho_levels[0], u_levels[0], MG, cdim, mean_density[0], box_size);
+  if (MG->timing) message("Relaxation on the grid with size %d took %.3f %s.",
+            N_min, clocks_from_ticks(getticks() - tic), clocks_getunit());
   message("Finished applying Newton-Gauss-Seidel");
 
   /* Solve on all finer grids by prolongating from the previous grid and performing the multigrid method */
@@ -3990,7 +3995,10 @@ void space_get_fR_contribution(const struct space *s, struct threadpool *tp, dou
     cdim[0] = N;
     cdim[1] = N;
     cdim[2] = N;
+    tic = getticks();
     apply_multigrid_fR(tp, rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, V_max);
+    if (MG->timing) message("Relaxation on the grid with size %d took %.3f %s.",
+            N, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
 
@@ -4052,13 +4060,13 @@ void red_black_mapper(void* map_data, int num, void* extra) {
 
   int cdim[3] = {N, N, N};
 
-  /* Pointer to the chunk to be processed */
-  const struct mesh_plane *planes = (const struct mesh_plane*)map_data;
+  /* Find the address of the first element we are processing */
+  double *planes_start = data->planes;
+  ptrdiff_t offset = ((double*) map_data) - planes_start;
 
   /* Loop over the elements assigned to this thread */
   for (int p=0; p<num; p++) {
-    const int k = planes[p].k; //Which plane are we working on?
-    //message("Doing k-plane %d", k);
+    const int k = offset + p; //Which plane are we working on?
     int nbs[6];
     nbs[4] = (k+1) % cdim[2];
     nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
@@ -4110,16 +4118,14 @@ void perform_red_black_sweep_fR(struct threadpool *tp, double *u, const double *
   data.delta = delta;
   data.mean_density = mean_density;
 
-  struct mesh_plane *planes = malloc(N*sizeof(struct mesh_plane));
-  for (int k=0; k<N; k++) {
-    planes[k].k = k;
-  }
+  /* Threadpool trick for indexing the mesh planes: use the existing solution array to get 'dummy indices'
+      for the planes from the pointers corresponding to the array. */
+  data.planes = u;
 
   for (int col=0; col<2; col++){
     data.col = col;
-    threadpool_map(tp, red_black_mapper, planes, N, sizeof(struct mesh_plane), threadpool_auto_chunk_size, (void*)&data);
+    threadpool_map(tp, red_black_mapper, u, N, sizeof(double), threadpool_auto_chunk_size, (void*)&data);
   }
-  free(planes);
 }
 
 /**
@@ -4166,13 +4172,13 @@ void residual_mapper(void* map_data, int num, void* extra) {
 
   int cdim[3] = {N, N, N};
 
-  /* Pointer to the chunk to be processed */
-  const struct mesh_plane *planes = (const struct mesh_plane*)map_data;
+  /* Find the address of the first element we are processing */
+  double *planes_start = data->planes;
+  ptrdiff_t offset = ((double*) map_data) - planes_start;
 
   /* Loop over the elements assigned to this thread */
   for (int p=0; p<num; p++) {
-    const int k = planes[p].k; //Which plane are we working on?
-    //message("Doing k-plane %d", k);
+    const int k = offset + p; //Which plane are we working on?
     int nbs[6];
     nbs[4] = (k+1) % N;
     nbs[5] = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
@@ -4226,14 +4232,12 @@ double get_residual_fR(struct threadpool *tp, double *u, const double *rho, stru
   data.delta = delta;
   data.mean_density = mean_density;
 
-  struct mesh_plane *planes = malloc(N*sizeof(struct mesh_plane));
-  for (int k=0; k<N; k++) {
-    planes[k].k = k;
-  }
+  /* Threadpool trick for indexing the mesh planes: use the existing solution array to get 'dummy indices'
+    for the planes from the pointers corresponding to the array. */
+  data.planes = u;
 
   /* Do a parallel loop over the k-planes */
-  threadpool_map(tp, residual_mapper, planes, N, sizeof(struct mesh_plane), threadpool_auto_chunk_size, (void*)&data);
-  free(planes);
+  threadpool_map(tp, residual_mapper, u, N, sizeof(double), threadpool_auto_chunk_size, (void*)&data);
   return sqrt(residual);
 }
 
@@ -4356,6 +4360,7 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
   int depth = 0;
 
   while (residual > tolerance && V_cycles < V_max) { 
+    ticks tic = getticks();
     message("Performing V-cycle %d", V_cycles);
     /* Pre-smoothing */
     for (int i=0; i<fine_steps; i++) {
@@ -4369,7 +4374,10 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
     
     /* Transfer residual array to get coarse-grid correction */
     message("After pre-smoothing the residual is %E. Going to recurse with V-cycles.", residual);
+    ticks toc = getticks();
     FAS_recursive(tp, u, residual_array, MG, cdim, delta, N_min, &depth);
+    if (MG->timing) message("The recursive part of the V-cycle took %.3f %s.",
+            clocks_from_ticks(getticks() - toc), clocks_getunit());
 
     /* Post-smoothing if needed */
     residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
@@ -4383,6 +4391,8 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
     residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
     V_cycles +=1;
     message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
+    if (MG->timing) message("V-cycle number %d on the grid with size %d took %.3f %s.",
+            V_cycles, N_max, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   message("Performed %d V-cycle(s) in total", V_cycles);
@@ -4421,6 +4431,7 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
   delta = delta*2.0; //Cells are twice as big on the coarser grid
   N = N/2; 
 
+  ticks tic = getticks();
   /* Array for storing R(L_h(u_h) - f_h), the restriction of the residual on the finer grid */
   double *restricted_residual = NULL;
   restricted_residual = (double*)malloc(sizeof(double) * N * N * N);
@@ -4452,10 +4463,15 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
     error("Error allocating memory for the new coarser residual.");
   }
   memuse_log_allocation("coarser.newresidual", coarser_residual, 1, sizeof(double)*N*N*N);
+  if (MG->timing) message("Creating the V-cycle arrays for the grid with size %d took %.3f %s.",
+            N, clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Restrict residual and solution of the finer grid*/
+  tic = getticks();
   restrict_residual(restricted_residual, residual, cdim);
   restrict_residual(restricted_solution, u, cdim); 
+  if (MG->timing) message("Restricting the residual and solution to the grid with size %d took %.3f %s.",
+            N, clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Set initial guess on the coarser grid to be R(u_h) */
   for (int i=0; i<N*N*N; i++) {
@@ -4484,7 +4500,10 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
     for (int i=0; i<N*N*N; i++) {
       coarser_solution[i] -= restricted_solution[i];
     }
+    tic = getticks();
     prolongate_residual(coarser_solution, u, cdimH);
+    if (MG->timing) message("Prolongating to the grid with size %d took %.3f %s.",
+            N*2, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   /* Do some smoothing and proceed to coarser grids */
@@ -4514,7 +4533,10 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
     for (int i=0; i<N*N*N; i++) {
       coarser_solution[i] -= restricted_solution[i];
     }
+    tic = getticks();
     prolongate_residual(coarser_solution, u, cdimH);
+    if (MG->timing) message("Prolongating to the grid with size %d took %.3f %s.",
+            N*2, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   /* The coarser-grid correction has now been added to the finer-grid solution for the potential, so discard used arrays. */
@@ -4583,23 +4605,15 @@ void coarser_red_black_mapper(void *map_data, int num, void* extra) {
   const double delta = data->delta;
   const int col = data->col;
 
-  // Matthieu's dirty trick part 1
-  struct mesh_plane *planes_start = data->planes;
-  ptrdiff_t offset = ((struct mesh_plane*) map_data) - planes_start;
+  /* Find the address of the first element we are processing */
+  double *planes_start = data->planes;
+  ptrdiff_t offset = ((double*) map_data) - planes_start;
   
   const int cdim[3] = {N,N,N};
 
-  /* Pointer to the chunk to be processed */
-  const struct mesh_plane *planes = (const struct mesh_plane*)map_data;
-
   /* Loop over the elements assigned to this thread */
   for (int p=0; p<num; p++) {
-    //const int k = planes[p].k; //Which plane are we working on?
-
-      // Matthieu's dirty trick part 2
-    const int k = offset + p;
-    
-    //message("Doing k-plane %d", k);
+    const int k = offset + p; // Which plane are we working on?
     int nbs[6];
     nbs[4] = (k+1) % cdim[2];
     nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
@@ -4644,20 +4658,15 @@ void perform_red_black_sweep_coarser(struct threadpool *tp, double *coarser_solu
   data.MG = MG;
   data.delta = delta;
   data.N = N;
-  
-  struct mesh_plane *planes = malloc(N*sizeof(struct mesh_plane));
-  for (int k=0; k<N; k++) {
-    planes[k].k = k;
-  }
-
-  // Matthieu's dirty trick part 3
-  data.planes = planes;
+ 
+  /* Threadpool trick for indexing the mesh planes: use the existing solution array to get 'dummy indices'
+      for the planes from the pointers corresponding to the array. */
+  data.planes = coarser_solution;
   
   for (int col=0; col<2; col++) {
     data.col = col;
-    threadpool_map(tp, coarser_red_black_mapper, planes, N, sizeof(struct mesh_plane), threadpool_auto_chunk_size, (void*)&data);
+    threadpool_map(tp, coarser_red_black_mapper, coarser_solution, N, sizeof(double), threadpool_auto_chunk_size, (void*)&data);
   }
-  free(planes);
 }
 
 /**
@@ -4682,13 +4691,13 @@ void coarser_residual_mapper(void *map_data, int num, void* extra) {
 
   const int cdim[3] = {N,N,N};
 
-  /* Pointer to the chunk to be processed */
-  const struct mesh_plane *planes = (const struct mesh_plane*)map_data;
+  /* Find the address of the first element we are processing */
+  double *planes_start = data->planes;
+  ptrdiff_t offset = ((double*) map_data) - planes_start;
 
   /* Loop over the elements assigned to this thread */
   for (int p=0; p<num; p++) {
-    const int k = planes[p].k; //Which plane are we working on?
-    //message("Doing k-plane %d", k);
+    const int k = offset + p; //Which plane are we working on?
     int nbs[6];
     nbs[4] = (k+1) % cdim[2];
     nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
@@ -4734,14 +4743,11 @@ double get_residual_coarser(struct threadpool *tp, double *coarser_solution, con
   data.delta = delta;
   data.residual = &residual;
   data.N = N;
+  /* Threadpool trick for indexing the mesh planes: use an already existing array to get 'dummy indices'
+    for the planes from the pointers corresponding to the array. */
+  data.planes = coarser_solution;
 
-  struct mesh_plane *planes = malloc(N*sizeof(struct mesh_plane));
-  for (int k=0; k<N; k++) {
-    planes[k].k = k;
-  }
-
-  threadpool_map(tp, coarser_residual_mapper, planes, N, sizeof(struct mesh_plane), threadpool_auto_chunk_size, (void*)&data);
-  free(planes);
+  threadpool_map(tp, coarser_residual_mapper, coarser_solution, N, sizeof(double), threadpool_auto_chunk_size, (void*)&data);
 
   return sqrt(residual);
 }
