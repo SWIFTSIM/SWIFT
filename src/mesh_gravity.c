@@ -1150,7 +1150,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   const int N_half = N / 2;
   const double cell_fac = N / box_size;
   /* Constants for the MG density/potential mesh */
-  int N_MG = 128;
+  int N_MG = 256;
   const int N_half_MG = N_MG / 2;
   const double cell_fac_MG = N_MG / box_size;
 
@@ -1158,7 +1158,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   double* restrict rho = mesh->potential_global;
   if (rho == NULL) error("Error allocating memory for density mesh");
 
-  double* rho_MG = malloc(N_MG*N_MG*N_MG *sizeof(double));
+  double* rho_MG = swift_malloc("rho_MG", N_MG*N_MG*N_MG *sizeof(double));
 
   /* Allocates some memory for the mesh in Fourier space */
   fftw_complex* restrict frho =
@@ -1441,6 +1441,8 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   fftw_destroy_plan(inverse_plan_MG);
   memuse_log_allocation("fftw_frho_MG", frho_MG, 0, 0);
   fftw_free(frho_MG);
+
+  swift_free("rho_MG", rho_MG);
 
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");

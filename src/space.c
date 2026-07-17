@@ -3958,7 +3958,10 @@ void space_get_fR_contribution(const struct space *s, struct threadpool *tp, dou
         data.N = N;
         data.rho = rho_levels[i];
         data.fac = fac_level;
-        gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);        
+        threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts, 
+                       sizeof(struct gpart), threadpool_auto_chunk_size, 
+                       (void*)&data);
+        //gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);        
     }
 
     /* Decide if we need to calculate the mean density */
