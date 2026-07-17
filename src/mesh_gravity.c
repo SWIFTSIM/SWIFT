@@ -996,11 +996,9 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
   
   /* Initialise u = exp(f_R/bar{f}_R), here called f_R */
   double *f_R = NULL; 
-  f_R = (double*)calloc(N_MG * N_MG * N_MG, sizeof(double));
-  if (f_R == NULL)
-    error("Error allocating memory for the density mesh.");
-  memuse_log_allocation("mesh.fR", f_R, 1,
-                        sizeof(double) * N_MG * N_MG * N_MG);
+  f_R = (double*)swift_calloc("fR_field", N_MG * N_MG * N_MG, sizeof(double));
+  if (f_R == NULL) error("Error allocating memory for the density mesh.");
+  //memuse_log_allocation("mesh.fR", f_R, 1, sizeof(double) * N_MG * N_MG * N_MG);
 
   int test = 0; //1 = uniform density, 2 = point mass, 3 = sine wave, 4 = two point masses
   if (cosmo->Omega_b == 0 && cosmo->Omega_cdm == 0) error("Calculating Modified Gravity but no matter present!");
@@ -1081,7 +1079,7 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
     
   message("Going to compute f(R)...");
   /* Make a copy of the density array to renormalise */
-  double *rho_copy = malloc(N_MG*N_MG*N_MG *sizeof(double));
+  double *rho_copy = swift_malloc("density_copy", N_MG*N_MG*N_MG *sizeof(double));
   memcpy(rho_copy, rho_MG, N_MG*N_MG*N_MG*sizeof(double));
   space_get_fR_contribution(s, tp, rho_copy, f_R, &MG_var, N_min, N_MG, test);
   get_rho_mod(rho_MG, f_R, &MG_var, delta, N_MG);
@@ -1091,7 +1089,7 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
     double *acc[3];
     for (int j=0; j<3; j++) {
       acc[j] = NULL;
-      acc[j] = (double*)calloc(N_MG*N_MG*N_MG, sizeof(double));
+      acc[j] = (double*)swift_calloc("cell_acc_component", N_MG*N_MG*N_MG, sizeof(double));
     }
 
     for (int i=0; i<N_MG*N_MG*N_MG; i++) {
@@ -1100,13 +1098,13 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
     get_cell_acc(acc, f_R, N_MG, cell_fac_MG);
 
     for (int j=0; j<3; j++) {
-      free(acc[j]);
+      swift_free("cell_acc_component", acc[j]);
       acc[j] = NULL;
     }
   }
 
-  free(rho_copy);
-  free(f_R);
+  swift_free("density_copy", rho_copy);
+  swift_free("fR_field", f_R);
   if (MG_var.timing) message("Solving the field equation took %.3f %s.",
             clocks_from_ticks(getticks() - toc), clocks_getunit());
 }

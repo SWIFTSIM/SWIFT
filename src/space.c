@@ -3116,7 +3116,7 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max) {
 
     double *acc[3];
     for (int d = 0; d < 3; d++) {
-      acc[d] = malloc((size_t)N_max * N_max * N_max * sizeof(double));
+      acc[d] = swift_malloc("acceleration_component", (size_t)N_max * N_max * N_max * sizeof(double));
     }
 
     for (int i = 0; i < N_max; i++) {
@@ -3159,7 +3159,7 @@ void space_apply_FMG(const struct engine *e, const int N_min, const int N_max) {
       }
     }
     for (int d = 0; d < 3; d++) {
-      free(acc[d]);
+      swift_free("acceleration_component", acc[d]);
     }
   }
 
@@ -3898,8 +3898,8 @@ void space_get_fR_contribution(const struct space *s, struct threadpool *tp, dou
 
   /* Initialise arrays for density and potential calculation. Except on the largest grid; there we already have them */
   for (int i=0; i<N_levels-1; i++) {
-    rho_levels[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
-    u_levels[i] = calloc(grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
+    rho_levels[i] = swift_calloc("level_density", grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
+    u_levels[i] = swift_calloc("level_solution", grid_sizes[i]*grid_sizes[i]*grid_sizes[i], sizeof(double));
     
     int N = grid_sizes[i];
     int cdim[3] = {N,N,N};
@@ -4000,6 +4000,12 @@ void space_get_fR_contribution(const struct space *s, struct threadpool *tp, dou
     if (MG->timing) message("Relaxation on the grid with size %d took %.3f %s.",
             N, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
+
+  for (int i=0; i<N_levels-1; i++) {
+    swift_free("level_density", rho_levels[i]);
+    swift_free("level_solution", u_levels[i]);
+  }
+
 }
 
 /**
@@ -4336,17 +4342,17 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
 
   /* Allocate the memory for the residual array on the finest level */
   double *residual_array = NULL;
-  residual_array = (double*)malloc(sizeof(double) * N_max * N_max * N_max);
+  residual_array = (double*)swift_malloc("residual_array", sizeof(double) * N_max * N_max * N_max);
   if (residual_array == NULL){
     error("Error allocating memory for the residual array.");
   }
-  memuse_log_allocation("residual.array", residual_array, 1, sizeof(double)*N_max*N_max*N_max);
+  //memuse_log_allocation("residual.array", residual_array, 1, sizeof(double)*N_max*N_max*N_max);
 
-  double field_sum = 0;
-  for (int i =0; i<N_max*N_max*N_max; i++) {
-    field_sum += fabs(u[i]);  
-  }
-  message("The msq of the field is %lf", field_sum/(N_max*N_max*N_max));
+  //double field_sum = 0;
+  //for (int i =0; i<N_max*N_max*N_max; i++) {
+    //field_sum += fabs(u[i]);  
+  //}
+  //message("The msq of the field is %lf", field_sum/(N_max*N_max*N_max));
 
   double delta = box_size/N_max; //Width of a grid cell of the finest level
   double residual; 
@@ -4406,7 +4412,7 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
   }
   residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
   message("Needed to do %d step(s) in post-smoothing after which the residual was %E", counter, residual);
-  free(residual_array);
+  swift_free("residual_array", residual_array);
 }
 
 /**
@@ -4434,35 +4440,35 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
   ticks tic = getticks();
   /* Array for storing R(L_h(u_h) - f_h), the restriction of the residual on the finer grid */
   double *restricted_residual = NULL;
-  restricted_residual = (double*)malloc(sizeof(double) * N * N * N);
+  restricted_residual = (double*)swift_malloc("restricted_residual", sizeof(double) * N * N * N);
   if (restricted_residual == NULL){
     error("Error allocating memory for the coarser-grid array.");
   }
-  memuse_log_allocation("coarser.grid", restricted_residual, 1, sizeof(double)*N*N*N);
+  //memuse_log_allocation("coarser.grid", restricted_residual, 1, sizeof(double)*N*N*N);
 
   /* Array for storing R(u_h), the restriction of the solution on the finer grid */
   double *restricted_solution = NULL;
-  restricted_solution = (double*)malloc(sizeof(double) * N * N * N);
+  restricted_solution = (double*)swift_malloc("restricted_solution", sizeof(double) * N * N * N);
   if (restricted_solution == NULL) {
     error("Error allocating memory for the coarser-grid equation.");
   }
-  memuse_log_allocation("coarser.equation", restricted_solution, 1, sizeof(double)*N*N*N);
+  //memuse_log_allocation("coarser.equation", restricted_solution, 1, sizeof(double)*N*N*N);
 
   /* Array for storing u_H, the solution of the equation on the coarser grid */
   double *coarser_solution = NULL;
-  coarser_solution = (double*)malloc(N * N * N*sizeof(double)); 
+  coarser_solution = (double*)swift_malloc("coarser_solution", N * N * N*sizeof(double)); 
   if (coarser_solution == NULL){
     error("Error allocating memory for the coarser-grid array.");
   }
-  memuse_log_allocation("coarser.solution", coarser_solution, 1, sizeof(double)*N*N*N);
+  //memuse_log_allocation("coarser.solution", coarser_solution, 1, sizeof(double)*N*N*N);
 
   /* Array for storing L_H - f_H, the residual of the (approximate) solution of the equation on the coarser grid */
   double *coarser_residual = NULL; 
-  coarser_residual = (double*)malloc(sizeof(double) * N * N * N);
+  coarser_residual = (double*)swift_malloc("coarser_residual", sizeof(double) * N * N * N);
   if (coarser_residual == NULL){
     error("Error allocating memory for the new coarser residual.");
   }
-  memuse_log_allocation("coarser.newresidual", coarser_residual, 1, sizeof(double)*N*N*N);
+  //memuse_log_allocation("coarser.newresidual", coarser_residual, 1, sizeof(double)*N*N*N);
   if (MG->timing) message("Creating the V-cycle arrays for the grid with size %d took %.3f %s.",
             N, clocks_from_ticks(getticks() - tic), clocks_getunit());
 
@@ -4540,10 +4546,10 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
   }
 
   /* The coarser-grid correction has now been added to the finer-grid solution for the potential, so discard used arrays. */
-  free(restricted_residual);
-  free(coarser_solution);
-  free(coarser_residual);
-  free(restricted_solution);
+  swift_free("restricted_residual", restricted_residual);
+  swift_free("coarser_solution", coarser_solution);
+  swift_free("coarser_residual", coarser_residual);
+  swift_free("restricted_solution", restricted_solution);
 
   *depth -= 1;
 
