@@ -116,7 +116,17 @@ float feedback_compute_spart_timestep(
 
   float dt_HII_safe = FLT_MAX;
 
-  if (HII_region_rebuild_dt > 0.0 && star_age_beg_step < HII_region_max_age) {
+  if (HII_region_rebuild_dt < 0.0 && star_age_beg_step < HII_region_max_age) {
+    /* Negative rebuild time means "rebuild every step"
+       (feedback_will_do_feedback()'s need_HII_region_rebuild gate already
+       treats this as unconditional), but nothing here was forcing the star
+       to actually take small enough steps to be active every step -- so
+       "every step" was not actually enforced, only "whenever the star
+       happens to be active for some other reason". Force the smallest
+       available step so the gate's promise is kept. */
+    dt_HII_safe = 0.0f;
+  } else if (HII_region_rebuild_dt > 0.0 &&
+             star_age_beg_step < HII_region_max_age) {
     const float HII_region_last_rebuild =
         sp->feedback_data.radiation.HII_region_last_rebuild;
 
