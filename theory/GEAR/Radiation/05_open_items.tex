@@ -112,6 +112,62 @@ session are labelled \code{T}\emph{n} (task-graph) and
     half-width, per T4's finding that no such check currently exists.
     Would surface silent capping immediately at launch instead of
     requiring an external comparison to notice.
+  \item[$\square$] \textbf{T7} -- The codebase does not actually
+    compile with any feedback model other than GEAR today, despite
+    radiation being GEAR-specific functionality that generic files
+    should not hard-depend on. Verified directly (2026-07-17):
+    reconfiguring with \code{--with-feedback=none} and building
+    \code{runner\_radiation\_feedback.c} alone produces 20+
+    undefined-symbol errors (\code{feedback\_is\_HII\_ionization\_active},
+    \code{feedback\_get\_star\_ionization\_rate},
+    \code{feedback\_iact\_HII\_ionization},
+    \code{feedback\_part\_can\_be\_ionized}, \code{compute\_time}, the
+    \code{radiation} member of \code{feedback\_spart\_data}, and
+    \code{spart.h\_hii} itself) -- all defined only in
+    \code{src/feedback/GEAR/feedback\_common.\{h,c\}} and
+    \code{src/stars/GEAR/stars\_part.h}. Three related fixes:
+    \begin{itemize}
+      \item \textbf{Gate the file itself.} \code{src/Makefile.am}
+        (lines 183--184) lists \code{runner\_radiation\_feedback.\{c,h\}}
+        in the unconditional \code{AM\_SOURCES}, unlike
+        \code{feedback/GEAR/*.c}, which is already correctly gated
+        behind \code{if COMMON\_GEAR\_NEEDED} / \code{if
+        HAVEGEARFEEDBACK} (lines 142--153). Move it under the same
+        guard (or an equivalent one) so it simply isn't compiled for
+        non-GEAR builds, matching the pattern the rest of the codebase
+        already follows.
+      \item \textbf{\code{h\_hii} exists only in
+        \code{stars/GEAR/stars\_part.h}}, absent from
+        \code{stars/Basic}, \code{stars/EAGLE}, \code{stars/None} --
+        add it (even as an always-zero/no-op field) to every
+        \code{stars/*/stars\_part.h} so code that must stay generic
+        (e.g.\ anything walking the cell hierarchy) never hard-depends
+        on the GEAR stars flavour specifically. Conversely,
+        \code{cell.h}'s \code{stars.h\_hii\_max} (and
+        \code{h\_hii\_max\_active}/\code{h\_hii\_max\_old}) is the
+        opposite asymmetry: unconditionally present in core,
+        always-compiled code, so every build currently pays a small
+        per-cell cost for a GEAR-only concept regardless of the chosen
+        feedback/stars model.
+      \item \textbf{Hide GEAR internals out of
+        \code{runner\_radiation\_feedback.c}.} Despite living in
+        generic \code{src/} alongside model-agnostic files like
+        \code{runner\_others.c}, it directly manipulates
+        \code{si->feedback\_data.radiation.n\_HII\_pixels}, calls the
+        HealPix-specific \code{runner\_hii\_get\_pixel()}
+        (\code{src/runner\_radiation\_feedback.h}), and calls GEAR-only
+        functions directly rather than through a model-dispatched
+        interface the way other runner/feedback interactions do.
+        Narrowing this file back down to genuinely generic
+        cell-traversal/gather logic, with the GEAR-specific
+        consumption/pixel-assignment decisions pushed behind
+        \code{feedback\_iact\_HII\_ionization}-style dispatch, would
+        make the first two fixes sufficient rather than just
+        necessary.
+    \end{itemize}
+    Not attempted this session -- flagging so a future non-GEAR build
+    isn't silently assumed to work. Pre-existing gap, not introduced by
+    this session's nside=2 work.
 \end{itemize}
 
 \subsection{Physical validation}
