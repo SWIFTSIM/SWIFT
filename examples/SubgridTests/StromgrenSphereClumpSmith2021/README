@@ -95,3 +95,33 @@ python3 clump_anisotropy_check.py --nside0-snapshot nside0/snap/snapshot_0042.hd
 python3 plot_temperature_hii.py -s nside1/snap/snapshot   # defaults to the last snapshot
 ```
 `clump_anisotropy_check.py` requires a build with `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` (add to `CFLAGS` before `./configure`) so `IsIonizedFlags` accumulates monotonically instead of resetting every step.
+
+# Measuring clump erosion (ID-tracked)
+
+Run after the full `run_name=gas${gas_mass}_z${z_label}_nside${nside}_rebuild${rebuild_time_myr}` sweep above (each script globs run directories by that naming convention in the current directory):
+
+```
+python3 clump_erosion_matrix.py       # total mass remaining, full matrix, bar chart
+python3 clump_hemisphere_erosion.py   # near (star-facing) vs. far split + mass-conservation check
+python3 clump_radial_profile.py       # median n_H binned by t=0 radius from the clump centre
+```
+
+All three identify clump-member particles once, by particle ID, at
+`snapshot_0000` (position within `clump_radius_pc` of the clump centre,
+density above the clump's own IC threshold), then look the same IDs up
+at the final snapshot wherever they have since moved to. This is
+deliberate: re-selecting by position and density at the final time
+instead (an earlier version of this measurement) implicitly assumes the
+clump neither drifts nor has non-clump gas swept into its old spatial
+footprint. Neither holds in practice -- that approach produced an
+internally inconsistent result (a hemisphere showing more than 100% of
+its own t=0 mass remaining, impossible for a fixed set of particles
+under mass conservation) and is not used here. `clump_hemisphere_erosion.py`'s
+"still-present at all" numbers are the direct check that ID-tracking
+itself conserves mass: they must read 100% in every configuration
+(no gas particle is created, destroyed, or loses its ID), so any
+deviation there indicates a bug in the analysis, not real clump
+physics.
+
+All three scripts take `--gas-mass`/`--metallicity`/`--rebuild` to
+select a subset of the matrix instead of the full sweep; see `--help`.

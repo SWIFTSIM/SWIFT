@@ -308,8 +308,10 @@ def main():
     print(f"Plotting {filename}")
     star_pos, r_hii = get_star_position_and_hii_radius(filename, args.stub)
     r_physics = compute_physics_hii_radius(sw.load(filename), star_pos)
-    print(f"r_HII (algorithm) = {r_hii * 1e3 if r_hii else 0:.2f} pc, "
-          f"r_physics (T > 1e4 K) = {r_physics * 1e3 if r_physics else 0:.2f} pc")
+    print(
+        f"r_HII (algorithm) = {r_hii * 1e3 if r_hii else 0:.2f} pc, "
+        f"r_physics (T > 1e4 K) = {r_physics * 1e3 if r_physics else 0:.2f} pc"
+    )
 
     t_myr = float(sw.load(filename).metadata.time.to("Myr").value)
     suffix = filename.split("/")[-1].replace(".hdf5", "")
