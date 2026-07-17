@@ -22,11 +22,11 @@
 
 /* Standard headers. */
 #include <fenv.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* Local headers. */
-#include "gravity_properties.h"
 #include "parser.h"
 #include "space.h"
 #include "swift.h"
@@ -35,6 +35,8 @@
 struct truncation_result {
   double box_dim;
   double high_res_dim;
+  double tidal_factor;
+  double epsilon;
   size_t nr_inhibited_background;
   size_t nr_active_background;
 };
@@ -96,33 +98,24 @@ static struct truncation_result run_truncation_case(const char *param_file_name,
   parser_read_file(param_file_name, &params);
 
   struct space *s = malloc(sizeof(struct space));
-  struct engine *e = malloc(sizeof(struct engine));
-  struct gravity_props *gravity = malloc(sizeof(struct gravity_props));
-  if (s == NULL || e == NULL || gravity == NULL)
-    error("Failed to allocate truncation test structures.");
-
+  if (s == NULL) error("Failed to allocate truncation test structures.");
   bzero(s, sizeof(struct space));
-  bzero(e, sizeof(struct engine));
-  bzero(gravity, sizeof(struct gravity_props));
 
   make_mock_space(s, zoom_width);
   s->with_zoom_region = 1;
-  s->e = e;
 
-  gravity->r_s = 1.0;
-  gravity->r_cut_max_ratio = 1.0;
-  e->gravity_properties = gravity;
-  e->restarting = 0;
-  threadpool_init(&e->threadpool, 1);
-
+  /* Truncation runs at the end of space_init, before the engine (or any
+   * box-size-derived structure) exists, so no engine is needed here. */
   zoom_props_init(&params, s, /*verbose=*/0);
-  zoom_region_init(s, /*regridding=*/0, /*verbose=*/0);
+  zoom_truncate_bkg(&params, s, /*verbose=*/0);
 
-  struct truncation_result result = {0.0, 0.0, 0, 0};
+  struct truncation_result result = {0.0, 0.0, 0.0, 0.0, 0, 0};
   result.box_dim = s->dim[0];
   result.high_res_dim =
       max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
            s->zoom_props->part_dim[2]);
+  result.tidal_factor = s->zoom_props->tidal_factor;
+  result.epsilon = s->zoom_props->truncate_epsilon;
 
   for (size_t i = 0; i < s->nr_gparts; i++) {
     const struct gpart *gp = &s->gparts[i];
@@ -146,14 +139,30 @@ static struct truncation_result run_truncation_case(const char *param_file_name,
     if (gp->time_bin == time_bin_inhibited)
       error(
           "High-resolution particle was incorrectly inhibited by truncation.");
+    for (int j = 0; j < 3; j++) {
+      if (gp->x[j] < 0.0 || gp->x[j] >= s->dim[j]) {
+        error("High-resolution particle lies outside the retained box.");
+      }
+    }
   }
 
-  threadpool_clean(&e->threadpool);
-  free(gravity);
-  free(e);
   free_mock_space(s);
 
   return result;
+}
+
+/**
+ * @brief Check the retained box matches the analytic accuracy translation.
+ *
+ * The protected half-extent is the measured high-resolution extent, so the
+ * box should be 2 x tidal_factor x extent x (2 epsilon)^(-1/3).
+ */
+static void check_box_dim(const struct truncation_result *res) {
+  const double expected = 2.0 * res->tidal_factor * res->high_res_dim *
+                          cbrt(0.5 / res->epsilon);
+  if (fabs(res->box_dim - expected) > 1e-4 * expected)
+    error("Retained box (%.6e) does not match the accuracy bound (%.6e).",
+          res->box_dim, expected);
 }
 
 int main(int argc, char *argv[]) {
@@ -183,12 +192,21 @@ int main(int argc, char *argv[]) {
   assert(base.high_res_dim == zoom_width);
   assert(wide.high_res_dim == 2.0 * zoom_width);
 
+  /* The retained boxes must match the analytic epsilon translation. */
+  check_box_dim(&base);
+  check_box_dim(&tight);
+  check_box_dim(&strong);
+  check_box_dim(&wide);
+
+  /* A tighter tolerance must keep more of the volume. */
   assert(tight.box_dim > base.box_dim);
   assert(tight.nr_active_background >= base.nr_active_background);
 
+  /* A larger safety factor must keep more of the volume. */
   assert(strong.box_dim > base.box_dim);
   assert(strong.nr_active_background >= base.nr_active_background);
 
+  /* A larger protected region must keep more of the volume. */
   assert(wide.box_dim > base.box_dim);
   assert(wide.nr_active_background >= base.nr_active_background);
 
