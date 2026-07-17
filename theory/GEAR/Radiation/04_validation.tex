@@ -334,6 +334,59 @@ whole structure that angular does not produce.
   \label{fig:clump-radial-profile}
 \end{figure}
 
+\textbf{The total-mass number is a headline metric, not a test of the
+mechanism -- splitting it by direction is.} Mass-biasing
+(Section~\ref{sec:angular-splitting}) is specifically a
+\emph{directional} failure: one shared budget over-serves whichever
+gas happens to be closest, which for this geometry means the clump's
+star-facing hemisphere. A single aggregate number cannot distinguish
+that from an isotropic effect, and the radial-profile result above
+already showed the $Z=0$ disturbance is partly bulk compression, not
+pure photon-driven stripping -- so the aggregate ``mass above
+threshold'' statistic conflates two different physical processes.
+The direct test: split the clump's own gas by the star$\to$clump axis
+(known exactly -- the clump sits at $+x$ from the star, HealPix
+\code{nside=1} pixel 4's centre, Section~\ref{sec:angular-splitting})
+into a near (star-facing) and far half, and measure mass-remaining in
+each half separately, at $Z=0$, \code{rebuild=0.01\,Myr}.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/clump_hemisphere_erosion}
+  \caption{Clump mass remaining at $t=8\,$Myr, split into the
+    star-facing (near) and opposite (far) hemisphere, $Z=0$,
+    \texttt{rebuild=0.01\,Myr}. Uniform strips the near hemisphere
+    almost completely (10--25\% remaining) while the far hemisphere
+    \emph{gains} mass (108--161\% of $t=0$); angular's near/far split
+    stays close to symmetric (90--92\% vs.\ 108--110\%).}
+  \label{fig:clump-hemisphere}
+\end{figure}
+
+The split confirms the mechanism directly and sharpens it beyond what
+the aggregate number or the radial profile alone showed. Under
+uniform, the near hemisphere collapses to 10\% (\code{gas\_mass=20})
+or 25\% (\code{gas\_mass=95}) of its initial mass -- the budget is
+being spent almost entirely on the star-facing side, exactly as the
+mass-biasing failure mode predicts -- while the far hemisphere's mass
+\emph{increases} to 156--161\% of its initial value. That rules out
+``uniform erosion, just more of it'': the far-side gain shows the
+near-side gas is not simply vanishing, it is being pushed through and
+piling up on the far side, i.e.\ the over-ionized surrounding bubble
+is driving a compression wave through the clump from the near side --
+consistent with the radial-profile finding
+(Figure~\ref{fig:clump-radial-profile}) that uniform's $t=8\,$Myr
+profile sits \emph{above} the $t=0$ profile through most of the
+clump's radius. Angular still shows a small near/far asymmetry (91\%
+vs.\ 108\%, \code{gas\_mass=20}; 90\% vs.\ 110\%, \code{gas\_mass=95})
+-- the clump still occupies mostly one HealPix pixel, so its nearest
+particles are still consumed first within that pixel's own budget --
+but the swing is an order of magnitude smaller than uniform's, and the
+near hemisphere is never gutted the way it is under uniform. This is
+the clearest evidence yet that angular's protection is not just a
+smaller version of the same disturbance: it changes the disturbance
+from a directional stripping-and-compression event into a mild,
+roughly symmetric one.
+
 \begin{figure}
   \centering
   \includegraphics[width=\linewidth]{Figures/gas95_z0231_matrix}
