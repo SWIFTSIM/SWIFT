@@ -66,13 +66,11 @@ radiation_get_part_number_hydrogen_atoms(
 
 /**
  * Metallicity-dependent collisional-equilibrium temperature floor
- * (Hopkins 2023's photoionization temperature fit; FIRE-2's own
- * predecessor clamps to a flat 1e4 K instead -- see
+ * (Hopkins 2023's photoionization temperature fit; see
  * theory/GEAR/Radiation/01_algorithm.tex, Eq. tcollisional). Depends
- * only on Z, not on any specific particle, so this is usable both
- * per-particle (radiation_get_part_ionized_internal_energy) and
- * per-star (radiation_compute_and_cache_HII_rebuild_interval, which has
- * no single gas particle to read Z from).
+ * only on Z, so it is usable both per-particle
+ * (radiation_get_part_ionized_internal_energy) and per-star
+ * (radiation_compute_and_cache_HII_rebuild_interval).
  *
  * @param Z Metal mass fraction.
  * @return Collisional-equilibrium temperature (Kelvin).
@@ -216,27 +214,23 @@ radiation_get_part_rate_to_fully_ionize(
 }
 
 /**
- * Compute this star's next adaptive HII rebuild deadline and cache it
- * (adaptive-cadence mode only, GEARFeedback:HII_adaptive_rebuild_cadence).
- * Called once per rebuild pass, on the retry loop's first pass only,
- * before any particle this pass is actually ionized -- so every
- * consumer of the cached value this pass (including
- * feedback_iact_HII_ionization's end_time) reads the same number.
+ * Compute and cache this star's next adaptive HII rebuild deadline
+ * (GEARFeedback:HII_adaptive_rebuild_cadence). Called once per rebuild
+ * pass, before any particle this pass is ionized, so every consumer
+ * (including feedback_iact_HII_ionization's end_time) reads the same
+ * cached value for the whole pass.
  *
- * interval = f_safety * min(t_rec_pixel-min, t_cross): t_rec is the
- * recombination timescale, computed per active angular pixel from the
- * mean density of that pixel's own gathered candidates (a dense,
- * clump-facing pixel must not have its short t_rec diluted away by
- * other, more diffuse pixels -- the same reasoning the angular budget
- * split itself is built on); t_cross = R_hii/c_s is the sound-crossing
- * timescale, star-wide (h_hii is not tracked per-pixel).
+ * interval = f_safety * min(t_rec_pixel-min, t_cross). t_rec
+ * (recombination timescale) is computed per active angular pixel, from
+ * the mean density of that pixel's own gathered candidates, so a dense
+ * pixel's short t_rec is not diluted by more diffuse pixels. t_cross =
+ * R_hii/c_s (sound-crossing timescale) is star-wide, since h_hii is not
+ * tracked per pixel.
  *
- * Known limitation, not fixed here: if the gather buffer saturated this
- * pass (count_found == max_ngbs), sum_rho_pix/count_pix only reflect
- * the nearest max_ngbs candidates, not the whole front -- a truncated,
- * near-biased sample in an anisotropic/clumpy environment. This still
- * pushes toward a *shorter*, more conservative interval, the same
- * direction already accepted elsewhere in this design.
+ * Known limitation: if the gather buffer saturated this pass,
+ * sum_rho_pix/count_pix reflect only the nearest candidates, not the
+ * whole front -- biased toward higher density, which only pushes the
+ * interval shorter (more conservative), not longer.
  *
  * @param sp The star.
  * @param feedback_props The #feedback_props.
@@ -265,10 +259,9 @@ void radiation_compute_and_cache_HII_rebuild_interval(
   const double k_B = phys_const->const_boltzmann_k;
   const double floor_interval = feedback_props->HII_region_rebuild_floor_Myr;
 
-  /* Temperature floor and case-B recombination coefficient: a function of
-     Z only (radiation_get_T_collisional_K), shared across every pixel --
-     there is no single gas particle at this star-level call site, only
-     the star's own metallicity. */
+  /* Temperature floor and case-B recombination coefficient: depend only
+     on Z (no single gas particle at this star-level call site), shared
+     across every pixel. */
   const double T_ionized_K =
       radiation_get_T_collisional_K(sp->feedback_data.Z_star);
   const double beta_cgs =
@@ -278,20 +271,17 @@ void radiation_compute_and_cache_HII_rebuild_interval(
       beta_cgs / units_general_cgs_conversion_factor(us, dimension_alphaB);
 
   /* X_H = HydrogenFractionByMass - Z, matching
-     cooling_get_hydrogen_mass_fraction's own mode-0 formula
-     (src/cooling/grackle/cooling_utils.h) -- that helper itself needs a
-     specific gas particle (its Grackle-mode>=1 branch reads per-particle
-     HI/HII fractions), not available at this star-level, multi-candidate
-     call site, so this reimplements its mode-0 formula directly, matching
-     this whole model's build convention (--with-cooling=grackle_0). */
+     cooling_get_hydrogen_mass_fraction's mode-0 formula
+     (src/cooling/grackle/cooling_utils.h). That helper itself needs a
+     specific gas particle for its Grackle-mode>=1 branch, unavailable
+     at this star-level, multi-candidate call site, so the mode-0
+     formula is reimplemented directly here. */
   const double X_H = cooling->HydrogenFractionByMass - sp->feedback_data.Z_star;
 
-  /* Per-pixel t_rec, tracking the minimum across active pixels, plus an
-     overall (non-per-pixel) mean density for the bootstrap R_st estimate
-     below -- inherently a spherical/aggregate estimate, not a per-pixel
-     one. A pixel that found zero candidates this pass contributes no
-     t_rec term at all -- it simply doesn't constrain t_rec_min, rather
-     than being assigned some manufactured worst-case value. */
+  /* Per-pixel t_rec, tracking the minimum, plus an overall mean density
+     for the bootstrap R_st estimate below. A pixel with zero candidates
+     this pass contributes no t_rec term, rather than a manufactured
+     worst case. */
   double t_rec_min = -1.0; /* sentinel: none found yet */
   double sum_rho_overall = 0.0;
   int count_overall = 0;
@@ -306,12 +296,9 @@ void radiation_compute_and_cache_HII_rebuild_interval(
     if (t_rec_min < 0.0 || t_rec_p < t_rec_min) t_rec_min = t_rec_p;
   }
 
-  /* Genuinely isolated star this pass (nothing eligible found even at the
-     smallest search radius): fall back to the star's own SPH-averaged
-     local density, from the density loop that already ran before this
-     feedback loop this step (comoving -> physical), for both the overall
-     mean and t_rec_min -- i.e. degenerate to a single-value estimate in
-     this specific edge case. */
+  /* No eligible candidates found this pass: fall back to the star's own
+     SPH-averaged local density (comoving -> physical) for both the
+     overall mean and t_rec_min. */
   double rho_overall_mean;
   if (count_overall > 0) {
     rho_overall_mean = sum_rho_overall / count_overall;
@@ -330,13 +317,11 @@ void radiation_compute_and_cache_HII_rebuild_interval(
     return;
   }
 
-  /* R_hii: an already-established region (some earlier rebuild already
-     tagged gas) uses its own star-wide h_hii (comoving -> physical, same
-     convention as everywhere else h_hii is used); a true bootstrap
-     (nothing ever tagged) uses the classical equilibrium Stromgren
-     radius from this star's own Q_H (summed fresh, un-consumed
-     dot_N_ion_pix -- valid for any star_type) and the overall mean
-     density above. */
+  /* R_hii: an established region uses its own star-wide h_hii (comoving
+     -> physical); a true bootstrap (nothing ever tagged) uses the
+     classical equilibrium Stromgren radius from this star's own Q_H
+     (summed fresh, un-consumed dot_N_ion_pix) and the mean density
+     above. */
   double R_hii;
   if (sp->h_hii > 0.0) {
     R_hii = sp->h_hii * kernel_gamma * cosmo->a;
@@ -352,12 +337,9 @@ void radiation_compute_and_cache_HII_rebuild_interval(
                 : 0.0;
   }
 
-  /* Sound speed of the ionized gas, from the same T_ionized_K used for
-     the temperature floor everywhere else in this model. No specific gas
-     particle is available at this star-level call site to read a
-     tracked mu from, so use a fixed fully-ionized-primordial mu ~ 0.61
-     (this ideal-gas EoS's own density argument is unused in the formula,
-     c_s = sqrt(gamma*(gamma-1)*u), so no density coupling is lost here). */
+  /* Sound speed of the ionized gas at T_ionized_K. No gas particle is
+     available here for a tracked mu, so use a fixed fully-ionized mu ~
+     0.61 (the EoS's density argument is unused in this formula). */
   const double mu_ionized = 0.61;
   const double T_ionized_internal =
       T_ionized_K * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);

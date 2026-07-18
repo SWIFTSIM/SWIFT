@@ -238,9 +238,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     int num_retry_full_buffer = 0;
     int num_radius_expansions = 0;
 
-    /* Needed both by the adaptive-cadence cache below (first pass only)
-       and by the HII_region_last_rebuild stamp after the loop -- computed
-       once here instead of twice. */
+    /* Needed by the adaptive-cadence cache below and by the
+       HII_region_last_rebuild stamp after the loop -- computed once. */
     double star_age_beg_step = 0;
     double dt_enrichment = 0;
     integertime_t ti_begin_star = 0;
@@ -293,17 +292,12 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       const int buffer_was_full = (count_found == max_ngbs);
 
       /* Adaptive rebuild cadence: cache this star's next rebuild deadline
-         from the density of the candidates this pass's gather just found
-         -- fixed for the whole pass (every end_time this pass reads it),
-         computed only once, on the very first pass (before any retry or
-         radius expansion), using the same candidates the ionize loop
-         below is about to consume. Generic per-particle aggregation here
-         (a plain per-pixel sum over an already-gathered array); the
-         actual physics is dispatched through feedback_common.h's
-         feedback_compute_and_cache_HII_rebuild_interval(), matching how
-         every other GEAR-specific radiation call in this generic runner
-         file is already only ever exposed -- this file must not reach
-         past feedback_common.h into GEAR/radiation.h directly. */
+         from the density of this pass's gathered candidates, on the
+         first retry-loop pass only, before the ionize loop below
+         consumes them. Only a per-pixel density sum here; the physics
+         is dispatched through feedback_compute_and_cache_HII_rebuild_
+         interval() (feedback_common.h) so this generic runner file
+         doesn't reach past it into GEAR/radiation.h directly. */
       if (feedback_props->HII_adaptive_rebuild_cadence &&
           num_retry_full_buffer == 0 && num_radius_expansions == 0) {
         float sum_rho_pix[HII_MAX_ANGULAR_PIXELS] = {0.0f};

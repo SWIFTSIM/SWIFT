@@ -93,18 +93,14 @@ struct feedback_props {
   /*! Replace the fixed HII_region_rebuild_time with a per-star cadence
    * derived from f_safety*min(t_rec, t_cross) (see
    * radiation_compute_and_cache_HII_rebuild_interval). Opt-in, default
-   * off, so the fixed-cadence behaviour (and every result validated
-   * against it) stays reproducible unless explicitly enabled. */
+   * off. */
   char HII_adaptive_rebuild_cadence;
 
   /*! Safety factor applied to min(t_rec, t_cross) in adaptive-cadence
-   * mode -- the direct dimensionless analogue of a CFL number. Only
-   * meaningful if HII_adaptive_rebuild_cadence is set. */
+   * mode -- the dimensionless analogue of a CFL number. */
   float HII_region_rebuild_safety_factor;
 
-  /*! Backstop minimum rebuild interval in adaptive-cadence mode, against
-   * pathological over-rebuilding (e.g. T_ionized -> 0). Only meaningful
-   * if HII_adaptive_rebuild_cadence is set. */
+  /*! Backstop minimum rebuild interval in adaptive-cadence mode. */
   float HII_region_rebuild_floor_Myr;
 
   /* ------------- Stellar winds properties ------------- */
@@ -325,9 +321,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         params, "GEARFeedback:HII_deterministic_boundary_ionization",
         default_HII_deterministic_boundary_ionization);
 
-    /* Read the adaptive rebuild cadence opt-in and its two parameters.
-     * Only meaningful if the opt-in is set, but always parsed/converted so
-     * feedback_props_print() and any consumer can read them unconditionally. */
     fp->HII_adaptive_rebuild_cadence = parser_get_opt_param_int(
         params, "GEARFeedback:HII_adaptive_rebuild_cadence",
         default_HII_adaptive_rebuild_cadence);

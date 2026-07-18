@@ -118,34 +118,21 @@ float feedback_compute_spart_timestep(
   float dt_HII_safe = FLT_MAX;
 
   if (feedback_props->HII_adaptive_rebuild_cadence) {
-    /* Adaptive mode: the deadline is a cached absolute age, computed last
-       rebuild pass (radiation_compute_and_cache_HII_rebuild_interval) --
-       never reconstructed from HII_region_last_rebuild, which adaptive
-       mode never reads. */
+    /* Cached absolute deadline from the last rebuild pass
+       (radiation_compute_and_cache_HII_rebuild_interval); never
+       reconstructed from HII_region_last_rebuild. */
     if (star_age_beg_step < HII_region_max_age) {
       const double next_rebuild_age =
           min((double)sp->feedback_data.radiation.HII_region_next_rebuild_time,
               HII_region_max_age);
       double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
       if (time_to_next_rebuild <= 0.0) {
-        /* The cache is stale or already due. Unlike the fixed-cadence
-           branches below, there is no "next integer multiple of a fixed
-           interval" to catch up to here -- the cache is only refreshed
-           by an actual rebuild pass (radiation_compute_and_cache_HII_
-           rebuild_interval, called from the runner, gated on
-           feedback_is_HII_ionization_active). If that gate stays false
-           for a reason unrelated to timing (e.g. the star ran out of
-           its total photon budget, or aged past HII_region_max_age
-           between rebuilds), the cache is never refreshed again and
-           this branch would otherwise return exactly 0.0 forever,
-           violating dt_min and crashing the run (confirmed: this
-           deadlocked 3 of 4 StromgrenSphereClumpSmith2021 adaptive
-           smoke runs). Fall back to the floor interval instead: always
-           positive, guarantees forward progress, and costs one cheap
-           re-check every floor interval if the star turns out to
-           genuinely have nothing left to do -- the same shape of cost
-           the fixed-cadence path already pays once a star stops being
-           HII-active but keeps re-checking. */
+        /* The cache is refreshed only by an actual rebuild pass (gated
+           on feedback_is_HII_ionization_active); if that gate stays
+           false for a reason unrelated to timing (e.g. photon budget
+           exhausted), the deadline goes stale and this would otherwise
+           return exactly 0.0 forever, violating dt_min. Fall back to
+           the floor interval: always positive, guarantees progress. */
         time_to_next_rebuild = feedback_props->HII_region_rebuild_floor_Myr;
       }
       dt_HII_safe = (float)time_to_next_rebuild;
@@ -349,10 +336,9 @@ void feedback_will_do_feedback(
 
   char need_HII_region_rebuild = 0;
   if (feedback_props->HII_adaptive_rebuild_cadence) {
-    /* Adaptive mode: compare directly against the cached absolute
-       deadline -- never reconstructed from HII_region_last_rebuild
-       (seeded to 0.0 at birth/restart, which reads as "already due"
-       since star ages are always >= 0 by construction). */
+    /* Compare directly against the cached absolute deadline (seeded to
+       0.0 at birth, which reads as "already due" since star ages are
+       always >= 0). */
     const double next_rebuild_time =
         sp->feedback_data.radiation.HII_region_next_rebuild_time;
     const double eps = 1e-4 * feedback_props->HII_region_rebuild_floor_Myr;
@@ -618,15 +604,12 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
       feedback_props->HII_deterministic_boundary_ionization;
 
   /* Stay flagged as ionized (and re-floored above the cooling floor, see
-     cooling_ionize_part_subgrid) until this star's next HII rebuild, with
-     no fixed physical timescale of its own. Using the actual time this
-     star's search is running (not a shared/global schedule) keeps this
-     correct even though different stars rebuild on independent,
-     asynchronous cadences. In adaptive mode, this is the cached absolute
-     deadline directly -- already exactly "this star's next HII rebuild",
-     no time+duration reconstruction needed (and the cache was computed
-     before this loop started, so every particle ionized this pass reads
-     the same value). */
+     cooling_ionize_part_subgrid) until this star's next HII rebuild.
+     Using the actual time this star's search is running (not a
+     shared/global schedule) keeps this correct across stars rebuilding
+     on independent, asynchronous cadences. In adaptive mode this is the
+     cached absolute deadline directly, computed once before this loop
+     started, so every particle ionized this pass reads the same value. */
   const double end_time =
       feedback_props->HII_adaptive_rebuild_cadence
           ? si->feedback_data.radiation.HII_region_next_rebuild_time
@@ -693,13 +676,11 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 }
 
 /**
- * @brief Thin dispatch wrapper so runner_radiation_feedback.c (generic
- * cell-traversal code, not GEAR-specific) never has to reach past this
- * file into radiation.h/.c directly -- matching how every other
- * GEAR-specific radiation call the runner makes is already only ever
- * exposed through feedback_common.h (see feedback_iact_HII_ionization
- * above). The actual physics lives in
- * radiation_compute_and_cache_HII_rebuild_interval() (radiation.c).
+ * @brief Dispatch wrapper exposing
+ * radiation_compute_and_cache_HII_rebuild_interval() (radiation.c) to
+ * runner_radiation_feedback.c, which -- being generic cell-traversal code --
+ * must not include GEAR-internal radiation.h directly (see
+ * feedback_iact_HII_ionization for the same pattern).
  *
  * @param sp The star.
  * @param feedback_props The #feedback_props.
@@ -760,12 +741,9 @@ void feedback_init_after_star_formation(
   sp->feedback_data.will_do_feedback = 0;
   sp->feedback_data.will_do_HII_ionization = 0;
 
-  /* Only meaningful in adaptive-cadence mode. Seed to 0.0, not to this
-     star's actual birth age (unavailable here without a signature
-     change) -- star ages are always >= 0 by construction
-     (compute_star_age_end_of_step), so a deadline of 0.0 reads as
-     "already due" on this star's first check regardless, the same
-     "due now" semantics a real age would give. */
+  /* Adaptive-cadence mode only. 0.0 reads as "already due" since star
+     ages are always >= 0, so this has the same effect as seeding the
+     star's actual birth age without needing one here. */
   sp->feedback_data.radiation.HII_region_next_rebuild_time = 0.0;
 
   /* Give to the star its appropriate type: single star, continuous IMF star or

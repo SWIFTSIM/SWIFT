@@ -152,15 +152,10 @@ struct feedback_spart_data {
     float HII_region_last_rebuild;
 
     /*! Absolute simulation time of this star's next scheduled HII
-        rebuild -- only meaningful in adaptive-cadence mode
-        (GEARFeedback:HII_adaptive_rebuild_cadence), ignored otherwise.
-        Cached once per rebuild pass, before the ionization search loop
-        runs, as star_age_beg_step + f_safety*min(t_rec_pixel-min,
-        t_cross) (see radiation_compute_and_cache_HII_rebuild_interval).
-        Caching the absolute deadline rather than a relative interval
-        means every consumer compares against this single value directly
-        instead of reconstructing it from HII_region_last_rebuild, which
-        adaptive mode never needs to read. */
+        rebuild. Adaptive-cadence mode only
+        (GEARFeedback:HII_adaptive_rebuild_cadence); ignored otherwise.
+        Cached once per rebuild pass (see
+        radiation_compute_and_cache_HII_rebuild_interval). */
     double HII_region_next_rebuild_time;
 
   } radiation;
