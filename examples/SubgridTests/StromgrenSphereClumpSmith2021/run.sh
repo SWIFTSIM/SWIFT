@@ -20,6 +20,11 @@ n_cells=${n_cells:=3}               # must match Scheduler:max_top_level_cells i
 nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override: 0 (spherical) or N (12*N^2 pixels);
                                      # must fit the build's --with-number-of-hii-angular-pixels (default 12, i.e. N<=1)
 rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_region_rebuild_time_Myr override
+adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=0} # GEARFeedback:HII_adaptive_rebuild_cadence override:
+                                     # 0 = fixed cadence (rebuild_time_myr above), 1 = physically-derived
+                                     # per-star cadence (ignores rebuild_time_myr)
+rebuild_safety_factor=${rebuild_safety_factor:=0.2} # GEARFeedback:HII_region_rebuild_safety_factor override
+                                     # (only used if adaptive_rebuild_cadence=1)
 deterministic=${deterministic:=0}   # GEARFeedback:HII_deterministic_boundary_ionization override
 initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override
                                     # (Z/Zsun with scale_initial_metallicity: 1 below)
@@ -83,6 +88,8 @@ if [ "$with_cooling" -eq 1 ]; then
                --sync --limiter $runtime_param --threads=$n_threads \
                -P GEARFeedback:HII_angular_nside:$nside \
                -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
+               -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
+               -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
                -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                -P GEARChemistry:initial_metallicity:$initial_metallicity \
                params.yml 2>&1 | tee output.log
@@ -91,6 +98,8 @@ else
                 --sync --limiter $runtime_param --threads=$n_threads \
                -P GEARFeedback:HII_angular_nside:$nside \
                -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
+               -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
+               -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
                -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                -P GEARChemistry:initial_metallicity:$initial_metallicity \
                params.yml 2>&1 | tee output.log
