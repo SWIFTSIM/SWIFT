@@ -81,17 +81,13 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
   const double Z_sun = 0.02;
   const double ten_to_four_K = 1e4;
 
-  /* Here we need to treat the cases Z << Z_sun otherwise we have T < 0 */
+  /* Guard against Z << Z_sun, where the fit below would give T < 0. */
   if (Z >= Z_sun * 1e-3) {
-    /* Hopkins (2023)'s fit is in log10(Z/Z_sun), not ln -- using log()
-       here silently applied the wrong base and shifted T_collisional
-       (e.g. ~12,700 K instead of the intended 10,000 K at this branch's
-       own Z/Zsun~0.231 reference point, see
-       theory/GEAR/Radiation/01_algorithm.tex, Eq. tcollisional). */
+    /* Hopkins (2023)'s fit is in log10(Z/Z_sun), not ln. */
     const double tmp = 0.86 / (1 + 0.22 * log10(Z / Z_sun));
     return ten_to_four_K * min(6.62, tmp);
   } else {
-    return 6.62 * ten_to_four_K; /* High-temp asymptote */
+    return 6.62 * ten_to_four_K; /* High-temperature asymptote */
   }
 }
 
@@ -466,7 +462,7 @@ radiation_get_part_ionized_end_time(const struct part *p,
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
-  /* Note: The enrichement weight is the star's density! */
+  /* enrichment_weight is the star's SPH-averaged local gas density. */
   const float rho_gas = sp->feedback_data.enrichment_weight;
   const float grad_rho[3] = {sp->feedback_data.grad_rho_star[0],
                              sp->feedback_data.grad_rho_star[1],
@@ -475,7 +471,12 @@ radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
       sqrtf(grad_rho[0] * grad_rho[0] + grad_rho[1] * grad_rho[1] +
             grad_rho[2] * grad_rho[2]);
 
-  const float length_gas = sp->h * kernel_gamma + rho_gas / norm_grad_rho;
+  /* A locally uniform density field (zero gradient, e.g. unperturbed
+     glass/grid ICs) makes the Sobolev length rho/|grad rho| undefined;
+     fall back to just the kernel support radius in that case. */
+  const float sobolev_length =
+      norm_grad_rho > 0.0f ? rho_gas / norm_grad_rho : 0.0f;
+  const float length_gas = sp->h * kernel_gamma + sobolev_length;
   return length_gas * rho_gas;
 }
 
@@ -547,10 +548,10 @@ radiation_get_star_physical_radiation_pressure(
 /**
  * Compute the radius of a single star from empirical mass-radius relations.
  *
- * This function get the value for an individual star. For a SSP, this function
- * is used to compute and IMF-average.
+ * This function gets the value for an individual star. For a SSP, this
+ * function is used to compute an IMF-average.
  *
- * @param sp Pointer to star particle.
+ * @param mass Mass of the star.
  * @param us Unit system.
  * @param phys_const Physical constants.
  * @return Radius in code units.
@@ -577,10 +578,10 @@ float radiation_get_individual_star_radius(
  * Compute the temperature of a single star from empirical mass-temperature
  * relations.
  *
- * This function get the value for an individual star. For a SSP, this function
- * is used to compute and IMF-average.
+ * This function gets the value for an individual star. For a SSP, this
+ * function is used to compute an IMF-average.
  *
- * @param sp Pointer to star particle.
+ * @param mass Mass of the star.
  * @param us Unit system.
  * @param phys_const Physical constants.
  * @return Temperature in code units.
@@ -613,10 +614,10 @@ float radiation_get_individual_star_temperature(
  * Computes the bolometric luminosity of a single star from empirical
  * mass-luminosity relations.
  *
- * This function get the value for an individual star. For a SSP, this function
- * is used to compute and IMF-average.
+ * This function gets the value for an individual star. For a SSP, this
+ * function is used to compute an IMF-average.
  *
- * @param sp Pointer to star particle.
+ * @param mass Mass of the star.
  * @param us Unit system.
  * @param phys_const Physical constants.
  * @return Luminosity in code units.

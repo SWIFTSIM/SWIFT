@@ -129,23 +129,13 @@ feedback_prepare_radiation_feedback(
   sp->feedback_data.grad_rho_star[1] *= hi_inv_dim_plus_one;
   sp->feedback_data.grad_rho_star[2] *= hi_inv_dim_plus_one;
 
-  sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.enrichment_weight;
-
-  /* const float Sigma_gas =
-   * radiation_get_comoving_gas_column_density_at_star(sp); */
-  /* const float kappa_IR = radiation_get_physical_IR_opacity(sp, us,
-   * phys_const, cosmo); */
-  /* const float tau_IR = radiation_get_physical_IR_optical_depth(sp, us,
-   * phys_const, cosmo); */
-
-  /* message( */
-  /*     "rho_star = %e, Grad rho = (%e %e %e), Z = %e, Sigma_gas = %e, kappa_IR
-   * " */
-  /*     "= %e, tau_IR = %e", */
-  /*     sp->feedback_data.rho_star, sp->feedback_data.grad_rho_star[0], */
-  /*     sp->feedback_data.grad_rho_star[1], sp->feedback_data.grad_rho_star[2],
-   */
-  /*     sp->feedback_data.Z_star, Sigma_gas, kappa_IR, tau_IR); */
+  /* enrichment_weight is 0 for a star with no gas neighbours this step
+     (e.g. freshly formed in a very sparse region); Z_star's own
+     accumulation is weighted identically, so it is still exactly 0 in
+     that case and the multiply can simply be skipped. */
+  if (sp->feedback_data.enrichment_weight > 0.0f) {
+    sp->feedback_data.Z_star *= hi_inv / sp->feedback_data.enrichment_weight;
+  }
 }
 
 /**

@@ -37,6 +37,42 @@
 #include "runner.h"
 #include "timers.h"
 
+#ifdef IONIZATION_FEEDBACK_LOOP
+/**
+ * @brief Assign a gas candidate to its angular pixel and insert it into
+ * the neighbour buffer if it is within range and that pixel still has
+ * budget left.
+ *
+ * Shared by every gather call site (doself, dopair naive, dopair sorted
+ * forward/backward), which otherwise each repeat this exact pixel +
+ * range + budget + insert sequence.
+ *
+ * @param si The #spart (star) performing the feedback.
+ * @param pj The candidate gas particle.
+ * @param xpj The candidate's extended data.
+ * @param c The #cell the candidate belongs to (for SWIFT_DEBUG_CHECKS).
+ * @param dx Star-minus-particle position offset.
+ * @param r2 Squared distance between star and candidate.
+ * @param r2_max Squared search radius.
+ * @param buffer The #hii_neighbor array to store found candidates.
+ * @param max_size The maximum capacity of the neighbor buffer.
+ * @param count_found (return) The number of neighbors gathered so far.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
+                                struct xpart *xpj, struct cell *c,
+                                const float dx[3], const float r2,
+                                const float r2_max, struct hii_neighbor *buffer,
+                                int max_size, int *count_found) {
+
+  const int pixel =
+      runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
+  if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
+    runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c,
+                             pixel);
+}
+#endif
+
 /**
  * @brief Top-level steering function for HII ionization feedback.
  *
@@ -567,11 +603,8 @@ void runner_doself_stars_hii_ionization_feedback(
 
     /* Skipping the insert once a pixel is exhausted stops a dead pixel's
        candidates from crowding out other pixels' on retry. */
-    const int pixel =
-        runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
-    if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
-      runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c,
-                               pixel);
+    runner_hii_try_insert_candidate(si, pj, xpj, c, dx, r2, r2_max, buffer,
+                                    max_size, count_found);
   } /* Loop in current cell */
 }
 
@@ -654,11 +687,8 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int pixel =
-          runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
-      if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
-        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj,
-                                 pixel);
+      runner_hii_try_insert_candidate(si, pj, xpj, cj, dx, r2, r2_max, buffer,
+                                      max_size, count_found);
     } /* Loop in current cell */
   }
 }
@@ -763,11 +793,8 @@ void runner_dopair_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int pixel =
-          runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
-      if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
-        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj,
-                                 pixel);
+      runner_hii_try_insert_candidate(si, pj, xpj, cj, dx, r2, r2_max, buffer,
+                                      max_size, count_found);
     }
   } else {
     /* Star is on the 'right' relative to the axis direction.
@@ -794,11 +821,8 @@ void runner_dopair_stars_hii_ionization_feedback(
       const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int pixel =
-          runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
-      if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
-        runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, cj,
-                                 pixel);
+      runner_hii_try_insert_candidate(si, pj, xpj, cj, dx, r2, r2_max, buffer,
+                                      max_size, count_found);
     }
   }
 }

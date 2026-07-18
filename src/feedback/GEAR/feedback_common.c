@@ -51,7 +51,6 @@ float feedback_compute_spart_timestep(
     const int with_cosmology, const struct cosmology *cosmo,
     const integertime_t ti_current, const double time, const double time_base) {
 
-  /* TODO: Compute timestep for feedback */
   float dt = FLT_MAX;
 
   /*----------------------------------------*/
@@ -141,35 +140,33 @@ float feedback_compute_spart_timestep(
              star_age_beg_step < HII_region_max_age) {
     /* Negative rebuild time means "rebuild every step"
        (feedback_will_do_feedback()'s need_HII_region_rebuild gate already
-       treats this as unconditional), but nothing here was forcing the star
-       to actually take small enough steps to be active every step -- so
-       "every step" was not actually enforced, only "whenever the star
-       happens to be active for some other reason". Force the smallest
-       available step so the gate's promise is kept. */
-    dt_HII_safe = 0.0f;
+       treats this as unconditional). Force a small step so the star is
+       reliably active often, but never literally 0.0 -- that would
+       violate dt_min on every step, forever. */
+    dt_HII_safe = (float)feedback_props->HII_region_rebuild_floor_Myr;
   } else if (HII_region_rebuild_dt > 0.0 &&
              star_age_beg_step < HII_region_max_age) {
+    /* HII_region_last_rebuild zero-inits with the rest of the spart
+       struct and is only ever written a non-negative age (see the stamp
+       in runner_dosub_stars_hii_ionization_feedback()), so treating it
+       as "0.0 = never rebuilt yet" below is correct for a brand-new
+       star too -- no separate first-time case is needed. */
     const float HII_region_last_rebuild =
         sp->feedback_data.radiation.HII_region_last_rebuild;
 
-    double next_rebuild_age = 0.0;
-    if (HII_region_last_rebuild < 0.0) {
-      /* First time handling this star: force it to rebuild immediately next
-       * step */
-      next_rebuild_age = star_age_beg_step;
+    /* Calculate the absolute target age for the next rebuild */
+    const double target = HII_region_last_rebuild + HII_region_rebuild_dt;
+    double next_rebuild_age;
+    if (star_age_beg_step > target) {
+      /* Already past due (e.g. after a lag) -- jump to the next integer
+         interval instead of the immediately-overshot one. */
+      const double intervals =
+          ceil((star_age_beg_step - HII_region_last_rebuild) /
+               HII_region_rebuild_dt);
+      next_rebuild_age =
+          HII_region_last_rebuild + intervals * HII_region_rebuild_dt;
     } else {
-      /* Calculate the absolute target age for the next rebuild */
-      double target = HII_region_last_rebuild + HII_region_rebuild_dt;
-      /* If due to some lag we already passed it, find the next integer interval
-       */
-      if (star_age_beg_step > target) {
-        double intervals = ceil((star_age_beg_step - HII_region_last_rebuild) /
-                                HII_region_rebuild_dt);
-        next_rebuild_age =
-            HII_region_last_rebuild + intervals * HII_region_rebuild_dt;
-      } else {
-        next_rebuild_age = target;
-      }
+      next_rebuild_age = target;
     }
 
     /* Limit next rebuild age by the maximum possible HII life stage */
@@ -177,16 +174,12 @@ float feedback_compute_spart_timestep(
       next_rebuild_age = HII_region_max_age;
     }
 
-    /* The maximum allowable time-step size to avoid overshooting the rebuild
-     * point */
-    double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
-    if (time_to_next_rebuild > 0.0) {
-      dt_HII_safe = (float)time_to_next_rebuild;
-    } else {
-      /* If we are exactly on it or behind, allow a minimum tiny step or let it
-       * trigger */
-      dt_HII_safe = 0.0f;
-    }
+    /* The maximum allowable time-step size to avoid overshooting the
+       rebuild point. Never literally 0.0, even exactly on/behind
+       schedule -- see the negative-rebuild-time branch above for why. */
+    const double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
+    dt_HII_safe = (float)max(time_to_next_rebuild,
+                             feedback_props->HII_region_rebuild_floor_Myr);
   }
 
   /*----------------------------------------*/
@@ -274,12 +267,11 @@ void feedback_will_do_feedback(
 
   /* A single star */
   if (sp->star_type == single_star) {
-    /* If the star has completely exploded, do not continue. This will also
-       avoid NaN values in the liftetime if the mass is set to 0. Correction
-       (28.04.2024): A bug fix in the mass of the star (see stellar_evolution.c
-       in stellar_evolution_compute_X_feedback_properties, X=discrete,
-       continuous) has changed the mass of the star from 0 to
-       discrete_star_minimal_gravity_mass. Hence the fix is propagated here. */
+    /* A fully-exploded discrete star's mass floors at
+       discrete_star_minimal_gravity_mass (not 0, see
+       stellar_evolution_compute_discrete_feedback_properties), so compare
+       against that floor rather than 0 to detect it and avoid NaNs in the
+       lifetime calculation below. */
     if (sp->mass <= model->discrete_star_minimal_gravity_mass) {
       return;
     }
@@ -327,9 +319,9 @@ void feedback_will_do_feedback(
   const char is_HII_eligible =
       star_age_beg_step <= feedback_props->HII_region_max_age;
 
-  /* TODO: Check the units. Tout en Myr ou en internal units */
-  /* Only rebuild every HII_region_rebuild time and at the first timestep the
-     star is born. If the rebuild time is negative, do it at every step */
+  /* Only rebuild every HII_region_rebuild_time (internal units) and at the
+     first timestep the star is born. A negative rebuild time means "every
+     step". */
   const float HII_region_last_rebuild =
       sp->feedback_data.radiation.HII_region_last_rebuild;
   const float HII_region_rebuild_time = feedback_props->HII_region_rebuild_time;
@@ -347,12 +339,12 @@ void feedback_will_do_feedback(
     }
   } else if (HII_region_rebuild_time < 0.0) {
     need_HII_region_rebuild = 1;
-  } else if (HII_region_last_rebuild < 0.0) {
-    /* Brand new star particle needs a rebuild */
-    need_HII_region_rebuild = 1;
   } else {
-    /* Determine if the end of this upcoming step reaches/overshoots the next
-     * scheduled point */
+    /* HII_region_last_rebuild zero-inits with the rest of the spart
+       struct (never seeded negative), so "0.0 = never rebuilt yet" below
+       already covers a brand-new star -- its very first rebuild is
+       triggered separately, by the star_age_end_step == 0.0 special case
+       above. */
     const double next_rebuild_target =
         HII_region_last_rebuild + HII_region_rebuild_time;
     const double eps = 1e-4 * HII_region_rebuild_time;
@@ -727,17 +719,13 @@ void feedback_init_after_star_formation(
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
 
-  /* The star has nothing useful to do in this loop. Note that in GEAR, the
-  order of operations are:
-  1. Star formation: Form a star with age_beg_step < 0 and age_end_step = 0.
-  2. Stars density, prep1-4, feedback apply: Nothing to do or distribute.
-  sp->feedback_data.will_do_feedback = 0;
-  3. Timestep: Call to feedback_will_do_feedback(), which calls the stellar
-  evolution to be distributed in the next step. Since we have age_beg_step < 0
-  and age_end_step = 0 now, there is nothing to compute or distribute for the
-  next timestep. So we do not need to compute any feedback or stellar evolution
-  now.
-  */
+  /* The star has nothing useful to do in this loop yet. Order of operations
+     for a newly-formed star:
+     1. Star formation: age_beg_step < 0, age_end_step = 0.
+     2. Stars density/prep/feedback-apply tasks this step: nothing to
+        distribute (will_do_feedback = 0 below).
+     3. Timestep task: feedback_will_do_feedback() runs the stellar
+        evolution, to be distributed starting next step. */
   sp->feedback_data.will_do_feedback = 0;
   sp->feedback_data.will_do_HII_ionization = 0;
 

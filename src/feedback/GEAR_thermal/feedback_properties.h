@@ -343,10 +343,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->HII_region_max_age *= Myr_internal_units;
     fp->HII_region_rebuild_time *= Myr_internal_units;
     fp->HII_region_rebuild_floor_Myr *= Myr_internal_units;
-
-    if (fp->HII_region_rebuild_time <= 0.0) {
-      /* TODO: What do we do? We rebuild at every step the star is active */
-    }
   }
 
   /* -------------------------------------------- */
