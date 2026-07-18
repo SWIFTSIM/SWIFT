@@ -44,6 +44,29 @@ For debugging, add:
  
 To disable cooling effects for the particles flagged by ionization: CLFAGS+="-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING" ./configure
 
+### Grackle cooling modes
+`--with-cooling=grackle_N` (N = 0, 1, 2, 3) sets the compile-time
+`COOLING_GRACKLE_MODE` macro (`configure.ac`, `AC_DEFINE_UNQUOTED`), which
+gates increasingly capable chemistry networks via `#if COOLING_GRACKLE_MODE
+> 0` / `> 1` / `> 2` preprocessor conditionals throughout
+`src/cooling/grackle/*.c`/`*.h` (0 = tabulated/equilibrium only, no species
+tracking; 1 = primordial H/He; 2 = + H2/H3+; 3 = + deuterium). A single
+built `swift` binary only contains the code for the mode it was configured
+with — code added under one mode's `#if` guard is never compiled, let alone
+tested, under another.
+
+**Any change to `src/cooling/grackle/`** must be verified to compile
+cleanly under all four modes before being considered done: reconfigure with
+each of `--with-cooling=grackle_0/1/2/3` in turn and `make -j$(nproc)`,
+watching for errors — particularly in or near code added inside a
+`COOLING_GRACKLE_MODE` guard, since a change that only touches the
+mode-N-and-above branch can still break compilation at a lower mode (e.g. a
+struct field only populated `#if COOLING_GRACKLE_MODE > 0` but read
+unconditionally). Reconfiguring rebuilds the `swift`/`swift_mpi` binaries in
+place — do this only when no other run (including background jobs in
+isolated directories that symlink to this tree's binary) still depends on
+the currently-built binary.
+
 ### Key unit tests:
 - `tests/testRadiationRebuildCheck` — the subgrid-radiation rebuild criterion
   (`cell_need_rebuild_for_radiation_pair`) and the
