@@ -752,15 +752,15 @@ A single-star run (no clump, no co-location, matching e10's
 requirement) needed a box wide enough to contain the equilibrium
 radius and a \code{time\_end} that stays within the star's own
 ionizing lifetime -- the example's own defaults (25\,pc box
-half-width, $R_{\rm st}=26.4\,$pc for the default
+half-width, $R_{\rm st}=25.4\,$pc for the default
 $29.7\,{\rm M}_\odot$ star) do not satisfy the first condition, so
 this run uses \code{boxsize=0.08} (80\,pc) via a new \code{run.sh}
 override added for this check. Metallicity matters here too: at this
 example's own $Z=0$ default, the corrected (Section~\ref{sec:beta-temperature})
-temperature-dependent $\alpha_B$ pushes $R_{\rm st}$ to 42\,pc, larger
+temperature-dependent $\alpha_B$ pushes $R_{\rm st}$ to 40.5\,pc, larger
 than even the widened 40\,pc box half-width -- so this check runs at
 $Z/Z_\odot\approx0.231$ (the papers' own $10^4\,$K convention,
-Section~\ref{sec:metallicity}), which keeps $R_{\rm st}=26.4\,$pc
+Section~\ref{sec:metallicity}), which keeps $R_{\rm st}=25.4\,$pc
 comfortably inside the box. \code{time\_end=5.5e-3} ($\approx$5.4\,Myr)
 also required lowering \code{dt\_max} to \code{1e-3} via a new
 \code{run.sh} override -- the example's default \code{dt\_max=1e-2}
@@ -768,21 +768,38 @@ exceeds a \code{time\_end} shortened this far, and
 \code{engine\_config()} correctly refuses to start rather than
 silently accept it.
 
+\textbf{Methodology correction (2026-07-18): the comparison point
+itself was wrong.} \code{stromgren\_analytic\_check.py} originally
+compared at the run's final simulated time regardless of whether that
+time was still physically meaningful. But the analytic D-type curve
+(Eq.~\ref{eq:dtype}) starts at $R_{\rm st}$ and only grows from
+there, so it exceeds this run's 40\,pc box half-width from
+$t\approx1.37\,$Myr onward -- past that point the comparison is
+periodic-box vs.\ infinite-medium, not a code check. The
+41.7\%/$t\approx3.8\,$Myr figures previously reported here were
+measured at $t=5.38\,$Myr, deep in that invalid regime, and are
+superseded below. The script now picks the \emph{last} snapshot that
+is both box-valid ($r_{\rm analytic}\le$ box half-width) and
+physically alive ($r_{\rm HII}>0$, so a dead star's bookkeeping reset
+to 0 is not mistaken for the region shrinking), and reports the
+comparison there instead.
+
 \textbf{Result: FAIL -- the growth curve's \emph{shape} does not
 match the D-type solution, not just its endpoint.}
 Figure~\ref{fig:e10-dtype} shows $r_{\rm HII}(t)$ against the analytic
-curve. The final-time relative error is 41.7\% (41.6\,pc simulated vs.\
-71.3\,pc analytic at $t=5.38\,$Myr) -- already a clear fail against the
-default 30\% tolerance -- but the shape mismatch is more informative
-than that one number: the simulated curve is a \emph{staircase}, flat
-between rebuilds and jumping at each one, while the analytic curve is
-smooth and already past $R_{\rm st}$ from very early times. The
-simulated curve does not even first cross $R_{\rm st}$ until
-$t\approx3.8\,$Myr -- more than 80\% of the run -- whereas the D-type
-solution reaches $R_{\rm st}$ essentially at $t=0$ by construction
-(the classical solution assumes the R-type phase that establishes
-$R_{\rm st}$ is effectively instantaneous, then D-type expansion
-proceeds from there).
+curve. At the last box-valid time ($t=1.27\,$Myr), the relative error
+is 75.2\% (9.8\,pc simulated vs.\ 39.4\,pc analytic) -- a clear fail
+against the default 30\% tolerance, and the shape mismatch is more
+informative than that one number: the simulated curve is a
+\emph{staircase}, flat between rebuilds and jumping at each one, while
+the analytic curve is smooth and already past $R_{\rm st}$ from very
+early times. The simulated curve does not first cross $R_{\rm
+st}=25.4\,$pc until $t\approx3.3\,$Myr -- past the point where the box
+itself is even still valid for the analytic curve -- whereas the
+D-type solution reaches $R_{\rm st}$ essentially at $t=0$ by
+construction (the classical solution assumes the R-type phase that
+establishes $R_{\rm st}$ is effectively instantaneous, then D-type
+expansion proceeds from there).
 
 \textbf{Likely mechanism: per-rebuild search-radius growth is
 geometrically bounded, not radius-following.} This run's
@@ -814,15 +831,52 @@ $1.61\times$-per-cycle cap is unrelated to the cadence itself. Recorded
 as a new open item (T8, Section~\ref{sec:open}) rather than fixed
 here.
 
+\textbf{T11 verification: adaptive cadence measurably shrinks the
+delay, but does not eliminate the staircase shape.} Re-ran the
+identical setup (same box, same star, same $Z/Z_\odot\approx0.231$,
+same \code{time\_end}/\code{dt\_max}) with
+\code{GEARFeedback:HII\_adaptive\_rebuild\_cadence=1} and
+\code{HII\_region\_rebuild\_safety\_factor=0.2} in place of the fixed
+\code{rebuild\_time\_myr=0.5}. Figure~\ref{fig:e10-dtype} overlays both
+curves. Two numbers, holding everything else fixed:
+\begin{itemize}
+  \item \textbf{Time to first reach $R_{\rm st}=25.4\,$pc:}
+    $1.76\,$Myr (adaptive) vs.\ $3.32\,$Myr (fixed) -- a 47\% reduction.
+  \item \textbf{Relative error at the last box-valid time
+    ($t=1.27\,$Myr):} 41.5\% (adaptive) vs.\ 75.2\% (fixed) -- roughly
+    half the error at the one time both curves can be legitimately
+    compared to the infinite-medium analytic solution.
+\end{itemize}
+Both curves remain a staircase (adaptive rebuilds far more often, but
+each individual rebuild is still subject to the same
+$1.1^5\approx1.61\times$-per-cycle search-radius cap identified above
+as the likely mechanism), and both eventually run into the box's
+periodic wrap and plateau near 40\,pc rather than tracking the analytic
+curve's continued rise -- T8's mechanism is structurally independent of
+the rebuild cadence, so this result is exactly what T8's own analysis
+predicted: adaptive cadence attacks \emph{how often} the search radius
+gets a chance to grow, not the \emph{per-attempt} growth cap, so it
+narrows the delay without closing it. \textbf{Verdict: T11 delivers a
+real, quantified improvement and is safe to recommend as the default
+for future runs that care about early-time accuracy, but does not by
+itself resolve T8} -- raising
+\code{max\_HII\_radius\_expansion\_tries}/\code{HII\_radius\_expansion\_factor}
+remains the more direct fix for the shape mismatch itself, and is
+still open.
+
 \begin{figure}
   \centering
   \includegraphics[width=0.8\linewidth]{Figures/e10_dtype_growth_curve}
-  \caption{Simulated $r_{\rm HII}(t)$ (blue, algorithm bookkeeping) vs.\
-    the analytic Spitzer (1978) D-type solution (orange dashed) and the
-    equilibrium $R_{\rm st}$ (grey dotted), single isolated star,
-    $Z/Z_\odot\approx0.231$, \texttt{rebuild\_time\_myr=0.5}. The
-    simulated curve's staircase shape and $\sim$3.8\,Myr delay to first
-    reach $R_{\rm st}$ show the mismatch is in the trajectory, not just
-    the final value.}
+  \caption{Simulated $r_{\rm HII}(t)$ for fixed cadence (blue circles,
+    \texttt{rebuild\_time\_myr=0.5}) and adaptive cadence (red squares,
+    \texttt{HII\_adaptive\_rebuild\_cadence=1}, safety factor 0.2)
+    against the analytic Spitzer (1978) D-type solution (black dashed),
+    the equilibrium $R_{\rm st}$ (grey dotted), and the box half-width
+    (red dotted) beyond which the analytic curve is no longer physically
+    comparable to this finite, periodic setup. Single isolated star,
+    $Z/Z_\odot\approx0.231$. Adaptive cadence reaches $R_{\rm st}$ at
+    $t=1.76\,$Myr vs.\ fixed cadence's $t=3.32\,$Myr, but both remain a
+    staircase and both eventually plateau against the box's periodic
+    wrap rather than the analytic curve.}
   \label{fig:e10-dtype}
 \end{figure}

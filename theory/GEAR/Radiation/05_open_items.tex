@@ -196,7 +196,13 @@ session are labelled \code{T}\emph{n} (task-graph) and
     reach, or seeding the post-rebuild search radius from something
     better-informed than the previous cycle's achieved $h_{\rm hii}$
     (e.g.\ an analytic $R_{\rm st}$ estimate). Not attempted this
-    session.
+    session. \textbf{Update (2026-07-18):} T11's adaptive rebuild
+    cadence narrows this delay (time to first reach $R_{\rm
+    st}$: $3.32\,$Myr fixed $\to$ $1.76\,$Myr adaptive, same setup,
+    Section~\ref{sec:e10}) but does not close it -- confirming the
+    hypothesis above that the per-cycle search-radius cap, not the
+    rebuild cadence, is the structural bottleneck. The fix directions
+    listed above remain the way to actually resolve this.
   \item[$\square$] \textbf{T9} -- Step 4
     (Section~\ref{sec:space-regrid-hhii}, folding \code{h\_hii} into
     \code{space\_regrid}'s top-level cell sizing, committed
@@ -232,8 +238,8 @@ session are labelled \code{T}\emph{n} (task-graph) and
     here, since matching their convention matters more for this
     model's validation purpose than matching real ISM physics in
     isolation.
-  \item[$\square$] \textbf{T11 -- implemented (2026-07-18), verification
-    pending} -- Physically-derived, adaptive,
+  \item[$\boxtimes$] \textbf{T11 -- implemented and verified
+    (2026-07-18)} -- Physically-derived, adaptive,
     per-star HII rebuild cadence
     (\code{GEARFeedback:HII\_adaptive\_rebuild\_cadence}), replacing
     the fixed \code{HII\_region\_rebuild\_time\_Myr} with
@@ -265,20 +271,37 @@ session are labelled \code{T}\emph{n} (task-graph) and
     code path is a provably byte-identical diff (every existing branch
     untouched, only new \code{if}/\code{else if} arms added ahead of
     it) -- every already-validated result in this logbook stays
-    reproducible. \textbf{Not done}: a single ad-hoc smoke run
-    (\code{StromgrenSpherePair}, 5062 particles,
-    $Z/Z_\odot\approx0.231$, adaptive on) executed 100+ timesteps with
-    no crash/NaN/error, but no complete run, no
-    \code{stromgren\_analytic\_check.py} adaptive-vs-fixed comparison,
-    no e10 shape check, and no \code{StromgrenSphereClumpSmith2021}
-    stress test have been done -- the plan's own ``Verification''
-    section (steps 1-9) remains fully open. The one smoke run also hints
-    the adaptive interval can come out considerably shorter than any
-    fixed cadence used in this project so far for a dense
-    ($n_H\sim100\,{\rm cm^{-3}}$) background (many more rebuilds per
-    Myr than the 0.01--0.5\,Myr range validated elsewhere), which is a
-    real wall-clock cost worth measuring, not assuming, in that pending
-    verification pass. One
+    reproducible. \textbf{Verification (2026-07-18), completed after a
+    genuine dt=0 deadlock was found and fixed first}: an initial
+    verification pass crashed 3 of 4 clump-sweep runs with ``spart
+    wants a time-step (0.0) below dt\_min'' -- the cached rebuild
+    deadline is only refreshed by an actual rebuild pass, and if that
+    gate stays false for a reason unrelated to timing (photon budget
+    exhausted, aged past \code{HII\_region\_max\_age}) the deadline
+    goes stale and the timestep constraint returned exactly 0.0
+    forever. Fixed by flooring the fallback at
+    \code{HII\_region\_rebuild\_floor\_Myr} instead of a literal
+    \code{0.0f} (also applied to the pre-existing, structurally
+    identical bug in the non-adaptive negative-\code{rebuild\_time\_myr}
+    and overshoot branches of \code{feedback\_compute\_spart\_timestep}
+    -- neither now ever forces \code{dt=0.0}). With that fixed: the
+    \code{StromgrenSphere} \code{gas\_mass=0.1} adaptive run completed
+    cleanly to $t=20\,$Myr ($r_{\rm HII}$ reaches its plateau by
+    $t\approx3$--$4\,$Myr and holds until the star's own $\sim$6\,Myr
+    lifetime ends it); all six \code{StromgrenSphereClumpSmith2021}
+    sweep configurations ($\text{gas\_mass}\in\{95,20\}\times
+    \text{nside}\in\{0,1,2\}$) completed cleanly to $t=8.2\,$Myr with
+    sane, bounded $r_{\rm HII}$ (12--20\,pc); and the e10
+    adaptive-vs-fixed comparison (Section~\ref{sec:e10}) shows a real,
+    quantified improvement (time to reach $R_{\rm st}$: $47\%$ faster;
+    error at the last box-valid time: roughly halved) without fully
+    closing T8's shape mismatch, exactly as T8's own mechanism
+    predicts. The \code{StromgrenSphereClumpSmith2021} stress test's
+    per-pixel density estimate was not separately instrumented/logged
+    this pass (\code{SWIFT\_DEBUG\_CHECKS\_VERBOSE} spot-check, plan
+    step 8) -- the sweep's clean completion and sane $r_{\rm HII}$
+    values are indirect evidence it behaves sanely, not direct
+    confirmation. One
     deliberate scope decision to revisit later, not before: the
     density sample for $t_{\rm rec}$ is drawn only from not-yet-tagged
     front candidates (gas at the active ionization front), not from
@@ -317,7 +340,13 @@ session are labelled \code{T}\emph{n} (task-graph) and
     (marginal, as expected -- T8's mechanism is structurally independent
     of this bug), but first reaches $R_{\rm st}$ noticeably sooner
     ($\approx$3.8\,Myr pre-fix $\to$ $\approx$2.8\,Myr post-fix); the
-    staircase shape and overall mismatch persist. \textbf{Not done:} the
+    staircase shape and overall mismatch persist. (These specific
+    numbers used the final-simulated-time comparison point, later found
+    to be past the box's validity limit and superseded by the
+    box-valid-comparison methodology fix in Section~\ref{sec:e10} --
+    the corrected, precise value is $3.32\,$Myr, not $2.8\,$Myr; the
+    qualitative conclusion here, that the fix helps only marginally,
+    is unaffected.) \textbf{Not done:} the
     prose analysis and figures in Sections~\ref{sec:matrix-gas20}--
     \ref{sec:matrix-gas95} (growth-curve plots, temperature slices, the
     ID-tracked erosion table) still reflect the pre-fix numbers --
@@ -363,7 +392,10 @@ session are labelled \code{T}\emph{n} (task-graph) and
     before and after any future algorithm change to this model (e.g.\
     T2, or e7's optional \code{end\_time} margin if that's ever
     implemented), to confirm a change actually improves the trajectory
-    shape and not just the endpoint by coincidence.
+    shape and not just the endpoint by coincidence. Standing practice,
+    not a one-off: exercised for T11 (Section~\ref{sec:e10}), which is
+    exactly this kind of check -- keep applying it to future algorithm
+    changes, this item is not closed by that one instance.
   \item[$\square$] \textbf{V5} -- Quantify whether the shallow clump
     surface erosion found this session (star-facing outer skin
     $\sim$28,000\,K to $\sim$3\,pc deep, interior still cold) grows
