@@ -308,7 +308,7 @@ def main():
     # self-interaction/wrapping makes the simulated and infinite-medium
     # analytic solutions incomparable, not wrong -- and (b) the star is
     # still alive and actively tracked: h_hii resets to 0 once a star
-    # dies or ages past HII_region_max_age (feedback_will_do_feedback),
+    # dies or ages past HII_max_age (feedback_will_do_feedback),
     # which is bookkeeping, not the region physically vanishing. Picking
     # the LAST snapshot that satisfies both, rather than blindly using
     # the final simulated time, makes this check robust to runs that

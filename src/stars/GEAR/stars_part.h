@@ -185,7 +185,7 @@ struct stars_props {
   float spart_first_init_birth_time;
 
   /*! Maximal search radius for the HII ionization */
-  float max_HII_search_radius;
+  float HII_max_search_radius;
 
   /*! Maximal number of full-buffer retries (at a fixed search radius)
    * before giving up on finding every gas particle within that radius for
@@ -194,7 +194,7 @@ struct stars_props {
    * constant; this retry count is the runtime knob for adapting to local
    * gas mass resolution without recompiling (e.g. across regions of a
    * cosmological zoom-in). */
-  int max_HII_retry_full_buffer;
+  int HII_max_retry_full_buffer;
 
   /*! Maximal number of search-radius expansions per HII search pass. Once
    * a pass finds every not-yet-ionized particle within the current radius
@@ -203,10 +203,10 @@ struct stars_props {
    * see HII_radius_expansion_factor) lets the star claim its full reach
    * within one pass, instead of waiting on the unrelated h_max term to
    * drift the next rebuild's radius outward over many cycles. */
-  int max_HII_radius_expansion_tries;
+  int HII_max_radius_expansion_tries;
 
   /*! Growth factor applied to the search radius on each expansion above
-   * (e.g. 1.1 = 10% larger per try). Bounded by max_HII_search_radius. */
+   * (e.g. 1.1 = 10% larger per try). Bounded by HII_max_search_radius. */
   float HII_radius_expansion_factor;
 };
 

@@ -19,14 +19,14 @@ dt_max=${dt_max:=1e-2} #TimeIntegration:dt_max override (internal units). Must s
                         #below time_end (engine_config() errors otherwise) -- lower
                         #this if you shorten time_end below the default 1e-2.
 initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override
-rebuild_time_myr=${rebuild_time_myr:=0.5} #GEARFeedback:HII_region_rebuild_time_Myr override
+rebuild_time_myr=${rebuild_time_myr:=0.5} #GEARFeedback:HII_rebuild_time_Myr override
 adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=0} #GEARFeedback:HII_adaptive_rebuild_cadence override:
                         #0 = fixed cadence (rebuild_time_myr above), 1 = physically-derived
                         #per-star cadence (ignores rebuild_time_myr)
-rebuild_safety_factor=${rebuild_safety_factor:=0.2} #GEARFeedback:HII_region_rebuild_safety_factor override
+rebuild_safety_factor=${rebuild_safety_factor:=0.2} #GEARFeedback:HII_rebuild_safety_factor override
                         #(only used if adaptive_rebuild_cadence=1)
-max_retry_full_buffer=${max_retry_full_buffer:=10} #Stars:max_HII_retry_full_buffer override
-max_radius_expansion_tries=${max_radius_expansion_tries:=5} #Stars:max_HII_radius_expansion_tries override
+max_retry_full_buffer=${max_retry_full_buffer:=10} #Stars:HII_max_retry_full_buffer override
+max_radius_expansion_tries=${max_radius_expansion_tries:=5} #Stars:HII_max_radius_expansion_tries override
 radius_expansion_factor=${radius_expansion_factor:=1.1} #Stars:HII_radius_expansion_factor override
                         #(max per-rebuild search-radius growth is
                         #radius_expansion_factor^max_radius_expansion_tries, see T8)
@@ -89,11 +89,11 @@ if [ "$with_cooling" -eq 1 ]; then
 		   -P TimeIntegration:time_end:$time_end \
 		   -P TimeIntegration:dt_max:$dt_max \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
-		   -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
+		   -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
 		   -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
-		   -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
-		   -P Stars:max_HII_retry_full_buffer:$max_retry_full_buffer \
-		   -P Stars:max_HII_radius_expansion_tries:$max_radius_expansion_tries \
+		   -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
+		   -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
+		   -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
 		   -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
 		   params.yml 2>&1 | tee output.log
 else
@@ -102,11 +102,11 @@ else
 	       -P TimeIntegration:time_end:$time_end \
 	       -P TimeIntegration:dt_max:$dt_max \
 	       -P GEARChemistry:initial_metallicity:$initial_metallicity \
-	       -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
+	       -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
 		   -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
-		   -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
-		   -P Stars:max_HII_retry_full_buffer:$max_retry_full_buffer \
-		   -P Stars:max_HII_radius_expansion_tries:$max_radius_expansion_tries \
+		   -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
+		   -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
+		   -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
 		   -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
 		   params.yml 2>&1 | tee output.log
 fi

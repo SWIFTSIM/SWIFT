@@ -99,7 +99,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
      TODO: Implement retry if search radius is too small */
   const float r_hii_max =
       max(c->stars.h_hii_max_active, c->stars.h_max_active) * kernel_gamma;
-  const float max_search_radius = star_props->max_HII_search_radius;
+  const float max_search_radius = star_props->HII_max_search_radius;
   const float interaction_limit =
       min(search_radius_factor * r_hii_max, max_search_radius);
 
@@ -177,10 +177,10 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
  * ways, chosen by why the pass fell short: if the neighbour buffer filled
  * up, more candidates may exist within the SAME search radius (bumped out
  * by the nearest-max_ngbs cut), so it retries there
- * (Stars:max_HII_retry_full_buffer); if the buffer did NOT fill up (every
+ * (Stars:HII_max_retry_full_buffer); if the buffer did NOT fill up (every
  * reachable candidate was already found and ionized) the radius itself is
  * the bottleneck, so it is expanded
- * (Stars:max_HII_radius_expansion_tries, Stars:HII_radius_expansion_factor)
+ * (Stars:HII_max_radius_expansion_tries, Stars:HII_radius_expansion_factor)
  * and the pass retried at the larger radius. Both retries are scoped to
  * the individual star inside the loop below: a star that exhausts its
  * budget on the first pass costs nothing extra, and only a star that
@@ -216,11 +216,11 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     return;
 
   const struct stars_props *star_props = e->stars_properties;
-  const int max_retry_full_buffer = star_props->max_HII_retry_full_buffer;
+  const int max_retry_full_buffer = star_props->HII_max_retry_full_buffer;
   const int max_radius_expansion_tries =
-      star_props->max_HII_radius_expansion_tries;
+      star_props->HII_max_radius_expansion_tries;
   const float radius_expansion_factor = star_props->HII_radius_expansion_factor;
-  const float max_search_radius = star_props->max_HII_search_radius;
+  const float max_search_radius = star_props->HII_max_search_radius;
 
   struct hii_neighbor ngb_buffer[max_ngbs];
 
@@ -258,7 +258,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
      *    the current radius was found and processed) but photons remain:
      *    the RADIUS itself is the bottleneck, not the buffer. Retrying at
      *    the same radius would just re-find nothing new. Only expanding
-     *    the radius can make progress -- max_HII_radius_expansion_tries.
+     *    the radius can make progress -- HII_max_radius_expansion_tries.
      *
      * Conflating these (retrying the same radius regardless of which
      * happened) leaves a star stalled whenever case 2 occurs: with no

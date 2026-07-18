@@ -13,7 +13,7 @@ paper's absolute scale isn't the goal.
 
 Density values (100 / 1e4 cm^-3), clump geometry (10 pc radius at 20 pc),
 gas mass resolution (20 Msun), and the ionizing photon rate per source
-come directly from the paper. Defaults: `HII_region_rebuild_time_Myr=0.01`,
+come directly from the paper. Defaults: `HII_rebuild_time_Myr=0.01`,
 `HII_deterministic_boundary_ionization=0` (probabilistic; validated as
 the better default -- see `theory/GEAR/Radiation/`), `initial_metallicity=0`.
 
@@ -33,7 +33,7 @@ floor is metallicity-dependent and reaches ~47,500 K at Z=0, which both
 lowers the recombination cost and raises the D-type driving sound speed
 -- so Z=0 runs land systematically *above* the papers' reference numbers
 (expected, not a bug), and `r_HII` can approach
-`Stars:max_HII_search_radius` (45 pc) and the 50 pc box half-width for
+`Stars:HII_max_search_radius` (45 pc) and the 50 pc box half-width for
 several rebuild cadences (see `theory/GEAR/Radiation/`, Section
 "Validation" for the full matrix and the numeric breakdown of the two
 effects). For a direct apples-to-apples comparison at the papers' own

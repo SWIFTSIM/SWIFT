@@ -109,10 +109,10 @@ float feedback_compute_spart_timestep(
   /*----------------------------------------*/
 
   /* HII region constraint to rebuild the HII region every
-   * feedback_props->HII_region_rebuild_time (or, in adaptive-cadence mode,
+   * feedback_props->HII_rebuild_time (or, in adaptive-cadence mode,
    * every sp->feedback_data.radiation.HII_region_next_rebuild_time). */
-  const float HII_region_rebuild_dt = feedback_props->HII_region_rebuild_time;
-  const double HII_region_max_age = feedback_props->HII_region_max_age;
+  const float HII_region_rebuild_dt = feedback_props->HII_rebuild_time;
+  const double HII_max_age = feedback_props->HII_max_age;
 
   float dt_HII_safe = FLT_MAX;
 
@@ -120,10 +120,10 @@ float feedback_compute_spart_timestep(
     /* Cached absolute deadline from the last rebuild pass
        (radiation_compute_and_cache_HII_rebuild_interval); never
        reconstructed from HII_region_last_rebuild. */
-    if (star_age_beg_step < HII_region_max_age) {
+    if (star_age_beg_step < HII_max_age) {
       const double next_rebuild_age =
           min((double)sp->feedback_data.radiation.HII_region_next_rebuild_time,
-              HII_region_max_age);
+              HII_max_age);
       double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
       if (time_to_next_rebuild <= 0.0) {
         /* The cache is refreshed only by an actual rebuild pass (gated
@@ -132,20 +132,18 @@ float feedback_compute_spart_timestep(
            exhausted), the deadline goes stale and this would otherwise
            return exactly 0.0 forever, violating dt_min. Fall back to
            the floor interval: always positive, guarantees progress. */
-        time_to_next_rebuild = feedback_props->HII_region_rebuild_floor_Myr;
+        time_to_next_rebuild = feedback_props->HII_rebuild_floor_Myr;
       }
       dt_HII_safe = (float)time_to_next_rebuild;
     }
-  } else if (HII_region_rebuild_dt < 0.0 &&
-             star_age_beg_step < HII_region_max_age) {
+  } else if (HII_region_rebuild_dt < 0.0 && star_age_beg_step < HII_max_age) {
     /* Negative rebuild time means "rebuild every step"
        (feedback_will_do_feedback()'s need_HII_region_rebuild gate already
        treats this as unconditional). Force a small step so the star is
        reliably active often, but never literally 0.0 -- that would
        violate dt_min on every step, forever. */
-    dt_HII_safe = (float)feedback_props->HII_region_rebuild_floor_Myr;
-  } else if (HII_region_rebuild_dt > 0.0 &&
-             star_age_beg_step < HII_region_max_age) {
+    dt_HII_safe = (float)feedback_props->HII_rebuild_floor_Myr;
+  } else if (HII_region_rebuild_dt > 0.0 && star_age_beg_step < HII_max_age) {
     /* HII_region_last_rebuild zero-inits with the rest of the spart
        struct and is only ever written a non-negative age (see the stamp
        in runner_dosub_stars_hii_ionization_feedback()), so treating it
@@ -170,16 +168,16 @@ float feedback_compute_spart_timestep(
     }
 
     /* Limit next rebuild age by the maximum possible HII life stage */
-    if (next_rebuild_age > HII_region_max_age) {
-      next_rebuild_age = HII_region_max_age;
+    if (next_rebuild_age > HII_max_age) {
+      next_rebuild_age = HII_max_age;
     }
 
     /* The maximum allowable time-step size to avoid overshooting the
        rebuild point. Never literally 0.0, even exactly on/behind
        schedule -- see the negative-rebuild-time branch above for why. */
     const double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
-    dt_HII_safe = (float)max(time_to_next_rebuild,
-                             feedback_props->HII_region_rebuild_floor_Myr);
+    dt_HII_safe =
+        (float)max(time_to_next_rebuild, feedback_props->HII_rebuild_floor_Myr);
   }
 
   /*----------------------------------------*/
@@ -316,15 +314,14 @@ void feedback_will_do_feedback(
       feedback_props->radiation_policy & radiation_policy_photoionization;
   const char has_enough_photons =
       feedback_get_star_ionization_rate_max(sp) > 0.0;
-  const char is_HII_eligible =
-      star_age_beg_step <= feedback_props->HII_region_max_age;
+  const char is_HII_eligible = star_age_beg_step <= feedback_props->HII_max_age;
 
-  /* Only rebuild every HII_region_rebuild_time (internal units) and at the
+  /* Only rebuild every HII_rebuild_time (internal units) and at the
      first timestep the star is born. A negative rebuild time means "every
      step". */
   const float HII_region_last_rebuild =
       sp->feedback_data.radiation.HII_region_last_rebuild;
-  const float HII_region_rebuild_time = feedback_props->HII_region_rebuild_time;
+  const float HII_rebuild_time = feedback_props->HII_rebuild_time;
 
   char need_HII_region_rebuild = 0;
   if (feedback_props->HII_adaptive_rebuild_cadence) {
@@ -333,11 +330,11 @@ void feedback_will_do_feedback(
        always >= 0). */
     const double next_rebuild_time =
         sp->feedback_data.radiation.HII_region_next_rebuild_time;
-    const double eps = 1e-4 * feedback_props->HII_region_rebuild_floor_Myr;
+    const double eps = 1e-4 * feedback_props->HII_rebuild_floor_Myr;
     if (star_age_end_step >= next_rebuild_time - eps) {
       need_HII_region_rebuild = 1;
     }
-  } else if (HII_region_rebuild_time < 0.0) {
+  } else if (HII_rebuild_time < 0.0) {
     need_HII_region_rebuild = 1;
   } else {
     /* HII_region_last_rebuild zero-inits with the rest of the spart
@@ -346,8 +343,8 @@ void feedback_will_do_feedback(
        triggered separately, by the star_age_end_step == 0.0 special case
        above. */
     const double next_rebuild_target =
-        HII_region_last_rebuild + HII_region_rebuild_time;
-    const double eps = 1e-4 * HII_region_rebuild_time;
+        HII_region_last_rebuild + HII_rebuild_time;
+    const double eps = 1e-4 * HII_rebuild_time;
 
     if (star_age_end_step >= next_rebuild_target - eps) {
       need_HII_region_rebuild = 1;
@@ -360,8 +357,7 @@ void feedback_will_do_feedback(
       "next_rebuild_time "
       "= %e, need_HII_region_rebuild = %i",
       HII_region_last_rebuild, star_age_beg_step, star_age_end_step,
-      HII_region_last_rebuild + HII_region_rebuild_time,
-      need_HII_region_rebuild);
+      HII_region_last_rebuild + HII_rebuild_time, need_HII_region_rebuild);
 #endif
 
   sp->feedback_data.will_do_HII_ionization =
@@ -559,7 +555,7 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
 
   /* Density threshold criterion */
   const float rho = hydro_get_physical_density(p, cosmo);
-  const float rho_threshold = feedback_props->HII_region_min_density;
+  const float rho_threshold = feedback_props->HII_min_density;
   const char is_dense = rho >= rho_threshold;
 
   /* Can the particle be ionized? */
@@ -605,7 +601,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
   const double end_time =
       feedback_props->HII_adaptive_rebuild_cadence
           ? si->feedback_data.radiation.HII_region_next_rebuild_time
-          : time + max(feedback_props->HII_region_rebuild_time, 0.0);
+          : time + max(feedback_props->HII_rebuild_time, 0.0);
 
   /* If already ionized (by another thread), just move on. */
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;

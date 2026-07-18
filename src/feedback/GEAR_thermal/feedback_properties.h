@@ -24,13 +24,13 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
-#define default_HII_region_min_density_Hpcm3 1.0
-#define default_HII_region_max_age_Myr 50.0
-#define default_HII_region_rebuild_time_Myr 0.5
+#define default_HII_min_density_Hpcm3 1.0
+#define default_HII_max_age_Myr 50.0
+#define default_HII_rebuild_time_Myr 0.5
 #define default_HII_deterministic_boundary_ionization 0
 #define default_HII_adaptive_rebuild_cadence 0
-#define default_HII_region_rebuild_safety_factor 0.2
-#define default_HII_region_rebuild_floor_Myr 1e-4
+#define default_HII_rebuild_safety_factor 0.2
+#define default_HII_rebuild_floor_Myr 1e-4
 
 /**
  * @brief The different subgrid radiation feedback processes GEAR models.
@@ -76,13 +76,13 @@ struct feedback_props {
   float radiation_pressure_efficiency;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
-  float HII_region_min_density;
+  float HII_min_density;
 
   /*! HII region rebuild frequency */
-  float HII_region_rebuild_time;
+  float HII_rebuild_time;
 
   /*! Maximun age of star particle to trigger the HII region algorithm */
-  float HII_region_max_age;
+  float HII_max_age;
 
   /*! How to treat the boundary gas particle a star's remaining photon
    * budget cannot fully ionize: 0 = probabilistic (weighted coin flip,
@@ -90,7 +90,7 @@ struct feedback_props {
    * letting the budget go slightly negative). */
   char HII_deterministic_boundary_ionization;
 
-  /*! Replace the fixed HII_region_rebuild_time with a per-star cadence
+  /*! Replace the fixed HII_rebuild_time with a per-star cadence
    * derived from f_safety*min(t_rec, t_cross) (see
    * radiation_compute_and_cache_HII_rebuild_interval). Opt-in, default
    * off. */
@@ -98,10 +98,10 @@ struct feedback_props {
 
   /*! Safety factor applied to min(t_rec, t_cross) in adaptive-cadence
    * mode -- the dimensionless analogue of a CFL number. */
-  float HII_region_rebuild_safety_factor;
+  float HII_rebuild_safety_factor;
 
   /*! Backstop minimum rebuild interval in adaptive-cadence mode. */
-  float HII_region_rebuild_floor_Myr;
+  float HII_rebuild_floor_Myr;
 
   /* ------------- Stellar winds properties ------------- */
 
@@ -154,7 +154,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
 
   if (do_photoionization) {
     message("HII region minimal gas density (internal units)            = %g",
-            feedback_props->HII_region_min_density);
+            feedback_props->HII_min_density);
     message("HII boundary ionization mode                               = %s",
             feedback_props->HII_deterministic_boundary_ionization
                 ? "deterministic"
@@ -163,9 +163,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
             feedback_props->HII_adaptive_rebuild_cadence ? "ON" : "OFF");
     if (feedback_props->HII_adaptive_rebuild_cadence) {
       message("HII adaptive rebuild safety factor                         = %g",
-              feedback_props->HII_region_rebuild_safety_factor);
+              feedback_props->HII_rebuild_safety_factor);
       message("HII adaptive rebuild floor (internal units)                = %g",
-              feedback_props->HII_region_rebuild_floor_Myr);
+              feedback_props->HII_rebuild_floor_Myr);
     }
   }
 
@@ -302,19 +302,18 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->radiation_policy |= radiation_policy_photoionization;
 
     /* Read the minimal density */
-    fp->HII_region_min_density = parser_get_opt_param_float(
-        params, "GEARFeedback:HII_region_min_density_Hpcm3",
-        default_HII_region_min_density_Hpcm3);
+    fp->HII_min_density =
+        parser_get_opt_param_float(params, "GEARFeedback:HII_min_density_Hpcm3",
+                                   default_HII_min_density_Hpcm3);
 
     /* Read the HII region maximal age */
-    fp->HII_region_max_age = parser_get_opt_param_float(
-        params, "GEARFeedback:HII_region_max_age_Myr",
-        default_HII_region_max_age_Myr);
+    fp->HII_max_age = parser_get_opt_param_float(
+        params, "GEARFeedback:HII_max_age_Myr", default_HII_max_age_Myr);
 
     /* Read the HII region rebuild frequency */
-    fp->HII_region_rebuild_time = parser_get_opt_param_float(
-        params, "GEARFeedback:HII_region_rebuild_time_Myr",
-        default_HII_region_rebuild_time_Myr);
+    fp->HII_rebuild_time =
+        parser_get_opt_param_float(params, "GEARFeedback:HII_rebuild_time_Myr",
+                                   default_HII_rebuild_time_Myr);
 
     /* Read the boundary-particle ionization mode */
     fp->HII_deterministic_boundary_ionization = parser_get_opt_param_int(
@@ -325,24 +324,24 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         params, "GEARFeedback:HII_adaptive_rebuild_cadence",
         default_HII_adaptive_rebuild_cadence);
 
-    fp->HII_region_rebuild_safety_factor = parser_get_opt_param_float(
-        params, "GEARFeedback:HII_region_rebuild_safety_factor",
-        default_HII_region_rebuild_safety_factor);
+    fp->HII_rebuild_safety_factor = parser_get_opt_param_float(
+        params, "GEARFeedback:HII_rebuild_safety_factor",
+        default_HII_rebuild_safety_factor);
 
-    fp->HII_region_rebuild_floor_Myr = parser_get_opt_param_float(
-        params, "GEARFeedback:HII_region_rebuild_floor_Myr",
-        default_HII_region_rebuild_floor_Myr);
+    fp->HII_rebuild_floor_Myr =
+        parser_get_opt_param_float(params, "GEARFeedback:HII_rebuild_floor_Myr",
+                                   default_HII_rebuild_floor_Myr);
 
     /* Convert to internal units */
     const double m_p_cgs = phys_const->const_proton_mass *
                            units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-    fp->HII_region_min_density *=
+    fp->HII_min_density *=
         m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
     const double Myr_internal_units = 1e6 * phys_const->const_year;
-    fp->HII_region_max_age *= Myr_internal_units;
-    fp->HII_region_rebuild_time *= Myr_internal_units;
-    fp->HII_region_rebuild_floor_Myr *= Myr_internal_units;
+    fp->HII_max_age *= Myr_internal_units;
+    fp->HII_rebuild_time *= Myr_internal_units;
+    fp->HII_rebuild_floor_Myr *= Myr_internal_units;
   }
 
   /* -------------------------------------------- */

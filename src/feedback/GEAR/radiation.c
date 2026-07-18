@@ -253,7 +253,7 @@ void radiation_compute_and_cache_HII_rebuild_interval(
   const int n_HII_pixels = sp->feedback_data.radiation.n_HII_pixels;
   const double m_p = phys_const->const_proton_mass;
   const double k_B = phys_const->const_boltzmann_k;
-  const double floor_interval = feedback_props->HII_region_rebuild_floor_Myr;
+  const double floor_interval = feedback_props->HII_rebuild_floor_Myr;
 
   /* Temperature floor and case-B recombination coefficient: depend only
      on Z (no single gas particle at this star-level call site), shared
@@ -350,12 +350,12 @@ void radiation_compute_and_cache_HII_rebuild_interval(
   if (t_rec_min < 0.0 && t_cross < 0.0) {
     interval = floor_interval;
   } else if (t_rec_min < 0.0) {
-    interval = feedback_props->HII_region_rebuild_safety_factor * t_cross;
+    interval = feedback_props->HII_rebuild_safety_factor * t_cross;
   } else if (t_cross < 0.0) {
-    interval = feedback_props->HII_region_rebuild_safety_factor * t_rec_min;
+    interval = feedback_props->HII_rebuild_safety_factor * t_rec_min;
   } else {
-    interval = feedback_props->HII_region_rebuild_safety_factor *
-               min(t_rec_min, t_cross);
+    interval =
+        feedback_props->HII_rebuild_safety_factor * min(t_rec_min, t_cross);
   }
   interval = max(interval, floor_interval);
 

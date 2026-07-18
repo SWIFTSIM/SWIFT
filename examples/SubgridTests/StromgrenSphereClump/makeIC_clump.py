@@ -183,7 +183,7 @@ def pick_clump_geometry(opt):
         print(
             "  WARNING: clump extends past half the box half-width -- "
             "risks periodic self-interaction or exceeding "
-            "Stars:max_HII_search_radius."
+            "Stars:HII_max_search_radius."
         )
 
     return r_clump.to(units.kpc).value, R_clump.to(units.kpc).value

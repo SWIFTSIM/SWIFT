@@ -312,8 +312,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
 
 #ifdef IONIZATION_FEEDBACK_LOOP
   /* Read the maximal search radius */
-  sp->max_HII_search_radius =
-      parser_get_param_float(params, "Stars:max_HII_search_radius");
+  sp->HII_max_search_radius =
+      parser_get_param_float(params, "Stars:HII_max_search_radius");
 
   /* Read the HII full-buffer retry count. Default matches the value this
    * used to be hardcoded to, so existing parameter files keep working
@@ -322,15 +322,15 @@ INLINE static void stars_props_init(struct stars_props *sp,
    * may need several passes to cover all gas within the search radius
    * (the per-pass buffer capacity, max_HII_ngbs, is a compile-time
    * constant -- see runner_radiation_feedback.h). */
-  sp->max_HII_retry_full_buffer =
-      parser_get_opt_param_int(params, "Stars:max_HII_retry_full_buffer", 10);
+  sp->HII_max_retry_full_buffer =
+      parser_get_opt_param_int(params, "Stars:HII_max_retry_full_buffer", 10);
 
   /* Read the search-radius expansion knobs. Defaults: 5 tries at 10%
    * growth each (~1.1^5 =~ 1.61x total reach) matches a full pass of
    * same-radius buffer retries in cost order of magnitude, while still
-   * bounded by max_HII_search_radius. */
-  sp->max_HII_radius_expansion_tries = parser_get_opt_param_int(
-      params, "Stars:max_HII_radius_expansion_tries", 5);
+   * bounded by HII_max_search_radius. */
+  sp->HII_max_radius_expansion_tries = parser_get_opt_param_int(
+      params, "Stars:HII_max_radius_expansion_tries", 5);
   sp->HII_radius_expansion_factor = parser_get_opt_param_float(
       params, "Stars:HII_radius_expansion_factor", 1.1f);
 #endif
@@ -364,9 +364,9 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
 #ifdef IONIZATION_FEEDBACK_LOOP
   message("Maximal search radius for HII ionization: %e (U_L)",
-          sp->max_HII_search_radius);
+          sp->HII_max_search_radius);
   message("HII search-radius expansion: up to %d tries, %.2fx per try",
-          sp->max_HII_radius_expansion_tries, sp->HII_radius_expansion_factor);
+          sp->HII_max_radius_expansion_tries, sp->HII_radius_expansion_factor);
 #endif
 }
 

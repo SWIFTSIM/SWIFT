@@ -19,18 +19,18 @@ L=${boxsize:=0.1}                  # boxsize in kpc
 n_cells=${n_cells:=3}               # must match Scheduler:max_top_level_cells in params.yml
 nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override: 0 (spherical) or N (12*N^2 pixels);
                                      # must fit the build's --with-number-of-hii-angular-pixels (default 12, i.e. N<=1)
-rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_region_rebuild_time_Myr override
+rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_rebuild_time_Myr override
 adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=0} # GEARFeedback:HII_adaptive_rebuild_cadence override:
                                      # 0 = fixed cadence (rebuild_time_myr above), 1 = physically-derived
                                      # per-star cadence (ignores rebuild_time_myr)
-rebuild_safety_factor=${rebuild_safety_factor:=0.2} # GEARFeedback:HII_region_rebuild_safety_factor override
+rebuild_safety_factor=${rebuild_safety_factor:=0.2} # GEARFeedback:HII_rebuild_safety_factor override
                                      # (only used if adaptive_rebuild_cadence=1)
 deterministic=${deterministic:=0}   # GEARFeedback:HII_deterministic_boundary_ionization override
 initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override
                                     # (Z/Zsun with scale_initial_metallicity: 1 below)
-max_search_radius=${max_search_radius:=0.045} # Stars:max_HII_search_radius override (internal units)
-max_retry_full_buffer=${max_retry_full_buffer:=30} # Stars:max_HII_retry_full_buffer override
-max_radius_expansion_tries=${max_radius_expansion_tries:=5} # Stars:max_HII_radius_expansion_tries override
+max_search_radius=${max_search_radius:=0.045} # Stars:HII_max_search_radius override (internal units)
+max_retry_full_buffer=${max_retry_full_buffer:=30} # Stars:HII_max_retry_full_buffer override
+max_radius_expansion_tries=${max_radius_expansion_tries:=5} # Stars:HII_max_radius_expansion_tries override
 radius_expansion_factor=${radius_expansion_factor:=1.1} # Stars:HII_radius_expansion_factor override
                                     # (max per-rebuild search-radius growth is
                                     # radius_expansion_factor^max_radius_expansion_tries, see T8)
@@ -93,28 +93,28 @@ if [ "$with_cooling" -eq 1 ]; then
 ../../../swift --hydro --stars --external-gravity --feedback --cooling \
                --sync --limiter $runtime_param --threads=$n_threads \
                -P GEARFeedback:HII_angular_nside:$nside \
-               -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
+               -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
                -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
-               -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
+               -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
                -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                -P GEARChemistry:initial_metallicity:$initial_metallicity \
-               -P Stars:max_HII_search_radius:$max_search_radius \
-               -P Stars:max_HII_retry_full_buffer:$max_retry_full_buffer \
-               -P Stars:max_HII_radius_expansion_tries:$max_radius_expansion_tries \
+               -P Stars:HII_max_search_radius:$max_search_radius \
+               -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
+               -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
                -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
                params.yml 2>&1 | tee output.log
 else
 ../../../swift --hydro --stars --external-gravity --feedback \
                 --sync --limiter $runtime_param --threads=$n_threads \
                -P GEARFeedback:HII_angular_nside:$nside \
-               -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
+               -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
                -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
-               -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
+               -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
                -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                -P GEARChemistry:initial_metallicity:$initial_metallicity \
-               -P Stars:max_HII_search_radius:$max_search_radius \
-               -P Stars:max_HII_retry_full_buffer:$max_retry_full_buffer \
-               -P Stars:max_HII_radius_expansion_tries:$max_radius_expansion_tries \
+               -P Stars:HII_max_search_radius:$max_search_radius \
+               -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
+               -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
                -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
                params.yml 2>&1 | tee output.log
 fi

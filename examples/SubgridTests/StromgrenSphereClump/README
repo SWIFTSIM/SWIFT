@@ -29,7 +29,7 @@ make -j
 # Run
 `nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh` / `run_name=nside1 ./run.sh` to keep both outputs) compare the two modes. `nside` is passed to `swift` as `-P GEARFeedback:HII_angular_nside:$nside`.
 
-`Stars:max_HII_search_radius` in `params.yml` is set just under the box half-width -- the box itself is small (matched to the measured front reach), so this isn't a looser or tighter choice than the other StromgrenSphere* examples, just scaled to this problem's size.
+`Stars:HII_max_search_radius` in `params.yml` is set just under the box half-width -- the box itself is small (matched to the measured front reach), so this isn't a looser or tighter choice than the other StromgrenSphere* examples, just scaled to this problem's size.
 
 # Checking the redistribution effect
 ```

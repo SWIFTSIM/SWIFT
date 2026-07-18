@@ -47,7 +47,7 @@ struct cell;
  * shell of gas at gas_mass=0.01-resolution test problems without needing
  * many retries (empirically ~a few thousand particles per shell in
  * StromgrenSphere); denser regions (e.g. clumps in a cosmological zoom-in)
- * rely on Stars:max_HII_retry_full_buffer (struct stars_props, runtime-
+ * rely on Stars:HII_max_retry_full_buffer (struct stars_props, runtime-
  * configurable) to cover the rest across several passes at the same
  * search radius. */
 #define max_ngbs 1024

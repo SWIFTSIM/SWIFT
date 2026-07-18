@@ -624,7 +624,7 @@ void engine_config(int restart, int fof, struct engine *e,
       if (e->nodeID == 0) stars_props_print(e->stars_properties);
 
 #ifdef IONIZATION_FEEDBACK_LOOP
-      /* Stars:max_HII_search_radius exceeding the periodic box's
+      /* Stars:HII_max_search_radius exceeding the periodic box's
          half-width is not itself fatal -- the search radius just never
          gets to expand that far, which is indistinguishable from a
          genuinely converged result without an external comparison.
@@ -632,13 +632,13 @@ void engine_config(int restart, int fof, struct engine *e,
       if (e->s->periodic && e->nodeID == 0) {
         const double half_width =
             0.5 * min3(e->s->dim[0], e->s->dim[1], e->s->dim[2]);
-        if (e->stars_properties->max_HII_search_radius > half_width)
+        if (e->stars_properties->HII_max_search_radius > half_width)
           warning(
-              "Stars:max_HII_search_radius (%g) exceeds the periodic box's "
+              "Stars:HII_max_search_radius (%g) exceeds the periodic box's "
               "half-width (%g) -- the HII search radius will silently never "
               "reach the configured value, capping out at the box's own "
               "periodic wrap distance instead.",
-              e->stars_properties->max_HII_search_radius, half_width);
+              e->stars_properties->HII_max_search_radius, half_width);
       }
 #endif
     }
