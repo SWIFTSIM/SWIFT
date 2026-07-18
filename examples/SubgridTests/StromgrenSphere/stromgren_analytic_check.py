@@ -266,18 +266,6 @@ def main():
         "at the Z/Zsun~0.231 metallicity that reproduces the papers' "
         "classical 1e4 K convention.",
     )
-    parser.add_argument(
-        "--n-tail",
-        type=int,
-        default=5,
-        dest="n_tail",
-        help="Number of trailing snapshots to max-envelope for the "
-        "'final' r_sim comparison point (default: 5). HIIRegionRadii is "
-        "algorithm bookkeeping that can reset to 0 between rebuilds even "
-        "while the star is still actively ionizing, so comparing a single "
-        "last sample is noise-prone; this takes the max over the last "
-        "n_tail samples instead.",
-    )
     args = parser.parse_args()
 
     T_IONIZED_K = args.T_ionized_K * u.K
@@ -315,22 +303,57 @@ def main():
 
     r_analytic = dtype_expansion_radius(t_sim, R_st, C_S_IONIZED).to(u.kpc)
 
-    # Relative error at the final simulated time, using a max-envelope over
-    # the trailing n_tail samples so a single bookkeeping reset (r_hii
-    # dropping to 0 between rebuilds, or after star death) doesn't produce
-    # a spurious FAIL -- see --n-tail help.
-    tail = slice(-args.n_tail, None)
-    r_sim_final = np.max(r_sim[tail])
-    t_sim_final = t_sim[tail][np.argmax(r_sim[tail])]
-    r_analytic_final = dtype_expansion_radius(t_sim_final, R_st, C_S_IONIZED).to(u.kpc)
+    # The comparison is only meaningful while (a) the analytic curve is
+    # still predicted to fit inside the box -- beyond that, periodic
+    # self-interaction/wrapping makes the simulated and infinite-medium
+    # analytic solutions incomparable, not wrong -- and (b) the star is
+    # still alive and actively tracked: h_hii resets to 0 once a star
+    # dies or ages past HII_region_max_age (feedback_will_do_feedback),
+    # which is bookkeeping, not the region physically vanishing. Picking
+    # the LAST snapshot that satisfies both, rather than blindly using
+    # the final simulated time, makes this check robust to runs that
+    # continue well past either limit (e.g. an acceptance run taken to
+    # time_end long after the star has died).
+    valid = (r_analytic <= box_half_width) & (r_sim > 0)
+    box_exceeded_at = t_sim[r_analytic > box_half_width]
+    # r_sim == 0 before the region has ever formed is not "death" -- only
+    # flag a zero that follows a nonzero sample as the star going dark.
+    nonzero_idx = np.where(r_sim > 0)[0]
+    dead_mask = np.zeros(len(r_sim), dtype=bool)
+    if len(nonzero_idx) > 0:
+        dead_mask[nonzero_idx[0] + 1 :] = r_sim[nonzero_idx[0] + 1 :] == 0
+    star_dead_at = t_sim[dead_mask]
+    if not np.any(valid):
+        raise RuntimeError(
+            "No snapshot has both an analytic radius within the box and an "
+            "alive, actively-tracked r_sim > 0 -- no meaningful comparison "
+            "point exists in this run. Try a bigger boxsize or a higher "
+            "gas_density (shrinks R_st ~ n_H^-2/3), or check the run "
+            "completed at least one HII rebuild before the star died."
+        )
+    last_valid = np.where(valid)[0][-1]
+    t_sim_final = t_sim[last_valid]
+    r_sim_final = r_sim[last_valid]
+    r_analytic_final = r_analytic[last_valid]
     rel_error = float(
         (np.abs(r_sim_final - r_analytic_final) / r_analytic_final).decompose()
     )
     verdict = "PASS" if rel_error <= args.tol else "FAIL"
     print(
-        f"Final time: t={t_sim_final:.4g}  r_sim={r_sim_final:.4g}  "
+        f"Comparison time: t={t_sim_final:.4g}  r_sim={r_sim_final:.4g}  "
         f"r_analytic={r_analytic_final:.4g}  rel_error={rel_error:.2%}  [{verdict}]"
     )
+    if last_valid < len(t_sim) - 1:
+        reason = []
+        if len(box_exceeded_at) > 0:
+            reason.append(f"box half-width exceeded from t={box_exceeded_at[0]:.4g}")
+        if len(star_dead_at) > 0:
+            reason.append(f"star inactive/dead from t={star_dead_at[0]:.4g}")
+        print(
+            f"  (not the final simulated time t={t_sim[-1]:.4g} -- "
+            f"{'; '.join(reason)}; later snapshots are not comparable to "
+            f"the infinite-medium analytic solution.)"
+        )
 
     fig, ax = plt.subplots()
     ax.plot(t_sim.to(u.Myr), r_sim.to(u.pc), "o-", label="Simulation ($r_{hii}$)")
@@ -342,6 +365,19 @@ def main():
     )
     ax.axhline(
         R_st.to(u.pc).value, color="grey", linestyle=":", label="Equilibrium $R_{st}$"
+    )
+    ax.axhline(
+        box_half_width.to(u.pc).value,
+        color="firebrick",
+        linestyle=":",
+        label="Box half-width",
+    )
+    ax.axvline(
+        t_sim_final.to(u.Myr).value,
+        color="black",
+        linestyle="-.",
+        alpha=0.6,
+        label="Comparison point",
     )
     ax.set_xlabel("Time [Myr]")
     ax.set_ylabel("HII region radius [pc]")
