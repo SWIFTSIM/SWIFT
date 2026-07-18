@@ -65,11 +65,28 @@ one.
   \hline
   scheme  & rebuild=0.01\,Myr & rebuild=0.05\,Myr & rebuild=0.1\,Myr \\
   \hline
-  uniform (nside=0) & 12.5--14.3\,pc & 12.5--13.2\,pc & 13.3--13.6\,pc \\
-  angular (nside=1) & 24.7--27.7\,pc & 13.2--20.5\,pc & 12.2--14.0\,pc \\
+  uniform (nside=0) & 13.3--13.7\,pc & 12.5--12.8\,pc & 12.6--13.2\,pc \\
+  angular (nside=1) & 21.1--23.6\,pc & 12.8--22.2\,pc & 12.6--19.1\,pc \\
   \hline
 \end{tabular}
 \end{center}
+
+\textbf{Updated 2026-07-18 (item T12, Section~\ref{sec:open}):} the
+table above reflects the $T_{\rm collisional}$ log-base bug fix
+(rerun from scratch); the $\approx$24.7--27.7\,pc angular/fast-cadence
+row this section's prose below still describes is the pre-fix value.
+The post-fix numbers are lower across the board (the corrected, lower
+$T_{\rm collisional}=10^4\,$K raises $\beta$ and lowers $c_s$, both
+push $r_{\rm HII}$ down) but the qualitative pattern this section's
+prose argues for -- uniform low and cadence-insensitive, angular only
+matching the papers at the fast cadence -- is unchanged: angular/0.01
+(21.1--23.6\,pc) is still inside the papers' $\sim$20--25\,pc band,
+just nearer its lower edge; angular/0.1 still collapses to
+$\approx$uniform (12.6--19.1\,pc vs.\ 12.6--13.2\,pc, overlapping).
+The specific numbers, per-star figures, and slice images below are
+\emph{not yet regenerated} against this fix -- treat the prose narrative
+as illustrative of the pattern, not as matching the table's current
+values exactly.
 
 \textbf{The uniform scheme is consistently low, regardless of rebuild
 cadence} (12.5--14.3\,pc across all three) -- the clump's mass-biasing
@@ -164,11 +181,21 @@ matrix.
   \hline
   scheme  & rebuild=0.01\,Myr & rebuild=0.05\,Myr & rebuild=0.1\,Myr \\
   \hline
-  uniform (nside=0) & 14.7--15.7\,pc & 14.0--14.7\,pc & 12.6--14.7\,pc \\
-  angular (nside=1) & 16.4--31.1\,pc & 18.0--28.0\,pc & 14.5--15.4\,pc \\
+  uniform (nside=0) & 14.6--15.0\,pc & 12.3--14.4\,pc & 14.1--14.6\,pc \\
+  angular (nside=1) & 16.7--32.7\,pc & 16.6--27.9\,pc & 13.1--16.9\,pc \\
   \hline
 \end{tabular}
 \end{center}
+
+\textbf{Updated 2026-07-18 (item T12, Section~\ref{sec:open}):}
+rerun from scratch against the $T_{\rm collisional}$ log-base bug fix
+(see the identical note in Section~\ref{sec:matrix-gas20}). Numbers
+shifted modestly (mostly down) but the pattern this section's prose
+argues for is unchanged: neither scheme reliably reaches the papers'
+reference at this resolution, and the angular scheme's higher raw
+numbers remain a bookkeeping artifact (see below) rather than a
+genuinely larger ionized region. Figures/slices below not yet
+regenerated against this fix.
 
 \textbf{None of the six configurations reliably reaches the papers'
 $\sim$20--25\,pc reference at this resolution.} The uniform scheme is
