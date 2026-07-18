@@ -787,9 +787,12 @@ GEARFeedback:
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
   HII_region_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_region_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
-  HII_region_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
+  HII_region_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This value also enforces a timestep constraint on the stars. Negative values mean "rebuild every step" instead of on a fixed schedule. (Default: 0.5)
   HII_angular_nside:             0                         # Angular (HEALPix) splitting of the HII ionization budget: 0 = spherical (disabled, one shared budget), N>=1 = 12*N^2 HEALPix pixels. Requires building with --with-chealpix for nside > 0; the requested pixel count must also fit the build's --with-number-of-hii-angular-pixels (default 12, i.e. nside<=1). (Default: 0)
   HII_deterministic_boundary_ionization: 0                 # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default: 0)
+  HII_adaptive_rebuild_cadence:  0                         # Replace the fixed HII_region_rebuild_time_Myr schedule with a per-star cadence f_safety*min(t_rec, t_cross) derived from the recombination and sound-crossing timescales. 1: on, 0: off. (Default: 0)
+  HII_region_rebuild_safety_factor: 0.2                    # Safety factor applied to min(t_rec, t_cross) in adaptive-cadence mode (the CFL-like dimensionless analogue). Only used if HII_adaptive_rebuild_cadence=1. (Default: 0.2)
+  HII_region_rebuild_floor_Myr:  1e-4                      # Minimum allowed rebuild interval (in Myr) in adaptive-cadence mode, guarding against pathologically short intervals. Only used if HII_adaptive_rebuild_cadence=1. (Default: 1e-4)
 
 GEARSupernovaeII:
     interpolation_size:  200                               # Number of elements to keep in the interpolation of the data. (Default: 200)
