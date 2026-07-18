@@ -28,6 +28,12 @@ rebuild_safety_factor=${rebuild_safety_factor:=0.2} # GEARFeedback:HII_region_re
 deterministic=${deterministic:=0}   # GEARFeedback:HII_deterministic_boundary_ionization override
 initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override
                                     # (Z/Zsun with scale_initial_metallicity: 1 below)
+max_search_radius=${max_search_radius:=0.045} # Stars:max_HII_search_radius override (internal units)
+max_retry_full_buffer=${max_retry_full_buffer:=30} # Stars:max_HII_retry_full_buffer override
+max_radius_expansion_tries=${max_radius_expansion_tries:=5} # Stars:max_HII_radius_expansion_tries override
+radius_expansion_factor=${radius_expansion_factor:=1.1} # Stars:HII_radius_expansion_factor override
+                                    # (max per-rebuild search-radius growth is
+                                    # radius_expansion_factor^max_radius_expansion_tries, see T8)
 run_name=${run_name:=""}
 restart=${restart:=0}
 run_analysis=${run_analysis:=1}         # Run plot_temperature_hii.py (temperature slice +
@@ -92,6 +98,10 @@ if [ "$with_cooling" -eq 1 ]; then
                -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
                -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                -P GEARChemistry:initial_metallicity:$initial_metallicity \
+               -P Stars:max_HII_search_radius:$max_search_radius \
+               -P Stars:max_HII_retry_full_buffer:$max_retry_full_buffer \
+               -P Stars:max_HII_radius_expansion_tries:$max_radius_expansion_tries \
+               -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
                params.yml 2>&1 | tee output.log
 else
 ../../../swift --hydro --stars --external-gravity --feedback \
@@ -102,6 +112,10 @@ else
                -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
                -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                -P GEARChemistry:initial_metallicity:$initial_metallicity \
+               -P Stars:max_HII_search_radius:$max_search_radius \
+               -P Stars:max_HII_retry_full_buffer:$max_retry_full_buffer \
+               -P Stars:max_HII_radius_expansion_tries:$max_radius_expansion_tries \
+               -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
                params.yml 2>&1 | tee output.log
 fi
 

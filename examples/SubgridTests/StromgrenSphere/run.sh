@@ -25,6 +25,11 @@ adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=0} #GEARFeedback:HII_adapti
                         #per-star cadence (ignores rebuild_time_myr)
 rebuild_safety_factor=${rebuild_safety_factor:=0.2} #GEARFeedback:HII_region_rebuild_safety_factor override
                         #(only used if adaptive_rebuild_cadence=1)
+max_retry_full_buffer=${max_retry_full_buffer:=10} #Stars:max_HII_retry_full_buffer override
+max_radius_expansion_tries=${max_radius_expansion_tries:=5} #Stars:max_HII_radius_expansion_tries override
+radius_expansion_factor=${radius_expansion_factor:=1.1} #Stars:HII_radius_expansion_factor override
+                        #(max per-rebuild search-radius growth is
+                        #radius_expansion_factor^max_radius_expansion_tries, see T8)
 run_name=${run_name:=""}
 restart=${restart:=0}
 
@@ -87,6 +92,9 @@ if [ "$with_cooling" -eq 1 ]; then
 		   -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
 		   -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
 		   -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
+		   -P Stars:max_HII_retry_full_buffer:$max_retry_full_buffer \
+		   -P Stars:max_HII_radius_expansion_tries:$max_radius_expansion_tries \
+		   -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
 		   params.yml 2>&1 | tee output.log
 else
 ../../../swift --hydro --stars --external-gravity --feedback \
@@ -97,6 +105,9 @@ else
 	       -P GEARFeedback:HII_region_rebuild_time_Myr:$rebuild_time_myr \
 		   -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
 		   -P GEARFeedback:HII_region_rebuild_safety_factor:$rebuild_safety_factor \
+		   -P Stars:max_HII_retry_full_buffer:$max_retry_full_buffer \
+		   -P Stars:max_HII_radius_expansion_tries:$max_radius_expansion_tries \
+		   -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
 		   params.yml 2>&1 | tee output.log
 fi
 
