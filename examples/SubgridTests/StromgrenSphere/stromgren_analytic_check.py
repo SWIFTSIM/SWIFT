@@ -195,7 +195,39 @@ def read_simulated_r_hii(snapshot_glob):
         # astropy.units quantities -- convert to plain floats in a fixed
         # unit at this boundary, then re-wrap as astropy Quantities.
         times.append(data.metadata.time.to("Myr").value)
-        r_hii.append(float(np.max(data.stars.hiiregion_radii).to("kpc").value))
+
+        # r_hii from the star's own HIIRegionRadii (h_hii) is frozen at the
+        # moment each gas particle was tagged -- it never updates as that
+        # particle keeps moving afterwards. Since ionized gas has substantial
+        # outward velocity (confirmed directly: tagged particles show mean
+        # v_r several times larger than untagged gas, growing with time),
+        # h_hii systematically undercounts the true current extent of the
+        # ionized/expanding shell -- by up to ~60-80% at t~2-3 Myr in the
+        # e10 check. Instead, use the current position of every gas particle
+        # this star has *ever* tagged: HIIStarIDs is set once when a
+        # particle is first ionized and, unlike IsIonizedFlags, is never
+        # reset when that tag later expires (see
+        # radiation_reset_part_ionized_tag, src/feedback/GEAR/radiation.c),
+        # so it survives the rebuild-cadence tag/re-tag cycle and gives the
+        # true maximum radius any ionized gas has reached, not just the
+        # radius at which it was found.
+        star_id = int(data.stars.particle_ids[0])
+        ever_tagged = data.gas.hiistar_ids == star_id
+        if np.any(ever_tagged):
+            star_pos = data.stars.coordinates[0].to("kpc").value
+            gas_pos = data.gas.coordinates[ever_tagged].to("kpc").value
+            box_kpc = data.metadata.boxsize.to("kpc").value
+            # Minimum-image convention: a periodic box means the naive
+            # difference can be wrong by a whole box length once gas has
+            # wrapped around, which would corrupt the max() with a single
+            # spurious huge distance -- match the simulation's own
+            # nearest-image distance convention here.
+            dx = gas_pos - star_pos
+            dx -= box_kpc * np.round(dx / box_kpc)
+            r_ever_tagged = float(np.max(np.linalg.norm(dx, axis=1)))
+            r_hii.append(r_ever_tagged)
+        else:
+            r_hii.append(float(np.max(data.stars.hiiregion_radii).to("kpc").value))
 
         if star_mass_msun is None:
             n_stars = len(data.stars.masses)
