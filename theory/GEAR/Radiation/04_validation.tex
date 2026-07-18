@@ -864,6 +864,30 @@ itself resolve T8} -- raising
 remains the more direct fix for the shape mismatch itself, and is
 still open.
 
+\textbf{Measurement correction (2026-07-18): $r_{\rm HII}$ itself was
+being undercounted.} \code{HIIRegionRadii} ($h_{\rm hii}$) is the
+distance at the moment a particle was tagged, recorded once and never
+updated as that particle moves afterwards. A direct check confirmed
+tagged gas keeps moving outward substantially after being tagged (mean
+radial velocity several times that of untagged gas, growing with time),
+so $h_{\rm hii}$ systematically lags the true current extent of the
+ionized/expanding shell. \code{stromgren\_analytic\_check.py} now
+instead takes the current (periodic-wrapped) position of every gas
+particle a star has \emph{ever} tagged, using \code{HIIStarIDs} (set
+once at tagging and, unlike \code{IsIonizedFlags}, never reset when the
+tag later expires) rather than $h_{\rm hii}$. On the adaptive-cadence
+run this drops the comparison-point error from 41.5\% to 32.4\% and the
+time to first reach $R_{\rm st}$ from 1.76 to 1.17\,Myr. On the
+fixed-cadence run the comparison-point error is unchanged at 75.2\%
+(tagging is too infrequent for tagged gas to have drifted far by
+$t=1.27\,$Myr) but time-to-$R_{\rm st}$ still improves, 3.32 to
+2.44\,Myr. This is a measurement fix, not a physics change -- it does
+not alter T8's underlying mechanism or verdict, but shows the earlier
+numbers above understated how much of the true ionized shell had
+already formed. Figure~\ref{fig:e10-dtype} still shows the
+$h_{\rm hii}$-based curves; a version overlaying the corrected
+ever-tagged measure has not been regenerated yet.
+
 \begin{figure}
   \centering
   \includegraphics[width=0.8\linewidth]{Figures/e10_dtype_growth_curve}

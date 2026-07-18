@@ -202,7 +202,26 @@ session are labelled \code{T}\emph{n} (task-graph) and
     Section~\ref{sec:e10}) but does not close it -- confirming the
     hypothesis above that the per-cycle search-radius cap, not the
     rebuild cadence, is the structural bottleneck. The fix directions
-    listed above remain the way to actually resolve this.
+    listed above remain the way to actually resolve this. \textbf{Update
+    (2026-07-18):} two further, independent findings this pass. (1) A
+    direct radial-velocity check on tagged gas confirms momentum
+    coupling itself is not the bottleneck -- tagged particles show mean
+    $v_r$ several times that of untagged gas and accelerating, so the
+    pressure-to-momentum conversion already works; moving the
+    ionization-heating application from the cooling task to
+    \code{feedback\_update\_part()} (drift-time, same-step force-loop
+    visibility -- considered this pass) would not be expected to help
+    and was not implemented. (2) $r_{\rm HII}$ itself was undercounted:
+    \code{HIIRegionRadii} freezes at tag time and never updates as
+    tagged gas keeps moving, so the true ionized-shell extent is larger
+    than what was being measured -- see the measurement correction in
+    Section~\ref{sec:e10}. With the corrected measure, adaptive-cadence
+    error drops $41.5\%\to32.4\%$ and time-to-$R_{\rm st}$ drops
+    $1.76\to1.17\,$Myr; fixed-cadence time-to-$R_{\rm st}$ drops
+    $3.32\to2.44\,$Myr. Neither finding changes T8's verdict -- the
+    per-cycle search-radius cap remains the identified structural
+    bottleneck -- but both narrow how much of the mismatch was
+    measurement artifact vs.\ real.
   \item[$\square$] \textbf{T9} -- Step 4
     (Section~\ref{sec:space-regrid-hhii}, folding \code{h\_hii} into
     \code{space\_regrid}'s top-level cell sizing, committed
