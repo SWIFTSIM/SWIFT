@@ -110,13 +110,28 @@ float feedback_compute_spart_timestep(
   /*----------------------------------------*/
 
   /* HII region constraint to rebuild the HII region every
-   * feedback_props->HII_region_rebuild_time. */
+   * feedback_props->HII_region_rebuild_time (or, in adaptive-cadence mode,
+   * every sp->feedback_data.radiation.HII_region_next_rebuild_time). */
   const float HII_region_rebuild_dt = feedback_props->HII_region_rebuild_time;
   const double HII_region_max_age = feedback_props->HII_region_max_age;
 
   float dt_HII_safe = FLT_MAX;
 
-  if (HII_region_rebuild_dt < 0.0 && star_age_beg_step < HII_region_max_age) {
+  if (feedback_props->HII_adaptive_rebuild_cadence) {
+    /* Adaptive mode: the deadline is a cached absolute age, computed last
+       rebuild pass (radiation_compute_and_cache_HII_rebuild_interval) --
+       never reconstructed from HII_region_last_rebuild, which adaptive
+       mode never reads. */
+    if (star_age_beg_step < HII_region_max_age) {
+      const double next_rebuild_age =
+          min((double)sp->feedback_data.radiation.HII_region_next_rebuild_time,
+              HII_region_max_age);
+      const double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
+      dt_HII_safe =
+          (time_to_next_rebuild > 0.0) ? (float)time_to_next_rebuild : 0.0f;
+    }
+  } else if (HII_region_rebuild_dt < 0.0 &&
+             star_age_beg_step < HII_region_max_age) {
     /* Negative rebuild time means "rebuild every step"
        (feedback_will_do_feedback()'s need_HII_region_rebuild gate already
        treats this as unconditional), but nothing here was forcing the star
@@ -313,7 +328,18 @@ void feedback_will_do_feedback(
   const float HII_region_rebuild_time = feedback_props->HII_region_rebuild_time;
 
   char need_HII_region_rebuild = 0;
-  if (HII_region_rebuild_time < 0.0) {
+  if (feedback_props->HII_adaptive_rebuild_cadence) {
+    /* Adaptive mode: compare directly against the cached absolute
+       deadline -- never reconstructed from HII_region_last_rebuild
+       (seeded to 0.0 at birth/restart, which reads as "already due"
+       since star ages are always >= 0 by construction). */
+    const double next_rebuild_time =
+        sp->feedback_data.radiation.HII_region_next_rebuild_time;
+    const double eps = 1e-4 * feedback_props->HII_region_rebuild_floor_Myr;
+    if (star_age_end_step >= next_rebuild_time - eps) {
+      need_HII_region_rebuild = 1;
+    }
+  } else if (HII_region_rebuild_time < 0.0) {
     need_HII_region_rebuild = 1;
   } else if (HII_region_last_rebuild < 0.0) {
     /* Brand new star particle needs a rebuild */
@@ -576,9 +602,15 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
      no fixed physical timescale of its own. Using the actual time this
      star's search is running (not a shared/global schedule) keeps this
      correct even though different stars rebuild on independent,
-     asynchronous cadences. */
+     asynchronous cadences. In adaptive mode, this is the cached absolute
+     deadline directly -- already exactly "this star's next HII rebuild",
+     no time+duration reconstruction needed (and the cache was computed
+     before this loop started, so every particle ionized this pass reads
+     the same value). */
   const double end_time =
-      time + max(feedback_props->HII_region_rebuild_time, 0.0);
+      feedback_props->HII_adaptive_rebuild_cadence
+          ? si->feedback_data.radiation.HII_region_next_rebuild_time
+          : time + max(feedback_props->HII_region_rebuild_time, 0.0);
 
   /* If already ionized (by another thread), just move on. */
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
@@ -641,6 +673,41 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 }
 
 /**
+ * @brief Thin dispatch wrapper so runner_radiation_feedback.c (generic
+ * cell-traversal code, not GEAR-specific) never has to reach past this
+ * file into radiation.h/.c directly -- matching how every other
+ * GEAR-specific radiation call the runner makes is already only ever
+ * exposed through feedback_common.h (see feedback_iact_HII_ionization
+ * above). The actual physics lives in
+ * radiation_compute_and_cache_HII_rebuild_interval() (radiation.c).
+ *
+ * @param sp The star.
+ * @param feedback_props The #feedback_props.
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param sum_rho_pix Per-pixel sum of physical density over this pass's
+ * gathered candidates.
+ * @param count_pix Per-pixel candidate count over this pass's gathered
+ * candidates.
+ * @param star_age_beg_step This star's age at the start of the current
+ * step.
+ */
+void feedback_compute_and_cache_HII_rebuild_interval(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const float sum_rho_pix[HII_MAX_ANGULAR_PIXELS],
+    const int count_pix[HII_MAX_ANGULAR_PIXELS],
+    const double star_age_beg_step) {
+
+  radiation_compute_and_cache_HII_rebuild_interval(
+      sp, feedback_props, phys_const, us, cosmo, cooling, sum_rho_pix,
+      count_pix, star_age_beg_step);
+}
+
+/**
  * @brief Prepare the feedback fields after a star is born.
  *
  * This function is called in the functions sink_copy_properties_to_star() and
@@ -673,6 +740,14 @@ void feedback_init_after_star_formation(
   sp->feedback_data.will_do_feedback = 0;
   sp->feedback_data.will_do_HII_ionization = 0;
 
+  /* Only meaningful in adaptive-cadence mode. Seed to 0.0, not to this
+     star's actual birth age (unavailable here without a signature
+     change) -- star ages are always >= 0 by construction
+     (compute_star_age_end_of_step), so a deadline of 0.0 reads as
+     "already due" on this star's first check regardless, the same
+     "due now" semantics a real age would give. */
+  sp->feedback_data.radiation.HII_region_next_rebuild_time = 0.0;
+
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
   sp->star_type = star_type;
@@ -703,6 +778,10 @@ void feedback_first_init_spart(struct spart *sp,
      that returns early (already past the IMF's alive range) never reads
      it uninitialized. */
   sp->feedback_data.radiation.n_HII_pixels = 1;
+
+  /* Only meaningful in adaptive-cadence mode -- see the identical seed in
+     feedback_init_after_star_formation() for why 0.0 is correct here too. */
+  sp->feedback_data.radiation.HII_region_next_rebuild_time = 0.0;
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;

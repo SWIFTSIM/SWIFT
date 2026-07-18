@@ -237,6 +237,16 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     float dynamic_search_radius = interaction_limit;
     int num_retry_full_buffer = 0;
     int num_radius_expansions = 0;
+
+    /* Needed both by the adaptive-cadence cache below (first pass only)
+       and by the HII_region_last_rebuild stamp after the loop -- computed
+       once here instead of twice. */
+    double star_age_beg_step = 0;
+    double dt_enrichment = 0;
+    integertime_t ti_begin_star = 0;
+    compute_time(si, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
+                 &ti_begin_star, ti_current, time_base, time);
+
     while (1) {
       int count_found = 0;
 
@@ -281,6 +291,33 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       } /* Neighbour search */
 
       const int buffer_was_full = (count_found == max_ngbs);
+
+      /* Adaptive rebuild cadence: cache this star's next rebuild deadline
+         from the density of the candidates this pass's gather just found
+         -- fixed for the whole pass (every end_time this pass reads it),
+         computed only once, on the very first pass (before any retry or
+         radius expansion), using the same candidates the ionize loop
+         below is about to consume. Generic per-particle aggregation here
+         (a plain per-pixel sum over an already-gathered array); the
+         actual physics is dispatched through feedback_common.h's
+         feedback_compute_and_cache_HII_rebuild_interval(), matching how
+         every other GEAR-specific radiation call in this generic runner
+         file is already only ever exposed -- this file must not reach
+         past feedback_common.h into GEAR/radiation.h directly. */
+      if (feedback_props->HII_adaptive_rebuild_cadence &&
+          num_retry_full_buffer == 0 && num_radius_expansions == 0) {
+        float sum_rho_pix[HII_MAX_ANGULAR_PIXELS] = {0.0f};
+        int count_pix[HII_MAX_ANGULAR_PIXELS] = {0};
+        for (int k = 0; k < count_found; k++) {
+          const int pixel = ngb_buffer[k].pixel;
+          sum_rho_pix[pixel] +=
+              hydro_get_physical_density(ngb_buffer[k].p, cosmo);
+          count_pix[pixel]++;
+        }
+        feedback_compute_and_cache_HII_rebuild_interval(
+            si, feedback_props, phys_const, us, cosmo, cooling, sum_rho_pix,
+            count_pix, star_age_beg_step);
+      }
 
       /***************************************************/
       /* It's time to sort the gas particles */
@@ -344,14 +381,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
     /* TODO: Move into a function */
     if (feedback_is_HII_ionization_active(si, e)) {
-      /* Compute the times */
-      double star_age_beg_step = 0;
-      double dt_enrichment = 0;
-      integertime_t ti_begin = 0;
-      compute_time(si, with_cosmology, cosmo, &star_age_beg_step,
-                   &dt_enrichment, &ti_begin, ti_current, time_base, time);
-
-      /* Log when this HII region was (re)built */
+      /* Log when this HII region was (re)built (star_age_beg_step computed
+         once, before the retry loop above -- see its own comment). */
       si->feedback_data.radiation.HII_region_last_rebuild = star_age_beg_step;
     }
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE

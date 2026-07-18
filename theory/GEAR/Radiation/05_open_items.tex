@@ -232,7 +232,8 @@ session are labelled \code{T}\emph{n} (task-graph) and
     here, since matching their convention matters more for this
     model's validation purpose than matching real ISM physics in
     isolation.
-  \item[$\square$] \textbf{T11} -- Physically-derived, adaptive,
+  \item[$\square$] \textbf{T11 -- implemented (2026-07-18), verification
+    pending} -- Physically-derived, adaptive,
     per-star HII rebuild cadence
     (\code{GEARFeedback:HII\_adaptive\_rebuild\_cadence}), replacing
     the fixed \code{HII\_region\_rebuild\_time\_Myr} with
@@ -241,8 +242,43 @@ session are labelled \code{T}\emph{n} (task-graph) and
     cadence produces a D-type growth curve that doesn't match the
     analytic shape. Full design in
     \code{/home/darwinr/.claude/plans/sleepy-honking-pascal.md} (Phase
-    5) -- not yet implemented. Opt-in, default off, so all
-    already-validated results in this logbook stay reproducible. One
+    5). \textbf{Implemented as designed}: new
+    \code{radiation\_get\_T\_collisional\_K()} (extracted helper) and
+    \code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval()} in
+    \code{radiation.c}, dispatched through a thin wrapper in
+    \code{feedback\_common.h/.c} (matching
+    \code{feedback\_iact\_HII\_ionization}'s own pattern, so
+    \code{runner\_radiation\_feedback.c} -- generic cell-traversal code
+    -- never includes GEAR-internal \code{radiation.h} directly, per
+    T7); mode-branches in all three consumers
+    (\code{feedback\_compute\_spart\_timestep},
+    \code{feedback\_will\_do\_feedback},
+    \code{feedback\_iact\_HII\_ionization}); new
+    \code{HII\_region\_next\_rebuild\_time} field seeded to \code{0.0}
+    at star creation (both \code{feedback\_first\_init\_spart} and
+    \code{feedback\_init\_after\_star\_formation} -- correct because
+    star ages are always $\ge 0$ by construction, so this always reads
+    as ``already due,'' overwritten with a real value on the star's
+    first actual search pass). Build clean with \code{-Werror},
+    \code{testRadiationRebuildCheck} and
+    \code{test27cellsStars -n 3 -N 3 -r 5} pass, and the non-adaptive
+    code path is a provably byte-identical diff (every existing branch
+    untouched, only new \code{if}/\code{else if} arms added ahead of
+    it) -- every already-validated result in this logbook stays
+    reproducible. \textbf{Not done}: a single ad-hoc smoke run
+    (\code{StromgrenSpherePair}, 5062 particles,
+    $Z/Z_\odot\approx0.231$, adaptive on) executed 100+ timesteps with
+    no crash/NaN/error, but no complete run, no
+    \code{stromgren\_analytic\_check.py} adaptive-vs-fixed comparison,
+    no e10 shape check, and no \code{StromgrenSphereClumpSmith2021}
+    stress test have been done -- the plan's own ``Verification''
+    section (steps 1-9) remains fully open. The one smoke run also hints
+    the adaptive interval can come out considerably shorter than any
+    fixed cadence used in this project so far for a dense
+    ($n_H\sim100\,{\rm cm^{-3}}$) background (many more rebuilds per
+    Myr than the 0.01--0.5\,Myr range validated elsewhere), which is a
+    real wall-clock cost worth measuring, not assuming, in that pending
+    verification pass. One
     deliberate scope decision to revisit later, not before: the
     density sample for $t_{\rm rec}$ is drawn only from not-yet-tagged
     front candidates (gas at the active ionization front), not from
@@ -254,8 +290,8 @@ session are labelled \code{T}\emph{n} (task-graph) and
     if verification (re-running \code{stromgren\_analytic\_check.py},
     and a \code{StromgrenSphereClumpSmith2021} stress test given its
     explicit density inhomogeneity) shows this proxy is insufficient.
-  \item[$\square$] \textbf{T12 -- bug fixed (2026-07-18), matrix rerun
-    still needed} -- \code{radiation.c}'s $T_{\rm collisional}$
+  \item[$\boxtimes$] \textbf{T12 -- bug fixed and matrix rerun
+    (2026-07-18)} -- \code{radiation.c}'s $T_{\rm collisional}$
     (Eq.~\ref{eq:tcollisional}) used C's \code{log()} (natural log)
     instead of \code{log10()}, silently applying the wrong base for
     every $Z \ge 10^{-3}Z_\odot$ case -- including this project's own
@@ -265,15 +301,29 @@ session are labelled \code{T}\emph{n} (task-graph) and
     $\approx$12,700\,K at that point. Fixed
     (\code{log}$\to$\code{log10}); build clean,
     \code{testRadiationRebuildCheck} and
-    \code{test27cellsStars -n 3 -N 3 -r 5} both pass. \textbf{Not yet
-    done:} every $Z/Z_\odot\approx0.231$ result in this logbook (the
-    whole validation matrix, Sections~\ref{sec:matrix-gas20}--
-    \ref{sec:matrix-gas95}; T8's e10 curve-shape check; V8, V9, V12) was
-    produced under the wrong $T_{\rm collisional}$ and needs rerunning
-    against this fix before being treated as current. Plausible partial
-    explanation for V12's finding that no rebuild cadence reproduced the
-    papers at \code{gas\_mass=95} resolution, and for part of T8's
-    curve-shape gap -- not confirmed, needs the rerun to check.
+    \code{test27cellsStars -n 3 -N 3 -r 5} both pass. All twelve
+    $Z/Z_\odot\approx0.231$ matrix configurations
+    (Sections~\ref{sec:matrix-gas20}--\ref{sec:matrix-gas95}) and the
+    e10 single-star check were rerun against the fix ($Z=0$ rows are
+    provably unaffected -- that branch never calls \code{log}/\code{log10}
+    at all -- and were not rerun). Effect, measured directly: the
+    corrected (lower, $10^4\,$K vs.\ the buggy $\approx$12,700\,K)
+    temperature raises $\beta$ (higher recombination cost) and lowers
+    $c_s$, both pushing $r_{\rm HII}$ down -- confirmed, not assumed.
+    \code{gas20\_z0231\_nside1\_rebuild0p01} (the cleanest documented
+    anchor): 24.7--27.7\,pc pre-fix $\to$ 21.1--23.6\,pc post-fix --
+    still inside the papers' 20--25\,pc band, shifted toward its lower
+    end rather than out of it. e10: 41.7\%$\to$40.4\% final-time error
+    (marginal, as expected -- T8's mechanism is structurally independent
+    of this bug), but first reaches $R_{\rm st}$ noticeably sooner
+    ($\approx$3.8\,Myr pre-fix $\to$ $\approx$2.8\,Myr post-fix); the
+    staircase shape and overall mismatch persist. \textbf{Not done:} the
+    prose analysis and figures in Sections~\ref{sec:matrix-gas20}--
+    \ref{sec:matrix-gas95} (growth-curve plots, temperature slices, the
+    ID-tracked erosion table) still reflect the pre-fix numbers --
+    updating the raw table cells here was in scope, regenerating every
+    downstream figure/prose conclusion was not; treat those sections'
+    narrative as stale until that follow-up lands.
   \item[$\boxtimes$] \textbf{T13 -- confirmed done (2026-07-18)} --
     Gather-time pixel-budget starvation
     guard (design doc:

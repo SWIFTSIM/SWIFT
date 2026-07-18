@@ -77,6 +77,14 @@ void feedback_iact_HII_ionization(
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
     const double time);
 
+void feedback_compute_and_cache_HII_rebuild_interval(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const float sum_rho_pix[HII_MAX_ANGULAR_PIXELS],
+    const int count_pix[HII_MAX_ANGULAR_PIXELS],
+    const double star_age_beg_step);
+
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,
     enum stellar_type star_type);

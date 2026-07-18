@@ -28,6 +28,9 @@
 #define default_HII_region_max_age_Myr 50.0
 #define default_HII_region_rebuild_time_Myr 0.5
 #define default_HII_deterministic_boundary_ionization 0
+#define default_HII_adaptive_rebuild_cadence 0
+#define default_HII_region_rebuild_safety_factor 0.2
+#define default_HII_region_rebuild_floor_Myr 1e-4
 
 /**
  * @brief The different subgrid radiation feedback processes GEAR models.
@@ -87,6 +90,23 @@ struct feedback_props {
    * letting the budget go slightly negative). */
   char HII_deterministic_boundary_ionization;
 
+  /*! Replace the fixed HII_region_rebuild_time with a per-star cadence
+   * derived from f_safety*min(t_rec, t_cross) (see
+   * radiation_compute_and_cache_HII_rebuild_interval). Opt-in, default
+   * off, so the fixed-cadence behaviour (and every result validated
+   * against it) stays reproducible unless explicitly enabled. */
+  char HII_adaptive_rebuild_cadence;
+
+  /*! Safety factor applied to min(t_rec, t_cross) in adaptive-cadence
+   * mode -- the direct dimensionless analogue of a CFL number. Only
+   * meaningful if HII_adaptive_rebuild_cadence is set. */
+  float HII_region_rebuild_safety_factor;
+
+  /*! Backstop minimum rebuild interval in adaptive-cadence mode, against
+   * pathological over-rebuilding (e.g. T_ionized -> 0). Only meaningful
+   * if HII_adaptive_rebuild_cadence is set. */
+  float HII_region_rebuild_floor_Myr;
+
   /* ------------- Stellar winds properties ------------- */
 
   /*! Pre-supernova feedback energy effectively deposited */
@@ -143,6 +163,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
             feedback_props->HII_deterministic_boundary_ionization
                 ? "deterministic"
                 : "probabilistic");
+    message("HII adaptive rebuild cadence                               = %s",
+            feedback_props->HII_adaptive_rebuild_cadence ? "ON" : "OFF");
+    if (feedback_props->HII_adaptive_rebuild_cadence) {
+      message("HII adaptive rebuild safety factor                         = %g",
+              feedback_props->HII_region_rebuild_safety_factor);
+      message("HII adaptive rebuild floor (internal units)                = %g",
+              feedback_props->HII_region_rebuild_floor_Myr);
+    }
   }
 
   message(
@@ -297,6 +325,21 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         params, "GEARFeedback:HII_deterministic_boundary_ionization",
         default_HII_deterministic_boundary_ionization);
 
+    /* Read the adaptive rebuild cadence opt-in and its two parameters.
+     * Only meaningful if the opt-in is set, but always parsed/converted so
+     * feedback_props_print() and any consumer can read them unconditionally. */
+    fp->HII_adaptive_rebuild_cadence = parser_get_opt_param_int(
+        params, "GEARFeedback:HII_adaptive_rebuild_cadence",
+        default_HII_adaptive_rebuild_cadence);
+
+    fp->HII_region_rebuild_safety_factor = parser_get_opt_param_float(
+        params, "GEARFeedback:HII_region_rebuild_safety_factor",
+        default_HII_region_rebuild_safety_factor);
+
+    fp->HII_region_rebuild_floor_Myr = parser_get_opt_param_float(
+        params, "GEARFeedback:HII_region_rebuild_floor_Myr",
+        default_HII_region_rebuild_floor_Myr);
+
     /* Convert to internal units */
     const double m_p_cgs = phys_const->const_proton_mass *
                            units_cgs_conversion_factor(us, UNIT_CONV_MASS);
@@ -306,6 +349,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     const double Myr_internal_units = 1e6 * phys_const->const_year;
     fp->HII_region_max_age *= Myr_internal_units;
     fp->HII_region_rebuild_time *= Myr_internal_units;
+    fp->HII_region_rebuild_floor_Myr *= Myr_internal_units;
 
     if (fp->HII_region_rebuild_time <= 0.0) {
       /* TODO: What do we do? We rebuild at every step the star is active */
