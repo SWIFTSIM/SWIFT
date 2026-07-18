@@ -126,9 +126,29 @@ float feedback_compute_spart_timestep(
       const double next_rebuild_age =
           min((double)sp->feedback_data.radiation.HII_region_next_rebuild_time,
               HII_region_max_age);
-      const double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
-      dt_HII_safe =
-          (time_to_next_rebuild > 0.0) ? (float)time_to_next_rebuild : 0.0f;
+      double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
+      if (time_to_next_rebuild <= 0.0) {
+        /* The cache is stale or already due. Unlike the fixed-cadence
+           branches below, there is no "next integer multiple of a fixed
+           interval" to catch up to here -- the cache is only refreshed
+           by an actual rebuild pass (radiation_compute_and_cache_HII_
+           rebuild_interval, called from the runner, gated on
+           feedback_is_HII_ionization_active). If that gate stays false
+           for a reason unrelated to timing (e.g. the star ran out of
+           its total photon budget, or aged past HII_region_max_age
+           between rebuilds), the cache is never refreshed again and
+           this branch would otherwise return exactly 0.0 forever,
+           violating dt_min and crashing the run (confirmed: this
+           deadlocked 3 of 4 StromgrenSphereClumpSmith2021 adaptive
+           smoke runs). Fall back to the floor interval instead: always
+           positive, guarantees forward progress, and costs one cheap
+           re-check every floor interval if the star turns out to
+           genuinely have nothing left to do -- the same shape of cost
+           the fixed-cadence path already pays once a star stops being
+           HII-active but keeps re-checking. */
+        time_to_next_rebuild = feedback_props->HII_region_rebuild_floor_Myr;
+      }
+      dt_HII_safe = (float)time_to_next_rebuild;
     }
   } else if (HII_region_rebuild_dt < 0.0 &&
              star_age_beg_step < HII_region_max_age) {
