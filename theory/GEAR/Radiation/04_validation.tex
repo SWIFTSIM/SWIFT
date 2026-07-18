@@ -884,23 +884,35 @@ $t=1.27\,$Myr) but time-to-$R_{\rm st}$ still improves, 3.32 to
 2.44\,Myr. This is a measurement fix, not a physics change -- it does
 not alter T8's underlying mechanism or verdict, but shows the earlier
 numbers above understated how much of the true ionized shell had
-already formed. Figure~\ref{fig:e10-dtype} still shows the
-$h_{\rm hii}$-based curves; a version overlaying the corrected
-ever-tagged measure has not been regenerated yet.
+already formed. Figure~\ref{fig:e10-dtype} has been regenerated with
+the corrected ever-tagged measure (the adaptive-cadence curve is also
+now from the run with the Grackle-bypass cooling fix applied, which
+holds tagged particles exactly at the ionized-energy floor instead of
+letting Grackle's own chemistry solve pull them back down within the
+same step) -- both curves are visibly smoother than the original
+$h_{\rm hii}$-based
+staircase, since ever-tagged gas keeps contributing its continued
+outward drift between rebuilds instead of only jumping at each one, but
+the qualitative picture (adaptive well ahead of fixed, both eventually
+running into the box's periodic wrap) is unchanged.
 
 \begin{figure}
   \centering
   \includegraphics[width=0.8\linewidth]{Figures/e10_dtype_growth_curve}
   \caption{Simulated $r_{\rm HII}(t)$ for fixed cadence (blue circles,
-    \texttt{rebuild\_time\_myr=0.5}) and adaptive cadence (red squares,
+    \texttt{rebuild\_time\_myr=0.5}) and adaptive cadence with the
+    Grackle-bypass cooling fix (red squares,
     \texttt{HII\_adaptive\_rebuild\_cadence=1}, safety factor 0.2)
     against the analytic Spitzer (1978) D-type solution (black dashed),
     the equilibrium $R_{\rm st}$ (grey dotted), and the box half-width
     (red dotted) beyond which the analytic curve is no longer physically
     comparable to this finite, periodic setup. Single isolated star,
-    $Z/Z_\odot\approx0.231$. Adaptive cadence reaches $R_{\rm st}$ at
-    $t=1.76\,$Myr vs.\ fixed cadence's $t=3.32\,$Myr, but both remain a
-    staircase and both eventually plateau against the box's periodic
-    wrap rather than the analytic curve.}
+    $Z/Z_\odot\approx0.231$. $r_{\rm HII}$ is the ever-tagged measure
+    (Section~\ref{sec:e10}): the current, periodic-wrapped max radius of
+    every gas particle each star has ever tagged, not the star's own
+    frozen $h_{\rm hii}$. Adaptive cadence reaches $R_{\rm st}$ at
+    $t=1.17\,$Myr vs.\ fixed cadence's $t=2.44\,$Myr; both eventually
+    plateau against the box's periodic wrap rather than the analytic
+    curve.}
   \label{fig:e10-dtype}
 \end{figure}
