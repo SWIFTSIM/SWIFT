@@ -44,8 +44,13 @@
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
+ * @return 1 if the particle was held at the subgrid-ionized floor this
+ *         call, 0 otherwise. The caller uses this to skip Grackle's own
+ *         chemistry/cooling solve for this step -- otherwise Grackle's
+ *         ODE integrator, unaware of the external forcing, pulls the
+ *         energy back down within the same step it was just floored.
  */
-INLINE static void cooling_ionize_part_subgrid(
+INLINE static int cooling_ionize_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor,
@@ -53,7 +58,7 @@ INLINE static void cooling_ionize_part_subgrid(
     struct xpart *xp, double dt, double dt_therm, double time) {
 #ifndef IONIZATION_FEEDBACK_DEBUG_NO_COOLING
   if (!radiation_is_part_tagged_as_ionized(p, xp)) {
-    return;
+    return 0;
   }
 
   /* Specific internal energy this particle is held at while ionized
@@ -86,6 +91,9 @@ and
   if (time >= radiation_get_part_ionized_end_time(p, xp)) {
     radiation_reset_part_ionized_tag(p, xp);
   }
+  return 1;
+#else
+  return 0;
 #endif
 }
 
@@ -105,8 +113,10 @@ and
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
+ * @return 1 if the particle was held at the subgrid-ionized floor this
+ *         call, 0 otherwise. See #cooling_ionize_part_subgrid.
  */
-INLINE static void cooling_update_part_subgrid(
+INLINE static int cooling_update_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor,
@@ -114,11 +124,13 @@ INLINE static void cooling_update_part_subgrid(
     struct xpart *xp, double dt, double dt_therm, double time) {
 
   /* Apply ionization */
-  cooling_ionize_part_subgrid(phys_const, us, cosmo, hydro_props,
-                              pressure_floor, cooling, p, xp, dt, dt_therm,
-                              time);
+  const int ionized_this_step = cooling_ionize_part_subgrid(
+      phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
+      dt_therm, time);
 
   /* TODO (future plan): Apply space-time varying UV background */
+
+  return ionized_this_step;
 }
 
 #endif /* SWIFT_GEAR_COOLING_SUBGRID_H */

@@ -38,12 +38,15 @@
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
+ * @return Always 0 -- this subgrid model never floors a particle's energy.
  */
-INLINE static void cooling_update_part_subgrid(
+INLINE static int cooling_update_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
-    struct xpart *xp, double dt, double dt_therm, double time) {}
+    struct xpart *xp, double dt, double dt_therm, double time) {
+  return 0;
+}
 
 #endif /* SWIFT_NONE_COOLING_SUBGRID_H */
