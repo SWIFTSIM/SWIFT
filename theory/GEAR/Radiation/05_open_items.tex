@@ -371,7 +371,21 @@ session are labelled \code{T}\emph{n} (task-graph) and
     ID-tracked erosion table) still reflect the pre-fix numbers --
     updating the raw table cells here was in scope, regenerating every
     downstream figure/prose conclusion was not; treat those sections'
-    narrative as stale until that follow-up lands.
+    narrative as stale until that follow-up lands. \textbf{Cross-check
+    (2026-07-19):} the user independently quoted \citet{Hopkins2023}
+    (FIRE-3) directly: $T_{\rm eqm}/10^4\,{\rm K} \approx \min(6.62,\,
+    0.86/(1+0.22\,\ln[Z/Z_\odot]))$ -- their own text uses $\ln$, not
+    $\log_{10}$. This directly conflicts with this fix's premise (that
+    $\log_{10}$ is correct, verified by $Z/Z_\odot\approx0.231$ landing
+    on $10^4\,$K only under $\log_{10}$). Not re-litigated this pass --
+    the dated fix above was a deliberate, considered correction (not a
+    blind copy), and Draine (2011), the primary source both this
+    logbook and \citet{Hopkins2023} cite, is the actual tie-breaker,
+    not either paper's own possibly-loose notation. \textbf{Flagging,
+    not resolving}: if this ever becomes load-bearing again (e.g.\ a
+    result hinges on the exact $Z/Z_\odot\to T_{\rm collisional}$
+    mapping), check Draine (2011) directly before trusting either
+    reading.
   \item[$\boxtimes$] \textbf{T13 -- confirmed done (2026-07-18)} --
     Gather-time pixel-budget starvation
     guard (design doc:
@@ -388,6 +402,110 @@ session are labelled \code{T}\emph{n} (task-graph) and
     slowing not deadlocking the sparse one's service rate) remains
     unaddressed, per the plan's own note -- only worth revisiting if a
     clumpy test shows it matters in practice.
+  \item[$\boxtimes$] \textbf{T14 -- reference comparison against FIRE's
+    own public code (2026-07-19)} -- Read \code{radfb\_local.c}
+    (\code{HII\_heating\_singledomain()},
+    \code{GALSF\_FB\_FIRE\_RT\_HIIHEATING}) in a local
+    \code{gizmo-public} checkout: the actual Hopkins et al. (2018)
+    Appendix~E reference implementation this model, \citet{Hu2017}, and
+    \citet{Smith2021} all descend from. \textbf{Caution:} the user
+    confirmed FIRE's own production runs do not use Grackle at all
+    (native chemistry network instead), and separately warned this
+    public code may lag the current FIRE-3 algorithm -- confirmed
+    directly: the code's ionization floor is \code{DMAX(current,
+    target)} (never cools hot gas), matching FIRE-2's flat clamp, while
+    the user's own quoted \citet{Hopkins2023} (FIRE-3) text describes
+    \code{min(current + ionization\_heat, T\_eqm)}, matching this
+    model's own \code{min()} (Eq.~\ref{eq:floor}) -- i.e.\ the public
+    code reflects FIRE-2 on this point, not the FIRE-3 paper description
+    the branch should actually be compared against. \textbf{Structural
+    differences found, from the public (FIRE-2-era) code}: (1) no
+    metallicity dependence at all -- \code{HIIRegion\_Temp} is one flat
+    global parameter, independent evidence a flat $T_i$ is a normal way
+    to run this class of model; (2) tag duration is a flat
+    $\min(dt, 10\,{\rm Myr})$ cap, not tied to any rebuild-cadence
+    calculation; (3) neighbour selection is \emph{not} distance-sorted --
+    tree-order candidates with one shared random draw against a
+    per-particle acceptance probability, plus a separate
+    nearest-still-unionized mop-up pass, rather than this model's
+    distance-sorted deterministic spend. \textbf{Directly relevant,
+    from the user's own quoted FIRE-3 paper text (not yet checked
+    against the code)}: FIRE-3 changed neighbour selection again, to the
+    \emph{lowest-density} neighbour among overlapping cells specifically
+    because uniform/nearest selection is biased toward denser,
+    less-volume-filling structures that need more photons to ionize,
+    under-estimating radiative feedback (per an M1-solver comparison
+    the user's quoted FIRE-3 text cites as Hopkins et al. 2020a --
+    not yet added to \code{bibliography.bib}, full reference not in
+    hand). This model uses distance-sorted spend (closest-first),
+    structurally the same failure mode FIRE-3 moved away from --
+    plausible candidate mechanism for the persistent STARBENCH mismatch
+    that survived the $T_i$ regime test (V13) unchanged. Not attempted
+    this session. Full comparison notes (memory,
+    \code{reference\_gizmo\_fire\_rt\_rate\_coupling.md}):
+    \code{~/.claude/projects/-home-darwinr-swiftsim-3/memory/}.
+  \item[$\boxtimes$] \textbf{T15 -- bug fixed (2026-07-19)} --
+    \code{cooling\_get\_mean\_molecular\_weight()}
+    (\code{cooling\_utils.h}) referenced \code{cool\_data}/\code{rho}/
+    \code{m\_H} (mode 3: \code{m\_H} only) without ever declaring them
+    under \code{COOLING\_GRACKLE\_MODE == 2} and \code{== 3} --
+    undeclared-identifier compile errors, so the whole codebase failed
+    to build under \code{--with-cooling=grackle\_2/3}. Confirmed
+    pre-existing (worktree check against the commit immediately before
+    this session) and unrelated to this session's own changes to
+    \code{cooling.c}/\code{radiation.c} -- the required
+    all-four-modes compile check (this project's own stated rule for
+    any \code{src/cooling/grackle/} change) had apparently never been
+    run against this function specifically. Fixed by hoisting the
+    HI/HII/HeI/HeII/HeIII block (previously copy-pasted three times,
+    two of the three copies broken) out to a single
+    \code{COOLING\_GRACKLE\_MODE >= 1} block; each mode now only adds
+    what's specific to it. All four modes verified to build clean;
+    \code{testRadiationRebuildCheck} and
+    \code{test27cellsStars -n 3 -N 3 -r 5} pass.
+  \item[$\square$] \textbf{T16} -- User's stated direction (2026-07-19),
+    not yet implemented: (1) adaptive rebuild cadence (T11) is intended
+    to become the \emph{default}, not stay opt-in indefinitely; (2) the
+    ad-hoc floor added to \code{dt\_HII\_safe}'s adaptive branch this
+    session (missing the same unconditional floor the fixed-cadence
+    branch already had) should be generalized rather than left as a
+    one-off patch -- proposed: a new \code{Stars:min\_star\_timestep}
+    parameter applied to \emph{every} non-gravity star timestep
+    criterion (\code{dt\_evolution}, \code{dt\_HII\_safe}, and any
+    future one), not just the HII-specific term. This would also close
+    a latent, structurally identical gap in \code{dt\_evolution}
+    (\code{feedback\_common.c}, \code{star\_age /
+    (factor*lifetime)}, currently unfloored -- not yet confirmed to
+    misbehave in practice, only shown analytically to have the same
+    unguarded-near-zero shape as the bug just fixed) in the same change
+    rather than as a separate patch. Not implemented this session --
+    scope was check/report only.
+  \item[$\square$] \textbf{T17} -- Pass real ionizing/heating rates
+    into Grackle's chemistry solve (Grackle's own \code{RT\_heating\_rate}/
+    \code{RT\_HI\_ionization\_rate} fields), instead of this model's
+    instant flag-and-floor scheme. User's explicit position
+    (2026-07-19): worth testing, \emph{not} for the current STARBENCH
+    validation effort (both \citet{Hu2017} and \citet{Smith2021}
+    themselves use the same flag-and-floor approach this model does, so
+    rate-coupling would solve a different problem than the one
+    currently being validated against), and not before it -- a
+    standalone follow-up. See T14/memory for how FIRE-3 actually does
+    this (self-consistent solve, Stromgren-value incident flux,
+    self-shielding off) and why it needs an actual local radiation
+    field, not just a number handed to Grackle.
+  \item[$\square$] \textbf{T18} -- Variable ISRF (interstellar radiation
+    field), user's design idea (2026-07-19), not yet implemented.
+    Motivation: proper Grackle coupling needs an ISRF estimate, and the
+    common approach (reusing the gravity tree for this) is, in the
+    user's own words, ``not optimal nor ideal'' and would require new
+    tasks for a lot of engineering cost. \textbf{Proposed alternative,
+    cheaper and (in the user's assessment) ``not less correct''}: inject
+    FUV radiation onto gas particles within the source's kernel, then
+    propagate the FUV field by smoothing over gas neighbours -- possibly
+    using the analytical solution to a hyperbolic diffusion equation,
+    explicitly \emph{not} an M1-closure scheme, specifically to avoid
+    the $\text{CFL}\sim1/c$ constraint M1 would impose. Not scoped or
+    attempted this session.
 \end{itemize}
 
 \subsection{Physical validation}
@@ -479,6 +597,53 @@ session are labelled \code{T}\emph{n} (task-graph) and
     clump-disruption gap to \citeauthor{Smith2021} is a hydro solver
     difference (AREPO's moving-mesh Godunov scheme vs.\ our SPH) rather
     than anything specific to this subgrid radiation model.
+  \item[$\boxtimes$] \textbf{V13 -- done: $T_i$ regime tested and split
+    result found (2026-07-19)} -- New examples
+    \code{StromgrenSphereStarbench} (single star, reproducing
+    \citet{Bisbas2015}'s own STARBENCH semi-empirical D-type formula,
+    Eqns 8/11/28-29) and \code{StromgrenSphereHuSmith2017} (4 co-located
+    stars, reproducing \citet{Hu2017} Appendix~A) validate against
+    STARBENCH directly rather than the papers' own $r_{\rm HII}(t)$
+    trajectories. Motivation: this project's usual
+    $Z/Z_\odot\approx0.231$ workaround for hitting the papers' flat
+    $T_i=10^4\,$K brings real metal-line cooling neither paper's
+    idealized medium has; new debug flags
+    \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K}/
+    \code{FIXED\_NEUTRAL\_TEMPERATURE\_K} (\code{radiation.c}/
+    \code{cooling.c}) decouple $T_i$/$T_o$ from $Z$ entirely, so both
+    examples ran at $Z=0$ (no metal cooling) with $T_i$ forced to
+    exactly $10^4\,$K. \textbf{Result -- a real split, not a uniform
+    pass or fail}: STARBENCH (single star, $n_H=3346\,{\rm cm}^{-3}$)
+    \textbf{passes}, $5.30\%$ error at $t=3\,$Myr (vs.\ $10\%$
+    tolerance). Hu/Smith (4 co-located stars, $n_H\approx107\,{\rm
+    cm}^{-3}$) \textbf{still fails}: windowed median error
+    $32.4\%$ (min $17.1\%$ at $t=1.37\,$Myr, max $81.4\%$ at
+    $t=0.10\,$Myr, $0/82$ snapshots within tolerance) -- essentially
+    unchanged from the same check at this project's original
+    $T_i\approx47{,}500\,$K floor ($33.6\%$ median, $0/34$ within
+    tolerance, smaller box). \textbf{Conclusion: the $T_i$-regime
+    hypothesis is refuted as the primary driver} -- fixing $T_i$ helped
+    the single-source geometry a great deal but left the multi-source
+    geometry's error nearly untouched, which rules out temperature as
+    the dominant shared cause and narrows the open question specifically
+    to whatever differs between one star and four co-located stars
+    (search/gather overlap between sources, budget-sharing, or the
+    measurement itself being noisier for a multi-source front -- see
+    the max-vs-median percentile spread noted during this same
+    investigation). \textbf{Also tested and refuted}: sampling the
+    actual local (compression-heated) precursor temperature just
+    ahead of the front, instead of the fixed far-field $T_o$, for the
+    STARBENCH $c_o$ term -- makes the match \emph{worse}
+    ($R_{\rm STAG}\propto(c_i/c_o)^{4/3}$, so a warmer measured $c_o$
+    \emph{shrinks} the predicted radius, moving it further from
+    the simulation, not closer). T14's FIRE-3 lowest-density-neighbour
+    selection (rather than this model's distance-sorted spend) is the
+    leading remaining hypothesis for the multi-source residual --
+    not yet tested. Both examples committed
+    (\code{examples/SubgridTests/StromgrenSphereStarbench},
+    \code{.../StromgrenSphereHuSmith2017}); this specific $T_i=10^4\,$K
+    run was a one-off isolated test (\code{~/tmp/starbench\_ti1e4\_test},
+    \code{~/tmp/husmith\_ti1e4\_test}), not committed.
   \item[$\boxtimes$] \textbf{V12 -- done: no rebuild cadence reproduces
     the papers at this resolution (2026-07-16)} -- Swept
     \code{gas\_mass=95} over scheme $\times$ \code{rebuild\_time\_myr}
