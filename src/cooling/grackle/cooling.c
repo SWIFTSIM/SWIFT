@@ -968,12 +968,12 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
     return hydro_get_physical_internal_energy(p, xp, cosmo);
   }
 
-#ifdef IONIZATION_FEEDBACK_DEBUG_FORCE_TO_K
+#ifdef IONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K
   /* Debug: hold every non-ionized particle fixed at this temperature too,
      bypassing Grackle's chemistry/cooling solve entirely -- combined with
-     IONIZATION_FEEDBACK_DEBUG_FORCE_TI_K, this reproduces STARBENCH's own
-     idealized two-fixed-state assumption (no continuous cooling physics
-     for either phase, no compression/shock heating of the neutral
+     IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K, this reproduces
+     STARBENCH's own idealized two-fixed-state assumption (no continuous cooling
+     physics for either phase, no compression/shock heating of the neutral
      medium), isolating the ionization scheme's geometry/timing from real
      thermal physics for a direct comparison against the analytic
      formula. Mirrors cooling_ionize_part_subgrid's own re-flooring
@@ -982,7 +982,7 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
     const double mu = cooling_get_mean_molecular_weight(
         phys_const, us, cosmo, hydro_props, cooling, p, xp);
     const double T_o_internal =
-        (double)IONIZATION_FEEDBACK_DEBUG_FORCE_TO_K *
+        (double)IONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K *
         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
     const float u_o = cooling_internal_energy_from_T(
         T_o_internal, mu, phys_const->const_boltzmann_k,
