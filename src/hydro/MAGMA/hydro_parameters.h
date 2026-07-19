@@ -33,10 +33,10 @@
 #include "error.h"
 #include "inline.h"
 
-#define TRADITIONAL_SPH_ACCELERATION_TERM
-#define GRAVITY_DIFF_VELOCITY
+// #define TRADITIONAL_SPH_ACCELERATION_TERM
 // #define USE_ZEROTH_ORDER_VELOCITIES
 // #define USE_STANDARD_KERNEL_GRADIENTS
+#define GRAVITY_DIFF_VELOCITY
 
 /**
  * @file MAGMA/hydro_parameters.h
@@ -53,6 +53,7 @@
 #define const_viscosity_alpha 1.0f
 #define const_viscosity_beta 2.0f
 #define const_viscosity_epsilon 0.1f
+#define const_viscosity_eta_crit 1.0f
 
 /* Rosswog 2020 (eq. 24) constant terms */
 #define const_diffusion_alpha 0.05f

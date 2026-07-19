@@ -2288,6 +2288,14 @@ case "$with_hydro" in
    ;;
    magma2)
       AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
+      AC_DEFINE([TRADITIONAL_SPH_ACCELERATION_TERM], [1], [Use MI1 discretization of MAGMA])
+   ;;
+   magma2-MI1)
+      AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
+      AC_DEFINE([TRADITIONAL_SPH_ACCELERATION_TERM], [1], [Use MI1 discretization of MAGMA])
+   ;;
+   magma2-MI2)
+      AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
    ;;
    gasoline)
       AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])

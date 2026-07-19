@@ -81,7 +81,11 @@
 #elif defined(MAGMA_SPH)
 #include "./hydro/MAGMA/hydro.h"
 #include "./hydro/MAGMA/hydro_iact.h"
-#define SPH_IMPLEMENTATION "MAGMA-2 (Rosswog+ 2020)"
+#ifdef TRADITIONAL_SPH_ACCELERATION_TERM
+#define SPH_IMPLEMENTATION "MAGMA-2-MI1 (Rosswog+ 2020)"
+#else
+#define SPH_IMPLEMENTATION "MAGMA-2-MI2 (Rosswog+ 2020)"
+#endif
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro.h"
 #include "./hydro/Gasoline/hydro_iact.h"
