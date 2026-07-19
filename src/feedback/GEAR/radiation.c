@@ -72,12 +72,22 @@ radiation_get_part_number_hydrogen_atoms(
  * (radiation_get_part_ionized_internal_energy) and per-star
  * (radiation_compute_and_cache_HII_rebuild_interval).
  *
+ * Compile with -DIONIZATION_FEEDBACK_DEBUG_FORCE_TI_K=<value> to force
+ * this to a fixed value regardless of Z -- e.g. to reproduce a paper's
+ * own flat T_i=1e4 K convention at Z=0 (pure hydrogen, no metal-line
+ * cooling), decoupling the ionized-gas temperature from the metallicity
+ * this fit would otherwise require to hit that value (Z/Zsun~0.231 for
+ * 1e4 K, which brings real metal cooling along with it).
+ *
  * @param Z Metal mass fraction.
  * @return Collisional-equilibrium temperature (Kelvin).
  */
 __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
     const double Z) {
 
+#ifdef IONIZATION_FEEDBACK_DEBUG_FORCE_TI_K
+  return IONIZATION_FEEDBACK_DEBUG_FORCE_TI_K;
+#else
   const double Z_sun = 0.02;
   const double ten_to_four_K = 1e4;
 
@@ -89,6 +99,7 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
   } else {
     return 6.62 * ten_to_four_K; /* High-temperature asymptote */
   }
+#endif
 }
 
 /**
