@@ -402,48 +402,6 @@ session are labelled \code{T}\emph{n} (task-graph) and
     slowing not deadlocking the sparse one's service rate) remains
     unaddressed, per the plan's own note -- only worth revisiting if a
     clumpy test shows it matters in practice.
-  \item[$\boxtimes$] \textbf{T14 -- reference comparison against FIRE's
-    own public code (2026-07-19)} -- Read \code{radfb\_local.c}
-    (\code{HII\_heating\_singledomain()},
-    \code{GALSF\_FB\_FIRE\_RT\_HIIHEATING}) in a local
-    \code{gizmo-public} checkout: the actual Hopkins et al. (2018)
-    Appendix~E reference implementation this model, \citet{Hu2017}, and
-    \citet{Smith2021} all descend from. \textbf{Caution:} the user
-    confirmed FIRE's own production runs do not use Grackle at all
-    (native chemistry network instead), and separately warned this
-    public code may lag the current FIRE-3 algorithm -- confirmed
-    directly: the code's ionization floor is \code{DMAX(current,
-    target)} (never cools hot gas), matching FIRE-2's flat clamp, while
-    the user's own quoted \citet{Hopkins2023} (FIRE-3) text describes
-    \code{min(current + ionization\_heat, T\_eqm)}, matching this
-    model's own \code{min()} (Eq.~\ref{eq:floor}) -- i.e.\ the public
-    code reflects FIRE-2 on this point, not the FIRE-3 paper description
-    the branch should actually be compared against. \textbf{Structural
-    differences found, from the public (FIRE-2-era) code}: (1) no
-    metallicity dependence at all -- \code{HIIRegion\_Temp} is one flat
-    global parameter, independent evidence a flat $T_i$ is a normal way
-    to run this class of model; (2) tag duration is a flat
-    $\min(dt, 10\,{\rm Myr})$ cap, not tied to any rebuild-cadence
-    calculation; (3) neighbour selection is \emph{not} distance-sorted --
-    tree-order candidates with one shared random draw against a
-    per-particle acceptance probability, plus a separate
-    nearest-still-unionized mop-up pass, rather than this model's
-    distance-sorted deterministic spend. \textbf{Directly relevant,
-    from the user's own quoted FIRE-3 paper text (not yet checked
-    against the code)}: FIRE-3 changed neighbour selection again, to the
-    \emph{lowest-density} neighbour among overlapping cells specifically
-    because uniform/nearest selection is biased toward denser,
-    less-volume-filling structures that need more photons to ionize,
-    under-estimating radiative feedback (per an M1-solver comparison
-    the user's quoted FIRE-3 text cites as Hopkins et al. 2020a --
-    not yet added to \code{bibliography.bib}, full reference not in
-    hand). This model uses distance-sorted spend (closest-first),
-    structurally the same failure mode FIRE-3 moved away from --
-    plausible candidate mechanism for the persistent STARBENCH mismatch
-    that survived the $T_i$ regime test (V13) unchanged. Not attempted
-    this session. Full comparison notes (memory,
-    \code{reference\_gizmo\_fire\_rt\_rate\_coupling.md}):
-    \code{~/.claude/projects/-home-darwinr-swiftsim-3/memory/}.
   \item[$\boxtimes$] \textbf{T15 -- bug fixed (2026-07-19)} --
     \code{cooling\_get\_mean\_molecular\_weight()}
     (\code{cooling\_utils.h}) referenced \code{cool\_data}/\code{rho}/
@@ -489,9 +447,11 @@ session are labelled \code{T}\emph{n} (task-graph) and
     themselves use the same flag-and-floor approach this model does, so
     rate-coupling would solve a different problem than the one
     currently being validated against), and not before it -- a
-    standalone follow-up. See T14/memory for how FIRE-3 actually does
-    this (self-consistent solve, Stromgren-value incident flux,
-    self-shielding off) and why it needs an actual local radiation
+    standalone follow-up. See memory
+    (\code{reference\_gizmo\_fire\_rt\_rate\_coupling.md}) for how
+    FIRE-3 actually does this (self-consistent solve, Stromgren-value
+    incident flux, self-shielding off) and why it needs an actual local
+    radiation
     field, not just a number handed to Grackle.
   \item[$\square$] \textbf{T18} -- Variable ISRF (interstellar radiation
     field), user's design idea (2026-07-19), not yet implemented.
@@ -636,10 +596,14 @@ session are labelled \code{T}\emph{n} (task-graph) and
     STARBENCH $c_o$ term -- makes the match \emph{worse}
     ($R_{\rm STAG}\propto(c_i/c_o)^{4/3}$, so a warmer measured $c_o$
     \emph{shrinks} the predicted radius, moving it further from
-    the simulation, not closer). T14's FIRE-3 lowest-density-neighbour
-    selection (rather than this model's distance-sorted spend) is the
-    leading remaining hypothesis for the multi-source residual --
-    not yet tested. Both examples committed
+    the simulation, not closer). \textbf{Ruled out}: FIRE-3's
+    lowest-density-neighbour selection (a candidate mechanism raised
+    and then withdrawn this session) -- this model's angular
+    (HealPix pixel-budget) splitting already addresses the mass-biasing
+    problem that selection change targets, via a different mechanism
+    (spatial budget partitioning instead of gather order), so it is not
+    expected to explain the multi-source residual. The mechanism behind
+    the residual itself remains open. Both examples committed
     (\code{examples/SubgridTests/StromgrenSphereStarbench},
     \code{.../StromgrenSphereHuSmith2017}); this specific $T_i=10^4\,$K
     run was a one-off isolated test (\code{~/tmp/starbench\_ti1e4\_test},
