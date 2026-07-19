@@ -118,8 +118,8 @@ session are labelled \code{T}\emph{n} (task-graph) and
     half-width prints the warning at startup as expected; build clean,
     \code{testRadiationRebuildCheck} and
     \code{test27cellsStars -n 3 -N 3 -r 5} both pass.
-  \item[$\boxtimes$] \textbf{T7 -- sub-fixes 1+2 done, sub-fix 3
-    deliberately deferred (2026-07-19)} -- The codebase did not
+  \item[$\boxtimes$] \textbf{T7 -- all three sub-fixes done
+    (2026-07-19)} -- The codebase did not
     actually compile with any feedback model other than GEAR, despite
     radiation being GEAR-specific functionality that generic files
     should not hard-depend on. Original scoping (2026-07-17) assumed a
@@ -181,32 +181,59 @@ session are labelled \code{T}\emph{n} (task-graph) and
         \code{stars.h\_hii\_max}/\code{h\_hii\_max\_active}/\code{h\_hii\_max\_old}
         deliberately left as the accepted, always-on, small per-cell
         cost -- not touched, per the original scoping.
-      \item[$\square$] \textbf{Hide GEAR internals out of
-        \code{runner\_radiation\_feedback.c}.} Despite living in
-        generic \code{src/} alongside model-agnostic files like
-        \code{runner\_others.c}, it directly manipulates
-        \code{si->feedback\_data.radiation.n\_HII\_pixels}, calls the
-        HealPix-specific \code{runner\_hii\_get\_pixel()}
-        (\code{src/runner\_radiation\_feedback.h}), and calls GEAR-only
-        functions directly rather than through a model-dispatched
-        interface the way other runner/feedback interactions do.
-        Narrowing this file back down to genuinely generic
-        cell-traversal/gather logic, with the GEAR-specific
-        consumption/pixel-assignment decisions pushed behind
-        \code{feedback\_iact\_HII\_ionization}-style dispatch, would
-        make the first two fixes sufficient rather than just
-        necessary. \textbf{Deliberately deferred (2026-07-19):} the
-        first two fixes above are already sufficient for the actual
-        goal (non-GEAR builds compile, GEAR build unaffected) --
-        this file itself is gated out of non-GEAR builds entirely, so
-        its internal GEAR-specificity carries zero compile-time risk
-        for other models today. This item is a robustness/cleanliness
-        improvement (a future edit to this file could reintroduce a
-        symbol only \code{feedback\_common.\{h,c\}} defines without
-        the compiler ever objecting, since the file no longer needs to
-        compile against those models), not a required fix -- treat as
-        a separate, standalone refactor, not bundled into a build-fix
-        commit.
+      \item[$\boxtimes$] \textbf{Hide GEAR internals out of
+        \code{runner\_radiation\_feedback.c} -- done (2026-07-19,
+        commit \code{59d10f898}).} Originally deferred the same day as
+        robustness-only (the file was already gated out of non-GEAR
+        builds, so its internal GEAR-specificity carried zero
+        compile-time risk). Picked back up the same session at the
+        user's explicit request ("I feel that in
+        runner\_radiation\_feedback we are exposing too much of GEAR
+        ... for people that would like to use this algorithm"). The
+        file's only two direct touches of
+        \code{sp->feedback\_data.radiation} (\code{n\_HII\_pixels},
+        \code{HII\_region\_last\_rebuild}) are now wrapped behind
+        \code{feedback\_get\_star\_HII\_pixel\_count()}/
+        \code{feedback\_set\_star\_HII\_last\_rebuild()} in
+        \code{feedback\_common.\{h,c\}}, matching the dispatch pattern
+        every other query in this file already used. This turned out
+        to be small and mechanical, not the large refactor originally
+        worried about -- \code{runner\_hii\_get\_pixel()} was correctly
+        judged out of scope (it's part of the shared HEALPix
+        \emph{algorithm}, not GEAR physics, so it stays).
+      \item[$\boxtimes$] \textbf{Same leak, two more call sites -- found
+        and fixed the same pass.} Verifying every \code{--with-subgrid}
+        preset (prompted by the same conversation) surfaced that
+        \code{star\_formation/GEAR/star\_formation.h} and
+        \code{sink/GEAR/sink.h} both call
+        \code{radiation\_is\_part\_tagged\_as\_ionized()} directly,
+        relying on it being transitively pulled in via
+        \code{cooling.h} only when \code{GEAR\_COOLING} happens to be
+        defined (\code{feedback=GEAR \&\& cooling=grackle} together) --
+        undefined under \code{--with-subgrid=AGORA}
+        (\code{star\_formation=GEAR}, \code{feedback=AGORA}), a real,
+        currently-selectable combination. \code{stars/GEAR/stars\_io.h}'s
+        HII-mass snapshot converter had the identical problem reading
+        \code{feedback\_data.radiation} directly. Fixed the same way as
+        the user suggested mid-fix: not a scattered
+        \code{\#ifdef IONIZATION\_FEEDBACK\_LOOP} guard in each caller,
+        but \code{feedback\_is\_part\_tagged\_as\_ionized()} and
+        \code{feedback\_get\_star\_HII\_mass()} added to \emph{every}
+        feedback model's dispatch surface (GEAR\_thermal implements them
+        for real; none/EAGLE\_thermal/EAGLE\_kinetic/AGORA return
+        false/0) -- callers now call one function unconditionally,
+        exactly like every other cross-model query, no macro or
+        conditional include needed at the call site at all.
+        Verified: every \code{--with-subgrid} preset (none, EAGLE,
+        EAGLE-XL, SPIN\_JET\_EAGLE, FLAMINGO, SPIN\_JET\_FLAMINGO, GEAR,
+        GEAR-G3, AGORA, QLA-EAGLE) builds \code{swift}+\code{swift\_mpi}
+        clean, including AGORA, which failed before this fix.
+        \code{testRadiationRebuildCheck}/
+        \code{test27cellsStars -n 3 -N 3 -r 5} still pass under GEAR.
+        \code{QLA} itself still fails, but on a pre-existing, unrelated
+        unused-variable error in \code{cooling/QLA/cooling\_rates.h}
+        with zero diff from master -- not this branch's regression, not
+        fixed here.
     \end{itemize}
     \textbf{Also discovered, not part of the original three-fix
     scoping:} the density/apply signature mismatch in
@@ -271,7 +298,39 @@ session are labelled \code{T}\emph{n} (task-graph) and
     $3.32\to2.44\,$Myr. Neither finding changes T8's verdict -- the
     per-cycle search-radius cap remains the identified structural
     bottleneck -- but both narrow how much of the mismatch was
-    measurement artifact vs.\ real.
+    measurement artifact vs.\ real. \textbf{Update (2026-07-19),
+    verdict refined:} directly tested the cap hypothesis by loosening
+    it far beyond anything previously tried
+    (\code{HII\_radius\_expansion\_factor}=1.5,
+    \code{HII\_max\_radius\_expansion\_tries}=20, i.e.\
+    $1.5^{20}\approx3300\times$ per cycle vs.\ the default
+    $1.1^5\approx1.61\times$) together with a much bigger box (60\,pc
+    half-width vs.\ 40\,pc) to remove the periodic-ceiling confound,
+    fixed cadence, same $Z/Z_\odot\approx0.231$/$T_i\approx47500\,$K
+    setup otherwise. Result: the earlier plateau-at-box-half-width
+    artifact (seen in both the 2026-07-18 \code{bigexpand} and
+    \code{coolfix} tests, which used the much milder
+    \code{HII\_radius\_expansion\_factor}=1.3) is \emph{gone} -- the
+    curve now climbs smoothly past $R_{\rm st}=40.5\,$pc all the way to
+    the (much larger) box edge, confirming the cap really was
+    truncating growth. But the mismatch does \emph{not} close: at the
+    box-valid comparison time ($t=0.78\,$Myr) the error is still
+    63\% (22\,pc simulated vs.\ 60\,pc analytic), and the gap stays
+    large and roughly constant in absolute terms throughout the whole
+    growth phase, not just near the box edge. \textbf{Refined verdict:}
+    the search-radius cap is a real, confirmed contributing factor (it
+    was the direct cause of the box-edge plateau specifically), but not
+    the dominant driver of the overall shape mismatch -- with it
+    effectively removed, something else still paces growth far below
+    the analytic rate. The curve's post-bootstrap shape (a sharp jump
+    to $\approx$22\,pc almost immediately, then a slow, roughly linear
+    climb, no longer a staircase) points at the fixed
+    \code{HII\_region\_rebuild\_time\_Myr}=0.5 cadence itself as the
+    next candidate: T11's adaptive cadence (already implemented,
+    Section~\ref{sec:e10}/below) has so far only been tested at this
+    example's \emph{original}, uncapped default expansion settings --
+    re-running it together with this session's loosened cap is the
+    natural next diagnostic, not yet done.
   \item[$\square$] \textbf{T9} -- Step 4
     (Section~\ref{sec:space-regrid-hhii}, folding \code{h\_hii} into
     \code{space\_regrid}'s top-level cell sizing, committed
