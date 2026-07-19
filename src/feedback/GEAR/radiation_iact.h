@@ -196,6 +196,11 @@ radiation_iact_nonsym_feedback_apply(
       xpj->feedback_data.radiation.delta_p[i] -=
           delta_p_rad * dx[i] / r * cosmo->a;
     }
+
+    /* Set the indication of a radiation-pressure event, matching
+       hit_by_SN/hit_by_winds -- without this, feedback_update_part_radiation()
+       never applies the momentum just accumulated above. */
+    xpj->feedback_data.hit_by_radiation = 1;
   }
 
   /*
