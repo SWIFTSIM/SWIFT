@@ -124,17 +124,16 @@ float feedback_compute_spart_timestep(
       const double next_rebuild_age =
           min((double)sp->feedback_data.radiation.HII_region_next_rebuild_time,
               HII_max_age);
-      double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
-      if (time_to_next_rebuild <= 0.0) {
-        /* The cache is refreshed only by an actual rebuild pass (gated
-           on feedback_is_HII_ionization_active); if that gate stays
-           false for a reason unrelated to timing (e.g. photon budget
-           exhausted), the deadline goes stale and this would otherwise
-           return exactly 0.0 forever, violating dt_min. Fall back to
-           the floor interval: always positive, guarantees progress. */
-        time_to_next_rebuild = feedback_props->HII_rebuild_floor_Myr;
-      }
-      dt_HII_safe = (float)time_to_next_rebuild;
+      const double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
+      /* Floor unconditionally, not just the <= 0.0 (overdue/stale-cache)
+         case: as star_age_beg_step counts up toward the cached deadline
+         on ordinary, on-schedule steps, this remainder shrinks toward
+         0.0 by design (it is meant to guide dt right up to the
+         rebuild), and can pass through a tiny positive value below
+         dt_min in the last step or two before reaching it -- matching
+         the floor already applied in the non-adaptive branch below. */
+      dt_HII_safe = (float)max(time_to_next_rebuild,
+                               feedback_props->HII_rebuild_floor_Myr);
     }
   } else if (HII_region_rebuild_dt < 0.0 && star_age_beg_step < HII_max_age) {
     /* Negative rebuild time means "rebuild every step"
