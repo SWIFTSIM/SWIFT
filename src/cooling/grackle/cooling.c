@@ -968,6 +968,32 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
     return hydro_get_physical_internal_energy(p, xp, cosmo);
   }
 
+#ifdef IONIZATION_FEEDBACK_DEBUG_FORCE_TO_K
+  /* Debug: hold every non-ionized particle fixed at this temperature too,
+     bypassing Grackle's chemistry/cooling solve entirely -- combined with
+     IONIZATION_FEEDBACK_DEBUG_FORCE_TI_K, this reproduces STARBENCH's own
+     idealized two-fixed-state assumption (no continuous cooling physics
+     for either phase, no compression/shock heating of the neutral
+     medium), isolating the ionization scheme's geometry/timing from real
+     thermal physics for a direct comparison against the analytic
+     formula. Mirrors cooling_ionize_part_subgrid's own re-flooring
+     pattern (recomputed every step, not cached). */
+  {
+    const double mu = cooling_get_mean_molecular_weight(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp);
+    const double T_o_internal =
+        (double)IONIZATION_FEEDBACK_DEBUG_FORCE_TO_K *
+        units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+    const float u_o = cooling_internal_energy_from_T(
+        T_o_internal, mu, phys_const->const_boltzmann_k,
+        phys_const->const_proton_mass);
+    hydro_set_physical_internal_energy(p, xp, cosmo, u_o);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_o);
+    hydro_set_physical_internal_energy_dt(p, cosmo, 0.f);
+    return u_o;
+  }
+#endif
+
   /* general particle data */
   gr_float density = cooling_get_physical_density(p, cosmo, cooling);
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo) +
