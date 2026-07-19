@@ -125,89 +125,92 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /**
-   * @brief Structure for the variables only used in the density loop over
-   * neighbours.
-   *
-   * Quantities in this sub-structure should only be accessed in the density
-   * loop over neighbours and the ghost task.
-   */
-  struct {
+  union {
 
-    /*! Neighbour number count. */
-    float wcount;
+    /**
+     * @brief Structure for the variables only used in the density loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the density
+     * loop over neighbours and the ghost task.
+     */
+    struct {
 
-    /*! Derivative of the neighbour number with respect to h. */
-    float wcount_dh;
+      /*! Neighbour number count. */
+      float wcount;
 
-    /*! Derivative of density with respect to h */
-    float rho_dh;
+      /*! Derivative of the neighbour number with respect to h. */
+      float wcount_dh;
 
-  } density;
+      /*! Derivative of density with respect to h */
+      float rho_dh;
 
-  /**
-   * @brief Structure for the variables only used in the gradient loop over
-   * neighbours.
-   *
-   * Quantities should only be accessed in the gradient loop over neighbours
-   * and the extra ghost task.
-   */
-  struct {
+    } density;
 
-    /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
-    struct sym_matrix c_matrix_inv;
+    /**
+     * @brief Structure for the variables only used in the gradient loop over
+     * neighbours.
+     *
+     * Quantities should only be accessed in the gradient loop over neighbours
+     * and the extra ghost task.
+     */
+    struct {
 
-    /*! Gradient of the x-component of the velocity */
-    float gradient_vx[3];
+      /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
+      struct sym_matrix c_matrix_inv;
 
-    /*! Gradient of the y-component of the velocity */
-    float gradient_vy[3];
+      /*! Gradient of the x-component of the velocity */
+      float gradient_vx[3];
 
-    /*! Gradient of the z-component of the velocity */
-    float gradient_vz[3];
+      /*! Gradient of the y-component of the velocity */
+      float gradient_vy[3];
 
-    /*! Gradient of the internal energy */
-    float gradient_u[3];
+      /*! Gradient of the z-component of the velocity */
+      float gradient_vz[3];
 
-  } gradient;
+      /*! Gradient of the internal energy */
+      float gradient_u[3];
 
-  /**
-   * @brief Structure for the variables only used in the force loop over
-   * neighbours.
-   *
-   * Quantities in this sub-structure should only be accessed in the force
-   * loop over neighbours, the extra ghost, drift and kick tasks.
-   */
-  struct {
+    } gradient;
 
-    /*! Particle pressure. */
-    float pressure;
+    /**
+     * @brief Structure for the variables only used in the force loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the force
+     * loop over neighbours, the extra ghost, drift and kick tasks.
+     */
+    struct {
 
-    /*! Particle soundspeed. */
-    float soundspeed;
+      /*! The 'correction matrix' (e.q. 6) - It's symmetric */
+      struct sym_matrix c_matrix;
 
-    /*! Particle signal velocity */
-    float mu_tilde;
+      /*! Gradient of the x-component of the velocity */
+      float gradient_vx[3];
 
-    /*! Time derivative of smoothing length  */
-    float h_dt;
+      /*! Gradient of the y-component of the velocity */
+      float gradient_vy[3];
 
-    /*! The 'correction matrix' (e.q. 6) - It's symmetric */
-    struct sym_matrix c_matrix;
+      /*! Gradient of the z-component of the velocity */
+      float gradient_vz[3];
 
-    /*! Gradient of the x-component of the velocity */
-    float gradient_vx[3];
+      /*! Gradient of the internal energy */
+      float gradient_u[3];
 
-    /*! Gradient of the y-component of the velocity */
-    float gradient_vy[3];
+      /*! Particle pressure. */
+      float pressure;
 
-    /*! Gradient of the z-component of the velocity */
-    float gradient_vz[3];
+      /*! Particle soundspeed. */
+      float soundspeed;
 
-    /*! Gradient of the internal energy */
-    float gradient_u[3];
+      /*! Particle signal velocity */
+      float mu_tilde;
 
-  } force;
+      /*! Time derivative of smoothing length  */
+      float h_dt;
+
+    } force;
+  };
 
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
