@@ -19,6 +19,7 @@
 #ifndef SWIFT_GEAR_STARS_IO_H
 #define SWIFT_GEAR_STARS_IO_H
 
+#include "feedback.h"
 #include "io_properties.h"
 #include "kick.h"
 #include "stars/GEAR/stars_stellar_type.h"
@@ -131,7 +132,7 @@ INLINE static void convert_spart_HII_radius(const struct engine *e,
 
 INLINE static void convert_spart_HII_mass(const struct engine *e,
                                           const struct spart *sp, float *ret) {
-  ret[0] = sp->feedback_data.radiation.mass_HII_region;
+  ret[0] = feedback_get_star_HII_mass(sp);
 }
 
 /**

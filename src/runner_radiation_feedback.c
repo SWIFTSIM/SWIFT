@@ -66,7 +66,7 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
                                 int max_size, int *count_found) {
 
   const int pixel =
-      runner_hii_get_pixel(dx, si->feedback_data.radiation.n_HII_pixels);
+      runner_hii_get_pixel(dx, feedback_get_star_HII_pixel_count(si));
   if (r2 < r2_max && feedback_get_star_ionization_rate(si, pixel) > 0.0)
     runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c,
                              pixel);
@@ -413,7 +413,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     if (feedback_is_HII_ionization_active(si, e)) {
       /* Log when this HII region was (re)built (star_age_beg_step computed
          once, before the retry loop above -- see its own comment). */
-      si->feedback_data.radiation.HII_region_last_rebuild = star_age_beg_step;
+      feedback_set_star_HII_last_rebuild(si, star_age_beg_step);
     }
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     if (feedback_get_star_ionization_rate_max(si) <= 0.0) {

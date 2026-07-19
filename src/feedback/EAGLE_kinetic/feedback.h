@@ -76,6 +76,32 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
 }
 
 /**
+ * @brief Is this gas particle currently tagged as HII-ionized?
+ *
+ * This model does not implement HII photoionization feedback.
+ *
+ * @param p The #part to query.
+ * @param xp The #part's extended data.
+ */
+__attribute__((always_inline)) INLINE static char
+feedback_is_part_tagged_as_ionized(const struct part *p,
+                                   const struct xpart *xp) {
+  return 0;
+}
+
+/**
+ * @brief Current ionized mass of this star's HII region.
+ *
+ * This model does not implement HII photoionization feedback.
+ *
+ * @param sp The #spart to query.
+ */
+__attribute__((always_inline)) INLINE static float feedback_get_star_HII_mass(
+    const struct spart *sp) {
+  return 0.f;
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon

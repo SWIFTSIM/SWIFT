@@ -696,6 +696,65 @@ void feedback_compute_and_cache_HII_rebuild_interval(
 }
 
 /**
+ * @brief Number of active angular pixels this star's ionizing photon budget
+ * is currently split across (1 = spherical, HEALPix disabled).
+ *
+ * Exists so callers outside this feedback model (e.g. the generic
+ * runner_radiation_feedback.c) never need to reach directly into
+ * sp->feedback_data.radiation, a GEAR-specific struct.
+ *
+ * @param sp The #spart to query.
+ */
+int feedback_get_star_HII_pixel_count(const struct spart *sp) {
+  return sp->feedback_data.radiation.n_HII_pixels;
+}
+
+/**
+ * @brief Record the (star-relative) age at which this star's HII region was
+ * last rebuilt.
+ *
+ * @param sp The #spart to update.
+ * @param star_age_beg_step The star's age at the start of the current step.
+ */
+void feedback_set_star_HII_last_rebuild(struct spart *sp,
+                                        double star_age_beg_step) {
+  sp->feedback_data.radiation.HII_region_last_rebuild = star_age_beg_step;
+}
+
+/**
+ * @brief Is this gas particle currently tagged as HII-ionized?
+ *
+ * Thin dispatch wrapper so callers outside this feedback model (e.g.
+ * star_formation/GEAR, sink/GEAR, both of which are selectable
+ * independently of the feedback model) can query ionization state without
+ * depending on this model being the one actually compiled in -- every
+ * feedback model provides this function, matching #radiation_is_part_
+ * tagged_as_ionized() here for GEAR and unconditionally returning false
+ * everywhere else.
+ *
+ * @param p The #part to query.
+ * @param xp The #part's extended data.
+ */
+char feedback_is_part_tagged_as_ionized(const struct part *p,
+                                        const struct xpart *xp) {
+  return radiation_is_part_tagged_as_ionized(p, xp);
+}
+
+/**
+ * @brief Current ionized mass of this star's HII region.
+ *
+ * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR
+ * stars I/O converter, which is compiled whenever stars=GEAR regardless of
+ * the feedback model) can read this without depending on GEAR feedback
+ * being the one actually compiled in.
+ *
+ * @param sp The #spart to query.
+ */
+float feedback_get_star_HII_mass(const struct spart *sp) {
+  return sp->feedback_data.radiation.mass_HII_region;
+}
+
+/**
  * @brief Prepare the feedback fields after a star is born.
  *
  * This function is called in the functions sink_copy_properties_to_star() and

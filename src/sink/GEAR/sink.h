@@ -455,7 +455,7 @@ INLINE static int sink_is_forming(
 
   /* TODO: Update doc */
   /* If you are tagged as ionized, you cannot be star-forming */
-  if (radiation_is_part_tagged_as_ionized(p, xp)) {
+  if (feedback_is_part_tagged_as_ionized(p, xp)) {
     return 0;
   }
 
