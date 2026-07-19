@@ -38,16 +38,21 @@
  * @param xpj Extra particle data (not updated).
  * @param cosmo The cosmological model.
  * @param fb_props Properties of the feedback scheme.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
-                                    const float hi, const float hj,
-                                    struct spart *si, const struct part *pj,
-                                    const struct xpart *xpj,
-                                    const struct cosmology *cosmo,
-                                    const struct feedback_props *fb_props,
-                                    const integertime_t ti_current) {
+runner_iact_nonsym_feedback_density(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *si, const struct part *pj, const struct xpart *xpj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const struct hydro_props *hydro_props,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {
 
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
@@ -81,16 +86,24 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
  * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
  * @param fb_props Properties of the feedback scheme.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
+ * @param time_base The time base used to compute integer times.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
     struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {
+    const struct feedback_props *fb_props,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cooling_function_data *cooling,
+    const integertime_t ti_current, const double time_base) {
 
   const double e_sn = si->feedback_data.energy_ejected;
 

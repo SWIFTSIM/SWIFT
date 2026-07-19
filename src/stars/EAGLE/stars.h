@@ -143,6 +143,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
     const int with_cosmology, const double scale_factor, const double time) {
 
   sp->time_bin = 0;
+  sp->h_hii = 0.0;
   sp->f_E = -1.f;
   sp->count_since_last_enrichment = -1;
   sp->number_of_heating_events = 0.;

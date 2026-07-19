@@ -45,6 +45,11 @@ struct spart {
   /*! Particle smoothing length. */
   float h;
 
+  /*! Particle ionization radius / gamma_k. Unused by this stellar model;
+   * kept as a stub so generic space-level code (e.g. space_regrid.c,
+   * space_split.c) can read it unconditionally across all stars flavours. */
+  float h_hii;
+
   struct {
 
     /* Number of neighbours. */

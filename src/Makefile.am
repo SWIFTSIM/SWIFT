@@ -145,6 +145,7 @@ COMMON_GEAR_SOURCES = \
     feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c \
     feedback/GEAR/feedback_common.c feedback/GEAR/stellar_wind.c
 COMMON_GEAR_SOURCES += feedback/GEAR/radiation.c
+COMMON_GEAR_SOURCES += runner_radiation_feedback.c runner_radiation_feedback.h
 
 GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
 endif
@@ -180,8 +181,8 @@ AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
 AM_SOURCES += runner_doiact_stars.c runner_doiact_black_holes.c runner_doiact_sinks.c runner_ghost.c
 AM_SOURCES += runner_recv.c runner_pack.c
 AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c
-AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c runner_radiation_feedback.c
-AM_SOURCES += runner_sinks.c runner_radiation_feedback.h
+AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c
+AM_SOURCES += runner_sinks.c
 AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c
 AM_SOURCES += cell_unskip.c cell_grid.c cell_init.c
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c
