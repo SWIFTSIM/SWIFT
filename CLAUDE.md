@@ -44,6 +44,11 @@ For debugging, add:
  
 To disable cooling effects for the particles flagged by ionization: CLFAGS+="-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING" ./configure
 
+To force the ionized-gas temperature (`radiation_get_T_collisional_K`) to a
+fixed value regardless of metallicity -- e.g. to reproduce a paper's own flat
+T_i convention at Z=0, decoupled from the Z/Zsun that fit would otherwise
+require and the metal-line cooling that comes with it: CFLAGS+="-DIONIZATION_FEEDBACK_DEBUG_FORCE_TI_K=<value_in_K>" ./configure
+
 ### Grackle cooling modes
 `--with-cooling=grackle_N` (N = 0, 1, 2, 3) sets the compile-time
 `COOLING_GRACKLE_MODE` macro (`configure.ac`, `AC_DEFINE_UNQUOTED`), which
