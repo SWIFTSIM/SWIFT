@@ -575,6 +575,32 @@ session are labelled \code{T}\emph{n} (task-graph) and
     explicitly \emph{not} an M1-closure scheme, specifically to avoid
     the $\text{CFL}\sim1/c$ constraint M1 would impose. Not scoped or
     attempted this session.
+  \item[$\square$] \textbf{T19} -- Two independent mass--temperature
+    relations coexist in the blackbody ionizing-rate fit
+    (Section~\ref{sec:blackbody}):
+    \code{radiation\_get\_individual\_star\_temperature} (a standalone
+    piecewise fit) is never actually called by
+    \code{radiation\_get\_individual\_star\_ionizing\_photon\_emission\_
+    rate\_fit}, which instead derives $T_{\rm eff}$ from $L$ and $R$ via
+    Stefan--Boltzmann (Eq.~\ref{eq:stefan-boltzmann}). Not yet checked
+    whether the two agree numerically across the relevant mass range,
+    or which is authoritative if they disagree, or whether the unused
+    function is dead code that should be removed. Noticed while
+    documenting Section~\ref{sec:blackbody} (2026-07-19), not
+    investigated further.
+  \item[$\square$] \textbf{T20} -- The radiation-pressure momentum
+    recipe (Eq.~\ref{eq:rp-momentum-rate}--\ref{eq:rp-tauIR},
+    Section~\ref{sec:radiation-pressure}: single UV scattering plus
+    $(1+\tau_{\rm IR})$ dust-IR-trapping boost, $\kappa_{\rm IR}=10\,{\rm
+    cm^2\,g^{-1}}$ at $Z_\odot$) is not yet traced to a specific cited
+    source in this codebase. The functional form matches the
+    momentum-driven feedback recipe used across several FIRE papers,
+    but no citation is attached in the code and none is asserted in
+    Section~\ref{sec:radiation-pressure} pending verification. Also
+    still open: no validation example exercises this channel at all
+    (Section~\ref{sec:rp-open}), so the numerical fix in
+    Section~\ref{sec:rp-hit-flag-bug} (momentum now actually applied)
+    has not been checked against any analytic expectation.
 \end{itemize}
 
 \subsection{Physical validation}

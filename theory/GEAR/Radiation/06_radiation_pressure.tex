@@ -1,0 +1,144 @@
+\section{Radiation pressure}
+\label{sec:radiation-pressure}
+
+This section documents the radiation-pressure feedback channel
+(\code{GEARFeedback:radiation\_pressure\_efficiency},
+\code{radiation\_policy\_radiation\_pressure}), a separate mechanism
+from the HII photoionization budget documented in
+Section~\ref{sec:algorithm}: photoionization tags and re-floors gas
+temperature, while radiation pressure injects momentum directly into
+gas neighbouring the star. Both draw on the same per-star bolometric
+luminosity and the same SPH gather around the star, but are otherwise
+independent -- a star can have one policy enabled without the other.
+Not yet covered anywhere else in this logbook; written up here for the
+first time (2026-07-19).
+
+\subsection{Momentum injection: single-scattering plus IR trapping}
+\label{sec:rp-momentum}
+
+Each active star's momentum injection rate is
+(\code{radiation\_get\_star\_physical\_radiation\_pressure},
+\code{src/feedback/GEAR/radiation.c}):
+\begin{equation}
+  \dot p_{\rm rad} = \frac{L_{\rm bol}}{c}\,(1+\tau_{\rm IR}),
+  \label{eq:rp-momentum-rate}
+\end{equation}
+the standard single-UV-scattering-plus-dust-IR-trapping recipe: direct
+absorption/scattering of the star's own UV/optical photons deposits
+$L_{\rm bol}/c$ of momentum per unit time; photons re-radiated in the
+IR by dust can scatter multiple times in an optically thick shell
+before escaping, boosting the momentum transfer by a further factor of
+$(1+\tau_{\rm IR})$ over a single scattering. \textbf{Not yet traced to
+a specific literature source in this codebase} -- the functional form
+matches the momentum-driven feedback recipe used across several FIRE
+papers (e.g.\ the $L/c\,(1+\tau_{\rm IR})$ combination), but no
+citation is attached to this code and none is asserted here; worth
+pinning down before treating the exact opacity normalization below as
+validated against a specific paper (item~T20, Section~\ref{sec:open}).
+
+$L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, set from
+the same blackbody mass--luminosity fit as the ionizing photon rate
+(Eq.~\ref{eq:mass-luminosity}, Section~\ref{sec:blackbody}) and scaled
+by \code{radiation\_pressure\_efficiency} (\code{feedback\_common.c}) --
+an overall dial on this channel independent of the photoionization
+budget, default behaviour unaffected unless explicitly set $\ne1$.
+
+The IR optical depth is
+\begin{equation}
+  \tau_{\rm IR} = \kappa_{\rm IR}\,\Sigma_{\rm gas}, \qquad
+  \kappa_{\rm IR} = 10\,\frac{\rm cm^2}{\rm g}\,\frac{Z}{Z_\odot},
+  \label{eq:rp-tauIR}
+\end{equation}
+(\code{radiation\_get\_physical\_IR\_optical\_depth},
+\code{radiation\_get\_physical\_IR\_opacity}) -- a metallicity-linear
+dust opacity of $10\,{\rm cm^2\,g^{-1}}$ at solar metallicity, a
+standard order-of-magnitude value for dust-processed IR opacity in this
+class of model. $Z$ here is \code{sp->feedback\_data.Z\_star}, the
+SPH-kernel-weighted gas metallicity at the star's own location
+(accumulated in \code{radiation\_iact\_nonsym\_feedback\_density}
+alongside $\nabla\rho_\star$ below, normalized by the same
+$1/h^{d+1}$ factor in \code{feedback\_prepare\_radiation\_feedback}
+that finishes $\nabla\rho_\star$; both are zero, not divided-by-zero,
+for a star with no gas neighbours this step, since
+\code{enrichment\_weight} being zero is checked before the divide).
+
+\subsection{Gas column density: Sobolev approximation}
+\label{sec:rp-sobolev}
+
+$\Sigma_{\rm gas}$ in Eq.~\ref{eq:rp-tauIR} uses the Sobolev
+approximation, the same length-scale trick used for line-of-sight
+column densities in stellar-atmosphere and ISM radiative-transfer
+codes:
+\begin{equation}
+  \Sigma_{\rm gas} = \rho_\star \times
+  \left(h_\star\,\gamma_k + \ell_{\rm Sobolev}\right), \qquad
+  \ell_{\rm Sobolev} = \frac{\rho_\star}{|\nabla\rho_\star|},
+  \label{eq:rp-sobolev}
+\end{equation}
+(\code{radiation\_get\_comoving\_gas\_column\_density\_at\_star}), i.e.\
+the local gas density times an effective path length: the kernel
+support radius $h_\star\gamma_k$ (a floor -- always included, not just
+a fallback) plus the Sobolev length $\rho/|\nabla\rho|$, the
+characteristic distance over which the density itself changes by a
+factor of $e$. $\rho_\star$ is \code{enrichment\_weight} (the star's
+own SPH-averaged local gas density, already computed by the regular
+enrichment density loop, reused here rather than a separate
+accumulator); $\nabla\rho_\star$ is
+\code{sp->feedback\_data.grad\_rho\_star}, an ordinary SPH kernel-gradient
+density estimate accumulated in the same density-loop pass as $Z_\star$
+above. \textbf{Degenerate case handled:} a locally uniform density
+field (zero gradient -- e.g.\ unperturbed glass/grid initial
+conditions, or a star with too few neighbours to resolve a gradient)
+makes $\ell_{\rm Sobolev}$ formally undefined (0/0); the code checks
+$|\nabla\rho_\star|>0$ explicitly and falls back to the kernel-radius
+term alone in that case, rather than propagating a NaN.
+
+\subsection{Distributing the kick to gas particles}
+\label{sec:rp-distribute}
+
+$\dot p_{\rm rad}$ (Eq.~\ref{eq:rp-momentum-rate}) is a single
+star-level rate; distributing it to individual gas neighbours uses the
+same SPH-kernel-weighted-share pattern already used for chemical
+enrichment (\code{radiation\_iact\_nonsym\_feedback\_apply}):
+\begin{equation}
+  \Delta\vec p_j = -\,\dot p_{\rm rad}\,\Delta t_\star\,
+  \frac{m_j w_{ij}}{\rho_\star}\,\hat{\vec r}_{j\star},
+  \label{eq:rp-per-particle}
+\end{equation}
+where $\Delta t_\star$ is the star's own current timestep, $w_{ij}$ the
+kernel weight, $m_j$ the gas particle's mass, and $\hat{\vec r}_{j\star}$
+the unit vector pointing radially outward from the star to the gas
+particle (the code computes $-dx/r$ with $dx \equiv \vec x_\star -
+\vec x_j$, i.e.\ away from the star, with the usual comoving/physical
+$\times\,a$ conversion applied). The result accumulates into
+\code{xpj->feedback\_data.radiation.delta\_p} -- a field distinct from
+the top-level \code{xpj->feedback\_data.delta\_p} used for
+supernova/wind momentum (\code{feedback\_struct.h}), applied separately
+in \code{feedback\_update\_part\_radiation}
+(\code{feedback\_data\_iact.h} -- see the bug fixed in
+Section~\ref{sec:bugs}, \code{hit\_by\_radiation} was never actually
+set until 2026-07-19, so this accumulated momentum was silently
+discarded every step until then).
+
+\subsection{Open questions, not investigated this pass}
+\label{sec:rp-open}
+
+\begin{itemize}
+  \item No validation example exercises this channel at all yet -- every
+    example in Section~\ref{sec:validation} runs with
+    \code{radiation\_pressure\_efficiency=0} (the default) or does not
+    set the \code{radiation\_policy\_radiation\_pressure} bit. With the
+    bug in Section~\ref{sec:bugs} now fixed, the momentum is applied,
+    but no test has yet checked the resulting kick against an analytic
+    expectation (e.g.\ total momentum injected over a known interval
+    vs.\ $\int \dot p_{\rm rad}\,dt$, or a simple radial expansion test
+    analogous to the D-type check in Section~\ref{sec:e10}).
+  \item Eq.~\ref{eq:rp-tauIR}'s $\kappa_{\rm IR}=10\,{\rm
+    cm^2\,g^{-1}}$ at $Z=Z_\odot$ is not yet cross-checked against a
+    specific cited source (item~T20 above).
+  \item Interaction with photoionization not examined: a particle can
+    in principle be both HII-tagged and receiving a radiation-pressure
+    kick simultaneously (the two policies are independent bits); no
+    check yet for whether that combination is physically sensible or
+    double-counts anything.
+\end{itemize}

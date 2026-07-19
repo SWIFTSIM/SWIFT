@@ -1,17 +1,91 @@
 \section{Algorithm}
 \label{sec:algorithm}
 
+\subsection{Ionizing photon rate: blackbody spectrum fit}
+\label{sec:blackbody}
+
+Every active star's ionizing photon rate $\dot N_{\rm ion}$ (the budget
+spent in Section~\ref{sec:photon-budget} below) comes from
+\code{radiation\_get\_individual\_star\_ionizing\_photon\_emission\_
+rate\_fit} (\code{src/feedback/GEAR/radiation.c}), used both directly
+for individual (non-SSP) star particles and to build the IMF-integrated
+lookup table population stars read from. Unlike a simple empirical
+$\dot N_{\rm ion}(M)$ fit, this derives $\dot N_{\rm ion}$ from the
+star's own blackbody spectrum, via a mass $\to$ radius $\to$
+luminosity $\to$ effective temperature chain:
+\begin{align}
+  R(M) &= R_\odot \times
+  \begin{cases}
+    (M/M_\odot)^{0.8} & M < 1\,M_\odot \\
+    (M/M_\odot)^{0.57} & 1 \le M/M_\odot < 8 \\
+    (M/M_\odot)^{0.5} & M/M_\odot \ge 8
+  \end{cases}
+  \label{eq:mass-radius} \\
+  L(M) &= L_\odot \times
+  \begin{cases}
+    0.185\,(M/M_\odot)^{2} & M/M_\odot < 0.43 \\
+    (M/M_\odot)^{4} & 0.43 \le M/M_\odot < 2 \\
+    1.5\,(M/M_\odot)^{3.5} & 2 \le M/M_\odot < 54 \\
+    32000\,(M/M_\odot) & M/M_\odot \ge 54
+  \end{cases}
+  \label{eq:mass-luminosity} \\
+  T_{\rm eff} &= 5780\,{\rm K} \times
+  \left(\frac{L/L_\odot}{(R/R_\odot)^2}\right)^{1/4},
+  \label{eq:stefan-boltzmann}
+\end{align}
+i.e.\ a piecewise power-law mass--radius and mass--luminosity relation
+(\code{radiation\_get\_individual\_star\_radius},
+\code{radiation\_get\_individual\_star\_luminosity}), then $T_{\rm eff}$
+from the Stefan--Boltzmann law applied to $L$ and $R$ directly (not a
+separate mass--temperature fit -- see the note at the end of this
+subsection). $\dot N_{\rm ion}$ is then the photon-number flux of a
+Planck spectrum of temperature $T_{\rm eff}$ above the H-ionizing edge
+$h\nu_0=13.6\,$eV:
+\begin{equation}
+  \dot N_{\rm ion} = \frac{L}{k_B T_{\rm eff}} \times
+  \frac{15}{\pi^4} \int_{x_0}^{\infty} \frac{x^2}{e^x-1}\,dx, \qquad
+  x_0 = \frac{h\nu_0}{k_B T_{\rm eff}},
+  \label{eq:planck-photon-rate}
+\end{equation}
+the standard Planck photon-number integral normalized so the
+$15/\pi^4$ prefactor makes the \emph{bolometric} photon rate exact in
+the $x_0\to0$ limit. The incomplete integral in
+Eq.~\ref{eq:planck-photon-rate} has no closed form, so the code
+evaluates it via the standard series expansion
+\begin{equation}
+  \int_{x_0}^\infty \frac{x^2}{e^x-1}\,dx =
+  \sum_{n=1}^{\infty} \frac{e^{-nx_0}}{n}
+  \left(x_0^2 + \frac{2x_0}{n} + \frac{2}{n^2}\right),
+  \label{eq:planck-series}
+\end{equation}
+truncated at $n=5$ terms (or earlier once $e^{-nx_0}<10^{-10}$) --
+sufficient given $x_0 \gtrsim 3$ for any star hot enough to ionize
+hydrogen at all, so the series converges geometrically fast. If
+$x_0 > 45$ (i.e.\ $e^{-x_0}<10^{-20}$, negligible ionizing output --
+happens for any star with $T_{\rm eff}\lesssim3500\,$K), $\dot N_{\rm
+ion}=0$ is returned directly rather than evaluating the series.
+
+\textbf{Note: two independent mass--temperature relations coexist.}
+\code{radiation\_get\_individual\_star\_temperature} is a separate,
+piecewise mass--temperature fit ($3500\,{\rm K}\,(M/M_\odot)^{0.5}$
+below $1\,M_\odot$, $5800\,{\rm K}\,(M/M_\odot)^{0.5}$ up to
+$8\,M_\odot$, $25000\,{\rm K}\,(M/M_\odot/20)^{0.1}$ above), \emph{not}
+used by Eq.~\ref{eq:stefan-boltzmann} above, which derives $T_{\rm
+eff}$ from $L$ and $R$ via Stefan--Boltzmann instead. Not yet checked
+whether the two are numerically close across the relevant mass range,
+or which one (if either) is authoritative where they disagree -- flagged
+as item~T19, Section~\ref{sec:open}, not investigated this session.
+
 \subsection{Photon budget and recombination cost}
+\label{sec:photon-budget}
 
 The whole algorithm -- one-shot, distance-sorted photon-budget spending
 on the nearest candidate gas particles, closest-first, until exhausted
 -- is the FIRE-2 subgrid photoionization scheme
 \citep[Appendix~E]{Hopkins2018}; Hu et al.\ and Smith et al.\ (and this
 branch) build directly on it. Each active star with ionizing photon
-rate $\dot N_{\rm ion}$ (from
-\code{radiation\_get\_individual\_star\_ionizing\_photon\_emission\_rate\_fit},
-a blackbody mass--luminosity--temperature fit, not a simple linear
-function of stellar mass) gathers candidate gas particles within a
+rate $\dot N_{\rm ion}$ (Eq.~\ref{eq:planck-photon-rate},
+Section~\ref{sec:blackbody}) gathers candidate gas particles within a
 search radius, sorted by distance, and spends its budget on them
 closest-first. For a candidate particle $b$ of mass $m_b$, hydrogen
 mass fraction $X_H$, and physical density $\rho_b$, the number of

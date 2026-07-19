@@ -119,3 +119,49 @@ showed $Z=0$ runs can now approach
 matrix (Section~\ref{sec:validation}) runs at
 $Z/Z_\odot\approx0.231$ instead, which avoids the issue entirely
 (Section~\ref{sec:metallicity}).
+
+\subsection{2026-07-19: radiation pressure momentum computed but never applied}
+\label{sec:rp-hit-flag-bug}
+
+\code{radiation\_iact\_nonsym\_feedback\_apply}
+(\code{src/feedback/GEAR/radiation\_iact.h}, the radiation-pressure
+momentum kick, Section~\ref{sec:radiation-pressure}) correctly computed
+and accumulated $\Delta\vec p_j$ (Eq.~\ref{eq:rp-per-particle}) into
+\code{xpj->feedback\_data.radiation.delta\_p}, but never set
+\code{xpj->feedback\_data.hit\_by\_radiation}. That flag gates two
+things: \code{feedback\_update\_part\_radiation}
+(\code{radiation\_iact.h}) only converts \code{delta\_p} into an actual
+velocity kick if it is set, and
+\code{feedback\_update\_part}'s (\code{feedback/GEAR\_thermal/feedback.c})
+own top-of-function early return checks it alongside
+\code{hit\_by\_SN}/\code{hit\_by\_winds}/tagged-as-ionized -- a
+particle receiving \emph{only} a radiation-pressure kick (no SN, no
+winds, not HII-tagged) would return before ever reaching the radiation
+branch. Net effect: every radiation-pressure momentum kick was
+computed, stored, and then silently reset to zero
+(\code{radiation\_iact.h}'s own reset line) without ever reaching the
+gas particle's velocity -- the whole channel was a structural no-op
+regardless of \code{radiation\_pressure\_efficiency}.
+
+\textbf{How it was found:} read while documenting
+Section~\ref{sec:radiation-pressure} for the first time; noticed
+\code{hit\_by\_radiation} is read/reset in exactly two places in
+\code{radiation\_iact.h} but grepping the whole \code{src/} tree found
+no assignment to \code{1} anywhere. The sibling flags
+\code{hit\_by\_SN}/\code{hit\_by\_winds}
+(\code{feedback/GEAR\_thermal/feedback\_iact.h:274,311}) are both
+correctly set at their own point of momentum deposit, confirming this
+is an isolated omission in the radiation-pressure code path, not a
+different intended design.
+
+\textbf{Fix:} added \code{xpj->feedback\_data.hit\_by\_radiation = 1;}
+immediately after the \code{delta\_p} accumulation in
+\code{radiation\_iact\_nonsym\_feedback\_apply}, matching the
+SN/winds pattern exactly. Committed \code{baf5b1ff5}.
+
+\textbf{Verification:} clean build (both \code{swift} and
+\code{swift\_mpi}); \code{testRadiationRebuildCheck} and
+\code{test27cellsStars -n 3 -N 3 -r 5} pass. No dedicated
+radiation-pressure validation example exists yet to check the kick's
+magnitude against an analytic expectation -- see
+Section~\ref{sec:rp-open}.
