@@ -49,6 +49,12 @@ fixed value regardless of metallicity -- e.g. to reproduce a paper's own flat
 T_i convention at Z=0, decoupled from the Z/Zsun that fit would otherwise
 require and the metal-line cooling that comes with it: CFLAGS+="-DIONIZATION_FEEDBACK_DEBUG_FORCE_TI_K=<value_in_K>" ./configure
 
+To also hold every non-ionized particle fixed at a given temperature,
+bypassing Grackle's cooling/heating entirely for that phase too (combine with
+the flag above to reproduce STARBENCH's own idealized two-fixed-state
+assumption, no compression/shock heating of the neutral medium):
+CFLAGS+="-DIONIZATION_FEEDBACK_DEBUG_FORCE_TO_K=<value_in_K>" ./configure
+
 ### Grackle cooling modes
 `--with-cooling=grackle_N` (N = 0, 1, 2, 3) sets the compile-time
 `COOLING_GRACKLE_MODE` macro (`configure.ac`, `AC_DEFINE_UNQUOTED`), which
