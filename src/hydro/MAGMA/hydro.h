@@ -38,6 +38,7 @@
 #include "pressure_floor.h"
 
 /* System includes */
+#include <float.h>
 #include <string.h>
 
 /**
