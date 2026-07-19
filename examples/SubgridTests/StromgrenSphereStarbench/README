@@ -1,0 +1,113 @@
+# Intro
+Reproduces the STARBENCH project's late-phase D-type expansion test
+(Bisbas et al. 2015, MNRAS 453, 1324, arXiv:1507.05621), Section 4.1.2:
+a single ionizing source at the center of a uniform pure-hydrogen medium,
+density `rho_o = 5.21e-21 g/cm^3` (`n_H ~ 3115 cm^-3`), emitting
+`Q_H = 1e49` photons/s. STARBENCH's own late-phase reference solution --
+twelve independent radiation-hydrodynamics codes, mutually agreeing to
+~1-2% -- is the "STARBENCH equation" (their Eqns 8, 11, 28, 29), not the
+classical Spitzer (1978) D-type formula used by the sibling
+`../StromgrenSphere/` example's `stromgren_analytic_check.py`. Spitzer
+over-predicts the true expansion at late times (the paper's whole point);
+STARBENCH's blend of the exact pressure-driven ODE (their "Raga-I", Eqn 8)
+and the Hosokawa & Inutsuka (2006) shell-inertia ODE ("Raga-II", Eqn 11)
+is the correct target to validate against.
+
+Use `starbench_analytic_check.py` (not `stromgren_analytic_check.py`) to
+compare this run's `r_HII(t)` against that reference solution.
+
+## Temperature: Z=0, this code's own floors, not the papers' flat 1e4 K
+STARBENCH assumes `T_i=1e4 K` (ionized) and `T_o=1e3 K` (neutral) by
+construction of the test itself -- an idealized two-temperature medium no
+participating code actually integrates via a real cooling network. This
+code does not have that option: gas cools/heats via the normal Grackle
+physics. `GEARChemistry:initial_metallicity=0` (literally pure hydrogen,
+matching STARBENCH's own medium exactly) is used rather than the
+`Z/Zsun~0.231` workaround this project's other radiation examples use to
+hit the papers' flat 1e4 K target -- see "What actually happened" below
+for why. At Z=0 this code's own metallicity-dependent
+collisional-equilibrium fit (`radiation_get_T_collisional_K`) gives
+`T_i~47500 K`, not 1e4 K. The STARBENCH comparison is evaluated at
+whatever `T_i`/`T_o` this run actually used
+(`starbench_analytic_check.py --T-ionized-K --T-neutral-K`, defaulting to
+47500/1000), not hardcoded to the papers' own numbers -- this remains a
+valid, precise check even though `T_i` doesn't match the papers'
+convention.
+
+## What actually happened (2026-07-19): the neutral gas was not
+## staying anywhere near `T_o`
+The first version of this example used `Z/Zsun=0.231` (to hit `T_i=1e4 K`
+exactly) and left `SPH:minimal_temperature` at its usual value of 1 K,
+assuming the mismatch between "neutral gas cools/heats freely" and
+STARBENCH's "neutral gas held fixed at `T_o`" would be a minor, second-order
+effect. It measured as the *dominant* one: a direct check of the completed
+3 Myr run found untagged (neutral) gas sitting at **2-5 K** from the very
+first snapshot (`t~0.05 Myr`) onward, not anywhere near `T_o=1000 K`.
+Real metal-line cooling at `Z/Zsun=0.231` (absent from STARBENCH's
+literal pure-H test) combined with no floor to stop it, and the gas just
+kept cooling. A collapsed `T_o` collapses `c_o`
+(`R_STAG = (c_i/c_o)^(4/3) R_St` -- STARBENCH Eqn 14), removing essentially
+all the pressure confinement the late-phase stagnation radius depends on:
+the simulated front kept growing well past the STARBENCH-predicted
+radius instead of leveling off (`r_sim=5.96 pc` vs.\ `R_SB=2.25 pc`
+predicted at `t=3 Myr`, a 165% miss).
+
+Fix: `SPH:minimal_temperature=1000` (floors the neutral gas near `T_o`
+without forcing a full isothermal EOS -- gas can still heat freely via
+compression/shocks, it just can't cool below this) combined with `Z=0`
+(removes the metal-line cooling that was driving the collapse in the
+first place, and is the more literal reproduction of STARBENCH's
+pure-H medium besides). Not yet re-validated against the completed run
+at time of writing -- update this section once it has been.
+
+## Star mass
+STARBENCH specifies `Q_H` directly, not a stellar mass. This code's
+Q_H(mass) fit (`radiation_get_individual_star_ionizing_photon_emission_rate_fit`,
+`src/feedback/GEAR/radiation.c`) gives `Q_H = 1e49 s^-1` at
+`star_mass = 26.75 Msun` -- solved numerically once
+(`starbench_analytic_check.py`'s own `ionizing_photon_rate()`, which is a
+verbatim copy of the same fit used elsewhere in this project) and hardcoded
+as `run.sh`'s default. Re-derive it the same way if the fit ever changes.
+Unaffected by the Z=0 change (Q_H(mass) has no metallicity dependence).
+
+## Resolution
+`gas_mass=0.1 Msun` (default) gives ~770k particles at this box size and
+density. At `Z/Zsun=0.231` (`T_i=1e4 K`) this was ~2.9 particles per
+`R_St=0.319 pc`; at `Z=0` (`T_i~47500 K`), `R_St` grows to `0.507 pc`
+(`alpha_B` drops ~4x at the higher temperature, `R_St ~ alpha_B^{-1/3}`),
+giving ~4.6 particles per `R_St` instead -- slightly better resolved, not
+worse. This is still coarser than the paper's own SPH tests (up to 8e6
+particles, Section 4.2.1) -- a deliberate compromise for a repository
+example that runs in a reasonable wall-clock time. Increase `gas_mass`
+down for a tighter resolution test if needed.
+
+## Box size
+`boxsize=0.01` kpc (10 pc, 5 pc half-width) was originally sized against
+`R_STAG~2.32 pc` at `T_i=1e4 K`. At `Z=0`'s `T_i~47500 K`, `R_STAG` grows
+to **~10.6 pc** (`c_i` alone grows ~2.2x, and `R_STAG ~ c_i^{4/3}`) --
+comfortably beyond this box. Rather than grow the box to match (mass in a
+uniform box scales as `L^3`; covering the full new `R_STAG` with the same
+margin would need a >60x larger particle count at fixed resolution, not
+practical for a repository example), the box was left unchanged and the
+comparison window shrinks accordingly: `R_SB(t)` stays inside the 5 pc
+half-width only until `t~0.59 Myr` (vs.\ the full 3 Myr run), the same
+"limited but still meaningful" tradeoff the sibling `StromgrenSphere`
+example's e10 checks already accept (~1.4 Myr window there). Growth from
+`R_St=0.507 pc` to `5 pc` by the time box-validity ends is still a full
+order of magnitude of dynamic range to compare against.
+
+## Gravity
+`--external-gravity` is passed (matching every other example in this
+family) but no `Potential:` block is configured in `params.yml`, so there
+is no gravitational force in practice -- self-gravity is off entirely,
+matching STARBENCH's own purely hydrodynamical test (Section 4, "The test
+is purely hydrodynamical i.e. it includes no gravity or magnetic fields").
+
+## Usage
+```
+./run.sh
+python3 starbench_analytic_check.py -s snap/snapshot_*.hdf5
+```
+Override any parameter via the matching env var, e.g.
+`gas_mass=0.05 rebuild_time_myr=0.005 ./run.sh` -- see `run.sh` for the
+full list.

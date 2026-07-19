@@ -1,0 +1,140 @@
+#!/bin/bash
+
+# make run.sh fail if a subcommand fails. pipefail matters here specifically:
+# swift's own exit code is piped into `tee output.log`, and without it a
+# crashed/errored swift run still lets the pipeline "succeed" (tee's own
+# exit code), silently producing a run_name output directory that looks
+# complete but only contains a startup-error log.
+set -eo pipefail
+
+# Defaults reproduce STARBENCH's (Bisbas et al. 2015, arXiv:1507.05621)
+# late-phase D-type expansion test: rho_o=5.21e-21 g/cm3 (n_H~3115/cm3),
+# Q_H=1e49 photons/s (star_mass=26.75 Msun in this code's mass-luminosity
+# fit), T_i=1e4 K, T_o=1e3 K, t_end=3.0 Myr. See README for the full
+# parameter derivation and the residual mismatches accepted vs. the paper's
+# idealized two-temperature test.
+n_threads=${n_threads:=8}  #Number of threads to use
+gas_density=${gas_density:=3115} #Gas density in atom/cm^3 -- STARBENCH's rho_o=5.21e-21 g/cm3
+gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun) -- ~2.9 particles across R_St, a resolution
+                                    #compromise vs. the paper's own SPH tests (up to 8e6 particles); see README.
+star_mass=${star_mass:=26.75} #Star mass giving Q_H=1e49 photons/s in this code's fit
+star_type=${star_type:="single_star"}
+with_cooling=${with_cooling:=1}
+L=${boxsize:=0.01} #boxsize in kpc (10 pc, ~2.16x R_STAG=2.32 pc half-width margin)
+time_end=${time_end:=3.068e-3} #TimeIntegration:time_end override (internal units) -- 3.0 Myr
+dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units). Must stay
+                        #below time_end (engine_config() errors otherwise) -- lower
+                        #this if you shorten time_end below the default.
+initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override --
+                        #Z=0, literally pure hydrogen matching STARBENCH's own medium; gives this
+                        #code's own T_i~47500 K floor, not the papers' flat 1e4 K. See README.
+rebuild_time_myr=${rebuild_time_myr:=0.01} #GEARFeedback:HII_rebuild_time_Myr override (only used if adaptive_rebuild_cadence=0)
+adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=1} #GEARFeedback:HII_adaptive_rebuild_cadence override:
+                        #0 = fixed cadence (rebuild_time_myr above), 1 = physically-derived
+                        #per-star cadence (ignores rebuild_time_myr) -- on by default (T11)
+rebuild_safety_factor=${rebuild_safety_factor:=0.2} #GEARFeedback:HII_rebuild_safety_factor override
+                        #(only used if adaptive_rebuild_cadence=1)
+max_search_radius=${max_search_radius:=0.0049} #Stars:HII_max_search_radius override (internal units, 4.9 pc,
+                        #just inside the 5 pc box half-width)
+max_retry_full_buffer=${max_retry_full_buffer:=30} #Stars:HII_max_retry_full_buffer override
+max_radius_expansion_tries=${max_radius_expansion_tries:=5} #Stars:HII_max_radius_expansion_tries override
+radius_expansion_factor=${radius_expansion_factor:=1.1} #Stars:HII_radius_expansion_factor override
+run_name=${run_name:=""}
+restart=${restart:=0}
+
+# Remove the ICs
+if [ -e ICs_starbench.hdf5 ]
+then
+    rm ICs_starbench.hdf5
+fi
+
+#Create the ICs if they do not exist
+if [ ! -e ICs_starbench.hdf5 ]
+then
+    echo "Generating initial conditions to run the example..."
+    python3 makeIC.py --boxsize $L --rho $gas_density \
+		--mass $gas_particle_mass --star_mass $star_mass \
+		--star_type $star_type \
+	    -o ICs_starbench.hdf5
+fi
+
+# Get the Grackle cooling table
+if [ ! -e CloudyData_UVB=HM2012.h5 ]
+then
+    echo "Fetching the Cloudy tables required by Grackle..."
+    ./getGrackleCoolingTable.sh
+fi
+
+if [ ! -e POPIIsw.h5 ]
+then
+    echo "Fetching the chemistry tables..."
+    ./getChemistryTable.sh
+fi
+
+# Create output directory
+DIR=snap
+if [ -d "$DIR" ];
+then
+    if [ "$restart" -ne 1 ]; then
+	echo "$DIR directory exists. Its content will be removed."
+	rm -r $DIR
+    fi
+else
+    echo "$DIR directory does not exists. It will be created."
+    mkdir $DIR
+fi
+
+printf "Running simulation..."
+
+if [ "$restart" -eq 1 ]; then
+    runtime_param="--restart --verbose=0"
+else
+    runtime_param="--verbose=0"
+fi
+
+if [ "$with_cooling" -eq 1 ]; then
+../../../swift --hydro --stars --external-gravity --feedback --cooling \
+		   --sync --limiter $runtime_param --threads=$n_threads \
+		   -P TimeIntegration:time_end:$time_end \
+		   -P TimeIntegration:dt_max:$dt_max \
+		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
+		   -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
+		   -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
+		   -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
+		   -P Stars:HII_max_search_radius:$max_search_radius \
+		   -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
+		   -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
+		   -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
+		   params.yml 2>&1 | tee output.log
+else
+../../../swift --hydro --stars --external-gravity --feedback \
+		--sync --limiter $runtime_param --threads=$n_threads \
+	       -P TimeIntegration:time_end:$time_end \
+	       -P TimeIntegration:dt_max:$dt_max \
+	       -P GEARChemistry:initial_metallicity:$initial_metallicity \
+	       -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
+		   -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
+		   -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
+		   -P Stars:HII_max_search_radius:$max_search_radius \
+		   -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
+		   -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
+		   -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
+		   params.yml 2>&1 | tee output.log
+fi
+
+if [ -z "$run_name" ]; then
+    echo "run_name is empty."
+else
+    if [ -d "$run_name" ]; then
+	echo "$run_name directory exists. Nothing will be moved."
+    else
+	echo "$run_name directory does not exists. It will be created."
+	mkdir -p $run_name
+	mv snap $run_name
+	mv output.log $run_name
+	mv timesteps.txt $run_name
+	mv statistics.txt $run_name
+	mv unused_parameters.yml $run_name
+	mv used_parameters.yml $run_name
+    fi
+fi
