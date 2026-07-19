@@ -58,6 +58,7 @@ Usage:
 import argparse
 import glob
 
+import h5py
 import numpy as np
 from astropy import constants as const
 from astropy import units as u
@@ -289,7 +290,61 @@ def read_simulated_r_hii(snapshot_glob):
         n_stars_found,
         n_H_atom_cc,
         boxsize_kpc * u.kpc,
+        files,
     )
+
+
+def measure_precursor_temperature_K(filename, r_hii_pc, shell_width_pc=5.0):
+    """Median temperature of never-ionized gas in a thin shell just outside
+    the current r_hii(t) front.
+
+    STARBENCH's T_o is meant to be the undisturbed exterior temperature,
+    but a real D-type expansion does hydrodynamic work on the swept-up
+    neutral gas ahead of the front, heating a precursor shell well above
+    the far-field floor before that gas is ever ionized -- an effect the
+    idealized two-state analytic model has no term for. Sampling the
+    actual local temperature there, instead of the fixed far-field floor,
+    gives c_o the value the front is actually pushing against.
+
+    @return Median T [K] in the shell, or None if it's empty (e.g. r_hii_pc
+    already exceeds the box).
+    """
+    with h5py.File(filename, "r") as h:
+        stars = h["PartType4"]
+        if len(stars["Coordinates"]) == 0:
+            return None
+        star_ids = stars["ParticleIDs"][:]
+        cluster_pos_kpc = stars["Coordinates"][:].mean(axis=0)
+        box_kpc = h["Header"].attrs["BoxSize"]
+
+        gas = h["PartType0"]
+        pos_kpc = gas["Coordinates"][:]
+        never = ~np.isin(gas["HIIStarIDs"][:], star_ids)
+
+        dx = pos_kpc - cluster_pos_kpc
+        dx -= box_kpc * np.round(dx / box_kpc)
+        r_pc = np.linalg.norm(dx, axis=1) * 1000.0
+
+        shell = never & (r_pc >= r_hii_pc) & (r_pc < r_hii_pc + shell_width_pc)
+        if not np.any(shell):
+            return None
+
+        u_L = h["Units"].attrs["Unit length in cgs (U_L)"][0]
+        u_t = h["Units"].attrs["Unit time in cgs (U_t)"][0]
+        u_to_cgs = (u_L / u_t) ** 2  # internal energy unit -> erg/g
+
+        X_HI = gas["HI"][shell]
+        X_HII = gas["HII"][shell]
+        X_HeI = gas["HeI"][shell]
+        X_HeII = gas["HeII"][shell]
+        X_HeIII = gas["HeIII"][shell]
+        inv_mu = X_HI + 2.0 * X_HII + 0.25 * X_HeI + 0.5 * X_HeII + 0.75 * X_HeIII
+        mu = 1.0 / np.clip(inv_mu, 1e-10, None)
+
+        u_cgs = gas["InternalEnergies"][shell] * u_to_cgs
+        gamma_m1 = 2.0 / 3.0  # monatomic ideal gas, matching this project's EoS
+        T = u_cgs * gamma_m1 * mu * const.m_p.cgs.value / const.k_B.cgs.value
+        return float(np.median(T))
 
 
 def main():
@@ -316,9 +371,17 @@ def main():
         "to hit Hu/Smith's own convention.",
     )
     parser.add_argument("--T-neutral-K", type=float, default=1e3, dest="T_neutral_K")
+    parser.add_argument(
+        "--precursor-shell-pc",
+        type=float,
+        default=5.0,
+        dest="precursor_shell_pc",
+        help="Width (pc) of the never-ionized shell just outside r_hii(t) "
+        "sampled for the measured-T_o recheck (default: 5.0).",
+    )
     args = parser.parse_args()
 
-    t_sim, r_sim, star_mass_msun, n_stars, n_H, boxsize = read_simulated_r_hii(
+    t_sim, r_sim, star_mass_msun, n_stars, n_H, boxsize, files = read_simulated_r_hii(
         args.snapshot_glob
     )
     box_half_width = 0.5 * boxsize
@@ -369,8 +432,53 @@ def main():
     verdict = "PASS" if rel_error <= args.tol else "FAIL"
     print(
         f"\nComparison time: t={t_c:.4g}  r_sim={r_c:.4g} pc  "
-        f"R_SB={R_SB_c:.4g} pc  rel_error={rel_error:.2%}  [{verdict}]"
+        f"R_SB={R_SB_c:.4g} pc  rel_error={rel_error:.2%}  [{verdict}]  "
+        f"(fixed T_o={args.T_neutral_K:.0f} K)"
     )
+
+    # Recheck against the measured local precursor temperature instead of
+    # the fixed far-field T_o: a real D-type front does hydrodynamic work
+    # on the swept-up neutral gas ahead of it, heating a precursor shell
+    # the idealized two-state STARBENCH model has no term for -- see
+    # measure_precursor_temperature_K's docstring.
+    T_precursor_K = measure_precursor_temperature_K(
+        files[last], r_c, shell_width_pc=args.precursor_shell_pc
+    )
+    R_SB_precursor = None
+    if T_precursor_K is not None:
+        c_o_precursor = (np.sqrt(const.k_B * T_precursor_K * u.K / const.m_p)).to(
+            u.km / u.s
+        )
+        _, _, R_SB_precursor_curve = starbench_curve(
+            t_grid.to(u.Myr).value,
+            R_St.to(u.pc).value,
+            c_i.value,
+            c_o_precursor.value,
+            T_i_K=args.T_ionized_K,
+            T_o_K=T_precursor_K,
+        )
+        R_SB_precursor = np.interp(
+            t_c.to(u.Myr).value, t_grid.to(u.Myr).value, R_SB_precursor_curve
+        )
+        rel_error_precursor = abs(r_c - R_SB_precursor) / R_SB_precursor
+        verdict_precursor = "PASS" if rel_error_precursor <= args.tol else "FAIL"
+        print(
+            f"Measured local precursor T_o={T_precursor_K:.4g} K "
+            f"(median, never-ionized gas in [{r_c:.1f}, "
+            f"{r_c + args.precursor_shell_pc:.1f}] pc shell)  "
+            f"c_o={c_o_precursor:.4g}"
+        )
+        print(
+            f"Comparison time: t={t_c:.4g}  r_sim={r_c:.4g} pc  "
+            f"R_SB={R_SB_precursor:.4g} pc  rel_error={rel_error_precursor:.2%}  "
+            f"[{verdict_precursor}]  (measured precursor T_o)"
+        )
+    else:
+        print(
+            f"No never-ionized gas found in the [{r_c:.1f}, "
+            f"{r_c + args.precursor_shell_pc:.1f}] pc shell -- skipping the "
+            f"measured-T_o recheck."
+        )
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(
@@ -383,7 +491,15 @@ def main():
     )
     ax.plot(t_grid, R_I, ":", color="grey", label="Raga-I (Eqn 8)")
     ax.plot(t_grid, R_II, "-.", color="grey", label="Raga-II (Eqn 11)")
-    ax.plot(t_grid, R_SB, "--", color="black", label="STARBENCH (Eqns 28-29)")
+    ax.plot(t_grid, R_SB, "--", color="black", label="STARBENCH (fixed $T_o$)")
+    if T_precursor_K is not None:
+        ax.plot(
+            t_grid,
+            R_SB_precursor_curve,
+            "--",
+            color="#1f77b4",
+            label=f"STARBENCH (measured precursor $T_o$={T_precursor_K:.3g} K)",
+        )
     ax.axhline(
         box_half_width.to(u.pc).value,
         color="firebrick",
