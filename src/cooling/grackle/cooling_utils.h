@@ -155,13 +155,14 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
       u, phys_const, hydro_props, cooling);
   return mu;
 
-  /* Grackle mode 1: Only HI, HII, HeI, HeII, and HeIII species */
-#elif COOLING_GRACKLE_MODE == 1
+#elif COOLING_GRACKLE_MODE >= 1
+  /* HI, HII, HeI, HeII, HeIII are tracked in every mode >= 1 -- shared by
+     modes 1-3 instead of re-declared (and, for modes 2-3, previously
+     forgotten) in each one. */
   const struct cooling_xpart_data *cool_data = &xp->cooling_data;
   const double rho = hydro_get_physical_density(p, cosmo);
   const double m_H = phys_const->const_proton_mass;
 
-  /* Extract mass fractions for various species from the cooling data */
   const double XHI = cool_data->HI_frac;
   const double XHII = cool_data->HII_frac;
   const double XHeI = cool_data->HeI_frac;
@@ -174,86 +175,44 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   const double nHeII = XHeII * rho / (4 * m_H);
   const double nHeIII = XHeIII * rho / (4 * m_H);
 
-  /* Calculate total number of electrons (nel) */
+#if COOLING_GRACKLE_MODE == 1
   const double nel = nHII + nHeII + 2 * nHeIII;
-
-  /* Compute the molecular weight using the species mass fractions */
   const double total_density = nHI + nHII + nHeI + nHeII + nHeIII + nel;
   const double mu =
       ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4) / total_density;
-
   return mu;
 
-  /* Grackle mode 2: Add species like H2I and H2II to the molecular weight
-   * calculation */
-#elif COOLING_GRACKLE_MODE == 2
-  const double XHeI = cool_data->HeI_frac;
-  const double XHeII = cool_data->HeII_frac;
-  const double XHeIII = cool_data->HeIII_frac;
+#else /* COOLING_GRACKLE_MODE >= 2: also track H2I, H2II */
   const double XH2I = cool_data->H2I_frac;
   const double XH2II = cool_data->H2II_frac;
-  const double XHI = cool_data->HI_frac;
-  const double XHII = cool_data->HII_frac;
-
-  const double nHI = XHI * rho / m_H;
-  const double nHII = XHII * rho / m_H;
-  const double nHeI = XHeI * rho / (4 * m_H);  // He is ~4 times heavier than H
-  const double nHeII = XHeII * rho / (4 * m_H);
-  const double nHeIII = XHeIII * rho / (4 * m_H);
-
   const double nH2I = XH2I * rho / (2 * m_H);  // H2 is 2 times the mass of H
   const double nH2II = XH2II * rho / (2 * m_H);
 
-  /* Calculate total number of electrons (nel) */
+#if COOLING_GRACKLE_MODE == 2
   const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
-
-  /* Compute the molecular weight using the species mass fractions */
   const double total_density =
       nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II + nel;
-  double mu =
+  const double mu =
       ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2) /
       total_density;
-
   return mu;
 
-  /* Grackle mode 3: Add species like H2I, H2II, HDI, and electrons to the
-   * molecular weight calculation */
-#elif COOLING_GRACKLE_MODE == 3
-  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
-  const double rho = hydro_get_physical_density(p, cosmo);
-  const double XHeI = cool_data->HeI_frac;
-  const double XHeII = cool_data->HeII_frac;
-  const double XHeIII = cool_data->HeIII_frac;
-  const double XH2I = cool_data->H2I_frac;
-  const double XH2II = cool_data->H2II_frac;
-  const double XHI = cool_data->HI_frac;
-  const double XHII = cool_data->HII_frac;
+#else  /* COOLING_GRACKLE_MODE == 3: also track HDI */
   const double XHDI = cool_data->HDI_frac;
-
-  const double nHI = XHI * rho / m_H;
-  const double nHII = XHII * rho / m_H;
-  const double nHeI = XHeI * rho / (4 * m_H);  // He is ~4 times heavier than H
-  const double nHeII = XHeII * rho / (4 * m_H);
-  const double nHeIII = XHeIII * rho / (4 * m_H);
-
-  const double nH2I = XH2I * rho / (2 * m_H);  // H2 is 2 times the mass of H
-  const double nH2II = XH2II * rho / (2 * m_H);
-
   const double nHDI = XHDI * rho / (3 * m_H);  // HD is 3 times the mass of H
 
-  /* Calculate total number of electrons (nel) */
   const double nel = nHII + nHeII + 2 * nHeIII + nH2II;
-
-  /* Compute the molecular weight using the species mass fractions */
   const double total_density =
       nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II + nHDI + nel;
-  double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 +
-               nHDI * 3) /
-              total_density;
-
+  const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
+                     (nH2I + nH2II) * 2 + nHDI * 3) /
+                    total_density;
   return mu;
-#else
-  /* Default case: Error if cooling model is not valid */
+#endif /* COOLING_GRACKLE_MODE == 3 */
+#endif /* COOLING_GRACKLE_MODE >= 2 */
+#endif /* COOLING_GRACKLE_MODE >= 1 */
+
+#if COOLING_GRACKLE_MODE < 0 || COOLING_GRACKLE_MODE > 3
 #error "Invalid COOLING_GRACKLE_MODE"
 #endif
 }
