@@ -418,38 +418,61 @@ def main():
     # per snapshot).
     R_SB_at_t_sim = np.interp(t_sim.to(u.Myr).value, t_grid.to(u.Myr).value, R_SB)
 
+    # The comparison window is every snapshot where the *analytic
+    # prediction itself* is still within the box (STARBENCH assumes an
+    # unbounded uniform medium; once R_SB exceeds the box half-width the
+    # formula is being asked a question the box's own periodicity can no
+    # longer answer). Report the error across this whole window rather
+    # than a single point -- a single "last valid" instant can land
+    # anywhere in a still-transient part of the curve and isn't
+    # representative of how well the run matches STARBENCH overall.
     r_sim_pc = r_sim.to(u.pc).value
     box_valid = R_SB_at_t_sim <= box_half_width.to(u.pc).value
     alive = r_sim_pc > 0
     ok = box_valid & alive
     if not np.any(ok):
         raise RuntimeError("No box-valid, alive snapshot to compare at.")
-    last = np.where(ok)[0][-1]
-    t_c = t_sim[last]
-    r_c = r_sim_pc[last]
-    R_SB_c = R_SB_at_t_sim[last]
-    rel_error = abs(r_c - R_SB_c) / R_SB_c
-    verdict = "PASS" if rel_error <= args.tol else "FAIL"
+    window = np.where(ok)[0]
+    t_w = t_sim[window]
+    r_w = r_sim_pc[window]
+    R_SB_w = R_SB_at_t_sim[window]
+    rel_error_w = np.abs(r_w - R_SB_w) / R_SB_w
+
     print(
-        f"\nComparison time: t={t_c:.4g}  r_sim={r_c:.4g} pc  "
-        f"R_SB={R_SB_c:.4g} pc  rel_error={rel_error:.2%}  [{verdict}]  "
-        f"(fixed T_o={args.T_neutral_K:.0f} K)"
+        f"\nComparison window: t=[{t_w[0]:.4g}, {t_w[-1]:.4g}] "
+        f"({len(window)} snapshots), fixed T_o={args.T_neutral_K:.0f} K"
+    )
+    print(f"{'t [Myr]':>9} {'r_sim [pc]':>11} {'R_SB [pc]':>11} {'rel_error':>10}")
+    for tt, rr, RR, ee in zip(t_w, r_w, R_SB_w, rel_error_w):
+        print(f"{tt.value:9.4g} {rr:11.4g} {RR:11.4g} {ee:9.2%}")
+    n_pass = np.sum(rel_error_w <= args.tol)
+    median_error = np.median(rel_error_w)
+    verdict = "PASS" if median_error <= args.tol else "FAIL"
+    print(
+        f"Window summary: min={rel_error_w.min():.2%} (t={t_w[np.argmin(rel_error_w)]:.4g})  "
+        f"median={median_error:.2%}  max={rel_error_w.max():.2%} "
+        f"(t={t_w[np.argmax(rel_error_w)]:.4g})  "
+        f"{n_pass}/{len(window)} snapshots within tol={args.tol:.0%}  "
+        f"[{verdict} by median]"
     )
 
-    # Recheck against the measured local precursor temperature instead of
-    # the fixed far-field T_o: a real D-type front does hydrodynamic work
-    # on the swept-up neutral gas ahead of it, heating a precursor shell
-    # the idealized two-state STARBENCH model has no term for -- see
-    # measure_precursor_temperature_K's docstring.
-    T_precursor_K = measure_precursor_temperature_K(
-        files[last], r_c, shell_width_pc=args.precursor_shell_pc
-    )
-    R_SB_precursor = None
-    if T_precursor_K is not None:
+    # Same window, but against the measured local precursor temperature
+    # instead of the fixed far-field T_o: a real D-type front does
+    # hydrodynamic work on the swept-up neutral gas ahead of it, heating a
+    # precursor shell the idealized two-state STARBENCH model has no term
+    # for -- see measure_precursor_temperature_K's docstring.
+    t_prec, err_prec, T_prec_list = [], [], []
+    R_SB_precursor_curve = None
+    for idx, tt, rr in zip(window, t_w, r_w):
+        T_precursor_K = measure_precursor_temperature_K(
+            files[idx], rr, shell_width_pc=args.precursor_shell_pc
+        )
+        if T_precursor_K is None:
+            continue
         c_o_precursor = (np.sqrt(const.k_B * T_precursor_K * u.K / const.m_p)).to(
             u.km / u.s
         )
-        _, _, R_SB_precursor_curve = starbench_curve(
+        _, _, curve = starbench_curve(
             t_grid.to(u.Myr).value,
             R_St.to(u.pc).value,
             c_i.value,
@@ -457,27 +480,29 @@ def main():
             T_i_K=args.T_ionized_K,
             T_o_K=T_precursor_K,
         )
-        R_SB_precursor = np.interp(
-            t_c.to(u.Myr).value, t_grid.to(u.Myr).value, R_SB_precursor_curve
-        )
-        rel_error_precursor = abs(r_c - R_SB_precursor) / R_SB_precursor
-        verdict_precursor = "PASS" if rel_error_precursor <= args.tol else "FAIL"
+        R_SB_p = np.interp(tt.to(u.Myr).value, t_grid.to(u.Myr).value, curve)
+        t_prec.append(tt.value)
+        err_prec.append(abs(rr - R_SB_p) / R_SB_p)
+        T_prec_list.append(T_precursor_K)
+        if idx == window[-1]:
+            R_SB_precursor_curve = curve
+
+    if err_prec:
+        err_prec = np.array(err_prec)
+        median_error_prec = np.median(err_prec)
+        verdict_prec = "PASS" if median_error_prec <= args.tol else "FAIL"
         print(
-            f"Measured local precursor T_o={T_precursor_K:.4g} K "
-            f"(median, never-ionized gas in [{r_c:.1f}, "
-            f"{r_c + args.precursor_shell_pc:.1f}] pc shell)  "
-            f"c_o={c_o_precursor:.4g}"
-        )
-        print(
-            f"Comparison time: t={t_c:.4g}  r_sim={r_c:.4g} pc  "
-            f"R_SB={R_SB_precursor:.4g} pc  rel_error={rel_error_precursor:.2%}  "
-            f"[{verdict_precursor}]  (measured precursor T_o)"
+            f"\nMeasured-precursor-T_o window summary "
+            f"(T_o ranged {min(T_prec_list):.4g}-{max(T_prec_list):.4g} K): "
+            f"min={err_prec.min():.2%}  median={median_error_prec:.2%}  "
+            f"max={err_prec.max():.2%}  "
+            f"{np.sum(err_prec <= args.tol)}/{len(err_prec)} within tol  "
+            f"[{verdict_prec} by median]"
         )
     else:
         print(
-            f"No never-ionized gas found in the [{r_c:.1f}, "
-            f"{r_c + args.precursor_shell_pc:.1f}] pc shell -- skipping the "
-            f"measured-T_o recheck."
+            "\nNo never-ionized gas found near the front in this window -- "
+            "skipping the measured-T_o recheck."
         )
 
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -492,13 +517,14 @@ def main():
     ax.plot(t_grid, R_I, ":", color="grey", label="Raga-I (Eqn 8)")
     ax.plot(t_grid, R_II, "-.", color="grey", label="Raga-II (Eqn 11)")
     ax.plot(t_grid, R_SB, "--", color="black", label="STARBENCH (fixed $T_o$)")
-    if T_precursor_K is not None:
+    if R_SB_precursor_curve is not None:
         ax.plot(
             t_grid,
             R_SB_precursor_curve,
             "--",
             color="#1f77b4",
-            label=f"STARBENCH (measured precursor $T_o$={T_precursor_K:.3g} K)",
+            label=f"STARBENCH (measured precursor $T_o$={T_prec_list[-1]:.3g} K, "
+            "last window point)",
         )
     ax.axhline(
         box_half_width.to(u.pc).value,
@@ -507,12 +533,12 @@ def main():
         alpha=0.6,
         label="Box half-width",
     )
-    ax.axvline(
-        t_c.to(u.Myr).value,
+    ax.axvspan(
+        t_w[0].to(u.Myr).value,
+        t_w[-1].to(u.Myr).value,
         color="black",
-        linestyle="-.",
-        alpha=0.4,
-        label="Comparison point",
+        alpha=0.08,
+        label="Comparison window",
     )
     ax.set_xlabel("Time [Myr]")
     ax.set_ylabel(r"HII region radius $r_{\rm HII}$ [pc]")
