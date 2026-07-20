@@ -1628,7 +1628,7 @@ int main(int argc, char *argv[]) {
     message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
-    pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1);
+    //pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1);
 
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
@@ -1737,15 +1737,6 @@ int main(int argc, char *argv[]) {
     mpiuse_log_dump(dumpfile, clocks_start_ticks);
   }
 #endif
-
-/*FILE *export_acc;
-export_acc = fopen("/data1/vandervlugt/PythonFiles/MG_acceleration/regular_acc.txt", "w");
-for (size_t i=0; i<s.nr_gparts; i++) {
-  double acc = sqrt(s.gparts[i].a_grav[0]*s.gparts[i].a_grav[0] + s.gparts[i].a_grav[1]*s.gparts[i].a_grav[1] + s.gparts[i].a_grav[2] * s.gparts[i].a_grav[2]);
-  fprintf(export_acc, "%E %.15g %.15g %.15g \n", acc, s.gparts[i].x[0], s.gparts[i].x[1], s.gparts[i].x[2]);
-}
-fclose(export_acc);
-message("Exported acceleration");*/
 
 //error("We don't want to do any time integration now");
 
