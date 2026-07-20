@@ -23,6 +23,9 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Standard headers. */
+#include <stdint.h>
+
 /* This object's header. */
 #include "space.h"
 
@@ -766,6 +769,45 @@ static void space_split_recursive(struct space *s, struct cell *c,
 }
 
 /**
+ * @brief Old and new base addresses for every particle-array pointer swap
+ *        performed by #space_split_move_particles().
+ *
+ * space_split_move_particles() moves each family into a freshly allocated
+ * array and swaps it in for the real one, which is cheaper than copying
+ * the result back over the original array -- see that function's
+ * documentation. The cost is that every cell in the tree still holds raw
+ * pointers computed against the old (now freed) arrays; this bundles the
+ * old/new base of every one of them so #space_split_aggregate_recursive()
+ * can rebase each cell's pointers as it walks the tree, before anything
+ * tries to read particle data through them. A family's old/new pair is
+ * identical when that family was never swapped (e.g. the space holds none
+ * of it), making its rebase a no-op.
+ */
+struct space_split_rebase_data {
+
+  /*! The #space being split. */
+  struct space *s;
+
+  /*! #part array base address before/after the move pass. */
+  uintptr_t old_parts, new_parts;
+
+  /*! #xpart array base address before/after the move pass. */
+  uintptr_t old_xparts, new_xparts;
+
+  /*! #gpart array base address before/after the move pass. */
+  uintptr_t old_gparts, new_gparts;
+
+  /*! #spart array base address before/after the move pass. */
+  uintptr_t old_sparts, new_sparts;
+
+  /*! #bpart array base address before/after the move pass. */
+  uintptr_t old_bparts, new_bparts;
+
+  /*! #sink array base address before/after the move pass. */
+  uintptr_t old_sinks, new_sinks;
+};
+
+/**
  * @brief Recursively aggregate progeny properties onto parent cells.
  *
  * Once the split pass in #space_split_recursive() has built the cell
@@ -779,10 +821,45 @@ static void space_split_recursive(struct space *s, struct cell *c,
  * multipole is built from the bottom up (M2M) via
  * #space_split_populate_multipole().
  *
- * @param s The #space the cell lives in.
+ * Before doing any of that, this first rebases this cell's own particle
+ * array pointers (including the grav/stars/sinks `parts_rebuild`
+ * snapshots) onto whichever arrays #space_split_move_particles() actually
+ * swapped in -- see #space_split_rebase_data. This must happen for every
+ * cell, leaf or split, before its particles are read.
+ *
+ * @param rebase The old/new particle array base addresses.
  * @param c The cell to aggregate.
  */
-static void space_split_aggregate_recursive(struct space *s, struct cell *c) {
+static void space_split_aggregate_recursive(
+    struct space_split_rebase_data *rebase, struct cell *c) {
+
+  struct space *s = rebase->s;
+
+  /* Rebase this cell's pointers onto the swapped-in arrays before touching
+   * any particle data through them. */
+  c->hydro.parts = (struct part *)(rebase->new_parts +
+                                   ((uintptr_t)c->hydro.parts - rebase->old_parts));
+  c->hydro.xparts =
+      (struct xpart *)(rebase->new_xparts +
+                       ((uintptr_t)c->hydro.xparts - rebase->old_xparts));
+  c->grav.parts = (struct gpart *)(rebase->new_gparts +
+                                   ((uintptr_t)c->grav.parts - rebase->old_gparts));
+  c->grav.parts_rebuild =
+      (struct gpart *)(rebase->new_gparts +
+                       ((uintptr_t)c->grav.parts_rebuild - rebase->old_gparts));
+  c->stars.parts = (struct spart *)(rebase->new_sparts +
+                                    ((uintptr_t)c->stars.parts - rebase->old_sparts));
+  c->stars.parts_rebuild =
+      (struct spart *)(rebase->new_sparts +
+                       ((uintptr_t)c->stars.parts_rebuild - rebase->old_sparts));
+  c->black_holes.parts =
+      (struct bpart *)(rebase->new_bparts +
+                       ((uintptr_t)c->black_holes.parts - rebase->old_bparts));
+  c->sinks.parts = (struct sink *)(rebase->new_sinks +
+                                   ((uintptr_t)c->sinks.parts - rebase->old_sinks));
+  c->sinks.parts_rebuild =
+      (struct sink *)(rebase->new_sinks +
+                      ((uintptr_t)c->sinks.parts_rebuild - rebase->old_sinks));
 
   /* Leaves are finalised directly from their own particles. */
   if (!c->split) {
@@ -793,7 +870,7 @@ static void space_split_aggregate_recursive(struct space *s, struct cell *c) {
   /* Aggregate progeny first. */
   for (int k = 0; k < 8; k++) {
     if (c->progeny[k] != NULL)
-      space_split_aggregate_recursive(s, c->progeny[k]);
+      space_split_aggregate_recursive(rebase, c->progeny[k]);
   }
 
   /* Reset to the identity of the max/min reduction that
@@ -943,13 +1020,15 @@ static void space_split_mapper(void *map_data, int num_cells,
  *
  * @param map_data Pointer to the start of a chunk of cell indices.
  * @param num_cells Number of indices in this chunk.
- * @param extra_data Pointer to the parent #space.
+ * @param extra_data Pointer to a #space_split_rebase_data.
  */
 static void space_split_aggregate_mapper(void *map_data, int num_cells,
                                          void *extra_data) {
 
   /* Unpack the inputs. */
-  struct space *s = (struct space *)extra_data;
+  struct space_split_rebase_data *rebase =
+      (struct space_split_rebase_data *)extra_data;
+  struct space *s = rebase->s;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
@@ -963,7 +1042,7 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
 
     /* Get this cell and aggregate its progeny's properties into it. */
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    space_split_aggregate_recursive(s, c);
+    space_split_aggregate_recursive(rebase, c);
 
     /* If we are running with self-gravity, collect the global min/max values
      * of the multipole properties. */
@@ -1312,42 +1391,6 @@ static void space_split_sort_sinks_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Extra data for #space_split_copy_back_mapper().
- */
-struct space_split_copy_back_data {
-
-  /*! Destination base pointer -- the real array being written to. */
-  char *dest;
-
-  /*! Source base pointer -- the scratch array being read from. */
-  const char *src;
-};
-
-/**
- * @brief #threadpool mapper function to copy a scratch array back over the
- *        real array it was gathered from, one chunk of raw bytes at a time.
- *
- * A plain single-threaded memcpy() can only use one core's worth of memory
- * bandwidth; chunking this over the #threadpool instead lets it use
- * however many cores are available, the same way the gather that filled
- * the scratch array in the first place already does.
- *
- * @param map_data A chunk of the scratch (source) array, as raw bytes.
- * @param num_elements The number of bytes in this chunk.
- * @param extra_data A #space_split_copy_back_data.
- */
-static void space_split_copy_back_mapper(void *map_data, int num_elements,
-                                         void *extra_data) {
-
-  const char *chunk = (const char *)map_data;
-  struct space_split_copy_back_data *data =
-      (struct space_split_copy_back_data *)extra_data;
-  const ptrdiff_t offset = chunk - data->src;
-
-  memcpy(data->dest + offset, chunk, num_elements);
-}
-
-/**
  * @brief Move every particle into the position implied by its fully sorted
  *        space-wide buffer, and restore #gpart linkage.
  *
@@ -1356,10 +1399,20 @@ static void space_split_copy_back_mapper(void *map_data, int num_elements,
  * each buffer holds a complete permutation of one particle family, with
  * every entry's part_ind identifying that particle's current (not yet
  * moved) global index. This gathers each family, one at a time, into a
- * freshly allocated scratch array via that permutation, then copies the
- * scratch back over the real array in parallel via
- * #space_split_copy_back_mapper() -- freeing both the scratch and the
- * (now consumed) buffer immediately afterwards to keep peak memory down.
+ * freshly allocated array via that permutation, then swaps that array in
+ * for the real one -- freeing the old array and the (now consumed) buffer
+ * immediately afterwards to keep peak memory down.
+ *
+ * The swap is deliberate, not a copy-back: copying the gathered result
+ * back over the original array costs a second full read-and-write sweep
+ * of the family for no reason, since the freshly gathered array already
+ * has the right layout and only needs to become "the" array. The cost
+ * moves elsewhere instead -- every cell in the tree still holds pointers
+ * computed against the old (about to be freed) arrays, so the caller must
+ * rebase every one of them before touching particle data again. This
+ * returns the old/new base of every family precisely so
+ * #space_split_aggregate_recursive() can do that rebase as it walks the
+ * tree; see #space_split_rebase_data.
  *
  * #gpart linkage needs care, since it is a link in two directions: a
  * #part/#spart/#bpart/#sink's `.gpart` pointer, and a #gpart's
@@ -1368,9 +1421,9 @@ static void space_split_copy_back_mapper(void *map_data, int num_elements,
  * each immediately fixing up its partner #gpart's `id_or_neg_offset` as
  * part of its own gather mapper -- still safe at this point, since the
  * #gpart array itself has not moved yet. #gpart is moved last, once every
- * other family is already in its final place, so its own gather mapper
- * can safely fix up the `.gpart` back-pointers straight into their final
- * arrays as it goes.
+ * other family is already swapped into its final place, so its own gather
+ * mapper can safely fix up the `.gpart` back-pointers straight into those
+ * final arrays as it goes.
  *
  * @param s The #space.
  * @param buff The (fully sorted) space-wide hydro buffer.
@@ -1378,26 +1431,37 @@ static void space_split_copy_back_mapper(void *map_data, int num_elements,
  * @param sbuff The (fully sorted) space-wide star buffer.
  * @param bbuff The (fully sorted) space-wide black hole buffer.
  * @param sink_buff The (fully sorted) space-wide sink buffer.
+ * @return The old/new base address of every family, for
+ *         #space_split_aggregate_recursive() to rebase cell pointers with.
  */
-static void space_split_move_particles(struct space *s,
-                                       struct cell_buff *buff,
-                                       struct cell_buff *gbuff,
-                                       struct cell_buff *sbuff,
-                                       struct cell_buff *bbuff,
-                                       struct cell_buff *sink_buff) {
+static struct space_split_rebase_data space_split_move_particles(
+    struct space *s, struct cell_buff *buff, struct cell_buff *gbuff,
+    struct cell_buff *sbuff, struct cell_buff *bbuff,
+    struct cell_buff *sink_buff) {
 
   struct threadpool *tp = &s->e->threadpool;
 
+  /* Default every family's rebase to a no-op; only families we actually
+   * swap below get their new_* overwritten. */
+  struct space_split_rebase_data rebase = {0};
+  rebase.s = s;
+  rebase.old_parts = rebase.new_parts = (uintptr_t)s->parts;
+  rebase.old_xparts = rebase.new_xparts = (uintptr_t)s->xparts;
+  rebase.old_gparts = rebase.new_gparts = (uintptr_t)s->gparts;
+  rebase.old_sparts = rebase.new_sparts = (uintptr_t)s->sparts;
+  rebase.old_bparts = rebase.new_bparts = (uintptr_t)s->bparts;
+  rebase.old_sinks = rebase.new_sinks = (uintptr_t)s->sinks;
+
   /* Hydro: gather parts and xparts, fixing up the id_or_neg_offset of
-   * every gpart they are linked to as they land, then copy the result
-   * back over the real arrays. */
+   * every gpart they are linked to as they land, then swap the gathered
+   * arrays in for the real ones. */
   if (s->nr_parts > 0) {
     struct part *new_parts = NULL;
     struct xpart *new_xparts = NULL;
-    if (swift_memalign("tempparts", (void **)&new_parts, part_align,
+    if (swift_memalign("parts", (void **)&new_parts, part_align,
                        sizeof(struct part) * s->nr_parts) != 0)
       error("Failed to allocate new parts array.");
-    if (swift_memalign("tempxparts", (void **)&new_xparts, xpart_align,
+    if (swift_memalign("xparts", (void **)&new_xparts, xpart_align,
                        sizeof(struct xpart) * s->nr_parts) != 0)
       error("Failed to allocate new xparts array.");
 
@@ -1407,26 +1471,19 @@ static void space_split_move_particles(struct space *s,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    struct space_split_copy_back_data parts_copy = {(char *)s->parts,
-                                                     (char *)new_parts};
-    threadpool_map(tp, space_split_copy_back_mapper, new_parts,
-                   sizeof(struct part) * s->nr_parts, 1,
-                   threadpool_auto_chunk_size, &parts_copy);
-    struct space_split_copy_back_data xparts_copy = {(char *)s->xparts,
-                                                      (char *)new_xparts};
-    threadpool_map(tp, space_split_copy_back_mapper, new_xparts,
-                   sizeof(struct xpart) * s->nr_parts, 1,
-                   threadpool_auto_chunk_size, &xparts_copy);
-
-    swift_free("tempparts", new_parts);
-    swift_free("tempxparts", new_xparts);
+    swift_free("parts", s->parts);
+    swift_free("xparts", s->xparts);
+    s->parts = new_parts;
+    s->xparts = new_xparts;
+    rebase.new_parts = (uintptr_t)new_parts;
+    rebase.new_xparts = (uintptr_t)new_xparts;
   }
   if (buff != NULL) swift_free("tempbuff", buff);
 
   /* Stars. */
   if (s->nr_sparts > 0) {
     struct spart *new_sparts = NULL;
-    if (swift_memalign("tempsparts", (void **)&new_sparts, spart_align,
+    if (swift_memalign("sparts", (void **)&new_sparts, spart_align,
                        sizeof(struct spart) * s->nr_sparts) != 0)
       error("Failed to allocate new sparts array.");
 
@@ -1435,20 +1492,16 @@ static void space_split_move_particles(struct space *s,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    struct space_split_copy_back_data sparts_copy = {(char *)s->sparts,
-                                                      (char *)new_sparts};
-    threadpool_map(tp, space_split_copy_back_mapper, new_sparts,
-                   sizeof(struct spart) * s->nr_sparts, 1,
-                   threadpool_auto_chunk_size, &sparts_copy);
-
-    swift_free("tempsparts", new_sparts);
+    swift_free("sparts", s->sparts);
+    s->sparts = new_sparts;
+    rebase.new_sparts = (uintptr_t)new_sparts;
   }
   if (sbuff != NULL) swift_free("tempsbuff", sbuff);
 
   /* Black holes. */
   if (s->nr_bparts > 0) {
     struct bpart *new_bparts = NULL;
-    if (swift_memalign("tempbparts", (void **)&new_bparts, bpart_align,
+    if (swift_memalign("bparts", (void **)&new_bparts, bpart_align,
                        sizeof(struct bpart) * s->nr_bparts) != 0)
       error("Failed to allocate new bparts array.");
 
@@ -1457,20 +1510,16 @@ static void space_split_move_particles(struct space *s,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    struct space_split_copy_back_data bparts_copy = {(char *)s->bparts,
-                                                      (char *)new_bparts};
-    threadpool_map(tp, space_split_copy_back_mapper, new_bparts,
-                   sizeof(struct bpart) * s->nr_bparts, 1,
-                   threadpool_auto_chunk_size, &bparts_copy);
-
-    swift_free("tempbparts", new_bparts);
+    swift_free("bparts", s->bparts);
+    s->bparts = new_bparts;
+    rebase.new_bparts = (uintptr_t)new_bparts;
   }
   if (bbuff != NULL) swift_free("tempbbuff", bbuff);
 
   /* Sinks. */
   if (s->nr_sinks > 0) {
     struct sink *new_sinks = NULL;
-    if (swift_memalign("tempsinks", (void **)&new_sinks, sink_align,
+    if (swift_memalign("sinks", (void **)&new_sinks, sink_align,
                        sizeof(struct sink) * s->nr_sinks) != 0)
       error("Failed to allocate new sinks array.");
 
@@ -1480,40 +1529,34 @@ static void space_split_move_particles(struct space *s,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    struct space_split_copy_back_data sinks_copy = {(char *)s->sinks,
-                                                     (char *)new_sinks};
-    threadpool_map(tp, space_split_copy_back_mapper, new_sinks,
-                   sizeof(struct sink) * s->nr_sinks, 1,
-                   threadpool_auto_chunk_size, &sinks_copy);
-
-    swift_free("tempsinks", new_sinks);
+    swift_free("sinks", s->sinks);
+    s->sinks = new_sinks;
+    rebase.new_sinks = (uintptr_t)new_sinks;
   }
   if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
 
-  /* Gravity: every other family is now in its final place with a correct
-   * id_or_neg_offset pointing at it, so gparts can move last -- its own
-   * gather mapper fixes up the `.gpart` back-pointers into those final
-   * arrays directly (see #space_split_sort_gparts_mapper()). */
+  /* Gravity: every other family is now swapped into its final place with a
+   * correct id_or_neg_offset pointing at it, so gparts can move last --
+   * its own gather mapper fixes up the `.gpart` back-pointers into those
+   * final arrays directly (see #space_split_sort_gparts_mapper()). Note
+   * final_gparts is new_gparts, not s->gparts: at this point s->gparts is
+   * still the old array, about to be freed below. */
   if (s->nr_gparts > 0) {
     struct gpart *new_gparts = NULL;
-    if (swift_memalign("tempgparts", (void **)&new_gparts, gpart_align,
+    if (swift_memalign("gparts", (void **)&new_gparts, gpart_align,
                        sizeof(struct gpart) * s->nr_gparts) != 0)
       error("Failed to allocate new gparts array.");
 
     struct space_split_sort_gparts_data data = {
-        s->gparts, new_gparts, s->gparts, gbuff,
-        s->parts,  s->sparts,  s->bparts, s->sinks};
+        s->gparts, new_gparts, new_gparts, gbuff,
+        s->parts,  s->sparts,  s->bparts,  s->sinks};
     threadpool_map(tp, space_split_sort_gparts_mapper, gbuff, s->nr_gparts,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    struct space_split_copy_back_data gparts_copy = {(char *)s->gparts,
-                                                      (char *)new_gparts};
-    threadpool_map(tp, space_split_copy_back_mapper, new_gparts,
-                   sizeof(struct gpart) * s->nr_gparts, 1,
-                   threadpool_auto_chunk_size, &gparts_copy);
-
-    swift_free("tempgparts", new_gparts);
+    swift_free("gparts", s->gparts);
+    s->gparts = new_gparts;
+    rebase.new_gparts = (uintptr_t)new_gparts;
   }
   if (gbuff != NULL) swift_free("tempgbuff", gbuff);
 
@@ -1522,6 +1565,8 @@ static void space_split_move_particles(struct space *s,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
                     s->nr_bparts, /*verbose=*/0);
 #endif
+
+  return rebase;
 }
 
 /**
@@ -1583,20 +1628,24 @@ void space_split(struct space *s, int verbose) {
 
   /* Move pass: move every particle into the position implied by its fully
    * sorted buffer, and restore #gpart linkage. Consumes and frees
-   * buff/gbuff/sbuff/bbuff/sink_buff. */
+   * buff/gbuff/sbuff/bbuff/sink_buff. This swaps each family's array
+   * rather than copying into it, so every cell's pointers into the swapped
+   * families are now stale; the returned rebase data lets the aggregation
+   * pass below fix them up as it walks the tree. */
   const ticks tic_move = getticks();
-  space_split_move_particles(s, buff, gbuff, sbuff, bbuff, sink_buff);
+  struct space_split_rebase_data rebase =
+      space_split_move_particles(s, buff, gbuff, sbuff, bbuff, sink_buff);
   if (verbose)
     message("Move pass: %.3f %s.", clocks_from_ticks(getticks() - tic_move),
             clocks_getunit());
 
-  /* Aggregation pass: finalise leaves and derive cell statistics and
-   * multipoles bottom-up. */
+  /* Aggregation pass: rebase cell pointers onto the swapped-in arrays,
+   * finalise leaves and derive cell statistics and multipoles bottom-up. */
   const ticks tic_aggregate = getticks();
   threadpool_map(&s->e->threadpool, space_split_aggregate_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+                 threadpool_auto_chunk_size, &rebase);
   if (verbose)
     message("Aggregate pass: %.3f %s.",
             clocks_from_ticks(getticks() - tic_aggregate), clocks_getunit());
