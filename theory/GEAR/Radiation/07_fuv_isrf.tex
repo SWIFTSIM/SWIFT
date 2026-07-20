@@ -107,6 +107,63 @@ building inside Grackle -- the per-particle \code{isrf\_habing} field
 already exists; the gap is, again, estimating the local $G_0$ to fill
 it.
 
+\subsection{Concrete Grackle configuration for PE heating, dust, and a
+per-particle ISRF}
+\label{sec:fuv-pe-concrete}
+
+The discussion above was in terms of what Grackle \emph{can} do;
+concretely, what we would actually set (2026-07-20, not yet
+implemented):
+
+\begin{enumerate}
+  \item \code{metal\_cooling=1} -- prerequisite for the next flag,
+    already on for GEAR chemistry runs.
+  \item \code{dust\_chemistry=1} -- Grackle's single intended entry
+    point for "turn on dust physics with a given ISRF." Bundles three
+    things at once, all scaled by the same ISRF value: photoelectric
+    heating (auto-sets \code{photoelectric\_heating=2} if unset), dust
+    recombination cooling (Wolfire et al.\ 1995 Eq.~9), and
+    H$_2$-formation-on-dust (since \code{primordial\_chemistry}$>1$ in
+    our modes 2/3). \textbf{Open decision, not yet made}: whether to
+    take the bundle as-is, or set \code{photoelectric\_heating} and
+    \code{dust\_recombination\_cooling} separately instead if
+    H$_2$-formation-on-dust risks double-counting against an existing
+    channel -- not checked.
+  \item \code{photoelectric\_heating=2} \textbf{or} \code{=3} -- open
+    decision: \code{=2} is the simpler constant-$\epsilon=0.05$
+    version; \code{=3} computes $\epsilon$ from the local electron
+    density (Wolfire et al.\ 1995 Eq.~2), which our
+    \code{primordial\_chemistry}$>0$ tracking does provide, but
+    Grackle's own docs flag that this electron density is
+    "most likely underestimated at low temperatures" since it ignores
+    metal/dust-grain contributions -- not yet weighed against just
+    using the constant-$\epsilon$ option.
+  \item \code{use\_isrf\_field=1} -- switches Grackle from the scalar
+    \code{interstellar\_radiation\_field} to reading the per-particle
+    \code{isrf\_habing} array (Section~\ref{sec:fuv-pe-grackle}).
+  \item \textbf{Allocate and fill \code{isrf\_habing} ourselves,
+    every time chemistry is solved}, one value per gas particle, in
+    Habing units: take the local $G_0$-equivalent flux our own
+    propagation scheme produces (physical units,
+    ${\rm erg\,s^{-1}\,cm^{-2}}$, summing $L_{\rm FUV}+L_{\rm LW}$ per
+    Section~\ref{sec:fuv-two-bands}) and divide by the Habing
+    normalization $1.6\times10^{-3}\,{\rm erg\,s^{-1}\,cm^{-2}}$. This
+    is the one number this codebase is actually responsible for
+    producing; everything else in this list is Grackle configuration,
+    not new code.
+  \item \textbf{This is independent of H$_2$ photodissociation
+    coupling} (Section~\ref{sec:fuv-lw-grackle}) -- that needs its own
+    separate switches (\code{use\_radiative\_transfer=1},
+    \code{primordial\_chemistry}$\in\{2,3\}$) and its own separately
+    converted quantity ($L_{\rm LW}$ alone, not $L_{\rm FUV}+L_{\rm
+    LW}$, into \code{RT\_H2\_dissociation\_rate}). Turning on
+    \code{use\_isrf\_field} does \emph{not} also turn on H$_2$
+    dissociation coupling, or vice versa -- both must be configured
+    if both channels are wanted, and whether they can be enabled
+    together without conflict is itself unverified
+    (Section~\ref{sec:fuv-propagation}'s open-questions list).
+\end{enumerate}
+
 \subsection{Same photon band for both?}
 \label{sec:fuv-band-question}
 
@@ -298,17 +355,109 @@ original framing). Two refinements on that idea worth recording:
     parabolic PDE explicitly at all.
 \end{itemize}
 
+\subsection{A concrete discretization: SPH smoothing with decay and
+injection}
+\label{sec:fuv-discretization}
+
+The naive starting point for actually implementing
+Section~\ref{sec:fuv-propagation} is SPH smoothing, the same
+neighbour-loop machinery already used for metal mixing. A concrete
+per-particle update rule (proposed 2026-07-20, not yet built):
+\begin{equation}
+  u_i^{n+1} = (1-\alpha)\,u_i^n\,e^{-\Delta t/\Delta t_{\rm decay}}
+    + \alpha\sum_j \tilde w_{ij}\,u_j^n
+    + \frac{u_{{\rm inject},i}}{m_i} ,
+  \label{eq:fuv-discrete-update}
+\end{equation}
+where $u_i$ is particle $i$'s local FUV/LW field value, $\tilde w_{ij}$
+a normalized SPH kernel weight, $\alpha$ a mixing fraction, and
+$u_{{\rm inject},i}$ the budget gathered this step from any star whose
+kernel reaches particle $i$ (Section~\ref{sec:fuv-propagation}).
+
+\textbf{This is not an ad hoc smoothing -- it is an explicit
+(forward-Euler) integrator of Eq.~\ref{eq:fuv-screened-helmholtz}.}
+Expanding both exponentials to first order in $\Delta t$ and
+dividing through by $\Delta t$:
+\begin{equation}
+  \frac{u_i^{n+1}-u_i^n}{\Delta t} \approx
+    \underbrace{\frac{\alpha}{\Delta t}\Big(\sum_j\tilde w_{ij}u_j^n - u_i^n\Big)}_{\textstyle D\nabla^2 u}
+    \;\underbrace{-\;\frac{u_i^n}{\Delta t_{\rm decay}}}_{\textstyle -\,u/\lambda^2}
+    \;+\; \frac{u_{{\rm inject},i}}{m_i\Delta t} ,
+  \label{eq:fuv-discrete-continuum-limit}
+\end{equation}
+which is exactly $\partial u/\partial t = D\nabla^2 u - u/\lambda^2 + S$
+(Eqs.~\ref{eq:fuv-screened-helmholtz}--\ref{eq:fuv-radial-ode}), with
+the correspondence
+\begin{equation}
+  D \sim \frac{\alpha h^2}{\Delta t}, \qquad
+  \lambda^2 = D\,\Delta t_{\rm decay} .
+  \label{eq:fuv-discrete-correspondence}
+\end{equation}
+\textbf{Consequence: $\Delta t_{\rm decay}$ is not a free tuning knob.}
+Once $\lambda$ is fixed by the physical dust opacity (the same
+$\kappa_{\rm IR}\Sigma_{\rm gas}$ from radiation pressure,
+Section~\ref{sec:fuv-yukawa}) and $D$ by whatever $\alpha$/$h$/$\Delta t$
+the smoothing pass uses, $\Delta t_{\rm decay}=\lambda^2/D$ is
+determined, not chosen by feel.
+
+\textbf{Which existing GEAR chemistry backend is the right template --
+neither, exactly, but one is much closer.} SWIFT has two: plain
+\code{src/chemistry/GEAR/} is a one-sided kernel-weighted
+\emph{average} of the metal mass fraction (\code{chemistry\_iact.h:45-108},
+\code{chemistry\_end\_density}) -- not an exchange of the metal
+reservoirs themselves, and explicitly non-conservative (its own
+\code{chemistry\_timestep()} returns \code{FLT\_MAX} with the comment
+"no diffusion"). \code{src/chemistry/GEAR\_DIFFUSION/}
+(\code{chemistry\_iact.h:169-266}, Shen et al.\ 2010) is real
+metal-mass diffusion: a \emph{symmetric pairwise exchange} between
+particles $i,j$ (\code{metal\_mass\_dt[i] += coef\_i*dm};
+\code{metal\_mass\_dt[j] -= coef\_j*dm}), conservative to machine
+precision because total metal mass must never be created or destroyed
+by mixing. \textbf{Neither has anything like the $e^{-\Delta
+t/\Delta t_{\rm decay}}$ term} -- both are pure redistribution.
+Since our field \emph{should} lose budget locally (dust actually
+absorbs FUV photons -- the sink is a feature, not a bug, unlike metal
+mass), the non-conservative plain-\code{GEAR} kernel-average is the
+closer starting template, not the conservative Shen et al.\ 2010
+scheme built specifically to prevent exactly the kind of loss we want
+here. The decay and injection terms in
+Eq.~\ref{eq:fuv-discrete-update} would need to be added on top either
+way -- reusing the neighbour-loop/kernel machinery, not the physics.
+
+\textbf{Stability: a real constraint, but the mild kind, not the
+$c$-dependent kind, and not automatically enforced by precedent.} This
+is still an explicit, time-marched update, so it inherits the ordinary
+diffusion stability bound ($\alpha\lesssim$ some $O(1)$ limit tied to
+the kernel/neighbour count, from Eq.~\ref{eq:fuv-discrete-correspondence}'s
+$D\sim\alpha h^2/\Delta t$ -- the standard $\Delta
+t\lesssim h^2/D$ explicit-diffusion condition), \emph{not} the much
+harsher $\text{CFL}\sim h/c$ that ruled out M1 in the first place --
+consistent with the original design goal (Section~\ref{sec:fuv-propagation}).
+But it is not unconditionally stable either, and
+\code{GEAR\_DIFFUSION}'s own precedent is a cautionary one: its
+diffusion coefficient \code{C} (\code{GEARChemistry:diffusion\_coefficient})
+has no enforced stability check at all --
+\code{chemistry\_timestep()} unconditionally returns \code{FLT\_MAX}
+despite doing real diffusion, leaving stability entirely up to the
+user picking a small enough \code{C}. This scheme should not repeat
+that silently-unchecked pattern; an explicit stability bound on
+$\alpha$ given $h$, $\Delta t$, and the local neighbour count should be
+added, not left implicit.
+
 \textbf{Not yet done / open questions, this pass}:
 \begin{itemize}
-  \item How to discretize and solve the steady screened-diffusion
-    equation within SWIFT's existing SPH+task-graph architecture
-    without a full global linear solve every step (e.g.\ a
-    local-relaxation scheme reusing the existing tree/kernel
-    neighbour-finding, a fixed small number of Jacobi/Gauss-Seidel
-    sweeps rather than solving to full convergence) -- not scoped, the
-    main remaining engineering question for T6;
-  \item the propagation scheme itself remains item~T6 (still
-    unscoped);
+  \item Working out the actual stability bound on $\alpha$ for a given
+    kernel/neighbour configuration, and deciding whether to enforce it
+    via a timestep constraint (unlike \code{GEAR\_DIFFUSION}'s
+    precedent) -- not scoped;
+  \item whether a single explicit relaxation step per hydro step
+    tracks the intended quasi-static equilibrium closely enough, or
+    whether the field lags behind fast-changing sources (e.g.\ a star
+    turning on) enough to need sub-cycling -- not checked;
+  \item the propagation scheme's normalized weights $\tilde w_{ij}$ and
+    how they should be built from the existing SPH kernel
+    infrastructure -- not scoped;
+  \item item~T6 as a whole remains unscoped as an implementation;
   \item confirming whether \citet{DraineBertoldi1996}'s $k_{\rm
     LW}(\chi)$ normalization, or a direct $\sigma_{\rm LW}$-based
     conversion (Section~\ref{sec:fuv-two-bands}), is the better fit
