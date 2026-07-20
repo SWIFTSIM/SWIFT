@@ -52,7 +52,7 @@ Statistics:
 InitialConditions:
   file_name:          ICs_starbench.hdf5
   periodic:                 1
-  shift:              [0.00833333, 0.00833333, 0.00833333]
+  shift:              [0.0, 0.0, 0.0]
 
 # Parameters for the hydrodynamics scheme
 SPH:
