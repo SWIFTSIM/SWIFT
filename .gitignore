@@ -210,6 +210,7 @@ tests/testZoomRegrid
 tests/testZoomRegrid.sh
 tests/testZoomVoidTree
 tests/testZoomVoidTree.sh
+tests/testZoomTruncation
 tests/testMeshGravityRebuildCheck
 tests/*.png
 tests/*.txt

@@ -125,15 +125,26 @@ void zoom_parse_params(struct swift_params *params,
       parser_get_opt_param_int(params, "ZoomRegion:bkg_subdepth_diff_grav",
                                zoom_bkg_subdepth_diff_grav_default);
 
+  /* Should we truncate the background? */
+  props->truncate_background =
+      parser_get_opt_param_int(params, "ZoomRegion:truncate_background", 0);
+
+  /* If we are truncating the background we need the tidal factor and the
+   * target tolerance. */
+  if (props->truncate_background) {
+    props->tidal_factor = parser_get_opt_param_float(
+        params, "ZoomRegion:truncate_tidal_factor", 1.0);
+    props->truncate_epsilon =
+        parser_get_opt_param_float(params, "ZoomRegion:truncate_epsilon", 1e-3);
+  } else {
+    props->tidal_factor = 0.0;
+    props->truncate_epsilon = 0.0;
+  }
+
   /* Extract the maximum shift of the zoom region we will allow in units of
    * the zoom region extent. */
   props->max_com_dx =
       parser_get_opt_param_float(params, "ZoomRegion:max_com_dx", 0.1);
-
-  /* Set the initial scale factor we last shifted to the starting scale factor
-   * (not dangerous if not running a cosmological sim, just won't be used). */
-  props->scale_factor_at_last_shift =
-      parser_get_opt_param_float(params, "Cosmology:a_begin", -1.0);
 }
 
 struct region_dim_data {
@@ -541,9 +552,9 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
             s->zoom_props->applied_zoom_shift[1],
             s->zoom_props->applied_zoom_shift[2]);
 
-  /* Store the scale factor at which we applied the shift (if we don't yet
-   * have the engine then we are starting up and will set this in
-   * engine_init). */
+  /* Store the scale factor at which we applied the shift. If we don't yet
+   * have the engine we are starting up and scale_factor_at_last_shift
+   * already holds a_begin, set from the cosmology in zoom_props_init. */
   if (s->e != NULL) {
     /* Are we doing cosmology? */
     if (s->e->policy & engine_policy_cosmology) {
@@ -551,8 +562,6 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
     } else {
       s->zoom_props->scale_factor_at_last_shift = 1.0;
     }
-  } else {
-    s->zoom_props->scale_factor_at_last_shift = -1.0;
   }
 
   if (verbose) {
@@ -771,6 +780,8 @@ void zoom_report_cell_properties(const struct space *s) {
           s->cdim[2]);
   message("%28s = [%d, %d, %d]", "Zoom cdim", zoom_props->cdim[0],
           zoom_props->cdim[1], zoom_props->cdim[2]);
+  message("%28s = [%d, %d, %d]", "Void cdim", zoom_props->void_cdim[0],
+          zoom_props->void_cdim[1], zoom_props->void_cdim[2]);
 
   /* Dimensions */
   message("%28s = [%f, %f, %f]", "Background Dimensions", s->dim[0], s->dim[1],
@@ -829,10 +840,11 @@ void zoom_report_cell_properties(const struct space *s) {
  *
  * @param params Swift parameter structure.
  * @param s The space
+ * @param cosmo The current cosmological model.
  * @param verbose Are we talking?
  */
 void zoom_props_init(struct swift_params *params, struct space *s,
-                     const int verbose) {
+                     const struct cosmology *cosmo, const int verbose) {
 
   const ticks tic = getticks();
 
@@ -866,6 +878,10 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
+
+  /* Set the initial scale factor we last shifted to the starting scale
+   * factor (cosmo->a_begin is 1.0 for non-cosmological runs). */
+  s->zoom_props->scale_factor_at_last_shift = cosmo->a_begin;
 
   if (verbose) {
     message("Initialising zoom region properties took %f %s",
@@ -988,7 +1004,10 @@ void zoom_region_init(struct space *s, const int regridding,
    * to check if we need to regrid so we skip it here. */
   if (!regridding) zoom_get_region_dim_and_shift(s, verbose);
 
-  /* Apply the zoom shift to the particles. */
+  /* Apply the zoom shift to the particles. (If the background was truncated
+   * this was already done, along with the truncation itself, at the end of
+   * space_init in zoom_truncate_bkg; the shift computed above will then be
+   * negligible.) */
   zoom_apply_zoom_shift_to_particles(s, verbose);
 
   /* The maximal particle extent is the initial dimensions of
@@ -996,6 +1015,19 @@ void zoom_region_init(struct space *s, const int regridding,
   const double ini_dim =
       max3(s->zoom_props->part_dim[0], s->zoom_props->part_dim[1],
            s->zoom_props->part_dim[2]);
+
+  /* If the background was truncated the accuracy bound was derived for a
+   * fixed protected extent and the box cannot be re-truncated, so warn if the
+   * high-resolution region has outgrown the protection. */
+  if (s->zoom_props->truncate_background &&
+      s->zoom_props->truncate_protected_dim > 0.0 &&
+      ini_dim > s->zoom_props->truncate_protected_dim) {
+    warning(
+        "The high-resolution region (extent %.2e) has outgrown the extent "
+        "protected by the background truncation (%.2e). The requested tidal "
+        "accuracy (ZoomRegion:truncate_epsilon) is no longer guaranteed.",
+        ini_dim, s->zoom_props->truncate_protected_dim);
+  }
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->user_region_pad_factor;
@@ -1100,11 +1132,88 @@ void zoom_region_init(struct space *s, const int regridding,
   s->zoom_props->nr_zoom_cells = s->zoom_props->bkg_cell_offset;
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
+  /* Compute the number of background cells along each side of the void
+   * region. Here we include an small buffer to ensure we don't fall foul of
+   * rounding errors, we already know the void region is aligned with the
+   * background cells so this is totally safe. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->void_cdim[i] =
+        (int)floor((s->zoom_props->void_dim[i] * s->iwidth[i]) + 0.5);
+  }
+
   /* Report what we have done */
   if (verbose) {
     zoom_report_cell_properties(s);
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure all particles are within the box boundaries (sanity check for
+   * truncation and shifting, if not truncated we don't need to wrap here as
+   * it is done in the main code). */
+  if (s->zoom_props->truncate_background) {
+    for (size_t k = 0; k < s->nr_parts; k++) {
+      if (s->parts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->parts[k].x[i] < 0.0 || s->parts[k].x[i] >= s->dim[i]) {
+          error(
+              "Particle %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->parts[k].x[0], s->parts[k].x[1], s->parts[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
+      }
+    }
+    for (size_t k = 0; k < s->nr_gparts; k++) {
+      if (s->gparts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->gparts[k].x[i] < 0.0 || s->gparts[k].x[i] >= s->dim[i]) {
+          error(
+              "gpart %zu (%s) is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, part_type_names[s->gparts[k].type], s->gparts[k].x[0],
+              s->gparts[k].x[1], s->gparts[k].x[2], s->dim[0], s->dim[1],
+              s->dim[2]);
+        }
+      }
+    }
+    for (size_t k = 0; k < s->nr_sparts; k++) {
+      if (s->sparts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->sparts[k].x[i] < 0.0 || s->sparts[k].x[i] >= s->dim[i]) {
+          error(
+              "SPart %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->sparts[k].x[0], s->sparts[k].x[1], s->sparts[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
+      }
+    }
+    for (size_t k = 0; k < s->nr_bparts; k++) {
+      if (s->bparts[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->bparts[k].x[i] < 0.0 || s->bparts[k].x[i] >= s->dim[i]) {
+          error(
+              "BPart %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->bparts[k].x[0], s->bparts[k].x[1], s->bparts[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
+      }
+    }
+    for (size_t k = 0; k < s->nr_sinks; k++) {
+      if (s->sinks[k].time_bin == time_bin_inhibited) continue;
+      for (int i = 0; i < 3; i++) {
+        if (s->sinks[k].x[i] < 0.0 || s->sinks[k].x[i] >= s->dim[i]) {
+          error(
+              "Sink %zu is out of bounds after zoom region setup! "
+              "(x=[%f, %f, %f], dim=[%f, %f, %f])",
+              k, s->sinks[k].x[0], s->sinks[k].x[1], s->sinks[k].x[2],
+              s->dim[0], s->dim[1], s->dim[2]);
+        }
+      }
+    }
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
   /* Report how long it took. */
   if (verbose) {
     message("Zoom region initialisation took %f %s",

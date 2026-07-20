@@ -1405,7 +1405,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Init the zoom region, if not enabled this does nothing other than flag
    * that zoom support is off. */
-  zoom_props_init(params, s, verbose);
+  zoom_props_init(params, s, cosmo, verbose);
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1515,6 +1515,14 @@ void space_init(struct space *s, struct swift_params *params,
           if (sinks[k].x[j] < 0 || sinks[k].x[j] >= s->dim[j])
             error("Not all sink-particles are within the specified domain.");
     }
+
+    /* If requested, truncate the background of a zoom simulation now:
+     * everything downstream (the gravity properties, the PM mesh, the
+     * neutrino response, line-of-sight properties, ...) is derived from the
+     * box dimensions, so the box must take its final size before space_init
+     * returns. */
+    if (s->with_zoom_region && s->zoom_props->truncate_background)
+      zoom_truncate_bkg(params, s, verbose);
   }
 
   /* Allocate the extra parts array for the gas particles. */
@@ -2208,7 +2216,21 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
           "Omega_nu = %e",
           cosmo->Omega_nu_0, Omega_particles_nu);
 
-    if (fabs(Omega_particles_m - Omega_m) > 1e-3)
+    /* If we have truncated the background in a zoom simulation we could
+     * feasibly calculate an "incorrect density from the particles because of
+     * the resolution gradient in the background. In this case we just warn
+     * instead of erroring since it would be nice to know but we have knowingly
+     * removed mass during truncation. */
+    if (fabs(Omega_particles_m - Omega_m) > 1e-3 &&
+        s->zoom_props->truncate_background) {
+      warning(
+          "The total matter content of the simulation after truncation does "
+          "not match the cosmology in the parameter file: "
+          "cosmo.Omega_m = %e particles Omega_m = %e \n cosmo: Omega_b=%e "
+          "Omega_cdm=%e \n particles: Omega_b=%e Omega_cdm=%e",
+          Omega_m, Omega_particles_m, cosmo->Omega_b, cosmo->Omega_cdm,
+          Omega_particles_b, Omega_particles_cdm);
+    } else if (fabs(Omega_particles_m - Omega_m) > 1e-3) {
       error(
           "The total matter content of the simulation does not match the "
           "cosmology in the parameter file: cosmo.Omega_m = %e particles "
@@ -2216,6 +2238,7 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
           "particles: Omega_b=%e Omega_cdm=%e",
           Omega_m, Omega_particles_m, cosmo->Omega_b, cosmo->Omega_cdm,
           Omega_particles_b, Omega_particles_cdm);
+    }
   }
 }
 

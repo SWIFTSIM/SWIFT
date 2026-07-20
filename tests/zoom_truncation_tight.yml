@@ -1,0 +1,10 @@
+ZoomRegion:
+  region_pad_factor: 1.25
+  zoom_top_level_depth: 2
+  bkg_top_level_cells: 16
+  truncate_background: 1
+  truncate_epsilon: 1e-4
+  truncate_tidal_factor: 1.0
+
+Gravity:
+  mesh_side_length: 512
