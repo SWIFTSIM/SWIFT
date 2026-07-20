@@ -1405,7 +1405,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Init the zoom region, if not enabled this does nothing other than flag
    * that zoom support is off. */
-  zoom_props_init(params, s, verbose);
+  zoom_props_init(params, s, cosmo, verbose);
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};

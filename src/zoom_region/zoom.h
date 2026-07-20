@@ -43,6 +43,7 @@ struct space;
 struct cell;
 struct engine;
 struct partition;
+struct cosmology;
 
 /* Define a constant for the background task depth. */
 #define zoom_bkg_subdepth_diff_grav_default 4
@@ -50,7 +51,7 @@ extern int zoom_bkg_subdepth_diff_grav;
 
 /* Zoom region and cell grid initialisation functions. */
 void zoom_props_init(struct swift_params *params, struct space *s,
-                     const int verbose);
+                     const struct cosmology *cosmo, const int verbose);
 void zoom_region_init(struct space *s, const int regridding, const int verbose);
 void zoom_get_region_dim_and_shift(struct space *s, const int verbose);
 void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose);

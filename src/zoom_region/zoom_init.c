@@ -145,11 +145,6 @@ void zoom_parse_params(struct swift_params *params,
    * the zoom region extent. */
   props->max_com_dx =
       parser_get_opt_param_float(params, "ZoomRegion:max_com_dx", 0.1);
-
-  /* Set the initial scale factor we last shifted to the starting scale factor
-   * (not dangerous if not running a cosmological sim, just won't be used). */
-  props->scale_factor_at_last_shift =
-      parser_get_opt_param_float(params, "Cosmology:a_begin", -1.0);
 }
 
 struct region_dim_data {
@@ -557,9 +552,9 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
             s->zoom_props->applied_zoom_shift[1],
             s->zoom_props->applied_zoom_shift[2]);
 
-  /* Store the scale factor at which we applied the shift (if we don't yet
-   * have the engine then we are starting up and will set this in
-   * engine_init). */
+  /* Store the scale factor at which we applied the shift. If we don't yet
+   * have the engine we are starting up and scale_factor_at_last_shift
+   * already holds a_begin, set from the cosmology in zoom_props_init. */
   if (s->e != NULL) {
     /* Are we doing cosmology? */
     if (s->e->policy & engine_policy_cosmology) {
@@ -567,8 +562,6 @@ void zoom_apply_zoom_shift_to_particles(struct space *s, const int verbose) {
     } else {
       s->zoom_props->scale_factor_at_last_shift = 1.0;
     }
-  } else {
-    s->zoom_props->scale_factor_at_last_shift = -1.0;
   }
 
   if (verbose) {
@@ -847,10 +840,11 @@ void zoom_report_cell_properties(const struct space *s) {
  *
  * @param params Swift parameter structure.
  * @param s The space
+ * @param cosmo The current cosmological model.
  * @param verbose Are we talking?
  */
 void zoom_props_init(struct swift_params *params, struct space *s,
-                     const int verbose) {
+                     const struct cosmology *cosmo, const int verbose) {
 
   const ticks tic = getticks();
 
@@ -884,6 +878,10 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
+
+  /* Set the initial scale factor we last shifted to the starting scale
+   * factor (cosmo->a_begin is 1.0 for non-cosmological runs). */
+  s->zoom_props->scale_factor_at_last_shift = cosmo->a_begin;
 
   if (verbose) {
     message("Initialising zoom region properties took %f %s",
