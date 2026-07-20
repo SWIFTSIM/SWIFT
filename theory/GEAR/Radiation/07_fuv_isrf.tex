@@ -424,36 +424,102 @@ here. The decay and injection terms in
 Eq.~\ref{eq:fuv-discrete-update} would need to be added on top either
 way -- reusing the neighbour-loop/kernel machinery, not the physics.
 
-\textbf{Stability: a real constraint, but the mild kind, not the
-$c$-dependent kind, and not automatically enforced by precedent.} This
-is still an explicit, time-marched update, so it inherits the ordinary
-diffusion stability bound ($\alpha\lesssim$ some $O(1)$ limit tied to
-the kernel/neighbour count, from Eq.~\ref{eq:fuv-discrete-correspondence}'s
-$D\sim\alpha h^2/\Delta t$ -- the standard $\Delta
-t\lesssim h^2/D$ explicit-diffusion condition), \emph{not} the much
-harsher $\text{CFL}\sim h/c$ that ruled out M1 in the first place --
-consistent with the original design goal (Section~\ref{sec:fuv-propagation}).
-But it is not unconditionally stable either, and
-\code{GEAR\_DIFFUSION}'s own precedent is a cautionary one: its
-diffusion coefficient \code{C} (\code{GEARChemistry:diffusion\_coefficient})
-has no enforced stability check at all --
-\code{chemistry\_timestep()} unconditionally returns \code{FLT\_MAX}
-despite doing real diffusion, leaving stability entirely up to the
-user picking a small enough \code{C}. This scheme should not repeat
-that silently-unchecked pattern; an explicit stability bound on
-$\alpha$ given $h$, $\Delta t$, and the local neighbour count should be
-added, not left implicit.
+\textbf{Stability -- worked through in full (2026-07-20), because "do
+we need a CFL condition" turned out to have a sharper answer than
+"yes, a mild one."}
+
+\textit{The decay term alone needs no CFL at all.} $u_i^n\,e^{-\Delta
+t/\Delta t_{\rm decay}}$ is not a forward-Euler approximation of
+$du/dt=-u/\tau$ -- it is that ODE's \emph{exact analytic solution}.
+$e^{-\Delta t/\tau}\in(0,1]$ for any $\Delta t\ge0$, so this half of
+Eq.~\ref{eq:fuv-discrete-update} is unconditionally stable regardless
+of how large $\Delta t$ is relative to $\tau$.
+
+\textit{The neighbour-mixing term is not solved exactly, and that is
+where a real bound lives.} $\alpha\sum_j\tilde w_{ij}u_j^n$ uses each
+neighbour's \emph{old} (level-$n$) value -- an explicit (Jacobi) update
+of the spatial coupling, not an implicit or exact one. A von Neumann
+analysis (Fourier mode $u_j^n=\hat u^n e^{ik\cdot x_j}$, kernel
+response $\hat W(k)\in[-W_{\min},1]$, worst case at the
+shortest-wavelength mode the particle spacing resolves) gives the
+growth factor
+\begin{equation}
+  g(k) = (1-\alpha)e^{-\Delta t/\tau} + \alpha\,\hat W(k),
+  \label{eq:fuv-growth-factor}
+\end{equation}
+and requiring $|g|\le1$ at the worst-case mode ($\hat W\to-W_{\min}$)
+gives
+\begin{equation}
+  \alpha \;\lesssim\; \frac{1+e^{-\Delta t/\tau}}{W_{\min}+e^{-\Delta t/\tau}} .
+  \label{eq:fuv-alpha-bound}
+\end{equation}
+\textbf{This bound is tightest as $\Delta t\to0$} ($\approx2/(W_{\min}+1)$)
+and only loosens for larger $\Delta t$ -- the decay term actively
+\emph{helps} by damping the same short-wavelength modes the mixing
+term risks amplifying.
+
+\textit{Converting to a physical decision.} Via
+Eq.~\ref{eq:fuv-discrete-correspondence}'s $D\sim\alpha h^2/\Delta t$,
+Eq.~\ref{eq:fuv-alpha-bound} becomes the ordinary explicit-diffusion
+condition $\Delta t\lesssim h^2/D$ -- real, but nowhere near the
+$\text{CFL}\sim h/c$ that ruled out M1. Concretely, using this
+project's own STARBENCH numbers (Section~\ref{sec:validation}):
+\code{dt\_max}$\approx10^{-5}$ in internal units
+$\times\,977.8\,$Myr$\,\approx10^4\,$yr, in a $10\,$pc box with
+sub-pc particle spacing, so $h/c$ is of order a few \emph{years} --
+$\sim3000$--$30000\times$ smaller than the hydro step. M1 would need
+thousands of sub-steps per hydro step; the diffusion-type bound, even
+pushed to demand faster-than-hydro-step relaxation, needs at most a
+modest number of sub-cycles (tens, not thousands) to reach it.
+
+\textbf{Decided (2026-07-20): fix $\alpha$ once, conservatively, and
+never derive it from a target relaxation length.} This is the
+difference between introducing a new gas timestep limiter and not.
+Deriving $\Delta t$ backwards from a desired physical $D$ (a target
+screening length $\lambda$, tracked as fast as possible) risks landing
+on a $\Delta t$ smaller than what gas particles already use for
+hydro -- exactly the kind of new limiter (like a cooling-time
+constraint) this design is trying to avoid. Instead, fix a single
+conservative $\alpha$ (safe for the $\Delta t\to0$ limit of
+Eq.~\ref{eq:fuv-alpha-bound}, with margin) and run the update at
+whatever $\Delta t$ a gas particle \emph{already} has from its own
+existing hydro/Courant timestep -- since the bound only loosens for
+larger $\Delta t$, a fixed $\alpha$ chosen safe at the tightest case is
+provably safe for every particle's actual, possibly much larger,
+$\Delta t$. \textbf{Consequence}: no new \code{\_timestep()} criterion,
+no new limiter, nothing added to the timestep hierarchy at all --
+piggyback the update directly onto an already-existing gas-gas
+neighbour loop (density loop, or the plain \code{GEAR/chemistry.h}
+kernel-smoothing pass if active) rather than standing up a new task
+subtype, since per this project's own task-registration checklist,
+that is real multi-file engineering cost independent of how simple the
+underlying math is.
+
+\textbf{Trade accepted}: with $\alpha$ fixed rather than derived, the
+screening length $\lambda$ (Section~\ref{sec:fuv-yukawa}) is no longer
+a precisely dialled-in physical target -- it becomes an
+\emph{emergent} quantity varying with local $h$ and each particle's
+own $\Delta t$. Given the priority of avoiding a new gas timestep
+constraint, that is the right trade: verify \emph{after the fact},
+diagnostically, that the emergent relaxation time stays fast against
+stellar-lifetime timescales (very likely true, since Courant-limited
+hydro steps in resolved star-forming gas are already far below a Myr),
+rather than enforcing an exact $\lambda$ upfront at the cost of a new
+limiter. Also don't fire the update every hydro step by default -- reuse
+the adaptive-rebuild-cadence machinery already built for the HII budget
+(T4) so the smoothing pass runs only as often as source evolution
+(stellar lifetimes, $\gtrsim$Myr) actually requires.
 
 \textbf{Not yet done / open questions, this pass}:
 \begin{itemize}
-  \item Working out the actual stability bound on $\alpha$ for a given
-    kernel/neighbour configuration, and deciding whether to enforce it
-    via a timestep constraint (unlike \code{GEAR\_DIFFUSION}'s
-    precedent) -- not scoped;
-  \item whether a single explicit relaxation step per hydro step
-    tracks the intended quasi-static equilibrium closely enough, or
-    whether the field lags behind fast-changing sources (e.g.\ a star
-    turning on) enough to need sub-cycling -- not checked;
+  \item Which existing gas-gas neighbour loop to piggyback the update
+    on (density loop vs.\ the plain \code{GEAR/chemistry.h}
+    kernel-smoothing pass, if active in this configuration) -- not
+    checked;
+  \item diagnostically confirming, once built, that the emergent
+    relaxation time (from a fixed conservative $\alpha$) stays fast
+    against stellar-lifetime timescales, rather than assuming it --
+    not done;
   \item the propagation scheme's normalized weights $\tilde w_{ij}$ and
     how they should be built from the existing SPH kernel
     infrastructure -- not scoped;
