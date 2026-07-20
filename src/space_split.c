@@ -481,25 +481,6 @@ static void space_split_populate_multipole(struct cell *c) {
 }
 
 /**
- * @brief Quantise a real position into #cell_buff.x's fixed-point encoding.
- *
- * @param x The real, absolute position along one axis.
- * @param loc The lower edge of the top-level cell containing @p x, along
- *        that axis.
- * @param width The full width of that top-level cell along that axis.
- * @return A #cell_buff_scale_bits-bit fixed-point fraction of the way from
- *         @p loc to @p loc + @p width, clamped to [0, UINT32_MAX].
- */
-static uint32_t space_split_scale_x(const double x, const double loc,
-                                    const double width) {
-
-  double frac = (x - loc) / width * 4294967296.0; /* 2^cell_buff_scale_bits */
-  if (frac < 0.0) frac = 0.0;
-  if (frac > 4294967295.0) frac = 4294967295.0;
-  return (uint32_t)frac;
-}
-
-/**
  * @brief Fill a top-level cell's slice of the space-wide sorting buffers.
  *
  * The buffers are allocated once, up front, for the complete local
@@ -513,10 +494,6 @@ static uint32_t space_split_scale_x(const double x, const double loc,
  * (e.g. s->parts) it was filled from. This is what lets #cell_split()
  * reorder the buffers alone, further down the tree, without also having to
  * move the particles themselves.
- *
- * @p c is always the top-level cell here (see #space_split_mapper()), so
- * its loc/width are what every entry's position is quantised against --
- * see #space_split_scale_x() and #cell_buff_scale_bits.
  *
  * @param c The #cell whose particles populate the buffers.
  * @param buff This cell's slice of the space-wide hydro buffer.
@@ -558,9 +535,9 @@ static void space_split_fill_buffers(
     if (parts[k].time_bin == time_bin_not_created)
       error("Extra particle present in space_split()");
 #endif
-    buff[k].x[0] = space_split_scale_x(parts[k].x[0], c->loc[0], c->width[0]);
-    buff[k].x[1] = space_split_scale_x(parts[k].x[1], c->loc[1], c->width[1]);
-    buff[k].x[2] = space_split_scale_x(parts[k].x[2], c->loc[2], c->width[2]);
+    buff[k].x[0] = parts[k].x[0];
+    buff[k].x[1] = parts[k].x[1];
+    buff[k].x[2] = parts[k].x[2];
     buff[k].part_ind = parts_offset + k;
   }
 
@@ -572,12 +549,9 @@ static void space_split_fill_buffers(
     if (gparts[k].time_bin == time_bin_not_created)
       error("Extra particle present in space_split()");
 #endif
-    gbuff[k].x[0] =
-        space_split_scale_x(gparts[k].x[0], c->loc[0], c->width[0]);
-    gbuff[k].x[1] =
-        space_split_scale_x(gparts[k].x[1], c->loc[1], c->width[1]);
-    gbuff[k].x[2] =
-        space_split_scale_x(gparts[k].x[2], c->loc[2], c->width[2]);
+    gbuff[k].x[0] = gparts[k].x[0];
+    gbuff[k].x[1] = gparts[k].x[1];
+    gbuff[k].x[2] = gparts[k].x[2];
     gbuff[k].part_ind = gparts_offset + k;
   }
 
@@ -589,12 +563,9 @@ static void space_split_fill_buffers(
     if (sparts[k].time_bin == time_bin_not_created)
       error("Extra particle present in space_split()");
 #endif
-    sbuff[k].x[0] =
-        space_split_scale_x(sparts[k].x[0], c->loc[0], c->width[0]);
-    sbuff[k].x[1] =
-        space_split_scale_x(sparts[k].x[1], c->loc[1], c->width[1]);
-    sbuff[k].x[2] =
-        space_split_scale_x(sparts[k].x[2], c->loc[2], c->width[2]);
+    sbuff[k].x[0] = sparts[k].x[0];
+    sbuff[k].x[1] = sparts[k].x[1];
+    sbuff[k].x[2] = sparts[k].x[2];
     sbuff[k].part_ind = sparts_offset + k;
   }
 
@@ -606,12 +577,9 @@ static void space_split_fill_buffers(
     if (bparts[k].time_bin == time_bin_not_created)
       error("Extra particle present in space_split()");
 #endif
-    bbuff[k].x[0] =
-        space_split_scale_x(bparts[k].x[0], c->loc[0], c->width[0]);
-    bbuff[k].x[1] =
-        space_split_scale_x(bparts[k].x[1], c->loc[1], c->width[1]);
-    bbuff[k].x[2] =
-        space_split_scale_x(bparts[k].x[2], c->loc[2], c->width[2]);
+    bbuff[k].x[0] = bparts[k].x[0];
+    bbuff[k].x[1] = bparts[k].x[1];
+    bbuff[k].x[2] = bparts[k].x[2];
     bbuff[k].part_ind = bparts_offset + k;
   }
 
@@ -623,12 +591,9 @@ static void space_split_fill_buffers(
     if (sinks[k].time_bin == time_bin_not_created)
       error("Extra particle present in space_split()");
 #endif
-    sink_buff[k].x[0] =
-        space_split_scale_x(sinks[k].x[0], c->loc[0], c->width[0]);
-    sink_buff[k].x[1] =
-        space_split_scale_x(sinks[k].x[1], c->loc[1], c->width[1]);
-    sink_buff[k].x[2] =
-        space_split_scale_x(sinks[k].x[2], c->loc[2], c->width[2]);
+    sink_buff[k].x[0] = sinks[k].x[0];
+    sink_buff[k].x[1] = sinks[k].x[1];
+    sink_buff[k].x[2] = sinks[k].x[2];
     sink_buff[k].part_ind = sinks_offset + k;
   }
 }
@@ -950,7 +915,7 @@ static void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Split the cell's particle data. */
-    cell_split(c, s, ind, buff, sbuff, bbuff, gbuff, sink_buff);
+    cell_split(c, ind, buff, sbuff, bbuff, gbuff, sink_buff);
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,

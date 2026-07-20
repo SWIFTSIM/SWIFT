@@ -48,28 +48,14 @@
  * only needs to be at least as large as the biggest of the five counts
  * below, and is reused across all five families in this one call.
  *
- * The bucket id is normally computed straight from #cell_buff.x's
- * fixed-point bits (see #cell_buff_scale_bits) -- an exact integer
- * comparison, no access to the real particle arrays needed. Only once a
- * cell has already been split #cell_buff_scale_bits times does that
- * quantised value run out of resolution; from that depth on, this falls
- * back to comparing the real (double-precision) particle position via @p
- * s and each entry's part_ind instead, which is exact all the way to
- * #space_cell_maxdepth. This fallback is expected to be exceedingly rare
- * in practice -- it only triggers for particles closer together than one
- * part in 2^cell_buff_scale_bits of a top-level cell's width.
- *
- * All five families use the same (`>=`) comparison against the pivot in
- * the fallback path (and the same bit position in the fast path). This
- * matters beyond consistency: a #gpart and its #part/#spart/#bpart/#sink
- * partner always share identical coordinates, so using the same
+ * All five families use the same (`>=`) comparison against the pivot.
+ * This matters beyond consistency: a #gpart and its #part/#spart/#bpart/
+ * #sink partner always share identical coordinates, so using the same
  * comparison guarantees they always compute the same bucket id at every
  * level and therefore always end up in the same leaf -- an invariant
  * space_split.c's per-leaf move relies on.
  *
  * @param c The #cell array to be sorted.
- * @param s The #space, only used if the fixed-point fallback above
- *        triggers.
  * @param ind Scratch space with at least
  * max(c->hydro.count, c->grav.count, c->stars.count, c->black_holes.count,
  * c->sinks.count) entries, reused for each family in turn.
@@ -84,7 +70,7 @@
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
  */
-void cell_split(struct cell *c, struct space *s, int *restrict ind,
+void cell_split(struct cell *c, int *restrict ind,
                 struct cell_buff *restrict buff,
                 struct cell_buff *restrict sbuff,
                 struct cell_buff *restrict bbuff,
@@ -97,34 +83,15 @@ void cell_split(struct cell *c, struct space *s, int *restrict ind,
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
                            c->loc[2] + c->width[2] / 2};
-
-  /* Fast path: the octant bit for this depth is a single bit of the
-   * fixed-point x already in the buffer. Only false once a cell has been
-   * split cell_buff_scale_bits times already -- see this function's
-   * documentation. */
-  const int fast_path = c->depth < cell_buff_scale_bits;
-  const int shift = cell_buff_scale_bits - 1 - c->depth;
-
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
 
   /* Fill ind with the bucket indices. */
-  if (fast_path) {
-    for (int k = 0; k < count; k++) {
-      const int bid = ((buff[k].x[0] >> shift) & 1) * 4 +
-                      ((buff[k].x[1] >> shift) & 1) * 2 +
-                      ((buff[k].x[2] >> shift) & 1);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
-  } else {
-    for (int k = 0; k < count; k++) {
-      const double *x = s->parts[buff[k].part_ind].x;
-      const int bid =
-          (x[0] >= pivot[0]) * 4 + (x[1] >= pivot[1]) * 2 + (x[2] >= pivot[2]);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
+  for (int k = 0; k < count; k++) {
+    const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
+                    (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
+    bucket_count[bid]++;
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -179,15 +146,8 @@ void cell_split(struct cell *c, struct space *s, int *restrict ind,
     if (ind[k] < ind[k - 1]) error("Buff not sorted.");
   }
   for (int k = 0; k < count; k++) {
-    int bid;
-    if (fast_path) {
-      bid = ((buff[k].x[0] >> shift) & 1) * 4 +
-            ((buff[k].x[1] >> shift) & 1) * 2 + ((buff[k].x[2] >> shift) & 1);
-    } else {
-      const double *x = s->parts[buff[k].part_ind].x;
-      bid = (x[0] >= pivot[0]) * 4 + (x[1] >= pivot[1]) * 2 +
-            (x[2] >= pivot[2]);
-    }
+    const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
+                    (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
     if (bid != ind[k]) error("Buff ind inconsistent with position.");
   }
 
@@ -207,22 +167,12 @@ void cell_split(struct cell *c, struct space *s, int *restrict ind,
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
   /* Fill ind with the bucket indices. */
-  if (fast_path) {
-    for (int k = 0; k < scount; k++) {
-      const int bid = ((sbuff[k].x[0] >> shift) & 1) * 4 +
-                      ((sbuff[k].x[1] >> shift) & 1) * 2 +
-                      ((sbuff[k].x[2] >> shift) & 1);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
-  } else {
-    for (int k = 0; k < scount; k++) {
-      const double *x = s->sparts[sbuff[k].part_ind].x;
-      const int bid =
-          (x[0] >= pivot[0]) * 4 + (x[1] >= pivot[1]) * 2 + (x[2] >= pivot[2]);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
+  for (int k = 0; k < scount; k++) {
+    const int bid = (sbuff[k].x[0] >= pivot[0]) * 4 +
+                    (sbuff[k].x[1] >= pivot[1]) * 2 +
+                    (sbuff[k].x[2] >= pivot[2]);
+    bucket_count[bid]++;
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -272,22 +222,12 @@ void cell_split(struct cell *c, struct space *s, int *restrict ind,
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
   /* Fill ind with the bucket indices. */
-  if (fast_path) {
-    for (int k = 0; k < bcount; k++) {
-      const int bid = ((bbuff[k].x[0] >> shift) & 1) * 4 +
-                      ((bbuff[k].x[1] >> shift) & 1) * 2 +
-                      ((bbuff[k].x[2] >> shift) & 1);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
-  } else {
-    for (int k = 0; k < bcount; k++) {
-      const double *x = s->bparts[bbuff[k].part_ind].x;
-      const int bid =
-          (x[0] >= pivot[0]) * 4 + (x[1] >= pivot[1]) * 2 + (x[2] >= pivot[2]);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
+  for (int k = 0; k < bcount; k++) {
+    const int bid = (bbuff[k].x[0] >= pivot[0]) * 4 +
+                    (bbuff[k].x[1] >= pivot[1]) * 2 +
+                    (bbuff[k].x[2] >= pivot[2]);
+    bucket_count[bid]++;
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -336,22 +276,12 @@ void cell_split(struct cell *c, struct space *s, int *restrict ind,
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
   /* Fill ind with the bucket indices. */
-  if (fast_path) {
-    for (int k = 0; k < sink_count; k++) {
-      const int bid = ((sinkbuff[k].x[0] >> shift) & 1) * 4 +
-                      ((sinkbuff[k].x[1] >> shift) & 1) * 2 +
-                      ((sinkbuff[k].x[2] >> shift) & 1);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
-  } else {
-    for (int k = 0; k < sink_count; k++) {
-      const double *x = s->sinks[sinkbuff[k].part_ind].x;
-      const int bid =
-          (x[0] >= pivot[0]) * 4 + (x[1] >= pivot[1]) * 2 + (x[2] >= pivot[2]);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
+  for (int k = 0; k < sink_count; k++) {
+    const int bid = (sinkbuff[k].x[0] >= pivot[0]) * 4 +
+                    (sinkbuff[k].x[1] >= pivot[1]) * 2 +
+                    (sinkbuff[k].x[2] >= pivot[2]);
+    bucket_count[bid]++;
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -401,22 +331,12 @@ void cell_split(struct cell *c, struct space *s, int *restrict ind,
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
   /* Fill ind with the bucket indices. */
-  if (fast_path) {
-    for (int k = 0; k < gcount; k++) {
-      const int bid = ((gbuff[k].x[0] >> shift) & 1) * 4 +
-                      ((gbuff[k].x[1] >> shift) & 1) * 2 +
-                      ((gbuff[k].x[2] >> shift) & 1);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
-  } else {
-    for (int k = 0; k < gcount; k++) {
-      const double *x = s->gparts[gbuff[k].part_ind].x;
-      const int bid =
-          (x[0] >= pivot[0]) * 4 + (x[1] >= pivot[1]) * 2 + (x[2] >= pivot[2]);
-      bucket_count[bid]++;
-      ind[k] = bid;
-    }
+  for (int k = 0; k < gcount; k++) {
+    const int bid = (gbuff[k].x[0] >= pivot[0]) * 4 +
+                    (gbuff[k].x[1] >= pivot[1]) * 2 +
+                    (gbuff[k].x[2] >= pivot[2]);
+    bucket_count[bid]++;
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
