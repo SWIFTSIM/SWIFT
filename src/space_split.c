@@ -1525,6 +1525,7 @@ void space_split(struct space *s, int verbose) {
    * for the complete local particle arrays; each top-level cell will fill
    * and use its own slice of the former (see #space_split_mapper()), and
    * gather straight into the latter as each of its leaves is found. */
+  const ticks tic_alloc = getticks();
   struct cell_buff *buff = NULL, *gbuff = NULL, *sbuff = NULL, *bbuff = NULL,
                    *sink_buff = NULL;
   space_split_allocate_buffers(s, &buff, &gbuff, &sbuff, &bbuff, &sink_buff);
@@ -1541,6 +1542,9 @@ void space_split(struct space *s, int verbose) {
           sizeof(struct space_split_ind_scratch) * nr_threads);
   if (ind_scratch == NULL) error("Failed to allocate ind scratch array.");
   bzero(ind_scratch, sizeof(struct space_split_ind_scratch) * nr_threads);
+  if (verbose)
+    message("Allocation: %.3f %s.", clocks_from_ticks(getticks() - tic_alloc),
+            clocks_getunit());
 
   /* Split pass: fill the buffers, build the cell hierarchy, sort the
    * particles into it and move each leaf's particles into place as it is
