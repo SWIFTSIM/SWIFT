@@ -7,11 +7,75 @@ This section documents the radiation-pressure feedback channel
 from the HII photoionization budget documented in
 Section~\ref{sec:algorithm}: photoionization tags and re-floors gas
 temperature, while radiation pressure injects momentum directly into
-gas neighbouring the star. Both draw on the same per-star bolometric
-luminosity and the same SPH gather around the star, but are otherwise
-independent -- a star can have one policy enabled without the other.
-Not yet covered anywhere else in this logbook; written up here for the
-first time (2026-07-19).
+gas neighbouring the star. The two channels draw on \emph{different}
+integrals of the star's spectrum ($Q_H$ vs.\ $L_{\rm bol}$, see
+Section~\ref{sec:rp-vs-hii} below) and use the same SPH gather around
+the star, but are otherwise independent -- a star can have one policy
+enabled without the other. Not yet covered anywhere else in this
+logbook; written up here for the first time (2026-07-19).
+
+\subsection{Physical distinction from photoionization}
+\label{sec:rp-vs-hii}
+
+Two genuinely different physical mechanisms in a real star, not two
+bookkeeping categories of the same effect (clarified 2026-07-20).
+
+\textbf{Photoionization} is a quantum/atomic process: a photon with
+energy above $13.6\,$eV (Lyman continuum, $\lambda<912\,$\AA) is
+absorbed by a bound electron in hydrogen, ejecting it; the photon's
+energy above the ionization threshold becomes the photoelectron's
+kinetic energy, which thermalizes via collisions -- this is what heats
+the gas to $\sim10^4\,$K, balanced against recombination/line cooling.
+Only photons above that specific energy threshold count, and the
+relevant budget is $Q_H$ (ionizing photon \emph{number} rate,
+Section~\ref{sec:blackbody}), not energy. This is fundamentally a
+\textbf{thermal/chemical} effect -- it sets the gas's ionization state
+and temperature, and in this code drives dynamics only indirectly,
+through the resulting thermal-pressure contrast against the cold
+ambient medium (the classical Spitzer D-type expansion that STARBENCH,
+Section~\ref{sec:validation}, validates).
+
+\textbf{Radiation pressure} is a mechanical process: \emph{any}
+absorbed or scattered photon, at any wavelength, transfers momentum
+$p=E/c$ to whatever absorbs or scatters it. This draws on $L_{\rm
+bol}$ -- the star's entire spectrum, dominated for most stars by the
+non-ionizing UV/optical continuum, not the ionizing band specifically
+(Eq.~\ref{eq:mass-luminosity} vs.\ the separate ionizing-rate fit
+behind $Q_H$, both in Section~\ref{sec:blackbody} -- two different
+fits of the same underlying blackbody, not the same fit reused). It is
+a \textbf{dynamical} effect -- a direct push, independent of whether
+the interaction happens to ionize anything, and in this code it acts
+through Eq.~\ref{eq:rp-momentum-rate} directly, with no thermal
+intermediary.
+
+Two consequences worth keeping precise:
+\begin{itemize}
+  \item \textbf{They are not disjoint at the photon level.} An
+    ionizing-photon absorption \emph{also} transfers momentum
+    $h\nu/c$ in that same event -- momentum conservation does not care
+    about the atomic-physics outcome. But that ionizing-photon
+    momentum is a small slice of the total budget, since $Q_H$
+    photons are only part of $L_{\rm bol}$ for most stars, and dust
+    reprocessing/IR trapping (the $(1+\tau_{\rm IR})$ term,
+    Eq.~\ref{eq:rp-tauIR}) adds momentum from photons that were never
+    ionizing to begin with. This code does not attempt to avoid
+    double-counting this overlap -- see the open interaction question
+    in Section~\ref{sec:rp-open}.
+  \item \textbf{They drive HII region expansion through different,
+    competing channels.} Photoionization heats gas against a cold
+    ambient medium ($\sim10$--$100\,$K) -- the resulting
+    \emph{thermal-pressure} contrast drives the D-type expansion.
+    Radiation pressure drives expansion through \emph{direct momentum}
+    deposition instead, no heating required.
+    \citet{KrumholzMatzner2009} -- already cited above for the Tier-2
+    validation proposal -- is literally a paper about comparing these
+    two channels: thermal-pressure-driven expansion dominates for the
+    modest OB associations STARBENCH-style tests represent, while
+    radiation pressure only becomes the dominant \emph{dynamical}
+    driver for far more luminous, compact sources (starburst clusters,
+    super star clusters) where $L$ is large and the region is
+    dense/compact enough for $\tau_{\rm IR}$ to matter.
+\end{itemize}
 
 \subsection{Momentum injection: single-scattering plus IR trapping}
 \label{sec:rp-momentum}
