@@ -179,6 +179,72 @@ two more band integrals of the same underlying stellar atmosphere
 model that project would need to tabulate, not a separate table-
 generation effort -- widening T7's scope rather than adding a new item.
 
+\subsection{Aside: from plain diffusion to a screened (Yukawa) solution}
+\label{sec:fuv-yukawa}
+
+Worked through in full here (2026-07-20) since it is the crux of the
+propagation proposal below and easy to get wrong by analogy with
+gravity/electrostatics.
+
+\textbf{Start from ordinary diffusion.} A field $\phi$ spreading out
+and fed by a source $S$ obeys
+\begin{equation}
+  \frac{\partial\phi}{\partial t} = D\nabla^2\phi + S .
+  \label{eq:fuv-plain-diffusion}
+\end{equation}
+At steady state ($\partial\phi/\partial t=0$) this is just the Poisson
+equation, $-D\nabla^2\phi=S$ -- the same equation gravity and
+electrostatics obey. Its point-source Green's function in 3D is the
+familiar
+\begin{equation}
+  \phi(r) \propto \frac{1}{r},
+  \label{eq:fuv-poisson-green}
+\end{equation}
+which falls off with distance but \emph{never vanishes}: fine for
+gravity (nothing removes the gravitational field), wrong for FUV
+photons, which dust actually absorbs as they travel. Eq.~\ref{eq:fuv-plain-diffusion}
+has no mechanism to remove $\phi$ locally, only to spread it out.
+
+\textbf{Add a local removal (screening) term.} Physically, at every
+point some of the field should just disappear -- absorbed by dust --
+at a rate set by a lengthscale $\lambda$:
+\begin{equation}
+  -D\nabla^2\phi + \frac{\phi}{\lambda^2} = S .
+  \label{eq:fuv-screened-helmholtz}
+\end{equation}
+This is the \textbf{screened Poisson equation}, equivalently the
+\textbf{modified Helmholtz equation} -- "Helmholtz" because it has the
+same form as the wave/oscillation equation $\nabla^2\phi+k^2\phi=0$,
+just with the sign on the second term flipped so solutions decay
+exponentially instead of oscillating. The same equation is Yukawa's
+(1935) screened nuclear potential and the Debye-H\"uckel screened
+potential in plasmas -- one equation, several physics contexts.
+
+Solving Eq.~\ref{eq:fuv-screened-helmholtz} for a single point source:
+away from the source ($S=0$), spherical symmetry lets the substitution
+$\phi(r)=u(r)/r$ turn the 3D Laplacian into an ordinary second-order
+ODE,
+\begin{equation}
+  u''(r) = \frac{u(r)}{D\lambda^2},
+  \label{eq:fuv-radial-ode}
+\end{equation}
+whose physical (decaying, not growing, as $r\to\infty$) solution is
+$u(r)\propto e^{-r/\ell}$ with $\ell=\sqrt{D\lambda^2}$; absorbing
+constants into $\lambda$, the point-source Green's function is
+\begin{equation}
+  \phi(r) \;\propto\; \frac{e^{-r/\lambda}}{r},
+  \label{eq:fuv-yukawa-green}
+\end{equation}
+the Yukawa potential: the same geometric $1/r$ spreading as
+Eq.~\ref{eq:fuv-poisson-green}, now multiplied by an exponential cutoff
+over the scale $\lambda$ -- exactly the shape a real photon field has
+(geometric dilution \emph{and} dust extinction). $\lambda$ here is the
+same "how far before dust absorbs it" quantity already entering
+$\kappa_{\rm IR}\Sigma_{\rm gas}$ in the radiation-pressure term
+(Eq.~\ref{eq:rp-tauIR}, Section~\ref{sec:rp-sobolev}) -- not a new
+physical input, an ingredient already computed elsewhere in this
+codebase.
+
 \subsection{Coupling to Grackle: injection alone is not a smooth ISRF}
 \label{sec:fuv-propagation}
 
@@ -201,34 +267,27 @@ the $\text{CFL}\sim1/c$ constraint free-streaming RT would impose (T6's
 original framing). Two refinements on that idea worth recording:
 
 \begin{itemize}
-  \item \textbf{A screened (Helmholtz-type) equation, not a plain
-    diffusion equation.} Physically, direct FUV transport in the
-    diffuse ISM is \emph{not} actually a diffusion process -- it is
-    optically-thin free-streaming (geometric $1/r^2$ dilution plus
-    exponential dust extinction, the ordinary radiative transfer
-    equation in the optically-thin limit). Diffusion (photons
-    random-walking through repeated scattering) is the right
-    description for the \emph{already-implemented} IR-trapping term
-    in radiation pressure ($\tau_{\rm IR}$,
-    Eq.~\ref{eq:rp-tauIR}), not for direct FUV. A plain diffusion
-    equation's steady point-source solution is an unscreened $1/r$ --
-    unbounded, no attenuation length at all -- so it does not
-    reproduce the right shape either. A \textbf{screened diffusion
-    equation}, $-D\nabla^2\phi+\phi/\lambda^2=S$ (reaction-diffusion /
-    Helmholtz form), has a point-source Green's function
-    $\propto e^{-r/\lambda}/r$ -- a Yukawa potential, structurally the
-    correct combination of geometric dilution and exponential
-    attenuation -- with the screening length $\lambda$ tied to the
-    local dust opacity, reusing the same $\kappa_{\rm IR}$/$\Sigma_{\rm
-    gas}$ machinery already computed for radiation pressure
-    (Section~\ref{sec:rp-sobolev}). This reconciles wanting an
-    elliptic (no wave-CFL) solve with actually getting the right
-    near-field shape, rather than an arbitrary smoothing kernel.
+  \item \textbf{Solve the screened equation (Eq.~\ref{eq:fuv-screened-helmholtz}),
+    not the plain one (Eq.~\ref{eq:fuv-plain-diffusion}).} Physically,
+    direct FUV transport in the diffuse ISM is \emph{not} actually a
+    diffusion process -- it is optically-thin free-streaming (geometric
+    $1/r^2$ dilution plus exponential dust extinction, the ordinary
+    radiative transfer equation in the optically-thin limit). Diffusion
+    (photons random-walking through repeated scattering) is the right
+    description for the \emph{already-implemented} IR-trapping term in
+    radiation pressure ($\tau_{\rm IR}$, Eq.~\ref{eq:rp-tauIR}), not for
+    direct FUV. The screened form (Section~\ref{sec:fuv-yukawa}) gets
+    the right near-field shape -- geometric dilution plus a physically
+    motivated attenuation length tied to the same dust opacity already
+    computed for radiation pressure -- where the plain, unscreened form
+    would not.
   \item \textbf{The CFL win comes from solving it as steady-state, not
     from "diffusion" per se.} A literal time-dependent (parabolic)
-    diffusion PDE has its own explicit stability constraint,
-    $\Delta t\lesssim\Delta x^2/D$, which for a photon diffusion
-    coefficient $D\sim c\,\ell_{\rm mfp}$ can be just as restrictive as
+    diffusion PDE (Eq.~\ref{eq:fuv-plain-diffusion} or its screened
+    version, evolved explicitly in time) has its own explicit stability
+    constraint, $\Delta t\lesssim\Delta x^2/D$, which for a photon
+    diffusion coefficient $D\sim c\,\ell_{\rm mfp}$ can be just as
+    restrictive as
     the M1 $\text{CFL}\sim1/c$ this is meant to avoid. The actual
     justification for avoiding a time-marched transport equation
     entirely is that light-crossing time is vastly shorter than any
