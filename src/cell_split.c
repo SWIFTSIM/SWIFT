@@ -36,10 +36,29 @@
  * #spart, #bpart, #gpart and #sink arrays themselves, and the gpart
  * back-pointers linking them, are left untouched. Each buffer entry's
  * part_ind field identifies which particle it represents, so a later pass
- * can move every particle into place in one go, once every cell at every
- * level has finished sorting its buffers (see space_split.c).
+ * can move every particle into place, once every cell at every level has
+ * finished sorting its buffers (see space_split.c).
+ *
+ * The bucket id (0-7) each entry currently belongs to while sorting is
+ * kept in ind, not in #cell_buff itself: it is only ever read and written
+ * within a single call to this function (each call, for each family,
+ * overwrites it fresh from the current pivot before reading it back), so
+ * there is no reason to pay for it in the space-wide buffers, which have
+ * to carry every byte of #cell_buff through every level of the tree. ind
+ * only needs to be at least as large as the biggest of the five counts
+ * below, and is reused across all five families in this one call.
+ *
+ * All five families use the same (`>=`) comparison against the pivot.
+ * This matters beyond consistency: a #gpart and its #part/#spart/#bpart/
+ * #sink partner always share identical coordinates, so using the same
+ * comparison guarantees they always compute the same bucket id at every
+ * level and therefore always end up in the same leaf -- an invariant
+ * space_split.c's per-leaf move relies on.
  *
  * @param c The #cell array to be sorted.
+ * @param ind Scratch space with at least
+ * max(c->hydro.count, c->grav.count, c->stars.count, c->black_holes.count,
+ * c->sinks.count) entries, reused for each family in turn.
  * @param buff A buffer with at least max(c->hydro.count, c->grav.count)
  * entries, used for sorting indices.
  * @param sbuff A buffer with at least max(c->stars.count, c->grav.count)
@@ -51,7 +70,8 @@
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
  */
-void cell_split(struct cell *c, struct cell_buff *restrict buff,
+void cell_split(struct cell *c, int *restrict ind,
+                struct cell_buff *restrict buff,
                 struct cell_buff *restrict sbuff,
                 struct cell_buff *restrict bbuff,
                 struct cell_buff *restrict gbuff,
@@ -66,12 +86,12 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
 
-  /* Fill the buffer with the indices. */
+  /* Fill ind with the bucket indices. */
   for (int k = 0; k < count; k++) {
     const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
                     (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
     bucket_count[bid]++;
-    cell_buff_set_ind(&buff[k], bid);
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -81,24 +101,29 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap buffer entries to their correct
-   * spot. */
+  /* Run through the buckets, and swap buffer entries (and their ind) to
+   * their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_buff_get_ind(&buff[k]);
+      int bid = ind[k];
       if (bid != bucket) {
         struct cell_buff temp_buff = buff[k];
+        int temp_ind = ind[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_buff_get_ind(&buff[j]) == bid) {
+          while (ind[j] == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = cell_buff_get_ind(&temp_buff);
+          const int swap_ind = ind[j];
+          ind[j] = temp_ind;
+          temp_ind = swap_ind;
+          bid = temp_ind;
         }
         buff[k] = temp_buff;
+        ind[k] = temp_ind;
       }
       bucket_count[bid]++;
     }
@@ -118,14 +143,12 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
    * cannot check this against the #part array itself here, since the
    * particles have not been physically moved yet -- only the buffer has. */
   for (int k = 1; k < count; k++) {
-    if (cell_buff_get_ind(&buff[k]) < cell_buff_get_ind(&buff[k - 1]))
-      error("Buff not sorted.");
+    if (ind[k] < ind[k - 1]) error("Buff not sorted.");
   }
   for (int k = 0; k < count; k++) {
     const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
                     (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
-    if (bid != cell_buff_get_ind(&buff[k]))
-      error("Buff ind inconsistent with position.");
+    if (bid != ind[k]) error("Buff ind inconsistent with position.");
   }
 
   /* Verify that _all_ the parts have been assigned to a cell. */
@@ -143,12 +166,13 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   /* Now do the same song and dance for the sparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Fill the buffer with the indices. */
+  /* Fill ind with the bucket indices. */
   for (int k = 0; k < scount; k++) {
-    const int bid = (sbuff[k].x[0] > pivot[0]) * 4 +
-                    (sbuff[k].x[1] > pivot[1]) * 2 + (sbuff[k].x[2] > pivot[2]);
+    const int bid = (sbuff[k].x[0] >= pivot[0]) * 4 +
+                    (sbuff[k].x[1] >= pivot[1]) * 2 +
+                    (sbuff[k].x[2] >= pivot[2]);
     bucket_count[bid]++;
-    cell_buff_set_ind(&sbuff[k], bid);
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -158,24 +182,29 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap buffer entries to their correct
-   * spot. */
+  /* Run through the buckets, and swap buffer entries (and their ind) to
+   * their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_buff_get_ind(&sbuff[k]);
+      int bid = ind[k];
       if (bid != bucket) {
         struct cell_buff temp_buff = sbuff[k];
+        int temp_ind = ind[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_buff_get_ind(&sbuff[j]) == bid) {
+          while (ind[j] == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = cell_buff_get_ind(&temp_buff);
+          const int swap_ind = ind[j];
+          ind[j] = temp_ind;
+          temp_ind = swap_ind;
+          bid = temp_ind;
         }
         sbuff[k] = temp_buff;
+        ind[k] = temp_ind;
       }
       bucket_count[bid]++;
     }
@@ -192,12 +221,13 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   /* Now do the same song and dance for the bparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Fill the buffer with the indices. */
+  /* Fill ind with the bucket indices. */
   for (int k = 0; k < bcount; k++) {
-    const int bid = (bbuff[k].x[0] > pivot[0]) * 4 +
-                    (bbuff[k].x[1] > pivot[1]) * 2 + (bbuff[k].x[2] > pivot[2]);
+    const int bid = (bbuff[k].x[0] >= pivot[0]) * 4 +
+                    (bbuff[k].x[1] >= pivot[1]) * 2 +
+                    (bbuff[k].x[2] >= pivot[2]);
     bucket_count[bid]++;
-    cell_buff_set_ind(&bbuff[k], bid);
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -207,24 +237,29 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap buffer entries to their correct
-   * spot. */
+  /* Run through the buckets, and swap buffer entries (and their ind) to
+   * their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_buff_get_ind(&bbuff[k]);
+      int bid = ind[k];
       if (bid != bucket) {
         struct cell_buff temp_buff = bbuff[k];
+        int temp_ind = ind[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_buff_get_ind(&bbuff[j]) == bid) {
+          while (ind[j] == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&bbuff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = cell_buff_get_ind(&temp_buff);
+          const int swap_ind = ind[j];
+          ind[j] = temp_ind;
+          temp_ind = swap_ind;
+          bid = temp_ind;
         }
         bbuff[k] = temp_buff;
+        ind[k] = temp_ind;
       }
       bucket_count[bid]++;
     }
@@ -240,13 +275,13 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   /* Now do the same song and dance for the sinks. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Fill the buffer with the indices. */
+  /* Fill ind with the bucket indices. */
   for (int k = 0; k < sink_count; k++) {
-    const int bid = (sinkbuff[k].x[0] > pivot[0]) * 4 +
-                    (sinkbuff[k].x[1] > pivot[1]) * 2 +
-                    (sinkbuff[k].x[2] > pivot[2]);
+    const int bid = (sinkbuff[k].x[0] >= pivot[0]) * 4 +
+                    (sinkbuff[k].x[1] >= pivot[1]) * 2 +
+                    (sinkbuff[k].x[2] >= pivot[2]);
     bucket_count[bid]++;
-    cell_buff_set_ind(&sinkbuff[k], bid);
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -256,24 +291,29 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap buffer entries to their correct
-   * spot. */
+  /* Run through the buckets, and swap buffer entries (and their ind) to
+   * their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_buff_get_ind(&sinkbuff[k]);
+      int bid = ind[k];
       if (bid != bucket) {
         struct cell_buff temp_buff = sinkbuff[k];
+        int temp_ind = ind[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_buff_get_ind(&sinkbuff[j]) == bid) {
+          while (ind[j] == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&sinkbuff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = cell_buff_get_ind(&temp_buff);
+          const int swap_ind = ind[j];
+          ind[j] = temp_ind;
+          temp_ind = swap_ind;
+          bid = temp_ind;
         }
         sinkbuff[k] = temp_buff;
+        ind[k] = temp_ind;
       }
       bucket_count[bid]++;
     }
@@ -290,12 +330,13 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   /* Finally, do the same song and dance for the gparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
-  /* Fill the buffer with the indices. */
+  /* Fill ind with the bucket indices. */
   for (int k = 0; k < gcount; k++) {
-    const int bid = (gbuff[k].x[0] > pivot[0]) * 4 +
-                    (gbuff[k].x[1] > pivot[1]) * 2 + (gbuff[k].x[2] > pivot[2]);
+    const int bid = (gbuff[k].x[0] >= pivot[0]) * 4 +
+                    (gbuff[k].x[1] >= pivot[1]) * 2 +
+                    (gbuff[k].x[2] >= pivot[2]);
     bucket_count[bid]++;
-    cell_buff_set_ind(&gbuff[k], bid);
+    ind[k] = bid;
   }
 
   /* Set the buffer offsets. */
@@ -305,24 +346,29 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap buffer entries to their correct
-   * spot. */
+  /* Run through the buckets, and swap buffer entries (and their ind) to
+   * their correct spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = cell_buff_get_ind(&gbuff[k]);
+      int bid = ind[k];
       if (bid != bucket) {
         struct cell_buff temp_buff = gbuff[k];
+        int temp_ind = ind[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (cell_buff_get_ind(&gbuff[j]) == bid) {
+          while (ind[j] == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = cell_buff_get_ind(&temp_buff);
+          const int swap_ind = ind[j];
+          ind[j] = temp_ind;
+          temp_ind = swap_ind;
+          bid = temp_ind;
         }
         gbuff[k] = temp_buff;
+        ind[k] = temp_ind;
       }
       bucket_count[bid]++;
     }
