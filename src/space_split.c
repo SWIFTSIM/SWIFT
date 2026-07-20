@@ -478,23 +478,28 @@ static void space_split_populate_multipole(struct cell *c) {
 }
 
 /**
- * @brief Allocate and fill temporary sorting buffers for a cell's particles.
+ * @brief Fill a top-level cell's slice of the space-wide sorting buffers.
  *
- * Only called by the caller when buff, gbuff, sbuff, bbuff and sink_buff
- * are all NULL; always allocates and fills a buffer here for each
- * non-empty particle family.
+ * The buffers are allocated once, up front, for the complete local
+ * particle arrays by #space_split() -- see #space_split_mapper() -- rather
+ * than per top-level cell. This only fills a single cell's slice of those
+ * buffers from its own particles; buff, gbuff, sbuff, bbuff and sink_buff
+ * must already point at the start of that cell's slice (i.e. offset by the
+ * same particle-array offset used elsewhere, e.g. in #cell_split()).
  *
  * @param c The #cell whose particles populate the buffers.
- * @param buff Pointer to the hydro buffer pointer, allocated in place.
- * @param gbuff Pointer to the gravity buffer pointer, allocated in place.
- * @param sbuff Pointer to the star buffer pointer, allocated in place.
- * @param bbuff Pointer to the black hole buffer pointer, allocated in place.
- * @param sink_buff Pointer to the sink buffer pointer, allocated in place.
+ * @param buff This cell's slice of the space-wide hydro buffer.
+ * @param gbuff This cell's slice of the space-wide gravity buffer.
+ * @param sbuff This cell's slice of the space-wide star buffer.
+ * @param bbuff This cell's slice of the space-wide black hole buffer.
+ * @param sink_buff This cell's slice of the space-wide sink buffer.
  */
-static void space_split_allocate_and_fill_buffers(
-    struct cell *c, struct cell_buff *restrict *buff,
-    struct cell_buff *restrict *gbuff, struct cell_buff *restrict *sbuff,
-    struct cell_buff *restrict *bbuff, struct cell_buff *restrict *sink_buff) {
+static void space_split_fill_buffers(struct cell *c,
+                                     struct cell_buff *restrict buff,
+                                     struct cell_buff *restrict gbuff,
+                                     struct cell_buff *restrict sbuff,
+                                     struct cell_buff *restrict bbuff,
+                                     struct cell_buff *restrict sink_buff) {
 
   /* Unpack counts and particle arrays. */
   const int count = c->hydro.count;
@@ -508,115 +513,69 @@ static void space_split_allocate_and_fill_buffers(
   struct bpart *bparts = c->black_holes.parts;
   struct sink *sinks = c->sinks.parts;
 
-  /* Only allocate part arrays if we have parts. */
-  if (count > 0) {
-
-    /* Allocate the temporary buffer for hydro parts. */
-    if (swift_memalign("tempbuff", (void **)buff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * count) != 0)
-      error("Failed to allocate temporary indices.");
-
-    /* Fill the temporary buffer for hydro parts. */
-    for (int k = 0; k < count; k++) {
+  /* Fill the temporary buffer for hydro parts. */
+  for (int k = 0; k < count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (parts[k].time_bin == time_bin_inhibited)
-        error("Inhibited particle present in space_split()");
-      if (parts[k].time_bin == time_bin_not_created)
-        error("Extra particle present in space_split()");
+    if (parts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (parts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
 #endif
-      (*buff)[k].x[0] = parts[k].x[0];
-      (*buff)[k].x[1] = parts[k].x[1];
-      (*buff)[k].x[2] = parts[k].x[2];
-    }
+    buff[k].x[0] = parts[k].x[0];
+    buff[k].x[1] = parts[k].x[1];
+    buff[k].x[2] = parts[k].x[2];
   }
 
-  /* Only allocate part arrays if we have gparts. */
-  if (gcount > 0) {
-
-    /* Allocate the temporary buffer for gravity parts. */
-    if (swift_memalign("tempgbuff", (void **)gbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * gcount) != 0)
-      error("Failed to allocate temporary indices.");
-
-    /* Fill the temporary buffer for gravity parts. */
-    for (int k = 0; k < gcount; k++) {
+  /* Fill the temporary buffer for gravity parts. */
+  for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (gparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited particle present in space_split()");
-      if (gparts[k].time_bin == time_bin_not_created)
-        error("Extra particle present in space_split()");
+    if (gparts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (gparts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
 #endif
-      (*gbuff)[k].x[0] = gparts[k].x[0];
-      (*gbuff)[k].x[1] = gparts[k].x[1];
-      (*gbuff)[k].x[2] = gparts[k].x[2];
-    }
+    gbuff[k].x[0] = gparts[k].x[0];
+    gbuff[k].x[1] = gparts[k].x[1];
+    gbuff[k].x[2] = gparts[k].x[2];
   }
 
-  /* Only allocate part arrays if we have sparts. */
-  if (scount > 0) {
-
-    /* Allocate the temporary buffer for star parts. */
-    if (swift_memalign("tempsbuff", (void **)sbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * scount) != 0)
-      error("Failed to allocate temporary indices.");
-
-    /* Fill the temporary buffer for star parts. */
-    for (int k = 0; k < scount; k++) {
+  /* Fill the temporary buffer for star parts. */
+  for (int k = 0; k < scount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (sparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited particle present in space_split()");
-      if (sparts[k].time_bin == time_bin_not_created)
-        error("Extra particle present in space_split()");
+    if (sparts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (sparts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
 #endif
-      (*sbuff)[k].x[0] = sparts[k].x[0];
-      (*sbuff)[k].x[1] = sparts[k].x[1];
-      (*sbuff)[k].x[2] = sparts[k].x[2];
-    }
+    sbuff[k].x[0] = sparts[k].x[0];
+    sbuff[k].x[1] = sparts[k].x[1];
+    sbuff[k].x[2] = sparts[k].x[2];
   }
 
-  /* Only allocate part arrays if we have bparts. */
-  if (bcount > 0) {
-
-    /* Allocate the temporary buffer for black hole parts. */
-    if (swift_memalign("tempbbuff", (void **)bbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * bcount) != 0)
-      error("Failed to allocate temporary indices.");
-
-    /* Fill the temporary buffer for black hole parts. */
-    for (int k = 0; k < bcount; k++) {
+  /* Fill the temporary buffer for black hole parts. */
+  for (int k = 0; k < bcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (bparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited particle present in space_split()");
-      if (bparts[k].time_bin == time_bin_not_created)
-        error("Extra particle present in space_split()");
+    if (bparts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (bparts[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
 #endif
-      (*bbuff)[k].x[0] = bparts[k].x[0];
-      (*bbuff)[k].x[1] = bparts[k].x[1];
-      (*bbuff)[k].x[2] = bparts[k].x[2];
-    }
+    bbuff[k].x[0] = bparts[k].x[0];
+    bbuff[k].x[1] = bparts[k].x[1];
+    bbuff[k].x[2] = bparts[k].x[2];
   }
 
-  /* Only allocate part arrays if we have sinks. */
-  if (sink_count > 0) {
-
-    /* Allocate the temporary buffer for sink parts. */
-    if (swift_memalign("temp_sink_buff", (void **)sink_buff,
-                       SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * sink_count) != 0)
-      error("Failed to allocate temporary indices.");
-
-    /* Fill the temporary buffer for sink parts. */
-    for (int k = 0; k < sink_count; k++) {
+  /* Fill the temporary buffer for sink parts. */
+  for (int k = 0; k < sink_count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (sinks[k].time_bin == time_bin_inhibited)
-        error("Inhibited particle present in space_split()");
-      if (sinks[k].time_bin == time_bin_not_created)
-        error("Extra particle present in space_split()");
+    if (sinks[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle present in space_split()");
+    if (sinks[k].time_bin == time_bin_not_created)
+      error("Extra particle present in space_split()");
 #endif
-      (*sink_buff)[k].x[0] = sinks[k].x[0];
-      (*sink_buff)[k].x[1] = sinks[k].x[1];
-      (*sink_buff)[k].x[2] = sinks[k].x[2];
-    }
+    sink_buff[k].x[0] = sinks[k].x[0];
+    sink_buff[k].x[1] = sinks[k].x[1];
+    sink_buff[k].x[2] = sinks[k].x[2];
   }
 }
 
@@ -632,16 +591,16 @@ static void space_split_allocate_and_fill_buffers(
  *
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
- * @param buff A buffer for particle sorting, should be of size at least
- *        c->hydro.count or NULL.
- * @param sbuff A buffer for particle sorting, should be of size at least
- *        c->stars.count or NULL.
- * @param bbuff A buffer for particle sorting, should be of size at least
- *        c->black_holes.count or NULL.
- * @param gbuff A buffer for particle sorting, should be of size at least
- *        c->grav.count or NULL.
- * @param sink_buff A buffer for particle sorting, should be of size at least
- *        c->sinks.count or NULL.
+ * @param buff This cell's slice of the space-wide hydro sorting buffer,
+ *        already filled (see #space_split_mapper()).
+ * @param sbuff This cell's slice of the space-wide star sorting buffer,
+ *        already filled.
+ * @param bbuff This cell's slice of the space-wide black hole sorting
+ *        buffer, already filled.
+ * @param gbuff This cell's slice of the space-wide gravity sorting buffer,
+ *        already filled.
+ * @param sink_buff This cell's slice of the space-wide sink sorting
+ *        buffer, already filled.
  */
 static void space_split_recursive(struct space *s, struct cell *c,
                                   struct cell_buff *restrict buff,
@@ -661,14 +620,6 @@ static void space_split_recursive(struct space *s, struct cell *c,
   /* Set the top level cell tpid. Doing it here ensures top level cells
    * have the same tpid as their progeny. */
   if (depth == 0) c->tpid = tpid;
-
-  /* Do we need to allocate the sorting buffers? If so, do it here. */
-  const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
-                               bbuff == NULL && sink_buff == NULL);
-  if (allocate_buffer) {
-    space_split_allocate_and_fill_buffers(c, &buff, &gbuff, &sbuff, &bbuff,
-                                          &sink_buff);
-  }
 
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
@@ -798,15 +749,6 @@ static void space_split_recursive(struct space *s, struct cell *c,
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
   }
-
-  /* Clean up the sorting buffers if we allocated them here. */
-  if (allocate_buffer) {
-    if (buff != NULL) swift_free("tempbuff", buff);
-    if (gbuff != NULL) swift_free("tempgbuff", gbuff);
-    if (sbuff != NULL) swift_free("tempsbuff", sbuff);
-    if (bbuff != NULL) swift_free("tempbbuff", bbuff);
-    if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
-  }
 }
 
 /**
@@ -890,23 +832,57 @@ static void space_split_aggregate_recursive(struct space *s, struct cell *c) {
 }
 
 /**
+ * @brief Extra data for #space_split_mapper().
+ *
+ * The sorting buffers are allocated once, up front, for the complete local
+ * particle arrays by #space_split() rather than per top-level cell (see
+ * #space_split_fill_buffers()). This bundles the #space together with the
+ * base pointer of each of those buffers so every worker thread can find its
+ * own top-level cells' slices.
+ */
+struct space_split_mapper_data {
+
+  /*! The #space being split. */
+  struct space *s;
+
+  /*! Base pointer of the space-wide hydro sorting buffer. */
+  struct cell_buff *buff;
+
+  /*! Base pointer of the space-wide gravity sorting buffer. */
+  struct cell_buff *gbuff;
+
+  /*! Base pointer of the space-wide star sorting buffer. */
+  struct cell_buff *sbuff;
+
+  /*! Base pointer of the space-wide black hole sorting buffer. */
+  struct cell_buff *bbuff;
+
+  /*! Base pointer of the space-wide sink sorting buffer. */
+  struct cell_buff *sink_buff;
+};
+
+/**
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
- * This only builds the cell hierarchy and sorts particles into it. See
- * #space_split_aggregate_mapper() for the pass that finalises leaves and
- * derives cell statistics and multipoles once the whole hierarchy has been
- * built.
+ * For each top-level cell, this first fills that cell's slice of the
+ * space-wide sorting buffers (see #space_split_fill_buffers()) and then
+ * builds the cell hierarchy and sorts particles into it. It does not
+ * compute any per-cell statistics; see #space_split_aggregate_mapper() for
+ * the pass that finalises leaves and derives cell statistics and
+ * multipoles once the whole hierarchy has been built.
  *
  * @param map_data Pointer towards the top-cells.
  * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
+ * @param extra_data Pointer to a #space_split_mapper_data.
  */
 static void space_split_mapper(void *map_data, int num_cells,
                                void *extra_data) {
 
   /* Unpack the inputs. */
-  struct space *s = (struct space *)extra_data;
+  struct space_split_mapper_data *data =
+      (struct space_split_mapper_data *)extra_data;
+  struct space *s = data->s;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
@@ -916,9 +892,22 @@ static void space_split_mapper(void *map_data, int num_cells,
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
 
-    /* Get this cell and split it recursively. */
+    /* Get this cell. */
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
+
+    /* A top-level cell's particles occupy a contiguous slice of the
+     * complete local particle arrays, at the same offset used elsewhere
+     * (e.g. #cell_split()). Find this cell's slice of each space-wide
+     * buffer and fill it from the cell's own particles. */
+    struct cell_buff *buff = data->buff + (c->hydro.parts - s->parts);
+    struct cell_buff *gbuff = data->gbuff + (c->grav.parts - s->gparts);
+    struct cell_buff *sbuff = data->sbuff + (c->stars.parts - s->sparts);
+    struct cell_buff *bbuff = data->bbuff + (c->black_holes.parts - s->bparts);
+    struct cell_buff *sink_buff = data->sink_buff + (c->sinks.parts - s->sinks);
+    space_split_fill_buffers(c, buff, gbuff, sbuff, bbuff, sink_buff);
+
+    /* Split this cell recursively. */
+    space_split_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff, tpid);
   }
 }
 
@@ -989,6 +978,60 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
 }
 
 /**
+ * @brief Allocate the space-wide sorting buffers for the complete local
+ * particle arrays.
+ *
+ * Called once by #space_split(), up front, before the split pass. Each
+ * top-level cell later fills and uses its own slice of these buffers (see
+ * #space_split_mapper() and #space_split_fill_buffers()); this only
+ * allocates them, sized to the space's complete local particle arrays, for
+ * each non-empty particle family.
+ *
+ * @param s The #space whose local particle arrays size the buffers.
+ * @param buff Pointer to the hydro buffer pointer, allocated in place.
+ * @param gbuff Pointer to the gravity buffer pointer, allocated in place.
+ * @param sbuff Pointer to the star buffer pointer, allocated in place.
+ * @param bbuff Pointer to the black hole buffer pointer, allocated in place.
+ * @param sink_buff Pointer to the sink buffer pointer, allocated in place.
+ */
+static void space_split_allocate_buffers(struct space *s,
+                                         struct cell_buff **buff,
+                                         struct cell_buff **gbuff,
+                                         struct cell_buff **sbuff,
+                                         struct cell_buff **bbuff,
+                                         struct cell_buff **sink_buff) {
+
+  /* Only allocate a buffer for a family if the space holds any such
+   * particles locally. */
+  if (s->nr_parts > 0) {
+    if (swift_memalign("tempbuff", (void **)buff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * s->nr_parts) != 0)
+      error("Failed to allocate temporary indices.");
+  }
+  if (s->nr_gparts > 0) {
+    if (swift_memalign("tempgbuff", (void **)gbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * s->nr_gparts) != 0)
+      error("Failed to allocate temporary indices.");
+  }
+  if (s->nr_sparts > 0) {
+    if (swift_memalign("tempsbuff", (void **)sbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * s->nr_sparts) != 0)
+      error("Failed to allocate temporary indices.");
+  }
+  if (s->nr_bparts > 0) {
+    if (swift_memalign("tempbbuff", (void **)bbuff, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * s->nr_bparts) != 0)
+      error("Failed to allocate temporary indices.");
+  }
+  if (s->nr_sinks > 0) {
+    if (swift_memalign("temp_sink_buff", (void **)sink_buff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * s->nr_sinks) != 0)
+      error("Failed to allocate temporary indices.");
+  }
+}
+
+/**
  * @brief Split particles between cells of a hierarchy.
  *
  * This is done in parallel using threads in the #threadpool.
@@ -1021,15 +1064,36 @@ void space_split(struct space *s, int verbose) {
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
-  /* Split pass: build the cell hierarchy and sort the particles into it. */
+  /* Allocate the sorting buffers once for the complete local particle
+   * arrays; each top-level cell will fill and use its own slice (see
+   * #space_split_mapper()). */
+  const ticks tic_alloc = getticks();
+  struct cell_buff *buff = NULL, *gbuff = NULL, *sbuff = NULL, *bbuff = NULL,
+                   *sink_buff = NULL;
+  space_split_allocate_buffers(s, &buff, &gbuff, &sbuff, &bbuff, &sink_buff);
+  if (verbose)
+    message("Buffer allocation: %.3f %s.",
+            clocks_from_ticks(getticks() - tic_alloc), clocks_getunit());
+
+  /* Split pass: fill the buffers, build the cell hierarchy and sort the
+   * particles into it. */
   const ticks tic_split = getticks();
+  struct space_split_mapper_data split_data = {s,     buff,  gbuff,
+                                               sbuff, bbuff, sink_buff};
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+                 threadpool_auto_chunk_size, &split_data);
   if (verbose)
     message("Split pass: %.3f %s.", clocks_from_ticks(getticks() - tic_split),
             clocks_getunit());
+
+  /* The sorting buffers are only needed for the split pass above. */
+  if (buff != NULL) swift_free("tempbuff", buff);
+  if (gbuff != NULL) swift_free("tempgbuff", gbuff);
+  if (sbuff != NULL) swift_free("tempsbuff", sbuff);
+  if (bbuff != NULL) swift_free("tempbbuff", bbuff);
+  if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
 
   /* Aggregation pass: finalise leaves and derive cell statistics and
    * multipoles bottom-up. */
