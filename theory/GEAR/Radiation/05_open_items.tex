@@ -96,19 +96,28 @@ validation-against-a-paper status.
     \code{radiation\_get\_individual\_star\_temperature}
     (Section~\ref{sec:blackbody}).
 
-  \item[$\square$] \textbf{T8} -- The radiation-pressure momentum
-    recipe (Eq.~\ref{eq:rp-momentum-rate}--\ref{eq:rp-tauIR},
+  \item[$\square$] \textbf{T8 -- citation partially resolved
+    (2026-07-20), validation gap still open} -- The radiation-pressure
+    momentum recipe (Eq.~\ref{eq:rp-momentum-rate}--\ref{eq:rp-tauIR},
     Section~\ref{sec:radiation-pressure}: single UV scattering plus
     $(1+\tau_{\rm IR})$ dust-IR-trapping boost, $\kappa_{\rm IR}=10\,{\rm
-    cm^2\,g^{-1}}$ at $Z_\odot$) is not yet traced to a specific cited
-    source in this codebase. The functional form matches the
-    momentum-driven feedback recipe used across several FIRE papers,
-    but no citation is attached in the code and none is asserted in
-    Section~\ref{sec:radiation-pressure} pending verification. Also
-    still open: no validation example exercises this channel at all
+    cm^2\,g^{-1}}$ at $Z_\odot$) is not unique to one paper -- it is a
+    widely shared recipe across \citet{Hopkins2018} (FIRE-2, already
+    cited elsewhere in this logbook), \citet{Agertz2013}, and
+    \citet{Marinacci2019} (the SMUGGLE model), and the $\kappa_{\rm
+    IR}=10\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$ normalization matches a
+    commonly-quoted value across this literature. \textbf{Not
+    resolved}: which single paper (if any) this codebase's exact
+    implementation traces to -- full-text access to
+    \citet{Agertz2013}/\citet{Marinacci2019}'s own equations was not
+    available in this pass to confirm their precise $\kappa_{\rm IR}$
+    value against this code's. \textbf{Separately, still fully open}:
+    pinning a citation does not validate the physics -- no test in
+    this codebase exercises the radiation-pressure channel at all
     (Section~\ref{sec:rp-open}), so the numerical fix in
     Section~\ref{sec:rp-hit-flag-bug} (momentum now actually applied)
-    has not been checked against any analytic expectation.
+    has not been checked against any analytic expectation. No design
+    for such a test exists yet.
 
   \item[$\square$] \textbf{T9} -- \code{space\_regrid}'s top-level
     cell grid never re-refines once coarsened, even after the

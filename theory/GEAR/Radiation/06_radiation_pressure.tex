@@ -28,13 +28,36 @@ absorption/scattering of the star's own UV/optical photons deposits
 $L_{\rm bol}/c$ of momentum per unit time; photons re-radiated in the
 IR by dust can scatter multiple times in an optically thick shell
 before escaping, boosting the momentum transfer by a further factor of
-$(1+\tau_{\rm IR})$ over a single scattering. \textbf{Not yet traced to
-a specific literature source in this codebase} -- the functional form
-matches the momentum-driven feedback recipe used across several FIRE
-papers (e.g.\ the $L/c\,(1+\tau_{\rm IR})$ combination), but no
-citation is attached to this code and none is asserted here; worth
-pinning down before treating the exact opacity normalization below as
-validated against a specific paper (item~T8, Section~\ref{sec:open}).
+$(1+\tau_{\rm IR})$ over a single scattering.
+
+\textbf{Citation search (2026-07-20), partially resolved.} The
+$L_{\rm bol}/c\,(1+\tau_{\rm IR})$ functional form is not unique to any
+one paper -- it is a widely shared recipe across at least three
+independent lineages: \citet{Hopkins2018} (FIRE-2, already cited
+elsewhere in this logbook for the recombination-cost formula),
+\citet{Agertz2013} (a purely local subgrid implementation for
+cosmological-resolution simulations, with photon trapping assumed only
+while a star cluster remains embedded in its natal clump, and
+explicitly becoming negligible at low metallicity), and
+\citet{Marinacci2019} (the SMUGGLE model for the moving-mesh code
+AREPO). The specific normalization $\kappa_{\rm IR}=10\,{\rm
+cm^2\,g^{-1}}\,(Z/Z_\odot)$ (Eq.~\ref{eq:rp-tauIR}) also matches a
+commonly-quoted reference value in this literature (metallicity-linear
+dust IR opacity of order $5$--$10\,{\rm cm^2\,g^{-1}}$ at solar
+metallicity is standard across this family of models). \textbf{Not
+fully resolved}: the exact equation numbers and precise $\kappa_{\rm
+IR}$ value used by \citet{Agertz2013} and \citet{Marinacci2019}
+specifically were not directly confirmed against the primary sources
+in this pass (full-text fetch was unavailable in this environment) --
+what's established is that the functional form and normalization are
+standard across this literature, not which single paper this
+codebase's implementation was transcribed from, if any one in
+particular. \textbf{Separately, and not resolved by this citation
+search at all}: pinning down a source for the formula does not by
+itself validate the physics -- no test in this codebase exercises the
+radiation-pressure channel against any analytic or reference
+expectation (Section~\ref{sec:rp-open} tracks that gap, item~T8,
+Section~\ref{sec:open}).
 
 $L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, set from
 the same blackbody mass--luminosity fit as the ionizing photon rate
