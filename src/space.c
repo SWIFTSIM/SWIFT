@@ -477,7 +477,7 @@ void space_map_cells_pre(struct space *s, int full,
  * @param tpid ID of threadpool threadpool associated with cells_sub.
  */
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
-                    const short int tpid, int index, int ghost) {
+                    const short int tpid) {
 
   /* For each requested cell... */
   for (int j = 0; j < nr_cells; j++) {
@@ -515,39 +515,39 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     }
 
     /* Pick off the next cell. */
-    cells[j+index] = s->cells_sub[tpid];
-    s->cells_sub[tpid] = cells[j+index]->next;
+    cells[j] = s->cells_sub[tpid];
+    s->cells_sub[tpid] = cells[j]->next;
 
     /* Hook the multipole */
     if (s->with_self_gravity) {
-      cells[j+index]->grav.multipole = s->multipoles_sub[tpid];
-      s->multipoles_sub[tpid] = cells[j+index]->grav.multipole->next;
+      cells[j]->grav.multipole = s->multipoles_sub[tpid];
+      s->multipoles_sub[tpid] = cells[j]->grav.multipole->next;
     }
   }
 
   /* Unlock the space. */
-  if (!ghost) atomic_add(&s->tot_cells, nr_cells);
+  atomic_add(&s->tot_cells, nr_cells);
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
-    cell_free_hydro_sorts(cells[j+index]);
-    cell_free_stars_sorts(cells[j+index]);
+    cell_free_hydro_sorts(cells[j]);
+    cell_free_stars_sorts(cells[j]);
 
-    struct gravity_tensors *temp = cells[j+index]->grav.multipole;
-    bzero(cells[j+index], sizeof(struct cell));
-    cells[j+index]->grav.multipole = temp;
-    cells[j+index]->nodeID = -1;
-    cells[j+index]->tpid = tpid;
-    if (lock_init(&cells[j+index]->hydro.lock) != 0 ||
-        lock_init(&cells[j+index]->hydro.extra_sort_lock) != 0 ||
-        lock_init(&cells[j+index]->grav.plock) != 0 ||
-        lock_init(&cells[j+index]->grav.mlock) != 0 ||
-        lock_init(&cells[j+index]->stars.lock) != 0 ||
-        lock_init(&cells[j+index]->sinks.lock) != 0 ||
-        lock_init(&cells[j+index]->sinks.sink_formation_lock) != 0 ||
-        lock_init(&cells[j+index]->black_holes.lock) != 0 ||
-        lock_init(&cells[j+index]->stars.star_formation_lock) != 0 ||
-        lock_init(&cells[j+index]->grav.star_formation_lock) != 0)
+    struct gravity_tensors *temp = cells[j]->grav.multipole;
+    bzero(cells[j], sizeof(struct cell));
+    cells[j]->grav.multipole = temp;
+    cells[j]->nodeID = -1;
+    cells[j]->tpid = tpid;
+    if (lock_init(&cells[j]->hydro.lock) != 0 ||
+        lock_init(&cells[j]->hydro.extra_sort_lock) != 0 ||
+        lock_init(&cells[j]->grav.plock) != 0 ||
+        lock_init(&cells[j]->grav.mlock) != 0 ||
+        lock_init(&cells[j]->stars.lock) != 0 ||
+        lock_init(&cells[j]->sinks.lock) != 0 ||
+        lock_init(&cells[j]->sinks.sink_formation_lock) != 0 ||
+        lock_init(&cells[j]->black_holes.lock) != 0 ||
+        lock_init(&cells[j]->stars.star_formation_lock) != 0 ||
+        lock_init(&cells[j]->grav.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
 }
@@ -3278,9 +3278,7 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
   double mean_density = get_mean_density(density_array, N, 0);
   mean_density *= 4.* M_PI * fac*fac*fac;
   double sum = 0.0;
-  double rms = 0.0;
   for (int i = 0; i < N*N*N; i++) {
-    rms += fabs(density_array[i]-1);
     sum += density_array[i]-1;
   }
   if (sum < -0.1 || sum > 0.1) message("Warning! Mean of the overdensity is nonzero");
@@ -3433,10 +3431,6 @@ void apply_GS(const double *rho, double *pot, int cdim[3], double mean_density, 
   for (int i = 0; i<N*N*N; i++) {
     pot[i] -= sum/(N*N*N);
   }
-
-  double potential_sum = 0;
-  for (int i =0; i<N*N*N; i++)
-    potential_sum += fabs(pot[i]);  
 }
 
 /**
@@ -3926,7 +3920,7 @@ void space_get_fR_contribution(const struct space *s, struct threadpool *tp, dou
         }
         rho_levels[i][cell_getid(cdim, N/2, N/2, N/2)] = mean_density_set * (1. + 1e-4*(N*N*N-1.));
         break;
-      case 3:
+      case 3: {
         /* Change the density field to represent a 1D sinusoid in the box */
         double fR_mod = MG->fR_bar;
         double delta = s->dim[0]/N;
@@ -3939,6 +3933,7 @@ void space_get_fR_contribution(const struct space *s, struct threadpool *tp, dou
           }
         }
         break;
+      }
       case 4:
         /* Change the density field to represent two particles aligned along the x-axis of the box */
         for (int i2=0; i2<N; i2++) {
