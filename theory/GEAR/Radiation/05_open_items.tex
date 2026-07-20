@@ -109,4 +109,47 @@ validation-against-a-paper status.
     (Section~\ref{sec:rp-open}), so the numerical fix in
     Section~\ref{sec:rp-hit-flag-bug} (momentum now actually applied)
     has not been checked against any analytic expectation.
+
+  \item[$\square$] \textbf{T9} -- \code{space\_regrid}'s top-level
+    cell grid never re-refines once coarsened, even after the
+    \code{h\_hii} that coarsened it shrinks back down (e.g.\ a star
+    dies). Traced in code (2026-07-20), not yet fixed.
+    \textbf{Per-star and per-cell bookkeeping is already correct}:
+    \code{feedback\_common.c:372-378} explicitly resets
+    \code{sp->h\_hii = 0.0} when a star dies or ages out of HII
+    eligibility (comment: ``This prevents dead particles with large
+    h\_hii to force the tasks at higher levels than necessary'',
+    final value preserved in
+    \code{sp->tracers\_data.final\_HII\_radius}), and
+    \code{c->stars.h\_hii\_max} (the per-cell aggregate
+    \code{space\_regrid} reads, Section~\ref{sec:space-regrid-hhii}) is
+    recomputed fresh from current \code{sparts[i].h\_hii} at every
+    tree rebuild/drift (\code{cell.c}, \code{cell\_drift.c},
+    \code{space\_split.c}) -- so it does shrink correctly once a
+    star's \code{h\_hii} resets. \textbf{The gap is one level up}:
+    \code{space\_regrid.c}'s own regrid trigger,
+    \begin{quote}
+    \code{if (s->cells\_top == NULL || cdim[0] < s->cdim[0] || ...)}
+    \end{quote}
+    only fires when the newly-computed \code{cdim} is \emph{smaller}
+    (coarser) than the grid's current \code{cdim} -- never when it
+    would come out larger (finer) again. This is a general,
+    pre-existing SWIFT property, true for ordinary hydro \code{h\_max}
+    too, not introduced by this branch: once cells coarsen, they stay
+    coarse for the rest of that run, regardless of why \code{h\_max}
+    grew. \code{h\_hii} is the first mechanism in this codebase where a
+    \emph{single, brief, transient} event (one star's HII region,
+    possibly capped only by the periodic floor of 3,
+    Section~\ref{sec:space-regrid-hhii}) can trigger this, unlike ordinary
+    hydro resolution needs which are usually sustained, not transient.
+    \textbf{Practical concern}: in a real multi-star simulation, one
+    star's HII region growing large enough to coarsen \code{cdim} --
+    even briefly, even down to the periodic floor -- would coarsen the
+    whole box for the remainder of that run, even after that star dies
+    and every other star stays small. Not fixed here: needs a design
+    decision (e.g.\ periodically re-attempt a finer regrid when
+    \code{h\_max} has dropped and stayed dropped for some margin, or
+    track \code{h\_hii}'s contribution to \code{h\_max} separately so
+    it cannot ratchet the whole grid the way sustained hydro resolution
+    needs legitimately should).
 \end{itemize}
