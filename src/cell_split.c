@@ -71,7 +71,7 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
     const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
                     (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
     bucket_count[bid]++;
-    buff[k].ind = bid;
+    cell_buff_set_ind(&buff[k], bid);
   }
 
   /* Set the buffer offsets. */
@@ -86,17 +86,17 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = buff[k].ind;
+      int bid = cell_buff_get_ind(&buff[k]);
       if (bid != bucket) {
         struct cell_buff temp_buff = buff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (buff[j].ind == bid) {
+          while (cell_buff_get_ind(&buff[j]) == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = temp_buff.ind;
+          bid = cell_buff_get_ind(&temp_buff);
         }
         buff[k] = temp_buff;
       }
@@ -118,12 +118,14 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
    * cannot check this against the #part array itself here, since the
    * particles have not been physically moved yet -- only the buffer has. */
   for (int k = 1; k < count; k++) {
-    if (buff[k].ind < buff[k - 1].ind) error("Buff not sorted.");
+    if (cell_buff_get_ind(&buff[k]) < cell_buff_get_ind(&buff[k - 1]))
+      error("Buff not sorted.");
   }
   for (int k = 0; k < count; k++) {
     const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
                     (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
-    if (bid != buff[k].ind) error("Buff ind inconsistent with position.");
+    if (bid != cell_buff_get_ind(&buff[k]))
+      error("Buff ind inconsistent with position.");
   }
 
   /* Verify that _all_ the parts have been assigned to a cell. */
@@ -146,7 +148,7 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
     const int bid = (sbuff[k].x[0] > pivot[0]) * 4 +
                     (sbuff[k].x[1] > pivot[1]) * 2 + (sbuff[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    sbuff[k].ind = bid;
+    cell_buff_set_ind(&sbuff[k], bid);
   }
 
   /* Set the buffer offsets. */
@@ -161,17 +163,17 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = sbuff[k].ind;
+      int bid = cell_buff_get_ind(&sbuff[k]);
       if (bid != bucket) {
         struct cell_buff temp_buff = sbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (sbuff[j].ind == bid) {
+          while (cell_buff_get_ind(&sbuff[j]) == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = temp_buff.ind;
+          bid = cell_buff_get_ind(&temp_buff);
         }
         sbuff[k] = temp_buff;
       }
@@ -195,7 +197,7 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
     const int bid = (bbuff[k].x[0] > pivot[0]) * 4 +
                     (bbuff[k].x[1] > pivot[1]) * 2 + (bbuff[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    bbuff[k].ind = bid;
+    cell_buff_set_ind(&bbuff[k], bid);
   }
 
   /* Set the buffer offsets. */
@@ -210,17 +212,17 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = bbuff[k].ind;
+      int bid = cell_buff_get_ind(&bbuff[k]);
       if (bid != bucket) {
         struct cell_buff temp_buff = bbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (bbuff[j].ind == bid) {
+          while (cell_buff_get_ind(&bbuff[j]) == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&bbuff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = temp_buff.ind;
+          bid = cell_buff_get_ind(&temp_buff);
         }
         bbuff[k] = temp_buff;
       }
@@ -244,7 +246,7 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
                     (sinkbuff[k].x[1] > pivot[1]) * 2 +
                     (sinkbuff[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    sinkbuff[k].ind = bid;
+    cell_buff_set_ind(&sinkbuff[k], bid);
   }
 
   /* Set the buffer offsets. */
@@ -259,17 +261,17 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = sinkbuff[k].ind;
+      int bid = cell_buff_get_ind(&sinkbuff[k]);
       if (bid != bucket) {
         struct cell_buff temp_buff = sinkbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (sinkbuff[j].ind == bid) {
+          while (cell_buff_get_ind(&sinkbuff[j]) == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&sinkbuff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = temp_buff.ind;
+          bid = cell_buff_get_ind(&temp_buff);
         }
         sinkbuff[k] = temp_buff;
       }
@@ -293,7 +295,7 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
     const int bid = (gbuff[k].x[0] > pivot[0]) * 4 +
                     (gbuff[k].x[1] > pivot[1]) * 2 + (gbuff[k].x[2] > pivot[2]);
     bucket_count[bid]++;
-    gbuff[k].ind = bid;
+    cell_buff_set_ind(&gbuff[k], bid);
   }
 
   /* Set the buffer offsets. */
@@ -308,17 +310,17 @@ void cell_split(struct cell *c, struct cell_buff *restrict buff,
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
-      int bid = gbuff[k].ind;
+      int bid = cell_buff_get_ind(&gbuff[k]);
       if (bid != bucket) {
         struct cell_buff temp_buff = gbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
-          while (gbuff[j].ind == bid) {
+          while (cell_buff_get_ind(&gbuff[j]) == bid) {
             j++;
             bucket_count[bid]++;
           }
           memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
-          bid = temp_buff.ind;
+          bid = cell_buff_get_ind(&temp_buff);
         }
         gbuff[k] = temp_buff;
       }

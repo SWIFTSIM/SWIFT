@@ -538,7 +538,7 @@ static void space_split_fill_buffers(
     buff[k].x[0] = parts[k].x[0];
     buff[k].x[1] = parts[k].x[1];
     buff[k].x[2] = parts[k].x[2];
-    buff[k].part_ind = parts_offset + k;
+    cell_buff_set_part_ind(&buff[k], parts_offset + k);
   }
 
   /* Fill the temporary buffer for gravity parts. */
@@ -552,7 +552,7 @@ static void space_split_fill_buffers(
     gbuff[k].x[0] = gparts[k].x[0];
     gbuff[k].x[1] = gparts[k].x[1];
     gbuff[k].x[2] = gparts[k].x[2];
-    gbuff[k].part_ind = gparts_offset + k;
+    cell_buff_set_part_ind(&gbuff[k], gparts_offset + k);
   }
 
   /* Fill the temporary buffer for star parts. */
@@ -566,7 +566,7 @@ static void space_split_fill_buffers(
     sbuff[k].x[0] = sparts[k].x[0];
     sbuff[k].x[1] = sparts[k].x[1];
     sbuff[k].x[2] = sparts[k].x[2];
-    sbuff[k].part_ind = sparts_offset + k;
+    cell_buff_set_part_ind(&sbuff[k], sparts_offset + k);
   }
 
   /* Fill the temporary buffer for black hole parts. */
@@ -580,7 +580,7 @@ static void space_split_fill_buffers(
     bbuff[k].x[0] = bparts[k].x[0];
     bbuff[k].x[1] = bparts[k].x[1];
     bbuff[k].x[2] = bparts[k].x[2];
-    bbuff[k].part_ind = bparts_offset + k;
+    cell_buff_set_part_ind(&bbuff[k], bparts_offset + k);
   }
 
   /* Fill the temporary buffer for sink parts. */
@@ -594,7 +594,7 @@ static void space_split_fill_buffers(
     sink_buff[k].x[0] = sinks[k].x[0];
     sink_buff[k].x[1] = sinks[k].x[1];
     sink_buff[k].x[2] = sinks[k].x[2];
-    sink_buff[k].part_ind = sinks_offset + k;
+    cell_buff_set_part_ind(&sink_buff[k], sinks_offset + k);
   }
 }
 
@@ -1178,7 +1178,7 @@ static void space_split_sort_parts_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     const size_t i = offset + k;
-    const size_t j = chunk[k].part_ind;
+    const size_t j = cell_buff_get_part_ind(&chunk[k]);
     data->new_parts[i] = data->old_parts[j];
     data->new_xparts[i] = data->old_xparts[j];
 
@@ -1244,7 +1244,7 @@ static void space_split_sort_gparts_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     const size_t i = offset + k;
-    const size_t j = chunk[k].part_ind;
+    const size_t j = cell_buff_get_part_ind(&chunk[k]);
     data->new_gparts[i] = data->old_gparts[j];
 
     struct gpart *final_gp = &data->final_gparts[i];
@@ -1296,7 +1296,7 @@ static void space_split_sort_sparts_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     const size_t i = offset + k;
-    const size_t j = chunk[k].part_ind;
+    const size_t j = cell_buff_get_part_ind(&chunk[k]);
     data->new_sparts[i] = data->old_sparts[j];
 
     if (data->new_sparts[i].gpart != NULL)
@@ -1339,7 +1339,7 @@ static void space_split_sort_bparts_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     const size_t i = offset + k;
-    const size_t j = chunk[k].part_ind;
+    const size_t j = cell_buff_get_part_ind(&chunk[k]);
     data->new_bparts[i] = data->old_bparts[j];
 
     if (data->new_bparts[i].gpart != NULL)
@@ -1382,7 +1382,7 @@ static void space_split_sort_sinks_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     const size_t i = offset + k;
-    const size_t j = chunk[k].part_ind;
+    const size_t j = cell_buff_get_part_ind(&chunk[k]);
     data->new_sinks[i] = data->old_sinks[j];
 
     if (data->new_sinks[i].gpart != NULL)

@@ -74,23 +74,63 @@ extern unsigned long long last_leaf_cell_id;
 
 /* Struct to temporarily buffer the particle locations and bin id.
  *
- * Deliberately not SWIFT_STRUCT_ALIGN: nothing accesses this struct via
- * SIMD, so the usual 32-byte struct alignment buys nothing here, and it
- * would push part_ind's 8-byte alignment requirement past the 32-byte
- * boundary and pad the struct out to 64 bytes -- doubling all the memory
- * traffic cell_split() and the space-wide buffer fill/gather do. Left to
- * its natural alignment, it is 40 bytes. */
+ * ind (the octant bucket id used while sorting, 0-7) and part_ind (the
+ * particle's index in the corresponding space-wide array, e.g. s->parts)
+ * are packed together into packed_ind rather than kept as separate
+ * fields, so this struct stays a clean 32 bytes (x[3] plus one size_t)
+ * instead of the 40 bytes a separate 4-byte ind and 8-byte part_ind would
+ * need once aligned -- exactly SWIFT_STRUCT_ALIGN's 32 bytes, so it costs
+ * nothing here. cell_split() moves every byte of this struct at every
+ * level of the tree, for every particle, so that difference is not free.
+ * 3 bits comfortably cover ind; the remaining 61 give part_ind a range no
+ * plausible particle count will ever approach. Always go through
+ * cell_buff_get_ind()/cell_buff_set_ind()/cell_buff_get_part_ind()/
+ * cell_buff_set_part_ind() rather than touching packed_ind directly. */
 struct cell_buff {
   double x[3];
-  int ind;
 
-  /*! Index, in the corresponding space-wide particle array (e.g.
-   * s->parts), of the particle this buffer entry represents. Set once when
-   * the buffer is filled and carried along by every subsequent swap, so it
-   * always identifies the right particle even though the particle itself
-   * is not physically moved until the buffer is fully sorted. */
-  size_t part_ind;
-};
+  /*! Packed ind (top 3 bits) and part_ind (low 61 bits). */
+  size_t packed_ind;
+} SWIFT_STRUCT_ALIGN;
+
+/*! Number of low bits of cell_buff::packed_ind given to part_ind. */
+#define cell_buff_part_ind_bits 61
+
+/*! Mask selecting the part_ind bits of cell_buff::packed_ind. */
+#define cell_buff_part_ind_mask \
+  ((((size_t)1) << cell_buff_part_ind_bits) - 1)
+
+/**
+ * @brief Unpack the octant bucket id (0-7) from a #cell_buff.
+ */
+static inline int cell_buff_get_ind(const struct cell_buff *b) {
+  return (int)(b->packed_ind >> cell_buff_part_ind_bits);
+}
+
+/**
+ * @brief Set the octant bucket id (0-7) of a #cell_buff, leaving its
+ *        part_ind untouched.
+ */
+static inline void cell_buff_set_ind(struct cell_buff *b, const int ind) {
+  b->packed_ind = (((size_t)ind) << cell_buff_part_ind_bits) |
+                  (b->packed_ind & cell_buff_part_ind_mask);
+}
+
+/**
+ * @brief Unpack the space-wide particle index from a #cell_buff.
+ */
+static inline size_t cell_buff_get_part_ind(const struct cell_buff *b) {
+  return b->packed_ind & cell_buff_part_ind_mask;
+}
+
+/**
+ * @brief Set the space-wide particle index of a #cell_buff, leaving its
+ *        ind untouched.
+ */
+static inline void cell_buff_set_part_ind(struct cell_buff *b,
+                                          const size_t part_ind) {
+  b->packed_ind = (b->packed_ind & ~cell_buff_part_ind_mask) | part_ind;
+}
 
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
