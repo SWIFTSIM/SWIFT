@@ -1562,6 +1562,7 @@ void space_split(struct space *s, int verbose) {
 
   /* The sorting buffers and ind scratch are only needed for the split pass
    * above. */
+  const ticks tic_cleanup = getticks();
   if (buff != NULL) swift_free("tempbuff", buff);
   if (gbuff != NULL) swift_free("tempgbuff", gbuff);
   if (sbuff != NULL) swift_free("tempsbuff", sbuff);
@@ -1571,14 +1572,21 @@ void space_split(struct space *s, int verbose) {
     if (ind_scratch[t].ind != NULL) swift_free("ind_scratch", ind_scratch[t].ind);
   }
   swift_free("ind_scratch_array", ind_scratch);
+  if (verbose)
+    message("Buffer cleanup: %.3f %s.",
+            clocks_from_ticks(getticks() - tic_cleanup), clocks_getunit());
 
   /* Swap: every leaf's particles have already been moved into the
    * destination arrays during the split pass; make them the real arrays.
    * Every cell's pointers into any swapped family are now stale; the
    * returned rebase data lets the aggregation pass below fix them up as it
    * walks the tree. */
+  const ticks tic_swap = getticks();
   struct space_split_rebase_data rebase =
       space_split_swap_particle_arrays(s, &move);
+  if (verbose)
+    message("Array swap: %.3f %s.", clocks_from_ticks(getticks() - tic_swap),
+            clocks_getunit());
 
   /* Aggregation pass: rebase cell pointers onto the swapped-in arrays,
    * finalise leaves and derive cell statistics and multipoles bottom-up. */
