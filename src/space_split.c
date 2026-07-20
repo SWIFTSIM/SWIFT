@@ -602,8 +602,9 @@ static void space_split_fill_buffers(
  * @brief Base addresses of the space-wide destination arrays that
  *        #space_split_move_leaf() gathers particles into.
  *
- * Allocated once, up front, by #space_split() -- see
- * #space_split_allocate_particle_arrays() -- sized to the complete local
+ * Point at the space's persistent split scratch arrays (@c s->parts_split
+ * etc.), set up once, up front, by #space_split() -- see
+ * #space_split_ensure_split_arrays() -- sized to the complete local
  * particle arrays, exactly like the sort buffers. Unlike the sort buffers,
  * these do not need per-cell slicing: #space_split_move_leaf() computes a
  * leaf's destination offset itself (the same offset used for buffer
@@ -1364,48 +1365,107 @@ static void space_split_allocate_buffers(struct space *s,
 }
 
 /**
- * @brief Allocate the space-wide destination particle arrays.
+ * @brief Point @p move at the space's persistent split scratch arrays,
+ *        growing whichever ones are too small for the current particle
+ *        counts.
  *
- * Called once by #space_split(), up front, before the split pass, so that
- * #space_split_move_leaf() can gather each leaf's particles into them as
- * soon as that leaf is found, rather than needing a separate pass over the
- * whole space once splitting is done. Sized to the complete local particle
- * arrays, for each non-empty particle family.
+ * #space_split_move_leaf() gathers each leaf's particles into these arrays
+ * as soon as that leaf is found, rather than needing a separate pass over
+ * the whole space once splitting is done. Unlike a plain allocate, the
+ * arrays behind @c s->parts_split etc. persist for the whole run and are
+ * ping-ponged with @c s->parts etc. by #space_split_swap_particle_arrays()
+ * every call: in the common case where particle counts have not grown past
+ * the current capacity, no allocation happens here at all. Growth is rare
+ * and, since the scratch array's previous contents are always fully
+ * overwritten by the gather that follows, does not need to preserve them --
+ * it just frees the too-small array and allocates a bigger one.
  *
  * @param s The #space whose local particle arrays size the destination
  *        arrays.
  * @param move The #space_split_move_data to populate.
+ * @param verbose Whether to log any growth that occurs.
  */
-static void space_split_allocate_particle_arrays(
-    struct space *s, struct space_split_move_data *move) {
+static void space_split_ensure_split_arrays(
+    struct space *s, struct space_split_move_data *move, int verbose) {
 
   if (s->nr_parts > 0) {
-    if (swift_memalign("parts", (void **)&move->new_parts, part_align,
-                       sizeof(struct part) * s->nr_parts) != 0)
-      error("Failed to allocate new parts array.");
-    if (swift_memalign("xparts", (void **)&move->new_xparts, xpart_align,
-                       sizeof(struct xpart) * s->nr_parts) != 0)
-      error("Failed to allocate new xparts array.");
+    if (s->size_parts_split < s->nr_parts) {
+      if (s->parts_split != NULL) swift_free("parts_split", s->parts_split);
+      if (s->xparts_split != NULL)
+        swift_free("xparts_split", s->xparts_split);
+      s->size_parts_split =
+          (size_t)(engine_redistribute_alloc_margin * s->nr_parts);
+      if (swift_memalign("parts_split", (void **)&s->parts_split, part_align,
+                         sizeof(struct part) * s->size_parts_split) != 0)
+        error("Failed to allocate parts_split array.");
+      if (swift_memalign("xparts_split", (void **)&s->xparts_split,
+                         xpart_align,
+                         sizeof(struct xpart) * s->size_parts_split) != 0)
+        error("Failed to allocate xparts_split array.");
+      if (verbose)
+        message("Grew parts_split/xparts_split to %zu.",
+                s->size_parts_split);
+    }
+    move->new_parts = s->parts_split;
+    move->new_xparts = s->xparts_split;
   }
   if (s->nr_gparts > 0) {
-    if (swift_memalign("gparts", (void **)&move->new_gparts, gpart_align,
-                       sizeof(struct gpart) * s->nr_gparts) != 0)
-      error("Failed to allocate new gparts array.");
+    if (s->size_gparts_split < s->nr_gparts) {
+      if (s->gparts_split != NULL)
+        swift_free("gparts_split", s->gparts_split);
+      s->size_gparts_split =
+          (size_t)(engine_redistribute_alloc_margin * s->nr_gparts);
+      if (swift_memalign("gparts_split", (void **)&s->gparts_split,
+                         gpart_align,
+                         sizeof(struct gpart) * s->size_gparts_split) != 0)
+        error("Failed to allocate gparts_split array.");
+      if (verbose)
+        message("Grew gparts_split to %zu.", s->size_gparts_split);
+    }
+    move->new_gparts = s->gparts_split;
   }
   if (s->nr_sparts > 0) {
-    if (swift_memalign("sparts", (void **)&move->new_sparts, spart_align,
-                       sizeof(struct spart) * s->nr_sparts) != 0)
-      error("Failed to allocate new sparts array.");
+    if (s->size_sparts_split < s->nr_sparts) {
+      if (s->sparts_split != NULL)
+        swift_free("sparts_split", s->sparts_split);
+      s->size_sparts_split =
+          (size_t)(engine_redistribute_alloc_margin * s->nr_sparts);
+      if (swift_memalign("sparts_split", (void **)&s->sparts_split,
+                         spart_align,
+                         sizeof(struct spart) * s->size_sparts_split) != 0)
+        error("Failed to allocate sparts_split array.");
+      if (verbose)
+        message("Grew sparts_split to %zu.", s->size_sparts_split);
+    }
+    move->new_sparts = s->sparts_split;
   }
   if (s->nr_bparts > 0) {
-    if (swift_memalign("bparts", (void **)&move->new_bparts, bpart_align,
-                       sizeof(struct bpart) * s->nr_bparts) != 0)
-      error("Failed to allocate new bparts array.");
+    if (s->size_bparts_split < s->nr_bparts) {
+      if (s->bparts_split != NULL)
+        swift_free("bparts_split", s->bparts_split);
+      s->size_bparts_split =
+          (size_t)(engine_redistribute_alloc_margin * s->nr_bparts);
+      if (swift_memalign("bparts_split", (void **)&s->bparts_split,
+                         bpart_align,
+                         sizeof(struct bpart) * s->size_bparts_split) != 0)
+        error("Failed to allocate bparts_split array.");
+      if (verbose)
+        message("Grew bparts_split to %zu.", s->size_bparts_split);
+    }
+    move->new_bparts = s->bparts_split;
   }
   if (s->nr_sinks > 0) {
-    if (swift_memalign("sinks", (void **)&move->new_sinks, sink_align,
-                       sizeof(struct sink) * s->nr_sinks) != 0)
-      error("Failed to allocate new sinks array.");
+    if (s->size_sinks_split < s->nr_sinks) {
+      if (s->sinks_split != NULL) swift_free("sinks_split", s->sinks_split);
+      s->size_sinks_split =
+          (size_t)(engine_redistribute_alloc_margin * s->nr_sinks);
+      if (swift_memalign("sinks_split", (void **)&s->sinks_split, sink_align,
+                         sizeof(struct sink) * s->size_sinks_split) != 0)
+        error("Failed to allocate sinks_split array.");
+      if (verbose)
+        message("Grew sinks_split to %zu.", s->size_sinks_split);
+    }
+    move->new_sinks = s->sinks_split;
   }
 }
 
@@ -1413,31 +1473,25 @@ static void space_split_allocate_particle_arrays(
  * @brief Swap the freshly gathered particle arrays in for the real ones.
  *
  * By the time this runs, the split pass (#space_split_mapper()) has
- * already gathered every leaf's particles into @p move via
- * #space_split_move_leaf(), so @p move's arrays already hold the complete,
- * final-order data for each family. This only needs to free the old array
- * and swap the new one in -- no gather left to do here.
+ * already gathered every leaf's particles into @c s->parts_split etc. (via
+ * #space_split_move_leaf()), so those arrays already hold the complete,
+ * final-order data for each family. This just exchanges each family's
+ * pointer with its scratch counterpart -- no allocation, no free, no copy:
+ * the array that was "the" array before this call becomes next split's
+ * scratch space, to be overwritten wholesale by the next gather.
  *
- * The swap is deliberate, not a copy-back: copying the gathered result
- * back over the original array would cost a second full read-and-write
- * sweep of the family for no reason, since the freshly gathered array
- * already has the right layout and only needs to become "the" array. The
- * cost moves elsewhere instead -- every cell in the tree still holds
- * pointers computed against the old (about to be freed) arrays, so the
- * caller must rebase every one of them before touching particle data
- * again. This returns the old/new base of every family precisely so
- * #space_split_aggregate_recursive() can do that rebase as it walks the
- * tree; see #space_split_rebase_data.
+ * Every cell in the tree still holds pointers computed against the old
+ * (now demoted to scratch) arrays, so the caller must rebase every one of
+ * them before touching particle data again. This returns the old/new base
+ * of every family precisely so #space_split_aggregate_recursive() can do
+ * that rebase as it walks the tree; see #space_split_rebase_data.
  *
  * @param s The #space.
- * @param move The destination arrays #space_split_move_leaf() gathered
- *        every leaf's particles into during the split pass.
  * @return The old/new base address of every family, for
  *         #space_split_aggregate_recursive() to rebase cell pointers with.
  */
 static struct space_split_rebase_data space_split_swap_particle_arrays(
-    struct space *s, const struct space_split_move_data *move,
-    int verbose) {
+    struct space *s) {
 
   struct space_split_rebase_data rebase = {0};
   rebase.s = s;
@@ -1448,57 +1502,39 @@ static struct space_split_rebase_data space_split_swap_particle_arrays(
   rebase.old_bparts = rebase.new_bparts = (uintptr_t)s->bparts;
   rebase.old_sinks = rebase.new_sinks = (uintptr_t)s->sinks;
 
-  /* DIAGNOSTIC: per-array timing to find out where the free() cost in this
-   * function actually goes. To be removed once we have an answer. */
-  ticks tic_free;
-
   if (s->nr_parts > 0) {
-    tic_free = getticks();
-    swift_free("parts", s->parts);
-    swift_free("xparts", s->xparts);
-    if (verbose)
-      message("  free(parts+xparts) [%zu parts]: %.3f %s.", s->nr_parts,
-              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
-    s->parts = move->new_parts;
-    s->xparts = move->new_xparts;
-    rebase.new_parts = (uintptr_t)move->new_parts;
-    rebase.new_xparts = (uintptr_t)move->new_xparts;
+    struct part *tmp_parts = s->parts;
+    struct xpart *tmp_xparts = s->xparts;
+    s->parts = s->parts_split;
+    s->xparts = s->xparts_split;
+    s->parts_split = tmp_parts;
+    s->xparts_split = tmp_xparts;
+    rebase.new_parts = (uintptr_t)s->parts;
+    rebase.new_xparts = (uintptr_t)s->xparts;
   }
   if (s->nr_sparts > 0) {
-    tic_free = getticks();
-    swift_free("sparts", s->sparts);
-    if (verbose)
-      message("  free(sparts) [%zu sparts]: %.3f %s.", s->nr_sparts,
-              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
-    s->sparts = move->new_sparts;
-    rebase.new_sparts = (uintptr_t)move->new_sparts;
+    struct spart *tmp_sparts = s->sparts;
+    s->sparts = s->sparts_split;
+    s->sparts_split = tmp_sparts;
+    rebase.new_sparts = (uintptr_t)s->sparts;
   }
   if (s->nr_bparts > 0) {
-    tic_free = getticks();
-    swift_free("bparts", s->bparts);
-    if (verbose)
-      message("  free(bparts) [%zu bparts]: %.3f %s.", s->nr_bparts,
-              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
-    s->bparts = move->new_bparts;
-    rebase.new_bparts = (uintptr_t)move->new_bparts;
+    struct bpart *tmp_bparts = s->bparts;
+    s->bparts = s->bparts_split;
+    s->bparts_split = tmp_bparts;
+    rebase.new_bparts = (uintptr_t)s->bparts;
   }
   if (s->nr_sinks > 0) {
-    tic_free = getticks();
-    swift_free("sinks", s->sinks);
-    if (verbose)
-      message("  free(sinks) [%zu sinks]: %.3f %s.", s->nr_sinks,
-              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
-    s->sinks = move->new_sinks;
-    rebase.new_sinks = (uintptr_t)move->new_sinks;
+    struct sink *tmp_sinks = s->sinks;
+    s->sinks = s->sinks_split;
+    s->sinks_split = tmp_sinks;
+    rebase.new_sinks = (uintptr_t)s->sinks;
   }
   if (s->nr_gparts > 0) {
-    tic_free = getticks();
-    swift_free("gparts", s->gparts);
-    if (verbose)
-      message("  free(gparts) [%zu gparts]: %.3f %s.", s->nr_gparts,
-              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
-    s->gparts = move->new_gparts;
-    rebase.new_gparts = (uintptr_t)move->new_gparts;
+    struct gpart *tmp_gparts = s->gparts;
+    s->gparts = s->gparts_split;
+    s->gparts_split = tmp_gparts;
+    rebase.new_gparts = (uintptr_t)s->gparts;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1531,9 +1567,10 @@ static struct space_split_rebase_data space_split_swap_particle_arrays(
  *    (h_max, time-step bounds, star formation history, maxdepth and, for
  *    self-gravity runs, the multipole) from its progeny.
  *
- * Between the two, #space_split_swap_particle_arrays() swaps the
- * destination arrays #space_split_move_leaf() gathered into in for the
- * real ones.
+ * Between the two, #space_split_swap_particle_arrays() ping-pongs the
+ * destination arrays #space_split_move_leaf() gathered into with the real
+ * ones -- a pointer swap only, since both sets of arrays persist on the
+ * #space across calls (see #space_split_ensure_split_arrays()).
  *
  * @param s The #space.
  * @param verbose Are we talkative ?
@@ -1546,16 +1583,19 @@ void space_split(struct space *s, int verbose) {
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
-  /* Allocate the sorting buffers and the destination particle arrays once
-   * for the complete local particle arrays; each top-level cell will fill
-   * and use its own slice of the former (see #space_split_mapper()), and
-   * gather straight into the latter as each of its leaves is found. */
+  /* Allocate the sorting buffers for the complete local particle arrays;
+   * each top-level cell will fill and use its own slice (see
+   * #space_split_mapper()). Point the destination particle arrays at the
+   * space's persistent split scratch arrays, growing them first if needed
+   * -- gathering into these as each leaf is found (see
+   * #space_split_move_leaf()) needs no fresh allocation in the common
+   * case, since they are ping-ponged back in below rather than freed. */
   const ticks tic_alloc = getticks();
   struct cell_buff *buff = NULL, *gbuff = NULL, *sbuff = NULL, *bbuff = NULL,
                    *sink_buff = NULL;
   space_split_allocate_buffers(s, &buff, &gbuff, &sbuff, &bbuff, &sink_buff);
   struct space_split_move_data move = {0};
-  space_split_allocate_particle_arrays(s, &move);
+  space_split_ensure_split_arrays(s, &move, verbose);
 
   /* One #cell_split() ind scratch buffer per worker thread, grown lazily
    * as #space_split_mapper() encounters top-level cells with larger
@@ -1602,13 +1642,13 @@ void space_split(struct space *s, int verbose) {
             clocks_from_ticks(getticks() - tic_cleanup), clocks_getunit());
 
   /* Swap: every leaf's particles have already been moved into the
-   * destination arrays during the split pass; make them the real arrays.
-   * Every cell's pointers into any swapped family are now stale; the
-   * returned rebase data lets the aggregation pass below fix them up as it
-   * walks the tree. */
+   * destination arrays during the split pass; ping-pong them in for the
+   * real arrays (a pointer swap, not a free -- see
+   * #space_split_swap_particle_arrays()). Every cell's pointers into any
+   * swapped family are now stale; the returned rebase data lets the
+   * aggregation pass below fix them up as it walks the tree. */
   const ticks tic_swap = getticks();
-  struct space_split_rebase_data rebase =
-      space_split_swap_particle_arrays(s, &move, verbose);
+  struct space_split_rebase_data rebase = space_split_swap_particle_arrays(s);
   if (verbose)
     message("Array swap: %.3f %s.", clocks_from_ticks(getticks() - tic_swap),
             clocks_getunit());

@@ -282,6 +282,44 @@ struct space {
   /*! The sink particle data (cells have pointers to this). */
   struct sink *sinks;
 
+  /*! Persistent scratch array #space_split() gathers particles into while
+   * sorting, ping-ponged with #parts on every call so no allocation or
+   * free of a full-size particle array is needed on the steady-state path
+   * (see space_split_swap_particle_arrays() in space_split.c). Grown, never
+   * shrunk, when the particle count outgrows its current capacity. */
+  struct part *parts_split;
+
+  /*! Extended-particle counterpart of #parts_split, ping-ponged with
+   * #xparts alongside it. */
+  struct xpart *xparts_split;
+
+  /*! g-particle counterpart of #parts_split, ping-ponged with #gparts. */
+  struct gpart *gparts_split;
+
+  /*! s-particle counterpart of #parts_split, ping-ponged with #sparts. */
+  struct spart *sparts_split;
+
+  /*! b-particle counterpart of #parts_split, ping-ponged with #bparts. */
+  struct bpart *bparts_split;
+
+  /*! Sink counterpart of #parts_split, ping-ponged with #sinks. */
+  struct sink *sinks_split;
+
+  /*! Allocated capacity of #parts_split and #xparts_split. */
+  size_t size_parts_split;
+
+  /*! Allocated capacity of #gparts_split. */
+  size_t size_gparts_split;
+
+  /*! Allocated capacity of #sparts_split. */
+  size_t size_sparts_split;
+
+  /*! Allocated capacity of #bparts_split. */
+  size_t size_bparts_split;
+
+  /*! Allocated capacity of #sinks_split. */
+  size_t size_sinks_split;
+
   /*! Minimal mass of all the #part */
   float min_part_mass;
 

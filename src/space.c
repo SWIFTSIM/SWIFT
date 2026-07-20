@@ -2598,6 +2598,12 @@ void space_clean(struct space *s) {
   swift_free("sparts", s->sparts);
   swift_free("bparts", s->bparts);
   swift_free("sinks", s->sinks);
+  swift_free("parts_split", s->parts_split);
+  swift_free("xparts_split", s->xparts_split);
+  swift_free("gparts_split", s->gparts_split);
+  swift_free("sparts_split", s->sparts_split);
+  swift_free("bparts_split", s->bparts_split);
+  swift_free("sinks_split", s->sinks_split);
 #ifdef WITH_MPI
   swift_free("parts_foreign", s->parts_foreign);
   swift_free("sparts_foreign", s->sparts_foreign);
@@ -2822,6 +2828,21 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->sinks_foreign = NULL;
   s->size_sinks_foreign = 0;
 #endif
+
+  /* The split scratch arrays are pure derived state, rebuilt (grown
+   * lazily) by the next space_split() -- see
+   * space_split_ensure_split_arrays(). */
+  s->parts_split = NULL;
+  s->size_parts_split = 0;
+  s->xparts_split = NULL;
+  s->gparts_split = NULL;
+  s->size_gparts_split = 0;
+  s->sparts_split = NULL;
+  s->size_sparts_split = 0;
+  s->bparts_split = NULL;
+  s->size_bparts_split = 0;
+  s->sinks_split = NULL;
+  s->size_sinks_split = 0;
 
   /* More things to read. */
   s->parts = NULL;
