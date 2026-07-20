@@ -97,13 +97,13 @@ A task involving the task graph system (task types, subtypes, unskipping, dispat
 2. **Unit tests pass:** `cd tests && make check` exits 0 (at minimum build and
    run `./testRadiationRebuildCheck` and `./test27cellsStars -n 3 -r 5`).
 3. **StrömgrenSphere simulation runs:** In
-   `examples/SubgridTests/StromgrenSphere/`, BOTH `gas_mass=0.1 ./run.sh` and
+   `examples/SubgridTests/SubgridRadiation/StromgrenSphere/`, BOTH `gas_mass=0.1 ./run.sh` and
    `gas_mass=0.01 ./run.sh` complete to `time_end` ("main: done. Bye.") with
    no crash/assertion under `--enable-debugging-checks` (gas_mass=0.01 is the
    real bar — it reaches the tree depth and `radiation_level > hydro.super`
    coarse case that gas_mass=0.1 never does). Run swift directly (not via the
    `tee` pipe in run.sh, which masks the exit code) when checking for a crash.
    Physics/correctness: build with `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING`,
-   then `examples/SubgridTests/StromgrenSphere/hii_anisotropy_check.py` reports
+   then `examples/SubgridTests/SubgridRadiation/StromgrenSphere/hii_anisotropy_check.py` reports
    0.00% un-ionized within the analysis radius at every star position (center
    and cell corners, incl. periodic-seam corners).

@@ -85,7 +85,7 @@ example's current, committed configuration.
 \subsection{[DEPRECATED] Setup}
 \label{sec:setup}
 
-\code{examples/SubgridTests/StromgrenSphereClumpSmith2021/} reproduces
+\code{examples/SubgridTests/SubgridRadiation/StromgrenSphereClumpSmith2021/} reproduces
 both papers' D-type expansion test directly: four co-located
 19.2\,M$_\odot$ sources ($\dot N_{\rm ion}\approx2.5\times10^{48}\,
 {\rm s^{-1}}$ each, $1\times10^{49}\,{\rm s^{-1}}$ combined), a uniform
@@ -1143,7 +1143,7 @@ otherwise unexplained.
 \subsection{[DEPRECATED] STARBENCH: validating the physics, not a paper's implementation}
 \label{sec:starbench}
 
-\code{examples/SubgridTests/StromgrenSphereStarbench/} reproduces the
+\code{examples/SubgridTests/SubgridRadiation/StromgrenSphereStarbench/} reproduces the
 STARBENCH project's late-phase D-type expansion test
 \citep[Section~4.1.2]{Bisbas2015}: a single ionizing source
 ($\dot N_{\rm ion}=10^{49}\,{\rm s^{-1}}$, star mass 26.75\,M$_\odot$ at
@@ -1272,7 +1272,7 @@ an open item, Section~\ref{sec:open}.
 \subsection{[DEPRECATED] Hu et al.\ (2017) / Smith et al.\ (2021): 4 co-located stars}
 \label{sec:husmith4star}
 
-\code{examples/SubgridTests/StromgrenSphereHuSmith2017/} reproduces the
+\code{examples/SubgridTests/SubgridRadiation/StromgrenSphereHuSmith2017/} reproduces the
 D-type expansion convergence test from \citet{Hu2017}, Appendix~A --
 the base algorithm this branch's own HII photoionization scheme builds
 on, before \citet{Smith2021}'s angular (HEALPix) budget-splitting
@@ -1331,7 +1331,7 @@ multi-source residual. This is the open item this validation target
 tracks going forward (Table~\ref{tab:validation-targets}).
 
 \textbf{Provenance}: the example itself is committed
-(\code{examples/SubgridTests/StromgrenSphereHuSmith2017/}), but this
+(\code{examples/SubgridTests/SubgridRadiation/StromgrenSphereHuSmith2017/}), but this
 specific $T_i=10^4\,$K run used the debug compile flag above, not yet
 reflected as a documented, reproducible recipe in that example's own
 README -- the same repo-currency gap identified for STARBENCH
