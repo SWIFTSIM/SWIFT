@@ -119,29 +119,20 @@ float feedback_compute_spart_timestep(
   if (feedback_props->HII_adaptive_rebuild_cadence) {
     /* Cached absolute deadline from the last rebuild pass
        (radiation_compute_and_cache_HII_rebuild_interval); never
-       reconstructed from HII_region_last_rebuild. */
+       reconstructed from HII_region_last_rebuild. Floored uniformly
+       with every other criterion at the bottom of this function. */
     if (star_age_beg_step < HII_max_age) {
       const double next_rebuild_age =
           min((double)sp->feedback_data.radiation.HII_region_next_rebuild_time,
               HII_max_age);
-      const double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
-      /* Floor unconditionally, not just the <= 0.0 (overdue/stale-cache)
-         case: as star_age_beg_step counts up toward the cached deadline
-         on ordinary, on-schedule steps, this remainder shrinks toward
-         0.0 by design (it is meant to guide dt right up to the
-         rebuild), and can pass through a tiny positive value below
-         dt_min in the last step or two before reaching it -- matching
-         the floor already applied in the non-adaptive branch below. */
-      dt_HII_safe = (float)max(time_to_next_rebuild,
-                               feedback_props->HII_rebuild_floor_Myr);
+      dt_HII_safe = (float)(next_rebuild_age - star_age_beg_step);
     }
   } else if (HII_region_rebuild_dt < 0.0 && star_age_beg_step < HII_max_age) {
     /* Negative rebuild time means "rebuild every step"
        (feedback_will_do_feedback()'s need_HII_region_rebuild gate already
-       treats this as unconditional). Force a small step so the star is
-       reliably active often, but never literally 0.0 -- that would
-       violate dt_min on every step, forever. */
-    dt_HII_safe = (float)feedback_props->HII_rebuild_floor_Myr;
+       treats this as unconditional). Force the smallest allowed step so
+       the star is reliably active every step. */
+    dt_HII_safe = feedback_props->min_star_timestep;
   } else if (HII_region_rebuild_dt > 0.0 && star_age_beg_step < HII_max_age) {
     /* HII_region_last_rebuild zero-inits with the rest of the spart
        struct and is only ever written a non-negative age (see the stamp
@@ -172,11 +163,9 @@ float feedback_compute_spart_timestep(
     }
 
     /* The maximum allowable time-step size to avoid overshooting the
-       rebuild point. Never literally 0.0, even exactly on/behind
-       schedule -- see the negative-rebuild-time branch above for why. */
-    const double time_to_next_rebuild = next_rebuild_age - star_age_beg_step;
-    dt_HII_safe =
-        (float)max(time_to_next_rebuild, feedback_props->HII_rebuild_floor_Myr);
+       rebuild point. Floored uniformly with every other criterion at the
+       bottom of this function. */
+    dt_HII_safe = (float)(next_rebuild_age - star_age_beg_step);
   }
 
   /*----------------------------------------*/
@@ -185,7 +174,13 @@ float feedback_compute_spart_timestep(
     return FLT_MAX;
   } else {
     dt = min3(dt, dt_evolution, dt_HII_safe);
-    return dt;
+    /* Floor every non-gravity star timestep criterion uniformly here,
+       instead of each criterion flooring itself individually: this also
+       covers dt_evolution, which has no floor of its own and can pass
+       through a near-zero value as star_age_beg_step -> 0+ (the same
+       unguarded-near-zero shape as the dt_HII_safe bug this floor was
+       originally added for). */
+    return (float)max(dt, feedback_props->min_star_timestep);
   }
 }
 

@@ -534,23 +534,50 @@ session are labelled \code{T}\emph{n} (task-graph) and
     what's specific to it. All four modes verified to build clean;
     \code{testRadiationRebuildCheck} and
     \code{test27cellsStars -n 3 -N 3 -r 5} pass.
-  \item[$\square$] \textbf{T16} -- User's stated direction (2026-07-19),
-    not yet implemented: (1) adaptive rebuild cadence (T11) is intended
-    to become the \emph{default}, not stay opt-in indefinitely; (2) the
-    ad-hoc floor added to \code{dt\_HII\_safe}'s adaptive branch this
-    session (missing the same unconditional floor the fixed-cadence
-    branch already had) should be generalized rather than left as a
-    one-off patch -- proposed: a new \code{Stars:min\_star\_timestep}
-    parameter applied to \emph{every} non-gravity star timestep
-    criterion (\code{dt\_evolution}, \code{dt\_HII\_safe}, and any
-    future one), not just the HII-specific term. This would also close
-    a latent, structurally identical gap in \code{dt\_evolution}
-    (\code{feedback\_common.c}, \code{star\_age /
-    (factor*lifetime)}, currently unfloored -- not yet confirmed to
-    misbehave in practice, only shown analytically to have the same
-    unguarded-near-zero shape as the bug just fixed) in the same change
-    rather than as a separate patch. Not implemented this session --
-    scope was check/report only.
+  \item[$\square$] \textbf{T16 -- part 2 done (2026-07-20), part 1 still
+    open} -- User's stated direction (2026-07-19): (1) adaptive rebuild
+    cadence (T11) is intended to become the \emph{default}, not stay
+    opt-in indefinitely -- \textbf{deliberately not done yet}: the user
+    wants more testing first (2026-07-20), so
+    \code{HII\_adaptive\_rebuild\_cadence} stays off by default. (2) the
+    ad-hoc floor reused from \code{HII\_rebuild\_floor\_Myr} in
+    \code{dt\_HII\_safe}'s branches -- \textbf{implemented}: new
+    \code{GEARFeedback:min\_star\_timestep\_Myr} parameter
+    (\code{feedback\_properties.h}, parsed unconditionally, not gated on
+    \code{with\_photoionization}, since it floors \code{dt\_evolution}
+    too), applied once at the end of
+    \code{feedback\_compute\_spart\_timestep} via
+    \code{max(min3(dt, dt\_evolution, dt\_HII\_safe),
+    min\_star\_timestep)} instead of three separate per-branch
+    \code{max()} calls against \code{HII\_rebuild\_floor\_Myr}. This
+    also closes the latent \code{dt\_evolution} gap (previously
+    completely unfloored). \code{HII\_rebuild\_floor\_Myr} is
+    deliberately kept separate -- it still floors the adaptive-cadence
+    \emph{interval itself} in
+    \code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval}
+    (a physics floor), a different quantity from the numerical
+    step-size safety floor \code{min\_star\_timestep} now provides.
+    \textbf{Default value, chosen over the user's own suggestion of
+    $10^{-6}\,$Gyr ($=10^{-3}\,$Myr):} kept at $10^{-4}\,$Myr, matching
+    \code{HII\_rebuild\_floor\_Myr}'s existing default, rather than
+    raising it $10\times$. Reasoning: at $T_i=10^4\,$K
+    (\citet{Hu2017}/\citet{Smith2021}'s own convention,
+    $\alpha_B\approx2.6\times10^{-13}\,{\rm cm^3\,s^{-1}}$), a dense
+    clump ($n_H\sim$ several hundred ${\rm cm^{-3}}$, well within this
+    project's own clump examples' resolution) already has
+    $t_{\rm rec}=1/(\alpha_B n_e)$ of order a few hundred years
+    ($\sim2$--$5\times10^{-4}\,$Myr); with $f_{\rm safety}=0.2$ (T11's
+    default), the resulting adaptive interval is already close to or
+    below the existing $10^{-4}\,$Myr floor in exactly this regime. A
+    $10\times$ larger floor ($10^{-3}\,$Myr $\approx1000\,$yr) would
+    routinely clip this genuinely short physical timescale in dense
+    clumps -- precisely the environment the per-pixel adaptive cadence
+    exists to resolve finely -- coarsening the cadence below what the
+    physics wants rather than only guarding against pathological
+    near-zero cases. Kept at $10^{-4}\,$Myr instead, consistent with the
+    existing, already-shipped backstop value. Build clean,
+    \code{testRadiationRebuildCheck} and
+    \code{test27cellsStars -n 3 -N 3 -r 5} both pass.
   \item[$\square$] \textbf{T17} -- Pass real ionizing/heating rates
     into Grackle's chemistry solve (Grackle's own \code{RT\_heating\_rate}/
     \code{RT\_HI\_ionization\_rate} fields), instead of this model's
