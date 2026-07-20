@@ -103,7 +103,13 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
   } else {
     dt_age = stars_properties->max_time_step_young;
   }
-  return min(dt_age, dt_feedback);
+
+  /* Floor the combined result, not each criterion individually: some
+     feedback-module criteria (e.g. GEAR's dt_evolution/dt_HII_safe) can
+     pass through a near-zero remainder as the star approaches a
+     scheduled event, which would otherwise violate dt_min. */
+  const float dt = min(dt_age, dt_feedback);
+  return (float)max(dt, stars_properties->min_star_timestep);
 }
 
 /**

@@ -283,6 +283,16 @@ INLINE static void stars_props_init(struct stars_props *sp,
   const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
       params, "Stars:timestep_age_threshold_unlimited_Myr", 0.);
 
+  /* Floor applied to the star's final time-step, after combining the
+     age-based bound above with the feedback module's own criteria
+     (stellar-evolution stage, HII rebuild cadence, ...). Guards against a
+     near-zero remainder violating dt_min. Not a physics floor -- see
+     GEARFeedback:HII_rebuild_floor_Myr for the adaptive HII cadence's own
+     floor on the rebuild interval itself, a different quantity kept
+     separate from this one. */
+  const double min_star_timestep_Myr = parser_get_opt_param_float(
+      params, "Stars:min_star_timestep_Myr", 1e-4);
+
   /* Check for consistency */
   if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
     if (age_threshold_unlimited_Myr < age_threshold_Myr)
@@ -300,6 +310,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->age_threshold = age_threshold_Myr * Myr_internal_units;
   sp->age_threshold_unlimited =
       age_threshold_unlimited_Myr * Myr_internal_units;
+  sp->min_star_timestep = min_star_timestep_Myr * Myr_internal_units;
 
   /* Do we want to overwrite the stars' birth properties? */
   sp->overwrite_birth_time =

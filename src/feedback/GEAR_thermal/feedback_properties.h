@@ -31,7 +31,6 @@
 #define default_HII_adaptive_rebuild_cadence 0
 #define default_HII_rebuild_safety_factor 0.2
 #define default_HII_rebuild_floor_Myr 1e-4
-#define default_min_star_timestep_Myr 1e-4
 
 /**
  * @brief The different subgrid radiation feedback processes GEAR models.
@@ -67,13 +66,6 @@ struct feedback_props {
 
   /*! Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
-
-  /*! Floor applied to every non-gravity star timestep criterion
-   * (dt_evolution, dt_HII_safe, ...) to guard against a near-zero
-   * remainder violating dt_min. Not a physics floor -- see
-   * HII_rebuild_floor_Myr for the adaptive-cadence interval's own
-   * floor, which this is intentionally kept separate from. */
-  float min_star_timestep;
 
   /* ------------- Subgrid Radiation properties ------------- */
 
@@ -154,8 +146,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
   message("Stellar winds efficiency                                   = %.2g",
           feedback_props->winds_efficiency);
-  message("Minimum star timestep floor (internal units)               = %g",
-          feedback_props->min_star_timestep);
 
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
@@ -284,16 +274,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                                  params, cosmo, fp->with_stellar_wind_feedback);
   }
 
-  const double Myr_internal_units = 1e6 * phys_const->const_year;
-
-  /* Minimum star timestep floor. Applies to every non-gravity star
-     timestep criterion regardless of which feedback channels are
-     active, so it is parsed unconditionally here. */
-  fp->min_star_timestep = parser_get_opt_param_float(
-      params, "GEARFeedback:min_star_timestep_Myr",
-      default_min_star_timestep_Myr);
-  fp->min_star_timestep *= Myr_internal_units;
-
   /* ------------- Subgrid Radiation properties ------------- */
   fp->radiation_policy = 0;
 
@@ -358,6 +338,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->HII_min_density *=
         m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
+    const double Myr_internal_units = 1e6 * phys_const->const_year;
     fp->HII_max_age *= Myr_internal_units;
     fp->HII_rebuild_time *= Myr_internal_units;
     fp->HII_rebuild_floor_Myr *= Myr_internal_units;

@@ -541,22 +541,49 @@ session are labelled \code{T}\emph{n} (task-graph) and
     wants more testing first (2026-07-20), so
     \code{HII\_adaptive\_rebuild\_cadence} stays off by default. (2) the
     ad-hoc floor reused from \code{HII\_rebuild\_floor\_Myr} in
-    \code{dt\_HII\_safe}'s branches -- \textbf{implemented}: new
-    \code{GEARFeedback:min\_star\_timestep\_Myr} parameter
-    (\code{feedback\_properties.h}, parsed unconditionally, not gated on
-    \code{with\_photoionization}, since it floors \code{dt\_evolution}
-    too), applied once at the end of
-    \code{feedback\_compute\_spart\_timestep} via
-    \code{max(min3(dt, dt\_evolution, dt\_HII\_safe),
-    min\_star\_timestep)} instead of three separate per-branch
-    \code{max()} calls against \code{HII\_rebuild\_floor\_Myr}. This
-    also closes the latent \code{dt\_evolution} gap (previously
-    completely unfloored). \code{HII\_rebuild\_floor\_Myr} is
-    deliberately kept separate -- it still floors the adaptive-cadence
-    \emph{interval itself} in
-    \code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval}
-    (a physics floor), a different quantity from the numerical
-    step-size safety floor \code{min\_star\_timestep} now provides.
+    \code{dt\_HII\_safe}'s branches -- \textbf{implemented, one design
+    correction after the first pass}: a first attempt added
+    \code{GEARFeedback:min\_star\_timestep\_Myr} to \code{feedback\_props}
+    and floored the result inside
+    \code{feedback\_compute\_spart\_timestep} itself. User pointed out
+    (2026-07-20) that the \emph{general}, model-agnostic star timestep
+    logic (age-based young/old/unlimited caps,
+    \code{max\_time\_step\_young}/\code{max\_time\_step\_old}) already
+    lives one level up, in \code{stars\_compute\_timestep}
+    (\code{src/stars/GEAR/stars.h}), not inside the feedback module --
+    and a timestep \emph{floor} is the direct mirror of those existing
+    \emph{ceiling} bounds, so it belongs at the same layer, not buried in
+    one particular feedback model's own function. Moved accordingly:
+    new \code{Stars:min\_star\_timestep\_Myr} parameter (\code{struct
+    stars\_props}, parsed in \code{stars\_io.h} alongside
+    \code{max\_timestep\_young\_Myr} etc.), applied once in
+    \code{stars\_compute\_timestep} via
+    \code{max(min(dt\_age, dt\_feedback), min\_star\_timestep)} --
+    i.e.\ after combining the age-based bound \emph{and} whatever the
+    feedback module returned, not before. \code{feedback\_compute\_spart\_
+    timestep} itself is back to returning the raw, unfloored
+    \code{min3(dt, dt\_evolution, dt\_HII\_safe)}; the one branch that
+    previously assigned \code{min\_star\_timestep} directly (the
+    ``rebuild every step'' case) now uses \code{HII\_rebuild\_floor\_Myr}
+    instead, restoring that branch's pre-session behaviour -- correct,
+    since ``how small a step to force in this HII-specific mode'' is a
+    scheduling decision that belongs with the HII parameters, not the
+    generic floor. This also closes the latent \code{dt\_evolution} gap
+    (previously completely unfloored, now covered by the same
+    end-of-function floor since \code{dt\_evolution} feeds into
+    \code{dt\_feedback}). \code{HII\_rebuild\_floor\_Myr} is deliberately
+    kept separate -- it still floors the adaptive-cadence \emph{interval
+    itself} in \code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval}
+    (a physics floor, and only ever parsed under
+    \code{with\_photoionization}), a different quantity from the
+    generic numerical step-size safety floor \code{min\_star\_timestep}
+    now provides regardless of which feedback channels are active.
+    (\emph{Sanity-checked} \code{min\_star\_timestep}'s own default
+    against this project's actual unit system: at
+    \code{TimeIntegration:dt\_min}$=10^{-10}$ internal
+    ($\approx0.1\,$yr for this project's \code{kpc}/\code{km/s}/M$_\odot$
+    system), $10^{-4}\,$Myr sits $\sim1000\times$ above the true
+    numerical floor -- comfortable margin, not a razor's edge.)
     \textbf{Default value, chosen over the user's own suggestion of
     $10^{-6}\,$Gyr ($=10^{-3}\,$Myr):} kept at $10^{-4}\,$Myr, matching
     \code{HII\_rebuild\_floor\_Myr}'s existing default, rather than

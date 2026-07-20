@@ -178,6 +178,12 @@ struct stars_props {
    * units) */
   double age_threshold_unlimited;
 
+  /*! Floor applied to the star's final time-step (after combining the
+   * age-based bound above with the feedback module's own criteria),
+   * guarding against a near-zero remainder violating dt_min (internal
+   * units). */
+  double min_star_timestep;
+
   /*! Are we overwriting the stars' birth time read from the ICs? */
   int overwrite_birth_time;
 

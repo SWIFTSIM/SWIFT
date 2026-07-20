@@ -120,7 +120,7 @@ float feedback_compute_spart_timestep(
     /* Cached absolute deadline from the last rebuild pass
        (radiation_compute_and_cache_HII_rebuild_interval); never
        reconstructed from HII_region_last_rebuild. Floored uniformly
-       with every other criterion at the bottom of this function. */
+       with every other criterion in stars_compute_timestep(). */
     if (star_age_beg_step < HII_max_age) {
       const double next_rebuild_age =
           min((double)sp->feedback_data.radiation.HII_region_next_rebuild_time,
@@ -130,9 +130,10 @@ float feedback_compute_spart_timestep(
   } else if (HII_region_rebuild_dt < 0.0 && star_age_beg_step < HII_max_age) {
     /* Negative rebuild time means "rebuild every step"
        (feedback_will_do_feedback()'s need_HII_region_rebuild gate already
-       treats this as unconditional). Force the smallest allowed step so
-       the star is reliably active every step. */
-    dt_HII_safe = feedback_props->min_star_timestep;
+       treats this as unconditional). Force a small step so the star is
+       reliably active every step; stars_compute_timestep()'s final floor
+       guards against this ever reaching 0.0. */
+    dt_HII_safe = (float)feedback_props->HII_rebuild_floor_Myr;
   } else if (HII_region_rebuild_dt > 0.0 && star_age_beg_step < HII_max_age) {
     /* HII_region_last_rebuild zero-inits with the rest of the spart
        struct and is only ever written a non-negative age (see the stamp
@@ -163,8 +164,8 @@ float feedback_compute_spart_timestep(
     }
 
     /* The maximum allowable time-step size to avoid overshooting the
-       rebuild point. Floored uniformly with every other criterion at the
-       bottom of this function. */
+       rebuild point. Floored uniformly with every other criterion in
+       stars_compute_timestep(). */
     dt_HII_safe = (float)(next_rebuild_age - star_age_beg_step);
   }
 
@@ -173,14 +174,13 @@ float feedback_compute_spart_timestep(
   if (sp->feedback_data.is_dead) {
     return FLT_MAX;
   } else {
+    /* Not floored here: dt_evolution and dt_HII_safe are combined with
+       the age-based criterion and floored uniformly in
+       stars_compute_timestep() (src/stars/GEAR/stars.h), the
+       model-agnostic layer where the sibling age-based bounds
+       (max_time_step_young/old) already live. */
     dt = min3(dt, dt_evolution, dt_HII_safe);
-    /* Floor every non-gravity star timestep criterion uniformly here,
-       instead of each criterion flooring itself individually: this also
-       covers dt_evolution, which has no floor of its own and can pass
-       through a near-zero value as star_age_beg_step -> 0+ (the same
-       unguarded-near-zero shape as the dt_HII_safe bug this floor was
-       originally added for). */
-    return (float)max(dt, feedback_props->min_star_timestep);
+    return dt;
   }
 }
 
