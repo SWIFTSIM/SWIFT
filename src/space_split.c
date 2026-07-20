@@ -1436,7 +1436,8 @@ static void space_split_allocate_particle_arrays(
  *         #space_split_aggregate_recursive() to rebase cell pointers with.
  */
 static struct space_split_rebase_data space_split_swap_particle_arrays(
-    struct space *s, const struct space_split_move_data *move) {
+    struct space *s, const struct space_split_move_data *move,
+    int verbose) {
 
   struct space_split_rebase_data rebase = {0};
   rebase.s = s;
@@ -1447,31 +1448,55 @@ static struct space_split_rebase_data space_split_swap_particle_arrays(
   rebase.old_bparts = rebase.new_bparts = (uintptr_t)s->bparts;
   rebase.old_sinks = rebase.new_sinks = (uintptr_t)s->sinks;
 
+  /* DIAGNOSTIC: per-array timing to find out where the free() cost in this
+   * function actually goes. To be removed once we have an answer. */
+  ticks tic_free;
+
   if (s->nr_parts > 0) {
+    tic_free = getticks();
     swift_free("parts", s->parts);
     swift_free("xparts", s->xparts);
+    if (verbose)
+      message("  free(parts+xparts) [%zu parts]: %.3f %s.", s->nr_parts,
+              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
     s->parts = move->new_parts;
     s->xparts = move->new_xparts;
     rebase.new_parts = (uintptr_t)move->new_parts;
     rebase.new_xparts = (uintptr_t)move->new_xparts;
   }
   if (s->nr_sparts > 0) {
+    tic_free = getticks();
     swift_free("sparts", s->sparts);
+    if (verbose)
+      message("  free(sparts) [%zu sparts]: %.3f %s.", s->nr_sparts,
+              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
     s->sparts = move->new_sparts;
     rebase.new_sparts = (uintptr_t)move->new_sparts;
   }
   if (s->nr_bparts > 0) {
+    tic_free = getticks();
     swift_free("bparts", s->bparts);
+    if (verbose)
+      message("  free(bparts) [%zu bparts]: %.3f %s.", s->nr_bparts,
+              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
     s->bparts = move->new_bparts;
     rebase.new_bparts = (uintptr_t)move->new_bparts;
   }
   if (s->nr_sinks > 0) {
+    tic_free = getticks();
     swift_free("sinks", s->sinks);
+    if (verbose)
+      message("  free(sinks) [%zu sinks]: %.3f %s.", s->nr_sinks,
+              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
     s->sinks = move->new_sinks;
     rebase.new_sinks = (uintptr_t)move->new_sinks;
   }
   if (s->nr_gparts > 0) {
+    tic_free = getticks();
     swift_free("gparts", s->gparts);
+    if (verbose)
+      message("  free(gparts) [%zu gparts]: %.3f %s.", s->nr_gparts,
+              clocks_from_ticks(getticks() - tic_free), clocks_getunit());
     s->gparts = move->new_gparts;
     rebase.new_gparts = (uintptr_t)move->new_gparts;
   }
@@ -1583,7 +1608,7 @@ void space_split(struct space *s, int verbose) {
    * walks the tree. */
   const ticks tic_swap = getticks();
   struct space_split_rebase_data rebase =
-      space_split_swap_particle_arrays(s, &move);
+      space_split_swap_particle_arrays(s, &move, verbose);
   if (verbose)
     message("Array swap: %.3f %s.", clocks_from_ticks(getticks() - tic_swap),
             clocks_getunit());
