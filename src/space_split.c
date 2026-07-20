@@ -1078,8 +1078,12 @@ struct space_split_sort_parts_data {
  * @brief #threadpool mapper function to gather #part/#xpart into their
  *        final, buffer-sorted order.
  *
- * This only gathers -- #gpart linkage is fixed up separately once every
- * family has been moved into place (see #space_split_move_particles()).
+ * Shift and relink happen together in this one pass, exactly as they did
+ * in the pre-buffer #cell_split(): as soon as a #part lands in its new
+ * slot i, the #gpart it is linked to (which has not moved yet) has its
+ * id_or_neg_offset fixed up to point at i. #gpart itself is only moved
+ * once every other family is done (see #space_split_move_particles()), so
+ * this write is always safe.
  *
  * @param map_data A chunk of the space-wide hydro sorting buffer.
  * @param num_elements The number of entries in this chunk.
@@ -1098,6 +1102,9 @@ static void space_split_sort_parts_mapper(void *map_data, int num_elements,
     const size_t j = chunk[k].part_ind;
     data->new_parts[i] = data->old_parts[j];
     data->new_xparts[i] = data->old_xparts[j];
+
+    if (data->new_parts[i].gpart != NULL)
+      data->new_parts[i].gpart->id_or_neg_offset = -(ptrdiff_t)i;
   }
 }
 
@@ -1112,13 +1119,37 @@ struct space_split_sort_gparts_data {
   /*! The freshly allocated #gpart array to gather into. */
   struct gpart *new_gparts;
 
+  /*! s->gparts: the final resting address of the #gpart array, used to
+   * compute the (not yet valid, but stable) address each #gpart will end
+   * up at, so `.gpart` back-pointers can be fixed up now. */
+  struct gpart *final_gparts;
+
   /*! Base pointer of the (fully sorted) space-wide gravity buffer. */
   const struct cell_buff *buff;
+
+  /*! s->parts, already fully moved to their final positions. */
+  struct part *parts;
+
+  /*! s->stars.parts equivalent (s->sparts), already fully moved. */
+  struct spart *sparts;
+
+  /*! s->black_holes.parts equivalent (s->bparts), already fully moved. */
+  struct bpart *bparts;
+
+  /*! s->sinks, already fully moved. */
+  struct sink *sinks;
 };
 
 /**
  * @brief #threadpool mapper function to gather #gpart into their final,
  *        buffer-sorted order.
+ *
+ * This is called once every other family is already in its final place
+ * with a correct id_or_neg_offset (see #space_split_move_particles()), so
+ * as soon as a #gpart lands in its new slot i, this can also fix up its
+ * partner #part/#spart/#bpart/#sink's `.gpart` pointer to
+ * &final_gparts[i] -- the #gpart's final address, valid even before
+ * #space_split_move_particles() has physically copied it there.
  *
  * @param map_data A chunk of the space-wide gravity sorting buffer.
  * @param num_elements The number of entries in this chunk.
@@ -1136,6 +1167,18 @@ static void space_split_sort_gparts_mapper(void *map_data, int num_elements,
     const size_t i = offset + k;
     const size_t j = chunk[k].part_ind;
     data->new_gparts[i] = data->old_gparts[j];
+
+    struct gpart *final_gp = &data->final_gparts[i];
+    const ptrdiff_t partner = -data->new_gparts[i].id_or_neg_offset;
+    if (data->new_gparts[i].type == swift_type_gas) {
+      data->parts[partner].gpart = final_gp;
+    } else if (data->new_gparts[i].type == swift_type_stars) {
+      data->sparts[partner].gpart = final_gp;
+    } else if (data->new_gparts[i].type == swift_type_black_hole) {
+      data->bparts[partner].gpart = final_gp;
+    } else if (data->new_gparts[i].type == swift_type_sink) {
+      data->sinks[partner].gpart = final_gp;
+    }
   }
 }
 
@@ -1156,7 +1199,9 @@ struct space_split_sort_sparts_data {
 
 /**
  * @brief #threadpool mapper function to gather #spart into their final,
- *        buffer-sorted order.
+ *        buffer-sorted order, fixing up the linked #gpart's
+ *        id_or_neg_offset as each #spart lands (see
+ *        #space_split_sort_parts_mapper() for why this is safe here).
  *
  * @param map_data A chunk of the space-wide star sorting buffer.
  * @param num_elements The number of entries in this chunk.
@@ -1174,6 +1219,9 @@ static void space_split_sort_sparts_mapper(void *map_data, int num_elements,
     const size_t i = offset + k;
     const size_t j = chunk[k].part_ind;
     data->new_sparts[i] = data->old_sparts[j];
+
+    if (data->new_sparts[i].gpart != NULL)
+      data->new_sparts[i].gpart->id_or_neg_offset = -(ptrdiff_t)i;
   }
 }
 
@@ -1194,7 +1242,9 @@ struct space_split_sort_bparts_data {
 
 /**
  * @brief #threadpool mapper function to gather #bpart into their final,
- *        buffer-sorted order.
+ *        buffer-sorted order, fixing up the linked #gpart's
+ *        id_or_neg_offset as each #bpart lands (see
+ *        #space_split_sort_parts_mapper() for why this is safe here).
  *
  * @param map_data A chunk of the space-wide black hole sorting buffer.
  * @param num_elements The number of entries in this chunk.
@@ -1212,6 +1262,9 @@ static void space_split_sort_bparts_mapper(void *map_data, int num_elements,
     const size_t i = offset + k;
     const size_t j = chunk[k].part_ind;
     data->new_bparts[i] = data->old_bparts[j];
+
+    if (data->new_bparts[i].gpart != NULL)
+      data->new_bparts[i].gpart->id_or_neg_offset = -(ptrdiff_t)i;
   }
 }
 
@@ -1232,7 +1285,9 @@ struct space_split_sort_sinks_data {
 
 /**
  * @brief #threadpool mapper function to gather #sink into their final,
- *        buffer-sorted order.
+ *        buffer-sorted order, fixing up the linked #gpart's
+ *        id_or_neg_offset as each #sink lands (see
+ *        #space_split_sort_parts_mapper() for why this is safe here).
  *
  * @param map_data A chunk of the space-wide sink sorting buffer.
  * @param num_elements The number of entries in this chunk.
@@ -1250,7 +1305,46 @@ static void space_split_sort_sinks_mapper(void *map_data, int num_elements,
     const size_t i = offset + k;
     const size_t j = chunk[k].part_ind;
     data->new_sinks[i] = data->old_sinks[j];
+
+    if (data->new_sinks[i].gpart != NULL)
+      data->new_sinks[i].gpart->id_or_neg_offset = -(ptrdiff_t)i;
   }
+}
+
+/**
+ * @brief Extra data for #space_split_copy_back_mapper().
+ */
+struct space_split_copy_back_data {
+
+  /*! Destination base pointer -- the real array being written to. */
+  char *dest;
+
+  /*! Source base pointer -- the scratch array being read from. */
+  const char *src;
+};
+
+/**
+ * @brief #threadpool mapper function to copy a scratch array back over the
+ *        real array it was gathered from, one chunk of raw bytes at a time.
+ *
+ * A plain single-threaded memcpy() can only use one core's worth of memory
+ * bandwidth; chunking this over the #threadpool instead lets it use
+ * however many cores are available, the same way the gather that filled
+ * the scratch array in the first place already does.
+ *
+ * @param map_data A chunk of the scratch (source) array, as raw bytes.
+ * @param num_elements The number of bytes in this chunk.
+ * @param extra_data A #space_split_copy_back_data.
+ */
+static void space_split_copy_back_mapper(void *map_data, int num_elements,
+                                         void *extra_data) {
+
+  const char *chunk = (const char *)map_data;
+  struct space_split_copy_back_data *data =
+      (struct space_split_copy_back_data *)extra_data;
+  const ptrdiff_t offset = chunk - data->src;
+
+  memcpy(data->dest + offset, chunk, num_elements);
 }
 
 /**
@@ -1263,19 +1357,20 @@ static void space_split_sort_sinks_mapper(void *map_data, int num_elements,
  * every entry's part_ind identifying that particle's current (not yet
  * moved) global index. This gathers each family, one at a time, into a
  * freshly allocated scratch array via that permutation, then copies the
- * scratch back over the real array -- freeing both the scratch and the
+ * scratch back over the real array in parallel via
+ * #space_split_copy_back_mapper() -- freeing both the scratch and the
  * (now consumed) buffer immediately afterwards to keep peak memory down.
  *
  * #gpart linkage needs care, since it is a link in two directions: a
  * #part/#spart/#bpart/#sink's `.gpart` pointer, and a #gpart's
  * `id_or_neg_offset` back to its partner. Both go stale the moment either
  * side of the pair moves. So the non-gravity families are moved first,
- * each immediately fixing up its partner #gpart's `id_or_neg_offset` via
- * #part_relink_gparts_to_parts() and friends -- still safe at this point,
- * since the #gpart array itself has not moved yet. #gpart is moved last,
- * once every other family is already in its final place, so the final
- * #part_relink_all_parts_to_gparts() pass can safely write the `.gpart`
- * back-pointers straight into their final arrays.
+ * each immediately fixing up its partner #gpart's `id_or_neg_offset` as
+ * part of its own gather mapper -- still safe at this point, since the
+ * #gpart array itself has not moved yet. #gpart is moved last, once every
+ * other family is already in its final place, so its own gather mapper
+ * can safely fix up the `.gpart` back-pointers straight into their final
+ * arrays as it goes.
  *
  * @param s The #space.
  * @param buff The (fully sorted) space-wide hydro buffer.
@@ -1293,9 +1388,9 @@ static void space_split_move_particles(struct space *s,
 
   struct threadpool *tp = &s->e->threadpool;
 
-  /* Hydro: gather parts and xparts, copy them back, then fix up the
-   * id_or_neg_offset of every gpart they are linked to. The gparts
-   * themselves have not moved yet, so this is safe. */
+  /* Hydro: gather parts and xparts, fixing up the id_or_neg_offset of
+   * every gpart they are linked to as they land, then copy the result
+   * back over the real arrays. */
   if (s->nr_parts > 0) {
     struct part *new_parts = NULL;
     struct xpart *new_xparts = NULL;
@@ -1312,12 +1407,19 @@ static void space_split_move_particles(struct space *s,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    memcpy(s->parts, new_parts, sizeof(struct part) * s->nr_parts);
-    memcpy(s->xparts, new_xparts, sizeof(struct xpart) * s->nr_parts);
+    struct space_split_copy_back_data parts_copy = {(char *)s->parts,
+                                                     (char *)new_parts};
+    threadpool_map(tp, space_split_copy_back_mapper, new_parts,
+                   sizeof(struct part) * s->nr_parts, 1,
+                   threadpool_auto_chunk_size, &parts_copy);
+    struct space_split_copy_back_data xparts_copy = {(char *)s->xparts,
+                                                      (char *)new_xparts};
+    threadpool_map(tp, space_split_copy_back_mapper, new_xparts,
+                   sizeof(struct xpart) * s->nr_parts, 1,
+                   threadpool_auto_chunk_size, &xparts_copy);
+
     swift_free("tempparts", new_parts);
     swift_free("tempxparts", new_xparts);
-
-    part_relink_gparts_to_parts(s->parts, s->nr_parts, 0);
   }
   if (buff != NULL) swift_free("tempbuff", buff);
 
@@ -1333,10 +1435,13 @@ static void space_split_move_particles(struct space *s,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    memcpy(s->sparts, new_sparts, sizeof(struct spart) * s->nr_sparts);
-    swift_free("tempsparts", new_sparts);
+    struct space_split_copy_back_data sparts_copy = {(char *)s->sparts,
+                                                      (char *)new_sparts};
+    threadpool_map(tp, space_split_copy_back_mapper, new_sparts,
+                   sizeof(struct spart) * s->nr_sparts, 1,
+                   threadpool_auto_chunk_size, &sparts_copy);
 
-    part_relink_gparts_to_sparts(s->sparts, s->nr_sparts, 0);
+    swift_free("tempsparts", new_sparts);
   }
   if (sbuff != NULL) swift_free("tempsbuff", sbuff);
 
@@ -1352,10 +1457,13 @@ static void space_split_move_particles(struct space *s,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    memcpy(s->bparts, new_bparts, sizeof(struct bpart) * s->nr_bparts);
-    swift_free("tempbparts", new_bparts);
+    struct space_split_copy_back_data bparts_copy = {(char *)s->bparts,
+                                                      (char *)new_bparts};
+    threadpool_map(tp, space_split_copy_back_mapper, new_bparts,
+                   sizeof(struct bpart) * s->nr_bparts, 1,
+                   threadpool_auto_chunk_size, &bparts_copy);
 
-    part_relink_gparts_to_bparts(s->bparts, s->nr_bparts, 0);
+    swift_free("tempbparts", new_bparts);
   }
   if (bbuff != NULL) swift_free("tempbbuff", bbuff);
 
@@ -1372,33 +1480,40 @@ static void space_split_move_particles(struct space *s,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    memcpy(s->sinks, new_sinks, sizeof(struct sink) * s->nr_sinks);
-    swift_free("tempsinks", new_sinks);
+    struct space_split_copy_back_data sinks_copy = {(char *)s->sinks,
+                                                     (char *)new_sinks};
+    threadpool_map(tp, space_split_copy_back_mapper, new_sinks,
+                   sizeof(struct sink) * s->nr_sinks, 1,
+                   threadpool_auto_chunk_size, &sinks_copy);
 
-    part_relink_gparts_to_sinks(s->sinks, s->nr_sinks, 0);
+    swift_free("tempsinks", new_sinks);
   }
   if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
 
   /* Gravity: every other family is now in its final place with a correct
-   * id_or_neg_offset pointing at it, so gparts can move last -- the
-   * relinking pass below can then safely write straight into the final
-   * arrays. */
+   * id_or_neg_offset pointing at it, so gparts can move last -- its own
+   * gather mapper fixes up the `.gpart` back-pointers into those final
+   * arrays directly (see #space_split_sort_gparts_mapper()). */
   if (s->nr_gparts > 0) {
     struct gpart *new_gparts = NULL;
     if (swift_memalign("tempgparts", (void **)&new_gparts, gpart_align,
                        sizeof(struct gpart) * s->nr_gparts) != 0)
       error("Failed to allocate new gparts array.");
 
-    struct space_split_sort_gparts_data data = {s->gparts, new_gparts, gbuff};
+    struct space_split_sort_gparts_data data = {
+        s->gparts, new_gparts, s->gparts, gbuff,
+        s->parts,  s->sparts,  s->bparts, s->sinks};
     threadpool_map(tp, space_split_sort_gparts_mapper, gbuff, s->nr_gparts,
                    sizeof(struct cell_buff), threadpool_auto_chunk_size,
                    &data);
 
-    memcpy(s->gparts, new_gparts, sizeof(struct gpart) * s->nr_gparts);
-    swift_free("tempgparts", new_gparts);
+    struct space_split_copy_back_data gparts_copy = {(char *)s->gparts,
+                                                      (char *)new_gparts};
+    threadpool_map(tp, space_split_copy_back_mapper, new_gparts,
+                   sizeof(struct gpart) * s->nr_gparts, 1,
+                   threadpool_auto_chunk_size, &gparts_copy);
 
-    part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts,
-                                    s->sinks, s->sparts, s->bparts, tp);
+    swift_free("tempgparts", new_gparts);
   }
   if (gbuff != NULL) swift_free("tempgbuff", gbuff);
 
