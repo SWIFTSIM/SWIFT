@@ -95,15 +95,28 @@ validation-against-a-paper status.
     attempted. \textbf{Update (2026-07-20)}, Section~\ref{sec:fuv-isrf}:
     photoelectric heating and H$_2$ (Lyman-Werner) dissociation are
     \emph{not} the same photon band (Habing/PE $\sim6$--$13.6\,$eV vs.\
-    LW $11.2$--$13.6\,$eV, a hard sub-band), but under a fixed assumed
-    ISRF spectral shape (e.g.\ Draine 1978/Mathis et al.\ 1983 -- the
-    same move already made for $Q_H$ vs.\ $L_{\rm bol}$,
-    Section~\ref{sec:rp-vs-hii}) a single local $G_0$-equivalent proxy
-    can drive both: fed directly into \code{isrf\_habing} for PE
-    heating, and converted via \citet{DraineBertoldi1996}'s
-    $k_{\rm LW}(\chi)$ relation for \code{RT\_H2\_dissociation\_rate}.
-    Still not scoped: the propagation scheme that would actually produce
-    that one $G_0$ number.
+    LW $11.2$--$13.6\,$eV, a hard sub-band). \textbf{Decided}: rather
+    than assume a fixed ISRF spectral shape to split one proxy in two,
+    track two explicit band luminosities per star, $L_{\rm FUV}$
+    ($6$--$11.2\,$eV) and $L_{\rm LW}$ ($11.2$--$13.6\,$eV) --
+    Section~\ref{sec:fuv-two-bands} -- summed for
+    \code{isrf\_habing}/photoelectric heating, with $L_{\rm LW}$ alone
+    feeding \code{RT\_H2\_dissociation\_rate}. \textbf{Also decided}:
+    injecting these onto kernel-neighbour gas
+    (Section~\ref{sec:fuv-propagation}) is not itself a smooth ISRF
+    (sharp kernel cutoff, resolution-dependent reach); propagation
+    should solve a \emph{screened} (Helmholtz-type) diffusion equation,
+    not a plain one -- its point-source solution is a Yukawa
+    $e^{-r/\lambda}/r$, matching real geometric-dilution-plus-dust-
+    extinction falloff, unlike plain diffusion's unscreened,
+    unphysical $1/r$. The CFL win comes from solving this
+    \emph{steady-state} each update (light-crossing time
+    $\ll$ hydro/cooling timescales), not from "diffusion" as such -- a
+    time-marched parabolic diffusion PDE has its own, potentially just
+    as restrictive, $\Delta t\lesssim\Delta x^2/D$ constraint. Still not
+    scoped: how to solve that steady equation inside SWIFT's
+    SPH+task-graph architecture without a full global linear solve
+    every step.
 
   \item[$\square$] \textbf{T7} -- Extend \texttt{pychem}
     (\texttt{\textasciitilde/programs/pychem/}, already the source of
@@ -115,7 +128,12 @@ validation-against-a-paper status.
     disagreement in detail). A standalone project, not a small in-place
     fix. When it lands, delete the dead
     \code{radiation\_get\_individual\_star\_temperature}
-    (Section~\ref{sec:blackbody}).
+    (Section~\ref{sec:blackbody}). \textbf{Scope widened (2026-07-20)}:
+    $L_{\rm FUV}$ and $L_{\rm LW}$ (Section~\ref{sec:fuv-two-bands}) are
+    two more band integrals of the same underlying stellar-atmosphere
+    model this project would tabulate -- not a separate
+    table-generation effort from $Q_H$/$L_{\rm bol}$, just two more
+    threshold pairs on the same curve.
 
   \item[$\square$] \textbf{T8 -- citation partially resolved
     (2026-07-20), validation gap still open} -- The radiation-pressure
