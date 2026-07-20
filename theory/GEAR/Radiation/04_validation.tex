@@ -1,5 +1,20 @@
-\section{Validation against Hu et al.\ (2017) and Smith et al.\ (2021)}
+\section{Validation}
 \label{sec:validation}
+
+Two distinct kinds of check live in this section. Most of it validates
+against Hu et al.\ (2017) and Smith et al.\ (2021)'s own reported
+numbers for their specific multi-source clump test -- reproducing a
+paper's result, not a test of the underlying physics in general (a
+bug shared between this code and an assumption both papers happen to
+make would pass this kind of check without being caught).
+Section~\ref{sec:starbench} is different in kind: STARBENCH
+\citep{Bisbas2015} is a single-source D-type expansion test where
+twelve independent, differently-implemented radiation-hydrodynamics
+codes agree with each other to $\sim$1--2\%, and this model is compared
+directly against their consensus solution rather than against any one
+paper's own subgrid scheme. It is a much more direct test of whether
+this code reproduces the actual physics of D-type expansion, not just
+whether it reproduces one particular paper's implementation of it.
 
 \subsection{Setup}
 
@@ -916,3 +931,132 @@ running into the box's periodic wrap) is unchanged.
     curve.}
   \label{fig:e10-dtype}
 \end{figure}
+
+\subsection{STARBENCH: validating the physics, not a paper's implementation}
+\label{sec:starbench}
+
+\code{examples/SubgridTests/StromgrenSphereStarbench/} reproduces the
+STARBENCH project's late-phase D-type expansion test
+\citep[Section~4.1.2]{Bisbas2015}: a single ionizing source
+($\dot N_{\rm ion}=10^{49}\,{\rm s^{-1}}$, star mass 26.75\,M$_\odot$ at
+this code's own $\dot N_{\rm ion}(M)$ fit, Section~\ref{sec:blackbody})
+at the centre of a uniform, pure-hydrogen medium
+($n_H\approx3115\,{\rm cm^{-3}}$), purely hydrodynamical (no gravity,
+no magnetic fields, matching the paper's own test exactly). Unlike
+Section~\ref{sec:algorithm}--\ref{sec:e10}'s comparisons, the reference
+here is not one paper's own subgrid implementation but STARBENCH's
+semi-empirical blend of two independently-derived ODEs (Eqns 8, 11, 28,
+29 of the paper): the exact pressure-driven thin-shell equation
+(``Raga-I''), and \citet{HosokawaInutsuka2006}'s shell-inertia equation
+(``Raga-II''), combined with a time-dependent weight
+$f_{\rm SB}(t)=1-0.733\,e^{-t/{\rm 1\,Myr}}$ that interpolates between
+them. This blend was tuned against, and agrees with, twelve
+independently-implemented radiation-hydrodynamics codes to
+$\sim$1--2\% -- a test of whether this code's D-type expansion physics
+is right in general, not of whether it matches one specific paper's own
+approximations.
+
+\textbf{Temperature convention.} STARBENCH assumes a flat
+$T_i=10^4\,$K (ionized) / $T_o=10^3\,$K (neutral) two-temperature
+medium by construction -- an idealization no participating code
+actually integrates through a real cooling network. This model does
+not have that option (gas cools/heats via ordinary Grackle physics), so
+two configurations were tested.
+
+\textbf{First attempt (failed): $Z/Z_\odot=0.231$, unmodified neutral-gas
+floor.} To hit $T_i=10^4\,$K via this model's own metallicity-dependent
+collisional floor (Eq.~\ref{eq:tcollisional}), the first attempt used
+$Z/Z_\odot=0.231$ and left \code{SPH:minimal\_temperature} at its usual
+value of 1\,K, expecting the gap between ``neutral gas cools/heats
+freely'' and STARBENCH's ``neutral gas held fixed at $T_o$'' to be a
+minor, second-order effect. It was not: a direct check found untagged
+gas sitting at 2--5\,K from the very first snapshot onward, not
+anywhere near $T_o=1000\,$K -- real metal-line cooling at
+$Z/Z_\odot=0.231$ (absent from STARBENCH's literal pure-H medium),
+combined with no floor to arrest it. A collapsed $T_o$ collapses $c_o$,
+and since $R_{\rm STAG}\propto(c_i/c_o)^{4/3}$ (the paper's own
+Eqn~14), this removes essentially all the pressure confinement the
+late-phase stagnation radius depends on: instead of levelling off, the
+simulated front grew straight through the STARBENCH prediction and kept
+going (Fig.~\ref{fig:starbench-beforefix}, $r_{\rm sim}=5.96\,$pc vs.\
+$R_{\rm SB}=2.25\,$pc predicted at $t=3\,$Myr, a 165\% miss).
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/starbench_beforefix_check}
+  \caption{STARBENCH check, first attempt: $Z/Z_\odot=0.231$
+    (targeting $T_i=10^4\,$K), \texttt{SPH:minimal\_temperature} left at
+    its usual 1\,K. The simulated front (red) grows straight through
+    the STARBENCH reference (black dashed) instead of levelling off,
+    because the neutral gas ahead of the front collapsed to 2--5\,K
+    instead of holding near $T_o=1000\,$K, collapsing the pressure
+    confinement the late-phase stagnation radius depends on.}
+  \label{fig:starbench-beforefix}
+\end{figure}
+
+\textbf{Fix: \code{SPH:minimal\_temperature=1000}.} Floors the neutral
+gas near $T_o$ without forcing a full isothermal equation of state --
+gas can still heat freely via compression/shocks, it simply cannot cool
+below this floor. This is the same fix later found to matter for the
+Hu/Smith clump examples too (item~T7's neighbouring bug hunts;
+Section~\ref{sec:metallicity}'s discussion of why every other example
+in this section avoids $Z=0$ specifically to sidestep needing this same
+floor).
+
+\textbf{Validated result: $T_i=10^4\,$K forced directly, matching the
+paper's own convention exactly.} Rather than continue reasoning about
+$Z/Z_\odot=0.231$'s approximate match to $10^4\,$K, this run used
+\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
+(decoupling $T_i$ from metallicity entirely, CLAUDE.md) together with
+the \code{minimal\_temperature=1000} fix above -- the literal STARBENCH
+convention, not a workaround. Result
+(Fig.~\ref{fig:starbench-ti1e4}): $r_{\rm sim}=2.366\,$pc vs.\
+$R_{\rm SB}=2.247\,$pc at $t=3\,$Myr (the full run -- $R_{\rm SB}(t)$
+stays inside this example's 5\,pc box half-width for the entire 3\,Myr,
+unlike the natural-$T_i$ case), a \textbf{5.30\% error, PASS} against
+this example's 10\% tolerance (tighter than the classical Spitzer
+check's 30\%, since STARBENCH's own claimed accuracy is $\sim$1--2\%).
+Beyond the single comparison point, the simulated curve tracks
+STARBENCH's characteristic \emph{non-monotonic} shape closely across
+the whole window -- rising to a local overshoot near $t\approx1\,$Myr,
+dipping, then re-settling -- a shape the naive Raga-I curve alone does
+not have; matching it is a qualitatively stronger check than matching
+one number at one time would be on its own.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/starbench_ti1e4_check}
+  \caption{STARBENCH check, validated configuration: $T_i=10^4\,$K
+    forced directly (\texttt{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_
+    IONIZED\_TEMPERATURE\_K}), \texttt{SPH:minimal\_temperature=1000}.
+    Simulated $r_{\rm HII}(t)$ (red) against Raga-I (Eqn~8, dotted),
+    Raga-II (Eqn~11, dash-dotted), and the full STARBENCH blend
+    (Eqns~28--29, black dashed). 5.30\% error at $t=3\,$Myr, PASS.
+    Single isolated star, purely hydrodynamical, pure-hydrogen medium.}
+  \label{fig:starbench-ti1e4}
+\end{figure}
+
+\textbf{What this does and does not establish.} This is the strongest
+single-source validation result in this logbook: unlike the Hu/Smith
+comparisons (which inherit whatever approximations those papers'
+own subgrid schemes make) or the classical-Spitzer e10 check
+(Section~\ref{sec:e10}, which compares against a formula STARBENCH's
+own paper shows \emph{overpredicts} the true late-phase solution), this
+is a direct match to a consensus, code-independent physical solution.
+It validates the single-source photon-budget, temperature-floor, and
+momentum-coupling physics (Sections~\ref{sec:blackbody}--\ref{sec:algorithm})
+in the regime this test covers. It does \emph{not} by itself validate
+the multi-source angular-splitting machinery
+(Section~\ref{sec:angular-splitting}) or explain the Hu/Smith
+multi-source residual (Section~\ref{sec:metallicity} onward) --
+STARBENCH is a single-star test, and V13 (item, Section~\ref{sec:open})
+already found that forcing $T_i=10^4\,$K helped this single-source case
+dramatically while leaving the Hu/Smith multi-source error essentially
+unchanged, i.e.\ this result and the still-open multi-source residual
+are consistent with each other, not in tension. \textbf{Also not yet
+done}: validating this example's own \emph{default}, committed
+configuration ($Z=0$, natural $T_i\approx47{,}500\,$K via
+Eq.~\ref{eq:tcollisional}, with the \code{minimal\_temperature=1000}
+fix applied) against STARBENCH at its own natural temperature -- only
+the $T_i=10^4\,$K forced variant has been validated so far. Flagged as
+item~T21, Section~\ref{sec:open}.

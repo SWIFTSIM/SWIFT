@@ -343,29 +343,6 @@ session are labelled \code{T}\emph{n} (task-graph) and
     (\code{gas\_mass=0.1}/\code{0.01} at \code{max\_top\_level\_cells: 3})
     are permanently pinned at the periodic floor and can only test the
     latter.
-  \item[$\square$] \textbf{T10} -- This model assumes $n_e \approx n_H$
-    throughout (Section~\ref{sec:algorithm}), i.e.\ it does not track
-    helium's ionization state at all. For a standard cosmic He mass
-    fraction ($\sim$24--28\%, $\sim$8--10\% by number relative to H),
-    singly-ionized He alone (needs $>24.6\,$eV, present in any O-star
-    field that ionizes H at all) underestimates $n_e$ by $\sim$8--10\%
-    if ignored; doubly-ionized He ($>54.4\,$eV, only the hottest O
-    stars) up to $\sim$16--20\%. This affects the recombination-cost
-    calculation, cooling, and (T11 below) the adaptive rebuild cadence's
-    recombination timescale. Not attempted: would need a new
-    per-particle He ionization state (not just the binary
-    ionized/not-ionized tag this model has today), separate
-    photon-count integrals above 24.6\,eV/54.4\,eV in the $\dot N_{\rm
-    ion}$ fit, and a self-consistent H/He budget-sharing scheme -- a
-    standalone physics feature at least as large as the angular-pixel-
-    splitting work, not a small addition. GEAR\_10 chemistry already
-    tracks He \emph{mass fraction} per particle (one of its 10
-    elements) -- the gap is specifically ionization \emph{state}, not
-    composition data. Worth checking whether \citet{Hu2017}/
-    \citet{Smith2021} themselves track He ionization before investing
-    here, since matching their convention matters more for this
-    model's validation purpose than matching real ISM physics in
-    isolation.
   \item[$\boxtimes$] \textbf{T11 -- implemented and verified
     (2026-07-18)} -- Physically-derived, adaptive,
     per-star HII rebuild cadence
