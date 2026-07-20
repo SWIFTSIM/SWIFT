@@ -485,7 +485,12 @@ static void space_split_populate_multipole(struct cell *c) {
  * than per top-level cell. This only fills a single cell's slice of those
  * buffers from its own particles; buff, gbuff, sbuff, bbuff and sink_buff
  * must already point at the start of that cell's slice (i.e. offset by the
- * same particle-array offset used elsewhere, e.g. in #cell_split()).
+ * same particle-array offset used elsewhere, e.g. in #cell_split()), and
+ * the *_offset arguments must be that same offset, so that each entry's
+ * part_ind can be set to the particle's index in the space-wide array
+ * (e.g. s->parts) it was filled from. This is what lets #cell_split()
+ * reorder the buffers alone, further down the tree, without also having to
+ * move the particles themselves.
  *
  * @param c The #cell whose particles populate the buffers.
  * @param buff This cell's slice of the space-wide hydro buffer.
@@ -493,13 +498,19 @@ static void space_split_populate_multipole(struct cell *c) {
  * @param sbuff This cell's slice of the space-wide star buffer.
  * @param bbuff This cell's slice of the space-wide black hole buffer.
  * @param sink_buff This cell's slice of the space-wide sink buffer.
+ * @param parts_offset c->hydro.parts - s->parts.
+ * @param gparts_offset c->grav.parts - s->gparts.
+ * @param sparts_offset c->stars.parts - s->sparts.
+ * @param bparts_offset c->black_holes.parts - s->bparts.
+ * @param sinks_offset c->sinks.parts - s->sinks.
  */
-static void space_split_fill_buffers(struct cell *c,
-                                     struct cell_buff *restrict buff,
-                                     struct cell_buff *restrict gbuff,
-                                     struct cell_buff *restrict sbuff,
-                                     struct cell_buff *restrict bbuff,
-                                     struct cell_buff *restrict sink_buff) {
+static void space_split_fill_buffers(
+    struct cell *c, struct cell_buff *restrict buff,
+    struct cell_buff *restrict gbuff, struct cell_buff *restrict sbuff,
+    struct cell_buff *restrict bbuff, struct cell_buff *restrict sink_buff,
+    const ptrdiff_t parts_offset, const ptrdiff_t gparts_offset,
+    const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
+    const ptrdiff_t sinks_offset) {
 
   /* Unpack counts and particle arrays. */
   const int count = c->hydro.count;
@@ -524,6 +535,7 @@ static void space_split_fill_buffers(struct cell *c,
     buff[k].x[0] = parts[k].x[0];
     buff[k].x[1] = parts[k].x[1];
     buff[k].x[2] = parts[k].x[2];
+    buff[k].part_ind = parts_offset + k;
   }
 
   /* Fill the temporary buffer for gravity parts. */
@@ -537,6 +549,7 @@ static void space_split_fill_buffers(struct cell *c,
     gbuff[k].x[0] = gparts[k].x[0];
     gbuff[k].x[1] = gparts[k].x[1];
     gbuff[k].x[2] = gparts[k].x[2];
+    gbuff[k].part_ind = gparts_offset + k;
   }
 
   /* Fill the temporary buffer for star parts. */
@@ -550,6 +563,7 @@ static void space_split_fill_buffers(struct cell *c,
     sbuff[k].x[0] = sparts[k].x[0];
     sbuff[k].x[1] = sparts[k].x[1];
     sbuff[k].x[2] = sparts[k].x[2];
+    sbuff[k].part_ind = sparts_offset + k;
   }
 
   /* Fill the temporary buffer for black hole parts. */
@@ -563,6 +577,7 @@ static void space_split_fill_buffers(struct cell *c,
     bbuff[k].x[0] = bparts[k].x[0];
     bbuff[k].x[1] = bparts[k].x[1];
     bbuff[k].x[2] = bparts[k].x[2];
+    bbuff[k].part_ind = bparts_offset + k;
   }
 
   /* Fill the temporary buffer for sink parts. */
@@ -576,6 +591,7 @@ static void space_split_fill_buffers(struct cell *c,
     sink_buff[k].x[0] = sinks[k].x[0];
     sink_buff[k].x[1] = sinks[k].x[1];
     sink_buff[k].x[2] = sinks[k].x[2];
+    sink_buff[k].part_ind = sinks_offset + k;
   }
 }
 
@@ -899,12 +915,19 @@ static void space_split_mapper(void *map_data, int num_cells,
      * complete local particle arrays, at the same offset used elsewhere
      * (e.g. #cell_split()). Find this cell's slice of each space-wide
      * buffer and fill it from the cell's own particles. */
-    struct cell_buff *buff = data->buff + (c->hydro.parts - s->parts);
-    struct cell_buff *gbuff = data->gbuff + (c->grav.parts - s->gparts);
-    struct cell_buff *sbuff = data->sbuff + (c->stars.parts - s->sparts);
-    struct cell_buff *bbuff = data->bbuff + (c->black_holes.parts - s->bparts);
-    struct cell_buff *sink_buff = data->sink_buff + (c->sinks.parts - s->sinks);
-    space_split_fill_buffers(c, buff, gbuff, sbuff, bbuff, sink_buff);
+    const ptrdiff_t parts_offset = c->hydro.parts - s->parts;
+    const ptrdiff_t gparts_offset = c->grav.parts - s->gparts;
+    const ptrdiff_t sparts_offset = c->stars.parts - s->sparts;
+    const ptrdiff_t bparts_offset = c->black_holes.parts - s->bparts;
+    const ptrdiff_t sinks_offset = c->sinks.parts - s->sinks;
+    struct cell_buff *buff = data->buff + parts_offset;
+    struct cell_buff *gbuff = data->gbuff + gparts_offset;
+    struct cell_buff *sbuff = data->sbuff + sparts_offset;
+    struct cell_buff *bbuff = data->bbuff + bparts_offset;
+    struct cell_buff *sink_buff = data->sink_buff + sinks_offset;
+    space_split_fill_buffers(c, buff, gbuff, sbuff, bbuff, sink_buff,
+                             parts_offset, gparts_offset, sparts_offset,
+                             bparts_offset, sinks_offset);
 
     /* Split this cell recursively. */
     space_split_recursive(s, c, buff, sbuff, bbuff, gbuff, sink_buff, tpid);
@@ -1067,13 +1090,9 @@ void space_split(struct space *s, int verbose) {
   /* Allocate the sorting buffers once for the complete local particle
    * arrays; each top-level cell will fill and use its own slice (see
    * #space_split_mapper()). */
-  const ticks tic_alloc = getticks();
   struct cell_buff *buff = NULL, *gbuff = NULL, *sbuff = NULL, *bbuff = NULL,
                    *sink_buff = NULL;
   space_split_allocate_buffers(s, &buff, &gbuff, &sbuff, &bbuff, &sink_buff);
-  if (verbose)
-    message("Buffer allocation: %.3f %s.",
-            clocks_from_ticks(getticks() - tic_alloc), clocks_getunit());
 
   /* Split pass: fill the buffers, build the cell hierarchy and sort the
    * particles into it. */

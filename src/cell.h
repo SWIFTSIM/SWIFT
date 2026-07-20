@@ -76,6 +76,13 @@ extern unsigned long long last_leaf_cell_id;
 struct cell_buff {
   double x[3];
   int ind;
+
+  /*! Index, in the corresponding space-wide particle array (e.g.
+   * s->parts), of the particle this buffer entry represents. Set once when
+   * the buffer is filled and carried along by every subsequent swap, so it
+   * always identifies the right particle even though the particle itself
+   * is not physically moved until the buffer is fully sorted. */
+  size_t part_ind;
 } SWIFT_STRUCT_ALIGN;
 
 /* Mini struct to link cells to tasks. Used as a linked list. */

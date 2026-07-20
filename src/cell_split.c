@@ -29,18 +29,29 @@
 #include "memswap.h"
 
 /**
- * @brief Sort the parts into eight bins along the given pivots.
+ * @brief Sort the buffers describing the parts into eight bins along the
+ *        given pivots.
+ *
+ * This only reorders buff, sbuff, bbuff, gbuff and sinkbuff -- the #part,
+ * #spart, #bpart, #gpart and #sink arrays themselves, and the gpart
+ * back-pointers linking them, are left untouched. Each buffer entry's
+ * part_ind field identifies which particle it represents, so a later pass
+ * can move every particle into place in one go, once every cell at every
+ * level has finished sorting its buffers (see space_split.c).
  *
  * @param c The #cell array to be sorted.
  * @param parts_offset Offset of the cell parts array relative to the
- *        space's parts array, i.e. c->hydro.parts - s->parts.
+ *        space's parts array, i.e. c->hydro.parts - s->parts. Currently
+ *        unused here (kept for the particle-moving pass still to be added).
  * @param sparts_offset Offset of the cell sparts array relative to the
  *        space's sparts array, i.e. c->stars.parts - s->stars.parts.
+ *        Currently unused here.
  * @param bparts_offset Offset of the cell bparts array relative to the
  *        space's bparts array, i.e. c->black_holes.parts -
- * s->black_holes.parts.
+ *        s->black_holes.parts. Currently unused here.
  * @param sinks_offset Offset of the cell sink array relative to the
  *        space's sink array, i.e. c->sinks.parts - s->sinks.parts.
+ *        Currently unused here.
  * @param buff A buffer with at least max(c->hydro.count, c->grav.count)
  * entries, used for sorting indices.
  * @param sbuff A buffer with at least max(c->stars.count, c->grav.count)
@@ -63,46 +74,11 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
             sink_count = c->sinks.count;
-  struct part *parts = c->hydro.parts;
-  struct xpart *xparts = c->hydro.xparts;
-  struct gpart *gparts = c->grav.parts;
-  struct spart *sparts = c->stars.parts;
-  struct bpart *bparts = c->black_holes.parts;
-  struct sink *sinks = c->sinks.parts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
                            c->loc[2] + c->width[2] / 2};
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the buffs are OK. */
-  for (int k = 0; k < count; k++) {
-    if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
-        buff[k].x[2] != parts[k].x[2])
-      error("Inconsistent buff contents.");
-  }
-  for (int k = 0; k < gcount; k++) {
-    if (gbuff[k].x[0] != gparts[k].x[0] || gbuff[k].x[1] != gparts[k].x[1] ||
-        gbuff[k].x[2] != gparts[k].x[2])
-      error("Inconsistent gbuff contents.");
-  }
-  for (int k = 0; k < scount; k++) {
-    if (sbuff[k].x[0] != sparts[k].x[0] || sbuff[k].x[1] != sparts[k].x[1] ||
-        sbuff[k].x[2] != sparts[k].x[2])
-      error("Inconsistent sbuff contents.");
-  }
-  for (int k = 0; k < bcount; k++) {
-    if (bbuff[k].x[0] != bparts[k].x[0] || bbuff[k].x[1] != bparts[k].x[1] ||
-        bbuff[k].x[2] != bparts[k].x[2])
-      error("Inconsistent bbuff contents.");
-  }
-  for (int k = 0; k < sink_count; k++) {
-    if (sinkbuff[k].x[0] != sinks[k].x[0] ||
-        sinkbuff[k].x[1] != sinks[k].x[1] || sinkbuff[k].x[2] != sinks[k].x[2])
-      error("Inconsistent sinkbuff contents.");
-  }
-#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Fill the buffer with the indices. */
   for (int k = 0; k < count; k++) {
@@ -119,14 +95,13 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
+  /* Run through the buckets, and swap buffer entries to their correct
+   * spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
       int bid = buff[k].ind;
       if (bid != bucket) {
-        struct part part = parts[k];
-        struct xpart xpart = xparts[k];
         struct cell_buff temp_buff = buff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
@@ -134,24 +109,17 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
             j++;
             bucket_count[bid]++;
           }
-          memswap(&parts[j], &part, sizeof(struct part));
-          memswap(&xparts[j], &xpart, sizeof(struct xpart));
           memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
-          if (parts[j].gpart)
-            parts[j].gpart->id_or_neg_offset = -(j + parts_offset);
           bid = temp_buff.ind;
         }
-        parts[k] = part;
-        xparts[k] = xpart;
         buff[k] = temp_buff;
-        if (parts[k].gpart)
-          parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
       }
       bucket_count[bid]++;
     }
   }
 
-  /* Store the counts and offsets. */
+  /* Store the counts and offsets. The #part/#xpart arrays have not moved
+   * yet, so these pointers describe where the particles will end up. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->hydro.count = bucket_count[k];
     c->progeny[k]->hydro.count_total = c->progeny[k]->hydro.count;
@@ -160,12 +128,16 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the buffs are OK. */
+  /* The buffer should now be grouped into non-decreasing bucket order. We
+   * cannot check this against the #part array itself here, since the
+   * particles have not been physically moved yet -- only the buffer has. */
   for (int k = 1; k < count; k++) {
     if (buff[k].ind < buff[k - 1].ind) error("Buff not sorted.");
-    if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
-        buff[k].x[2] != parts[k].x[2])
-      error("Inconsistent buff contents (k=%i).", k);
+  }
+  for (int k = 0; k < count; k++) {
+    const int bid = (buff[k].x[0] >= pivot[0]) * 4 +
+                    (buff[k].x[1] >= pivot[1]) * 2 + (buff[k].x[2] >= pivot[2]);
+    if (bid != buff[k].ind) error("Buff ind inconsistent with position.");
   }
 
   /* Verify that _all_ the parts have been assigned to a cell. */
@@ -178,48 +150,6 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   if (&c->progeny[7]->hydro.parts[c->progeny[7]->hydro.count] !=
       &c->hydro.parts[count])
     error("Particle sorting failed (right edge).");
-
-  /* Verify a few sub-cells. */
-  for (int k = 0; k < c->progeny[0]->hydro.count; k++)
-    if (c->progeny[0]->hydro.parts[k].x[0] >= pivot[0] ||
-        c->progeny[0]->hydro.parts[k].x[1] >= pivot[1] ||
-        c->progeny[0]->hydro.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=0).");
-  for (int k = 0; k < c->progeny[1]->hydro.count; k++)
-    if (c->progeny[1]->hydro.parts[k].x[0] >= pivot[0] ||
-        c->progeny[1]->hydro.parts[k].x[1] >= pivot[1] ||
-        c->progeny[1]->hydro.parts[k].x[2] < pivot[2])
-      error("Sorting failed (progeny=1).");
-  for (int k = 0; k < c->progeny[2]->hydro.count; k++)
-    if (c->progeny[2]->hydro.parts[k].x[0] >= pivot[0] ||
-        c->progeny[2]->hydro.parts[k].x[1] < pivot[1] ||
-        c->progeny[2]->hydro.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=2).");
-  for (int k = 0; k < c->progeny[3]->hydro.count; k++)
-    if (c->progeny[3]->hydro.parts[k].x[0] >= pivot[0] ||
-        c->progeny[3]->hydro.parts[k].x[1] < pivot[1] ||
-        c->progeny[3]->hydro.parts[k].x[2] < pivot[2])
-      error("Sorting failed (progeny=3).");
-  for (int k = 0; k < c->progeny[4]->hydro.count; k++)
-    if (c->progeny[4]->hydro.parts[k].x[0] < pivot[0] ||
-        c->progeny[4]->hydro.parts[k].x[1] >= pivot[1] ||
-        c->progeny[4]->hydro.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=4).");
-  for (int k = 0; k < c->progeny[5]->hydro.count; k++)
-    if (c->progeny[5]->hydro.parts[k].x[0] < pivot[0] ||
-        c->progeny[5]->hydro.parts[k].x[1] >= pivot[1] ||
-        c->progeny[5]->hydro.parts[k].x[2] < pivot[2])
-      error("Sorting failed (progeny=5).");
-  for (int k = 0; k < c->progeny[6]->hydro.count; k++)
-    if (c->progeny[6]->hydro.parts[k].x[0] < pivot[0] ||
-        c->progeny[6]->hydro.parts[k].x[1] < pivot[1] ||
-        c->progeny[6]->hydro.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=6).");
-  for (int k = 0; k < c->progeny[7]->hydro.count; k++)
-    if (c->progeny[7]->hydro.parts[k].x[0] < pivot[0] ||
-        c->progeny[7]->hydro.parts[k].x[1] < pivot[1] ||
-        c->progeny[7]->hydro.parts[k].x[2] < pivot[2])
-      error("Sorting failed (progeny=7).");
 #endif
 
   /* Now do the same song and dance for the sparts. */
@@ -240,13 +170,13 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
+  /* Run through the buckets, and swap buffer entries to their correct
+   * spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
       int bid = sbuff[k].ind;
       if (bid != bucket) {
-        struct spart spart = sparts[k];
         struct cell_buff temp_buff = sbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
@@ -254,16 +184,10 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
             j++;
             bucket_count[bid]++;
           }
-          memswap(&sparts[j], &spart, sizeof(struct spart));
           memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
-          if (sparts[j].gpart)
-            sparts[j].gpart->id_or_neg_offset = -(j + sparts_offset);
           bid = temp_buff.ind;
         }
-        sparts[k] = spart;
         sbuff[k] = temp_buff;
-        if (sparts[k].gpart)
-          sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
       }
       bucket_count[bid]++;
     }
@@ -295,13 +219,13 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
+  /* Run through the buckets, and swap buffer entries to their correct
+   * spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
       int bid = bbuff[k].ind;
       if (bid != bucket) {
-        struct bpart bpart = bparts[k];
         struct cell_buff temp_buff = bbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
@@ -309,16 +233,10 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
             j++;
             bucket_count[bid]++;
           }
-          memswap(&bparts[j], &bpart, sizeof(struct bpart));
           memswap(&bbuff[j], &temp_buff, sizeof(struct cell_buff));
-          if (bparts[j].gpart)
-            bparts[j].gpart->id_or_neg_offset = -(j + bparts_offset);
           bid = temp_buff.ind;
         }
-        bparts[k] = bpart;
         bbuff[k] = temp_buff;
-        if (bparts[k].gpart)
-          bparts[k].gpart->id_or_neg_offset = -(k + bparts_offset);
       }
       bucket_count[bid]++;
     }
@@ -350,13 +268,13 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
+  /* Run through the buckets, and swap buffer entries to their correct
+   * spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
       int bid = sinkbuff[k].ind;
       if (bid != bucket) {
-        struct sink sink = sinks[k];
         struct cell_buff temp_buff = sinkbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
@@ -364,16 +282,10 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
             j++;
             bucket_count[bid]++;
           }
-          memswap(&sinks[j], &sink, sizeof(struct sink));
           memswap(&sinkbuff[j], &temp_buff, sizeof(struct cell_buff));
-          if (sinks[j].gpart)
-            sinks[j].gpart->id_or_neg_offset = -(j + sinks_offset);
           bid = temp_buff.ind;
         }
-        sinks[k] = sink;
         sinkbuff[k] = temp_buff;
-        if (sinks[k].gpart)
-          sinks[k].gpart->id_or_neg_offset = -(k + sinks_offset);
       }
       bucket_count[bid]++;
     }
@@ -405,13 +317,13 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     bucket_count[k - 1] = 0;
   }
 
-  /* Run through the buckets, and swap particles to their correct spot. */
+  /* Run through the buckets, and swap buffer entries to their correct
+   * spot. */
   for (int bucket = 0; bucket < 8; bucket++) {
     for (int k = bucket_offset[bucket] + bucket_count[bucket];
          k < bucket_offset[bucket + 1]; k++) {
       int bid = gbuff[k].ind;
       if (bid != bucket) {
-        struct gpart gpart = gparts[k];
         struct cell_buff temp_buff = gbuff[k];
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
@@ -419,36 +331,10 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
             j++;
             bucket_count[bid]++;
           }
-          memswap_unaligned(&gparts[j], &gpart, sizeof(struct gpart));
           memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
-          if (gparts[j].type == swift_type_gas) {
-            parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
-                &gparts[j];
-          } else if (gparts[j].type == swift_type_stars) {
-            sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
-                &gparts[j];
-          } else if (gparts[j].type == swift_type_sink) {
-            sinks[-gparts[j].id_or_neg_offset - sinks_offset].gpart =
-                &gparts[j];
-          } else if (gparts[j].type == swift_type_black_hole) {
-            bparts[-gparts[j].id_or_neg_offset - bparts_offset].gpart =
-                &gparts[j];
-          }
           bid = temp_buff.ind;
         }
-        gparts[k] = gpart;
         gbuff[k] = temp_buff;
-        if (gparts[k].type == swift_type_gas) {
-          parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
-        } else if (gparts[k].type == swift_type_stars) {
-          sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
-              &gparts[k];
-        } else if (gparts[k].type == swift_type_sink) {
-          sinks[-gparts[k].id_or_neg_offset - sinks_offset].gpart = &gparts[k];
-        } else if (gparts[k].type == swift_type_black_hole) {
-          bparts[-gparts[k].id_or_neg_offset - bparts_offset].gpart =
-              &gparts[k];
-        }
       }
       bucket_count[bid]++;
     }
