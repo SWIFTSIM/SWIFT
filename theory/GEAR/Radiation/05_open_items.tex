@@ -68,7 +68,17 @@ validation-against-a-paper status.
     (\code{reference\_gizmo\_fire\_rt\_rate\_coupling.md}) for how
     FIRE-3 actually does this (self-consistent solve, Stromgren-value
     incident flux, self-shielding off) and why it needs an actual local
-    radiation field, not just a number handed to Grackle.
+    radiation field, not just a number handed to Grackle. \textbf{Update
+    (2026-07-20)}: confirmed Grackle also has an equally-real, separate
+    coupling point specifically for H$_2$ photodissociation
+    (\code{RT\_H2\_dissociation\_rate}, gated on
+    \code{primordial\_chemistry}\,$\in\{2,3\}$, i.e.\ this project's
+    modes 2/3) and for photoelectric heating
+    (\code{use\_isrf\_field}/\code{isrf\_habing}, a genuinely per-particle
+    field, not just the scalar \code{interstellar\_radiation\_field}) --
+    see Section~\ref{sec:fuv-isrf} for the full trace into Grackle's own
+    source. Nothing needs changing inside Grackle for either channel;
+    the entire gap is T6's local FUV estimate below.
 
   \item[$\square$] \textbf{T6} -- Variable ISRF (interstellar radiation
     field), user's design idea (2026-07-19), not yet implemented.
@@ -82,7 +92,18 @@ validation-against-a-paper status.
     using the analytical solution to a hyperbolic diffusion equation,
     explicitly \emph{not} an M1-closure scheme, specifically to avoid
     the $\text{CFL}\sim1/c$ constraint M1 would impose. Not scoped or
-    attempted.
+    attempted. \textbf{Update (2026-07-20)}, Section~\ref{sec:fuv-isrf}:
+    photoelectric heating and H$_2$ (Lyman-Werner) dissociation are
+    \emph{not} the same photon band (Habing/PE $\sim6$--$13.6\,$eV vs.\
+    LW $11.2$--$13.6\,$eV, a hard sub-band), but under a fixed assumed
+    ISRF spectral shape (e.g.\ Draine 1978/Mathis et al.\ 1983 -- the
+    same move already made for $Q_H$ vs.\ $L_{\rm bol}$,
+    Section~\ref{sec:rp-vs-hii}) a single local $G_0$-equivalent proxy
+    can drive both: fed directly into \code{isrf\_habing} for PE
+    heating, and converted via \citet{DraineBertoldi1996}'s
+    $k_{\rm LW}(\chi)$ relation for \code{RT\_H2\_dissociation\_rate}.
+    Still not scoped: the propagation scheme that would actually produce
+    that one $G_0$ number.
 
   \item[$\square$] \textbf{T7} -- Extend \texttt{pychem}
     (\texttt{\textasciitilde/programs/pychem/}, already the source of

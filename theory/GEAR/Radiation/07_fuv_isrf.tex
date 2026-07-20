@@ -1,0 +1,172 @@
+\section{FUV / ISRF: photoelectric heating and H$_2$ photodissociation}
+\label{sec:fuv-isrf}
+
+Not implemented yet -- this section records what was found
+(2026-07-20) while scoping items~T5 and~T6 (Section~\ref{sec:open}):
+what Grackle (the frozen, SWIFT-compatible checkout at
+\texttt{\textasciitilde/programs/grackle-swift/}, confirmed against its
+own source, not just its online docs, which are thin on this) actually
+expects for these two channels, and whether they can share a single
+local FUV estimate or need two.
+
+\subsection{H$_2$ photodissociation (Lyman-Werner) in Grackle}
+\label{sec:fuv-lw-grackle}
+
+Grackle has its own rate-coupling field for this, parallel to the
+H/He ionization-rate fields already used for photoionization
+(Section~\ref{sec:algorithm}):
+\code{RT\_H2\_dissociation\_rate} (\code{grackle\_types.h:74}), threaded
+through \code{solve\_chemistry.c} into the Fortran rate solver
+(\code{solve\_rate\_cool\_g.F}) under the internal name
+\code{kdissH2I}. Requirements, from \code{doc/source/Parameters.rst}
+and \code{Integration.rst} (more explicit there than the field's own
+one-line docstring):
+\begin{itemize}
+  \item \code{use\_radiative\_transfer=1};
+  \item \code{primordial\_chemistry} (Grackle's own name for what this
+    codebase calls \code{COOLING\_GRACKLE\_MODE}) set to \textbf{2 or
+    3} -- i.e.\ exactly this project's modes 2/3, since a
+    dissociation rate for a species (H$_2$) only means something once
+    that species is tracked;
+  \item units \code{1/time\_units}, the same convention as
+    \code{RT\_HI\_ionization\_rate}.
+\end{itemize}
+Reaction \textbf{k31} in Grackle's own network is
+\code{H2I + photon -> 2 HI} (\code{initialize\_rates.c:62}) -- the
+Lyman-Werner dissociation reaction itself. In the solver it is applied
+additively on top of the UV-background table value, exactly like
+\code{kphHI} for photoionization:
+\begin{quote}
+\code{k31shield(i) = k31 + kdissH2I(i,j,k)} \quad
+(\code{solve\_rate\_cool\_g.F:1407})
+\end{quote}
+\textbf{Self-shielding is already handled for us}: both
+\code{H2\_self\_shielding} and \code{H2\_custom\_shielding} explicitly
+attenuate \emph{both} the background UVB rate and the supplied
+\code{RT\_H2\_dissociation\_rate} by the same factor -- dense,
+self-shielded gas is protected from a local LW source exactly as it is
+from the background, with no extra bookkeeping needed on this
+codebase's side. Nothing to build in Grackle for this: the coupling
+point already exists and is well-formed. The gap is entirely upstream
+-- estimating the local LW flux to populate the field (see
+Section~\ref{sec:fuv-band-question} below).
+
+\subsection{Photoelectric heating in Grackle}
+\label{sec:fuv-pe-grackle}
+
+A separate, older mechanism from the RT-coupled ionization/dissociation
+fields above -- not a radiative-transfer field at all, but its own
+dust-physics option:
+
+\begin{itemize}
+  \item \code{photoelectric\_heating} (int, default 0): 0 = off; 1 = a
+    spatially uniform rate set directly by
+    \code{photoelectric\_heating\_rate} (Tasker \& Bryan 2008, no ISRF
+    dependence); 2 = `Wolfire et al.\ (1995)`, Eq.~1, with a constant
+    grain photoelectric efficiency $\epsilon=0.05$ (below $2\times10^4\,$K,
+    0 above), scaled by the local ISRF strength; 3 = same but with
+    $\epsilon$ computed directly from Wolfire et al.\ 1995 Eq.~2
+    (electron-density-dependent, needs \code{primordial\_chemistry}$>0$
+    to have a meaningful electron density).
+  \item \code{dust\_chemistry=1} auto-enables
+    \code{photoelectric\_heating=2} (if unset) \emph{and} dust
+    recombination cooling (Wolfire et al.\ 1995, Eq.~9) \emph{and}
+    H$_2$-formation-on-dust, all three scaled by the same ISRF value --
+    i.e.\ this one flag is Grackle's intended entry point for "turn on
+    dust physics with a given ISRF," not something to enable piecemeal.
+  \item \textbf{The ISRF value itself can be per-particle}, not just a
+    global scalar: \code{use\_isrf\_field=1} switches from the scalar
+    \code{interstellar\_radiation\_field} parameter (Habing units,
+    default 1.7 -- Grackle's own default happens to equal the standard
+    Draine 1978 field normalization, Section~\ref{sec:fuv-band-question})
+    to a per-cell/per-particle field, \code{isrf\_habing}
+    (\code{grackle\_types.h:79}), same units. \textbf{This is exactly
+    the plumbing item~T6 was assuming didn't exist yet} -- it does, and
+    it is the more natural target for a local FUV estimate than routing
+    through \code{RT\_heating\_rate} (which Section~\ref{sec:fuv-lw-grackle}'s
+    ionization-rate machinery is built for, and which does not know
+    about Wolfire et al.\ 1995's dust-grain physics at all).
+\end{itemize}
+Traced into the actual solver (\code{cool1d\_multi\_g.F:709-997}): the
+per-cell ISRF value (either the scalar or, if
+\code{use\_isrf\_field=1}, \code{isrf\_habing(i,j,k)}) is read into a
+local \code{myisrf(i)}, and the heating rate is
+\begin{equation}
+  \Gamma_{\rm PE} = \gamma_{ha}\,\epsilon\,G_0\,n_H, \qquad
+  \gamma_{ha} = 10^{-24}\,{\rm erg\,s^{-1}}
+  \label{eq:fuv-pe-heating}
+\end{equation}
+(\code{rate\_functions.c}'s \code{gammah\_rate}, applied as
+\code{gammaha\_eff(i) = gammaha * 0.05 * myisrf(i)} for
+\code{photoelectric\_heating=2}, \code{cool1d\_multi\_g.F:972}), added
+directly into \code{edot}. As with H$_2$ dissociation, nothing needs
+building inside Grackle -- the per-particle \code{isrf\_habing} field
+already exists; the gap is, again, estimating the local $G_0$ to fill
+it.
+
+\subsection{Same photon band for both?}
+\label{sec:fuv-band-question}
+
+\textbf{No, not the same band -- but a shared spectral-shape
+assumption lets one local proxy drive both}, which matters because
+this codebase does not propagate spectrally-resolved photons (no FIRE-style
+multi-bin RT) and is not about to start for this.
+
+\begin{itemize}
+  \item \textbf{Photoelectric heating} draws on the classical Habing
+    band, historically $\sim6$--$13.6\,$eV ($912$--$2000$\,\AA): any
+    FUV photon energetic enough to eject an electron from a dust
+    grain's surface, essentially the whole non-ionizing far-UV
+    continuum.
+  \item \textbf{Lyman-Werner (H$_2$ dissociation)} is narrower and
+    harder: $11.2$--$13.6\,$eV ($912$--$1108$\,\AA), the specific
+    energy range of H$_2$'s own electronic transitions (Lyman
+    $B^1\Sigma_u^+$--$X^1\Sigma_g^+$ and Werner
+    $C^1\Pi_u$--$X^1\Sigma_g^+$ bands) -- a sub-band sitting at the
+    hard end of the Habing range, not the whole thing.
+  \item \textbf{The escape hatch}: assume a single, fixed ISRF
+    spectral shape (e.g.\ Draine 1978 / Mathis et al.\ 1983 -- the
+    standard solar-neighbourhood spectrum most PDR/ISM codes adopt by
+    default rather than solving for it), and derive \emph{both}
+    band-integrated quantities from one overall FUV normalization by
+    a fixed ratio, exactly the same move this codebase already makes
+    for photoionization vs.\ radiation pressure (Section~\ref{sec:rp-vs-hii}:
+    $Q_H$ and $L_{\rm bol}$ are two different fixed-shape integrals of
+    one blackbody fit, not two independently-measured quantities).
+    Concretely: Grackle's own default \code{interstellar\_radiation\_field=1.7}
+    is the Habing-unit value of exactly the standard Draine (1978)
+    field ($\chi=1$ Draine $\approx1.7\,G_0$ Habing, the conventional
+    conversion) -- not a coincidence, and a sign this fixed-shape
+    approach is already the field's default assumption. Under that same
+    fixed shape, \citet{DraineBertoldi1996} give the free-space H$_2$
+    dissociation rate as (commonly quoted across the PDR literature,
+    e.g.\ Krumholz 2012/2013 and others building on this paper, but
+    the coefficient itself not independently re-derived from
+    \citeauthor{DraineBertoldi1996}'s own primary text in this pass)
+    $k_{\rm LW}\approx1.1\times10^{-10}\,\chi\,{\rm s^{-1}}$ -- i.e.\
+    \emph{also} derivable from the one $\chi$ (or $G_0$) value, with
+    Grackle's own \code{H2\_self\_shielding} handling the attenuation
+    from there.
+\end{itemize}
+
+\textbf{Proposed engineering path (not yet built)}: item~T6's local FUV
+estimate (whatever propagation scheme it ends up using -- kernel
+injection + diffusion, per the design idea already logged there) only
+needs to produce \emph{one} local scalar, a $G_0$-equivalent FUV
+intensity. From that single number: feed \code{isrf\_habing} directly
+for photoelectric heating (Eq.~\ref{eq:fuv-pe-heating}, no further
+conversion), and feed \code{RT\_H2\_dissociation\_rate} via the Draine
+\& Bertoldi (1996) $k_{\rm LW}(\chi)$ relation above for H$_2$
+dissociation. Both are already-built Grackle mechanisms
+(Sections~\ref{sec:fuv-lw-grackle}--\ref{sec:fuv-pe-grackle}); nothing
+needs changing on the Grackle side, only on the side of estimating and
+feeding that one number in.
+
+\textbf{Not yet done}: the propagation scheme itself (item~T6, still
+unscoped); confirming whether Draine \& Bertoldi (1996)'s specific
+normalization is the right one to cite here or whether a more recent
+fit exists; checking whether \code{use\_isrf\_field} and
+\code{use\_radiative\_transfer} can be enabled simultaneously without
+conflict (not checked -- they gate physically distinct code paths in
+\code{cool1d\_multi\_g.F} above, but this has not been tested end to
+end).
