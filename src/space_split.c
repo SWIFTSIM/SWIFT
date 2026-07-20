@@ -1053,26 +1053,387 @@ static void space_split_allocate_buffers(struct space *s,
 }
 
 /**
+ * @brief Extra data for #space_split_sort_parts_mapper().
+ */
+struct space_split_sort_parts_data {
+
+  /*! The complete, not yet moved, #part array to gather from. */
+  const struct part *old_parts;
+
+  /*! The complete, not yet moved, #xpart array to gather from. */
+  const struct xpart *old_xparts;
+
+  /*! The freshly allocated #part array to gather into. */
+  struct part *new_parts;
+
+  /*! The freshly allocated #xpart array to gather into. */
+  struct xpart *new_xparts;
+
+  /*! Base pointer of the (fully sorted) space-wide hydro buffer, used to
+   * recover a chunk's position in the global array. */
+  const struct cell_buff *buff;
+};
+
+/**
+ * @brief #threadpool mapper function to gather #part/#xpart into their
+ *        final, buffer-sorted order.
+ *
+ * This only gathers -- #gpart linkage is fixed up separately once every
+ * family has been moved into place (see #space_split_move_particles()).
+ *
+ * @param map_data A chunk of the space-wide hydro sorting buffer.
+ * @param num_elements The number of entries in this chunk.
+ * @param extra_data A #space_split_sort_parts_data.
+ */
+static void space_split_sort_parts_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+
+  const struct cell_buff *chunk = (const struct cell_buff *)map_data;
+  struct space_split_sort_parts_data *data =
+      (struct space_split_sort_parts_data *)extra_data;
+  const ptrdiff_t offset = chunk - data->buff;
+
+  for (int k = 0; k < num_elements; k++) {
+    const size_t i = offset + k;
+    const size_t j = chunk[k].part_ind;
+    data->new_parts[i] = data->old_parts[j];
+    data->new_xparts[i] = data->old_xparts[j];
+  }
+}
+
+/**
+ * @brief Extra data for #space_split_sort_gparts_mapper().
+ */
+struct space_split_sort_gparts_data {
+
+  /*! The complete, not yet moved, #gpart array to gather from. */
+  const struct gpart *old_gparts;
+
+  /*! The freshly allocated #gpart array to gather into. */
+  struct gpart *new_gparts;
+
+  /*! Base pointer of the (fully sorted) space-wide gravity buffer. */
+  const struct cell_buff *buff;
+};
+
+/**
+ * @brief #threadpool mapper function to gather #gpart into their final,
+ *        buffer-sorted order.
+ *
+ * @param map_data A chunk of the space-wide gravity sorting buffer.
+ * @param num_elements The number of entries in this chunk.
+ * @param extra_data A #space_split_sort_gparts_data.
+ */
+static void space_split_sort_gparts_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+
+  const struct cell_buff *chunk = (const struct cell_buff *)map_data;
+  struct space_split_sort_gparts_data *data =
+      (struct space_split_sort_gparts_data *)extra_data;
+  const ptrdiff_t offset = chunk - data->buff;
+
+  for (int k = 0; k < num_elements; k++) {
+    const size_t i = offset + k;
+    const size_t j = chunk[k].part_ind;
+    data->new_gparts[i] = data->old_gparts[j];
+  }
+}
+
+/**
+ * @brief Extra data for #space_split_sort_sparts_mapper().
+ */
+struct space_split_sort_sparts_data {
+
+  /*! The complete, not yet moved, #spart array to gather from. */
+  const struct spart *old_sparts;
+
+  /*! The freshly allocated #spart array to gather into. */
+  struct spart *new_sparts;
+
+  /*! Base pointer of the (fully sorted) space-wide star buffer. */
+  const struct cell_buff *buff;
+};
+
+/**
+ * @brief #threadpool mapper function to gather #spart into their final,
+ *        buffer-sorted order.
+ *
+ * @param map_data A chunk of the space-wide star sorting buffer.
+ * @param num_elements The number of entries in this chunk.
+ * @param extra_data A #space_split_sort_sparts_data.
+ */
+static void space_split_sort_sparts_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+
+  const struct cell_buff *chunk = (const struct cell_buff *)map_data;
+  struct space_split_sort_sparts_data *data =
+      (struct space_split_sort_sparts_data *)extra_data;
+  const ptrdiff_t offset = chunk - data->buff;
+
+  for (int k = 0; k < num_elements; k++) {
+    const size_t i = offset + k;
+    const size_t j = chunk[k].part_ind;
+    data->new_sparts[i] = data->old_sparts[j];
+  }
+}
+
+/**
+ * @brief Extra data for #space_split_sort_bparts_mapper().
+ */
+struct space_split_sort_bparts_data {
+
+  /*! The complete, not yet moved, #bpart array to gather from. */
+  const struct bpart *old_bparts;
+
+  /*! The freshly allocated #bpart array to gather into. */
+  struct bpart *new_bparts;
+
+  /*! Base pointer of the (fully sorted) space-wide black hole buffer. */
+  const struct cell_buff *buff;
+};
+
+/**
+ * @brief #threadpool mapper function to gather #bpart into their final,
+ *        buffer-sorted order.
+ *
+ * @param map_data A chunk of the space-wide black hole sorting buffer.
+ * @param num_elements The number of entries in this chunk.
+ * @param extra_data A #space_split_sort_bparts_data.
+ */
+static void space_split_sort_bparts_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+
+  const struct cell_buff *chunk = (const struct cell_buff *)map_data;
+  struct space_split_sort_bparts_data *data =
+      (struct space_split_sort_bparts_data *)extra_data;
+  const ptrdiff_t offset = chunk - data->buff;
+
+  for (int k = 0; k < num_elements; k++) {
+    const size_t i = offset + k;
+    const size_t j = chunk[k].part_ind;
+    data->new_bparts[i] = data->old_bparts[j];
+  }
+}
+
+/**
+ * @brief Extra data for #space_split_sort_sinks_mapper().
+ */
+struct space_split_sort_sinks_data {
+
+  /*! The complete, not yet moved, #sink array to gather from. */
+  const struct sink *old_sinks;
+
+  /*! The freshly allocated #sink array to gather into. */
+  struct sink *new_sinks;
+
+  /*! Base pointer of the (fully sorted) space-wide sink buffer. */
+  const struct cell_buff *buff;
+};
+
+/**
+ * @brief #threadpool mapper function to gather #sink into their final,
+ *        buffer-sorted order.
+ *
+ * @param map_data A chunk of the space-wide sink sorting buffer.
+ * @param num_elements The number of entries in this chunk.
+ * @param extra_data A #space_split_sort_sinks_data.
+ */
+static void space_split_sort_sinks_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+
+  const struct cell_buff *chunk = (const struct cell_buff *)map_data;
+  struct space_split_sort_sinks_data *data =
+      (struct space_split_sort_sinks_data *)extra_data;
+  const ptrdiff_t offset = chunk - data->buff;
+
+  for (int k = 0; k < num_elements; k++) {
+    const size_t i = offset + k;
+    const size_t j = chunk[k].part_ind;
+    data->new_sinks[i] = data->old_sinks[j];
+  }
+}
+
+/**
+ * @brief Move every particle into the position implied by its fully sorted
+ *        space-wide buffer, and restore #gpart linkage.
+ *
+ * The split pass (#space_split_mapper()) only ever reorders buff/gbuff/
+ * sbuff/bbuff/sink_buff -- see #cell_split() -- so by the time this runs,
+ * each buffer holds a complete permutation of one particle family, with
+ * every entry's part_ind identifying that particle's current (not yet
+ * moved) global index. This gathers each family, one at a time, into a
+ * freshly allocated scratch array via that permutation, then copies the
+ * scratch back over the real array -- freeing both the scratch and the
+ * (now consumed) buffer immediately afterwards to keep peak memory down.
+ *
+ * #gpart linkage needs care, since it is a link in two directions: a
+ * #part/#spart/#bpart/#sink's `.gpart` pointer, and a #gpart's
+ * `id_or_neg_offset` back to its partner. Both go stale the moment either
+ * side of the pair moves. So the non-gravity families are moved first,
+ * each immediately fixing up its partner #gpart's `id_or_neg_offset` via
+ * #part_relink_gparts_to_parts() and friends -- still safe at this point,
+ * since the #gpart array itself has not moved yet. #gpart is moved last,
+ * once every other family is already in its final place, so the final
+ * #part_relink_all_parts_to_gparts() pass can safely write the `.gpart`
+ * back-pointers straight into their final arrays.
+ *
+ * @param s The #space.
+ * @param buff The (fully sorted) space-wide hydro buffer.
+ * @param gbuff The (fully sorted) space-wide gravity buffer.
+ * @param sbuff The (fully sorted) space-wide star buffer.
+ * @param bbuff The (fully sorted) space-wide black hole buffer.
+ * @param sink_buff The (fully sorted) space-wide sink buffer.
+ */
+static void space_split_move_particles(struct space *s,
+                                       struct cell_buff *buff,
+                                       struct cell_buff *gbuff,
+                                       struct cell_buff *sbuff,
+                                       struct cell_buff *bbuff,
+                                       struct cell_buff *sink_buff) {
+
+  struct threadpool *tp = &s->e->threadpool;
+
+  /* Hydro: gather parts and xparts, copy them back, then fix up the
+   * id_or_neg_offset of every gpart they are linked to. The gparts
+   * themselves have not moved yet, so this is safe. */
+  if (s->nr_parts > 0) {
+    struct part *new_parts = NULL;
+    struct xpart *new_xparts = NULL;
+    if (swift_memalign("tempparts", (void **)&new_parts, part_align,
+                       sizeof(struct part) * s->nr_parts) != 0)
+      error("Failed to allocate new parts array.");
+    if (swift_memalign("tempxparts", (void **)&new_xparts, xpart_align,
+                       sizeof(struct xpart) * s->nr_parts) != 0)
+      error("Failed to allocate new xparts array.");
+
+    struct space_split_sort_parts_data data = {s->parts, s->xparts, new_parts,
+                                               new_xparts, buff};
+    threadpool_map(tp, space_split_sort_parts_mapper, buff, s->nr_parts,
+                   sizeof(struct cell_buff), threadpool_auto_chunk_size,
+                   &data);
+
+    memcpy(s->parts, new_parts, sizeof(struct part) * s->nr_parts);
+    memcpy(s->xparts, new_xparts, sizeof(struct xpart) * s->nr_parts);
+    swift_free("tempparts", new_parts);
+    swift_free("tempxparts", new_xparts);
+
+    part_relink_gparts_to_parts(s->parts, s->nr_parts, 0);
+  }
+  if (buff != NULL) swift_free("tempbuff", buff);
+
+  /* Stars. */
+  if (s->nr_sparts > 0) {
+    struct spart *new_sparts = NULL;
+    if (swift_memalign("tempsparts", (void **)&new_sparts, spart_align,
+                       sizeof(struct spart) * s->nr_sparts) != 0)
+      error("Failed to allocate new sparts array.");
+
+    struct space_split_sort_sparts_data data = {s->sparts, new_sparts, sbuff};
+    threadpool_map(tp, space_split_sort_sparts_mapper, sbuff, s->nr_sparts,
+                   sizeof(struct cell_buff), threadpool_auto_chunk_size,
+                   &data);
+
+    memcpy(s->sparts, new_sparts, sizeof(struct spart) * s->nr_sparts);
+    swift_free("tempsparts", new_sparts);
+
+    part_relink_gparts_to_sparts(s->sparts, s->nr_sparts, 0);
+  }
+  if (sbuff != NULL) swift_free("tempsbuff", sbuff);
+
+  /* Black holes. */
+  if (s->nr_bparts > 0) {
+    struct bpart *new_bparts = NULL;
+    if (swift_memalign("tempbparts", (void **)&new_bparts, bpart_align,
+                       sizeof(struct bpart) * s->nr_bparts) != 0)
+      error("Failed to allocate new bparts array.");
+
+    struct space_split_sort_bparts_data data = {s->bparts, new_bparts, bbuff};
+    threadpool_map(tp, space_split_sort_bparts_mapper, bbuff, s->nr_bparts,
+                   sizeof(struct cell_buff), threadpool_auto_chunk_size,
+                   &data);
+
+    memcpy(s->bparts, new_bparts, sizeof(struct bpart) * s->nr_bparts);
+    swift_free("tempbparts", new_bparts);
+
+    part_relink_gparts_to_bparts(s->bparts, s->nr_bparts, 0);
+  }
+  if (bbuff != NULL) swift_free("tempbbuff", bbuff);
+
+  /* Sinks. */
+  if (s->nr_sinks > 0) {
+    struct sink *new_sinks = NULL;
+    if (swift_memalign("tempsinks", (void **)&new_sinks, sink_align,
+                       sizeof(struct sink) * s->nr_sinks) != 0)
+      error("Failed to allocate new sinks array.");
+
+    struct space_split_sort_sinks_data data = {s->sinks, new_sinks,
+                                               sink_buff};
+    threadpool_map(tp, space_split_sort_sinks_mapper, sink_buff, s->nr_sinks,
+                   sizeof(struct cell_buff), threadpool_auto_chunk_size,
+                   &data);
+
+    memcpy(s->sinks, new_sinks, sizeof(struct sink) * s->nr_sinks);
+    swift_free("tempsinks", new_sinks);
+
+    part_relink_gparts_to_sinks(s->sinks, s->nr_sinks, 0);
+  }
+  if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+
+  /* Gravity: every other family is now in its final place with a correct
+   * id_or_neg_offset pointing at it, so gparts can move last -- the
+   * relinking pass below can then safely write straight into the final
+   * arrays. */
+  if (s->nr_gparts > 0) {
+    struct gpart *new_gparts = NULL;
+    if (swift_memalign("tempgparts", (void **)&new_gparts, gpart_align,
+                       sizeof(struct gpart) * s->nr_gparts) != 0)
+      error("Failed to allocate new gparts array.");
+
+    struct space_split_sort_gparts_data data = {s->gparts, new_gparts, gbuff};
+    threadpool_map(tp, space_split_sort_gparts_mapper, gbuff, s->nr_gparts,
+                   sizeof(struct cell_buff), threadpool_auto_chunk_size,
+                   &data);
+
+    memcpy(s->gparts, new_gparts, sizeof(struct gpart) * s->nr_gparts);
+    swift_free("tempgparts", new_gparts);
+
+    part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts,
+                                    s->sinks, s->sparts, s->bparts, tp);
+  }
+  if (gbuff != NULL) swift_free("tempgbuff", gbuff);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
+                    s->nr_bparts, /*verbose=*/0);
+#endif
+}
+
+/**
  * @brief Split particles between cells of a hierarchy.
  *
  * This is done in parallel using threads in the #threadpool.
  * Only do this for the local non-empty top-level cells.
  *
- * The work is split into two passes over the top-level cells, both run in
- * parallel via the #threadpool:
+ * The work is split into three passes, all run in parallel via the
+ * #threadpool:
  *
  * 1. Split pass: #space_split_mapper() recursively builds the cell
- *    hierarchy and sorts each cell's particles into its progeny, without
- *    computing any per-cell statistics.
- * 2. Aggregation pass: #space_split_aggregate_mapper() walks the
+ *    hierarchy and sorts each cell's slice of the space-wide sorting
+ *    buffers into its progeny, without moving any particles or computing
+ *    any per-cell statistics -- see #cell_split().
+ * 2. Move pass: #space_split_move_particles() moves every particle into
+ *    the position implied by its now fully sorted buffer, one family at a
+ *    time, and restores #gpart linkage.
+ * 3. Aggregation pass: #space_split_aggregate_mapper() walks the
  *    now-complete hierarchy bottom-up, finalising leaves from their own
  *    particles and deriving every other cell's statistics (h_max,
  *    time-step bounds, star formation history, maxdepth and, for
  *    self-gravity runs, the multipole) from its progeny.
  *
- * Keeping the two passes separate keeps the expensive, memory-heavy
- * splitting and sorting work distinct from the cheaper upward reduction,
- * which makes it easier to improve either independently.
+ * Keeping the three passes separate keeps the expensive, memory-heavy
+ * splitting, particle-moving and upward-reduction work distinct, which
+ * makes it easier to improve each independently.
  *
  * @param s The #space.
  * @param verbose Are we talkative ?
@@ -1105,12 +1466,14 @@ void space_split(struct space *s, int verbose) {
     message("Split pass: %.3f %s.", clocks_from_ticks(getticks() - tic_split),
             clocks_getunit());
 
-  /* The sorting buffers are only needed for the split pass above. */
-  if (buff != NULL) swift_free("tempbuff", buff);
-  if (gbuff != NULL) swift_free("tempgbuff", gbuff);
-  if (sbuff != NULL) swift_free("tempsbuff", sbuff);
-  if (bbuff != NULL) swift_free("tempbbuff", bbuff);
-  if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+  /* Move pass: move every particle into the position implied by its fully
+   * sorted buffer, and restore #gpart linkage. Consumes and frees
+   * buff/gbuff/sbuff/bbuff/sink_buff. */
+  const ticks tic_move = getticks();
+  space_split_move_particles(s, buff, gbuff, sbuff, bbuff, sink_buff);
+  if (verbose)
+    message("Move pass: %.3f %s.", clocks_from_ticks(getticks() - tic_move),
+            clocks_getunit());
 
   /* Aggregation pass: finalise leaves and derive cell statistics and
    * multipoles bottom-up. */
