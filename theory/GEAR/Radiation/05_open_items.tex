@@ -330,7 +330,34 @@ session are labelled \code{T}\emph{n} (task-graph) and
     Section~\ref{sec:e10}/below) has so far only been tested at this
     example's \emph{original}, uncapped default expansion settings --
     re-running it together with this session's loosened cap is the
-    natural next diagnostic, not yet done.
+    natural next diagnostic, not yet done. \textbf{Update (2026-07-20):}
+    that diagnostic is now done -- T11's adaptive cadence
+    ($f_{\rm safety}=0.2$) rerun on top of the same loosened-cap,
+    bigger-box setup as the update above
+    (\code{HII\_radius\_expansion\_factor}=1.5,
+    \code{HII\_max\_radius\_expansion\_tries}=20, 60\,pc box half-width,
+    $Z/Z_\odot\approx0.231$). Result: error at the box-valid comparison
+    time ($t=0.78\,$Myr) drops $63\%\to43\%$ -- a real, further
+    improvement on top of the cap fix alone, consistent with T11's own
+    e10 result (Section~\ref{sec:e10}) and confirming the two fixes are
+    complementary, not redundant. The curve shape also changes
+    qualitatively: instead of the capped-only run's single
+    sharp-jump-then-flat-linear-climb, growth is now a sharp jump to
+    $\approx$28\,pc by $t\approx0.35\,$Myr followed by a distinctly
+    two-stage climb -- a slower stretch up to $R_{\rm st}=40.5\,$pc
+    (reached by $t\approx2\,$Myr) then a somewhat steeper stretch
+    beyond it, out to the box edge by $t\approx4.4\,$Myr. \textbf{Verdict
+    still not closed:} even with both the cap loosened and the cadence
+    made adaptive, the region still takes $\approx$2\,Myr to first reach
+    $R_{\rm st}$, versus the analytic solution's near-instantaneous
+    establishment -- a 43\% miss remains a FAIL against this check's
+    30\% tolerance. Both identified factors (search-radius cap,
+    fixed-vs-adaptive cadence) are confirmed real and now both
+    exhausted as candidate root causes at their current settings; the
+    residual gap points at something neither addresses -- not yet
+    identified. Not attempted this pass: instrumenting which retry
+    branch dominates once both fixes are in place (the original,
+    still-open suggestion from this item's first entry).
   \item[$\square$] \textbf{T9} -- Step 4
     (Section~\ref{sec:space-regrid-hhii}, folding \code{h\_hii} into
     \code{space\_regrid}'s top-level cell sizing, committed
