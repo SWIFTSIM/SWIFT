@@ -151,20 +151,42 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
       s->zoom_props->zoom_cells_top == NULL)
     error("Gravity:zoom_mesh requires zoom top-level cells.");
 
-  const double zoom_cell_width[3] = {
-      s->zoom_props->zoom_cells_top[0].width[0],
-      s->zoom_props->zoom_cells_top[0].width[1],
-      s->zoom_props->zoom_cells_top[0].width[2]};
-  if (zoom_cell_width[0] != zoom_cell_width[1] ||
-      zoom_cell_width[0] != zoom_cell_width[2])
-    error("Gravity:zoom_mesh requires cubic zoom top-level cells.");
-  const double zoom_r_s = props->a_smooth * zoom_cell_width[0];
-
   /* Compute the buffer width in each dimension. */
   const double buffer[3] = {
       buffer_cells * s->zoom_props->bkg_cells_top[0].width[0],
       buffer_cells * s->zoom_props->bkg_cells_top[0].width[1],
       buffer_cells * s->zoom_props->bkg_cells_top[0].width[2]};
+
+  /* The physical domain actually covered by the active zoom mesh. */
+  const double zoom_mesh_dim[3] = {s->zoom_props->dim[0] + 2. * buffer[0],
+                                   s->zoom_props->dim[1] + 2. * buffer[1],
+                                   s->zoom_props->dim[2] + 2. * buffer[2]};
+  if (zoom_mesh_dim[0] != zoom_mesh_dim[1] ||
+      zoom_mesh_dim[0] != zoom_mesh_dim[2])
+    error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
+
+  /* The smoothing scale must track the zoom mesh's own grid resolution
+   * (mirroring how the background mesh derives r_s from dim/mesh_size in
+   * gravity_props_init), NOT the zoom region's top-level tree cell width.
+   * The tree cdim is set independently for domain-decomposition/load
+   * balancing and can be far coarser than the requested mesh resolution. */
+  const double zoom_cell_width = zoom_mesh_dim[0] / side_length;
+  const double zoom_r_s = props->a_smooth * zoom_cell_width;
+
+  /* The zoom mesh only makes sense if it is strictly higher resolution than
+   * the background mesh it is correcting. If it isn't, the mesh-tree
+   * splitting criterion becomes *more* conservative inside the zoom region
+   * (not less), silently exploding the gravity task count instead of
+   * reducing it. */
+  if (zoom_r_s >= props->r_s)
+    error(
+        "The zoom gravity mesh must be higher resolution than the "
+        "background mesh, but its smoothing scale (r_s=%.6e, from "
+        "Gravity:zoom_mesh_side_length=%d over a domain of %.6e) is not "
+        "smaller than the background mesh's (r_s=%.6e, from "
+        "Gravity:mesh_side_length). Increase Gravity:zoom_mesh_side_length "
+        "or shrink the zoom region.",
+        zoom_r_s, side_length, zoom_mesh_dim[0], props->r_s);
 
   /* Fill in the mesh structure. */
   mesh->enabled = 1;
@@ -177,7 +199,7 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
   for (int i = 0; i < 3; ++i) {
     mesh->N[i] = side_length;
     mesh->loc[i] = s->zoom_props->region_lower_bounds[i] - buffer[i];
-    mesh->dim[i] = s->zoom_props->dim[i] + 2. * buffer[i];
+    mesh->dim[i] = zoom_mesh_dim[i];
     mesh->cell_fac[i] = side_length / mesh->dim[i];
   }
 
