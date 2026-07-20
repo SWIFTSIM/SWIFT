@@ -72,6 +72,16 @@ extern unsigned long long last_cell_id;
 extern unsigned long long last_leaf_cell_id;
 #endif
 
+/*! Number of most-significant bits of #cell_buff.x that are exact relative
+ * to the containing top-level cell (see space_split_fill_buffers()).
+ * cell_split() can use pure integer bucket comparisons up to this many
+ * levels of splitting; beyond that -- exceedingly rare, since it requires
+ * particles this close together relative to a top-level cell's width --
+ * it falls back to comparing the real (double-precision) particle
+ * position instead, so correctness is unaffected all the way to
+ * #space_cell_maxdepth. */
+#define cell_buff_scale_bits 32
+
 /* Struct to temporarily buffer the particle locations and bin id.
  *
  * Deliberately does not carry the octant bucket id used while sorting
@@ -81,7 +91,6 @@ extern unsigned long long last_leaf_cell_id;
  * separate, thread-local scratch array instead of being paid for in this
  * struct at every level of the tree, for every particle. */
 struct cell_buff {
-  double x[3];
 
   /*! Index, in the corresponding space-wide particle array (e.g.
    * s->parts), of the particle this buffer entry represents. Set once when
@@ -89,7 +98,19 @@ struct cell_buff {
    * always identifies the right particle even though the particle itself
    * is not physically moved until the buffer is fully sorted. */
   size_t part_ind;
-} SWIFT_STRUCT_ALIGN;
+
+  /*! Position along each axis, quantised to a cell_buff_scale_bits-bit
+   * fixed-point fraction of the way across the top-level cell that
+   * contains this particle: 0 at the cell's lower edge, UINT32_MAX just
+   * short of its upper edge. Because every split is an exact power-of-two
+   * halving of a top-level cell, this one value -- computed once when the
+   * buffer is filled -- stays valid at every depth: the octant bit for a
+   * cell at depth d is simply bit (cell_buff_scale_bits - 1 - d) of this
+   * value. Deliberately not a plain double: this is the dominant
+   * per-particle cost of the sorting pass, so its size sets the size of
+   * #cell_buff, which is read and swapped at every level of the tree. */
+  uint32_t x[3];
+};
 
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
@@ -546,9 +567,10 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split(struct cell *c, int *ind, struct cell_buff *buff,
-                struct cell_buff *sbuff, struct cell_buff *bbuff,
-                struct cell_buff *gbuff, struct cell_buff *sinkbuff);
+void cell_split(struct cell *c, struct space *s, int *ind,
+                struct cell_buff *buff, struct cell_buff *sbuff,
+                struct cell_buff *bbuff, struct cell_buff *gbuff,
+                struct cell_buff *sinkbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
