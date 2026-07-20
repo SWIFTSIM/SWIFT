@@ -64,10 +64,10 @@ else
 fi
 
 if [ "$with_cooling" -eq 1 ]; then
-../../../swift --hydro --stars --external-gravity --feedback --cooling \
+../../../../swift --hydro --stars --external-gravity --feedback --cooling \
                --sync --limiter $runtime_param --threads=$n_threads params.yml 2>&1 | tee output.log
 else
-../../../swift --hydro --stars --external-gravity --feedback \
+../../../../swift --hydro --stars --external-gravity --feedback \
                 --sync --limiter $runtime_param --threads=$n_threads \
                params.yml 2>&1 | tee output.log
 fi

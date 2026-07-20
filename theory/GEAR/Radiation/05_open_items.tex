@@ -116,8 +116,21 @@ validation-against-a-paper status.
     this codebase exercises the radiation-pressure channel at all
     (Section~\ref{sec:rp-open}), so the numerical fix in
     Section~\ref{sec:rp-hit-flag-bug} (momentum now actually applied)
-    has not been checked against any analytic expectation. No design
-    for such a test exists yet.
+    has not been checked against any analytic expectation.
+    \textbf{Proposed two-tier plan (2026-07-20)},
+    Section~\ref{sec:rp-validation-plan}: (1) a cheap
+    momentum-conservation self-check ($\int \dot p_{\rm rad}\,dt$ from
+    the code's own logged $L_{\rm bol}$/$\tau_{\rm IR}$ vs.\ actual gas
+    momentum gained -- code correctness only, not a physics check); (2)
+    a genuine fourth validation target against
+    \citet{KrumholzMatzner2009}'s analytic radiation-pressure-driven
+    shell radius(t) solution, the direct radiation-pressure analog of
+    the Spitzer D-type solution STARBENCH validates for photoionization,
+    with \citet{Draine2011}'s static-equilibrium dusty-H\,\textsc{ii}
+    solutions as a possible cross-check. Neither tier implemented yet;
+    tier~1 is queued first (cheap, would have caught the
+    \code{hit\_by\_radiation} bug on its own), tier~2 is not yet scoped
+    as its own example directory.
 
   \item[$\square$] \textbf{T9} -- \code{space\_regrid}'s top-level
     cell grid never re-refines once coarsened, even after the

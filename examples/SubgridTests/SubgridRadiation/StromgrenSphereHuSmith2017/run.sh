@@ -103,7 +103,7 @@ else
 fi
 
 if [ "$with_cooling" -eq 1 ]; then
-../../../swift --hydro --stars --external-gravity --feedback --cooling \
+../../../../swift --hydro --stars --external-gravity --feedback --cooling \
                --sync --limiter $runtime_param --threads=$n_threads \
                -P TimeIntegration:time_end:$time_end \
                -P TimeIntegration:dt_max:$dt_max \
@@ -119,7 +119,7 @@ if [ "$with_cooling" -eq 1 ]; then
                -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
                params.yml 2>&1 | tee output.log
 else
-../../../swift --hydro --stars --external-gravity --feedback \
+../../../../swift --hydro --stars --external-gravity --feedback \
                 --sync --limiter $runtime_param --threads=$n_threads \
                -P TimeIntegration:time_end:$time_end \
                -P TimeIntegration:dt_max:$dt_max \

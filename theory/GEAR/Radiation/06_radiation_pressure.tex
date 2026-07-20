@@ -153,9 +153,8 @@ discarded every step until then).
     set the \code{radiation\_policy\_radiation\_pressure} bit. With the
     bug in Section~\ref{sec:bugs} now fixed, the momentum is applied,
     but no test has yet checked the resulting kick against an analytic
-    expectation (e.g.\ total momentum injected over a known interval
-    vs.\ $\int \dot p_{\rm rad}\,dt$, or a simple radial expansion test
-    analogous to the D-type check in Section~\ref{sec:e10}).
+    expectation. \textbf{Proposed two-tier plan (2026-07-20)}, see
+    Section~\ref{sec:rp-validation-plan}.
   \item Eq.~\ref{eq:rp-tauIR}'s $\kappa_{\rm IR}=10\,{\rm
     cm^2\,g^{-1}}$ at $Z=Z_\odot$ is not yet cross-checked against a
     specific cited source (item~T8, Section~\ref{sec:open}).
@@ -165,3 +164,49 @@ discarded every step until then).
     check yet for whether that combination is physically sensible or
     double-counts anything.
 \end{itemize}
+
+\subsection{Proposed validation plan (2026-07-20)}
+\label{sec:rp-validation-plan}
+
+Two tiers, deliberately kept separate since they check different
+things and cost very different amounts of effort.
+
+\textbf{Tier 1 -- momentum-conservation self-check (cheap, code
+correctness).} Single star, uniform-density box, radiation pressure
+only: \code{radiation\_pressure\_efficiency=1}, photoionization
+disabled, cooling and self-gravity off. Log $L_{\rm bol}$ and
+$\tau_{\rm IR}$ (Eq.~\ref{eq:rp-momentum-rate}--\ref{eq:rp-tauIR}) every
+step and integrate $\int \dot p_{\rm rad}\,dt$ from the code's own
+diagnostics; compare against the actual total momentum gained by the
+gas. This checks only that the implementation does what
+Eq.~\ref{eq:rp-momentum-rate} says -- no missing factor, no
+double-counting, no silently-dropped kick (the class of bug already
+found and fixed in Section~\ref{sec:bugs},
+\code{hit\_by\_radiation}). It is self-referential (code output
+checked against code output) and does \emph{not} validate that the
+underlying physical model is correct -- that is a separate question,
+addressed by Tier 2.
+
+\textbf{Tier 2 -- physics validation against
+\citet{KrumholzMatzner2009}.} \citeauthor{KrumholzMatzner2009}
+(\citeyear{KrumholzMatzner2009}, ApJ 703, 1352) derive an analytic
+radius--time solution for a momentum-driven H\,\textsc{ii}-region
+shell around a star -- the direct radiation-pressure analog of the
+Spitzer (1978) D-type solution that STARBENCH
+(Section~\ref{sec:validation}) already validates for pure
+photoionization. Reproducing their idealized single-star setup and
+comparing the simulated shell-radius growth to their analytic
+expression would make this a genuine fourth validation target
+(its own idealized IC, its own analytic-check script), not merely an
+internal consistency check like Tier~1. \citet{Draine2011} (ApJ 732,
+100, static equilibrium dusty H\,\textsc{ii} regions with radiation
+pressure) is a possible cross-check for the static/equilibrium limit
+if the dynamical \citet{KrumholzMatzner2009} setup proves awkward to
+reproduce, but is not itself a radius(t) expansion test and does not
+substitute for one.
+
+\textbf{Sequencing.} Tier~1 is cheap enough to run alongside other
+work and should happen first -- it would have caught the
+\code{hit\_by\_radiation} bug on its own. Tier~2 is a new, separate
+validation-target proposal (not yet scoped as its own example
+directory or IC) and is queued behind it.
