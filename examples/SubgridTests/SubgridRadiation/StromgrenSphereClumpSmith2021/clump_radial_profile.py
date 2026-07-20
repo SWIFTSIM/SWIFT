@@ -101,7 +101,10 @@ def profile_by_id(run_dir: str) -> tuple:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--gas-mass", nargs="+", default=["20", "95"], help="gas_mass labels (default: 20 95)."
+        "--gas-mass",
+        nargs="+",
+        default=["20", "95"],
+        help="gas_mass labels (default: 20 95).",
     )
     parser.add_argument(
         "--metallicity",
@@ -110,13 +113,20 @@ def main():
         help="Metallicity labels (default: z0231 z0).",
     )
     parser.add_argument(
-        "--rebuild", type=str, default="0p01", help="Rebuild-cadence label (default: 0p01)."
+        "--rebuild",
+        type=str,
+        default="0p01",
+        help="Rebuild-cadence label (default: 0p01).",
     )
-    parser.add_argument("-o", "--output", type=str, default="clump_radial_profile_matrix.png")
+    parser.add_argument(
+        "-o", "--output", type=str, default="clump_radial_profile_matrix.png"
+    )
     args = parser.parse_args()
 
     panels = [
-        (f"gas_mass={g}\n{z}", f"gas{g}_{z}") for g in args.gas_mass for z in args.metallicity
+        (f"gas_mass={g}\n{z}", f"gas{g}_{z}")
+        for g in args.gas_mass
+        for z in args.metallicity
     ]
 
     fig, axes = plt.subplots(1, len(panels), figsize=(4 * len(panels), 4), sharey=True)

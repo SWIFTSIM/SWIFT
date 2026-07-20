@@ -125,16 +125,27 @@ def run_case(snap0: str, snap8: str) -> dict:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--gas-mass", nargs="+", default=["20", "95"], help="gas_mass labels (default: 20 95)."
+        "--gas-mass",
+        nargs="+",
+        default=["20", "95"],
+        help="gas_mass labels (default: 20 95).",
     )
     parser.add_argument(
-        "--metallicity", nargs="+", default=["z0"], help="Metallicity labels (default: z0)."
+        "--metallicity",
+        nargs="+",
+        default=["z0"],
+        help="Metallicity labels (default: z0).",
     )
     parser.add_argument(
-        "--rebuild", nargs="+", default=["0p01"], help="Rebuild-cadence labels (default: 0p01)."
+        "--rebuild",
+        nargs="+",
+        default=["0p01"],
+        help="Rebuild-cadence labels (default: 0p01).",
     )
     parser.add_argument("--no-plot", action="store_true")
-    parser.add_argument("-o", "--output", type=str, default="clump_hemisphere_erosion.png")
+    parser.add_argument(
+        "-o", "--output", type=str, default="clump_hemisphere_erosion.png"
+    )
     args = parser.parse_args()
 
     schemes = [("uniform", "nside0"), ("angular", "nside1")]
@@ -177,7 +188,9 @@ def main():
 
     categories = ["total", "near\n(star-facing)", "far"]
     keys = ["total", "near", "far"]
-    fig, axes = plt.subplots(1, len(plot_data), figsize=(4.5 * len(plot_data), 4.2), sharey=True)
+    fig, axes = plt.subplots(
+        1, len(plot_data), figsize=(4.5 * len(plot_data), 4.2), sharey=True
+    )
     if len(plot_data) == 1:
         axes = [axes]
     for ax, (panel_label, schemes_data) in zip(axes, plot_data.items()):

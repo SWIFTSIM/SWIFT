@@ -171,17 +171,27 @@ def main():
     if args.no_plot:
         return
 
-    fig, axes = plt.subplots(1, len(results), figsize=(4 * len(results), 4), sharey=True)
+    fig, axes = plt.subplots(
+        1, len(results), figsize=(4 * len(results), 4), sharey=True
+    )
     if len(results) == 1:
         axes = [axes]
     x = np.arange(len(args.rebuild))
     width = 0.35
     for ax, (title, schemes_data) in zip(axes, results.items()):
         ax.bar(
-            x - width / 2, schemes_data["uniform"], width, label="uniform", color="tab:orange"
+            x - width / 2,
+            schemes_data["uniform"],
+            width,
+            label="uniform",
+            color="tab:orange",
         )
         ax.bar(
-            x + width / 2, schemes_data["angular"], width, label="angular", color="tab:green"
+            x + width / 2,
+            schemes_data["angular"],
+            width,
+            label="angular",
+            color="tab:green",
         )
         ax.axhline(100, color="black", linewidth=1, linestyle=":")
         ax.set_xticks(x)
