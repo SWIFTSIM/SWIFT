@@ -3960,8 +3960,7 @@ void space_get_fR_contribution(const struct space *s, struct threadpool *tp, dou
         data.fac = fac_level;
         threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts, 
                        sizeof(struct gpart), threadpool_auto_chunk_size, 
-                       (void*)&data);
-        //gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);        
+                       (void*)&data);      
     }
 
     /* Decide if we need to calculate the mean density */
@@ -4351,12 +4350,6 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
   }
   //memuse_log_allocation("residual.array", residual_array, 1, sizeof(double)*N_max*N_max*N_max);
 
-  //double field_sum = 0;
-  //for (int i =0; i<N_max*N_max*N_max; i++) {
-    //field_sum += fabs(u[i]);  
-  //}
-  //message("The msq of the field is %lf", field_sum/(N_max*N_max*N_max));
-
   double delta = box_size/N_max; //Width of a grid cell of the finest level
   double residual; 
   residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
@@ -4434,7 +4427,7 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
  * @param N_stop 1D size of the coarsest grid.
  * @param depth How many levels are we into the V-cycle?
  */
-void FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth) {
+int FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth) {
   *depth += 1;
   int N = cdim[0]; //Grid size of the current level we are on
   delta = delta*2.0; //Cells are twice as big on the coarser grid
@@ -4499,6 +4492,15 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
     while (coarser_residual_abs >= tolerance) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
       coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+      if (coarser_residual_abs >1e50) message("We have a nan!");
+      if (coarser_residual_abs>1e50) {
+        swift_free("restricted_residual", restricted_residual);
+        swift_free("coarser_solution", coarser_solution);
+        swift_free("coarser_residual", coarser_residual);
+        swift_free("restricted_solution", restricted_solution);
+        *depth -= 1;
+        return 1;
+      }
       counter +=1;
       if (counter%50 == 0) message("Did %d steps and the residual is %E", counter, coarser_residual_abs);
     }
@@ -4522,21 +4524,48 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
     for (int i=0; i<coarse_steps; i++) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
       coarser_residual_abs =  get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+      if (coarser_residual_abs >1e50) message("We have a nan!");
+      if (coarser_residual_abs > 1e50) {
+        swift_free("restricted_residual", restricted_residual);
+        swift_free("coarser_solution", coarser_solution);
+        swift_free("coarser_residual", coarser_residual);
+        swift_free("restricted_solution", restricted_solution);
+        *depth -= 1;
+        return 1;
+      }
       counter +=1;
       //if (coarser_residual_abs < tolerance) break;
     }
     get_residual_array_coarser(coarser_solution, restricted_residual, restricted_solution, coarser_residual, MG, cdimH, delta);
 
-    coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+    //coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
     message("The residual after pre-smoothing is %E", coarser_residual_abs);
 
-    FAS_recursive(tp, coarser_solution, coarser_residual, MG, cdimH, delta, N_stop, depth);
+    int diverged = FAS_recursive(tp, coarser_solution, coarser_residual, MG, cdimH, delta, N_stop, depth);
+    message("The diverged value is %d", diverged);
+    if (diverged) {
+      swift_free("restricted_residual", restricted_residual);
+      swift_free("coarser_solution", coarser_solution);
+      swift_free("coarser_residual", coarser_residual);
+      swift_free("restricted_solution", restricted_solution);
+      *depth -= 1;
+      return 1;
+    }
 
     /* Post-smoothing */
     coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
     message("Back on the grid with size %d the residual is %E", N, coarser_residual_abs);
     for (int i=0; i<coarse_steps; i++) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
+    }
+    coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+    if (coarser_residual_abs>1e50) { //This supposedly does not happen in post-smoothing
+      swift_free("restricted_residual", restricted_residual);
+      swift_free("coarser_solution", coarser_solution);
+      swift_free("coarser_residual", coarser_residual);
+      swift_free("restricted_solution", restricted_solution);
+      *depth -= 1;
+      return 1; 
     }
     /* Prepare array for prolongation */
     for (int i=0; i<N*N*N; i++) {
@@ -4555,6 +4584,7 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
   swift_free("restricted_solution", restricted_solution);
 
   *depth -= 1;
+  return 0;
 
 }
 

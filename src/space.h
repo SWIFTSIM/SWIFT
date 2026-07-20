@@ -551,7 +551,7 @@ double get_residual_fR(struct threadpool *tp, double *u, const double *rho, stru
 double get_derivative(double *phi, struct MG_variables *MG, const int cdim[3], int nbs[6], int i, int j, int k, double delta);
 void perform_red_black_sweep_fR(struct threadpool *tp, double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
 void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *pot, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
-void FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth);
+int FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth);
 double get_residual_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
 void perform_red_black_sweep_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
 void get_residual_array_coarser(const double *coarser_solution, const double *restricted_residual, const double *restricted_solution, double *coarser_residual, struct MG_variables *MG, int cdim[3], double delta);
