@@ -209,6 +209,8 @@ tests/testZoomRegrid
 tests/testZoomRegrid.sh
 tests/testZoomVoidTree
 tests/testZoomVoidTree.sh
+tests/testZoomMeshGravity
+tests/testZoomMeshResolutionGuard
 tests/*.png
 tests/*.txt
 
