@@ -372,10 +372,20 @@ session are labelled \code{T}\emph{n} (task-graph) and
     the very first e10 run, so this does not cleanly isolate $T_i$ as
     ``the'' missing factor -- the lower $T_i$ also shrinks $R_{\rm st}$
     itself (40.5\,pc$\to$25.4\,pc) and raises $\alpha_B$, changing the
-    physical scales being compared, not just resolving numerics. Not yet
-    done: a $T_i=10^4\,$K run at the \emph{original}, uncapped/fixed
-    settings, to isolate how much of this pass is $T_i$ alone vs.\ the
-    cap/cadence fixes.
+    physical scales being compared, not just resolving numerics.
+    \textbf{Isolation done (2026-07-20):} $T_i=10^4\,$K alone (cap and
+    cadence back to defaults) gives 43.02\% error, FAIL -- essentially
+    the same as the historical natural-$T_i$ default-cap/cadence result,
+    confirming $T_i$ alone is not the driver. A separate $Z=0$ (pristine)
+    run with the loosened cap and adaptive cadence kept on (plus the
+    STARBENCH-style \code{minimal\_temperature=1000} fix, needed at
+    $Z=0$) gives 37.10\% error, FAIL -- \emph{worse} than the
+    $Z/Z_\odot=0.231$ PASS run, refuting metal-line cooling as a
+    suppressing factor. \textbf{Verdict:} the cap and cadence fixes
+    account for essentially all of the improvement seen this session;
+    $T_i$ and metallicity are second-order at best. Full detail and both
+    plots in Section~\ref{sec:e10}. The residual gap in the PASS run
+    (27.74\%) remains unexplained.
   \item[$\square$] \textbf{T9} -- Step 4
     (Section~\ref{sec:space-regrid-hhii}, folding \code{h\_hii} into
     \code{space\_regrid}'s top-level cell sizing, committed

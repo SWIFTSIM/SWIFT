@@ -959,6 +959,64 @@ to pass the check at all, and is recorded here as the strongest current
 result pending a cleaner isolation of which combination is doing the
 work.
 
+\textbf{Isolation follow-up (2026-07-20).} Two further runs, same box
+and $T_i=10^4\,$K, each changing exactly one thing relative to the PASS
+run above:
+\begin{itemize}
+  \item \emph{$T_i$ alone, cap/cadence back to their defaults}
+    (\code{HII\_max\_radius\_expansion\_tries=5},
+    \code{HII\_radius\_expansion\_factor=1.1},
+    \code{HII\_adaptive\_rebuild\_cadence=0}): 43.02\% error, FAIL --
+    barely different from the historical natural-$T_i$ default-cap/
+    cadence runs ($\sim$40--42\%), and the curve reverts to the same
+    staircase shape (Figure~\ref{fig:e10-ti1e4-isolation}) seen
+    throughout this investigation at default settings. $T_i$ by itself
+    is not the driver of the PASS result -- the loosened cap and
+    adaptive cadence are doing essentially all of the work.
+  \item \emph{$Z=0$ (pristine, not $Z/Z_\odot=0.231$), loosened cap and
+    adaptive cadence kept on}, with the STARBENCH-style
+    \code{SPH:minimal\_temperature=1000}/\code{initial\_temperature=1000}
+    fix applied (needed at $Z=0$ for the same reason as
+    Section~\ref{sec:starbench}: no metal-line cooling to floor the
+    neutral gas otherwise): 37.10\% error, FAIL -- \emph{worse} than the
+    $Z/Z_\odot=0.231$ PASS run, not better
+    (Figure~\ref{fig:e10-z0-ti1e4}). This refutes the hypothesis that
+    $Z/Z_\odot=0.231$'s metal-line cooling was suppressing growth
+    relative to a pristine medium; if anything, the pristine run is
+    slightly slower.
+\end{itemize}
+\textbf{Current picture:} of the three variables varied this session
+(search-radius cap, rebuild cadence, $T_i$/metallicity), the cap and
+cadence fixes account for essentially all of the improvement seen; $T_i$
+and metallicity are, at most, second-order effects at this box/
+resolution, and lowering metallicity to zero does not help. The residual
+gap between the PASS run (27.74\%) and the analytic solution remains
+otherwise unexplained.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/e10_ti1e4_isolation_check}
+  \caption{$T_i=10^4\,$K alone, cap and cadence reverted to their
+    defaults (\texttt{HII\_max\_radius\_expansion\_tries=5},
+    \texttt{HII\_radius\_expansion\_factor=1.1},
+    \texttt{HII\_adaptive\_rebuild\_cadence=0}). 43.02\% error at
+    $t=3.81\,$Myr, FAIL -- the staircase shape returns, confirming $T_i$
+    alone does not reproduce the PASS result.}
+  \label{fig:e10-ti1e4-isolation}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/e10_z0_ti1e4_check}
+  \caption{$Z=0$ (pristine) instead of $Z/Z_\odot=0.231$, loosened cap
+    and adaptive cadence kept on, $T_i=10^4\,$K forced,
+    \texttt{SPH:minimal\_temperature=1000} (STARBENCH-style floor,
+    needed at $Z=0$). 37.10\% error at $t=3.81\,$Myr, FAIL -- slightly
+    worse than the $Z/Z_\odot=0.231$ PASS run, refuting metal-line
+    cooling as the suppressing factor.}
+  \label{fig:e10-z0-ti1e4}
+\end{figure}
+
 \begin{figure}
   \centering
   \includegraphics[width=0.8\linewidth]{Figures/e10_adaptive_bigcap_ti1e4_check}
