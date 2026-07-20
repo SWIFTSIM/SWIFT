@@ -72,7 +72,14 @@ extern unsigned long long last_cell_id;
 extern unsigned long long last_leaf_cell_id;
 #endif
 
-/* Struct to temporarily buffer the particle locations and bin id. */
+/* Struct to temporarily buffer the particle locations and bin id.
+ *
+ * Deliberately not SWIFT_STRUCT_ALIGN: nothing accesses this struct via
+ * SIMD, so the usual 32-byte struct alignment buys nothing here, and it
+ * would push part_ind's 8-byte alignment requirement past the 32-byte
+ * boundary and pad the struct out to 64 bytes -- doubling all the memory
+ * traffic cell_split() and the space-wide buffer fill/gather do. Left to
+ * its natural alignment, it is 40 bytes. */
 struct cell_buff {
   double x[3];
   int ind;
@@ -83,7 +90,7 @@ struct cell_buff {
    * always identifies the right particle even though the particle itself
    * is not physically moved until the buffer is fully sorted. */
   size_t part_ind;
-} SWIFT_STRUCT_ALIGN;
+};
 
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
