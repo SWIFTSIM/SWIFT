@@ -932,6 +932,48 @@ running into the box's periodic wrap) is unchanged.
   \label{fig:e10-dtype}
 \end{figure}
 
+\textbf{Update (2026-07-20): $T_i=10^4\,$K, matching
+\citet{Hu2017}/\citet{Smith2021}'s own convention, combined with the
+loosened cap and adaptive cadence.} All comparisons above use
+$Z/Z_\odot\approx0.231$'s natural, metallicity-dependent
+$T_i\approx47500\,$K (Section~\ref{sec:metallicity}). Rerunning the same
+loosened-cap, adaptive-cadence, bigger-box setup with
+\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
+forcing the papers' own $T_i$ directly (same mechanism as the STARBENCH
+check, Section~\ref{sec:starbench}) gives the first \textbf{PASS} on this
+check: 27.74\% error at the box-valid comparison time ($t=3.81\,$Myr,
+later than the earlier $T_i\approx47500\,$K comparisons since the lower
+$T_i$ shrinks $R_{\rm st}$ to 25.4\,pc, taking longer to reach the
+60\,pc box half-width). The curve's shape is also qualitatively
+different for the first time: a sharp jump to $\approx$18\,pc by
+$t\approx0.35\,$Myr, a brief plateau right at $R_{\rm st}$ from
+$t\approx1$--$2\,$Myr, then a continued D-type climb that tracks the
+analytic slope reasonably closely -- the R-type-then-D-type qualitative
+behaviour the analytic solution itself has, not seen in any
+$T_i\approx47500\,$K run this session. This does not by itself prove
+$T_i$ was the missing factor from T8's earlier ``both known factors
+exhausted, residual gap unexplained'' verdict -- three things changed at
+once (cap, cadence, $T_i$) and were not tested pairwise against $T_i$
+alone -- but it is the first configuration in this whole investigation
+to pass the check at all, and is recorded here as the strongest current
+result pending a cleaner isolation of which combination is doing the
+work.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/e10_adaptive_bigcap_ti1e4_check}
+  \caption{Simulated $r_{\rm HII}(t)$ (blue circles) against the analytic
+    Spitzer (1978) D-type solution (orange dashed), for the loosened cap
+    (\texttt{HII\_radius\_expansion\_factor=1.5},
+    \texttt{HII\_max\_radius\_expansion\_tries=20}) plus adaptive cadence
+    (\texttt{HII\_adaptive\_rebuild\_cadence=1}, safety factor 0.2)
+    combined with $T_i=10^4\,$K forced directly. Single isolated star,
+    $Z/Z_\odot\approx0.231$, 60\,pc box half-width. 27.74\% error at
+    $t=3.81\,$Myr, PASS against the 30\% tolerance -- the first passing
+    configuration in this check's history.}
+  \label{fig:e10-ti1e4}
+\end{figure}
+
 \subsection{STARBENCH: validating the physics, not a paper's implementation}
 \label{sec:starbench}
 

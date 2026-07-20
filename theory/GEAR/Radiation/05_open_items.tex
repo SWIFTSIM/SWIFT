@@ -358,6 +358,24 @@ session are labelled \code{T}\emph{n} (task-graph) and
     identified. Not attempted this pass: instrumenting which retry
     branch dominates once both fixes are in place (the original,
     still-open suggestion from this item's first entry).
+    \textbf{Update (2026-07-20), first PASS:} rerun with the same
+    loosened-cap/adaptive-cadence/bigger-box setup, but
+    $T_i=10^4\,$K forced directly instead of $Z/Z_\odot\approx0.231$'s
+    natural $T_i\approx47500\,$K (Section~\ref{sec:e10}, full detail).
+    Result: 27.74\% error at the box-valid comparison time
+    ($t=3.81\,$Myr) -- \textbf{PASS} against the 30\% tolerance, the
+    first passing run in this item's entire history, and the curve for
+    the first time shows the qualitative R-type-then-D-type shape (sharp
+    initial jump, brief plateau at $R_{\rm st}$, then a D-type climb
+    tracking the analytic slope) instead of a shape mismatch. Caveat:
+    three variables changed together (cap, cadence, $T_i$) relative to
+    the very first e10 run, so this does not cleanly isolate $T_i$ as
+    ``the'' missing factor -- the lower $T_i$ also shrinks $R_{\rm st}$
+    itself (40.5\,pc$\to$25.4\,pc) and raises $\alpha_B$, changing the
+    physical scales being compared, not just resolving numerics. Not yet
+    done: a $T_i=10^4\,$K run at the \emph{original}, uncapped/fixed
+    settings, to isolate how much of this pass is $T_i$ alone vs.\ the
+    cap/cadence fixes.
   \item[$\square$] \textbf{T9} -- Step 4
     (Section~\ref{sec:space-regrid-hhii}, folding \code{h\_hii} into
     \code{space\_regrid}'s top-level cell sizing, committed
