@@ -2223,9 +2223,9 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
      * removed mass during truncation. */
     if (fabs(Omega_particles_m - Omega_m) > 1e-3 &&
         s->zoom_props->truncate_background) {
-      message(
-          "Warning: The total matter content of the simulation after "
-          "truncation does not match the cosmology in the parameter file: "
+      warning(
+          "The total matter content of the simulation after truncation does "
+          "not match the cosmology in the parameter file: "
           "cosmo.Omega_m = %e particles Omega_m = %e \n cosmo: Omega_b=%e "
           "Omega_cdm=%e \n particles: Omega_b=%e Omega_cdm=%e",
           Omega_m, Omega_particles_m, cosmo->Omega_b, cosmo->Omega_cdm,
