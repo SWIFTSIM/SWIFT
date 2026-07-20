@@ -40,18 +40,6 @@
  * level has finished sorting its buffers (see space_split.c).
  *
  * @param c The #cell array to be sorted.
- * @param parts_offset Offset of the cell parts array relative to the
- *        space's parts array, i.e. c->hydro.parts - s->parts. Currently
- *        unused here (kept for the particle-moving pass still to be added).
- * @param sparts_offset Offset of the cell sparts array relative to the
- *        space's sparts array, i.e. c->stars.parts - s->stars.parts.
- *        Currently unused here.
- * @param bparts_offset Offset of the cell bparts array relative to the
- *        space's bparts array, i.e. c->black_holes.parts -
- *        s->black_holes.parts. Currently unused here.
- * @param sinks_offset Offset of the cell sink array relative to the
- *        space's sink array, i.e. c->sinks.parts - s->sinks.parts.
- *        Currently unused here.
  * @param buff A buffer with at least max(c->hydro.count, c->grav.count)
  * entries, used for sorting indices.
  * @param sbuff A buffer with at least max(c->stars.count, c->grav.count)
@@ -63,9 +51,7 @@
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
  */
-void cell_split(struct cell *c, const ptrdiff_t parts_offset,
-                const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
-                const ptrdiff_t sinks_offset, struct cell_buff *restrict buff,
+void cell_split(struct cell *c, struct cell_buff *restrict buff,
                 struct cell_buff *restrict sbuff,
                 struct cell_buff *restrict bbuff,
                 struct cell_buff *restrict gbuff,

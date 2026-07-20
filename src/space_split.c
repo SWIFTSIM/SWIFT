@@ -719,9 +719,7 @@ static void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Split the cell's particle data. */
-    cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
-               c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
-               buff, sbuff, bbuff, gbuff, sink_buff);
+    cell_split(c, buff, sbuff, bbuff, gbuff, sink_buff);
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
