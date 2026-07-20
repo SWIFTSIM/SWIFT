@@ -1,22 +1,89 @@
 \section{Validation}
 \label{sec:validation}
 
-Two distinct kinds of check live in this section. Most of it validates
-against Hu et al.\ (2017) and Smith et al.\ (2021)'s own reported
-numbers for their specific multi-source clump test -- reproducing a
-paper's result, not a test of the underlying physics in general (a
-bug shared between this code and an assumption both papers happen to
-make would pass this kind of check without being caught).
-Section~\ref{sec:starbench} is different in kind: STARBENCH
-\citep{Bisbas2015} is a single-source D-type expansion test where
-twelve independent, differently-implemented radiation-hydrodynamics
-codes agree with each other to $\sim$1--2\%, and this model is compared
-directly against their consensus solution rather than against any one
-paper's own subgrid scheme. It is a much more direct test of whether
-this code reproduces the actual physics of D-type expansion, not just
-whether it reproduces one particular paper's implementation of it.
+This project validates against exactly three published targets, listed
+in Table~\ref{tab:validation-targets} below. A fourth kind of check
+also lives in this section, \code{StromgrenSphere}'s D-type
+growth-curve diagnostic (Section~\ref{sec:e10}) -- it is
+\textbf{explicitly not a fourth validation target}: it compares
+against the classical Spitzer (1978) formula, which STARBENCH's own
+paper shows over-predicts the true late-phase solution, and it exists
+to debug this model's own task-graph/rebuild-cadence behaviour (item
+T3, Section~\ref{sec:open}), not to certify the physics. Do
+not read a PASS/FAIL there as a validation verdict.
 
-\subsection{Setup}
+Of the two remaining kinds of check among the three real targets: the
+clump and four-star targets validate against Hu et al.\ (2017) and
+Smith et al.\ (2021)'s own reported numbers for their specific
+multi-source tests -- reproducing a paper's result, not a test of the
+underlying physics in general (a bug shared between this code and an
+assumption both papers happen to make would pass this kind of check
+without being caught). STARBENCH \citep{Bisbas2015} is different in
+kind: a single-source D-type expansion test where twelve independent,
+differently-implemented radiation-hydrodynamics codes agree with each
+other to $\sim$1--2\%, and this model is compared directly against
+their consensus solution rather than against any one paper's own
+subgrid scheme -- a much more direct test of whether this code
+reproduces the actual physics of D-type expansion, not just whether it
+reproduces one particular paper's implementation of it.
+
+\subsection{Validation targets: summary}
+\label{sec:validation-targets}
+
+\textbf{Restart (2026-07-20).} Every result measured before this date
+(Sections~\ref{sec:setup}--\ref{sec:husmith4star} below) is moved to
+Section~\ref{sec:deprecated-results} and marked deprecated -- kept for
+historical reference, not to be treated as current status. The cause:
+repeated drift between what was actually validated and what the
+committed examples contain (stale STARBENCH README, an un-zeroed
+\code{shift} in two examples' \code{params.yml}, an undocumented
+compile flag required to reproduce the one passing result). Going
+forward, a target is only marked validated once the \emph{committed}
+example (params, README, any required build flags) has itself been run
+and checked -- no exceptions. Re-validation proceeds in this order:
+(1) STARBENCH, (2) Hu et al.\ (2017)/Smith et al.\ (2021) 4-star, (3)
+Smith et al.\ (2021) clump. All three currently read NOT YET VALIDATED.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{p{2.6cm}p{3.4cm}p{5.7cm}}
+\hline
+\textbf{Target} & \textbf{Example} & \textbf{Status} \\
+\hline
+1. STARBENCH (Bisbas et al.\ 2015) &
+  \code{StromgrenSphereStarbench} &
+  \textbf{NOT YET VALIDATED (restart).} Deprecated result:
+  Section~\ref{sec:starbench}. \\
+\hline
+2. Hu et al.\ (2017) / Smith et al.\ (2021), 4 co-located stars &
+  \code{StromgrenSphereHuSmith2017} &
+  \textbf{NOT YET VALIDATED (restart).} Deprecated result:
+  Section~\ref{sec:husmith4star}. \\
+\hline
+3. Smith et al.\ (2021), Fig.~2 clump &
+  \code{StromgrenSphereClumpSmith2021} &
+  \textbf{NOT YET VALIDATED (restart).} Deprecated result:
+  Section~\ref{sec:matrix-gas20}--\ref{sec:matrix-gas95}. \\
+\hline
+\end{tabular}
+\caption{The three published validation targets, in restart order, and
+  their owning example. Every prior result is deprecated as of
+  2026-07-20 -- see Section~\ref{sec:deprecated-results}.}
+\label{tab:validation-targets}
+\end{table}
+
+\subsection{Deprecated: results predating the 2026-07-20 restart}
+\label{sec:deprecated-results}
+
+Everything from here to the end of this section (through
+Section~\ref{sec:husmith4star}) predates the restart above and is kept
+purely as historical record of what was tried and measured -- none of
+it should be read as current validation status. Do not cite a
+PASS/FAIL from this material without first re-running it against the
+example's current, committed configuration.
+
+\subsection{[DEPRECATED] Setup}
+\label{sec:setup}
 
 \code{examples/SubgridTests/StromgrenSphereClumpSmith2021/} reproduces
 both papers' D-type expansion test directly: four co-located
@@ -36,7 +103,7 @@ comparison every run below reproduces at two gas resolutions:
 for this test) and \code{gas\_mass=95} (a representative galaxy
 zoom-in baryon particle mass).
 
-\subsection{Why every run below uses $Z/Z_\odot\approx0.231$}
+\subsection{[DEPRECATED] Why every run below uses $Z/Z_\odot\approx0.231$}
 \label{sec:metallicity}
 
 Both reference papers are effectively zero-metallicity (\citet{Hu2017}
@@ -66,7 +133,7 @@ apples-to-apples comparison against the papers' own convention --
 without needing to widen the box or search radius, since the front no
 longer overshoots enough to approach either default ceiling.
 
-\subsection{The $Z/Z_\odot\approx0.231$ matrix at \texttt{gas\_mass=20}}
+\subsection{[DEPRECATED] The $Z/Z_\odot\approx0.231$ matrix at \texttt{gas\_mass=20}}
 \label{sec:matrix-gas20}
 
 This is the direct replacement for Smith et al.'s Fig.~2 comparison
@@ -86,7 +153,7 @@ one.
 \end{tabular}
 \end{center}
 
-\textbf{Updated 2026-07-18 (item T12, Section~\ref{sec:open}):} the
+\textbf{Updated 2026-07-18 (Section~\ref{sec:t12-log10-bug}):} the
 table above reflects the $T_{\rm collisional}$ log-base bug fix
 (rerun from scratch); the $\approx$24.7--27.7\,pc angular/fast-cadence
 row this section's prose below still describes is the pre-fix value.
@@ -188,7 +255,7 @@ matrix.
   \label{fig:gas20-slices}
 \end{figure}
 
-\subsection{The $Z/Z_\odot\approx0.231$ matrix at \texttt{gas\_mass=95} (zoom-in resolution)}
+\subsection{[DEPRECATED] The $Z/Z_\odot\approx0.231$ matrix at \texttt{gas\_mass=95} (zoom-in resolution)}
 \label{sec:matrix-gas95}
 
 \begin{center}
@@ -202,7 +269,7 @@ matrix.
 \end{tabular}
 \end{center}
 
-\textbf{Updated 2026-07-18 (item T12, Section~\ref{sec:open}):}
+\textbf{Updated 2026-07-18 (Section~\ref{sec:t12-log10-bug}):}
 rerun from scratch against the $T_{\rm collisional}$ log-base bug fix
 (see the identical note in Section~\ref{sec:matrix-gas20}). Numbers
 shifted modestly (mostly down) but the pattern this section's prose
@@ -248,10 +315,37 @@ result for production use: it says the D-type test in this exact
 geometry is not a reliable calibration point at zoom-in resolution, not
 that a particular rebuild cadence is preferred over another there.
 
-\subsection{Is angular better than uniform in general? Direct clump-erosion measurement}
+\subsection{[DEPRECATED] Is angular better than uniform in general? Direct clump-erosion measurement}
 \label{sec:angular-vs-uniform-erosion}
 
-Everything above judges the schemes by the \emph{ionized region's
+\textbf{Deferred sub-questions for Step 3 (clump) of the restart},
+carried over from the pre-restart open-items list, not yet
+re-examined:
+\begin{itemize}
+\item Check per-star, per-direction reach (clump-facing vs.\ away) for
+  every matrix configuration, not just scalar max $r_{\rm HII}$ -- a
+  single number can hide an asymmetric front.
+\item Quantify whether the shallow clump surface erosion found in the
+  deprecated results (star-facing outer skin $\sim$28,000\,K to
+  $\sim$3\,pc deep, interior still cold) grows toward
+  \citeauthor{Smith2021}'s more substantial disruption given more time,
+  or genuinely plateaus short of it.
+\item AREPO-vs-SPH mixing hypothesis: \citeauthor{Smith2021} use AREPO
+  (moving-mesh Godunov), this code uses SPH; their Fig.~2 shows visibly
+  better clump-boundary mixing. Testable by rerunning with \swift's
+  Gizmo MFV/MFM solver instead of SPH and comparing clump erosion
+  directly.
+\item Pin down \citeauthor{Smith2021}'s actual box size more precisely
+  than the deprecated results' eyeballed 60--80\,pc estimate, if an
+  exact comparison becomes load-bearing.
+\item Confirm the sound-speed-channel explanation for the deprecated
+  $Z=0$ no-clump result ($r_{\rm HII}$ larger than the papers'
+  reference by a factor consistent with the hotter applied
+  temperature) via a controlled, both-channels-neutralized comparison
+  at $Z/Z_\odot\approx0.231$.
+\end{itemize}
+
+The rest of this subsection judges the schemes by the \emph{ionized region's
 extent} ($r_{\rm HII}$, $r_{\rm physics}$). That is not what
 HealPix splitting was designed to protect
 (Section~\ref{sec:angular-splitting}) -- it was designed to stop the
@@ -464,7 +558,7 @@ test cannot answer.
   \label{fig:gas95-slices}
 \end{figure}
 
-\subsection{The $Z=0$ matrix (this example's default) -- and why $r_{\rm physics}$ is not trustworthy here}
+\subsection{[DEPRECATED] The $Z=0$ matrix (this example's default) -- and why $r_{\rm physics}$ is not trustworthy here}
 \label{sec:matrix-z0}
 
 The two matrices above isolate the algorithm from the metallicity
@@ -742,8 +836,22 @@ lower recombination coefficient, and a $r_{\rm physics}$ diagnostic
 contaminated by box-wide residual heating) are confirmed present at
 this resolution too, not specific to \code{gas\_mass=20}.}
 
-\subsection{D-type growth curve shape (e10)}
+\subsection{D-type growth curve shape (e10) -- algorithm diagnostic, not a validation target}
 \label{sec:e10}
+
+\textbf{This subsection is not one of the three validation targets}
+(Table~\ref{tab:validation-targets}). It compares against the classical
+Spitzer (1978) formula, which STARBENCH's own paper
+(Section~\ref{sec:starbench}) shows over-predicts the true late-phase
+D-type solution -- a PASS here is not evidence of correct physics, and
+a FAIL here is not a validation failure. Its purpose is narrower and
+different in kind: \code{StromgrenSphere} is a debugging/diagnostic
+tool for this model's own task-graph and rebuild-cadence behaviour
+(the search-radius-expansion cap, fixed-vs-adaptive cadence, and their
+interaction -- item T3, Section~\ref{sec:open}), using the
+Spitzer curve as a cheap, always-available reference shape rather than
+a certified target. Treat everything below as algorithm-behaviour
+evidence, not a physics verdict.
 
 The matrix above compares only final-time values. \citet{Spitzer1978}'s
 classical D-type expansion solution gives the full trajectory, not just
@@ -843,7 +951,7 @@ growth.} At this example's own \code{rebuild\_time\_myr=0.5\,Myr} that
 delay is several Myr; a faster rebuild cadence (e.g.\ this project's
 usual \code{0.01\,Myr}) would shrink but not eliminate it, since the
 $1.61\times$-per-cycle cap is unrelated to the cadence itself. Recorded
-as a new open item (T8, Section~\ref{sec:open}) rather than fixed
+as an open item (T3, Section~\ref{sec:open}) rather than fixed
 here.
 
 \textbf{T11 verification: adaptive cadence measurably shrinks the
@@ -1032,7 +1140,7 @@ otherwise unexplained.
   \label{fig:e10-ti1e4}
 \end{figure}
 
-\subsection{STARBENCH: validating the physics, not a paper's implementation}
+\subsection{[DEPRECATED] STARBENCH: validating the physics, not a paper's implementation}
 \label{sec:starbench}
 
 \code{examples/SubgridTests/StromgrenSphereStarbench/} reproduces the
@@ -1098,7 +1206,7 @@ $R_{\rm SB}=2.25\,$pc predicted at $t=3\,$Myr, a 165\% miss).
 gas near $T_o$ without forcing a full isothermal equation of state --
 gas can still heat freely via compression/shocks, it simply cannot cool
 below this floor. This is the same fix later found to matter for the
-Hu/Smith clump examples too (item~T7's neighbouring bug hunts;
+Hu/Smith clump examples too (the \texttt{minimal\_temperature} fix's neighbouring bug hunts (Section~\ref{sec:t7-buildfix} covers the unrelated build-compat work from the same session);
 Section~\ref{sec:metallicity}'s discussion of why every other example
 in this section avoids $Z=0$ specifically to sidestep needing this same
 floor).
@@ -1149,7 +1257,7 @@ in the regime this test covers. It does \emph{not} by itself validate
 the multi-source angular-splitting machinery
 (Section~\ref{sec:angular-splitting}) or explain the Hu/Smith
 multi-source residual (Section~\ref{sec:metallicity} onward) --
-STARBENCH is a single-star test, and V13 (item, Section~\ref{sec:open})
+STARBENCH is a single-star test, and Section~\ref{sec:husmith4star}
 already found that forcing $T_i=10^4\,$K helped this single-source case
 dramatically while leaving the Hu/Smith multi-source error essentially
 unchanged, i.e.\ this result and the still-open multi-source residual
@@ -1159,4 +1267,72 @@ configuration ($Z=0$, natural $T_i\approx47{,}500\,$K via
 Eq.~\ref{eq:tcollisional}, with the \code{minimal\_temperature=1000}
 fix applied) against STARBENCH at its own natural temperature -- only
 the $T_i=10^4\,$K forced variant has been validated so far. Flagged as
-item~T21, Section~\ref{sec:open}.
+an open item, Section~\ref{sec:open}.
+
+\subsection{[DEPRECATED] Hu et al.\ (2017) / Smith et al.\ (2021): 4 co-located stars}
+\label{sec:husmith4star}
+
+\code{examples/SubgridTests/StromgrenSphereHuSmith2017/} reproduces the
+D-type expansion convergence test from \citet{Hu2017}, Appendix~A --
+the base algorithm this branch's own HII photoionization scheme builds
+on, before \citet{Smith2021}'s angular (HEALPix) budget-splitting
+addition. Both papers use the same four-co-located-source
+configuration (each source $19.2\,{\rm M}_\odot$,
+$\dot N_{\rm ion}\approx2.5\times10^{48}\,{\rm s^{-1}}$, uniform
+$n_H\approx107\,{\rm cm^{-3}}$ background), so this single example
+validates against both papers at once -- distinct from
+Section~\ref{sec:setup}'s clump test (Smith et al.\ 2021 only, with the
+dense clump present).
+
+\textbf{Motivation for a STARBENCH-style check here too.} This
+project's usual $Z/Z_\odot\approx0.231$ workaround for hitting the
+papers' flat $T_i=10^4\,$K brings real metal-line cooling neither
+paper's idealized medium has. The same debug flags used for STARBENCH
+(\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K}/
+\code{FIXED\_NEUTRAL\_TEMPERATURE\_K}, \code{radiation.c}/
+\code{cooling.c}) decouple $T_i$/$T_o$ from $Z$ entirely, so this
+example was run at $Z=0$ (no metal cooling) with $T_i$ forced to
+exactly $10^4\,$K, matching STARBENCH's own methodology.
+
+\textbf{Result: FAIL.} Windowed median error $32.4\%$ against the
+paper's own $r_{\rm HII}(t)$ trajectory (min $17.1\%$ at
+$t=1.37\,$Myr, max $81.4\%$ at $t=0.10\,$Myr, $0/82$ snapshots within
+the $10\%$ tolerance) -- essentially unchanged from the same check at
+this project's original $T_i\approx47{,}500\,$K floor ($33.6\%$
+median, $0/34$ within tolerance, smaller box).
+
+\textbf{The $T_i$-regime hypothesis is refuted as the cause.} Forcing
+$T_i=10^4\,$K helped the single-source STARBENCH case dramatically
+(Section~\ref{sec:starbench}) but left this multi-source case's error
+nearly untouched -- ruling out temperature as the dominant shared
+cause and narrowing the open question specifically to whatever differs
+between one star and four co-located stars (search/gather overlap
+between sources, budget-sharing, or the measurement itself being
+noisier for a multi-source front -- the max-vs-median spread above is
+much wider than STARBENCH's own single-source scatter).
+
+\textbf{Also tested and refuted}: sampling the actual local
+(compression-heated) precursor temperature just ahead of the front,
+instead of the fixed far-field $T_o$, for the STARBENCH-style $c_o$
+term used in this comparison -- makes the match \emph{worse}
+($R_{\rm STAG}\propto(c_i/c_o)^{4/3}$, so a warmer measured $c_o$
+\emph{shrinks} the predicted radius, moving it further from the
+simulation, not closer).
+
+\textbf{Ruled out}: FIRE-3's lowest-density-neighbour selection (a
+candidate mechanism raised and then withdrawn) -- this model's angular
+(HealPix pixel-budget) splitting already addresses the mass-biasing
+problem that selection change targets, via a different mechanism
+(spatial budget partitioning instead of gather order), so it is not
+expected to explain the multi-source residual.
+
+\textbf{Not yet identified}: the actual mechanism behind the
+multi-source residual. This is the open item this validation target
+tracks going forward (Table~\ref{tab:validation-targets}).
+
+\textbf{Provenance}: the example itself is committed
+(\code{examples/SubgridTests/StromgrenSphereHuSmith2017/}), but this
+specific $T_i=10^4\,$K run used the debug compile flag above, not yet
+reflected as a documented, reproducible recipe in that example's own
+README -- the same repo-currency gap identified for STARBENCH
+(Table~\ref{tab:validation-targets}) applies here too.

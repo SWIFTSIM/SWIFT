@@ -237,6 +237,25 @@ makes the search radius-adaptive: it is why hitting
 shows up as the search radius simply never being allowed to expand past
 the configured ceiling, not as a scheduler-level task-graph error.
 
+\textbf{Gather-time pixel-budget starvation guard: confirmed shipped
+(2026-07-18).} Without the per-candidate pixel-budget filter in step 1
+above, a dense clump in one pixel's direction could exceed the buffer's
+capacity on its own, permanently monopolizing it: that pixel's own
+budget exhausts quickly, but its now-dead candidates keep re-winning
+the nearest-distance ranking on every retry, burning out
+\code{max\_HII\_retry\_full\_buffer} re-finding the same dead pixel
+before the search ever reaches radius expansion -- leaving a sparse
+pixel's budget completely unspent. All four
+\code{runner\_hii\_buffer\_insert} call sites (self, dopair-naive, and
+both branches of the sorted dopair) gate the insert on
+\code{feedback\_get\_star\_ionization\_rate(si, pixel) > 0.0}, so a
+pixel with an exhausted budget can no longer monopolize buffer slots on
+retry, confirmed present at all four sites. A milder residual (two live
+pixels, one much denser, slowing rather than deadlocking the sparse
+one's service rate) remains deliberately unaddressed -- would need
+per-pixel bounded buffer segments to fix robustly, only worth building
+if a clumpy test shows it matters in practice.
+
 \subsection{Cell sizing: folding \texttt{h\_hii} into \texttt{space\_regrid}}
 \label{sec:space-regrid-hhii}
 
@@ -298,12 +317,21 @@ at least 3 cells'' error -- confirming the crash is real and caused by
 folding \code{h\_hii} in, and that the cap resolves it without breaking
 anything else. Committed as \code{d7f4644cf}.
 
-\textbf{Open follow-up (item~T9, Section~\ref{sec:open}):} the existing
-StromgrenSphere suite runs can only ever test ``does the cap correctly
-avoid a spurious crash'' -- they are permanently pinned at the periodic
-floor, so they can never exercise the actual feature (\code{h\_hii}
-genuinely coarsening cells to preserve coverage at \code{cdim >= 4}). A
-dedicated \code{cdim >= 4} configuration (a bigger box, or smaller
-\code{gas\_mass} forcing \code{max\_top\_level\_cells} higher) would be
-needed to verify the feature does something, not just that it doesn't
-crash -- not built yet.
+\textbf{Dedicated \code{cdim >= 4} regression: done, feature confirmed
+working (2026-07-20).} The existing StromgrenSphere acceptance runs can
+only ever test ``does the cap correctly avoid a spurious crash'' -- they
+are permanently pinned at the periodic floor. Built a dedicated case
+instead (single star, uniform gas, \code{--enable-debugging-checks}
+build, same e10-style box but \code{Scheduler:max\_top\_level\_cells}
+raised from 3 to 16 so ordinary hydro resolution -- not the radiation
+cap -- sets the starting grid): \code{space\_regrid}'s own
+\code{SWIFT\_DEBUG\_CHECKS} regrid message shows
+\code{cdim=(16,16,16)} at $t=0$ (hydro resolution, uncapped by
+\code{h\_hii} yet), coarsening to \code{cdim=(4,4,4)} by step 146 as
+\code{h\_hii} grows, and finally to \code{cdim=(3,3,3)} (the
+crash-avoidance cap) by step 1148, holding there for the rest of the
+run ($\approx2050$ steps total, completed cleanly to \code{time\_end}).
+The intermediate \code{cdim=4} state, held for roughly 1000 steps, is
+direct confirmation that \code{h\_hii} genuinely coarsens the grid to
+preserve radiation-search coverage, not merely that the cap prevents a
+crash at the periodic floor.

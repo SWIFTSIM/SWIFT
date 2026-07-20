@@ -65,16 +65,39 @@ $x_0 > 45$ (i.e.\ $e^{-x_0}<10^{-20}$, negligible ionizing output --
 happens for any star with $T_{\rm eff}\lesssim3500\,$K), $\dot N_{\rm
 ion}=0$ is returned directly rather than evaluating the series.
 
-\textbf{Note: two independent mass--temperature relations coexist.}
+\textbf{Note: two independent mass--temperature relations coexist,
+confirmed to disagree (investigated 2026-07-20).}
 \code{radiation\_get\_individual\_star\_temperature} is a separate,
 piecewise mass--temperature fit ($3500\,{\rm K}\,(M/M_\odot)^{0.5}$
 below $1\,M_\odot$, $5800\,{\rm K}\,(M/M_\odot)^{0.5}$ up to
 $8\,M_\odot$, $25000\,{\rm K}\,(M/M_\odot/20)^{0.1}$ above), \emph{not}
 used by Eq.~\ref{eq:stefan-boltzmann} above, which derives $T_{\rm
-eff}$ from $L$ and $R$ via Stefan--Boltzmann instead. Not yet checked
-whether the two are numerically close across the relevant mass range,
-or which one (if either) is authoritative where they disagree -- flagged
-as item~T19, Section~\ref{sec:open}, not investigated this session.
+eff}$ from $L$ and $R$ via Stefan--Boltzmann instead. A grep confirms
+\code{radiation\_get\_individual\_star\_temperature} has zero call
+sites anywhere in \code{src/} -- genuinely dead code, not merely
+redundant. Evaluated both relations (plus the $R(M)$/$L(M)$ fits the
+Stefan--Boltzmann path depends on) across $0.1$--$150\,M_\odot$: they
+agree only near the two piecewise-boundary anchors ($\approx1\,M_\odot$,
+$\approx8\,M_\odot$, almost certainly tuned to known reference points
+like the Sun's $T_{\rm eff}$) and diverge by a factor
+$\sim1.5$--$2.7\times$ everywhere else, worst in the OB-star range that
+dominates ionizing photon production. The Stefan--Boltzmann path (the
+one actually used) also saturates at a fixed $\approx77{,}300\,$K for
+every mass above $\approx54\,M_\odot$ -- a structural artifact of the
+mass--luminosity fit turning linear ($L\propto M$) at exactly the mass
+the mass--radius fit is already $R\propto M^{0.5}$, making $L/R^2$ (and
+hence $T_{\rm eff}$) mass-independent there by construction, not
+physical intent. \textbf{Not worth reconciling in place}: both fits are
+single-metallicity piecewise power laws with no $(M,Z)$ dependence at
+all, which is the actual limitation regardless of which temperature
+relation is used. This entire empirical-fit layer (radius, luminosity,
+temperature) is intended to be replaced by extending \texttt{pychem}
+(\texttt{\textasciitilde/programs/pychem/}, already the source of this
+project's GEAR chemical-yield tables) to emit proper
+$(M,Z)$-dependent stellar tables -- see the open items
+(Section~\ref{sec:open}) for that standalone follow-up project. When it
+lands, the unused \code{radiation\_get\_individual\_star\_temperature}
+should simply be deleted.
 
 \subsection{Photon budget and recombination cost}
 \label{sec:photon-budget}
@@ -110,8 +133,8 @@ included one.
 
 \textbf{Known approximation: $n_e \approx n_H$.} Equation~\ref{eq:recomb-cost}
 (and every other electron-density calculation in this model, including
-the still-unimplemented adaptive rebuild cadence's recombination
-timescale, item~T11, Section~\ref{sec:open}) assumes one free electron
+the adaptive rebuild cadence's recombination timescale,
+Section~\ref{sec:adaptive-cadence}) assumes one free electron
 per hydrogen nucleus -- it does not track helium's ionization state at all.
 For a standard cosmic He mass fraction ($\sim$24--28\%, $\sim$8--10\%
 by number relative to H), singly-ionized He alone (needs $>24.6\,$eV,
@@ -201,7 +224,15 @@ one. The last, unaffordable particle is the ``boundary particle'':
 \end{itemize}
 See Section~\ref{sec:validation} for the measured effect of this
 choice -- it turns out to matter a lot more than the name ``one
-boundary particle'' suggests.
+boundary particle'' suggests. \textbf{Decided (2026-07-16):
+probabilistic is the default}, not deterministic -- the validation
+matrix showed deterministic mode over-ionizes (mildly for the uniform
+scheme, severely for the angular scheme, driving it straight into the
+search-radius cap) with no compensating benefit, so this is simply the
+better default rather than a papers-vs-production tradeoff. The code's
+own default (\code{default\_HII\_deterministic\_boundary\_ionization},
+\code{feedback\_properties.h}) was already 0; only example configs that
+had explicitly overridden it needed fixing.
 
 \subsection{Angular (HealPix) budget splitting}
 \label{sec:angular-splitting}
@@ -251,18 +282,18 @@ Eq.~\ref{eq:floor}--\ref{eq:tcollisional} at $Z=0$.
 $\log_{10}$, but \code{radiation.c} computed it with C's \code{log()}
 (natural log) until this fix. This silently applied the wrong base
 everywhere $Z \ge 10^{-3}Z_\odot$, including at this project's own
-$Z/Z_\odot\approx0.231$ validation-matrix reference point (item~V8,
-Section~\ref{sec:open}), chosen specifically because $\log_{10}$ makes
+$Z/Z_\odot\approx0.231$ reference point (Section~\ref{sec:metallicity}),
+chosen specifically because $\log_{10}$ makes
 $T_{\rm collisional}=10^4\,$K there. With the natural-log bug, the code
 actually applied $T_{\rm collisional}\approx12{,}700\,$K at that same
 point -- not the intended, papers-matching $10^4\,$K -- which also
 shifted the case-B $\beta$ (Section~\ref{sec:beta-temperature}, evaluated
 at this same temperature whenever $u_{\rm collisional} < \Delta
-u_{\rm ionized}$). Every result in this logbook computed at
-$Z/Z_\odot\approx0.231$ (the whole validation matrix,
-Sections~\ref{sec:matrix-gas20}--\ref{sec:matrix-gas95}, T8's e10 check)
-was therefore run at the wrong reference temperature; see item~T12,
-Section~\ref{sec:open}.
+u_{\rm ionized}$). Every deprecated result in this logbook computed at
+$Z/Z_\odot\approx0.231$ (Sections~\ref{sec:matrix-gas20}--\ref{sec:matrix-gas95},
+the e10 check) was therefore run at the wrong reference temperature;
+see Section~\ref{sec:t12-log10-bug} for the fix and its measured
+effect.
 
 \subsection{Persistence}
 
@@ -283,4 +314,86 @@ the stars are identical, not because the code enforces it.
 There is no carryover of unspent budget or accumulated ``credit''
 between rebuild cycles -- each rebuild resets to the star's full,
 instantaneous $\dot N_{\rm ion}$. This is an equilibrium-rate model,
-not a time-integrated one; see item~e7 in Section~\ref{sec:open}.
+not a time-integrated one.
+
+\textbf{Interior-recombination-accounting gap: assessed, not an issue
+(2026-07-16).} Once a particle is ionized it never reappears as a
+search candidate (it fails the ``cold'' filter in
+\code{feedback\_part\_can\_be\_ionized}) until its tag expires, so its
+ongoing maintenance recombination cost is never re-charged against a
+star's budget at any rebuild after the one that first tagged it. This
+matches FIRE's own implementation (not a deviation to fix), and is
+bounded by design here: the rebuild cadence is set to track the
+recombination/cooling timescale, so interior gas has no time to
+meaningfully recombine away between rebuilds -- no example or test run
+has shown this gap actually matters in practice. Possible refinement,
+not confirmed necessary: add a small margin to \code{end\_time} beyond
+the nominal \code{tag\_time + HII\_region\_rebuild\_time}, to cover
+cases where SWIFT's own timestepping forces a rebuild slightly earlier
+than the nominal cadence -- untested, low priority given the above.
+
+\subsection{Adaptive rebuild cadence (opt-in, implemented and verified
+2026-07-18)}
+\label{sec:adaptive-cadence}
+
+The fixed \code{HII\_region\_rebuild\_time\_Myr} above is a single,
+problem-specific value with no principled way to choose it -- this
+project has used both $0.01$ and $0.5\,$Myr across different examples.
+\code{GEARFeedback:HII\_adaptive\_rebuild\_cadence=1} replaces it with a
+physically-derived, per-star cadence,
+\begin{equation}
+  \Delta t_{\rm rebuild} = f_{\rm safety}\times
+  \min(t_{\rm rec,\,pixel\text{-}min},\ t_{\rm cross}),
+\end{equation}
+where $t_{\rm rec}=1/(\alpha_B(T_i)\,n_H)$ (recombination timescale,
+computed \emph{per active angular pixel} and combined via a minimum,
+since a dense clump-facing pixel and a diffuse one are physically
+different environments -- diluting via a star-wide mean would
+reintroduce a milder version of the mass-biasing problem angular
+splitting exists to solve), $t_{\rm cross}=R_{\rm hii}/c_s(T_i)$
+(sound-crossing timescale, star-wide, since $h_{\rm hii}$ is not
+tracked per-pixel), and $f_{\rm safety}$ (default $0.2$) is a
+dimensionless safety factor, the direct analogue of a CFL number. The
+density sample for $t_{\rm rec}$ is drawn only from not-yet-tagged
+front candidates already gathered by the ordinary search pass (not from
+gas already tagged by this star in an earlier rebuild) -- simpler, no
+changes needed to \code{feedback\_part\_can\_be\_ionized}/the gather
+functions, and arguably the physically right population for
+recombination risk anyway (front gas is the marginal population, not
+the already-robustly-ionized interior). A backstop floor,
+\code{GEARFeedback:HII\_region\_rebuild\_floor\_Myr} (default
+$10^{-4}\,$Myr), prevents a pathologically short computed interval;
+this is a distinct quantity from \code{Stars:min\_star\_timestep\_Myr}
+(Section~\ref{sec:t16-timestep-floor}), the unrelated numerical
+step-size safety floor.
+
+Implementation: \code{radiation\_get\_T\_collisional\_K()} (extracted
+helper) and
+\code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval()} in
+\code{radiation.c}, dispatched through a thin wrapper in
+\code{feedback\_common.\{h,c\}} so \code{runner\_radiation\_feedback.c}
+-- generic cell-traversal code -- never includes GEAR-internal
+\code{radiation.h} directly. The non-adaptive code path is untouched
+(only new \code{if}/\code{else if} branches added ahead of it), so
+every already-validated result stays reproducible with the feature off
+(the default).
+
+\textbf{Verification.} A genuine \code{dt=0} deadlock was found and
+fixed during verification: the cached rebuild deadline is only
+refreshed by an actual rebuild pass, and if that gate stays false for a
+reason unrelated to timing (photon budget exhausted, aged past
+\code{HII\_region\_max\_age}) the deadline goes stale and the timestep
+constraint returned exactly $0.0$ forever -- fixed by flooring the
+fallback instead of returning a literal $0.0$ (Section~\ref{sec:t16-timestep-floor}
+generalized this floor further). With that fixed: \code{StromgrenSphere}
+and all six \code{StromgrenSphereClumpSmith2021} sweep configurations
+completed cleanly with sane, bounded $r_{\rm HII}$; the e10 diagnostic
+(Section~\ref{sec:e10}) showed a real, quantified improvement (time to
+reach $R_{\rm st}$ roughly $47\%$ faster) without fully closing that
+diagnostic's own shape mismatch -- consistent with the search-radius
+cap being a separate, also-contributing factor there.
+
+\textbf{Not yet done (2026-07-20):} the user has indicated this should
+eventually become the default (replacing the fixed cadence), but wants
+more testing first -- it remains opt-in, off by default, until that
+testing happens.

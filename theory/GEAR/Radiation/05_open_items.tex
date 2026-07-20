@@ -1,21 +1,17 @@
 \section{Open items}
 \label{sec:open}
 
-Two checklists: task-graph/algorithm correctness (Section~\ref{sec:todo-task})
-and physical validation (Section~\ref{sec:todo-phys}). Move an item to
-Section~\ref{sec:bugs} (if it was a bug) or
-Section~\ref{sec:validation} (if it's a settled result) once resolved
--- do not just delete it here.
-
-Several items below carry labels (\code{e6}--\code{e10}) inherited
-from the pre-existing project memory
-(\code{radiation\_feedback\_taskgraph\_plan.md}, sessions predating
-this logbook) to avoid losing that history; new items from this
-session are labelled \code{T}\emph{n} (task-graph) and
-\code{V}\emph{n} (validation).
-
-\subsection{Task graph / algorithm}
-\label{sec:todo-task}
+\textbf{Restarted 2026-07-20.} This list previously mixed genuine open
+task-graph/algorithm work with validation-run tracking (results
+against Hu et al.\ 2017/Smith et al.\ 2021/STARBENCH, and the e10
+diagnostic history). Validation status now lives exclusively in
+Section~\ref{sec:validation} (its own summary table,
+Table~\ref{tab:validation-targets}); every settled bug fix or shipped
+feature that had accumulated here was moved to
+Section~\ref{sec:bugs} or the relevant part of Section~\ref{sec:algorithm}/
+\ref{sec:taskgraph}. This list is renumbered from T1 and contains only
+currently-open task-graph/algorithm items -- nothing here tracks
+validation-against-a-paper status.
 
 \begin{itemize}
   \item[$\square$] \textbf{T1} -- Confirm or rule out the
@@ -28,612 +24,38 @@ session are labelled \code{T}\emph{n} (task-graph) and
     \code{StromgrenSphereClumpSmith2021} at a resolution fine enough
     to actually split the tree near the clump boundary; the
     \code{error()} at \code{cell.c:1387} will fire if it's hit.
-  \item[$\boxtimes$] \textbf{e7 -- assessed, not an issue (2026-07-16)}
-    -- Interior-recombination-accounting gap: once a particle is
-    ionized it never reappears as a search candidate (it fails the
-    ``cold'' filter in \code{feedback\_part\_can\_be\_ionized}) until
-    its tag expires, so its ongoing maintenance recombination cost is
-    never re-charged against a star's budget at any rebuild after the
-    one that first tagged it. This matches FIRE's own implementation
-    (not a deviation to fix), and is bounded by design here: this
-    model's rebuild cadence
-    (\code{HII\_region\_rebuild\_time\_Myr}) is set to track the
-    recombination/cooling timescale, so interior gas has no time to
-    meaningfully recombine away between rebuilds -- no example or test
-    run so far has shown this gap actually matters in practice.
-    \textbf{Possible refinement, not confirmed necessary:} add a small
-    margin to \code{end\_time} (Section~\ref{sec:algorithm},
-    Persistence) beyond the nominal
-    \code{tag\_time + HII\_region\_rebuild\_time}, to cover cases
-    where SWIFT's own timestepping forces a rebuild slightly earlier
-    than the nominal cadence -- untested, low priority given the above.
-  \item[$\boxtimes$] \textbf{e10 -- done: shape does NOT match
-    (2026-07-17)} -- Ran \code{stromgren\_analytic\_check.py} on a
-    single isolated star at $Z/Z_\odot\approx0.231$
-    (Section~\ref{sec:e10}): 41.7\% final-time error, and more
-    tellingly, the simulated $r_{\rm HII}(t)$ is a rebuild-cadence
-    staircase that doesn't first reach $R_{\rm st}$ until
-    $t\approx3.8\,$Myr, vs.\ the analytic solution's near-instant
-    R-type establishment. Likely mechanism and follow-up tracked as T8
-    below.
-  \item[$\boxtimes$] \textbf{T2 -- implemented (2026-07-16)} -- $\beta$
-    (case-B recombination coefficient, Eq.~\ref{eq:recomb-cost}) was a
-    fixed constant evaluated at the conventional $10^4\,$K
-    (\code{phys\_const->const\_caseb\_recomb}), not recomputed at the
-    gas's actual, metallicity-dependent applied temperature
-    (Section~\ref{sec:metallicity}); Section~\ref{sec:beta-temperature}
-    quantified the cost as a $\sim$75\% overestimate at this example's
-    $Z=0$ default. Now replaced with \citet{HuiGnedin1997}'s
-    $\alpha_B(T)$ fit (Eq.~\ref{eq:alphaB-huignedin}), evaluated at the
-    particle's own applied ionized temperature -- see
-    Section~\ref{sec:beta-temperature} for the implementation and
-    Section~\ref{sec:validation} for its measured effect on the
-    matrix.
-  \item[$\boxtimes$] \textbf{T3 -- decided: probabilistic (2026-07-16)}
-    -- \code{HII\_deterministic\_boundary\_ionization} defaults to 0
-    now (was 1) in this example's \code{run.sh} and \code{params.yml}:
-    the matrix (Section~\ref{sec:validation}) showed deterministic mode
-    over-ionizes -- mildly for the uniform scheme, severely for the
-    angular scheme (drives it straight into the search-radius cap) --
-    with no compensating benefit, so probabilistic is simply the better
-    default, not a papers-vs-production tradeoff. The code's own
-    default (\code{default\_HII\_deterministic\_boundary\_ionization},
-    \code{src/feedback/GEAR\_thermal/feedback\_properties.h:30}) was
-    already 0 -- only this example's explicit override needed fixing.
-    No code changed, so no acceptance re-run needed (see V2).
-  \item[$\boxtimes$] \textbf{T4 -- resolved: validate at
-    $Z/Z_\odot\approx0.231$ instead of widening (2026-07-16)} --
-    \code{Stars:max\_HII\_search\_radius} (45\,pc) and the box (100\,pc,
-    50\,pc half-width) are too tight for a $Z=0$ run once it grows fast
-    (Section~\ref{sec:metallicity}): seen both for the old deterministic
-    matrix and for a $Z=0$ post-T2 test. \textbf{From the code}: the cap
-    (\code{Stars:max\_HII\_search\_radius}, \code{stars\_io.h:315-316})
-    is read as a plain user-set float with \emph{no internal check at
-    all} against the box size -- nothing warns or errors if it exceeds
-    the periodic half-width, so an inconsistent setup fails silently
-    (the search radius just never gets to expand that far,
-    indistinguishable from a genuinely converged result without an
-    external comparison). Rather than widening the box/cap (which would
-    multiply the particle count for no physical benefit), the
-    validation matrix now runs at $Z/Z_\odot\approx0.231$
-    (Section~\ref{sec:metallicity}), which avoids the overshoot -- and
-    therefore the capping -- entirely, by construction. The underlying
-    code gap (no box-size safety check) remains and is tracked
-    separately as T6.
-  \item[$\square$] \textbf{T5} -- MPI is explicitly not supported yet
+
+  \item[$\square$] \textbf{T2} -- MPI is explicitly not supported yet
     for the radiation loop (\texttt{error("MPI is not yet
     implemented")} in both \code{task.c} and \code{cell\_unskip.c}
     for \texttt{nr\_nodes > 1}). Not a bug, just an explicit gap to be
     aware of before attempting a multi-node run with this feedback
     channel active.
-  \item[$\boxtimes$] \textbf{T6 -- implemented (2026-07-18)} -- Added a
-    startup warning in \code{engine\_config()}
-    (\code{src/engine\_config.c}, right after \code{stars\_props\_print})
-    when \code{Stars:max\_HII\_search\_radius} exceeds the periodic
-    box's half-width, per T4's finding that no such check existed.
-    Guarded behind \code{IONIZATION\_FEEDBACK\_LOOP} (only compiled for
-    GEAR feedback), fires once on rank~0, only if \code{e->s->periodic}.
-    Verified directly: an isolated \code{StromgrenSpherePair} copy with
-    \code{max\_HII\_search\_radius} deliberately set above the box's
-    half-width prints the warning at startup as expected; build clean,
-    \code{testRadiationRebuildCheck} and
-    \code{test27cellsStars -n 3 -N 3 -r 5} both pass.
-  \item[$\boxtimes$] \textbf{T7 -- all three sub-fixes done
-    (2026-07-19)} -- The codebase did not
-    actually compile with any feedback model other than GEAR, despite
-    radiation being GEAR-specific functionality that generic files
-    should not hard-depend on. Original scoping (2026-07-17) assumed a
-    single 20+-symbol undefined-reference wall from building
-    \code{runner\_radiation\_feedback.c} in isolation; by 2026-07-19
-    the actual failure mode (checked fresh against
-    \code{--with-stars=basic --with-feedback=none}) had drifted and
-    was narrower but split across two distinct causes, both fixed in
-    commit \code{8569d8006}:
-    \begin{itemize}
-      \item \code{space\_regrid.c}/\code{space\_split.c} read
-        \code{spart.h\_hii} unconditionally -- fixed by adding
-        \code{h\_hii} as an always-zero stub field to
-        \code{stars/\{Basic,EAGLE,None\}/stars\_part.h}
-        (zero-initialized in \code{stars\_first\_init\_spart},
-        matching GEAR's own convention). \code{cell.h}'s
-        \code{stars.h\_hii\_max}/\code{h\_hii\_max\_active}/\code{h\_hii\_max\_old}
-        deliberately left unconditional, per the original scoping.
-      \item \code{runner\_doiact\_functions\_stars.h} (genuinely
-        generic, shared by every model) calls the shared
-        \code{runner\_iact\_nonsym\_feedback\_density()}/\code{\_apply()}
-        with GEAR\_thermal's \emph{extended} signature (4 extra
-        params: \code{hydro\_props}, \code{phys\_const}, \code{us},
-        \code{cooling}) -- not anticipated in the original scoping,
-        which only knew about \code{h\_hii} and the
-        \code{runner\_radiation\_feedback.c}-internal symbols below.
-        \code{none}/\code{EAGLE\_thermal}/\code{EAGLE\_kinetic}/\code{AGORA}
-        had never gained the extra params, so every one of them failed
-        to build, not just \code{none}. Fixed by extending all four
-        models' signatures to accept (and ignore) the same params,
-        the standard SWIFT convention of every model implementing an
-        identical call-site signature.
-      \item Only once those two were fixed did the originally-scoped
-        \code{runner\_radiation\_feedback.c} undefined-symbol wall
-        appear (\code{feedback\_is\_HII\_ionization\_active},
-        \code{feedback\_get\_star\_ionization\_rate},
-        \code{feedback\_iact\_HII\_ionization},
-        \code{feedback\_part\_can\_be\_ionized}, \code{compute\_time},
-        the \code{radiation} member of \code{feedback\_spart\_data}) --
-        confirming the file itself needed gating, not stubbing.
-    \end{itemize}
-    Three related fixes were originally scoped; the first two are
-    done, the third deliberately deferred (see below):
-    \begin{itemize}
-      \item[$\boxtimes$] \textbf{Gate the file itself -- done.}
-        \code{src/Makefile.am} used to list
-        \code{runner\_radiation\_feedback.\{c,h\}} in the unconditional
-        \code{AM\_SOURCES}, unlike \code{feedback/GEAR/*.c}, which was
-        already correctly gated behind \code{if COMMON\_GEAR\_NEEDED}.
-        Moved it into the same \code{COMMON\_GEAR\_NEEDED} source list
-        alongside \code{feedback/GEAR/radiation.c}, which it directly
-        depends on.
-      \item[$\boxtimes$] \textbf{\code{h\_hii} stub -- done.} Added an
-        always-zero \code{h\_hii} field (zero-initialized in
-        \code{stars\_first\_init\_spart}, matching GEAR's own
-        convention) to \code{stars/\{Basic,EAGLE,None\}/stars\_part.h},
-        so \code{space\_regrid.c}/\code{space\_split.c} can keep
-        reading it unconditionally. \code{cell.h}'s
-        \code{stars.h\_hii\_max}/\code{h\_hii\_max\_active}/\code{h\_hii\_max\_old}
-        deliberately left as the accepted, always-on, small per-cell
-        cost -- not touched, per the original scoping.
-      \item[$\boxtimes$] \textbf{Hide GEAR internals out of
-        \code{runner\_radiation\_feedback.c} -- done (2026-07-19,
-        commit \code{59d10f898}).} Originally deferred the same day as
-        robustness-only (the file was already gated out of non-GEAR
-        builds, so its internal GEAR-specificity carried zero
-        compile-time risk). Picked back up the same session at the
-        user's explicit request ("I feel that in
-        runner\_radiation\_feedback we are exposing too much of GEAR
-        ... for people that would like to use this algorithm"). The
-        file's only two direct touches of
-        \code{sp->feedback\_data.radiation} (\code{n\_HII\_pixels},
-        \code{HII\_region\_last\_rebuild}) are now wrapped behind
-        \code{feedback\_get\_star\_HII\_pixel\_count()}/
-        \code{feedback\_set\_star\_HII\_last\_rebuild()} in
-        \code{feedback\_common.\{h,c\}}, matching the dispatch pattern
-        every other query in this file already used. This turned out
-        to be small and mechanical, not the large refactor originally
-        worried about -- \code{runner\_hii\_get\_pixel()} was correctly
-        judged out of scope (it's part of the shared HEALPix
-        \emph{algorithm}, not GEAR physics, so it stays).
-      \item[$\boxtimes$] \textbf{Same leak, two more call sites -- found
-        and fixed the same pass.} Verifying every \code{--with-subgrid}
-        preset (prompted by the same conversation) surfaced that
-        \code{star\_formation/GEAR/star\_formation.h} and
-        \code{sink/GEAR/sink.h} both call
-        \code{radiation\_is\_part\_tagged\_as\_ionized()} directly,
-        relying on it being transitively pulled in via
-        \code{cooling.h} only when \code{GEAR\_COOLING} happens to be
-        defined (\code{feedback=GEAR \&\& cooling=grackle} together) --
-        undefined under \code{--with-subgrid=AGORA}
-        (\code{star\_formation=GEAR}, \code{feedback=AGORA}), a real,
-        currently-selectable combination. \code{stars/GEAR/stars\_io.h}'s
-        HII-mass snapshot converter had the identical problem reading
-        \code{feedback\_data.radiation} directly. Fixed the same way as
-        the user suggested mid-fix: not a scattered
-        \code{\#ifdef IONIZATION\_FEEDBACK\_LOOP} guard in each caller,
-        but \code{feedback\_is\_part\_tagged\_as\_ionized()} and
-        \code{feedback\_get\_star\_HII\_mass()} added to \emph{every}
-        feedback model's dispatch surface (GEAR\_thermal implements them
-        for real; none/EAGLE\_thermal/EAGLE\_kinetic/AGORA return
-        false/0) -- callers now call one function unconditionally,
-        exactly like every other cross-model query, no macro or
-        conditional include needed at the call site at all.
-        Verified: every \code{--with-subgrid} preset (none, EAGLE,
-        EAGLE-XL, SPIN\_JET\_EAGLE, FLAMINGO, SPIN\_JET\_FLAMINGO, GEAR,
-        GEAR-G3, AGORA, QLA-EAGLE) builds \code{swift}+\code{swift\_mpi}
-        clean, including AGORA, which failed before this fix.
-        \code{testRadiationRebuildCheck}/
-        \code{test27cellsStars -n 3 -N 3 -r 5} still pass under GEAR.
-        \code{QLA} itself still fails, but on a pre-existing, unrelated
-        unused-variable error in \code{cooling/QLA/cooling\_rates.h}
-        with zero diff from master -- not this branch's regression, not
-        fixed here.
-    \end{itemize}
-    \textbf{Also discovered, not part of the original three-fix
-    scoping:} the density/apply signature mismatch in
-    \code{runner\_doiact\_functions\_stars.h} (see above) was fixed by
-    extending \code{none}/\code{EAGLE\_thermal}/\code{EAGLE\_kinetic}/
-    \code{AGORA}'s \code{runner\_iact\_nonsym\_feedback\_density()}/
-    \code{\_apply()} signatures to accept GEAR\_thermal's 4 extra
-    params, unused. This grows the shared interface every model must
-    implement identically (SWIFT's own established convention for this
-    call site), rather than narrowing GEAR's own footprint -- the
-    inverse direction from the dispatch-interface idea above. Revisit
-    together if the dispatch refactor is ever done, since a cleaner
-    fix might avoid needing every model to carry unused
-    cooling/units/phys\_const params at all.
-    Not attempted this session -- flagging so a future non-GEAR build
-    isn't silently assumed to work. Pre-existing gap, not introduced by
-    this session's nside=2 work.
-  \item[$\square$] \textbf{T8} -- e10 (above, Section~\ref{sec:e10})
-    found the simulated $r_{\rm HII}(t)$ growth curve's \emph{shape}
-    does not match the analytic D-type solution: it takes
-    $\approx$3.8\,Myr to first reach $R_{\rm st}$, where the analytic
-    solution reaches it almost immediately. The parameter-grounded
-    hypothesis is that per-rebuild search-radius growth is capped at
-    $\text{HII\_radius\_expansion\_factor}^{\text{max\_HII\_radius\_expansion\_tries}}$
-    ($1.1^5\approx1.61\times$ at this example's defaults) per cycle,
-    decoupled from the rebuild cadence itself -- so even a much faster
-    \code{HII\_region\_rebuild\_time\_Myr} would shrink but not
-    eliminate the delay. Not confirmed by direct instrumentation (which
-    retry branch -- buffer-full vs.\ radius-expansion -- fires on each
-    rebuild cycle, and why growth stalls for several cycles at a time,
-    e.g.\ the 24\,pc plateau in Figure~\ref{fig:e10-dtype}). If this
-    matters for production runs (an HII region reaching its true size
-    several Myr later than the physics would predict), the fix
-    direction is likely either raising
-    \code{max\_HII\_radius\_expansion\_tries}/\code{HII\_radius\_expansion\_factor}
-    so a single rebuild can catch up to the star's actual budget-implied
-    reach, or seeding the post-rebuild search radius from something
-    better-informed than the previous cycle's achieved $h_{\rm hii}$
-    (e.g.\ an analytic $R_{\rm st}$ estimate). Not attempted this
-    session. \textbf{Update (2026-07-18):} T11's adaptive rebuild
-    cadence narrows this delay (time to first reach $R_{\rm
-    st}$: $3.32\,$Myr fixed $\to$ $1.76\,$Myr adaptive, same setup,
-    Section~\ref{sec:e10}) but does not close it -- confirming the
-    hypothesis above that the per-cycle search-radius cap, not the
-    rebuild cadence, is the structural bottleneck. The fix directions
-    listed above remain the way to actually resolve this. \textbf{Update
-    (2026-07-18):} two further, independent findings this pass. (1) A
-    direct radial-velocity check on tagged gas confirms momentum
-    coupling itself is not the bottleneck -- tagged particles show mean
-    $v_r$ several times that of untagged gas and accelerating, so the
-    pressure-to-momentum conversion already works; moving the
-    ionization-heating application from the cooling task to
-    \code{feedback\_update\_part()} (drift-time, same-step force-loop
-    visibility -- considered this pass) would not be expected to help
-    and was not implemented. (2) $r_{\rm HII}$ itself was undercounted:
-    \code{HIIRegionRadii} freezes at tag time and never updates as
-    tagged gas keeps moving, so the true ionized-shell extent is larger
-    than what was being measured -- see the measurement correction in
-    Section~\ref{sec:e10}. With the corrected measure, adaptive-cadence
-    error drops $41.5\%\to32.4\%$ and time-to-$R_{\rm st}$ drops
-    $1.76\to1.17\,$Myr; fixed-cadence time-to-$R_{\rm st}$ drops
-    $3.32\to2.44\,$Myr. Neither finding changes T8's verdict -- the
-    per-cycle search-radius cap remains the identified structural
-    bottleneck -- but both narrow how much of the mismatch was
-    measurement artifact vs.\ real. \textbf{Update (2026-07-19),
-    verdict refined:} directly tested the cap hypothesis by loosening
-    it far beyond anything previously tried
-    (\code{HII\_radius\_expansion\_factor}=1.5,
-    \code{HII\_max\_radius\_expansion\_tries}=20, i.e.\
-    $1.5^{20}\approx3300\times$ per cycle vs.\ the default
-    $1.1^5\approx1.61\times$) together with a much bigger box (60\,pc
-    half-width vs.\ 40\,pc) to remove the periodic-ceiling confound,
-    fixed cadence, same $Z/Z_\odot\approx0.231$/$T_i\approx47500\,$K
-    setup otherwise. Result: the earlier plateau-at-box-half-width
-    artifact (seen in both the 2026-07-18 \code{bigexpand} and
-    \code{coolfix} tests, which used the much milder
-    \code{HII\_radius\_expansion\_factor}=1.3) is \emph{gone} -- the
-    curve now climbs smoothly past $R_{\rm st}=40.5\,$pc all the way to
-    the (much larger) box edge, confirming the cap really was
-    truncating growth. But the mismatch does \emph{not} close: at the
-    box-valid comparison time ($t=0.78\,$Myr) the error is still
-    63\% (22\,pc simulated vs.\ 60\,pc analytic), and the gap stays
-    large and roughly constant in absolute terms throughout the whole
-    growth phase, not just near the box edge. \textbf{Refined verdict:}
-    the search-radius cap is a real, confirmed contributing factor (it
-    was the direct cause of the box-edge plateau specifically), but not
-    the dominant driver of the overall shape mismatch -- with it
-    effectively removed, something else still paces growth far below
-    the analytic rate. The curve's post-bootstrap shape (a sharp jump
-    to $\approx$22\,pc almost immediately, then a slow, roughly linear
-    climb, no longer a staircase) points at the fixed
-    \code{HII\_region\_rebuild\_time\_Myr}=0.5 cadence itself as the
-    next candidate: T11's adaptive cadence (already implemented,
-    Section~\ref{sec:e10}/below) has so far only been tested at this
-    example's \emph{original}, uncapped default expansion settings --
-    re-running it together with this session's loosened cap is the
-    natural next diagnostic, not yet done. \textbf{Update (2026-07-20):}
-    that diagnostic is now done -- T11's adaptive cadence
-    ($f_{\rm safety}=0.2$) rerun on top of the same loosened-cap,
-    bigger-box setup as the update above
-    (\code{HII\_radius\_expansion\_factor}=1.5,
-    \code{HII\_max\_radius\_expansion\_tries}=20, 60\,pc box half-width,
-    $Z/Z_\odot\approx0.231$). Result: error at the box-valid comparison
-    time ($t=0.78\,$Myr) drops $63\%\to43\%$ -- a real, further
-    improvement on top of the cap fix alone, consistent with T11's own
-    e10 result (Section~\ref{sec:e10}) and confirming the two fixes are
-    complementary, not redundant. The curve shape also changes
-    qualitatively: instead of the capped-only run's single
-    sharp-jump-then-flat-linear-climb, growth is now a sharp jump to
-    $\approx$28\,pc by $t\approx0.35\,$Myr followed by a distinctly
-    two-stage climb -- a slower stretch up to $R_{\rm st}=40.5\,$pc
-    (reached by $t\approx2\,$Myr) then a somewhat steeper stretch
-    beyond it, out to the box edge by $t\approx4.4\,$Myr. \textbf{Verdict
-    still not closed:} even with both the cap loosened and the cadence
-    made adaptive, the region still takes $\approx$2\,Myr to first reach
-    $R_{\rm st}$, versus the analytic solution's near-instantaneous
-    establishment -- a 43\% miss remains a FAIL against this check's
-    30\% tolerance. Both identified factors (search-radius cap,
-    fixed-vs-adaptive cadence) are confirmed real and now both
-    exhausted as candidate root causes at their current settings; the
-    residual gap points at something neither addresses -- not yet
-    identified. Not attempted this pass: instrumenting which retry
-    branch dominates once both fixes are in place (the original,
-    still-open suggestion from this item's first entry).
-    \textbf{Update (2026-07-20), first PASS:} rerun with the same
-    loosened-cap/adaptive-cadence/bigger-box setup, but
-    $T_i=10^4\,$K forced directly instead of $Z/Z_\odot\approx0.231$'s
-    natural $T_i\approx47500\,$K (Section~\ref{sec:e10}, full detail).
-    Result: 27.74\% error at the box-valid comparison time
-    ($t=3.81\,$Myr) -- \textbf{PASS} against the 30\% tolerance, the
-    first passing run in this item's entire history, and the curve for
-    the first time shows the qualitative R-type-then-D-type shape (sharp
-    initial jump, brief plateau at $R_{\rm st}$, then a D-type climb
-    tracking the analytic slope) instead of a shape mismatch. Caveat:
-    three variables changed together (cap, cadence, $T_i$) relative to
-    the very first e10 run, so this does not cleanly isolate $T_i$ as
-    ``the'' missing factor -- the lower $T_i$ also shrinks $R_{\rm st}$
-    itself (40.5\,pc$\to$25.4\,pc) and raises $\alpha_B$, changing the
-    physical scales being compared, not just resolving numerics.
-    \textbf{Isolation done (2026-07-20):} $T_i=10^4\,$K alone (cap and
-    cadence back to defaults) gives 43.02\% error, FAIL -- essentially
-    the same as the historical natural-$T_i$ default-cap/cadence result,
-    confirming $T_i$ alone is not the driver. A separate $Z=0$ (pristine)
-    run with the loosened cap and adaptive cadence kept on (plus the
-    STARBENCH-style \code{minimal\_temperature=1000} fix, needed at
-    $Z=0$) gives 37.10\% error, FAIL -- \emph{worse} than the
-    $Z/Z_\odot=0.231$ PASS run, refuting metal-line cooling as a
-    suppressing factor. \textbf{Verdict:} the cap and cadence fixes
-    account for essentially all of the improvement seen this session;
-    $T_i$ and metallicity are second-order at best. Full detail and both
-    plots in Section~\ref{sec:e10}. The residual gap in the PASS run
-    (27.74\%) remains unexplained.
-  \item[$\square$] \textbf{T9} -- Step 4
-    (Section~\ref{sec:space-regrid-hhii}, folding \code{h\_hii} into
-    \code{space\_regrid}'s top-level cell sizing, committed
-    \code{d7f4644cf}) has one unbuilt follow-up: a dedicated
-    large-\code{h\_hii}/\code{cdim>=4} regression case to confirm the
-    \emph{feature} itself (cells correctly coarsening to preserve
-    \code{h\_hii} coverage) works, not just that the crash-avoidance cap
-    (added in the same commit) avoids a spurious ``must have at least 3
-    cells'' error. The existing StromgrenSphere acceptance runs
-    (\code{gas\_mass=0.1}/\code{0.01} at \code{max\_top\_level\_cells: 3})
-    are permanently pinned at the periodic floor and can only test the
-    latter.
-  \item[$\boxtimes$] \textbf{T11 -- implemented and verified
-    (2026-07-18)} -- Physically-derived, adaptive,
-    per-star HII rebuild cadence
-    (\code{GEARFeedback:HII\_adaptive\_rebuild\_cadence}), replacing
-    the fixed \code{HII\_region\_rebuild\_time\_Myr} with
-    $f_{\rm safety} \times \min(t_{\rm rec,\,pixel\text{-}min},
-    t_{\rm cross})$, directly motivated by T8's finding that the fixed
-    cadence produces a D-type growth curve that doesn't match the
-    analytic shape. Full design in
-    \code{/home/darwinr/.claude/plans/sleepy-honking-pascal.md} (Phase
-    5). \textbf{Implemented as designed}: new
-    \code{radiation\_get\_T\_collisional\_K()} (extracted helper) and
-    \code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval()} in
-    \code{radiation.c}, dispatched through a thin wrapper in
-    \code{feedback\_common.h/.c} (matching
-    \code{feedback\_iact\_HII\_ionization}'s own pattern, so
-    \code{runner\_radiation\_feedback.c} -- generic cell-traversal code
-    -- never includes GEAR-internal \code{radiation.h} directly, per
-    T7); mode-branches in all three consumers
-    (\code{feedback\_compute\_spart\_timestep},
-    \code{feedback\_will\_do\_feedback},
-    \code{feedback\_iact\_HII\_ionization}); new
-    \code{HII\_region\_next\_rebuild\_time} field seeded to \code{0.0}
-    at star creation (both \code{feedback\_first\_init\_spart} and
-    \code{feedback\_init\_after\_star\_formation} -- correct because
-    star ages are always $\ge 0$ by construction, so this always reads
-    as ``already due,'' overwritten with a real value on the star's
-    first actual search pass). Build clean with \code{-Werror},
-    \code{testRadiationRebuildCheck} and
-    \code{test27cellsStars -n 3 -N 3 -r 5} pass, and the non-adaptive
-    code path is a provably byte-identical diff (every existing branch
-    untouched, only new \code{if}/\code{else if} arms added ahead of
-    it) -- every already-validated result in this logbook stays
-    reproducible. \textbf{Verification (2026-07-18), completed after a
-    genuine dt=0 deadlock was found and fixed first}: an initial
-    verification pass crashed 3 of 4 clump-sweep runs with ``spart
-    wants a time-step (0.0) below dt\_min'' -- the cached rebuild
-    deadline is only refreshed by an actual rebuild pass, and if that
-    gate stays false for a reason unrelated to timing (photon budget
-    exhausted, aged past \code{HII\_region\_max\_age}) the deadline
-    goes stale and the timestep constraint returned exactly 0.0
-    forever. Fixed by flooring the fallback at
-    \code{HII\_region\_rebuild\_floor\_Myr} instead of a literal
-    \code{0.0f} (also applied to the pre-existing, structurally
-    identical bug in the non-adaptive negative-\code{rebuild\_time\_myr}
-    and overshoot branches of \code{feedback\_compute\_spart\_timestep}
-    -- neither now ever forces \code{dt=0.0}). With that fixed: the
-    \code{StromgrenSphere} \code{gas\_mass=0.1} adaptive run completed
-    cleanly to $t=20\,$Myr ($r_{\rm HII}$ reaches its plateau by
-    $t\approx3$--$4\,$Myr and holds until the star's own $\sim$6\,Myr
-    lifetime ends it); all six \code{StromgrenSphereClumpSmith2021}
-    sweep configurations ($\text{gas\_mass}\in\{95,20\}\times
-    \text{nside}\in\{0,1,2\}$) completed cleanly to $t=8.2\,$Myr with
-    sane, bounded $r_{\rm HII}$ (12--20\,pc); and the e10
-    adaptive-vs-fixed comparison (Section~\ref{sec:e10}) shows a real,
-    quantified improvement (time to reach $R_{\rm st}$: $47\%$ faster;
-    error at the last box-valid time: roughly halved) without fully
-    closing T8's shape mismatch, exactly as T8's own mechanism
-    predicts. The \code{StromgrenSphereClumpSmith2021} stress test's
-    per-pixel density estimate was not separately instrumented/logged
-    this pass (\code{SWIFT\_DEBUG\_CHECKS\_VERBOSE} spot-check, plan
-    step 8) -- the sweep's clean completion and sane $r_{\rm HII}$
-    values are indirect evidence it behaves sanely, not direct
-    confirmation. One
-    deliberate scope decision to revisit later, not before: the
-    density sample for $t_{\rm rec}$ is drawn only from not-yet-tagged
-    front candidates (gas at the active ionization front), not from
-    gas already tagged by this star in an earlier rebuild -- simpler,
-    no changes needed to \code{feedback\_part\_can\_be\_ionized}/the
-    gather functions, and arguably the physically right population for
-    recombination risk anyway (front gas is the marginal population,
-    not the already-robustly-ionized interior). Revisit specifically
-    if verification (re-running \code{stromgren\_analytic\_check.py},
-    and a \code{StromgrenSphereClumpSmith2021} stress test given its
-    explicit density inhomogeneity) shows this proxy is insufficient.
-  \item[$\boxtimes$] \textbf{T12 -- bug fixed and matrix rerun
-    (2026-07-18)} -- \code{radiation.c}'s $T_{\rm collisional}$
-    (Eq.~\ref{eq:tcollisional}) used C's \code{log()} (natural log)
-    instead of \code{log10()}, silently applying the wrong base for
-    every $Z \ge 10^{-3}Z_\odot$ case -- including this project's own
-    $Z/Z_\odot\approx0.231$ validation-matrix reference point (V8),
-    chosen specifically because $\log_{10}$ makes $T_{\rm
-    collisional}=10^4\,$K there. The buggy code instead applied
-    $\approx$12,700\,K at that point. Fixed
-    (\code{log}$\to$\code{log10}); build clean,
-    \code{testRadiationRebuildCheck} and
-    \code{test27cellsStars -n 3 -N 3 -r 5} both pass. All twelve
-    $Z/Z_\odot\approx0.231$ matrix configurations
-    (Sections~\ref{sec:matrix-gas20}--\ref{sec:matrix-gas95}) and the
-    e10 single-star check were rerun against the fix ($Z=0$ rows are
-    provably unaffected -- that branch never calls \code{log}/\code{log10}
-    at all -- and were not rerun). Effect, measured directly: the
-    corrected (lower, $10^4\,$K vs.\ the buggy $\approx$12,700\,K)
-    temperature raises $\beta$ (higher recombination cost) and lowers
-    $c_s$, both pushing $r_{\rm HII}$ down -- confirmed, not assumed.
-    \code{gas20\_z0231\_nside1\_rebuild0p01} (the cleanest documented
-    anchor): 24.7--27.7\,pc pre-fix $\to$ 21.1--23.6\,pc post-fix --
-    still inside the papers' 20--25\,pc band, shifted toward its lower
-    end rather than out of it. e10: 41.7\%$\to$40.4\% final-time error
-    (marginal, as expected -- T8's mechanism is structurally independent
-    of this bug), but first reaches $R_{\rm st}$ noticeably sooner
-    ($\approx$3.8\,Myr pre-fix $\to$ $\approx$2.8\,Myr post-fix); the
-    staircase shape and overall mismatch persist. (These specific
-    numbers used the final-simulated-time comparison point, later found
-    to be past the box's validity limit and superseded by the
-    box-valid-comparison methodology fix in Section~\ref{sec:e10} --
-    the corrected, precise value is $3.32\,$Myr, not $2.8\,$Myr; the
-    qualitative conclusion here, that the fix helps only marginally,
-    is unaffected.) \textbf{Not done:} the
-    prose analysis and figures in Sections~\ref{sec:matrix-gas20}--
-    \ref{sec:matrix-gas95} (growth-curve plots, temperature slices, the
-    ID-tracked erosion table) still reflect the pre-fix numbers --
-    updating the raw table cells here was in scope, regenerating every
-    downstream figure/prose conclusion was not; treat those sections'
-    narrative as stale until that follow-up lands. \textbf{Cross-check
-    (2026-07-19):} the user independently quoted \citet{Hopkins2023}
-    (FIRE-3) directly: $T_{\rm eqm}/10^4\,{\rm K} \approx \min(6.62,\,
-    0.86/(1+0.22\,\ln[Z/Z_\odot]))$ -- their own text uses $\ln$, not
-    $\log_{10}$. This directly conflicts with this fix's premise (that
-    $\log_{10}$ is correct, verified by $Z/Z_\odot\approx0.231$ landing
-    on $10^4\,$K only under $\log_{10}$). Not re-litigated this pass --
-    the dated fix above was a deliberate, considered correction (not a
-    blind copy), and Draine (2011), the primary source both this
-    logbook and \citet{Hopkins2023} cite, is the actual tie-breaker,
-    not either paper's own possibly-loose notation. \textbf{Flagging,
-    not resolving}: if this ever becomes load-bearing again (e.g.\ a
-    result hinges on the exact $Z/Z_\odot\to T_{\rm collisional}$
-    mapping), check Draine (2011) directly before trusting either
-    reading.
-  \item[$\boxtimes$] \textbf{T13 -- confirmed done (2026-07-18)} --
-    Gather-time pixel-budget starvation
-    guard (design doc:
-    \code{/home/darwinr/.claude/plans/sleepy-honking-pascal.md}, Phase
-    2) is confirmed shipped and live: all four
-    \code{runner\_hii\_buffer\_insert} call sites in
-    \code{runner\_radiation\_feedback.c} (self, dopair-naive, and both
-    branches of the sorted dopair) gate the insert on
-    \code{feedback\_get\_star\_ionization\_rate(si, pixel) > 0.0}
-    before adding a candidate, so a pixel with an exhausted budget can
-    no longer monopolize buffer slots on retry. No further action
-    needed for the deadlock case this guard targets. The milder,
-    deliberately-deferred residual (two live pixels, one much denser,
-    slowing not deadlocking the sparse one's service rate) remains
-    unaddressed, per the plan's own note -- only worth revisiting if a
-    clumpy test shows it matters in practice.
-  \item[$\boxtimes$] \textbf{T15 -- bug fixed (2026-07-19)} --
-    \code{cooling\_get\_mean\_molecular\_weight()}
-    (\code{cooling\_utils.h}) referenced \code{cool\_data}/\code{rho}/
-    \code{m\_H} (mode 3: \code{m\_H} only) without ever declaring them
-    under \code{COOLING\_GRACKLE\_MODE == 2} and \code{== 3} --
-    undeclared-identifier compile errors, so the whole codebase failed
-    to build under \code{--with-cooling=grackle\_2/3}. Confirmed
-    pre-existing (worktree check against the commit immediately before
-    this session) and unrelated to this session's own changes to
-    \code{cooling.c}/\code{radiation.c} -- the required
-    all-four-modes compile check (this project's own stated rule for
-    any \code{src/cooling/grackle/} change) had apparently never been
-    run against this function specifically. Fixed by hoisting the
-    HI/HII/HeI/HeII/HeIII block (previously copy-pasted three times,
-    two of the three copies broken) out to a single
-    \code{COOLING\_GRACKLE\_MODE >= 1} block; each mode now only adds
-    what's specific to it. All four modes verified to build clean;
-    \code{testRadiationRebuildCheck} and
-    \code{test27cellsStars -n 3 -N 3 -r 5} pass.
-  \item[$\square$] \textbf{T16 -- part 2 done (2026-07-20), part 1 still
-    open} -- User's stated direction (2026-07-19): (1) adaptive rebuild
-    cadence (T11) is intended to become the \emph{default}, not stay
-    opt-in indefinitely -- \textbf{deliberately not done yet}: the user
-    wants more testing first (2026-07-20), so
-    \code{HII\_adaptive\_rebuild\_cadence} stays off by default. (2) the
-    ad-hoc floor reused from \code{HII\_rebuild\_floor\_Myr} in
-    \code{dt\_HII\_safe}'s branches -- \textbf{implemented, one design
-    correction after the first pass}: a first attempt added
-    \code{GEARFeedback:min\_star\_timestep\_Myr} to \code{feedback\_props}
-    and floored the result inside
-    \code{feedback\_compute\_spart\_timestep} itself. User pointed out
-    (2026-07-20) that the \emph{general}, model-agnostic star timestep
-    logic (age-based young/old/unlimited caps,
-    \code{max\_time\_step\_young}/\code{max\_time\_step\_old}) already
-    lives one level up, in \code{stars\_compute\_timestep}
-    (\code{src/stars/GEAR/stars.h}), not inside the feedback module --
-    and a timestep \emph{floor} is the direct mirror of those existing
-    \emph{ceiling} bounds, so it belongs at the same layer, not buried in
-    one particular feedback model's own function. Moved accordingly:
-    new \code{Stars:min\_star\_timestep\_Myr} parameter (\code{struct
-    stars\_props}, parsed in \code{stars\_io.h} alongside
-    \code{max\_timestep\_young\_Myr} etc.), applied once in
-    \code{stars\_compute\_timestep} via
-    \code{max(min(dt\_age, dt\_feedback), min\_star\_timestep)} --
-    i.e.\ after combining the age-based bound \emph{and} whatever the
-    feedback module returned, not before. \code{feedback\_compute\_spart\_
-    timestep} itself is back to returning the raw, unfloored
-    \code{min3(dt, dt\_evolution, dt\_HII\_safe)}; the one branch that
-    previously assigned \code{min\_star\_timestep} directly (the
-    ``rebuild every step'' case) now uses \code{HII\_rebuild\_floor\_Myr}
-    instead, restoring that branch's pre-session behaviour -- correct,
-    since ``how small a step to force in this HII-specific mode'' is a
-    scheduling decision that belongs with the HII parameters, not the
-    generic floor. This also closes the latent \code{dt\_evolution} gap
-    (previously completely unfloored, now covered by the same
-    end-of-function floor since \code{dt\_evolution} feeds into
-    \code{dt\_feedback}). \code{HII\_rebuild\_floor\_Myr} is deliberately
-    kept separate -- it still floors the adaptive-cadence \emph{interval
-    itself} in \code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval}
-    (a physics floor, and only ever parsed under
-    \code{with\_photoionization}), a different quantity from the
-    generic numerical step-size safety floor \code{min\_star\_timestep}
-    now provides regardless of which feedback channels are active.
-    (\emph{Sanity-checked} \code{min\_star\_timestep}'s own default
-    against this project's actual unit system: at
-    \code{TimeIntegration:dt\_min}$=10^{-10}$ internal
-    ($\approx0.1\,$yr for this project's \code{kpc}/\code{km/s}/M$_\odot$
-    system), $10^{-4}\,$Myr sits $\sim1000\times$ above the true
-    numerical floor -- comfortable margin, not a razor's edge.)
-    \textbf{Default value, chosen over the user's own suggestion of
-    $10^{-6}\,$Gyr ($=10^{-3}\,$Myr):} kept at $10^{-4}\,$Myr, matching
-    \code{HII\_rebuild\_floor\_Myr}'s existing default, rather than
-    raising it $10\times$. Reasoning: at $T_i=10^4\,$K
-    (\citet{Hu2017}/\citet{Smith2021}'s own convention,
-    $\alpha_B\approx2.6\times10^{-13}\,{\rm cm^3\,s^{-1}}$), a dense
-    clump ($n_H\sim$ several hundred ${\rm cm^{-3}}$, well within this
-    project's own clump examples' resolution) already has
-    $t_{\rm rec}=1/(\alpha_B n_e)$ of order a few hundred years
-    ($\sim2$--$5\times10^{-4}\,$Myr); with $f_{\rm safety}=0.2$ (T11's
-    default), the resulting adaptive interval is already close to or
-    below the existing $10^{-4}\,$Myr floor in exactly this regime. A
-    $10\times$ larger floor ($10^{-3}\,$Myr $\approx1000\,$yr) would
-    routinely clip this genuinely short physical timescale in dense
-    clumps -- precisely the environment the per-pixel adaptive cadence
-    exists to resolve finely -- coarsening the cadence below what the
-    physics wants rather than only guarding against pathological
-    near-zero cases. Kept at $10^{-4}\,$Myr instead, consistent with the
-    existing, already-shipped backstop value. Build clean,
-    \code{testRadiationRebuildCheck} and
-    \code{test27cellsStars -n 3 -N 3 -r 5} both pass.
-  \item[$\square$] \textbf{T17} -- Pass real ionizing/heating rates
+
+  \item[$\square$] \textbf{T3} -- The e10 diagnostic
+    (Section~\ref{sec:e10} -- an algorithm-behaviour check, not a
+    validation target, see the note there) has an unexplained residual:
+    even with the search-radius-expansion cap loosened and the
+    adaptive rebuild cadence on, the simulated D-type growth curve
+    still shows a gap to the analytic solution that neither fix
+    closes. Both identified contributing factors (the cap, the fixed
+    cadence) are confirmed real and exhausted as candidate root causes
+    at their current settings -- the residual points at something else,
+    not yet identified. A $T_i=10^4\,$K variant of the same combined
+    setup passed the check outright (Section~\ref{sec:e10}), but three
+    variables changed at once relative to the original mismatch, so
+    $T_i$ is not cleanly isolated as the explanation. Not attempted:
+    instrumenting which retry branch (buffer-full vs.\ radius-expansion)
+    dominates once the cap/cadence fixes are both in place.
+
+  \item[$\square$] \textbf{T4} -- User's stated direction (2026-07-19):
+    the adaptive rebuild cadence (Section~\ref{sec:adaptive-cadence})
+    is intended to become the \emph{default}, not stay opt-in
+    indefinitely. \textbf{Deliberately not done yet} (2026-07-20): the
+    user wants more testing first, so
+    \code{HII\_adaptive\_rebuild\_cadence} stays off by default.
+
+  \item[$\square$] \textbf{T5} -- Pass real ionizing/heating rates
     into Grackle's chemistry solve (Grackle's own \code{RT\_heating\_rate}/
     \code{RT\_HI\_ionization\_rate} fields), instead of this model's
     instant flag-and-floor scheme. User's explicit position
@@ -646,12 +68,12 @@ session are labelled \code{T}\emph{n} (task-graph) and
     (\code{reference\_gizmo\_fire\_rt\_rate\_coupling.md}) for how
     FIRE-3 actually does this (self-consistent solve, Stromgren-value
     incident flux, self-shielding off) and why it needs an actual local
-    radiation
-    field, not just a number handed to Grackle.
-  \item[$\square$] \textbf{T18} -- Variable ISRF (interstellar radiation
+    radiation field, not just a number handed to Grackle.
+
+  \item[$\square$] \textbf{T6} -- Variable ISRF (interstellar radiation
     field), user's design idea (2026-07-19), not yet implemented.
-    Motivation: proper Grackle coupling needs an ISRF estimate, and the
-    common approach (reusing the gravity tree for this) is, in the
+    Motivation: proper Grackle coupling (T5) needs an ISRF estimate, and
+    the common approach (reusing the gravity tree for this) is, in the
     user's own words, ``not optimal nor ideal'' and would require new
     tasks for a lot of engineering cost. \textbf{Proposed alternative,
     cheaper and (in the user's assessment) ``not less correct''}: inject
@@ -660,62 +82,21 @@ session are labelled \code{T}\emph{n} (task-graph) and
     using the analytical solution to a hyperbolic diffusion equation,
     explicitly \emph{not} an M1-closure scheme, specifically to avoid
     the $\text{CFL}\sim1/c$ constraint M1 would impose. Not scoped or
-    attempted this session.
-  \item[$\square$] \textbf{T19 -- investigated (2026-07-20), confirmed
-    dead code with a real numerical disagreement, fix deferred} -- Two
-    independent mass--temperature relations coexist in the blackbody
-    ionizing-rate fit (Section~\ref{sec:blackbody}):
-    \code{radiation\_get\_individual\_star\_temperature} (a standalone
-    piecewise fit) is never actually called by
-    \code{radiation\_get\_individual\_star\_ionizing\_photon\_emission\_
-    rate\_fit}, which instead derives $T_{\rm eff}$ from $L$ and $R$ via
-    Stefan--Boltzmann (Eq.~\ref{eq:stefan-boltzmann}).
-    \textbf{Dead-code check:} grepped every call site of both functions
-    across \code{src/} -- \code{radiation\_get\_individual\_star\_
-    temperature} has exactly two occurrences total (its own header
-    declaration and its own definition), no caller anywhere. Confirmed
-    unused.
-    \textbf{Numerical comparison:} evaluated both $T(M)$ relations
-    (plus the $R(M)$/$L(M)$ fits the Stefan--Boltzmann path depends on)
-    at masses spanning $0.1$--$150\,M_\odot$. They agree only very close
-    to the two piecewise-boundary anchors ($M\approx1\,M_\odot$: ratio
-    $0.997$; $M\approx8\,M_\odot$: ratio $1.029$) -- almost certainly
-    because those boundaries were tuned to known reference points (the
-    Sun's $T_{\rm eff}\approx5800\,$K at $1\,M_\odot$), not because the
-    two fits are actually consistent. Everywhere else they diverge
-    substantially: a factor $\sim1.5$--$1.6\times$ around
-    $0.5$--$3\,M_\odot$, growing to $\sim2$--$2.7\times$ at the low-mass
-    end ($0.1\,M_\odot$) and the high-mass end
-    ($50$--$150\,M_\odot$) -- precisely the OB-star range that
-    dominates ionizing photon production. The unused fit never rises
-    above $\sim30{,}000\,$K even at $150\,M_\odot$, while the
-    Stefan--Boltzmann path (the one actually used) saturates at a fixed
-    $\approx77{,}300\,$K for every $M\gtrsim54\,M_\odot$, a direct
-    structural consequence of the mass-luminosity fit turning linear
-    ($L\propto M$) at exactly the mass where the mass-radius fit is
-    already $R\propto M^{0.5}$, making $L/R^2$ (and hence $T_{\rm eff}$)
-    mass-independent in that regime by construction, not by
-    physical intent.
-    \textbf{Verdict: not worth reconciling.} Both fits are simple
-    piecewise power laws with no metallicity dependence at all --
-    exactly the limitation this whole radius/luminosity/temperature
-    triplet has, independent of which of the two temperature relations
-    is used. The user's stated direction (2026-07-20) is to replace this
-    entire empirical-fit layer with proper $(M, Z)$-dependent feedback
-    tables, generated by extending \texttt{pychem}
+    attempted.
+
+  \item[$\square$] \textbf{T7} -- Extend \texttt{pychem}
     (\texttt{\textasciitilde/programs/pychem/}, already the source of
-    this project's GEAR chemical-yield tables, e.g.\
-    \code{yields\_table} in \code{feedback\_properties.h}) to also emit
-    stellar radius/luminosity/effective-temperature (and hence ionizing
-    photon rate) as a function of both mass \emph{and} metallicity,
-    rather than patching either fixed-$Z$ piecewise fit in
-    \code{radiation.c}. Not attempted this pass -- this item is now a
-    placeholder for that larger, separate \texttt{pychem} extension
-    project rather than a small in-place code fix. When it lands, the
-    unused \code{radiation\_get\_individual\_star\_temperature} should
-    be deleted (dead code, not merely superseded) rather than kept
-    around as a second, disagreeing implementation.
-  \item[$\square$] \textbf{T20} -- The radiation-pressure momentum
+    this project's GEAR chemical-yield tables) to emit proper
+    $(M,Z)$-dependent stellar radius/luminosity/effective-temperature
+    (and hence ionizing photon rate) tables, replacing the current
+    single-metallicity, mutually-disagreeing piecewise power-law fits
+    in \code{radiation.c} (Section~\ref{sec:blackbody} documents the
+    disagreement in detail). A standalone project, not a small in-place
+    fix. When it lands, delete the dead
+    \code{radiation\_get\_individual\_star\_temperature}
+    (Section~\ref{sec:blackbody}).
+
+  \item[$\square$] \textbf{T8} -- The radiation-pressure momentum
     recipe (Eq.~\ref{eq:rp-momentum-rate}--\ref{eq:rp-tauIR},
     Section~\ref{sec:radiation-pressure}: single UV scattering plus
     $(1+\tau_{\rm IR})$ dust-IR-trapping boost, $\kappa_{\rm IR}=10\,{\rm
@@ -728,159 +109,4 @@ session are labelled \code{T}\emph{n} (task-graph) and
     (Section~\ref{sec:rp-open}), so the numerical fix in
     Section~\ref{sec:rp-hit-flag-bug} (momentum now actually applied)
     has not been checked against any analytic expectation.
-\end{itemize}
-
-\subsection{Physical validation}
-\label{sec:todo-phys}
-
-\begin{itemize}
-  \item[$\square$] \textbf{V1} -- For all configurations in the current
-    matrix (Section~\ref{sec:matrix-gas20}/\ref{sec:matrix-gas95}), not
-    just the ones plotted, check per-star, per-direction reach
-    (clump-facing vs.\ away), not only the scalar max $r_{\rm HII}$ --
-    a single number can hide an asymmetric front the way it did before
-    the radial-shell temperature check caught the clump's shallow
-    surface erosion.
-  \item[$\boxtimes$] \textbf{V2 -- done (2026-07-16)} -- T3 decided;
-    \code{run.sh}/\code{params.yml} defaults updated. No acceptance
-    re-run needed -- this only changes an example's own default
-    parameter value, not code, so it isn't covered by the
-    build/tests/acceptance-run checklist (that already re-ran clean
-    after the actual code change, T2's implementation).
-  \item[$\square$] \textbf{V4} -- Run e10's curve-shape check (above)
-    before and after any future algorithm change to this model (e.g.\
-    T2, or e7's optional \code{end\_time} margin if that's ever
-    implemented), to confirm a change actually improves the trajectory
-    shape and not just the endpoint by coincidence. Standing practice,
-    not a one-off: exercised for T11 (Section~\ref{sec:e10}), which is
-    exactly this kind of check -- keep applying it to future algorithm
-    changes, this item is not closed by that one instance.
-  \item[$\square$] \textbf{V5} -- Quantify whether the shallow clump
-    surface erosion found this session (star-facing outer skin
-    $\sim$28,000\,K to $\sim$3\,pc deep, interior still cold) grows
-    toward \citeauthor{Smith2021}'s more substantial disruption given
-    more time / the fixed rebuild cadence, or genuinely plateaus short
-    of it -- not yet run long enough or compared quantitatively
-    (their Fig.~2 doesn't give an exact eroded-mass number to target,
-    only a visual). \textbf{New candidate explanation (2026-07-16,
-    not yet tested):} \citeauthor{Smith2021} use AREPO, a moving-mesh
-    Godunov (finite-volume) code; we use SPH. Their Fig.~2 shows
-    visibly better mixing at the clump boundary than ours -- plausibly
-    an SPH-vs-Godunov contact-discontinuity/mixing difference (a
-    long-known SPH weakness) rather than anything specific to this
-    subgrid model. Testable by re-running the same example with
-    \swift's Gizmo MFV or MFM solver instead of SPH and comparing
-    clump erosion directly -- would isolate ``subgrid algorithm
-    difference'' from ``hydro solver difference'' as the cause of any
-    remaining mixing gap. Not attempted yet.
-  \item[$\boxtimes$] \textbf{V6 -- superseded by the
-    $Z/Z_\odot\approx0.231$ matrix (2026-07-16)} -- T2 is implemented
-    (Section~\ref{sec:beta-temperature}). The $Z/Z_\odot\approx0.231$
-    matrix (Sections~\ref{sec:matrix-gas20}--\ref{sec:matrix-gas95}) is
-    now the current post-T2 validation, and the right one to draw
-    scheme/rebuild conclusions from -- but since matrix runs at this
-    metallicity have the $\beta$/sound-speed channels neutralized by
-    construction (Section~\ref{sec:metallicity}), they are not the
-    right place to look for T2's own effect specifically; a dedicated
-    $Z=0$ rerun would still be needed for that (not done).
-  \item[$\square$] \textbf{V7} -- Pin down \citeauthor{Smith2021}'s
-    actual box size for their idealized D-type test more precisely
-    than the current eyeballed 60--80\,pc estimate (Section
-    \ref{sec:validation}), if an exact box-size comparison becomes
-    load-bearing for some future conclusion.
-  \item[$\boxtimes$] \textbf{V8 -- confirmed:
-    $Z/Z_\odot\approx0.231$ reproduces the papers (2026-07-16)} -- An
-    initial single-row test at the metallicity that makes
-    $T_{\rm collisional}=10^4\,$K exactly (Eq.~\ref{eq:tcollisional})
-    gave $r_{\rm HII}=24.7$--$27.7\,$pc at $t=8\,$Myr, right at the edge
-    of the papers' $\sim$20--25\,pc reference -- confirming this
-    metallicity is the right choice for an apples-to-apples comparison.
-    This is now the standard metallicity for the whole validation
-    matrix (Section~\ref{sec:metallicity}), superseding this item as a
-    one-off test.
-  \item[$\square$] \textbf{V9} -- An earlier, $Z=0$, pre-T2 no-clump
-    test gave $r_{\rm HII}=32.6$--$35.6\,$pc, \emph{larger} than the
-    papers' $\sim$20--25\,pc no-clump reference. Not an anomaly: the
-    sound-speed channel (Section~\ref{sec:metallicity}), independent of
-    $\beta$/T2, alone predicts a $\sim$1.56$\times$ larger radius from
-    $Z=0$'s hotter ($\approx$47,500\,K vs.\ the papers' $10^4\,$K)
-    applied temperature -- in the same ballpark as the measured
-    $\sim$1.4--1.6$\times$. Still open: confirming this \emph{is} the
-    dominant mechanism would need a controlled comparison, e.g.\ a
-    no-clump run at $Z/Z_\odot\approx0.231$ where both channels are
-    neutralized, checking the result lands at the papers' reference
-    instead of over/under-shooting -- not yet done at time of writing.
-  \item[$\square$] \textbf{V11} -- Test the AREPO-vs-SPH mixing
-    hypothesis from V5: rerun \code{StromgrenSphereClumpSmith2021} with
-    \swift's Gizmo MFV or MFM hydro solver instead of SPH and compare
-    clump-boundary mixing/erosion against the uniform-vs-angular
-    temperature slices (Section~\ref{sec:matrix-gas20}) and
-    \citeauthor{Smith2021}'s Fig.~2. Would tell us whether the residual
-    clump-disruption gap to \citeauthor{Smith2021} is a hydro solver
-    difference (AREPO's moving-mesh Godunov scheme vs.\ our SPH) rather
-    than anything specific to this subgrid radiation model.
-  \item[$\boxtimes$] \textbf{V13 -- done: $T_i$ regime tested and split
-    result found (2026-07-19)} -- New examples
-    \code{StromgrenSphereStarbench} (single star, reproducing
-    \citet{Bisbas2015}'s own STARBENCH semi-empirical D-type formula,
-    Eqns 8/11/28-29) and \code{StromgrenSphereHuSmith2017} (4 co-located
-    stars, reproducing \citet{Hu2017} Appendix~A) validate against
-    STARBENCH directly rather than the papers' own $r_{\rm HII}(t)$
-    trajectories. Motivation: this project's usual
-    $Z/Z_\odot\approx0.231$ workaround for hitting the papers' flat
-    $T_i=10^4\,$K brings real metal-line cooling neither paper's
-    idealized medium has; new debug flags
-    \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K}/
-    \code{FIXED\_NEUTRAL\_TEMPERATURE\_K} (\code{radiation.c}/
-    \code{cooling.c}) decouple $T_i$/$T_o$ from $Z$ entirely, so both
-    examples ran at $Z=0$ (no metal cooling) with $T_i$ forced to
-    exactly $10^4\,$K. \textbf{Result -- a real split, not a uniform
-    pass or fail}: STARBENCH (single star, $n_H=3346\,{\rm cm}^{-3}$)
-    \textbf{passes}, $5.30\%$ error at $t=3\,$Myr (vs.\ $10\%$
-    tolerance). Hu/Smith (4 co-located stars, $n_H\approx107\,{\rm
-    cm}^{-3}$) \textbf{still fails}: windowed median error
-    $32.4\%$ (min $17.1\%$ at $t=1.37\,$Myr, max $81.4\%$ at
-    $t=0.10\,$Myr, $0/82$ snapshots within tolerance) -- essentially
-    unchanged from the same check at this project's original
-    $T_i\approx47{,}500\,$K floor ($33.6\%$ median, $0/34$ within
-    tolerance, smaller box). \textbf{Conclusion: the $T_i$-regime
-    hypothesis is refuted as the primary driver} -- fixing $T_i$ helped
-    the single-source geometry a great deal but left the multi-source
-    geometry's error nearly untouched, which rules out temperature as
-    the dominant shared cause and narrows the open question specifically
-    to whatever differs between one star and four co-located stars
-    (search/gather overlap between sources, budget-sharing, or the
-    measurement itself being noisier for a multi-source front -- see
-    the max-vs-median percentile spread noted during this same
-    investigation). \textbf{Also tested and refuted}: sampling the
-    actual local (compression-heated) precursor temperature just
-    ahead of the front, instead of the fixed far-field $T_o$, for the
-    STARBENCH $c_o$ term -- makes the match \emph{worse}
-    ($R_{\rm STAG}\propto(c_i/c_o)^{4/3}$, so a warmer measured $c_o$
-    \emph{shrinks} the predicted radius, moving it further from
-    the simulation, not closer). \textbf{Ruled out}: FIRE-3's
-    lowest-density-neighbour selection (a candidate mechanism raised
-    and then withdrawn this session) -- this model's angular
-    (HealPix pixel-budget) splitting already addresses the mass-biasing
-    problem that selection change targets, via a different mechanism
-    (spatial budget partitioning instead of gather order), so it is not
-    expected to explain the multi-source residual. The mechanism behind
-    the residual itself remains open. Both examples committed
-    (\code{examples/SubgridTests/StromgrenSphereStarbench},
-    \code{.../StromgrenSphereHuSmith2017}); this specific $T_i=10^4\,$K
-    run was a one-off isolated test (\code{~/tmp/starbench\_ti1e4\_test},
-    \code{~/tmp/husmith\_ti1e4\_test}), not committed.
-  \item[$\boxtimes$] \textbf{V12 -- done: no rebuild cadence reproduces
-    the papers at this resolution (2026-07-16)} -- Swept
-    \code{gas\_mass=95} over scheme $\times$ \code{rebuild\_time\_myr}
-    $\in\{0.01,0.05,0.1\}$ at $Z/Z_\odot\approx0.231$
-    (Section~\ref{sec:matrix-gas95}): unlike at \code{gas\_mass=20}
-    (Section~\ref{sec:matrix-gas20}), no combination reliably reaches
-    the papers' $\sim$20--25\,pc reference -- the uniform scheme is
-    consistently low and the angular scheme's apparently-better numbers
-    are mostly a bookkeeping artifact, not real. This session's D-type
-    test geometry is therefore not a reliable calibration point at
-    zoom-in resolution regardless of rebuild cadence; picking a
-    fiducial cadence for production runs needs a different diagnostic
-    than this test.
 \end{itemize}
