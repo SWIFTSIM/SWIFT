@@ -279,6 +279,33 @@ figure). The measured-precursor-temperature secondary check
 \code{--reference} selects, so it stays consistent with the primary
 verdict instead of always re-deriving the blend.
 
+\textbf{Resolution check (2026-07-21)}: re-ran at \code{gas\_mass=20}\,M$_\odot$
+($123{,}571$ particles, $\sim\!5\times$ coarser than the $617{,}851$-particle
+default above), same box/search-radius/$T_i=10^4\,$K build. Against Raga-II:
+median $5.58\%$, still \textbf{PASS} by the aggregate median, but the
+late-time trend differs qualitatively from the finer default run. Direct
+comparison at matching late times:
+\begin{center}
+\begin{tabular}{r r r}
+$t$ (Myr) & gas\_mass=4 (finer) & gas\_mass=20 (coarser) \\
+\hline
+7.431 & 5.36\% & 11.26\% \\
+7.627 & 6.53\% & 10.61\% \\
+7.822 & 8.00\% & 12.61\% \\
+8.000 & 6.75\% & 12.38\% \\
+\end{tabular}
+\end{center}
+The finer (default) run stays bounded within the $10\%$ tolerance through
+$t=8\,$Myr, including a slight late-time recovery; the coarser run climbs
+past tolerance from $t\approx7.4\,$Myr onward and does not recover. This is
+the expected convergence direction (finer resolution tracks Raga-II more
+faithfully at late times), not a paradox -- the lower aggregate median at
+\code{gas\_mass=20} is a window-averaging artifact of better agreement
+earlier in the run, not evidence the coarser run is actually closer to the
+analytic solution late-time, which is where it matters for a converged
+verdict. \code{gas\_mass=4} (already the default) remains the resolution
+this target is validated at.
+
 \textbf{Status}: \textbf{validated}. The "unidentified multi-source
 residual" tracked since the deprecated result
 (Section~\ref{sec:husmith4star}) was never a real physics gap -- it was

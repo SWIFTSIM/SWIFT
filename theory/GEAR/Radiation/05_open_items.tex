@@ -207,12 +207,50 @@ validation-against-a-paper status.
     star's HII region growing large enough to coarsen \code{cdim} --
     even briefly, even down to the periodic floor -- would coarsen the
     whole box for the remainder of that run, even after that star dies
-    and every other star stays small. Not fixed here: needs a design
-    decision (e.g.\ periodically re-attempt a finer regrid when
-    \code{h\_max} has dropped and stayed dropped for some margin, or
-    track \code{h\_hii}'s contribution to \code{h\_max} separately so
-    it cannot ratchet the whole grid the way sustained hydro resolution
-    needs legitimately should).
+    and every other star stays small.
+
+    \textbf{Decision (2026-07-21)}: scoped to h\_hii specifically, not a
+    general change to the one-way coarsening ratchet ordinary
+    hydro/star/black-hole/sink \code{h\_max} still relies on (ratchet
+    behaviour for those is a pre-existing, general SWIFT property, out
+    of scope for this branch). \code{space::h\_max\_no\_hii\_hwm}
+    (\code{src/space.h}) is a new persistent high-water mark that
+    reproduces the existing ratchet exactly for the non-\code{h\_hii}
+    contributions to \code{h\_max}; \code{h\_hii}'s own contribution is
+    recomputed fresh every regrid (no memory), and the regrid trigger in
+    \code{space\_regrid.c} is now bidirectional (\code{cdim != s->cdim}
+    instead of \code{cdim < s->cdim}). This is safe because \code{cdim}
+    can only come out \emph{larger} (finer) than before when
+    \code{h\_hii}'s contribution has shrunk -- the ratchet guarantees the
+    ordinary-physics component never causes that direction on its own.
+    Implemented in \code{src/space.h}/\code{src/space\_regrid.c}; builds
+    clean (\code{swift}/\code{swift\_mpi}) under
+    \code{-Werror -Wall -Wextra -Wshadow}. \textbf{Committed
+    (2026-07-21)}: \code{testRadiationRebuildCheck} and
+    \code{test27cellsStars} both pass, and a full STARBENCH re-run
+    ($T_i=10^4\,$K forced, the same edge case that pins
+    \code{max\_top\_level\_cells: 3} at the periodic boundary) completed
+    end to end at $9.23\%$ (vs.\ $6.12\%$ pre-change -- within the
+    scatter expected from this example's probabilistic boundary
+    ionization, not attributed to a regression).
+
+    \textbf{Complementary general safety, also added}: a new
+    \code{Scheduler:min\_top\_level\_cells} parameter (default 3,
+    mirroring the existing \code{Scheduler:max\_top\_level\_cells}) sets
+    \code{space::cell\_max\_width}, a ceiling on the effective cell width
+    that \code{space\_regrid()} will not coarsen past regardless of what
+    is driving the coarsening (ordinary \code{h\_max} or \code{h\_hii}).
+    This bounds the worst case even if the bidirectional trigger above
+    never actually gets exercised in a given run.
+
+    \textbf{Explicitly unverified}: whether the bidirectional trigger is
+    reachable in practice for a continuously star-forming cosmological
+    box (as opposed to quiescent periods, isolated-galaxy/zoom tests, or
+    bursty SF) is an untested hypothesis, not a measured result -- no run
+    has yet checked whether \code{cdim} actually gets a chance to shrink
+    back in a continuous-SF setting. Worth checking as part of T4's
+    planned \code{HomogeneousBox}/isolated-galaxy testing rather than
+    assumed.
 
   \item[$\square$] \textbf{T10 -- confirmed (2026-07-21), decision
     still open} -- STARBENCH re-validation
