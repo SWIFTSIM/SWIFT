@@ -2995,6 +2995,9 @@ case "$with_forcing" in
    idealized-agn-jet)
       AC_DEFINE([FORCING_IDEALIZED_AGN_JET], [1], [Launch AGN jets and treats particles in jet reservoir as fixed boundary particles])
    ;;
+   driven-turbulence)
+      AC_DEFINE([FORCING_DRIVEN_TURBULENCE], [1], [Driven turbulence following updating the forces])
+   ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
    ;;
