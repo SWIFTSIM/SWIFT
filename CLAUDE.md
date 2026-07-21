@@ -27,6 +27,15 @@
   the fix itself is the evidence; the comment should just describe the resulting correct
   behavior). Delete commented-out dead code instead of leaving it in place. When a function's
   doxygen `@param` list is touched, keep it in sync with the actual signature.
+- **Example READMEs:** Written for an external computational astrophysicist who wants to
+  configure and run the example — not for us, and not a lab notebook. Concise, self-contained,
+  no "bible length" documents. Must cover: what it reproduces (a one-line pointer to the
+  paper is fine), how to configure, how to run. Must NOT cover: validation status, what was
+  investigated or bisected, comparisons against deprecated/old results, or anything that
+  assumes the reader watched this project's own debugging happen. That content belongs in
+  `theory/GEAR/Radiation/` or the agent's own memory, never in the shipped README. Before
+  writing or editing one, re-read a sibling README (e.g. `StromgrenSphereClump/README`) for
+  length and tone calibration. This has been a repeat problem — take it seriously.
 
 ## Commit Style
 - Atomic commits per logical unit (one per file group or feature boundary)
