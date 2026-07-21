@@ -481,26 +481,23 @@ static void space_split_populate_multipole(struct cell *c) {
 }
 
 /**
- * @brief Fill a top-level cell's slice of the space-wide sorting buffers.
+ * @brief Fill a top-level cell's sorting buffers from its particles.
  *
- * The buffers are allocated once, up front, for the complete local
- * particle arrays by #space_split() -- see #space_split_mapper() -- rather
- * than per top-level cell. This only fills a single cell's slice of those
- * buffers from its own particles; buff, gbuff, sbuff, bbuff and sink_buff
- * must already point at the start of that cell's slice (i.e. offset by the
- * same particle-array offset used elsewhere, e.g. in #cell_split()), and
- * the *_offset arguments must be that same offset, so that each entry's
- * part_ind can be set to the particle's index in the space-wide array
- * (e.g. s->parts) it was filled from. This is what lets #cell_split()
- * reorder the buffers alone, further down the tree, without also having to
- * move the particles themselves.
+ * The buffers are this cell's own, allocated per top-level cell by
+ * #space_split_mapper() (see #space_split_alloc_cell_scratch()). This fills
+ * each from the cell's particles, index 0 upward; the *_offset arguments
+ * are the cell's offset into the corresponding space-wide particle array
+ * (e.g. c->hydro.parts - s->parts), so that each entry's part_ind can be
+ * set to the global index of the particle it was filled from. That global
+ * index is what lets #cell_split() reorder the buffers alone, further down
+ * the tree, without also having to move the particles themselves.
  *
  * @param c The #cell whose particles populate the buffers.
- * @param buff This cell's slice of the space-wide hydro buffer.
- * @param gbuff This cell's slice of the space-wide gravity buffer.
- * @param sbuff This cell's slice of the space-wide star buffer.
- * @param bbuff This cell's slice of the space-wide black hole buffer.
- * @param sink_buff This cell's slice of the space-wide sink buffer.
+ * @param buff This cell's hydro sorting buffer.
+ * @param gbuff This cell's gravity sorting buffer.
+ * @param sbuff This cell's star sorting buffer.
+ * @param bbuff This cell's black hole sorting buffer.
+ * @param sink_buff This cell's sink sorting buffer.
  * @param parts_offset c->hydro.parts - s->parts.
  * @param gparts_offset c->grav.parts - s->gparts.
  * @param sparts_offset c->stars.parts - s->sparts.
@@ -599,19 +596,28 @@ static void space_split_fill_buffers(
 }
 
 /**
- * @brief One top-level cell's particle scratch buffers.
+ * @brief One top-level cell's scratch space.
  *
  * Allocated per top-level cell, sized to exactly that cell's per-family
  * counts, used for the whole subtree and freed once the cell is done --
- * the same allocate/use/free-per-cell pattern master uses for its sort
- * buffers, just holding full particle structs. #space_split_move_leaf()
- * gathers each leaf's particles into these; once a cell's whole subtree
- * has been gathered, #space_split_mapper() copies each family straight
- * back into the real array. This keeps the design's one real per-particle
- * data move sequential on both ends, without ever needing an allocation
- * sized to the whole space.
+ * the same allocate/use/free-per-cell pattern master uses. This holds both
+ * the lightweight sorting buffers #cell_split() reorders (buff/gbuff/... and
+ * the bucket-id scratch ind), and the full-particle gather buffers
+ * #space_split_move_leaf() collects each leaf into (parts/xparts/...). Once
+ * a cell's whole subtree has been gathered, #space_split_mapper() copies
+ * each family straight back into the real array. Nothing here is ever sized
+ * to the whole space.
  */
 struct space_split_cell_scratch {
+
+  /*! Sorting buffers, reordered in place by #cell_split(); each entry keeps
+   * the global index of the particle it represents. */
+  struct cell_buff *buff, *gbuff, *sbuff, *bbuff, *sink_buff;
+
+  /*! #cell_split() bucket-id scratch, sized to the cell's largest count. */
+  int *ind;
+
+  /*! Full-particle gather buffers, one per family. */
   struct part *parts;
   struct xpart *xparts;
   struct gpart *gparts;
@@ -621,8 +627,8 @@ struct space_split_cell_scratch {
 };
 
 /**
- * @brief Allocate a top-level cell's particle scratch buffers, one family
- *        at a time, sized to exactly the cell's counts.
+ * @brief Allocate a top-level cell's scratch space, one family at a time,
+ *        sized to exactly the cell's counts.
  *
  * A family with no particles is left NULL.
  *
@@ -637,14 +643,13 @@ static void space_split_alloc_cell_scratch(
     struct space_split_cell_scratch *scratch, const int count, const int gcount,
     const int scount, const int bcount, const int sink_count) {
 
-  scratch->parts = NULL;
-  scratch->xparts = NULL;
-  scratch->gparts = NULL;
-  scratch->sparts = NULL;
-  scratch->bparts = NULL;
-  scratch->sinks = NULL;
+  bzero(scratch, sizeof(struct space_split_cell_scratch));
 
   if (count > 0) {
+    if (swift_memalign("tempbuff", (void **)&scratch->buff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * count) != 0)
+      error("Failed to allocate cell sort buffer.");
     if (swift_memalign("particle_scratch", (void **)&scratch->parts, part_align,
                        sizeof(struct part) * count) != 0)
       error("Failed to allocate particle scratch parts buffer.");
@@ -652,32 +657,71 @@ static void space_split_alloc_cell_scratch(
                        xpart_align, sizeof(struct xpart) * count) != 0)
       error("Failed to allocate particle scratch xparts buffer.");
   }
-  if (gcount > 0 &&
-      swift_memalign("particle_scratch", (void **)&scratch->gparts, gpart_align,
-                     sizeof(struct gpart) * gcount) != 0)
-    error("Failed to allocate particle scratch gparts buffer.");
-  if (scount > 0 &&
-      swift_memalign("particle_scratch", (void **)&scratch->sparts, spart_align,
-                     sizeof(struct spart) * scount) != 0)
-    error("Failed to allocate particle scratch sparts buffer.");
-  if (bcount > 0 &&
-      swift_memalign("particle_scratch", (void **)&scratch->bparts, bpart_align,
-                     sizeof(struct bpart) * bcount) != 0)
-    error("Failed to allocate particle scratch bparts buffer.");
-  if (sink_count > 0 &&
-      swift_memalign("particle_scratch", (void **)&scratch->sinks, sink_align,
-                     sizeof(struct sink) * sink_count) != 0)
-    error("Failed to allocate particle scratch sinks buffer.");
+  if (gcount > 0) {
+    if (swift_memalign("tempgbuff", (void **)&scratch->gbuff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * gcount) != 0)
+      error("Failed to allocate cell sort buffer.");
+    if (swift_memalign("particle_scratch", (void **)&scratch->gparts,
+                       gpart_align, sizeof(struct gpart) * gcount) != 0)
+      error("Failed to allocate particle scratch gparts buffer.");
+  }
+  if (scount > 0) {
+    if (swift_memalign("tempsbuff", (void **)&scratch->sbuff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * scount) != 0)
+      error("Failed to allocate cell sort buffer.");
+    if (swift_memalign("particle_scratch", (void **)&scratch->sparts,
+                       spart_align, sizeof(struct spart) * scount) != 0)
+      error("Failed to allocate particle scratch sparts buffer.");
+  }
+  if (bcount > 0) {
+    if (swift_memalign("tempbbuff", (void **)&scratch->bbuff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * bcount) != 0)
+      error("Failed to allocate cell sort buffer.");
+    if (swift_memalign("particle_scratch", (void **)&scratch->bparts,
+                       bpart_align, sizeof(struct bpart) * bcount) != 0)
+      error("Failed to allocate particle scratch bparts buffer.");
+  }
+  if (sink_count > 0) {
+    if (swift_memalign("temp_sink_buff", (void **)&scratch->sink_buff,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct cell_buff) * sink_count) != 0)
+      error("Failed to allocate cell sort buffer.");
+    if (swift_memalign("particle_scratch", (void **)&scratch->sinks, sink_align,
+                       sizeof(struct sink) * sink_count) != 0)
+      error("Failed to allocate particle scratch sinks buffer.");
+  }
+
+  /* The bucket-id scratch is reused across all five families within a
+   * single #cell_split() call, so it only needs to be as big as the
+   * largest of the cell's counts. */
+  int max_count = count;
+  max_count = max(max_count, gcount);
+  max_count = max(max_count, scount);
+  max_count = max(max_count, bcount);
+  max_count = max(max_count, sink_count);
+  if (max_count > 0 &&
+      swift_memalign("ind_scratch", (void **)&scratch->ind,
+                     SWIFT_STRUCT_ALIGNMENT, sizeof(int) * max_count) != 0)
+    error("Failed to allocate cell bucket-id scratch.");
 }
 
 /**
- * @brief Free a top-level cell's particle scratch buffers.
+ * @brief Free a top-level cell's scratch space.
  *
  * @param scratch The #space_split_cell_scratch to free.
  */
 static void space_split_free_cell_scratch(
     struct space_split_cell_scratch *scratch) {
 
+  if (scratch->buff != NULL) swift_free("tempbuff", scratch->buff);
+  if (scratch->gbuff != NULL) swift_free("tempgbuff", scratch->gbuff);
+  if (scratch->sbuff != NULL) swift_free("tempsbuff", scratch->sbuff);
+  if (scratch->bbuff != NULL) swift_free("tempbbuff", scratch->bbuff);
+  if (scratch->sink_buff != NULL) swift_free("temp_sink_buff", scratch->sink_buff);
+  if (scratch->ind != NULL) swift_free("ind_scratch", scratch->ind);
   if (scratch->parts != NULL) swift_free("particle_scratch", scratch->parts);
   if (scratch->xparts != NULL) swift_free("particle_scratch", scratch->xparts);
   if (scratch->gparts != NULL) swift_free("particle_scratch", scratch->gparts);
@@ -740,11 +784,11 @@ static void space_split_free_cell_scratch(
  *        buffer.
  * @param scratch_gparts This leaf's slice of the thread's scratch #gpart
  *        buffer.
- * @param buff This leaf's slice of the space-wide hydro buffer.
- * @param sbuff This leaf's slice of the space-wide star buffer.
- * @param bbuff This leaf's slice of the space-wide black hole buffer.
- * @param gbuff This leaf's slice of the space-wide gravity buffer.
- * @param sink_buff This leaf's slice of the space-wide sink buffer.
+ * @param buff This leaf's slice of the hydro buffer.
+ * @param sbuff This leaf's slice of the star buffer.
+ * @param bbuff This leaf's slice of the black hole buffer.
+ * @param gbuff This leaf's slice of the gravity buffer.
+ * @param sink_buff This leaf's slice of the sink buffer.
  */
 static void space_split_move_leaf(
     struct space *s, struct cell *c, struct part *restrict scratch_parts,
@@ -906,15 +950,15 @@ static void space_split_move_leaf(
  *        level of this top-level cell's recursion (sized by the caller to
  *        the top-level cell's own count, the largest any descendant will
  *        need).
- * @param buff This cell's slice of the space-wide hydro sorting buffer,
+ * @param buff This cell's slice of the hydro sorting buffer,
  *        already filled (see #space_split_mapper()).
- * @param sbuff This cell's slice of the space-wide star sorting buffer,
+ * @param sbuff This cell's slice of the star sorting buffer,
  *        already filled.
- * @param bbuff This cell's slice of the space-wide black hole sorting
+ * @param bbuff This cell's slice of the black hole sorting
  *        buffer, already filled.
- * @param gbuff This cell's slice of the space-wide gravity sorting buffer,
+ * @param gbuff This cell's slice of the gravity sorting buffer,
  *        already filled.
- * @param sink_buff This cell's slice of the space-wide sink sorting
+ * @param sink_buff This cell's slice of the sink sorting
  *        buffer, already filled.
  */
 static void space_split_recursive(
@@ -1183,95 +1227,30 @@ static void space_split_aggregate_recursive(struct space *s, struct cell *c) {
  * cell's recursion, since a descendant's count can only ever be smaller
  * than its top-level cell's own.
  */
-struct space_split_ind_scratch {
-
-  /*! The scratch buffer itself. */
-  int *ind;
-
-  /*! Number of entries currently allocated. */
-  int capacity;
-};
-
-/**
- * @brief Grow a thread's ind scratch buffer if it is not already big enough.
- *
- * @param scratch The thread's #space_split_ind_scratch.
- * @param needed The number of entries required.
- */
-static void space_split_ensure_ind_scratch(
-    struct space_split_ind_scratch *scratch, const int needed) {
-
-  if (needed <= scratch->capacity) return;
-
-  if (scratch->ind != NULL) swift_free("ind_scratch", scratch->ind);
-  if (swift_memalign("ind_scratch", (void **)&scratch->ind,
-                     SWIFT_STRUCT_ALIGNMENT, sizeof(int) * needed) != 0)
-    error("Failed to allocate ind scratch buffer.");
-  scratch->capacity = needed;
-}
-
-/**
- * @brief Extra data for #space_split_mapper().
- *
- * The sorting buffers are allocated once, up front, for the complete local
- * particle arrays by #space_split() rather than per top-level cell (see
- * #space_split_fill_buffers()). This bundles the #space together with the
- * base pointer of each of those buffers and one #space_split_ind_scratch
- * per worker thread, so every worker can find its own top-level cells'
- * slices and its own reusable #cell_split() scratch space.
- */
-struct space_split_mapper_data {
-
-  /*! The #space being split. */
-  struct space *s;
-
-  /*! Base pointer of the space-wide hydro sorting buffer. */
-  struct cell_buff *buff;
-
-  /*! Base pointer of the space-wide gravity sorting buffer. */
-  struct cell_buff *gbuff;
-
-  /*! Base pointer of the space-wide star sorting buffer. */
-  struct cell_buff *sbuff;
-
-  /*! Base pointer of the space-wide black hole sorting buffer. */
-  struct cell_buff *bbuff;
-
-  /*! Base pointer of the space-wide sink sorting buffer. */
-  struct cell_buff *sink_buff;
-
-  /*! Per-thread #cell_split() ind scratch buffers, one per worker thread. */
-  struct space_split_ind_scratch *ind_scratch;
-};
-
 /**
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
- * For each top-level cell, this first fills that cell's slice of the
- * space-wide sorting buffers (see #space_split_fill_buffers()), ensures
- * this thread's #cell_split() scratch buffer is big enough for it and
- * allocates this cell's particle scratch buffers, then builds the cell
- * hierarchy, sorts particles into it and gathers each leaf's particles
- * into the particle scratch buffers as it is found (see
- * #space_split_move_leaf()). Once that whole subtree has been gathered,
- * this copies each family's scratch data back into the real arrays and
- * frees the cell's particle scratch. It does not compute any per-cell
- * statistics; see #space_split_aggregate_mapper() for the pass that
- * finalises leaves and derives cell statistics and multipoles once the
+ * For each top-level cell, this allocates that cell's scratch space (sort
+ * buffers and per-family gather buffers), fills the sort buffers from the
+ * cell's own particles (see #space_split_fill_buffers()), then builds the
+ * cell hierarchy, sorts particles into it and gathers each leaf's particles
+ * into the gather buffers as it is found (see #space_split_move_leaf()).
+ * Once that whole subtree has been gathered, this copies each family back
+ * into the real arrays and frees the cell's scratch. It does not compute
+ * any per-cell statistics; see #space_split_aggregate_mapper() for the pass
+ * that finalises leaves and derives cell statistics and multipoles once the
  * whole hierarchy has been built.
  *
  * @param map_data Pointer towards the top-cells.
  * @param num_cells The number of cells to treat.
- * @param extra_data Pointer to a #space_split_mapper_data.
+ * @param extra_data Pointer to the #space being split.
  */
 static void space_split_mapper(void *map_data, int num_cells,
                                void *extra_data) {
 
   /* Unpack the inputs. */
-  struct space_split_mapper_data *data =
-      (struct space_split_mapper_data *)extra_data;
-  struct space *s = data->s;
+  struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
@@ -1285,46 +1264,35 @@ static void space_split_mapper(void *map_data, int num_cells,
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
     /* A top-level cell's particles occupy a contiguous slice of the
-     * complete local particle arrays, at the same offset used elsewhere
-     * (e.g. #cell_split()). Find this cell's slice of each space-wide
-     * buffer and fill it from the cell's own particles. */
+     * complete local particle arrays; part_ind values are these global
+     * indices (see #space_split_fill_buffers()). */
     const ptrdiff_t parts_offset = c->hydro.parts - s->parts;
     const ptrdiff_t gparts_offset = c->grav.parts - s->gparts;
     const ptrdiff_t sparts_offset = c->stars.parts - s->sparts;
     const ptrdiff_t bparts_offset = c->black_holes.parts - s->bparts;
     const ptrdiff_t sinks_offset = c->sinks.parts - s->sinks;
-    struct cell_buff *buff = data->buff + parts_offset;
-    struct cell_buff *gbuff = data->gbuff + gparts_offset;
-    struct cell_buff *sbuff = data->sbuff + sparts_offset;
-    struct cell_buff *bbuff = data->bbuff + bparts_offset;
-    struct cell_buff *sink_buff = data->sink_buff + sinks_offset;
-    space_split_fill_buffers(c, buff, gbuff, sbuff, bbuff, sink_buff,
-                             parts_offset, gparts_offset, sparts_offset,
-                             bparts_offset, sinks_offset);
 
-    /* This thread's cell_split() scratch buffer only needs to be as big as
-     * this top-level cell's own largest count -- every descendant's count
-     * can only be smaller. */
-    int max_count = c->hydro.count;
-    max_count = max(max_count, c->grav.count);
-    max_count = max(max_count, c->stars.count);
-    max_count = max(max_count, c->black_holes.count);
-    max_count = max(max_count, c->sinks.count);
-    space_split_ensure_ind_scratch(&data->ind_scratch[tpid], max_count);
-
-    /* Allocate this cell's particle scratch buffers, one family at a time,
-     * sized to exactly its counts. */
+    /* Allocate this cell's scratch (sort buffers + gather buffers), one
+     * family at a time, sized to exactly its counts. */
     struct space_split_cell_scratch scratch;
     space_split_alloc_cell_scratch(&scratch, c->hydro.count, c->grav.count,
                                    c->stars.count, c->black_holes.count,
                                    c->sinks.count);
+    struct cell_buff *buff = scratch.buff, *gbuff = scratch.gbuff,
+                     *sbuff = scratch.sbuff, *bbuff = scratch.bbuff,
+                     *sink_buff = scratch.sink_buff;
+
+    /* Fill the sort buffers from the cell's own particles. */
+    space_split_fill_buffers(c, buff, gbuff, sbuff, bbuff, sink_buff,
+                             parts_offset, gparts_offset, sparts_offset,
+                             bparts_offset, sinks_offset);
 
     /* Split this cell recursively, gathering each leaf's particles into
      * scratch as it is found. */
     space_split_recursive(s, c, scratch.parts, scratch.xparts, scratch.sparts,
                           scratch.bparts, scratch.sinks, scratch.gparts,
-                          data->ind_scratch[tpid].ind, buff, sbuff, bbuff,
-                          gbuff, sink_buff, tpid);
+                          scratch.ind, buff, sbuff, bbuff, gbuff, sink_buff,
+                          tpid);
 
     /* This cell's entire subtree has now been gathered into scratch, in
      * final order: copy each family back into the real arrays, skipping any
@@ -1354,7 +1322,7 @@ static void space_split_mapper(void *map_data, int num_cells,
       c->grav.parts[k] = scratch.gparts[k];
     }
 
-    /* Done with this cell -- free its particle scratch. */
+    /* Done with this cell -- free its scratch. */
     space_split_free_cell_scratch(&scratch);
   }
 }
@@ -1426,60 +1394,6 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
 }
 
 /**
- * @brief Allocate the space-wide sorting buffers for the complete local
- * particle arrays.
- *
- * Called once by #space_split(), up front, before the split pass. Each
- * top-level cell later fills and uses its own slice of these buffers (see
- * #space_split_mapper() and #space_split_fill_buffers()); this only
- * allocates them, sized to the space's complete local particle arrays, for
- * each non-empty particle family.
- *
- * @param s The #space whose local particle arrays size the buffers.
- * @param buff Pointer to the hydro buffer pointer, allocated in place.
- * @param gbuff Pointer to the gravity buffer pointer, allocated in place.
- * @param sbuff Pointer to the star buffer pointer, allocated in place.
- * @param bbuff Pointer to the black hole buffer pointer, allocated in place.
- * @param sink_buff Pointer to the sink buffer pointer, allocated in place.
- */
-static void space_split_allocate_buffers(struct space *s,
-                                         struct cell_buff **buff,
-                                         struct cell_buff **gbuff,
-                                         struct cell_buff **sbuff,
-                                         struct cell_buff **bbuff,
-                                         struct cell_buff **sink_buff) {
-
-  /* Only allocate a buffer for a family if the space holds any such
-   * particles locally. */
-  if (s->nr_parts > 0) {
-    if (swift_memalign("tempbuff", (void **)buff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * s->nr_parts) != 0)
-      error("Failed to allocate temporary indices.");
-  }
-  if (s->nr_gparts > 0) {
-    if (swift_memalign("tempgbuff", (void **)gbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * s->nr_gparts) != 0)
-      error("Failed to allocate temporary indices.");
-  }
-  if (s->nr_sparts > 0) {
-    if (swift_memalign("tempsbuff", (void **)sbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * s->nr_sparts) != 0)
-      error("Failed to allocate temporary indices.");
-  }
-  if (s->nr_bparts > 0) {
-    if (swift_memalign("tempbbuff", (void **)bbuff, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * s->nr_bparts) != 0)
-      error("Failed to allocate temporary indices.");
-  }
-  if (s->nr_sinks > 0) {
-    if (swift_memalign("temp_sink_buff", (void **)sink_buff,
-                       SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct cell_buff) * s->nr_sinks) != 0)
-      error("Failed to allocate temporary indices.");
-  }
-}
-
-/**
  * @brief Split particles between cells of a hierarchy.
  *
  * This is done in parallel using threads in the #threadpool.
@@ -1489,13 +1403,14 @@ static void space_split_allocate_buffers(struct space *s,
  * #threadpool:
  *
  * 1. Split pass: #space_split_mapper() recursively builds the cell
- *    hierarchy and sorts each cell's slice of the space-wide sorting
- *    buffers into its progeny (see #cell_split()), gathering each leaf's
- *    particles into this thread's particle scratch buffers as it is found
- *    (see #space_split_move_leaf()), then, once a top-level cell's whole
- *    subtree has been gathered, copies each family's scratch data back
- *    into the real arrays with a single bulk memcpy. It does not compute
- *    any per-cell statistics.
+ *    hierarchy and sorts each top-level cell's sorting buffers into its
+ *    progeny (see #cell_split()), gathering each leaf's particles into
+ *    that cell's gather buffers as it is found (see
+ *    #space_split_move_leaf()), then, once the cell's whole subtree has
+ *    been gathered, copies each family back into the real arrays. All of
+ *    that cell's scratch is allocated and freed inside the mapper, per
+ *    cell, exactly like master's sort buffers. It does not compute any
+ *    per-cell statistics.
  * 2. Aggregation pass: #space_split_aggregate_mapper() walks the
  *    now-complete hierarchy bottom-up, finalising leaves from their own
  *    (already moved) particles and deriving every other cell's statistics
@@ -1518,40 +1433,15 @@ void space_split(struct space *s, int verbose) {
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
-  /* Allocate the sorting buffers for the complete local particle arrays;
-   * each top-level cell will fill and use its own slice (see
-   * #space_split_mapper()). */
-  const ticks tic_alloc = getticks();
-  struct cell_buff *buff = NULL, *gbuff = NULL, *sbuff = NULL, *bbuff = NULL,
-                   *sink_buff = NULL;
-  space_split_allocate_buffers(s, &buff, &gbuff, &sbuff, &bbuff, &sink_buff);
-
-  /* One #cell_split() ind scratch buffer per worker thread, grown lazily
-   * as #space_split_mapper() encounters top-level cells with larger counts.
-   * The particle scratch buffers are allocated per top-level cell inside
-   * the mapper instead (see #space_split_alloc_cell_scratch()). */
-  const int nr_threads = s->e->threadpool.num_threads;
-  struct space_split_ind_scratch *ind_scratch =
-      (struct space_split_ind_scratch *)swift_malloc(
-          "ind_scratch_array",
-          sizeof(struct space_split_ind_scratch) * nr_threads);
-  if (ind_scratch == NULL) error("Failed to allocate ind scratch array.");
-  bzero(ind_scratch, sizeof(struct space_split_ind_scratch) * nr_threads);
-  if (verbose)
-    message("Allocation: %.3f %s.", clocks_from_ticks(getticks() - tic_alloc),
-            clocks_getunit());
-
-  /* Split pass: fill the buffers, build the cell hierarchy, sort the
-   * particles into it, gather each leaf's particles into scratch as it is
-   * found and copy each top-level cell's worth back into place once its
-   * whole subtree has been gathered. */
+  /* Split pass: for each top-level cell, allocate its scratch, build the
+   * cell hierarchy, sort the particles into it, gather each leaf's
+   * particles into scratch as it is found, copy them back into place and
+   * free the scratch -- all per cell inside the mapper. */
   const ticks tic_split = getticks();
-  struct space_split_mapper_data split_data = {
-      s, buff, gbuff, sbuff, bbuff, sink_buff, ind_scratch};
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, &split_data);
+                 threadpool_auto_chunk_size, s);
   if (verbose)
     message("Split pass: %.3f %s.", clocks_from_ticks(getticks() - tic_split),
             clocks_getunit());
@@ -1561,24 +1451,6 @@ void space_split(struct space *s, int verbose) {
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
                     s->nr_bparts, /*verbose=*/0);
 #endif
-
-  /* The sorting buffers and the ind scratch are only needed for the split
-   * pass above. The per-thread particle scratch buffers are freed in the
-   * aggregation pass below, in parallel on their owning threads, so only
-   * their (tiny) containing array is freed here -- after that pass. */
-  const ticks tic_cleanup = getticks();
-  if (buff != NULL) swift_free("tempbuff", buff);
-  if (gbuff != NULL) swift_free("tempgbuff", gbuff);
-  if (sbuff != NULL) swift_free("tempsbuff", sbuff);
-  if (bbuff != NULL) swift_free("tempbbuff", bbuff);
-  if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
-  for (int t = 0; t < nr_threads; t++) {
-    if (ind_scratch[t].ind != NULL) swift_free("ind_scratch", ind_scratch[t].ind);
-  }
-  swift_free("ind_scratch_array", ind_scratch);
-  if (verbose)
-    message("Buffer cleanup: %.3f %s.",
-            clocks_from_ticks(getticks() - tic_cleanup), clocks_getunit());
 
   /* Aggregation pass: finalise leaves and derive cell statistics and
    * multipoles bottom-up. No rebase needed -- see #space_split()'s
