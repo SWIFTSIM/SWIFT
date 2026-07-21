@@ -62,6 +62,8 @@ struct forcing_terms {
   /*! Maximal mode */
   double k_max;
 
+  double previous_update_time;
+
   double time_frequency;  // ST_DtFreq
 
   double decay_time;  // ST_Decay
@@ -150,9 +152,7 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
  * @param gp Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static void forcing_grav_terms_apply(
-    const long long id, const struct forcing_terms *terms, struct gpart *gp) {
-  /* Nothing to do here */
-}
+    const long long id, const struct forcing_terms *terms, struct gpart *gp) {}
 
 /**
  * @brief Sets the forcing of gparts prior to drift.
@@ -281,18 +281,23 @@ static INLINE void forcing_terms_calculate_phases(struct forcing_terms *terms) {
 /**
  * @brief updates the forcing terms
  *
- * Nothing to do here
- *
  * @param terms The #forcing_terms properties of the run
- * @param time_old The previous system time
+ * @param time The current time
  */
 INLINE static void forcing_update(struct forcing_terms *terms,
-                                  const double time_old) {
+                                  const double time) {
 
-  // CHECK IF TIME HAS ELAPSED
+  const double delta_time = time - terms->previous_update_time;
 
-  forcing_terms_init_random_sequence(terms);
-  forcing_terms_calculate_phases(terms);
+  if (delta_time >= terms->time_frequency) {
+
+    forcing_terms_init_random_sequence(terms);
+    forcing_terms_calculate_phases(terms);
+
+    terms->previous_update_time = time;
+  }
+
+  message("Updated the driving fields");
 }
 
 /**
@@ -308,15 +313,13 @@ static INLINE void forcing_terms_print(const struct forcing_terms *terms) {
 /**
  * @brief Initialises the forcing term properties
  *
- * Nothing to do here.
- *
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
  * @param s The #space object.
  * @param terms The forcing term properties to initialize
  */
-static INLINE void forcing_terms_init(struct swift_params *parameter_file,
+static INLINE void forcing_terms_init(struct swift_params *params,
                                       const struct phys_const *phys_const,
                                       const struct unit_system *us,
                                       const struct space *s,
@@ -324,15 +327,27 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
 
   /* Read in parameter files ---------------------------------*/
 
-  int seed = 0;
-  double energy = 1;
-  double decay = 1;
-  double weight = 1;  // ST_SolWeight
+  const int seed =
+      parser_get_param_int(params, "TurbulenceDriving:random_seed");
+  const double energy =
+      parser_get_param_double(params, "TurbulenceDriving:energy");
+  const double decay_time =
+      parser_get_param_double(params, "TurbulenceDriving:decay_time");
+  const double weight =
+      parser_get_param_double(params, "TurbulenceDriving:weight");
 
-  terms->amplitude_factor = 1.0;  // ST_AmplFac
-  terms->variance = sqrt(energy / decay);
+  terms->k_min = parser_get_param_double(params, "TurbulenceDriving:k_min");
+  terms->k_max = parser_get_param_double(params, "TurbulenceDriving:k_max");
+  terms->shape = parser_get_param_int(params, "TurbulenceDriving:shape");
+  terms->amplitude_factor =
+      parser_get_param_double(params, "TurbulenceDriving:amplitude_factor");
   terms->solenoid_weight = weight;
-  terms->solenoid_weight_norm =  // StSolWeightNorm
+  terms->time_frequency =
+      parser_get_param_double(params, "TurbulenceDriving:frequency");
+
+  terms->previous_update_time = 0.;
+  terms->variance = sqrt(energy / decay_time);
+  terms->solenoid_weight_norm =
       sqrt(3.0 / hydro_dimension) * sqrt(3.0) * 1.0 /
       sqrt(1.0 - 2.0 * weight + hydro_dimension * weight * weight);
 
@@ -491,8 +506,6 @@ static INLINE void forcing_terms_init(struct swift_params *parameter_file,
 
 /**
  * @brief Clean-up the memory allocated for the forcing routine
- *
- * Nothing to do here
  *
  * @param terms The forcing term properties
  */
