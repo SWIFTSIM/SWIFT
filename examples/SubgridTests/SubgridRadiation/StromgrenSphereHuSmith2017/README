@@ -33,6 +33,6 @@ Override any parameter via the matching env var, e.g. `gas_mass=0.5 ./run.sh` --
 
 # Checking
 ```
-python3 hu_smith_analytic_check.py -s snap/snapshot_*.hdf5
+python3 hu_smith_analytic_check.py -s "snap/snapshot_*.hdf5"
 ```
 Pass `--T-ionized-K 1e4` (matching whatever `T_i` the build used) if built with the flag above.
