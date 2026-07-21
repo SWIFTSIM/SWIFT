@@ -1454,8 +1454,6 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
 
     /* Only unlock the merger after the having swallowed gas. This ensures we
        are not working concurrently on sinks that swallow and are swallowed */
-    /* Note: To be removed after merging the branch: This prevents the limiter
-       error "Particle has h larger than h_max_active" */
     scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger);
 
     if (c->hydro.count > 0) {
