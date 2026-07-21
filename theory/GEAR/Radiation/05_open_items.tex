@@ -32,21 +32,21 @@ validation-against-a-paper status.
     aware of before attempting a multi-node run with this feedback
     channel active.
 
-  \item[$\square$] \textbf{T3} -- The e10 diagnostic
-    (Section~\ref{sec:e10} -- an algorithm-behaviour check, not a
-    validation target, see the note there) has an unexplained residual:
-    even with the search-radius-expansion cap loosened and the
-    adaptive rebuild cadence on, the simulated D-type growth curve
-    still shows a gap to the analytic solution that neither fix
-    closes. Both identified contributing factors (the cap, the fixed
-    cadence) are confirmed real and exhausted as candidate root causes
-    at their current settings -- the residual points at something else,
-    not yet identified. A $T_i=10^4\,$K variant of the same combined
-    setup passed the check outright (Section~\ref{sec:e10}), but three
-    variables changed at once relative to the original mismatch, so
-    $T_i$ is not cleanly isolated as the explanation. Not attempted:
-    instrumenting which retry branch (buffer-full vs.\ radius-expansion)
-    dominates once the cap/cadence fixes are both in place.
+  \item[$\square$] \textbf{T3} -- The \code{StromgrenSphere} D-type
+    growth-curve diagnostic (an algorithm-behaviour check against the
+    classical Spitzer formula, not a validation target) has an
+    unexplained residual: even with the search-radius-expansion cap
+    loosened and the adaptive rebuild cadence on, the simulated D-type
+    growth curve still shows a gap to the analytic solution that
+    neither fix closes. Both identified contributing factors (the cap,
+    the fixed cadence) are confirmed real and exhausted as candidate
+    root causes at their current settings -- the residual points at
+    something else, not yet identified. A $T_i=10^4\,$K variant of the
+    same combined setup passed the check outright, but three variables
+    changed at once relative to the original mismatch, so $T_i$ is not
+    cleanly isolated as the explanation. Not attempted: instrumenting
+    which retry branch (buffer-full vs.\ radius-expansion) dominates
+    once the cap/cadence fixes are both in place.
 
   \item[$\square$] \textbf{T4} -- User's stated direction (2026-07-19):
     the adaptive rebuild cadence (Section~\ref{sec:adaptive-cadence})
@@ -252,43 +252,14 @@ validation-against-a-paper status.
     planned \code{HomogeneousBox}/isolated-galaxy testing rather than
     assumed.
 
-  \item[$\square$] \textbf{T10 -- confirmed (2026-07-21), decision
-    still open} -- STARBENCH re-validation
-    (Section~\ref{sec:starbench-current}): the plain committed default
-    build \textbf{FAILS at 22.76\%} (tolerance 10\%); building with
-    \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
-    on top of the exact same (unchanged) committed \code{run.sh}/
-    \code{params.yml} \textbf{PASSES at 6.12\%}. $T_i$ convention is
-    confirmed as the sole differing factor -- this example's own
-    search-radius cap and rebuild cadence have not changed since first
-    committed (checked via \code{git log --follow}, correcting an
-    earlier imprecise statement that they had), and the search-radius
-    expansion/retry mechanism was directly verified not to bind in the
-    passing run (\code{HIIRegionRadii(t)} grows smoothly to its natural
-    $2.46\,$pc equilibrium with monotonically decelerating growth
-    factors, never approaching the $4.9\,$pc ceiling). \textbf{Still
-    open}: deciding whether matching STARBENCH's flat-$T_i$ convention
-    should become an actual default-buildable option (not just a debug
-    flag), or whether this code's natural non-isothermal $T_i$ is the
-    intended, more physical behaviour and STARBENCH comparison is
-    understood to always require this explicit build -- the committed
-    example's README now documents the compile flag either way, so
-    this is a design decision, not a reproducibility gap. Per the
-    restart ordering (Section~\ref{sec:validation-targets}), STARBENCH
-    can now be considered validated (with the documented build), so
-    the next target is Hu et al.\ (2017)/Smith et al.\ (2021) 4-star.
-    \textbf{Update (2026-07-21) -- resolved}: that next target has now
-    been re-tried (Section~\ref{sec:husmith-current}) with the exact
-    same $T_i=10^4\,$K debug flag, after first fixing a matching
-    repo-currency bug in \emph{its} committed \code{run.sh} (box size
-    and search radius silently drifted from what the deprecated result
-    actually used). Against the Bisbas et al.\ (2015) blend it still
-    reads FAIL (median $33.51\%$, essentially unchanged from the
-    deprecated $32.4\%$) -- but that turned out to be the wrong
-    reference: Hu et al.\ (2017)/Smith et al.\ (2021)'s own published
-    ``STARBENCH'' figures for this exact test match Raga-II directly,
-    not the full blend. Checked against Raga-II: \textbf{PASS}, median
-    $6.89\%$. The "multi-source residual" tracked since the deprecated
-    result was never a real physics gap -- it was a wrong-reference-curve
-    artifact. Both validation targets are now PASS.
+  \item[$\square$] \textbf{T10} -- STARBENCH and Hu et al.\
+    (2017)/Smith et al.\ (2021) 4-star are both validated (PASS),
+    Sections~\ref{sec:starbench-current}/\ref{sec:husmith-current}.
+    \textbf{Still open}: whether matching STARBENCH's flat-$T_i$
+    convention should become a default-buildable option (not just a
+    debug flag), or whether this code's natural, metallicity-dependent
+    $T_i$ is the intended behaviour and STARBENCH/Hu-Smith comparisons
+    are understood to always require the explicit build -- a design
+    decision, not a reproducibility gap (both examples' READMEs
+    document the flag).
 \end{itemize}

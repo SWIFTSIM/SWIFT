@@ -1,55 +1,18 @@
 \section{Validation}
 \label{sec:validation}
 
-This project validates against exactly three published targets, listed
-in Table~\ref{tab:validation-targets} below. A fourth kind of check
-also lives in this section, \code{StromgrenSphere}'s D-type
-growth-curve diagnostic (Section~\ref{sec:e10}) -- it is
-\textbf{explicitly not a fourth validation target}: it compares
-against the classical Spitzer (1978) formula, which STARBENCH's own
-paper shows over-predicts the true late-phase solution, and it exists
-to debug this model's own task-graph/rebuild-cadence behaviour (item
-T3, Section~\ref{sec:open}), not to certify the physics. Do
-not read a PASS/FAIL there as a validation verdict.
-
-Of the two remaining kinds of check among the three real targets: the
-clump and four-star targets validate against Hu et al.\ (2017) and
-Smith et al.\ (2021)'s own reported numbers for their specific
-multi-source tests -- reproducing a paper's result, not a test of the
-underlying physics in general (a bug shared between this code and an
-assumption both papers happen to make would pass this kind of check
-without being caught). STARBENCH \citep{Bisbas2015} is different in
-kind: a single-source D-type expansion test where twelve independent,
+This project validates against three published targets, listed in
+Table~\ref{tab:validation-targets}. STARBENCH \citep{Bisbas2015} is a
+single-source D-type expansion test where twelve independent,
 differently-implemented radiation-hydrodynamics codes agree with each
-other to $\sim$1--2\%, and this model is compared directly against
-their consensus solution rather than against any one paper's own
-subgrid scheme -- a much more direct test of whether this code
-reproduces the actual physics of D-type expansion, not just whether it
-reproduces one particular paper's implementation of it.
+other to $\sim$1--2\% -- a direct test of whether this code reproduces
+the actual physics of D-type expansion, not just one paper's own
+subgrid scheme. Hu et al.\ (2017)/Smith et al.\ (2021) 4-star and the
+Smith et al.\ (2021) clump target instead reproduce those papers' own
+specific multi-source tests and reported numbers.
 
 \subsection{Validation targets: summary}
 \label{sec:validation-targets}
-
-\textbf{Restart (2026-07-20).} Every result measured before this date
-is marked deprecated -- kept for historical reference (see
-Section~\ref{sec:husmith4star} for what remains of it), not to be
-treated as current status. The pre-restart clump-erosion matrix has
-since been removed outright rather than kept as deprecated material
-(Section~\ref{sec:validation-targets}). The cause:
-repeated drift between what was actually validated and what the
-committed examples contain (stale STARBENCH README, an un-zeroed
-\code{shift} in two examples' \code{params.yml}, an undocumented
-compile flag required to reproduce the one passing result). Going
-forward, a target is only marked validated once the \emph{committed}
-example (params, README, any required build flags) has itself been run
-and checked -- no exceptions. Re-validation proceeds in this order:
-(1) STARBENCH, (2) Hu et al.\ (2017)/Smith et al.\ (2021) 4-star, (3)
-Smith et al.\ (2021) clump. STARBENCH now reads PASS (2026-07-21,
-Section~\ref{sec:starbench-current}, with the documented build flag);
-Hu et al.\ (2017)/Smith et al.\ (2021) 4-star also now reads PASS
-(2026-07-21, Section~\ref{sec:husmith-current}, against Raga-II with
-the same build flag); the clump target currently reads NOT YET
-VALIDATED.
 
 \begin{table}[h]
 \centering
@@ -59,34 +22,20 @@ VALIDATED.
 \hline
 1. STARBENCH (Bisbas et al.\ 2015) &
   \code{StromgrenSphereStarbench} &
-  \textbf{PASS (2026-07-21), 6.12\% error}, with
-  \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
-  built in (not the default build, which reads FAIL at 22.76\%).
-  Current result: Section~\ref{sec:starbench-current}. Deprecated
-  (pre-restart) result: Section~\ref{sec:starbench}. \\
+  \textbf{PASS, 6.12\% error}. Section~\ref{sec:starbench-current}. \\
 \hline
 2. Hu et al.\ (2017) / Smith et al.\ (2021), 4 co-located stars &
   \code{StromgrenSphereHuSmith2017} &
-  \textbf{PASS (2026-07-21), median 6.89\%}, against Raga-II (Eqn 11)
-  with $T_i=10^4\,$K built in -- the ``STARBENCH'' curve Hu2017 Fig.~A1
-  and Smith2021 Fig.~1 actually plot for this test (confirmed against
-  their published figures) is Raga-II directly, not the Bisbas et
-  al.\ (2015) blend (median $33.51\%$ against that, essentially the
-  deprecated result). Current result:
-  Section~\ref{sec:husmith-current}. Deprecated result:
-  Section~\ref{sec:husmith4star}. \\
+  \textbf{PASS, median 6.89\%}, against Raga-II.
+  Section~\ref{sec:husmith-current}. \\
 \hline
 3. Smith et al.\ (2021), Fig.~2 clump &
   \code{StromgrenSphereClumpSmith2021} &
-  \textbf{NOT YET VALIDATED.} Investigation in progress
-  (2026-07-21); the pre-restart deprecated result has been removed,
-  not kept, since it used the wrong $T_i$ (see below). \\
+  \textbf{NOT YET VALIDATED.} Section~\ref{sec:clump-current}. \\
 \hline
 \end{tabular}
-\caption{The three published validation targets, in restart order, and
-  their owning example. Every prior result is deprecated as of
-  2026-07-20. STARBENCH has
-  a current (post-restart) result as of 2026-07-21, Section~\ref{sec:starbench-current}.}
+\caption{The three published validation targets and their owning
+  example.}
 \label{tab:validation-targets}
 \end{table}
 
@@ -101,10 +50,7 @@ temperature floor (Eq.~\ref{eq:floor}) is metallicity-\emph{dependent}:
 at $Z=0$ the applied temperature is $\approx$47,500\,K, not $10^4\,$K,
 which raises $r_{\rm HII}$ through two independent channels -- a lower
 case-B recombination coefficient (Section~\ref{sec:beta-temperature})
-and a higher D-type driving sound speed ($c_s\propto\sqrt T$) -- so a
-$Z=0$ run is expected to overshoot the papers' reference, and can run
-large enough to hit \code{Stars:max\_HII\_search\_radius} (45\,pc) or
-the box half-width (50\,pc).
+and a higher D-type driving sound speed ($c_s\propto\sqrt T$).
 
 Both channels are neutralized by construction at the metallicity where
 $T_{\rm collisional}=10^4\,$K exactly (Eq.~\ref{eq:tcollisional}):
@@ -113,773 +59,163 @@ $T_{\rm collisional}=10^4\,$K exactly (Eq.~\ref{eq:tcollisional}):
   \quad\Longrightarrow\quad Z/Z_\odot \approx 0.231.
   \label{eq:z0231}
 \end{equation}
-This was this project's original workaround for hitting the papers'
-flat $T_i=10^4\,$K -- since superseded by
+All three validation targets instead use
 \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
 (forces $T_i$ directly, no metallicity side effects on cooling), which
-is what STARBENCH and Hu/Smith are validated against as of the
-2026-07-21 restart.
+matches the papers' own flat convention exactly. Each example's own
+README documents the flag.
 
-\textbf{Consequence for comparing against pre-restart results (2026-07-21)}:
-the deprecated pre-restart clump-erosion matrix ran at this project's
-actual default, $Z=0$ -- the code's natural $T_i\approx47{,}500\,$K,
-{\bf not} $10^4\,$K. Every clump re-run since the restart (bisection
-tests included) uses the $T_i=10^4\,$K debug flag instead, matching
-STARBENCH/Hu-Smith convention. A $\sim$4.75$\times$ hotter ionized
-phase drives a correspondingly larger pressure contrast against the
-cold neutral clump, so the deprecated matrix's larger measured erosion
-and the current runs' near-side compression are not directly
-comparable results at all -- they were run in different physical
-regimes ($T_i\approx47{,}500\,$K vs.\ $10^4\,$K), not the same physics
-observed at two points in the code's history. This -- not the two code
-changes ruled out by direct bisection (reverting the Grackle-bypass
-cooling fix, and slowing the rebuild cadence, neither of which restored
-the deprecated matrix's erosion magnitude) -- is the leading
-explanation for the apparent disagreement, and any future comparison
-against the deprecated numbers must first match $T_i$ before drawing
-conclusions from it.
-
-\textbf{Directly verified (2026-07-22)}: rather than trust the build
-flag alone, the actual gas temperature was measured from the
-\code{gas20\_z0\_nside0\_rebuild0p01} snapshot (final time), binned by
-distance from the star. The ionized core sits at
-$1.4$--$2.2\times10^4\,$K out to $r\approx15\,$pc (some excess above
-the nominal $10^4\,$K floor from real hydrodynamic/compression
-heating, not a bug), with a sharp transition to $<50\,$K beyond
-$r\approx16\,$pc -- matching the algorithm's own $r_{\rm HII}=16.44\,$pc
-for this run almost exactly. This confirms the run is in the
-$10^4\,$K-order regime the debug flag targets, not the $\sim\!4\times$
-larger $47{,}500\,$K a natural $Z=0$ run would give -- consistent with
-this run's modest $r_{\rm HII}$ (16--23\,pc across the matrix, well
-inside the $45\,$pc search-radius ceiling), where a genuine $47{,}500\,$K
-run would be expected to push much further out (see above).
-
-\subsection{STARBENCH: current status (2026-07-21) -- FAIL, 22.76\%}
+\subsection{STARBENCH (Bisbas et al.\ 2015)}
 \label{sec:starbench-current}
 
-Run using the \emph{exact committed default} configuration of
-\code{examples/SubgridTests/SubgridRadiation/StromgrenSphereStarbench/run.sh}
-(\code{n\_threads=12}, no overrides, no compile-time debug flags) --
-$26.75\,$M$_\odot$ star ($Q_H=10^{49}\,{\rm s^{-1}}$), $n_H=3346\,{\rm
-cm^{-3}}$, $10\,$pc box, \code{GEARChemistry:initial\_metallicity=0}
-(pristine, giving this code's natural $T_i\approx47500\,$K floor, not
-STARBENCH's own flat $10^4\,$K convention), loosened search-radius cap
-and adaptive rebuild cadence both on (their committed defaults). Ran
-to completion cleanly (\code{main: done. Bye.}, 63 snapshots, no
-crash/assertion).
-
-\code{starbench\_analytic\_check.py} (default tolerance 10\%,
-Bisbas et al.\ 2015 Eqns 8/11/28/29): \textbf{FAIL}, 22.76\% relative
-error at the comparison time ($t=0.5867\,$Myr, $r_{\rm sim}=5.963\,$pc
-vs.\ $R_{\rm SB}=4.857\,$pc). The comparison time itself is chosen
-principledly (the last snapshot before the \emph{analytic} STARBENCH
-curve would exceed the $5\,$pc box half-width, avoiding a
-box-contaminated comparison) -- but at that exact time the
-\emph{simulated} radius has already exceeded the box half-width,
-i.e.\ the simulated front is overshooting fast enough to reach the
-periodic boundary before the reference solution does. The growth
-curve (Figure, saved alongside the run) tracks STARBENCH closely until
-$t\approx0.5\,$Myr, then visibly overshoots with a couple of step-like
-jumps ($\sim$0.7--0.9 and $\sim$1.8--2.0\,Myr) before reconverging with
-STARBENCH by $t\approx2.5$--$3\,$Myr (both $\approx8.6\,$pc).
-
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.8\linewidth]{Figures/starbench_restart_2026-07-21_check}
-  \caption{STARBENCH check, post-restart (2026-07-21), exact committed
-    default configuration: overshoots STARBENCH's prediction
-    (black dashed) from $t\approx0.5\,$Myr, reconverging only by
-    $t\approx2.5$--$3\,$Myr. FAIL, 22.76\% at the comparison time.}
-  \label{fig:starbench-restart-current}
-\end{figure}
-
-\textbf{Likely cause, not yet confirmed as the full explanation}:
-$r_{\rm sim}=5.963\,$pc here is almost identical to the very first
-pre-restart attempt's $5.96\,$pc
-(Section~\ref{sec:starbench}, Fig.~\ref{fig:starbench-beforefix}),
-which used $Z/Z_\odot=0.231$ \emph{without} forcing $T_i=10^4\,$K --
-i.e.\ two different natural-$T_i$ configurations (Z=0's
-$\sim47500\,$K here, $Z/Z_\odot=0.231$'s intermediate value there)
-overshoot STARBENCH by essentially the same amount. This is consistent
-with, not contradicted by, this session's own isolation tests
-(Section~\ref{sec:e10}): $T_i=10^4\,$K forced \emph{alone} (without
-the loosened cap/adaptive cadence) still failed at 43.02\%, and the
-only PASS found anywhere in this project's history combined \emph{all
-three} of the loosened cap, adaptive cadence, \emph{and} $T_i=10^4\,$K
-forcing together -- via an uncommitted compile-time debug flag
-(\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K}),
-never a property of the default build. This run has two of those three
-ingredients (cap, cadence) but not the third ($T_i$ forced to
-STARBENCH's convention) -- consistent with $T_i$ being a necessary,
-not just sufficient, ingredient for matching STARBENCH's assumed
-flat-temperature convention with the current default (natural,
-metallicity-dependent $T_i$) build.
-
-\textbf{Confirmed (2026-07-21): $T_i$ is the cause, cap/cadence were
-never the differing factor for this example.} Re-checked via
-\texttt{git log --follow} on this example's own \texttt{run.sh}: unlike
-the separate e10 diagnostic (Section~\ref{sec:e10}, which genuinely
-did need a loosened cap and adaptive cadence on top of a bigger box),
-\emph{this} example's committed \texttt{run.sh} has not changed since
-it was first added -- the search-radius cap and cadence settings used
-for the original 5.30\% PASS are identical to today's committed
-defaults. The earlier statement above (that cap/cadence had "since
-changed") was imprecise and is corrected here.
-
-Re-ran with exactly the current committed \texttt{run.sh}/\texttt{params.yml}
-(same box, same cap, same cadence, same 12 threads) plus only
-\texttt{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
-added at compile time. Before checking, computed the STARBENCH
-prediction directly for this exact star/density (not assumed from the
-old citation): $R_{\rm St}=0.304\,$pc, $c_i=12.85\,$km/s, and
-$R_{\rm SB}$ never exceeds $2.71\,$pc over the full 0--3\,Myr window --
-comfortably inside the $5\,$pc box half-width and the $4.9\,$pc
-\texttt{Stars:HII\_max\_search\_radius} ceiling the whole time, unlike
-the natural-$T_i$ run above. Result: \textbf{PASS}, 6.12\% error at
-$t=3\,$Myr ($r_{\rm sim}=2.384\,$pc vs.\ $R_{\rm SB}=2.247\,$pc), the
-full run, not an early box-limited comparison.
+\textbf{PASS, 6.12\% error.} Validated configuration: committed
+\code{StromgrenSphereStarbench/run.sh}/\code{params.yml}
+($26.75\,M_\odot$ star, $Q_H=10^{49}\,{\rm s^{-1}}$,
+$n_H=3346\,{\rm cm^{-3}}$, $10\,$pc box, purely hydrodynamical) built
+with \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}.
+Checked against Bisbas et al.\ (2015) Eqns 8/11/28/29
+(\code{starbench\_analytic\_check.py}, 10\% tolerance):
+$r_{\rm sim}=2.384\,$pc vs.\ $R_{\rm SB}=2.247\,$pc at $t=3\,$Myr,
+\textbf{6.12\% error}, for the full run (never exceeds the $5\,$pc box
+half-width or the $4.9\,$pc search-radius ceiling).
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.8\linewidth]{Figures/starbench_restart_ti1e4_2026-07-21_check}
-  \caption{STARBENCH check, post-restart (2026-07-21), committed
-    defaults plus $T_i=10^4\,$K forced at compile time. PASS, 6.12\%
-    error at $t=3\,$Myr, full run inside the box the whole time.}
+  \caption{STARBENCH check: committed defaults plus $T_i=10^4\,$K
+    forced at compile time. PASS, 6.12\% error at $t=3\,$Myr.}
   \label{fig:starbench-restart-ti1e4}
 \end{figure}
 
-\textbf{Also verified: the search-radius expansion/retry mechanism was
-never a binding constraint in this run.} Checked
-\texttt{HIIRegionRadii}$(t)$ directly against \texttt{Stars:HII\_max\_search\_radius}
-(the absolute ceiling) and against the per-rebuild expansion-tries
-pattern (a repeated $1.1^5\approx1.61\times$-per-cycle factor would
-indicate the expansion cap binding every cycle): the star's search
-radius grows smoothly from 0 to its natural equilibrium at $2.46\,$pc
-by $t\approx0.93\,$Myr, with per-step growth factors \emph{decelerating
-monotonically} (1.19$\times\to$1.22$\times\to\ldots\to$1.02$\times\to$1.00$\times$)
--- the signature of a genuine approach to photoionization-recombination
-equilibrium, not of hitting \texttt{Stars:HII\_max\_radius\_expansion\_tries}
-or \texttt{Stars:HII\_max\_retry\_full\_buffer}. It then holds
-perfectly flat for the remaining $\sim2\,$Myr, well short of the
-$4.9\,$pc ceiling.
+\textbf{Caveat}: the plain default build (no compile flag) gives this
+code's natural, metallicity-dependent $T_i\approx47{,}500\,$K instead
+of STARBENCH's flat $10^4\,$K convention (Section~\ref{sec:metallicity})
+and FAILs at 22.76\% -- the compile flag is required to reproduce this
+result, not optional.
 
-\textbf{Still open}: deciding whether matching STARBENCH's convention
-should ever become a default-buildable option (not just a debug flag)
-now that it is confirmed necessary and sufficient here, or whether the
-natural, non-isothermal $T_i$ this code computes is itself the
-intended, more physical behaviour and STARBENCH comparison is
-understood to always require this explicit flat-$T_i$ build.
-See item~T10, Section~\ref{sec:open}, updated accordingly. The
-committed example's own README (\code{StromgrenSphereStarbench/README})
-documents the compile flag needed to reproduce this build.
+\textbf{Search-radius mechanism verified not binding}:
+\code{HIIRegionRadii}$(t)$ grows smoothly to its natural equilibrium at
+$2.46\,$pc by $t\approx0.93\,$Myr, with per-step growth factors
+decelerating monotonically (never hitting
+\code{Stars:HII\_max\_radius\_expansion\_tries} or
+\code{Stars:HII\_max\_retry\_full\_buffer}), then holds flat for the
+remaining $\sim2\,$Myr -- well short of the $4.9\,$pc ceiling.
 
-\subsection{Hu et al.\ (2017)/Smith et al.\ (2021) 4-star: current
-status (2026-07-21) -- PASS against Raga-II, the residual was a wrong
-reference curve, not real physics}
+\subsection{Hu et al.\ (2017)/Smith et al.\ (2021), 4-star}
 \label{sec:husmith-current}
 
-\textbf{First, a repo-currency bug found and fixed}: cross-checking an
-old, already-completed (pre-restart) run against today's committed
-\code{run.sh} found its box size and search radius did not match --
-the actual run behind the deprecated $32.4\%$ result
-(Section~\ref{sec:husmith4star}) used \code{boxsize=0.1}\,kpc
-($100\,$pc) and \code{Stars:HII\_max\_search\_radius=0.04} ($40\,$pc),
-not the committed defaults of $0.07\,$kpc/$0.03$. Fixed both
-\code{run.sh} and the example's README to match the values actually
-used, the same class of fix as STARBENCH's.
+\textbf{PASS, median 6.89\% error.} Validated configuration: committed
+\code{StromgrenSphereHuSmith2017/run.sh}/\code{params.yml} (4 co-located
+$19.2\,M_\odot$ sources, $\dot N_{\rm ion}\approx2.5\times10^{48}\,{\rm
+s^{-1}}$ each, uniform $n_H\approx107\,{\rm cm^{-3}}$ background,
+$617{,}851$ particles at the default \code{gas\_mass=4}) built with
+\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}.
 
-Re-ran with the corrected committed defaults plus
-\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
-built in: $617{,}851$ particles, 8 threads, ran to completion cleanly
-(\code{main: done. Bye.} at $t=8.182\times10^{-3}$, no crash). Checked
-against the Bisbas et al.\ (2015) Eqn 28-29 blend (the same reference
-STARBENCH itself uses): \textbf{FAIL}, median $33.51\%$ -- essentially
-unchanged from the deprecated $32.4\%$, confirming $T_i$ is not the fix
-for this multi-source test against that reference.
-
-\textbf{But that reference was wrong for this test.} Checking each
-component of the blend separately against the same simulated
-$r_{\rm HII}(t)$: median error against Raga-I (pure pressure-driven,
-Eqn 8) is $34.07\%$, against the full blend $33.54\%$ -- but against
-\textbf{Raga-II alone (Hosokawa \& Inutsuka 2006's shell-inertia
-equation, Eqn 11) it is $6.89\%$}, comfortably inside the $10\%$
-tolerance (min $3.69\%$, $70/82$ snapshots within tolerance). This is
-not a coincidence: Hu et al.\ (2017, Fig.~A1) and Smith et al.\ (2021,
-Fig.~1) both plot a curve they label ``STARBENCH'' for this exact
-configuration, reaching $\sim\!25\,$pc by $t=8\,$Myr -- matching
-Raga-II directly (this run's own Raga-II reaches $\sim\!26\,$pc at that
-time), \emph{not} the fully-blended $\sim\!20\,$pc the Bisbas et al.\
-(2015) Eqns 28-29 formula gives for the same inputs. \textbf{Both
-papers' own ``STARBENCH'' label refers to Raga-II, not the full blend}
--- the blend's time-dependent weight $f_{\rm SB}(t)=1-0.733e^{-t/1{\rm
-Myr}}$ was calibrated against single-source RHD simulations and does
-not transfer to this co-located multi-source configuration, which
-apparently sits in the shell-inertia-dominated regime from early on
-rather than transitioning gradually the way a single star's front
-does. \textbf{Verdict, against the correct reference: PASS.}
+Hu et al.\ (2017, Fig.~A1) and Smith et al.\ (2021, Fig.~1) both plot a
+curve labeled ``STARBENCH'' for this exact configuration -- this is
+Hosokawa \& Inutsuka (2006)'s shell-inertia equation (``Raga-II'', Eqn
+11), not the full Bisbas et al.\ (2015) blend (Eqns 28--29): the
+papers' own curve reaches $\sim\!25\,$pc by $t=8\,$Myr, matching
+Raga-II directly, not the blend's $\sim\!20\,$pc for the same inputs.
+Checked against Raga-II: \textbf{median 6.89\% error} (min 3.69\%,
+70/82 snapshots within the 10\% tolerance).
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.8\linewidth]{Figures/husmith_restart_ti1e4_2026-07-21_check}
-  \caption{Hu/Smith 4-star check, post-restart (2026-07-21), corrected
-    box/search-radius defaults plus $T_i=10^4\,$K forced at compile
-    time, checked against Raga-II (the papers' own ``STARBENCH'' curve
-    for this test). PASS, median 6.89\% over the comparison window.
-    Raga-I shown for context; the Bisbas et al.\ (2015) blend is not
-    plotted (misleading if labeled ``STARBENCH'' here, see text).}
+  \caption{Hu/Smith 4-star check: committed defaults plus $T_i=10^4\,$K
+    forced at compile time, checked against Raga-II. PASS, median
+    6.89\%.}
   \label{fig:husmith-restart-ti1e4}
 \end{figure}
 
-\textbf{Verified the search-radius/retry mechanism was not a
-confound}: each star's \code{HIIRegionRadii}$(t)$ grows steadily
-throughout the run, reaching $\sim\!27.7\,$pc by $t\approx7.8\,$Myr and
-still rising (not plateaued) -- comfortably below the $40\,$pc ceiling
-($\sim\!1.45\times$ margin even at the run's end).
+\code{hu\_smith\_analytic\_check.py} defaults to \code{--reference
+raga2}; Raga-I and the Bisbas et al.\ blend remain available via
+\code{--reference \{raga1,starbench\}} for comparison, but are not
+labeled ``STARBENCH'' in the figure.
 
-\code{hu\_smith\_analytic\_check.py} now defaults to
-\code{--reference raga2} and no longer plots the Bisbas et al.\ (2015)
-blend curve at all (Raga-I and Raga-II both remain plotted for
-context; the blend stays available via \code{--reference starbench}
-for anyone who wants it, just not under a ``STARBENCH'' label in the
-figure). The measured-precursor-temperature secondary check
-(Section~\ref{sec:husmith4star}) now also uses whichever reference
-\code{--reference} selects, so it stays consistent with the primary
-verdict instead of always re-deriving the blend.
+\textbf{Search-radius mechanism verified not binding}: each star's
+\code{HIIRegionRadii}$(t)$ grows steadily to $\sim\!27.7\,$pc by
+$t\approx7.8\,$Myr, still rising, comfortably below the $40\,$pc
+ceiling.
 
-\textbf{Resolution check (2026-07-21)}: re-ran at \code{gas\_mass=20}\,M$_\odot$
-($123{,}571$ particles, $\sim\!5\times$ coarser than the $617{,}851$-particle
-default above), same box/search-radius/$T_i=10^4\,$K build. Against Raga-II:
-median $5.58\%$, still \textbf{PASS} by the aggregate median, but the
-late-time trend differs qualitatively from the finer default run. Direct
-comparison at matching late times:
+\textbf{Resolution}: \code{gas\_mass=4} (default, $617{,}851$ particles)
+is the validated resolution. A coarser \code{gas\_mass=20} run
+($123{,}571$ particles) still passes by aggregate median (5.58\%), but
+its late-time error climbs past the 10\% tolerance from
+$t\approx7.4\,$Myr onward and does not recover, unlike the finer
+default run -- the expected convergence direction (finer resolution
+tracks Raga-II more faithfully at late times).
+
+\subsection{Smith et al.\ (2021) clump}
+\label{sec:clump-current}
+
+\textbf{NOT YET VALIDATED.} Investigation ongoing on
+\code{StromgrenSphereClumpSmith2021}
+(four co-located $19.2\,M_\odot$ sources, $10\,$pc-radius $10^4\,{\rm
+cm^{-3}}$ clump $20\,$pc from the sources in a $100\,{\rm cm^{-3}}$
+background), built with
+\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}.
+
+\textbf{Confirmed}: the ionized core's measured gas temperature sits at
+$1.4$--$2.2\times10^4\,$K out to $r\approx15\,$pc, dropping sharply to
+$<50\,$K beyond $r\approx16\,$pc -- matching the algorithm's own
+$r_{\rm HII}=16.44\,$pc for this configuration almost exactly, and
+confirming the run is genuinely in the $10^4\,$K-order regime the
+build flag targets.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.48\linewidth]{Figures/clump_gas20_nside0_temperature_slice}
+  \includegraphics[width=0.48\linewidth]{Figures/clump_gas20_nside1_temperature_slice}
+  \caption{Mass-weighted temperature slice through the star plane,
+    \texttt{gas\_mass=20}, $t=8.02\,$Myr: uniform (left, $r_{\rm HII}=
+    16.44\,$pc) vs.\ angular (right, $r_{\rm HII}=23.18\,$pc). The
+    ionized bubble (yellow) reaches the clump's near edge and stops --
+    the clump interior (black) stays dense and cold in both schemes;
+    angular's bubble is visibly rounder and reaches further before
+    meeting the clump.}
+  \label{fig:clump-temperature-slices}
+\end{figure}
+
+\textbf{Clump erosion} (ID-tracked, near/far hemisphere split against
+the star$\to$clump axis, \code{clump\_hemisphere\_erosion.py}/
+\code{clump\_hemisphere\_density\_change.py}): the near (star-facing)
+side shows negligible mass loss below the clump's own IC density
+threshold ($<1\%$ across \code{gas\_mass}$=\{20,95\}$ and both
+uniform/angular schemes), but its median density actually
+\emph{increases} to 125--141\% of its $t=0$ value -- compression, not
+dilution, which a density-threshold metric alone cannot detect. The
+far (star-shielded) side is essentially unaffected in every
+configuration tested.
+
 \begin{center}
-\begin{tabular}{r r r}
-$t$ (Myr) & gas\_mass=4 (finer) & gas\_mass=20 (coarser) \\
+\begin{tabular}{lrrr}
 \hline
-7.431 & 5.36\% & 11.26\% \\
-7.627 & 6.53\% & 10.61\% \\
-7.822 & 8.00\% & 12.61\% \\
-8.000 & 6.75\% & 12.38\% \\
+& near, still-dense & near, $n_H$ ratio & far, $n_H$ ratio \\
+\hline
+\code{gas\_mass=20}, uniform & 99.3\% & 134.3\% [133.4--135.0] & 95.5\% \\
+\code{gas\_mass=20}, angular & 99.9\% & 125.0\% [124.6--125.6] & 95.7\% \\
+\code{gas\_mass=95}, uniform & 99.8\% & 140.2\% [138.9--141.4] & 104.9\% \\
+\code{gas\_mass=95}, angular & 99.9\% & 141.3\% [139.8--142.6] & 105.1\% \\
+\hline
 \end{tabular}
 \end{center}
-The finer (default) run stays bounded within the $10\%$ tolerance through
-$t=8\,$Myr, including a slight late-time recovery; the coarser run climbs
-past tolerance from $t\approx7.4\,$Myr onward and does not recover. This is
-the expected convergence direction (finer resolution tracks Raga-II more
-faithfully at late times), not a paradox -- the lower aggregate median at
-\code{gas\_mass=20} is a window-averaging artifact of better agreement
-earlier in the run, not evidence the coarser run is actually closer to the
-analytic solution late-time, which is where it matters for a converged
-verdict. \code{gas\_mass=4} (already the default) remains the resolution
-this target is validated at.
+``Still-dense'' is the \code{clump\_hemisphere\_erosion.py} threshold
+metric (\% of $t=0$ mass remaining above $n_H=1000\,{\rm cm^{-3}}$);
+``$n_H$ ratio'' is the continuous median-density metric (final/$t=0$,
+\% with bootstrap 68\% confidence interval, $10^4$ resamples).
 
-\textbf{Status}: \textbf{validated}. The "unidentified multi-source
-residual" tracked since the deprecated result
-(Section~\ref{sec:husmith4star}) was never a real physics gap -- it was
-comparing against the wrong analytic curve (the full blend) instead of
-the one these papers actually validate against (Raga-II). Everything
-in Section~\ref{sec:husmith4star} that was "ruled out" while chasing
-that residual (precursor-temperature sampling, FIRE-3's
-lowest-density-neighbour selection) was ruled out for a discrepancy
-that itself no longer needs explaining.
+\textbf{Resolution-dependent scheme differentiation}: uniform and
+angular differ significantly in near-side compression at
+\code{gas\_mass=20} ($134.3\%$ vs.\ $125.0\%$, non-overlapping
+confidence intervals above), but converge to statistically
+indistinguishable values at the coarser \code{gas\_mass=95} ($140.2\%$
+vs.\ $141.3\%$, overlapping intervals) -- consistent with the angular
+scheme's per-pixel budget-splitting needing enough particles per
+pixel's solid angle to manifest a distinct effect.
 
-\subsection{D-type growth curve shape (e10) -- algorithm diagnostic, not a validation target}
-\label{sec:e10}
-
-\textbf{This subsection is not one of the three validation targets}
-(Table~\ref{tab:validation-targets}). It compares against the classical
-Spitzer (1978) formula, which STARBENCH's own paper
-(Section~\ref{sec:starbench}) shows over-predicts the true late-phase
-D-type solution -- a PASS here is not evidence of correct physics, and
-a FAIL here is not a validation failure. Its purpose is narrower and
-different in kind: \code{StromgrenSphere} is a debugging/diagnostic
-tool for this model's own task-graph and rebuild-cadence behaviour
-(the search-radius-expansion cap, fixed-vs-adaptive cadence, and their
-interaction -- item T3, Section~\ref{sec:open}), using the
-Spitzer curve as a cheap, always-available reference shape rather than
-a certified target. Treat everything below as algorithm-behaviour
-evidence, not a physics verdict.
-
-The matrix above compares only final-time values. \citet{Spitzer1978}'s
-classical D-type expansion solution gives the full trajectory, not just
-the endpoint:
-\begin{equation}
-  R(t) = R_{\rm st}\left(1 + \frac{7 c_s t}{4 R_{\rm st}}\right)^{4/7},
-  \label{eq:dtype}
-\end{equation}
-where $R_{\rm st}$ is the equilibrium Str\"omgren radius and $c_s$ is
-the isothermal sound speed of the ionized gas. \code{stromgren\_\allowbreak
-analytic\_check.py} (sibling \code{StromgrenSphere} example)
-reimplements this directly from the code's own $\dot N_{\rm ion}(m)$
-fit (not an independently-guessed photon budget), using this run's
-actual applied ionized temperature for both $\alpha_B$ and $c_s$
-(Section~\ref{sec:metallicity}) rather than the classical $10^4\,$K
-reference point, since using the latter would systematically
-under-predict the analytic curve for any $Z=0$ run and make a real
-match look like a mismatch.
-
-A single-star run (no clump, no co-location, matching e10's
-requirement) needed a box wide enough to contain the equilibrium
-radius and a \code{time\_end} that stays within the star's own
-ionizing lifetime -- the example's own defaults (25\,pc box
-half-width, $R_{\rm st}=25.4\,$pc for the default
-$29.7\,{\rm M}_\odot$ star) do not satisfy the first condition, so
-this run uses \code{boxsize=0.08} (80\,pc) via a new \code{run.sh}
-override added for this check. Metallicity matters here too: at this
-example's own $Z=0$ default, the corrected (Section~\ref{sec:beta-temperature})
-temperature-dependent $\alpha_B$ pushes $R_{\rm st}$ to 40.5\,pc, larger
-than even the widened 40\,pc box half-width -- so this check runs at
-$Z/Z_\odot\approx0.231$ (the papers' own $10^4\,$K convention,
-Section~\ref{sec:metallicity}), which keeps $R_{\rm st}=25.4\,$pc
-comfortably inside the box. \code{time\_end=5.5e-3} ($\approx$5.4\,Myr)
-also required lowering \code{dt\_max} to \code{1e-3} via a new
-\code{run.sh} override -- the example's default \code{dt\_max=1e-2}
-exceeds a \code{time\_end} shortened this far, and
-\code{engine\_config()} correctly refuses to start rather than
-silently accept it.
-
-\textbf{Methodology correction (2026-07-18): the comparison point
-itself was wrong.} \code{stromgren\_analytic\_check.py} originally
-compared at the run's final simulated time regardless of whether that
-time was still physically meaningful. But the analytic D-type curve
-(Eq.~\ref{eq:dtype}) starts at $R_{\rm st}$ and only grows from
-there, so it exceeds this run's 40\,pc box half-width from
-$t\approx1.37\,$Myr onward -- past that point the comparison is
-periodic-box vs.\ infinite-medium, not a code check. The
-41.7\%/$t\approx3.8\,$Myr figures previously reported here were
-measured at $t=5.38\,$Myr, deep in that invalid regime, and are
-superseded below. The script now picks the \emph{last} snapshot that
-is both box-valid ($r_{\rm analytic}\le$ box half-width) and
-physically alive ($r_{\rm HII}>0$, so a dead star's bookkeeping reset
-to 0 is not mistaken for the region shrinking), and reports the
-comparison there instead.
-
-\textbf{Result: FAIL -- the growth curve's \emph{shape} does not
-match the D-type solution, not just its endpoint.}
-Figure~\ref{fig:e10-dtype} shows $r_{\rm HII}(t)$ against the analytic
-curve. At the last box-valid time ($t=1.27\,$Myr), the relative error
-is 75.2\% (9.8\,pc simulated vs.\ 39.4\,pc analytic) -- a clear fail
-against the default 30\% tolerance, and the shape mismatch is more
-informative than that one number: the simulated curve is a
-\emph{staircase}, flat between rebuilds and jumping at each one, while
-the analytic curve is smooth and already past $R_{\rm st}$ from very
-early times. The simulated curve does not first cross $R_{\rm
-st}=25.4\,$pc until $t\approx3.3\,$Myr -- past the point where the box
-itself is even still valid for the analytic curve -- whereas the
-D-type solution reaches $R_{\rm st}$ essentially at $t=0$ by
-construction (the classical solution assumes the R-type phase that
-establishes $R_{\rm st}$ is effectively instantaneous, then D-type
-expansion proceeds from there).
-
-\textbf{Likely mechanism: per-rebuild search-radius growth is
-geometrically bounded, not radius-following.} This run's
-\code{used\_parameters.yml} confirms \code{HII\_region\_rebuild\_time\_Myr=0.5},
-\code{max\_HII\_radius\_expansion\_tries=5}, and
-\code{HII\_radius\_expansion\_factor=1.1} -- so within a single
-rebuild's pass, the search radius can expand at most
-$1.1^5\approx1.61\times$ beyond its starting point
-(Section~\ref{sec:algorithm}'s retry logic,
-\code{runner\_dosub\_stars\_hii\_ionization\_feedback}), and the
-starting point for the \emph{next} rebuild is set from
-\code{h\_hii\_max} achieved at the \emph{end} of the current one. The
-observed step sizes (0$\to$5, 5$\to$10, 10$\to$19, 19$\to$24, 24$\to$36\,pc)
-are consistent with this compounding, capped-per-cycle growth, and the
-occasional multi-cycle plateaus (e.g.\ stuck at 24\,pc for
-$\sim$3 rebuild cycles) are consistent with cycles where the
-buffer-retry path (Stars:max\_HII\_retry\_full\_buffer) fired instead
-of the radius-expansion path, making no radius progress that cycle.
-This is a plausible, parameter-grounded explanation, not a fully
-diagnosed root cause -- confirming it would need per-rebuild
-instrumentation of which retry branch fires and why (not done here).
-\textbf{The practical implication: an HII region's growth toward its
-equilibrium size is retry/rebuild-cadence-limited, not
-recombination-physics-limited, for a significant fraction of its early
-growth.} At this example's own \code{rebuild\_time\_myr=0.5\,Myr} that
-delay is several Myr; a faster rebuild cadence (e.g.\ this project's
-usual \code{0.01\,Myr}) would shrink but not eliminate it, since the
-$1.61\times$-per-cycle cap is unrelated to the cadence itself. Recorded
-as an open item (T3, Section~\ref{sec:open}) rather than fixed
-here.
-
-\textbf{T11 verification: adaptive cadence measurably shrinks the
-delay, but does not eliminate the staircase shape.} Re-ran the
-identical setup (same box, same star, same $Z/Z_\odot\approx0.231$,
-same \code{time\_end}/\code{dt\_max}) with
-\code{GEARFeedback:HII\_adaptive\_rebuild\_cadence=1} and
-\code{HII\_region\_rebuild\_safety\_factor=0.2} in place of the fixed
-\code{rebuild\_time\_myr=0.5}. Figure~\ref{fig:e10-dtype} overlays both
-curves. Two numbers, holding everything else fixed:
-\begin{itemize}
-  \item \textbf{Time to first reach $R_{\rm st}=25.4\,$pc:}
-    $1.76\,$Myr (adaptive) vs.\ $3.32\,$Myr (fixed) -- a 47\% reduction.
-  \item \textbf{Relative error at the last box-valid time
-    ($t=1.27\,$Myr):} 41.5\% (adaptive) vs.\ 75.2\% (fixed) -- roughly
-    half the error at the one time both curves can be legitimately
-    compared to the infinite-medium analytic solution.
-\end{itemize}
-Both curves remain a staircase (adaptive rebuilds far more often, but
-each individual rebuild is still subject to the same
-$1.1^5\approx1.61\times$-per-cycle search-radius cap identified above
-as the likely mechanism), and both eventually run into the box's
-periodic wrap and plateau near 40\,pc rather than tracking the analytic
-curve's continued rise -- T8's mechanism is structurally independent of
-the rebuild cadence, so this result is exactly what T8's own analysis
-predicted: adaptive cadence attacks \emph{how often} the search radius
-gets a chance to grow, not the \emph{per-attempt} growth cap, so it
-narrows the delay without closing it. \textbf{Verdict: T11 delivers a
-real, quantified improvement and is safe to recommend as the default
-for future runs that care about early-time accuracy, but does not by
-itself resolve T8} -- raising
-\code{max\_HII\_radius\_expansion\_tries}/\code{HII\_radius\_expansion\_factor}
-remains the more direct fix for the shape mismatch itself, and is
-still open.
-
-\textbf{Measurement correction (2026-07-18): $r_{\rm HII}$ itself was
-being undercounted.} \code{HIIRegionRadii} ($h_{\rm hii}$) is the
-distance at the moment a particle was tagged, recorded once and never
-updated as that particle moves afterwards. A direct check confirmed
-tagged gas keeps moving outward substantially after being tagged (mean
-radial velocity several times that of untagged gas, growing with time),
-so $h_{\rm hii}$ systematically lags the true current extent of the
-ionized/expanding shell. \code{stromgren\_analytic\_check.py} now
-instead takes the current (periodic-wrapped) position of every gas
-particle a star has \emph{ever} tagged, using \code{HIIStarIDs} (set
-once at tagging and, unlike \code{IsIonizedFlags}, never reset when the
-tag later expires) rather than $h_{\rm hii}$. On the adaptive-cadence
-run this drops the comparison-point error from 41.5\% to 32.4\% and the
-time to first reach $R_{\rm st}$ from 1.76 to 1.17\,Myr. On the
-fixed-cadence run the comparison-point error is unchanged at 75.2\%
-(tagging is too infrequent for tagged gas to have drifted far by
-$t=1.27\,$Myr) but time-to-$R_{\rm st}$ still improves, 3.32 to
-2.44\,Myr. This is a measurement fix, not a physics change -- it does
-not alter T8's underlying mechanism or verdict, but shows the earlier
-numbers above understated how much of the true ionized shell had
-already formed. Figure~\ref{fig:e10-dtype} has been regenerated with
-the corrected ever-tagged measure (the adaptive-cadence curve is also
-now from the run with the Grackle-bypass cooling fix applied, which
-holds tagged particles exactly at the ionized-energy floor instead of
-letting Grackle's own chemistry solve pull them back down within the
-same step) -- both curves are visibly smoother than the original
-$h_{\rm hii}$-based
-staircase, since ever-tagged gas keeps contributing its continued
-outward drift between rebuilds instead of only jumping at each one, but
-the qualitative picture (adaptive well ahead of fixed, both eventually
-running into the box's periodic wrap) is unchanged.
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.8\linewidth]{Figures/e10_dtype_growth_curve}
-  \caption{Simulated $r_{\rm HII}(t)$ for fixed cadence (blue circles,
-    \texttt{rebuild\_time\_myr=0.5}) and adaptive cadence with the
-    Grackle-bypass cooling fix (red squares,
-    \texttt{HII\_adaptive\_rebuild\_cadence=1}, safety factor 0.2)
-    against the analytic Spitzer (1978) D-type solution (black dashed),
-    the equilibrium $R_{\rm st}$ (grey dotted), and the box half-width
-    (red dotted) beyond which the analytic curve is no longer physically
-    comparable to this finite, periodic setup. Single isolated star,
-    $Z/Z_\odot\approx0.231$. $r_{\rm HII}$ is the ever-tagged measure
-    (Section~\ref{sec:e10}): the current, periodic-wrapped max radius of
-    every gas particle each star has ever tagged, not the star's own
-    frozen $h_{\rm hii}$. Adaptive cadence reaches $R_{\rm st}$ at
-    $t=1.17\,$Myr vs.\ fixed cadence's $t=2.44\,$Myr; both eventually
-    plateau against the box's periodic wrap rather than the analytic
-    curve.}
-  \label{fig:e10-dtype}
-\end{figure}
-
-\textbf{Update (2026-07-20): $T_i=10^4\,$K, matching
-\citet{Hu2017}/\citet{Smith2021}'s own convention, combined with the
-loosened cap and adaptive cadence.} All comparisons above use
-$Z/Z_\odot\approx0.231$'s natural, metallicity-dependent
-$T_i\approx47500\,$K (Section~\ref{sec:metallicity}). Rerunning the same
-loosened-cap, adaptive-cadence, bigger-box setup with
-\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
-forcing the papers' own $T_i$ directly (same mechanism as the STARBENCH
-check, Section~\ref{sec:starbench}) gives the first \textbf{PASS} on this
-check: 27.74\% error at the box-valid comparison time ($t=3.81\,$Myr,
-later than the earlier $T_i\approx47500\,$K comparisons since the lower
-$T_i$ shrinks $R_{\rm st}$ to 25.4\,pc, taking longer to reach the
-60\,pc box half-width). The curve's shape is also qualitatively
-different for the first time: a sharp jump to $\approx$18\,pc by
-$t\approx0.35\,$Myr, a brief plateau right at $R_{\rm st}$ from
-$t\approx1$--$2\,$Myr, then a continued D-type climb that tracks the
-analytic slope reasonably closely -- the R-type-then-D-type qualitative
-behaviour the analytic solution itself has, not seen in any
-$T_i\approx47500\,$K run this session. This does not by itself prove
-$T_i$ was the missing factor from T8's earlier ``both known factors
-exhausted, residual gap unexplained'' verdict -- three things changed at
-once (cap, cadence, $T_i$) and were not tested pairwise against $T_i$
-alone -- but it is the first configuration in this whole investigation
-to pass the check at all, and is recorded here as the strongest current
-result pending a cleaner isolation of which combination is doing the
-work.
-
-\textbf{Isolation follow-up (2026-07-20).} Two further runs, same box
-and $T_i=10^4\,$K, each changing exactly one thing relative to the PASS
-run above:
-\begin{itemize}
-  \item \emph{$T_i$ alone, cap/cadence back to their defaults}
-    (\code{HII\_max\_radius\_expansion\_tries=5},
-    \code{HII\_radius\_expansion\_factor=1.1},
-    \code{HII\_adaptive\_rebuild\_cadence=0}): 43.02\% error, FAIL --
-    barely different from the historical natural-$T_i$ default-cap/
-    cadence runs ($\sim$40--42\%), and the curve reverts to the same
-    staircase shape (Figure~\ref{fig:e10-ti1e4-isolation}) seen
-    throughout this investigation at default settings. $T_i$ by itself
-    is not the driver of the PASS result -- the loosened cap and
-    adaptive cadence are doing essentially all of the work.
-  \item \emph{$Z=0$ (pristine, not $Z/Z_\odot=0.231$), loosened cap and
-    adaptive cadence kept on}, with the STARBENCH-style
-    \code{SPH:minimal\_temperature=1000}/\code{initial\_temperature=1000}
-    fix applied (needed at $Z=0$ for the same reason as
-    Section~\ref{sec:starbench}: no metal-line cooling to floor the
-    neutral gas otherwise): 37.10\% error, FAIL -- \emph{worse} than the
-    $Z/Z_\odot=0.231$ PASS run, not better
-    (Figure~\ref{fig:e10-z0-ti1e4}). This refutes the hypothesis that
-    $Z/Z_\odot=0.231$'s metal-line cooling was suppressing growth
-    relative to a pristine medium; if anything, the pristine run is
-    slightly slower.
-\end{itemize}
-\textbf{Current picture:} of the three variables varied this session
-(search-radius cap, rebuild cadence, $T_i$/metallicity), the cap and
-cadence fixes account for essentially all of the improvement seen; $T_i$
-and metallicity are, at most, second-order effects at this box/
-resolution, and lowering metallicity to zero does not help. The residual
-gap between the PASS run (27.74\%) and the analytic solution remains
-otherwise unexplained.
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.8\linewidth]{Figures/e10_ti1e4_isolation_check}
-  \caption{$T_i=10^4\,$K alone, cap and cadence reverted to their
-    defaults (\texttt{HII\_max\_radius\_expansion\_tries=5},
-    \texttt{HII\_radius\_expansion\_factor=1.1},
-    \texttt{HII\_adaptive\_rebuild\_cadence=0}). 43.02\% error at
-    $t=3.81\,$Myr, FAIL -- the staircase shape returns, confirming $T_i$
-    alone does not reproduce the PASS result.}
-  \label{fig:e10-ti1e4-isolation}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.8\linewidth]{Figures/e10_z0_ti1e4_check}
-  \caption{$Z=0$ (pristine) instead of $Z/Z_\odot=0.231$, loosened cap
-    and adaptive cadence kept on, $T_i=10^4\,$K forced,
-    \texttt{SPH:minimal\_temperature=1000} (STARBENCH-style floor,
-    needed at $Z=0$). 37.10\% error at $t=3.81\,$Myr, FAIL -- slightly
-    worse than the $Z/Z_\odot=0.231$ PASS run, refuting metal-line
-    cooling as the suppressing factor.}
-  \label{fig:e10-z0-ti1e4}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.8\linewidth]{Figures/e10_adaptive_bigcap_ti1e4_check}
-  \caption{Simulated $r_{\rm HII}(t)$ (blue circles) against the analytic
-    Spitzer (1978) D-type solution (orange dashed), for the loosened cap
-    (\texttt{HII\_radius\_expansion\_factor=1.5},
-    \texttt{HII\_max\_radius\_expansion\_tries=20}) plus adaptive cadence
-    (\texttt{HII\_adaptive\_rebuild\_cadence=1}, safety factor 0.2)
-    combined with $T_i=10^4\,$K forced directly. Single isolated star,
-    $Z/Z_\odot\approx0.231$, 60\,pc box half-width. 27.74\% error at
-    $t=3.81\,$Myr, PASS against the 30\% tolerance -- the first passing
-    configuration in this check's history.}
-  \label{fig:e10-ti1e4}
-\end{figure}
-
-\subsection{[DEPRECATED] STARBENCH: validating the physics, not a paper's implementation}
-\label{sec:starbench}
-
-\code{examples/SubgridTests/SubgridRadiation/StromgrenSphereStarbench/} reproduces the
-STARBENCH project's late-phase D-type expansion test
-\citep[Section~4.1.2]{Bisbas2015}: a single ionizing source
-($\dot N_{\rm ion}=10^{49}\,{\rm s^{-1}}$, star mass 26.75\,M$_\odot$ at
-this code's own $\dot N_{\rm ion}(M)$ fit, Section~\ref{sec:blackbody})
-at the centre of a uniform, pure-hydrogen medium
-($n_H\approx3115\,{\rm cm^{-3}}$), purely hydrodynamical (no gravity,
-no magnetic fields, matching the paper's own test exactly). Unlike
-Section~\ref{sec:algorithm}--\ref{sec:e10}'s comparisons, the reference
-here is not one paper's own subgrid implementation but STARBENCH's
-semi-empirical blend of two independently-derived ODEs (Eqns 8, 11, 28,
-29 of the paper): the exact pressure-driven thin-shell equation
-(``Raga-I''), and \citet{HosokawaInutsuka2006}'s shell-inertia equation
-(``Raga-II''), combined with a time-dependent weight
-$f_{\rm SB}(t)=1-0.733\,e^{-t/{\rm 1\,Myr}}$ that interpolates between
-them. This blend was tuned against, and agrees with, twelve
-independently-implemented radiation-hydrodynamics codes to
-$\sim$1--2\% -- a test of whether this code's D-type expansion physics
-is right in general, not of whether it matches one specific paper's own
-approximations.
-
-\textbf{Temperature convention.} STARBENCH assumes a flat
-$T_i=10^4\,$K (ionized) / $T_o=10^3\,$K (neutral) two-temperature
-medium by construction -- an idealization no participating code
-actually integrates through a real cooling network. This model does
-not have that option (gas cools/heats via ordinary Grackle physics), so
-two configurations were tested.
-
-\textbf{First attempt (failed): $Z/Z_\odot=0.231$, unmodified neutral-gas
-floor.} To hit $T_i=10^4\,$K via this model's own metallicity-dependent
-collisional floor (Eq.~\ref{eq:tcollisional}), the first attempt used
-$Z/Z_\odot=0.231$ and left \code{SPH:minimal\_temperature} at its usual
-value of 1\,K, expecting the gap between ``neutral gas cools/heats
-freely'' and STARBENCH's ``neutral gas held fixed at $T_o$'' to be a
-minor, second-order effect. It was not: a direct check found untagged
-gas sitting at 2--5\,K from the very first snapshot onward, not
-anywhere near $T_o=1000\,$K -- real metal-line cooling at
-$Z/Z_\odot=0.231$ (absent from STARBENCH's literal pure-H medium),
-combined with no floor to arrest it. A collapsed $T_o$ collapses $c_o$,
-and since $R_{\rm STAG}\propto(c_i/c_o)^{4/3}$ (the paper's own
-Eqn~14), this removes essentially all the pressure confinement the
-late-phase stagnation radius depends on: instead of levelling off, the
-simulated front grew straight through the STARBENCH prediction and kept
-going (Fig.~\ref{fig:starbench-beforefix}, $r_{\rm sim}=5.96\,$pc vs.\
-$R_{\rm SB}=2.25\,$pc predicted at $t=3\,$Myr, a 165\% miss).
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.8\linewidth]{Figures/starbench_beforefix_check}
-  \caption{STARBENCH check, first attempt: $Z/Z_\odot=0.231$
-    (targeting $T_i=10^4\,$K), \texttt{SPH:minimal\_temperature} left at
-    its usual 1\,K. The simulated front (red) grows straight through
-    the STARBENCH reference (black dashed) instead of levelling off,
-    because the neutral gas ahead of the front collapsed to 2--5\,K
-    instead of holding near $T_o=1000\,$K, collapsing the pressure
-    confinement the late-phase stagnation radius depends on.}
-  \label{fig:starbench-beforefix}
-\end{figure}
-
-\textbf{Fix: \code{SPH:minimal\_temperature=1000}.} Floors the neutral
-gas near $T_o$ without forcing a full isothermal equation of state --
-gas can still heat freely via compression/shocks, it simply cannot cool
-below this floor. This is the same fix later found to matter for the
-Hu/Smith clump examples too (the \texttt{minimal\_temperature} fix's neighbouring bug hunts (Section~\ref{sec:t7-buildfix} covers the unrelated build-compat work from the same session);
-Section~\ref{sec:metallicity}'s discussion of why every other example
-in this section avoids $Z=0$ specifically to sidestep needing this same
-floor).
-
-\textbf{Validated result: $T_i=10^4\,$K forced directly, matching the
-paper's own convention exactly.} Rather than continue reasoning about
-$Z/Z_\odot=0.231$'s approximate match to $10^4\,$K, this run used
-\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
-(decoupling $T_i$ from metallicity entirely, CLAUDE.md) together with
-the \code{minimal\_temperature=1000} fix above -- the literal STARBENCH
-convention, not a workaround. Result
-(Fig.~\ref{fig:starbench-ti1e4}): $r_{\rm sim}=2.366\,$pc vs.\
-$R_{\rm SB}=2.247\,$pc at $t=3\,$Myr (the full run -- $R_{\rm SB}(t)$
-stays inside this example's 5\,pc box half-width for the entire 3\,Myr,
-unlike the natural-$T_i$ case), a \textbf{5.30\% error, PASS} against
-this example's 10\% tolerance (tighter than the classical Spitzer
-check's 30\%, since STARBENCH's own claimed accuracy is $\sim$1--2\%).
-Beyond the single comparison point, the simulated curve tracks
-STARBENCH's characteristic \emph{non-monotonic} shape closely across
-the whole window -- rising to a local overshoot near $t\approx1\,$Myr,
-dipping, then re-settling -- a shape the naive Raga-I curve alone does
-not have; matching it is a qualitatively stronger check than matching
-one number at one time would be on its own.
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.8\linewidth]{Figures/starbench_ti1e4_check}
-  \caption{STARBENCH check, validated configuration: $T_i=10^4\,$K
-    forced directly (\texttt{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_
-    IONIZED\_TEMPERATURE\_K}), \texttt{SPH:minimal\_temperature=1000}.
-    Simulated $r_{\rm HII}(t)$ (red) against Raga-I (Eqn~8, dotted),
-    Raga-II (Eqn~11, dash-dotted), and the full STARBENCH blend
-    (Eqns~28--29, black dashed). 5.30\% error at $t=3\,$Myr, PASS.
-    Single isolated star, purely hydrodynamical, pure-hydrogen medium.}
-  \label{fig:starbench-ti1e4}
-\end{figure}
-
-\textbf{What this does and does not establish.} This is the strongest
-single-source validation result in this logbook: unlike the Hu/Smith
-comparisons (which inherit whatever approximations those papers'
-own subgrid schemes make) or the classical-Spitzer e10 check
-(Section~\ref{sec:e10}, which compares against a formula STARBENCH's
-own paper shows \emph{overpredicts} the true late-phase solution), this
-is a direct match to a consensus, code-independent physical solution.
-It validates the single-source photon-budget, temperature-floor, and
-momentum-coupling physics (Sections~\ref{sec:blackbody}--\ref{sec:algorithm})
-in the regime this test covers. It does \emph{not} by itself validate
-the multi-source angular-splitting machinery
-(Section~\ref{sec:angular-splitting}) or explain the Hu/Smith
-multi-source residual (Section~\ref{sec:metallicity} onward) --
-STARBENCH is a single-star test, and Section~\ref{sec:husmith4star}
-already found that forcing $T_i=10^4\,$K helped this single-source case
-dramatically while leaving the Hu/Smith multi-source error essentially
-unchanged, i.e.\ this result and the still-open multi-source residual
-are consistent with each other, not in tension. \textbf{Also not yet
-done}: validating this example's own \emph{default}, committed
-configuration ($Z=0$, natural $T_i\approx47{,}500\,$K via
-Eq.~\ref{eq:tcollisional}, with the \code{minimal\_temperature=1000}
-fix applied) against STARBENCH at its own natural temperature -- only
-the $T_i=10^4\,$K forced variant has been validated so far. Flagged as
-an open item, Section~\ref{sec:open}.
-
-\subsection{[DEPRECATED] Hu et al.\ (2017) / Smith et al.\ (2021): 4 co-located stars}
-\label{sec:husmith4star}
-
-\code{examples/SubgridTests/SubgridRadiation/StromgrenSphereHuSmith2017/} reproduces the
-D-type expansion convergence test from \citet{Hu2017}, Appendix~A --
-the base algorithm this branch's own HII photoionization scheme builds
-on, before \citet{Smith2021}'s angular (HEALPix) budget-splitting
-addition. Both papers use the same four-co-located-source
-configuration (each source $19.2\,{\rm M}_\odot$,
-$\dot N_{\rm ion}\approx2.5\times10^{48}\,{\rm s^{-1}}$, uniform
-$n_H\approx107\,{\rm cm^{-3}}$ background), so this single example
-validates against both papers at once -- distinct from
-\code{StromgrenSphereClumpSmith2021}'s clump test (Smith et al.\ 2021
-only, with the dense clump present).
-
-\textbf{Motivation for a STARBENCH-style check here too.} This
-project's usual $Z/Z_\odot\approx0.231$ workaround for hitting the
-papers' flat $T_i=10^4\,$K brings real metal-line cooling neither
-paper's idealized medium has. The same debug flags used for STARBENCH
-(\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K}/
-\code{FIXED\_NEUTRAL\_TEMPERATURE\_K}, \code{radiation.c}/
-\code{cooling.c}) decouple $T_i$/$T_o$ from $Z$ entirely, so this
-example was run at $Z=0$ (no metal cooling) with $T_i$ forced to
-exactly $10^4\,$K, matching STARBENCH's own methodology.
-
-\textbf{Result: FAIL.} Windowed median error $32.4\%$ against the
-paper's own $r_{\rm HII}(t)$ trajectory (min $17.1\%$ at
-$t=1.37\,$Myr, max $81.4\%$ at $t=0.10\,$Myr, $0/82$ snapshots within
-the $10\%$ tolerance) -- essentially unchanged from the same check at
-this project's original $T_i\approx47{,}500\,$K floor ($33.6\%$
-median, $0/34$ within tolerance, smaller box).
-
-\textbf{The $T_i$-regime hypothesis is refuted as the cause.} Forcing
-$T_i=10^4\,$K helped the single-source STARBENCH case dramatically
-(Section~\ref{sec:starbench}) but left this multi-source case's error
-nearly untouched -- ruling out temperature as the dominant shared
-cause and narrowing the open question specifically to whatever differs
-between one star and four co-located stars (search/gather overlap
-between sources, budget-sharing, or the measurement itself being
-noisier for a multi-source front -- the max-vs-median spread above is
-much wider than STARBENCH's own single-source scatter).
-
-\textbf{Also tested and refuted}: sampling the actual local
-(compression-heated) precursor temperature just ahead of the front,
-instead of the fixed far-field $T_o$, for the STARBENCH-style $c_o$
-term used in this comparison -- makes the match \emph{worse}
-($R_{\rm STAG}\propto(c_i/c_o)^{4/3}$, so a warmer measured $c_o$
-\emph{shrinks} the predicted radius, moving it further from the
-simulation, not closer).
-
-\textbf{Ruled out}: FIRE-3's lowest-density-neighbour selection (a
-candidate mechanism raised and then withdrawn) -- this model's angular
-(HealPix pixel-budget) splitting already addresses the mass-biasing
-problem that selection change targets, via a different mechanism
-(spatial budget partitioning instead of gather order), so it is not
-expected to explain the multi-source residual.
-
-\textbf{Not yet identified}: the actual mechanism behind the
-multi-source residual. This is the open item this validation target
-tracks going forward (Table~\ref{tab:validation-targets}).
-
-\textbf{Provenance}: the example itself is committed
-(\code{examples/SubgridTests/SubgridRadiation/StromgrenSphereHuSmith2017/}), but this
-specific $T_i=10^4\,$K run used the debug compile flag above, not yet
-reflected as a documented, reproducible recipe in that example's own
-README -- the same repo-currency gap identified for STARBENCH
-(Table~\ref{tab:validation-targets}) applies here too.
+\textbf{Open}: what magnitude of erosion/compression Smith et al.\
+(2021)'s own Figure 2 reports, to judge whether the current result
+matches it; whether the compression signal measured here is the same
+effect the paper calls erosion, or something distinct from it.
