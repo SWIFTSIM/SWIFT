@@ -49,7 +49,7 @@ kept cooling. A collapsed `T_o` collapses `c_o`
 (`R_STAG = (c_i/c_o)^(4/3) R_St` -- STARBENCH Eqn 14), removing essentially
 all the pressure confinement the late-phase stagnation radius depends on:
 the simulated front kept growing well past the STARBENCH-predicted
-radius instead of leveling off (`r_sim=5.96 pc` vs.\ `R_SB=2.25 pc`
+radius instead of leveling off (`r_sim=5.96 pc` vs. `R_SB=2.25 pc`
 predicted at `t=3 Myr`, a 165% miss).
 
 Fix: `SPH:minimal_temperature=1000` (floors the neutral gas near `T_o`
@@ -57,8 +57,26 @@ without forcing a full isothermal EOS -- gas can still heat freely via
 compression/shocks, it just can't cool below this) combined with `Z=0`
 (removes the metal-line cooling that was driving the collapse in the
 first place, and is the more literal reproduction of STARBENCH's
-pure-H medium besides). Not yet re-validated against the completed run
-at time of writing -- update this section once it has been.
+pure-H medium besides). This fix is in the committed `params.yml`
+(`SPH:minimal_temperature=1000`, `initial_temperature=1000`,
+`GEARChemistry:initial_metallicity=0`).
+
+## Building to match STARBENCH's own `T_i` convention
+`T_i` is set at compile time, not in `params.yml`. To force it to
+STARBENCH's own flat `1e4 K` (see "Temperature" above for why this
+differs from the plain build's natural, metallicity-dependent value):
+```
+CFLAGS+="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4" ./configure \
+    --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 \
+    --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR \
+    --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT
+make -j$(nproc)
+```
+Then run `./run.sh` unmodified -- no other parameter changes needed,
+same committed `params.yml`/`run.sh`. When checking the result, pass
+the matching `--T-ionized-K` to `starbench_analytic_check.py` (see
+"Usage" below) -- it must match whatever `T_i` the build actually used,
+or the check compares against the wrong reference curve silently.
 
 ## Star mass
 STARBENCH specifies `Q_H` directly, not a stellar mass. This code's
@@ -82,19 +100,17 @@ example that runs in a reasonable wall-clock time. Increase `gas_mass`
 down for a tighter resolution test if needed.
 
 ## Box size
-`boxsize=0.01` kpc (10 pc, 5 pc half-width) was originally sized against
-`R_STAG~2.32 pc` at `T_i=1e4 K`. At `Z=0`'s `T_i~47500 K`, `R_STAG` grows
-to **~10.6 pc** (`c_i` alone grows ~2.2x, and `R_STAG ~ c_i^{4/3}`) --
-comfortably beyond this box. Rather than grow the box to match (mass in a
-uniform box scales as `L^3`; covering the full new `R_STAG` with the same
-margin would need a >60x larger particle count at fixed resolution, not
-practical for a repository example), the box was left unchanged and the
-comparison window shrinks accordingly: `R_SB(t)` stays inside the 5 pc
-half-width only until `t~0.59 Myr` (vs.\ the full 3 Myr run), the same
-"limited but still meaningful" tradeoff the sibling `StromgrenSphere`
-example's e10 checks already accept (~1.4 Myr window there). Growth from
-`R_St=0.507 pc` to `5 pc` by the time box-validity ends is still a full
-order of magnitude of dynamic range to compare against.
+`boxsize=0.01` kpc (10 pc, 5 pc half-width) was sized against
+`R_STAG~2.32 pc` at `T_i=1e4 K` -- i.e. for the debug build above,
+with headroom to spare. At `Z=0`'s natural, un-forced `T_i~47500 K`
+(the plain default build, no debug flag), `R_STAG` instead grows to
+`~10.6 pc` (`c_i` alone grows ~2.2x, and `R_STAG ~ c_i^{4/3}`) --
+comfortably beyond this box, so the plain build's comparison window is
+limited to the time before `R_SB(t)` exceeds the 5 pc half-width
+(`starbench_analytic_check.py` picks this automatically). Growing the
+box to cover the natural-`T_i` case's full `R_STAG` would need a >60x
+larger particle count at fixed resolution (mass in a uniform box scales
+as `L^3`), not practical for a repository example.
 
 ## Gravity
 `--external-gravity` is passed (matching every other example in this
@@ -104,10 +120,19 @@ matching STARBENCH's own purely hydrodynamical test (Section 4, "The test
 is purely hydrodynamical i.e. it includes no gravity or magnetic fields").
 
 ## Usage
+Plain default build, this code's own natural `T_i`:
 ```
 ./run.sh
 python3 starbench_analytic_check.py -s snap/snapshot_*.hdf5
 ```
+To build and run with `T_i` forced to STARBENCH's own convention
+instead, see "Building to match STARBENCH's own `T_i` convention"
+above, then check with the matching `--T-ionized-K`:
+```
+./run.sh
+python3 starbench_analytic_check.py -s snap/snapshot_*.hdf5 --T-ionized-K 1e4
+```
+
 Override any parameter via the matching env var, e.g.
 `gas_mass=0.05 rebuild_time_myr=0.005 ./run.sh` -- see `run.sh` for the
 full list.

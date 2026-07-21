@@ -42,7 +42,9 @@ forward, a target is only marked validated once the \emph{committed}
 example (params, README, any required build flags) has itself been run
 and checked -- no exceptions. Re-validation proceeds in this order:
 (1) STARBENCH, (2) Hu et al.\ (2017)/Smith et al.\ (2021) 4-star, (3)
-Smith et al.\ (2021) clump. All three currently read NOT YET VALIDATED.
+Smith et al.\ (2021) clump. STARBENCH now reads PASS (2026-07-21,
+Section~\ref{sec:starbench-current}, with the documented build flag);
+the other two currently read NOT YET VALIDATED.
 
 \begin{table}[h]
 \centering
@@ -52,9 +54,11 @@ Smith et al.\ (2021) clump. All three currently read NOT YET VALIDATED.
 \hline
 1. STARBENCH (Bisbas et al.\ 2015) &
   \code{StromgrenSphereStarbench} &
-  \textbf{FAIL (2026-07-21), 22.76\% error.} Current result:
-  Section~\ref{sec:starbench-current}. Deprecated (pre-restart)
-  result: Section~\ref{sec:starbench}. \\
+  \textbf{PASS (2026-07-21), 6.12\% error}, with
+  \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
+  built in (not the default build, which reads FAIL at 22.76\%).
+  Current result: Section~\ref{sec:starbench-current}. Deprecated
+  (pre-restart) result: Section~\ref{sec:starbench}. \\
 \hline
 2. Hu et al.\ (2017) / Smith et al.\ (2021), 4 co-located stars &
   \code{StromgrenSphereHuSmith2017} &
@@ -135,16 +139,63 @@ not just sufficient, ingredient for matching STARBENCH's assumed
 flat-temperature convention with the current default (natural,
 metallicity-dependent $T_i$) build.
 
-\textbf{Not yet done}: confirming this diagnosis by re-running with
-the debug flag on top of the current committed cap/cadence defaults
-(distinct from the old, now-stale combination that produced the
-original 5.30\% PASS, since cap/cadence themselves have since changed);
-deciding whether matching STARBENCH's convention should ever become a
-default-buildable option (not just a debug flag) if it is confirmed
-necessary, or whether the natural, non-isothermal $T_i$ this code
-computes is itself the intended, more physical behaviour and STARBENCH
-comparison is understood to require an explicit flat-$T_i$ mode to be
-enabled. Logged as a new open item (Section~\ref{sec:open}).
+\textbf{Confirmed (2026-07-21): $T_i$ is the cause, cap/cadence were
+never the differing factor for this example.} Re-checked via
+\texttt{git log --follow} on this example's own \texttt{run.sh}: unlike
+the separate e10 diagnostic (Section~\ref{sec:e10}, which genuinely
+did need a loosened cap and adaptive cadence on top of a bigger box),
+\emph{this} example's committed \texttt{run.sh} has not changed since
+it was first added -- the search-radius cap and cadence settings used
+for the original 5.30\% PASS are identical to today's committed
+defaults. The earlier statement above (that cap/cadence had "since
+changed") was imprecise and is corrected here.
+
+Re-ran with exactly the current committed \texttt{run.sh}/\texttt{params.yml}
+(same box, same cap, same cadence, same 12 threads) plus only
+\texttt{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
+added at compile time. Before checking, computed the STARBENCH
+prediction directly for this exact star/density (not assumed from the
+old citation): $R_{\rm St}=0.304\,$pc, $c_i=12.85\,$km/s, and
+$R_{\rm SB}$ never exceeds $2.71\,$pc over the full 0--3\,Myr window --
+comfortably inside the $5\,$pc box half-width and the $4.9\,$pc
+\texttt{Stars:HII\_max\_search\_radius} ceiling the whole time, unlike
+the natural-$T_i$ run above. Result: \textbf{PASS}, 6.12\% error at
+$t=3\,$Myr ($r_{\rm sim}=2.384\,$pc vs.\ $R_{\rm SB}=2.247\,$pc), the
+full run, not an early box-limited comparison.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/starbench_restart_ti1e4_2026-07-21_check}
+  \caption{STARBENCH check, post-restart (2026-07-21), committed
+    defaults plus $T_i=10^4\,$K forced at compile time. PASS, 6.12\%
+    error at $t=3\,$Myr, full run inside the box the whole time.}
+  \label{fig:starbench-restart-ti1e4}
+\end{figure}
+
+\textbf{Also verified: the search-radius expansion/retry mechanism was
+never a binding constraint in this run.} Checked
+\texttt{HIIRegionRadii}$(t)$ directly against \texttt{Stars:HII\_max\_search\_radius}
+(the absolute ceiling) and against the per-rebuild expansion-tries
+pattern (a repeated $1.1^5\approx1.61\times$-per-cycle factor would
+indicate the expansion cap binding every cycle): the star's search
+radius grows smoothly from 0 to its natural equilibrium at $2.46\,$pc
+by $t\approx0.93\,$Myr, with per-step growth factors \emph{decelerating
+monotonically} (1.19$\times\to$1.22$\times\to\ldots\to$1.02$\times\to$1.00$\times$)
+-- the signature of a genuine approach to photoionization-recombination
+equilibrium, not of hitting \texttt{Stars:HII\_max\_radius\_expansion\_tries}
+or \texttt{Stars:HII\_max\_retry\_full\_buffer}. It then holds
+perfectly flat for the remaining $\sim2\,$Myr, well short of the
+$4.9\,$pc ceiling.
+
+\textbf{Still open}: deciding whether matching STARBENCH's convention
+should ever become a default-buildable option (not just a debug flag)
+now that it is confirmed necessary and sufficient here, or whether the
+natural, non-isothermal $T_i$ this code computes is itself the
+intended, more physical behaviour and STARBENCH comparison is
+understood to always require this explicit flat-$T_i$ build.
+See item~T10, Section~\ref{sec:open}, updated accordingly. The
+committed example's own README (\code{StromgrenSphereStarbench/README})
+documents the compile flag needed to reproduce this build.
 
 \subsection{Deprecated: results predating the 2026-07-20 restart}
 \label{sec:deprecated-results}

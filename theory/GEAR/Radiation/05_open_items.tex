@@ -214,26 +214,29 @@ validation-against-a-paper status.
     it cannot ratchet the whole grid the way sustained hydro resolution
     needs legitimately should).
 
-  \item[$\square$] \textbf{T10} -- STARBENCH re-validation, run against
-    the current committed default (Section~\ref{sec:starbench-current}),
-    \textbf{FAILS at 22.76\%} (tolerance 10\%). The likely cause is the
-    same $T_i$-convention mismatch already flagged in this session's
-    e10 isolation tests (Section~\ref{sec:e10}): the current default
-    build gives Z=0 gas a natural, metallicity-dependent $T_i\approx
-    47500\,$K, not STARBENCH's own assumed flat $10^4\,$K. The only
-    PASS found anywhere in this project's history
-    (Section~\ref{sec:starbench}) needed \emph{all three} of the
-    loosened search-radius cap, adaptive rebuild cadence, \emph{and}
-    $T_i=10^4\,$K forced via an uncommitted compile-time debug flag --
-    never buildable by default. \textbf{Not yet done}: re-confirm this
-    by rerunning with the debug flag on top of today's (changed)
-    cap/cadence defaults; then decide whether matching STARBENCH's flat-$T_i$
-    convention should become an actual default-buildable option (not
-    just a debug flag) if confirmed necessary, or whether this code's
-    natural non-isothermal $T_i$ is the intended, more physical
-    behaviour and STARBENCH comparison is understood to always require
-    an explicit flat-$T_i$ mode. This blocks calling STARBENCH
-    validated and, per the restart ordering
-    (Section~\ref{sec:validation-targets}), blocks moving on to the
-    Hu et al.\ (2017)/Smith et al.\ (2021) 4-star target next.
+  \item[$\square$] \textbf{T10 -- confirmed (2026-07-21), decision
+    still open} -- STARBENCH re-validation
+    (Section~\ref{sec:starbench-current}): the plain committed default
+    build \textbf{FAILS at 22.76\%} (tolerance 10\%); building with
+    \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
+    on top of the exact same (unchanged) committed \code{run.sh}/
+    \code{params.yml} \textbf{PASSES at 6.12\%}. $T_i$ convention is
+    confirmed as the sole differing factor -- this example's own
+    search-radius cap and rebuild cadence have not changed since first
+    committed (checked via \code{git log --follow}, correcting an
+    earlier imprecise statement that they had), and the search-radius
+    expansion/retry mechanism was directly verified not to bind in the
+    passing run (\code{HIIRegionRadii(t)} grows smoothly to its natural
+    $2.46\,$pc equilibrium with monotonically decelerating growth
+    factors, never approaching the $4.9\,$pc ceiling). \textbf{Still
+    open}: deciding whether matching STARBENCH's flat-$T_i$ convention
+    should become an actual default-buildable option (not just a debug
+    flag), or whether this code's natural non-isothermal $T_i$ is the
+    intended, more physical behaviour and STARBENCH comparison is
+    understood to always require this explicit build -- the committed
+    example's README now documents the compile flag either way, so
+    this is a design decision, not a reproducibility gap. Per the
+    restart ordering (Section~\ref{sec:validation-targets}), STARBENCH
+    can now be considered validated (with the documented build), so
+    the next target is Hu et al.\ (2017)/Smith et al.\ (2021) 4-star.
 \end{itemize}
