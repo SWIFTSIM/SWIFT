@@ -62,7 +62,10 @@ the other two currently read NOT YET VALIDATED.
 \hline
 2. Hu et al.\ (2017) / Smith et al.\ (2021), 4 co-located stars &
   \code{StromgrenSphereHuSmith2017} &
-  \textbf{NOT YET VALIDATED (restart).} Deprecated result:
+  \textbf{FAIL (2026-07-21), median 33.51\%}, with $T_i=10^4\,$K built
+  in (same debug flag as STARBENCH) -- confirms, does not resolve, the
+  deprecated finding below. Current result:
+  Section~\ref{sec:husmith-current}. Deprecated result:
   Section~\ref{sec:husmith4star}. \\
 \hline
 3. Smith et al.\ (2021), Fig.~2 clump &
@@ -196,6 +199,61 @@ understood to always require this explicit flat-$T_i$ build.
 See item~T10, Section~\ref{sec:open}, updated accordingly. The
 committed example's own README (\code{StromgrenSphereStarbench/README})
 documents the compile flag needed to reproduce this build.
+
+\subsection{Hu et al.\ (2017)/Smith et al.\ (2021) 4-star: current
+status (2026-07-21) -- FAIL, confirms the deprecated residual}
+\label{sec:husmith-current}
+
+\textbf{First, a repo-currency bug found and fixed}: cross-checking an
+old, already-completed (pre-restart) run against today's committed
+\code{run.sh} found its box size and search radius did not match --
+the actual run behind the deprecated $32.4\%$ result
+(Section~\ref{sec:husmith4star}) used \code{boxsize=0.1}\,kpc
+($100\,$pc) and \code{Stars:HII\_max\_search\_radius=0.04} ($40\,$pc),
+not the committed defaults of $0.07\,$kpc/$0.03$, which give only
+$\sim\!1.3\times$ margin over this test's own computed STARBENCH-blend
+worst case -- too little for a test already known to have wider
+max-vs-median scatter than STARBENCH's single-source case. Fixed both
+\code{run.sh} and the example's README to match the values actually
+used, the same class of fix as STARBENCH's.
+
+Re-ran with the corrected committed defaults plus
+\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
+built in: $617{,}851$ particles, 8 threads, ran to completion cleanly
+(\code{main: done. Bye.} at $t=8.182\times10^{-3}$, no crash). Result:
+\textbf{FAIL}, median $33.51\%$ over the 82-snapshot comparison window
+(min $17.53\%$ at $t=1.47\,$Myr, max $81.40\%$ at $t=0.10\,$Myr,
+$0/82$ within the $10\%$ tolerance) -- essentially unchanged from the
+deprecated result's $32.4\%$ median, confirming (not just repeating)
+that $T_i$ is not the fix for this multi-source test, unlike STARBENCH.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/husmith_restart_ti1e4_2026-07-21_check}
+  \caption{Hu/Smith 4-star check, post-restart (2026-07-21), corrected
+    box/search-radius defaults plus $T_i=10^4\,$K forced at compile
+    time. FAIL, median 33.51\% over the comparison window -- consistent
+    with the deprecated result, $T_i$ confirmed not to be the fix.}
+  \label{fig:husmith-restart-ti1e4}
+\end{figure}
+
+\textbf{Verified the search-radius/retry mechanism was not a
+confound this time}: each star's \code{HIIRegionRadii}$(t)$ grows
+steadily throughout the run, reaching $\sim\!27.7\,$pc by
+$t\approx7.8\,$Myr and still rising (not plateaued) -- comfortably
+below the $40\,$pc ceiling ($\sim\!1.45\times$ margin even at the run's
+end). The FAIL is not a search-radius/box artifact; it is the same
+genuine, unidentified multi-source residual the deprecated section
+already flags.
+
+\textbf{Status}: the multi-source residual mechanism remains
+unidentified -- this re-run confirms it is real and reproducible
+against the (now-corrected) committed example, not an artifact of a
+stale or under-margined setup. See item~T10 (updated,
+Section~\ref{sec:open}) for the STARBENCH-vs-Hu/Smith status contrast,
+and Section~\ref{sec:husmith4star} for what has already been tried and
+ruled out (precursor-temperature sampling, FIRE-3's
+lowest-density-neighbour selection).
 
 \subsection{Deprecated: results predating the 2026-07-20 restart}
 \label{sec:deprecated-results}

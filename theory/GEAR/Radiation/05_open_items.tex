@@ -239,4 +239,16 @@ validation-against-a-paper status.
     restart ordering (Section~\ref{sec:validation-targets}), STARBENCH
     can now be considered validated (with the documented build), so
     the next target is Hu et al.\ (2017)/Smith et al.\ (2021) 4-star.
+    \textbf{Update (2026-07-21)}: that next target has now been
+    re-tried (Section~\ref{sec:husmith-current}) with the exact same
+    $T_i=10^4\,$K debug flag, after first fixing a matching
+    repo-currency bug in \emph{its} committed \code{run.sh} (box size
+    and search radius silently drifted from what the deprecated result
+    actually used). Result: \textbf{still FAILS}, median $33.51\%$,
+    essentially unchanged from the deprecated $32.4\%$ -- confirming,
+    with a properly-margined re-run (search radius verified not
+    capped), that $T_i$ genuinely fixes STARBENCH's single-source case
+    but does \emph{not} fix this multi-source one. The actual
+    multi-source residual mechanism is still unidentified; see
+    Section~\ref{sec:husmith4star} for what has already been ruled out.
 \end{itemize}
