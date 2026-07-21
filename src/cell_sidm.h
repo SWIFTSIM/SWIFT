@@ -73,6 +73,9 @@ struct cell_sidm {
     /*! Last (integer) time the cell's sipart were drifted forward in time. */
     integertime_t ti_old_part;
 
+    /*! Spin-lock for the case where we do an extra sort of the cell. */
+    swift_lock_type extra_sort_lock;
+
     /*! Nr of #sipart this cell can hold after addition of new #sipart. */
     int count_total;
 
