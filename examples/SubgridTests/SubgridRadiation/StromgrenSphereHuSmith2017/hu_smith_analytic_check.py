@@ -571,7 +571,9 @@ def main():
     ax.set_xlabel("Time [Myr]")
     ax.set_ylabel(r"HII region radius $r_{\rm HII}$ [pc]")
     ax.legend(loc="lower right", fontsize=9)
-    ax.set_title(f"Reference: {ref_label} -- median error {median_error:.2%} [{verdict}]")
+    ax.set_title(
+        f"Reference: {ref_label} -- median error {median_error:.2%} [{verdict}]"
+    )
     ax.grid(True, linestyle="--", alpha=0.4)
     fig.tight_layout()
     fig.savefig(args.output, dpi=150)
