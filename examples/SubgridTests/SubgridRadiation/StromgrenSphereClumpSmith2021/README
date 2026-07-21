@@ -35,17 +35,16 @@ lowers the recombination cost and raises the D-type driving sound speed
 (expected, not a bug), and `r_HII` can approach
 `Stars:HII_max_search_radius` (45 pc) and the 50 pc box half-width for
 several rebuild cadences (see `theory/GEAR/Radiation/`, Section
-"Validation" for the full matrix and the numeric breakdown of the two
-effects). For a direct apples-to-apples comparison at the papers' own
+"Metallicity and the ionized-gas temperature floor" for the numeric
+breakdown of the two effects). For a direct apples-to-apples comparison at the papers' own
 fixed-1e4K convention -- and to stay well inside those defaults -- run
 `initial_metallicity=0.231 ./run.sh` (the Z/Zsun that makes
 T_collisional=1e4K exactly): this reproduces their reference closely
 without needing a larger box or search radius.
 
-## Reproducing the validation matrix
-The full $2\times2\times3$ sweep (scheme $\times$ metallicity $\times$
-rebuild cadence) documented in `theory/GEAR/Radiation/` was generated
-with:
+## Running a full matrix
+A $2\times2\times3$ sweep (scheme $\times$ metallicity $\times$ rebuild
+cadence), at a given `gas_mass`, can be generated with:
 ```
 for nside in 0 1; do
   for rebuild_time_myr in 0.01 0.05 0.1; do
@@ -94,17 +93,6 @@ it). It prints `r_HII`/`r_physics` and writes
 `temperature_{projection,slice}_<snapshot>.png` next to the run's own
 output (inside `$run_name/` if set).
 
-# Checking the redistribution effect
-
-`clump_anisotropy_check.py` is not run automatically -- it needs a
-`-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` build (add to `CFLAGS` before
-`./configure`, so `IsIonizedFlags` accumulates monotonically instead of
-resetting every step) and two specific runs (`nside=0`/`nside=1`) at
-once, matching `../StromgrenSphereClump/`:
-```
-python3 clump_anisotropy_check.py --nside0-snapshot nside0/snap/snapshot_0042.hdf5 --nside1-snapshot nside1/snap/snapshot_0042.hdf5
-```
-
 # Measuring clump erosion (ID-tracked)
 
 Run after the full `run_name=gas${gas_mass}_z${z_label}_nside${nside}_rebuild${rebuild_time_myr}`
@@ -114,10 +102,17 @@ has actually been run -- not automatically from `run.sh`, since they
 need the whole matrix, not just the run that just finished):
 
 ```
-python3 clump_erosion_matrix.py       # total mass remaining, full matrix, bar chart
-python3 clump_hemisphere_erosion.py   # near (star-facing) vs. far split + mass-conservation check
-python3 clump_radial_profile.py       # median n_H binned by t=0 radius from the clump centre
+python3 clump_erosion_matrix.py            # total mass remaining, full matrix, bar chart
+python3 clump_hemisphere_erosion.py        # near (star-facing) vs. far split + mass-conservation check
+python3 clump_hemisphere_density_change.py # near vs. far median n_H, final/t=0 (continuous, not threshold-based)
 ```
+
+Radially-binned diagnostics (median n_H vs. distance from the clump
+centre) are deliberately not used here: erosion in this test is a
+directional, near-hemisphere-only effect (see "Mass-biasing" in
+`theory/GEAR/Radiation/`), and averaging over the whole sphere at a
+given radius dilutes it with the far side's near-total absence of
+change.
 
 All three identify clump-member particles once, by particle ID, at
 `snapshot_0000` (position within `clump_radius_pc` of the clump centre,
@@ -136,5 +131,33 @@ itself conserves mass: they must read 100% in every configuration
 deviation there indicates a bug in the analysis, not real clump
 physics.
 
+`clump_erosion_matrix.py`'s "still-dense" (n_H above the clump's own IC
+threshold) metric only catches gas pushed below that threshold; it
+reads ~100% even when the near side is being compressed rather than
+diluted. `clump_hemisphere_density_change.py`'s continuous ratio
+catches that case.
+
 All three scripts take `--gas-mass`/`--metallicity`/`--rebuild` to
 select a subset of the matrix instead of the full sweep; see `--help`.
+
+## A note on metallicity when comparing against old results
+This example's `initial_metallicity=0` default gives this code's
+natural, non-isothermal T_i ~ 47,500 K (see "Metallicity" above) -- a
+materially hotter ionized phase than the T_i=1e4 K STARBENCH/Hu-Smith
+are validated against via
+`IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4`. The two
+are not interchangeable for erosion/compression measurements: a
+~4.75x hotter ionized phase drives a correspondingly larger pressure
+contrast against the clump. Match T_i (build flag or
+`initial_metallicity=0.231`) before comparing erosion numbers across
+runs, or the comparison is confounded by two different physical
+regimes, not the same physics at two points in time.
+
+Verified directly (not just inferred from the build flag): with
+`IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4`, the
+ionized core's measured gas temperature sits at 1.4-2.2e4 K out to
+r ~ 15 pc, dropping sharply to <50 K beyond r ~ 16 pc -- matching
+r_HII almost exactly, and confirming the 1e4 K-order regime rather
+than 47,500 K. To reproduce a config known to be in this regime:
+`gas_mass={20,95}`, `nside={0,1}`, `initial_metallicity=0`,
+`rebuild_time_myr=0.01`, built with the debug flag above.
