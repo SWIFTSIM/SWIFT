@@ -61,6 +61,7 @@
 # Import the Python numerical libraries, which we need for sqrt
 import numpy as np
 
+
 ##
 # @brief Exact Riemann solver.
 ##
@@ -219,7 +220,7 @@ class RiemannSolver:
                 # two rarefactions
                 Pguess = (
                     (aL + aR - self._gm1d2 * (uR - uL))
-                    / (aL / (PL ** self._gm1d2g) + aR / (PR ** self._gm1d2g))
+                    / (aL / (PL**self._gm1d2g) + aR / (PR**self._gm1d2g))
                 ) ** self._tgdgm1
             else:
                 # two shocks
@@ -395,21 +396,21 @@ class RiemannSolver:
         # variable used twice below
         PdPR = Pstar / PR
         # get the velocity of the tail of the rarefaction wave
-        STR = ustar + aR * PdPR ** self._gm1d2g
+        STR = ustar + aR * PdPR**self._gm1d2g
         middle_state = rarefaction_regime & (STR > dxdt)
         rarefaction_fan = rarefaction_regime & (~middle_state)
         ## middle state regime
-        rhosol[middle_state] = rhoR * PdPR ** self._ginv
+        rhosol[middle_state] = rhoR * PdPR**self._ginv
         usol[middle_state] = ustar
         Psol[middle_state] = Pstar
         ## rarefaction fan regime
         # variable used twice below
         base = self._tdgp1 - self._gm1dgp1 * (uR - dxdt[rarefaction_fan]) / aR
-        rhosol[rarefaction_fan] = rhoR * base ** self._tdgm1
+        rhosol[rarefaction_fan] = rhoR * base**self._tdgm1
         usol[rarefaction_fan] = self._tdgp1 * (
             -aR + self._gm1d2 * uR + dxdt[rarefaction_fan]
         )
-        Psol[rarefaction_fan] = PR * base ** self._tgdgm1
+        Psol[rarefaction_fan] = PR * base**self._tgdgm1
         ## right state regime
         rhosol[right_state] = rhoR
         usol[right_state] = uR
@@ -513,21 +514,21 @@ class RiemannSolver:
             # variable used twice below
             PdPL = Pstar / PL
             # get the velocity of the tail of the rarefaction wave
-            STL = ustar - aL * PdPL ** self._gm1d2g
+            STL = ustar - aL * PdPL**self._gm1d2g
             rarefaction_fan = rarefaction_wave & (STL > dxdt)
             middle_state = rarefaction_wave & (~rarefaction_fan)
             if np.any(rarefaction_fan):
                 ## rarefaction fan regime
                 # variable used twice below
                 base = self._tdgp1 + self._gm1dgp1 * (uL - dxdt[rarefaction_fan]) / aL
-                rhosol[rarefaction_fan] = rhoL * base ** self._tdgm1
+                rhosol[rarefaction_fan] = rhoL * base**self._tdgm1
                 usol[rarefaction_fan] = self._tdgp1 * (
                     aL + self._gm1d2 * uL + dxdt[rarefaction_fan]
                 )
-                Psol[rarefaction_fan] = PL * base ** self._tgdgm1
+                Psol[rarefaction_fan] = PL * base**self._tgdgm1
             if np.any(middle_state):
                 ## middle state regime
-                rhosol[middle_state] = rhoL * PdPL ** self._ginv
+                rhosol[middle_state] = rhoL * PdPL**self._ginv
                 usol[middle_state] = ustar
                 Psol[middle_state] = Pstar
         if np.any(left_state):
@@ -593,11 +594,11 @@ class RiemannSolver:
                 ## rarefaction wave regime
                 # variable used twice below
                 base = self._tdgp1 + self._gm1dgp1 * (uL - dxdt[rarefaction_wave]) / aL
-                rhosol[rarefaction_wave] = rhoL * base ** self._tdgm1
+                rhosol[rarefaction_wave] = rhoL * base**self._tdgm1
                 usol[rarefaction_wave] = self._tdgp1 * (
                     aL + self._gm1d2 * uL + dxdt[rarefaction_wave]
                 )
-                Psol[rarefaction_wave] = PL * base ** self._tgdgm1
+                Psol[rarefaction_wave] = PL * base**self._tgdgm1
                 flagsol[rarefaction_wave] = -1
             ## vacuum
             # variables are already 0, as they should be
@@ -639,11 +640,11 @@ class RiemannSolver:
                 ## rarefaction wave regime
                 # variable used twice below
                 base = self._tdgp1 - self._gm1dgp1 * (uR - dxdt[rarefaction_wave]) / aR
-                rhosol[rarefaction_wave] = rhoR * base ** self._tdgm1
+                rhosol[rarefaction_wave] = rhoR * base**self._tdgm1
                 usol[rarefaction_wave] = self._tdgp1 * (
                     -aR + self._tdgm1 * uR + dxdt[rarefaction_wave]
                 )
-                Psol[rarefaction_wave] = PR * base ** self._tgdgm1
+                Psol[rarefaction_wave] = PR * base**self._tgdgm1
                 flagsol[rarefaction_wave] = 1
             ## vacuum
             # variables are already 0, as they should be
@@ -701,11 +702,11 @@ class RiemannSolver:
                         self._tdgp1
                         - self._gm1dgp1 * (uR - dxdt[right_rarefaction]) / aR
                     )
-                    rhosol[right_rarefaction] = rhoR * base ** self._tdgm1
+                    rhosol[right_rarefaction] = rhoR * base**self._tdgm1
                     usol[right_rarefaction] = self._tdgp1 * (
                         -aR + self._tdgm1 * uR + dxdt[right_rarefaction]
                     )
-                    Psol[right_rarefaction] = PR * base ** self._tgdgm1
+                    Psol[right_rarefaction] = PR * base**self._tgdgm1
                 if np.any(right_state):
                     ## right state regime
                     rhosol[right_state] = rhoR
@@ -722,11 +723,11 @@ class RiemannSolver:
                     base = (
                         self._tdgp1 + self._gm1dgp1 * (uL - dxdt[left_rarefaction]) / aL
                     )
-                    rhosol[left_rarefaction] = rhoL * base ** self._tdgm1
+                    rhosol[left_rarefaction] = rhoL * base**self._tdgm1
                     usol[left_rarefaction] = self._tdgp1 * (
                         aL + self._tdgm1 * uL + dxdt[left_rarefaction]
                     )
-                    Psol[left_rarefaction] = PL * base ** self._tgdgm1
+                    Psol[left_rarefaction] = PL * base**self._tgdgm1
                 if np.any(left_state):
                     ## left state regime
                     rhosol[left_state] = rhoL
@@ -860,16 +861,16 @@ class RiemannSolver:
         left_state = ~right_state
 
         if np.any(right_state):
-            rhosol[right_state], usol[right_state], Psol[
-                right_state
-            ] = self.sample_right_state(
-                rhoR, uR, PR, aR, ustar, Pstar, dxdt[right_state]
+            rhosol[right_state], usol[right_state], Psol[right_state] = (
+                self.sample_right_state(
+                    rhoR, uR, PR, aR, ustar, Pstar, dxdt[right_state]
+                )
             )
             flagsol[right_state] = 1
         if np.any(left_state):
-            rhosol[left_state], usol[left_state], Psol[
-                left_state
-            ] = self.sample_left_state(rhoL, uL, PL, aL, ustar, Pstar, dxdt[left_state])
+            rhosol[left_state], usol[left_state], Psol[left_state] = (
+                self.sample_left_state(rhoL, uL, PL, aL, ustar, Pstar, dxdt[left_state])
+            )
             flagsol[left_state] = -1
 
         return rhosol, usol, Psol, flagsol
@@ -948,6 +949,7 @@ class RiemannSolver:
 
 ################################################################################
 ################################################################################
+
 
 ################################################################################
 # @brief Check if the relative difference between the two given values is

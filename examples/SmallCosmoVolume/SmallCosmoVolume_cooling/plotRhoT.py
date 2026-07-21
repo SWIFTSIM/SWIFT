@@ -66,6 +66,7 @@ unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
 
+
 # Primoridal mean molecular weight as a function of temperature
 def mu(T, H_frac=H_mass_fraction, T_trans=H_transition_temp):
     if T > T_trans:
@@ -96,13 +97,13 @@ rho = sim["/PartType0/Densities"][:]
 u = sim["/PartType0/InternalEnergies"][:]
 
 # Compute the temperature
-u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
+u *= unit_length_in_si**2 / unit_time_in_si**2
 u /= a ** (3 * (gas_gamma - 1.0))
 Temp = T(u)
 
 # Compute the physical density
-rho *= unit_mass_in_cgs / unit_length_in_cgs ** 3
-rho /= a ** 3
+rho *= unit_mass_in_cgs / unit_length_in_cgs**3
+rho /= a**3
 rho /= mH_in_kg
 
 # Life is better in log-space

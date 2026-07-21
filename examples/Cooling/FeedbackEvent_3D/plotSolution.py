@@ -91,7 +91,7 @@ boxSize = sim.metadata.boxsize[0]
 x = sim.gas.coordinates[:, 0] - boxSize / 2
 y = sim.gas.coordinates[:, 1] - boxSize / 2
 z = sim.gas.coordinates[:, 2] - boxSize / 2
-r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+r = np.sqrt(x**2 + y**2 + z**2)
 vel = sim.gas.velocities
 v_r = (x * vel[:, 0] + y * vel[:, 1] + z * vel[:, 2]) / r
 
@@ -106,7 +106,7 @@ data = dict(
     u=sim.gas.temperatures.to(K).value,
     S=sim.gas.entropies.to(keV / K).value,
     P=sim.gas.pressures.to(kPa).value,
-    rho=sim.gas.densities.to(mh / (cm ** 3)).value,
+    rho=sim.gas.densities.to(mh / (cm**3)).value,
 )
 
 # Try to add on the viscosity and diffusion.
@@ -128,11 +128,11 @@ binned = {
     for k, v in data.items()
 }
 square_binned = {
-    k: stats.binned_statistic(data["x"], v ** 2, statistic="mean", bins=x_bin_edge)[0]
+    k: stats.binned_statistic(data["x"], v**2, statistic="mean", bins=x_bin_edge)[0]
     for k, v in data.items()
 }
 sigma = {
-    k: np.sqrt(v2 - v ** 2)
+    k: np.sqrt(v2 - v**2)
     for k, v2, v in zip(binned.keys(), square_binned.values(), binned.values())
 }
 

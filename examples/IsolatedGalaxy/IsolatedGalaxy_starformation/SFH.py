@@ -96,8 +96,7 @@ def getSFH(filename, points):
 
 
 def getsfrsnapwide(numbsnaps):
-    """ Get the SFH from all the individual snaps
-    """
+    """Get the SFH from all the individual snaps"""
 
     # time = np.arange(1, 101, 1)
     time = np.zeros(numbsnaps)

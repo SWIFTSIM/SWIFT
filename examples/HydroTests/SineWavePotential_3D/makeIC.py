@@ -33,7 +33,7 @@ A = 10.0
 fileName = "sineWavePotential.hdf5"
 numPart_1D = 20
 boxSize = [1.0, 1.0]
-numPart = numPart_1D ** 3
+numPart = numPart_1D**3
 
 coords = np.zeros((numPart, 3))
 v = np.zeros((numPart, 3))
@@ -49,9 +49,9 @@ for i in range(numPart_1D):
     #  coords[i,0] = (i+np.random.random())/numPart
     for j in range(numPart_1D):
         for k in range(numPart_1D):
-            coords[numPart_1D ** 2 * i + numPart_1D * j + k, 0] = (i + 0.5) / numPart_1D
-            coords[numPart_1D ** 2 * i + numPart_1D * j + k, 1] = (j + 0.5) / numPart_1D
-            coords[numPart_1D ** 2 * i + numPart_1D * j + k, 2] = (k + 0.5) / numPart_1D
+            coords[numPart_1D**2 * i + numPart_1D * j + k, 0] = (i + 0.5) / numPart_1D
+            coords[numPart_1D**2 * i + numPart_1D * j + k, 1] = (j + 0.5) / numPart_1D
+            coords[numPart_1D**2 * i + numPart_1D * j + k, 2] = (k + 0.5) / numPart_1D
 
 V = 1.0 / numPart
 for i in range(numPart):

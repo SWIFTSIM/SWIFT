@@ -49,7 +49,7 @@ Msun = 1.98848e33  # g
 kpc = 3.08566e21  # cm
 mu = 0.6  #
 m_H = 1.67262e-24  # g
-gas_density_0 *= (10 ** 10 * Msun / kpc ** 3) / (mu * m_H)
+gas_density_0 *= (10**10 * Msun / kpc**3) / (mu * m_H)
 
 # Make plot
 import matplotlib.pyplot as plt
@@ -79,7 +79,7 @@ for i in range(4):
     gas_ids = data.gas.particle_ids.value
 
     # Load density and convert to number density
-    gas_densities = data.gas.densities.value * (10 ** 10 * Msun / kpc ** 3) / (mu * m_H)
+    gas_densities = data.gas.densities.value * (10**10 * Msun / kpc**3) / (mu * m_H)
 
     # Make a selection for jet and lobe particles only
     selection_jet_only = (gas_ids > 1e7) & (gas_ids < 2e7)

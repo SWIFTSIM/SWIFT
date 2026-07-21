@@ -38,8 +38,8 @@ fileName = "perturbedBox.hdf5"
 
 
 # ---------------------------------------------------
-numPart = L ** 3
-mass = boxSize ** 3 * rho / numPart
+numPart = L**3
+mass = boxSize**3 * rho / numPart
 internalEnergy = P / ((gamma - 1.0) * rho)
 
 # Generate particles

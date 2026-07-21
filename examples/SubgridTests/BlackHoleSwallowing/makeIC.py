@@ -42,7 +42,7 @@ unit_T_cgs = 1.0
 unit_t_cgs = unit_l_cgs / unit_v_cgs
 
 boxsize_cgs = 10.0 * kpc_in_cm
-vol_cgs = boxsize_cgs ** 3
+vol_cgs = boxsize_cgs**3
 
 # ---------------------------------------------------
 glass = h5py.File("glassCube_32.hdf5", "r")
@@ -104,7 +104,7 @@ print(
 # Convert to internal units
 bh_m = bh_m_cgs / unit_m_cgs
 m[:] = m_cgs / unit_m_cgs
-u[:] = u_cgs * unit_v_cgs ** -2
+u[:] = u_cgs * unit_v_cgs**-2
 boxsize = boxsize_cgs / unit_l_cgs
 
 

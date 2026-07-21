@@ -74,7 +74,7 @@ def parse_options():
         help="output filename",
     )
 
-    (options, args) = parser.parse_args()
+    options, args = parser.parse_args()
 
     files = args
 
@@ -102,11 +102,11 @@ UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
 
 
 # Number of particles
-N = (2 ** opt.level) ** 3  # number of particles
+N = (2**opt.level) ** 3  # number of particles
 
 # Mean density
 rho = opt.rho  # atom/cc
-rho = rho * constants.m_p / units.cm ** 3
+rho = rho * constants.m_p / units.cm**3
 
 # Gas particle mass
 m = opt.mass  # in solar mass
@@ -137,14 +137,14 @@ print("Equivalent velocity dispertion        : {}".format(sigma.to(units.m / uni
 # Convert to code units
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
-rho = rho.to(UnitMass / UnitLength ** 3).value
+rho = rho.to(UnitMass / UnitLength**3).value
 sigma = sigma.to(UnitVelocity).value
 
 # Generate the particles
 pos = np.random.random([N, 3]) * np.array([L, L, L])
 vel = np.zeros(N)
 mass = np.ones(N) * m
-u = np.ones(N) * sigma ** 2
+u = np.ones(N) * sigma**2
 ids = np.arange(N)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
 rho = np.ones(N) * rho

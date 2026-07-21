@@ -21,7 +21,6 @@
 ###############################################################################
 """
 
-
 import numpy as np
 import write_gadget as wg
 import h5py as h5
@@ -75,9 +74,7 @@ class Particles(object):
         Please give angle in radians.
         """
         force_modifier = (
-            np.sqrt(
-                self.gravitymass / (self.radii ** 2 + self.softening ** 2) ** (3 / 2)
-            )
+            np.sqrt(self.gravitymass / (self.radii**2 + self.softening**2) ** (3 / 2))
             * self.radii
         )
         try:
@@ -171,7 +168,7 @@ class Particles(object):
     def wiggle_positions(self, tol=1e-3):
         """
         'Wiggle' the positions to avoid precision issues.
-        
+
         Note that this does not touch r, theta, phi.
         """
         self.positions += np.random.random(self.positions.shape) * tol
@@ -552,14 +549,12 @@ def gen_particles_gaussian(meta):
 if __name__ == "__main__":
     import argparse as ap
 
-    PARSER = ap.ArgumentParser(
-        description="""
+    PARSER = ap.ArgumentParser(description="""
                     Initial conditions generator for the Keplerian Ring
                     example. It has sensible defaults for GIZMO, but if you
                     wish to run the example with SPH you sould use
                     --generationmethod spiral.
-                    """
-    )
+                    """)
 
     PARSER.add_argument(
         "-m",

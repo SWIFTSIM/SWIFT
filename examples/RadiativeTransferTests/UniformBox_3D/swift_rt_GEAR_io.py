@@ -96,8 +96,8 @@ class Rundata(object):
         self.use_const_emission_rate = False
         self.has_stars = False  # assume we don't have stars, check while reading in
         self.has_star_debug_data = (
-            False
-        )  # assume we don't have stars, check while reading in
+            False  # assume we don't have stars, check while reading in
+        )
 
         self.ngroups = 0  # photon frequency groups
         self.const_emission_rates = None

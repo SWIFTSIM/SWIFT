@@ -17,7 +17,7 @@
 #
 ##############################################################################
 """
-Plots the solution of the square test in a smoothed way using SWIFTsimIO's 
+Plots the solution of the square test in a smoothed way using SWIFTsimIO's
 smoothed plotting.
 """
 

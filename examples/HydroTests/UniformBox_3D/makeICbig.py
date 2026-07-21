@@ -36,8 +36,8 @@ eta = 1.2349  # 48 ngbs with cubic spline kernel
 fileName = "uniformBox_%d.hdf5" % L
 
 # ---------------------------------------------------
-numPart = L ** 3
-mass = boxSize ** 3 * rho / numPart
+numPart = L**3
+mass = boxSize**3 * rho / numPart
 internalEnergy = P / ((gamma - 1.0) * rho)
 
 # ---------------------------------------------------
@@ -129,7 +129,7 @@ for n in range(n_iterations):
     ds_id[offset : offset + N] = ids + 1
     x = ids % L
     y = ((ids - x) / L) % L
-    z = (ids - x - L * y) / L ** 2
+    z = (ids - x - L * y) / L**2
     ids = zeros(1)
     coords = zeros((N, 3))
     coords[:, 0] = z[:, 0] * boxSize / L + boxSize / (2 * L)
@@ -164,7 +164,7 @@ ids = linspace(offset, offset + remainder, remainder, endpoint=False).reshape(
 ds_id[offset : offset + remainder] = ids + 1
 x = ids % L
 y = ((ids - x) / L) % L
-z = (ids - x - L * y) / L ** 2
+z = (ids - x - L * y) / L**2
 coords = zeros((remainder, 3))
 coords[:, 0] = z[:, 0] * boxSize / L + boxSize / (2 * L)
 coords[:, 1] = y[:, 0] * boxSize / L + boxSize / (2 * L)

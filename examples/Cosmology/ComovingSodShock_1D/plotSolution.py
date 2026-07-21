@@ -91,7 +91,7 @@ rho_s, v_s, P_s, _ = solver.solve(rho_L, v_L, P_L, rho_R, v_R, P_R, x_s / time)
 
 # Additional arrays
 u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
-s_s = P_s / rho_s ** gas_gamma  # entropic function
+s_s = P_s / rho_s**gas_gamma  # entropic function
 
 # Shock position (since we want to overplot it in the viscosity/diffusion plot
 c_R = sqrt(gas_gamma * P_R / rho_R)

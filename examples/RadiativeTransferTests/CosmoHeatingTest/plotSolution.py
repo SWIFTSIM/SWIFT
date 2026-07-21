@@ -46,13 +46,13 @@ plot_time = False
 
 # -----------------------------------------------------------------------
 
-energy_units = unyt.Msun * unyt.kpc ** 2 / unyt.kyr ** 2
+energy_units = unyt.Msun * unyt.kpc**2 / unyt.kyr**2
 mass_units = unyt.Msun
 
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp
@@ -79,7 +79,7 @@ def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
 
 def gas_temperature(u, mu, gamma):
     """
-    Compute the gas temperature given the specific internal 
+    Compute the gas temperature given the specific internal
     energy u and the mean molecular weight mu
     """
 
@@ -93,7 +93,7 @@ def gas_temperature(u, mu, gamma):
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -158,7 +158,7 @@ def get_snapshot_data(snaplist):
     Returns:
         numpy arrays of:
             time
-            temperatures 
+            temperatures
             mean molecular weights
             mass fractions
     """

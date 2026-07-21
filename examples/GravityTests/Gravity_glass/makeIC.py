@@ -33,8 +33,8 @@ L = int(sys.argv[1])  # Number of particles along one axis
 fileName = "uniform_DM_box.hdf5"
 
 # ---------------------------------------------------
-numPart = L ** 3
-mass = boxSize ** 3 * rho / numPart
+numPart = L**3
+mass = boxSize**3 * rho / numPart
 
 # --------------------------------------------------
 

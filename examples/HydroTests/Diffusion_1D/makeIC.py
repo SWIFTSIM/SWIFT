@@ -73,7 +73,7 @@ def get_particle_hsml(box_length: float, n_part: int) -> np.array:
 
 if __name__ == "__main__":
     import argparse as ap
-    from swiftsimio import Writer
+    import swiftsimio as sw
 
     parser = ap.ArgumentParser(
         description="Makes initial conditions for the ContactDiscontinuity_1D test."
@@ -129,15 +129,42 @@ if __name__ == "__main__":
 
     boxsize = 1.0 * unyt.cm
 
-    writer = Writer(cgs, boxsize, dimension=1)
+    boxsize_cosmo = sw.cosmo_array(
+        [boxsize.value],
+        boxsize.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    )
+    writer = sw.Writer(unit_system=cgs, boxsize=boxsize_cosmo, dimension=1)
 
-    coordinates = np.zeros((n_part, 3), dtype=float) * unyt.cm
-    coordinates[:, 0] = get_particle_positions(boxsize, n_part)
+    coordinates = np.zeros((n_part, 3), dtype=float)
+    coordinates[:, 0] = get_particle_positions(boxsize, n_part).value
+    writer.gas.coordinates = sw.cosmo_array(
+        coordinates, unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
 
-    writer.gas.coordinates = coordinates
-    writer.gas.velocities = np.zeros((n_part, 3), dtype=float) * unyt.cm / unyt.s
-    writer.gas.masses = get_particle_masses(mass, n_part)
-    writer.gas.internal_energy = get_particle_u(low, high, n_part)
-    writer.gas.smoothing_length = get_particle_hsml(boxsize, n_part)
+    writer.gas.velocities = sw.cosmo_array(
+        np.zeros((n_part, 3), dtype=float),
+        unyt.cm / unyt.s,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+
+    masses = get_particle_masses(mass, n_part)
+    writer.gas.masses = sw.cosmo_array(
+        masses.value, masses.units, comoving=True, scale_factor=1.0, scale_exponent=0
+    )
+
+    u = get_particle_u(low, high, n_part)
+    writer.gas.internal_energy = sw.cosmo_array(
+        u.value, u.units, comoving=True, scale_factor=1.0, scale_exponent=-2
+    )
+
+    h = get_particle_hsml(boxsize, n_part)
+    writer.gas.smoothing_lengths = sw.cosmo_array(
+        h.value, h.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
 
     writer.write("diffusion.hdf5")

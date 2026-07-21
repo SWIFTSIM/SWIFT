@@ -79,7 +79,7 @@ if gridtype == "cartesian":
     fileName = "Gradients_cartesian.hdf5"
     boxSize = [1.0, 1.0, 1.0]
     nx = 20
-    npart = nx ** 3
+    npart = nx**3
     partVol = 1.0 / npart
     coords = np.zeros((npart, 3))
     h = np.zeros((npart, 1))

@@ -64,8 +64,8 @@ numPart_L = size(h_LL)
 numPart_R = size(h_RR)
 numPart = size(h)
 
-vol_L = pi * 0.25 ** 2
-vol_R = 1.0 - pi * 0.25 ** 2
+vol_L = pi * 0.25**2
+vol_R = 1.0 - pi * 0.25**2
 
 # Generate extra arrays
 v = zeros((numPart, 3))

@@ -46,7 +46,7 @@ div_reg = 1e-30
 
 def set_colorbar(fig, ax, im):
     """sets a nicely placed colorbar at the right of the given axis object <ax>, in figure <fig>
-        with image <im>"""
+    with image <im>"""
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = fig.colorbar(im, cax=cax, extend="both")

@@ -107,7 +107,7 @@ def plot_param_over_time(snapshot_list, param="energy density", redshift_domain=
                 # The SWIFT cosmology module assumes 3-dimensional lengths and volumes,
                 # so multiply by a**2 to get the correct relations
                 physical_energy_density = (
-                    energy_density.to_physical() * meta.scale_factor ** 2
+                    energy_density.to_physical() * meta.scale_factor**2
                 )
                 physical_energy = energy.to_physical()
 

@@ -40,7 +40,7 @@ with h5py.File(args.input, "r") as handle:
     ut = (units["Unit time in cgs (U_t)"][0] * unyt.s).in_base("galactic")
 
     coords = (coords * uL).in_base("galactic")
-    rho = (rho * uM / uL ** 3).in_base("galactic")
+    rho = (rho * uM / uL**3).in_base("galactic")
     T = T * unyt.K
     vs = (vs * uL / ut).in_base("galactic")
     time = (time * ut).in_base("galactic")
@@ -48,7 +48,7 @@ with h5py.File(args.input, "r") as handle:
 
     coords -= 0.5 * box[None, :]
 
-    x = np.sqrt((coords ** 2).sum(axis=1))
+    x = np.sqrt((coords**2).sum(axis=1))
     v = (coords * vs).sum(axis=1) / x
 
 rhohist, edges, _ = stats.binned_statistic(x, rho, statistic="median", bins=100)

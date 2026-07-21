@@ -48,10 +48,10 @@ sn_time = 0.00125  # time in internal units between injections
 
 def get_thermal_energy(data, unit):
     """returns the total thermal energy of the particles
-       E_th = sum (u_i * m_i)
-         
-      data:  the data snapshot
-      unit:  the energy unit to convert to"""
+     E_th = sum (u_i * m_i)
+
+    data:  the data snapshot
+    unit:  the energy unit to convert to"""
     u = data.gas.internal_energies.to_physical()
     m = data.gas.masses.to_physical()
 
@@ -64,10 +64,10 @@ def get_thermal_energy(data, unit):
 
 def get_radiated_energy(data, unit):
     """returns the total radiated energy
-       cumulated sum over time on particle basis
+    cumulated sum over time on particle basis
 
-       data:  the data snapshot
-       unit:  the energy unit to convert to"""
+    data:  the data snapshot
+    unit:  the energy unit to convert to"""
     try:
         Er = np.sum(data.gas.radiated_energies)
 
@@ -81,10 +81,10 @@ def get_radiated_energy(data, unit):
 
 def get_kinetic_energy(data, unit):
     """returns the total kinetic energy of the particles
-       E_k = sum (m_i * (v_i)**2 / 2)
+    E_k = sum (m_i * (v_i)**2 / 2)
 
-       data:  the data snapshot
-       unit:  the energy unit to convert to"""
+    data:  the data snapshot
+    unit:  the energy unit to convert to"""
     v_vec = data.gas.velocities.to_physical()
     v = np.sqrt(np.sum(np.square(v_vec), axis=1))
 
@@ -100,10 +100,10 @@ def get_kinetic_energy(data, unit):
 
 def get_injected_energy(data, unit):
     """returns the total injected energy
-       cumulated sum over time on particle basis
+    cumulated sum over time on particle basis
 
-       data:  the data snapshot
-       unit:  the energy unit to convert to"""
+    data:  the data snapshot
+    unit:  the energy unit to convert to"""
     E_inj_part = data.gas.forcing_injected_energies
 
     E_inj = np.sum(E_inj_part)
@@ -116,8 +116,8 @@ def get_injected_energy(data, unit):
 def get_time(data, unit):
     """returns the time of the snapshot
 
-       data: the data snapshot
-       unit: the time unit to convert to"""
+    data: the data snapshot
+    unit: the time unit to convert to"""
     t = data.metadata.time
     t.convert_to_units(unit)
     return t
@@ -125,10 +125,10 @@ def get_time(data, unit):
 
 def get_energy_evolution(path):
     """Loops over all the snapshots in the directory to obtain the
-       energy in the different components. Returns a dictionary
-       with arrays of the time evolution of the different components
+    energy in the different components. Returns a dictionary
+    with arrays of the time evolution of the different components
 
-       path:  the directory containing the snapshots"""
+    path:  the directory containing the snapshots"""
     # specify the units we are using
     ut = unyt.Myr
     uE = 1e53 * unyt.erg

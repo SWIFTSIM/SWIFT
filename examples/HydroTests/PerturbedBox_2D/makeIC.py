@@ -37,8 +37,8 @@ fileName = "perturbedPlane.hdf5"
 
 
 # ---------------------------------------------------
-numPart = L ** 2
-mass = boxSize ** 2 * rho / numPart
+numPart = L**2
+mass = boxSize**2 * rho / numPart
 internalEnergy = P / ((gamma - 1.0) * rho)
 
 # Generate particles
