@@ -42,6 +42,8 @@
 #include "./forcing/BalsaraKim/forcing.h"
 #elif defined(FORCING_IDEALIZED_AGN_JET)
 #include "./forcing/idealized_agn_jet/forcing.h"
+#elif defined(FORCING_DRIVEN_TURBULENCE)
+#include "./forcing/driven_turbulence/forcing.h"
 #else
 #error "Invalid choice of forcing terms"
 #endif
