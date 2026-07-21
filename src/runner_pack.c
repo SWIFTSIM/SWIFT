@@ -30,7 +30,48 @@
 
 /* Local headers. */
 #include "cell.h"
+#include "engine.h"
 #include "timers.h"
+
+/**
+ * @brief Recompute the hydro h_max_active of a (foreign) cell and its
+ * progeny after their particles' time-bins have just been overwritten.
+ *
+ * cell_unpack_timebin() can lower a particle's time-bin (waking it up, e.g.
+ * following a time-step limiter/sync propagation) without going through
+ * recv_xv/recv_rho, which are the only tasks that normally refresh
+ * h_max_active (see runner_do_recv_part()). Left stale, h_max_active can
+ * under-count a particle that just became active, since it was excluded
+ * from the max the last time h_max_active was computed. This trips the "h
+ * larger than h_max_active" debug check in the limiter pair/self
+ * interactions.
+ *
+ * @param c The #cell (and its progeny) whose time-bins were just unpacked.
+ * @param max_active_bin The current maximal active time-bin.
+ */
+static void cell_update_hydro_h_max_active(struct cell *c,
+                                           const timebin_t max_active_bin) {
+
+  float h_max_active = 0.f;
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        cell_update_hydro_h_max_active(c->progeny[k], max_active_bin);
+        h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
+      }
+    }
+  } else {
+    const struct part *parts = c->hydro.parts;
+    for (int i = 0; i < c->hydro.count; ++i) {
+      if (parts[i].time_bin == time_bin_inhibited) continue;
+      if (parts[i].time_bin <= max_active_bin)
+        h_max_active = max(h_max_active, parts[i].h);
+    }
+  }
+
+  c->hydro.h_max_active = h_max_active;
+}
 
 /**
  * @brief Pack the data needed by the time-step limiter loop prior to sending
@@ -63,6 +104,10 @@ void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
                               const int timer) {
 
   cell_unpack_timebin(c, (timebin_t *)buffer);
+
+  /* The time-bins we just overwrote may have woken particles up; make sure
+     h_max_active reflects that before the limiter task reads it. */
+  cell_update_hydro_h_max_active(c, r->e->max_active_bin);
 
   free(buffer);
 }
