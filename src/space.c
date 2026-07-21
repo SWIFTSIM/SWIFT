@@ -4537,7 +4537,7 @@ int FAS_recursive(struct threadpool *tp, double *u, const double *residual, stru
     message("The residual after pre-smoothing is %E", coarser_residual_abs);
 
     int diverged = FAS_recursive(tp, coarser_solution, coarser_residual, MG, cdimH, delta, N_stop, depth);
-    message("The diverged value is %d", diverged);
+    if (diverged) message("The diverged value is %d", diverged);
     if (diverged) {
       swift_free("restricted_residual", restricted_residual);
       swift_free("coarser_solution", coarser_solution);

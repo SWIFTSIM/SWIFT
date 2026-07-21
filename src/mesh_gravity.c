@@ -1132,7 +1132,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
                               struct threadpool* tp, const struct cosmology *cosmo, const int verbose, const int MG) {
 
 #ifdef HAVE_FFTW
-  message("Doing this");
   const double r_s = mesh->r_s;
   const double r_s_MG = 0.;
   const double box_size = s->dim[0];
@@ -1150,7 +1149,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   const int N_half = N / 2;
   const double cell_fac = N / box_size;
   /* Constants for the MG density/potential mesh */
-  int N_MG = 256;
+  int N_MG = 128;
   const int N_half_MG = N_MG / 2;
   const double cell_fac_MG = N_MG / box_size;
 
@@ -1248,7 +1247,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
       data_MG.const_G = 0.f;
       data_MG.nu_model = &nu_model;
 
-      if (nr_local_cells == 0) {
+      //if (nr_local_cells == 0) {
 
         /* We don't have a cell infrastructure in place so we need to
         * directly loop over the particles */
@@ -1256,14 +1255,14 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
                       sizeof(struct gpart), threadpool_auto_chunk_size,
                       (void*)&data_MG);
 
-      } else { /* Normal case */ //Not tested but just copied so *should* be fine
+      //} else { /* Normal case */ //Not tested but just copied so *should* be fine
 
         /* Do a parallel CIC mesh assignment of the gparts but only using
         * the local top-level cells */
-        threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
-                      nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                      (void*)&data_MG);
-      }
+        //threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
+          //            nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+            //          (void*)&data_MG);
+      //}
     }
 
     /* Do the actual calculation. rho_MG receives the extra overdensity due to f_R */
@@ -1380,7 +1379,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   data.const_G = s->e->physical_constants->const_newton_G;
   data.reset = 1;
 
-  if (nr_local_cells == 0) {
+  //if (nr_local_cells == 0) {
 
     /* We don't have a cell infrastructure in place so we need to
     * directly loop over the particles */
@@ -1388,14 +1387,14 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
                   sizeof(struct gpart), threadpool_auto_chunk_size,
                   (void*)&data);
 
-  } else { /* Normal case */
+  //} else { /* Normal case */
 
     /* Do a parallel CIC mesh interpolation onto the gparts but only using
       the local top-level cells */
-    threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
-                  nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                  (void*)&data);
-  }
+    //threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
+      //            nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+    //              (void*)&data);
+  //}
 
   if (verbose)
     message("Computing mesh accelerations took %.3f %s.",

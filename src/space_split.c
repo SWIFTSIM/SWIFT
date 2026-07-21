@@ -201,7 +201,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 1;
 
     /* Create the cell's progeny. */
-    space_getcells(s, 8, c->progeny, tpid, 0, 0);
+    space_getcells(s, 8, c->progeny, tpid);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       cp->hydro.count = 0;
