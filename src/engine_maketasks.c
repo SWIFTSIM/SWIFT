@@ -740,16 +740,16 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, t_rho, ci->hydro.super->sinks.sink_ghost1);
 
       if (ci->hydro.count > 0) {
-	/* Add dependencies send_sink_counts --> send rho, gas swallow, sink
-	   merger. This ensures the new counts are sent before any other
-	   information */
+        /* Add dependencies send_sink_counts --> send rho, gas swallow, sink
+           merger. This ensures the new counts are sent before any other
+           information */
         scheduler_addunlock(s, t_sink_formation_counts, t_rho);
         scheduler_addunlock(s, t_sink_formation_counts, t_sink_gas_swallow);
-	scheduler_addunlock(s, t_sink_formation_counts, t_sink_merger);
+        scheduler_addunlock(s, t_sink_formation_counts, t_sink_merger);
       }
 
       /* Note that agter sink_swallow, we know who the sinks will
-	 swallow. Hence we can send both merger data at the same time */
+         swallow. Hence we can send both merger data at the same time */
       /* Ghost1 before you send the sink gas swallow */
       scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
                           t_sink_gas_swallow);
@@ -1458,8 +1458,8 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
 
     if (c->hydro.count > 0) {
       /* Add dependencies recv_sink_counts --> recv rho, gas swallow, sink
-	 merger. This ensures the new counts are received before any other
-	 information. */
+         merger. This ensures the new counts are received before any other
+         information. */
       scheduler_addunlock(s, t_sink_formation_counts, t_rho);
       scheduler_addunlock(s, t_sink_formation_counts, t_sink_gas_swallow);
       scheduler_addunlock(s, t_sink_formation_counts, t_sink_merger);
@@ -1554,8 +1554,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   const int are_particles_forming =
       (with_star_formation && c->hydro.count > 0) ||
       (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0));
-    /* Note: Sink formation does not change the number of gparts. Hence, we do
-       not need to create a t_grav_counts task */
+  /* Note: Sink formation does not change the number of gparts. Hence, we do
+     not need to create a t_grav_counts task */
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -2054,6 +2054,15 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Report each super-cell's local particle counts. */
+    message(
+        "SUPER-CELL: id=%lld top_id=%lld is_top=%d depth=%d hydro.count=%d "
+        "sinks.count=%d stars.count=%d",
+        c->cellID, c->top->cellID, (c == c->top), c->depth, c->hydro.count,
+        c->sinks.count, c->stars.count);
+#endif
+
     /* Add the sort task. */
     c->hydro.sorts =
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
@@ -2225,6 +2234,39 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                                with_star_formation_sink))) {
           scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
                               c->stars.stars_in);
+        }
+
+        /* This cell has no local gas/sinks, so it was skipped by the resort
+         * gate above. cell_add_spart/cell_add_gpart still shift the whole
+         * top-level array when a sibling cell spawns a particle, so this
+         * cell's stars pipeline needs a direct dependency on star formation
+         * to avoid running concurrently with that shift. Gated on the
+         * top-level tasks rather than the resort task to avoid a cycle. */
+        else if (with_feedback) {
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Report cells matching the condition above that also carry
+           * stars, to check whether this path is ever exercised. */
+          if (c->stars.count > 0) {
+            message(
+                "VULNERABLE CELL: id=%lld top_id=%lld depth=%d "
+                "hydro.count=%d sinks.count=%d stars.count=%d "
+                "top->hydro.count=%d top->sinks.count=%d",
+                c->cellID, c->top->cellID, c->depth, c->hydro.count,
+                c->sinks.count, c->stars.count, c->top->hydro.count,
+                c->top->sinks.count);
+          }
+#endif
+          /* Disabled: not yet observed to fire; needs validating at scale
+           * before it can unlock unconditionally. */
+          if (0 && with_star_formation && c->top->hydro.count > 0) {
+            scheduler_addunlock(s, c->top->hydro.star_formation,
+                                c->stars.stars_in);
+          }
+          if (0 && with_star_formation_sink &&
+              (c->top->hydro.count > 0 || c->top->sinks.count > 0)) {
+            scheduler_addunlock(s, c->top->sinks.star_formation_sink,
+                                c->stars.stars_in);
+          }
         }
       }
 

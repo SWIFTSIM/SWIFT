@@ -1174,6 +1174,16 @@ struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
   /* Copy the gpart */
   *gp = *s->gpart;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Report the sink's gravitational state at spawn time. */
+  message(
+      "sink id=%lld: gpart a_grav=[%f %f %f] potential=%f initialised=%d "
+      "num_interacted=%lld ti_drift=%lld",
+      s->id, s->gpart->a_grav[0], s->gpart->a_grav[1], s->gpart->a_grav[2],
+      s->gpart->potential, s->gpart->initialised, s->gpart->num_interacted,
+      s->gpart->ti_drift);
+#endif
+
   /* Assign the ID. */
   sp->id = space_get_new_unique_id(e->s);
   gp->type = swift_type_stars;

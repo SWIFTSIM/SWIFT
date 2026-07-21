@@ -390,7 +390,24 @@ void scheduler_ranktasks(struct scheduler *s) {
   /* Main loop. */
   for (int j = 0, rank = 0; j < nr_tasks; rank++) {
     /* Did we get anything? */
-    if (j == left) error("Unsatisfiable task dependencies detected.");
+    if (j == left) {
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Dump the tasks still waiting on an unlock to help identify the
+       * cycle. */
+      int printed = 0;
+      for (int k = 0; k < nr_tasks && printed < 60; k++) {
+        struct task *t = &tasks[k];
+        if (t->wait == 0) continue;
+        printed++;
+        const long long ci_id = t->ci ? t->ci->cellID : -1;
+        const long long cj_id = t->cj ? t->cj->cellID : -1;
+        message("STUCK TASK: idx=%d type=%s subtype=%s wait=%d ci=%lld cj=%lld",
+                k, taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
+                ci_id, cj_id);
+      }
+#endif
+      error("Unsatisfiable task dependencies detected.");
+    }
 
     /* Unlock the next layer of tasks. */
     const int left_old = left;
