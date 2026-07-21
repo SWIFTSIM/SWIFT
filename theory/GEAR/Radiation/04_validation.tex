@@ -230,7 +230,43 @@ vs.\ $141.3\%$, overlapping intervals) -- consistent with the angular
 scheme's per-pixel budget-splitting needing enough particles per
 pixel's solid angle to manifest a distinct effect.
 
-\textbf{Open}: what magnitude of erosion/compression Smith et al.\
-(2021)'s own Figure 2 reports, to judge whether the current result
-matches it; whether the compression signal measured here is the same
-effect the paper calls erosion, or something distinct from it.
+\textbf{Direct comparison against Smith et al.\ (2021)'s own Figure 2}:
+the paper reports no quantitative erosion number at all -- their own
+validation is qualitative, describing the spherical scheme as
+disrupting "a significant portion of the clump" and the HealPix scheme
+as leaving it "barely disturbed"/"relatively undisturbed". Replotting
+our own \code{gas\_mass=20} snapshot in their exact convention
+($\log_{10}(T/\mu\,[{\rm K}])$, $\mu=1$, colorbar 1.0--4.5, green
+circle at the no-clump Raga-II prediction, $26.7\,$pc at $t=8\,$Myr)
+for a direct visual comparison:
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.55\linewidth]{Figures/clump_smith2021_style_comparison}
+  \caption{Our \texttt{gas\_mass=20} result in Smith et al.\ (2021)'s own
+    Figure 2 convention: spherical (top) vs.\ HealPix/angular (bottom),
+    $t=8\,$Myr, green circle at the no-clump Raga-II prediction
+    ($26.7\,$pc).}
+  \label{fig:clump-smith2021-style}
+\end{figure}
+
+Their Figure 2 shows a visible intermediate-temperature shell (a
+partially-heated halo, distinct from both the ionized bubble and the
+cold clump) draping around the clump, most pronounced in the spherical
+panel -- this shell is essentially absent from our own result in both
+schemes, which shows a sharp, direct transition from ionized bubble to
+cold clump instead. This is consistent with a known SPH-vs-moving-mesh
+difference: \citet{Smith2021} use AREPO (moving-mesh Godunov), which
+handles mixing at contact discontinuities more physically than SPH,
+which is prone to under-mixing (an artificial surface-tension-like
+effect) at sharp density contrasts like this clump's $100\times$ jump.
+This is a plausible explanation for the qualitatively smaller
+disruption signal measured here relative to the paper's description,
+and would not be a bug in the photoionization/budget-splitting
+algorithm itself -- testable by rerunning with \swift's Gizmo MFV/MFM
+solver instead of SPH and comparing directly, not yet attempted.
+
+\textbf{Open}: whether the compression signal measured here (near-side
+density increase) is the same effect the paper calls erosion/disruption,
+or a distinct effect the missing mixing shell would otherwise mask;
+the AREPO-vs-SPH mixing comparison above, if pursued.
