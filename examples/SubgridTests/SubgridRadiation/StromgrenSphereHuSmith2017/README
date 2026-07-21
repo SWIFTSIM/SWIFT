@@ -1,156 +1,38 @@
 # Intro
-Reproduces the D-type expansion convergence test from Hu et al. (2017,
-MNRAS 471, 2151), Appendix A -- the base algorithm this branch's own HII
-photoionization scheme builds on, before Smith et al. (2021)'s angular
-(HEALPix) budget-splitting addition. Four star particles co-located at the
-box center, each with `Q_H = 2.5e48` photons/s (`star_mass=19.2 Msun` in
-this code's fit), `S_tot = 1e49` photons/s combined -- "typical for an O
-star" (Hu et al. 2017). Uniform pure-hydrogen medium, `n_H = 100 cm^-3`.
-No clump: this reuses `../StromgrenSphereClumpSmith2021/`'s
-`makeIC_clump.py` with `clump_radius_pc=0`, which cleanly degenerates to
-a uniform box (verified directly: 0 clump particles, no carve-out from
-the diffuse background).
+Reproduces the D-type expansion convergence test from Hu et al. (2017, MNRAS 471, 2151), Appendix A -- the base algorithm this branch's HII photoionization scheme builds on, before Smith et al. (2021)'s angular (HEALPix) budget-splitting addition. Four star particles co-located at the box center, each `Q_H = 2.5e48` photons/s (`star_mass=19.2 Msun`), `1e49` photons/s combined. Uniform pure-hydrogen medium, `n_H = 100 cm^-3`. Reuses `../StromgrenSphereClumpSmith2021/`'s `makeIC_clump.py` with `clump_radius_pc=0` (degenerates to a uniform box, 0 clump particles).
 
-Use `../StromgrenSphereClumpSmith2021/` (with its clump intact) to assess
-differences between the uniform ("spherical", `nside=0`) and angular
-(`nside=1`) budget-splitting schemes -- there is no precise published
-metric for that comparison, only Smith et al.'s own qualitative
-mass-biasing argument. This example is the opposite: a *uniform* medium
-with a precise, published analytic target, specifically so the
-angular-splitting question doesn't confound the validation.
+Use `../StromgrenSphereClumpSmith2021/` (clump intact) to assess the uniform (`nside=0`) vs. angular (`nside=1`) budget-splitting schemes; this example is deliberately uniform so that question doesn't confound the validation here.
 
-## Validating against Raga-II (Hosokawa & Inutsuka 2006), not the Bisbas
-## et al. (2015) STARBENCH blend
-Hu et al. (2017) validate their own D-type test against the classical
-Spitzer (1978) solution at early times and against a late-time formula
-they call "STARBENCH" (quoting their own Appendix A directly: "This
-late-time evolution is investigated in Bisbas et al. (2015) using several
-different radiative transfer codes as part of the code comparison project
-STARBENCH"). Smith et al. (2021, Fig. 1) plot the same curve under the
-same name. **What both papers actually plot under that label is
-Hosokawa & Inutsuka (2006)'s shell-inertia ODE (Raga-II, Eqn 11) directly
--- confirmed against their own published curves (~25 pc by t=8 Myr for
-this exact configuration) -- not the full Bisbas et al. (2015) Eqn 28-29
-blend** (Raga-II plus a time-dependent weighted combination with Raga-I,
-which reads ~20 pc here instead). The blend's time-dependent weight was
-calibrated against single-source RHD simulations and does not transfer to
-this four-co-located-source configuration; `hu_smith_analytic_check.py`
-checks against Raga-II by default (`--reference raga2`) for exactly this
-reason, and does not plot the blend (would be misleadingly labeled
-"STARBENCH" here). Both Raga-I and the blend remain available via
-`--reference` for comparison. See `StromgrenSphereStarbench/README` for
-the single-source case, where the full blend genuinely is the right
-target.
+## Reference curve
+Hu et al. (2017) and Smith et al. (2021, Fig. 1) both plot a late-time curve labeled "STARBENCH" -- this is Hosokawa & Inutsuka (2006)'s shell-inertia ODE (Raga-II, Eqn 11), not the full Bisbas et al. (2015) Eqn 28-29 blend (~20 pc vs. their ~25 pc by t=8 Myr for this configuration; the blend's time-dependent weight is calibrated for a single source and doesn't transfer to 4 co-located ones). `hu_smith_analytic_check.py` checks against Raga-II by default (`--reference raga2`) and does not plot the blend. `--reference {raga1,starbench}` selects the others.
 
-## Temperature: Z=0, this code's own floors, not the papers' flat 1e4 K
-`GEARChemistry:initial_metallicity=0` -- literally pure hydrogen,
-matching Hu et al. and Smith et al.'s own medium exactly (`X_H=1`, no
-metal term in either paper's algorithm). This code's own
-metallicity-dependent collisional-equilibrium fit
-(`radiation_get_T_collisional_K`) gives `T_i~47500 K` at `Z=0`, not the
-papers' flat `T_i=1e4 K` -- see "What actually happened" below for why
-`Z/Zsun~0.231` (this project's usual workaround to hit `T_i=1e4 K`
-exactly) is *not* used here. The STARBENCH comparison is evaluated at
-whatever `T_i`/`T_o` this run actually used
-(`hu_smith_analytic_check.py --T-ionized-K --T-neutral-K`, defaulting to
-47500/1000), not hardcoded to the papers' own numbers -- this remains a
-valid, precise check even though it isn't a literal point-by-point
-reproduction of Hu et al.'s own trajectory (their own curve was measured
-at `T_i=1e4 K`; ours is a physically different, hotter, faster-expanding
-region by design).
-
-## What actually happened (2026-07-19): the neutral gas was not
-## staying anywhere near `T_o`
-The first version of this example used `Z/Zsun=0.231` (to hit `T_i=1e4 K`
-exactly, this project's usual workaround) and left
-`SPH:minimal_temperature` at its usual value of 1 K. A direct check on
-the sibling `StromgrenSphereStarbench` example (same metallicity/floor
-choice, denser medium) found untagged (neutral) gas sitting at **2-5 K**
-from the very first snapshot onward, not anywhere near `T_o`. Real
-metal-line cooling at `Z/Zsun=0.231` (absent from the papers' literal
-pure-H test) combined with no floor to stop it, and the gas just kept
-cooling. The same diagnostic on this example's own (accidentally
-full-length, coarse-resolution) smoke test confirmed the identical
-pattern at `n_H=100/cm^3` -- not just at the STARBENCH example's much
-higher density, so this is a general effect of the metallicity choice,
-not a density-specific one. A collapsed `T_o` collapses `c_o`
-(`R_STAG = (c_i/c_o)^(4/3) R_St` -- STARBENCH Eqn 14), removing
-essentially all the pressure confinement the late-phase stagnation
-radius depends on.
-
-Fix: `SPH:minimal_temperature=1000` (floors the neutral gas near `T_o`
-without forcing a full isothermal EOS -- gas can still heat freely via
-compression/shocks, it just can't cool below this) combined with `Z=0`
-(removes the metal-line cooling that was driving the collapse, and is
-the more literal reproduction of the papers' pure-H medium besides).
-This fix is in the committed `params.yml`
-(`SPH:minimal_temperature=1000`, `GEARChemistry:initial_metallicity=0`).
-
-## Building to match the papers' own `T_i` convention
-`T_i` is set at compile time, not in `params.yml` -- see
-`StromgrenSphereStarbench/README`'s "Building to match STARBENCH's own
-`T_i` convention" for the full compile line
-(`IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4`, same
-mechanism, same configure flags). Run `./run.sh` unmodified after
-rebuilding -- no other parameter changes needed -- and pass the
-matching `--T-ionized-K 1e4` to `hu_smith_analytic_check.py`.
+## Temperature
+`GEARChemistry:initial_metallicity=0` (pure hydrogen, matching both papers' medium). This code computes `T_i` from metallicity; at `Z=0` it gives `T_i~47500 K`, not the papers' flat `T_i=1e4 K`. To match their convention, build with the flag below. `SPH:minimal_temperature=1000` floors the neutral gas at `T_o` regardless of build (already set in `params.yml`).
 
 ## Box size
-No box size is specified in Hu et al. (2017)'s own description (it's an
-SPH paper, not grid-based, so no domain size to report). At `Z/Zsun=0.231`
-(`T_i=1e4 K`), `R_STAG = (c_i/c_o)^{4/3} R_St ~ 23.2 pc` (STARBENCH
-Eqn 14). This four-co-located-source test's simulated front is noisier
-(wider max-vs-median scatter) than the single-source `StromgrenSphereStarbench`
-case, so `boxsize=0.1` kpc (100 pc, 50 pc half-width, ~2.15x `R_STAG`)
-and `Stars:HII_max_search_radius=0.04` (40 pc, ~1.5x margin over Raga-II's
-own, larger, late-time prediction) are used instead of the tighter margin
-that example gets away with -- both confirmed by direct computation of
-the actual validation target, Raga-II (Eqn 11, not the `R_STAG` estimate
-above, which is only a rough single-length-scale proxy) for this exact
-4-star/density configuration (`hu_smith_analytic_check.py`'s own solver:
-Raga-II reaches ~26 pc by t=8 Myr here, comfortably inside both the box
-half-width and the search-radius cap). At `Z=0`'s natural,
-un-forced `T_i~47500 K` (the plain default build, no debug flag),
-`R_STAG` grows to **~104.6 pc** (`c_i` alone grows ~2.2x, and
-`R_STAG ~ c_i^{4/3}`) -- far beyond this box regardless of which of the
-two box sizes above is used. Growing the box to match the natural-`T_i`
-case would need a >20x larger particle count at fixed resolution (mass
-in a uniform box scales as `L^3`), not practical for a repository
-example -- the plain build's comparison window is correspondingly
-limited to the time before `R_SB(t)` exceeds the box half-width
-(`hu_smith_analytic_check.py` picks this automatically).
+`boxsize=0.1` kpc (100 pc), `Stars:HII_max_search_radius=0.04` (40 pc) -- both give ~1.5-2x margin over Raga-II's own late-time prediction (~26 pc by t=8 Myr) for this configuration. At the plain build's natural `T_i~47500 K`, the equivalent radius exceeds even this box; `hu_smith_analytic_check.py` automatically limits its comparison window to when the analytic prediction is still box-valid.
 
 ## Resolution
-Hu et al. tested four gas particle masses: 4, 0.5, 0.0625, and
-0.0078125 Msun (each 8x finer than the last), to establish the mass
-resolution needed to converge on the analytic D-type curve. This
-example's default, `gas_mass=4.0` Msun, is their own *coarsest* tested
-level (~618k particles at this box size) -- chosen for a repository
-example that runs in a reasonable time, not to reproduce their
-highest-resolution reference. Override with e.g. `gas_mass=0.5 ./run.sh`
-for a tighter test (proportionally more particles and slower); the two
-finest levels (each 8x finer again) are Hu et al.'s own high-resolution
-convergence runs, not practical repository example defaults.
+Hu et al. tested four gas particle masses: 4, 0.5, 0.0625, 0.0078125 Msun (each 8x finer). `gas_mass=4.0` (default) is their coarsest, ~618k particles at this box size.
 
 ## Gravity
-`--external-gravity` is passed (matching every other example in this
-family) but no `Potential:` block is configured, so there is no
-gravitational force in practice -- matching Hu et al.'s and Smith et
-al.'s own purely hydrodynamical test.
+`--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force -- matching both papers' purely hydrodynamical test.
 
-## Usage
-Plain default build, this code's own natural `T_i`:
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+To match the papers' `T_i=1e4 K` convention instead of this code's natural metallicity-dependent value, add `CFLAGS+="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"` before `./configure`.
+
+# Run
 ```
 ./run.sh
+```
+Override any parameter via the matching env var, e.g. `gas_mass=0.5 ./run.sh` -- see `run.sh` for the full list.
+
+# Checking
+```
 python3 hu_smith_analytic_check.py -s snap/snapshot_*.hdf5
 ```
-To build and run with `T_i` forced to the papers' own convention
-instead, see "Building to match the papers' own `T_i` convention"
-above, then check with the matching `--T-ionized-K`:
-```
-./run.sh
-python3 hu_smith_analytic_check.py -s snap/snapshot_*.hdf5 --T-ionized-K 1e4
-```
-
-Override any parameter via the matching env var -- see `run.sh` for the
-full list, including `gas_mass` for a finer resolution test.
+Pass `--T-ionized-K 1e4` (matching whatever `T_i` the build used) if built with the flag above.
