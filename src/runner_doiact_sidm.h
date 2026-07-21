@@ -25,49 +25,77 @@
 
 #define PASTE(x, y) x##_##y
 
-#define _DOSELF1_SIDM(f) PASTE(runner_doself1_sidm, f)
-#define DOSELF1_SIDM _DOSELF1_SIDM(FUNCTION)
+#define _DOPAIR1_BRANCH_SIDM(f) PASTE(runner_dopair1_branch_sidm, f)
+#define DOPAIR1_BRANCH_SIDM _DOPAIR1_BRANCH_SIDM(FUNCTION)
 
-#define _DOSELF1_SIDM_NAIVE(f) PASTE(runner_doself1_sidm_naive, f)
-#define DOSELF1_SIDM_NAIVE _DOSELF1_SIDM_NAIVE(FUNCTION)
+#define _DOPAIR1_SIDM(f) PASTE(runner_dopair1_sidm, f)
+#define DOPAIR1_SIDM _DOPAIR1_SIDM(FUNCTION)
+
+#define _DOPAIR2_BRANCH_SIDM(f) PASTE(runner_dopair2_branch_sidm, f)
+#define DOPAIR2_BRANCH_SIDM _DOPAIR2_BRANCH_SIDM(FUNCTION)
+
+#define _DOPAIR2_SIDM(f) PASTE(runner_dopair2_sidm, f)
+#define DOPAIR2_SIDM _DOPAIR2_SIDM(FUNCTION)
+
+#define _DOPAIR_SUBSET_SIDM(f) PASTE(runner_dopair_subset_sidm, f)
+#define DOPAIR_SUBSET_SIDM _DOPAIR_SUBSET_SIDM(FUNCTION)
+
+#define _DOPAIR_SUBSET_BRANCH_SIDM(f) \
+  PASTE(runner_dopair_subset_branch_sidm, f)
+#define DOPAIR_SUBSET_BRANCH_SIDM _DOPAIR_SUBSET_BRANCH_SIDM(FUNCTION)
+
+#define _DOPAIR_SUBSET_SIDM_NAIVE(f) PASTE(runner_dopair_subset_sidm_naive, f)
+#define DOPAIR_SUBSET_SIDM_NAIVE _DOPAIR_SUBSET_SIDM_NAIVE(FUNCTION)
 
 #define _DOPAIR1_SIDM_NAIVE(f) PASTE(runner_dopair1_sidm_naive, f)
 #define DOPAIR1_SIDM_NAIVE _DOPAIR1_SIDM_NAIVE(FUNCTION)
 
-#define _DOPAIR1_SUBSET_SIDM(f) PASTE(runner_dopair1_subset_sidm, f)
-#define DOPAIR1_SUBSET_SIDM _DOPAIR1_SUBSET_SIDM(FUNCTION)
+#define _DOPAIR2_SIDM_NAIVE(f) PASTE(runner_dopair2_sidm_naive, f)
+#define DOPAIR2_SIDM_NAIVE _DOPAIR2_SIDM_NAIVE(FUNCTION)
 
-#define _DOPAIR1_SUBSET_SIDM_NAIVE(f) PASTE(runner_dopair1_subset_sidm_naive, f)
-#define DOPAIR1_SUBSET_SIDM_NAIVE _DOPAIR1_SUBSET_SIDM_NAIVE(FUNCTION)
+#define _DOSELF1_SIDM_NAIVE(f) PASTE(runner_doself1_sidm_naive, f)
+#define DOSELF1_SIDM_NAIVE _DOSELF1_SIDM_NAIVE(FUNCTION)
 
-#define _DOSELF1_SUBSET_SIDM(f) PASTE(runner_doself1_subset_sidm, f)
-#define DOSELF1_SUBSET_SIDM _DOSELF1_SUBSET_SIDM(FUNCTION)
-
-#define _DOSELF1_SUBSET_BRANCH_SIDM(f) \
-  PASTE(runner_doself1_subset_branch_sidm, f)
-#define DOSELF1_SUBSET_BRANCH_SIDM _DOSELF1_SUBSET_BRANCH_SIDM(FUNCTION)
-
-#define _DOPAIR1_SUBSET_BRANCH_SIDM(f) \
-  PASTE(runner_dopair1_subset_branch_sidm, f)
-#define DOPAIR1_SUBSET_BRANCH_SIDM _DOPAIR1_SUBSET_BRANCH_SIDM(FUNCTION)
+#define _DOSELF2_SIDM_NAIVE(f) PASTE(runner_doself2_sidm_naive, f)
+#define DOSELF2_SIDM_NAIVE _DOSELF2_SIDM_NAIVE(FUNCTION)
 
 #define _DOSELF1_BRANCH_SIDM(f) PASTE(runner_doself1_branch_sidm, f)
 #define DOSELF1_BRANCH_SIDM _DOSELF1_BRANCH_SIDM(FUNCTION)
 
-#define _DOPAIR1_BRANCH_SIDM(f) PASTE(runner_dopair1_branch_sidm, f)
-#define DOPAIR1_BRANCH_SIDM _DOPAIR1_BRANCH_SIDM(FUNCTION)
+#define _DOSELF1_SIDM(f) PASTE(runner_doself1_sidm, f)
+#define DOSELF1_SIDM _DOSELF1_SIDM(FUNCTION)
 
-#define _DOSUB_PAIR1_SIDM(f) PASTE(runner_dosub_pair_sidm, f)
+#define _DOSELF2_BRANCH_SIDM(f) PASTE(runner_doself2_branch_sidm, f)
+#define DOSELF2_BRANCH_SIDM _DOSELF2_BRANCH_SIDM(FUNCTION)
+
+#define _DOSELF2_SIDM(f) PASTE(runner_doself2_sidm, f)
+#define DOSELF2_SIDM _DOSELF2_SIDM(FUNCTION)
+
+#define _DOSELF_SUBSET_SIDM(f) PASTE(runner_doself_subset_sidm, f)
+#define DOSELF_SUBSET_SIDM _DOSELF_SUBSET_SIDM(FUNCTION)
+
+#define _DOSELF_SUBSET_BRANCH_SIDM(f) \
+  PASTE(runner_doself_subset_branch_sidm, f)
+#define DOSELF_SUBSET_BRANCH_SIDM _DOSELF_SUBSET_BRANCH_SIDM(FUNCTION)
+
+
+#define _DOSUB_PAIR1_SIDM(f) PASTE(runner_dosub_pair1_sidm, f)
 #define DOSUB_PAIR1_SIDM _DOSUB_PAIR1_SIDM(FUNCTION)
 
-#define _DOSUB_SELF1_SIDM(f) PASTE(runner_dosub_self_sidm, f)
+#define _DOSUB_SELF1_SIDM(f) PASTE(runner_dosub_self1_sidm, f)
 #define DOSUB_SELF1_SIDM _DOSUB_SELF1_SIDM(FUNCTION)
 
-#define _DOSUB_SELF1_SUBSET_SIDM(f) PASTE(runner_dosub_self_subset_sidm, f)
-#define DOSUB_SELF1_SUBSET_SIDM _DOSUB_SELF1_SUBSET_SIDM(FUNCTION)
+#define _DOSUB_PAIR2_SIDM(f) PASTE(runner_dosub_pair2_sidm, f)
+#define DOSUB_PAIR2_SIDM _DOSUB_PAIR2_SIDM(FUNCTION)
 
-#define _DOSUB_PAIR1_SUBSET_SIDM(f) PASTE(runner_dosub_pair_subset_sidm, f)
-#define DOSUB_PAIR1_SUBSET_SIDM _DOSUB_PAIR1_SUBSET_SIDM(FUNCTION)
+#define _DOSUB_SELF2_SIDM(f) PASTE(runner_dosub_self2_sidm, f)
+#define DOSUB_SELF2_SIDM _DOSUB_SELF2_SIDM(FUNCTION)
+
+#define _DOSUB_SELF_SUBSET_SIDM(f) PASTE(runner_dosub_self_subset_sidm, f)
+#define DOSUB_SELF_SUBSET_SIDM _DOSUB_SELF_SUBSET_SIDM(FUNCTION)
+
+#define _DOSUB_PAIR_SUBSET_SIDM(f) PASTE(runner_dosub_pair_subset_sidm, f)
+#define DOSUB_PAIR_SUBSET_SIDM _DOSUB_PAIR_SUBSET_SIDM(FUNCTION)
 
 #define _TIMER_DOSELF_SIDM(f) PASTE(timer_doself_sidm, f)
 #define TIMER_DOSELF_SIDM _TIMER_DOSELF_SIDM(FUNCTION)
@@ -92,26 +120,37 @@
 
 void DOSELF1_BRANCH_SIDM(struct runner *r, const struct cell *c,
                          const int limit_min_h, const int limit_max_h);
+void DOSELF2_BRANCH_SIDM(struct runner *r, const struct cell *c,
+                    const int limit_min_h, const int limit_max_h);
+
 void DOPAIR1_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
                          const int limit_min_h, const int limit_max_h);
+void DOPAIR2_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
+                    const int limit_min_h, const int limit_max_h);
 
 void DOSUB_SELF1_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
                       const int gettimer);
+void DOSUB_SELF2_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
+                 const int gettimer);
+
 void DOSUB_PAIR1_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
                       int recurse_below_h_max, const int gettimer);
+void DOSUB_PAIR2_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
+                 int recurse_below_h_max, const int gettimer);
 
-void DOSUB_SELF1_SUBSET_SIDM(struct runner *r, struct cell *ci,
+void DOSUB_SELF_SUBSET_SIDM(struct runner *r, struct cell *ci,
                              struct sipart *siparts, const int *ind,
                              const int sicount, const int gettimer);
-void DOSUB_PAIR1_SUBSET_SIDM(struct runner *r, struct cell *ci,
+
+void DOSUB_PAIR_SUBSET_SIDM(struct runner *r, struct cell *ci,
                              struct sipart *siparts, const int *ind,
                              const int sicount, struct cell *cj,
                              const int gettimer);
 
-void DOSELF1_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *ci,
+void DOSELF_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *ci,
                                 struct sipart *restrict siparts, const int *ind,
                                 const int sicount);
-void DOPAIR1_SUBSET_BRANCH_SIDM(struct runner *r,
+void DOPAIR_SUBSET_BRANCH_SIDM(struct runner *r,
                                 const struct cell *restrict ci,
                                 struct sipart *restrict siparts_i,
                                 const int *ind, const int sicount,
