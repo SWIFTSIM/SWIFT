@@ -52,8 +52,9 @@ Smith et al.\ (2021) clump. All three currently read NOT YET VALIDATED.
 \hline
 1. STARBENCH (Bisbas et al.\ 2015) &
   \code{StromgrenSphereStarbench} &
-  \textbf{NOT YET VALIDATED (restart).} Deprecated result:
-  Section~\ref{sec:starbench}. \\
+  \textbf{FAIL (2026-07-21), 22.76\% error.} Current result:
+  Section~\ref{sec:starbench-current}. Deprecated (pre-restart)
+  result: Section~\ref{sec:starbench}. \\
 \hline
 2. Hu et al.\ (2017) / Smith et al.\ (2021), 4 co-located stars &
   \code{StromgrenSphereHuSmith2017} &
@@ -68,9 +69,82 @@ Smith et al.\ (2021) clump. All three currently read NOT YET VALIDATED.
 \end{tabular}
 \caption{The three published validation targets, in restart order, and
   their owning example. Every prior result is deprecated as of
-  2026-07-20 -- see Section~\ref{sec:deprecated-results}.}
+  2026-07-20 -- see Section~\ref{sec:deprecated-results}. STARBENCH has
+  a current (post-restart) result as of 2026-07-21, Section~\ref{sec:starbench-current}.}
 \label{tab:validation-targets}
 \end{table}
+
+\subsection{STARBENCH: current status (2026-07-21) -- FAIL, 22.76\%}
+\label{sec:starbench-current}
+
+Run using the \emph{exact committed default} configuration of
+\code{examples/SubgridTests/SubgridRadiation/StromgrenSphereStarbench/run.sh}
+(\code{n\_threads=12}, no overrides, no compile-time debug flags) --
+$26.75\,$M$_\odot$ star ($Q_H=10^{49}\,{\rm s^{-1}}$), $n_H=3346\,{\rm
+cm^{-3}}$, $10\,$pc box, \code{GEARChemistry:initial\_metallicity=0}
+(pristine, giving this code's natural $T_i\approx47500\,$K floor, not
+STARBENCH's own flat $10^4\,$K convention), loosened search-radius cap
+and adaptive rebuild cadence both on (their committed defaults). Ran
+to completion cleanly (\code{main: done. Bye.}, 63 snapshots, no
+crash/assertion).
+
+\code{starbench\_analytic\_check.py} (default tolerance 10\%,
+Bisbas et al.\ 2015 Eqns 8/11/28/29): \textbf{FAIL}, 22.76\% relative
+error at the comparison time ($t=0.5867\,$Myr, $r_{\rm sim}=5.963\,$pc
+vs.\ $R_{\rm SB}=4.857\,$pc). The comparison time itself is chosen
+principledly (the last snapshot before the \emph{analytic} STARBENCH
+curve would exceed the $5\,$pc box half-width, avoiding a
+box-contaminated comparison) -- but at that exact time the
+\emph{simulated} radius has already exceeded the box half-width,
+i.e.\ the simulated front is overshooting fast enough to reach the
+periodic boundary before the reference solution does. The growth
+curve (Figure, saved alongside the run) tracks STARBENCH closely until
+$t\approx0.5\,$Myr, then visibly overshoots with a couple of step-like
+jumps ($\sim$0.7--0.9 and $\sim$1.8--2.0\,Myr) before reconverging with
+STARBENCH by $t\approx2.5$--$3\,$Myr (both $\approx8.6\,$pc).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/starbench_restart_2026-07-21_check}
+  \caption{STARBENCH check, post-restart (2026-07-21), exact committed
+    default configuration: overshoots STARBENCH's prediction
+    (black dashed) from $t\approx0.5\,$Myr, reconverging only by
+    $t\approx2.5$--$3\,$Myr. FAIL, 22.76\% at the comparison time.}
+  \label{fig:starbench-restart-current}
+\end{figure}
+
+\textbf{Likely cause, not yet confirmed as the full explanation}:
+$r_{\rm sim}=5.963\,$pc here is almost identical to the very first
+pre-restart attempt's $5.96\,$pc
+(Section~\ref{sec:starbench}, Fig.~\ref{fig:starbench-beforefix}),
+which used $Z/Z_\odot=0.231$ \emph{without} forcing $T_i=10^4\,$K --
+i.e.\ two different natural-$T_i$ configurations (Z=0's
+$\sim47500\,$K here, $Z/Z_\odot=0.231$'s intermediate value there)
+overshoot STARBENCH by essentially the same amount. This is consistent
+with, not contradicted by, this session's own isolation tests
+(Section~\ref{sec:e10}): $T_i=10^4\,$K forced \emph{alone} (without
+the loosened cap/adaptive cadence) still failed at 43.02\%, and the
+only PASS found anywhere in this project's history combined \emph{all
+three} of the loosened cap, adaptive cadence, \emph{and} $T_i=10^4\,$K
+forcing together -- via an uncommitted compile-time debug flag
+(\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K}),
+never a property of the default build. This run has two of those three
+ingredients (cap, cadence) but not the third ($T_i$ forced to
+STARBENCH's convention) -- consistent with $T_i$ being a necessary,
+not just sufficient, ingredient for matching STARBENCH's assumed
+flat-temperature convention with the current default (natural,
+metallicity-dependent $T_i$) build.
+
+\textbf{Not yet done}: confirming this diagnosis by re-running with
+the debug flag on top of the current committed cap/cadence defaults
+(distinct from the old, now-stale combination that produced the
+original 5.30\% PASS, since cap/cadence themselves have since changed);
+deciding whether matching STARBENCH's convention should ever become a
+default-buildable option (not just a debug flag) if it is confirmed
+necessary, or whether the natural, non-isothermal $T_i$ this code
+computes is itself the intended, more physical behaviour and STARBENCH
+comparison is understood to require an explicit flat-$T_i$ mode to be
+enabled. Logged as a new open item (Section~\ref{sec:open}).
 
 \subsection{Deprecated: results predating the 2026-07-20 restart}
 \label{sec:deprecated-results}
