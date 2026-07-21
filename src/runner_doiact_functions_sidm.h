@@ -183,8 +183,6 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const double time_base = e->time_base;
-  const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   /* Anything to do here? */
@@ -446,8 +444,6 @@ void DOSELF2_SIDM_NAIVE(struct runner *r, const struct cell *c,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const double time_base = e->time_base;
-  const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   /* Anything to do here? */
@@ -661,8 +657,6 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const double time_base = e->time_base;
-  const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   TIMER_TIC;
@@ -704,7 +698,6 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
         /* Skip inhibited particles. */
         if (sipart_is_inhibited(sipj, e)) continue;
 
-        const float hj = sipj->h;
         const double sipjx = sipj->x[0];
         const double sipjy = sipj->x[1];
         const double sipjz = sipj->x[2];
@@ -759,7 +752,6 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
         /* Skip inhibited particles. */
         if (sipart_is_inhibited(sipj, e)) continue;
 
-        const float hj = sipj->h;
         const double sipjx = sipj->x[0];
         const double sipjy = sipj->x[1];
         const double sipjz = sipj->x[2];
@@ -968,8 +960,6 @@ void DOPAIR1_SIDM(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
-  const double time_base = e->time_base;
-  const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   /* Get the cut_off shift. */
@@ -1292,8 +1282,6 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
 
-  const double time_base = e->time_base;
-  const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   /* Get the cut_off shift. */
@@ -2141,8 +2129,6 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const double time_base = e->time_base;
-  const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   struct sipart *siparts = c->sidm.parts;
