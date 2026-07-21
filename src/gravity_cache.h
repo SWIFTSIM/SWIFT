@@ -323,10 +323,13 @@ INLINE static void gravity_cache_populate_foreign(
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
   if (gcount_padded % VEC_SIZE != 0)
     error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
-  if (c->count < gcount_padded)
-    error("Size of the gravity cache is not large enough.");
   if (cell->nodeID == engine_rank) error("Populating from a local cell!");
 #endif
+
+  /* Do we need to grow the cache? Unlike the other populate_* variants,
+   * this one only asserted instead of growing, so a foreign cell that
+   * outgrew the cache silently overflowed c->x/y/z/m in release builds. */
+  if (c->count < gcount_padded) gravity_cache_init(c, gcount_padded + VEC_SIZE);
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
