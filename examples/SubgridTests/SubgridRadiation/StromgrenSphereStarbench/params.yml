@@ -82,19 +82,6 @@ GrackleCooling:
   maximal_density_Hpcm3: 1e4
 
 GEARChemistry:
-  # Z=0 -- literally pure hydrogen, matching STARBENCH's medium exactly.
-  # An earlier version of this example used Z/Zsun~0.231 to hit the
-  # papers' flat T_i=1e4 K target via this code's metallicity-dependent
-  # collisional-equilibrium fit (radiation_get_T_collisional_K). That
-  # introduced real metal-line cooling absent from STARBENCH's idealized
-  # test, which (combined with no floor on the neutral gas) collapsed the
-  # neutral gas to ~2-5 K almost instantly -- a much bigger effect than
-  # the metallicity mismatch itself. Z=0 has no metal-line cooling at all
-  # (the correct choice for literally reproducing a pure-H medium) and
-  # gives this code's own high-temperature asymptote, T_i~47500 K, not
-  # 1e4 K -- the STARBENCH comparison is evaluated at this run's actual
-  # T_i/T_o (see starbench_analytic_check.py's --T-ionized-K), not
-  # hardcoded to the papers' own numbers. See README.
   initial_metallicity: 0
   scale_initial_metallicity: 1
 
@@ -115,7 +102,7 @@ GEARFeedback:
   radiation_pressure_efficiency: 0
   HII_max_age_Myr:        50.0
   HII_rebuild_time_Myr:   0.01
-  HII_adaptive_rebuild_cadence: 1     # T11: physically-derived per-star cadence, confirmed the better default
+  HII_adaptive_rebuild_cadence: 1     # Physically-derived per-star cadence, confirmed the better default
   HII_rebuild_safety_factor: 0.2
   HII_rebuild_floor_Myr: 1e-4
 
@@ -136,3 +123,4 @@ Stars:
   HII_max_retry_full_buffer: 30
   HII_max_radius_expansion_tries: 5
   HII_radius_expansion_factor: 1.1
+  min_star_timestep_Myr: 1e-4
