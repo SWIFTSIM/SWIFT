@@ -45,9 +45,16 @@ void space_regrid(struct space *s, int verbose) {
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
-  /* Run through the cells and get the current h_max. */
+  /* Run through the cells and get the current h_max, tracked separately for
+     ordinary hydro/star/black-hole/sink smoothing lengths (h_max_no_hii)
+     and for the star HII search radius (h_max_hii). They are combined
+     further down via space::h_max_no_hii_hwm's ratchet -- see the comment
+     there for why h_hii must stay independent of the ordinary quantities
+     instead of folding into one combined running value. */
   // tic = getticks();
-  float h_max = s->cell_min / kernel_gamma / space_stretch;
+  const float h_max_floor = s->cell_min / kernel_gamma / space_stretch;
+  float h_max_no_hii = h_max_floor;
+  float h_max_hii = h_max_floor;
 
   /* h_hii (the star HII ionization search radius) is a fundamentally
      different, much larger-scale quantity than any ordinary smoothing
@@ -72,20 +79,20 @@ void space_regrid(struct space *s, int verbose) {
       for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
         const struct cell *c =
             &s->cells_top[s->local_cells_with_particles_top[k]];
-        if (c->hydro.h_max > h_max) {
-          h_max = c->hydro.h_max;
+        if (c->hydro.h_max > h_max_no_hii) {
+          h_max_no_hii = c->hydro.h_max;
         }
-        if (c->stars.h_max > h_max) {
-          h_max = c->stars.h_max;
+        if (c->stars.h_max > h_max_no_hii) {
+          h_max_no_hii = c->stars.h_max;
         }
-        if (min(c->stars.h_hii_max, h_hii_max_for_regrid) > h_max) {
-          h_max = min(c->stars.h_hii_max, h_hii_max_for_regrid);
+        if (min(c->stars.h_hii_max, h_hii_max_for_regrid) > h_max_hii) {
+          h_max_hii = min(c->stars.h_hii_max, h_hii_max_for_regrid);
         }
-        if (c->black_holes.h_max > h_max) {
-          h_max = c->black_holes.h_max;
+        if (c->black_holes.h_max > h_max_no_hii) {
+          h_max_no_hii = c->black_holes.h_max;
         }
-        if (c->sinks.h_max > h_max) {
-          h_max = c->sinks.h_max;
+        if (c->sinks.h_max > h_max_no_hii) {
+          h_max_no_hii = c->sinks.h_max;
         }
       }
 
@@ -93,64 +100,89 @@ void space_regrid(struct space *s, int verbose) {
     } else if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
         const struct cell *c = &s->cells_top[k];
-        if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
-          h_max = c->hydro.h_max;
+        if (c->nodeID == engine_rank && c->hydro.h_max > h_max_no_hii) {
+          h_max_no_hii = c->hydro.h_max;
         }
-        if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
-          h_max = c->stars.h_max;
+        if (c->nodeID == engine_rank && c->stars.h_max > h_max_no_hii) {
+          h_max_no_hii = c->stars.h_max;
         }
         if (c->nodeID == engine_rank &&
-            min(c->stars.h_hii_max, h_hii_max_for_regrid) > h_max) {
-          h_max = min(c->stars.h_hii_max, h_hii_max_for_regrid);
+            min(c->stars.h_hii_max, h_hii_max_for_regrid) > h_max_hii) {
+          h_max_hii = min(c->stars.h_hii_max, h_hii_max_for_regrid);
         }
-        if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
-          h_max = c->black_holes.h_max;
+        if (c->nodeID == engine_rank && c->black_holes.h_max > h_max_no_hii) {
+          h_max_no_hii = c->black_holes.h_max;
         }
-        if (c->nodeID == engine_rank && c->sinks.h_max > h_max) {
-          h_max = c->sinks.h_max;
+        if (c->nodeID == engine_rank && c->sinks.h_max > h_max_no_hii) {
+          h_max_no_hii = c->sinks.h_max;
         }
       }
 
       /* Last option: run through the particles */
     } else {
       for (size_t k = 0; k < nr_parts; k++) {
-        if (s->parts[k].h > h_max) h_max = s->parts[k].h;
+        if (s->parts[k].h > h_max_no_hii) h_max_no_hii = s->parts[k].h;
       }
       for (size_t k = 0; k < nr_sparts; k++) {
-        if (s->sparts[k].h > h_max) h_max = s->sparts[k].h;
-        if (min(s->sparts[k].h_hii, h_hii_max_for_regrid) > h_max)
-          h_max = min(s->sparts[k].h_hii, h_hii_max_for_regrid);
+        if (s->sparts[k].h > h_max_no_hii) h_max_no_hii = s->sparts[k].h;
+        if (min(s->sparts[k].h_hii, h_hii_max_for_regrid) > h_max_hii)
+          h_max_hii = min(s->sparts[k].h_hii, h_hii_max_for_regrid);
       }
       for (size_t k = 0; k < nr_bparts; k++) {
-        if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
+        if (s->bparts[k].h > h_max_no_hii) h_max_no_hii = s->bparts[k].h;
       }
       for (size_t k = 0; k < nr_sinks; k++) {
-        if (s->sinks[k].h > h_max) h_max = s->sinks[k].h;
+        if (s->sinks[k].h > h_max_no_hii) h_max_no_hii = s->sinks[k].h;
       }
     }
   }
 
 /* If we are running in parallel, make sure everybody agrees on
-   how large the largest cell should be. */
+   how large the largest cell should be. Reduce both quantities
+   independently -- max() distributes over independent reductions, so this
+   gives the same global h_max_no_hii/h_max_hii as reducing one combined
+   value would, while keeping them separable for the ratchet below. */
 #ifdef WITH_MPI
   {
-    float buff;
-    if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
+    float buff_in[2] = {h_max_no_hii, h_max_hii};
+    float buff_out[2];
+    if (MPI_Allreduce(buff_in, buff_out, 2, MPI_FLOAT, MPI_MAX,
+                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate the rebuild flag across nodes.");
-    h_max = buff;
+    h_max_no_hii = buff_out[0];
+    h_max_hii = buff_out[1];
   }
 #endif
+
+  /* space::h_max_no_hii_hwm is a one-way ratchet that exactly reproduces
+     this function's historical behaviour for ordinary hydro/star/
+     black-hole/sink smoothing lengths: once the grid has coarsened for one
+     of these, it stays coarse even if that h later shrinks (previously an
+     implicit effect of the cdim-can-only-shrink trigger below; now made
+     explicit so it can be kept separate from h_hii). h_hii is
+     deliberately NOT folded into this ratchet: it is a transient,
+     per-star quantity (reset to 0 when a star dies or ages out of HII
+     eligibility, see feedback_common.c) that should stop requiring a
+     coarse grid the moment no star's search radius needs it any more,
+     without perturbing the ratchet ordinary physics still relies on. */
+  s->h_max_no_hii_hwm = fmaxf(s->h_max_no_hii_hwm, h_max_no_hii);
+  const float h_max = fmaxf(s->h_max_no_hii_hwm, h_max_hii);
+
   if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
-  /* Get the new putative cell dimensions. */
-  const int cdim[3] = {
-      (int)floor(s->dim[0] /
-                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-      (int)floor(s->dim[1] /
-                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-      (int)floor(s->dim[2] /
-                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
+  /* Get the new putative cell dimensions. The effective cell width is
+     clamped between cell_min (Scheduler:max_top_level_cells' complement,
+     existing) and cell_max_width (Scheduler:min_top_level_cells' own
+     complement): once h_max would push the width past cell_max_width, it
+     is capped there instead, so cdim never drops below
+     Scheduler:min_top_level_cells regardless of what is driving the
+     coarsening. */
+  const double cell_width =
+      fmin(fmax(h_max * kernel_gamma * space_stretch, s->cell_min),
+           s->cell_max_width);
+  const int cdim[3] = {(int)floor(s->dim[0] / cell_width),
+                       (int)floor(s->dim[1] / cell_width),
+                       (int)floor(s->dim[2] / cell_width)};
 
   /* check that we have at least 1 cell in each dimension */
   if (cdim[0] == 0 || cdim[1] == 0 || cdim[2] == 0) {
@@ -183,9 +215,13 @@ void space_regrid(struct space *s, int verbose) {
   double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
-  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
+  if (cdim[0] != s->cdim[0] || cdim[1] != s->cdim[1] ||
+      cdim[2] != s->cdim[2]) {
 
-    /* Capture state of current space. */
+    /* Capture state of current space. h_max_no_hii_hwm's ratchet (see
+       above) means cdim can now also come out larger (finer) than before
+       -- only ever via h_hii shrinking, never via ordinary physics -- so
+       this capture must trigger on any change, not just a decrease. */
     oldcdim[0] = s->cdim[0];
     oldcdim[1] = s->cdim[1];
     oldcdim[2] = s->cdim[2];
@@ -213,10 +249,16 @@ void space_regrid(struct space *s, int verbose) {
   const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
 
-  /* Do we need to re-build the upper-level cells? */
+  /* Do we need to re-build the upper-level cells? Any change now
+     triggers a regrid, not just a decrease: h_max_no_hii_hwm's ratchet
+     (above) guarantees cdim can only come out larger (finer) than
+     s->cdim because h_hii's own contribution shrank, never because
+     ordinary hydro/star/black-hole/sink h_max did -- so allowing that
+     direction here does not reopen the general one-way-coarsening
+     behaviour those quantities still rely on. */
   // tic = getticks();
-  if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
-      cdim[2] < s->cdim[2]) {
+  if (s->cells_top == NULL || cdim[0] != s->cdim[0] || cdim[1] != s->cdim[1] ||
+      cdim[2] != s->cdim[2]) {
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -241,7 +283,7 @@ void space_regrid(struct space *s, int verbose) {
      * memory while copying the particle arrays. */
     if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
-    /* Set the new cell dimensions only if smaller. */
+    /* Set the new cell dimensions. */
     for (int k = 0; k < 3; k++) {
       s->cdim[k] = cdim[k];
       s->width[k] = s->dim[k] / cdim[k];

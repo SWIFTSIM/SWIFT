@@ -71,6 +71,7 @@ struct hydro_props;
 #define space_recurse_size_pair_sinks_default 100
 #define space_subdepth_diff_grav_default 4
 #define space_max_top_level_cells_default 12
+#define space_min_top_level_cells_default 3
 #define space_stretch 1.10f
 #define space_maxreldx 0.1f
 
@@ -153,8 +154,23 @@ struct space {
   /*! The minimum top-level cell width allowed. */
   double cell_min;
 
+  /*! The maximum top-level cell width allowed -- the complement of
+   * cell_min, derived from Scheduler:min_top_level_cells. Bounds how far
+   * any single coarsening event (ordinary h_max growth, or h_hii) can
+   * push the grid: once the effective cell width would exceed this, it
+   * is clamped here instead, so cdim never drops below
+   * Scheduler:min_top_level_cells. */
+  double cell_max_width;
+
   /*! Space dimensions in number of top-cells. */
   int cdim[3];
+
+  /*! High-water mark of h_max from ordinary hydro/star/black-hole/sink
+   * smoothing lengths only (excludes h_hii), used by space_regrid() to
+   * keep its one-way coarsening ratchet for those quantities while
+   * letting h_hii's own, separately-tracked contribution shrink the
+   * grid back down once no star's HII search radius needs it any more. */
+  float h_max_no_hii_hwm;
 
   /*! Maximal depth reached by the tree */
   int maxdepth;

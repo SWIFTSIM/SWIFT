@@ -1280,6 +1280,29 @@ void space_init(struct space *s, struct swift_params *params,
         "least %d",
         maxtcells, needtcells);
 
+  /* Decide on the maximal top-level cell width -- the complement of the
+     above, bounding how coarse the grid is ever allowed to get regardless
+     of what is driving the coarsening (ordinary hydro/star/black-hole/sink
+     h_max, or a star's h_hii). space_regrid() clamps the effective cell
+     width at this value instead of coarsening past it. */
+  int mintcells = parser_get_opt_param_int(
+      params, "Scheduler:min_top_level_cells",
+      space_min_top_level_cells_default);
+  if (mintcells < 1)
+    error("Scheduler:min_top_level_cells must be at least 1, got %d",
+          mintcells);
+  if (s->periodic && mintcells < 3)
+    error(
+        "Scheduler:min_top_level_cells is too small %d, needs to be at "
+        "least 3 when periodicity is switched on",
+        mintcells);
+  if (mintcells > maxtcells)
+    error(
+        "Scheduler:min_top_level_cells (%d) cannot exceed "
+        "Scheduler:max_top_level_cells (%d)",
+        mintcells, maxtcells);
+  s->cell_max_width = dmin / mintcells;
+
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
                                            space_maxsize_default);
