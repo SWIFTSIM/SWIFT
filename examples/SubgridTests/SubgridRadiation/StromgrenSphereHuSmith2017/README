@@ -16,20 +16,31 @@ differences between the uniform ("spherical", `nside=0`) and angular
 (`nside=1`) budget-splitting schemes -- there is no precise published
 metric for that comparison, only Smith et al.'s own qualitative
 mass-biasing argument. This example is the opposite: a *uniform* medium
-with a precise, published analytic target (STARBENCH), specifically so
-the angular-splitting question doesn't confound the validation.
+with a precise, published analytic target, specifically so the
+angular-splitting question doesn't confound the validation.
 
-## Validating against STARBENCH, not point-by-point against the papers
+## Validating against Raga-II (Hosokawa & Inutsuka 2006), not the Bisbas
+## et al. (2015) STARBENCH blend
 Hu et al. (2017) validate their own D-type test against the classical
-Spitzer (1978) solution at early times and against Bisbas et al. (2015)'s
-STARBENCH semi-empirical formula at late times (quoting their own
-Appendix A directly: "This late-time evolution is investigated in Bisbas
-et al. (2015) using several different radiative transfer codes as part of
-the code comparison project STARBENCH"). `hu_smith_analytic_check.py`
-does the same thing this branch's `StromgrenSphereStarbench/` example
-does for a single source: numerically integrate STARBENCH's Eqns 8
-(Raga-I) and 11 (Raga-II), blend via Eqns 28-29, and compare against the
-simulated `r_HII(t)`.
+Spitzer (1978) solution at early times and against a late-time formula
+they call "STARBENCH" (quoting their own Appendix A directly: "This
+late-time evolution is investigated in Bisbas et al. (2015) using several
+different radiative transfer codes as part of the code comparison project
+STARBENCH"). Smith et al. (2021, Fig. 1) plot the same curve under the
+same name. **What both papers actually plot under that label is
+Hosokawa & Inutsuka (2006)'s shell-inertia ODE (Raga-II, Eqn 11) directly
+-- confirmed against their own published curves (~25 pc by t=8 Myr for
+this exact configuration) -- not the full Bisbas et al. (2015) Eqn 28-29
+blend** (Raga-II plus a time-dependent weighted combination with Raga-I,
+which reads ~20 pc here instead). The blend's time-dependent weight was
+calibrated against single-source RHD simulations and does not transfer to
+this four-co-located-source configuration; `hu_smith_analytic_check.py`
+checks against Raga-II by default (`--reference raga2`) for exactly this
+reason, and does not plot the blend (would be misleadingly labeled
+"STARBENCH" here). Both Raga-I and the blend remain available via
+`--reference` for comparison. See `StromgrenSphereStarbench/README` for
+the single-source case, where the full blend genuinely is the right
+target.
 
 ## Temperature: Z=0, this code's own floors, not the papers' flat 1e4 K
 `GEARChemistry:initial_metallicity=0` -- literally pure hydrogen,
@@ -91,11 +102,14 @@ SPH paper, not grid-based, so no domain size to report). At `Z/Zsun=0.231`
 Eqn 14). This four-co-located-source test's simulated front is noisier
 (wider max-vs-median scatter) than the single-source `StromgrenSphereStarbench`
 case, so `boxsize=0.1` kpc (100 pc, 50 pc half-width, ~2.15x `R_STAG`)
-and `Stars:HII_max_search_radius=0.04` (40 pc, ~1.7x `R_STAG`) are used
-instead of the tighter margin that example gets away with -- both
-confirmed by direct computation of the STARBENCH-blend prediction for
-this exact 4-star/density configuration (`hu_smith_analytic_check.py`'s
-own solver), not just the `R_STAG` estimate above. At `Z=0`'s natural,
+and `Stars:HII_max_search_radius=0.04` (40 pc, ~1.5x margin over Raga-II's
+own, larger, late-time prediction) are used instead of the tighter margin
+that example gets away with -- both confirmed by direct computation of
+the actual validation target, Raga-II (Eqn 11, not the `R_STAG` estimate
+above, which is only a rough single-length-scale proxy) for this exact
+4-star/density configuration (`hu_smith_analytic_check.py`'s own solver:
+Raga-II reaches ~26 pc by t=8 Myr here, comfortably inside both the box
+half-width and the search-radius cap). At `Z=0`'s natural,
 un-forced `T_i~47500 K` (the plain default build, no debug flag),
 `R_STAG` grows to **~104.6 pc** (`c_i` alone grows ~2.2x, and
 `R_STAG ~ c_i^{4/3}`) -- far beyond this box regardless of which of the
