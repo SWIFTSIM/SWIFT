@@ -40,8 +40,7 @@
 #define _DOPAIR_SUBSET_SIDM(f) PASTE(runner_dopair_subset_sidm, f)
 #define DOPAIR_SUBSET_SIDM _DOPAIR_SUBSET_SIDM(FUNCTION)
 
-#define _DOPAIR_SUBSET_BRANCH_SIDM(f) \
-  PASTE(runner_dopair_subset_branch_sidm, f)
+#define _DOPAIR_SUBSET_BRANCH_SIDM(f) PASTE(runner_dopair_subset_branch_sidm, f)
 #define DOPAIR_SUBSET_BRANCH_SIDM _DOPAIR_SUBSET_BRANCH_SIDM(FUNCTION)
 
 #define _DOPAIR_SUBSET_SIDM_NAIVE(f) PASTE(runner_dopair_subset_sidm_naive, f)
@@ -74,10 +73,8 @@
 #define _DOSELF_SUBSET_SIDM(f) PASTE(runner_doself_subset_sidm, f)
 #define DOSELF_SUBSET_SIDM _DOSELF_SUBSET_SIDM(FUNCTION)
 
-#define _DOSELF_SUBSET_BRANCH_SIDM(f) \
-  PASTE(runner_doself_subset_branch_sidm, f)
+#define _DOSELF_SUBSET_BRANCH_SIDM(f) PASTE(runner_doself_subset_branch_sidm, f)
 #define DOSELF_SUBSET_BRANCH_SIDM _DOSELF_SUBSET_BRANCH_SIDM(FUNCTION)
-
 
 #define _DOSUB_PAIR1_SIDM(f) PASTE(runner_dosub_pair1_sidm, f)
 #define DOSUB_PAIR1_SIDM _DOSUB_PAIR1_SIDM(FUNCTION)
@@ -121,37 +118,36 @@
 void DOSELF1_BRANCH_SIDM(struct runner *r, const struct cell *c,
                          const int limit_min_h, const int limit_max_h);
 void DOSELF2_BRANCH_SIDM(struct runner *r, const struct cell *c,
-                    const int limit_min_h, const int limit_max_h);
+                         const int limit_min_h, const int limit_max_h);
 
 void DOPAIR1_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
                          const int limit_min_h, const int limit_max_h);
 void DOPAIR2_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
-                    const int limit_min_h, const int limit_max_h);
+                         const int limit_min_h, const int limit_max_h);
 
 void DOSUB_SELF1_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
                       const int gettimer);
 void DOSUB_SELF2_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
-                 const int gettimer);
+                      const int gettimer);
 
 void DOSUB_PAIR1_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
                       int recurse_below_h_max, const int gettimer);
 void DOSUB_PAIR2_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
-                 int recurse_below_h_max, const int gettimer);
+                      int recurse_below_h_max, const int gettimer);
 
 void DOSUB_SELF_SUBSET_SIDM(struct runner *r, struct cell *ci,
-                             struct sipart *siparts, const int *ind,
-                             const int sicount, const int gettimer);
+                            struct sipart *siparts, const int *ind,
+                            const int sicount, const int gettimer);
 
 void DOSUB_PAIR_SUBSET_SIDM(struct runner *r, struct cell *ci,
-                             struct sipart *siparts, const int *ind,
-                             const int sicount, struct cell *cj,
-                             const int gettimer);
+                            struct sipart *siparts, const int *ind,
+                            const int sicount, struct cell *cj,
+                            const int gettimer);
 
 void DOSELF_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *ci,
-                                struct sipart *restrict siparts, const int *ind,
-                                const int sicount);
-void DOPAIR_SUBSET_BRANCH_SIDM(struct runner *r,
-                                const struct cell *restrict ci,
-                                struct sipart *restrict siparts_i,
-                                const int *ind, const int sicount,
-                                struct cell *restrict cj);
+                               struct sipart *restrict siparts, const int *ind,
+                               const int sicount);
+void DOPAIR_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *restrict ci,
+                               struct sipart *restrict siparts_i,
+                               const int *ind, const int sicount,
+                               struct cell *restrict cj);
