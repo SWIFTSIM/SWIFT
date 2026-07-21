@@ -178,8 +178,8 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
  * @param limit_max_h Only consider particles with h < c->dmin.
  */
 void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
-                   const struct cell *restrict cj, const int limit_min_h,
-                   const int limit_max_h) {
+                        const struct cell *restrict cj, const int limit_min_h,
+                        const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -232,8 +232,8 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
     const float hi = sipi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float sipix[3] = {(float)(sipi->x[0] - (cj->loc[0] + shift[0])),
-                          (float)(sipi->x[1] - (cj->loc[1] + shift[1])),
-                          (float)(sipi->x[2] - (cj->loc[2] + shift[2]))};
+                            (float)(sipi->x[1] - (cj->loc[1] + shift[1])),
+                            (float)(sipi->x[2] - (cj->loc[2] + shift[2]))};
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -251,9 +251,10 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
 
       /* Compute the pairwise distance. */
       const float sipjx[3] = {(float)(sipj->x[0] - cj->loc[0]),
-                            (float)(sipj->x[1] - cj->loc[1]),
-                            (float)(sipj->x[2] - cj->loc[2])};
-      float dx[3] = {sipix[0] - sipjx[0], sipix[1] - sipjx[1], sipix[2] - sipjx[2]};
+                              (float)(sipj->x[1] - cj->loc[1]),
+                              (float)(sipj->x[2] - cj->loc[2])};
+      float dx[3] = {sipix[0] - sipjx[0], sipix[1] - sipjx[1],
+                     sipix[2] - sipjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
@@ -277,8 +278,8 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
 #endif
 
         IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
-                           cosmo, e->sidm_properties, e->ti_current,
-                           e->time_base);
+                         cosmo, e->sidm_properties, e->ti_current,
+                         e->time_base);
       }
       if (doj) {
 
@@ -291,8 +292,8 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
         dx[2] = -dx[2];
 
         IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology,
-                           cosmo, e->sidm_properties, e->ti_current,
-                           e->time_base);
+                         cosmo, e->sidm_properties, e->ti_current,
+                         e->time_base);
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -441,7 +442,7 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
  * @param limit_max_h Only consider particles with h < c->dmin.
  */
 void DOSELF2_SIDM_NAIVE(struct runner *r, const struct cell *c,
-                   const int limit_min_h, const int limit_max_h) {
+                        const int limit_min_h, const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -483,8 +484,8 @@ void DOSELF2_SIDM_NAIVE(struct runner *r, const struct cell *c,
     const float hi = sipi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float sipix[3] = {(float)(sipi->x[0] - c->loc[0]),
-                          (float)(sipi->x[1] - c->loc[1]),
-                          (float)(sipi->x[2] - c->loc[2])};
+                            (float)(sipi->x[1] - c->loc[1]),
+                            (float)(sipi->x[2] - c->loc[2])};
 
     /* Loop over the parts in cj. */
     for (int pjd = pid + 1; pjd < count; pjd++) {
@@ -502,9 +503,10 @@ void DOSELF2_SIDM_NAIVE(struct runner *r, const struct cell *c,
 
       /* Compute the pairwise distance. */
       const float sipjx[3] = {(float)(sipj->x[0] - c->loc[0]),
-                            (float)(sipj->x[1] - c->loc[1]),
-                            (float)(sipj->x[2] - c->loc[2])};
-      float dx[3] = {sipix[0] - sipjx[0], sipix[1] - sipjx[1], sipix[2] - sipjx[2]};
+                              (float)(sipj->x[1] - c->loc[1]),
+                              (float)(sipj->x[2] - c->loc[2])};
+      float dx[3] = {sipix[0] - sipjx[0], sipix[1] - sipjx[1],
+                     sipix[2] - sipjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       const int doi = pi_active && (depth_i >= min_depth) &&
@@ -572,10 +574,9 @@ void DOSELF2_SIDM_NAIVE(struct runner *r, const struct cell *c,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
-                               struct sipart *restrict siparts_i,
-                               const int *ind, const int sicount,
-                               const struct cell *restrict cj,
-                               const double shift[3]) {
+                              struct sipart *restrict siparts_i, const int *ind,
+                              const int sicount, const struct cell *restrict cj,
+                              const double shift[3]) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -653,9 +654,10 @@ void DOPAIR_SUBSET_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
-                   struct sipart *restrict siparts_i, const int *ind,
-                   const int sicount, const struct cell *restrict cj,
-                   const int sid, const int flipped, const double shift[3]) {
+                        struct sipart *restrict siparts_i, const int *ind,
+                        const int sicount, const struct cell *restrict cj,
+                        const int sid, const int flipped,
+                        const double shift[3]) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -690,7 +692,8 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
       const float hi = sipi->h;
       const float hig2 = hi * hi * kernel_gamma2;
       const double di = hi * kernel_gamma + dxj + sipix * runner_shift[sid][0] +
-                        sipiy * runner_shift[sid][1] + sipiz * runner_shift[sid][2];
+                        sipiy * runner_shift[sid][1] +
+                        sipiz * runner_shift[sid][2];
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < sicount_j && sort_j[pjd].d < di; pjd++) {
@@ -722,9 +725,9 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM_SIDM(r2, dx, hi, sipj->h, sipi, sipj, a, H, with_cosmology,
-                         cosmo, e->sidm_properties, e->ti_current,
-                         e->time_base);
+          IACT_NONSYM_SIDM(r2, dx, hi, sipj->h, sipi, sipj, a, H,
+                           with_cosmology, cosmo, e->sidm_properties,
+                           e->ti_current, e->time_base);
         }
       } /* loop over the parts in cj. */
     } /* loop over the parts in ci. */
@@ -743,8 +746,9 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
       const double sipiz = sipi->x[2] - (shift[2]);
       const float hi = sipi->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      const double di = -hi * kernel_gamma - dxj + sipix * runner_shift[sid][0] +
-                        sipiy * runner_shift[sid][1] + sipiz * runner_shift[sid][2];
+      const double di =
+          -hi * kernel_gamma - dxj + sipix * runner_shift[sid][0] +
+          sipiy * runner_shift[sid][1] + sipiz * runner_shift[sid][2];
 
       /* Loop over the parts in cj. */
       for (int pjd = sicount_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
@@ -776,9 +780,9 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM_SIDM(r2, dx, hi, sipj->h, sipi, sipj, a, H, with_cosmology,
-                         cosmo, e->sidm_properties, e->ti_current,
-                         e->time_base);
+          IACT_NONSYM_SIDM(r2, dx, hi, sipj->h, sipi, sipj, a, H,
+                           with_cosmology, cosmo, e->sidm_properties,
+                           e->ti_current, e->time_base);
         }
       } /* loop over the parts in cj. */
     } /* loop over the parts in ci. */
@@ -797,11 +801,10 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
  * @param sicount The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void DOPAIR_SUBSET_BRANCH_SIDM(struct runner *r,
-                                const struct cell *restrict ci,
-                                struct sipart *restrict siparts_i,
-                                const int *ind, const int sicount,
-                                struct cell *restrict cj) {
+void DOPAIR_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *restrict ci,
+                               struct sipart *restrict siparts_i,
+                               const int *ind, const int sicount,
+                               struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
@@ -832,9 +835,8 @@ void DOPAIR_SUBSET_BRANCH_SIDM(struct runner *r,
   lock_lock(&cj->sidm.extra_sort_lock);
 
   /* Is it sorted, if not we use the naive interactions. */
-  const int is_sorted =
-      (cj->sidm.sorted & (1 << sid)) &&
-      (cj->sidm.dx_max_sort_old <= space_maxreldx * cj->dmin);
+  const int is_sorted = (cj->sidm.sorted & (1 << sid)) &&
+                        (cj->sidm.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
   /* Now we can unlock */
   if (lock_unlock(&cj->sidm.extra_sort_lock) != 0)
@@ -863,8 +865,8 @@ void DOPAIR_SUBSET_BRANCH_SIDM(struct runner *r,
  * @param sicount The number of particles in @c ind.
  */
 void DOSELF_SUBSET_SIDM(struct runner *r, const struct cell *c,
-                         struct sipart *restrict siparts, const int *ind,
-                         const int sicount) {
+                        struct sipart *restrict siparts, const int *ind,
+                        const int sicount) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -888,7 +890,8 @@ void DOSELF_SUBSET_SIDM(struct runner *r, const struct cell *c,
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!sipart_is_active(sipi, e)) error("Inactive particle in subset function!");
+    if (!sipart_is_active(sipi, e))
+      error("Inactive particle in subset function!");
 #endif
 
     /* Loop over the parts in cj. */
@@ -942,8 +945,8 @@ void DOSELF_SUBSET_SIDM(struct runner *r, const struct cell *c,
  * @param sicount The number of particles in @c ind.
  */
 void DOSELF_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *ci,
-                                struct sipart *restrict siparts, const int *ind,
-                                const int sicount) {
+                               struct sipart *restrict siparts, const int *ind,
+                               const int sicount) {
 
   DOSELF_SUBSET_SIDM(r, ci, siparts, ind, sicount);
 }
@@ -960,8 +963,8 @@ void DOSELF_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1_SIDM(struct runner *r, const struct cell *restrict ci,
-             const struct cell *restrict cj, const int limit_min_h,
-             const int limit_max_h, const int sid, const double shift[3]) {
+                  const struct cell *restrict cj, const int limit_min_h,
+                  const int limit_max_h, const int sid, const double shift[3]) {
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -1016,7 +1019,7 @@ void DOPAIR1_SIDM(struct runner *r, const struct cell *restrict ci,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  if (cell_is_active_sidm(ci, e)) { 
+  if (cell_is_active_sidm(ci, e)) {
 
     /* Loop over the *active* parts in ci that are within range (on the axis)
        of any particle in cj. */
@@ -1113,14 +1116,14 @@ void DOPAIR1_SIDM(struct runner *r, const struct cell *restrict ci,
 #endif
 
           IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
-                         cosmo, e->sidm_properties, e->ti_current,
-                         e->time_base);
+                           cosmo, e->sidm_properties, e->ti_current,
+                           e->time_base);
         }
       } /* loop over the parts in cj. */
     } /* loop over the parts in ci. */
   } /* Cell ci is active */
 
-  if (cell_is_active_sidm(cj, e)) { 
+  if (cell_is_active_sidm(cj, e)) {
 
     /* Loop over the *active* parts in cj that are within range (on the axis)
        of any particle in ci. */
@@ -1217,14 +1220,13 @@ void DOPAIR1_SIDM(struct runner *r, const struct cell *restrict ci,
 #endif
 
           IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology,
-                         cosmo, e->sidm_properties, e->ti_current,
-                         e->time_base);
+                           cosmo, e->sidm_properties, e->ti_current,
+                           e->time_base);
         }
       } /* loop over the parts in ci. */
     } /* loop over the parts in cj. */
   } /* Cell cj is active */
 }
-
 
 /**
  * @brief Determine which version of DOPAIR1 needs to be called depending on the
@@ -1253,22 +1255,22 @@ void DOPAIR1_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Get the sort ID.
    * Note: this may swap the ci and cj pointers!! */
-  double shift[3] = {0.0, 0.0, 0.0}; 
-  const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift); 
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
   if (!(ci->sidm.sorted & (1 << sid)) ||
-       ci->sidm.dx_max_sort_old > space_maxreldx * ci->dmin) 
-    error("Interacting unsorted cells (ci)."); 
+      ci->sidm.dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells (ci).");
 
   if (!(cj->sidm.sorted & (1 << sid)) ||
-       cj->sidm.dx_max_sort_old > space_maxreldx * cj->dmin) 
-    error("Interacting unsorted cells (cj)."); 
+      cj->sidm.dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells (cj).");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_SIDM_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #else
-   DOPAIR1_SIDM(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
+  DOPAIR1_SIDM(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
 #endif
 }
 
@@ -1284,8 +1286,8 @@ void DOPAIR1_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
-             const struct cell *restrict cj, const int limit_min_h,
-             const int limit_max_h, const int sid, const double shift[3]) {
+                  const struct cell *restrict cj, const int limit_min_h,
+                  const int limit_max_h, const int sid, const double shift[3]) {
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -1507,8 +1509,8 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
 #endif
 
           IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology,
-                         cosmo, e->sidm_properties, e->ti_current,
-                         e->time_base);
+                           cosmo, e->sidm_properties, e->ti_current,
+                           e->time_base);
         }
       } /* loop over the active parts in cj. */
     }
@@ -1592,7 +1594,7 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
 #endif
 
             IACT_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology, cosmo,
-                    e->sidm_properties, e->ti_current, e->time_base);
+                      e->sidm_properties, e->ti_current, e->time_base);
           } else {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1600,8 +1602,8 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
               error("Inappropriate h for this level!");
 #endif
             IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
-                           cosmo, e->sidm_properties, e->ti_current,
-                           e->time_base);
+                             cosmo, e->sidm_properties, e->ti_current,
+                             e->time_base);
           }
         }
       } /* loop over the parts in cj. */
@@ -1797,7 +1799,7 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
 #endif
 
             IACT_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology, cosmo,
-                    e->sidm_properties, e->ti_current, e->time_base);
+                      e->sidm_properties, e->ti_current, e->time_base);
           } else {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1806,8 +1808,8 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
 #endif
 
             IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology,
-                           cosmo, e->sidm_properties, e->ti_current,
-                           e->time_base);
+                             cosmo, e->sidm_properties, e->ti_current,
+                             e->time_base);
           }
         }
       } /* loop over the parts in ci. */
@@ -1815,7 +1817,7 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
   } /* Loop over all cj */
 
   /* Clean-up if necessary */  // MATTHIEU: temporary disable this optimization
-  if (cell_is_active_sidm(ci, e))   // && !cell_is_all_active_hydro(ci, e))
+  if (cell_is_active_sidm(ci, e))  // && !cell_is_all_active_hydro(ci, e))
     free(sort_active_i);
   if (cell_is_active_sidm(cj, e))  // && !cell_is_all_active_hydro(cj, e))
     free(sort_active_j);
@@ -1832,7 +1834,7 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
  * @param limit_max_h Only consider particles with h < c->dmin.
  */
 void DOPAIR2_BRANCH_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
-                    const int limit_min_h, const int limit_max_h) {
+                         const int limit_min_h, const int limit_max_h) {
 
   const struct engine *e = r->e;
 
@@ -2135,7 +2137,7 @@ void DOSELF1_BRANCH_SIDM(struct runner *r, const struct cell *c,
  * @param limit_max_h Only consider particles with h < c->dmin.
  */
 void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
-             const int limit_max_h) {
+                  const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -2165,7 +2167,8 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
   for (int k = 0; k < count; k++) {
     const struct sipart *sip = &siparts[k];
     const char depth = sip->depth_h;
-    if (sipart_is_active(sip, e) && (depth >= min_depth) && (depth <= max_depth)) {
+    if (sipart_is_active(sip, e) && (depth >= min_depth) &&
+        (depth <= max_depth)) {
       indt[countdt] = k;
       countdt += 1;
     }
@@ -2220,7 +2223,8 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* Compute the (square of) pairwise distance. */
         const double sipjx[3] = {sipj->x[0], sipj->x[1], sipj->x[2]};
-        const float dx[3] = {(float)(sipjx[0] - sipix[0]), (float)(sipjx[1] - sipix[1]),
+        const float dx[3] = {(float)(sipjx[0] - sipix[0]),
+                             (float)(sipjx[1] - sipix[1]),
                              (float)(sipjx[2] - sipix[2])};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -2233,8 +2237,8 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 #endif
 
           IACT_NONSYM_SIDM(r2, dx, hj, hi, sipj, sipi, a, H, with_cosmology,
-                         cosmo, e->sidm_properties, e->ti_current,
-                         e->time_base);
+                           cosmo, e->sidm_properties, e->ti_current,
+                           e->time_base);
         }
       } /* loop over all other particles. */
     }
@@ -2273,7 +2277,8 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* Compute the (square of) pairwise distance. */
         const double sipjx[3] = {sipj->x[0], sipj->x[1], sipj->x[2]};
-        float dx[3] = {(float)(sipix[0] - sipjx[0]), (float)(sipix[1] - sipjx[1]),
+        float dx[3] = {(float)(sipix[0] - sipjx[0]),
+                       (float)(sipix[1] - sipjx[1]),
                        (float)(sipix[2] - sipjx[2])};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -2303,7 +2308,7 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
           /* Update both pi and pj */
 
           IACT_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology, cosmo,
-                  e->sidm_properties, e->ti_current, e->time_base);
+                    e->sidm_properties, e->ti_current, e->time_base);
         } else if (doi) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2314,8 +2319,8 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
           /* Update only pi */
 
           IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
-                         cosmo, e->sidm_properties, e->ti_current,
-                         e->time_base);
+                           cosmo, e->sidm_properties, e->ti_current,
+                           e->time_base);
         } else if (doj) {
 
           /* Update only doj
@@ -2331,7 +2336,6 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
   } /* loop over all particles. */
 
   free(indt);
-
 }
 
 /**
@@ -2344,7 +2348,7 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
  * @param limit_max_h Only consider particles with h < c->dmin.
  */
 void DOSELF2_BRANCH_SIDM(struct runner *r, const struct cell *c,
-                    const int limit_min_h, const int limit_max_h) {
+                         const int limit_min_h, const int limit_max_h) {
 
   const struct engine *e = r->e;
 
@@ -2442,7 +2446,7 @@ void DOSUB_PAIR1_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
     if (recurse_below_h_max) {
 
       /* Do any of the cells need to be sorted first?
-      * Since h_max might have changed, we may not have sorted at this level */
+       * Since h_max might have changed, we may not have sorted at this level */
       if (!(ci->sidm.sorted & (1 << sid)) ||
           ci->sidm.dx_max_sort_old > ci->dmin * space_maxreldx) {
         runner_do_sidm_sort(r, ci, (1 << sid), /*cleanup=*/0, /*clock=*/0);
@@ -2549,7 +2553,7 @@ void DOSUB_SELF1_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
  * redundant computations to find the sid on-the-fly.
  */
 void DOSUB_PAIR2_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
-                 int recurse_below_h_max, const int gettimer) {
+                      int recurse_below_h_max, const int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -2582,15 +2586,14 @@ void DOSUB_PAIR2_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
        - Apply the max h limit if we are recursing below the level
        where h is smaller than the cell size */
     DOPAIR2_BRANCH_SIDM(r, ci, cj, /*limit_h_min=*/0,
-                   /*limit_h_max=*/recurse_below_h_max);
+                        /*limit_h_max=*/recurse_below_h_max);
 
   } else {
 
     /* Should we change the recursion regime because we encountered a large
        particle? */
-    if (!recurse_below_h_max &&
-        (!cell_can_recurse_in_subpair2_sidm_task(ci) ||
-         !cell_can_recurse_in_subpair2_sidm_task(cj))) {
+    if (!recurse_below_h_max && (!cell_can_recurse_in_subpair2_sidm_task(ci) ||
+                                 !cell_can_recurse_in_subpair2_sidm_task(cj))) {
       recurse_below_h_max = 1;
     }
 
@@ -2606,7 +2609,7 @@ void DOSUB_PAIR2_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
       }
       if (!(cj->sidm.sorted & (1 << sid)) ||
           cj->sidm.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0,/*clock=*/0);
+        runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0, /*clock=*/0);
       }
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
@@ -2620,8 +2623,9 @@ void DOSUB_PAIR2_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
-        DOSUB_PAIR2_SIDM(r, ci->progeny[pid], cj->progeny[pjd], recurse_below_h_max,
-                    /*gettimer=*/0);
+        DOSUB_PAIR2_SIDM(r, ci->progeny[pid], cj->progeny[pjd],
+                         recurse_below_h_max,
+                         /*gettimer=*/0);
       }
     }
   }
@@ -2635,7 +2639,7 @@ void DOSUB_PAIR2_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
  * @param gettimer Do we have a timer ?
  */
 void DOSUB_SELF2_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
-                 const int gettimer) {
+                      const int gettimer) {
 
   /* Should we even bother? */
   if (c->sidm.count == 0 || !cell_is_active_sidm(c, r->e)) return;
@@ -2648,7 +2652,7 @@ void DOSUB_SELF2_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
        - Apply the max h limit if we are recursing below the level
        where h is smaller than the cell size */
     DOSELF2_BRANCH_SIDM(r, c, /*limit_h_min=*/0,
-                   /*limit_h_max=*/recurse_below_h_max);
+                        /*limit_h_max=*/recurse_below_h_max);
 
   } else {
 
@@ -2675,8 +2679,9 @@ void DOSUB_SELF2_SIDM(struct runner *r, struct cell *c, int recurse_below_h_max,
         DOSUB_SELF2_SIDM(r, c->progeny[k], recurse_below_h_max, /*gettimer=*/0);
         for (int j = k + 1; j < 8; j++) {
           if (c->progeny[j] != NULL) {
-            DOSUB_PAIR2_SIDM(r, c->progeny[k], c->progeny[j], recurse_below_h_max,
-                        /*gettimer=*/0);
+            DOSUB_PAIR2_SIDM(r, c->progeny[k], c->progeny[j],
+                             recurse_below_h_max,
+                             /*gettimer=*/0);
           }
         }
       }
@@ -2719,9 +2724,9 @@ struct cell *FIND_SUB_SIDM(const struct cell *const c,
 }
 
 void DOSUB_PAIR_SUBSET_SIDM(struct runner *r, struct cell *ci,
-                             struct sipart *siparts, const int *ind,
-                             const int sicount, struct cell *cj,
-                             const int gettimer) {
+                            struct sipart *siparts, const int *ind,
+                            const int sicount, struct cell *cj,
+                            const int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -2747,12 +2752,12 @@ void DOSUB_PAIR_SUBSET_SIDM(struct runner *r, struct cell *ci,
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
         DOSUB_PAIR_SUBSET_SIDM(r, ci->progeny[pid], siparts, ind, sicount,
-                                cj->progeny[pjd],
-                                /*gettimer=*/0);
+                               cj->progeny[pjd],
+                               /*gettimer=*/0);
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
         DOSUB_PAIR_SUBSET_SIDM(r, cj->progeny[pjd], siparts, ind, sicount,
-                                ci->progeny[pid],
-                                /*gettimer=*/0);
+                               ci->progeny[pid],
+                               /*gettimer=*/0);
     }
 
   }
@@ -2766,8 +2771,8 @@ void DOSUB_PAIR_SUBSET_SIDM(struct runner *r, struct cell *ci,
   }
 }
 void DOSUB_SELF_SUBSET_SIDM(struct runner *r, struct cell *ci,
-                             struct sipart *siparts, const int *ind,
-                             const int sicount, const int gettimer) {
+                            struct sipart *siparts, const int *ind,
+                            const int sicount, const int gettimer) {
 
   const struct engine *e = r->e;
 
@@ -2786,7 +2791,7 @@ void DOSUB_SELF_SUBSET_SIDM(struct runner *r, struct cell *ci,
     for (int j = 0; j < 8; j++)
       if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
         DOSUB_PAIR_SUBSET_SIDM(r, sub, siparts, ind, sicount, ci->progeny[j],
-                                /*gettimer=*/0);
+                               /*gettimer=*/0);
   }
 
   /* Otherwise, compute self-interaction. */
