@@ -717,6 +717,49 @@ static void space_split_ensure_particle_scratch(
 }
 
 /**
+ * @brief Free a thread's particle scratch buffers.
+ *
+ * NULL-guarded and NULL-setting, so it is idempotent: it is called once per
+ * worker thread from #space_split_aggregate_mapper() (freeing the buffers
+ * in parallel, on the thread and NUMA node that allocated and touched them,
+ * rather than serially on the main thread), and may be called again for the
+ * same thread if that thread handles more than one aggregation chunk, and
+ * finally by #space_split() as a serial straggler sweep for any thread that
+ * was never handed an aggregation chunk. All but the first call for a given
+ * thread are no-ops.
+ *
+ * @param scratch The thread's #space_split_particle_scratch.
+ */
+static void space_split_free_particle_scratch(
+    struct space_split_particle_scratch *scratch) {
+
+  if (scratch->parts != NULL) {
+    swift_free("particle_scratch", scratch->parts);
+    scratch->parts = NULL;
+  }
+  if (scratch->xparts != NULL) {
+    swift_free("particle_scratch", scratch->xparts);
+    scratch->xparts = NULL;
+  }
+  if (scratch->gparts != NULL) {
+    swift_free("particle_scratch", scratch->gparts);
+    scratch->gparts = NULL;
+  }
+  if (scratch->sparts != NULL) {
+    swift_free("particle_scratch", scratch->sparts);
+    scratch->sparts = NULL;
+  }
+  if (scratch->bparts != NULL) {
+    swift_free("particle_scratch", scratch->bparts);
+    scratch->bparts = NULL;
+  }
+  if (scratch->sinks != NULL) {
+    swift_free("particle_scratch", scratch->sinks);
+    scratch->sinks = NULL;
+  }
+}
+
+/**
  * @brief Gather a leaf cell's particles into its slice of the thread's
  *        particle scratch buffers.
  *
@@ -1390,6 +1433,19 @@ static void space_split_mapper(void *map_data, int num_cells,
 }
 
 /**
+ * @brief Extra data for #space_split_aggregate_mapper().
+ */
+struct space_split_aggregate_mapper_data {
+
+  /*! The #space being aggregated. */
+  struct space *s;
+
+  /*! Per-thread particle scratch buffers, freed here (in parallel, on the
+   * owning thread) now the split pass no longer needs them. */
+  struct space_split_particle_scratch *particle_scratch;
+};
+
+/**
  * @brief #threadpool mapper function for finalising leaves and accumulating
  * cell properties after splitting.
  *
@@ -1398,17 +1454,31 @@ static void space_split_mapper(void *map_data, int num_cells,
  * way to the leaves, finalise them from their own particles, and then
  * accumulate cell properties and populate multipoles from the bottom up.
  *
+ * Before that, it frees this worker thread's particle scratch buffers,
+ * which the split pass is done with: doing it here runs the frees in
+ * parallel across workers, each on the thread (and NUMA node) that
+ * allocated and touched its own buffers, instead of serially on the main
+ * thread. See #space_split_free_particle_scratch() for the idempotency
+ * that makes this safe across multiple chunks per thread.
+ *
  * @param map_data Pointer to the start of a chunk of cell indices.
  * @param num_cells Number of indices in this chunk.
- * @param extra_data Pointer to the #space being split.
+ * @param extra_data Pointer to a #space_split_aggregate_mapper_data.
  */
 static void space_split_aggregate_mapper(void *map_data, int num_cells,
                                          void *extra_data) {
 
   /* Unpack the inputs. */
-  struct space *s = (struct space *)extra_data;
+  struct space_split_aggregate_mapper_data *data =
+      (struct space_split_aggregate_mapper_data *)extra_data;
+  struct space *s = data->s;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
+
+  /* Free this thread's particle scratch, no longer needed after the split
+   * pass -- in parallel, on the thread that owns it. */
+  space_split_free_particle_scratch(
+      &data->particle_scratch[threadpool_gettid()]);
 
   /* Initialise some global information about the top-level m-poles */
   float min_a_grav = FLT_MAX;
@@ -1602,8 +1672,10 @@ void space_split(struct space *s, int verbose) {
                     s->nr_bparts, /*verbose=*/0);
 #endif
 
-  /* The sorting buffers and both scratch spaces are only needed for the
-   * split pass above. */
+  /* The sorting buffers and the ind scratch are only needed for the split
+   * pass above. The per-thread particle scratch buffers are freed in the
+   * aggregation pass below, in parallel on their owning threads, so only
+   * their (tiny) containing array is freed here -- after that pass. */
   const ticks tic_cleanup = getticks();
   if (buff != NULL) swift_free("tempbuff", buff);
   if (gbuff != NULL) swift_free("tempgbuff", gbuff);
@@ -1612,28 +1684,30 @@ void space_split(struct space *s, int verbose) {
   if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
   for (int t = 0; t < nr_threads; t++) {
     if (ind_scratch[t].ind != NULL) swift_free("ind_scratch", ind_scratch[t].ind);
-    struct space_split_particle_scratch *ps = &particle_scratch[t];
-    if (ps->parts != NULL) swift_free("particle_scratch", ps->parts);
-    if (ps->xparts != NULL) swift_free("particle_scratch", ps->xparts);
-    if (ps->gparts != NULL) swift_free("particle_scratch", ps->gparts);
-    if (ps->sparts != NULL) swift_free("particle_scratch", ps->sparts);
-    if (ps->bparts != NULL) swift_free("particle_scratch", ps->bparts);
-    if (ps->sinks != NULL) swift_free("particle_scratch", ps->sinks);
   }
   swift_free("ind_scratch_array", ind_scratch);
-  swift_free("particle_scratch_array", particle_scratch);
   if (verbose)
     message("Buffer cleanup: %.3f %s.",
             clocks_from_ticks(getticks() - tic_cleanup), clocks_getunit());
 
   /* Aggregation pass: finalise leaves and derive cell statistics and
-   * multipoles bottom-up. No rebase needed -- see #space_split()'s
+   * multipoles bottom-up (and free each thread's particle scratch in
+   * parallel on the way). No rebase needed -- see #space_split()'s
    * documentation. */
   const ticks tic_aggregate = getticks();
+  struct space_split_aggregate_mapper_data aggregate_data = {s,
+                                                             particle_scratch};
   threadpool_map(&s->e->threadpool, space_split_aggregate_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+                 threadpool_auto_chunk_size, &aggregate_data);
+
+  /* Straggler sweep: free the scratch of any thread the aggregation pass
+   * never handed a chunk to (a no-op for every thread that was), then the
+   * containing array itself. */
+  for (int t = 0; t < nr_threads; t++)
+    space_split_free_particle_scratch(&particle_scratch[t]);
+  swift_free("particle_scratch_array", particle_scratch);
   if (verbose)
     message("Aggregate pass: %.3f %s.",
             clocks_from_ticks(getticks() - tic_aggregate), clocks_getunit());
