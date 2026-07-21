@@ -264,7 +264,7 @@ def read_simulated_r_hii(snapshot_glob):
             X_H_raw = data.metadata.parameters.get(
                 "GrackleCooling:HydrogenFractionByMass"
             )
-            X_H = float(X_H_raw) if X_H_raw is not None else 0.716
+            X_H = float(X_H_raw) if X_H_raw is not None else 0.76
             n_H_atom_cc = (rho_g_cm3 * u.g / u.cm**3 * X_H / const.m_p).to(1 / u.cm**3)
 
     return (

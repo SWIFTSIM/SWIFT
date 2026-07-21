@@ -10,9 +10,10 @@ set -eo pipefail
 # Defaults reproduce STARBENCH's (Bisbas et al. 2015, arXiv:1507.05621)
 # late-phase D-type expansion test: rho_o=5.21e-21 g/cm3 (n_H~3115/cm3),
 # Q_H=1e49 photons/s (star_mass=26.75 Msun in this code's mass-luminosity
-# fit), T_i=1e4 K, T_o=1e3 K, t_end=3.0 Myr. See README for the full
-# parameter derivation and the residual mismatches accepted vs. the paper's
-# idealized two-temperature test.
+# fit), T_o=1e3 K, t_end=3.0 Myr. T_i=1e4 K (STARBENCH's own convention)
+# additionally requires a compile-time flag -- see README, "Building to
+# match STARBENCH's own T_i convention" -- the plain default build
+# instead gives this code's own natural, metallicity-dependent T_i.
 n_threads=${n_threads:=8}  #Number of threads to use
 gas_density=${gas_density:=3115} #Gas density in atom/cm^3 -- STARBENCH's rho_o=5.21e-21 g/cm3
 gas_particle_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun) -- ~2.9 particles across R_St, a resolution
