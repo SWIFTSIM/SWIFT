@@ -71,39 +71,52 @@ Fix: `SPH:minimal_temperature=1000` (floors the neutral gas near `T_o`
 without forcing a full isothermal EOS -- gas can still heat freely via
 compression/shocks, it just can't cool below this) combined with `Z=0`
 (removes the metal-line cooling that was driving the collapse, and is
-the more literal reproduction of the papers' pure-H medium besides). Not
-yet re-validated against a completed run at time of writing -- update
-this section once it has been.
+the more literal reproduction of the papers' pure-H medium besides).
+This fix is in the committed `params.yml`
+(`SPH:minimal_temperature=1000`, `GEARChemistry:initial_metallicity=0`).
+
+## Building to match the papers' own `T_i` convention
+`T_i` is set at compile time, not in `params.yml` -- see
+`StromgrenSphereStarbench/README`'s "Building to match STARBENCH's own
+`T_i` convention" for the full compile line
+(`IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4`, same
+mechanism, same configure flags). Run `./run.sh` unmodified after
+rebuilding -- no other parameter changes needed -- and pass the
+matching `--T-ionized-K 1e4` to `hu_smith_analytic_check.py`.
 
 ## Box size
 No box size is specified in Hu et al. (2017)'s own description (it's an
 SPH paper, not grid-based, so no domain size to report). At `Z/Zsun=0.231`
 (`T_i=1e4 K`), `R_STAG = (c_i/c_o)^{4/3} R_St ~ 23.2 pc` (STARBENCH
-Eqn 14) motivated `boxsize=0.07` kpc (70 pc, 35 pc half-width, ~1.5x
-`R_STAG`). At `Z=0`'s `T_i~47500 K`, `R_STAG` grows to **~104.6 pc**
-(`c_i` alone grows ~2.2x, and `R_STAG ~ c_i^{4/3}`) -- far beyond this
-box. Growing the box to match would need a >20x larger particle count at
-fixed resolution (mass in a uniform box scales as `L^3`), not practical
-for a repository example. The box was left unchanged; the comparison
-window shrinks accordingly: `R_SB(t)` stays inside the 35 pc half-width
-only until `t~3.2 Myr` (vs.\ the full 8 Myr run) -- still a substantial
-fraction (40%) of the run and a full order of magnitude of growth
-(`R_St=5.02 pc` to `35 pc`) to compare against, the same "limited but
-still meaningful" tradeoff `StromgrenSphereStarbench` and the sibling
-`StromgrenSphere` example's own e10 checks already accept.
+Eqn 14). This four-co-located-source test's simulated front is noisier
+(wider max-vs-median scatter) than the single-source `StromgrenSphereStarbench`
+case, so `boxsize=0.1` kpc (100 pc, 50 pc half-width, ~2.15x `R_STAG`)
+and `Stars:HII_max_search_radius=0.04` (40 pc, ~1.7x `R_STAG`) are used
+instead of the tighter margin that example gets away with -- both
+confirmed by direct computation of the STARBENCH-blend prediction for
+this exact 4-star/density configuration (`hu_smith_analytic_check.py`'s
+own solver), not just the `R_STAG` estimate above. At `Z=0`'s natural,
+un-forced `T_i~47500 K` (the plain default build, no debug flag),
+`R_STAG` grows to **~104.6 pc** (`c_i` alone grows ~2.2x, and
+`R_STAG ~ c_i^{4/3}`) -- far beyond this box regardless of which of the
+two box sizes above is used. Growing the box to match the natural-`T_i`
+case would need a >20x larger particle count at fixed resolution (mass
+in a uniform box scales as `L^3`), not practical for a repository
+example -- the plain build's comparison window is correspondingly
+limited to the time before `R_SB(t)` exceeds the box half-width
+(`hu_smith_analytic_check.py` picks this automatically).
 
 ## Resolution
 Hu et al. tested four gas particle masses: 4, 0.5, 0.0625, and
 0.0078125 Msun (each 8x finer than the last), to establish the mass
 resolution needed to converge on the analytic D-type curve. This
 example's default, `gas_mass=4.0` Msun, is their own *coarsest* tested
-level (~212k particles at this box size) -- chosen for a repository
+level (~618k particles at this box size) -- chosen for a repository
 example that runs in a reasonable time, not to reproduce their
 highest-resolution reference. Override with e.g. `gas_mass=0.5 ./run.sh`
-for a tighter test (~1.7M particles, proportionally slower); the two
-finest levels (13.5M and 108M particles) are Hu et al.'s own
-high-resolution convergence runs, not practical repository example
-defaults.
+for a tighter test (proportionally more particles and slower); the two
+finest levels (each 8x finer again) are Hu et al.'s own high-resolution
+convergence runs, not practical repository example defaults.
 
 ## Gravity
 `--external-gravity` is passed (matching every other example in this
@@ -112,9 +125,18 @@ gravitational force in practice -- matching Hu et al.'s and Smith et
 al.'s own purely hydrodynamical test.
 
 ## Usage
+Plain default build, this code's own natural `T_i`:
 ```
 ./run.sh
 python3 hu_smith_analytic_check.py -s snap/snapshot_*.hdf5
 ```
+To build and run with `T_i` forced to the papers' own convention
+instead, see "Building to match the papers' own `T_i` convention"
+above, then check with the matching `--T-ionized-K`:
+```
+./run.sh
+python3 hu_smith_analytic_check.py -s snap/snapshot_*.hdf5 --T-ionized-K 1e4
+```
+
 Override any parameter via the matching env var -- see `run.sh` for the
 full list, including `gas_mass` for a finer resolution test.

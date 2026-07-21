@@ -28,7 +28,7 @@ density_factor=${density_factor:=1.0} # Unused at clump_radius_pc=0, kept for ma
 clump_distance_pc=${clump_distance_pc:=20.0} # Unused at clump_radius_pc=0
 clump_radius_pc=${clump_radius_pc:=0.0}      # 0 = no clump, uniform box (verified: 0 clump particles)
 with_cooling=${with_cooling:=1}
-L=${boxsize:=0.07}                 # boxsize in kpc (70 pc, 35 pc half-width -- see README for
+L=${boxsize:=0.1}                  # boxsize in kpc (100 pc, 50 pc half-width -- see README for
                                     # the STARBENCH-curve-based box-size derivation)
 time_end=${time_end:=8.182e-3}     # TimeIntegration:time_end override (internal units) -- 8.0 Myr,
                                     # matching Hu et al. (2017) Fig. A1's reported test duration.
@@ -45,7 +45,8 @@ deterministic=${deterministic:=0}   # GEARFeedback:HII_deterministic_boundary_io
 initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override --
                         # Z=0, literally pure hydrogen matching Hu/Smith's own medium; gives this
                         # code's own T_i~47500 K floor, not the papers' flat 1e4 K. See README.
-max_search_radius=${max_search_radius:=0.03} # Stars:HII_max_search_radius override (internal units, 30 pc)
+max_search_radius=${max_search_radius:=0.04} # Stars:HII_max_search_radius override (internal units, 40 pc,
+                                    # just inside the 50 pc box half-width)
 max_retry_full_buffer=${max_retry_full_buffer:=30} # Stars:HII_max_retry_full_buffer override
 max_radius_expansion_tries=${max_radius_expansion_tries:=5} # Stars:HII_max_radius_expansion_tries override
 radius_expansion_factor=${radius_expansion_factor:=1.1} # Stars:HII_radius_expansion_factor override
