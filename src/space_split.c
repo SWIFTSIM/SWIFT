@@ -599,59 +599,190 @@ static void space_split_fill_buffers(
 }
 
 /**
- * @brief Apply a top-level cell's completed sort to its particles, in place.
+ * @brief A thread's reused, per-top-level-cell particle scratch buffers.
  *
- * Called from #space_split_mapper() once #space_split_recursive() has
- * returned for a top-level cell -- i.e. once that cell's entire subtree has
- * been built and every one of its buffer slices (buff/sbuff/bbuff/gbuff/
- * sink_buff) holds the final sorted order for the whole cell, not just one
- * leaf. This is what a top-level cell's slice of each buffer encodes: entry
- * k says which particle (by its index in the space-wide array, e.g.
- * s->parts) belongs at slot k. That is exactly a permutation of this cell's
- * slice of the space-wide array, and it is applied to the real particle
- * arrays here via cycle-following -- no destination array, no allocation:
- * each family's buffer slice doubles as the "visited" tracking cycle
- * detection needs, since a part_ind is never read again once the particle
- * it names has been placed (it is overwritten with SIZE_MAX at that
- * point).
+ * Sized to the largest top-level cell this thread has processed so far
+ * (grown, never shrunk, across the whole run -- see
+ * #space_split_ensure_particle_scratch()), not to the space's complete
+ * local particle arrays: #space_split_move_leaf() gathers each leaf's
+ * particles into these, and once a whole top-level cell's subtree has been
+ * gathered, #space_split_mapper() copies each family's slice straight back
+ * into the real array with a single bulk memcpy. That keeps the one real
+ * per-particle data move this design allows for (see
+ * #space_split_move_leaf()) sequential on both ends, without ever needing
+ * an allocation sized to the whole space.
+ */
+struct space_split_particle_scratch {
+
+  /*! Scratch #part buffer. */
+  struct part *parts;
+
+  /*! Scratch #xpart buffer; always sized alongside #parts. */
+  struct xpart *xparts;
+
+  /*! Allocated capacity of #parts and #xparts. */
+  int parts_capacity;
+
+  /*! Scratch #gpart buffer. */
+  struct gpart *gparts;
+
+  /*! Allocated capacity of #gparts. */
+  int gparts_capacity;
+
+  /*! Scratch #spart buffer. */
+  struct spart *sparts;
+
+  /*! Allocated capacity of #sparts. */
+  int sparts_capacity;
+
+  /*! Scratch #bpart buffer. */
+  struct bpart *bparts;
+
+  /*! Allocated capacity of #bparts. */
+  int bparts_capacity;
+
+  /*! Scratch #sink buffer. */
+  struct sink *sinks;
+
+  /*! Allocated capacity of #sinks. */
+  int sinks_capacity;
+};
+
+/**
+ * @brief Grow a thread's particle scratch buffers if they are not already
+ *        big enough for a top-level cell with the given per-family counts.
  *
- * Doing this once per top-level cell, right here rather than fused into
- * #space_split_recursive() at leaf granularity or deferred to the
- * aggregation pass, is deliberate: cycles are defined over positions in
- * the whole cell's slice and can span what will become several different
- * leaves, so they cannot be resolved leaf-by-leaf; and doing it here, in
- * the same #threadpool_map() call and the same thread as the buffer sort
- * that produced this cell's part_ind values, keeps that data hot, unlike
- * the separate, barrier-separated aggregation pass.
+ * Each family is grown independently, since a top-level cell's counts for
+ * different families are generally not the same. Growth never needs to
+ * preserve a buffer's previous contents -- every entry is fully overwritten
+ * by the gather that follows -- so this simply frees the too-small buffer
+ * and allocates a bigger one.
  *
- * Because this mutates s->parts etc. in place rather than swapping in a
- * different array, every #cell pointer computed during the split pass
- * (always of the form base + offset against whichever array s->parts
- * currently is) remains valid afterwards without any rebase: the base
- * never changes, only the contents at each offset.
+ * @param scratch The thread's #space_split_particle_scratch.
+ * @param count Hydro particle count required.
+ * @param gcount Gravity particle count required.
+ * @param scount Star particle count required.
+ * @param bcount Black hole particle count required.
+ * @param sink_count Sink particle count required.
+ */
+static void space_split_ensure_particle_scratch(
+    struct space_split_particle_scratch *scratch, const int count,
+    const int gcount, const int scount, const int bcount,
+    const int sink_count) {
+
+  if (count > scratch->parts_capacity) {
+    if (scratch->parts != NULL) swift_free("particle_scratch", scratch->parts);
+    if (scratch->xparts != NULL)
+      swift_free("particle_scratch", scratch->xparts);
+    if (swift_memalign("particle_scratch", (void **)&scratch->parts,
+                       part_align, sizeof(struct part) * count) != 0)
+      error("Failed to allocate particle scratch parts buffer.");
+    if (swift_memalign("particle_scratch", (void **)&scratch->xparts,
+                       xpart_align, sizeof(struct xpart) * count) != 0)
+      error("Failed to allocate particle scratch xparts buffer.");
+    scratch->parts_capacity = count;
+  }
+  if (gcount > scratch->gparts_capacity) {
+    if (scratch->gparts != NULL)
+      swift_free("particle_scratch", scratch->gparts);
+    if (swift_memalign("particle_scratch", (void **)&scratch->gparts,
+                       gpart_align, sizeof(struct gpart) * gcount) != 0)
+      error("Failed to allocate particle scratch gparts buffer.");
+    scratch->gparts_capacity = gcount;
+  }
+  if (scount > scratch->sparts_capacity) {
+    if (scratch->sparts != NULL)
+      swift_free("particle_scratch", scratch->sparts);
+    if (swift_memalign("particle_scratch", (void **)&scratch->sparts,
+                       spart_align, sizeof(struct spart) * scount) != 0)
+      error("Failed to allocate particle scratch sparts buffer.");
+    scratch->sparts_capacity = scount;
+  }
+  if (bcount > scratch->bparts_capacity) {
+    if (scratch->bparts != NULL)
+      swift_free("particle_scratch", scratch->bparts);
+    if (swift_memalign("particle_scratch", (void **)&scratch->bparts,
+                       bpart_align, sizeof(struct bpart) * bcount) != 0)
+      error("Failed to allocate particle scratch bparts buffer.");
+    scratch->bparts_capacity = bcount;
+  }
+  if (sink_count > scratch->sinks_capacity) {
+    if (scratch->sinks != NULL)
+      swift_free("particle_scratch", scratch->sinks);
+    if (swift_memalign("particle_scratch", (void **)&scratch->sinks,
+                       sink_align, sizeof(struct sink) * sink_count) != 0)
+      error("Failed to allocate particle scratch sinks buffer.");
+    scratch->sinks_capacity = sink_count;
+  }
+}
+
+/**
+ * @brief Gather a leaf cell's particles into its slice of the thread's
+ *        particle scratch buffers.
  *
- * #gpart linkage is fixed up as each particle is placed into its final
- * slot, exactly as it would be in a single global pass: a #gpart and its
- * #part/#spart/#bpart/#sink partner always share identical coordinates, so
- * #cell_split()'s consistent (`>=`) pivot comparison guarantees they always
- * compute the same bucket at every level and therefore always end up at
- * the same relative position within this cell's slice. The non-gravity
- * families are permuted first, each fixing up its partner #gpart's (not
- * yet permuted, so still safe to reach) id_or_neg_offset; #gpart is
- * permuted last, using that now-correct id_or_neg_offset to fix up the
- * `.gpart` back-pointer into the already-permuted families.
+ * Called from #space_split_recursive() the moment a cell is found not to
+ * need any further splitting, while its buffer slice (buff/sbuff/bbuff/
+ * gbuff/sink_buff, already fully sorted for this cell by the parent's
+ * #cell_split() calls) is still hot. For each family, and each entry k in
+ * the leaf's slice, this reads the source particle identified by part_ind
+ * and writes it into the matching slot of this leaf's slice of the scratch
+ * buffers -- @p scratch_parts etc. have already been advanced by the
+ * caller to point at this leaf's own position within the top-level cell's
+ * scratch buffers, exactly like @p buff etc. have for the sort buffers, so
+ * no further offset is needed to address them.
+ *
+ * A particle already in its final slot (source index == final index) is
+ * *not* gathered: it stays put in the real array and its scratch slot is
+ * left untouched, to be skipped on write-back (see #space_split_mapper()).
+ * This is the same work master avoids for particles that have not changed
+ * cell. Its partner gpart's back-index is still fixed up, though, since
+ * that gpart may itself be moving.
+ *
+ * #gpart linkage is fixed up as each particle lands, exactly as it would
+ * be in a single global pass, but scoped to this one leaf: a #gpart and
+ * its #part/#spart/#bpart/#sink partner always share identical
+ * coordinates, so #cell_split()'s consistent (`>=`) pivot comparison
+ * guarantees they always compute the same bucket at every level and
+ * therefore always end up in the same leaf. That is what makes it safe to
+ * do all of this leaf's relinking self-contained, right here: the
+ * non-gravity families are gathered first, each fixing up its partner
+ * #gpart's (not yet gathered, so still safe to reach at its old, real
+ * location) id_or_neg_offset; #gpart is gathered last, using that
+ * now-correct id_or_neg_offset to fix up the `.gpart` back-pointer to its
+ * own real, final address. That back-pointer must land wherever write-back
+ * will read the partner baryon from: its scratch slice if the baryon is
+ * moving, and -- since a stationary baryon is skipped on write-back -- the
+ * real array too if it is not. Writing the real array directly here is
+ * safe because a stationary particle is never another leaf's gather source
+ * and so is never read concurrently.
  *
  * @param s The #space.
- * @param c The top-level #cell whose particles are permuted into place.
- * @param buff This cell's slice of the space-wide hydro buffer, holding the
- *        complete sort for the whole cell.
- * @param sbuff This cell's slice of the space-wide star buffer.
- * @param bbuff This cell's slice of the space-wide black hole buffer.
- * @param gbuff This cell's slice of the space-wide gravity buffer.
- * @param sink_buff This cell's slice of the space-wide sink buffer.
+ * @param c The leaf #cell whose particles are gathered.
+ * @param scratch_parts This leaf's slice of the thread's scratch #part
+ *        buffer.
+ * @param scratch_xparts This leaf's slice of the thread's scratch #xpart
+ *        buffer.
+ * @param scratch_sparts This leaf's slice of the thread's scratch #spart
+ *        buffer.
+ * @param scratch_bparts This leaf's slice of the thread's scratch #bpart
+ *        buffer.
+ * @param scratch_sinks This leaf's slice of the thread's scratch #sink
+ *        buffer.
+ * @param scratch_gparts This leaf's slice of the thread's scratch #gpart
+ *        buffer.
+ * @param buff This leaf's slice of the space-wide hydro buffer.
+ * @param sbuff This leaf's slice of the space-wide star buffer.
+ * @param bbuff This leaf's slice of the space-wide black hole buffer.
+ * @param gbuff This leaf's slice of the space-wide gravity buffer.
+ * @param sink_buff This leaf's slice of the space-wide sink buffer.
  */
-static void space_split_permute_particles(
-    struct space *s, struct cell *c, struct cell_buff *restrict buff,
+static void space_split_move_leaf(
+    struct space *s, struct cell *c, struct part *restrict scratch_parts,
+    struct xpart *restrict scratch_xparts,
+    struct spart *restrict scratch_sparts,
+    struct bpart *restrict scratch_bparts,
+    struct sink *restrict scratch_sinks,
+    struct gpart *restrict scratch_gparts, struct cell_buff *restrict buff,
     struct cell_buff *restrict sbuff, struct cell_buff *restrict bbuff,
     struct cell_buff *restrict gbuff, struct cell_buff *restrict sink_buff) {
 
@@ -661,32 +792,23 @@ static void space_split_permute_particles(
   const int sink_count = c->sinks.count;
   const int gcount = c->grav.count;
 
-  /* Hydro: permute parts and xparts together, fixing up the
-   * id_or_neg_offset of the gpart each is linked to (not yet permuted, so
-   * this is safe) as each lands in its final slot. */
+  /* Hydro: gather parts and xparts, fixing up the id_or_neg_offset of the
+   * gpart each is linked to (not yet gathered, so this is safe). A particle
+   * already in its final slot (j == i) is left untouched in the real array
+   * -- its scratch slot stays garbage and is skipped on write-back -- but
+   * its partner gpart's back-index is still fixed up unconditionally, since
+   * that gpart may itself be moving. */
   if (count > 0) {
     const ptrdiff_t offset = c->hydro.parts - s->parts;
     for (int k = 0; k < count; k++) {
-      if (buff[k].part_ind == SIZE_MAX) continue;
-      const struct part temp = s->parts[offset + k];
-      const struct xpart xtemp = s->xparts[offset + k];
-      size_t cur = (size_t)k;
-      while (1) {
-        const size_t src = buff[cur].part_ind - offset;
-        const size_t i = offset + cur;
-        buff[cur].part_ind = SIZE_MAX;
-        if (src == (size_t)k) {
-          s->parts[i] = temp;
-          s->xparts[i] = xtemp;
-        } else {
-          s->parts[i] = s->parts[offset + src];
-          s->xparts[i] = s->xparts[offset + src];
-        }
-        if (s->parts[i].gpart != NULL)
-          s->parts[i].gpart->id_or_neg_offset = -(ptrdiff_t)i;
-        if (src == (size_t)k) break;
-        cur = src;
+      const size_t j = buff[k].part_ind;
+      const size_t i = offset + k;
+      struct part *src = &s->parts[j];
+      if (j != i) {
+        scratch_parts[k] = *src;
+        scratch_xparts[k] = s->xparts[j];
       }
+      if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
     }
   }
 
@@ -694,19 +816,11 @@ static void space_split_permute_particles(
   if (scount > 0) {
     const ptrdiff_t offset = c->stars.parts - s->sparts;
     for (int k = 0; k < scount; k++) {
-      if (sbuff[k].part_ind == SIZE_MAX) continue;
-      const struct spart temp = s->sparts[offset + k];
-      size_t cur = (size_t)k;
-      while (1) {
-        const size_t src = sbuff[cur].part_ind - offset;
-        const size_t i = offset + cur;
-        sbuff[cur].part_ind = SIZE_MAX;
-        s->sparts[i] = (src == (size_t)k) ? temp : s->sparts[offset + src];
-        if (s->sparts[i].gpart != NULL)
-          s->sparts[i].gpart->id_or_neg_offset = -(ptrdiff_t)i;
-        if (src == (size_t)k) break;
-        cur = src;
-      }
+      const size_t j = sbuff[k].part_ind;
+      const size_t i = offset + k;
+      struct spart *src = &s->sparts[j];
+      if (j != i) scratch_sparts[k] = *src;
+      if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
     }
   }
 
@@ -714,19 +828,11 @@ static void space_split_permute_particles(
   if (bcount > 0) {
     const ptrdiff_t offset = c->black_holes.parts - s->bparts;
     for (int k = 0; k < bcount; k++) {
-      if (bbuff[k].part_ind == SIZE_MAX) continue;
-      const struct bpart temp = s->bparts[offset + k];
-      size_t cur = (size_t)k;
-      while (1) {
-        const size_t src = bbuff[cur].part_ind - offset;
-        const size_t i = offset + cur;
-        bbuff[cur].part_ind = SIZE_MAX;
-        s->bparts[i] = (src == (size_t)k) ? temp : s->bparts[offset + src];
-        if (s->bparts[i].gpart != NULL)
-          s->bparts[i].gpart->id_or_neg_offset = -(ptrdiff_t)i;
-        if (src == (size_t)k) break;
-        cur = src;
-      }
+      const size_t j = bbuff[k].part_ind;
+      const size_t i = offset + k;
+      struct bpart *src = &s->bparts[j];
+      if (j != i) scratch_bparts[k] = *src;
+      if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
     }
   }
 
@@ -734,50 +840,60 @@ static void space_split_permute_particles(
   if (sink_count > 0) {
     const ptrdiff_t offset = c->sinks.parts - s->sinks;
     for (int k = 0; k < sink_count; k++) {
-      if (sink_buff[k].part_ind == SIZE_MAX) continue;
-      const struct sink temp = s->sinks[offset + k];
-      size_t cur = (size_t)k;
-      while (1) {
-        const size_t src = sink_buff[cur].part_ind - offset;
-        const size_t i = offset + cur;
-        sink_buff[cur].part_ind = SIZE_MAX;
-        s->sinks[i] = (src == (size_t)k) ? temp : s->sinks[offset + src];
-        if (s->sinks[i].gpart != NULL)
-          s->sinks[i].gpart->id_or_neg_offset = -(ptrdiff_t)i;
-        if (src == (size_t)k) break;
-        cur = src;
-      }
+      const size_t j = sink_buff[k].part_ind;
+      const size_t i = offset + k;
+      struct sink *src = &s->sinks[j];
+      if (j != i) scratch_sinks[k] = *src;
+      if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
     }
   }
 
   /* Gravity -- last, using the id_or_neg_offset values the four families
    * above just fixed up, to fix up their `.gpart` back-pointers in turn. */
   if (gcount > 0) {
+    const ptrdiff_t hydro_offset = c->hydro.parts - s->parts;
+    const ptrdiff_t stars_offset = c->stars.parts - s->sparts;
+    const ptrdiff_t bh_offset = c->black_holes.parts - s->bparts;
+    const ptrdiff_t sink_offset = c->sinks.parts - s->sinks;
     const ptrdiff_t offset = c->grav.parts - s->gparts;
     for (int k = 0; k < gcount; k++) {
-      if (gbuff[k].part_ind == SIZE_MAX) continue;
-      const struct gpart temp = s->gparts[offset + k];
-      size_t cur = (size_t)k;
-      while (1) {
-        const size_t src = gbuff[cur].part_ind - offset;
-        const size_t i = offset + cur;
-        gbuff[cur].part_ind = SIZE_MAX;
-        s->gparts[i] = (src == (size_t)k) ? temp : s->gparts[offset + src];
+      const size_t j = gbuff[k].part_ind;
+      const size_t i = offset + k;
+      struct gpart *src = &s->gparts[j];
+      if (j != i) scratch_gparts[k] = *src;
 
-        struct gpart *final_gp = &s->gparts[i];
-        const ptrdiff_t partner = -final_gp->id_or_neg_offset;
-        if (final_gp->type == swift_type_gas) {
+      /* The real, final address this gpart will occupy once this
+       * top-level cell's scratch data is copied back -- valid to store
+       * now even though that memory does not hold this data yet.
+       *
+       * The partner baryon's `.gpart` back-pointer must land wherever
+       * write-back will read that baryon from: its scratch slot if the
+       * baryon is moving; and, if the baryon is stationary (and hence
+       * skipped on write-back), directly in the real array at its final
+       * index too. A stationary particle is never another leaf's gather
+       * source, so this direct real-array write cannot race any gather. */
+      struct gpart *final_gp = &s->gparts[i];
+      const ptrdiff_t partner = -src->id_or_neg_offset;
+      if (src->type == swift_type_gas) {
+        const ptrdiff_t pl = partner - hydro_offset;
+        scratch_parts[pl].gpart = final_gp;
+        if (buff[pl].part_ind == (size_t)partner)
           s->parts[partner].gpart = final_gp;
-        } else if (final_gp->type == swift_type_stars) {
+      } else if (src->type == swift_type_stars) {
+        const ptrdiff_t pl = partner - stars_offset;
+        scratch_sparts[pl].gpart = final_gp;
+        if (sbuff[pl].part_ind == (size_t)partner)
           s->sparts[partner].gpart = final_gp;
-        } else if (final_gp->type == swift_type_black_hole) {
+      } else if (src->type == swift_type_black_hole) {
+        const ptrdiff_t pl = partner - bh_offset;
+        scratch_bparts[pl].gpart = final_gp;
+        if (bbuff[pl].part_ind == (size_t)partner)
           s->bparts[partner].gpart = final_gp;
-        } else if (final_gp->type == swift_type_sink) {
+      } else if (src->type == swift_type_sink) {
+        const ptrdiff_t pl = partner - sink_offset;
+        scratch_sinks[pl].gpart = final_gp;
+        if (sink_buff[pl].part_ind == (size_t)partner)
           s->sinks[partner].gpart = final_gp;
-        }
-
-        if (src == (size_t)k) break;
-        cur = src;
       }
     }
   }
@@ -788,16 +904,34 @@ static void space_split_permute_particles(
  *
  * This builds the cell hierarchy and sorts particles into the progeny; it
  * does not compute any per-cell statistics (h_max, time-step bounds, star
- * formation history, multipoles, ...) and it does not move any particles --
- * it only sorts the buffers. Statistics are handled for every cell -- leaf
- * and split alike -- by the separate aggregation pass in
+ * formation history, multipoles, ...). Those are handled for every cell --
+ * leaf and split alike -- by the separate aggregation pass in
  * #space_split_aggregate_recursive(), once the whole hierarchy below a
- * top-level cell has been built here. The particle move happens once per
- * top-level cell, in #space_split_mapper(), after this function returns for
- * that cell -- see #space_split_permute_particles() for why.
+ * top-level cell has been built here.
+ *
+ * Leaves are different: the moment a cell is found not to need any further
+ * splitting, its particles are gathered into this thread's particle
+ * scratch buffers right here, via #space_split_move_leaf(), while its
+ * buffer slice is still hot -- see that function's documentation for why
+ * this is both correct and the point of the exercise. Once the whole
+ * top-level cell's subtree has been gathered this way,
+ * #space_split_mapper() copies the scratch buffers back into the real
+ * arrays with a single bulk memcpy per family.
  *
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
+ * @param scratch_parts This cell's slice of the thread's scratch #part
+ *        buffer, advanced in step with @p buff.
+ * @param scratch_xparts This cell's slice of the thread's scratch #xpart
+ *        buffer.
+ * @param scratch_sparts This cell's slice of the thread's scratch #spart
+ *        buffer, advanced in step with @p sbuff.
+ * @param scratch_bparts This cell's slice of the thread's scratch #bpart
+ *        buffer, advanced in step with @p bbuff.
+ * @param scratch_sinks This cell's slice of the thread's scratch #sink
+ *        buffer, advanced in step with @p sink_buff.
+ * @param scratch_gparts This cell's slice of the thread's scratch #gpart
+ *        buffer, advanced in step with @p gbuff.
  * @param ind Scratch space for #cell_split(), reused unchanged at every
  *        level of this top-level cell's recursion (sized by the caller to
  *        the top-level cell's own count, the largest any descendant will
@@ -813,14 +947,16 @@ static void space_split_permute_particles(
  * @param sink_buff This cell's slice of the space-wide sink sorting
  *        buffer, already filled.
  */
-static void space_split_recursive(struct space *s, struct cell *c,
-                                  int *restrict ind,
-                                  struct cell_buff *restrict buff,
-                                  struct cell_buff *restrict sbuff,
-                                  struct cell_buff *restrict bbuff,
-                                  struct cell_buff *restrict gbuff,
-                                  struct cell_buff *restrict sink_buff,
-                                  const short int tpid) {
+static void space_split_recursive(
+    struct space *s, struct cell *c, struct part *restrict scratch_parts,
+    struct xpart *restrict scratch_xparts,
+    struct spart *restrict scratch_sparts,
+    struct bpart *restrict scratch_bparts,
+    struct sink *restrict scratch_sinks,
+    struct gpart *restrict scratch_gparts, int *restrict ind,
+    struct cell_buff *restrict buff, struct cell_buff *restrict sbuff,
+    struct cell_buff *restrict bbuff, struct cell_buff *restrict gbuff,
+    struct cell_buff *restrict sink_buff, const short int tpid) {
 
   /* Unpack cell information. */
   const int count = c->hydro.count;
@@ -921,6 +1057,12 @@ static void space_split_recursive(struct space *s, struct cell *c,
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
                      *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
                      *progeny_sink_buff = sink_buff;
+    struct part *progeny_scratch_parts = scratch_parts;
+    struct xpart *progeny_scratch_xparts = scratch_xparts;
+    struct spart *progeny_scratch_sparts = scratch_sparts;
+    struct bpart *progeny_scratch_bparts = scratch_bparts;
+    struct sink *progeny_scratch_sinks = scratch_sinks;
+    struct gpart *progeny_scratch_gparts = scratch_gparts;
 
     for (int k = 0; k < 8; k++) {
 
@@ -937,9 +1079,12 @@ static void space_split_recursive(struct space *s, struct cell *c,
       } else {
 
         /* Recurse */
-        space_split_recursive(s, cp, ind, progeny_buff, progeny_sbuff,
-                              progeny_bbuff, progeny_gbuff, progeny_sink_buff,
-                              tpid);
+        space_split_recursive(s, cp, progeny_scratch_parts,
+                              progeny_scratch_xparts, progeny_scratch_sparts,
+                              progeny_scratch_bparts, progeny_scratch_sinks,
+                              progeny_scratch_gparts, ind, progeny_buff,
+                              progeny_sbuff, progeny_bbuff, progeny_gbuff,
+                              progeny_sink_buff, tpid);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -947,17 +1092,29 @@ static void space_split_recursive(struct space *s, struct cell *c,
         progeny_sbuff += cp->stars.count;
         progeny_bbuff += cp->black_holes.count;
         progeny_sink_buff += cp->sinks.count;
+        progeny_scratch_parts += cp->hydro.count;
+        progeny_scratch_xparts += cp->hydro.count;
+        progeny_scratch_gparts += cp->grav.count;
+        progeny_scratch_sparts += cp->stars.count;
+        progeny_scratch_bparts += cp->black_holes.count;
+        progeny_scratch_sinks += cp->sinks.count;
       }
     }
 
   } /* Split or let it be? */
 
-  /* Otherwise, this cell remains a leaf: mark it as such. Statistics,
-   * multipole construction and the particle move itself are all deferred --
-   * see #space_split_recursive()'s documentation. */
+  /* Otherwise, this cell remains a leaf: mark it as such, and gather its
+   * particles into scratch while its buffer slice is still hot. Statistics
+   * and multipole construction are still deferred to the aggregation pass
+   * in #space_split_aggregate_recursive(), since they are cheap sequential
+   * reads once the particles are in final order, and gain nothing from
+   * happening here too. */
   else {
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
+    space_split_move_leaf(s, c, scratch_parts, scratch_xparts, scratch_sparts,
+                          scratch_bparts, scratch_sinks, scratch_gparts, buff,
+                          sbuff, bbuff, gbuff, sink_buff);
   }
 }
 
@@ -965,23 +1122,21 @@ static void space_split_recursive(struct space *s, struct cell *c,
  * @brief Recursively aggregate progeny properties onto parent cells.
  *
  * Once the split pass in #space_split_recursive() has built the cell
- * hierarchy and sorted particles into it, and #space_split_mapper() has
- * permuted every particle into its final position (see
- * #space_split_permute_particles()), this function derives every cell's
- * statistics in a single depth-first, post-order traversal. Leaf cells
- * (#cell.split unset) are finalised directly from their own (already
- * permuted) particles via #space_split_finalise_leaf(). Split cells are
- * built up from their already-aggregated progeny: smoothing lengths,
- * time-step bounds and star formation history are folded in via
- * #space_split_accumulate_props(), and, if running with self-gravity, the
- * multipole is built from the bottom up (M2M) via
- * #space_split_populate_multipole().
+ * hierarchy and sorted particles into it, gathered every leaf's particles
+ * into scratch via #space_split_move_leaf(), and #space_split_mapper() has
+ * copied each top-level cell's scratch data back into the real arrays,
+ * this function derives every cell's statistics in a single depth-first,
+ * post-order traversal. Leaf cells (#cell.split unset) are finalised
+ * directly from their own (already moved) particles via
+ * #space_split_finalise_leaf(). Split cells are built up from their
+ * already-aggregated progeny: smoothing lengths, time-step bounds and star
+ * formation history are folded in via #space_split_accumulate_props(),
+ * and, if running with self-gravity, the multipole is built from the
+ * bottom up (M2M) via #space_split_populate_multipole().
  *
- * No pointer rebasing is needed here: #space_split_permute_particles()
- * mutates s->parts etc. in place rather than swapping in a different
- * array, so every cell pointer computed during the split pass (always
- * base + offset against whichever array s->parts currently is) is still
- * valid.
+ * No pointer rebasing is needed here: every family is copied back into the
+ * same array, at the same addresses, it always occupied, so every cell
+ * pointer computed during the split pass is still valid.
  *
  * @param s The #space being aggregated.
  * @param c The cell to aggregate.
@@ -1092,8 +1247,8 @@ static void space_split_ensure_ind_scratch(
  * particle arrays by #space_split() rather than per top-level cell (see
  * #space_split_fill_buffers()). This bundles the #space together with the
  * base pointer of each of those buffers and one #space_split_ind_scratch
- * per worker thread, so every worker can find its own top-level cells'
- * slices and its own reusable #cell_split() scratch space.
+ * and #space_split_particle_scratch per worker thread, so every worker can
+ * find its own top-level cells' slices and its own reusable scratch space.
  */
 struct space_split_mapper_data {
 
@@ -1117,6 +1272,9 @@ struct space_split_mapper_data {
 
   /*! Per-thread #cell_split() ind scratch buffers, one per worker thread. */
   struct space_split_ind_scratch *ind_scratch;
+
+  /*! Per-thread particle scratch buffers, one per worker thread. */
+  struct space_split_particle_scratch *particle_scratch;
 };
 
 /**
@@ -1125,14 +1283,15 @@ struct space_split_mapper_data {
  *
  * For each top-level cell, this first fills that cell's slice of the
  * space-wide sorting buffers (see #space_split_fill_buffers()), ensures
- * this thread's #cell_split() scratch buffer is big enough for it, then
- * builds the cell hierarchy and sorts particles into it, and finally, once
- * that whole subtree's buffers hold the complete sorted order, permutes
- * every one of this cell's particles into their final position in place
- * (see #space_split_permute_particles()). It does not compute any
- * per-cell statistics; see #space_split_aggregate_mapper() for the pass
- * that finalises leaves and derives cell statistics and multipoles once
- * the whole hierarchy has been built.
+ * this thread's #cell_split() and particle scratch buffers are big enough
+ * for it, then builds the cell hierarchy, sorts particles into it and
+ * gathers each leaf's particles into the particle scratch buffers as it is
+ * found (see #space_split_move_leaf()). Once that whole subtree has been
+ * gathered, this copies each family's scratch data straight back into the
+ * real arrays with a single bulk memcpy. It does not compute any per-cell
+ * statistics; see #space_split_aggregate_mapper() for the pass that
+ * finalises leaves and derives cell statistics and multipoles once the
+ * whole hierarchy has been built.
  *
  * @param map_data Pointer towards the top-cells.
  * @param num_cells The number of cells to treat.
@@ -1150,6 +1309,7 @@ static void space_split_mapper(void *map_data, int num_cells,
 
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
+  struct space_split_particle_scratch *scratch = &data->particle_scratch[tpid];
 
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
@@ -1185,14 +1345,47 @@ static void space_split_mapper(void *map_data, int num_cells,
     max_count = max(max_count, c->sinks.count);
     space_split_ensure_ind_scratch(&data->ind_scratch[tpid], max_count);
 
-    /* Split this cell recursively -- buffers only, no particle movement. */
-    space_split_recursive(s, c, data->ind_scratch[tpid].ind, buff, sbuff,
-                          bbuff, gbuff, sink_buff, tpid);
+    /* This thread's particle scratch buffers need to hold this whole
+     * top-level cell's particles, per family. */
+    space_split_ensure_particle_scratch(scratch, c->hydro.count,
+                                        c->grav.count, c->stars.count,
+                                        c->black_holes.count,
+                                        c->sinks.count);
 
-    /* This cell's entire subtree is now sorted: every one of its buffer
-     * slices holds the final order. Permute the real particles into place
-     * while that data is still hot. */
-    space_split_permute_particles(s, c, buff, sbuff, bbuff, gbuff, sink_buff);
+    /* Split this cell recursively, gathering each leaf's particles into
+     * scratch as it is found. */
+    space_split_recursive(s, c, scratch->parts, scratch->xparts,
+                          scratch->sparts, scratch->bparts, scratch->sinks,
+                          scratch->gparts, data->ind_scratch[tpid].ind, buff,
+                          sbuff, bbuff, gbuff, sink_buff, tpid);
+
+    /* This cell's entire subtree has now been gathered into scratch, in
+     * final order: copy each family back into the real arrays, skipping any
+     * particle that was already in its final slot (source index == final
+     * index). Such particles were never gathered into scratch (their slot
+     * is garbage) and never need moving -- exactly the work master avoids
+     * for particles that have not changed cell. */
+    for (int k = 0; k < c->hydro.count; k++) {
+      if (buff[k].part_ind == (size_t)(parts_offset + k)) continue;
+      c->hydro.parts[k] = scratch->parts[k];
+      c->hydro.xparts[k] = scratch->xparts[k];
+    }
+    for (int k = 0; k < c->stars.count; k++) {
+      if (sbuff[k].part_ind == (size_t)(sparts_offset + k)) continue;
+      c->stars.parts[k] = scratch->sparts[k];
+    }
+    for (int k = 0; k < c->black_holes.count; k++) {
+      if (bbuff[k].part_ind == (size_t)(bparts_offset + k)) continue;
+      c->black_holes.parts[k] = scratch->bparts[k];
+    }
+    for (int k = 0; k < c->sinks.count; k++) {
+      if (sink_buff[k].part_ind == (size_t)(sinks_offset + k)) continue;
+      c->sinks.parts[k] = scratch->sinks[k];
+    }
+    for (int k = 0; k < c->grav.count; k++) {
+      if (gbuff[k].part_ind == (size_t)(gparts_offset + k)) continue;
+      c->grav.parts[k] = scratch->gparts[k];
+    }
   }
 }
 
@@ -1327,19 +1520,22 @@ static void space_split_allocate_buffers(struct space *s,
  *
  * 1. Split pass: #space_split_mapper() recursively builds the cell
  *    hierarchy and sorts each cell's slice of the space-wide sorting
- *    buffers into its progeny (see #cell_split()), then, once a top-level
- *    cell's whole subtree is sorted, permutes its particles into their
- *    final position in place (see #space_split_permute_particles()). It
- *    does not compute any per-cell statistics.
+ *    buffers into its progeny (see #cell_split()), gathering each leaf's
+ *    particles into this thread's particle scratch buffers as it is found
+ *    (see #space_split_move_leaf()), then, once a top-level cell's whole
+ *    subtree has been gathered, copies each family's scratch data back
+ *    into the real arrays with a single bulk memcpy. It does not compute
+ *    any per-cell statistics.
  * 2. Aggregation pass: #space_split_aggregate_mapper() walks the
  *    now-complete hierarchy bottom-up, finalising leaves from their own
- *    (already permuted) particles and deriving every other cell's
- *    statistics (h_max, time-step bounds, star formation history, maxdepth
- *    and, for self-gravity runs, the multipole) from its progeny.
+ *    (already moved) particles and deriving every other cell's statistics
+ *    (h_max, time-step bounds, star formation history, maxdepth and, for
+ *    self-gravity runs, the multipole) from its progeny.
  *
- * There is no array swap or pointer rebase between the two: the permute
- * step mutates s->parts etc. in place, so every cell pointer computed
- * during the split pass is still valid throughout the aggregation pass.
+ * There is no array swap or pointer rebase between the two: every family
+ * is copied back into the same array, at the same addresses, it always
+ * occupied, so every cell pointer computed during the split pass is still
+ * valid throughout the aggregation pass.
  *
  * @param s The #space.
  * @param verbose Are we talkative ?
@@ -1360,9 +1556,11 @@ void space_split(struct space *s, int verbose) {
                    *sink_buff = NULL;
   space_split_allocate_buffers(s, &buff, &gbuff, &sbuff, &bbuff, &sink_buff);
 
-  /* One #cell_split() ind scratch buffer per worker thread, grown lazily
-   * as #space_split_mapper() encounters top-level cells with larger
-   * counts. */
+  /* One #cell_split() ind scratch buffer and one particle scratch buffer
+   * per worker thread, both grown lazily as #space_split_mapper()
+   * encounters top-level cells with larger counts -- the particle scratch
+   * buffers only ever need to be as big as a single top-level cell's
+   * counts, not the space's complete local particle arrays. */
   const int nr_threads = s->e->threadpool.num_threads;
   struct space_split_ind_scratch *ind_scratch =
       (struct space_split_ind_scratch *)swift_malloc(
@@ -1370,16 +1568,26 @@ void space_split(struct space *s, int verbose) {
           sizeof(struct space_split_ind_scratch) * nr_threads);
   if (ind_scratch == NULL) error("Failed to allocate ind scratch array.");
   bzero(ind_scratch, sizeof(struct space_split_ind_scratch) * nr_threads);
+  struct space_split_particle_scratch *particle_scratch =
+      (struct space_split_particle_scratch *)swift_malloc(
+          "particle_scratch_array",
+          sizeof(struct space_split_particle_scratch) * nr_threads);
+  if (particle_scratch == NULL)
+    error("Failed to allocate particle scratch array.");
+  bzero(particle_scratch,
+        sizeof(struct space_split_particle_scratch) * nr_threads);
   if (verbose)
     message("Allocation: %.3f %s.", clocks_from_ticks(getticks() - tic_alloc),
             clocks_getunit());
 
   /* Split pass: fill the buffers, build the cell hierarchy, sort the
-   * particles into it and permute each top-level cell's particles into
-   * place once its whole subtree is sorted. */
+   * particles into it, gather each leaf's particles into scratch as it is
+   * found and copy each top-level cell's worth back into place once its
+   * whole subtree has been gathered. */
   const ticks tic_split = getticks();
   struct space_split_mapper_data split_data = {
-      s, buff, gbuff, sbuff, bbuff, sink_buff, ind_scratch};
+      s,     buff,        gbuff,          sbuff,
+      bbuff, sink_buff,   ind_scratch,    particle_scratch};
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
@@ -1394,8 +1602,8 @@ void space_split(struct space *s, int verbose) {
                     s->nr_bparts, /*verbose=*/0);
 #endif
 
-  /* The sorting buffers and ind scratch are only needed for the split pass
-   * above. */
+  /* The sorting buffers and both scratch spaces are only needed for the
+   * split pass above. */
   const ticks tic_cleanup = getticks();
   if (buff != NULL) swift_free("tempbuff", buff);
   if (gbuff != NULL) swift_free("tempgbuff", gbuff);
@@ -1404,8 +1612,16 @@ void space_split(struct space *s, int verbose) {
   if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
   for (int t = 0; t < nr_threads; t++) {
     if (ind_scratch[t].ind != NULL) swift_free("ind_scratch", ind_scratch[t].ind);
+    struct space_split_particle_scratch *ps = &particle_scratch[t];
+    if (ps->parts != NULL) swift_free("particle_scratch", ps->parts);
+    if (ps->xparts != NULL) swift_free("particle_scratch", ps->xparts);
+    if (ps->gparts != NULL) swift_free("particle_scratch", ps->gparts);
+    if (ps->sparts != NULL) swift_free("particle_scratch", ps->sparts);
+    if (ps->bparts != NULL) swift_free("particle_scratch", ps->bparts);
+    if (ps->sinks != NULL) swift_free("particle_scratch", ps->sinks);
   }
   swift_free("ind_scratch_array", ind_scratch);
+  swift_free("particle_scratch_array", particle_scratch);
   if (verbose)
     message("Buffer cleanup: %.3f %s.",
             clocks_from_ticks(getticks() - tic_cleanup), clocks_getunit());
