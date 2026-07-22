@@ -89,8 +89,6 @@ cooling_get_helium_mass_fraction(const struct cooling_function_data *cooling,
  * @param cosmo The current cosmological model.
  * @param hydro_properties The #hydro_props.
  * @param cooling The #cooling_function_data used in the run.
- * @param p The particle.
- * @param xp The extended data of the particle.
  * @return Mean molecular weight.
  */
 __attribute__((always_inline)) INLINE static double

@@ -626,6 +626,17 @@ INLINE static void star_formation_copy_properties(
   /* Store the tracers data */
   sp->tracers_data = xp->tracers_data;
 
+#if defined(TRACERS_EAGLE)
+  /* The trigger-recording mechanism stores a negative sentinel in
+   * averaged_SFR[i] when a snapshot trigger fires mid-step, to be corrected
+   * by tracers_after_timestep_part at step end. If the gas converts to a star
+   * before that correction runs, the sentinel is copied here but never consumed
+   * Clamp to zero to avoid writing negative AveragedStarFormationRates. */
+  for (int i = 0; i < num_snapshot_triggers_part; ++i)
+    if (sp->tracers_data.averaged_SFR[i] < 0.f)
+      sp->tracers_data.averaged_SFR[i] = 0.f;
+#endif
+
   /* Store the birth density in the star particle */
   sp->birth_density = hydro_get_physical_density(p, cosmo);
 
