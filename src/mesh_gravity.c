@@ -1083,12 +1083,6 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
   memcpy(rho_copy, rho_MG, N_MG*N_MG*N_MG*sizeof(double));
   space_get_fR_contribution(s, tp, rho_copy, f_R, &MG_var, N_min, N_MG, test);
 
-  FILE *part_acc_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/snaps_cosma/new_field.txt", "w");
-  for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-    fprintf(part_acc_export, "%E \n", f_R[i]);
-  }
-  fclose(part_acc_export);
-
   get_rho_mod(rho_MG, f_R, &MG_var, delta, N_MG);
 
   /* Decide if we want to calculate the MG contribution to the accelerations at the cell level. E.g. to export for analysing. */
@@ -1114,12 +1108,6 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
   swift_free("fR_field", f_R);
   if (MG_var.timing) message("Solving the field equation took %.3f %s.",
             clocks_from_ticks(getticks() - toc), clocks_getunit());
-
-  FILE *part_acc_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/snaps_cosma/new_rhomod.txt", "w");
-  for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-    fprintf(part_acc_export2, "%E \n", rho_MG[i]);
-  }
-  fclose(part_acc_export2);
 }
 
 /**
