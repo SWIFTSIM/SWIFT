@@ -1353,12 +1353,6 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   fftw_execute(inverse_plan);
   if (MG) fftw_execute(inverse_plan_MG);
 
-  FILE *part_acc_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/snaps_cosma/new_FT_mesh.txt", "w");
-  for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-    fprintf(part_acc_export2, "%E \n", rho_MG[i]);
-  }
-  fclose(part_acc_export2);
-
   /* Extra conversion factor if we used a discrete symbol before */
   double conversion_factor;
   if (discrete_symbol)
@@ -1431,29 +1425,12 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     data_MG.const_G = s->e->physical_constants->const_newton_G;
     data_MG.reset = 0;
 
-    //if (nr_local_cells == 0) {
-
       /* We don't have a cell infrastructure in place so we need to
       * directly loop over the particles */
       threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
                     sizeof(struct gpart), threadpool_auto_chunk_size,
                     (void*)&data_MG);
-
-    //} else { /* Normal case */ //Untested with MG!
-
-      /* Do a parallel CIC mesh interpolation onto the gparts but only using
-        the local top-level cells */
-      //threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
-        //            nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-          //          (void*)&data_MG);
-    //}
   }
-
-  FILE *part_acc_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/snaps_cosma/new_acc.txt", "w");
-  for (size_t i=0; i<s->nr_gparts; i++) {
-    fprintf(part_acc_export, "%E \n", s->gparts[i].a_grav_mesh[0]);
-  }
-  fclose(part_acc_export);
 
 
   /* Clean-up the mess */
