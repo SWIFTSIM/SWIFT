@@ -61,9 +61,9 @@ void zoom_write_metadata(hid_t root_grp, hid_t head_grp,
   if (h_zoom < 0) error("Failed to create ZoomRegion group in HDF5 file.");
 
   /* Remove the shift from the center of mass */
-  double center[3] = {zp->com[0] - zp->zoom_shift[0],
-                      zp->com[1] - zp->zoom_shift[1],
-                      zp->com[2] - zp->zoom_shift[2]};
+  double center[3] = {zp->com[0] - zp->applied_zoom_shift[0],
+                      zp->com[1] - zp->applied_zoom_shift[1],
+                      zp->com[2] - zp->applied_zoom_shift[2]};
 
   /* Define the internal used centre (the centre of the box) */
   double internal_center[3] = {0.5 * s->dim[0], 0.5 * s->dim[1],
@@ -110,7 +110,7 @@ void zoom_unshift_pos(const struct space *s, double pos[3]) {
   const struct zoom_region_properties *zp = s->zoom_props;
 
   /* Unshift the position. */
-  pos[0] -= zp->zoom_shift[0];
-  pos[1] -= zp->zoom_shift[1];
-  pos[2] -= zp->zoom_shift[2];
+  pos[0] -= zp->applied_zoom_shift[0];
+  pos[1] -= zp->applied_zoom_shift[1];
+  pos[2] -= zp->applied_zoom_shift[2];
 }
