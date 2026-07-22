@@ -263,10 +263,57 @@ effect) at sharp density contrasts like this clump's $100\times$ jump.
 This is a plausible explanation for the qualitatively smaller
 disruption signal measured here relative to the paper's description,
 and would not be a bug in the photoionization/budget-splitting
-algorithm itself -- testable by rerunning with \swift's Gizmo MFV/MFM
-solver instead of SPH and comparing directly, not yet attempted.
+algorithm itself -- tested by rerunning \code{gas\_mass=20} with
+\swift's Gizmo MFM solver instead of SPH (same IC, same radiation
+parameters; \code{hydro\_set\_v\_sig\_based\_on\_velocity\_kick()}
+backported from \code{darwin/gear\_mechanical\_feedback} to make the
+GEAR mechanical-feedback code path build against Gizmo).
 
-\textbf{Open}: whether the compression signal measured here (near-side
-density increase) is the same effect the paper calls erosion/disruption,
-or a distinct effect the missing mixing shell would otherwise mask;
-the AREPO-vs-SPH mixing comparison above, if pursued.
+\begin{figure}
+  \centering
+  \includegraphics[width=0.55\linewidth]{Figures/clump_smith2021_style_comparison_mfm}
+  \caption{Same as Figure~\ref{fig:clump-smith2021-style}, rerun with
+    Gizmo MFM instead of SPH: spherical (top) vs.\ HealPix/angular
+    (bottom), $t=8\,$Myr.}
+  \label{fig:clump-smith2021-style-mfm}
+\end{figure}
+
+\begin{center}
+\begin{tabular}{lrrr}
+\hline
+& near, still-dense & near, $n_H$ ratio & far, $n_H$ ratio \\
+\hline
+\code{gas\_mass=20}, uniform, MFM & 96.3\% & 85.7\% & 81.7\% \\
+\code{gas\_mass=20}, angular, MFM & 96.8\% & 86.5\% & 81.8\% \\
+\hline
+\end{tabular}
+\end{center}
+
+Two findings from the MFM rerun. First, the near side now
+\emph{dilutes} (density drops to $\sim$84--87\% of its $t=0$ value)
+instead of compressing, the opposite sign from the SPH result above --
+consistent with SPH's known surface-tension-like resistance to mixing
+and disruption of a dense clump embedded in hot gas (the same failure
+mode documented for SPH on the classic ``blob test''). The MFM bubble
+edge is also visibly smoother/rounder than SPH's, with less of the
+particle-noise texture along the ionization front. Second, the
+uniform/angular scheme differentiation that was resolvable under SPH
+at this resolution ($134.3\%$ vs.\ $125.0\%$) disappears under MFM
+(near-side ratios differ by under $1$ percentage point) -- suggesting
+that differentiation was partly an SPH compression artifact rather
+than a clean signal about how the two radiation-injection schemes
+differ; with that artifact removed, the schemes agree. The
+intermediate-temperature mixing shell from Smith et al.'s Figure~2 is
+still absent from the MFM slices (Figure~\ref{fig:clump-smith2021-style-mfm})
+-- the hot/cold interface remains sharp in both schemes -- so MFM
+resolves the compression artifact and the ionization-front noise, but
+does not by itself reproduce that specific visual feature at this
+resolution.
+
+\textbf{Open}: whether the dilution signal measured under MFM
+(near-side density decrease) is the same effect the paper calls
+erosion/disruption; whether the missing mixing shell is a resolution
+effect (untested at higher \code{gas\_mass}) or requires a different
+diagnostic (slice thickness, projection vs.\ slice); and whether an
+MFV rerun (only attempted with MFM so far) changes this picture
+further.
