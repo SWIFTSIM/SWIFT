@@ -39,6 +39,17 @@ struct tracers_xpart_data {
     /*! Time when this particle is not ionized anymore */
     float end_time;
 
+    /*! Mean photon energy above the 13.6 eV HI ionization threshold for
+        the tagging star, frozen at tag time (only set when
+        GEARFeedback:HII_couple_ionization_rate is on; 0 otherwise). */
+    float excess_photon_energy_HI;
+
+    /*! HI-ionizing photon flux from the tagging star at this particle's
+        location, frozen at tag time (photons / area / time, internal
+        units; only set when GEARFeedback:HII_couple_ionization_rate is
+        on, 0 otherwise). */
+    float ionizing_flux_HI;
+
   } HII_region;
 };
 

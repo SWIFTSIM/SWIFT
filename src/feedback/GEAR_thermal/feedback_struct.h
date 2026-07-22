@@ -158,6 +158,11 @@ struct feedback_spart_data {
         radiation_compute_and_cache_HII_rebuild_interval). */
     double HII_region_next_rebuild_time;
 
+    /*! Mean photon energy above the 13.6 eV HI ionization threshold,
+        cached once per HII rebuild pass (only computed when
+        GEARFeedback:HII_couple_ionization_rate is on; 0 otherwise). */
+    float mean_excess_photon_energy_HI;
+
   } radiation;
 };
 

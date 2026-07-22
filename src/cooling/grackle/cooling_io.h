@@ -184,6 +184,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->use_radiative_transfer = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:use_radiative_transfer", 0);
 
+  /* Lives under GEARFeedback, alongside its sibling HII_* parameters,
+     rather than GrackleCooling -- forces use_radiative_transfer on
+     internally so the user only sets this one flag. */
+  cooling->HII_couple_ionization_rate = parser_get_opt_param_int(
+      parameter_file, "GEARFeedback:HII_couple_ionization_rate", 0);
+  if (cooling->HII_couple_ionization_rate) {
+    cooling->use_radiative_transfer = 1;
+  }
+
   cooling->RT_heating_rate = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:RT_heating_rate_cgs", 0);
 

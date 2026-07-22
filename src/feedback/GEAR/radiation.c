@@ -266,6 +266,15 @@ void radiation_compute_and_cache_HII_rebuild_interval(
   const double k_B = phys_const->const_boltzmann_k;
   const double floor_interval = feedback_props->HII_rebuild_floor_Myr;
 
+  /* Only needed for GEARFeedback:HII_couple_ionization_rate's
+     RT_heating_rate derivation; skip the series expansion otherwise.
+     Cached once per rebuild pass rather than per tagged gas particle. */
+  sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+      cooling->HII_couple_ionization_rate
+          ? (float)radiation_get_individual_star_mean_excess_photon_energy_HI(
+                sp->mass, us, phys_const)
+          : 0.f;
+
   /* Temperature floor and case-B recombination coefficient: depend only
      on Z (no single gas particle at this star-level call site), shared
      across every pixel. */
@@ -419,10 +428,13 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  * ionization on the very next step.
  */
 __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
-    struct part *p, struct xpart *xp, long long star_id, double end_time) {
+    struct part *p, struct xpart *xp, long long star_id, double end_time,
+    float excess_photon_energy_HI, float ionizing_flux_HI) {
   xp->tracers_data.HII_region.is_ionized = 1;
   xp->tracers_data.HII_region.star_id = star_id;
   xp->tracers_data.HII_region.end_time = end_time;
+  xp->tracers_data.HII_region.excess_photon_energy_HI = excess_photon_energy_HI;
+  xp->tracers_data.HII_region.ionizing_flux_HI = ionizing_flux_HI;
   return;
 }
 
@@ -462,6 +474,60 @@ __attribute__((always_inline)) INLINE double
 radiation_get_part_ionized_end_time(const struct part *p,
                                     const struct xpart *xp) {
   return xp->tracers_data.HII_region.end_time;
+}
+
+/**
+ * Mean photon energy above the 13.6 eV HI ionization threshold of the
+ * star that tagged this #part, frozen at tag time. Only meaningful while
+ * radiation_is_part_tagged_as_ionized() is true.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+__attribute__((always_inline)) INLINE float
+radiation_get_part_excess_photon_energy_HI(const struct part *p,
+                                           const struct xpart *xp) {
+  return xp->tracers_data.HII_region.excess_photon_energy_HI;
+}
+
+/**
+ * HI-ionizing photon flux from the tagging star at this #part's location,
+ * frozen at tag time (photons / area / time, internal units). Only
+ * meaningful while radiation_is_part_tagged_as_ionized() is true.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+__attribute__((always_inline)) INLINE float radiation_get_part_ionizing_flux_HI(
+    const struct part *p, const struct xpart *xp) {
+  return xp->tracers_data.HII_region.ionizing_flux_HI;
+}
+
+/**
+ * Photoionization rate coefficient Gamma_HI this #part should be fed
+ * (internal 1/time), from its frozen ionizing flux and the standard
+ * hydrogen photoionization cross-section at the Lyman limit (Osterbrock &
+ * Ferland 2006, sigma_HI = 6.3e-18 cm^2 -- a physical constant, not a
+ * tunable parameter). Used by cooling_copy_to_grackle to populate
+ * Grackle's RT_HI_ionization_rate for a rate-coupled particle (see
+ * GEARFeedback:HII_couple_ionization_rate).
+ *
+ * @param us Unit system.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Gamma_HI (internal units).
+ */
+__attribute__((always_inline)) INLINE double
+radiation_get_part_photoionization_rate_coefficient(
+    const struct unit_system *us, const struct part *p,
+    const struct xpart *xp) {
+
+  const double sigma_HI_cgs = 6.3e-18; /* [cm^2], Osterbrock & Ferland 2006 */
+  const float dimension_area[5] = {0, 2, 0, 0, 0}; /* [cm^2] */
+  const double sigma_HI =
+      sigma_HI_cgs / units_general_cgs_conversion_factor(us, dimension_area);
+
+  return sigma_HI * radiation_get_part_ionizing_flux_HI(p, xp);
 }
 
 /**
@@ -736,6 +802,84 @@ double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
                            prefactor * photon_integral_sum;
 
   return N_dot_ion;
+}
+
+/**
+ * @brief Get the star's mean excess photon energy above the 13.6 eV
+ * hydrogen ionization threshold, from the same blackbody spectrum used by
+ * radiation_get_individual_star_ionizing_photon_emission_rate_fit.
+ *
+ * Only used when GEARFeedback:HII_couple_ionization_rate is on, to derive
+ * Grackle's RT_heating_rate for a rate-coupled particle
+ * (RT_heating_rate = Gamma_HI * mean_excess_photon_energy_HI).
+ *
+ * @param mass Mass of the star particle.
+ * @param us The unit system.
+ * @param phys_const The #phys_const.
+ * @return Mean excess photon energy above 13.6 eV (internal energy units).
+ */
+double radiation_get_individual_star_mean_excess_photon_energy_HI(
+    const float mass, const struct unit_system *us,
+    const struct phys_const *phys_const) {
+
+  const float R = radiation_get_individual_star_radius(mass, us, phys_const);
+  const float L =
+      radiation_get_individual_star_luminosity(mass, us, phys_const);
+
+  if (R <= 0.f || L <= 0.f) {
+    return 0.0;
+  }
+
+  const float R_in_R_sun = R / phys_const->const_solar_radius;
+  const float L_in_L_sun = L / phys_const->const_solar_luminosity;
+
+  const double T_K =
+      5780.0 * pow((double)(L_in_L_sun / (R_in_R_sun * R_in_R_sun)), 0.25) /
+      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  const double E_threshold_internal = 13.605 * phys_const->const_electron_volt;
+  const double x_0 =
+      E_threshold_internal / (phys_const->const_boltzmann_k * T_K);
+
+  if (x_0 > 45.0) {
+    return 0.0;
+  }
+
+  const int max_terms = 5;
+
+  /* Photon NUMBER integral, Integral(x^2/(e^x-1))dx (same series as the
+     ionizing photon rate fit above). */
+  double number_integral_sum = 0.0;
+  /* Photon ENERGY integral, Integral(x^3/(e^x-1))dx -- one moment higher,
+     by the identical by-parts derivation. */
+  double energy_integral_sum = 0.0;
+
+  for (int n = 1; n <= max_terms; ++n) {
+    const double exp_term = exp(-((double)n) * x_0);
+    if (exp_term < 1e-10) {
+      break;
+    }
+    const double n_double = (double)n;
+
+    number_integral_sum +=
+        (exp_term / n_double) *
+        (x_0 * x_0 + (2.0 * x_0) / n_double + 2.0 / (n_double * n_double));
+
+    energy_integral_sum += (exp_term / n_double) *
+                           (x_0 * x_0 * x_0 + (3.0 * x_0 * x_0) / n_double +
+                            (6.0 * x_0) / (n_double * n_double) +
+                            6.0 / (n_double * n_double * n_double));
+  }
+
+  if (number_integral_sum <= 0.0) {
+    return 0.0;
+  }
+
+  /* Mean photon energy above threshold, in units of k_B*T: ratio of the
+     energy-weighted to the number-weighted integral. */
+  const double mean_hnu_over_kT = energy_integral_sum / number_integral_sum;
+
+  return phys_const->const_boltzmann_k * T_K * (mean_hnu_over_kT - x_0);
 }
 
 /******************************************************************************/

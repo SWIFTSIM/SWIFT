@@ -61,6 +61,21 @@ INLINE static int cooling_ionize_part_subgrid(
     return 0;
   }
 
+#if COOLING_GRACKLE_MODE > 0
+  if (cooling->HII_couple_ionization_rate) {
+    /* Rate-coupled path: cooling_copy_to_grackle() injects this tagged
+       particle's Gamma_HI/RT_heating_rate, and Grackle's own
+       local_solve_chemistry computes the resulting energy/ionization
+       state -- so, unlike the flag-and-floor path below, do not force the
+       energy here. Return value means "did we force the energy," not "is
+       this particle ionized," so cooling_new_energy still runs the solve. */
+    if (time >= radiation_get_part_ionized_end_time(p, xp)) {
+      radiation_reset_part_ionized_tag(p, xp);
+    }
+    return 0;
+  }
+#endif
+
   /* Specific internal energy this particle is held at while ionized
      (shared with radiation_get_part_rate_to_fully_ionize, which uses the
      same value to evaluate the temperature-dependent case-B
@@ -81,8 +96,6 @@ and
      let grackle solve the network. */
   xp->cooling_data.HI_frac = 0.0;
   xp->cooling_data.HII_frac = 1.0;
-
-  /* Should we provide the rates? */
 #endif
 
   /* Keep the particle flagged (and re-floored above, every step) until

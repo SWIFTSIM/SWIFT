@@ -762,7 +762,8 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
                              struct xpart *xp, gr_float rho,
                              gr_float species_densities[12],
                              const struct cooling_function_data *cooling,
-                             const struct phys_const *phys_const) {
+                             const struct phys_const *phys_const,
+                             const struct unit_system *us) {
 
   const float time_units = cooling->units.time_units;
 
@@ -784,28 +785,39 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
 
   if (cooling->chemistry_data.use_radiative_transfer) {
 
-    /* heating rate */
     gr_float *RT_heating_rate = (gr_float *)malloc(sizeof(gr_float));
-    *RT_heating_rate = cooling->RT_heating_rate;
-    /* Note to self:
-     * If cooling->RT_heating_rate is computed properly, i.e. using
-     * the HI density, and then being HI density dependent, we need
-     * to divide it as follow. If it is assumed to be already normed
-     * as it is so when providing it via some parameters, we keep it
-     * unchanged.
-     */
-    /* Grackle wants heating rate in units of / nHI_cgs */
-    // const double nHI_cgs = species_densities[0]
-    //                      / phys_const->const_proton_mass
-    //                      / pow(length_units,3);
-    //*RT_heating_rate /= nHI_cgs;
-    data->RT_heating_rate = RT_heating_rate;
-
-    /* HI ionization rate */
     gr_float *RT_HI_ionization_rate = (gr_float *)malloc(sizeof(gr_float));
-    *RT_HI_ionization_rate = cooling->RT_HI_ionization_rate;
-    /* Grackle wants it in 1/internal_time_units */
-    *RT_HI_ionization_rate /= (1. / time_units);
+
+    if (cooling->HII_couple_ionization_rate &&
+        radiation_is_part_tagged_as_ionized(p, xp)) {
+      /* GEAR HII feedback rate-coupling: a physically derived, per-particle,
+         distance-dependent rate for this tagged particle (see
+         radiation_get_part_photoionization_rate_coefficient), instead of
+         the generic global scalar below. */
+      const double Gamma_HI =
+          radiation_get_part_photoionization_rate_coefficient(
+              us, p, xp); /* already internal 1/time; no conversion needed */
+      *RT_HI_ionization_rate = Gamma_HI;
+
+      /* Grackle wants RT_heating_rate in raw cgs, RT_HI_ionization_rate *
+         mean excess photon energy per ionization, both in cgs. */
+      const double Gamma_HI_cgs = Gamma_HI / time_units;
+      const double E_excess_cgs =
+          radiation_get_part_excess_photon_energy_HI(p, xp) *
+          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+      *RT_heating_rate = Gamma_HI_cgs * E_excess_cgs;
+    } else {
+      /* Generic Grackle RT fields: a single global scalar from the YAML
+         parameter file, unrelated to GEAR's HII feedback. */
+      /* Assumed already normalized per nHI, as provided via the YAML
+         parameter. */
+      *RT_heating_rate = cooling->RT_heating_rate;
+
+      *RT_HI_ionization_rate = cooling->RT_HI_ionization_rate;
+      /* Grackle wants it in 1/internal_time_units */
+      *RT_HI_ionization_rate /= (1. / time_units);
+    }
+    data->RT_heating_rate = RT_heating_rate;
     data->RT_HI_ionization_rate = RT_HI_ionization_rate;
 
     /* HeI ionization rate */
@@ -1016,7 +1028,7 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
 
   /* copy to grackle structure */
   cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling,
-                          phys_const);
+                          phys_const, us);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
@@ -1091,7 +1103,7 @@ gr_float cooling_time(const struct phys_const *phys_const,
   gr_float species_densities[12];
   /* copy data from particle to grackle data */
   cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling,
-                          phys_const);
+                          phys_const, us);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);

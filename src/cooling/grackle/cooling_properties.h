@@ -79,6 +79,12 @@ struct cooling_function_data {
   /*! Arrays of ionization and heating rates are provided */
   int use_radiative_transfer;
 
+  /*! Rate-couple GEAR's HII photoionization into Grackle's RT fields
+      instead of flooring the particle's energy directly (see
+      cooling_ionize_part_subgrid). Forces use_radiative_transfer on
+      internally when set. */
+  int HII_couple_ionization_rate;
+
   /*! Grackle RT_heating_rate (in IU) */
   float RT_heating_rate;
 
