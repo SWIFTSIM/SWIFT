@@ -160,7 +160,10 @@ struct feedback_spart_data {
 
     /*! Mean photon energy above the 13.6 eV HI ionization threshold,
         cached once per HII rebuild pass (only computed when
-        GEARFeedback:HII_couple_ionization_rate is on; 0 otherwise). */
+        GEARFeedback:HII_couple_ionization_rate is on; 0 otherwise). Stored
+        in cgs (erg), not internal units, since the absolute per-particle
+        value underflows float precision in this project's internal unit
+        system. */
     float mean_excess_photon_energy_HI;
 
   } radiation;

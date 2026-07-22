@@ -429,12 +429,12 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  */
 __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
     struct part *p, struct xpart *xp, long long star_id, double end_time,
-    float excess_photon_energy_HI, float ionizing_flux_HI) {
+    float excess_photon_energy_HI, float photoionization_rate_HI) {
   xp->tracers_data.HII_region.is_ionized = 1;
   xp->tracers_data.HII_region.star_id = star_id;
   xp->tracers_data.HII_region.end_time = end_time;
   xp->tracers_data.HII_region.excess_photon_energy_HI = excess_photon_energy_HI;
-  xp->tracers_data.HII_region.ionizing_flux_HI = ionizing_flux_HI;
+  xp->tracers_data.HII_region.photoionization_rate_HI = photoionization_rate_HI;
   return;
 }
 
@@ -478,8 +478,8 @@ radiation_get_part_ionized_end_time(const struct part *p,
 
 /**
  * Mean photon energy above the 13.6 eV HI ionization threshold of the
- * star that tagged this #part, frozen at tag time. Only meaningful while
- * radiation_is_part_tagged_as_ionized() is true.
+ * star that tagged this #part, in cgs (erg), frozen at tag time. Only
+ * meaningful while radiation_is_part_tagged_as_ionized() is true.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -491,43 +491,43 @@ radiation_get_part_excess_photon_energy_HI(const struct part *p,
 }
 
 /**
- * HI-ionizing photon flux from the tagging star at this #part's location,
- * frozen at tag time (photons / area / time, internal units). Only
- * meaningful while radiation_is_part_tagged_as_ionized() is true.
+ * Photoionization rate coefficient Gamma_HI frozen on this #part at tag
+ * time (internal 1/time). Only meaningful while
+ * radiation_is_part_tagged_as_ionized() is true.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
  */
-__attribute__((always_inline)) INLINE float radiation_get_part_ionizing_flux_HI(
-    const struct part *p, const struct xpart *xp) {
-  return xp->tracers_data.HII_region.ionizing_flux_HI;
+__attribute__((always_inline)) INLINE float
+radiation_get_part_photoionization_rate_coefficient(const struct part *p,
+                                                    const struct xpart *xp) {
+  return xp->tracers_data.HII_region.photoionization_rate_HI;
 }
 
 /**
- * Photoionization rate coefficient Gamma_HI this #part should be fed
- * (internal 1/time), from its frozen ionizing flux and the standard
- * hydrogen photoionization cross-section at the Lyman limit (Osterbrock &
- * Ferland 2006, sigma_HI = 6.3e-18 cm^2 -- a physical constant, not a
- * tunable parameter). Used by cooling_copy_to_grackle to populate
- * Grackle's RT_HI_ionization_rate for a rate-coupled particle (see
- * GEARFeedback:HII_couple_ionization_rate).
+ * Photoionization rate coefficient Gamma_HI from an HI-ionizing photon
+ * flux (photons / area / time, internal units), via the standard hydrogen
+ * photoionization cross-section at the Lyman limit (sigma_HI = 6.3e-18
+ * cm^2, Osterbrock & Ferland 2006 -- a physical constant, not a tunable
+ * parameter). Called once at tag time (feedback_iact_HII_ionization): the
+ * raw flux is too large for float32 in this unit system, but the product
+ * with the tiny cross-section is safely representable, so only that
+ * product is stored.
  *
  * @param us Unit system.
- * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param ionizing_flux_HI HI-ionizing photon flux (internal units).
  * @return Gamma_HI (internal units).
  */
 __attribute__((always_inline)) INLINE double
-radiation_get_part_photoionization_rate_coefficient(
-    const struct unit_system *us, const struct part *p,
-    const struct xpart *xp) {
+radiation_get_photoionization_rate_coefficient_from_flux_HI(
+    const struct unit_system *us, const double ionizing_flux_HI) {
 
   const double sigma_HI_cgs = 6.3e-18; /* [cm^2], Osterbrock & Ferland 2006 */
   const float dimension_area[5] = {0, 2, 0, 0, 0}; /* [cm^2] */
   const double sigma_HI =
       sigma_HI_cgs / units_general_cgs_conversion_factor(us, dimension_area);
 
-  return sigma_HI * radiation_get_part_ionizing_flux_HI(p, xp);
+  return sigma_HI * ionizing_flux_HI;
 }
 
 /**
@@ -816,7 +816,9 @@ double radiation_get_individual_star_ionizing_photon_emission_rate_fit(
  * @param mass Mass of the star particle.
  * @param us The unit system.
  * @param phys_const The #phys_const.
- * @return Mean excess photon energy above 13.6 eV (internal energy units).
+ * @return Mean excess photon energy above 13.6 eV, in cgs (erg) -- not
+ * internal units, since this project's internal mass unit makes the
+ * absolute per-particle value underflow float precision (see caller).
  */
 double radiation_get_individual_star_mean_excess_photon_energy_HI(
     const float mass, const struct unit_system *us,
@@ -878,8 +880,14 @@ double radiation_get_individual_star_mean_excess_photon_energy_HI(
   /* Mean photon energy above threshold, in units of k_B*T: ratio of the
      energy-weighted to the number-weighted integral. */
   const double mean_hnu_over_kT = energy_integral_sum / number_integral_sum;
+  const double E_excess_internal =
+      phys_const->const_boltzmann_k * T_K * (mean_hnu_over_kT - x_0);
 
-  return phys_const->const_boltzmann_k * T_K * (mean_hnu_over_kT - x_0);
+  /* Return in cgs, not internal units: the internal mass unit (1e10 Msun)
+     makes this absolute per-particle energy ~1e-65 internally, underflowing
+     to exactly 0 once narrowed to float at the caching site. The cgs value
+     (~1e-11 erg) is safely representable. */
+  return E_excess_internal * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
 }
 
 /******************************************************************************/

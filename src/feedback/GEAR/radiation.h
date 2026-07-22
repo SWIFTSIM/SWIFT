@@ -69,7 +69,7 @@ void radiation_compute_and_cache_HII_rebuild_interval(
 void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj,
                                    long long star_id, double end_time,
                                    float excess_photon_energy_HI,
-                                   float ionizing_flux_HI);
+                                   float photoionization_rate_HI);
 void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj);
 char radiation_is_part_tagged_as_ionized(const struct part *p,
                                          const struct xpart *xpj);
@@ -77,10 +77,10 @@ double radiation_get_part_ionized_end_time(const struct part *p,
                                            const struct xpart *xpj);
 float radiation_get_part_excess_photon_energy_HI(const struct part *p,
                                                  const struct xpart *xpj);
-float radiation_get_part_ionizing_flux_HI(const struct part *p,
-                                          const struct xpart *xpj);
-double radiation_get_part_photoionization_rate_coefficient(
-    const struct unit_system *us, const struct part *p, const struct xpart *xp);
+float radiation_get_part_photoionization_rate_coefficient(
+    const struct part *p, const struct xpart *xpj);
+double radiation_get_photoionization_rate_coefficient_from_flux_HI(
+    const struct unit_system *us, const double ionizing_flux_HI);
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);

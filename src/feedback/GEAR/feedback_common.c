@@ -603,17 +603,21 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
   const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
       phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
 
-  /* Ionizing photon flux from this star at pj's location (photons / area /
-     time, internal units), frozen at tag time since the cooling task has
-     no neighbour-search access to recompute it later (same reasoning as
-     end_time). Only needed when GEARFeedback:HII_couple_ionization_rate is
-     on; skip the division otherwise. */
-  float ionizing_flux_HI = 0.f;
+  /* Gamma_HI this star delivers at pj's location, frozen at tag time (the
+     cooling task can't recompute it later, same reasoning as end_time). The
+     intermediate photon flux would overflow float32 in this unit system, so
+     only the final rate coefficient -- computed in double up to that point
+     -- is stored. Only needed when GEARFeedback:HII_couple_ionization_rate
+     is on. */
+  float photoionization_rate_HI = 0.f;
   if (cooling->HII_couple_ionization_rate) {
     const float Omega_pixel =
         4.0f * (float)M_PI / si->feedback_data.radiation.n_HII_pixels;
-    ionizing_flux_HI =
+    const double ionizing_flux_HI =
         feedback_get_star_ionization_rate(si, pixel) / (Omega_pixel * r2);
+    photoionization_rate_HI =
+        (float)radiation_get_photoionization_rate_coefficient_from_flux_HI(
+            us, ionizing_flux_HI);
   }
   const float excess_photon_energy_HI =
       si->feedback_data.radiation.mean_excess_photon_energy_HI;
@@ -624,7 +628,8 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
        (src/task.c) already serializes every writer of these fields. */
     if (xpj->tracers_data.HII_region.is_ionized == 0) {
       radiation_tag_part_as_ionized(pj, xpj, si->id, end_time,
-                                    excess_photon_energy_HI, ionizing_flux_HI);
+                                    excess_photon_energy_HI,
+                                    photoionization_rate_HI);
       timestep_sync_part(pj);
 
       /* Consume photons from the star */
@@ -640,7 +645,8 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
        ionization cost). */
     if (xpj->tracers_data.HII_region.is_ionized == 0) {
       radiation_tag_part_as_ionized(pj, xpj, si->id, end_time,
-                                    excess_photon_energy_HI, ionizing_flux_HI);
+                                    excess_photon_energy_HI,
+                                    photoionization_rate_HI);
       timestep_sync_part(pj);
 
       radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
@@ -664,7 +670,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
       if (xpj->tracers_data.HII_region.is_ionized == 0) {
         radiation_tag_part_as_ionized(pj, xpj, si->id, end_time,
                                       excess_photon_energy_HI,
-                                      ionizing_flux_HI);
+                                      photoionization_rate_HI);
         timestep_sync_part(pj);
 
         radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);

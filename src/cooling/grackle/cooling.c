@@ -788,28 +788,15 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     gr_float *RT_heating_rate = (gr_float *)malloc(sizeof(gr_float));
     gr_float *RT_HI_ionization_rate = (gr_float *)malloc(sizeof(gr_float));
 
-    if (cooling->HII_couple_ionization_rate &&
-        radiation_is_part_tagged_as_ionized(p, xp)) {
-      /* GEAR HII feedback rate-coupling: a physically derived, per-particle,
-         distance-dependent rate for this tagged particle (see
-         radiation_get_part_photoionization_rate_coefficient), instead of
-         the generic global scalar below. */
-      const double Gamma_HI =
-          radiation_get_part_photoionization_rate_coefficient(
-              us, p, xp); /* already internal 1/time; no conversion needed */
-      *RT_HI_ionization_rate = Gamma_HI;
-
-      /* Grackle wants RT_heating_rate in raw cgs, RT_HI_ionization_rate *
-         mean excess photon energy per ionization, both in cgs. */
-      const double Gamma_HI_cgs = Gamma_HI / time_units;
-      const double E_excess_cgs =
-          radiation_get_part_excess_photon_energy_HI(p, xp) *
-          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-      *RT_heating_rate = Gamma_HI_cgs * E_excess_cgs;
+    double heating_rate_cgs, HI_ionization_rate;
+    if (cooling_get_rate_coupled_RT_fields_subgrid(cooling, p, xp, time_units,
+                                                   &heating_rate_cgs,
+                                                   &HI_ionization_rate)) {
+      *RT_heating_rate = heating_rate_cgs;
+      *RT_HI_ionization_rate = HI_ionization_rate;
     } else {
-      /* Generic Grackle RT fields: a single global scalar from the YAML
-         parameter file, unrelated to GEAR's HII feedback. */
-      /* Assumed already normalized per nHI, as provided via the YAML
+      /* Fall back to a single global scalar from the YAML parameter file.
+         Assumed already normalized per nHI, as provided via the YAML
          parameter. */
       *RT_heating_rate = cooling->RT_heating_rate;
 
@@ -909,8 +896,6 @@ void cooling_apply_self_shielding(
     return;
   }
 
-  /* Disable self-shielding if the particle is flagged for photoionization */
-
   /* Are we in a self shielding regime? */
   const float rho = hydro_get_physical_density(p, cosmo);
   if (rho > cooling->self_shielding_threshold) {
@@ -980,31 +965,14 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
     return hydro_get_physical_internal_energy(p, xp, cosmo);
   }
 
-#ifdef IONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K
-  /* Debug: hold every non-ionized particle fixed at this temperature too,
-     bypassing Grackle's chemistry/cooling solve entirely -- combined with
-     IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K, this reproduces
-     STARBENCH's own idealized two-fixed-state assumption (no continuous cooling
-     physics for either phase, no compression/shock heating of the neutral
-     medium), isolating the ionization scheme's geometry/timing from real
-     thermal physics for a direct comparison against the analytic
-     formula. Mirrors cooling_ionize_part_subgrid's own re-flooring
-     pattern (recomputed every step, not cached). */
   {
-    const double mu = cooling_get_mean_molecular_weight(
-        phys_const, us, cosmo, hydro_props, cooling, p, xp);
-    const double T_o_internal =
-        (double)IONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K *
-        units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-    const float u_o = cooling_internal_energy_from_T(
-        T_o_internal, mu, phys_const->const_boltzmann_k,
-        phys_const->const_proton_mass);
-    hydro_set_physical_internal_energy(p, xp, cosmo, u_o);
-    hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_o);
-    hydro_set_physical_internal_energy_dt(p, cosmo, 0.f);
-    return u_o;
+    float u_o;
+    if (cooling_debug_fix_neutral_temperature_subgrid(
+            phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp,
+            &u_o)) {
+      return u_o;
+    }
   }
-#endif
 
   /* general particle data */
   gr_float density = cooling_get_physical_density(p, cosmo, cooling);
@@ -1029,6 +997,9 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
   /* copy to grackle structure */
   cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling,
                           phys_const, us);
+
+  /* Expire the tag only after cooling_copy_to_grackle has consumed it above. */
+  cooling_expire_rate_coupled_tag_subgrid(cooling, p, xp, time);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
