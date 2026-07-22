@@ -310,10 +310,48 @@ resolves the compression artifact and the ionization-front noise, but
 does not by itself reproduce that specific visual feature at this
 resolution.
 
-\textbf{Open}: whether the dilution signal measured under MFM
+\textbf{Cross-check with Gizmo MFV}: the same \code{gas\_mass=20}
+configuration was also rerun with \swift's Gizmo MFV solver (meshless
+finite volume, as opposed to MFM's finite mass) as an independent check
+that the MFM result is not specific to that one mesh-free scheme. MFV
+ran to completion for both the uniform and angular injection schemes
+with no crash, NaN, or assertion failure.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.55\linewidth]{Figures/clump_smith2021_style_comparison_mfv}
+  \caption{Same as Figure~\ref{fig:clump-smith2021-style-mfm}, rerun
+    with Gizmo MFV instead of MFM: spherical (top) vs.\
+    HealPix/angular (bottom), $t=8\,$Myr.}
+  \label{fig:clump-smith2021-style-mfv}
+\end{figure}
+
+\begin{center}
+\begin{tabular}{lrrr}
+\hline
+& near, still-dense & near, $n_H$ ratio & far, $n_H$ ratio \\
+\hline
+\code{gas\_mass=20}, uniform, MFV & 94.7\% & 86.8\% & 79.1\% \\
+\code{gas\_mass=20}, angular, MFV & 96.3\% & 87.4\% & 79.3\% \\
+\hline
+\end{tabular}
+\end{center}
+
+MFV agrees closely with MFM on every metric (within $1$--$2$
+percentage points): the same dilution instead of SPH's compression,
+the same convergence of uniform and angular to statistically
+indistinguishable values, and the same visually smooth, round bubble
+front with no scheme-specific mesh-regularization noise. The
+intermediate-temperature mixing shell remains absent under MFV as
+well. The MFV run's ID-tracked mass-conservation check reads
+$\sim$100.5--100.6\% present (vs.\ exactly $100\%$ under SPH/MFM) --
+not a data-quality problem, but the expected consequence of MFV's mass
+flux across the moving-mesh Riemann solve at every timestep (unlike
+SPH/MFM, an MFV particle's mass is not fixed), compounded by ordinary
+timestepping and floating-point error.
+
+\textbf{Open}: whether the dilution signal measured under MFM/MFV
 (near-side density decrease) is the same effect the paper calls
-erosion/disruption; whether the missing mixing shell is a resolution
-effect (untested at higher \code{gas\_mass}) or requires a different
-diagnostic (slice thickness, projection vs.\ slice); and whether an
-MFV rerun (only attempted with MFM so far) changes this picture
-further.
+erosion/disruption; and whether the missing mixing shell is a
+resolution effect (untested at higher \code{gas\_mass}) or requires a
+different diagnostic (slice thickness, projection vs.\ slice).
