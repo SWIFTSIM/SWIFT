@@ -400,6 +400,7 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
   const double dot_N_ion_per_pixel = dot_N_ion_total / n_HII_pixels;
   for (int p = 0; p < n_HII_pixels; p++) {
     sp->feedback_data.radiation.dot_N_ion_pix[p] = dot_N_ion_per_pixel;
+    sp->feedback_data.radiation.dot_N_ion_pix_initial[p] = dot_N_ion_per_pixel;
   }
 }
 

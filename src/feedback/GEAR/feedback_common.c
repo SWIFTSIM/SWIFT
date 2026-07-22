@@ -481,6 +481,23 @@ __attribute__((always_inline)) INLINE double feedback_get_star_ionization_rate(
 }
 
 /**
+ * Get the #spart's undepleted ionization photon emission rate for a given
+ * angular pixel, as set at the start of this rebuild pass -- unlike
+ * #feedback_get_star_ionization_rate, never decremented by
+ * radiation_consume_ionizing_photons. Used for the rate-coupled flux
+ * calculation so a particle's Gamma_HI depends only on its distance, not on
+ * how many other particles this pixel already tagged this pass.
+ *
+ * @param sp The star.
+ * @param pixel The angular pixel.
+ * @return Undepleted ionizing photon rate for that pixel.
+ */
+__attribute__((always_inline)) INLINE double
+feedback_get_star_initial_ionization_rate(const struct spart *sp, int pixel) {
+  return sp->feedback_data.radiation.dot_N_ion_pix_initial[pixel];
+}
+
+/**
  * Get the largest remaining ionization photon rate across all of the
  * #spart's active angular pixels. Used only for loop-termination/retry
  * decisions -- one exhausted pixel doesn't mean the star is done.
@@ -614,7 +631,8 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     const float Omega_pixel =
         4.0f * (float)M_PI / si->feedback_data.radiation.n_HII_pixels;
     const double ionizing_flux_HI =
-        feedback_get_star_ionization_rate(si, pixel) / (Omega_pixel * r2);
+        feedback_get_star_initial_ionization_rate(si, pixel) /
+        (Omega_pixel * r2);
     photoionization_rate_HI =
         (float)radiation_get_photoionization_rate_coefficient_from_flux_HI(
             us, ionizing_flux_HI);

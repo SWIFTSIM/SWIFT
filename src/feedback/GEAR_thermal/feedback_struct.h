@@ -141,6 +141,14 @@ struct feedback_spart_data {
         be a double) (physical units) from the stellar evolution */
     double dot_N_ion_pix[HII_MAX_ANGULAR_PIXELS];
 
+    /*! Same as dot_N_ion_pix at the start of this rebuild pass, before any
+        consumption by radiation_consume_ionizing_photons. Used only for the
+        rate-coupled flux calculation (GEARFeedback:HII_couple_ionization_rate),
+        so a particle's Gamma_HI depends solely on its distance, not on how
+        many other particles this pixel already tagged earlier in the same
+        pass. */
+    double dot_N_ion_pix_initial[HII_MAX_ANGULAR_PIXELS];
+
     /*! Number of active angular pixels this star is currently using
         (1 = spherical/HEALPix disabled) */
     int n_HII_pixels;
