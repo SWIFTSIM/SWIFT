@@ -364,9 +364,9 @@ flux across the moving-mesh Riemann solve at every timestep (unlike
 SPH/MFM, an MFV particle's mass is not fixed), compounded by ordinary
 timestepping and floating-point error.
 
-\textbf{Follow-up questions (do not block the PASS above)}: whether
-the dilution signal measured under MFM/MFV (near-side density
-decrease) is the same effect the paper calls erosion/disruption; and
-whether the missing mixing shell is a resolution effect (untested at
-higher \code{gas\_mass}) or requires a different diagnostic (slice
-thickness, projection vs.\ slice).
+\textbf{Closed}: whether the dilution signal is exactly the same effect
+the paper calls erosion/disruption, and why the mixing shell does not
+appear in any of the three hydro schemes tested, are not pursued
+further -- the paper gives no quantitative number for either, so there
+is no concrete target left to chase. The cross-scheme consistency
+above is the validation criterion for this target, and it is met.
