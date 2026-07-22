@@ -1114,6 +1114,12 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
   swift_free("fR_field", f_R);
   if (MG_var.timing) message("Solving the field equation took %.3f %s.",
             clocks_from_ticks(getticks() - toc), clocks_getunit());
+
+  FILE *part_acc_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/snaps_cosma/new_rhomod.txt", "w");
+  for (int i=0; i<N_MG*N_MG*N_MG; i++) {
+    fprintf(part_acc_export2, "%E \n", rho_MG[i]);
+  }
+  fclose(part_acc_export2);
 }
 
 /**
@@ -1346,6 +1352,12 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   /* Fourier transform to come back from magic-land */
   fftw_execute(inverse_plan);
   if (MG) fftw_execute(inverse_plan_MG);
+
+  FILE *part_acc_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/snaps_cosma/new_FT_mesh.txt", "w");
+  for (int i=0; i<N_MG*N_MG*N_MG; i++) {
+    fprintf(part_acc_export2, "%E \n", rho_MG[i]);
+  }
+  fclose(part_acc_export2);
 
   /* Extra conversion factor if we used a discrete symbol before */
   double conversion_factor;
