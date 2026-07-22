@@ -218,10 +218,10 @@ void runner_dopair1_branch_sidm_density(struct runner *r, struct cell *ci,
 void runner_doself1_branch_sidm_density(struct runner *r, struct cell *c,
                                         int limit_h_min, int limit_h_max);
 
-void runner_dopair1_branch_sidm_force(struct runner *r, struct cell *ci,
+void runner_dopair2_branch_sidm_force(struct runner *r, struct cell *ci,
                                       struct cell *cj, int limit_h_min,
                                       int limit_h_max);
-void runner_doself1_branch_sidm_force(struct runner *r, struct cell *ci,
+void runner_doself2_branch_sidm_force(struct runner *r, struct cell *ci,
                                       int limit_h_min, int limit_h_max);
 void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer);
 
@@ -434,6 +434,10 @@ int main(int argc, char *argv[]) {
     /* Zero the density and SIDM_rate fields */
     for (int j = 0; j < 125; ++j) zero_particle_fields(cells[j]);
 
+    /* First, sort stuff */
+    for (int j = 0; j < 125; ++j)
+      runner_do_sidm_sort(&runner, cells[j], 0x1FFF, 0, 0);
+
     /* Do the density calculation */
 
     /* Run all the pairs (only once !) */
@@ -490,7 +494,7 @@ int main(int argc, char *argv[]) {
           if (main_cell != cj) {
             const ticks sub_tic = getticks();
 
-            runner_dopair1_branch_sidm_force(&runner, main_cell, cj,
+            runner_dopair2_branch_sidm_force(&runner, main_cell, cj,
                                              /*limit_h_min=*/0,
                                              /*limit_h_max=*/0);
 
@@ -503,7 +507,7 @@ int main(int argc, char *argv[]) {
     const ticks self_tic = getticks();
 
     /* And now the self-interaction for the main cell */
-    runner_doself1_branch_sidm_force(&runner, main_cell, /*limit_h_min=*/0,
+    runner_doself2_branch_sidm_force(&runner, main_cell, /*limit_h_min=*/0,
                                      /*limit_h_max=*/0);
 
     timings[26] += getticks() - self_tic;
