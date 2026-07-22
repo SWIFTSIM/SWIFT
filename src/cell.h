@@ -72,19 +72,12 @@ extern unsigned long long last_cell_id;
 extern unsigned long long last_leaf_cell_id;
 #endif
 
-/* Struct to temporarily buffer the particle locations and bin id.
- *
- * Deliberately does not carry the octant bucket id used while sorting
- * (see cell_split()'s ind parameter): that value is only ever read and
- * written within a single cell_split() call, never needing to travel
- * through the recursion the way x and part_ind do, so it lives in a
- * separate, thread-local scratch array instead of being paid for in this
- * struct at every level of the tree, for every particle. */
+/* Struct to temporarily buffer the particle locations and indices. */
 struct cell_buff {
   double x[3];
 
-  /*! Index, in the corresponding space-wide particle array (e.g.
-   * s->parts), of the particle this buffer entry represents. Set once when
+  /*! Index in the corresponding space-wide particle array (e.g.
+   * s->parts) of the particle this buffer entry represents. Set once when
    * the buffer is filled and carried along by every subsequent swap, so it
    * always identifies the right particle even though the particle itself
    * is not physically moved until the buffer is fully sorted. */

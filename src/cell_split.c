@@ -29,31 +29,12 @@
 #include "memswap.h"
 
 /**
- * @brief Sort the buffers describing the parts into eight bins along the
- *        given pivots.
+ * @brief @brief Sort the parts into eight bins along the given pivots.
  *
- * This only reorders buff, sbuff, bbuff, gbuff and sinkbuff -- the #part,
- * #spart, #bpart, #gpart and #sink arrays themselves, and the gpart
- * back-pointers linking them, are left untouched. Each buffer entry's
- * part_ind field identifies which particle it represents, so a later pass
- * can move every particle into place, once every cell at every level has
- * finished sorting its buffers (see space_split.c).
- *
- * The bucket id (0-7) each entry currently belongs to while sorting is
- * kept in ind, not in #cell_buff itself: it is only ever read and written
- * within a single call to this function (each call, for each family,
- * overwrites it fresh from the current pivot before reading it back), so
- * there is no reason to pay for it in the space-wide buffers, which have
- * to carry every byte of #cell_buff through every level of the tree. ind
- * only needs to be at least as large as the biggest of the five counts
- * below, and is reused across all five families in this one call.
- *
- * All five families use the same (`>=`) comparison against the pivot.
- * This matters beyond consistency: a #gpart and its #part/#spart/#bpart/
- * #sink partner always share identical coordinates, so using the same
- * comparison guarantees they always compute the same bucket id at every
- * level and therefore always end up in the same leaf -- an invariant
- * space_split.c's per-leaf move relies on.
+ * This only reorders the buffers (buff, sbuff, bbuff, gbuff and sinkbuff), the
+ * particle arrays themselves are sorted later on in the process based on the
+ * location of the buffers (which contain the indices of the particles they
+ * represent).
  *
  * @param c The #cell array to be sorted.
  * @param ind Scratch space with at least
