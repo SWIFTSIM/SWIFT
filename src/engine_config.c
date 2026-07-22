@@ -971,6 +971,9 @@ void engine_config(int restart, int fof, struct engine *e,
     zoom_bkg_subdepth_diff_grav =
         parser_get_opt_param_int(params, "ZoomRegion:bkg_subdepth_diff_grav",
                                  zoom_bkg_subdepth_diff_grav_default);
+    if (zoom_bkg_subdepth_diff_grav < 0) {
+      error("ZoomRegion:bkg_subdepth_diff_grav must be non-negative.");
+    }
 
     /* Do we want any spare particles for on the fly creation?
        This condition should be the same than in space.c */

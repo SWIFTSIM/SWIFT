@@ -2171,6 +2171,11 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
     /* Skip NULL progeny */
     if (cpi == NULL) continue;
 
+    /* Skip void progeny that do not contain any zoom cells. This mirrors
+     * zoom_scheduler_splittask_gravity_void_pair(). */
+    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
+      continue;
+
     /* Skip empty progeny */
     if (cell_is_empty_mpole(cpi)) continue;
 
@@ -2180,8 +2185,19 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
       /* Skip NULL progeny */
       if (cpj == NULL) continue;
 
+      /* Skip void progeny that do not contain any zoom cells. This mirrors
+       * zoom_scheduler_splittask_gravity_void_pair(). */
+      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
+        continue;
+
+      /* Skip leaf neighbours interacting with non-useful void cells. */
+      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
+
       /* Skip empty progeny */
       if (cell_is_empty_mpole(cpj)) continue;
+
+      /* Skip entirely foreign pairs. */
+      if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpi, cpj)) {
@@ -2211,7 +2227,7 @@ static int cell_check_grav_mesh_pairs_zoom_pair_recursive(struct cell *ci,
 
       /* Can we use M-M for this pair? */
       if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                               /*is_tree_walk=*/0,
+                               /*is_tree_walk=*/1,
                                /*periodic boundaries*/ s->periodic,
                                /*use_mesh*/ s->periodic)) {
         /* M-M task handles this, skip */
@@ -2259,10 +2275,18 @@ static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
   for (int k = 0; k < 8; k++) {
     if (ci->progeny[k] == NULL) continue;
 
-    /* Skip empty progeny */
-    if (cell_is_empty_mpole(ci->progeny[k])) continue;
+    struct cell *cp = ci->progeny[k];
 
-    if (cell_check_grav_mesh_pairs_zoom_self_recursive(ci->progeny[k], e)) {
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (cp->subtype == cell_subtype_void && !cp->contains_zoom_cells) continue;
+
+    /* Skip empty progeny */
+    if (cell_is_empty_mpole(cp)) continue;
+
+    /* Skip foreign zoom progeny (no such thing as a foreign self task). */
+    if (cp->type == cell_type_zoom && cp->nodeID != engine_rank) continue;
+
+    if (cell_check_grav_mesh_pairs_zoom_self_recursive(cp, e)) {
       return 1;
     }
   }
@@ -2271,18 +2295,35 @@ static int cell_check_grav_mesh_pairs_zoom_self_recursive(struct cell *ci,
   for (int j = 0; j < 8; j++) {
     if (ci->progeny[j] == NULL) continue;
 
-    /* Skip empty progeny */
-    if (cell_is_empty_mpole(ci->progeny[j])) continue;
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (ci->progeny[j]->subtype == cell_subtype_void &&
+        !ci->progeny[j]->contains_zoom_cells)
+      continue;
+
+    /* Skip empty non-void progeny. */
+    if (ci->progeny[j]->subtype != cell_subtype_void &&
+        ci->progeny[j]->grav.count == 0)
+      continue;
 
     struct cell *cpj = ci->progeny[j];
 
     for (int k = j + 1; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
 
+      /* Skip void progeny that do not contain any zoom cells. */
+      if (ci->progeny[k]->subtype == cell_subtype_void &&
+          !ci->progeny[k]->contains_zoom_cells)
+        continue;
+
       /* Skip empty progeny */
       if (cell_is_empty_mpole(ci->progeny[k])) continue;
 
       struct cell *cpk = ci->progeny[k];
+
+      /* Skip entirely foreign pairs. */
+      if ((cpj->type == cell_type_zoom && cpk->type == cell_type_zoom) &&
+          cpj->nodeID != engine_rank && cpk->nodeID != engine_rank)
+        continue;
 
       /* Can we use the mesh for this pair? */
       if (cell_can_use_mesh(e, cpj, cpk)) {
@@ -2352,6 +2393,9 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
   /* Skip cells without gravity particles */
   if (cell_is_empty_mpole(c)) return;
 
+  /* Skip void cells that do not contain any zoom cells. */
+  if (c->subtype == cell_subtype_void && !c->contains_zoom_cells) return;
+
   /* Early exit if not using mesh */
   if (!s->periodic) {
     return;
@@ -2378,6 +2422,12 @@ void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e) {
 
     /* Avoid self contributions (already handled above) */
     if (c == cj) continue;
+
+    /* Skip pairs that would not have been created on this rank. */
+    if (c->nodeID != engine_rank && cj->nodeID != engine_rank) continue;
+
+    /* Skip void cells that do not contain any zoom cells. */
+    if (cj->subtype == cell_subtype_void && !cj->contains_zoom_cells) continue;
 
     /* Skip empty cells */
     if (cell_is_empty_mpole(cj)) continue;

@@ -1377,9 +1377,9 @@ void write_output_serial(struct engine *e,
   int nr_cells = e->s->nr_cells;
   if (e->s->with_zoom_region) {
     const struct zoom_region_properties *props = e->s->zoom_props;
-    zoom_shift[0] = props->zoom_shift[0];
-    zoom_shift[1] = props->zoom_shift[1];
-    zoom_shift[2] = props->zoom_shift[2];
+    zoom_shift[0] = props->applied_zoom_shift[0];
+    zoom_shift[1] = props->applied_zoom_shift[1];
+    zoom_shift[2] = props->applied_zoom_shift[2];
     width[0] = props->width[0];
     width[1] = props->width[1];
     width[2] = props->width[2];
