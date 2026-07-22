@@ -4487,8 +4487,8 @@ int FAS_recursive(struct threadpool *tp, double *u, const double *residual, stru
     while (coarser_residual_abs >= tolerance) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
       coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-      if (coarser_residual_abs >1e50) message("We have a nan!");
-      if (coarser_residual_abs>1e50) {
+      if (coarser_residual_abs >1e10) message("We have a problem!");
+      if (coarser_residual_abs>1e10) {
         swift_free("restricted_residual", restricted_residual);
         swift_free("coarser_solution", coarser_solution);
         swift_free("coarser_residual", coarser_residual);
@@ -4519,8 +4519,8 @@ int FAS_recursive(struct threadpool *tp, double *u, const double *residual, stru
     for (int i=0; i<coarse_steps; i++) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
       coarser_residual_abs =  get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-      if (coarser_residual_abs >1e50) message("We have a nan!");
-      if (coarser_residual_abs > 1e50) {
+      if (coarser_residual_abs >1e10) message("We have a problem!");
+      if (coarser_residual_abs > 1e10) {
         swift_free("restricted_residual", restricted_residual);
         swift_free("coarser_solution", coarser_solution);
         swift_free("coarser_residual", coarser_residual);
@@ -4554,7 +4554,7 @@ int FAS_recursive(struct threadpool *tp, double *u, const double *residual, stru
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
     }
     coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-    if (coarser_residual_abs>1e50) { //This supposedly does not happen in post-smoothing
+    if (coarser_residual_abs>1e10) { //This supposedly does not happen in post-smoothing
       swift_free("restricted_residual", restricted_residual);
       swift_free("coarser_solution", coarser_solution);
       swift_free("coarser_residual", coarser_residual);
