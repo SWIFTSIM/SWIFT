@@ -1082,6 +1082,13 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
   double *rho_copy = swift_malloc("density_copy", N_MG*N_MG*N_MG *sizeof(double));
   memcpy(rho_copy, rho_MG, N_MG*N_MG*N_MG*sizeof(double));
   space_get_fR_contribution(s, tp, rho_copy, f_R, &MG_var, N_min, N_MG, test);
+
+  FILE *part_acc_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/snaps_cosma/new_field.txt", "w");
+  for (int i=0; i<N_MG*N_MG*N_MG; i++) {
+    fprintf(part_acc_export, "%E \n", f_R[i]);
+  }
+  fclose(part_acc_export);
+
   get_rho_mod(rho_MG, f_R, &MG_var, delta, N_MG);
 
   /* Decide if we want to calculate the MG contribution to the accelerations at the cell level. E.g. to export for analysing. */
@@ -1379,7 +1386,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   data.const_G = s->e->physical_constants->const_newton_G;
   data.reset = 1;
 
-  //if (nr_local_cells == 0) {
+  if (nr_local_cells == 0) {
 
     /* We don't have a cell infrastructure in place so we need to
     * directly loop over the particles */
@@ -1387,14 +1394,14 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
                   sizeof(struct gpart), threadpool_auto_chunk_size,
                   (void*)&data);
 
-  //} else { /* Normal case */
+  } else { /* Normal case */
 
     /* Do a parallel CIC mesh interpolation onto the gparts but only using
       the local top-level cells */
-    //threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
-      //            nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-    //              (void*)&data);
-  //}
+    threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
+                  nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                  (void*)&data);
+  }
 
   if (verbose)
     message("Computing mesh accelerations took %.3f %s.",
@@ -1412,7 +1419,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     data_MG.const_G = s->e->physical_constants->const_newton_G;
     data_MG.reset = 0;
 
-    if (nr_local_cells == 0) {
+    //if (nr_local_cells == 0) {
 
       /* We don't have a cell infrastructure in place so we need to
       * directly loop over the particles */
@@ -1420,15 +1427,22 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
                     sizeof(struct gpart), threadpool_auto_chunk_size,
                     (void*)&data_MG);
 
-    } else { /* Normal case */ //Untested with MG!
+    //} else { /* Normal case */ //Untested with MG!
 
       /* Do a parallel CIC mesh interpolation onto the gparts but only using
         the local top-level cells */
-      threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
-                    nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                    (void*)&data_MG);
-    }
+      //threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
+        //            nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+          //          (void*)&data_MG);
+    //}
   }
+
+  FILE *part_acc_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/snaps_cosma/new_acc.txt", "w");
+  for (size_t i=0; i<s->nr_gparts; i++) {
+    fprintf(part_acc_export, "%E \n", s->gparts[i].a_grav_mesh[0]);
+  }
+  fclose(part_acc_export);
+
 
   /* Clean-up the mess */
   fftw_destroy_plan(forward_plan);
