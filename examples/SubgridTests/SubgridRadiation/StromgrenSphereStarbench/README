@@ -17,11 +17,14 @@ STARBENCH assumes a flat `T_i=1e4 K` / `T_o=1e3 K` two-temperature medium. This 
 `--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force -- matching STARBENCH's own purely hydrodynamical test.
 
 # Configure
+Validated configuration (matches STARBENCH's own `T_i=1e4 K` convention):
 ```
-./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"
 make -j
 ```
-To match STARBENCH's own `T_i=1e4 K` convention instead of this code's natural metallicity-dependent value, add `CFLAGS+="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"` before `./configure`.
+Dropping the `CFLAGS` forcing flag builds with this code's own natural,
+metallicity-dependent `T_i` instead -- known to fail this validation target
+(see Checking below), not currently supported as a passing configuration.
 
 # Run
 ```
@@ -31,6 +34,7 @@ Override any parameter via the matching env var, e.g. `gas_mass=0.05 ./run.sh` -
 
 # Checking
 ```
-python3 starbench_analytic_check.py -s "snap/snapshot_*.hdf5"
+python3 starbench_analytic_check.py -s "snap/snapshot_*.hdf5" --T-ionized-K 1e4
 ```
-Pass `--T-ionized-K 1e4` (matching whatever `T_i` the build used) if built with the flag above.
+Drop `--T-ionized-K 1e4` if built without the CFLAGS forcing flag above (natural
+`T_i`), though that configuration is not known to pass.

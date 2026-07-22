@@ -134,7 +134,7 @@ Stars:
   timestep_age_threshold_Myr:           7.
   max_timestep_young_Myr:               0.5
   max_timestep_old_Myr:                 1
-  HII_max_search_radius: 0.03           # 30 pc -- inside the 35 pc box half-width, comfortably
+  HII_max_search_radius: 0.04           # 40 pc -- inside the 50 pc box half-width, comfortably
                                          # beyond R_STAG~23.2 pc (with overshoot margin); see README.
   HII_max_retry_full_buffer: 30
   HII_max_radius_expansion_tries: 5

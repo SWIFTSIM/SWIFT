@@ -17,10 +17,12 @@ scale.
 default. This code's own ionized-gas temperature floor is
 metallicity-dependent, reaching ~47,500 K at Z=0, not the paper's flat
 1e4 K -- so `r_HII` runs systematically larger than the paper's own
-numbers. For a direct comparison at the paper's 1e4 K convention, run
-`initial_metallicity=0.231 ./run.sh` (the Z/Zsun that gives
-T_collisional=1e4 K exactly), or build with
-`IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4`.
+numbers. The validated erosion-matrix results use `initial_metallicity=0`
+combined with the `IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4`
+build flag (see Configure above) to match the paper's 1e4 K convention
+instead. `initial_metallicity=0.231 ./run.sh` (the Z/Zsun that gives
+T_collisional=1e4 K exactly) is an alternative, untested by the erosion
+matrix, that reaches the same T_i without the build flag.
 
 ## Resolution
 Gas particle mass defaults to 20 Msun, matching Smith et al. 2021's own
@@ -42,14 +44,12 @@ background density, reproducing the paper's own no-clump reference
 test.
 
 # Configure
+Validated configuration (matches the papers' `T_i=1e4 K` convention):
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix
-```
-`--with-chealpix` is required for `nside=1`; `nside=0` works without it.
-
-```
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"
 make -j
 ```
+`--with-chealpix` is required for `nside=1`; `nside=0` works without it.
 
 # Run
 `nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh`
