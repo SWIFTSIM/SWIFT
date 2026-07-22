@@ -2240,7 +2240,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
 
     /* Compute mesh forces */
-    pm_mesh_compute_potential(e, e->mesh, e->s, &e->threadpool, e->cosmology, e->verbose, /*MG=*/1);
+    pm_mesh_compute_potential(e, e->mesh, e->s, &e->threadpool, e->cosmology, e->verbose, /*MG=*/0);
 
     /* Compute mesh time-step length */
     engine_recompute_displacement_constraint(e);
@@ -2424,9 +2424,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
-
-//gravity_export_force(e->s, e);
-//space_apply_FMG(e->s, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
@@ -2895,7 +2892,7 @@ int engine_step(struct engine *e) {
     if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
 
     /* ... and recompute */
-    pm_mesh_compute_potential(e, e->mesh, e->s, &e->threadpool, e->cosmology, e->verbose, /*MG=*/1);
+    pm_mesh_compute_potential(e, e->mesh, e->s, &e->threadpool, e->cosmology, e->verbose, /*MG=*/0);
 
     /* Check whether we need to update the mesh time-step length */
     engine_recompute_displacement_constraint(e);

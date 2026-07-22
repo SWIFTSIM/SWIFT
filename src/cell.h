@@ -376,9 +376,6 @@ struct cell {
   /*! Pointers to the next level of cells. */
   struct cell *progeny[8];
 
-  /*! Pointers to the 6 neighbouring cells for potential calculation */
-  struct cell *neighbours[6];
-
   union {
 
     /*! Linking pointer for "memory management". */
@@ -417,21 +414,6 @@ struct cell {
 
   /*! Radiative transfer variables */
   struct cell_rt rt;
-
-  /*! Density and potential variables */
-  double CIC_density; 
-
-  double CIC_potential;
-
-  double CIC_acc[3];
-
-  double mask_value;
-
-  double conv_residual;
-  
-  int ghost;
-
-  int refine;
 
 #ifdef WITH_MPI
   /*! MPI variables */
@@ -544,7 +526,7 @@ struct cell {
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
-  ((size_t)(k) + (cdim)[2] * ((size_t)(j) + (cdim)[1] * (size_t)(i)))
+  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,

@@ -543,7 +543,7 @@ void engine_io(struct engine *e) {
         /* Do we want power spectrum outputs? */
         if (with_power && e->snapshot_invoke_ps) {
           calc_all_power_spectra(e->power_data, e->s, &e->threadpool,
-                                 e->verbose, 0);
+                                 e->verbose);
         }
 
         /* Dump... */
@@ -623,7 +623,7 @@ void engine_io(struct engine *e) {
       case output_ps:
 
         /* Compute the PS */
-        calc_all_power_spectra(e->power_data, e->s, &e->threadpool, e->verbose, 0);
+        calc_all_power_spectra(e->power_data, e->s, &e->threadpool, e->verbose);
 
         /* Move on */
         engine_compute_next_ps_time(e);

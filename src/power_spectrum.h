@@ -86,9 +86,6 @@ struct power_spectrum_data {
   /*! Pointer to a second grid for cross-power spectra */
   double* powgrid2;
 
-  /*! Pointer to the grid that comes from the MG calculation */
-  double *MG_dens;
-
 #ifdef HAVE_FFTW
   /*! Pointer to the grid in Fourier space */
   fftw_complex* powgridft;
@@ -108,7 +105,7 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
                 int nr_threads);
 void calc_all_power_spectra(struct power_spectrum_data* pow_data,
                             const struct space* s, struct threadpool* tp,
-                            const int verbose, int direct_mapping);
+                            const int verbose);
 void power_clean(struct power_spectrum_data* pow_data);
 
 /* Dump/restore. */

@@ -662,17 +662,6 @@ void cell_to_powgrid(const struct cell* c, double* rho, const int N,
   } /* Loop over particles */
 }
 
-void map_density_to_powgrid(double *MG_rho, double *dens, double fac, double kfac, int N) {
-  int cdim[3] = {N,N,N};
-  for (int i=0; i<N; i++) {
-    for (int j=0; j<N; j++) {
-      for (int k=0; k<N; k++) {
-        dens[row_major_id_periodic_with_padding(i, j, k, N, 2)] = MG_rho[cell_getid(cdim, i, j, k)];
-      }
-    }
-  }
-}
-
 /**
  * @brief Threadpool mapper function for the power grid assignment of a cell.
  *
@@ -900,7 +889,7 @@ INLINE static void power_init_output_file(FILE* fp, const enum power_type type1,
  */
 void power_spectrum(const enum power_type type1, const enum power_type type2,
                     struct power_spectrum_data* pow_data, const struct space* s,
-                    struct threadpool* tp, const int verbose, int direct_mapping) {
+                    struct threadpool* tp, const int verbose) {
 
   const int* local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
@@ -1068,7 +1057,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   const int kcutright = (int)(Ngrid / 256.0 * (double)kcutn / foldfac);
   /* numtot = 76 * Nfold + 14;
    * assumes a 256 grid, foldfac=6 and  windoworder=2 */
-  const int numtot = (Nfold>1) ? kcutleft + (Nfold - 1) * (kcutleft - kcutright + 1) : 1;
+  const int numtot = kcutleft + (Nfold - 1) * (kcutleft - kcutright + 1);
   int numstart = 0;
 
   double* kcomb = (double*)malloc(numtot * sizeof(double));
@@ -1078,7 +1067,7 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   char outputfileBase[200] = "";
   char outputfileName[256] = "";
 
-  sprintf(outputfileBase, "power_MGreal_final_e5_z05_%s", get_powtype_filename(type1));
+  sprintf(outputfileBase, "power_%s", get_powtype_filename(type1));
   if (type1 != type2) {
     const int length = strlen(outputfileBase);
     sprintf(outputfileBase + length, "-%s", get_powtype_filename(type2));
@@ -1106,19 +1095,13 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       bzero(pow_data->powgrid2, Ngrid2 * (Ngrid + 2) * sizeof(double));
 
     /* Fill out the folded grid(s) */
-    if (direct_mapping) {
-      message("Mapping the MG density to the powgrid");
-      map_density_to_powgrid(pow_data->MG_dens, densdata.dens, densdata.fac, kfac, Ngrid);
-    }
-    else {
+    threadpool_map(tp, cell_to_powgrid_mapper, (void*)local_cells,
+                  nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                  (void*)&densdata);
+    if (type1 != type2)
       threadpool_map(tp, cell_to_powgrid_mapper, (void*)local_cells,
                     nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                    (void*)&densdata);
-      if (type1 != type2)
-        threadpool_map(tp, cell_to_powgrid_mapper, (void*)local_cells,
-                      nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                      (void*)&densdata2);
-    }
+                    (void*)&densdata2);
 #ifdef WITH_MPI
     /* Merge everybody's share of the grid onto rank 0 */
     if (e->nodeID == 0)
@@ -1219,30 +1202,24 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       fclose(outputfile);
 
       /* Combine most accurate measurements from foldings */
-      if (Nfold>1) {
-        if (i == 0) {
+      if (i == 0) {
 
-          for (int j = 0; j < kcutleft; ++j) {
-            kcomb[j] = (j + 1) * kfac;
-            pcomb[j] = powersum[j + 1] / modecounts[j + 1] * volfac;
-          }
-
-          numstart += kcutleft;
-
-        } else {
-
-          const int off = kcutright + 1;
-          for (int j = 0; j < (kcutleft - kcutright + 1); ++j) {
-            kcomb[j + numstart] = (j + off) * kfac;
-            pcomb[j + numstart] =
-                powersum[j + off] / modecounts[j + off] * volfac;
-          }
-          numstart += (kcutleft - kcutright + 1);
+        for (int j = 0; j < kcutleft; ++j) {
+          kcomb[j] = (j + 1) * kfac;
+          pcomb[j] = powersum[j + 1] / modecounts[j + 1] * volfac;
         }
-      }
-      else {
-        kcomb[0] = kfac;
-        pcomb[0] = powersum[0]/modecounts[0] * volfac;
+
+        numstart += kcutleft;
+
+      } else {
+
+        const int off = kcutright + 1;
+        for (int j = 0; j < (kcutleft - kcutright + 1); ++j) {
+          kcomb[j + numstart] = (j + off) * kfac;
+          pcomb[j + numstart] =
+              powersum[j + off] / modecounts[j + off] * volfac;
+        }
+        numstart += (kcutleft - kcutright + 1);
       }
 
     } /* Work of rank 0 */
@@ -1345,7 +1322,7 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
   const int kcutn = (p->windoworder >= 3) ? 90 : 70;
   const int kcutleft = (int)(p->Ngrid / 256.0 * kcutn);
   const int kcutright = (int)(p->Ngrid / 256.0 * (double)kcutn / p->foldfac);
-  if (p->Nfold>1 && (kcutright < 10 || (kcutleft - kcutright) < 30))
+  if (kcutright < 10 || (kcutleft - kcutright) < 30)
     error(
         "Combination of power grid size and fold factor do not allow for "
         "enough overlap between foldings!");
@@ -1435,7 +1412,7 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
 
 void calc_all_power_spectra(struct power_spectrum_data* pow_data,
                             const struct space* s, struct threadpool* tp,
-                            const int verbose, int direct_mapping) {
+                            const int verbose) {
 #ifdef HAVE_FFTW
 
   const ticks tic = getticks();
@@ -1443,7 +1420,7 @@ void calc_all_power_spectra(struct power_spectrum_data* pow_data,
   /* Loop over all type combinations the user requested */
   for (int i = 0; i < pow_data->spectrumcount; ++i)
     power_spectrum(pow_data->types1[i], pow_data->types2[i], pow_data, s, tp,
-                   verbose, direct_mapping);
+                   verbose);
 
   /* Increment the PS output counter */
   s->e->ps_output_count++;
