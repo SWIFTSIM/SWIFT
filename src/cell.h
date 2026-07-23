@@ -539,9 +539,9 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split(struct cell *c, int *ind, struct cell_buff *buff,
-                struct cell_buff *sbuff, struct cell_buff *bbuff,
-                struct cell_buff *gbuff, struct cell_buff *sinkbuff);
+int cell_split(struct cell *c, int *ind, struct cell_buff *buff,
+               struct cell_buff *sbuff, struct cell_buff *bbuff,
+               struct cell_buff *gbuff, struct cell_buff *sinkbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);

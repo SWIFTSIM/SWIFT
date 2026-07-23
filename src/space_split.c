@@ -770,11 +770,14 @@ static void space_split_move_leaf(
       const size_t j = buff[k].part_ind;
       const size_t i = offset + k;
       struct part *src = &s->parts[j];
+      /* Stationary particles (j == i) are already in their final slot and
+       * their gpart already stores -i, so both the copy and the relink are
+       * redundant -- only touch particles that actually move. */
       if (j != i) {
         scratch_parts[k] = *src;
         scratch_xparts[k] = s->xparts[j];
+        if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
       }
-      if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
     }
   }
 
@@ -785,8 +788,10 @@ static void space_split_move_leaf(
       const size_t j = sbuff[k].part_ind;
       const size_t i = offset + k;
       struct spart *src = &s->sparts[j];
-      if (j != i) scratch_sparts[k] = *src;
-      if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
+      if (j != i) {
+        scratch_sparts[k] = *src;
+        if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
+      }
     }
   }
 
@@ -797,8 +802,10 @@ static void space_split_move_leaf(
       const size_t j = bbuff[k].part_ind;
       const size_t i = offset + k;
       struct bpart *src = &s->bparts[j];
-      if (j != i) scratch_bparts[k] = *src;
-      if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
+      if (j != i) {
+        scratch_bparts[k] = *src;
+        if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
+      }
     }
   }
 
@@ -809,8 +816,10 @@ static void space_split_move_leaf(
       const size_t j = sink_buff[k].part_ind;
       const size_t i = offset + k;
       struct sink *src = &s->sinks[j];
-      if (j != i) scratch_sinks[k] = *src;
-      if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
+      if (j != i) {
+        scratch_sinks[k] = *src;
+        if (src->gpart != NULL) src->gpart->id_or_neg_offset = -(ptrdiff_t)i;
+      }
     }
   }
 
@@ -826,9 +835,15 @@ static void space_split_move_leaf(
       const size_t j = gbuff[k].part_ind;
       const size_t i = offset + k;
       struct gpart *src = &s->gparts[j];
-      if (j != i) scratch_gparts[k] = *src;
 
-      /* Fix up the back-pointer from the particle to its gpart. */
+      /* A stationary gpart (j == i) has not moved, so every baryon partner
+       * still points at the correct location -- nothing to gather or relink. */
+      if (j == i) continue;
+
+      scratch_gparts[k] = *src;
+
+      /* The gpart moved: fix up the back-pointer from its baryon partner to
+       * the gpart's new location. */
       struct gpart *final_gp = &s->gparts[i];
       const ptrdiff_t partner = -src->id_or_neg_offset;
       if (src->type == swift_type_gas) {
@@ -900,8 +915,15 @@ static void space_split_move_leaf(
  *        already filled.
  * @param sink_buff This cell's slice of the sink sorting
  *        buffer, already filled.
+ * @param tpid The threadpool id of the thread handling this top-level cell.
+ * @param dirty Whether any ancestor #cell_split() on the path from the
+ *        top-level cell down to here moved a particle. When false, this
+ *        subtree's particles are all still in their original (final) order,
+ *        so the leaf gather is skipped.
+ * @return Whether any particle anywhere in this subtree was moved, so the
+ *         caller knows whether the top-level write-back is needed.
  */
-static void space_split_recursive(
+static int space_split_recursive(
     struct space *s, struct cell *c, struct part *restrict scratch_parts,
     struct xpart *restrict scratch_xparts,
     struct spart *restrict scratch_sparts,
@@ -909,7 +931,8 @@ static void space_split_recursive(
     struct gpart *restrict scratch_gparts, int *restrict ind,
     struct cell_buff *restrict buff, struct cell_buff *restrict sbuff,
     struct cell_buff *restrict bbuff, struct cell_buff *restrict gbuff,
-    struct cell_buff *restrict sink_buff, const short int tpid) {
+    struct cell_buff *restrict sink_buff, const short int tpid,
+    const int dirty) {
 
   /* Unpack cell information. */
   const int count = c->hydro.count;
@@ -1003,8 +1026,11 @@ static void space_split_recursive(
 #endif
     }
 
-    /* Split the cell's particle data. */
-    cell_split(c, ind, buff, sbuff, bbuff, gbuff, sink_buff);
+    /* Split the cell's particle data. #cell_split() reports whether it moved
+     * anything at this level; a cell whose whole subtree never moves a single
+     * particle can skip the gather and write-back entirely. */
+    int subtree_moved = cell_split(c, ind, buff, sbuff, bbuff, gbuff, sink_buff);
+    const int child_dirty = dirty | subtree_moved;
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
@@ -1032,12 +1058,12 @@ static void space_split_recursive(
       } else {
 
         /* Recurse */
-        space_split_recursive(s, cp, progeny_scratch_parts,
-                              progeny_scratch_xparts, progeny_scratch_sparts,
-                              progeny_scratch_bparts, progeny_scratch_sinks,
-                              progeny_scratch_gparts, ind, progeny_buff,
-                              progeny_sbuff, progeny_bbuff, progeny_gbuff,
-                              progeny_sink_buff, tpid);
+        subtree_moved |= space_split_recursive(
+            s, cp, progeny_scratch_parts, progeny_scratch_xparts,
+            progeny_scratch_sparts, progeny_scratch_bparts,
+            progeny_scratch_sinks, progeny_scratch_gparts, ind, progeny_buff,
+            progeny_sbuff, progeny_bbuff, progeny_gbuff, progeny_sink_buff, tpid,
+            child_dirty);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -1054,6 +1080,8 @@ static void space_split_recursive(
       }
     }
 
+    return subtree_moved;
+
   } /* Split or let it be? */
 
   /* Otherwise, this cell remains a leaf: mark it as such, and gather its
@@ -1061,13 +1089,20 @@ static void space_split_recursive(
    * and multipole construction are still deferred to the aggregation pass
    * in #space_split_aggregate_recursive(), since they are cheap sequential
    * reads once the particles are in final order, and gain nothing from
-   * happening here too. */
+   * happening here too.
+   *
+   * If nothing moved anywhere on the path from the top-level cell down to
+   * here (@p dirty is false), every particle in this leaf is already in its
+   * final slot, so the gather is pure redundant work and is skipped. A leaf
+   * never moves particles itself, so it contributes no movement upward. */
   else {
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
-    space_split_move_leaf(s, c, scratch_parts, scratch_xparts, scratch_sparts,
-                          scratch_bparts, scratch_sinks, scratch_gparts, buff,
-                          sbuff, bbuff, gbuff, sink_buff);
+    if (dirty)
+      space_split_move_leaf(s, c, scratch_parts, scratch_xparts, scratch_sparts,
+                            scratch_bparts, scratch_sinks, scratch_gparts, buff,
+                            sbuff, bbuff, gbuff, sink_buff);
+    return 0;
   }
 }
 
@@ -1199,35 +1234,39 @@ static void space_split_mapper(void *map_data, int num_cells,
                              bparts_offset, sinks_offset);
 
     /* Split this cell recursively, gathering each leaf's particles into
-     * scratch as it is found. */
-    space_split_recursive(s, c, scratch.parts, scratch.xparts, scratch.sparts,
-                          scratch.bparts, scratch.sinks, scratch.gparts,
-                          scratch.ind, buff, sbuff, bbuff, gbuff, sink_buff,
-                          tpid);
+     * scratch as it is found. The top-level call starts "clean" (dirty = 0);
+     * the returned flag says whether any particle in the whole subtree moved. */
+    const int moved = space_split_recursive(
+        s, c, scratch.parts, scratch.xparts, scratch.sparts, scratch.bparts,
+        scratch.sinks, scratch.gparts, scratch.ind, buff, sbuff, bbuff, gbuff,
+        sink_buff, tpid, /*dirty=*/0);
 
-    /* This cell's entire subtree has now been gathered into scratch: copy each
-     * family back into the real arrays, skipping any particle that was already
-     * in its final slot (source index == final index). */
-    for (int k = 0; k < c->hydro.count; k++) {
-      if (buff[k].part_ind == (size_t)(parts_offset + k)) continue;
-      c->hydro.parts[k] = scratch.parts[k];
-      c->hydro.xparts[k] = scratch.xparts[k];
-    }
-    for (int k = 0; k < c->stars.count; k++) {
-      if (sbuff[k].part_ind == (size_t)(sparts_offset + k)) continue;
-      c->stars.parts[k] = scratch.sparts[k];
-    }
-    for (int k = 0; k < c->black_holes.count; k++) {
-      if (bbuff[k].part_ind == (size_t)(bparts_offset + k)) continue;
-      c->black_holes.parts[k] = scratch.bparts[k];
-    }
-    for (int k = 0; k < c->sinks.count; k++) {
-      if (sink_buff[k].part_ind == (size_t)(sinks_offset + k)) continue;
-      c->sinks.parts[k] = scratch.sinks[k];
-    }
-    for (int k = 0; k < c->grav.count; k++) {
-      if (gbuff[k].part_ind == (size_t)(gparts_offset + k)) continue;
-      c->grav.parts[k] = scratch.gparts[k];
+    /* If nothing in this cell's subtree moved, every particle is already in
+     * its final slot and the gather never ran -- there is nothing to copy
+     * back. Otherwise copy each family back into the real arrays, skipping any
+     * individual particle that was already in its final slot. */
+    if (moved) {
+      for (int k = 0; k < c->hydro.count; k++) {
+        if (buff[k].part_ind == (size_t)(parts_offset + k)) continue;
+        c->hydro.parts[k] = scratch.parts[k];
+        c->hydro.xparts[k] = scratch.xparts[k];
+      }
+      for (int k = 0; k < c->stars.count; k++) {
+        if (sbuff[k].part_ind == (size_t)(sparts_offset + k)) continue;
+        c->stars.parts[k] = scratch.sparts[k];
+      }
+      for (int k = 0; k < c->black_holes.count; k++) {
+        if (bbuff[k].part_ind == (size_t)(bparts_offset + k)) continue;
+        c->black_holes.parts[k] = scratch.bparts[k];
+      }
+      for (int k = 0; k < c->sinks.count; k++) {
+        if (sink_buff[k].part_ind == (size_t)(sinks_offset + k)) continue;
+        c->sinks.parts[k] = scratch.sinks[k];
+      }
+      for (int k = 0; k < c->grav.count; k++) {
+        if (gbuff[k].part_ind == (size_t)(gparts_offset + k)) continue;
+        c->grav.parts[k] = scratch.gparts[k];
+      }
     }
 
     /* Done with this cell -- free its scratch. */

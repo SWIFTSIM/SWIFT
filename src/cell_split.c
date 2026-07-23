@@ -51,12 +51,12 @@
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
  */
-void cell_split(struct cell *c, int *restrict ind,
-                struct cell_buff *restrict buff,
-                struct cell_buff *restrict sbuff,
-                struct cell_buff *restrict bbuff,
-                struct cell_buff *restrict gbuff,
-                struct cell_buff *restrict sinkbuff) {
+int cell_split(struct cell *c, int *restrict ind,
+               struct cell_buff *restrict buff,
+               struct cell_buff *restrict sbuff,
+               struct cell_buff *restrict bbuff,
+               struct cell_buff *restrict gbuff,
+               struct cell_buff *restrict sinkbuff) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
@@ -66,6 +66,11 @@ void cell_split(struct cell *c, int *restrict ind,
                            c->loc[2] + c->width[2] / 2};
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
+
+  /* Track whether any particle was actually moved out of its incoming slot.
+   * If nothing moves anywhere in a top-level cell's whole subtree, its leaves
+   * are already in final order and the gather/write-back can be skipped. */
+  int moved = 0;
 
   /* Fill ind with the bucket indices. */
   for (int k = 0; k < count; k++) {
@@ -89,6 +94,7 @@ void cell_split(struct cell *c, int *restrict ind,
          k < bucket_offset[bucket + 1]; k++) {
       int bid = ind[k];
       if (bid != bucket) {
+        moved = 1;
         struct cell_buff temp_buff = buff[k];
         int temp_ind = ind[k];
         while (bid != bucket) {
@@ -170,6 +176,7 @@ void cell_split(struct cell *c, int *restrict ind,
          k < bucket_offset[bucket + 1]; k++) {
       int bid = ind[k];
       if (bid != bucket) {
+        moved = 1;
         struct cell_buff temp_buff = sbuff[k];
         int temp_ind = ind[k];
         while (bid != bucket) {
@@ -225,6 +232,7 @@ void cell_split(struct cell *c, int *restrict ind,
          k < bucket_offset[bucket + 1]; k++) {
       int bid = ind[k];
       if (bid != bucket) {
+        moved = 1;
         struct cell_buff temp_buff = bbuff[k];
         int temp_ind = ind[k];
         while (bid != bucket) {
@@ -279,6 +287,7 @@ void cell_split(struct cell *c, int *restrict ind,
          k < bucket_offset[bucket + 1]; k++) {
       int bid = ind[k];
       if (bid != bucket) {
+        moved = 1;
         struct cell_buff temp_buff = sinkbuff[k];
         int temp_ind = ind[k];
         while (bid != bucket) {
@@ -334,6 +343,7 @@ void cell_split(struct cell *c, int *restrict ind,
          k < bucket_offset[bucket + 1]; k++) {
       int bid = ind[k];
       if (bid != bucket) {
+        moved = 1;
         struct cell_buff temp_buff = gbuff[k];
         int temp_ind = ind[k];
         while (bid != bucket) {
@@ -362,6 +372,8 @@ void cell_split(struct cell *c, int *restrict ind,
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
     c->progeny[k]->grav.parts_rebuild = c->progeny[k]->grav.parts;
   }
+
+  return moved;
 }
 
 /**
