@@ -572,8 +572,8 @@ __attribute__((always_inline)) INLINE float radiation_get_physical_IR_opacity(
     const struct phys_const *phys_const, const struct cosmology *cosmo) {
   const float Z_gas = sp->feedback_data.Z_star;
   const float Z_sun = 0.02;
-  const float value = 10.0 * units_cgs_conversion_factor(us, UNIT_CONV_AREA) /
-                      units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  const float value = 10.0 * units_cgs_conversion_factor(us, UNIT_CONV_MASS) /
+                      units_cgs_conversion_factor(us, UNIT_CONV_AREA);
   return value * Z_gas / Z_sun;
 }
 
