@@ -426,6 +426,68 @@ Two bugs found during T8 code review, both fixed the same day (commits
     without first deciding whether/how to extend radiation pressure to
     the sink/accretion phase -- flagged here as an open, unscoped
     question, not a bug.
+
+    \textbf{2026-07-23 follow-up}: Darwin noted sinks do not (and will
+    not, for now) emit radiation pressure, so \citet{Krumholz2018}'s
+    specific subgrid fix has no code to attach to yet. Still worth
+    keeping two things from it: (a) the \emph{general} gravity-vs-radiation
+    caveat above, which applies to any self-gravitating production run
+    regardless of sinks, and (b) the methodological warning that ordinary
+    resolution-convergence tests can fail to expose this class of error
+    -- directly relevant to how any future convergence study of this
+    channel should be designed (don't just check smooth convergence;
+    check for a sharp qualitative flip between resolutions).
+
+  \item \textbf{A second, more directly actionable numerical-method
+    paper: \citet{HopkinsGrudic2019}} (MNRAS 483, 4187, arXiv:1803.07573,
+    ``Numerical Problems in Coupling Photon Momentum (Radiation
+    Pressure) to Gas''), found while re-checking the original FIRE-2
+    citation and fetched in full at Darwin's prompt for ``other papers
+    on radiation pressure''. Distinct from \citet{Krumholz2018}: this is
+    about how momentum gets distributed to gas \emph{numerically}, not
+    about a physical resolution scale. Their core result: a naive
+    ``cell-centred''/``cell-integrated'' coupling -- evaluating the
+    absorbed-flux integral (their Eq.~4) using field values at a single
+    point/cell rather than integrating it towards the true geometric
+    faces between fluid elements (their Eq.~7, the ``face-integrated''
+    fix) -- can under-estimate the RP force near an unresolved point
+    source by up to an order of magnitude, and this is \textbf{not}
+    limited to moments-based (M1/FLD) methods: their own star-cluster
+    formation test (\S5, Fig.~3) shows it just as strongly for
+    \textbf{ray-based LEBRON}, the method this codebase's approach is
+    architecturally closest to -- cell-centred LEBRON left RP with
+    ``almost no effect'' on cluster SFE, while face-integrated LEBRON
+    gave RP ``a dramatic effect''. They attribute at least one published
+    literature disagreement (Grudi\'c et al. 2018 vs.\ Raskutti et al.
+    2016, an order-of-magnitude SFE difference on similar clouds)
+    directly to this choice.
+
+    Their Appendix~A gives an explicit SPH/mesh-free ``effective face''
+    construction to fix this:
+    $A_{ba} = [\bar n_a^{-2}\,\partial W(|x|_{ba},H_a)/\partial|x|_{ba} +
+    \bar n_b^{-2}\,\partial W(|x|_{ba},H_b)/\partial|x|_{ba}]\,\hat x_{ba}$
+    -- built from the \emph{kernel gradient} $\partial W/\partial r$, then
+    integrated towards each face. \textbf{This is structurally different
+    from Eq.~\ref{eq:rp-per-particle}}, which distributes momentum by
+    plain kernel-\emph{value} mass-weighting ($m_j w_{ij}/\rho_\star$,
+    weights summing to 1) with no reference to the kernel gradient or
+    any face-like construction. \textbf{Honest uncertainty, not yet
+    resolved}: this codebase's scheme is not exactly their ``cell-centred''
+    failure mode either (each neighbour's share does vary with its own
+    distance from the star via $w_{ij}(r)$, unlike a single value applied
+    uniformly) -- whether it reproduces some fraction of the same
+    under-estimate, or is safe, has not been determined by inspection
+    alone and would need either a careful term-by-term comparison against
+    their Appendix~A formula, or (more practically) a dedicated
+    resolution test in the spirit of their Figs.~1-3: run the same
+    physical setup (e.g.\ the new Tier-1
+    \code{RadiationPressureMomentumCheck} example, Section
+    \ref{sec:rp-validation-plan}) at several particle counts and check
+    whether the coupled momentum \emph{converges}, or instead shrinks
+    towards zero as resolution improves -- the latter would be the
+    diagnostic signature of this specific failure mode. Not yet done;
+    a good complement to (not a replacement for) the Tier-2 analytic
+    comparison.
 \end{itemize}
 
 \subsection{Proposed validation plan (2026-07-20)}
