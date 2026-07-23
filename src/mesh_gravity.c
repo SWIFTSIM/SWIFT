@@ -1248,26 +1248,29 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
       data_MG.const_G = 0.f;
       data_MG.nu_model = &nu_model;
 
-      //if (nr_local_cells == 0) {
-
-        /* We don't have a cell infrastructure in place so we need to
-        * directly loop over the particles */
-        threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts,
-                      sizeof(struct gpart), threadpool_auto_chunk_size,
-                      (void*)&data_MG);
-
-      //} else { /* Normal case */ //Not tested but just copied so *should* be fine
-
-        /* Do a parallel CIC mesh assignment of the gparts but only using
-        * the local top-level cells */
-        //threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
-          //            nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-            //          (void*)&data_MG);
-      //}
+      /* We don't have a cell infrastructure in place so we need to
+      * directly loop over the particles */
+      threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts,
+                    sizeof(struct gpart), threadpool_auto_chunk_size,
+                    (void*)&data_MG);
     }
+
+    FILE *rho_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_initial_new.txt", "w");
+    FILE *rhoMG_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_initial_new.txt", "w");
+    for (int i=0; i<N*N*N; i++) {
+      fprintf(rho_export, "%E \n", rho[i]);
+      fprintf(rhoMG_export, "%E \n", rho_MG[i]);
+    }
+    fclose(rho_export);
+    fclose(rhoMG_export);
 
     /* Do the actual calculation. rho_MG receives the extra overdensity due to f_R */
     add_modified_gravity_contribution(s, tp, cosmo, rho_MG, N_MG);
+    FILE *rhoMG_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_mod_new.txt", "w");
+    for (int i=0; i<N*N*N; i++) {
+      fprintf(rhoMG_export2, "%E \n", rho_MG[i]);
+    }
+    fclose(rhoMG_export2);
   }
 
 
@@ -1315,7 +1318,7 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
                             /* mesh_size=*/N, r_s, box_size, deconvolve, discrete_symbol);
 
   if (MG) {
-     mesh_apply_Green_function(tp, frho_MG, /*slice_offset=*/0, /*slice_width=*/N_MG,
+    mesh_apply_Green_function(tp, frho_MG, /*slice_offset=*/0, /*slice_width=*/N_MG,
                               /* mesh_size=*/N_MG, r_s_MG, box_size, deconvolve, discrete_symbol);
   }
 
@@ -1356,6 +1359,15 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
 
   /* rho now contains the potential */
   /* This array is now again NxNxN real numbers */
+
+  FILE *rho_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_FTd_new.txt", "w");
+  FILE *rhoMG_export3 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_FTd_new.txt", "w");
+  for (int i=0; i<N*N*N; i++) {
+    fprintf(rho_export2, "%E \n", rho[i]);
+    fprintf(rhoMG_export3, "%E \n", rho_MG[i]);
+  }
+  fclose(rho_export2);
+  fclose(rhoMG_export3);
 
   /* Let's store it in the structure. Add the MG contribution to the total potential if this was calculated */
   for (int i=0; i<N*N*N; i++) {
@@ -1413,11 +1425,11 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
     data_MG.const_G = s->e->physical_constants->const_newton_G;
     data_MG.reset = 0;
 
-      /* We don't have a cell infrastructure in place so we need to
-      * directly loop over the particles */
-      threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
-                    sizeof(struct gpart), threadpool_auto_chunk_size,
-                    (void*)&data_MG);
+    /* We don't have a cell infrastructure in place so we need to
+    * directly loop over the particles */
+    threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
+                  sizeof(struct gpart), threadpool_auto_chunk_size,
+                  (void*)&data_MG);
   }
 
 
@@ -1433,6 +1445,14 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   fftw_free(frho_MG);
 
   swift_free("rho_MG", rho_MG);
+
+  FILE *acc_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/acc_new.txt", "w");
+  for (size_t i=0; i<s->nr_gparts; i++) {
+    fprintf(acc_export, "%E \n", s->gparts[i].a_grav_mesh[0]);
+  }
+  fclose(acc_export);
+  message("Done exporting stuff");
+  sleep(10);
 
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
