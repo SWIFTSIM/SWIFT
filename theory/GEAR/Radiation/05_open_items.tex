@@ -248,9 +248,34 @@ validation-against-a-paper status.
     box (as opposed to quiescent periods, isolated-galaxy/zoom tests, or
     bursty SF) is an untested hypothesis, not a measured result -- no run
     has yet checked whether \code{cdim} actually gets a chance to shrink
-    back in a continuous-SF setting. Worth checking as part of T4's
-    planned \code{HomogeneousBox}/isolated-galaxy testing rather than
-    assumed.
+    back in a continuous-SF setting. The STARBENCH re-run that
+    accompanied the 2026-07-21 commit above did not exercise this either:
+    STARBENCH's single star never dies within the run's $\sim$3\,Myr
+    duration (far short of its lifetime), so \code{h\_hii} never shrinks
+    back down and the re-refine path was likely never triggered -- that
+    run only confirmed no regression, not that the fix's core mechanism
+    works.
+
+    \textbf{TODO (added 2026-07-23, from a direct question about whether
+    this had ever actually been checked): explicitly verify the
+    coarsen-then-re-refine cycle}, in two places:
+    \begin{itemize}
+      \item \code{HomogeneousBox} (T4's planned isolated-galaxy/
+        continuous-SF test) -- as originally planned above.
+      \item \textbf{StromgrenSphere} -- a single star whose \code{h\_hii}
+        grows then shrinks back to zero (e.g.\ by running well past that
+        star's lifetime, or reusing \code{HII\_max\_age\_Myr} to force
+        early HII shutoff) is a much cheaper, more controlled way to
+        directly exercise both directions of the trigger than a full
+        continuous-SF box -- worth doing \emph{first}, before the
+        more expensive \code{HomogeneousBox} test.
+    \end{itemize}
+    In both cases, check \code{cdim}/top-level cell count directly
+    (e.g.\ via logged regrid messages or \code{task\_level}/dependency-graph
+    output showing the grid actually refining back to more cells) rather
+    than only checking the final physics result, since a physics-level
+    check alone would not distinguish ``re-refined correctly'' from
+    ``never needed to re-refine.''
 
   \item[$\square$] \textbf{T10} -- STARBENCH and Hu et al.\
     (2017)/Smith et al.\ (2021) 4-star are both validated (PASS),
