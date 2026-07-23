@@ -212,6 +212,14 @@ void feedback_will_do_feedback(
   sp->feedback_data.will_do_feedback = 0;
   sp->feedback_data.will_do_HII_ionization = 0;
 
+  /* Zero the radiation pressure luminosity. Unlike the energies above, this
+     is not otherwise reset when a star is dead (mass floored, or age past
+     lifetime): every early-return path below skips the fresh assignment in
+     stellar_evolution_compute_preSN_feedback_*, so without this a dead star
+     would keep exerting its last living L_bol as a radiation-pressure kick
+     on its gas neighbours indefinitely. */
+  sp->feedback_data.radiation.L_bol = 0;
+
   /* Quit if the birth_scale_factor or birth_time is negative.
      No Feedback event for the initial fake step. */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0 || sp->time_bin == 0)
