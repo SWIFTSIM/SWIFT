@@ -485,9 +485,20 @@ Two bugs found during T8 code review, both fixed the same day (commits
     \ref{sec:rp-validation-plan}) at several particle counts and check
     whether the coupled momentum \emph{converges}, or instead shrinks
     towards zero as resolution improves -- the latter would be the
-    diagnostic signature of this specific failure mode. Not yet done;
-    a good complement to (not a replacement for) the Tier-2 analytic
-    comparison.
+    diagnostic signature of this specific failure mode.
+
+    \textbf{2026-07-23 follow-up -- already solved elsewhere in this
+    codebase, not an open research question.} Darwin: the effective-face
+    approach is already implemented for mechanical (SN/wind) feedback,
+    in a separate branch, via angular weights. So the path forward for
+    radiation pressure is to \emph{adapt that existing implementation}
+    to this channel, not to run a from-scratch convergence study or
+    derive a new SPH-specific face construction -- de-scoped from
+    ``open question requiring investigation'' to ``known fix, needs
+    porting.'' The convergence-test idea above is no longer needed to
+    \emph{establish} whether this matters (it's the same class of error
+    the mechanical-feedback work already addressed); it could still be
+    useful later purely as a regression check once the port is done.
 \end{itemize}
 
 \subsection{Proposed validation plan (2026-07-20)}
