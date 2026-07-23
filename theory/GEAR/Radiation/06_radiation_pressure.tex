@@ -94,34 +94,55 @@ IR by dust can scatter multiple times in an optically thick shell
 before escaping, boosting the momentum transfer by a further factor of
 $(1+\tau_{\rm IR})$ over a single scattering.
 
-\textbf{Citation search (2026-07-20), partially resolved.} The
-$L_{\rm bol}/c\,(1+\tau_{\rm IR})$ functional form is not unique to any
-one paper -- it is a widely shared recipe across at least three
-independent lineages: \citet{Hopkins2018} (FIRE-2, already cited
-elsewhere in this logbook for the recombination-cost formula),
-\citet{Agertz2013} (a purely local subgrid implementation for
-cosmological-resolution simulations, with photon trapping assumed only
-while a star cluster remains embedded in its natal clump, and
-explicitly becoming negligible at low metallicity), and
-\citet{Marinacci2019} (the SMUGGLE model for the moving-mesh code
-AREPO). The specific normalization $\kappa_{\rm IR}=10\,{\rm
-cm^2\,g^{-1}}\,(Z/Z_\odot)$ (Eq.~\ref{eq:rp-tauIR}) also matches a
-commonly-quoted reference value in this literature (metallicity-linear
-dust IR opacity of order $5$--$10\,{\rm cm^2\,g^{-1}}$ at solar
-metallicity is standard across this family of models). \textbf{Not
-fully resolved}: the exact equation numbers and precise $\kappa_{\rm
-IR}$ value used by \citet{Agertz2013} and \citet{Marinacci2019}
-specifically were not directly confirmed against the primary sources
-in this pass (full-text fetch was unavailable in this environment) --
-what's established is that the functional form and normalization are
-standard across this literature, not which single paper this
-codebase's implementation was transcribed from, if any one in
-particular. \textbf{Separately, and not resolved by this citation
-search at all}: pinning down a source for the formula does not by
-itself validate the physics -- no test in this codebase exercises the
-radiation-pressure channel against any analytic or reference
-expectation (Section~\ref{sec:rp-open} tracks that gap, item~T8,
-Section~\ref{sec:open}).
+\textbf{Citation confirmed (2026-07-23), direct primary-source check.}
+Darwin confirmed this codebase's implementation is transcribed from
+\citet{Hopkins2020} (the FIRE-2 radiative-feedback methods paper,
+arXiv:1811.12462, distinct from the FIRE-2 numerics paper
+\citet{Hopkins2018} already cited elsewhere in this logbook). Fetched
+and grepped the full text directly: \citet{Hopkins2020}'s Appendix~A
+gives \textbf{exactly}
+$(\kappa_{\rm FUV},\kappa_{\rm NUV},\kappa_{\rm opt},\kappa_{\rm IR}) =
+(2000, 1800, 180, 10)\,(Z/Z_\odot)\,{\rm cm^2\,g^{-1}}$ -- this
+codebase's $\kappa_{\rm IR}=10\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$
+(Eq.~\ref{eq:rp-tauIR}) matches precisely, not just order-of-magnitude.
+\citet{Agertz2013}/\citet{Marinacci2019} remain plausible independent
+lineages sharing the same functional form but are no longer the
+open question -- \citet{Hopkins2020} is confirmed as the actual source.
+
+\textbf{New finding from the same primary-source check: a term this
+codebase is missing.} \citet{Hopkins2020} \S4.4, footnote 16 gives the
+full LEBRON momentum-coupling formula as
+$\dot p = \tilde\tau\,L_{\rm bol}/c$, with
+$\tilde\tau = (1-e^{-\tau_{\rm single}})\,(1+\tau_{\rm eff,IR})$ --
+\emph{not} simply $(1+\tau_{\rm IR})$ as
+Eq.~\ref{eq:rp-momentum-rate} implements. The
+$(1-e^{-\tau_{\rm single}})$ factor is the fraction of the
+\emph{input} (non-ionizing UV/optical) luminosity actually absorbed
+before reaching the dust that reprocesses it into the trapped IR
+term -- this codebase's formula implicitly assumes
+$\tau_{\rm single}\to\infty$ (i.e.\ $(1-e^{-\tau_{\rm single}})=1$,
+full absorption), which only holds deep in a dense cloud. Hopkins et
+al.\ report their own galaxy-scale simulations couple only
+$\langle\tilde\tau\rangle\sim0.4$--$0.7$ of the bolometric luminosity
+on average (an order-unity fraction of sightlines are optically thin
+even in the optical) -- so at Darwin's production resolution
+(10\,$M_\odot$ to a few $10^4\,M_\odot$ per gas particle), where much
+of the coupling volume around a star can be diffuse, this
+missing factor likely causes this codebase to \emph{over}-estimate
+direct/single-scattering radiation pressure, on top of (and largely
+independent from) the $\kappa_{\rm IR}$ bug's IR-trapping
+\emph{under}-estimate (Section~\ref{sec:rp-bugs-20260723}) -- the two
+are separate errors, not a cancelling pair, and there is no reason to
+expect them to offset in general. Implementing this requires an
+opacity for the input band(s), which \citet{Hopkins2020}'s own
+$\kappa_{\rm FUV}/\kappa_{\rm NUV}/\kappa_{\rm opt}$ spread by over an
+order of magnitude (2000 vs.\ 180\,${\rm cm^2\,g^{-1}}$) -- a single
+effective $\kappa_{\rm single}$ (e.g.\ luminosity/temperature-weighted
+via the blackbody fit already computed for $T_K$, Section
+\ref{sec:blackbody}) would capture the leading effect without adopting
+\citet{Hopkins2020}'s full 5-band architecture. Not yet implemented;
+this is judged the single most valuable remaining physics gap in this
+channel, ahead of the resolution/banding items below.
 
 $L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, set from
 the same blackbody mass--luminosity fit as the ionizing photon rate
@@ -179,6 +200,29 @@ conditions, or a star with too few neighbours to resolve a gradient)
 makes $\ell_{\rm Sobolev}$ formally undefined (0/0); the code checks
 $|\nabla\rho_\star|>0$ explicitly and falls back to the kernel-radius
 term alone in that case, rather than propagating a NaN.
+
+\textbf{Confirmed against the primary source (2026-07-23).}
+\citet{Hopkins2020} \S4.4 gives their own local column-density
+estimate as $\langle\Sigma\rangle \approx \rho\,[h + \rho/|\nabla\rho|]$,
+with $h=(m_i/\rho)^{1/3}$ the local resolution-element size --
+structurally identical to Eq.~\ref{eq:rp-sobolev}'s
+$\rho_\star(h_\star\gamma_k + \ell_{\rm Sobolev})$: same
+floor-plus-Sobolev-length sum, just a slightly different (arguably
+more physically motivated, since it is the actual SPH kernel support
+radius rather than a generic mass/density cube root) floor term.
+\textbf{One correction to an earlier assumption in this discussion}:
+Darwin recalled FIRE capping the $\rho/|\nabla\rho|$ term at the
+smoothing length; the formula as quoted in \citet{Hopkins2020} \S4.4
+is a plain sum, no $\min(\cdot)$ -- i.e.\ no cap is visible in this
+specific paper. This may be in \citet{Hopkins2018} (their ``Paper~I'',
+not yet checked) or a later code update, or simply a misremembering --
+not resolved this pass. Practically: this codebase's formula already
+matches \citet{Hopkins2020}'s own documented approach as-is, so the
+resolution-robustness concern raised below (production runs at
+10--$10^4\,M_\odot$ per particle) is about noise in $|\nabla\rho|$
+at coarse resolution, not about deviating from the primary source --
+a cap would be a robustness \emph{improvement over} what
+\citet{Hopkins2020} documents, not a correction to match it.
 
 \subsection{Distributing the kick to gas particles}
 \label{sec:rp-distribute}
@@ -247,22 +291,23 @@ Two bugs found during T8 code review, both fixed the same day (commits
     added 2026-07-23) but has not yet been run -- queued behind the
     ongoing T5 STARBENCH regression check. See
     Section~\ref{sec:rp-validation-plan}.
-  \item Eq.~\ref{eq:rp-tauIR}'s $\kappa_{\rm IR}=10\,{\rm
-    cm^2\,g^{-1}}\,(Z/Z_\odot)$ \textbf{citation resolved (2026-07-23)}:
-    Darwin confirms this is a \citet{Hopkins2018} (FIRE-2) fit, not
-    merely one of three plausible lineages as the citation search in
-    Section~\ref{sec:rp-momentum} left it. The precise FIRE-2 appendix
-    normalization has not been independently re-verified against the
-    primary source in this pass -- worth a direct check if precision
-    here ever matters.
+  \item Eq.~\ref{eq:rp-tauIR}'s $\kappa_{\rm IR}$ citation and value are
+    now both fully confirmed against \citet{Hopkins2020}'s primary text
+    (Section~\ref{sec:rp-momentum} above) -- no longer open.
+  \item \textbf{The missing $(1-e^{-\tau_{\rm single}})$ absorption
+    factor} (Section~\ref{sec:rp-momentum} above) is now judged the
+    top-priority physics gap in this channel, ahead of the two items
+    below.
   \item \textbf{Resolution-dependent robustness of the Sobolev length,
     not yet addressed.} Darwin's production runs span gas particle
     masses of $\sim$10--a few $\times10^4\,M_\odot$ (currently 95 and
     760\,$M_\odot$) -- far coarser than this Tier-1 test's box. At coarse
     resolution, $\ell_{\rm Sobolev}=\rho/|\nabla\rho|$ estimated from a
-    kernel sum over $\sim$57 neighbours is inherently noisy. Darwin notes
-    FIRE caps this term at (of order) the smoothing length -- not yet
-    implemented here. Concrete proposal:
+    kernel sum over $\sim$57 neighbours is inherently noisy. As now
+    confirmed (Section~\ref{sec:rp-sobolev} above),
+    \citet{Hopkins2020}'s own formula does not cap this term either --
+    so a cap would be a robustness improvement beyond the primary
+    source, not a fix to match it. Concrete proposal, unchanged:
     $\ell_{\rm Sobolev} \to \min(\rho_\star/|\nabla\rho_\star|,\,
     h_\star\gamma_k)$, capping $\Sigma_{\rm gas}$
     (Eq.~\ref{eq:rp-sobolev}) at $2\,\rho_\star h_\star\gamma_k$. A
@@ -277,19 +322,34 @@ Two bugs found during T8 code review, both fixed the same day (commits
     structure regardless of dynamical state. The cap above is the
     targeted fix for the noise problem without introducing that
     mismatch.
-  \item \textbf{Band-splitting: ionizing/non-ionizing, not further.}
-    Darwin considered a full \citet{Hopkins2018}-style multi-band split
-    (ionizing/FUV/optical/IR) but ruled out tree-based transport for any
-    of it -- that is reserved for the separate, not-yet-scoped ISRF
-    (diffuse FUV/photoelectric) work. For the radiation-pressure
-    momentum budget specifically, splitting FUV from optical mostly
-    matters for \emph{heating} physics (photoelectric heating, dust
-    temperature) that this channel does not model -- dust opacity/albedo
-    is close to grey from UV through optical for momentum purposes, and
-    the qualitatively different piece (IR reprocessing) is already the
-    dedicated $(1+\tau_{\rm IR})$ term. The one band-split judged worth
-    doing is ionizing vs.\ non-ionizing (next item), not a fuller
-    spectral decomposition.
+  \item \textbf{Band-splitting: ionizing/non-ionizing plus one effective
+    single-scattering opacity, not a fuller split.} Darwin considered a
+    full \citet{Hopkins2020}-style multi-band split
+    (ionizing/FUV/NUV/optical/IR) but ruled out tree-based transport for
+    any of it -- that is reserved for the separate, not-yet-scoped ISRF
+    (diffuse FUV/photoelectric) work. \textbf{Correction to an initial
+    claim made in this discussion}: dust opacity is \emph{not} close to
+    grey from UV through optical -- \citet{Hopkins2020}'s own
+    $\kappa_{\rm FUV}=2000$, $\kappa_{\rm NUV}=1800$,
+    $\kappa_{\rm opt}=180\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$ span more
+    than an order of magnitude among themselves, well before reaching
+    $\kappa_{\rm IR}=10$. This directly motivates the
+    $(1-e^{-\tau_{\rm single}})$ item above needing \emph{some}
+    band-aware opacity, even if not full separate per-band budgets: an
+    effective, luminosity/temperature-weighted $\kappa_{\rm single}$
+    (blended from the existing blackbody fit) is the pragmatic middle
+    ground -- capturing the leading effect without \citet{Hopkins2020}'s
+    full 5-band architecture or its long-range tree-based propagation.
+    Confirmed useful precedent for keeping this local, no-tree: their
+    \S4.3.4/\S4.4.1 ablation (disabling only the tree-propagated
+    ``long-range'' component of LEBRON while keeping the local,
+    kernel-scale ``short-range'' component) found radiation pressure
+    specifically is \emph{dominated} by the short-range term -- removing
+    only long-range RP gave results ``very similar to simply disabling
+    all radiation pressure''. The long-range/tree component matters more
+    for diffuse-gas photo-\emph{heating} in their tests, not
+    radiation-pressure momentum -- consistent with treating that as an
+    ISRF-module concern, not this channel's.
   \item \textbf{Interaction with photoionization -- a concrete plan, not
     yet implemented.} An ionizing-photon absorption event physically
     transfers momentum $h\nu/c$ in the same event that ionizes/heats the
