@@ -374,6 +374,58 @@ Two bugs found during T8 code review, both fixed the same day (commits
     excess}\rangle)$, a straightforward combination of quantities T5
     already computes. Not yet implemented; queued behind Tier~1/Tier~2
     validation.
+  \item \textbf{Sobolev-cap source corrected (2026-07-23).} Darwin
+    clarifies the smoothing-length cap is not from \citet{Hopkins2020} --
+    it is from elsewhere in the literature (paper not yet pinned down),
+    which uses a second-order least-squares gradient-matrix estimator
+    (as in meshless-finite-mass/volume methods) rather than the plain
+    SPH kernel-gradient sum this codebase uses, and so computes
+    $\nabla\rho$ more accurately in the first place. This is a plausible
+    reason \citet{Hopkins2020}'s own formula (Section~\ref{sec:rp-sobolev}
+    above) needs no cap while an SPH-based code might still want one:
+    the noise this cap would guard against is method-dependent, not a
+    universal feature of the Sobolev approach itself.
+  \item \textbf{Fundamental resolution caveat for self-gravitating
+    production runs, via \citet{Krumholz2018}.} Darwin flagged this
+    paper (MNRAS 480, 3468, arXiv:1805.00210) as worth checking; fetched
+    and read directly. Its core result: whether radiation pressure can
+    reverse a gravity-driven \emph{accretion flow} onto a source is set
+    by physics at the dust sublimation radius,
+    $r_s = 780\,L_6^{1/2}Q_{-2}^{-1/2}T_{s,3}^{-2}\,{\rm AU}$
+    ($L_6\equiv L/10^6 L_\odot$) -- e.g. $\sim$300 AU for a 26.75
+    $M_\odot$ star (STARBENCH's own star). Resolving this needs mass
+    resolution $\sim 0.01$--$0.09\,M_\odot$ (their \S4), which the paper
+    states explicitly is ``orders of magnitude beyond state of the art
+    galactic or cosmological simulations'' -- including, unavoidably,
+    this codebase's own 10--$10^4\,M_\odot$ production resolution.
+    \textbf{Mechanism}: gravity delivers momentum smoothly and is
+    \emph{under}-delivered when softened at low resolution near a
+    source, while radiation delivers a fixed \emph{total} momentum
+    regardless of where (i.e.\ how far out) it happens to be absorbed --
+    this asymmetry systematically biases unresolved simulations toward
+    \emph{overestimating} radiation's ability to overcome gravity and
+    disperse/halt infall, and conventional resolution-convergence tests
+    can fail to reveal it (the solution switches sharply between two
+    qualitative outcomes rather than converging smoothly).
+    \textbf{Scope, to state precisely}: Krumholz's specific subgrid fix
+    (Eq.~56-57 of that paper: suppress direct radiation force above a
+    critical accretion-rate threshold) targets an actively-accreting
+    source competing against its own inflow -- most directly analogous
+    to this codebase's sink-particle star-formation module, not (yet)
+    coupled to radiation pressure here at all, rather than to
+    already-formed \code{spart}s pushing on ambient ISM gas as this
+    channel currently does. The \emph{general} lesson (gravity-softening
+    vs.\ radiation's resolution-insensitive total momentum can bias a
+    gravity-vs-radiation contest) is still a relevant caution wherever
+    a production run has both self-gravity and radiation pressure on
+    near a young, still-forming/marginally-bound star cluster or clump
+    -- e.g.\ the physical scenario \code{StromgrenSphereClump*}
+    represents, though those specific examples currently run with
+    gravity off, sidestepping this particular failure mode (for better
+    or worse) rather than resolving it. Not actionable as a code change
+    without first deciding whether/how to extend radiation pressure to
+    the sink/accretion phase -- flagged here as an open, unscoped
+    question, not a bug.
 \end{itemize}
 
 \subsection{Proposed validation plan (2026-07-20)}
