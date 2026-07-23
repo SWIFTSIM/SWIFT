@@ -207,26 +207,113 @@ Section~\ref{sec:bugs}, \code{hit\_by\_radiation} was never actually
 set until 2026-07-19, so this accumulated momentum was silently
 discarded every step until then).
 
+\subsection{Bugs found and fixed (2026-07-23)}
+\label{sec:rp-bugs-20260723}
+
+Two bugs found during T8 code review, both fixed the same day (commits
+\code{eb105ee62}, \code{f6d93460e}):
+
+\begin{itemize}
+  \item \textbf{Inverted unit conversion in $\kappa_{\rm IR}$}
+    (\code{radiation\_get\_physical\_IR\_opacity}). The code multiplied by
+    the AREA/MASS cgs conversion factor instead of dividing by it --
+    verified via an SI-unit cross-check (10\,cm$^2$/g should convert to
+    exactly 1\,m$^2$/kg; the buggy formula gave 100). In this project's
+    unit system this underestimated $\tau_{\rm IR}$ by a factor of
+    $\sim$4.4, suppressing the IR-trapping boost. The sibling
+    $\sigma_{\rm HI}$ conversion a few lines above already divides
+    correctly, confirming this was an inconsistency, not a deliberate
+    choice.
+  \item \textbf{Stale $L_{\rm bol}$ past star death}
+    (\code{feedback\_will\_do\_feedback}). Unlike
+    \code{supernovae.energy\_ejected}/\code{winds.energy\_ejected}, which
+    are explicitly zeroed every step, \code{radiation.L\_bol} was never
+    reset -- every early-return path for a dead star skipped the code
+    that would otherwise overwrite it with a fresh value. A dead star's
+    remnant kept exerting its last living radiation-pressure kick on gas
+    neighbours indefinitely. Invisible in every currently-validated
+    example (\code{radiation\_pressure\_efficiency=0} already zeroes
+    $L_{\rm bol}$ every living step too), so this would only have
+    surfaced once the channel was actually enabled on a run outliving
+    the shortest stellar lifetime -- exactly the T8 scenario.
+\end{itemize}
+
 \subsection{Open questions, not investigated this pass}
 \label{sec:rp-open}
 
 \begin{itemize}
-  \item No validation example exercises this channel at all yet -- every
-    example in Section~\ref{sec:validation} runs with
-    \code{radiation\_pressure\_efficiency=0} (the default) or does not
-    set the \code{radiation\_policy\_radiation\_pressure} bit. With the
-    bug in Section~\ref{sec:bugs} now fixed, the momentum is applied,
-    but no test has yet checked the resulting kick against an analytic
-    expectation. \textbf{Proposed two-tier plan (2026-07-20)}, see
+  \item \textbf{Tier 1 example now exists}
+    (\code{examples/SubgridTests/SubgridRadiation/RadiationPressureMomentumCheck},
+    added 2026-07-23) but has not yet been run -- queued behind the
+    ongoing T5 STARBENCH regression check. See
     Section~\ref{sec:rp-validation-plan}.
   \item Eq.~\ref{eq:rp-tauIR}'s $\kappa_{\rm IR}=10\,{\rm
-    cm^2\,g^{-1}}$ at $Z=Z_\odot$ is not yet cross-checked against a
-    specific cited source (item~T8, Section~\ref{sec:open}).
-  \item Interaction with photoionization not examined: a particle can
-    in principle be both HII-tagged and receiving a radiation-pressure
-    kick simultaneously (the two policies are independent bits); no
-    check yet for whether that combination is physically sensible or
-    double-counts anything.
+    cm^2\,g^{-1}}\,(Z/Z_\odot)$ \textbf{citation resolved (2026-07-23)}:
+    Darwin confirms this is a \citet{Hopkins2018} (FIRE-2) fit, not
+    merely one of three plausible lineages as the citation search in
+    Section~\ref{sec:rp-momentum} left it. The precise FIRE-2 appendix
+    normalization has not been independently re-verified against the
+    primary source in this pass -- worth a direct check if precision
+    here ever matters.
+  \item \textbf{Resolution-dependent robustness of the Sobolev length,
+    not yet addressed.} Darwin's production runs span gas particle
+    masses of $\sim$10--a few $\times10^4\,M_\odot$ (currently 95 and
+    760\,$M_\odot$) -- far coarser than this Tier-1 test's box. At coarse
+    resolution, $\ell_{\rm Sobolev}=\rho/|\nabla\rho|$ estimated from a
+    kernel sum over $\sim$57 neighbours is inherently noisy. Darwin notes
+    FIRE caps this term at (of order) the smoothing length -- not yet
+    implemented here. Concrete proposal:
+    $\ell_{\rm Sobolev} \to \min(\rho_\star/|\nabla\rho_\star|,\,
+    h_\star\gamma_k)$, capping $\Sigma_{\rm gas}$
+    (Eq.~\ref{eq:rp-sobolev}) at $2\,\rho_\star h_\star\gamma_k$. A
+    thermal/turbulent Jeans length was considered as an alternative
+    length scale entirely (also used elsewhere in the subgrid-feedback
+    literature) but is not recommended as a \emph{replacement}: it
+    assumes local gravitational (Jeans) equilibrium, which need not hold
+    for gas actively being swept up by the same radiation
+    pressure/photoionization event whose column density it would be
+    used to estimate -- a category mismatch the density-gradient Sobolev
+    estimate does not have, since it measures the actual local density
+    structure regardless of dynamical state. The cap above is the
+    targeted fix for the noise problem without introducing that
+    mismatch.
+  \item \textbf{Band-splitting: ionizing/non-ionizing, not further.}
+    Darwin considered a full \citet{Hopkins2018}-style multi-band split
+    (ionizing/FUV/optical/IR) but ruled out tree-based transport for any
+    of it -- that is reserved for the separate, not-yet-scoped ISRF
+    (diffuse FUV/photoelectric) work. For the radiation-pressure
+    momentum budget specifically, splitting FUV from optical mostly
+    matters for \emph{heating} physics (photoelectric heating, dust
+    temperature) that this channel does not model -- dust opacity/albedo
+    is close to grey from UV through optical for momentum purposes, and
+    the qualitatively different piece (IR reprocessing) is already the
+    dedicated $(1+\tau_{\rm IR})$ term. The one band-split judged worth
+    doing is ionizing vs.\ non-ionizing (next item), not a fuller
+    spectral decomposition.
+  \item \textbf{Interaction with photoionization -- a concrete plan, not
+    yet implemented.} An ionizing-photon absorption event physically
+    transfers momentum $h\nu/c$ in the same event that ionizes/heats the
+    gas (Section~\ref{sec:rp-vs-hii}). Currently $L_{\rm bol}$ (used for
+    the generic SPH-kernel-shared radiation-pressure momentum,
+    Eq.~\ref{eq:rp-per-particle}) includes the ionizing band, so that
+    momentum is distributed via the kernel-share weighting, \emph{not}
+    the angular-pixel/flux-based weighting the HII algorithm already
+    uses to decide who actually absorbs those specific photons -- a
+    mismatch, not a double-count of energy, since the two channels draw
+    on different budgets ($Q_H$ number rate vs.\ $L_{\rm bol}$ energy
+    rate) but currently apply momentum from the same photons via two
+    different, uncoordinated distribution schemes. Proposed fix: exclude
+    the ionizing band's energy from the $L_{\rm bol}$ used specifically
+    in Eq.~\ref{eq:rp-momentum-rate}, and instead give momentum directly
+    at the photoionization-tagging call site
+    (\code{feedback\_iact\_HII\_ionization}), using the same per-particle
+    ionizing flux T5's rate-coupling already computes there. Requires one
+    new quantity not currently available: the ionizing band's
+    \emph{energy} rate (not just $Q_H$, its \emph{number} rate) --
+    $\dot E_{\rm ion} = Q_H\,(E_{\rm threshold}+\langle E_{\rm
+    excess}\rangle)$, a straightforward combination of quantities T5
+    already computes. Not yet implemented; queued behind Tier~1/Tier~2
+    validation.
 \end{itemize}
 
 \subsection{Proposed validation plan (2026-07-20)}
