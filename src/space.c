@@ -4351,7 +4351,7 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
   message("The first residual is %E", residual);
   double tolerance = 10e-9; //Choose reasonable value here
   int counter = 0;
-  int fine_steps = 10; //Choose reasonable value here
+  int fine_steps = 20; //Choose reasonable value here
 
   int V_cycles=0;
   int depth = 0;

@@ -1255,22 +1255,22 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
                     (void*)&data_MG);
     }
 
-    FILE *rho_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_initial_new.txt", "w");
-    FILE *rhoMG_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_initial_new.txt", "w");
-    for (int i=0; i<N*N*N; i++) {
-      fprintf(rho_export, "%E \n", rho[i]);
-      fprintf(rhoMG_export, "%E \n", rho_MG[i]);
-    }
-    fclose(rho_export);
-    fclose(rhoMG_export);
+    //FILE *rho_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_initial_new.txt", "w");
+    //FILE *rhoMG_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_initial_new.txt", "w");
+    //for (int i=0; i<N*N*N; i++) {
+      //fprintf(rho_export, "%E \n", rho[i]);
+      //fprintf(rhoMG_export, "%E \n", rho_MG[i]);
+    //}
+    //fclose(rho_export);
+    //fclose(rhoMG_export);
 
     /* Do the actual calculation. rho_MG receives the extra overdensity due to f_R */
     add_modified_gravity_contribution(s, tp, cosmo, rho_MG, N_MG);
-    FILE *rhoMG_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_mod_new.txt", "w");
-    for (int i=0; i<N*N*N; i++) {
-      fprintf(rhoMG_export2, "%E \n", rho_MG[i]);
-    }
-    fclose(rhoMG_export2);
+    //FILE *rhoMG_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_mod_new.txt", "w");
+    //for (int i=0; i<N*N*N; i++) {
+      //fprintf(rhoMG_export2, "%E \n", rho_MG[i]);
+    //}
+    //fclose(rhoMG_export2);
   }
 
 
@@ -1360,14 +1360,14 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
   /* rho now contains the potential */
   /* This array is now again NxNxN real numbers */
 
-  FILE *rho_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_FTd_new.txt", "w");
-  FILE *rhoMG_export3 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_FTd_new.txt", "w");
-  for (int i=0; i<N*N*N; i++) {
-    fprintf(rho_export2, "%E \n", rho[i]);
-    fprintf(rhoMG_export3, "%E \n", rho_MG[i]);
-  }
-  fclose(rho_export2);
-  fclose(rhoMG_export3);
+  //FILE *rho_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_FTd_new.txt", "w");
+  //FILE *rhoMG_export3 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_FTd_new.txt", "w");
+  //for (int i=0; i<N*N*N; i++) {
+    //fprintf(rho_export2, "%E \n", rho[i]);
+    //fprintf(rhoMG_export3, "%E \n", rho_MG[i]);
+  //}
+  //fclose(rho_export2);
+  //fclose(rhoMG_export3);
 
   /* Let's store it in the structure. Add the MG contribution to the total potential if this was calculated */
   for (int i=0; i<N*N*N; i++) {
@@ -1446,13 +1446,13 @@ void compute_potential_global(struct engine *e, struct pm_mesh* mesh, struct spa
 
   swift_free("rho_MG", rho_MG);
 
-  FILE *acc_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/acc_new.txt", "w");
-  for (size_t i=0; i<s->nr_gparts; i++) {
-    fprintf(acc_export, "%E \n", s->gparts[i].a_grav_mesh[0]);
-  }
-  fclose(acc_export);
-  message("Done exporting stuff");
-  sleep(10);
+  //FILE *acc_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/acc_new.txt", "w");
+  //for (size_t i=0; i<s->nr_gparts; i++) {
+    //fprintf(acc_export, "%E \n", s->gparts[i].a_grav_mesh[0]);
+  //}
+  //fclose(acc_export);
+  //message("Done exporting stuff");
+  //sleep(10);
 
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
