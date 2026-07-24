@@ -84,6 +84,10 @@ m = zeros(numPart)
 h = zeros(numPart)
 u = zeros(numPart)
 
+# Add in densities and material ids
+rhos = ones(numPart) * rho_0
+material_ids = zeros(numPart)
+
 # Set the particles on the left
 for i in range(numPart_1D):
     for j in range(numPart_1D):
@@ -105,6 +109,8 @@ v /= unit_v_in_si
 m /= unit_m_in_si
 h /= unit_l_in_si
 u /= unit_u_in_si
+rhos /= unit_m_in_si
+rhos *= (unit_l_in_si**3)
 
 boxSize /= unit_l_in_si
 
@@ -147,5 +153,6 @@ grp.create_dataset(
     "InternalEnergy", data=u, dtype="f", compression="gzip", shuffle=True
 )
 grp.create_dataset("ParticleIDs", data=ids, dtype="L", compression="gzip", shuffle=True)
-
+grp.create_dataset("MaterialIDs", data=material_ids, dtype="i")
+grp.create_dataset("Density", data=rhos, dtype="f")
 file.close()
