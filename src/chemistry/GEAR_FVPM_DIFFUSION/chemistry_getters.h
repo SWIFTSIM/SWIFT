@@ -246,6 +246,25 @@ __attribute__((always_inline)) INLINE static double chemistry_get_matrix_norm(
 }
 
 /**
+ * @brief Get matrix K's largest eigenvalue.
+ *
+ * Unlike the Frobenius norm, this is the tight bound on n^T K n for any
+ * unit vector n (equality for n along the dominant eigendirection), so it
+ * gives a less conservative (but still always-safe) hyperbolic wave-speed
+ * estimate than chemistry_get_matrix_norm() for anisotropic K, and the
+ * exact value (no gap at all) for isotropic K.
+ *
+ * @param K Pointer to a 3x3 diffusion tensor.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_matrix_max_eigenvalue(const double K[3][3]) {
+  double eigenvalues[3] = {0.0};
+  double ev0[3], ev1[3], ev2[3];
+  sym_matrix_diagonalise_3x3_d(K, eigenvalues, ev0, ev1, ev2);
+  return fmax(eigenvalues[0], fmax(eigenvalues[1], eigenvalues[2]));
+}
+
+/**
  * @brief Compute the physical diffusion coefficient of the particle.
  *
  * This must be called in chemistry_prepare_force() to have the values of the

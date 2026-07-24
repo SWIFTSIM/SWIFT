@@ -42,25 +42,33 @@ chemistry_get_physical_hyperbolic_soundspeed(
   if (chem_data->relaxation_time_mode == constant_mode) {
     double K[3][3];
     chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-    const double norm_matrix_K = chemistry_get_matrix_norm(K);
+    const double lambda_max_K = chemistry_get_matrix_max_eigenvalue(K);
+    const double rho = hydro_get_physical_density(p, cosmo);
 
-    /* Here we simply use the formula c_hyp = sqrt(||K||/tau) */
-    return sqrt(norm_matrix_K / p->chemistry_data.tau);
+    /* c_hyp = sqrt(lambda_max(K)/(rho*tau)): lambda_max(K) is the tight
+       bound on n^T K n over all interface directions n (exact for
+       isotropic K), and the rho division follows from the state vector
+       being U=(rho*Z,F) while the flux law is written in terms of
+       Z=U_0/rho -- see the theory document, Proposition 1. */
+    return sqrt(lambda_max_K / (rho * p->chemistry_data.tau));
   } else {
     /* Note that 1/|S| ~ time --> we define this as our turbulent relaxation
-       time. Also note that we do not regularize the shear tensor here.
+       time, coupled to C_diff -- see chemistry_compute_physical_tau() for
+       why. Also note that we do not regularize the shear tensor here.
        (Shall we?) */
     double S[3][3];
     chemistry_get_physical_shear_tensor(p, cosmo, S);
 
     /* TODO: Add the alpha parameter to the code */
-    /* The formula is c_hyp = sqrt(||K||/(rho tau)). We simplify it by hand to
-       reduce rounding errors: c_hyp = sqrt(C/alpha) * gamma_k * h * ||S|| */
+    /* The formula is c_hyp = sqrt(||K||/(rho tau)). With
+       tau = alpha/(C_diff*||S||) (chemistry_compute_physical_tau), we
+       simplify it by hand to reduce rounding errors:
+       c_hyp = (C/sqrt(alpha)) * gamma_k * h * ||S|| */
     const double delta_x = kernel_gamma * p->h;
     const double C_diff = chem_data->diffusion_coefficient;
     const double alpha = chem_data->tau;
     const double c_hyp =
-        sqrt(C_diff / alpha) * delta_x * chemistry_get_matrix_norm(S);
+        (C_diff / sqrt(alpha)) * delta_x * chemistry_get_matrix_norm(S);
     return c_hyp;
   }
 }
@@ -82,12 +90,18 @@ chemistry_compute_physical_tau(const struct part *restrict p,
     return chem_data->tau;
   } else {
     /* Note that 1/|S| ~ time --> we define this as our turbulent relaxation
-       time. Also note that we do not regularize the shear tensor here. */
+       time. Divide by C_diff so that tau tracks the same 1/(C_diff*|S|)
+       scaling as the physical turbulent-mixing timescale (Romano, Nagamine
+       & Hirashita 2022, arXiv:2202.05243, eq. 13) -- otherwise tau
+       decouples from the diffusivity's own normalisation as soon as
+       C_diff changes. Also note that we do not regularize the shear
+       tensor here. */
     double S[3][3];
     chemistry_get_physical_shear_tensor(p, cosmo, S);
     const double S_norm_inv = 1.0 / chemistry_get_matrix_norm(S);
+    const double C_diff = chem_data->diffusion_coefficient;
 
-    return chem_data->tau * S_norm_inv;
+    return chem_data->tau * S_norm_inv / C_diff;
   }
 }
 
