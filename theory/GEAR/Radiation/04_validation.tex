@@ -9,7 +9,11 @@ other to $\sim$1--2\% -- a direct test of whether this code reproduces
 the actual physics of D-type expansion, not just one paper's own
 subgrid scheme. Hu et al.\ (2017)/Smith et al.\ (2021) 4-star and the
 Smith et al.\ (2021) clump target instead reproduce those papers' own
-specific multi-source tests and reported numbers.
+specific multi-source tests and reported numbers. Section~\ref{sec:t5-validation}
+separately checks the Grackle rate-coupled photoionization scheme (T5) --
+neither paper tests rate-coupling, so that check is a self-consistency/
+robustness validation against basic photoionization equilibrium physics,
+not a fourth published target.
 
 \subsection{Validation targets: summary}
 \label{sec:validation-targets}
@@ -370,3 +374,115 @@ appear in any of the three hydro schemes tested, are not pursued
 further -- the paper gives no quantitative number for either, so there
 is no concrete target left to chase. The cross-scheme consistency
 above is the validation criterion for this target, and it is met.
+
+\subsection{Grackle rate-coupled photoionization (T5)}
+\label{sec:t5-validation}
+
+\textbf{PASS, as a self-consistency check.} Neither Hu et al.\ (2017)
+nor Smith et al.\ (2021) tests rate-coupling -- both use the same
+instant flag-and-floor scheme this model defaults to -- so there is no
+published number to reproduce here. Instead,
+\code{GEARFeedback:HII\_couple\_ionization\_rate} (T5) is checked
+against basic photoionization-equilibrium physics using
+\code{StromgrenSphereClumpSmith2021} as the testbed, on top of the
+existing validated setup. A caching bug that left \code{RT\_heating\_rate}
+always exactly zero was found and fixed first (Section~\ref{sec:t5-heating-rate-zero}
+of the bugs-and-fixes logbook); the results below are all post-fix.
+
+Six configurations were run to completion (uniform/angular
+budget-splitting $\times$ \code{gas\_mass}$=\{20,95\}$, T5 on/off in
+each case; the uniform \code{gas\_mass=95} pair was not run, since the
+uniform/angular contrast is already covered at \code{gas\_mass=20} and
+the resolution contrast is already covered under angular):
+
+\begin{center}
+\begin{tabular}{lrrr}
+\hline
+& $r_{50}$ [pc] & ionized mass [$M_\odot$] & mean $T$, HII$>$0.5 [K] \\
+\hline
+uniform, gas20, T5 on   & 15.5 & 1816 & 13533 \\
+uniform, gas20, T5 off  & 14.2 & 3601 &  9194 \\
+angular, gas20, T5 on   & 12.9 & 2902 & 10990 \\
+angular, gas20, T5 off  & 12.5 & 3993 &  8756 \\
+angular, gas95, T5 on   & 12.9 & 2246 & 12352 \\
+angular, gas95, T5 off  & 12.9 & 4480 &  8249 \\
+\hline
+\end{tabular}
+\end{center}
+$r_{50}$ is the outer radius of the $\geq$50\%-ionized shell (radially
+binned mean HII fraction), read at $t=8.2\,$Myr. At \code{gas\_mass=95}
+the ionized region contains only 34--47 particles above HII$>0.5$, so
+its temperature entry is noisier than the \code{gas\_mass=20} pair.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\linewidth]{Figures/t5_temperature_slices_all_configs}
+  \caption{Mass-weighted temperature slice through the star plane,
+    $t=8.2\,$Myr, for all six configurations. The ionized bubble's
+    shape and extent are visually indistinguishable between T5 on/off
+    at fixed geometry/resolution -- the difference between the two
+    schemes is quantitative (ionization fraction and temperature within
+    the bubble), not morphological.}
+  \label{fig:t5-temperature-slices}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.75\linewidth]{Figures/t5_spherical_rhii_vs_time}
+  \caption{$r_{50}$ vs.\ time, uniform scheme, \texttt{gas\_mass=20}: T5
+    on vs.\ off track each other closely for the whole $8\,$Myr run.}
+  \label{fig:t5-rhii-uniform}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\linewidth]{Figures/t5_angular_rhii_vs_time}
+  \caption{Same as Figure~\ref{fig:t5-rhii-uniform}, angular scheme, at
+    both resolutions: the same close on/off tracking holds, with more
+    scatter at the coarser \texttt{gas\_mass=95} (fewer particles per
+    radial bin).}
+  \label{fig:t5-rhii-angular}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.75\linewidth]{Figures/t5_spherical_ionized_mass_profile}
+  \caption{Uniform scheme, \texttt{gas\_mass=20}: total HII-weighted
+    ionized mass vs.\ time (left) and the radial HII-fraction profile
+    at $t=8.2\,$Myr (right), T5 on vs.\ off.}
+  \label{fig:t5-mass-profile-uniform}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\linewidth]{Figures/t5_angular_ionized_mass_profile}
+  \caption{Same as Figure~\ref{fig:t5-mass-profile-uniform}, angular
+    scheme, at both resolutions.}
+  \label{fig:t5-mass-profile-angular}
+\end{figure}
+
+\textbf{Interpretation}: at every configuration tested, T5 reaches
+essentially the same physical region size as flag-and-floor ($r_{50}$
+agrees to within $\sim$1--1.5\,pc in every row), but holds systematically
+less total ionized mass ($\sim$50--75\% of flag-and-floor's) and runs
+hotter ($\sim$2000--4300\,K above flag-and-floor's). Both differences
+have the same, single physical explanation: flag-and-floor forces every
+tagged particle to \code{HII\_frac=1} and a fixed
+$T\approx10^4\,$K target directly, by construction; T5 instead lets
+Grackle's own chemistry network solve for whatever ionization/thermal
+balance the locally-computed $\Gamma_{\rm HI}$ and photoheating rate
+(which includes the star's excess photon energy above the bare
+$13.6\,$eV threshold) actually support -- which converges to a real,
+partial equilibrium ionization fraction ($\sim$0.7--0.8 within the
+region, radial-profile figures above) at a temperature above flag-and-
+floor's fixed target, not below it. This is the expected signature of
+solving real photoionization microphysics instead of forcing an
+idealized target, not a discrepancy to resolve -- and it reproduces
+consistently across both budget-splitting geometries and both
+resolutions tested.
+
+T5 remains off by default (\code{GEARFeedback:HII\_couple\_ionization\_rate=0}),
+so none of this affects the three PASS verdicts above. This check
+validates that the feature itself behaves physically sensibly and
+robustly wherever it is turned on -- it is not, and does not claim to
+be, a reproduction of either paper's own published numbers.

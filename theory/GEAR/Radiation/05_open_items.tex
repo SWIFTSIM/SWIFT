@@ -55,16 +55,24 @@ validation-against-a-paper status.
     user wants more testing first, so
     \code{HII\_adaptive\_rebuild\_cadence} stays off by default.
 
-  \item[$\square$] \textbf{T5} -- Pass real ionizing/heating rates
+  \item[$\blacksquare$] \textbf{T5} -- Pass real ionizing/heating rates
     into Grackle's chemistry solve (Grackle's own \code{RT\_heating\_rate}/
     \code{RT\_HI\_ionization\_rate} fields), instead of this model's
-    instant flag-and-floor scheme. User's explicit position
-    (2026-07-19): worth testing, \emph{not} for the current STARBENCH
-    validation effort (both \citet{Hu2017} and \citet{Smith2021}
-    themselves use the same flag-and-floor approach this model does, so
-    rate-coupling would solve a different problem than the one
-    currently being validated against), and not before it -- a
-    standalone follow-up. See memory
+    instant flag-and-floor scheme, via
+    \code{GEARFeedback:HII\_couple\_ionization\_rate}. Implemented and a
+    caching bug that left \code{RT\_heating\_rate} always exactly zero
+    fixed -- see Section~\ref{sec:t5-heating-rate-zero}. A sanity check
+    against the cheapest validation target
+    (\code{StromgrenSphereClumpSmith2021}) now holds near-equilibrium
+    ionization for the full run; the three STARBENCH/Hu-Smith/clump
+    targets have not yet been re-validated with this feature on (it
+    remains off by default, so their existing PASS status is unaffected
+    either way). User's explicit position (2026-07-19): worth testing,
+    \emph{not} for the current STARBENCH validation effort (both
+    \citet{Hu2017} and \citet{Smith2021} themselves use the same
+    flag-and-floor approach this model does, so rate-coupling solves a
+    different problem than the one being validated against), and not
+    before it -- a standalone follow-up. See memory
     (\code{reference\_gizmo\_fire\_rt\_rate\_coupling.md}) for how
     FIRE-3 actually does this (self-consistent solve, Stromgren-value
     incident flux, self-shielding off) and why it needs an actual local

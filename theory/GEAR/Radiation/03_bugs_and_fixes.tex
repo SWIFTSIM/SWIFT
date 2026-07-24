@@ -362,3 +362,99 @@ kept at $10^{-4}\,$Myr rather than raised.
 
 \textbf{Verification:} build clean, \code{testRadiationRebuildCheck}/
 \code{test27cellsStars -n 3 -N 3 -r 5} pass.
+
+\subsection{2026-07-24: T5's \texttt{RT\_heating\_rate} was always exactly
+zero under the default (fixed-cadence) configuration}
+\label{sec:t5-heating-rate-zero}
+
+T5 (\code{GEARFeedback:HII\_couple\_ionization\_rate}) passed a build-clean,
+crash-free sanity run of the cheapest validation target
+(\code{StromgrenSphereClumpSmith2021}, 174{,}824 particles), but the
+ionization state it produced was wrong: near-star gas ionized briefly then
+decayed to a few percent instead of holding the near-100\% equilibrium
+basic Str\"omgren physics predicts (confirmed both against a
+Gamma\_HI/alpha\_B(T) hand calculation and against the actual measured
+temperature of ``highly ionized'' particles, which sat at the pre-ionization
+background temperature).
+
+\textbf{Root cause}, confirmed by direct instrumentation (temporary
+\code{message()} prints, reverted after use): each star's mean excess
+photon energy above 13.6\,eV
+(\code{sp->feedback\_data.radiation.mean\_excess\_photon\_energy\_HI}, the
+factor \code{RT\_heating\_rate} is built from) was computed and cached in
+exactly one place,
+\code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval()}, whose only
+call site was gated behind
+\code{if (feedback\_props->HII\_adaptive\_rebuild\_cadence \&\& ...)}. Since
+\code{HII\_adaptive\_rebuild\_cadence} is off by default (T4, still not
+enabled) and off in every validated example, that function never ran, so
+the cached energy stayed at its zero-initialized default forever --
+\code{RT\_heating\_rate = Gamma\_HI * E\_excess} was therefore always
+exactly zero, while \code{RT\_HI\_ionization\_rate} (Gamma\_HI, threaded
+through a separate, unconditional path) was genuinely nonzero. Grackle
+received a real photoionization rate with zero photoheating: photoionized
+gas never warmed up, so the (strongly temperature-dependent) case-B
+recombination coefficient stayed at its low-temperature (large) value,
+capping the achievable ionization equilibrium at a few percent.
+
+\textbf{Fix:} split the excess-photon-energy caching out of
+\code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval()} into its own
+function, \code{radiation\_cache\_mean\_excess\_photon\_energy\_HI()}
+(\code{radiation.c}), called unconditionally once per star per HII rebuild
+pass (gated only by \code{cooling->HII\_couple\_ionization\_rate}, not by
+\code{HII\_adaptive\_rebuild\_cadence}) from
+\code{runner\_radiation\_feedback.c}, mirroring how
+\code{dot\_N\_ion\_pix\_initial} already stays correctly populated
+regardless of cadence mode (via \code{radiation\_set\_ionizing\_photon\_rate}
+in \code{stellar\_evolution.c}, an independent, unconditional path).
+
+\textbf{Verification:} build clean, \code{testRadiationRebuildCheck}/
+\code{test27cellsStars -n 3 -N 3 -r 5} pass. Rerunning the same
+ClumpSmith2021 sanity check after the fix: near-star ionization now holds
+at $\sim$0.9--1.0 for the entire 8\,Myr run (matching the $\sim$0.9998
+analytic equilibrium) instead of decaying to a few percent, and the
+rate-coupled particle count no longer collapses. Feature-off
+(\code{HII\_couple\_ionization\_rate=0}) behaviour is unaffected by
+construction: the moved code was reachable only through the same flag, so
+removing it from the old function changes nothing when the flag is off
+(confirmed by rerunning the ClumpSmith2021 feature-off regression check
+with the fixed binary). Full re-validation of the three STARBENCH/Hu-Smith/
+clump targets against this build not yet re-run.
+
+\textbf{Angular-scheme and resolution check:} the sanity check above used
+the spherical budget (\code{nside=0}). Rerun with the angular scheme
+(\code{nside=1}, 12 HEALPix pixels) at both the default 20\,M$_\odot$
+resolution and GEAR's 95\,M$_\odot$ production resolution (see
+\code{project\_gear\_production\_resolution\_range.md}), T5 on and off
+in each case (four runs total). All four complete cleanly. Comparing the
+HII region's outer radius $r_{50}$ (the largest radius at which the
+radially-binned mean HII fraction is still $\geq 0.5$) over time, T5 and
+flag-and-floor track each other closely at both resolutions and reach
+essentially the same final size ($r_{50}\approx13\,$pc at $t=8.2\,$Myr in
+all four runs; the 95\,M$_\odot$ curves are visibly noisier, an expected
+consequence of $\sim$5$\times$ fewer particles). The final-time
+ionized-mass/temperature contrast seen with the spherical scheme persists
+under the angular scheme at both resolutions:
+
+\begin{center}
+\begin{tabular}{lrrr}
+ & $r_{50}$ [pc] & ionized mass [M$_\odot$] & mean $T$ (HII$>$0.5) [K] \\
+\hline
+20 M$_\odot$, T5 on  & 12.9 & 2902 & 10990 \\
+20 M$_\odot$, T5 off & 12.5 & 3993 &  8756 \\
+95 M$_\odot$, T5 on  & 12.9 & 2246 & 12352 \\
+95 M$_\odot$, T5 off & 12.9 & 4480 &  8249 \\
+\end{tabular}
+\end{center}
+
+i.e. T5 consistently reaches about the same physical size as flag-and-floor
+but with lower total ionized mass (partial rather than forced-complete
+ionization within the region) and a hotter ionized-gas temperature (Grackle's
+own photoheating balance, including the star's excess photon energy above
+13.6\,eV, settles above the flag-and-floor's fixed $\sim10^4\,$K target
+here) -- the same qualitative pattern reported above, now shown to be
+robust across both the angular/spherical budget-splitting choice and
+resolution, not an artifact of the one configuration first checked. At
+95\,M$_\odot$ the ionized-region particle count entering the temperature
+average is small (34--47 particles), so those two temperature values
+carry more sampling noise than the 20\,M$_\odot$ pair.
