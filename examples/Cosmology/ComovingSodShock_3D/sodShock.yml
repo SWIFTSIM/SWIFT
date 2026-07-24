@@ -78,3 +78,8 @@ EAGLEEntropyFloor:
 LambdaCooling:
   lambda_nH2_cgs:              1e-48 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
   cooling_tstep_mult:          1.0   # (Optional) Dimensionless pre-factor for the time-step condition.
+
+
+# Parameters related to the EOS (REMIX)
+EoS:
+  planetary_use_idg_def:  1 # default ideal gas, material ID 0

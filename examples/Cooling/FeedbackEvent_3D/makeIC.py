@@ -24,6 +24,8 @@ from unyt import cm, kpc, mh, msun, K, s, kb
 
 import h5py
 import numpy as np
+import os
+import sys
 
 # Generates a SWIFT IC file for the Feedback blast test.
 
@@ -105,3 +107,61 @@ if __name__ == "__main__":
     )
 
     output.write(file_name)
+
+
+    # Add in density and material id
+    def write_or_create(group, name, data, dtype):
+        if name in group:
+            group[name][...] = data
+        else:
+            group.create_dataset(name, data=data, dtype=dtype)
+
+    if IC_DIR != 'None':
+     
+        with h5py.File(os.path.join(IC_DIR, "feedback_0000.hdf5"), "r") as f:
+            ids_ref = f["/PartType0/ParticleIDs"][:]
+            rho_init = f["/PartType0/Densities"][:] 
+            masses = f["/PartType0/Masses"][:]
+            InternalEnergy = f["/PartType0/InternalEnergies"][:]
+
+            # For python indexing:
+            ids_ref = ids_ref - 1
+
+        # Create path to init file
+        ic_path = os.path.join(output_dir, file_name)
+
+        with h5py.File(ic_path, "r+") as f:
+            N = f["PartType0/ParticleIDs"].shape[0]
+
+            # Material IDs
+            mat_ids = np.zeros(N)
+
+            # Sort the densities of SPHENIX to the order of the reference (0 to N) -> that way the correct densities are assigned
+            order = np.argsort(ids_ref)    
+            rho_init = rho_init[order]
+
+            # Also do this for the masses and internal energies (although these are roughly equal for all particles)
+            masses = masses[order]
+            InternalEnergy = InternalEnergy[order]
+
+            # Particle group
+            grp = f["PartType0"]
+            write_or_create(grp, "Masses", masses, "f")
+            write_or_create(grp, "InternalEnergies", InternalEnergy, "f")
+            write_or_create(grp, "Density", rho_init, "f")
+            write_or_create(grp, "MaterialIDs", mat_ids, "L")
+
+    else:
+        with h5py.File(os.path.join(output_dir, file_name), "r+") as f:
+            N = f["PartType0/ParticleIDs"].shape[0]
+
+            # Material IDs
+            mat_ids = np.zeros(N)
+
+            # Rho
+            rho_init = np.ones_like(h) * initial_density
+
+            # Particle group
+            grp = f["PartType0"]
+            write_or_create(grp, "Density", rho_init, "f")
+            write_or_create(grp, "MaterialIDs", mat_ids, "L")
