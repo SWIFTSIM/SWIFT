@@ -1,16 +1,24 @@
 \section{FUV / ISRF: photoelectric heating and H$_2$ photodissociation}
 \label{sec:fuv-isrf}
 
-Not implemented yet -- this section records what was found
-(2026-07-20) while scoping items~T5 and~T6 (Section~\ref{sec:open}):
-what Grackle (the frozen, SWIFT-compatible checkout at
-\texttt{\textasciitilde/programs/grackle-swift/}, confirmed against its
-own source, not just its online docs, which are thin on this) actually
-expects for these two channels, whether they can share a single local
-FUV estimate or need two (Section~\ref{sec:fuv-band-question}: they
-need two, Section~\ref{sec:fuv-two-bands}), and how a per-star
-injected budget becomes a smooth ISRF at all
-(Section~\ref{sec:fuv-propagation}).
+Not implemented yet -- this section records what was found while scoping
+items~T5 and~T6 (Section~\ref{sec:open}): what Grackle (the frozen,
+SWIFT-compatible checkout at \texttt{\textasciitilde/programs/grackle-swift/},
+confirmed against its own source, not just its online docs, which are
+thin on this) actually expects for these two channels
+(Sections~\ref{sec:fuv-lw-grackle}--\ref{sec:fuv-two-bands}), what both
+propagation designs below need in common
+(Section~\ref{sec:fuv-common}), and two competing designs for turning a
+per-star injected budget into a smooth ISRF: a \textbf{parabolic}
+(Jacobi-relaxation) scheme (Section~\ref{sec:fuv-design-a}, 2026-07-20,
+revised 2026-07-24) and a \textbf{hyperbolic} (Cattaneo/P1, upgradeable
+to a cheap M1) scheme (Section~\ref{sec:fuv-design-b}, 2026-07-24,
+preferred going forward because its CFL condition scales like ordinary
+hydro's rather than like an explicit-diffusion $h^2$ bound). Both are
+kept here, not just the latest: Design~A is simpler and may still be
+the right choice if Design~B's extra machinery is not worth its cost in
+practice once built, so its derivation and honest caveats are preserved
+rather than deleted.
 
 \subsection{H$_2$ photodissociation (Lyman-Werner) in Grackle}
 \label{sec:fuv-lw-grackle}
@@ -73,7 +81,7 @@ dust-physics option:
     to have a meaningful electron density).
   \item \code{dust\_chemistry=1} auto-enables
     \code{photoelectric\_heating=2} (if unset) \emph{and} dust
-    recombination cooling (Wolfire et al.\ 1995, Eq.~9) \emph{and}
+    recombination cooling (Wolfire et al.\ 1995 Eq.~9) \emph{and}
     H$_2$-formation-on-dust, all three scaled by the same ISRF value --
     i.e.\ this one flag is Grackle's intended entry point for "turn on
     dust physics with a given ISRF," not something to enable piecemeal.
@@ -236,7 +244,49 @@ two more band integrals of the same underlying stellar atmosphere
 model that project would need to tabulate, not a separate table-
 generation effort -- widening T7's scope rather than adding a new item.
 
-\subsection{Aside: from plain diffusion to a screened (Yukawa) solution}
+Both propagation designs below (Sections~\ref{sec:fuv-design-a}
+and~\ref{sec:fuv-design-b}) consume $L_{\rm FUV}+L_{\rm LW}$ as their
+source term $S$ identically; the source-term decision above is common
+to both and is not repeated in either.
+
+\subsection{Common foundations for both propagation designs}
+\label{sec:fuv-common}
+
+Material shared by Design~A (Section~\ref{sec:fuv-design-a}) and
+Design~B (Section~\ref{sec:fuv-design-b}): gathered once here rather
+than duplicated in both, the same principle already applied to
+$\kappa_{\rm IR}$/$\kappa_{\rm FUV}$ (computed once in
+Section~\ref{sec:radiation-pressure}, reused rather than re-derived).
+
+\subsubsection{Injection alone is not a smooth ISRF}
+\label{sec:fuv-propagation}
+
+A star can inject $L_{\rm FUV}$/$L_{\rm LW}$ onto its SPH-kernel gas
+neighbours using the same density-loop-style gather/scatter already
+used for the HII budget (Section~\ref{sec:algorithm}) and radiation
+pressure (Section~\ref{sec:radiation-pressure}). \textbf{This alone is
+not a smooth ISRF}: injection only reaches particles within the
+star's kernel radius $h_\star$, dropping sharply to zero outside it,
+resolution-dependent (a smaller $h_\star$ at higher resolution shrinks
+the field's reach, which is unphysical -- the real radiation field
+does not know about the simulation's resolution), and patchy between
+sources rather than the smoothly-varying background a real,
+many-source, dust-attenuated ISRF produces.
+
+\textbf{Both designs below propagate the injected budget by solving a
+local, causally-bounded update instead of a full free-streaming/M1
+solve at the true speed of light} (which would impose the
+$\text{CFL}\sim1/c$ constraint T6's original framing was trying to
+avoid), differing only in \emph{how} that bound is achieved: Design~A
+(Section~\ref{sec:fuv-design-a}) solves the screened-diffusion equation
+below as a quasi-steady update, relying on light-crossing time being
+vastly shorter than any hydro/cooling timescale of interest; Design~B
+(Section~\ref{sec:fuv-design-b}) keeps a genuinely time-dependent,
+hyperbolic system but deliberately reduces its propagation speed
+(a reduced-speed-of-light approximation, honestly named as one) to make
+the resulting CFL condition affordable.
+
+\subsubsection{From plain diffusion to a screened (Yukawa) solution}
 \label{sec:fuv-yukawa}
 
 Worked through in full here (2026-07-20) since it is the crux of the
@@ -295,67 +345,86 @@ constants into $\lambda$, the point-source Green's function is
 the Yukawa potential: the same geometric $1/r$ spreading as
 Eq.~\ref{eq:fuv-poisson-green}, now multiplied by an exponential cutoff
 over the scale $\lambda$ -- exactly the shape a real photon field has
-(geometric dilution \emph{and} dust extinction). $\lambda$ here is the
-same "how far before dust absorbs it" quantity already entering
+(geometric dilution \emph{and} dust extinction). Concretely,
+\begin{equation}
+  \lambda = \frac{1}{\kappa_{\rm FUV}(Z)\,\rho} ,
+  \label{eq:fuv-lambda-def}
+\end{equation}
+the same "how far before dust absorbs it" quantity already entering
 $\kappa_{\rm IR}\Sigma_{\rm gas}$ in the radiation-pressure term
 (Eq.~\ref{eq:rp-tauIR}, Section~\ref{sec:rp-sobolev}) -- not a new
 physical input, an ingredient already computed elsewhere in this
-codebase.
+codebase, with $\kappa_{\rm FUV}=2000\,(Z/Z_\odot)\,{\rm cm^2\,g^{-1}}$
+from the same \citet{Hopkins2020} fit as $\kappa_{\rm IR}$
+(Section~\ref{sec:radiation-pressure}).
 
-\subsection{Coupling to Grackle: injection alone is not a smooth ISRF}
-\label{sec:fuv-propagation}
+\subsubsection{Interface consistency: symmetrize, don't average
+independently}
+\label{sec:fuv-harmonic-mean}
 
-A star can inject $L_{\rm FUV}$/$L_{\rm LW}$ onto its SPH-kernel gas
-neighbours using the same density-loop-style gather/scatter already
-used for the HII budget (Section~\ref{sec:algorithm}) and radiation
-pressure (Section~\ref{sec:radiation-pressure}). \textbf{This alone is
-not a smooth ISRF}: injection only reaches particles within the
-star's kernel radius $h_\star$, dropping sharply to zero outside it,
-resolution-dependent (a smaller $h_\star$ at higher resolution shrinks
-the field's reach, which is unphysical -- the real radiation field
-does not know about the simulation's resolution), and patchy between
-sources rather than the smoothly-varying background a real,
-many-source, dust-attenuated ISRF produces.
+A general problem for both designs, not just Design~A's: any local
+quantity built from $\kappa_{\rm FUV}(Z_i)\rho_i$ (a decay rate, a
+relaxation time, a corrected gradient -- whatever the specific design
+below computes locally per particle) can differ sharply between two
+neighbours at a density interface -- e.g.\ a dense, high-opacity clump
+particle immediately next to a diffuse, low-opacity particle. Letting
+each particle independently use its own value for a quantity that is
+really a property of the \emph{link} between them (not of either
+particle alone) risks an inconsistent, order-dependent exchange: it
+matters whether the "resistance" of a link is dominated by the more
+opaque side (physically correct -- a photon crossing the link must
+still get past the denser medium) or effectively averaged away
+(physically wrong -- lets a diffuse-side particle under-count how much
+a neighbouring dense clump actually blocks).
 
-\textbf{Proposed direction (not yet built, 2026-07-20)}: propagate the
-injected budget onto neighbouring gas by solving a diffusion-type
-equation, explicitly instead of an M1/moment-closure scheme, to avoid
-the $\text{CFL}\sim1/c$ constraint free-streaming RT would impose (T6's
-original framing). Two refinements on that idea worth recording:
+\textbf{General fix, following the standard SPH treatment of
+discontinuous conductivity} \citep{ClearyMonaghan1999}: combine the two
+particles' local rates with a \textbf{harmonic mean}, not an
+arithmetic one, the same series-resistance argument used for heat
+conduction across a material interface,
+\begin{equation}
+  \kappa_{ij} = \frac{2\,\kappa_{{\rm FUV},i}\,\kappa_{{\rm FUV},j}}
+                     {\kappa_{{\rm FUV},i}+\kappa_{{\rm FUV},j}},
+  \label{eq:fuv-harmonic-mean}
+\end{equation}
+so the link is dominated by (but not capped exactly at) whichever side
+attenuates more strongly. Design~A applies this directly to build a
+single per-link relaxation rate (Section~\ref{sec:fuv-adaptive-alpha});
+Design~B needs the same discipline applied to its own per-particle
+correction matrices (Section~\ref{sec:fuv-b-gradients}). Purely local
+quantities (e.g.\ the decay/absorption rate acting \emph{within} a
+single particle's own kernel volume, not shared with a neighbour) stay
+per-particle and unsymmetrized -- only link-shared quantities need
+this treatment. (\citet{ClearyMonaghan1999} recalled from general SPH
+heat-conduction literature -- exact volume/page not independently
+re-verified this pass, unlike the primary-source checks elsewhere in
+this logbook; confirm before this is cited outside an internal note.)
 
-\begin{itemize}
-  \item \textbf{Solve the screened equation (Eq.~\ref{eq:fuv-screened-helmholtz}),
-    not the plain one (Eq.~\ref{eq:fuv-plain-diffusion}).} Physically,
-    direct FUV transport in the diffuse ISM is \emph{not} actually a
-    diffusion process -- it is optically-thin free-streaming (geometric
-    $1/r^2$ dilution plus exponential dust extinction, the ordinary
-    radiative transfer equation in the optically-thin limit). Diffusion
-    (photons random-walking through repeated scattering) is the right
-    description for the \emph{already-implemented} IR-trapping term in
-    radiation pressure ($\tau_{\rm IR}$, Eq.~\ref{eq:rp-tauIR}), not for
-    direct FUV. The screened form (Section~\ref{sec:fuv-yukawa}) gets
-    the right near-field shape -- geometric dilution plus a physically
-    motivated attenuation length tied to the same dust opacity already
-    computed for radiation pressure -- where the plain, unscreened form
-    would not.
-  \item \textbf{The CFL win comes from solving it as steady-state, not
-    from "diffusion" per se.} A literal time-dependent (parabolic)
-    diffusion PDE (Eq.~\ref{eq:fuv-plain-diffusion} or its screened
-    version, evolved explicitly in time) has its own explicit stability
-    constraint, $\Delta t\lesssim\Delta x^2/D$, which for a photon
-    diffusion coefficient $D\sim c\,\ell_{\rm mfp}$ can be just as
-    restrictive as
-    the M1 $\text{CFL}\sim1/c$ this is meant to avoid. The actual
-    justification for avoiding a time-marched transport equation
-    entirely is that light-crossing time is vastly shorter than any
-    hydro/cooling timescale of interest, so the field can be treated
-    as reaching quasi-static equilibrium effectively instantly --
-    i.e.\ solve the \emph{steady-state} (elliptic) screened-diffusion
-    equation fresh each time it needs updating, not time-step a
-    parabolic PDE explicitly at all.
-\end{itemize}
+\subsubsection{Composability with the metagalactic/interstellar UV
+background}
+\label{sec:fuv-background-composability}
 
-\subsection{A concrete discretization: SPH smoothing with decay and
+Neither design below produces anything but the \emph{local,
+stellar-sourced} contribution to $G_0$. Neither is meant to reproduce a
+metagalactic or galaxy-averaged background: the codebase already has a
+separate, spatially-uniform, time-varying UV background at the Grackle
+level (\code{GrackleCooling:with\_UV\_background}, present in every
+current example's \code{params.yml}), and a spatially-varying
+background (from the collaboration's SPHINX simulation data) is
+separately planned. \textbf{Either design composes additively with
+both, and duplicates neither}: the per-particle \code{isrf\_habing}
+field (Section~\ref{sec:fuv-pe-grackle}) is meant to hold \emph{the
+local $u_i$ alone}, converted to Habing units and \emph{added} to
+whatever the background module (uniform-in-time today, SPHINX-based
+map eventually) supplies at that particle's position -- not a
+replacement for it. No background floor term needs adding to either
+design's own update equation.
+
+\subsection{Design A: parabolic Jacobi relaxation (2026-07-20, revised
+2026-07-24)}
+\label{sec:fuv-design-a}
+
+\subsubsection{A concrete discretization: SPH smoothing with decay and
 injection}
 \label{sec:fuv-discretization}
 
@@ -394,9 +463,8 @@ the correspondence
   \label{eq:fuv-discrete-correspondence}
 \end{equation}
 \textbf{Consequence: $\Delta t_{\rm decay}$ is not a free tuning knob.}
-Once $\lambda$ is fixed by the physical dust opacity (the same
-$\kappa_{\rm IR}\Sigma_{\rm gas}$ from radiation pressure,
-Section~\ref{sec:fuv-yukawa}) and $D$ by whatever $\alpha$/$h$/$\Delta t$
+Once $\lambda$ is fixed by the physical dust opacity
+(Eq.~\ref{eq:fuv-lambda-def}) and $D$ by whatever $\alpha$/$h$/$\Delta t$
 the smoothing pass uses, $\Delta t_{\rm decay}=\lambda^2/D$ is
 determined, not chosen by feel.
 
@@ -471,6 +539,11 @@ $\sim3000$--$30000\times$ smaller than the hydro step. M1 would need
 thousands of sub-steps per hydro step; the diffusion-type bound, even
 pushed to demand faster-than-hydro-step relaxation, needs at most a
 modest number of sub-cycles (tens, not thousands) to reach it.
+\textbf{This $h^2/D$ bound is nonetheless the concrete weakness Design~B
+(Section~\ref{sec:fuv-design-b}) is built to avoid}: it is only mild
+here because $D$ is left emergent (below) rather than tied to any
+target physical rate; tying it to one reintroduces exactly this
+quadratic-in-$h$ cost (Section~\ref{sec:fuv-design-a-limit}).
 
 \textbf{Decided (2026-07-20): fix $\alpha$ once, conservatively, and
 never derive it from a target relaxation length.} This is the
@@ -510,20 +583,790 @@ the adaptive-rebuild-cadence machinery already built for the HII budget
 (T4) so the smoothing pass runs only as often as source evolution
 (stellar lifetimes, $\gtrsim$Myr) actually requires.
 
-\textbf{Not yet done / open questions, this pass}:
+\subsubsection{Per-particle adaptive relaxation}
+\label{sec:fuv-adaptive-alpha}
+
+Reviewed 2026-07-24 against a design conversation (with Gemini)
+re-examining whether $\alpha$ in Eq.~\ref{eq:fuv-discrete-update} should
+stay a single global constant (the decision above) or vary per particle.
+Conclusion: \textbf{make it per-particle} -- this is both safe and
+strictly better than the fixed choice, using only the stability bound
+already derived above (Eq.~\ref{eq:fuv-alpha-bound}), not a new physical
+assumption.
+
+\textbf{The bound is already local.} Eq.~\ref{eq:fuv-alpha-bound} was
+derived per Fourier mode, but nothing in the derivation assumed a single
+global $\Delta t$ or $\tau_{\rm decay}$ -- each particle $i$ has its own
+hydro/Courant step $\Delta t_i$ and its own local decay time
+$\tau_i=\lambda_i^2/D$ (set by its own local dust opacity
+$\kappa_{\rm FUV}(Z_i)\rho_i$, Eq.~\ref{eq:fuv-discrete-correspondence}).
+Evaluating the same bound with particle $i$'s own values,
+\begin{equation}
+  \alpha_i \;\lesssim\; \min\!\left(1,\;
+    \frac{1+e^{-\Delta t_i/\tau_i}}{W_{\min}+e^{-\Delta t_i/\tau_i}}\right),
+  \label{eq:fuv-alpha-bound-i}
+\end{equation}
+gives a per-particle ceiling that is provably safe for that particle's
+actual $\Delta t_i$, and -- since the bound only loosens as $\Delta t_i$
+grows -- is never more restrictive than a single global $\alpha$ chosen
+safe for the worst (smallest $\Delta t_i/\tau_i$) particle in the whole
+run. Using Eq.~\ref{eq:fuv-alpha-bound-i} in place of a fixed $\alpha$
+therefore relaxes faster wherever it safely can (particles whose own
+hydro step is long compared to their local decay time), with zero loss
+of the stability margin the fixed choice already relied on for every
+other particle. \textbf{No new timestep constraint is introduced}:
+$\Delta t_i$ is read from the step the particle already has, not solved
+for -- the same design principle as the original fixed-$\alpha$
+decision, just applied per particle instead of globally. This
+supersedes the "fix $\alpha$ once" choice above -- not because that
+choice was wrong (it remains a correct conservative bound), but because
+the same bound admits a strictly better per-particle evaluation once
+actually written out.
+
+\textbf{Interface treatment.} Applying the general symmetrization
+principle of Section~\ref{sec:fuv-harmonic-mean} concretely here: for
+the specific $i$--$j$ link, use the harmonic mean of the two
+particles' local absorption rates to set the pairwise coupling
+strength that enters \emph{both} particles' updates for that link,
+Eq.~\ref{eq:fuv-harmonic-mean}, and symmetrize the kernel itself,
+$\bar W_{ij}=\tfrac12\big(W(r_{ij},h_i)+W(r_{ij},h_j)\big)$, the same
+averaging already standard in SPH force loops with differing smoothing
+lengths. The purely local decay term ($\gamma_i=1/\tau_i$, dust
+absorption within particle $i$'s own kernel volume) stays per-particle
+and unsymmetrized -- it is not a shared link property, only the
+pairwise exchange is.
+
+\subsubsection{What Gemini's design got right, and what it over-claimed}
+\label{sec:fuv-gemini-review}
+
+A conversation exploring this same idea externally (with Gemini,
+transcript reviewed 2026-07-24) reached the same practical conclusion --
+per-particle adaptive relaxation is worth having -- but wrapped it in
+framing that does not actually describe the scheme above, plus one
+claim that is internally inconsistent. Recorded here so the corrected
+framing does not get re-lost the next time this design is revisited.
+
+\begin{itemize}
+  \item \textbf{Not a reduced-speed-of-light (RSLA) scheme.} Gemini
+    cast $\alpha_i$ as a per-particle $c_{{\rm eff},i}$ in a hyperbolic
+    telegrapher's equation, $\frac{1}{c_{\rm eff}^2}\partial_t^2u+\ldots$.
+    Eq.~\ref{eq:fuv-discrete-update} has no second time-derivative and
+    no speed-of-light anywhere in it -- it is a first-order-in-time
+    explicit (Jacobi) update of a parabolic screened-diffusion equation.
+    What Eq.~\ref{eq:fuv-alpha-bound-i} actually is: the already-derived
+    linear-stability ceiling on the mixing fraction, evaluated with each
+    particle's own $\Delta t_i$ instead of the worst case in the
+    simulation. Same practical behaviour (particles with locally short
+    decay times relax faster), different and much simpler
+    justification -- no new differential equation, no reduced-light-speed
+    analogy needed \emph{for this design}. (Design~B,
+    Section~\ref{sec:fuv-design-b}, deliberately \emph{does} adopt a
+    genuine hyperbolic system with an honestly-named reduced propagation
+    speed -- the point here is only that Design~A's own adaptive-$\alpha$
+    fix does not need that machinery to work.)
+  \item \textbf{The Eddington-closure/RTE derivation is not needed, and
+    is internally inconsistent in the one regime it was invoked for.}
+    Gemini derived $D=\tfrac13c\lambda_{\rm mfp}$ from a moment-closure
+    of the radiative transfer equation, valid only when
+    $\lambda_{\rm mfp}\ll h$ (optically thick -- frequent scattering
+    randomizes photon direction locally). It then applied this same
+    formula to the \emph{pristine-gas} limit ($\lambda_{\rm
+    mfp}\to\infty$) to argue $\tau_{\rm diff}\to0$ and the scheme
+    "resolves" cleanly into free streaming. That argument uses the
+    optically-thick diffusion-coefficient formula precisely where it is
+    not valid -- $\lambda_{\rm mfp}\gg h$ is the regime the formula
+    assumes cannot happen. Design~A never needed this derivation:
+    $D$ is emergent from the numerics ($D\sim\alpha h^2/\Delta t$,
+    Eq.~\ref{eq:fuv-discrete-correspondence}), not from a physical mean
+    free path, and the only physical input is the screening length
+    $\lambda$ (Eq.~\ref{eq:fuv-lambda-def}), entering solely through the
+    local decay term. Section~\ref{sec:fuv-propagation}'s original
+    justification -- that the screened form is chosen because its
+    Green's function \emph{shape} (Yukawa) matches real
+    geometric-dilution-plus-extinction, not because direct FUV transport
+    is itself a diffusion process -- was already the honest version of
+    this argument and needs no revision. (Design~B below \emph{does}
+    derive a genuine Eddington-closure system properly, from the actual
+    moment equations, with its regime of validity stated explicitly --
+    resolving this exact critique rather than repeating Gemini's
+    mistake.)
+  \item \textbf{The pristine-gas limit is not literally free streaming,
+    and should be verified, not assumed.} At $\alpha_i\to1$ the update
+    becomes a pure kernel-weighted average of neighbours each step
+    (Eq.~\ref{eq:fuv-discrete-update} with no memory term) -- this can
+    only move energy one kernel radius per timestep, an effective speed
+    $\sim h_i/\Delta t_i$, exactly as Gemini itself computed, then
+    undersold as "$\sim0.017c$, close enough to instantaneous." For a
+    well-resolved star-forming region (small $h_i$, small
+    Courant-limited $\Delta t_i$), this ratio is not guaranteed to stay
+    fast compared to the timescales the field is meant to track (stellar
+    lifetimes, cooling times) -- it is resolution- and
+    timestep-dependent, and the diagnostic-verification open item below
+    already covers exactly this. Treat it as something to check per
+    configuration, not something the algebra guarantees.
+\end{itemize}
+
+\subsubsection{Design~A's own cost ceiling: the $h^2$ constraint}
+\label{sec:fuv-design-a-limit}
+
+Even with per-particle adaptive $\alpha_i$, Design~A's mixing term
+remains a parabolic, explicit-diffusion update: its stability bound
+(Eq.~\ref{eq:fuv-alpha-bound-i}), read through the correspondence
+$D\sim\alpha h^2/\Delta t$, is fundamentally an
+$\Delta t\lesssim h^2/D$ constraint. As implemented ($D$ left emergent,
+never tied to a target physical rate), this cost is dodged only by
+\emph{not} controlling the propagation speed at all -- which is also
+why the emergent relaxation speed $h_i/\Delta t_i$
+(Section~\ref{sec:fuv-gemini-review}, third point) is an
+after-the-fact diagnostic rather than a designed, guaranteed quantity.
+The moment $D$ is deliberately tied to a target propagation speed (e.g.\
+to guarantee the field relaxes faster than some multiple of the sound
+speed, rather than merely hoping it does), the $h^2$ scaling becomes the
+concrete, quantitatively prohibitive cost Darwin flagged
+(2026-07-24): at fixed target speed, halving $h$ (doubling resolution)
+quarters the allowed $\Delta t$, whereas the hydro Courant condition
+only halves it. \textbf{This is exactly why Design~B
+(Section~\ref{sec:fuv-design-b}) exists}: a hyperbolic reformulation of
+the same physics whose CFL condition scales linearly in $h$, like
+ordinary hydro, letting the propagation speed be a deliberately chosen,
+verified quantity rather than an emergent, hoped-for one.
+
+\subsubsection{Open items, Design A}
+\label{sec:fuv-design-a-open}
+
 \begin{itemize}
   \item Which existing gas-gas neighbour loop to piggyback the update
     on (density loop vs.\ the plain \code{GEAR/chemistry.h}
     kernel-smoothing pass, if active in this configuration) -- not
     checked;
+  \item per-particle $\alpha_i$ (Eq.~\ref{eq:fuv-alpha-bound-i}) and the
+    harmonic-mean pairwise coupling (Eq.~\ref{eq:fuv-harmonic-mean}) are
+    decided but not yet implemented or tested;
   \item diagnostically confirming, once built, that the emergent
-    relaxation time (from a fixed conservative $\alpha$) stays fast
-    against stellar-lifetime timescales, rather than assuming it --
-    not done;
+    relaxation speed ($h_i/\Delta t_i$, Section~\ref{sec:fuv-gemini-review})
+    stays fast against stellar-lifetime and cooling timescales, rather
+    than assuming it -- not done;
   \item the propagation scheme's normalized weights $\tilde w_{ij}$ and
     how they should be built from the existing SPH kernel
-    infrastructure -- not scoped;
-  \item item~T6 as a whole remains unscoped as an implementation;
+    infrastructure -- not scoped.
+\end{itemize}
+
+\subsection{Design B: hyperbolic P1 relaxation, upgradeable to a cheap
+M1 (2026-07-24)}
+\label{sec:fuv-design-b}
+
+Motivated directly by Section~\ref{sec:fuv-design-a-limit}'s $h^2$
+ceiling: Darwin's own \texttt{swiftsim\_0} checkout already implements
+a working template for exactly this kind of upgrade -- a hyperbolic
+(Cattaneo/Maxwell-type) reformulation of parabolic metal diffusion,
+\code{src/chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/}, documented in
+\texttt{theory/ParabolicDiffusion/GEAR\_FVPM\_Diffusion\_Theory.tex}.
+That module's own timestep section states the identical trade-off in
+its own words: the parabolic mode's CFL is
+$\Delta t\le C_{\rm CFL}\,\Delta x^2/\|K\|_F$ (quadratic in particle size),
+while its hyperbolic sibling uses an ordinary hyperbolic condition
+$\Delta t = C_{\rm CFL}\,\Delta x/v_{\max}$ (linear, like hydro), with the
+parabolic equation recovered exactly as the relaxation-time-to-zero
+limit of the hyperbolic one. This section works out the same idea for
+the FUV/ISRF field, derived from the radiative transfer equation
+itself (not asserted by analogy), and identifies exactly which of its
+own existing SWIFT modules already implement each piece.
+
+\subsubsection{Deriving a hyperbolic system from the RTE: the P1
+closure}
+\label{sec:fuv-b-p1}
+
+Take the first two angular moments of the radiative transfer equation
+(the same starting point already used, correctly, in
+Section~\ref{sec:fuv-gemini-review}'s critique of Gemini's derivation;
+matching the notation of this codebase's own \code{rt/GEAR} module,
+\texttt{theory/RadiativeTransfer/GEARRT/2-rt-equations.tex}):
+\begin{align}
+  \frac{\partial u}{\partial t} + \nabla\cdot\mathbf F
+    &= -c\,\kappa_{\rm FUV}\rho\, u + S ,
+  \label{eq:fuv-p1-zeroth} \\
+  \frac{\partial \mathbf F}{\partial t} + c^2\,\nabla\cdot\mathbf P
+    &= -c\,\kappa_{\rm FUV}\rho\, \mathbf F .
+  \label{eq:fuv-p1-first}
+\end{align}
+$\mathbf P$ (the radiation pressure tensor) is unclosed -- it depends on
+the second angular moment of the specific intensity, which these two
+equations alone do not determine. The \textbf{Eddington closure},
+\begin{equation}
+  \mathbf P = \frac{u}{3}\,\mathbf I ,
+  \label{eq:fuv-eddington-closure}
+\end{equation}
+is exact only when the local radiation field is close to isotropic
+(frequent scattering/absorption randomising photon direction locally)
+-- this closure, combined with Eqs.~\ref{eq:fuv-p1-zeroth}--\ref{eq:fuv-p1-first},
+is the \textbf{P1 approximation}, a standard, well-studied closure of
+the RTE (the ancestor of the M1 closure already implemented in this
+fork's own \code{rt/GEAR} and \code{rt/SPHM1RT} modules,
+Section~\ref{sec:fuv-b-precedent}), not something invented for this
+logbook. Substituting Eq.~\ref{eq:fuv-eddington-closure} into
+Eq.~\ref{eq:fuv-p1-first}:
+\begin{equation}
+  \frac{\partial \mathbf F}{\partial t} + \frac{c^2}{3}\,\nabla u
+    = -\frac{\mathbf F}{\tau_{\rm phys}} , \qquad
+  \tau_{\rm phys} = \frac{1}{c\,\kappa_{\rm FUV}\rho} .
+  \label{eq:fuv-tau-phys}
+\end{equation}
+This is \textbf{exactly} the Cattaneo-type flux-relaxation equation
+already integrated by \texttt{swiftsim\_0}'s
+\code{hyperbolic/chemistry\_flux.h} (\code{dflux/dt + K/tau*grad Z =
+-flux/tau}, with the exact analytic decay $\exp(-\Delta t/\tau)$
+already used there for the source term -- the same
+unconditional-stability property already exploited for the decay term
+in Design~A, Section~\ref{sec:fuv-discretization}). Matching
+Eq.~\ref{eq:fuv-tau-phys} to that form identifies
+\begin{equation}
+  D_{\rm phys} = c^2\,\tau_{\rm phys}/3 = \frac{c}{3\,\kappa_{\rm FUV}\rho}
+   = \frac{c\,\lambda}{3} ,
+  \qquad
+  \tau_{\rm phys} = \frac{\lambda}{c} ,
+  \label{eq:fuv-D-phys}
+\end{equation}
+the familiar radiative diffusion coefficient and photon mean-free-time
+-- they fall out of the derivation here, rather than being asserted
+independently as Gemini did. The hyperbolic signal speed of this exact
+system is
+\begin{equation}
+  c_{\rm hyp,phys} = \sqrt{D_{\rm phys}/\tau_{\rm phys}} = \frac{c}{\sqrt3} ,
+  \label{eq:fuv-chyp-phys}
+\end{equation}
+a \textbf{universal constant close to the speed of light}, independent
+of opacity. \textbf{This is the catch}: taken at face value, the
+rigorously RT-derived P1 system has exactly the same expensive
+$\Delta t\sim h/c$ CFL that motivates reduced-speed-of-light
+approximations in full M1 codes (\code{rt/GEAR}'s own
+\code{reduced\_speed\_of\_light} parameter,
+Section~\ref{sec:fuv-b-precedent}) -- P1 gives a real derivation, not
+by itself a cheap one.
+
+\subsubsection{Tying $\lambda$ to physics, $c_{\rm hyp}$ to
+affordability: deriving $D$ and $\tau$}
+\label{sec:fuv-b-lambda-chyp}
+
+Approved 2026-07-24: rather than use the true, expensive
+$(D_{\rm phys},\tau_{\rm phys},c_{\rm hyp,phys})$ of
+Eqs.~\ref{eq:fuv-D-phys}--\ref{eq:fuv-chyp-phys}, decouple the two
+physically-meaningful target quantities from the two free numerical
+parameters. There are exactly two things that must be right, and two
+free knobs ($D,\tau$) to set them with:
+\begin{enumerate}
+  \item the \textbf{screening length} $\lambda$
+    (Eq.~\ref{eq:fuv-lambda-def}) must match real dust opacity -- this
+    is the Yukawa/steady-state relation already derived in
+    Section~\ref{sec:fuv-yukawa}, $\lambda=\sqrt{D\tau}$;
+  \item the \textbf{propagation speed} $c_{\rm hyp}=\sqrt{D/\tau}$ is a
+    cost/accuracy dial, chosen to be affordable rather than physically
+    exact -- an honestly-named reduced-speed-of-light choice, the same
+    kind of parameter \code{rt/GEAR} already exposes.
+\end{enumerate}
+Solving these two equations for the two unknowns,
+\begin{equation}
+  \tau = \frac{\lambda}{c_{\rm hyp}} , \qquad
+  D = c_{\rm hyp}\,\lambda .
+  \label{eq:fuv-lambda-chyp-solve}
+\end{equation}
+\textbf{$D$ is therefore not an independent free choice}: once
+$\lambda$ is fixed by dust opacity (mandatory) and $c_{\rm hyp}$ is
+picked for affordability (a genuine choice), $D$ and $\tau$ follow
+algebraically. Concretely, choose
+\begin{equation}
+  c_{\rm hyp} = \kappa_{\rm margin}\,c_s ,
+  \label{eq:fuv-chyp-choice}
+\end{equation}
+$c_s$ the local sound speed and $\kappa_{\rm margin}\sim5$--$10$ a
+safety multiple (same margin-factor reasoning as the STARBENCH/Courant
+discussion, Section~\ref{sec:fuv-b-cfl} below) -- large enough that the
+field is quasi-instantaneous relative to hydro motions to a few
+percent, without buying an unnecessarily tight (and unaffordable) CFL
+by targeting anything close to $c_{\rm hyp,phys}=c/\sqrt3$.
+
+\textbf{Why not use $D_{\rm phys}$/$\tau_{\rm phys}$ directly}: checked
+against the ClumpSmith2021 regression-check snapshot (2026-07-23 run),
+$\lambda=1/(\kappa_{\rm FUV}\rho)$ at solar metallicity comes out to
+$\approx0.75\,$pc in the ambient gas ($n_H\approx130\,{\rm cm^{-3}}$,
+$h\approx2.3\,$pc) and $\approx0.008\,$pc in the clump
+($n_H\approx1.25\times10^4\,{\rm cm^{-3}}$, $h\approx0.5\,$pc) -- in
+\emph{both} regions $\lambda<h$, meaning the "many scatterings per
+resolution element" condition the diffusive regime
+($\lambda_{\rm mfp}\ll h$) requires is not robustly satisfied even in
+the diffuse gas at this resolution. The physical
+$(D_{\rm phys},\tau_{\rm phys})$ pair is therefore not just
+theoretically fragile in general (Section~\ref{sec:fuv-gemini-review})
+but concretely not trustworthy in this project's own validated
+configurations -- Eq.~\ref{eq:fuv-lambda-chyp-solve}'s decoupled choice
+is the robust one, not a shortcut.
+
+\subsubsection{Hyperbolic CFL}
+\label{sec:fuv-b-cfl}
+
+\begin{equation}
+  \Delta t \le C_{\rm CFL}\,\frac{h}{c_{\rm hyp}} ,
+  \label{eq:fuv-hyperbolic-cfl}
+\end{equation}
+\textbf{linear in $h$}, unlike Design~A's $h^2/D$ bound
+(Section~\ref{sec:fuv-design-a-limit}). With $c_{\rm hyp}=\kappa_{\rm
+margin}\,c_s$ (Eq.~\ref{eq:fuv-chyp-choice}) and the existing hydro
+Courant condition $\Delta t_{\rm hydro}=C_{\rm CFL}\,h/c_s$, the ratio
+\begin{equation}
+  \frac{\Delta t_{\rm hyp}}{\Delta t_{\rm hydro}} = \frac{1}{\kappa_{\rm margin}}
+  \label{eq:fuv-cfl-ratio}
+\end{equation}
+is independent of $h$ and $c_s$ entirely -- it only depends on the
+chosen margin. With $\kappa_{\rm margin}\sim5$--$10$, this sits at or
+below parity with the existing hydro step: essentially free, not the
+prohibitive scaling Design~A's own $h^2$ bound would impose at the same
+target speed (Section~\ref{sec:fuv-design-a-limit}).
+
+\subsubsection{The concrete solve algorithm}
+\label{sec:fuv-b-algorithm}
+
+Putting Sections~\ref{sec:fuv-b-p1}--\ref{sec:fuv-b-cfl} together into
+an actual per-timestep recipe, since "solve the hyperbolic system"
+needs a concrete answer, not just the governing equations. State per
+particle per band: $u_i$ (scalar) and $\mathbf F_i$ (3-vector) -- a
+new field, not needed by Design~A.
+
+\begin{enumerate}
+  \item \textbf{Flux, per interacting pair.} Form a Rusanov flux
+    (Eq.~\ref{eq:fuv-rusanov-flux}, Section~\ref{sec:fuv-b-rusanov})
+    for the \emph{whole} state at once: the $u$-equation's flux is
+    $\mathbf F\cdot\hat{\mathbf n}$ (already known -- no gradient needed
+    to obtain it), the $\mathbf F$-equation's flux is $c^2\,\mathbf
+    P\cdot\hat{\mathbf n}$ ($\mathbf P$ from the closure,
+    Eq.~\ref{eq:fuv-eddington-closure} or~\ref{eq:fuv-m1-closure}), both
+    using each particle's raw value at first order -- \textbf{no
+    gradient is required for this step}; gradients
+    (Section~\ref{sec:fuv-b-gradients}) are an optional upgrade to this
+    step only, not a prerequisite for it.
+  \item \textbf{Accumulate} pairwise, Newton's-third-law style, exactly
+    like any symmetric SPH force loop.
+  \item \textbf{Explicit hyperbolic sub-step}: update $(u,\mathbf F)$
+    from the accumulated fluxes over $\Delta t$ -- the step that needs
+    Eq.~\ref{eq:fuv-hyperbolic-cfl}.
+  \item \textbf{Exact relaxation -- and this is where the screening
+    term lands too.} Eq.~\ref{eq:fuv-p1-zeroth}'s own local sink,
+    $-c\,\kappa_{\rm FUV}\rho\,u$ (the dust-screening/absorption term),
+    is \emph{itself} a plain linear decay, $du/dt=-u/\tau_{\rm phys}$,
+    with \textbf{exactly the same} $\tau_{\rm phys}=1/(c\,\kappa_{\rm
+    FUV}\rho)$ (Eq.~\ref{eq:fuv-tau-phys}) already governing
+    $\mathbf F$'s own Cattaneo relaxation -- not a coincidence, but a
+    structural feature of the P1 system: both moments are being removed
+    from the field by the \emph{same} physical absorption events, so
+    they share the same rate. Both therefore admit \textbf{the same
+    exact exponential integrator} already used for
+    \texttt{swiftsim\_0}'s own hyperbolic module's flux relaxation
+    (Section~\ref{sec:fuv-b-precedent}) and for Design~A's own decay
+    term (Section~\ref{sec:fuv-discretization}):
+    \begin{equation}
+      u \to u\,e^{-\Delta t/\tau_{\rm phys}} , \qquad
+      \mathbf F \to \mathbf F\,e^{-\Delta t/\tau_{\rm phys}} ,
+      \label{eq:fuv-b-joint-relax}
+    \end{equation}
+    applied as one shared sub-step, unconditionally stable regardless
+    of how $\Delta t$ compares to $\tau_{\rm phys}$.
+  \item \textbf{Injection}: add the star's budget to $u$, as in
+    Design~A.
+\end{enumerate}
+
+\textbf{This split is not optional, it is required by stiffness.}
+Checked against the ClumpSmith2021 snapshot numbers already used in
+Section~\ref{sec:fuv-b-lambda-chyp}: in the clump,
+$\tau_{\rm phys}=\lambda/c_{\rm hyp}\approx0.008\,{\rm
+pc}/(5\times0.33\,{\rm km\,s^{-1}})\approx5\times10^3\,$yr, shorter
+than a typical hydro $\Delta t$ there ($\sim10^4$--$10^5\,$yr) --
+$\Delta t\gg\tau_{\rm phys}$, a genuinely stiff relaxation. An explicit
+(forward-Euler) treatment of Eq.~\ref{eq:fuv-b-joint-relax} would need
+its own $\Delta t\ll\tau_{\rm phys}$ sub-cycling on top of the
+hyperbolic CFL; the exact exponential integrator needs none, at zero
+extra cost, for the identical reason Design~A's own decay term already
+established (Section~\ref{sec:fuv-discretization}).
+
+\textbf{Refinement available, not yet adopted}: the injection term
+above is added \emph{after} the exact decay, as a separate additive
+term -- accurate to $O(\Delta t)$ for the injection itself, exact only
+for the pure decay. The fully exact solution of the inhomogeneous ODE
+$du/dt=-u/\tau+S/m$ is $u(\Delta t)=u_0\,e^{-\Delta t/\tau}+(S\tau/m)
+(1-e^{-\Delta t/\tau})$ -- folding injection into the same exact
+integrator, rather than adding it afterwards, is a small, available
+refinement to both designs, not yet applied to either.
+
+\subsubsection{Gradients: an optional accuracy upgrade to the flux step}
+\label{sec:fuv-b-gradients}
+
+\textbf{Correction (2026-07-24) to an earlier draft of this section}:
+the Brookshaw/Cleary-Monaghan pairwise operator (the tool actually used
+by Design~A, Section~\ref{sec:fuv-discretization}) builds a
+\emph{second} derivative ($\nabla^2u$) directly from paired \emph{value}
+differences $(u_i-u_j)$ -- the right tool specifically when $\mathbf F$
+has been eliminated and is not tracked as its own variable. Design~B
+tracks $\mathbf F$ dynamically (Section~\ref{sec:fuv-b-algorithm}), so
+it only ever needs \emph{first} derivatives -- $\nabla u$ (feeding
+$\mathbf P$ via the closure) and $\nabla\cdot\mathbf F$ -- ordinary
+SPH/kernel gradients, not the Brookshaw second-derivative machinery an
+earlier pass of this section wrongly reused here.
+
+\textbf{These gradients are optional, not required.} The baseline
+algorithm (Section~\ref{sec:fuv-b-algorithm}, step~1) uses each
+particle's raw $(u_i,\mathbf F_i)$ directly in the Rusanov flux -- a
+first-order-in-space (piecewise-constant) scheme, complete on its own.
+Gradients only enter if reconstructing $(u,\mathbf F)$ to the interface
+for second-order spatial accuracy before forming the flux (a MUSCL-type
+extrapolation) -- an accuracy upgrade on top of a working scheme, not a
+prerequisite for it.
+
+\textbf{Tier~1 vs Tier~2 for this optional step}: plain kernel gradient
+$\nabla W_{ij}$ (Tier~1, matching this project's own
+\code{GEAR\_DIFFUSION/chemistry\_iact.h}'s
+\code{runner\_iact\_gradient\_diffusion}, no matrix inversion) versus
+the matrix-corrected, linearly-consistent estimator using
+$\mathbf B_i=\mathbf E_i^{-1}$ (Tier~2,
+\texttt{swiftsim\_0}'s \texttt{GEAR\_FVPM\_Diffusion\_Theory.tex}'s own
+gradient estimator).
+
+\textbf{Correction (2026-07-24): $\mathbf B_i$ is not free in this
+codebase's actual configuration.} Checked \code{config.h} for this
+branch's build: \code{SPHENIX\_SPH} is defined, \emph{not}
+\code{GIZMO\_MFM\_SPH}. \code{p->geometry.matrix\_E} is
+GIZMO/MFM-specific infrastructure -- \texttt{swiftsim\_0}'s own
+metal-diffusion module gets it "for free" only because that module
+explicitly rides on a GIZMO/MFM hydro configuration (its own theory
+doc states this outright). This project's production hydro is SPHENIX
+(a density-based SPH scheme), which does not compute or maintain this
+matrix at all. \textbf{Consequence}: Tier~2 here means standing up a
+genuinely new per-particle least-squares moment-matrix computation
+(its own kernel sum, its own $3\times3$ inversion) from scratch, not
+reusing something the host hydro solver already provides -- a real,
+previously uncounted engineering cost specific to this branch,
+correcting the earlier "zero extra cost to access" claim. Tier~1
+(plain kernel gradient, no matrix inversion) carries no such cost and
+remains the practical default; Tier~2 should only be pursued if
+Tier~1 (or the no-gradient baseline) fails a validation test.
+
+\textbf{The symmetry subtlety, if Tier~2 is ever built}: $\mathbf B_i\ne
+\mathbf B_j$ in general, so naively letting each particle use its own
+$\mathbf B_i$ independently would break the antisymmetric pairwise
+cancellation that keeps a symmetric exchange exactly conservative by
+construction. A symmetrized average,
+\begin{equation}
+  \bar{\mathbf B}_{ij} = \tfrac12\left(\mathbf B_i + \mathbf B_j\right) ,
+  \label{eq:fuv-tier15-bavg}
+\end{equation}
+used for both particles' shared link (the same harmonic-mean-family
+discipline as Section~\ref{sec:fuv-harmonic-mean}, here an arithmetic
+average of matrices rather than a harmonic mean of scalars, since it is
+the shared gradient operator itself being built) fixes this, at the
+same mild, not-yet-validated cost to the positivity/monotonicity
+guarantee already flagged for Tier~2 gradients in general -- needing
+the same empirical validation (Yukawa-profile and
+intermediate-optical-depth tests, Section~\ref{sec:fuv-b-limits}) as
+before this is trusted.
+
+\subsubsection{Flux: Rusanov instead of a full Riemann solver}
+\label{sec:fuv-b-rusanov}
+
+A pure central-difference flux for a genuinely hyperbolic (wave)
+equation is unconditionally unstable -- this is not specific to
+radiative transfer, it is the standard reason upwind/Godunov methods
+exist for any hyperbolic conservation law. Some dissipative treatment
+is therefore unavoidable once Eq.~\ref{eq:fuv-tau-phys} is solved as a
+genuinely time-dependent system rather than adiabatically eliminating
+$\mathbf F$. \texttt{swiftsim\_0}'s own metal-diffusion module uses a
+full Hopkins-2017-style HLL solver with wave-speed estimation and
+minmod-blended artificial diffusivity (its own theory doc's flux
+computation section) -- again, machinery justified there by
+metal-mass conservation/positivity requirements this field does not
+share.
+
+The cheap alternative: a plain \textbf{Rusanov} (local Lax-Friedrichs)
+flux \citep{Rusanov1961},
+\begin{equation}
+  F_{\rm face} = \tfrac12\left(F_L+F_R\right)
+    - \tfrac12\,c_{\rm hyp}\left(U_R-U_L\right) ,
+  \label{eq:fuv-rusanov-flux}
+\end{equation}
+one maximum-signal-speed, one dissipation term, no wave-speed
+estimation subtlety, no minmod blending, no artificial-diffusivity
+tuning -- technically the simplest member of the Riemann-solver family,
+but a single line rather than the elaborate stack above. Valid because
+$c_{\rm hyp}$ (Eq.~\ref{eq:fuv-chyp-choice}) is by construction the
+system's own maximum characteristic speed. (\citet{Rusanov1961} is the
+originating reference recalled from standard numerical-methods
+literature -- author/year/general result are standard textbook
+material, but the exact journal/volume/page details have not been
+independently re-verified this pass, the same caveat already applied to
+\citet{ClearyMonaghan1999} above.)
+
+\subsubsection{Reusing the three hydro loops: task-graph cost}
+\label{sec:fuv-b-tasks}
+
+\textbf{Correction (2026-07-24) to an earlier draft's claim that this
+design "needs its own new task subtype."} Checked directly against
+this codebase's own task-graph machinery
+(\code{src/runner\_doiact\_functions\_hydro.h} and this project's own
+\code{src/chemistry/GEAR\_DIFFUSION/chemistry\_iact.h}): SWIFT's
+existing hydro density/gradient/force pairwise loops
+(\code{TASK\_LOOP\_DENSITY}, \code{TASK\_LOOP\_GRADIENT},
+\code{TASK\_LOOP\_FORCE} branches of the same generated-function
+template) are \emph{already} shared by multiple physics modules at
+once -- e.g.\ \code{runner\_iact\_chemistry} is called inline inside
+the density-loop branch, \code{runner\_iact\_gradient\_diffusion}
+inside the gradient-loop branch, and \code{runner\_iact\_diffusion}
+inside the force-loop branch, all within the same three generic
+templates hydro itself uses. \textbf{No new task type or subtype is
+needed}: adding a new physics channel to this codebase's existing
+pattern means adding new \code{runner\_iact\_*} functions called from
+these same three branches, not standing up new tasks in the scheduler
+at all -- correcting the earlier, overly pessimistic claim.
+
+\textbf{Concrete mapping for this design}:
+\begin{itemize}
+  \item \textbf{Density loop}: no new hook needed -- $\rho_i$ (feeding
+    $\kappa_{\rm FUV}\rho$, Eq.~\ref{eq:fuv-lambda-def}) is already
+    computed by hydro's own density loop regardless of this module;
+  \item \textbf{Gradient loop}: a new \code{runner\_iact\_gradient\_isrf}
+    (mirroring \code{runner\_iact\_gradient\_diffusion}) -- \emph{only}
+    needed if the optional gradient upgrade of
+    Section~\ref{sec:fuv-b-gradients} is adopted; the baseline
+    algorithm (Section~\ref{sec:fuv-b-algorithm}) does not need this
+    loop hook at all;
+  \item \textbf{Force loop}: a new \code{runner\_iact\_isrf}/
+    \code{runner\_iact\_nonsym\_isrf} (mirroring
+    \code{runner\_iact\_diffusion}/\code{runner\_iact\_nonsym\_diffusion})
+    -- the one hook the baseline algorithm actually requires, computing
+    the Rusanov flux (Eq.~\ref{eq:fuv-rusanov-flux}) and accumulating
+    the explicit hyperbolic sub-step
+    (Section~\ref{sec:fuv-b-algorithm}, steps~1--3).
+\end{itemize}
+\textbf{Minimal buildable version}: one new force-loop hook only, no
+gradient loop, no new task type -- cheaper, in task-graph terms, than
+the earlier draft credited it for. This does not exempt the new field
+($\mathbf F_i$, Section~\ref{sec:fuv-b-algorithm}) from the usual
+cell-link/\code{cell\_clean\_links} bookkeeping this project's own
+task-registration checklist requires for any new per-particle state,
+nor from choosing which existing timestep/rebuild cadence machinery
+(Section~\ref{sec:fuv-discretization}'s adaptive-rebuild precedent)
+governs how often it updates.
+
+\textbf{Design~A, for comparison}: its single kernel-average update
+(Eq.~\ref{eq:fuv-discrete-update}) needs only the density-loop-style
+hook (matching plain \code{runner\_iact\_chemistry}'s own one-loop
+pattern) -- no gradient loop, no force loop, since there is no
+separate gradient reconstruction or flux exchange step in Design~A at
+all. Both designs turn out to need no new task types; they differ in
+\emph{how many} of the three existing loop hooks they use (one for
+Design~A; one to two for Design~B, depending on whether the optional
+gradient upgrade is adopted), not in whether new scheduler machinery is
+needed at all.
+
+\subsubsection{From P1 to a cheap M1: a local closure upgrade}
+\label{sec:fuv-b-m1}
+
+\textbf{The difference between P1 and M1.} P1's closure
+(Eq.~\ref{eq:fuv-eddington-closure}) is \emph{always} $\mathbf P=u/3\,
+\mathbf I$, regardless of how directional the true local field actually
+is -- exact only near isotropy. The \textbf{M1 closure}
+\citep{Levermore1984} -- already implemented in this exact SWIFT fork,
+\code{rt/GEAR} and \code{rt/SPHM1RT}, and transcribed verbatim from
+\texttt{theory/RadiativeTransfer/GEARRT/2-rt-equations.tex} -- instead
+makes the Eddington tensor a function of the local \textbf{reduced
+flux} $f=|\mathbf F|/(cu)$:
+\begin{align}
+  \mathbf P &= \mathbf D\,u , \qquad
+  \mathbf D = \frac{1-\chi}{2}\,\mathbf I + \frac{3\chi-1}{2}\,
+    \hat{\mathbf n}\otimes\hat{\mathbf n} , \qquad
+  \hat{\mathbf n}=\frac{\mathbf F}{|\mathbf F|} ,
+  \label{eq:fuv-m1-closure} \\
+  \chi(f) &= \frac{3+4f^2}{5+2\sqrt{4-3f^2}} .
+  \label{eq:fuv-m1-chi}
+\end{align}
+Check the limits: $\chi(0)=1/3$ (recovers P1 exactly -- correct
+isotropic/diffusive behaviour) and $\chi(1)=1$ (correct free-streaming
+behaviour -- pure advection along $\hat{\mathbf n}$, no unphysical
+sideways spreading). \textbf{This is why M1 is better}: it is not
+locked into the isotropic assumption everywhere, so near a strong,
+little-scattered point source ($f\to1$) it lets the field stream
+directionally instead of leaking sideways the way P1 unconditionally
+forces it to -- the mechanism that gets shadows mostly right where P1
+cannot.
+
+\textbf{Could we upgrade to a cheap M1? Yes.} The physics upgrade and
+the numerics can be kept separate, exactly as in the gradient
+discussion above:
+\begin{itemize}
+  \item \textbf{Cheap part}: the closure swap itself needs no new
+    state -- $(u,\mathbf F)$ is already tracked by the hyperbolic system
+    of Section~\ref{sec:fuv-b-p1}, and $f$, $\chi(f)$, $\mathbf D$ are
+    local, per-particle/per-interface formula evaluations, essentially
+    free next to the cost of a neighbour loop.
+  \item \textbf{Expensive part, deliberately not adopted}: the
+    \emph{proper} M1 solver already in \code{rt/GEAR}
+    (\code{rt\_riemann\_HLL.h}) needs a precomputed
+    $100\times100$ lookup table of eigenvalues
+    \citep{Gonzalez2007}, because M1's true characteristic speeds are a
+    nontrivial function of both $f$ and the angle between the flux and
+    the interface normal -- genuinely more complex than P1's simple
+    $\pm c_{\rm hyp}$. Reusing the cheap Rusanov flux of
+    Eq.~\ref{eq:fuv-rusanov-flux} instead remains valid, because M1's
+    true characteristic speeds are bounded within $[-c_{\rm hyp},
+    c_{\rm hyp}]$ by construction (M1's defining design property is that
+    the reduced flux never exceeds 1) -- a Rusanov flux using
+    $c_{\rm hyp}$ as the dissipation speed is a correct, stable bound
+    for the upgraded system too, just not as sharp (less numerically
+    diffusive) as the proper eigenvalue-based solver would be.
+\end{itemize}
+So: keep M1's closure (Eqs.~\ref{eq:fuv-m1-closure}--\ref{eq:fuv-m1-chi}),
+keep the cheap Rusanov flux (Eq.~\ref{eq:fuv-rusanov-flux}) -- most of
+M1's physical upgrade over P1, essentially none of its own numerical
+machinery cost.
+
+\textbf{Implementation subtlety to get right}: under a
+reduced-speed-of-light scheme, $f$ must be built with the \emph{same}
+reduced $c_{\rm hyp}$, not the true $c$. If $f=|\mathbf F|/(c\,u)$ used
+true $c$ while $\mathbf F$ is dynamically bounded by $c_{\rm hyp}\,u$
+(with $c_{\rm hyp}\ll c$), $f$ would always come out tiny regardless of
+how beamed the field really is, silently collapsing the upgraded
+closure back to P1-like behaviour and defeating the point of upgrading.
+(General RT-methods knowledge, not independently verified against
+\code{rt/GEAR}'s own \code{reduced\_speed\_of\_light} handling this
+pass -- worth checking there too, not only in this design, before
+either is trusted.)
+
+\subsubsection{Known, accepted limitations: shadows and crossing beams}
+\label{sec:fuv-b-limits}
+
+\textbf{P1's shadow-smearing} (already accepted as a trade-off,
+Section~\ref{sec:fuv-b-p1}'s validity caveat): a real photon field shows
+almost zero flux directly behind a dense clump and full flux to the
+side; a diffusion-type (P1) field leaks some flux around the clump via
+neighbouring particles, smearing that shadow into something softer than
+reality. The cheap-M1 upgrade above improves this (Eq.~\ref{eq:fuv-m1-chi}
+lets $f\to1$ near a strong, little-scattered source) but does not fully
+fix it.
+
+\textbf{M1's own, distinct limitation: crossing beams.} M1 is a
+single-direction closure -- at any point it assumes all local flux
+points one way, $\hat{\mathbf n}=\mathbf F/|\mathbf F|$. When two
+genuinely separate beams from two different sources cross at a gas
+particle, M1 cannot represent "two beams passing through each other
+unaffected" -- it merges them into one averaged direction, a
+spurious artifact at the crossing point, well documented in the RT
+literature and not fixed by a better (more expensive) M1 solver; it is
+intrinsic to the closure. Directly relevant here since this project
+already cares about multi-source/angular behaviour (the HEALPix HII
+splitting, Section~\ref{sec:algorithm}).
+
+\textbf{Why, physically: moment-closure RT is to full kinetic RT what
+fluid dynamics is to kinetic gas dynamics} (Darwin's framing,
+2026-07-24, confirmed correct). Both P1/M1 and ordinary Euler
+hydrodynamics are moment truncations of an underlying kinetic
+(Boltzmann-type) transport equation -- radiative transfer's RTE for
+photons, the Boltzmann equation for a gas of particles. Both inherit
+the identical failure mode: a moment/fluid description collapses any
+locally multi-modal distribution (two distinct particle streams that
+have not thermalised together; two distinct photon beams that have not
+scattered together) into one local bulk description (one flow velocity;
+one flux direction), because a finite set of angular moments simply
+cannot distinguish "two populations moving differently" from "one
+population with the combined average motion." Representing genuinely
+crossing, non-interacting populations correctly requires a kinetic (or
+here, ray-based/multi-group) description, not a better moment closure --
+this is a structural property of the moment-truncation approach, not a
+correctable numerical shortcoming.
+
+\subsubsection{Relation to existing SWIFT modules}
+\label{sec:fuv-b-precedent}
+
+This design borrows validated formulas and structure from three places
+already in this SWIFT fork rather than inventing them:
+\begin{itemize}
+  \item \texttt{swiftsim\_0}'s \code{chemistry/GEAR\_FVPM\_DIFFUSION/hyperbolic/}
+    -- the Cattaneo relaxation-equation structure
+    ($\partial\mathbf F/\partial t + (K/\tau)\nabla u=-\mathbf F/\tau$,
+    $c_{\rm hyp}=\sqrt{\|K\|/\tau}$), its exact analytic
+    ($\exp(-\Delta t/\tau)$) integration of the relaxation source term,
+    and its hyperbolic CFL ($\Delta t=C_{\rm CFL}\,\Delta x/v_{\max}$) --
+    all mirrored directly in Sections~\ref{sec:fuv-b-p1}--\ref{sec:fuv-b-cfl}
+    above, for a different transported quantity;
+  \item \texttt{swiftsim\_0}'s \code{chemistry/GEAR\_FVPM\_DIFFUSION/}
+    (parabolic) gradient estimator, \code{p->geometry.matrix\_E}/
+    $\mathbf B_i=\mathbf E_i^{-1}$ -- the source of the optional Tier~2
+    correction matrix, Section~\ref{sec:fuv-b-gradients} (not free in
+    this project's own SPHENIX-based configuration, unlike there);
+  \item this project's own \code{chemistry/GEAR\_DIFFUSION/chemistry\_iact.h}
+    and \code{src/runner\_doiact\_functions\_hydro.h} -- confirms new
+    physics can hook into the existing density/gradient/force loops via
+    new \code{runner\_iact\_*} functions, with no new task type,
+    Section~\ref{sec:fuv-b-tasks};
+  \item \code{rt/GEAR} and \code{rt/SPHM1RT} -- full, working M1-closure
+    RT solvers already in this codebase, confirming
+    Eqs.~\ref{eq:fuv-m1-closure}--\ref{eq:fuv-m1-chi} exactly (verbatim
+    match against \texttt{theory/RadiativeTransfer/GEARRT/2-rt-equations.tex}),
+    and the source of the \code{reduced\_speed\_of\_light} precedent
+    (\code{rt/GEAR/rt\_properties.h}) for Eq.~\ref{eq:fuv-chyp-choice},
+    plus the Gonzalez-2007 eigenvalue-table solver
+    (\code{rt/GEAR/rt\_riemann\_HLL.h}) this design deliberately avoids
+    reusing directly (Section~\ref{sec:fuv-b-m1}) in favour of the
+    cheaper Rusanov flux.
+\end{itemize}
+None of these are proposed for direct reuse as full modules -- they are
+full, more expensive solvers built for different purposes (exact metal
+mass conservation; full radiation hydrodynamics) -- but each already
+validates a specific piece of this design's own physics or numerics,
+which is worth more than an independent derivation would be.
+
+\subsubsection{Open items, Design B}
+\label{sec:fuv-design-b-open}
+
+\begin{itemize}
+  \item \textbf{Resolved (2026-07-24)}: task-graph placement is no
+    longer an open question -- Section~\ref{sec:fuv-b-tasks} confirms
+    new \code{runner\_iact\_*} hooks into the existing density/
+    gradient/force loops, no new task type, mirroring
+    \code{GEAR\_DIFFUSION}'s own precedent directly. What remains open:
+    building the optional Tier~2 gradient upgrade
+    (Section~\ref{sec:fuv-b-gradients}) needs a genuinely new
+    per-particle moment-matrix computation in this SPHENIX-based
+    codebase (not free, unlike \texttt{swiftsim\_0}'s MFM-based
+    checkout), and the mild positivity/monotonicity loosening it
+    introduces is not yet empirically validated;
+  \item \citet{Rusanov1961}'s exact bibliographic details are not
+    independently re-verified;
+  \item the cheap-M1 upgrade's requirement that $f$ use the reduced
+    $c_{\rm hyp}$, not true $c$ (Section~\ref{sec:fuv-b-m1}), is not yet
+    implemented or checked against \code{rt/GEAR}'s own handling of the
+    same issue;
+  \item the margin factor $\kappa_{\rm margin}$
+    (Eq.~\ref{eq:fuv-chyp-choice}) is proposed at $\sim5$--$10$ by
+    analogy with a general "quasi-instantaneous relative to hydro"
+    argument, not yet empirically tuned or validated against an actual
+    run;
+  \item folding the injection term into the same exact exponential
+    integrator as the joint $u$/$\mathbf F$ relaxation
+    (Section~\ref{sec:fuv-b-algorithm}'s closing remark) is an available
+    refinement, not yet applied;
+  \item a validation plan specific to this design is not yet built:
+    the Yukawa-profile and telegrapher-wavefront tests already proposed
+    for Design~A apply equally here, plus a new
+    intermediate-optical-depth/off-axis-clump ("partial shadow") test
+    to quantify the known P1/M1 shadowing limitation
+    (Section~\ref{sec:fuv-b-limits}) for this project's own realistic
+    clump opacities, rather than asserting it away;
+  \item whether Design~A or Design~B is actually implemented first --
+    or whether Design~A is kept as a cheap fallback/cross-check target
+    for Design~B's own quasi-steady ($\tau\to0$-like) limit -- is not
+    yet decided;
+  \item item~T6 as a whole remains unscoped as an implementation, for
+    either design.
+\end{itemize}
+
+\subsection{Open items common to both designs}
+\label{sec:fuv-open-common}
+
+\begin{itemize}
   \item confirming whether \citet{DraineBertoldi1996}'s $k_{\rm
     LW}(\chi)$ normalization, or a direct $\sigma_{\rm LW}$-based
     conversion (Section~\ref{sec:fuv-two-bands}), is the better fit

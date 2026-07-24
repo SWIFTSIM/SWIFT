@@ -116,7 +116,26 @@ validation-against-a-paper status.
     as restrictive, $\Delta t\lesssim\Delta x^2/D$ constraint. Still not
     scoped: how to solve that steady equation inside SWIFT's
     SPH+task-graph architecture without a full global linear solve
-    every step.
+    every step. \textbf{Update (2026-07-24)}, Section~\ref{sec:fuv-adaptive-alpha}:
+    the mixing fraction $\alpha$ (Eq.~\ref{eq:fuv-discrete-update}) is
+    now decided to be per-particle, not fixed globally -- a stricter
+    evaluation of the same stability bound already derived
+    (Eq.~\ref{eq:fuv-alpha-bound-i}), superseding the earlier
+    fixed-$\alpha$ choice, still with no new timestep constraint.
+    Also decided: the pairwise coupling between neighbours with very
+    different local opacities should use a harmonic mean
+    (Eq.~\ref{eq:fuv-harmonic-mean}, following the standard SPH
+    treatment of discontinuous thermal conductivity), and this local
+    propagation scheme composes additively with the separate
+    metagalactic/interstellar UV background (already spatially-uniform
+    and time-varying at the Grackle level, with a spatially-varying
+    version planned from the collaboration's SPHINX data) rather than
+    duplicating it. A design conversation had explored this same idea
+    externally via an RSLA/hyperbolic-telegrapher analogy and an
+    RTE-Eddington-closure derivation for the diffusion coefficient --
+    Section~\ref{sec:fuv-gemini-review} records why neither is needed
+    and why the latter is actually self-inconsistent in the pristine-gas
+    limit it was invoked for.
 
   \item[$\square$] \textbf{T7} -- Extend \texttt{pychem}
     (\texttt{\textasciitilde/programs/pychem/}, already the source of
