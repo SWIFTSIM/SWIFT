@@ -37,6 +37,7 @@
 \newtheorem{definition}{Definition}
 \theoremstyle{remark}
 \newtheorem{remark}{Remark}
+\newtheorem{example}{Example}
 
 % ---------------------------------------------------------------------------
 % Physics macros, shared with GEAR_FVPM_Diffusion_Theory.tex (parabolic
@@ -62,6 +63,7 @@
 \newcommand{\Gflux}[1]{\mathbf{G}^{(#1)}}                 % flux tensor, direction-#1 component
 \newcommand{\chyp}{c_{\rm hyp}}                           % hyperbolic diffusion sound speed
 \newcommand{\taurelax}{\tau}                              % relaxation time (unmacroed in the parent doc; kept explicit here)
+\newcommand{\Deff}{\mathbf{D}}                            % effective diffusivity tensor, D = K*(q/U)
 
 \title{Wave-Speed Theory for the Hyperbolic (Cattaneo-Relaxation) FVPM
 Diffusion Scheme}
@@ -192,6 +194,44 @@ Crucially, $\Kmat$ carries an explicit factor of $\rho$ in the
 \emph{not} in \code{isotropic_constant}. This asymmetry is the origin of
 the apparent inconsistency examined in Section~\ref{sec:confrontation}.
 
+\subsection{The Effective Diffusivity $\Deff$}
+\label{sec:effective-diffusivity}
+$\Kmat$ is defined with respect to the \emph{driver} $\driver$ (Fick's
+law, $\Fdiff=-\Kmat\grad\driver$), not with respect to the
+\emph{conserved} state $U_0=\rhoZ$ -- and, as Section~\ref{sec:tau-modes}
+already had to confront for $\taurelax$, $\driver$ itself is
+\code{diffusion_mode}-dependent ($\driver=U_0$ for
+\code{isotropic_constant}, $\driver=U_0/\rho$ otherwise). This is not a
+notational nuisance to work around case-by-case; the code already
+resolves it with a single, explicit, named quantity. The \code{"DiffusionMatrices"}
+snapshot field's own description (\code{chemistry_io.h:185}) states it
+outright: \emph{``The effective diffusivity is defined as $\Deff =
+\Kmat\driver/U$.''} Formally, under the frozen-coefficient approximation
+of Section~\ref{sec:quasilinear} ($\driver=\mu U_0$, $\mu$ locally
+constant),
+\begin{equation}
+  \label{eq:D_definition}
+  \Deff \equiv \mu\,\Kmat = \frac{\driver}{U_0}\,\Kmat ,
+  \qquad
+  \mu = \begin{cases} 1 & \code{isotropic\_constant} \\ 1/\rho & \text{otherwise} \end{cases} .
+\end{equation}
+This is exactly the same $q/U$ (or $U/q$) bookkeeping that recurs
+throughout Hopkins~\cite{Hopkins2017diffusion} and is already used
+elsewhere in this module for precisely this reason, not by coincidence:
+\code{chemistry_riemann_compute_hyperbolic_blending_factor}
+(\code{chemistry_riemann_utils.h:210}) computes
+\code{norm\_D\_star = norm\_K\_star * q\_star/U\_star} -- the same
+$\Deff=\Kmat(\driver/U)$ construction, independently, for the
+blending-factor calculation. $\Deff$, not $\Kmat$, is the tensor that
+plays the role of an ordinary Fickian diffusivity \emph{for the conserved
+variable $U_0$ directly}: substituting $\grad\driver\approx\mu\grad U_0$
+(frozen-coefficient) into Fick's law gives $\Fdiff=-\Kmat\mu\grad U_0 =
+-\Deff\grad U_0$, i.e.\ $\Deff$ is what $\Kmat$ becomes once rewritten
+entirely in terms of $U_0$ instead of $\driver$. Using $\Deff$ as the
+primary object below, rather than carrying $\Kmat$ and $\mu$ separately,
+is what lets Proposition~\ref{prop:main} be stated as a single formula
+instead of a per-\code{diffusion\_mode} case split.
+
 \section{Quasi-Linear Form and the Flux Jacobian}
 \label{sec:quasilinear}
 
@@ -203,59 +243,40 @@ Define the four-component hyperbolic state vector
 As is standard for deriving a local wave-speed estimate for a Godunov-type
 solver (and as the code itself already does implicitly, by evaluating
 $\chyp$ from each particle's own, locally stored $\Kmat,\taurelax,\rho$ --
-\code{chemistry_iact.h:295--298}), we treat $\Kmat$, $\taurelax$ and $\rho$
-as \emph{locally frozen} coefficients for the purpose of constructing the
-flux Jacobian: they are evaluated at the particle/interface, not
-differentiated with respect to $\Uvec$. This is the same frozen-coefficient
-approximation used, without comment, by every scheme in this code family
-(GIZMO's own MFV/MFM sound-speed estimate is exactly analogous).
+\code{chemistry_iact.h:295--298}), we treat $\Kmat$ (equivalently $\Deff$),
+$\taurelax$ and $\rho$ as \emph{locally frozen} coefficients for the
+purpose of constructing the flux Jacobian: they are evaluated at the
+particle/interface, not differentiated with respect to $\Uvec$. This is
+the same frozen-coefficient approximation used, without comment, by every
+scheme in this code family (GIZMO's own MFV/MFM sound-speed estimate is
+exactly analogous). Under it, $\driver=\mu U_0$ (Section~\ref{sec:effective-diffusivity})
+is linear in $U_0$, and $\Deff=\mu\Kmat$ is itself frozen.
 
-\textbf{The driver $\driver$ used in the hyperbolic flux law is not
-uniformly $U_0/\rho$.} \code{chemistry_compute_flux}
-(\code{hyperbolic/chemistry_flux.h:159--172}) and
-\code{chemistry_riemann_compute_hyperbolic_blending_factor}
-(\code{chemistry_riemann_utils.h}) both branch on \code{diffusion_mode}:
-\begin{equation}
-  \driver =
-  \begin{cases}
-    U_0 & \text{\code{isotropic_constant}} \\
-    U_0/\rho & \text{otherwise (\code{isotropic_smagorinsky},
-    \code{anisotropic_gradient})}
-  \end{cases}
-\end{equation}
-Define $\mu\equiv\partial\driver/\partial U_0\in\{1,1/\rho\}$
-accordingly ($\mu$ is exactly the $\driver^\star/U^\star$ ratio already
-computed by \code{chemistry_riemann_compute_hyperbolic_blending_factor}
-for a different purpose). Under the frozen-coefficient approximation,
-$\driver=\mu U_0$ is linear in $U_0$ for either value of $\mu$, which is
-all the Jacobian derivation below actually needs -- but $\mu$ itself is
-\emph{not} a universal $1/\rho$, and an earlier version of this document
-incorrectly assumed it was, missing the \code{isotropic_constant} case.
-That error propagated into an initial fix of
-\code{chemistry_get_physical_hyperbolic_soundspeed} that added an
-unconditional $\rho^{-1}$; the corrected version (Section~\ref{sec:confrontation})
-applies $\mu$, not $1/\rho$, per \code{diffusion_mode}.
-
-\subsection{The Flux Tensor}
+\subsection{The Flux Tensor, Rewritten in Terms of $\Deff$}
 Directly from the code (\code{chemistry_get_hyperbolic_flux},
 \code{hyperbolic/chemistry_getters.h:162--200}), the flux of $\Uvec$ in
-Cartesian direction $k\in\{x,y,z\}$ is
+Cartesian direction $k\in\{x,y,z\}$ is $(F_k,\,K_{xk}\driver/\taurelax,\,
+K_{yk}\driver/\taurelax,\,K_{zk}\driver/\taurelax)$ -- an exact
+transcription of the implementation (row 0 of \code{hypflux} is literally
+\code{U[1..3]}, rows 1--3 are literally \code{K[j][k]*(q/tau)},
+\code{hyperbolic/chemistry_getters.h:178--199}), not an independent
+modelling choice. Substituting $\driver=\mu U_0$ (frozen $\mu$) turns
+$K_{jk}\driver/\taurelax$ into $D_{jk}U_0/\taurelax$, so
 \begin{equation}
-  \Gflux{k}(\Uvec) = \left( F_k, \; \frac{K_{xk}\driver}{\taurelax}, \; \frac{K_{yk}\driver}{\taurelax}, \; \frac{K_{zk}\driver}{\taurelax} \right) ,
+  \Gflux{k}(\Uvec) = \left( F_k, \; \frac{D_{xk}U_0}{\taurelax}, \; \frac{D_{yk}U_0}{\taurelax}, \; \frac{D_{zk}U_0}{\taurelax} \right) ,
 \end{equation}
-so that Eqs.~\eqref{eq:mass_conservation}--\eqref{eq:cattaneo} read, in
+i.e.\ the flux tensor is entirely in terms of $\Deff$ and $U_0$, the two
+quantities the state vector $\Uvec$ and its own conservation law are
+already written in terms of -- no leftover $\driver$/$\mu$ bookkeeping.
+Eqs.~\eqref{eq:mass_conservation}--\eqref{eq:cattaneo} read, in
 conservative form, $\partial_t\Uvec + \sum_k \partial_{x_k}\Gflux{k}(\Uvec)
-= -(0,\Fdiff/\taurelax)$. This is an exact transcription of the
-implementation, not an independent modelling choice: row 0 of
-\code{hypflux} is literally \code{U[1..3]}, and rows 1--3 are literally
-\code{K[j][k]*(q/tau)} (\code{hyperbolic/chemistry_getters.h:178--199}).
+= -(0,\Fdiff/\taurelax)$.
 
 \subsection{The Directional Flux Jacobian}
 For a Riemann problem at an interface with unit normal $\nunit$, the
 relevant $4\times4$ matrix is the projected flux Jacobian
 $\mathbf A(\nunit) \equiv \partial(\Gflux{}(\Uvec)\cdot\nunit)/\partial\Uvec$.
-Writing $\mathbf v \equiv \mu\Kmat\nunit/\taurelax$ (a 3-vector, with $\mu$
-as defined in Section~\ref{sec:quasilinear} above), direct
+Writing $\mathbf v \equiv \Deff\nunit/\taurelax$ (a 3-vector), direct
 differentiation of the flux tensor above gives, for any $\mathbf x =
 (x_0,x_1,x_2,x_3)$,
 \begin{equation}
@@ -270,18 +291,18 @@ differentiation of the flux tensor above gives, for any $\mathbf x =
 
 \begin{proposition}[Characteristic speeds of the hyperbolic diffusion system]
 \label{prop:main}
-For any symmetric positive semi-definite $3\times3$ diffusion tensor
-$\Kmat$ (no assumption on its shape -- isotropic, Smagorinsky-scaled, or
-fully anisotropic), any relaxation-time model, any unit interface
-normal $\nunit$, and $\mu=\partial\driver/\partial U_0$ as defined in
-Section~\ref{sec:quasilinear} ($\mu=1$ for \code{isotropic_constant},
-$\mu=1/\rho$ otherwise), the projected flux Jacobian $\mathbf A(\nunit)$
-of Eq.~\eqref{eq:jacobian_action} has eigenvalues
+For any symmetric positive semi-definite $3\times3$ effective diffusivity
+$\Deff$ (Section~\ref{sec:effective-diffusivity}; no assumption on its
+shape -- isotropic, Smagorinsky-scaled, or fully anisotropic, and no
+assumption on which \code{diffusion_mode} produced it), any
+relaxation-time model, and any unit interface normal $\nunit$, the
+projected flux Jacobian $\mathbf A(\nunit)$ of Eq.~\eqref{eq:jacobian_action}
+has eigenvalues
 \begin{equation}
   \label{eq:main_result}
   \lambda \in \left\{ \; +\chyp(\nunit),\; -\chyp(\nunit),\; 0,\; 0 \; \right\} ,
   \qquad
-  \boxed{\;\chyp(\nunit) = \sqrt{\dfrac{\mu\,\nunit^{\!\top}\Kmat\,\nunit}{\taurelax}}\;} .
+  \boxed{\;\chyp(\nunit) = \sqrt{\dfrac{\nunit^{\!\top}\Deff\,\nunit}{\taurelax}}\;} .
 \end{equation}
 \end{proposition}
 
@@ -294,9 +315,10 @@ x=\mathbf 0$, not a valid eigenvector). Substituting into the first block,
 $\lambda x_0 = \nunit\cdot(x_1,x_2,x_3) = (\nunit\cdot\mathbf v/\lambda)\,x_0$,
 and since $x_0\neq0$,
 \begin{equation}
-  \lambda^2 = \nunit\cdot\mathbf v = \frac{\mu\,\nunit\cdot(\Kmat\nunit)}{\taurelax} = \frac{\mu\,\nunit^{\!\top}\Kmat\nunit}{\taurelax} \; \geq 0
+  \lambda^2 = \nunit\cdot\mathbf v = \frac{\nunit\cdot(\Deff\nunit)}{\taurelax} = \frac{\nunit^{\!\top}\Deff\nunit}{\taurelax} \; \geq 0
 \end{equation}
-(non-negative because $\Kmat$ is PSD and $\mu>0$), giving the two roots
+(non-negative because $\Deff=\mu\Kmat$ is PSD -- $\mu>0$ and $\Kmat$ PSD),
+giving the two roots
 $\lambda=\pm\chyp(\nunit)$ of Eq.~\eqref{eq:main_result}. The remaining two
 eigenvalues are $\lambda=0$: any $\mathbf x=(0,x_1,x_2,x_3)$ with
 $\nunit\cdot(x_1,x_2,x_3)=0$ (a two-dimensional subspace, the plane
@@ -329,8 +351,9 @@ anisotropic). The two corollaries below specialise it.
 \begin{corollary}
 \label{cor:isotropic}
 If $\Kmat=\kappaP\mathbf I$ (both \code{isotropic_constant} and
-\code{isotropic_smagorinsky} modes), then $\nunit^{\!\top}\Kmat\nunit =
-\kappaP$ for \emph{every} unit vector $\nunit$, and
+\code{isotropic_smagorinsky} modes), then $\Deff=\mu\kappaP\mathbf I$ is
+also isotropic, $\nunit^{\!\top}\Deff\nunit = \mu\kappaP$ for \emph{every}
+unit vector $\nunit$, and
 \begin{equation}
   \chyp = \sqrt{\frac{\mu\,\kappaP}{\taurelax}} ,
   \qquad
@@ -338,8 +361,9 @@ If $\Kmat=\kappaP\mathbf I$ (both \code{isotropic_constant} and
                        1/\rho & \text{\code{isotropic_smagorinsky}} \end{cases}
 \end{equation}
 independent of direction in either case, but \emph{not} independent of
-which closure $\kappaP$ came from: the two modes differ by exactly the
-factor $\mu$.
+which closure $\kappaP$ came from: the two modes' $\Deff$ differ by
+exactly the factor $\mu$, even though the underlying $\Kmat$ formula
+looks superficially similar.
 \end{corollary}
 Direction-independence (the shape of $\Kmat$ not mattering) is universal,
 as Proposition~\ref{prop:main} guarantees for any isotropic $\Kmat$
@@ -378,14 +402,52 @@ equality iff $\lambda_2=\lambda_3=0$ (rank 1), so $\norm{\Kmat}_F/\lambda_1
 3\max_i\lambda_i^2=3\lambda_1^2$ with equality iff all three eigenvalues
 are equal, giving $\norm{\Kmat}_F/\lambda_1\leq\sqrt3$.
 \end{proof}
-Concretely, evaluating $\norm{\Kmat}_F$ for $\Kmat=\kappaP\mathbf I$ gives
-$\norm{\Kmat}_F=\kappaP\sqrt3$, \emph{not} $\kappaP$: using the Frobenius
-norm in place of the direction-projected $\nunit^{\!\top}\Kmat\nunit$
-overestimates the true characteristic speed by a factor of exactly
-$\sqrt3\approx1.73$ even in the isotropic limit, and by a smaller (but
-never negative) factor for anisotropic $\Kmat$. It is always a
-\emph{safe} (CFL-stable) overestimate, never an underestimate, but it is
-also never tight except for rank-1 $\Kmat$.
+\begin{example}[Why the Frobenius norm overestimates, in numbers]
+\label{ex:frobenius-numbers}
+The Frobenius norm $\norm{\Kmat}_F=\sqrt{\sum_{ij}K_{ij}^2}$ is a
+different mathematical object from ``the diffusion strength along a
+specific direction $\nunit$'', $\nunit^{\!\top}\Kmat\nunit$ -- it sums
+contributions from \emph{every} entry of the matrix, not just the ones
+relevant to one direction. Two cases make the gap concrete:
+\begin{itemize}
+\item \textbf{Isotropic}, $\Kmat=\mathrm{diag}(1,1,1)$ (eigenvalues
+  $1,1,1$): the true wave speed in \emph{any} direction uses
+  $\nunit^{\!\top}\Kmat\nunit=1$ -- e.g.\ $\nunit=(1,0,0)$ gives
+  $1\cdot1\cdot1+0+0=1$. But $\norm{\Kmat}_F=\sqrt{1^2+1^2+1^2}=\sqrt3\approx1.73$.
+  The code would have used $\chyp\propto\sqrt{1.73}$ instead of
+  $\chyp\propto\sqrt1$ -- a $\sim32\%$ overestimate of the speed itself,
+  and (Section~\ref{sec:hll-consequence}) the same overestimate directly
+  in the HLL numerical dissipation. $\lambda_1(\Kmat)=1$ here: exact, no
+  overestimate at all.
+\item \textbf{Anisotropic}, $\Kmat=\mathrm{diag}(4,1,1)$ (one strong
+  direction, two weak ones): along the strong axis $\nunit=(1,0,0)$, the
+  true value is $\nunit^{\!\top}\Kmat\nunit=4$. Here
+  $\norm{\Kmat}_F=\sqrt{16+1+1}=\sqrt{18}\approx4.24$, only a
+  $\sim6\%$ overestimate -- much smaller than the isotropic case, exactly
+  as Corollary~\ref{cor:frobenius} predicts ($\norm{\Kmat}_F/\lambda_1\to1$
+  as $\Kmat$ becomes more anisotropic). $\lambda_1(\Kmat)=4$: exact again,
+  for this direction (and a safe, tighter-than-Frobenius bound for any
+  other direction a neighbour might be in).
+\end{itemize}
+The pattern is the opposite of what intuition might suggest: the
+Frobenius norm is worst (loosest) for isotropic $\Kmat$, where directional
+information matters least, and best (tightest, in fact exact) for
+rank-1 $\Kmat$, where it matters most. $\lambda_1(\Kmat)$ is exact in the
+isotropic case and a safe, tighter bound in the anisotropic case -- it
+dominates $\norm{\Kmat}_F$ everywhere.
+\end{example}
+Using the Frobenius norm in place of the direction-projected
+$\nunit^{\!\top}\Kmat\nunit$ overestimates the true characteristic speed
+by a factor of exactly $\sqrt3\approx1.73$ in the isotropic limit
+(Example~\ref{ex:frobenius-numbers}), and by a smaller (but never
+negative) factor for anisotropic $\Kmat$. It is always a \emph{safe}
+(CFL-stable) overestimate, never an underestimate, but it is also never
+tight except for rank-1 $\Kmat$. \textbf{The correction is
+$\lambda_1(\Kmat)$}, the matrix's largest eigenvalue (Remark~\ref{rem:lambda-max-not-n}
+below): swap \code{chemistry\_get\_matrix\_norm(K)} (Frobenius) for
+\code{chemistry\_get\_matrix\_max\_eigenvalue(K)} wherever $\chyp$ is
+computed -- already done for \code{constant\_mode}
+(Section~\ref{sec:confrontation}), not yet for \code{turbulent\_mode}.
 
 \begin{remark}[$\lambda_1(\Kmat)$, not $\nunit$, is the right practical fix]
 \label{rem:lambda-max-not-n}
@@ -420,6 +482,120 @@ is a good trade: it fixes both open gaps (the missing $\mu$ factor and the
 Frobenius looseness) with a local, per-particle change, not an
 architectural one.
 \end{remark}
+
+\section{The General Telegrapher Equation}
+\label{sec:telegrapher}
+
+Proposition~\ref{prop:main} was derived from the first-order system's
+flux Jacobian. There is a second, classical route to the same physics --
+eliminate $\Fdiff$ between Eqs.~\eqref{eq:mass_conservation}--\eqref{eq:cattaneo}
+to get a single second-order-in-time equation for $U_0$ alone (the
+Cattaneo/Maxwell-Cattaneo route to the ``telegrapher's equation'',
+normally presented only for scalar/isotropic diffusivity). This section
+derives it for a fully general tensor $\Deff$, with no isotropy
+assumption, and uses it as an independent check on
+Proposition~\ref{prop:main} via a completely different method (a
+dispersion relation, rather than a Jacobian eigen-decomposition).
+
+\begin{proposition}[General telegrapher equation]
+\label{prop:telegrapher}
+Under the frozen-coefficient approximation of
+Section~\ref{sec:quasilinear} ($\taurelax$, $\Deff$ locally constant), the
+conservation and Cattaneo-relaxation equations
+\eqref{eq:mass_conservation}--\eqref{eq:cattaneo} imply, for the
+conserved state $U_0=\rhoZ$ alone,
+\begin{equation}
+  \label{eq:telegrapher}
+  \boxed{\;\taurelax\,\pdv[2]{U_0}{t} + \pdv{U_0}{t} = \div\!\big(\Deff\grad U_0\big)\;} ,
+\end{equation}
+for any symmetric PSD $3\times3$ tensor $\Deff$ (no isotropy assumed).
+\end{proposition}
+
+\begin{proof}
+Take $\partial_t$ of Eq.~\eqref{eq:mass_conservation}:
+$\partial_t^2 U_0 + \div(\partial_t\Fdiff)=0$. Substitute
+$\partial_t\Fdiff$ from Eq.~\eqref{eq:cattaneo} written in terms of
+$\Deff$ (Section~\ref{sec:effective-diffusivity}: $(\Kmat/\taurelax)\grad\driver
+= (\Deff/\taurelax)\grad U_0$ under the frozen-coefficient substitution
+$\grad\driver\approx\mu\grad U_0$),
+\begin{equation}
+  \partial_t\Fdiff = -\frac{\Deff}{\taurelax}\grad U_0 - \frac{\Fdiff}{\taurelax} ,
+\end{equation}
+giving
+\begin{equation}
+  \partial_t^2U_0 - \div\!\left(\frac{\Deff}{\taurelax}\grad U_0\right) - \frac{1}{\taurelax}\div\Fdiff = 0 .
+\end{equation}
+Eliminate the remaining $\div\Fdiff$ using
+Eq.~\eqref{eq:mass_conservation} itself, $\div\Fdiff=-\partial_tU_0$:
+\begin{equation}
+  \partial_t^2U_0 + \frac{1}{\taurelax}\partial_tU_0 - \div\!\left(\frac{\Deff}{\taurelax}\grad U_0\right) = 0 .
+\end{equation}
+Multiplying by $\taurelax$ (frozen, so it commutes with $\div$ and
+$\partial_t$) gives Eq.~\eqref{eq:telegrapher}.
+\end{proof}
+
+\subsection{Two Limits}
+Eq.~\eqref{eq:telegrapher} interpolates between two regimes already
+discussed separately elsewhere in this document, now visibly unified in
+one equation:
+\begin{itemize}
+\item $\taurelax\to0$: the first term drops and
+  Eq.~\eqref{eq:telegrapher} collapses to
+  $\partial_tU_0=\div(\Deff\grad U_0)$ -- ordinary parabolic diffusion for
+  the conserved variable $U_0$, with $\Deff$ playing exactly the role of
+  an ordinary Fickian diffusivity. This is the same relaxation limit
+  already established via the exact source-term integrator
+  (Section~\ref{sec:governing-system}'s companion memory note) and via
+  Corollary~\ref{cor:isotropic}, now visible directly at the PDE level
+  rather than only in the discretised flux update.
+\item $\taurelax\to\infty$ (or, more precisely, on timescales
+  $t\ll\taurelax$): the equation is dominated by
+  $\taurelax\partial_t^2U_0\approx\div(\Deff\grad U_0)$, an
+  undamped wave equation -- genuinely hyperbolic (finite-speed)
+  propagation, the point of the whole regularisation.
+\end{itemize}
+
+\subsection{Dispersion Relation: An Independent Check on $\chyp$}
+Seek plane-wave solutions $U_0=\hat U_0\exp[i(\mathbf k\cdot\mathbf x-\omega t)]$
+of Eq.~\eqref{eq:telegrapher} (frozen $\taurelax,\Deff$, so this is a
+valid local analysis). Substituting,
+\begin{equation}
+  -\taurelax\omega^2 U_0 - i\omega U_0 = -(\mathbf k^{\!\top}\Deff\,\mathbf k)\,U_0
+  \quad\Longrightarrow\quad
+  \taurelax\omega^2 + i\omega - \mathbf k^{\!\top}\Deff\,\mathbf k = 0 ,
+\end{equation}
+a quadratic in $\omega$ with roots
+$\omega = \dfrac{-i \pm \sqrt{-1+4\taurelax\,\mathbf k^{\!\top}\Deff\mathbf k}}{2\taurelax}$.
+Two limits of this dispersion relation reproduce results derived by
+entirely different means elsewhere in this document:
+\begin{itemize}
+\item \textbf{Short wavelength} ($4\taurelax\,\mathbf k^{\!\top}\Deff\mathbf k\gg1$,
+  i.e.\ well inside the propagating/hyperbolic regime): writing
+  $\mathbf k=k\nunit$,
+  \begin{equation}
+    \mathrm{Re}(\omega) \approx \pm\sqrt{\frac{\mathbf k^{\!\top}\Deff\mathbf k}{\taurelax}}
+    = \pm k\sqrt{\frac{\nunit^{\!\top}\Deff\nunit}{\taurelax}} ,
+  \end{equation}
+  so the phase speed $\mathrm{Re}(\omega)/k \to \pm\sqrt{\nunit^{\!\top}\Deff\nunit/\taurelax}$
+  -- exactly $\pm\chyp(\nunit)$ of Proposition~\ref{prop:main}, recovered
+  here from a plane-wave dispersion analysis of the reduced scalar PDE
+  instead of from the first-order system's flux-Jacobian eigenvalues. Two
+  unrelated derivation methods agreeing is a meaningful independent check,
+  not a restatement -- Eq.~\eqref{eq:telegrapher} was derived by
+  eliminating $\Fdiff$ algebraically, with no reference to Jacobians or
+  eigenvectors. The (present in both derivations) $-i/(2\taurelax)$
+  imaginary part of $\omega$ is a uniform decay rate: every propagating
+  mode damps on the relaxation timescale $\taurelax$, consistent with
+  $\Fdiff$ relaxing toward its Fickian value.
+\item \textbf{Long wavelength} ($4\taurelax\,\mathbf k^{\!\top}\Deff\mathbf k\ll1$):
+  $\omega\approx-i\,\mathbf k^{\!\top}\Deff\mathbf k$, purely diffusive
+  decay with no oscillation -- exactly the dispersion relation of the
+  parabolic equation $\partial_tU_0=\div(\Deff\grad U_0)$ itself. This is
+  the same $\taurelax\to0$ recovery as above, seen instead as a
+  long-wavelength (rather than small-$\taurelax$) statement: even at
+  fixed, finite $\taurelax$, sufficiently large-scale features of the
+  solution always diffuse rather than propagate.
+\end{itemize}
 
 \section{Physically-Motivated Normalisation of $\taurelax_0$}
 \label{sec:tau0-physical}
@@ -720,12 +896,23 @@ for a deliberate decision, not applied automatically.
 
 \begin{enumerate}
 \item \textbf{Proposition~\ref{prop:main} is the general result}: $\chyp(\nunit)
-  = \sqrt{\mu\,\nunit^{\!\top}\Kmat\nunit/\taurelax}$, derived from the
+  = \sqrt{\nunit^{\!\top}\Deff\nunit/\taurelax}$, with
+  $\Deff=\mu\Kmat$ the \emph{effective diffusivity}
+  (Section~\ref{sec:effective-diffusivity} -- the same $\Kmat\driver/U$
+  construction the code's own \code{"DiffusionMatrices"} field
+  description already names, and the same $q/U$ bookkeeping used
+  throughout Hopkins~\cite{Hopkins2017diffusion}), derived from the
   conservation and Cattaneo-relaxation equations alone, with no assumption
-  on the shape of $\Kmat$. This confirms the premise of the request that
-  motivated this document: a mode-independent derivation is possible. The
-  non-negotiable piece is $\mu=\partial\driver/\partial U_0$, which is
-  \emph{not} a universal $\rho^{-1}$ -- it is $1$ for
+  on the shape of $\Kmat$ or on which \code{diffusion_mode} produced it.
+  Proposition~\ref{prop:telegrapher} (Section~\ref{sec:telegrapher})
+  independently re-derives the same $\chyp(\nunit)$ from a dispersion
+  relation of the equivalent second-order-in-time PDE
+  $\taurelax\partial_t^2U_0+\partial_tU_0=\div(\Deff\grad U_0)$, a
+  completely different method arriving at the same result. This confirms
+  the premise of the request that motivated this document: a
+  mode-independent derivation is possible. The non-negotiable piece is
+  $\mu=\partial\driver/\partial U_0$, which is \emph{not} a universal
+  $\rho^{-1}$ -- it is $1$ for
   \code{isotropic_constant} and $1/\rho$ otherwise, fixed by
   \code{diffusion_mode}, not by the choice of relaxation-time model. An
   earlier draft of this document got this wrong (see item 2).
