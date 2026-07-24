@@ -81,7 +81,7 @@ struct xpart {
   struct star_formation_xpart_data sf_data;
 
   /*! Additional data used by the feedback */
-  struct feedback_part_data feedback_data;
+  struct feedback_xpart_data feedback_data;
 
   /*! Additional data used by the MHD scheme */
   struct mhd_xpart_data mhd_data;
@@ -137,6 +137,9 @@ struct part {
   float drho_dt;
 
   /*! Gradient of velocity, calculated using normalised kernel. */
+  float dr_norm_kernel[3][3];
+
+  /*! Gradient of velocity, calculated using normalised kernel. */
   float dv_norm_kernel[3][3];
 
   /*! Gradient of internal energy, calculated using normalised kernel. */
@@ -153,6 +156,12 @@ struct part {
 
   /*! Gradient of geometric moment m_0. */
   float grad_m0[3];
+
+  struct {
+    /*! Thermal diffusion coefficient controlling diffusion for 
+    thermal feedback particles */
+    float omega;
+  } diffusion;
 
   /* Store density/force specific stuff. */
   union {
@@ -269,6 +278,9 @@ struct part {
 
   /*! Cooling information */
   struct cooling_part_data cooling_data;
+
+  /* Additional data used by the feedback */
+  struct feedback_part_data feedback_data;
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
