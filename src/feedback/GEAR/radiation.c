@@ -221,6 +221,30 @@ radiation_get_part_rate_to_fully_ionize(
 }
 
 /**
+ * Cache this star's mean excess photon energy above the 13.6 eV HI
+ * ionization threshold, needed to build Grackle's RT_heating_rate for
+ * GEARFeedback:HII_couple_ionization_rate. Runs unconditionally every HII
+ * rebuild pass, regardless of HII_adaptive_rebuild_cadence -- unlike
+ * radiation_compute_and_cache_HII_rebuild_interval()'s adaptive-timing
+ * estimate, this caching is unrelated to rebuild cadence.
+ *
+ * @param sp The star.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param us Unit system.
+ * @param phys_const Physical constants.
+ */
+void radiation_cache_mean_excess_photon_energy_HI(
+    struct spart *sp, const struct cooling_function_data *cooling,
+    const struct unit_system *us, const struct phys_const *phys_const) {
+
+  sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+      cooling->HII_couple_ionization_rate
+          ? (float)radiation_get_individual_star_mean_excess_photon_energy_HI(
+                sp->mass, us, phys_const)
+          : 0.f;
+}
+
+/**
  * Compute and cache this star's next adaptive HII rebuild deadline
  * (GEARFeedback:HII_adaptive_rebuild_cadence). Called once per rebuild
  * pass, before any particle this pass is ionized, so every consumer
@@ -265,15 +289,6 @@ void radiation_compute_and_cache_HII_rebuild_interval(
   const double m_p = phys_const->const_proton_mass;
   const double k_B = phys_const->const_boltzmann_k;
   const double floor_interval = feedback_props->HII_rebuild_floor_Myr;
-
-  /* Only needed for GEARFeedback:HII_couple_ionization_rate's
-     RT_heating_rate derivation; skip the series expansion otherwise.
-     Cached once per rebuild pass rather than per tagged gas particle. */
-  sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-      cooling->HII_couple_ionization_rate
-          ? (float)radiation_get_individual_star_mean_excess_photon_energy_HI(
-                sp->mass, us, phys_const)
-          : 0.f;
 
   /* Temperature floor and case-B recombination coefficient: depend only
      on Z (no single gas particle at this star-level call site), shared

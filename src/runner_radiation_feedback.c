@@ -282,6 +282,14 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     compute_time(si, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                  &ti_begin_star, ti_current, time_base, time);
 
+    /* Unlike the adaptive-cadence cache below, this must run every pass
+       regardless of HII_adaptive_rebuild_cadence -- it feeds
+       RT_heating_rate for every tagged particle this pass, not just the
+       adaptive-timing estimate. */
+    if (cooling->HII_couple_ionization_rate) {
+      feedback_cache_mean_excess_photon_energy_HI(si, cooling, us, phys_const);
+    }
+
     while (1) {
       int count_found = 0;
 

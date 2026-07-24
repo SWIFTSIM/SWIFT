@@ -58,6 +58,10 @@ double radiation_get_case_b_recombination_coefficient_cgs(const double T);
 
 double radiation_get_T_collisional_K(const double Z);
 
+void radiation_cache_mean_excess_photon_energy_HI(
+    struct spart *sp, const struct cooling_function_data *cooling,
+    const struct unit_system *us, const struct phys_const *phys_const);
+
 void radiation_compute_and_cache_HII_rebuild_interval(
     struct spart *sp, const struct feedback_props *feedback_props,
     const struct phys_const *phys_const, const struct unit_system *us,

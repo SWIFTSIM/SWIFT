@@ -79,6 +79,10 @@ void feedback_iact_HII_ionization(
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
     const double time);
 
+void feedback_cache_mean_excess_photon_energy_HI(
+    struct spart *sp, const struct cooling_function_data *cooling,
+    const struct unit_system *us, const struct phys_const *phys_const);
+
 void feedback_compute_and_cache_HII_rebuild_interval(
     struct spart *sp, const struct feedback_props *feedback_props,
     const struct phys_const *phys_const, const struct unit_system *us,
