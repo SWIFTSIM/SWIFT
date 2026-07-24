@@ -24,6 +24,7 @@
 #include "cosmology.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
+#include "minmax.h"
 #include "part.h"
 #include "symmetric_matrix_diagonalisation.h"
 
@@ -261,7 +262,7 @@ chemistry_get_matrix_max_eigenvalue(const double K[3][3]) {
   double eigenvalues[3] = {0.0};
   double ev0[3], ev1[3], ev2[3];
   sym_matrix_diagonalise_3x3_d(K, eigenvalues, ev0, ev1, ev2);
-  return fmax(eigenvalues[0], fmax(eigenvalues[1], eigenvalues[2]));
+  return max3(eigenvalues[0], eigenvalues[1], eigenvalues[2]);
 }
 
 /**

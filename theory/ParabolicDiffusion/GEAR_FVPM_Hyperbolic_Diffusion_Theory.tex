@@ -208,10 +208,33 @@ as \emph{locally frozen} coefficients for the purpose of constructing the
 flux Jacobian: they are evaluated at the particle/interface, not
 differentiated with respect to $\Uvec$. This is the same frozen-coefficient
 approximation used, without comment, by every scheme in this code family
-(GIZMO's own MFV/MFM sound-speed estimate is exactly analogous). Under this
-approximation $\driver = U_0/\rho$ is linear in $U_0$ (both for
-$\driver=\rhoZ=U_0$ trivially, and for $\driver=\Zfrac=U_0/\rho$ with
-$\rho$ frozen).
+(GIZMO's own MFV/MFM sound-speed estimate is exactly analogous).
+
+\textbf{The driver $\driver$ used in the hyperbolic flux law is not
+uniformly $U_0/\rho$.} \code{chemistry_compute_flux}
+(\code{hyperbolic/chemistry_flux.h:159--172}) and
+\code{chemistry_riemann_compute_hyperbolic_blending_factor}
+(\code{chemistry_riemann_utils.h}) both branch on \code{diffusion_mode}:
+\begin{equation}
+  \driver =
+  \begin{cases}
+    U_0 & \text{\code{isotropic_constant}} \\
+    U_0/\rho & \text{otherwise (\code{isotropic_smagorinsky},
+    \code{anisotropic_gradient})}
+  \end{cases}
+\end{equation}
+Define $\mu\equiv\partial\driver/\partial U_0\in\{1,1/\rho\}$
+accordingly ($\mu$ is exactly the $\driver^\star/U^\star$ ratio already
+computed by \code{chemistry_riemann_compute_hyperbolic_blending_factor}
+for a different purpose). Under the frozen-coefficient approximation,
+$\driver=\mu U_0$ is linear in $U_0$ for either value of $\mu$, which is
+all the Jacobian derivation below actually needs -- but $\mu$ itself is
+\emph{not} a universal $1/\rho$, and an earlier version of this document
+incorrectly assumed it was, missing the \code{isotropic_constant} case.
+That error propagated into an initial fix of
+\code{chemistry_get_physical_hyperbolic_soundspeed} that added an
+unconditional $\rho^{-1}$; the corrected version (Section~\ref{sec:confrontation})
+applies $\mu$, not $1/\rho$, per \code{diffusion_mode}.
 
 \subsection{The Flux Tensor}
 Directly from the code (\code{chemistry_get_hyperbolic_flux},
@@ -231,7 +254,8 @@ implementation, not an independent modelling choice: row 0 of
 For a Riemann problem at an interface with unit normal $\nunit$, the
 relevant $4\times4$ matrix is the projected flux Jacobian
 $\mathbf A(\nunit) \equiv \partial(\Gflux{}(\Uvec)\cdot\nunit)/\partial\Uvec$.
-Writing $\mathbf v \equiv \Kmat\nunit/(\rho\taurelax)$ (a 3-vector), direct
+Writing $\mathbf v \equiv \mu\Kmat\nunit/\taurelax$ (a 3-vector, with $\mu$
+as defined in Section~\ref{sec:quasilinear} above), direct
 differentiation of the flux tensor above gives, for any $\mathbf x =
 (x_0,x_1,x_2,x_3)$,
 \begin{equation}
@@ -248,14 +272,16 @@ differentiation of the flux tensor above gives, for any $\mathbf x =
 \label{prop:main}
 For any symmetric positive semi-definite $3\times3$ diffusion tensor
 $\Kmat$ (no assumption on its shape -- isotropic, Smagorinsky-scaled, or
-fully anisotropic), any relaxation-time model, and any unit interface
-normal $\nunit$, the projected flux Jacobian $\mathbf A(\nunit)$
+fully anisotropic), any relaxation-time model, any unit interface
+normal $\nunit$, and $\mu=\partial\driver/\partial U_0$ as defined in
+Section~\ref{sec:quasilinear} ($\mu=1$ for \code{isotropic_constant},
+$\mu=1/\rho$ otherwise), the projected flux Jacobian $\mathbf A(\nunit)$
 of Eq.~\eqref{eq:jacobian_action} has eigenvalues
 \begin{equation}
   \label{eq:main_result}
   \lambda \in \left\{ \; +\chyp(\nunit),\; -\chyp(\nunit),\; 0,\; 0 \; \right\} ,
   \qquad
-  \boxed{\;\chyp(\nunit) = \sqrt{\dfrac{\nunit^{\!\top}\Kmat\,\nunit}{\rho\,\taurelax}}\;} .
+  \boxed{\;\chyp(\nunit) = \sqrt{\dfrac{\mu\,\nunit^{\!\top}\Kmat\,\nunit}{\taurelax}}\;} .
 \end{equation}
 \end{proposition}
 
@@ -268,9 +294,9 @@ x=\mathbf 0$, not a valid eigenvector). Substituting into the first block,
 $\lambda x_0 = \nunit\cdot(x_1,x_2,x_3) = (\nunit\cdot\mathbf v/\lambda)\,x_0$,
 and since $x_0\neq0$,
 \begin{equation}
-  \lambda^2 = \nunit\cdot\mathbf v = \frac{\nunit\cdot(\Kmat\nunit)}{\rho\taurelax} = \frac{\nunit^{\!\top}\Kmat\nunit}{\rho\taurelax} \; \geq 0
+  \lambda^2 = \nunit\cdot\mathbf v = \frac{\mu\,\nunit\cdot(\Kmat\nunit)}{\taurelax} = \frac{\mu\,\nunit^{\!\top}\Kmat\nunit}{\taurelax} \; \geq 0
 \end{equation}
-(non-negative because $\Kmat$ is PSD), giving the two roots
+(non-negative because $\Kmat$ is PSD and $\mu>0$), giving the two roots
 $\lambda=\pm\chyp(\nunit)$ of Eq.~\eqref{eq:main_result}. The remaining two
 eigenvalues are $\lambda=0$: any $\mathbf x=(0,x_1,x_2,x_3)$ with
 $\nunit\cdot(x_1,x_2,x_3)=0$ (a two-dimensional subspace, the plane
@@ -306,18 +332,27 @@ If $\Kmat=\kappaP\mathbf I$ (both \code{isotropic_constant} and
 \code{isotropic_smagorinsky} modes), then $\nunit^{\!\top}\Kmat\nunit =
 \kappaP$ for \emph{every} unit vector $\nunit$, and
 \begin{equation}
-  \chyp = \sqrt{\frac{\kappaP}{\rho\,\taurelax}} ,
+  \chyp = \sqrt{\frac{\mu\,\kappaP}{\taurelax}} ,
+  \qquad
+  \mu = \begin{cases} 1 & \text{\code{isotropic_constant}} \\
+                       1/\rho & \text{\code{isotropic_smagorinsky}} \end{cases}
 \end{equation}
-independent of direction and \emph{independent of whether $\kappaP$ came
-from the constant or the Smagorinsky closure.}
+independent of direction in either case, but \emph{not} independent of
+which closure $\kappaP$ came from: the two modes differ by exactly the
+factor $\mu$.
 \end{corollary}
-This is the formal statement of what the user's own by-hand derivation
-anticipated: the factor of $\rho^{-1}$ is required by the general
-Proposition, not by any assumption on the shape of $\Kmat$ -- it appears
-identically whether $\Kmat$ is isotropic-constant or isotropic-Smagorinsky.
-It is a consequence of $\driver$ being related to the \emph{conserved}
-state $U_0=\rhoZ$ by $\driver=U_0/\rho$, not of how $\kappaP$ itself was
-computed.
+Direction-independence (the shape of $\Kmat$ not mattering) is universal,
+as Proposition~\ref{prop:main} guarantees for any isotropic $\Kmat$
+regardless of $\mu$. The $\rho^{-1}$ factor, however, is \emph{not}
+universal in the way an earlier version of this document claimed: it is
+tied to $\mu$, which is fixed by \code{diffusion_mode} --
+\code{isotropic_constant}'s driver is $\driver=U_0$ (no $\rho$ conversion:
+the state vector's own conserved variable already equals the flux law's
+driver), while \code{isotropic_smagorinsky}'s is $\driver=U_0/\rho$ (a
+genuine intensive-vs-conserved conversion). Both are legitimate,
+self-consistent choices already present elsewhere in the code
+(\code{chemistry_compute_flux}, \code{chemistry_riemann_compute_hyperbolic_blending_factor}) --
+neither is "the" universal case.
 
 \subsection{Corollary: The Frobenius Norm Is a (Non-Tight) Upper Bound}
 \begin{corollary}
@@ -381,7 +416,7 @@ overestimate, just not an exact one. Given Corollary~\ref{cor:frobenius}
 already bounds how loose that overestimate can be
 ($\leq\sqrt3\,\lambda_1$, only reached when $\Kmat$ is isotropic -- in
 which case $\lambda_1$ \emph{is} exact for every $\nunit$ regardless), this
-is a good trade: it fixes both open gaps (the missing $\rho^{-1}$ and the
+is a good trade: it fixes both open gaps (the missing $\mu$ factor and the
 Frobenius looseness) with a local, per-particle change, not an
 architectural one.
 \end{remark}
@@ -576,15 +611,22 @@ comparison against Eq.~\eqref{eq:main_result}. The \code{turbulent_mode}
 branch is Eq.~\eqref{eq:code_turbulent_new} of
 Section~\ref{sec:tau0-physical} (already the current, $\kappaC$-coupled
 form); the \code{constant_mode} branch, following
-Remark~\ref{rem:lambda-max-not-n}, is now:
+Remark~\ref{rem:lambda-max-not-n} and the $\mu$ correction of
+Section~\ref{sec:quasilinear}, is now:
 \begin{align}
   \text{\code{constant_mode} branch (implemented):} \qquad
-  \chyp^{\rm code} &= \sqrt{\frac{\lambda_1(\Kmat)}{\rho\,\taurelax}} , \label{eq:code_constant}
+  \chyp^{\rm code} &= \sqrt{\frac{\mu\,\lambda_1(\Kmat)}{\taurelax}} ,
+  \qquad \mu=\begin{cases}1 & \code{isotropic\_constant}\\1/\rho & \text{otherwise}\end{cases}
+  \label{eq:code_constant}
 \end{align}
 which replaces the pre-fix form
 $\chyp^{\rm code,\,old}=\sqrt{\norm{\Kmat}_F/\taurelax}$ that this
-document originally found missing $\rho^{-1}$ and using the
-non-tight Frobenius norm.
+document originally found using the non-tight Frobenius norm and (for
+\code{isotropic_smagorinsky}/\code{anisotropic_gradient} only) missing
+$\mu=\rho^{-1}$. \textbf{An intermediate version of this fix applied
+$\rho^{-1}$ unconditionally, which was itself wrong for
+\code{isotropic_constant} (where $\mu=1$) -- caught and corrected before
+being left in source.}
 
 \begin{table}[h]
 \centering
@@ -593,10 +635,10 @@ non-tight Frobenius norm.
 \toprule
 \code{diffusion\_mode} $\times$ \code{relaxation\_time\_mode} & Code formula vs.\ Prop.~\ref{prop:main} & Verdict \\
 \midrule
-\code{isotropic\_constant} + \code{constant\_mode} & Eq.~\eqref{eq:code_constant}: $\lambda_1=\kappaP$ for isotropic $\Kmat$, $\equiv\sqrt{\kappaP/(\rho\taurelax)}$ & \textbf{consistent (exact)} \\
-\code{isotropic\_smagorinsky} + \code{constant\_mode} & same as above, $\kappaP$ now carries $\rho$ & \textbf{consistent (exact)} \\
-\code{anisotropic\_gradient} + \code{constant\_mode} & Eq.~\eqref{eq:code_constant} uses $\lambda_1(\Kmat)$, a tight bound on $\nunit^{\!\top}\Kmat\nunit$ (Cor.~\ref{cor:frobenius}) & \textbf{consistent (safe bound, exact for the worst-case $\nunit$)} \\
-\code{isotropic\_smagorinsky} + \code{turbulent\_mode} & Eq.~\eqref{eq:code_turbulent_new} $\equiv$ Cor.~\ref{cor:isotropic} exactly & \textbf{consistent} \\
+\code{isotropic\_constant} + \code{constant\_mode} & Eq.~\eqref{eq:code_constant} with $\mu=1$: $\lambda_1=\kappaP$ for isotropic $\Kmat$, $\equiv\sqrt{\kappaP/\taurelax}$ & \textbf{consistent (exact)} \\
+\code{isotropic\_smagorinsky} + \code{constant\_mode} & Eq.~\eqref{eq:code_constant} with $\mu=1/\rho$, $\kappaP$ carries $\rho$ & \textbf{consistent (exact)} \\
+\code{anisotropic\_gradient} + \code{constant\_mode} & Eq.~\eqref{eq:code_constant} with $\mu=1/\rho$, uses $\lambda_1(\Kmat)$, a tight bound on $\nunit^{\!\top}\Kmat\nunit$ (Cor.~\ref{cor:frobenius}) & \textbf{consistent (safe bound, exact for the worst-case $\nunit$)} \\
+\code{isotropic\_smagorinsky} + \code{turbulent\_mode} & Eq.~\eqref{eq:code_turbulent_new} $\equiv$ Cor.~\ref{cor:isotropic} ($\mu=1/\rho$ branch) exactly & \textbf{consistent} \\
 \code{isotropic\_constant} + \code{turbulent\_mode} & Eq.~\eqref{eq:code_turbulent_new} assumes Smagorinsky $\kappaP(h,\rho,\Shear)$ & formula does not apply; silently wrong \\
 \code{anisotropic\_gradient} + \code{turbulent\_mode} & Eq.~\eqref{eq:code_turbulent_new} assumes isotropic $\Kmat$ & formula does not apply; silently wrong \\
 \bottomrule
@@ -615,12 +657,13 @@ Smagorinsky-specific closed form.}
 \begin{itemize}
 \item \textbf{The \code{constant_mode} branch is now consistent for every
   diffusion mode} (Remark~\ref{rem:lambda-max-not-n}): using
-  $\lambda_1(\Kmat)$ with the $\rho^{-1}$ factor fixes the two gaps this
-  document originally found there in one, purely per-particle change --
-  no interface normal needed. This was the more consequential of the two
-  original gaps ($\rho$ varies by orders of magnitude across a
-  cosmological simulation; the superseded $\sqrt3$ Frobenius gap was only
-  ever a bounded, $O(1)$ constant), and is now resolved. The
+  $\lambda_1(\Kmat)$ with the correct, \code{diffusion\_mode}-dependent
+  $\mu$ (not a universal $\rho^{-1}$) fixes the two gaps this document
+  originally found there in one, purely per-particle change -- no
+  interface normal needed. The $\mu$ gap was the more consequential of
+  the two ($\rho$ varies by orders of magnitude across a cosmological
+  simulation, when $\mu=1/\rho$ applies; the superseded $\sqrt3$ Frobenius
+  gap was only ever a bounded, $O(1)$ constant), and is now resolved. The
   currently-tested example
   (\code{examples/ChemistryTests/MetalDiffusionOnePeak/params.yml}:
   \code{isotropic_constant} + \code{Constant} tau) sits in the first row
@@ -655,15 +698,18 @@ to
   = \frac{-\Lambda^2(U_R-U_L)}{2\Lambda} = -\frac{\Lambda}{2}(U_R-U_L) ,
 \end{equation}
 i.e.\ \emph{linear} in the wave-speed estimate $\Lambda$. Any factor by
-which $\chyp$ is overestimated (the missing $\rho^{-1}$ where relevant, the
-$\sqrt3$ Frobenius gap, or both) passes through directly into extra
+which $\chyp$ is overestimated (a missing/incorrect $\mu$ where relevant,
+the $\sqrt3$ Frobenius gap, or both) passes through directly into extra
 numerical diffusion in the large-$\taurelax$ ($\alpha\approx1$)
 regime -- on top of, and independent from, the missing Hopkins-2017-type
 limiter on $F_{\rm diss}$ already identified in that regime. Tightening
 $\chyp$ (using $\nunit^{\!\top}\Kmat\nunit$ rather than $\norm{\Kmat}_F$,
-and adding the missing $\rho^{-1}$) is therefore a second, independent
-lever on the ``too diffusive at large $\taurelax$'' symptom, complementary
-to porting the Hopkins-2017 limiter itself.
+and applying $\mu$ correctly) is therefore a second, independent lever on
+the ``too diffusive at large $\taurelax$'' symptom, complementary to
+porting the Hopkins-2017 limiter itself. This is now resolved for
+\code{constant_mode} (items 2--3 of Section~\ref{sec:summary}) but still
+open for \code{turbulent_mode} paired with non-Smagorinsky $\Kmat$
+(item 4).
 
 \section{Summary of Findings}
 \label{sec:summary}
@@ -674,17 +720,24 @@ for a deliberate decision, not applied automatically.
 
 \begin{enumerate}
 \item \textbf{Proposition~\ref{prop:main} is the general result}: $\chyp(\nunit)
-  = \sqrt{\nunit^{\!\top}\Kmat\nunit/(\rho\taurelax)}$, derived from the
+  = \sqrt{\mu\,\nunit^{\!\top}\Kmat\nunit/\taurelax}$, derived from the
   conservation and Cattaneo-relaxation equations alone, with no assumption
   on the shape of $\Kmat$. This confirms the premise of the request that
-  motivated this document: a mode-independent derivation is possible, and
-  it is the $\rho^{-1}$ factor, not the choice of relaxation-time model,
-  that is the universal, non-negotiable piece.
-\item \textbf{Implemented.} The \code{constant_mode} branch of
-  \code{chemistry_get_physical_hyperbolic_soundspeed} was missing the
-  $\rho^{-1}$ factor, for every \code{diffusion_mode} -- the higher-priority
-  of the two original gaps (unbounded in magnitude, unlike the next item).
-  Now fixed: it divides by $\rho$ (\code{hydro\_get\_physical\_density}).
+  motivated this document: a mode-independent derivation is possible. The
+  non-negotiable piece is $\mu=\partial\driver/\partial U_0$, which is
+  \emph{not} a universal $\rho^{-1}$ -- it is $1$ for
+  \code{isotropic_constant} and $1/\rho$ otherwise, fixed by
+  \code{diffusion_mode}, not by the choice of relaxation-time model. An
+  earlier draft of this document got this wrong (see item 2).
+\item \textbf{Implemented, corrected during review.} The
+  \code{constant_mode} branch of
+  \code{chemistry_get_physical_hyperbolic_soundspeed} was missing $\mu$
+  entirely. A first fix added an unconditional $\rho^{-1}$ -- itself wrong
+  for \code{isotropic_constant} ($\mu=1$ there), caught before being left
+  in source. The corrected version applies $\mu$
+  per-\code{diffusion\_mode}, matching how \code{chemistry_compute_flux}
+  and \code{chemistry_riemann_compute_hyperbolic_blending_factor} already
+  define the driver $\driver$ elsewhere in this module.
 \item \textbf{Implemented, via Remark~\ref{rem:lambda-max-not-n}, not by
   threading $\nunit$.} The \code{constant_mode} branch used $\norm{\Kmat}_F$
   in place of the direction-projected $\nunit^{\!\top}\Kmat\nunit$, an
@@ -695,18 +748,19 @@ for a deliberate decision, not applied automatically.
   turn a once-per-particle computation into a per-neighbour one), it now
   uses $\lambda_1(\Kmat)$, the largest eigenvalue of the particle's own
   $\Kmat$ (new helper \code{chemistry\_get\_matrix\_max\_eigenvalue}, built
-  on the existing \code{sym\_matrix\_diagonalise\_3x3\_d}) -- a strictly
-  tighter, still purely particle-local bound: exact for isotropic $\Kmat$
-  (every reachable \code{diffusion\_mode} paired with \code{constant\_mode}
-  is now exact, not merely bounded), and a tighter-than-Frobenius safe
-  overestimate for anisotropic $\Kmat$.
+  on the existing \code{sym\_matrix\_diagonalise\_3x3\_d}, and SWIFT's own
+  \code{max3} from \code{minmax.h} rather than a hand-rolled nested
+  \code{fmax}) -- a strictly tighter, still purely particle-local bound:
+  exact for isotropic $\Kmat$ (every reachable \code{diffusion\_mode}
+  paired with \code{constant\_mode} is now exact, not merely bounded), and
+  a tighter-than-Frobenius safe overestimate for anisotropic $\Kmat$.
 \item \emph{(Not yet implemented.)} The \code{turbulent_mode} branch's
   closed form (Eq.~\eqref{eq:code_turbulent_new}) is still only valid for
   \code{isotropic_smagorinsky} $\Kmat$; nothing in the code prevents
   pairing it with \code{anisotropic_gradient} or \code{isotropic_constant},
   where it would return a value not licensed by Proposition~\ref{prop:main}.
   Fixing this does not need $\nunit$ either -- the same
-  $\lambda_1(\Kmat)/(\rho\taurelax)$ approach as item 3 applies -- it is a
+  $\mu\lambda_1(\Kmat)/\taurelax$ approach as items 2--3 applies -- it is a
   smaller, still-open piece of work, not a different kind of fix.
 \item Findings 2--3 (now fixed) used to inflate the HLL
   numerical-dissipation term linearly (Section~\ref{sec:hll-consequence});
@@ -730,8 +784,17 @@ for a deliberate decision, not applied automatically.
   (Section~\ref{sec:no-q-over-dq}): it would double-count physics that
   already emerges from solving the coupled system, and it would break the
   frozen-coefficient assumption underpinning Proposition~\ref{prop:main}.
-\item All three source changes (items 2, 3, 6) were verified by rebuilding
-  \code{src/chemistry.o} against the tree's configured
+\item \textbf{Implemented (unrelated to $\chyp$, raised separately during
+  review).} Snapshots for \code{CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION}
+  wrote the relaxation time and (in debug builds only) the \emph{norm} of
+  the diffusion flux, but never the flux vector $\Fdiff$ itself -- the
+  code had a literal \code{// TODO: Output the fluxes} at the relevant
+  spot in \code{chemistry_io.h}. Added an unconditional (not
+  debug-gated) \code{"DiffusionFluxes"} output field writing all three
+  components per element.
+\item All source changes above were verified by rebuilding
+  \code{src/chemistry.o} and \code{src/single\_io.o} (which
+  \code{\#include}s \code{chemistry\_io.h}) against the tree's configured
   \code{GEAR-FVPM-HYPERBOLIC-DIFFUSION\_10} variant with
   \code{-Wall~-Wextra~-Werror}: clean, no warnings.
 \end{enumerate}

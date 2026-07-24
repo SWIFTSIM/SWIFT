@@ -90,6 +90,19 @@ INLINE static void convert_chemistry_diffusion_matrix(const struct engine *e,
   }
 }
 
+#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+INLINE static void convert_gas_diffusion_fluxes(const struct engine *e,
+                                                 const struct part *p,
+                                                 const struct xpart *xp,
+                                                 double *ret) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    ret[3 * i + 0] = p->chemistry_data.diffusion_flux[i][0];
+    ret[3 * i + 1] = p->chemistry_data.diffusion_flux[i][1];
+    ret[3 * i + 2] = p->chemistry_data.diffusion_flux[i][2];
+  }
+}
+#endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
+
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
 INLINE static void convert_gas_feedback_metals(const struct engine *e,
                                                const struct part *p,
@@ -195,7 +208,14 @@ INLINE static int chemistry_write_particles(const struct part *parts,
 #endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
 
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-  // TODO: Output the fluxes
+  list[num] = io_make_physical_output_field_convert_part(
+      "DiffusionFluxes", DOUBLE, 3 * GEAR_CHEMISTRY_ELEMENT_COUNT,
+      UNIT_CONV_MASS_PER_UNIT_TIME_PER_UNIT_AREA, 0.f, parts, xparts,
+      /*can convert to comoving=*/0, convert_gas_diffusion_fluxes,
+      "Physical hyperbolic diffusion flux F of each element, stored as "
+      "[F_0x, F_0y, F_0z, F_1x, ...].");
+  num += 1;
+
   list[num] = io_make_physical_output_field(
       "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,
       chemistry_data.tau, /*can convert to comoving=*/0,

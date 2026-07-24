@@ -43,14 +43,20 @@ chemistry_get_physical_hyperbolic_soundspeed(
     double K[3][3];
     chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
     const double lambda_max_K = chemistry_get_matrix_max_eigenvalue(K);
-    const double rho = hydro_get_physical_density(p, cosmo);
 
-    /* c_hyp = sqrt(lambda_max(K)/(rho*tau)): lambda_max(K) is the tight
-       bound on n^T K n over all interface directions n (exact for
-       isotropic K), and the rho division follows from the state vector
-       being U=(rho*Z,F) while the flux law is written in terms of
-       Z=U_0/rho -- see the theory document, Proposition 1. */
-    return sqrt(lambda_max_K / (rho * p->chemistry_data.tau));
+    /* c_hyp = sqrt(lambda_max(K)/(rho_eff*tau)): lambda_max(K) is the
+       tight bound on n^T K n over all interface directions n (exact for
+       isotropic K). rho_eff is 1 for isotropic_constant, where the
+       driver q used in the flux law is q=U=rho*Z directly (no rho
+       conversion -- see chemistry_compute_flux/
+       chemistry_riemann_compute_hyperbolic_blending_factor, both branch
+       on this same diffusion_mode check), and rho otherwise, where
+       q=Z=U_0/rho. See the theory document, Proposition 1, for the
+       derivation and why the two diffusion_modes differ here. */
+    const double rho_eff = (chem_data->diffusion_mode == isotropic_constant)
+                                ? 1.0
+                                : hydro_get_physical_density(p, cosmo);
+    return sqrt(lambda_max_K / (rho_eff * p->chemistry_data.tau));
   } else {
     /* Note that 1/|S| ~ time --> we define this as our turbulent relaxation
        time, coupled to C_diff -- see chemistry_compute_physical_tau() for
