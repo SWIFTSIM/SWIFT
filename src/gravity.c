@@ -516,6 +516,9 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
         const struct gpart *gpj = &s->gparts[j];
 
+        /* Inhibited particles are not present in the tree/mesh force. */
+        if (gpj->time_bin == time_bin_inhibited) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
         if (gpj->time_bin == time_bin_not_created) {
           error("Found an extra particle in the gravity check.");
