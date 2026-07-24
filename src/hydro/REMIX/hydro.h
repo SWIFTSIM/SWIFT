@@ -688,14 +688,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Balsara switch using normalised kernel gradients (Sandnes+2025 Eqn. 34 with
    * velocity gradients calculated by Eqn. 35) */
   /*Add scale factor here for the Balsara switch*/
-  float a_factor_balsara_sphenix = cosmo -> a_factor_Balsara_eps; /* a^{(1 - 3*gamma) / 2} */
-  float a_factor_remix_balsara = a_factor_balsara_sphenix * cosmo -> a * cosmo -> a; /* a^{(5 - 3*gamma) / 2} */
-  float hubble_flow = cosmo -> a_dot * cosmo -> a_inv;
+  const float a_factor_balsara_sphenix = cosmo -> a_factor_Balsara_eps; /* a^{(1 - 3*gamma) / 2} */
+  const float a_factor_remix_balsara = a_factor_balsara_sphenix * cosmo -> a * cosmo -> a; /* a^{(5 - 3*gamma) / 2} */
+  const float hubble_flow =  cosmo -> a_dot / cosmo -> a; 
+  const float hubble_a2 = hubble_flow * cosmo -> a * cosmo -> a;
   float balsara;
   if (div_v == 0.f) {
     balsara = 0.f;
   } else {
-    float abs_div_v = fabsf(3.f * hubble_flow + div_v);
+    float abs_div_v = fabsf(3.f * hubble_a2 + div_v);
     balsara = abs_div_v /
               (abs_div_v + mod_curl_v + 0.0001f * soundspeed * a_factor_remix_balsara / p->h);
   }
@@ -825,7 +826,14 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
   const float floor_u = gas_internal_energy_from_entropy(p->rho_evol, floor_A, p->mat_id);
+
+  /* Check against absolute minimum */
+  const float min_u =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  /* First check against entropy floor, then the min u of the hydro props! (Reversed the order, to be consistent with sphenix)*/
   p->u = max(p->u, floor_u);
+  p->u = max(p->u, min_u);
 
   /* Compute the new pressure */
   const float pressure =
@@ -843,7 +851,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Change diffusion.omega based on the current value (this is added for handling SNe particles in thermal feedback)*/
  const float tau_inverse = p->force.v_sig / (kernel_gamma * p->h);
  const float omega_dt = (const_remix_difn_omega_u - p->diffusion.omega) * tau_inverse;
- const float increase_factor = 1.f / 128.f; /*Controls how fast or slow we want to increase omega*/
+ const float increase_factor = 1.f / 64.f; /*Controls how fast or slow we want to increase omega*/
  p->diffusion.omega = min(p->diffusion.omega + increase_factor * omega_dt * dt_therm, const_remix_difn_omega_u);
 
 }
@@ -951,6 +959,15 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   const float u_factor = 1.f / cosmo->a_factor_internal_energy;
   p->u *= u_factor;
   xp->u_full = p->u;
+
+  /* Apply the minimal energy limit */
+  const float min_comoving_energy =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  if (xp->u_full < min_comoving_energy) {
+    xp->u_full = min_comoving_energy;
+    p->u = min_comoving_energy;
+    p->u_dt = 0.f;
+  }
 
   /* Compute the pressure */
   const float pressure =

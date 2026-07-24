@@ -238,6 +238,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get r. */
   const float r = sqrtf(r2);
+  const float hubble_flow_times_a2 = a * a * H;
 
   /* Recover some data */
   const float mi = pi->mass;
@@ -311,7 +312,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                        dx[1] * G_mean[1] +
                        dx[2] * G_mean[2];
 
-  const float H_a2 = H * a * a;
   pi->u_dt += H_a2 * mj * Q_i_term * drdotG;
   pj->u_dt += H_a2 * mi * Q_j_term * drdotG;
 
@@ -341,22 +341,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
   const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
                             G_mean[2] * G_mean[2]);
-  const float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
-                                 (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
-                                 (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
+  const float v_sig_norm = sqrtf((hubble_flow_times_a2 * - dx[0]) * (hubble_flow_times_a2 * - dx[0]) + (pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+                                (hubble_flow_times_a2 * - dx[1]) * (hubble_flow_times_a2 * - dx[1]) + (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
+                                (hubble_flow_times_a2 * - dx[2]) * (hubble_flow_times_a2 * - dx[2]) + (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
   const float alpha_norm = const_remix_norm_alpha;
-
-  /* Add cosmology terms */
-  float drho_dt_norm_and_difn_i = alpha_norm  *
+  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
                                   pi->force.vac_switch *
-                                  (pi->m0 * rhoi - rhoi) * (v_sig_norm + hubble_flow_times_a2* r) * (mj * mod_G * mean_rho_inv);
-                        
-  float drho_dt_norm_and_difn_j = alpha_norm  *
+                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
+  float drho_dt_norm_and_difn_j = alpha_norm * mi * v_sig_norm *
                                   pj->force.vac_switch *
-                                  (pj->m0 * rhoj - rhoj) * (v_sig_norm + hubble_flow_times_a2 * r) * (mi * mod_G * mean_rho_inv);
-
+                                  (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
   /* Only include diffusion for same-material particle pair */
   if (pi->mat_id == pj->mat_id) {
     /* Diffusion parameters */
@@ -423,6 +419,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get r. */
   const float r = sqrtf(r2);
+  const float hubble_flow_times_a2 = a * a * H;
 
   /* Recover some data */
   const float mj = pj->mass;
@@ -487,7 +484,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                        dx[1] * G_mean[1] +
                        dx[2] * G_mean[2];
 
-  const float hubble_flow_times_a2 = H * a * a;
   pi->u_dt += hubble_flow_times_a2 * mj * Q_i_term * drdotG;
 
   /* Density time derivative */
@@ -514,15 +510,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
                             G_mean[2] * G_mean[2]);
 
-  const float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
-                                 (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
-                                 (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
+  const float v_sig_norm = sqrtf((hubble_flow_times_a2 * - dx[0]) * (hubble_flow_times_a2 * - dx[0]) + (pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+                                 (hubble_flow_times_a2 * - dx[1]) * (hubble_flow_times_a2 * - dx[1]) + (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
+                                 (hubble_flow_times_a2 * - dx[2]) * (hubble_flow_times_a2 * - dx[2]) + (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
   const float alpha_norm = const_remix_norm_alpha;
-  float drho_dt_norm_and_difn_i = alpha_norm * 
+  float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
                                   pi->force.vac_switch *
-                                  (pi->m0 * rhoi - rhoi) * (v_sig_norm + hubble_flow_times_a2 * r) * (mj * mod_G * mean_rho_inv);
+                                  (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
 
   /* Only include diffusion for same-material particle pair */
   if (pi->mat_id == pj->mat_id) {

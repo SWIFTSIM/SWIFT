@@ -332,7 +332,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   /* Account for alpha being outside brackets in timestep code */
   const float viscosity_parameter_factor = (alpha == 0.f) ? 0.f : beta / alpha;
   *visc_signal_velocity =
-      ci + cj - 2.f * viscosity_parameter_factor * min(mu_i, mu_j);
+      ci + cj - 2.f * viscosity_parameter_factor * min(mu_i, mu_j); /* use the comoving mu */
 
   /* Signal velocity used for the artificial diffusion (Sandnes+2025 Eqns. 42
    * and 43) */
