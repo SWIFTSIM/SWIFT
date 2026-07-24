@@ -725,7 +725,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       const double gas_u_phys =
           bp->internal_energy_gas * cosmo->a_factor_internal_energy;
       const double gas_P_phys =
-          gas_pressure_from_internal_energy(gas_rho_phys, gas_u_phys);
+          gas_pressure_from_internal_energy(gas_rho_phys, gas_u_phys); /* Add , 0 for using REMIX */
 
       /* Assume primordial abundance and solar metallicity pattern
        * (Yes, that is inconsitent but makes no difference) */
@@ -745,7 +745,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       const double P_EOS = entropy_floor_gas_pressure(gas_rho_phys, bp->rho_gas,
                                                       cosmo, floor_props);
       const double u_EOS =
-          gas_internal_energy_from_pressure(gas_rho_phys, P_EOS);
+          gas_internal_energy_from_pressure(gas_rho_phys, P_EOS); /* Add , 0 for using REMIX */
       const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
 
       const float log10_u_EOS_max_cgs =
@@ -762,7 +762,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       bp->rho_subgrid_gas = rho_sub;
 
       /* And the subgrid sound-speed */
-      const float c_sub = gas_soundspeed_from_pressure(rho_sub, gas_P_phys);
+      const float c_sub = gas_soundspeed_from_pressure(rho_sub, gas_P_phys); /* Add , 0 for using REMIX */
 
       /* Also update the sound-speed to use in the angular momentum limiter */
       gas_c_phys = c_sub;

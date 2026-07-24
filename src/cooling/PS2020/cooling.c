@@ -863,7 +863,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
   const double A_floor = entropy_floor(p, cosmo, floor_props);
   const double rho_physical = hydro_get_physical_density(p, cosmo);
   const double u_floor =
-      gas_internal_energy_from_entropy(rho_physical, A_floor);
+      gas_internal_energy_from_entropy(rho_physical, A_floor); /*add , 0 for using REMIX*/
   u_final = max(u_final, u_floor);
 
   /* Expected change in energy over the next kick step
@@ -1001,7 +1001,7 @@ float cooling_get_particle_subgrid_HI_fraction(
 
   /* Limit imposed by the entropy floor */
   const double A_EOS = entropy_floor(p, cosmo, floor_props);
-  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS); /*add , 0 for using REMIX*/
   const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
 
   const float log10_u_EOS_max_cgs =
@@ -1065,7 +1065,7 @@ float cooling_get_particle_subgrid_HII_fraction(
 
   /* Limit imposed by the entropy floor */
   const double A_EOS = entropy_floor(p, cosmo, floor_props);
-  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS); /*add , 0 for using REMIX*/
   const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
 
   const float log10_u_EOS_max_cgs =
@@ -1129,7 +1129,7 @@ float cooling_get_particle_subgrid_H2_fraction(
 
   /* Limit imposed by the entropy floor */
   const double A_EOS = entropy_floor(p, cosmo, floor_props);
-  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS); /*add , 0 for using REMIX*/
   const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
 
   const float log10_u_EOS_max_cgs =
@@ -1192,7 +1192,7 @@ float cooling_get_particle_subgrid_temperature(
 
   /* Limit imposed by the entropy floor */
   const double A_EOS = entropy_floor(p, cosmo, floor_props);
-  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS); /*add , 0 for using REMIX*/
   const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
 
   const float log10_u_EOS_max_cgs =
@@ -1257,7 +1257,7 @@ float cooling_get_particle_subgrid_density(
 
   /* Limit imposed by the entropy floor */
   const double A_EOS = entropy_floor(p, cosmo, floor_props);
-  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS); /*add , 0 for using REMIX*/
   const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
 
   const float log10_u_EOS_max_cgs =
@@ -1316,7 +1316,7 @@ void cooling_set_particle_subgrid_properties(
 
   /* Limit imposed by the entropy floor */
   const double A_EOS = entropy_floor(p, cosmo, floor_props);
-  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS); /*add , 0 for using REMIX*/
   const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
 
   const float log10_u_EOS_max_cgs =
