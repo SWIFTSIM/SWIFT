@@ -68,74 +68,28 @@ validation-against-a-paper status.
     (\code{reference\_gizmo\_fire\_rt\_rate\_coupling.md}) for how
     FIRE-3 actually does this (self-consistent solve, Stromgren-value
     incident flux, self-shielding off) and why it needs an actual local
-    radiation field, not just a number handed to Grackle. \textbf{Update
-    (2026-07-20)}: confirmed Grackle also has an equally-real, separate
-    coupling point specifically for H$_2$ photodissociation
-    (\code{RT\_H2\_dissociation\_rate}, gated on
-    \code{primordial\_chemistry}\,$\in\{2,3\}$, i.e.\ this project's
-    modes 2/3) and for photoelectric heating
-    (\code{use\_isrf\_field}/\code{isrf\_habing}, a genuinely per-particle
-    field, not just the scalar \code{interstellar\_radiation\_field}) --
-    see Section~\ref{sec:fuv-isrf} for the full trace into Grackle's own
-    source. Nothing needs changing inside Grackle for either channel;
-    the entire gap is T6's local FUV estimate below.
+    radiation field, not just a number handed to Grackle. Grackle also
+    has an equally-real, separate coupling point for H$_2$
+    photodissociation and for photoelectric heating -- nothing needs
+    changing inside Grackle for either channel; the entire gap is T6's
+    local FUV estimate below.
 
   \item[$\square$] \textbf{T6} -- Variable ISRF (interstellar radiation
     field), user's design idea (2026-07-19), not yet implemented.
     Motivation: proper Grackle coupling (T5) needs an ISRF estimate, and
     the common approach (reusing the gravity tree for this) is, in the
     user's own words, ``not optimal nor ideal'' and would require new
-    tasks for a lot of engineering cost. \textbf{Proposed alternative,
-    cheaper and (in the user's assessment) ``not less correct''}: inject
-    FUV radiation onto gas particles within the source's kernel, then
-    propagate the FUV field by smoothing over gas neighbours -- possibly
-    using the analytical solution to a hyperbolic diffusion equation,
-    explicitly \emph{not} an M1-closure scheme, specifically to avoid
-    the $\text{CFL}\sim1/c$ constraint M1 would impose. Not scoped or
-    attempted. \textbf{Update (2026-07-20)}, Section~\ref{sec:fuv-isrf}:
-    photoelectric heating and H$_2$ (Lyman-Werner) dissociation are
-    \emph{not} the same photon band (Habing/PE $\sim6$--$13.6\,$eV vs.\
-    LW $11.2$--$13.6\,$eV, a hard sub-band). \textbf{Decided}: rather
-    than assume a fixed ISRF spectral shape to split one proxy in two,
-    track two explicit band luminosities per star, $L_{\rm FUV}$
-    ($6$--$11.2\,$eV) and $L_{\rm LW}$ ($11.2$--$13.6\,$eV) --
-    Section~\ref{sec:fuv-two-bands} -- summed for
-    \code{isrf\_habing}/photoelectric heating, with $L_{\rm LW}$ alone
-    feeding \code{RT\_H2\_dissociation\_rate}. \textbf{Also decided}:
-    injecting these onto kernel-neighbour gas
-    (Section~\ref{sec:fuv-propagation}) is not itself a smooth ISRF
-    (sharp kernel cutoff, resolution-dependent reach); propagation
-    should solve a \emph{screened} (Helmholtz-type) diffusion equation,
-    not a plain one -- its point-source solution is a Yukawa
-    $e^{-r/\lambda}/r$, matching real geometric-dilution-plus-dust-
-    extinction falloff, unlike plain diffusion's unscreened,
-    unphysical $1/r$. The CFL win comes from solving this
-    \emph{steady-state} each update (light-crossing time
-    $\ll$ hydro/cooling timescales), not from "diffusion" as such -- a
-    time-marched parabolic diffusion PDE has its own, potentially just
-    as restrictive, $\Delta t\lesssim\Delta x^2/D$ constraint. Still not
-    scoped: how to solve that steady equation inside SWIFT's
-    SPH+task-graph architecture without a full global linear solve
-    every step. \textbf{Update (2026-07-24)}, Section~\ref{sec:fuv-adaptive-alpha}:
-    the mixing fraction $\alpha$ (Eq.~\ref{eq:fuv-discrete-update}) is
-    now decided to be per-particle, not fixed globally -- a stricter
-    evaluation of the same stability bound already derived
-    (Eq.~\ref{eq:fuv-alpha-bound-i}), superseding the earlier
-    fixed-$\alpha$ choice, still with no new timestep constraint.
-    Also decided: the pairwise coupling between neighbours with very
-    different local opacities should use a harmonic mean
-    (Eq.~\ref{eq:fuv-harmonic-mean}, following the standard SPH
-    treatment of discontinuous thermal conductivity), and this local
-    propagation scheme composes additively with the separate
-    metagalactic/interstellar UV background (already spatially-uniform
-    and time-varying at the Grackle level, with a spatially-varying
-    version planned from the collaboration's SPHINX data) rather than
-    duplicating it. A design conversation had explored this same idea
-    externally via an RSLA/hyperbolic-telegrapher analogy and an
-    RTE-Eddington-closure derivation for the diffusion coefficient --
-    Section~\ref{sec:fuv-gemini-review} records why neither is needed
-    and why the latter is actually self-inconsistent in the pristine-gas
-    limit it was invoked for.
+    tasks for a lot of engineering cost. \textbf{Full design, decisions,
+    and open items now live entirely in the dedicated Radiation
+    Pressure \& ISRF logbook} (\code{radiation\_pressure\_isrf.tex}/
+    \code{.pdf}, this same directory) -- moved there (2026-07-24) since
+    the design had grown well beyond a single open-item entry: two
+    explicit per-star band luminosities ($L_{\rm FUV}$, $L_{\rm LW}$),
+    a screened (Yukawa) propagation equation, two competing solve
+    designs (a parabolic Jacobi-relaxation scheme and a hyperbolic
+    P1/cheap-M1 scheme on real FVPM geometry), and a decided
+    implementation order (parabolic first). Not scoped or attempted as
+    code.
 
   \item[$\square$] \textbf{T7} -- Extend \texttt{pychem}
     (\texttt{\textasciitilde/programs/pychem/}, already the source of
@@ -148,47 +102,22 @@ validation-against-a-paper status.
     fix. When it lands, delete the dead
     \code{radiation\_get\_individual\_star\_temperature}
     (Section~\ref{sec:blackbody}). \textbf{Scope widened (2026-07-20)}:
-    $L_{\rm FUV}$ and $L_{\rm LW}$ (Section~\ref{sec:fuv-two-bands}) are
-    two more band integrals of the same underlying stellar-atmosphere
+    $L_{\rm FUV}$ and $L_{\rm LW}$ (two more explicit per-star band
+    luminosities, decided in the Radiation Pressure \& ISRF logbook)
+    are two more band integrals of the same underlying stellar-atmosphere
     model this project would tabulate -- not a separate
     table-generation effort from $Q_H$/$L_{\rm bol}$, just two more
     threshold pairs on the same curve.
 
-  \item[$\square$] \textbf{T8 -- citation partially resolved
-    (2026-07-20), validation gap still open} -- The radiation-pressure
-    momentum recipe (Eq.~\ref{eq:rp-momentum-rate}--\ref{eq:rp-tauIR},
-    Section~\ref{sec:radiation-pressure}: single UV scattering plus
-    $(1+\tau_{\rm IR})$ dust-IR-trapping boost, $\kappa_{\rm IR}=10\,{\rm
-    cm^2\,g^{-1}}$ at $Z_\odot$) is not unique to one paper -- it is a
-    widely shared recipe across \citet{Hopkins2018} (FIRE-2, already
-    cited elsewhere in this logbook), \citet{Agertz2013}, and
-    \citet{Marinacci2019} (the SMUGGLE model), and the $\kappa_{\rm
-    IR}=10\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$ normalization matches a
-    commonly-quoted value across this literature. \textbf{Not
-    resolved}: which single paper (if any) this codebase's exact
-    implementation traces to -- full-text access to
-    \citet{Agertz2013}/\citet{Marinacci2019}'s own equations was not
-    available in this pass to confirm their precise $\kappa_{\rm IR}$
-    value against this code's. \textbf{Separately, still fully open}:
-    pinning a citation does not validate the physics -- no test in
-    this codebase exercises the radiation-pressure channel at all
-    (Section~\ref{sec:rp-open}), so the numerical fix in
-    Section~\ref{sec:rp-hit-flag-bug} (momentum now actually applied)
-    has not been checked against any analytic expectation.
-    \textbf{Proposed two-tier plan (2026-07-20)},
-    Section~\ref{sec:rp-validation-plan}: (1) a cheap
-    momentum-conservation self-check ($\int \dot p_{\rm rad}\,dt$ from
-    the code's own logged $L_{\rm bol}$/$\tau_{\rm IR}$ vs.\ actual gas
-    momentum gained -- code correctness only, not a physics check); (2)
-    a genuine fourth validation target against
-    \citet{KrumholzMatzner2009}'s analytic radiation-pressure-driven
-    shell radius(t) solution, the direct radiation-pressure analog of
-    the Spitzer D-type solution STARBENCH validates for photoionization,
-    with \citet{Draine2011}'s static-equilibrium dusty-H\,\textsc{ii}
-    solutions as a possible cross-check. Neither tier implemented yet;
-    tier~1 is queued first (cheap, would have caught the
-    \code{hit\_by\_radiation} bug on its own), tier~2 is not yet scoped
-    as its own example directory.
+  \item[$\square$] \textbf{T8} -- Radiation-pressure momentum recipe:
+    citation resolved (\citet{Hopkins2020}, FIRE-2's own
+    radiative-feedback methods paper), validation still fully open (no
+    test in this codebase exercises the channel at all). \textbf{Full
+    detail, physics gaps, and the validation plan now live entirely in
+    the dedicated Radiation Pressure \& ISRF logbook}
+    (\code{radiation\_pressure\_isrf.tex}/\code{.pdf}, this same
+    directory) -- moved there (2026-07-24) for the same reason as T6:
+    the design had grown well beyond a single open-item entry.
 
   \item[$\square$] \textbf{T9} -- \code{space\_regrid}'s top-level
     cell grid never re-refines once coarsened, even after the

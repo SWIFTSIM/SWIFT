@@ -49,32 +49,35 @@
 \newcommand{\LL}{\left(}
 \newcommand{\RR}{\right)}
 
-\title{GEAR subgrid HII photoionization}
-\subtitle{Developer logbook: algorithm, bugs found, and validation}
+\title{GEAR radiation feedback: radiation pressure and the FUV/ISRF}
+\subtitle{Developer logbook: momentum injection, photoelectric heating,
+and H$_2$ photodissociation propagation design}
 \author{Darwin Roduit}
 
 \begin{document}
 \maketitle
 
-This is a living logbook for the GEAR subgrid HII photoionization model
-(\code{src/feedback/GEAR/radiation.c} and related files), branch
-\code{darwin/gear\_radiation}. It records the algorithm as implemented,
-bugs found and fixed, and the ongoing validation against Hu et al.
-(2017) and Smith et al. (2021). Edit the numbered \code{.tex} files
-directly; each covers one topic and is short enough to update on its
-own. Regenerate the PDF with \code{./run.sh}. The radiation-pressure
-feedback channel and the FUV/ISRF propagation design are covered in a
-separate, dedicated logbook in this same directory,
-\code{radiation\_pressure\_isrf.tex} (\code{./run\_pressure\_isrf.sh}).
+This is a living logbook for two radiation feedback channels beyond
+the subgrid HII photoionization model, split out from that model's own
+logbook (\code{radiation.tex}/\code{radiation.pdf}, this same
+directory) since they are largely self-contained: the
+\textbf{radiation-pressure} momentum-injection channel
+(Section~\ref{sec:radiation-pressure}, \code{src/feedback/GEAR/radiation.c}
+and related files, branch \code{darwin/gear\_radiation}), and the
+\textbf{FUV/ISRF} propagation design for photoelectric heating and
+H$_2$ photodissociation (Section~\ref{sec:fuv-isrf}, not yet
+implemented). Where content here depends on the HII photoionization
+model itself (the blackbody luminosity fit, the task-graph algorithm,
+the validation targets), it is cited by name and section rather than by
+automatic cross-reference, since the two documents compile separately.
+Edit the numbered \code{.tex} files directly; each covers one topic and
+is short enough to update on its own. Regenerate the PDF with
+\code{./run\_pressure\_isrf.sh}.
 
 \tableofcontents
 
-\input{00_intro}
-\input{01_algorithm}
-\input{02_task_graph}
-\input{03_bugs_and_fixes}
-\input{04_validation}
-\input{05_open_items}
+\input{01_radiation_pressure}
+\input{02_fuv_isrf}
 
 \bibliography{bibliography}
 

@@ -2,7 +2,8 @@
 \label{sec:fuv-isrf}
 
 Not implemented yet -- this section records what was found while scoping
-items~T5 and~T6 (Section~\ref{sec:open}): what Grackle (the frozen,
+items~T5 and~T6 (the open-items section of the HII photoionization
+logbook): what Grackle (the frozen,
 SWIFT-compatible checkout at \texttt{\textasciitilde/programs/grackle-swift/},
 confirmed against its own source, not just its online docs, which are
 thin on this) actually expects for these two channels
@@ -24,8 +25,8 @@ rather than deleted.
 \label{sec:fuv-lw-grackle}
 
 Grackle has its own rate-coupling field for this, parallel to the
-H/He ionization-rate fields already used for photoionization
-(Section~\ref{sec:algorithm}):
+H/He ionization-rate fields already used for photoionization (the HII
+photoionization logbook's algorithm section):
 \code{RT\_H2\_dissociation\_rate} (\code{grackle\_types.h:74}), threaded
 through \code{solve\_chemistry.c} into the Fortran rate solver
 (\code{solve\_rate\_cool\_g.F}) under the internal name
@@ -222,8 +223,9 @@ Rejected the fixed-shape shortcut above in favour of tracking
 ($6$--$11.2\,$eV) and $L_{\rm LW}$ ($11.2$--$13.6\,$eV). These are just
 two more threshold-integrals of each star's own blackbody curve --
 exactly the same machinery already producing $Q_H$ (threshold above
-$13.6\,$eV, Section~\ref{sec:blackbody}) and $L_{\rm bol}$ (the full
-integral, Section~\ref{sec:rp-momentum}), just two more threshold
+$13.6\,$eV, the HII photoionization logbook's blackbody-fit section)
+and $L_{\rm bol}$ (the full integral, Section~\ref{sec:rp-momentum}),
+just two more threshold
 pairs on the same curve. Advantages over the fixed-shape escape hatch:
 \begin{itemize}
   \item Ties the FUV/LW split to each source's actual SED (which
@@ -246,8 +248,9 @@ pairs on the same curve. Advantages over the fixed-shape escape hatch:
 \end{itemize}
 \textbf{Like $Q_H$ and $L_{\rm bol}$, both $L_{\rm FUV}$ and $L_{\rm
 LW}$ will eventually be read from tables, not computed from the
-current empirical piecewise power-law fits.} Item~T7
-(Section~\ref{sec:open}) already plans to extend \texttt{pychem}
+current empirical piecewise power-law fits.} Item~T7 (the HII
+photoionization logbook's open-items section) already plans to extend
+\texttt{pychem}
 (\texttt{\textasciitilde/programs/pychem/}) to emit proper
 $(M,Z)$-dependent stellar tables replacing today's single-metallicity
 mass--luminosity/temperature fits; $L_{\rm FUV}$ and $L_{\rm LW}$ are
@@ -315,8 +318,9 @@ implemented -- flagged as an open item below
 
 A star can inject $L_{\rm FUV}$/$L_{\rm LW}$ onto its SPH-kernel gas
 neighbours using the same density-loop-style gather/scatter already
-used for the HII budget (Section~\ref{sec:algorithm}) and radiation
-pressure (Section~\ref{sec:radiation-pressure}). \textbf{This alone is
+used for the HII budget (the HII photoionization logbook's algorithm
+section) and radiation pressure (Section~\ref{sec:radiation-pressure}).
+\textbf{This alone is
 not a smooth ISRF}: injection only reaches particles within the
 star's kernel radius $h_\star$, dropping sharply to zero outside it,
 resolution-dependent (a smaller $h_\star$ at higher resolution shrinks
@@ -522,6 +526,72 @@ Section~\ref{sec:fuv-pe-concrete}). Dividing by $m_i$ in
 Eq.~\ref{eq:fuv-discrete-update} then gives a specific-energy
 increment, consistent with Section~\ref{sec:fuv-units}.
 
+\textbf{The mixing weights $\tilde w_{ij}$.} Gemini's own design
+conversation proposed a form for these (its pristine-gas discussion,
+Section~\ref{sec:fuv-gemini-review}): $\tilde w_{ij}\propto
+e^{-\tau_{ij}}/r_{ij}^2$, geometric inverse-square dilution attenuated
+by the dust column between the pair. The physical intuition -- weight
+neighbours by how much intervening dust blocks the path to them, not
+just by distance -- is sound and worth keeping, but the bare
+$1/r_{ij}^2$ has no natural cutoff: taken literally it would need
+summing over every particle in the box, not just SPH neighbours, and
+diverges as $r_{ij}\to0$.
+
+\textbf{Improved form}: replace $1/r_{ij}^2$ with the compact-support
+kernel this project already computes for every neighbour pair
+(Wendland~C2), and make the normalisation explicit rather than assumed,
+\begin{equation}
+  \tilde w_{ij} = \frac{W(r_{ij},h_i)\,e^{-\tau_{ij}}}
+                       {\sum_k W(r_{ik},h_i)\,e^{-\tau_{ik}}} , \qquad
+  \tau_{ij} = \kappa_{ij}\,r_{ij} ,
+  \label{eq:fuv-weight-formula}
+\end{equation}
+with $\kappa_{ij}$ the \emph{same} harmonic-mean pairwise absorption
+rate already decided for interface consistency
+(Eq.~\ref{eq:fuv-harmonic-mean}, Section~\ref{sec:fuv-harmonic-mean}) --
+reusing that decision here rather than introducing a second, separate
+pairwise combination rule. Two things this fixes relative to the raw
+proposal: (i)~$W(r_{ij},h_i)$ is already the kernel this codebase
+computes for every SPH neighbour loop, zero extra cost, well-behaved at
+$r\to0$, and naturally compact-supported, so the sum is only ever over
+actual neighbours; (ii)~explicit normalisation by construction
+guarantees $\sum_j\tilde w_{ij}=1$ regardless of how much the
+$e^{-\tau_{ij}}$ factors vary from neighbour to neighbour -- this
+matters because \emph{without} it, multiplying by $e^{-\tau_{ij}}<1$
+would silently remove energy inside the mixing term itself, on top of
+the already-derived, separate decay term
+(Eq.~\ref{eq:fuv-discrete-continuum-limit}) -- a real double-counting
+risk the raw proposal does not address. With the normalisation, the
+$e^{-\tau_{ij}}$ factors only reweight \emph{which} neighbours
+dominate the local average (favouring less-obscured directions), they
+do not change the total amount mixed.
+
+\textbf{Two open concerns this creates, checked against this project's
+own numbers, neither resolved yet}:
+\begin{itemize}
+  \item Recall $\lambda_{\rm clump}\approx0.008\,$pc is \emph{smaller}
+    than $h_{\rm clump}\approx0.5\,$pc (Section~\ref{sec:fuv-b-lambda-chyp}) --
+    so $\tau_{ij}=\kappa_{ij}r_{ij}$ can reach $r_{ij}/\lambda\sim60$ at
+    the far edge of a single kernel's support in the clump. Over that
+    range $e^{-\tau_{ij}}$ collapses from $\approx1$ to
+    $\approx0$ well within one kernel radius, so the \emph{effective}
+    number of neighbours contributing meaningfully to
+    Eq.~\ref{eq:fuv-weight-formula}'s sum could shrink drastically in
+    dense gas -- not necessarily wrong (a genuinely opaque medium
+    \emph{should} only exchange with its immediate surroundings), but
+    worth checking empirically rather than assuming the usual SPH
+    neighbour-count noise suppression still holds there;
+  \item the von Neumann stability analysis above
+    (Eqs.~\ref{eq:fuv-growth-factor}--\ref{eq:fuv-alpha-bound}) was
+    derived for $\hat W(k)$, the Fourier symbol of a \emph{pure
+    kernel-shape} weight operator. Folding $e^{-\tau_{ij}}$ into
+    $\tilde w_{ij}$ changes the operator itself, hence its Fourier
+    symbol and possibly $W_{\min}$ -- the existing bound should be
+    re-checked against this specific weighted form once it is
+    implemented, not assumed to carry over unchanged from the
+    pure-kernel case it was derived for.
+\end{itemize}
+
 \textbf{This is not an ad hoc smoothing -- it is an explicit
 (forward-Euler) integrator of Eq.~\ref{eq:fuv-screened-helmholtz}.}
 Expanding both exponentials to first order in $\Delta t$ and
@@ -545,7 +615,27 @@ the correspondence
 Once $\lambda$ is fixed by the physical dust opacity
 (Eq.~\ref{eq:fuv-lambda-def}) and $D$ by whatever $\alpha$/$h$/$\Delta t$
 the smoothing pass uses, $\Delta t_{\rm decay}=\lambda^2/D$ is
-determined, not chosen by feel.
+determined, not chosen by feel. Substituting
+$D\sim\alpha h^2/\Delta t$ gives the explicit formula actually used
+each step,
+\begin{equation}
+  \Delta t_{\rm decay} = \frac{\lambda^2\,\Delta t}{\alpha\,h^2} .
+  \label{eq:fuv-decay-timescale}
+\end{equation}
+\textbf{A direct consequence worth noting}: the per-step decay factor
+itself does not depend on $\Delta t$ at all -- substituting
+Eq.~\ref{eq:fuv-decay-timescale} into $e^{-\Delta t/\Delta t_{\rm
+decay}}$ cancels $\Delta t$ exactly,
+\begin{equation}
+  e^{-\Delta t/\Delta t_{\rm decay}} = e^{-\alpha h^2/\lambda^2} ,
+  \label{eq:fuv-decay-factor}
+\end{equation}
+fixed by $\alpha$, $h$, and $\lambda$ alone. Calling the update more or
+less often changes how many times this fixed per-step factor gets
+applied per unit physical time, not its own value -- consistent with,
+and part of the reason for, running it every hydro step
+(Section~\ref{sec:fuv-discretization}'s update-cadence discussion
+below).
 
 \textbf{Which existing GEAR chemistry backend is the right template --
 neither, exactly, but one is much closer.} SWIFT has two: plain
@@ -608,12 +698,50 @@ and only loosens for larger $\Delta t$ -- the decay term actively
 \emph{helps} by damping the same short-wavelength modes the mixing
 term risks amplifying.
 
+\textbf{What $W_{\min}$ actually is, and how to get it.} $\hat W(k)$ is
+the discrete Fourier symbol of the normalized weight operator
+$\{\tilde w_{ij}\}$ itself -- i.e.\ what the kernel-weighted sum does to
+a single Fourier mode $u_j=e^{ik\cdot x_j}$. Because $\sum_j\tilde
+w_{ij}=1$, $\hat W(0)=1$ (a uniform field is left unchanged, as it must
+be). For a genuinely continuous, non-negative convolution kernel
+$\hat W(k)$ would stay non-negative at every $k$; the compact-support,
+\emph{discrete}, particle-based sum used here does not have that
+guarantee at the shortest wavelength the particle spacing can resolve
+(an alternating $+1,-1$ "checkerboard" mode between neighbours) --
+$\tilde w_{ij}$ can partially cancel against that mode rather than
+average it out, giving a negative response. $W_{\min}$ is the
+magnitude of that worst-case (most negative) response -- the same
+zeroth-order kernel-sum inconsistency SPH kernel design already has to
+contend with (part of why Wendland kernels, this project's own choice,
+are preferred over cubic splines: better behaved at exactly this kind
+of adversarial short-wavelength mode). \textbf{Not yet computed for
+this project's actual kernel and particle configuration} -- two
+concrete ways to get it, neither done yet:
+\begin{enumerate}
+  \item \emph{Analytically}, for an idealized 1D lattice/checkerboard
+    arrangement at the target smoothing length: evaluate
+    $\hat W(k)=\sum_j\tilde w_{ij}\,e^{ik\cdot(x_j-x_i)}$ directly for
+    the Wendland~C2 kernel at $k$ up to the Nyquist wavenumber the
+    lattice spacing resolves, and take the most negative value found --
+    the standard technique for characterising a kernel's own
+    short-wavelength response.
+  \item \emph{Numerically}, from an actual glass-like particle
+    distribution at this project's own production resolution: build the
+    weight operator explicitly for a representative particle set and
+    measure its worst-case eigenvalue/response directly, rather than
+    relying on the idealized lattice case -- more representative of
+    real (disordered) particle configurations, and cheap to check
+    alongside the steady-state Yukawa-profile validation test (open,
+    Section~\ref{sec:fuv-design-a-open}).
+\end{enumerate}
+
 \textit{Converting to a physical decision.} Via
 Eq.~\ref{eq:fuv-discrete-correspondence}'s $D\sim\alpha h^2/\Delta t$,
 Eq.~\ref{eq:fuv-alpha-bound} becomes the ordinary explicit-diffusion
 condition $\Delta t\lesssim h^2/D$ -- real, but nowhere near the
 $\text{CFL}\sim h/c$ that ruled out M1. Concretely, using this
-project's own STARBENCH numbers (Section~\ref{sec:validation}):
+project's own STARBENCH numbers (the HII photoionization logbook's
+validation section):
 \code{dt\_max}$\approx10^{-5}$ in internal units
 $\times\,977.8\,$Myr$\,\approx10^4\,$yr, in a $10\,$pc box with
 sub-pc particle spacing, so $h/c$ is of order a few \emph{years} --
@@ -660,10 +788,23 @@ diagnostically, that the emergent relaxation time stays fast against
 stellar-lifetime timescales (very likely true, since Courant-limited
 hydro steps in resolved star-forming gas are already far below a Myr),
 rather than enforcing an exact $\lambda$ upfront at the cost of a new
-limiter. Also don't fire the update every hydro step by default -- reuse
-the adaptive-rebuild-cadence machinery already built for the HII budget
-(T4) so the smoothing pass runs only as often as source evolution
-(stellar lifetimes, $\gtrsim$Myr) actually requires.
+limiter. \textbf{The update runs every hydro step, not on a separate,
+rarer cadence.} An earlier pass of this section proposed gating it
+behind the adaptive-rebuild cadence already built for the HII budget
+(T4), reasoning that source evolution is slow (stellar lifetimes,
+$\gtrsim$Myr) so the field need not be refreshed as often. That
+reasoning does not survive contact with the task-graph placement
+(Section~\ref{sec:fuv-b-tasks}): the update is embedded directly in one
+of the existing hydro pairwise loops, which run every active particle's
+own hydro timestep by construction -- there is no separate, standalone
+mechanism left to rate-limit, and adding one back (checking a rebuild
+counter inside the loop) would be new complexity for no benefit. It
+also actively helps the "let real time do the converging" argument
+(Section~\ref{sec:fuv-discretization}'s neighbour-mixing discussion,
+and the identical argument for Design~B, Section~\ref{sec:fuv-b-algorithm}):
+that argument relies on many small updates accumulating across real
+hydro steps before the source changes appreciably, so running every
+step, not less often, is what makes it work.
 
 \subsubsection{Per-particle adaptive relaxation}
 \label{sec:fuv-adaptive-alpha}
@@ -818,26 +959,6 @@ only halves it. \textbf{This is exactly why Design~B
 the same physics whose CFL condition scales linearly in $h$, like
 ordinary hydro, letting the propagation speed be a deliberately chosen,
 verified quantity rather than an emergent, hoped-for one.
-
-\subsubsection{Open items, Design A}
-\label{sec:fuv-design-a-open}
-
-\begin{itemize}
-  \item Which existing gas-gas neighbour loop to piggyback the update
-    on (density loop vs.\ the plain \code{GEAR/chemistry.h}
-    kernel-smoothing pass, if active in this configuration) -- not
-    checked;
-  \item per-particle $\alpha_i$ (Eq.~\ref{eq:fuv-alpha-bound-i}) and the
-    harmonic-mean pairwise coupling (Eq.~\ref{eq:fuv-harmonic-mean}) are
-    decided but not yet implemented or tested;
-  \item diagnostically confirming, once built, that the emergent
-    relaxation speed ($h_i/\Delta t_i$, Section~\ref{sec:fuv-gemini-review})
-    stays fast against stellar-lifetime and cooling timescales, rather
-    than assuming it -- not done;
-  \item the propagation scheme's normalized weights $\tilde w_{ij}$ and
-    how they should be built from the existing SPH kernel
-    infrastructure -- not scoped.
-\end{itemize}
 
 \subsection{Design B: hyperbolic P1 relaxation, upgradeable to a cheap
 M1 (2026-07-24)}
@@ -1255,13 +1376,14 @@ new \code{runner\_iact\_isrf}/\code{runner\_iact\_nonsym\_isrf} forming
 the reconstructed-state Rusanov flux (Section~\ref{sec:fuv-b-rusanov})
 and accumulating the explicit sub-step. Still no new task \emph{type}
 in the scheduler -- three existing loop hooks, not one, but the same
-"add an iact function" pattern throughout. This does not exempt the new
-field ($\mathbf F_i$) from the usual cell-link/\code{cell\_clean\_links}
-bookkeeping this project's own task-registration checklist requires for
-any new per-particle state, nor from choosing which existing
-timestep/rebuild cadence machinery
-(Section~\ref{sec:fuv-discretization}'s adaptive-rebuild precedent)
-governs how often it updates.
+"add an iact function" pattern throughout. Being embedded directly in
+existing hydro pairwise loops, it runs every active particle's own
+hydro timestep, same as Design~A
+(Section~\ref{sec:fuv-discretization}'s update-cadence discussion) --
+not gated behind any separate, rarer cadence. This does not exempt the
+new field ($\mathbf F_i$) from the usual
+cell-link/\code{cell\_clean\_links} bookkeeping this project's own
+task-registration checklist requires for any new per-particle state.
 
 \textbf{Design~A, for comparison}: needs only the single
 density-loop-style hook (\code{runner\_iact\_chemistry}'s own pattern),
@@ -1365,7 +1487,8 @@ spurious artifact at the crossing point, well documented in the RT
 literature and not fixed by a better (more expensive) M1 solver; it is
 intrinsic to the closure. Directly relevant here since this project
 already cares about multi-source/angular behaviour (the HEALPix HII
-splitting, Section~\ref{sec:algorithm}).
+splitting, documented in the HII photoionization logbook's algorithm
+section).
 
 \textbf{Why, physically: moment-closure RT is to full kinetic RT what
 fluid dynamics is to kinetic gas dynamics} (Darwin's framing,
@@ -1457,7 +1580,67 @@ order. Design~A also remains a legitimate fallback in its own right if
 Design~B's extra cost is not worth it once measured, not merely a
 stepping stone.
 
-\subsubsection{Open items, Design B}
+\subsection{Open items}
+\label{sec:fuv-open-items}
+
+Gathered here, one place, rather than scattered per design -- everything
+still open for the FUV/ISRF work as a whole.
+
+\subsubsection{Design A}
+\label{sec:fuv-design-a-open}
+
+\begin{itemize}
+  \item \textbf{Resolved}: not limited to the density loop the way
+    plain \code{GEAR/chemistry.h}'s own kernel-smoothing happens to be
+    placed there -- any of the three existing hydro pairwise loops can
+    host this update (Section~\ref{sec:fuv-b-tasks}'s task-graph finding
+    applies equally to Design~A, which needs only one of the three,
+    carrying a single field); which specific loop is a placement detail
+    for implementation, not an open design question;
+  \item per-particle $\alpha_i$ (Eq.~\ref{eq:fuv-alpha-bound-i}) and the
+    harmonic-mean pairwise coupling (Eq.~\ref{eq:fuv-harmonic-mean}) are
+    decided but not yet implemented or tested;
+  \item diagnostically confirming, once built, that the emergent
+    relaxation speed ($h_i/\Delta t_i$, Section~\ref{sec:fuv-gemini-review})
+    stays fast against stellar-lifetime and cooling timescales, rather
+    than assuming it -- not done;
+  \item the mixing weights $\tilde w_{ij}$ now have a concrete proposed
+    form (Eq.~\ref{eq:fuv-weight-formula}), improving on Gemini's own
+    $e^{-\tau_{ij}}/r_{ij}^2$ idea by using the existing compact-support
+    kernel and an explicit normalisation -- not yet implemented, and its
+    two open concerns (effective-neighbour-count shrinkage in
+    optically-thick gas; $W_{\min}$ needing re-derivation for this
+    specific weighted form) are not yet checked;
+  \item $W_{\min}$ (Eq.~\ref{eq:fuv-alpha-bound}) has not been computed
+    for this project's actual kernel (Wendland~C2) and particle
+    configuration, by either of the two concrete routes above -- without
+    it, $\alpha$'s own numerical value cannot actually be set, only its
+    functional form is known;
+  \item \textbf{No dedicated validation-plan item for this design yet,
+    added 2026-07-24}: Design~B's own open items (below) refer back to
+    "the Yukawa-profile ... test already proposed for Design~A," but no
+    such item was ever actually written down here. Concretely: build a
+    3D glass/uniform particle distribution, place a single source at the
+    centre, run Eq.~\ref{eq:fuv-discrete-update} to a steady residual
+    ($u^{n+1}-u^n<\epsilon$), and check $u(r)\cdot r$ vs.\ $r$ on a
+    semi-log plot has slope $-1/\lambda$ (Section~\ref{sec:fuv-yukawa}'s
+    own analytic Green's function) -- not yet built. Unlike Design~B, a
+    telegrapher/wavefront-propagation test does not apply to a parabolic
+    scheme (no finite propagation speed to check against), so this
+    steady-state check is the whole of Design~A's own validation plan;
+  \item \citet{ClearyMonaghan1999}'s citation, underlying the
+    harmonic-mean interface treatment
+    (Section~\ref{sec:fuv-harmonic-mean}) this design uses, has not been
+    independently re-verified -- the same open caveat already tracked
+    for \citet{Rusanov1961} below, for consistency;
+  \item restart I/O for the new per-particle field $u_i$ -- not yet
+    scoped (whole-struct restart, snapshot-visible or not, follows the
+    existing \code{HII\_region}/\code{end\_time} precedent,
+    Section~\ref{sec:fuv-discretization}'s design intent, but this has
+    not been written down as an explicit task).
+\end{itemize}
+
+\subsubsection{Design B}
 \label{sec:fuv-design-b-open}
 
 \begin{itemize}
@@ -1501,8 +1684,10 @@ stepping stone.
     (Section~\ref{sec:fuv-b-algorithm}'s closing remark) is an available
     refinement, not yet applied;
   \item a validation plan specific to this design is not yet built:
-    the Yukawa-profile and telegrapher-wavefront tests already proposed
-    for Design~A apply equally here, plus a new
+    the Yukawa-profile test above (Design~A's own open items) and a new
+    telegrapher-wavefront test (checking the propagation speed $c_{\rm
+    hyp}$ is actually respected, i.e.\ $u\equiv0$ ahead of
+    $x=c_{\rm hyp}t$) apply here, plus a new
     intermediate-optical-depth/off-axis-clump ("partial shadow") test
     to quantify the known P1/M1 shadowing limitation
     (Section~\ref{sec:fuv-b-limits}) for this project's own realistic
@@ -1511,11 +1696,23 @@ stepping stone.
     target for Design~B's own quasi-steady ($\tau\to0$-like) limit, once
     both exist, is not yet decided (implementation order itself is --
     Section~\ref{sec:fuv-sequencing});
+  \item restart I/O for the new per-particle field $\mathbf F_i$, and
+    confirming this project's own cell-link/\code{cell\_clean\_links}
+    task-registration checklist has nothing further to add for it beyond
+    the ordinary per-particle-state case (Section~\ref{sec:fuv-b-tasks}
+    notes the requirement generically; not yet checked item by item
+    against the checklist itself);
+  \item an end-to-end sanity check that Eq.~\ref{eq:fuv-g0-conversion}'s
+    $G_{0,i}$ actually produces sensible \code{isrf\_habing} values when
+    run through a real Grackle photoelectric-heating solve -- distinct
+    from the item below (which only asks whether two Grackle flags can
+    coexist), this asks whether the number itself is physically
+    reasonable once it reaches Grackle;
   \item item~T6 as a whole remains unscoped as an implementation, for
     either design.
 \end{itemize}
 
-\subsection{Open items common to both designs}
+\subsubsection{Common to both designs}
 \label{sec:fuv-open-common}
 
 \begin{itemize}

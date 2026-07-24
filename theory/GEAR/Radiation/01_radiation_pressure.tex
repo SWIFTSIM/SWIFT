@@ -4,8 +4,10 @@
 This section documents the radiation-pressure feedback channel
 (\code{GEARFeedback:radiation\_pressure\_efficiency},
 \code{radiation\_policy\_radiation\_pressure}), a separate mechanism
-from the HII photoionization budget documented in
-Section~\ref{sec:algorithm}: photoionization tags and re-floors gas
+from the HII photoionization budget documented in the algorithm
+section of the HII photoionization logbook
+(\code{radiation.tex}/\code{radiation.pdf}, this same directory):
+photoionization tags and re-floors gas
 temperature, while radiation pressure injects momentum directly into
 gas neighbouring the star. The two channels draw on \emph{different}
 integrals of the star's spectrum ($Q_H$ vs.\ $L_{\rm bol}$, see
@@ -27,22 +29,24 @@ energy above the ionization threshold becomes the photoelectron's
 kinetic energy, which thermalizes via collisions -- this is what heats
 the gas to $\sim10^4\,$K, balanced against recombination/line cooling.
 Only photons above that specific energy threshold count, and the
-relevant budget is $Q_H$ (ionizing photon \emph{number} rate,
-Section~\ref{sec:blackbody}), not energy. This is fundamentally a
-\textbf{thermal/chemical} effect -- it sets the gas's ionization state
-and temperature, and in this code drives dynamics only indirectly,
-through the resulting thermal-pressure contrast against the cold
-ambient medium (the classical Spitzer D-type expansion that STARBENCH,
-Section~\ref{sec:validation}, validates).
+relevant budget is $Q_H$ (ionizing photon \emph{number} rate, the
+blackbody-fit section of the HII photoionization logbook), not energy.
+This is fundamentally a \textbf{thermal/chemical} effect -- it sets the
+gas's ionization state and temperature, and in this code drives
+dynamics only indirectly, through the resulting thermal-pressure
+contrast against the cold ambient medium (the classical Spitzer D-type
+expansion that STARBENCH, validated in the HII photoionization
+logbook's own validation section, checks).
 
 \textbf{Radiation pressure} is a mechanical process: \emph{any}
 absorbed or scattered photon, at any wavelength, transfers momentum
 $p=E/c$ to whatever absorbs or scatters it. This draws on $L_{\rm
 bol}$ -- the star's entire spectrum, dominated for most stars by the
 non-ionizing UV/optical continuum, not the ionizing band specifically
-(Eq.~\ref{eq:mass-luminosity} vs.\ the separate ionizing-rate fit
-behind $Q_H$, both in Section~\ref{sec:blackbody} -- two different
-fits of the same underlying blackbody, not the same fit reused). It is
+(the mass-luminosity fit vs.\ the separate ionizing-rate fit behind
+$Q_H$, both in the HII photoionization logbook's blackbody-fit section
+-- two different fits of the same underlying blackbody, not the same
+fit reused). It is
 a \textbf{dynamical} effect -- a direct push, independent of whether
 the interaction happens to ionize anything, and in this code it acts
 through Eq.~\ref{eq:rp-momentum-rate} directly, with no thermal
@@ -138,15 +142,15 @@ opacity for the input band(s), which \citet{Hopkins2020}'s own
 $\kappa_{\rm FUV}/\kappa_{\rm NUV}/\kappa_{\rm opt}$ spread by over an
 order of magnitude (2000 vs.\ 180\,${\rm cm^2\,g^{-1}}$) -- a single
 effective $\kappa_{\rm single}$ (e.g.\ luminosity/temperature-weighted
-via the blackbody fit already computed for $T_K$, Section
-\ref{sec:blackbody}) would capture the leading effect without adopting
+via the blackbody fit already computed for $T_K$, in the HII
+photoionization logbook) would capture the leading effect without adopting
 \citet{Hopkins2020}'s full 5-band architecture. Not yet implemented;
 this is judged the single most valuable remaining physics gap in this
 channel, ahead of the resolution/banding items below.
 
 $L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, set from
 the same blackbody mass--luminosity fit as the ionizing photon rate
-(Eq.~\ref{eq:mass-luminosity}, Section~\ref{sec:blackbody}) and scaled
+(the HII photoionization logbook's blackbody-fit section) and scaled
 by \code{radiation\_pressure\_efficiency} (\code{feedback\_common.c}) --
 an overall dial on this channel independent of the photoionization
 budget, default behaviour unaffected unless explicitly set $\ne1$.
@@ -246,8 +250,9 @@ $\times\,a$ conversion applied). The result accumulates into
 the top-level \code{xpj->feedback\_data.delta\_p} used for
 supernova/wind momentum (\code{feedback\_struct.h}), applied separately
 in \code{feedback\_update\_part\_radiation}
-(\code{feedback\_data\_iact.h} -- see the bug fixed in
-Section~\ref{sec:bugs}, \code{hit\_by\_radiation} was never actually
+(\code{feedback\_data\_iact.h} -- see the bug fixed in the HII
+photoionization logbook's bugs-and-fixes section,
+\code{hit\_by\_radiation} was never actually
 set until 2026-07-19, so this accumulated momentum was silently
 discarded every step until then).
 
@@ -326,8 +331,8 @@ Two bugs found during T8 code review, both fixed the same day (commits
     single-scattering opacity, not a fuller split.} Darwin considered a
     full \citet{Hopkins2020}-style multi-band split
     (ionizing/FUV/NUV/optical/IR) but ruled out tree-based transport for
-    any of it -- that is reserved for the separate, not-yet-scoped ISRF
-    (diffuse FUV/photoelectric) work. \textbf{Correction to an initial
+    any of it -- that is reserved for the separate FUV/ISRF work
+    (Section~\ref{sec:fuv-isrf}). \textbf{Correction to an initial
     claim made in this discussion}: dust opacity is \emph{not} close to
     grey from UV through optical -- \citet{Hopkins2020}'s own
     $\kappa_{\rm FUV}=2000$, $\kappa_{\rm NUV}=1800$,
@@ -340,6 +345,16 @@ Two bugs found during T8 code review, both fixed the same day (commits
     (blended from the existing blackbody fit) is the pragmatic middle
     ground -- capturing the leading effect without \citet{Hopkins2020}'s
     full 5-band architecture or its long-range tree-based propagation.
+    \textbf{Concrete construction, added 2026-07-24}: this does not need
+    a new fitting effort -- the FUV/ISRF module already builds two band
+    luminosities per star via blackbody-curve threshold integrals,
+    $L_{\rm FUV}$ and $L_{\rm LW}$ (Section~\ref{sec:fuv-two-bands}); a
+    third threshold pair over the NUV/optical range, on the same curve,
+    gives exactly the ingredients for a luminosity-weighted
+    $\kappa_{\rm single}=\sum_{\rm bands}L_{\rm band}\kappa_{\rm
+    band}/L_{\rm bol}$, reusing that machinery rather than inventing a
+    separate blend. Not yet implemented; naturally sequenced after the
+    FUV/ISRF module's own band-integral code exists, not before.
     Confirmed useful precedent for keeping this local, no-tree: their
     \S4.3.4/\S4.4.1 ablation (disabling only the tree-propagated
     ``long-range'' component of LEBRON while keeping the local,
@@ -499,6 +514,49 @@ Two bugs found during T8 code review, both fixed the same day (commits
     \emph{establish} whether this matters (it's the same class of error
     the mechanical-feedback work already addressed); it could still be
     useful later purely as a regression check once the port is done.
+
+  \item \textbf{Effective-face port: name the actual branch/file before
+    starting, added 2026-07-24.} The item above decides \emph{that} the
+    fix should be ported from the existing mechanical (SN/wind) feedback
+    implementation, not derived fresh -- but the specific branch and
+    file were never pinned down in this logbook. First concrete step,
+    not yet done: identify exactly which branch and which function
+    implements the mechanical-feedback angular-weight/effective-face
+    construction, before attempting the port itself.
+
+  \item \textbf{Multi-timestep consistency of the momentum \emph{rate},
+    added 2026-07-24.} Eq.~\ref{eq:rp-momentum-rate} gives a
+    \emph{rate}, $\dot p_{\rm rad}$; turning it into an actual kick
+    needs multiplying by a $\Delta t$, and stars and their gas
+    neighbours generally sit on different individual timesteps in this
+    code's hierarchical time-stepping. Not yet checked: whether the
+    current implementation integrates $\dot p_{\rm rad}$ over the
+    \emph{correct} $\Delta t$ when a star's own active step spans
+    several of a neighbouring gas particle's (or vice versa) --
+    analogous to the multi-timestep bookkeeping mechanical (SN) feedback
+    already has to get right, but not confirmed to have been checked for
+    this channel specifically.
+
+  \item \textbf{Cosmological (comoving-to-physical) unit handling, added
+    2026-07-24.} Every validated example to date is a non-cosmological,
+    isolated box. Eq.~\ref{eq:rp-momentum-rate}/\ref{eq:rp-tauIR}'s
+    $\Sigma_{\rm gas}$ (via the Sobolev density/gradient estimate,
+    Section~\ref{sec:rp-sobolev}) and the resulting momentum kick have
+    not been checked for correct physical-vs-comoving conversion in a
+    cosmological run -- this whole channel's cosmological path is
+    currently untested, not merely unvalidated against a specific target.
+
+  \item \textbf{A cheap unit-level check, complementing Tier~1, added
+    2026-07-24.} Tier~1 (Section~\ref{sec:rp-validation-plan}) validates
+    the momentum formula only via a full simulation's accumulated
+    output. A standalone unit test evaluating
+    Eqs.~\ref{eq:rp-momentum-rate}--\ref{eq:rp-sobolev} directly against
+    hand-computed values for a few fixed particle configurations (no
+    \code{swift} run required) would be a faster, more targeted
+    regression check for this channel specifically, closer in spirit to
+    \code{testRadiationRebuildCheck}'s role for the HII algorithm than
+    Tier~1's full-simulation approach -- not yet proposed as its own
+    test target.
 \end{itemize}
 
 \subsection{Proposed validation plan (2026-07-20)}
@@ -517,8 +575,8 @@ diagnostics; compare against the actual total momentum gained by the
 gas. This checks only that the implementation does what
 Eq.~\ref{eq:rp-momentum-rate} says -- no missing factor, no
 double-counting, no silently-dropped kick (the class of bug already
-found and fixed in Section~\ref{sec:bugs},
-\code{hit\_by\_radiation}). It is self-referential (code output
+found and fixed in the HII photoionization logbook's bugs-and-fixes
+section, \code{hit\_by\_radiation}). It is self-referential (code output
 checked against code output) and does \emph{not} validate that the
 underlying physical model is correct -- that is a separate question,
 addressed by Tier 2.
@@ -528,8 +586,8 @@ addressed by Tier 2.
 (\citeyear{KrumholzMatzner2009}, ApJ 703, 1352) derive an analytic
 radius--time solution for a momentum-driven H\,\textsc{ii}-region
 shell around a star -- the direct radiation-pressure analog of the
-Spitzer (1978) D-type solution that STARBENCH
-(Section~\ref{sec:validation}) already validates for pure
+Spitzer (1978) D-type solution that STARBENCH (the HII photoionization
+logbook's own validation section) already validates for pure
 photoionization. Reproducing their idealized single-star setup and
 comparing the simulated shell-radius growth to their analytic
 expression would make this a genuine fourth validation target

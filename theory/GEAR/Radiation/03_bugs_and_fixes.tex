@@ -125,8 +125,10 @@ $Z/Z_\odot\approx0.231$ instead, which avoids the issue entirely
 
 \code{radiation\_iact\_nonsym\_feedback\_apply}
 (\code{src/feedback/GEAR/radiation\_iact.h}, the radiation-pressure
-momentum kick, Section~\ref{sec:radiation-pressure}) correctly computed
-and accumulated $\Delta\vec p_j$ (Eq.~\ref{eq:rp-per-particle}) into
+momentum kick, documented in the Radiation Pressure \& ISRF logbook,
+this same directory) correctly computed
+and accumulated $\Delta\vec p_j$ (that logbook's per-particle momentum
+formula) into
 \code{xpj->feedback\_data.radiation.delta\_p}, but never set
 \code{xpj->feedback\_data.hit\_by\_radiation}. That flag gates two
 things: \code{feedback\_update\_part\_radiation}
@@ -143,8 +145,9 @@ computed, stored, and then silently reset to zero
 gas particle's velocity -- the whole channel was a structural no-op
 regardless of \code{radiation\_pressure\_efficiency}.
 
-\textbf{How it was found:} read while documenting
-Section~\ref{sec:radiation-pressure} for the first time; noticed
+\textbf{How it was found:} read while documenting the radiation-pressure
+channel for the first time (now the Radiation Pressure \& ISRF
+logbook); noticed
 \code{hit\_by\_radiation} is read/reset in exactly two places in
 \code{radiation\_iact.h} but grepping the whole \code{src/} tree found
 no assignment to \code{1} anywhere. The sibling flags
@@ -163,8 +166,8 @@ SN/winds pattern exactly. Committed \code{baf5b1ff5}.
 \code{swift\_mpi}); \code{testRadiationRebuildCheck} and
 \code{test27cellsStars -n 3 -N 3 -r 5} pass. No dedicated
 radiation-pressure validation example exists yet to check the kick's
-magnitude against an analytic expectation -- see
-Section~\ref{sec:rp-open}.
+magnitude against an analytic expectation -- see the open-items
+section of the Radiation Pressure \& ISRF logbook.
 
 \subsection{2026-07-17/19: radiation code did not compile under any
 non-GEAR feedback model}
