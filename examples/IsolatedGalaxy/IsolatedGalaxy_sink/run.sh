@@ -11,6 +11,8 @@ filename=lowres8.hdf5
 # make run.sh fail if a subcommand fails
 set -e
 
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
+
 if [ ! -e $filename ]
 then
     echo "Fetching initial conditons for the isolated galaxy with an external potential ..."
@@ -20,7 +22,7 @@ fi
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
-    ./getChemistryTable.sh
+    $scripts_location/getChemistryTable.sh
 fi
 
 
