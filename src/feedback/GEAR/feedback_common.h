@@ -77,7 +77,7 @@ void feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time);
+    const double time, const double star_age_beg_step);
 
 void feedback_cache_mean_excess_photon_energy_HI(
     struct spart *sp, const struct cooling_function_data *cooling,

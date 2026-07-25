@@ -384,9 +384,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           const float r2 = ngb_buffer[k].r2;
 
           /* Do the ionization */
-          feedback_iact_HII_ionization(si, pj, xpj, r2, pixel, phys_const,
-                                       hydro_props, us, cosmo, cooling,
-                                       feedback_props, ti_begin, time);
+          feedback_iact_HII_ionization(
+              si, pj, xpj, r2, pixel, phys_const, hydro_props, us, cosmo,
+              cooling, feedback_props, ti_begin, time, star_age_beg_step);
 
         } /* Loop over the sorted particles */
       }

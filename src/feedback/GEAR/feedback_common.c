@@ -597,6 +597,10 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  * @param feedback_props The #feedback_props.
  * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
+ * @param star_age_beg_step This star's age at the start of the current
+ * step -- needed to convert HII_region_next_rebuild_time (a star-age-
+ * relative deadline) into the absolute-time deadline this particle's
+ * end_time field expects.
  */
 __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
@@ -605,21 +609,22 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time) {
+    const double time, const double star_age_beg_step) {
 
   const int deterministic_boundary =
       feedback_props->HII_deterministic_boundary_ionization;
 
-  /* Stay flagged as ionized (and re-floored above the cooling floor, see
-     cooling_ionize_part_subgrid) until this star's next HII rebuild.
-     Using the actual time this star's search is running (not a
-     shared/global schedule) keeps this correct across stars rebuilding
-     on independent, asynchronous cadences. In adaptive mode this is the
-     cached absolute deadline directly, computed once before this loop
-     started, so every particle ionized this pass reads the same value. */
+  /* Stay flagged as ionized until this star's next HII rebuild.
+     HII_region_next_rebuild_time is cached in the star's own age frame
+     (see radiation_compute_and_cache_HII_rebuild_interval), but end_time
+     is compared against absolute simulation time in
+     cooling_gear_subgrid.h -- convert via (time - star_age_beg_step),
+     both from this pass's own compute_time() call, so it holds under
+     cosmology too. */
   const double end_time =
       feedback_props->HII_adaptive_rebuild_cadence
-          ? si->feedback_data.radiation.HII_region_next_rebuild_time
+          ? time - star_age_beg_step +
+                si->feedback_data.radiation.HII_region_next_rebuild_time
           : time + max(feedback_props->HII_rebuild_time, 0.0);
 
   /* If already ionized (by another thread), just move on. */
