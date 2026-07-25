@@ -64,6 +64,7 @@
 \newcommand{\chyp}{c_{\rm hyp}}                           % hyperbolic diffusion sound speed
 \newcommand{\taurelax}{\tau}                              % relaxation time (unmacroed in the parent doc; kept explicit here)
 \newcommand{\Deff}{\mathbf{D}}                            % effective diffusivity tensor, D = K*(q/U)
+\newcommand{\expr}{\mathcal{E}}                           % chemistry_timesteps.h's gradient-suppression "expression"
 
 \title{Wave-Speed Theory for the Hyperbolic (Cattaneo-Relaxation) FVPM
 Diffusion Scheme}
@@ -863,9 +864,12 @@ comparison):
 (the second expression is the code's \code{isotropic_smagorinsky}
 parabolic timestep, \code{chemistry_timesteps.h:107--113}, using
 $\lambda_1(\Kmat)=\kappaP$, exact for isotropic $\Kmat$ --
-Section~\ref{sec:related-fixes}). The resolution $h$, diffusivity
-normalisation $\kappaC$, and local shear $\norm{\Shear}_F$ all cancel from
-the ratio:
+Section~\ref{sec:related-fixes}; the first uses the identification
+$\gammak h=\dx$ -- both are $O(1)$ multiples of the same local resolution
+length, and the ratio is unaffected by resolution either way, only by
+this $O(1)$ geometric factor between the kernel support radius and the
+Gizmo particle size). The resolution $h$, diffusivity normalisation
+$\kappaC$, and local shear $\norm{\Shear}_F$ all cancel from the ratio:
 \begin{equation}
   \label{eq:revised_ratio}
   \boxed{\;\frac{\dt_{\rm hyp}}{\dt_{\rm par}} = \frac{\sqrt{\taurelax_0}}{2} \;}
@@ -875,6 +879,101 @@ the ratio:
 Whether the hyperbolic scheme is faster than parabolic depends only on
 the single dimensionless constant $\taurelax_0$, against a fixed
 threshold of order unity.
+
+\subsection{Speed Criterion for \code{anisotropic_gradient} Mode}
+\label{sec:speed-criterion-aniso}
+The derivation above is specific to \code{isotropic_smagorinsky}: its
+$\kappaP$ carries an explicit $\norm{\Shear}_F$ factor
+(Section~\ref{sec:diffusion-tensor-recap}) that cancels the same factor
+in $\taurelax$, and its parabolic timestep uses $\expr=\dx$
+(\code{chemistry_timesteps.h:111--117}), independent of the local
+gradient. Neither holds for \code{anisotropic_gradient}: its $\kappaP$
+has no $\norm{\Shear}_F$ factor at all (shear enters only through
+$\Splus$'s eigenvalues), and its parabolic timestep uses the
+gradient-suppressed
+$\expr=\norm{\driver}\dx/(\norm{\grad\driver}\dx+\norm{\driver})$
+(\code{chemistry_timesteps.h:118--124}). Redo the ratio for this mode,
+using $\lambda_1(\Splus)=\lambda_1(\Shear)$ (Corollary~\ref{cor:shear-regularisation-bound}'s
+proof: the top eigenvalue of a nonzero traceless tensor is always
+positive, hence unchanged by the $\Splus$ projection) and the same
+$\gammak h=\dx$ identification as above:
+\begin{align}
+  \dt_{\rm hyp} &\approx \frac{\CCFL\dx}{2\chyp}
+  = \frac{\CCFL\dx\sqrt{\taurelax_0}}{2\,\kappaC\gammak h\,\sqrt{\lambda_1(\Shear)\norm{\Shear}_F}}
+  = \frac{\CCFL\sqrt{\taurelax_0}}{2\,\kappaC\sqrt{\lambda_1(\Shear)\norm{\Shear}_F}} , \\
+  \dt_{\rm par} &= \frac{\CCFL\,\expr^2}{\kappaC\gammak^2h^2\lambda_1(\Shear)}
+  = \frac{\CCFL\,\expr^2}{\kappaC\dx^2\lambda_1(\Shear)} ,
+\end{align}
+where the first line uses
+$\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}=\kappaC\gammak h\sqrt{\lambda_1(\Shear)\norm{\Shear}_F/\taurelax_0}$
+(from $\Deff=\kappaC\gammak^2h^2\Splus$,
+Section~\ref{sec:diffusion-tensor-recap}, and
+Eq.~\eqref{eq:tau_turbulent}). Dividing:
+\begin{equation}
+  \label{eq:aniso_ratio}
+  \frac{\dt_{\rm hyp}}{\dt_{\rm par}}
+  = \frac{\sqrt{\taurelax_0}}{2}\,\left(\frac{\dx}{\expr}\right)^{\!2}
+  \sqrt{\frac{\lambda_1(\Shear)}{\norm{\Shear}_F}} .
+\end{equation}
+This reproduces Eq.~\eqref{eq:revised_ratio} exactly when
+$\expr=\dx$ (no gradient suppression) and $\Shear$ is isotropic
+($\lambda_1(\Shear)/\norm{\Shear}_F=1$) -- neither holds structurally in
+this mode, so the two extra factors are new, not corrections to
+something already accounted for. Verified against a direct numerical
+evaluation of the code's own formulas (Python, $2\times10^4$ random
+trials spanning $\CCFL$, $\kappaC$, $h$, $\gammak$, $\rho$, $\taurelax_0$,
+$\dx$, $\norm{\driver}$, $\norm{\grad\driver}$, and random traceless
+symmetric $\Shear$): relative agreement at machine precision
+($<10^{-14}$).
+
+Write $g\equiv\norm{\grad\driver}\dx/\norm{\driver}$ (the local gradient
+steepness, in units of the resolution length -- $g=0$ for a
+perfectly-resolved/flat field, $g\to\infty$ for a steep, poorly-resolved
+one) so that $\dx/\expr=1+g$, and
+$r\equiv\norm{\Shear}_F/\lambda_1(\Shear)$. Corollary~\ref{cor:shear-regularisation-bound}'s
+proof bounds $\lambda_1(\Shear)/\norm{\Shear}_F\in[1/\sqrt3,\sqrt{2/3}\,]$
+for any nonzero traceless $\Shear$ (same eigenvalue-triple argument, this
+time for $\lambda_1$ rather than $\Splus$'s norm), i.e.\
+$r\in[\sqrt{3/2},\sqrt6\,]\approx[1.22,\,2.45]$, tight at the same
+$\mathrm{diag}(2,-1,-1)$ (lower end) and $\mathrm{diag}(1,1,-2)$ (upper end) triples.
+Setting Eq.~\eqref{eq:aniso_ratio} to $1$:
+\begin{equation}
+  \label{eq:aniso_threshold}
+  \boxed{\;\taurelax_0 \gtrsim \frac{4r}{(1+g)^4}\;} ,
+  \qquad r\in[\sqrt{3/2},\sqrt6\,] .
+\end{equation}
+Unlike Eq.~\eqref{eq:revised_ratio}, this threshold is \emph{not} a
+single universal constant: it depends on the local shear anisotropy
+(through $r$) and, more strongly (fourth power), on the local gradient
+steepness $g$. Two limits are informative:
+\begin{itemize}
+\item \textbf{Smooth/well-resolved field} ($g\to0$, i.e.\
+  $\expr\to\dx$, the same limit that makes
+  \code{anisotropic_gradient} degenerate to
+  \code{isotropic_smagorinsky}'s timestep form): the threshold reduces to
+  $\taurelax_0\gtrsim4r\in[4.9,\,9.8]$ -- \emph{higher} than the isotropic
+  $4$, because $\kappaP$ lacks the $\norm{\Shear}_F$ boost
+  \code{isotropic_smagorinsky} gets, making $\Deff$ smaller for the same
+  $\kappaC,h$; since $\dt_{\rm par}\propto1/\Deff$ grows faster than
+  $\dt_{\rm hyp}\propto1/\sqrt{\Deff}$ as $\Deff$ shrinks, a smaller
+  $\Deff$ favours parabolic, so hyperbolic needs a larger $\taurelax_0$ to
+  compensate.
+\item \textbf{Steep gradient} ($g\gg1$, under-resolved abundance
+  contrasts -- exactly the SN-injection-site regime motivating this whole
+  investigation, Section~\ref{sec:scope}): the threshold falls as
+  $g^{-4}$, well below $4$, so hyperbolic wins at \emph{smaller}
+  $\taurelax_0$ than the isotropic estimate would suggest. This follows
+  directly from $\dt_{\rm par}\propto\expr^2\propto(1+g)^{-2}$ shrinking
+  with steepening gradients while $\dt_{\rm hyp}$ (a pure wave-speed CFL,
+  Section~\ref{sec:tau0-motivation}) does not depend on $g$ at all.
+\end{itemize}
+The qualitative conclusion -- hyperbolic's relative timestep advantage
+\emph{grows} precisely where gradients are steepest -- does not depend on
+the $\gammak h=\dx$ identification: that identification enters
+Eq.~\eqref{eq:aniso_ratio} only through the overall
+$\sqrt{\taurelax_0}/2$ prefactor shared with the isotropic result, not
+through the $g$- or $r$-dependent factors, which are ratios of
+same-mode quantities and are identification-independent.
 
 \section{Confrontation with the Implementation}
 \label{sec:confrontation}
@@ -1225,28 +1324,26 @@ function signature.
   ever be evaluated at the cell centre); the reverse order would leave a
   spurious, undecayed gradient artefact in the $\taurelax\to0$ limit. No
   source change was needed.
+\item \textbf{\code{anisotropic_gradient} speed criterion, derived.}
+  Section~\ref{sec:speed-criterion-aniso} redoes
+  Section~\ref{sec:speed-criterion}'s ratio for this mode:
+  $\taurelax_0\gtrsim4r/(1+g)^4$
+  (Eq.~\eqref{eq:aniso_threshold}), with $r=\norm{\Shear}_F/\lambda_1(\Shear)\in[\sqrt{3/2},\sqrt6\,]$
+  the local shear anisotropy and $g=\norm{\grad\driver}\dx/\norm{\driver}$
+  the local gradient steepness. Not a single constant like the isotropic
+  $4$: at $g=0$ the threshold is \emph{higher} ($\in[4.9,9.8]$, since this
+  mode's $\kappaP$ lacks the $\norm{\Shear}_F$ boost
+  \code{isotropic_smagorinsky} gets); at large $g$ (steep,
+  under-resolved gradients -- the SN-injection-site regime motivating
+  this whole investigation) it falls as $g^{-4}$, well below $4$, since
+  $\dt_{\rm par}$ shrinks with the gradient while $\dt_{\rm hyp}$ (a pure
+  wave-speed CFL) does not.
 \item All source changes above were verified by rebuilding
   \code{src/chemistry.o} and \code{src/single\_io.o} (which
   \code{\#include}s \code{chemistry\_io.h}) against the tree's configured
   \code{GEAR-FVPM-HYPERBOLIC-DIFFUSION\_10} variant with
   \code{-Wall~-Wextra~-Werror}: clean, no warnings.
 \end{enumerate}
-
-\subsection{What's Left}
-Outside the scope of this document's $\chyp$ review:
-\begin{itemize}
-\item Whether the Speed Criterion of Section~\ref{sec:speed-criterion}
-  ($\taurelax_0\gtrsim4$) transfers to \code{anisotropic_gradient} mode.
-  That derivation is specific to \code{isotropic_smagorinsky}: in
-  \code{anisotropic_gradient} mode $\kappaP$ carries no $\norm{\Shear}_F$
-  factor (Section~\ref{sec:diffusion-tensor-recap}), so $\lambda_1(\Deff)$
-  scales with $\lambda_1(\Shear)$ rather than $\norm{\Shear}_F$, and
-  $\dt_{\rm par}$ picks up the additional gradient-suppression factor
-  $(\norm{q}\dx)/(\norm{\grad q}\dx+\norm{q})$
-  (\code{chemistry\_timesteps.h:118--124}) that has no isotropic
-  counterpart. The two effects push the threshold in opposite directions,
-  so it is not simply $4$ -- not yet derived.
-\end{itemize}
 
 \bibliographystyle{plain}
 \bibliography{references}
