@@ -123,6 +123,7 @@ void stellar_model_print(const struct stellar_model *sm) {
   lifetime_print(&sm->lifetime);
   supernovae_ia_print(&sm->snia);
   supernovae_ii_print(&sm->snii);
+  radiation_print(&sm->rad);
 }
 
 /**

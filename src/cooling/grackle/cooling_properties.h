@@ -82,7 +82,18 @@ struct cooling_function_data {
   /*! Rate-couple GEAR's HII photoionization into Grackle's RT fields
       instead of flooring the particle's energy directly (see
       cooling_ionize_part_subgrid). Forces use_radiative_transfer on
-      internally when set. */
+      internally when set. Branches on this flag, in call order along the
+      feedback/cooling task chain: feedback/GEAR/feedback_common.c
+      (feedback_iact_HII_ionization, freezes Gamma_HI/excess photon energy
+      onto the tagged particle) -> feedback/GEAR/radiation.c
+      (radiation_cache_mean_excess_photon_energy_HI,
+      radiation_compute_and_cache_HII_rebuild_interval's T_ref_K) ->
+      cooling/grackle/cooling.c (cooling_copy_to_grackle, both call sites)
+      -> cooling/grackle/cooling_gear_subgrid.h
+      (cooling_ionize_part_subgrid, cooling_expire_rate_coupled_tag_subgrid)
+      -> cooling/grackle/cooling_io.h (parsing, forces
+      use_radiative_transfer). Keep this list in sync when adding a new
+      branch on the flag. */
   int HII_couple_ionization_rate;
 
   /*! Grackle RT_heating_rate (in IU) */

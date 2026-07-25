@@ -33,8 +33,11 @@
 #include "stellar_evolution_struct.h"
 #include "units.h"
 
-#define BB_NU_INTEGRATION_STEPS 500
-#define RADIATION_N_IONIZATION_STEPS 1000
+/*! Rescaling applied when building/reading the ionizing-photon-rate
+    (dot_N_ion) interpolation tables: raw values are ~1e48-1e50 photons/s in
+    code units, too large for the tables' float storage, so the table holds
+    (raw value / this factor) and every reader multiplies back by it. */
+#define RADIATION_DOT_N_ION_TABLE_SCALING 1e50
 
 double radiation_get_part_number_hydrogen_atoms(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
@@ -93,13 +96,11 @@ void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);
 
 float radiation_get_physical_IR_opacity(const struct spart *sp,
-                                        const struct unit_system *us,
-                                        const struct phys_const *phys_const,
-                                        const struct cosmology *cosmo);
+                                        const struct unit_system *us);
 
-float radiation_get_physical_IR_optical_depth(
-    const struct spart *sp, const struct unit_system *us,
-    const struct phys_const *phys_const, const struct cosmology *cosmo);
+float radiation_get_physical_IR_optical_depth(const struct spart *sp,
+                                              const struct unit_system *us,
+                                              const struct cosmology *cosmo);
 
 float radiation_get_star_physical_radiation_pressure(
     const struct spart *sp, const float Delta_t,

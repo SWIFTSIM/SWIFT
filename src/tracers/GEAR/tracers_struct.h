@@ -37,7 +37,7 @@ struct tracers_xpart_data {
     long long star_id;
 
     /*! Time when this particle is not ionized anymore */
-    float end_time;
+    double end_time;
 
     /*! Mean photon energy above the 13.6 eV HI ionization threshold for
         the tagging star, frozen at tag time (only set when

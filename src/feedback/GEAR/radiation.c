@@ -576,14 +576,11 @@ radiation_get_comoving_gas_column_density_at_star(const struct spart *sp) {
  * Compute the physical infrared opacity around a star.
  *
  * @param sp The #spart.
- * @param phys_const Physical constants.
  * @param us Unit system.
- * @param cosmo The current cosmological model.
  * @return Infrared gas opacity around the star.
  */
 __attribute__((always_inline)) INLINE float radiation_get_physical_IR_opacity(
-    const struct spart *sp, const struct unit_system *us,
-    const struct phys_const *phys_const, const struct cosmology *cosmo) {
+    const struct spart *sp, const struct unit_system *us) {
   const float Z_gas = sp->feedback_data.Z_star;
   const float Z_sun = 0.02;
   const float value = 10.0 * units_cgs_conversion_factor(us, UNIT_CONV_MASS) /
@@ -595,7 +592,6 @@ __attribute__((always_inline)) INLINE float radiation_get_physical_IR_opacity(
  * Compute the physical infrared optical depth around a star.
  *
  * @param sp The #spart.
- * @param phys_const Physical constants.
  * @param us Unit system.
  * @param cosmo The current cosmological model.
  * @return Infrared gas optical depth around the star.
@@ -603,13 +599,11 @@ __attribute__((always_inline)) INLINE float radiation_get_physical_IR_opacity(
 __attribute__((always_inline)) INLINE float
 radiation_get_physical_IR_optical_depth(const struct spart *sp,
                                         const struct unit_system *us,
-                                        const struct phys_const *phys_const,
                                         const struct cosmology *cosmo) {
   const float Sigma_gas_c =
       radiation_get_comoving_gas_column_density_at_star(sp);
   const float Sigma_gas_p = Sigma_gas_c * cosmo->a2_inv;
-  const float kappa_IR =
-      radiation_get_physical_IR_opacity(sp, us, phys_const, cosmo);
+  const float kappa_IR = radiation_get_physical_IR_opacity(sp, us);
   return kappa_IR * Sigma_gas_p;
 }
 
@@ -629,8 +623,7 @@ radiation_get_star_physical_radiation_pressure(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo) {
 
-  const float tau_IR =
-      radiation_get_physical_IR_optical_depth(sp, us, phys_const, cosmo);
+  const float tau_IR = radiation_get_physical_IR_optical_depth(sp, us, cosmo);
   const float L_bol = sp->feedback_data.radiation.L_bol;
   const float c = phys_const->const_speed_light_c;
 
@@ -922,7 +915,8 @@ void radiation_print(const struct radiation *rad) {
     return;
   }
 
-  /* message("Mass range for RAD = [%g, %g]", rad->mass_min, rad->mass_max); */
+  message("Angular pixels for HII ionization = %d", rad->n_HII_pixels);
+  message("Interpolation table size = %d", rad->interpolation_size);
 }
 
 /**
@@ -1078,12 +1072,10 @@ float radiation_get_luminosities_from_raw(const struct radiation *rad,
 double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
                                                    float log_m1, float log_m2) {
 
-  /* TODO: Multiply by the normalisation factor that avoid us using double. OR
-     use log... */
-  double dot_N_ion_1 =
-      interpolate_1d(&rad->integrated.dot_N_ion, log_m1) * 1e50;
-  double dot_N_ion_2 =
-      interpolate_1d(&rad->integrated.dot_N_ion, log_m2) * 1e50;
+  double dot_N_ion_1 = interpolate_1d(&rad->integrated.dot_N_ion, log_m1) *
+                      RADIATION_DOT_N_ION_TABLE_SCALING;
+  double dot_N_ion_2 = interpolate_1d(&rad->integrated.dot_N_ion, log_m2) *
+                      RADIATION_DOT_N_ION_TABLE_SCALING;
   return dot_N_ion_2 - dot_N_ion_1;
 };
 
@@ -1096,8 +1088,8 @@ double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
  */
 double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
                                               float log_m) {
-  /* TODO: Multiply by the normalisation factor that avoid us using double */
-  return interpolate_1d(&rad->raw.dot_N_ion, log_m) * 1e50;
+  return interpolate_1d(&rad->raw.dot_N_ion, log_m) *
+        RADIATION_DOT_N_ION_TABLE_SCALING;
 };
 
 /**
@@ -1199,7 +1191,7 @@ void radiation_read_ionization_rate_array(struct radiation *rad,
     /* Get bolometric luminosity for this mass, in internal units */
     data[j] = radiation_get_individual_star_ionizing_photon_emission_rate_fit(
                   mass, us, phys_const) /
-              1e50;
+              RADIATION_DOT_N_ION_TABLE_SCALING;
   }
 
   /* Initialize the raw interpolation */
