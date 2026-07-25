@@ -1113,16 +1113,14 @@ to
 i.e.\ \emph{linear} in the wave-speed estimate $\Lambda$. Any factor by
 which $\chyp$ is overestimated passes through directly into extra
 numerical diffusion in the large-$\taurelax$ ($\alpha\approx1$) regime --
-on top of, and independent from, the missing Hopkins-2017-type limiter on
-$F_{\rm diss}$ in that same regime (the companion document's parabolic
-Hopkins-HLL solver, Section ``The Hopkins HLL-Type Flux'' there, has such
-a limiter; no equivalent exists yet for the $\alpha\approx1$ hyperbolic
-branch). Since
+on top of, and independent from, a second lever: whether $F_{\rm diss}$
+itself is limited in that regime the way the companion document's
+parabolic Hopkins-HLL solver limits its own dissipation (Section ``The
+Hopkins HLL-Type Flux'' there). Since
 $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ is exact for isotropic $\Deff$
-and a tight, safe bound otherwise (Section~\ref{sec:confrontation}), this
-particular lever on the ``too diffusive at large $\taurelax$'' symptom is
-already pulled as far as it goes; porting the Hopkins-2017 limiter itself
-to the hyperbolic branch is the remaining, independent lever.
+and a tight, safe bound otherwise (Section~\ref{sec:confrontation}), the
+wave-speed lever is already pulled as far as it goes; Section~\ref{sec:hyperbolic-limiter}
+addresses the second one.
 
 \section{Practical Guidance for Choosing $\taurelax_0$}
 \label{sec:practical-tau0}
@@ -1165,14 +1163,18 @@ current implementation, already deep in the unlimited-HLL regime.
 
 ``Fast'' and ``Hopkins-limited/accurate'' are therefore not two
 independently reachable regimes under $\taurelax_0$ tuning alone -- they
-are the same knob, pointing in opposite directions, until the
-Hopkins-2017 limiter is ported to the $\alpha\approx1$ hyperbolic branch
-(Section~\ref{sec:hll-consequence}). Within the unlimited regime itself,
-larger $\taurelax_0$ is not obviously worse: the numerical dissipation
-magnitude $F_{\rm diss}\propto\chyp\propto\taurelax^{-1/2}$
-\emph{shrinks} as $\taurelax_0$ grows, even though the Hopkins-style
-protection against it disappears at essentially the same threshold where
-the speed benefit appears.
+are the same knob, pointing in opposite directions. The flux-memory
+limiter of Section~\ref{sec:hyperbolic-limiter} softens this tension
+(empirically, a further $\sim\!10\%$ RMS-spread reduction and several-fold
+better peak retention at $\taurelax_0=10^2$, on top of the wave-speed fix
+above) but does not eliminate it: the limiter suppresses dissipation the
+flux-memory signal identifies as unjustified, it does not restore full
+Hopkins-style protection at $\alpha\approx1$. Within the unlimited regime
+itself, larger $\taurelax_0$ is not obviously worse on the wave-speed
+lever alone: the numerical dissipation magnitude
+$F_{\rm diss}\propto\chyp\propto\taurelax^{-1/2}$ \emph{shrinks} as
+$\taurelax_0$ grows, even though full Hopkins-style protection is still
+only available at $\alpha\approx0$.
 
 \begin{remark}[Existing empirical guidance predates several fixes in this document]
 The \code{l5\_tau\_1e-1} through \code{l5\_tau\_1e2} runs that first
@@ -1187,13 +1189,149 @@ $\taurelax_0$ ``looks too diffusive'' should be re-checked against the
 current code before being treated as settled.
 \end{remark}
 
-As an interim starting point, pending the Hopkins-2017 hyperbolic port:
-$\taurelax_0$ a few times the relevant speed-parity threshold (order
-$4$--$10$ for \code{isotropic_smagorinsky}; toward the higher end, and
-locally variable, for \code{anisotropic_gradient} per
-Eq.~\eqref{eq:aniso_threshold}), validated against a matching parabolic
-run on the same problem before trusting quantitative results -- not yet a
-final, calibrated production value.
+As an interim starting point: $\taurelax_0$ a few times the relevant
+speed-parity threshold (order $4$--$10$ for \code{isotropic_smagorinsky};
+toward the higher end, and locally variable, for
+\code{anisotropic_gradient} per Eq.~\eqref{eq:aniso_threshold}), with the
+flux-memory limiter (Section~\ref{sec:hyperbolic-limiter},
+\code{hyperbolic_limiter_scope: AllComponents}) enabled, validated against
+a matching parabolic run on the same problem before trusting quantitative
+results -- not yet a final, calibrated production value.
+
+\section{A Hopkins-2017-Style Limiter for the Hyperbolic Branch}
+\label{sec:hyperbolic-limiter}
+
+\subsection{Why the Obvious Port Doesn't Work}
+\label{sec:limiter-naive-port}
+The parabolic Hopkins-HLL solver limits its dissipation with
+\code{chemistry\_riemann\_compute\_alpha} (\code{chemistry\_riemann\_utils.h}),
+built around the ratio
+\begin{equation}
+  r = \frac{v_{\rm HLL}\,\dx\,\lvert\driver_\star\rvert}{\norm{\Kmat_\star}_F\,\lvert U_\star\rvert} ,
+  \qquad v_{\rm HLL} = \tfrac12\lvert u_R-u_L\rvert + \tfrac12(c_{s,L}+c_{s,R}) ,
+\end{equation}
+comparing a numerical transport rate ($v_{\rm HLL}$, the \emph{hydro}
+sound speed -- an independent scale, since parabolic diffusion has no
+wave speed of its own) against a physical diffusion rate (built from
+$\Kmat$). The obvious port -- reuse this formula verbatim, substituting
+the genuine hyperbolic wave speed $\chyp$ for $v_{\rm HLL}$ -- does not
+work: it is redundant with the blending factor $\alpha$
+(Section~\ref{sec:tau-modes}) already computed for the same pair.
+
+\begin{remark}[The swapped ratio is a function of $\taurelax$ alone]
+\label{rem:limiter-redundant}
+Substituting $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ for $v_{\rm HLL}$
+and $\driver_\star/U_\star=\mu$ (Corollary~\ref{cor:isotropic}) puts
+$\Deff$ into both the numerator (through $\chyp$) and the denominator
+(through $\Kmat_\star$) of $r$. Holding every other quantity fixed and
+varying only $\taurelax$ -- the one free parameter this section is about
+-- gives $r\propto\taurelax^{-1/2}$, while the existing blending ratio
+$\rho_\star=\taurelax_\star/\taurelax_{\rm num}$
+(Section~\ref{sec:practical-tau0}) is $\propto\taurelax^{+1}$: an exact
+monotonic power-law relationship, $r\propto\rho_\star^{-1/2}$, verified
+against the code's own formulas (20 random trials over the free
+parameters, agreement at machine precision). The swapped $r$ therefore
+carries no information beyond what $\alpha$ already encodes -- both are
+functions of the same scheme parameters ($\Deff$, $\taurelax$, $\dx$)
+alone, since $\driver_\star/U_\star=\mu$ is a fixed per-mode constant,
+not a diagnostic of the local metal field. A working limiter needs a
+signal $\alpha$ does not already see: something that depends on the
+actual local state, not just on scheme parameters.
+\end{remark}
+
+\subsection{Flux Memory}
+\label{sec:limiter-flux-memory}
+In the parabolic scheme, comparing dissipation against $\Kmat\grad\driver$
+is exactly right because the flux \emph{is} $\Kmat\grad\driver$
+algebraically -- there is nothing else it could be. In the hyperbolic
+scheme this is no longer true: $\Fdiff$ is a dynamical variable that only
+relaxes toward $\Fdiff_{\rm parabolic}=-\Kmat\grad\driver$ on timescale
+$\taurelax$ (Eq.~\eqref{eq:cattaneo}). An un-relaxed flux that persists
+and keeps transporting metal after the local gradient that produced it
+has moved on -- not a wave-speed error -- is the mechanism identified
+(Section~\ref{sec:practical-tau0}) as the actual source of large-$\taurelax$
+over-transport, and it is precisely what Remark~\ref{rem:limiter-redundant}'s
+signal cannot see.
+
+Define the \emph{flux memory} as the (pair-averaged, exactly as
+$\Kmat_\star,\driver_\star,U_\star$ already are) residual between the
+dynamical flux and its own equilibrium target,
+\begin{equation}
+  \Fdiff_{\rm memory} = \tfrac12(\Fdiff_L+\Fdiff_R)
+  - \tfrac12(\Fdiff_{{\rm parabolic},L}+\Fdiff_{{\rm parabolic},R}) ,
+\end{equation}
+and the dimensionless ratio
+\begin{equation}
+  s = \frac{\norm{\Fdiff_{\rm memory}}}{\norm{\Fdiff_\star}+\norm{\Fdiff_{{\rm parabolic},\star}}} ,
+  \qquad
+  \boxed{\;\eta = \frac{1}{1+s}\;} ,
+\end{equation}
+multiplying $F_{\rm diss}$ (\code{chemistry\_riemann\_compute\_hyperbolic\_diffusivity\_limiter},
+\code{chemistry\_riemann\_utils.h}). $\eta\to1$ (no suppression) when the
+flux has caught up to its Fickian target; $\eta\to0$ (suppress) when it
+is still coasting on a stale gradient. The sum-normalisation (rather than
+normalising by $\Fdiff_{\rm parabolic}$ alone) avoids a $0/0$ blind spot
+at a sharp initial discontinuity: there, each particle's own local
+gradient -- and hence $\Fdiff_{\rm parabolic}$ -- can be exactly zero
+even though the pair straddles a real jump in $U_0$, which is legitimate
+transport to kick-start, not numerical excess; the limiter correctly
+leaves this case alone ($\eta=1$ when both $\Fdiff_\star$ and
+$\Fdiff_{{\rm parabolic},\star}$ vanish). This functional form is a
+starting point, not a derived result -- Hopkins' own $r_{\rm term}$ is
+similarly an empirically-tuned saturating function, not a first-principles
+one.
+
+\subsection{Scope, and the Empirical Comparison}
+Hopkins' original limiter was built for a 1-component state (density
+only); $F_{\rm diss}$ here has 4 (density and 3 flux components). Whether
+$\eta$ should also multiply the flux-component dissipation
+($F_{\rm diss,1\text{-}3}$) was not obvious a priori: limiting it could
+either suppress genuine numerical excess there too, or interfere with the
+flux components' own physical decay toward $\Fdiff_{\rm parabolic}$,
+making the memory persist \emph{longer}. Both scopes were implemented
+(\code{GEARChemistry:hyperbolic\_limiter\_scope}, \code{Density} vs.\
+\code{AllComponents}) and compared on the same \code{MetalDiffusionOnePeak}
+sweep used throughout this document (\code{constant\_mode}+
+\code{isotropic\_constant}, level 5, $\taurelax\in\{10^{-1},10^0,10^1,10^2\}$),
+against the no-limiter baseline:
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+$\taurelax$ & RMS spread (limiter/baseline) & peak $\rho Z$ (limiter/baseline) \\
+\midrule
+$10^{-1}$ & $0.995$ (Density), $0.995$ (All) & $1.03\times$, $1.03\times$ \\
+$10^{0}$  & $0.994$ (Density), $0.993$ (All) & $1.04\times$, $1.06\times$ \\
+$10^{1}$  & $0.953$ (Density), $0.942$ (All) & $1.18\times$, $1.23\times$ \\
+$10^{2}$  & $0.904$ (Density), $0.897$ (All) & $8.11\times$, $5.02\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Both scopes reduce the RMS spread further at every $\taurelax$ (beyond
+the $\lambda_1$-vs-Frobenius fix alone, Section~\ref{sec:related-fixes}),
+growing with $\taurelax$ -- exactly where the missing limiter's effect
+was largest. \code{AllComponents} matches or beats \code{Density} on the
+RMS spread (the more robust of the two metrics; peak $\rho Z$ is a
+single-particle statistic, noisier) at every $\taurelax$ tested,
+including $\taurelax=10^2$ where the two scopes' peak-retention numbers
+diverge most -- i.e.\ the a priori concern that limiting the flux
+components would preserve memory and make things worse is not borne out
+here. \textbf{\code{AllComponents} is therefore the recommended default},
+matching how the existing $\alpha$ blend already applies uniformly across
+all 4 components; \code{Density} remains available
+(\code{hyperbolic\_limiter\_scope: Density}) since it is not clearly
+worse and matches Hopkins' original scope exactly.
+
+Visual inspection of the profile plots confirms no pathological behaviour
+introduced by the limiter (no oscillation, no negative dips): the
+$\taurelax=10^2$ profile with the limiter sits visibly closer to the pure
+Cattaneo (top-hat) analytic solution than the unlimited baseline did --
+consistent with the limiter suppressing spurious numerical dissipation
+rather than introducing a new artefact.
+
+Mass conservation was verified exact (to machine precision) in every run,
+with and without the limiter, at every $\taurelax$ and scope -- the
+limiter only redistributes numerical dissipation among the HLL flux's
+components, it cannot break the underlying conservation law.
 
 \section{The Half-Timestep Predictor}
 \label{sec:predictor}
