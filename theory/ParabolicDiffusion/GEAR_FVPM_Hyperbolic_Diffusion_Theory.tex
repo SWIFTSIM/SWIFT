@@ -191,9 +191,7 @@ with $\taurelax_0=$\code{chem_data->tau} the parameter-file normalisation
 and $\Shear$ the (unregularised) physical velocity shear tensor. The
 \code{turbulent_mode} formula includes an explicit $\kappaC^{-1}$
 (\code{chem_data->diffusion_coefficient}) coupling, motivated and derived
-in Section~\ref{sec:tau0-physical}; it supersedes an earlier,
-$\kappaC$-independent version of this formula (see that section for why
-the coupling is required). This choice of relaxation-time model is
+in Section~\ref{sec:tau0-physical}. This choice of relaxation-time model is
 orthogonal, in the parameter file, to the diffusion-tensor mode $\Kmat$
 (Section~\ref{sec:diffusion-tensor-recap}): \code{diffusion_mode} and
 \code{relaxation_time_mode} are parsed as two independent strings
@@ -685,6 +683,69 @@ Section~\ref{sec:confrontation}'s companion work). A physically meaningful
 $\taurelax_0$ must therefore be defined \emph{relative to} $\kappaC$, not
 alongside it.
 
+\subsection{Should $\taurelax$ Use the Regularised $\Splus$?}
+\label{sec:tau-no-regularisation}
+Eq.~\eqref{eq:tau_turbulent} uses $\norm{\Shear}_F$, the Frobenius norm of
+the \emph{unregularised} shear tensor, even though $\Kmat$ itself is built
+from $\Splus$ in \code{anisotropic_gradient} mode
+(Section~\ref{sec:diffusion-tensor-recap}). This is deliberate, not an
+inconsistency.
+
+\begin{corollary}[The $\Splus/\Shear$ norm ratio is bounded]
+\label{cor:shear-regularisation-bound}
+For any nonzero traceless symmetric $3\times3$ tensor $\Shear$ with
+eigenvalues $\lambda_1\geq\lambda_2\geq\lambda_3$ (tracelessness forces
+$\lambda_1>0>\lambda_3$ whenever $\Shear\neq0$),
+\begin{equation}
+  \frac{\norm{\Splus}_F}{\norm{\Shear}_F} \in
+  \left[\frac{1}{\sqrt3},\ \sqrt{\frac23}\,\right] \approx [0.577,\ 0.816] ,
+\end{equation}
+the lower end attained at $\Shear=\mathrm{diag}(1,1,-2)$ (up to scale/permutation),
+the upper end at $\Shear=\mathrm{diag}(2,-1,-1)$.
+\end{corollary}
+\begin{proof}
+$\norm{\Splus}_F^2=\sum_{\lambda_i>0}\lambda_i^2$. If $\lambda_2\leq0$
+(one positive eigenvalue), write $\lambda_2=-t\lambda_1$,
+$\lambda_3=-(1-t)\lambda_1$ for $t\in[0,\tfrac12]$ (tracelessness and
+ordering); the squared ratio is
+$1/[1+t^2+(1-t)^2]$, decreasing on $[0,\tfrac12]$ from $1$ (the excluded
+$\Shear=0$ boundary) to $\tfrac23$ at $t=\tfrac12$
+($\lambda_2=\lambda_3$, i.e.\ $\mathrm{diag}(2,-1,-1)$) -- this is the upper end.
+If $\lambda_2>0$ (two positive eigenvalues), write $\lambda_2=t\lambda_1$,
+$t\in(0,1]$, so $\lambda_3=-(1+t)\lambda_1$; the squared ratio is
+$(1+t^2)/[2(1+t+t^2)]$, decreasing on $(0,1]$ from $\tfrac12$ (the
+$\lambda_2\to0$ boundary shared with the other branch) to $\tfrac13$ at
+$t=1$ ($\lambda_1=\lambda_2$, i.e.\ $\mathrm{diag}(1,1,-2)$) -- this is the lower
+end.
+\end{proof}
+
+\begin{remark}[$\Shear$, not $\Splus$, is the right choice for $\taurelax$]
+\label{rem:no-shear-regularisation-in-tau}
+Two independent reasons. Physically, $\taurelax$ is a turbulent mixing
+timescale: it must track the total local strain-rate magnitude, since both
+the stretching and compressive legs of the flow contribute to how fast an
+eddy folds and mixes a passive scalar -- exactly the full-norm scaling in
+Romano et al.'s Eq.~\eqref{eq:romano_tdiff} below. $\Splus$ is a different
+kind of object: a device for keeping $\Kmat$ positive semi-definite so
+that diffusion smooths gradients rather than sharpening them
+(Section~\ref{sec:diffusion-tensor-recap}), with no independent standing
+as a timescale -- and a scalar $\taurelax$ cannot carry $\Splus$'s
+directional information in any case; only $\Kmat$'s eigenvectors do that,
+through $\Deff$ itself.
+
+Quantitatively, Corollary~\ref{cor:shear-regularisation-bound} shows the
+two choices would differ only by a factor in
+$[\sqrt{3/2},\sqrt3]\approx[1.22,1.73]$ -- bounded, and fully degenerate
+with $\taurelax_0$, which is already a free, per-simulation calibrated
+constant. Regularising would not fix anything; it would only relabel
+$\taurelax_0$, while making $\taurelax$ larger (since
+$\norm{\Splus}_F\leq\norm{\Shear}_F$ always) and pushing the scheme
+further from the parabolic limit -- the opposite of the accuracy
+requirement motivating this section (small $\taurelax$ recovers Fick's
+law). $\norm{\Shear}_F$ is both the physically correct choice and the more
+conservative one.
+\end{remark}
+
 \subsection{Cross-Check: The Parabolic Mixing Timescale of Romano et al.~(2022)}
 Romano, Nagamine \& Hirashita~\cite{Romano2022} use the same
 Shen-et-al.~\cite{ShenWadsleyStinson2010}/Smagorinsky-Lilly~\cite{Smagorinsky1963}
@@ -1045,15 +1106,23 @@ function signature.
 \end{enumerate}
 
 \subsection{What's Left}
-Outside the scope of this document's $\chyp$ review: whether
-\code{chemistry_get_physical_shear_tensor()}'s output should be
-regularised before use in $\taurelax$'s \code{turbulent_mode} formula
-(the standing \code{// (Shall we?)} TODO at
-\code{hyperbolic/chemistry\_getters.h}, distinct from the
-$\Splus$-regularisation already applied to $\Kmat$ itself in
-\code{anisotropic_gradient} mode), and whether the half-timestep MUSCL
-predictor (\code{hyperbolic/chemistry\_gradients.h}) correctly
-time-extrapolates the flux state. Both are next.
+Outside the scope of this document's $\chyp$ review:
+\begin{itemize}
+\item Whether the half-timestep MUSCL predictor
+  (\code{hyperbolic/chemistry\_gradients.h}) correctly time-extrapolates
+  the flux state.
+\item Whether the Speed Criterion of Section~\ref{sec:speed-criterion}
+  ($\taurelax_0\gtrsim4$) transfers to \code{anisotropic_gradient} mode.
+  That derivation is specific to \code{isotropic_smagorinsky}: in
+  \code{anisotropic_gradient} mode $\kappaP$ carries no $\norm{\Shear}_F$
+  factor (Section~\ref{sec:diffusion-tensor-recap}), so $\lambda_1(\Deff)$
+  scales with $\lambda_1(\Shear)$ rather than $\norm{\Shear}_F$, and
+  $\dt_{\rm par}$ picks up the additional gradient-suppression factor
+  $(\norm{q}\dx)/(\norm{\grad q}\dx+\norm{q})$
+  (\code{chemistry\_timesteps.h:118--124}) that has no isotropic
+  counterpart. The two effects push the threshold in opposite directions,
+  so it is not simply $4$ -- not yet derived.
+\end{itemize}
 
 \bibliographystyle{plain}
 \bibliography{references}

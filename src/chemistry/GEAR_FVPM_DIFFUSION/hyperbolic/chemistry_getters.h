@@ -86,8 +86,14 @@ chemistry_compute_physical_tau(const struct part *restrict p,
        scaling as the physical turbulent-mixing timescale (Romano, Nagamine
        & Hirashita 2022, arXiv:2202.05243, eq. 13) -- otherwise tau
        decouples from the diffusivity's own normalisation as soon as
-       C_diff changes. Also note that we do not regularize the shear
-       tensor here. */
+       C_diff changes. We deliberately use the full (unregularized) shear
+       tensor here, not S_plus (chemistry_regularize_shear_tensor): S_plus
+       is a device for keeping K positive semi-definite, with no standing
+       as a physical timescale, whereas tau must track the full local
+       strain-rate magnitude (both legs of the flow contribute to how fast
+       turbulence mixes a scalar). The two choices differ only by a
+       bounded O(1) factor anyway (theory document, Corollary on the
+       S_plus/S norm ratio), fully absorbed by the free constant tau_0. */
     double S[3][3];
     chemistry_get_physical_shear_tensor(p, cosmo, S);
     const double S_norm_inv = 1.0 / chemistry_get_matrix_norm(S);
