@@ -77,7 +77,8 @@ __attribute__((always_inline)) INLINE static void
 chemistry_limit_metal_mass_flux(const struct part *restrict pi,
                                 const struct part *restrict pj, const int metal,
                                 double fluxes[4], const float dt,
-                                const int interaction_mode) {
+                                const int interaction_mode,
+                                const struct chemistry_global_data *chem_data) {
 
   /* Convert the raw riemann mass derivative to mass */
   double metal_mass_interface = fluxes[0] * dt;
@@ -119,7 +120,7 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
    * Truncates fluxes that are below machine epsilon relative to the source,
    * since it's just noise. Clipping it here can prevent the 'ratchet' effect.
    */
-  const double eps = GEAR_FVPM_DIFF_NOISE_GATE;
+  const double eps = chem_data->flux_limiter_noise_gate;
   if (fabs(metal_mass_interface) < mZ_source * eps) {
     /* Set to 0 to kill noise */
     for (int k = 0; k < 4; k++) fluxes[k] = 0.0;
@@ -136,9 +137,9 @@ chemistry_limit_metal_mass_flux(const struct part *restrict pi,
    * stalling the PDE front. We use a 'startup_fraction' of the source mass to
    * kick-start diffusion into the vacuum.
    */
-  const double safety_scale = GEAR_FVPM_DIFF_LIMITER_SAFETY;
-  const double relative_change_limit = GEAR_FVPM_DIFF_LIMITER_SINK_STABILITY;
-  const double startup_fraction = GEAR_FVPM_DIFF_LIMITER_STARTUP;
+  const double safety_scale = chem_data->flux_limiter_safety;
+  const double relative_change_limit = chem_data->flux_limiter_sink_stability;
+  const double startup_fraction = chem_data->flux_limiter_startup;
   double effective_limit_mass = min(mZ_source, capacity);
 
   /* Select the tighter of the source/capacity limit and the sink stability

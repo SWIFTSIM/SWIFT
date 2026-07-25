@@ -310,6 +310,24 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
   }
 
   /***************************************************************************/
+  /* Read parameters for the flux limiter (chemistry_limit_metal_mass_flux) */
+  data->flux_limiter_noise_gate = parser_get_opt_param_double(
+      parameter_file, "GEARChemistry:flux_limiter_noise_gate",
+      GEAR_FVPM_DIFF_NOISE_GATE_DEFAULT);
+
+  data->flux_limiter_safety = parser_get_opt_param_double(
+      parameter_file, "GEARChemistry:flux_limiter_safety",
+      GEAR_FVPM_DIFF_LIMITER_SAFETY_DEFAULT);
+
+  data->flux_limiter_sink_stability = parser_get_opt_param_double(
+      parameter_file, "GEARChemistry:flux_limiter_sink_stability",
+      GEAR_FVPM_DIFF_LIMITER_SINK_STABILITY_DEFAULT);
+
+  data->flux_limiter_startup = parser_get_opt_param_double(
+      parameter_file, "GEARChemistry:flux_limiter_startup",
+      GEAR_FVPM_DIFF_LIMITER_STARTUP_DEFAULT);
+
+  /***************************************************************************/
   /* Make it mandatory for parabolic diffusion */
   data->C_CFL_chemistry =
       parser_get_param_float(parameter_file, "GEARChemistry:C_CFL_chemistry");
@@ -363,6 +381,10 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
     message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
     message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
     message("C_CFL:                      %e", data->C_CFL_chemistry);
+    message("Flux limiter noise gate:    %e", data->flux_limiter_noise_gate);
+    message("Flux limiter safety:        %e", data->flux_limiter_safety);
+    message("Flux limiter sink stability: %e", data->flux_limiter_sink_stability);
+    message("Flux limiter startup:       %e", data->flux_limiter_startup);
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     message("Relaxation time mode:       %u", data->relaxation_time_mode);
     message("Relaxation time (constant_mode): %e", data->tau);

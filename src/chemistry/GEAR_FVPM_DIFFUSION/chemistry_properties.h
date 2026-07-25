@@ -54,24 +54,21 @@
  * 0: Silent, 1+: Detailed per-interaction reports (high I/O overhead). */
 #define GEAR_FVPM_DIFF_FLUX_LIMITER_VERBOSITY 0
 
-/** @brief The "Noise Gate" threshold.
- * Fluxes smaller than 1e-15 relative to the source mass are treated as
- * numerical noise and zeroed out to prevent the "ratchet effect." */
-#define GEAR_FVPM_DIFF_NOISE_GATE 1e-15
+/** @brief Default for the flux limiter's "Noise Gate" threshold (see
+ * GEARChemistry:flux_limiter_noise_gate). */
+#define GEAR_FVPM_DIFF_NOISE_GATE_DEFAULT 1e-15
 
-/** @brief Global safety factor for the rational flux limiter.
- * Ensures the attenuated flux remains well within the physical bounds. */
-#define GEAR_FVPM_DIFF_LIMITER_SAFETY 0.5f
+/** @brief Default for the flux limiter's global safety factor (see
+ * GEARChemistry:flux_limiter_safety). */
+#define GEAR_FVPM_DIFF_LIMITER_SAFETY_DEFAULT 0.5f
 
-/** @brief Sink Capacity Constraint.
- * Restricts a single neighbor interaction from changing the sink particle's
- * metal mass by more than 25% to prevent neighbor-flooding oscillations. */
-#define GEAR_FVPM_DIFF_LIMITER_SINK_STABILITY 0.25f
+/** @brief Default for the flux limiter's sink capacity constraint (see
+ * GEARChemistry:flux_limiter_sink_stability). */
+#define GEAR_FVPM_DIFF_LIMITER_SINK_STABILITY_DEFAULT 0.25f
 
-/** @brief Diffusion "Startup" Fraction.
- * Ensures pristine gas (Z=0) can be enriched. Allows a flux of up to 10%
- * of the source's mass to seed a metal-free neighbor. */
-#define GEAR_FVPM_DIFF_LIMITER_STARTUP 0.1f
+/** @brief Default for the flux limiter's diffusion "startup" fraction
+ * (see GEARChemistry:flux_limiter_startup). */
+#define GEAR_FVPM_DIFF_LIMITER_STARTUP_DEFAULT 0.1f
 
 /* --- Error Handling & Debugging --- */
 
@@ -162,6 +159,24 @@ struct chemistry_global_data {
   /* CFL coefficient for integration on timesteps larger than the parabolic
      timestep */
   float C_CFL_chemistry;
+
+  /***************************************************************************/
+  /* Flux limiter parameters (chemistry_limit_metal_mass_flux) */
+
+  /*! Fluxes below this fraction of the source mass are treated as noise
+      and zeroed (prevents the "ratchet effect"). */
+  double flux_limiter_noise_gate;
+
+  /*! Global safety factor for the rational flux limiter. */
+  double flux_limiter_safety;
+
+  /*! Sink capacity constraint: max fractional change to a sink particle's
+      metal mass from a single neighbour interaction. */
+  double flux_limiter_sink_stability;
+
+  /*! Startup fraction: max fraction of the source's mass that may flow to
+      a pristine (Z=0) neighbour, to seed diffusion into the vacuum. */
+  double flux_limiter_startup;
 };
 
 #endif /* SWIFT_CHEMISTRY_PROPERTIES_GEAR_FVPM_DIFFUSION_H */
