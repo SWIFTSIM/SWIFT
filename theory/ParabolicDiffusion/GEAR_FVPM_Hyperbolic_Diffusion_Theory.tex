@@ -489,76 +489,104 @@ architectural one.
 Proposition~\ref{prop:main} was derived from the first-order system's
 flux Jacobian. There is a second, classical route to the same physics --
 eliminate $\Fdiff$ between Eqs.~\eqref{eq:mass_conservation}--\eqref{eq:cattaneo}
-to get a single second-order-in-time equation for $U_0$ alone (the
-Cattaneo/Maxwell-Cattaneo route to the ``telegrapher's equation'',
-normally presented only for scalar/isotropic diffusivity). This section
-derives it for a fully general tensor $\Deff$, with no isotropy
-assumption, and uses it as an independent check on
-Proposition~\ref{prop:main} via a completely different method (a
-dispersion relation, rather than a Jacobian eigen-decomposition).
+to get a single second-order-in-time equation (the Cattaneo/Maxwell-Cattaneo
+route to the ``telegrapher's equation'', normally presented only for
+scalar/isotropic diffusivity). This section derives it in two stages: an
+\emph{exact} equation in the driver $\driver$ (Proposition~\ref{prop:telegrapher},
+no approximation beyond what Eq.~\eqref{eq:cattaneo} already assumes), and
+a \emph{local} specialisation to a closed equation in $U_0$ alone for any
+general tensor $\Deff$ (Corollary~\ref{cor:telegrapher_local}), used as an
+independent check on Proposition~\ref{prop:main} via a completely
+different method (a dispersion relation, rather than a Jacobian
+eigen-decomposition).
 
-\begin{proposition}[General telegrapher equation]
+\begin{proposition}[General telegrapher equation, exact form]
 \label{prop:telegrapher}
-Under the frozen-coefficient approximation of
-Section~\ref{sec:quasilinear} ($\taurelax$, $\Deff$ locally constant), the
-conservation and Cattaneo-relaxation equations
-\eqref{eq:mass_conservation}--\eqref{eq:cattaneo} imply, for the
-conserved state $U_0=\rhoZ$ alone,
+The conservation and Cattaneo-relaxation equations
+\eqref{eq:mass_conservation}--\eqref{eq:cattaneo} imply, exactly (no
+frozen-coefficient or isotropy assumption -- only the two governing
+equations themselves, and $\taurelax$ treated as locally constant so it
+can be pulled through $\div$/$\partial_t$, exactly as in
+Eq.~\eqref{eq:cattaneo} itself),
 \begin{equation}
-  \label{eq:telegrapher}
-  \boxed{\;\taurelax\,\pdv[2]{U_0}{t} + \pdv{U_0}{t} = \div\!\big(\Deff\grad U_0\big)\;} ,
+  \label{eq:telegrapher_q}
+  \boxed{\;\taurelax\,\pdv[2]{U_0}{t} + \pdv{U_0}{t} = \div\!\big(\Kmat\grad \driver\big)\;} ,
 \end{equation}
-for any symmetric PSD $3\times3$ tensor $\Deff$ (no isotropy assumed).
+a PDE in the \emph{driver} $\driver$, not yet in $U_0$ alone.
 \end{proposition}
 
 \begin{proof}
 Take $\partial_t$ of Eq.~\eqref{eq:mass_conservation}:
 $\partial_t^2 U_0 + \div(\partial_t\Fdiff)=0$. Substitute
-$\partial_t\Fdiff$ from Eq.~\eqref{eq:cattaneo} written in terms of
-$\Deff$ (Section~\ref{sec:effective-diffusivity}: $(\Kmat/\taurelax)\grad\driver
-= (\Deff/\taurelax)\grad U_0$ under the frozen-coefficient substitution
-$\grad\driver\approx\mu\grad U_0$),
+$\partial_t\Fdiff$ from Eq.~\eqref{eq:cattaneo},
 \begin{equation}
-  \partial_t\Fdiff = -\frac{\Deff}{\taurelax}\grad U_0 - \frac{\Fdiff}{\taurelax} ,
+  \partial_t\Fdiff = -\frac{\Kmat}{\taurelax}\grad \driver - \frac{\Fdiff}{\taurelax} ,
 \end{equation}
 giving
 \begin{equation}
-  \partial_t^2U_0 - \div\!\left(\frac{\Deff}{\taurelax}\grad U_0\right) - \frac{1}{\taurelax}\div\Fdiff = 0 .
+  \partial_t^2U_0 - \div\!\left(\frac{\Kmat}{\taurelax}\grad \driver\right) - \frac{1}{\taurelax}\div\Fdiff = 0 .
 \end{equation}
 Eliminate the remaining $\div\Fdiff$ using
 Eq.~\eqref{eq:mass_conservation} itself, $\div\Fdiff=-\partial_tU_0$:
 \begin{equation}
-  \partial_t^2U_0 + \frac{1}{\taurelax}\partial_tU_0 - \div\!\left(\frac{\Deff}{\taurelax}\grad U_0\right) = 0 .
+  \partial_t^2U_0 + \frac{1}{\taurelax}\partial_tU_0 - \div\!\left(\frac{\Kmat}{\taurelax}\grad \driver\right) = 0 .
 \end{equation}
-Multiplying by $\taurelax$ (frozen, so it commutes with $\div$ and
-$\partial_t$) gives Eq.~\eqref{eq:telegrapher}.
+Multiplying by $\taurelax$ gives Eq.~\eqref{eq:telegrapher_q}.
 \end{proof}
 
+\begin{corollary}[Local form in $U_0$ alone]
+\label{cor:telegrapher_local}
+Under the \emph{additional} frozen-coefficient approximation of
+Section~\ref{sec:quasilinear} ($\mu$, hence $\Deff=\mu\Kmat$, locally
+constant in a neighbourhood -- the same approximation already used to
+derive the flux Jacobian, Section~\ref{sec:quasilinear}), $\grad\driver
+\approx\mu\grad U_0$, and Eq.~\eqref{eq:telegrapher_q} reduces to
+\begin{equation}
+  \label{eq:telegrapher}
+  \taurelax\,\pdv[2]{U_0}{t} + \pdv{U_0}{t} \approx \div\!\big(\Deff\grad U_0\big) ,
+\end{equation}
+now a closed equation in $U_0$ alone, for any symmetric PSD $\Deff$ (no
+isotropy assumed). This is the form used for the local dispersion analysis
+below -- a plane-wave ansatz is itself only meaningful locally, over a
+neighbourhood small enough that treating $\taurelax,\Deff$ as constant is
+already implicit, so no additional assumption is introduced beyond what
+the analysis needs anyway.
+\end{corollary}
+\emph{Eq.~\eqref{eq:telegrapher_q} is the one to trust globally}
+($\driver$ is what the code actually evolves gradients of --
+Section~\ref{sec:governing-system} -- and it is exact, not an
+approximation); Eq.~\eqref{eq:telegrapher} is a local specialisation,
+useful specifically because it isolates $U_0$ for the dispersion relation
+below, and reduces to Eq.~\eqref{eq:telegrapher_q} exactly whenever
+$\driver=U_0$ (\code{isotropic_constant}, $\mu=1$).
+
 \subsection{Two Limits}
-Eq.~\eqref{eq:telegrapher} interpolates between two regimes already
+Eq.~\eqref{eq:telegrapher_q} interpolates between two regimes already
 discussed separately elsewhere in this document, now visibly unified in
 one equation:
 \begin{itemize}
 \item $\taurelax\to0$: the first term drops and
-  Eq.~\eqref{eq:telegrapher} collapses to
-  $\partial_tU_0=\div(\Deff\grad U_0)$ -- ordinary parabolic diffusion for
-  the conserved variable $U_0$, with $\Deff$ playing exactly the role of
-  an ordinary Fickian diffusivity. This is the same relaxation limit
+  Eq.~\eqref{eq:telegrapher_q} collapses to
+  $\partial_tU_0=\div(\Kmat\grad \driver)$ -- Fick's law substituted into
+  mass conservation, i.e.\ exactly the parabolic equation of the
+  companion document (Eq.~1 there). This is the same relaxation limit
   already established via the exact source-term integrator
   (Section~\ref{sec:governing-system}'s companion memory note) and via
   Corollary~\ref{cor:isotropic}, now visible directly at the PDE level
   rather than only in the discretised flux update.
 \item $\taurelax\to\infty$ (or, more precisely, on timescales
   $t\ll\taurelax$): the equation is dominated by
-  $\taurelax\partial_t^2U_0\approx\div(\Deff\grad U_0)$, an
+  $\taurelax\partial_t^2U_0\approx\div(\Kmat\grad\driver)$, an
   undamped wave equation -- genuinely hyperbolic (finite-speed)
   propagation, the point of the whole regularisation.
 \end{itemize}
 
 \subsection{Dispersion Relation: An Independent Check on $\chyp$}
 Seek plane-wave solutions $U_0=\hat U_0\exp[i(\mathbf k\cdot\mathbf x-\omega t)]$
-of Eq.~\eqref{eq:telegrapher} (frozen $\taurelax,\Deff$, so this is a
-valid local analysis). Substituting,
+of the \emph{local} form, Eq.~\eqref{eq:telegrapher}
+(Corollary~\ref{cor:telegrapher_local}; frozen $\taurelax,\Deff$, exactly
+what a plane-wave ansatz already requires to be self-consistent).
+Substituting,
 \begin{equation}
   -\taurelax\omega^2 U_0 - i\omega U_0 = -(\mathbf k^{\!\top}\Deff\,\mathbf k)\,U_0
   \quad\Longrightarrow\quad
@@ -781,28 +809,35 @@ threshold of order unity.
 \label{sec:confrontation}
 
 \code{chemistry_get_physical_hyperbolic_soundspeed}
-(\code{hyperbolic/chemistry_getters.h:37--66}) returns two different
-closed forms depending on \code{relaxation_time_mode}, reproduced here for
-comparison against Eq.~\eqref{eq:main_result}. The \code{turbulent_mode}
-branch is Eq.~\eqref{eq:code_turbulent_new} of
-Section~\ref{sec:tau0-physical} (already the current, $\kappaC$-coupled
-form); the \code{constant_mode} branch, following
-Remark~\ref{rem:lambda-max-not-n} and the $\mu$ correction of
-Section~\ref{sec:quasilinear}, is now:
-\begin{align}
-  \text{\code{constant_mode} branch (implemented):} \qquad
-  \chyp^{\rm code} &= \sqrt{\frac{\mu\,\lambda_1(\Kmat)}{\taurelax}} ,
-  \qquad \mu=\begin{cases}1 & \code{isotropic\_constant}\\1/\rho & \text{otherwise}\end{cases}
+(\code{hyperbolic/chemistry_getters.h:37--55}) originally returned two
+different closed forms depending on \code{relaxation_time_mode}, one
+hand-derived specifically for \code{isotropic_smagorinsky} $\Kmat$ and one
+missing $\mu$/using $\norm{\Kmat}_F$. \textbf{It is now a single, general
+formula, subsuming both}:
+\begin{equation}
   \label{eq:code_constant}
-\end{align}
-which replaces the pre-fix form
-$\chyp^{\rm code,\,old}=\sqrt{\norm{\Kmat}_F/\taurelax}$ that this
-document originally found using the non-tight Frobenius norm and (for
-\code{isotropic_smagorinsky}/\code{anisotropic_gradient} only) missing
-$\mu=\rho^{-1}$. \textbf{An intermediate version of this fix applied
-$\rho^{-1}$ unconditionally, which was itself wrong for
-\code{isotropic_constant} (where $\mu=1$) -- caught and corrected before
-being left in source.}
+  \boxed{\;\chyp^{\rm code} = \sqrt{\frac{\lambda_1(\Deff)}{\taurelax}}\;} ,
+  \qquad \Deff=\mu\Kmat\ \text{(\code{chemistry\_get\_physical\_matrix\_D})} ,
+\end{equation}
+exactly Eq.~\eqref{eq:main_result} of Proposition~\ref{prop:main} with
+$\nunit^{\!\top}\Deff\nunit$ replaced by its particle-local, direction-free
+bound $\lambda_1(\Deff)$ (Remark~\ref{rem:lambda-max-not-n}). This requires
+no branch on \code{relaxation_time_mode} inside the getter at all: $\taurelax$
+is read from \code{p->chemistry\_data.tau}, already computed correctly for
+whichever \code{relaxation_time_mode} is active by
+\code{chemistry\_compute\_physical\_tau()} in
+\code{chemistry\_prepare\_force()}, \emph{before} this getter is ever
+called (from \code{chemistry\_iact.h} or the Riemann solver, both
+during/after the force loop) -- so by the time $\chyp$ is needed, the
+mode-dependence is already resolved upstream, and does not need
+re-deriving here. \textbf{Getting here took two attempts}: an
+intermediate fix applied $\rho^{-1}$ unconditionally in the
+\code{constant\_mode} branch, which was itself wrong for
+\code{isotropic\_constant} (where $\mu=1$, not $1/\rho$) -- caught and
+corrected before being left in source, in favour of routing everything
+through $\Deff$ (Section~\ref{sec:effective-diffusivity}), which makes
+the $\mu$ bookkeeping impossible to get selectively wrong again since
+there is only one code path left.
 
 \begin{table}[h]
 \centering
@@ -811,52 +846,100 @@ being left in source.}
 \toprule
 \code{diffusion\_mode} $\times$ \code{relaxation\_time\_mode} & Code formula vs.\ Prop.~\ref{prop:main} & Verdict \\
 \midrule
-\code{isotropic\_constant} + \code{constant\_mode} & Eq.~\eqref{eq:code_constant} with $\mu=1$: $\lambda_1=\kappaP$ for isotropic $\Kmat$, $\equiv\sqrt{\kappaP/\taurelax}$ & \textbf{consistent (exact)} \\
-\code{isotropic\_smagorinsky} + \code{constant\_mode} & Eq.~\eqref{eq:code_constant} with $\mu=1/\rho$, $\kappaP$ carries $\rho$ & \textbf{consistent (exact)} \\
-\code{anisotropic\_gradient} + \code{constant\_mode} & Eq.~\eqref{eq:code_constant} with $\mu=1/\rho$, uses $\lambda_1(\Kmat)$, a tight bound on $\nunit^{\!\top}\Kmat\nunit$ (Cor.~\ref{cor:frobenius}) & \textbf{consistent (safe bound, exact for the worst-case $\nunit$)} \\
-\code{isotropic\_smagorinsky} + \code{turbulent\_mode} & Eq.~\eqref{eq:code_turbulent_new} $\equiv$ Cor.~\ref{cor:isotropic} ($\mu=1/\rho$ branch) exactly & \textbf{consistent} \\
-\code{isotropic\_constant} + \code{turbulent\_mode} & Eq.~\eqref{eq:code_turbulent_new} assumes Smagorinsky $\kappaP(h,\rho,\Shear)$ & formula does not apply; silently wrong \\
-\code{anisotropic\_gradient} + \code{turbulent\_mode} & Eq.~\eqref{eq:code_turbulent_new} assumes isotropic $\Kmat$ & formula does not apply; silently wrong \\
+\code{isotropic\_constant} + \code{constant\_mode} & $\Deff=\Kmat$ ($\mu=1$) isotropic: $\lambda_1(\Deff)=\kappaP$ for every $\nunit$ & \textbf{consistent (exact)} \\
+\code{isotropic\_smagorinsky} + \code{constant\_mode} & $\Deff=\Kmat/\rho$ isotropic: $\lambda_1(\Deff)=\kappaP/\rho$ for every $\nunit$ & \textbf{consistent (exact)} \\
+\code{anisotropic\_gradient} + \code{constant\_mode} & $\lambda_1(\Deff)$, a tight bound on $\nunit^{\!\top}\Deff\nunit$ (Cor.~\ref{cor:frobenius}) & \textbf{consistent (safe bound, exact for the worst-case $\nunit$)} \\
+\code{isotropic\_constant} + \code{turbulent\_mode} & same formula, now correct for this $\Kmat$ shape too (previously assumed Smagorinsky) & \textbf{consistent (exact)} \\
+\code{isotropic\_smagorinsky} + \code{turbulent\_mode} & reduces to the old hand-derived Eq.~\eqref{eq:code_turbulent_new}-equivalent exactly (verified numerically, see the companion memory note) & \textbf{consistent (exact)} \\
+\code{anisotropic\_gradient} + \code{turbulent\_mode} & same formula, now correct for this $\Kmat$ shape too (previously assumed isotropic) & \textbf{consistent (safe bound)} \\
 \bottomrule
 \end{tabular}
 \caption{Every reachable (\code{diffusion\_mode}, \code{relaxation\_time\_mode})
 combination (the two settings are parsed independently, \code{chemistry.h:279--326},
 with no cross-validation) against the general result of Proposition~\ref{prop:main}.
-Four of six pairings are now consistent, up from one; the two
-\code{turbulent\_mode} mismatches (rows 5--6) remain open, since fixing
-them requires the \code{turbulent_mode} branch to use $\Kmat$ and
-$\lambda_1(\Kmat)$ directly instead of its hand-derived,
-Smagorinsky-specific closed form.}
+\textbf{All six pairings are now consistent}, up from one at the start of
+this document's review.}
 \end{table}
 
 \subsection{Reading the Table}
 \begin{itemize}
-\item \textbf{The \code{constant_mode} branch is now consistent for every
-  diffusion mode} (Remark~\ref{rem:lambda-max-not-n}): using
-  $\lambda_1(\Kmat)$ with the correct, \code{diffusion\_mode}-dependent
-  $\mu$ (not a universal $\rho^{-1}$) fixes the two gaps this document
-  originally found there in one, purely per-particle change -- no
-  interface normal needed. The $\mu$ gap was the more consequential of
-  the two ($\rho$ varies by orders of magnitude across a cosmological
-  simulation, when $\mu=1/\rho$ applies; the superseded $\sqrt3$ Frobenius
-  gap was only ever a bounded, $O(1)$ constant), and is now resolved. The
-  currently-tested example
+\item \textbf{Unifying around $\Deff$ (Eq.~\eqref{eq:D_definition}) rather
+  than special-casing $\Kmat$ per mode is what let both remaining gaps
+  close at once.} The old \code{turbulent_mode} branch was mode-specific
+  by construction -- it hand-substituted the \code{isotropic_smagorinsky}
+  form of $\Kmat$ algebraically into the wave-speed formula, so it could
+  only ever be correct for that one $\Kmat$ shape. Routing through
+  \code{chemistry\_get\_physical\_matrix\_D} instead means the formula no
+  longer contains any assumption about which \code{diffusion_mode}
+  produced $\Kmat$ -- it just asks for $\Deff$ and takes its largest
+  eigenvalue, which Proposition~\ref{prop:main} already proves is safe
+  and, for isotropic $\Deff$, exact for any of the three modes.
+\item \textbf{No interface normal was needed anywhere in this fix},
+  confirming Remark~\ref{rem:lambda-max-not-n}'s conclusion: unifying the
+  two branches was entirely about which particle-local tensor
+  ($\Kmat$ vs.\ $\Deff$) and which particle-local scalar ($\norm{\cdot}_F$
+  vs.\ $\lambda_1$) to use, never about resolving $\chyp$ per-interaction.
+\item \textbf{The currently-tested example}
   (\code{examples/ChemistryTests/MetalDiffusionOnePeak/params.yml}:
-  \code{isotropic_constant} + \code{Constant} tau) sits in the first row
-  of the table and is exact after this fix (isotropic $\Kmat$: $\lambda_1=
-  \kappaP$ for every interface direction).
-\item \textbf{The \code{turbulent_mode} formula remains mode-specific, not
-  general}: it still silently returns a value derived under the
-  assumption $\Kmat=\kappaP\mathbf I$ with the particular Smagorinsky
-  $\kappaP$, even when \code{diffusion_mode} is set to something else.
-  Nothing prevents that combination being selected in the parameter file.
-  Unlike the \code{constant_mode} fix, resolving this needs the
-  \code{turbulent_mode} branch to stop hand-deriving a Smagorinsky-only
-  closed form and instead call
-  \code{chemistry_get_physical_matrix_K}/\code{chemistry_get_matrix_max_eigenvalue}
-  directly, the same way the now-fixed \code{constant_mode} branch does --
-  a small, still purely-particle-local change, but not yet made.
+  \code{isotropic_constant} + \code{Constant} tau) sits in row 1 of the
+  table and was, is, and remains exact throughout every version of this
+  fix -- none of today's corrections change its behaviour, which is why
+  the bugs found and fixed here were latent rather than visible in that
+  example's own results.
 \end{itemize}
+
+\section{Two Related Fixes Outside the Soundspeed Getter}
+\label{sec:related-fixes}
+
+Corollary~\ref{cor:frobenius} and the $\Deff$ construction of
+Section~\ref{sec:effective-diffusivity} turned out to apply to two more
+places in the code, found while implementing the above.
+
+\subsection{The Parabolic Timestep Has the Same Frobenius Gap}
+\code{chemistry_diffusion_timestep()} (\code{chemistry_timesteps.h}, the
+non-hyperbolic branch) computes an explicit-diffusion stability limit,
+$\dt\propto\dx^2/\norm{\Kmat}_F$ (times the same $\mu^{-1}=U/\driver$
+factor as Eq.~\eqref{eq:D_definition}, already correctly
+\code{diffusion\_mode}-dependent there -- \code{norm\_U\_over\_norm\_q =
+rho}, applied only outside the \code{isotropic\_constant} early return).
+The same Rayleigh-quotient argument as Corollary~\ref{cor:frobenius}
+applies: the explicit stability bound for anisotropic diffusion is set by
+the \emph{largest} eigenvalue of $\Deff$, not by $\norm{\Deff}_F$, for
+exactly the same reason a wave-speed bound is. Since $\dt\propto1/\Deff$,
+overestimating $\Deff$ via the Frobenius norm makes $\dt$ needlessly
+\emph{small} (never unstable, just wasteful) by the same bounded
+$[1,\sqrt3]$ factor as Example~\ref{ex:frobenius-numbers}. Fixed the same
+way: \code{chemistry\_get\_matrix\_norm} replaced by
+\code{chemistry\_get\_matrix\_max\_eigenvalue} throughout
+\code{chemistry\_diffusion\_timestep()}'s parabolic branch (both the
+\code{isotropic_constant} early return and the general
+\code{isotropic\_smagorinsky}/\code{anisotropic\_gradient} formula).
+
+\subsection{The \code{"DiffusionMatrices"} Snapshot Field Had a Units Bug}
+\label{sec:io-units-bug}
+\code{chemistry_io.h}'s \code{"DiffusionMatrices"} output field was
+documented to write $\Deff=\Kmat\driver/U$ (its own description said so)
+but the converter (\code{convert\_chemistry\_diffusion\_matrix}) actually
+wrote raw $\Kmat$, tagged with \code{UNIT\_CONV\_MASS\_DIFFUSIVITY}
+($[\text{mass}]\,[\text{length}]^{-1}[\text{time}]^{-1}$). This is only
+correct for \code{isotropic_smagorinsky}/\code{anisotropic_gradient},
+where $\Kmat$ genuinely carries a $\rho$ factor
+(Section~\ref{sec:diffusion-tensor-recap}). For \code{isotropic_constant},
+$\Kmat=\kappaP=\kappaC$ carries no $\rho$ at all, and Fick's law with
+$\driver=U_0$ (Section~\ref{sec:quasilinear}) requires $\Kmat$ to have
+\emph{ordinary} diffusivity units, $[\text{length}]^2[\text{time}]^{-1}$,
+there -- so for that mode the raw numbers written to the snapshot were
+dimensionally inconsistent with the unit conversion applied to them (a
+real bug: the internal-units value was correct, but converting it to
+physical/cgs units on output used the wrong dimensional exponents). $\Deff$
+does not have this problem: by construction
+(Section~\ref{sec:effective-diffusivity}) $\Deff$ always carries ordinary
+diffusivity units, $[\text{length}]^2[\text{time}]^{-1}$, in \emph{every}
+\code{diffusion_mode} -- SWIFT already has a unit for exactly this,
+\code{UNIT\_CONV\_DIFFUSIVITY} (distinct from
+\code{UNIT\_CONV\_MASS\_DIFFUSIVITY}). Fixed by having the converter call
+the new \code{chemistry\_get\_physical\_matrix\_D()} and switching the
+field's unit tag to \code{UNIT\_CONV\_DIFFUSIVITY}.
 
 \section{Consequence for the HLL Numerical Dissipation}
 \label{sec:hll-consequence}
@@ -890,9 +973,9 @@ open for \code{turbulent_mode} paired with non-Smagorinsky $\Kmat$
 \section{Summary of Findings}
 \label{sec:summary}
 
-Three changes have been applied to source as a direct consequence of this
-document (items 2, 3 and 6 below); the remaining finding (4) is offered
-for a deliberate decision, not applied automatically.
+All findings below have been implemented, verified by rebuild, and
+committed. None required threading the interface normal $\nunit$ into any
+function signature.
 
 \begin{enumerate}
 \item \textbf{Proposition~\ref{prop:main} is the general result}: $\chyp(\nunit)
@@ -904,73 +987,63 @@ for a deliberate decision, not applied automatically.
   throughout Hopkins~\cite{Hopkins2017diffusion}), derived from the
   conservation and Cattaneo-relaxation equations alone, with no assumption
   on the shape of $\Kmat$ or on which \code{diffusion_mode} produced it.
-  Proposition~\ref{prop:telegrapher} (Section~\ref{sec:telegrapher})
-  independently re-derives the same $\chyp(\nunit)$ from a dispersion
-  relation of the equivalent second-order-in-time PDE
-  $\taurelax\partial_t^2U_0+\partial_tU_0=\div(\Deff\grad U_0)$, a
-  completely different method arriving at the same result. This confirms
-  the premise of the request that motivated this document: a
-  mode-independent derivation is possible. The non-negotiable piece is
-  $\mu=\partial\driver/\partial U_0$, which is \emph{not} a universal
-  $\rho^{-1}$ -- it is $1$ for
+  Proposition~\ref{prop:telegrapher} and Corollary~\ref{cor:telegrapher_local}
+  (Section~\ref{sec:telegrapher}) independently re-derive the same
+  $\chyp(\nunit)$ from a dispersion relation of the (locally) equivalent
+  second-order-in-time PDE
+  $\taurelax\partial_t^2U_0+\partial_tU_0\approx\div(\Deff\grad U_0)$, a
+  completely different method arriving at the same result. The
+  non-negotiable piece is $\mu=\partial\driver/\partial U_0$, which is
+  \emph{not} a universal $\rho^{-1}$ -- it is $1$ for
   \code{isotropic_constant} and $1/\rho$ otherwise, fixed by
-  \code{diffusion_mode}, not by the choice of relaxation-time model. An
-  earlier draft of this document got this wrong (see item 2).
-\item \textbf{Implemented, corrected during review.} The
-  \code{constant_mode} branch of
-  \code{chemistry_get_physical_hyperbolic_soundspeed} was missing $\mu$
-  entirely. A first fix added an unconditional $\rho^{-1}$ -- itself wrong
-  for \code{isotropic_constant} ($\mu=1$ there), caught before being left
-  in source. The corrected version applies $\mu$
-  per-\code{diffusion\_mode}, matching how \code{chemistry_compute_flux}
-  and \code{chemistry_riemann_compute_hyperbolic_blending_factor} already
-  define the driver $\driver$ elsewhere in this module.
-\item \textbf{Implemented, via Remark~\ref{rem:lambda-max-not-n}, not by
-  threading $\nunit$.} The \code{constant_mode} branch used $\norm{\Kmat}_F$
-  in place of the direction-projected $\nunit^{\!\top}\Kmat\nunit$, an
-  overestimate of $\chyp$ by a bounded factor $\in[1,\sqrt3]$
-  (Corollary~\ref{cor:frobenius}). Rather than making $\chyp$ a
-  per-interaction quantity (which would need $\nunit$ threaded through
-  \code{chemistry_iact.h} and \code{chemistry_riemann_HLL.h}, and would
-  turn a once-per-particle computation into a per-neighbour one), it now
-  uses $\lambda_1(\Kmat)$, the largest eigenvalue of the particle's own
-  $\Kmat$ (new helper \code{chemistry\_get\_matrix\_max\_eigenvalue}, built
-  on the existing \code{sym\_matrix\_diagonalise\_3x3\_d}, and SWIFT's own
-  \code{max3} from \code{minmax.h} rather than a hand-rolled nested
-  \code{fmax}) -- a strictly tighter, still purely particle-local bound:
-  exact for isotropic $\Kmat$ (every reachable \code{diffusion\_mode}
-  paired with \code{constant\_mode} is now exact, not merely bounded), and
-  a tighter-than-Frobenius safe overestimate for anisotropic $\Kmat$.
-\item \emph{(Not yet implemented.)} The \code{turbulent_mode} branch's
-  closed form (Eq.~\eqref{eq:code_turbulent_new}) is still only valid for
-  \code{isotropic_smagorinsky} $\Kmat$; nothing in the code prevents
-  pairing it with \code{anisotropic_gradient} or \code{isotropic_constant},
-  where it would return a value not licensed by Proposition~\ref{prop:main}.
-  Fixing this does not need $\nunit$ either -- the same
-  $\mu\lambda_1(\Kmat)/\taurelax$ approach as items 2--3 applies -- it is a
-  smaller, still-open piece of work, not a different kind of fix.
-\item Findings 2--3 (now fixed) used to inflate the HLL
-  numerical-dissipation term linearly (Section~\ref{sec:hll-consequence});
-  finding 4 (still open) still does, for the \code{anisotropic_gradient}
-  and \code{isotropic_constant} pairings with \code{turbulent_mode}. Not
-  purely a timestep-accounting issue -- plausibly still contributes to the
-  large-$\taurelax$ over-diffusivity symptom for those pairings,
-  independently of the missing Hopkins-2017 limiter.
+  \code{diffusion_mode}. An earlier draft of this document, and an
+  intermediate source fix, both got this wrong before being corrected
+  (item 2).
+\item \textbf{Implemented.} \code{chemistry_get_physical_hyperbolic_soundspeed}
+  is now a single formula for every (\code{diffusion_mode},
+  \code{relaxation_time_mode}) pairing --
+  $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ -- replacing the two previous
+  branches (one missing $\mu$/using $\norm{\Kmat}_F$, one hand-derived
+  only for \code{isotropic_smagorinsky}). $\lambda_1(\Deff)$ is the
+  largest eigenvalue of the particle's own $\Deff$ (new helpers
+  \code{chemistry\_get\_physical\_matrix\_D},
+  \code{chemistry\_get\_matrix\_max\_eigenvalue} -- the latter using
+  SWIFT's own \code{max3} from \code{minmax.h}, and the existing
+  \code{sym\_matrix\_diagonalise\_3x3\_d} eigensolver, already used
+  elsewhere in this module) -- exact for isotropic $\Deff$ (\emph{every}
+  reachable pairing is now exact or a tight safe bound, up from one of
+  six), and a tighter-than-Frobenius safe overestimate for anisotropic
+  $\Deff$ (Corollary~\ref{cor:frobenius}, Remark~\ref{rem:lambda-max-not-n}).
+  No branch on \code{relaxation_time_mode} is needed inside the getter:
+  $\taurelax$ is read from the already-correctly-computed
+  \code{p->chemistry\_data.tau} (Section~\ref{sec:confrontation}).
+\item \textbf{Implemented.} The parabolic timestep
+  (\code{chemistry_diffusion_timestep}, non-hyperbolic branch) had the
+  same Frobenius-norm gap, for the same reason
+  (Section~\ref{sec:related-fixes}). Fixed identically: $\norm{\Deff}_F\to
+  \lambda_1(\Deff)$, giving a larger (still always safe) explicit-diffusion
+  timestep for anisotropic $\Deff$, exact for isotropic $\Deff$.
 \item \textbf{Implemented.} $\taurelax_0$ in \code{turbulent_mode} is now
   coupled to $\kappaC$ (Section~\ref{sec:tau0-physical}:
   $\taurelax=\taurelax_0/(\kappaC\norm{\Shear}_F)$), matching the physical
   mixing-timescale scaling independently derived by
-  Romano et al.~\cite{Romano2022}
-  (Eq.~\eqref{eq:romano_tdiff}). Both \code{chemistry_compute_physical_tau}
-  and \code{chemistry_get_physical_hyperbolic_soundspeed} were updated
-  consistently. No example parameter file used \code{turbulent_mode} prior
-  to this change, so the break in the meaning of an existing calibrated
-  $\taurelax_0$ (Section~\ref{sec:tau0-physical}) affects no committed
-  example. A $\driver/\Delta\driver$-type term was considered and
-  deliberately \emph{not} added to $\taurelax$ itself
+  Romano et al.~\cite{Romano2022} (Eq.~\eqref{eq:romano_tdiff}). No
+  example parameter file used \code{turbulent_mode} prior to this change,
+  so the break in the meaning of an existing calibrated $\taurelax_0$
+  affects no committed example. A $\driver/\Delta\driver$-type term was
+  considered and deliberately \emph{not} added to $\taurelax$ itself
   (Section~\ref{sec:no-q-over-dq}): it would double-count physics that
   already emerges from solving the coupled system, and it would break the
   frozen-coefficient assumption underpinning Proposition~\ref{prop:main}.
+\item \textbf{Implemented (units bug, unrelated to $\chyp$ but found via
+  the same $\Deff$ construction).} The \code{"DiffusionMatrices"}
+  snapshot field wrote raw $\Kmat$ tagged with
+  \code{UNIT\_CONV\_MASS\_DIFFUSIVITY} -- dimensionally wrong for
+  \code{isotropic_constant}, where $\Kmat$ has ordinary
+  ($\text{length}^2/\text{time}$) diffusivity units, not mass-diffusivity
+  units (Section~\ref{sec:io-units-bug}). Fixed by outputting $\Deff$
+  (always ordinary-diffusivity units, by construction) with SWIFT's
+  existing \code{UNIT\_CONV\_DIFFUSIVITY} tag instead.
 \item \textbf{Implemented (unrelated to $\chyp$, raised separately during
   review).} Snapshots for \code{CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION}
   wrote the relaxation time and (in debug builds only) the \emph{norm} of
@@ -983,8 +1056,20 @@ for a deliberate decision, not applied automatically.
   \code{src/chemistry.o} and \code{src/single\_io.o} (which
   \code{\#include}s \code{chemistry\_io.h}) against the tree's configured
   \code{GEAR-FVPM-HYPERBOLIC-DIFFUSION\_10} variant with
-  \code{-Wall~-Wextra~-Werror}: clean, no warnings.
+  \code{-Wall~-Wextra~-Werror}: clean, no warnings, at every stage
+  (including the intermediate, later-corrected version of item 1/2).
 \end{enumerate}
+
+\subsection{What's Left}
+Outside the scope of this document's $\chyp$ review: whether
+\code{chemistry_get_physical_shear_tensor()}'s output should be
+regularised before use in $\taurelax$'s \code{turbulent_mode} formula
+(the standing \code{// (Shall we?)} TODO at
+\code{hyperbolic/chemistry\_getters.h}, distinct from the
+$\Splus$-regularisation already applied to $\Kmat$ itself in
+\code{anisotropic_gradient} mode), and whether the half-timestep MUSCL
+predictor (\code{hyperbolic/chemistry\_gradients.h}) correctly
+time-extrapolates the flux state. Both are next.
 
 \bibliographystyle{plain}
 \bibliography{references}

@@ -231,6 +231,60 @@ chemistry_get_physical_matrix_K(const struct part *restrict p,
 }
 
 /**
+ * @brief Get the driver-to-conserved-state ratio mu = d(driver)/d(rho*Z).
+ *
+ * The diffusion driver q used in Fick's law (and in the hyperbolic flux
+ * law) is q=rho*Z for isotropic_constant (mu=1, no conversion) and q=Z
+ * for the other modes (mu=1/rho) -- see chemistry_compute_flux() and
+ * chemistry_riemann_compute_hyperbolic_blending_factor(), which both
+ * branch on this same diffusion_mode check. mu converts K (defined
+ * w.r.t. q) into the effective diffusivity D=mu*K (defined w.r.t. the
+ * conserved rho*Z directly, see chemistry_get_physical_matrix_D()).
+ *
+ * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmology.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_driver_over_conserved_ratio(
+    const struct part *restrict p,
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo) {
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    return 1.0;
+  }
+  return 1.0 / hydro_get_physical_density(p, cosmo);
+}
+
+/**
+ * @brief Get the physical effective diffusivity D = K*(q/U).
+ *
+ * Unlike K, D always has ordinary diffusivity units (length^2/time),
+ * regardless of diffusion_mode: it is the tensor that plays the role of
+ * a Fickian diffusivity for the conserved state rho*Z directly (see the
+ * theory document, Section "The Effective Diffusivity D"). This is the
+ * same D the "DiffusionMatrices" snapshot field is documented to output.
+ *
+ * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmology.
+ * @param D (return) Pointer to a 3x3 effective diffusivity tensor.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_get_physical_matrix_D(const struct part *restrict p,
+                                const struct chemistry_global_data *chem_data,
+                                const struct cosmology *cosmo, double D[3][3]) {
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, D);
+  const double mu =
+      chemistry_get_driver_over_conserved_ratio(p, chem_data, cosmo);
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      D[i][j] *= mu;
+    }
+  }
+}
+
+/**
  * @brief Get matrix K Frobenius norm.
  *
  * @param K Pointer to a 3x3 diffusion tensor.

@@ -39,44 +39,22 @@ chemistry_get_physical_hyperbolic_soundspeed(
     const struct part *restrict p,
     const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo) {
-  if (chem_data->relaxation_time_mode == constant_mode) {
-    double K[3][3];
-    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-    const double lambda_max_K = chemistry_get_matrix_max_eigenvalue(K);
-
-    /* c_hyp = sqrt(lambda_max(K)/(rho_eff*tau)): lambda_max(K) is the
-       tight bound on n^T K n over all interface directions n (exact for
-       isotropic K). rho_eff is 1 for isotropic_constant, where the
-       driver q used in the flux law is q=U=rho*Z directly (no rho
-       conversion -- see chemistry_compute_flux/
-       chemistry_riemann_compute_hyperbolic_blending_factor, both branch
-       on this same diffusion_mode check), and rho otherwise, where
-       q=Z=U_0/rho. See the theory document, Proposition 1, for the
-       derivation and why the two diffusion_modes differ here. */
-    const double rho_eff = (chem_data->diffusion_mode == isotropic_constant)
-                                ? 1.0
-                                : hydro_get_physical_density(p, cosmo);
-    return sqrt(lambda_max_K / (rho_eff * p->chemistry_data.tau));
-  } else {
-    /* Note that 1/|S| ~ time --> we define this as our turbulent relaxation
-       time, coupled to C_diff -- see chemistry_compute_physical_tau() for
-       why. Also note that we do not regularize the shear tensor here.
-       (Shall we?) */
-    double S[3][3];
-    chemistry_get_physical_shear_tensor(p, cosmo, S);
-
-    /* TODO: Add the alpha parameter to the code */
-    /* The formula is c_hyp = sqrt(||K||/(rho tau)). With
-       tau = alpha/(C_diff*||S||) (chemistry_compute_physical_tau), we
-       simplify it by hand to reduce rounding errors:
-       c_hyp = (C/sqrt(alpha)) * gamma_k * h * ||S|| */
-    const double delta_x = kernel_gamma * p->h;
-    const double C_diff = chem_data->diffusion_coefficient;
-    const double alpha = chem_data->tau;
-    const double c_hyp =
-        (C_diff / sqrt(alpha)) * delta_x * chemistry_get_matrix_norm(S);
-    return c_hyp;
-  }
+  /* c_hyp = sqrt(lambda_max(D)/tau) -- the general result (theory
+     document, Proposition 1) for any diffusion_mode and any
+     relaxation_time_mode, no case split needed here:
+       - D = K*(q/U) (chemistry_get_physical_matrix_D) is the effective
+         diffusivity; lambda_max(D) is the tight bound on n^T D n over
+         every interface direction n (exact for isotropic D, a safe
+         overestimate otherwise -- see chemistry_get_matrix_max_eigenvalue).
+       - p->chemistry_data.tau is already the correct value for whichever
+         relaxation_time_mode is active: chemistry_prepare_force() calls
+         chemistry_compute_physical_tau() and caches the result before
+         this getter is ever called (from chemistry_iact.h or the
+         Riemann solver, both during/after the force loop). */
+  double D[3][3];
+  chemistry_get_physical_matrix_D(p, chem_data, cosmo, D);
+  const double lambda_max_D = chemistry_get_matrix_max_eigenvalue(D);
+  return sqrt(lambda_max_D / p->chemistry_data.tau);
 }
 
 /**

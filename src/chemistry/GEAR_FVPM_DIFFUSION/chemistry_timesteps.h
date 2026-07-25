@@ -58,19 +58,23 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
 #else
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
-  /* Compute the diffusion matrix K */
+  /* Compute the diffusion matrix K. Use its largest eigenvalue, not its
+     Frobenius norm: lambda_max(K) is the tight bound on n^T K n over
+     every interface direction n (exact for isotropic K), whereas
+     ||K||_F overestimates it by up to sqrt(3) -- same reasoning as the
+     hyperbolic soundspeed getter, see the theory document. */
   double K[3][3];
   chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
-  const float norm_matrix_K = chemistry_get_matrix_norm(K);
+  const float lambda_max_K = chemistry_get_matrix_max_eigenvalue(K);
 
   /* Prevent pathological cases */
-  if (norm_matrix_K == 0.0) {
+  if (lambda_max_K == 0.0) {
     return FLT_MAX;
   }
 
   if (chem_data->diffusion_mode == isotropic_constant) {
     /* Isotropic constant diffusion has the simple expression: */
-    return CFL_condition * delta_x * delta_x / norm_matrix_K;
+    return CFL_condition * delta_x * delta_x / lambda_max_K;
   }
   /* From here, we are either isotropic smagorinksy or anisotropic */
 
@@ -120,7 +124,7 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
     expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
   }
 
-  const float dt = CFL_condition * expression * expression / norm_matrix_K *
+  const float dt = CFL_condition * expression * expression / lambda_max_K *
                    norm_U_over_norm_q;
   return dt;
 #endif

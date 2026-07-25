@@ -80,12 +80,17 @@ INLINE static void convert_chemistry_diffusion_matrix(const struct engine *e,
                                                       const struct part *p,
                                                       const struct xpart *xp,
                                                       double *ret) {
-  double K[3][3];
-  chemistry_get_physical_matrix_K(p, e->chemistry, e->cosmology, K);
+  /* Output D = K*(q/U), not the raw K: K's own physical units depend on
+     diffusion_mode (ordinary diffusivity for isotropic_constant, mass
+     diffusivity otherwise -- see chemistry_get_physical_matrix_D()), so a
+     single fixed UNIT_CONV_* tag cannot describe raw K consistently
+     across modes. D always has ordinary diffusivity units. */
+  double D[3][3];
+  chemistry_get_physical_matrix_D(p, e->chemistry, e->cosmology, D);
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      ret[3 * i + j] = K[i][j];
+      ret[3 * i + j] = D[i][j];
     }
   }
 }
@@ -178,11 +183,12 @@ INLINE static int chemistry_write_particles(const struct part *parts,
       "Mass fraction of each element");
 
   list[1] = io_make_physical_output_field_convert_part(
-      "DiffusionMatrices", DOUBLE, 9, UNIT_CONV_MASS_DIFFUSIVITY, 0.f, parts,
+      "DiffusionMatrices", DOUBLE, 9, UNIT_CONV_DIFFUSIVITY, 0.f, parts,
       xparts,
       /*can convert to comoving=*/0, convert_chemistry_diffusion_matrix,
-      "Physical diffusion matrix K, stored in a vector. The effective "
-      "diffusivity is defined as D = K*q/U");
+      "Physical effective diffusivity D = K*q/U, stored in a vector. "
+      "Unlike K, D has ordinary diffusivity units regardless of "
+      "diffusion_mode.");
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   list[2] = io_make_output_field_convert_part(
