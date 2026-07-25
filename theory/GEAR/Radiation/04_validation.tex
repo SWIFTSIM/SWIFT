@@ -380,68 +380,57 @@ above is the validation criterion for this target, and it is met.
 
 \textbf{PASS, as a self-consistency check.} Neither Hu et al.\ (2017)
 nor Smith et al.\ (2021) tests rate-coupling -- both use the same
-instant flag-and-floor scheme this model defaults to -- so there is no
-published number to reproduce here. Instead,
+instant flag-and-floor scheme this model defaults to -- so
 \code{GEARFeedback:HII\_couple\_ionization\_rate} (T5) is checked
-against basic photoionization-equilibrium physics using
-\code{StromgrenSphereClumpSmith2021} as the testbed, on top of the
-existing validated setup. A caching bug that left \code{RT\_heating\_rate}
-always exactly zero was found and fixed first (Section~\ref{sec:t5-heating-rate-zero}
-of the bugs-and-fixes logbook); the results below are all post-fix.
+instead against basic photoionization-equilibrium physics, using
+\code{StromgrenSphereClumpSmith2021} as the testbed. A caching bug that
+left \code{RT\_heating\_rate} always exactly zero was found and fixed
+first (Section~\ref{sec:t5-heating-rate-zero}); the results below are
+all post-fix.
 
 Six configurations were run to completion (uniform/angular
 budget-splitting $\times$ \code{gas\_mass}$=\{20,95\}$, T5 on/off in
-each case; the uniform \code{gas\_mass=95} pair was not run, since the
+each case; the uniform \code{gas\_mass=95} pair was skipped, since the
 uniform/angular contrast is already covered at \code{gas\_mass=20} and
-the resolution contrast is already covered under angular):
+the resolution contrast under angular):
 
 \begin{center}
 \begin{tabular}{lrrr}
 \hline
-& $r_{50}$ [pc] & ionized mass [$M_\odot$] & mean $T$, HII$>$0.5 [K] \\
+& $r_{\rm HII}$ [pc] & ionized mass [$M_\odot$] & mean $T$, HII$>$0.5 [K] \\
 \hline
-uniform, gas20, T5 on   & 15.5 & 1816 & 13533 \\
-uniform, gas20, T5 off  & 14.2 & 3601 &  9194 \\
-angular, gas20, T5 on   & 12.9 & 2902 & 10990 \\
-angular, gas20, T5 off  & 12.5 & 3993 &  8756 \\
-angular, gas95, T5 on   & 12.9 & 2246 & 12352 \\
-angular, gas95, T5 off  & 12.9 & 4480 &  8249 \\
+uniform, gas20, T5 on   & 17.04 & 1816 & 13533 \\
+uniform, gas20, T5 off  & 15.83 & 3601 &  9194 \\
+angular, gas20, T5 on   & 22.66 & 2902 & 10990 \\
+angular, gas20, T5 off  & 21.10 & 3993 &  8756 \\
+angular, gas95, T5 on   & 20.28 & 2246 & 12352 \\
+angular, gas95, T5 off  & 19.36 & 4480 &  8249 \\
 \hline
 \end{tabular}
 \end{center}
-$r_{50}$ is the outer radius of the $\geq$50\%-ionized shell (radially
-binned mean HII fraction), read at $t=8.2\,$Myr. At \code{gas\_mass=95}
-the ionized region contains only 34--47 particles above HII$>0.5$, so
-its temperature entry is noisier than the \code{gas\_mass=20} pair.
+$r_{\rm HII}$ is the algorithm's own tracked radius (peak
+\code{HIIRegionRadii} up to $t=8.2\,$Myr), the same quantity reported
+for the flag-and-floor baseline in Section~\ref{sec:clump-current} --
+these T5-off reruns reproduce that baseline closely (16.44/23.18/19.17\,pc
+there vs.\ 15.83/21.10/19.36\,pc here), confirming the two are directly
+comparable. At \code{gas\_mass=95} the ionized region contains only
+34--47 particles above HII$>0.5$, so its temperature entry is noisier
+than the \code{gas\_mass=20} pair.
 
 \begin{figure}
   \centering
   \includegraphics[width=0.95\linewidth]{Figures/t5_temperature_slices_all_configs}
   \caption{Mass-weighted temperature slice through the star plane,
-    $t=8.2\,$Myr, for all six configurations. The ionized bubble's
-    shape and extent are visually indistinguishable between T5 on/off
-    at fixed geometry/resolution -- the difference between the two
-    schemes is quantitative (ionization fraction and temperature within
-    the bubble), not morphological.}
+    $t=8.2\,$Myr, all six configurations, in the same convention as
+    Figure~\ref{fig:clump-temperature-slices} ($r_{\rm HII}$: cyan;
+    $r_{\rm physics}$: orange dashed; clump boundary: blue contour).
+    Bubble shape and extent are visually similar between T5 on/off at
+    fixed geometry/resolution; the uniform/T5-on panel's larger
+    $r_{\rm physics}$ than $r_{\rm HII}$ (32 vs.\ 17\,pc) reflects a
+    handful of particles cooling slowly through $10^4\,$K after their
+    tag expired, rather than instantly resetting as flag-and-floor's
+    hard clamp does.}
   \label{fig:t5-temperature-slices}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.75\linewidth]{Figures/t5_spherical_rhii_vs_time}
-  \caption{$r_{50}$ vs.\ time, uniform scheme, \texttt{gas\_mass=20}: T5
-    on vs.\ off track each other closely for the whole $8\,$Myr run.}
-  \label{fig:t5-rhii-uniform}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.95\linewidth]{Figures/t5_angular_rhii_vs_time}
-  \caption{Same as Figure~\ref{fig:t5-rhii-uniform}, angular scheme, at
-    both resolutions: the same close on/off tracking holds, with more
-    scatter at the coarser \texttt{gas\_mass=95} (fewer particles per
-    radial bin).}
-  \label{fig:t5-rhii-angular}
 \end{figure}
 
 \begin{figure}
@@ -457,32 +446,43 @@ its temperature entry is noisier than the \code{gas\_mass=20} pair.
   \centering
   \includegraphics[width=0.95\linewidth]{Figures/t5_angular_ionized_mass_profile}
   \caption{Same as Figure~\ref{fig:t5-mass-profile-uniform}, angular
-    scheme, at both resolutions.}
+    scheme, at both resolutions. The radial profile here is
+    angle-averaged over all HEALPix pixels, so it understates the
+    ionization fraction reached by any single pixel's own direction.}
   \label{fig:t5-mass-profile-angular}
 \end{figure}
 
-\textbf{Interpretation}: at every configuration tested, T5 reaches
-essentially the same physical region size as flag-and-floor ($r_{50}$
-agrees to within $\sim$1--1.5\,pc in every row), but holds systematically
-less total ionized mass ($\sim$50--75\% of flag-and-floor's) and runs
-hotter ($\sim$2000--4300\,K above flag-and-floor's). Both differences
-have the same, single physical explanation: flag-and-floor forces every
-tagged particle to \code{HII\_frac=1} and a fixed
-$T\approx10^4\,$K target directly, by construction; T5 instead lets
-Grackle's own chemistry network solve for whatever ionization/thermal
-balance the locally-computed $\Gamma_{\rm HI}$ and photoheating rate
-(which includes the star's excess photon energy above the bare
-$13.6\,$eV threshold) actually support -- which converges to a real,
-partial equilibrium ionization fraction ($\sim$0.7--0.8 within the
-region, radial-profile figures above) at a temperature above flag-and-
-floor's fixed target, not below it. This is the expected signature of
-solving real photoionization microphysics instead of forcing an
-idealized target, not a discrepancy to resolve -- and it reproduces
-consistently across both budget-splitting geometries and both
-resolutions tested.
+\textbf{Interpretation}: T5 consistently reaches a somewhat
+\emph{larger} $r_{\rm HII}$ than flag-and-floor ($+1$--$1.6\,$pc,
+5--8\%, every row above), while holding less total ionized mass
+($\sim$50--75\%) and running hotter ($\sim$2000--4300\,K above). The
+mass/temperature difference has a single cause: flag-and-floor forces
+every tagged particle to \code{HII\_frac=1} at a fixed
+$T\approx10^4\,$K by construction, while T5 lets Grackle's chemistry
+network solve for whatever partial-ionization ($\sim$0.7--0.8),
+higher-temperature balance the locally-computed $\Gamma_{\rm HI}$ and
+photoheating rate (which includes the star's excess photon energy
+above $13.6\,$eV) actually support -- the expected signature of real
+photoionization microphysics, not a discrepancy. Why $r_{\rm HII}$
+itself comes out larger under T5 is not yet explained (a plausible
+link is the slower recombination of the residually-hot gas noted in
+Figure~\ref{fig:t5-temperature-slices}, not yet checked).
+
+\textbf{T5 and $T_i$}: \code{RT\_heating\_rate} is built purely from
+the star's own blackbody excess-photon energy
+(\code{radiation\_get\_individual\_star\_mean\_excess\_photon\_energy\_HI}),
+never from \code{radiation\_get\_T\_collisional\_K} ($T_i$) -- Grackle
+never sees $T_i$ under T5, and gas heats to whatever equilibrium its
+chemistry network finds from the real photoheating rate (measured
+here: $11\,000$--$13\,500\,$K), regardless of whether $T_i$ is the
+natural, metallicity-dependent value ($\sim\!47\,500\,$K at $Z=0$) or
+the $10^4\,$K debug override used for every run above. $T_i$ still
+enters the tagging/budget bookkeeping shared with flag-and-floor (the
+case-B recombination coefficient in
+\code{radiation\_get\_part\_rate\_to\_fully\_ionize} is evaluated at
+$T_i$), so it still affects how far a pass can tag and the
+adaptive-cadence rebuild interval -- not yet checked at the natural
+$T_i$.
 
 T5 remains off by default (\code{GEARFeedback:HII\_couple\_ionization\_rate=0}),
-so none of this affects the three PASS verdicts above. This check
-validates that the feature itself behaves physically sensibly and
-robustly wherever it is turned on -- it is not, and does not claim to
-be, a reproduction of either paper's own published numbers.
+so none of this affects the three PASS verdicts above.

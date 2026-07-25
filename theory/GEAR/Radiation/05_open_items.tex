@@ -54,6 +54,18 @@ validation-against-a-paper status.
     indefinitely. \textbf{Deliberately not done yet} (2026-07-20): the
     user wants more testing first, so
     \code{HII\_adaptive\_rebuild\_cadence} stays off by default.
+    \textbf{TODO (2026-07-24)}: the Smith et al.\ (2021) clump target
+    (\code{StromgrenSphereClumpSmith2021}) has never actually been run
+    with \code{HII\_adaptive\_rebuild\_cadence=1} -- every clump run to
+    date (SPH uniform/angular, both resolutions, Gizmo MFM, Gizmo MFV)
+    used the fixed cadence (\code{=0}). STARBENCH's and
+    \code{StromgrenSphereHuSmith2017}'s own committed \code{run.sh}
+    already default to \code{=1} (their comments cite an untracked
+    ``T11'' with no corresponding entry in this document -- a dangling
+    reference worth resolving, not a real cross-check), so the clump
+    target is the one validated example still untested under adaptive
+    cadence -- add it to the planned \code{HomogeneousBox}/isolated-galaxy
+    testing pass below.
 
   \item[$\blacksquare$] \textbf{T5} -- Pass real ionizing/heating rates
     into Grackle's chemistry solve (Grackle's own \code{RT\_heating\_rate}/
@@ -79,25 +91,10 @@ validation-against-a-paper status.
     radiation field, not just a number handed to Grackle. Grackle also
     has an equally-real, separate coupling point for H$_2$
     photodissociation and for photoelectric heating -- nothing needs
-    changing inside Grackle for either channel; the entire gap is T6's
-    local FUV estimate below.
-
-  \item[$\square$] \textbf{T6} -- Variable ISRF (interstellar radiation
-    field), user's design idea (2026-07-19), not yet implemented.
-    Motivation: proper Grackle coupling (T5) needs an ISRF estimate, and
-    the common approach (reusing the gravity tree for this) is, in the
-    user's own words, ``not optimal nor ideal'' and would require new
-    tasks for a lot of engineering cost. \textbf{Full design, decisions,
-    and open items now live entirely in the dedicated Radiation
-    Pressure \& ISRF logbook} (\code{radiation\_pressure\_isrf.tex}/
-    \code{.pdf}, this same directory) -- moved there (2026-07-24) since
-    the design had grown well beyond a single open-item entry: two
-    explicit per-star band luminosities ($L_{\rm FUV}$, $L_{\rm LW}$),
-    a screened (Yukawa) propagation equation, two competing solve
-    designs (a parabolic Jacobi-relaxation scheme and a hyperbolic
-    P1/cheap-M1 scheme on real FVPM geometry), and a decided
-    implementation order (parabolic first). Not scoped or attempted as
-    code.
+    changing inside Grackle for either channel; the entire gap is the
+    variable-ISRF work tracked entirely in the dedicated Radiation
+    Pressure \& ISRF logbook (\code{radiation\_pressure\_isrf.tex}/
+    \code{.pdf}, this same directory).
 
   \item[$\square$] \textbf{T7} -- Extend \texttt{pychem}
     (\texttt{\textasciitilde/programs/pychem/}, already the source of
@@ -116,16 +113,6 @@ validation-against-a-paper status.
     model this project would tabulate -- not a separate
     table-generation effort from $Q_H$/$L_{\rm bol}$, just two more
     threshold pairs on the same curve.
-
-  \item[$\square$] \textbf{T8} -- Radiation-pressure momentum recipe:
-    citation resolved (\citet{Hopkins2020}, FIRE-2's own
-    radiative-feedback methods paper), validation still fully open (no
-    test in this codebase exercises the channel at all). \textbf{Full
-    detail, physics gaps, and the validation plan now live entirely in
-    the dedicated Radiation Pressure \& ISRF logbook}
-    (\code{radiation\_pressure\_isrf.tex}/\code{.pdf}, this same
-    directory) -- moved there (2026-07-24) for the same reason as T6:
-    the design had grown well beyond a single open-item entry.
 
   \item[$\square$] \textbf{T9} -- \code{space\_regrid}'s top-level
     cell grid never re-refines once coarsened, even after the
