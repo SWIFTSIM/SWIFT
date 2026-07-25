@@ -340,6 +340,20 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
         "GEARChemistry:tau cannot be set to 0.0! This defeats the hyperbolic "
         "diffusion purpose!");
   }
+
+  char temp3[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file,
+                              "GEARChemistry:hyperbolic_limiter_scope",
+                              temp3, "Density");
+  if (strcmp(temp3, "Density") == 0)
+    data->hyperbolic_limiter_scope = limiter_density_only;
+  else if (strcmp(temp3, "AllComponents") == 0)
+    data->hyperbolic_limiter_scope = limiter_all_components;
+  else
+    error(
+        "The chemistry hyperbolic_limiter_scope must be Density or "
+        "AllComponents, not %s",
+        temp3);
 #endif
   /***************************************************************************/
   /* Print the parameters we use */
@@ -352,6 +366,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     message("Relaxation time mode:       %u", data->relaxation_time_mode);
     message("Relaxation time (constant_mode): %e", data->tau);
+    message("Hyperbolic limiter scope:   %u", data->hyperbolic_limiter_scope);
 #endif
   }
 }

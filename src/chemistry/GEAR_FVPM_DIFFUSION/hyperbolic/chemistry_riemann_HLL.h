@@ -19,6 +19,7 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_RIEMANN_HLL_H
 #define SWIFT_CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION_RIEMANN_HLL_H
 
+#include "../chemistry_properties.h"
 #include "../chemistry_riemann_checks.h"
 #include "../chemistry_riemann_utils.h"
 #include "../chemistry_struct.h"
@@ -74,11 +75,18 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   const double lambda_plus = max(uL + c_diff_L, uR + c_diff_R);  /* S_R */
   const double lambda_minus = min(uL - c_diff_L, uR - c_diff_R); /* S_L */
 
-  if (lambda_plus == 0.0 && lambda_minus == 0.0) {
+  /* Degenerate/near-degenerate wave speeds: 1/(lambda_plus - lambda_minus)
+     below would divide by ~0. Guard exactly like the parabolic solver
+     (parabolic/chemistry_riemann_HLL.h) and return immediately -- falling
+     through into the general HLL branch here would overwrite these zeros
+     with NaN (0/0 from lprod * one_over_dl). */
+  if (fabs(lambda_plus - lambda_minus) <
+      GEAR_FVPM_DIFF_WAVESPEED_ESTIMATE_DIFFERENCE_TOLERANCE) {
     fluxes[0] = 0.0;
     fluxes[1] = 0.0;
     fluxes[2] = 0.0;
     fluxes[3] = 0.0;
+    return;
   }
 
   /***************************************************************************/
@@ -124,10 +132,28 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
         (lambda_plus * fluxL[1] - lambda_minus * fluxR[1]) * one_over_dl,
         (lambda_plus * fluxL[2] - lambda_minus * fluxR[2]) * one_over_dl,
         (lambda_plus * fluxL[3] - lambda_minus * fluxR[3]) * one_over_dl};
-    const double F_diss[4] = {lprod * (UR[0] - UL[0]) * one_over_dl,
-                              lprod * (UR[1] - UL[1]) * one_over_dl,
-                              lprod * (UR[2] - UL[2]) * one_over_dl,
-                              lprod * (UR[3] - UL[3]) * one_over_dl};
+    double F_diss[4] = {lprod * (UR[0] - UL[0]) * one_over_dl,
+                        lprod * (UR[1] - UL[1]) * one_over_dl,
+                        lprod * (UR[2] - UL[2]) * one_over_dl,
+                        lprod * (UR[3] - UL[3]) * one_over_dl};
+
+    /* Hopkins-2017-style limiter on the raw HLL dissipation, based on how
+       far the dynamical flux still is from its own Fickian relaxation
+       target ("flux memory") -- see chemistry_riemann_utils.h. Always
+       limits the mass-density dissipation (component 0); whether it also
+       limits the flux-component dissipation (1-3) is a parameter-file
+       choice, since limiting flux memory too aggressively could preserve
+       it instead of letting it decay. */
+    const double limiter_factor =
+        chemistry_riemann_compute_hyperbolic_diffusivity_limiter(
+            pi, pj, m, chem_data, cosmo);
+    F_diss[0] *= limiter_factor;
+    if (chem_data->hyperbolic_limiter_scope == limiter_all_components) {
+      F_diss[1] *= limiter_factor;
+      F_diss[2] *= limiter_factor;
+      F_diss[3] *= limiter_factor;
+    }
+
     const double fluxes_HLL[4] = {
         F_transport[0] + F_diss[0], F_transport[1] + F_diss[1],
         F_transport[2] + F_diss[2], F_transport[3] + F_diss[3]};

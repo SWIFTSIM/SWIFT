@@ -51,7 +51,8 @@ GEARChemistry:
   hll_riemann_solver_epsilon: 0.0        # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.0
   hll_riemann_solver_psi:     0.1        # (Optional) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hopkins 2017. (Default: 0.1)
   relaxation_time_mode:  Constant        # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
-  tau: 1e1                               # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
+  tau: 1e-1                               # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
+  hyperbolic_limiter_scope: AllComponents # (Optional, hyperbolic diffusion only) Scope of the Hopkins-2017-style limiter on the HLL solver's F_diss. Density = mass component only (default) ; AllComponents = mass + flux components.
 
 GEARFeedback:
   with_stellar_wind_feedback: 0         # No stellar winds

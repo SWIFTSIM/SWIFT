@@ -204,7 +204,10 @@ chemistry_riemann_compute_hyperbolic_blending_factor(
   double K_star[3][3];
   chemistry_riemann_compute_K_star(pi, pj, chem_data, cosmo, K_star);
   const double norm_K_star = chemistry_get_matrix_norm(K_star);
-  const double norm_D_star = norm_K_star * q_star / U_star;
+
+  /* If U_star == 0.0, then q_star = 0.0 (since U = rho*q and we cannot have rho
+   * = 0) */  
+  const double norm_D_star = (U_star == 0.0) ? norm_K_star : norm_K_star * q_star / U_star;
   const double delta_x = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const double tau_numerical = delta_x * delta_x / norm_D_star;
 
@@ -220,8 +223,8 @@ chemistry_riemann_compute_hyperbolic_blending_factor(
      The 0.1 constant is chosen to reach alpha = 1 faster when ratio >= 1.*/
   double alpha = (ratio) / (0.1 + ratio);
 
-  /* Safeguards */
-  if (isnan(alpha) || isinf(alpha)) {
+  /* Limiting behaviour: tau_numerical = 0 => ratio = infinity. */
+  if (tau_numerical == 0.0) {
     alpha = 1.0;
   }
   /* \alpha \in [0, 1] so enforce this. (It should never happen) */
@@ -233,6 +236,79 @@ chemistry_riemann_compute_hyperbolic_blending_factor(
   }
 
   return alpha;
+}
+
+/**
+ * @brief Compute a Hopkins-2017-style limiter for the hyperbolic HLL
+ * solver's F_diss, based on how far the dynamical flux still is from its
+ * own Fickian relaxation target ("flux memory").
+ *
+ * Hopkins' original criterion (chemistry_riemann_compute_alpha) compares
+ * the numerical dissipation rate against ||K.grad(q)||, the flux's
+ * equilibrium (tau->0) target -- a comparison that only makes sense
+ * because the parabolic scheme's flux IS that target algebraically. Here
+ * the flux is a dynamical state variable that only relaxes toward
+ * K.grad(q) on timescale tau, so an un-relaxed flux persisting after the
+ * gradient that produced it has moved on -- not a bad wave-speed estimate
+ * -- is the actual source of large-tau over-transport. This limiter
+ * targets that mechanism directly: small memory (flux caught up to its
+ * target) -> don't suppress; large memory (flux still coasting on a
+ * stale gradient) -> suppress.
+ *
+ * @param pi Left particle
+ * @param pj Right particle
+ * @param m Index of metal specie to update.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The #cosmology.
+ *
+ * @return The limiter factor in (0, 1], multiplying F_diss.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_riemann_compute_hyperbolic_diffusivity_limiter(
+    const struct part *restrict pi, const struct part *restrict pj,
+    const int m, const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo) {
+
+  double F_parabolic_L[3], F_parabolic_R[3];
+  chemistry_get_physical_parabolic_flux(pi, m, F_parabolic_L, chem_data,
+                                        cosmo);
+  chemistry_get_physical_parabolic_flux(pj, m, F_parabolic_R, chem_data,
+                                        cosmo);
+
+  const double F_actual_L[3] = {pi->chemistry_data.diffusion_flux[m][0],
+                                pi->chemistry_data.diffusion_flux[m][1],
+                                pi->chemistry_data.diffusion_flux[m][2]};
+  const double F_actual_R[3] = {pj->chemistry_data.diffusion_flux[m][0],
+                                pj->chemistry_data.diffusion_flux[m][1],
+                                pj->chemistry_data.diffusion_flux[m][2]};
+
+  double norm_parabolic_sq = 0.0, norm_actual_sq = 0.0, norm_memory_sq = 0.0;
+  for (int i = 0; i < 3; i++) {
+    const double F_parabolic_star = 0.5 * (F_parabolic_L[i] + F_parabolic_R[i]);
+    const double F_actual_star = 0.5 * (F_actual_L[i] + F_actual_R[i]);
+    const double F_memory = F_actual_star - F_parabolic_star;
+    norm_parabolic_sq += F_parabolic_star * F_parabolic_star;
+    norm_actual_sq += F_actual_star * F_actual_star;
+    norm_memory_sq += F_memory * F_memory;
+  }
+
+  const double denom = sqrt(norm_parabolic_sq) + sqrt(norm_actual_sq);
+
+  /* Neither a target nor an actual flux: nothing to transport, F_diss
+     itself will be ~0 regardless -- default to no extra suppression
+     rather than an arbitrary cut. This also covers a sharp initial
+     discontinuity where both particles' own local gradients are ~0 (each
+     side is locally uniform) even though the pair straddles a jump: the
+     interface density difference driving F_diss there is real transport
+     to kick-start, not numerical excess, and this limiter correctly
+     leaves it alone since it only sees the flux state, not the pair's
+     density jump. */
+  if (denom == 0.0) {
+    return 1.0;
+  }
+
+  const double s = sqrt(norm_memory_sq) / denom;
+  return 1.0 / (1.0 + s);
 }
 #endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
 
