@@ -1025,6 +1025,124 @@ particular lever on the ``too diffusive at large $\taurelax$'' symptom is
 already pulled as far as it goes; porting the Hopkins-2017 limiter itself
 to the hyperbolic branch is the remaining, independent lever.
 
+\section{The Half-Timestep Predictor}
+\label{sec:predictor}
+
+\code{chemistry\_gradients\_predict} (\code{hyperbolic/chemistry\_gradients.h:161--281})
+builds the left/right states handed to the Riemann solver by
+extrapolating both the conserved density $U_0=\rhoZ$ and the flux
+$\Fdiff$ from a particle's own position to the interparticle interface,
+over a half-timestep $h=\tfrac12\min(\dt_i,\dt_j)$. The two extrapolations
+differ in kind. $U_0$'s evolution equation, $\partial_tU_0=-\div\Fdiff$,
+carries no source term, so the code uses the ordinary first-order
+MUSCL-Hancock form, additive in space and time:
+\begin{equation}
+  U_0(\mathbf x_{\rm face},t^n+h) \approx
+  U_0(\mathbf x_{\rm cell},t^n) + \grad U_0\cdot\Delta\mathbf x
+  - h\,(\div\Fdiff)_{\mathbf x_{\rm cell}} ,
+\end{equation}
+with $\Delta\mathbf x=\mathbf x_{\rm face}-\mathbf x_{\rm cell}$ and
+$\div\Fdiff$ itself built from the cell-centred flux gradient. This is
+the same predictor form used for hydro's own MUSCL-Hancock step, and
+needs no special treatment: $U_0$'s equation has no stiff source.
+
+$\Fdiff$'s equation, Eq.~\eqref{eq:cattaneo}, does have a stiff source
+($-\Fdiff/\taurelax$), so a first-order-in-time Taylor step would be
+inconsistent whenever $h\gtrsim\taurelax$ -- exactly why the source term
+is integrated exactly rather than linearised elsewhere in the scheme
+(\code{chemistry\_part\_integrate\_flux\_source\_term}). The predictor
+applies that same exact integrator, but with the two operations ordered
+\emph{space, then time}:
+\begin{equation}
+  \label{eq:predictor-order}
+  \Fdiff(\mathbf x_{\rm face},t^n+h) =
+  \big[\Fdiff(\mathbf x_{\rm cell},t^n)+\grad\Fdiff\cdot\Delta\mathbf x\big]\,
+  e^{-h/\taurelax} + \Fdiff_{\rm parabolic}(\mathbf x_{\rm cell})\,
+  \big(1-e^{-h/\taurelax}\big)
+\end{equation}
+(\code{chemistry\_gradients.h:253--271}): first spatially reconstruct
+$\Fdiff$ to the interface using its own stored gradient, then relax the
+whole extrapolated value toward $\Fdiff_{\rm parabolic}$ exactly. Since $\Fdiff_{\rm parabolic}$
+is only ever available at the cell centre
+(Remark~\ref{rem:cell-centred-gradients-only}), the alternative order --
+relax the cell-centred value first, then add the spatial gradient
+afterwards -- is also conceivable. The two are not equivalent.
+
+\begin{proposition}[Eq.~\eqref{eq:predictor-order} is the exact solution of the locally-available problem]
+\label{prop:predictor}
+Treat $\Fdiff_{\rm parabolic}$ as spatially uniform over the cell, equal to its only
+available value at $\mathbf x_{\rm cell}$ -- the same approximation
+already forced by Remark~\ref{rem:cell-centred-gradients-only}. Then
+$\partial_t\Fdiff=-(\Fdiff-\Fdiff_{\rm parabolic})/\taurelax$ has no spatial-derivative
+coupling: it is an independent ODE at every point $\mathbf x$, with
+$\Fdiff_{\rm parabolic}$ constant in $\mathbf x$. Given the linear initial profile
+$\Fdiff(\mathbf x,t^n)=\Fdiff(\mathbf x_{\rm cell},t^n)+\grad\Fdiff\cdot(\mathbf x-\mathbf x_{\rm cell})$
+supplied by the gradient estimator, the exact solution at every
+$\mathbf x$ and every $t>t^n$ is
+\begin{equation}
+  \Fdiff(\mathbf x,t) = \Fdiff_{\rm parabolic} +
+  \big[\Fdiff(\mathbf x,t^n)-\Fdiff_{\rm parabolic}\big]\,e^{-(t-t^n)/\taurelax} .
+\end{equation}
+Evaluating at $\mathbf x=\mathbf x_{\rm face}$, $t=t^n+h$ reproduces
+Eq.~\eqref{eq:predictor-order} exactly.
+\end{proposition}
+\begin{proof}
+With $\Fdiff_{\rm parabolic}$ constant in $\mathbf x$,
+$\partial_t[\Fdiff-\Fdiff_{\rm parabolic}]=-[\Fdiff-\Fdiff_{\rm parabolic}]/\taurelax$ holds
+separately at each $\mathbf x$, solved by
+$[\Fdiff(\mathbf x,t^n)-\Fdiff_{\rm parabolic}]\,e^{-(t-t^n)/\taurelax}$ regardless
+of how $\Fdiff(\mathbf x,t^n)$ depends on $\mathbf x$.
+\end{proof}
+
+\begin{remark}[Why the reverse order is wrong]
+Decompose Eq.~\eqref{eq:predictor-order} into a cell-mean piece and a
+gradient piece:
+\begin{equation}
+  \Fdiff(\mathbf x_{\rm face},t^n+h) =
+  \underbrace{\Fdiff(\mathbf x_{\rm cell},t^n)e^{-h/\taurelax}
+  +\Fdiff_{\rm parabolic}(1-e^{-h/\taurelax})}_{\text{exact cell-centre relaxation}}
+  \;+\;
+  \underbrace{\big(\grad\Fdiff\cdot\Delta\mathbf x\big)\,e^{-h/\taurelax}}_{\text{gradient, decayed}} .
+\end{equation}
+The gradient contribution decays at the same rate as the mean, since
+$\Fdiff_{\rm parabolic}$ carries no gradient of its own in this local approximation
+-- both pieces of Proposition~\ref{prop:predictor}'s exact solution decay
+identically. The reverse order (relax the cell-centred value first, then
+add $\grad\Fdiff\cdot\Delta\mathbf x$ \emph{un}decayed) would instead give
+$\Fdiff_{\rm parabolic}+[\Fdiff(\mathbf x_{\rm cell},t^n)-\Fdiff_{\rm parabolic}]e^{-h/\taurelax}
++\grad\Fdiff\cdot\Delta\mathbf x$: as $\taurelax\to0$ this tends to
+$\Fdiff_{\rm parabolic}+\grad\Fdiff\cdot\Delta\mathbf x$, a spurious residual
+gradient inherited from the pre-relaxation, hyperbolic-regime flux field,
+surviving even in the limit where the flux should have fully relaxed to
+the smooth parabolic profile. Eq.~\eqref{eq:predictor-order}'s order
+avoids this: as $\taurelax\to0$ it tends to $\Fdiff_{\rm parabolic}$ exactly, with no
+residual gradient, matching the Cattaneo-to-Fick collapse of
+Eq.~\eqref{eq:cattaneo} itself.
+\end{remark}
+
+\begin{remark}[The opposite limit, $\taurelax\to\infty$]
+As $\taurelax\to\infty$, $e^{-h/\taurelax}\to1-h/\taurelax+O(\taurelax^{-2})$
+and Eq.~\eqref{eq:predictor-order} tends, at leading order, to
+$\Fdiff(\mathbf x_{\rm cell},t^n)+\grad\Fdiff\cdot\Delta\mathbf x$ -- a
+pure spatial extrapolation with no time evolution, matching
+Eq.~\eqref{eq:cattaneo}'s own source term vanishing in this limit. Both
+limits behave as they should.
+\end{remark}
+
+The face slope limiter (\code{chemistry\_slope\_limit\_face},
+\code{hyperbolic/chemistry\_slope\_limiter\_face.h}) is applied to
+$\grad\Fdiff\cdot\Delta\mathbf x$ before the exact time integration
+(\code{chemistry\_gradients.h} line 242 runs before line 253), consistent
+with the space-then-time order of Proposition~\ref{prop:predictor}: it
+bounds the purely spatial reconstruction that is then fed as the initial
+condition into the exact relaxation solve, not a separate step operating
+on an already time-evolved quantity.
+
+The implemented order is not merely a reasonable choice between two
+options: Proposition~\ref{prop:predictor} shows it is the only one
+consistent with the exact solution of the locally-available (cell-centred
+$\Fdiff_{\rm parabolic}$) relaxation problem.
+
 \section{Summary of Findings}
 \label{sec:summary}
 
@@ -1098,6 +1216,15 @@ function signature.
   but never the flux vector $\Fdiff$ itself. Added an unconditional (not
   debug-gated) \code{"DiffusionFluxes"} output field writing all three
   components per element.
+\item \textbf{No bug, now proven.} The half-timestep predictor
+  (Section~\ref{sec:predictor}, \code{chemistry\_gradients\_predict})
+  extrapolates $\Fdiff$ to the interface space-first, then relaxes the
+  whole extrapolated value toward the cell-centred $\Fdiff_{\rm parabolic}$ exactly.
+  Proposition~\ref{prop:predictor} shows this is the exact solution of
+  the locally-available relaxation problem (given $\Fdiff_{\rm parabolic}$ can only
+  ever be evaluated at the cell centre); the reverse order would leave a
+  spurious, undecayed gradient artefact in the $\taurelax\to0$ limit. No
+  source change was needed.
 \item All source changes above were verified by rebuilding
   \code{src/chemistry.o} and \code{src/single\_io.o} (which
   \code{\#include}s \code{chemistry\_io.h}) against the tree's configured
@@ -1108,9 +1235,6 @@ function signature.
 \subsection{What's Left}
 Outside the scope of this document's $\chyp$ review:
 \begin{itemize}
-\item Whether the half-timestep MUSCL predictor
-  (\code{hyperbolic/chemistry\_gradients.h}) correctly time-extrapolates
-  the flux state.
 \item Whether the Speed Criterion of Section~\ref{sec:speed-criterion}
   ($\taurelax_0\gtrsim4$) transfers to \code{anisotropic_gradient} mode.
   That derivation is specific to \code{isotropic_smagorinsky}: in
