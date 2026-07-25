@@ -1124,6 +1124,77 @@ particular lever on the ``too diffusive at large $\taurelax$'' symptom is
 already pulled as far as it goes; porting the Hopkins-2017 limiter itself
 to the hyperbolic branch is the remaining, independent lever.
 
+\section{Practical Guidance for Choosing $\taurelax_0$}
+\label{sec:practical-tau0}
+
+Sections~\ref{sec:speed-criterion}--\ref{sec:speed-criterion-aniso} and
+this one are not independent: the same $\taurelax_0$ that must clear the
+speed threshold also fixes the blending factor $\alpha$
+(\code{chemistry\_riemann\_compute\_hyperbolic\_blending\_factor},
+\code{chemistry\_riemann\_utils.h:179--239}), which decides whether a
+step runs through the Hopkins-limited parabolic branch ($\alpha\to0$) or
+the plain, unlimited HLL branch just discussed ($\alpha\to1$).
+
+$\alpha=\rho_\star/(0.1+\rho_\star)$ with
+$\rho_\star=\taurelax_\star/\taurelax_{\rm num}$,
+$\taurelax_\star$ the harmonic mean of the pair's two relaxation times
+(equal to $\taurelax/2$ when $\taurelax_L=\taurelax_R=\taurelax$), and
+$\taurelax_{\rm num}=r_{ij}^2/D_\star$ the local parabolic crossing time
+built from the actual pair separation $r_{ij}=|\mathbf x_i-\mathbf x_j|$
+(distinct from the Gizmo particle size $\dx$ used in the speed-criterion
+sections -- a different, though comparable, length scale). For
+\code{isotropic_smagorinsky}+\code{turbulent_mode}, substituting
+$\taurelax=\taurelax_0/(\kappaC\norm{\Shear}_F)$ and
+$\Deff=\kappaC\gammak^2h^2\norm{\Shear}_F$:
+\begin{equation}
+  \rho_\star = \taurelax_0\,\frac{\sqrt3\,\gammak^2h^2}{2\,r_{ij}^2} ,
+\end{equation}
+i.e.\ $\rho_\star$ is \emph{exactly} proportional to $\taurelax_0$, with a
+fixed, resolution/shear/$\kappaC$-independent geometric prefactor
+(verified against the code's own formulas numerically). Since $\gammak h$
+and $r_{ij}$ are comparable length scales ($\gammak>1$, and the kernel
+support radius is typically a modest multiple of the interparticle
+spacing, not a fraction of it), this prefactor is unlikely to be
+$\ll1$ -- and $\alpha$ saturates fast regardless: $\alpha=0.5$ at
+$\rho_\star=0.1$, $\alpha\approx0.91$ at $\rho_\star=1$,
+$\alpha\approx0.98$ at $\rho_\star=4$. Since the speed-parity threshold
+itself is $\taurelax_0\gtrsim4$ (isotropic) to $\gtrsim4$--$10$
+(anisotropic, Eq.~\eqref{eq:aniso_threshold}'s $g=0$ limit), any
+$\taurelax_0$ large enough to win on raw timestep speed is, in the
+current implementation, already deep in the unlimited-HLL regime.
+
+``Fast'' and ``Hopkins-limited/accurate'' are therefore not two
+independently reachable regimes under $\taurelax_0$ tuning alone -- they
+are the same knob, pointing in opposite directions, until the
+Hopkins-2017 limiter is ported to the $\alpha\approx1$ hyperbolic branch
+(Section~\ref{sec:hll-consequence}). Within the unlimited regime itself,
+larger $\taurelax_0$ is not obviously worse: the numerical dissipation
+magnitude $F_{\rm diss}\propto\chyp\propto\taurelax^{-1/2}$
+\emph{shrinks} as $\taurelax_0$ grows, even though the Hopkins-style
+protection against it disappears at essentially the same threshold where
+the speed benefit appears.
+
+\begin{remark}[Existing empirical guidance predates several fixes in this document]
+The \code{l5\_tau\_1e-1} through \code{l5\_tau\_1e2} runs that first
+identified the ``too diffusive at large $\taurelax$'' symptom -- the
+observation that motivated this entire investigation -- were made before
+the $\taurelax_0$-$\kappaC$ coupling, the $\mu$/$\rho$ correction, and the
+$\lambda_1(\Deff)$ unification (all derived in this document) were
+implemented. Those fixes change what a given numerical $\taurelax_0$
+value physically means (e.g.\ the isotropic threshold moved from
+$\taurelax_0\gtrsim1/\kappaC$ to $\taurelax_0\gtrsim4$), so which
+$\taurelax_0$ ``looks too diffusive'' should be re-checked against the
+current code before being treated as settled.
+\end{remark}
+
+As an interim starting point, pending the Hopkins-2017 hyperbolic port:
+$\taurelax_0$ a few times the relevant speed-parity threshold (order
+$4$--$10$ for \code{isotropic_smagorinsky}; toward the higher end, and
+locally variable, for \code{anisotropic_gradient} per
+Eq.~\eqref{eq:aniso_threshold}), validated against a matching parabolic
+run on the same problem before trusting quantitative results -- not yet a
+final, calibrated production value.
+
 \section{The Half-Timestep Predictor}
 \label{sec:predictor}
 
