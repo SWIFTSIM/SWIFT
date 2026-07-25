@@ -48,9 +48,17 @@ chemistry_get_physical_hyperbolic_soundspeed(
          overestimate otherwise -- see chemistry_get_matrix_max_eigenvalue).
        - p->chemistry_data.tau is already the correct value for whichever
          relaxation_time_mode is active: chemistry_prepare_force() calls
-         chemistry_compute_physical_tau() and caches the result before
-         this getter is ever called (from chemistry_iact.h or the
-         Riemann solver, both during/after the force loop). */
+         chemistry_compute_physical_tau() and caches the result. Verified
+         this genuinely runs before this getter is ever called: it is
+         invoked from runner_ghost.c's density-ghost task, alongside
+         hydro_prepare_force(), under the comment "Compute variables
+         required for the force loop" -- and this getter's two call
+         sites (chemistry_iact.h's flux loop, and the Riemann solver)
+         both run during the force loop itself, strictly after the
+         density-ghost task in the scheduler's dependency graph. For an
+         inactive neighbour, tau is a cached value from its last active
+         step -- the same lagged-quantity treatment already relied on
+         for kappa (chemistry_get_physical_matrix_K), not a new risk. */
   double D[3][3];
   chemistry_get_physical_matrix_D(p, chem_data, cosmo, D);
   const double lambda_max_D = chemistry_get_matrix_max_eigenvalue(D);
