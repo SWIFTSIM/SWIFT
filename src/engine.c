@@ -4308,7 +4308,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   struct feedback_props *feedback_properties =
       (struct feedback_props *)malloc(sizeof(struct feedback_props));
-  feedback_struct_restore(feedback_properties, stream);
+  feedback_struct_restore(feedback_properties, stream, e->internal_units,
+                          e->physical_constants);
   e->feedback_props = feedback_properties;
 
   struct pressure_floor_props *pressure_floor_properties =

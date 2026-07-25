@@ -137,7 +137,9 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
 void radiation_dump(const struct radiation *rad, FILE *stream,
                     const struct stellar_model *sm);
 void radiation_restore(struct radiation *rad, FILE *stream,
-                       const struct stellar_model *sm);
+                       const struct stellar_model *sm,
+                       const struct unit_system *us,
+                       const struct phys_const *phys_const);
 void radiation_clean(struct radiation *rad);
 
 float radiation_get_luminosities_from_integral(const struct radiation *rad,

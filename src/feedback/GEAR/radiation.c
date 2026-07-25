@@ -289,6 +289,7 @@ void radiation_compute_and_cache_HII_rebuild_interval(
   const double m_p = phys_const->const_proton_mass;
   const double k_B = phys_const->const_boltzmann_k;
   const double floor_interval = feedback_props->HII_rebuild_floor_Myr;
+  const double mu_ionized = 0.61;
 
   /* Temperature floor and case-B recombination coefficient: depend only
      on Z (no single gas particle at this star-level call site), shared
@@ -368,10 +369,8 @@ void radiation_compute_and_cache_HII_rebuild_interval(
                 : 0.0;
   }
 
-  /* Sound speed of the ionized gas at T_ionized_K. No gas particle is
-     available here for a tracked mu, so use a fixed fully-ionized mu ~
-     0.61 (the EoS's density argument is unused in this formula). */
-  const double mu_ionized = 0.61;
+  /* Sound speed of the ionized gas at T_ionized_K (the EoS's density
+     argument is unused in this formula). */
   const double T_ionized_internal =
       T_ionized_K * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
   const double u_ionized =
@@ -1003,18 +1002,27 @@ void radiation_dump(const struct radiation *rad, FILE *stream,
  * @brief Restore a radiation struct from the given FILE as a stream of
  * bytes.
  *
- * Here we are only writing the arrays, everything else has been copied in the
- * feedback.
+ * The flat restore below copies the interpolation tables' internal data
+ * pointers as raw bytes -- meaningless in the new process, since they held
+ * the old process's heap addresses. radiation_read_data() re-derives those
+ * tables from scratch instead of trying to serialize them (they are
+ * computed from mass/Z, not read from a file, so re-deriving is exact and
+ * avoids ever leaving a dangling pointer for radiation_clean() to free().
  *
  * @param rad the struct
  * @param stream the file stream
  * @param sm The #stellar_model.
+ * @param us The unit system.
+ * @param phys_const The physical constants in internal units.
  */
 void radiation_restore(struct radiation *rad, FILE *stream,
-                       const struct stellar_model *sm) {
+                       const struct stellar_model *sm,
+                       const struct unit_system *us,
+                       const struct phys_const *phys_const) {
 
   restart_read_blocks((void *)rad, sizeof(struct radiation), 1, stream, NULL,
                       "radiation");
+  radiation_read_data(rad, NULL, sm, us, phys_const, /*restart=*/1);
   message("Restoring GEAR radiation struct...");
 }
 

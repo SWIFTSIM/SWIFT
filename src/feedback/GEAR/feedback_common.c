@@ -927,18 +927,24 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
  *
  * @param feedback the struct
  * @param stream the file stream
+ * @param us The unit system.
+ * @param phys_const The physical constants in internal units.
  */
-void feedback_struct_restore(struct feedback_props *feedback, FILE *stream) {
+void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
+                             const struct unit_system *us,
+                             const struct phys_const *phys_const) {
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
 
   stellar_evolution_restore(&feedback->stellar_model, stream,
-                            feedback->with_stellar_wind_feedback);
+                            feedback->with_stellar_wind_feedback, us,
+                            phys_const);
 
   if (feedback->metallicity_max_first_stars != -1) {
     stellar_evolution_restore(&feedback->stellar_model_first_stars, stream,
-                              feedback->with_stellar_wind_feedback);
+                              feedback->with_stellar_wind_feedback, us,
+                              phys_const);
   }
 }
 

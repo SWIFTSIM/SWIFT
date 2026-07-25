@@ -347,7 +347,9 @@ void feedback_clean(struct feedback_props *fp);
 
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
 
-void feedback_struct_restore(struct feedback_props *feedback, FILE *stream);
+void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
+                             const struct unit_system *us,
+                             const struct phys_const *phys_const);
 
 #ifdef HAVE_HDF5
 /**

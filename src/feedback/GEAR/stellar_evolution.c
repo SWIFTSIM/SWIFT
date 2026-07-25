@@ -1475,9 +1475,13 @@ void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
  * @param stream the file stream
  * @param with_stellar_wind_feedback Are we restoring with stellar wind
  * feedback?
+ * @param us The unit system.
+ * @param phys_const The physical constants in internal units.
  */
 void stellar_evolution_restore(struct stellar_model *sm, FILE *stream,
-                               const char with_stellar_wind_feedback) {
+                               const char with_stellar_wind_feedback,
+                               const struct unit_system *us,
+                               const struct phys_const *phys_const) {
 
   /* Restore the initial mass function */
   initial_mass_function_restore(&sm->imf, stream, sm);
@@ -1499,7 +1503,7 @@ void stellar_evolution_restore(struct stellar_model *sm, FILE *stream,
   }
 
   /* Restore the radiation model */
-  radiation_restore(&sm->rad, stream, sm);
+  radiation_restore(&sm->rad, stream, sm, us, phys_const);
 }
 
 /**
