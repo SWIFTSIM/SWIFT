@@ -3637,8 +3637,8 @@ void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_
 
     struct cell *parent = level->cells[i]->parent;
 
-    int neighbour_counter = 0;
-    int no_neighbour_counter = 0;
+    //int neighbour_counter = 0;
+    //int no_neighbour_counter = 0;
 
     for (int j=0; j<6; j++) {
       if (level->cells[i]->neighbours[j] == NULL) {
@@ -3646,13 +3646,13 @@ void link_nonuniform_level(struct space *s, struct AMR_levels *level, int start_
         int pre_smoothing = 1;
         int neighbour = find_neighbour(level, parent, level->cells[i], search_id[j], fac, j, pre_smoothing, 0);
         if (cell_i==0 && cell_j==0 && cell_k==2 && neighbour) message("Found neighbour %d at (%lf, %lf, %lf)", j, level->cells[i]->neighbours[j]->loc[0], level->cells[i]->neighbours[j]->loc[1], level->cells[i]->neighbours[j]->loc[2]);
-        no_neighbour_counter += 1;
+        //no_neighbour_counter += 1;
         //message("For cell %d, neighbour %d was not linked", i, j);
       }
-      else {
-        neighbour_counter +=1;
+      //else {
+        //neighbour_counter +=1;
         //message("For cell %d, neighbour %d already linked", i, j);
-      }
+      //}
     }
   }
 }
@@ -4933,7 +4933,7 @@ void transfer_residual_array(struct AMR_levels fine, struct AMR_levels *coarse, 
 double get_patch_residual(struct AMR_levels level, double delta) {
   double mean_density = level.mean_density;
   double residual = 0.;
-  double mean_res = 0.;
+  //double mean_res = 0.;
 
   for (int i=0; i<level.cell_count; i++) {
     struct cell *current_cell = level.cells[i];
@@ -4956,7 +4956,7 @@ double get_patch_residual(struct AMR_levels level, double delta) {
       //message("Calculating using %.5g %.5g %.5g %.5g %.5g %.5g %.5g %.5g %.5g", current_cell->neighbours[0]->CIC_potential, current_cell->neighbours[1]->CIC_potential, current_cell->neighbours[2]->CIC_potential, current_cell->neighbours[3]->CIC_potential, current_cell->neighbours[4]->CIC_potential, current_cell->neighbours[5]->CIC_potential, current_cell->CIC_potential, mean_density, current_cell->CIC_density);
     //}
     //message("We just added %lf", temp);
-    mean_res += res;
+    //mean_res += res;
     residual += res*res;
   }
   double final_res = sqrt(residual/(level.cell_count));
@@ -5107,8 +5107,8 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
 
     struct cell *parent = fine->cells[i]->parent;
 
-    int neighbour_counter = 0;
-    int no_neighbour_counter = 0;
+    //int neighbour_counter = 0;
+    //int no_neighbour_counter = 0;
     //message("Checking neighbours for the cell with (%lf,%lf,%lf)", search_loc_x,search_loc_y, search_loc_z);
 
     //if (cell_i == 0 && cell_j == 0 && cell_k == 2) message("The neighbour %d has location (%lf, %lf, %lf)", 5, fine->cells[i]->neighbours[5]->loc[0], fine->cells[i]->neighbours[5]->loc[1], fine->cells[i]->neighbours[5]->loc[2]);
@@ -5121,12 +5121,12 @@ void set_patch_guess(struct space *s, struct AMR_levels *coarse, struct AMR_leve
         int pre_smoothing = 0;
         neighbour = find_neighbour(fine, parent, fine->cells[i], search_id[j], fac, j, pre_smoothing, 0);
         if (cell_i == 0 && cell_j == 0 && cell_k == 1) message("Neighbour found? %d", neighbour);
-        no_neighbour_counter += 1;
+        //no_neighbour_counter += 1;
         //if (fine->depth == 8) message("For cell %d, neighbour %d was not linked", i, j);
       }
       else {
         neighbour = 1;
-        neighbour_counter +=1;
+        //neighbour_counter +=1;
         //message("For cell %d, neighbour %d already linked", i, j);
       }
       //message("The neighbour %d value %d for cell %d is", j, neighbour, i);
@@ -6550,9 +6550,9 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
   double mean_density = get_mean_density(density_array, N, 0);
   mean_density *= 4.* M_PI * fac*fac*fac;
   double sum = 0.0;
-  double rms = 0.0;
+  //double rms = 0.0;
   for (int i = 0; i < N*N*N; i++) {
-    rms += fabs(density_array[i]-1);
+    //rms += fabs(density_array[i]-1);
     sum += density_array[i]-1;
   }
   if (sum < -0.1 || sum > 0.1) message("Warning! Mean of the overdensity is nonzero");
@@ -6720,9 +6720,9 @@ void apply_GS(const double *rho, double *pot, int cdim[3], double mean_density, 
     pot[i] -= sum/(N*N*N);
   }
 
-  double potential_sum = 0;
-  for (int i =0; i<N*N*N; i++)
-    potential_sum += fabs(pot[i]);  
+  //double potential_sum = 0;
+  //for (int i =0; i<N*N*N; i++)
+    //potential_sum += fabs(pot[i]);  
 }
 
 /**
@@ -7570,7 +7570,7 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
         }
         rho_levels[i][cell_getid(cdim, N/2, N/2, N/2)] = mean_density_set * (1. + 1e-4*(N*N*N-1.));
         break;
-      case 3:
+      case 3: {
         /* Change the density field to represent a 1D sinusoid in the box */
         double fR_mod = MG->fR_bar/2;
         double delta = s->dim[0]/N;
@@ -7583,6 +7583,7 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
           }
         }
         break;
+	}
       case 4:
         /* Change the density field to represent two particles aligned along the x-axis of the box */
         for (int i2=0; i2<N; i2++) {
