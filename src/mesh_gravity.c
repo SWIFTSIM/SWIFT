@@ -1135,6 +1135,16 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
     }
   }
 
+  FILE *rho_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_initial_old.txt", "w");
+  FILE *rhoMG_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_initial_old.txt", "w");
+  for (int i=0; i<N*N*N; i++) {
+    fprintf(rho_export, "%E \n", rho[i]);
+    fprintf(rhoMG_export, "%E \n", rho_MG[i]);
+  }
+  fclose(rho_export);
+  fclose(rhoMG_export);
+
+
   /* MG part from here! */
   //int get_MG_acc = 0;
   int cell_acc = 0;
@@ -1251,7 +1261,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
     //fclose(density_test_first);
     //double *rho_copy2 = malloc(N*N*N *sizeof(double));
     //memcpy(rho_copy2, rho, N*N*N*sizeof(double));
-    if (!linear) space_get_fR_contribution(s, rho_copy, field_contribution, &MG_var, N_min, N_MG, test); //Out comes u
+    if (!linear) space_get_fR_contribution(tp, s, rho_copy, field_contribution, &MG_var, N_min, N_MG, test); //Out comes u
     else space_get_fR_linear(s, rho_copy, field_contribution, &MG_var, N_min, N_MG); //Out comes delta f_R
     free(rho_copy);
 
@@ -1265,6 +1275,12 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
 
     double delta = box_size/N_MG;
     get_rho_mod(rho_MG, field_contribution, &MG_var, delta, N_MG);
+
+    FILE *rhoMG_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_mod_old.txt", "w");
+    for (int i=0; i<N*N*N; i++) {
+      fprintf(rhoMG_export2, "%E \n", rho_MG[i]);
+    }
+    fclose(rhoMG_export2);
 
     //mean_density = 0.;
     //for (int i=0; i<N*N*N; i++) {
@@ -1393,6 +1409,16 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
   /* rho now contains the potential */
   /* This array is now again NxNxN real numbers */
 
+  FILE *rho_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_FTd_old.txt", "w");
+  FILE *rhoMG_export3 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_FTd_old.txt", "w");
+  for (int i=0; i<N*N*N; i++) {
+    fprintf(rho_export2, "%E \n", rho[i]);
+    fprintf(rhoMG_export3, "%E \n", rho_MG[i]);
+  }
+  fclose(rho_export2);
+  fclose(rhoMG_export3);
+
+
   /* Get the fR contribution to the acceleration at the cells */
   if (MG && cell_acc) {
     double *acc2[3];
@@ -1492,6 +1518,15 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
     fftw_free(frho_MG);
 
     free(field_contribution);
+
+    FILE *acc_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/acc_old.txt", "w");
+    for (size_t i=0; i<s->nr_gparts; i++) {
+      fprintf(acc_export, "%E \n", s->gparts[i].a_grav_mesh[0]);
+    }
+    fclose(acc_export);
+    message("Done exporting stuff");
+    sleep(10);
+
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif

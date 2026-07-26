@@ -625,16 +625,16 @@ void get_patch_potential(struct space *s, struct AMR_levels *fine, struct AMR_le
 void mark_all_neighbours(struct space *s, int min_depth, struct AMR_levels *level, struct cell *curr_cell);
 void check_diagonal1(struct space *s, struct AMR_levels *coarse, struct AMR_levels *fine, struct cell *c, int nr_neighbours, int neighbours[nr_neighbours], int min_depth, int double_diag);
 void get_cell_accelerations(struct space *s, int min_depth, int max_depth, struct AMR_levels levels[max_depth+1]);
-void space_get_fR_contribution(const struct space *s, double *rho, double *phi, struct MG_variables *MG, int N_min, const int N, const int test);
-void apply_NGS(const double *rho, double *phi, struct MG_variables *MG, int cdim[3], double mean_density, double box_size);
-double get_Laplacian(struct MG_variables *MG, const double *phi, int cdim[3], int nbs[6], int i, int j, int k);
-double get_residual_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta, int verbose);
-double get_derivative(double *phi, struct MG_variables *MG, int cdim[3], int nbs[6], int i, int j, int k, double delta);
-void perform_red_black_sweep_fR(double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
-void apply_multigrid_fR(const double *rho, double *pot, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
-void FAS_recursive(double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth);
-double get_residual_coarser(const double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
-void perform_red_black_sweep_coarser(double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
+void space_get_fR_contribution(struct threadpool *tp, const struct space *s, double *rho, double *phi, struct MG_variables *MG, int N_min, const int N, const int test);
+void apply_NGS(struct threadpool *tp, const double *rho, double *phi, struct MG_variables *MG, int cdim[3], double mean_density, double box_size);
+double get_Laplacian(struct MG_variables *MG, const double *phi, const int cdim[3], int nbs[6], int i, int j, int k);
+double get_residual_fR(struct threadpool *tp, double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta, int verbose);
+double get_derivative(double *phi, struct MG_variables *MG, const int cdim[3], int nbs[6], int i, int j, int k, double delta);
+void perform_red_black_sweep_fR(struct threadpool *tp, double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
+void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *pot, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max);
+void FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth);
+double get_residual_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
+void perform_red_black_sweep_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta);
 void get_residual_array_coarser(const double *coarser_solution, const double *restricted_residual, const double *restricted_solution, double *coarser_residual, struct MG_variables *MG, int cdim[3], double delta);
 void get_residual_array_fR(const double *phi, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double *residual_array, double delta);
 void apply_NGS_Poisson(const double *rho, double *phi, int cdim[3], double mean_density, double box_size);
@@ -649,4 +649,8 @@ double get_residual_fR_linear(double *u, const double *rho, struct MG_variables 
 void perform_red_black_sweep_fR_linear(double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta);
 void apply_GS_fR(const double *rho, double *u, struct MG_variables *MG, int cdim[3], double mean_density, double box_size);
 void space_get_fR_linear(const struct space *s, double *rho, double *u, struct MG_variables *MG, int N_min, const int N_max);
+void coarser_red_black_mapper(void *map_data, int num, void* extra);
+void coarser_residual_mapper(void *map_data, int num, void* extra);
+void residual_mapper(void* map_data, int num, void* extra);
+void red_black_mapper(void* map_data, int num, void* extra);
 #endif /* SWIFT_SPACE_H */

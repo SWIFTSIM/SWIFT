@@ -27,12 +27,12 @@ Gravity:
   epsilon_fmm:  0.001
   comoving_DM_softening:     0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
   max_physical_DM_softening: 0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
-  mesh_side_length:       64
+  mesh_side_length:       128
 
 # Parameters governing the snapshots
 Snapshots:
-  subdir:              snapshots_64
-  basename:            snap_64
+  subdir:              snapshots_dump
+  basename:            snap_dump
   delta_time:          1.0816  # Only every second VELOCIraptor invoke gets a full snapshot dump.
   scale_factor_first:  0.1     # z = 9
   compression:         4

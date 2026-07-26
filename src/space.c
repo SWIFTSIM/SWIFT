@@ -3717,7 +3717,7 @@ void get_AMR_potential(struct space *s, int max_depth, int current_depth, struct
 
   /* CIC for the potential: Get overlap with the cell it is in and 7 others */
   struct cell *home_cell = levels[current_depth].cells[cell_nr];
-  double offset[3] = {pos_x - home_cell->loc[0], pos_y - home_cell->loc[1], pos_z - home_cell->loc[2]};
+  //double offset[3] = {pos_x - home_cell->loc[0], pos_y - home_cell->loc[1], pos_z - home_cell->loc[2]};
 
   int nbx = 0;
   int nby = 2;
@@ -7451,7 +7451,29 @@ double get_residual_fR_linear(double *u, const double *rho, struct MG_variables 
   return sqrt(residual/(N*N*N));
 }
 
+struct sweep_mapper_data {
+  const double *rho;
+  double *u;
+  int N;
+  struct MG_variables *MG;
+  double *residual;
+  double delta;
+  double mean_density;
+  int col;
+  double *planes;
+};
 
+struct coarser_sweep_mapper_data {
+  const double *restricted_residual;
+  const double *restricted_solution;
+  double *coarser_solution;
+  int N;
+  struct MG_variables *MG;
+  double *residual;
+  double delta;
+  int col;
+  double *planes;
+};
 
 /**
  * @brief Compute the field u = ln(f_R/mean(f_R)) on a series of uniform grids. 
@@ -7468,7 +7490,7 @@ double get_residual_fR_linear(double *u, const double *rho, struct MG_variables 
  * @param N_max 1D size of the largest grid on which to solve for the potential.
  * @param test Are we testing? (1 = uniform density, 2 = single particle, 3 = sine wave, 4 = two particles)
  */
-void space_get_fR_contribution(const struct space *s, double *rho, double *u, struct MG_variables *MG, int N_min, const int N_max, const int test) {
+void space_get_fR_contribution(struct threadpool *tp, const struct space *s, double *rho, double *u, struct MG_variables *MG, int N_min, const int N_max, const int test) {
   message("Doing test case %d", test);
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -7606,7 +7628,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
   /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
   set_initial_guess(u_levels[0], cdim, /*MG=*/1);
-  apply_NGS(rho_levels[0], u_levels[0], MG, cdim, mean_density[0], box_size);
+  apply_NGS(tp, rho_levels[0], u_levels[0], MG, cdim, mean_density[0], box_size);
   message("Finished applying Gauss-Seidel");
 
   /* Solve on all finer grids by prolongating from the previous grid and performing the multigrid method */
@@ -7622,7 +7644,7 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
     cdim[0] = N;
     cdim[1] = N;
     cdim[2] = N;
-    apply_multigrid_fR(rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, 15);
+    apply_multigrid_fR(tp, rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, 15);
   }
   /*
   if (test==3) { //Test whether the theoretical sine is a solution
@@ -7660,11 +7682,11 @@ void space_get_fR_contribution(const struct space *s, double *rho, double *u, st
  * @param mean_density Mean density on the grid.
  * @param box_size Side length of the box.
  */
-void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3], double mean_density, double box_size) {
+void apply_NGS(struct threadpool *tp, const double *rho, double *u, struct MG_variables *MG, int cdim[3], double mean_density, double box_size) {
   message("Applying Newton-Gauss-Seidel...");
   int N = cdim[0];
   double delta = box_size/N;
-  double residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
+  double residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
   message("Before smoothing the residual is %E", residual);
 
   /* Get the mean */
@@ -7679,7 +7701,7 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
   
 
   while (residual >= tolerance) {
-    perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density, delta);
+    perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density, delta);
 
     //sum = 0.;
     //for (int i=0; i<N*N*N; i++) {
@@ -7690,7 +7712,7 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
       //u[i] -= log(sum/(N*N*N));
     //}
 
-    residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
+    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
 
     //sum = 0.;
     //for (int i=0; i<N*N*N; i++) {
@@ -7704,7 +7726,7 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
   }
   message("We needed %d steps to converge", counter);
 
-  residual = get_residual_fR(u, rho, MG, cdim, mean_density, delta, 0);
+  residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
   message("The residual is %E", residual);
 
   /* Check the mean of the solution we found */
@@ -7726,6 +7748,60 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
 }
 
 /**
+ * @brief Threadpool mapper function for the parallel updating of red or black cells.
+ *
+ * @param map_data A chunk of the (k-)planes of the mesh.
+ * @param num The number of planes in the chunk.
+ * @param extra The information about the mesh and the solution assigned to it.
+ */
+void red_black_mapper(void* map_data, int num, void* extra) {
+  /* Unpack the shared information */
+  struct sweep_mapper_data *data = (struct sweep_mapper_data*)extra;
+  const double *rho = data->rho;
+  double *u = data->u;
+  const int N = data->N;
+  struct MG_variables *MG = data->MG;
+  const double delta = data->delta;
+  const double mean_density = data->mean_density;
+  const int col = data->col;
+
+  int cdim[3] = {N, N, N};
+
+  /* Find the address of the first element we are processing */
+  double *planes_start = data->planes;
+  ptrdiff_t offset = ((double*) map_data) - planes_start;
+
+  /* Loop over the elements assigned to this thread */
+  for (int p=0; p<num; p++) {
+    const int k = offset + p; //Which plane are we working on?
+    int nbs[6];
+    nbs[4] = (k+1) % cdim[2];
+    nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
+    for (int j=0; j<cdim[1]; j++){
+      nbs[2] = (j+1) % cdim[1];
+      nbs[3] = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
+      for (int i=0; i<cdim[0]; i++) {
+        nbs[0] = (i+1) % cdim[0];
+        nbs[1] = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
+        if ((i+j+k)%2 != col)
+          continue;
+        
+        /* Do we use the equation with density or with overdensity? */
+        double density_term;
+        if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)]/MG->a;
+        else density_term = 8. * M_PI * MG->G * mean_density * rho[cell_getid(cdim, i,j,k)]/MG->a;
+        
+        double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
+        double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.)*u[cell_getid(cdim, i,j,k)]));
+        double derivative_term = get_derivative(u, MG, cdim, nbs, i, j, k, delta);
+
+        u[cell_getid(cdim,i,j,k)] -= (Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term + density_term))/derivative_term;
+      }
+    }
+  }
+}
+
+/**
  * @brief Get a new approximation to the field u on the grid.
  *
  * Performs a red-black sweep of the grid: first one half of the cells is
@@ -7738,40 +7814,25 @@ void apply_NGS(const double *rho, double *u, struct MG_variables *MG, int cdim[3
  * @param mean_density Mean density on the grid.
  * @param delta Width of the grid cells.
  */
-void perform_red_black_sweep_fR(double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta) {
-  int nbs[6];
+void perform_red_black_sweep_fR(struct threadpool *tp, double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta) {
+  int N = cdim[0];
 
-  double correction_mean = 0.;
+  struct sweep_mapper_data data;
+  data.rho = rho;
+  data.u = u;
+  data.N = N;
+  data.MG = MG;
+  data.delta = delta;
+  data.mean_density = mean_density;
+
+  /* Threadpool trick for indexing the mesh planes: use the existing solution array to get 'dummy indices'
+      for the planes from the pointers corresponding to the array. */
+  data.planes = u;
 
   for (int col=0; col<2; col++){
-    for (int k=0; k<cdim[2]; k++){
-      nbs[4] = (k+1) % cdim[2];
-      nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
-      for (int j=0; j<cdim[1]; j++){
-        nbs[2] = (j+1) % cdim[1];
-        nbs[3] = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
-        for (int i=0; i<cdim[0]; i++) {
-          nbs[0] = (i+1) % cdim[0];
-          nbs[1] = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
-          if ((i+j+k)%2 != col)
-            continue;
-          
-          /* Do we use the equation with density or with overdensity? */
-          double density_term;
-          if (MG->overdensity) density_term = 8. * M_PI * MG->G * rho[cell_getid(cdim, i,j,k)]/MG->a;
-          else density_term = 8. * M_PI * MG->G * mean_density * rho[cell_getid(cdim, i,j,k)]/MG->a;
-          
-          double Laplacian_exp = get_Laplacian(MG, u, cdim, nbs, i, j, k);
-          double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.)*u[cell_getid(cdim, i,j,k)]));
-          double derivative_term = get_derivative(u, MG, cdim, nbs, i, j, k, delta);
-
-          u[cell_getid(cdim,i,j,k)] -= (Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term + density_term))/derivative_term;
-          correction_mean += (Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term + density_term))/derivative_term;
-        }
-      }
-    }
+    data.col = col;
+    threadpool_map(tp, red_black_mapper, u, N, sizeof(double), threadpool_auto_chunk_size, (void*)&data);
   }
-  //message("The mean of the correction is %E", correction_mean/(cdim[0]*cdim[0]*cdim[0]));
 }
 
 /**
@@ -7786,7 +7847,7 @@ void perform_red_black_sweep_fR(double *u, const double *rho, struct MG_variable
  * @param k z-index of the current grid cell.
  * @param delta Width of a grid cell.
  */
-double get_derivative(double *u, struct MG_variables *MG, int cdim[3], int nbs[6], int i, int j, int k, double delta) {
+double get_derivative(double *u, struct MG_variables *MG, const int cdim[3], int nbs[6], int i, int j, int k, double delta) {
   double exp_term = (exp(u[cell_getid(cdim, nbs[0], j, k)]) + exp(u[cell_getid(cdim, nbs[1], j, k)]) + exp(u[cell_getid(cdim, i, nbs[2], k)])
                       + exp(u[cell_getid(cdim, i, nbs[3], k)]) + exp(u[cell_getid(cdim, i, j, nbs[4])]) + exp(u[cell_getid(cdim, i, j, nbs[5])])
                       + 6. * exp(u[cell_getid(cdim, i, j, k)]));
@@ -7812,16 +7873,57 @@ double get_derivative(double *u, struct MG_variables *MG, int cdim[3], int nbs[6
  * @param delta Width of the grid cells.
  * @param verbose Are we talkative?
  */
-double get_residual_fR(const double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta, int verbose) {
+double get_residual_fR(struct threadpool *tp, double *u, const double *rho, struct MG_variables *MG, int cdim[3], double mean_density, double delta, int verbose) {
   double residual = 0.;
   int N = cdim[0];
-  int nbs[6];
 
-  double density_mean = 0.;
-  double field_mean = 0.;
-  double Laplacian_mean = 0.;
+  struct sweep_mapper_data data;
+  data.rho = rho;
+  data.u = u;
+  data.N = N;
+  data.MG = MG;
+  data.residual = &residual;
+  data.delta = delta;
+  data.mean_density = mean_density;
 
-  for (int k=0; k<N; k++){
+  /* Threadpool trick for indexing the mesh planes: use the existing solution array to get 'dummy indices'
+    for the planes from the pointers corresponding to the array. */
+  data.planes = u;
+
+  /* Do a parallel loop over the k-planes */
+  threadpool_map(tp, residual_mapper, u, N, sizeof(double), threadpool_auto_chunk_size, (void*)&data);
+
+  return sqrt(residual);
+}
+
+/**
+ * @brief Threadpool mapper function for the parallel calculation of the residual (on the finest grid).
+ *
+ * @param map_data A chunk of the (k-)planes of the mesh.
+ * @param num The number of planes in the chunk.
+ * @param extra The information about the mesh and the solution assigned to it.
+ */
+void residual_mapper(void* map_data, int num, void* extra) {
+  /* Unpack the shared information */
+  struct sweep_mapper_data *data = (struct sweep_mapper_data*)extra;
+  const double *rho = data->rho;
+  const double *u = data->u;
+  const int N = data->N;
+  struct MG_variables *MG = data->MG;
+  const double delta = data->delta;
+  const double mean_density = data->mean_density;
+  double residual_local = 0.;
+
+  int cdim[3] = {N, N, N};
+
+  /* Find the address of the first element we are processing */
+  double *planes_start = data->planes;
+  ptrdiff_t offset = ((double*) map_data) - planes_start;
+
+  /* Loop over the elements assigned to this thread */
+  for (int p=0; p<num; p++) {
+    const int k = offset + p; //Which plane are we working on?
+    int nbs[6];
     nbs[4] = (k+1) % N;
     nbs[5] = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
     for (int j=0; j<N; j++){
@@ -7840,28 +7942,11 @@ double get_residual_fR(const double *u, const double *rho, struct MG_variables *
         double field_term = MG->a*MG->a*MG->R* (1. - exp(-(1./2.) * u[cell_getid(cdim, i,j,k)]));
         double res = Laplacian_exp/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term + density_term); 
 
-        Laplacian_mean += Laplacian_exp/(delta*delta);
-        field_mean += (1./(3.*MG->c*MG->c*MG->fR_bar)) * field_term;
-        density_mean += (1./(3.*MG->c*MG->c*MG->fR_bar)) * density_term;
-        
-        if (verbose) {
-          message("The i-index is %d", i);
-          //message("The overdensity is %lf", mean_density * (rho[cell_getid(cdim, i,j,k)]-1.));
-          message("The density term is %E", (1./(3.*MG->c*MG->c*MG->fR_bar)) * density_term);
-          message("The fR/mean(fR) is %E and dR/R is %E", exp(u[cell_getid(cdim, i,j,k)]), (1. - exp(-(1./2.) * u[cell_getid(cdim, i,j,k)])));
-          message("The field term is %E and its components are c = %E, fR = %E, a = %E, R = %E", (1./(3.*MG->c*MG->c*MG->fR_bar)) * field_term, MG->c, MG->fR_bar, MG->a, MG->R);
-          message("The LHS (Laplacian) is %E and the RHS is %E", Laplacian_exp/(delta*delta), (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term + density_term));
-          message("The residual is %E \n", res);
-          sleep(2);
-        }
-
-        residual += (res*res)/(N*N*N);
+        residual_local += (res*res)/(N*N*N);
       }
     }
   }
-
-  //message("The means are: Laplacian = %E, field = %E, density = %E", Laplacian_mean/(N*N*N), field_mean/(N*N*N), density_mean/(N*N*N));
-  return sqrt(residual);
+  atomic_add_d(data->residual, residual_local); 
 }
 
 /**
@@ -7918,7 +8003,7 @@ void get_residual_array_fR(const double *u, const double *rho, struct MG_variabl
  * @param delta Width of the grid cells.
  * @param verbose Are we talkative?
  */
-double get_Laplacian(struct MG_variables *MG, const double *u, int cdim[3], int nbs[6], int i, int j, int k) {
+double get_Laplacian(struct MG_variables *MG, const double *u, const int cdim[3], int nbs[6], int i, int j, int k) {
   double half_exp[6];
   half_exp[0] = (1./2.) * (exp(u[cell_getid(cdim, nbs[0], j, k)]) + exp(u[cell_getid(cdim, i, j, k)]));
   half_exp[1] = (1./2.) * (exp(u[cell_getid(cdim, i, j, k)]) + exp(u[cell_getid(cdim, nbs[1], j, k)]));
@@ -7954,7 +8039,7 @@ double get_Laplacian(struct MG_variables *MG, const double *u, int cdim[3], int 
  * @param N_max 1D size of the finest grid.
  * @param V_max Maximum number of V-cycles that may be performed.
  */
-void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max) {
+void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max) {
   message("Applying the multigrid method for the grid with size %d...", N_max);
 
   /* Allocate the memory for the residual array on the finest level */
@@ -7973,9 +8058,9 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
 
   double delta = box_size/N_max; //Width of a grid cell of the finest level
   double residual; 
-  residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+  residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
   message("The first residual is %E", residual);
-  if (V_max == 2) residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 1);
+  if (V_max == 2) residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 1);
   const double tolerance = 10e-9; //Choose reasonable value here
   int counter = 0;
   int fine_steps = 20; //Choose reasonable value here
@@ -7988,8 +8073,8 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
     message("Performing V-cycle %d", V_cycles);
     /* Pre-smoothing */
     for (int i=0; i<fine_steps; i++) {
-      perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density[0], delta);
-      residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+      perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
+      residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
       double mean = 0.;
       for (int j=0; j<N_max*N_max*N_max; j++) {
         mean += exp(u[j]);
@@ -7997,23 +8082,23 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
       message("The mean is %E and the residual %E", mean/(N_max*N_max*N_max), residual);
       if (residual<tolerance) break;
     }
-    residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
     get_residual_array_fR(u, rho, MG, cdim, mean_density[0], residual_array, delta);
     if (residual<tolerance) break;
     
     /* Transfer residual array to get coarse-grid correction */
     message("After pre-smoothing the residual is %E. Going to recurse with V-cycles.", residual);
-    FAS_recursive(u, residual_array, MG, cdim, delta, N_min, &depth);
+    FAS_recursive(tp, u, residual_array, MG, cdim, delta, N_min, &depth);
 
     /* Post-smoothing if needed */
-    residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
     message("Back on the finest grid the residual is %lf", residual);
     if (residual > tolerance) {
       for (int i=0; i<fine_steps; i++) {
-        perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density[0], delta);
+        perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
       }
     }
-    residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
     V_cycles +=1;
     message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
   }
@@ -8022,11 +8107,11 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
   
   /* Post-smoothing until convergence. Should not be necessary! */
   while (residual > tolerance) {
-    perform_red_black_sweep_fR(u, rho, MG, cdim, mean_density[0], delta);
-    residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+    perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
+    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
     counter +=1;
   }
-  residual = get_residual_fR(u, rho, MG, cdim, mean_density[0], delta, 0);
+  residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
   message("Needed to do %d step(s) in post-smoothing after which the residual was %lf", counter, residual);
   free(residual_array);
 
@@ -8078,7 +8163,7 @@ void apply_multigrid_fR(const double *rho, double *u, struct MG_variables *MG, i
  * @param N_stop 1D size of the coarsest grid.
  * @param depth How many levels are we into the V-cycle?
  */
-void FAS_recursive(double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth) {
+void FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth) {
   *depth += 1;
   int N = cdim[0]; //Grid size of the current level we are on
   delta = delta*2.0; //Cells are twice as big on the coarser grid
@@ -8128,18 +8213,18 @@ void FAS_recursive(double *u, const double *residual, struct MG_variables *MG, i
   int cdimH[] = {N, N, N}; 
   double tolerance = 10e-9; //Choose a reasonable value here
   int counter = 0;
-  double coarser_residual_abs = get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+  double coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
   message("The first residual on the grid with size %d is %lf", N, coarser_residual_abs);
 
   /* Solve the equation exactly if we are on the coarsest grid */
   if (N==N_stop) {
     while (coarser_residual_abs >= tolerance) {
-      perform_red_black_sweep_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
-      coarser_residual_abs = get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+      perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
+      coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
       counter +=1;
       if (counter%50 == 0) message("Did %d steps and the residual is %E", counter, coarser_residual_abs);
     }
-    coarser_residual_abs = get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+    coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
     message("The total number of steps on the coarsest grid is %d and the residual is %lf", counter, coarser_residual_abs);
 
     /* Prepare array for prolongation */
@@ -8154,21 +8239,21 @@ void FAS_recursive(double *u, const double *residual, struct MG_variables *MG, i
     counter = 0;
     int coarse_steps = 25;
     for (int i=0; i<coarse_steps; i++) {
-      perform_red_black_sweep_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH,delta); 
-      coarser_residual_abs =  get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+      perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH,delta); 
+      coarser_residual_abs =  get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
       counter +=1;
       //if (coarser_residual_abs < tolerance) break;
     }
     get_residual_array_coarser(coarser_solution, restricted_residual, restricted_solution, coarser_residual, MG, cdimH, delta);
 
-    coarser_residual_abs = get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+    coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
     message("The residual after pre-smoothing is %lf", coarser_residual_abs);
-    FAS_recursive(coarser_solution, coarser_residual, MG, cdimH, delta, N_stop, depth);
+    FAS_recursive(tp, coarser_solution, coarser_residual, MG, cdimH, delta, N_stop, depth);
     /* Post-smoothing */
-    coarser_residual_abs = get_residual_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+    coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
     message("Back on the grid with size %d the residual is %lf", N, coarser_residual_abs);
     for (int i=0; i<coarse_steps; i++) {
-      perform_red_black_sweep_coarser(coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
+      perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
     }
     /* Prepare array for prolongation */
     for (int i=0; i<N*N*N; i++) {
@@ -8225,6 +8310,55 @@ void get_residual_array_coarser(const double *coarser_solution, const double *re
 }
 
 /**
+ * @brief Threadpool mapper function for the parallel updating of red or black cells.
+ * 
+ * Version of the red-black sweeps that is used during a V-cycle (i.e. without the density information).
+ *
+ * @param map_data A chunk of the (k-)planes of the mesh.
+ * @param num The number of planes in the chunk.
+ * @param extra The information about the mesh and the solution assigned to it.
+ */
+void coarser_red_black_mapper(void *map_data, int num, void* extra) {
+  /* Unpack the shared information */
+  struct coarser_sweep_mapper_data *data = (struct coarser_sweep_mapper_data*)extra;
+  const double *restricted_solution = data->restricted_solution;
+  const double *restricted_residual = data->restricted_residual;
+  const int N = data->N;
+  struct MG_variables *MG = data->MG;
+  const double delta = data->delta;
+  const int col = data->col;
+
+  /* Find the address of the first element we are processing */
+  double *planes_start = data->planes;
+  ptrdiff_t offset = ((double*) map_data) - planes_start;
+  
+  const int cdim[3] = {N,N,N};
+
+  /* Loop over the elements assigned to this thread */
+  for (int p=0; p<num; p++) {
+    const int k = offset + p; // Which plane are we working on?
+    int nbs[6];
+    nbs[4] = (k+1) % cdim[2];
+    nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
+    for (int j=0; j<cdim[1]; j++){
+      nbs[2] = (j+1) % cdim[1];
+      nbs[3] = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
+      for (int i=0; i<cdim[0]; i++) {
+        nbs[0] = (i+1) % cdim[0];
+        nbs[1] = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
+        if ((i+j+k)%2 != col)
+          continue;
+        double Laplacian_exp[2] = {get_Laplacian(MG, data->coarser_solution, cdim, nbs, i, j, k), get_Laplacian(MG, restricted_solution, cdim, nbs, i, j, k)};
+        double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*data->coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*restricted_solution[cell_getid(cdim, i,j,k)]))};
+        double derivative_term = get_derivative(data->coarser_solution, MG, cdim, nbs, i, j, k, delta);
+
+        data->coarser_solution[cell_getid(cdim,i,j,k)] -= ((Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term[0] - field_term[1]) + (restricted_residual[cell_getid(cdim, i, j, k)]))/derivative_term;
+      }
+    }
+  }
+}
+
+/**
  * @brief Compute a new approximation to the coarse-grid equation..
  * 
  * We are considering the equation L_H(u_H) = L_H(R(u_h)) + R(f_h - L_h(u_h)) and use Newton-Gauss-Seidel relaxation
@@ -8237,31 +8371,75 @@ void get_residual_array_coarser(const double *coarser_solution, const double *re
  * @param cdim 3D size of the grid.
  * @param delta Width of a fine grid cell.
  */
-void perform_red_black_sweep_coarser(double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta) {
-  int nbs[6];
+void perform_red_black_sweep_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta) {
+  int N = cdim[0];
 
-  for (int col=0; col<2; col++){
-    for (int k=0; k<cdim[2]; k++){
-      nbs[4] = (k+1) % cdim[2];
-      nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
-      for (int j=0; j<cdim[1]; j++){
-        nbs[2] = (j+1) % cdim[1];
-        nbs[3] = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
-        for (int i=0; i<cdim[0]; i++) {
-          nbs[0] = (i+1) % cdim[0];
-          nbs[1] = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
-          if ((i+j+k)%2 != col)
-            continue;
-          
-          double Laplacian_exp[2] = {get_Laplacian(MG, coarser_solution, cdim, nbs, i, j, k), get_Laplacian(MG, restricted_solution, cdim, nbs, i, j, k)};
-          double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*restricted_solution[cell_getid(cdim, i,j,k)]))};
-          double derivative_term = get_derivative(coarser_solution, MG, cdim, nbs, i, j, k, delta);
+  struct coarser_sweep_mapper_data data;
+  data.coarser_solution = coarser_solution;
+  data.restricted_residual = restricted_residual;
+  data.restricted_solution = restricted_solution;
+  data.MG = MG;
+  data.delta = delta;
+  data.N = N;
+ 
+  /* Threadpool trick for indexing the mesh planes: use the existing solution array to get 'dummy indices'
+      for the planes from the pointers corresponding to the array. */
+  data.planes = coarser_solution;
+  
+  for (int col=0; col<2; col++) {
+    data.col = col;
+    threadpool_map(tp, coarser_red_black_mapper, coarser_solution, N, sizeof(double), threadpool_auto_chunk_size, (void*)&data);
+  }
+}
 
-          coarser_solution[cell_getid(cdim,i,j,k)] -= ((Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term[0] - field_term[1]) + (restricted_residual[cell_getid(cdim, i, j, k)]))/derivative_term;
-        }
+/**
+ * @brief Threadpool mapper function for the parallel calculation of the residual.
+ * 
+ * Version of the calculation that is used during a V-cycle (i.e. without the density information).
+ *
+ * @param map_data A chunk of the (k-)planes of the mesh.
+ * @param num The number of planes in the chunk.
+ * @param extra The information about the mesh and the solution assigned to it.
+ */
+void coarser_residual_mapper(void *map_data, int num, void* extra) {
+  /* Unpack the shared information */
+  struct coarser_sweep_mapper_data *data = (struct coarser_sweep_mapper_data*)extra;
+  const double *restricted_solution = data->restricted_solution;
+  const double *restricted_residual = data->restricted_residual;
+  const int N = data->N;
+  struct MG_variables *MG = data->MG;
+  const double delta = data->delta;
+
+  double residual_local = 0.;
+
+  const int cdim[3] = {N,N,N};
+
+  /* Find the address of the first element we are processing */
+  double *planes_start = data->planes;
+  ptrdiff_t offset = ((double*) map_data) - planes_start;
+
+  /* Loop over the elements assigned to this thread */
+  for (int p=0; p<num; p++) {
+    const int k = offset + p; //Which plane are we working on?
+    int nbs[6];
+    nbs[4] = (k+1) % cdim[2];
+    nbs[5] = (k-1>=0) ? (k-1) % cdim[2] : (k-1) % cdim[2] + cdim[2];
+    for (int j=0; j<cdim[1]; j++){
+      nbs[2] = (j+1) % cdim[1];
+      nbs[3] = (j-1>=0) ? (j-1) % cdim[1] : (j-1) % cdim[1] + cdim[1];
+      for (int i=0; i<cdim[0]; i++) {
+        nbs[0] = (i+1) % cdim[0];
+        nbs[1] = (i-1>=0) ? (i-1) % cdim[0] : (i-1) % cdim[0] + cdim[0];
+
+        double Laplacian_exp[2] = {get_Laplacian(MG, data->coarser_solution, cdim, nbs, i, j, k), get_Laplacian(MG, restricted_solution, cdim, nbs, i, j, k)};
+        double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*data->coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*restricted_solution[cell_getid(cdim, i,j,k)]))};
+        double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term[0] - field_term[1]) + restricted_residual[cell_getid(cdim, i,j,k)]; 
+
+        residual_local += (res*res)/(N*N*N);
       }
     }
   }
+  atomic_add_d(data->residual, residual_local);
 }
 
 /**
@@ -8276,30 +8454,25 @@ void perform_red_black_sweep_coarser(double *coarser_solution, const double *res
  * @param cdim 3D size of the grid.
  * @param delta Width of a fine grid cell.
  */
-double get_residual_coarser(const double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta) {
+double get_residual_coarser(struct threadpool *tp, double *coarser_solution, const double *restricted_residual, const double *restricted_solution, struct MG_variables *MG, int cdim[3], double delta) {
   double residual = 0.;
   int N = cdim[0];
-  int nbs[6];
 
-  for (int k=0; k<N; k++){
-    nbs[4] = (k+1) % N;
-    nbs[5] = (k-1>=0) ? (k-1) % N : (k-1) % N + N;
-    for (int j=0; j<N; j++){
-      nbs[2] = (j+1) % N;
-      nbs[3] = (j-1>=0) ? (j-1) % N : (j-1) % N + N;
-      for (int i=0; i<N; i++) {
-        nbs[0] = (i+1) % N;
-        nbs[1] = (i-1>=0) ? (i-1) % N : (i-1) % N + N;
+  struct coarser_sweep_mapper_data data;
+  data.coarser_solution = coarser_solution;
+  data.restricted_residual = restricted_residual;
+  data.restricted_solution = restricted_solution;
+  data.MG = MG;
+  data.delta = delta;
+  data.residual = &residual;
+  data.N = N;
+  /* Threadpool trick for indexing the mesh planes: use an already existing array to get 'dummy indices'
+    for the planes from the pointers corresponding to the array. */
+  data.planes = coarser_solution;
 
-        double Laplacian_exp[2] = {get_Laplacian(MG, coarser_solution, cdim, nbs, i, j, k), get_Laplacian(MG, restricted_solution, cdim, nbs, i, j, k)};
-        double field_term[2] = {MG->R*MG->a*MG->a* (1. - exp(-(1./2.)*coarser_solution[cell_getid(cdim, i,j,k)])), MG->R*MG->a*MG->a*(1. - exp(-(1./2.)*restricted_solution[cell_getid(cdim, i,j,k)]))};
-        double res = (Laplacian_exp[0] - Laplacian_exp[1])/(delta*delta) + (1./(3.*MG->c*MG->c*MG->fR_bar)) * (field_term[0] - field_term[1]) + restricted_residual[cell_getid(cdim, i,j,k)]; 
+  threadpool_map(tp, coarser_residual_mapper, coarser_solution, N, sizeof(double), threadpool_auto_chunk_size, (void*)&data);
 
-        residual += res*res;
-      }
-    }
-  }
-  return sqrt(residual/(N*N*N));
+  return sqrt(residual);
 }
 
 void apply_NGS_Poisson(const double *rho, double *phi, int cdim[3], double mean_density, double box_size) {
