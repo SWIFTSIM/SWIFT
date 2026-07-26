@@ -146,5 +146,19 @@ for filename in tqdm(files):
         snapshot_number}"
 
     projected_density = metal_surface_density(data)
+
+    # Auto-scale per snapshot when not explicitly requested: a fixed
+    # vmin/vmax saturates badly since the peak density can vary by orders
+    # of magnitude across snapshots/configurations (tau, epsilon, ...).
+    positive = projected_density.value[projected_density.value > 0]
+    if log:
+        frame_vmax = np.log10(positive.max()) if positive.size else 0.0
+        frame_vmin = frame_vmax - 6.0
+    else:
+        frame_vmax = positive.max() if positive.size else 1.0
+        frame_vmin = 0.0
+    this_vmin = vmin if vmin is not None else frame_vmin
+    this_vmax = vmax if vmax is not None else frame_vmax
+
     make_plot(boxsize, projected_density, output_name,
-              log=log, vmin=vmin, vmax=vmax)
+              log=log, vmin=this_vmin, vmax=this_vmax)
