@@ -93,7 +93,7 @@ void pm_mesh_init(struct pm_mesh *mesh, const struct gravity_props *props,
                   const double dim[3], int nr_threads);
 void pm_mesh_init_no_mesh(struct pm_mesh *mesh, double dim[3]);
 void pm_mesh_compute_potential(struct engine *e, struct pm_mesh *mesh, struct space *s,
-                               struct threadpool *tp, const struct cosmology *cosmo, int verbose, const int MG, const int power);
+                               struct threadpool *tp, const struct cosmology *cosmo, int verbose, const int MG);
 void pm_mesh_clean(struct pm_mesh *mesh);
 
 void pm_mesh_allocate(struct pm_mesh *mesh);

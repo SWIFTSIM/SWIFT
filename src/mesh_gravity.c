@@ -1042,7 +1042,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
   double *restrict rho = mesh->potential_global;
   if (rho == NULL) error("Error allocating memory for density mesh");
 
-  double* rho_MG = malloc(N_MG*N_MG*N_MG *sizeof(double));
+  double* rho_MG = swift_malloc("rho_MG", N_MG*N_MG*N_MG *sizeof(double));
 
   /* Allocates some memory for the mesh in Fourier space */
   fftw_complex *restrict frho =
@@ -1135,31 +1135,21 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
     }
   }
 
-  //FILE *rho_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_initial_old.txt", "w");
-  //FILE *rhoMG_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_initial_old.txt", "w");
-  //for (int i=0; i<N*N*N; i++) {
-    //fprintf(rho_export, "%E \n", rho[i]);
-    //fprintf(rhoMG_export, "%E \n", rho_MG[i]);
-  //}
-  //fclose(rho_export);
-  //fclose(rhoMG_export);
-
-
   /* MG part from here! */
   //int get_MG_acc = 0;
   int cell_acc = 0;
 
   double *field_contribution = NULL;
-  field_contribution = (double*)calloc(N_MG * N_MG * N_MG, sizeof(double));
+  field_contribution = (double*)swift_calloc("fR_field", N_MG * N_MG * N_MG, sizeof(double));
   if (field_contribution == NULL)
     error("Error allocating memory for the density mesh.");
-  memuse_log_allocation("mesh.fR", field_contribution, 1,
-                        sizeof(double) * N_MG * N_MG * N_MG);
+  //memuse_log_allocation("mesh.fR", field_contribution, 1,
+    //                    sizeof(double) * N_MG * N_MG * N_MG);
 
   double *acc[3];
   for (int j=0; j<3; j++) {
     acc[j] = NULL;
-    acc[j] = (double*)calloc(N*N*N, sizeof(double));
+    acc[j] = (double*)swift_calloc("cell_acc_component", N*N*N, sizeof(double));
   }
 
   if (MG) { //Assume n=1 for now
@@ -1217,10 +1207,6 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
             for (int k=0; k<N_MG; k++) {
               double x_dist = ((double) i) * fac;
               rho_MG[cell_getid(cdim, i, j, k)] = peak_overdensity(&MG_var, x_dist, fR_mod, s->dim[0]);
-              //if (i==1) {
-                //message("Just initialised %E", rho[cell_getid(cdim, i, j, k)]);
-                //sleep(5);
-              //}
             }
           }
         }
@@ -1248,82 +1234,16 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
 
     message("The mean is supposed to be %E", MG_var.fR_bar);
     
-    int linear = 0;
     int N_min = 32; //Minimum gridsize to be used in multigrid acceleration
-    double *rho_copy = malloc(N_MG*N_MG*N_MG *sizeof(double));
+    double *rho_copy = swift_malloc("density_copy", N_MG*N_MG*N_MG *sizeof(double));
     memcpy(rho_copy, rho_MG, N_MG*N_MG*N_MG*sizeof(double));
 
-    //FILE *density_test_first;
-    //density_test_first = fopen("/net/styx/data1/vandervlugt/PythonFiles/MG_acceleration/pre_sim_test/pre_sim_test_decoupled/MG_dens_128_new.txt", "w");
-    //for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-      //fprintf(density_test_first, "%E \n", rho_copy[i]);
-    //}
-    //fclose(density_test_first);
-    //double *rho_copy2 = malloc(N*N*N *sizeof(double));
-    //memcpy(rho_copy2, rho, N*N*N*sizeof(double));
-    if (!linear) space_get_fR_contribution(tp, s, rho_copy, field_contribution, &MG_var, N_min, N_MG, test); //Out comes u
-    else space_get_fR_linear(s, rho_copy, field_contribution, &MG_var, N_min, N_MG); //Out comes delta f_R
-    free(rho_copy);
-
-    //if (get_MG_acc){
-      //for (int i=0; i<N_MG*N_MG*N_MG; i++) {
-        //field_contribution[i] = (MG_var.fR_bar)/(MG_var.a*MG_var.a) * (MG_var.c*MG_var.c)/2. * exp(field_contribution[i]);
-        //else field_contribution[i] = (MG_var.c*MG_var.c)/(2.*MG_var.a*MG_var.a) * (field_contribution[i] + MG_var.fR0 * evo_test* evo_test);
-      //}
-      //get_cell_acc(acc, field_contribution, N_MG, cell_fac);
-    //}
+    space_get_fR_contribution(tp, s, rho_copy, field_contribution, &MG_var, N_min, N_MG, test); //Out comes u
+    swift_free("density_copy", rho_copy);
 
     double delta = box_size/N_MG;
     get_rho_mod(rho_MG, field_contribution, &MG_var, delta, N_MG);
 
-    //FILE *rhoMG_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_mod_old.txt", "w");
-    //for (int i=0; i<N*N*N; i++) {
-      //fprintf(rhoMG_export2, "%E \n", rho_MG[i]);
-    //}
-    //fclose(rhoMG_export2);
-
-    //mean_density = 0.;
-    //for (int i=0; i<N*N*N; i++) {
-      //mean_density += rho_copy2[i]/(N*N*N);
-    //}
-
-    //FILE *fR_exp;
-    //fR_exp = fopen("/data1/vandervlugt/PythonFiles/MG_new_R/fR_map/new_ICs/z05_10-5_128.txt", "w");
-    //for (int i=0; i<N*N*N; i++) {
-      //double acc_x = acc[0][i];
-      //double acc_y = acc[1][i];
-      //double acc_z = acc[2][i];
-      //double acc_sq = sqrt(acc_x*acc_x + acc_y*acc_y + acc_z*acc_z);
-      //fprintf(fR_exp, "%E \n", exp(field_contribution[i]));
-    //}
-    //fclose(fR_exp);
-    //message("Exported");
-
-    //FILE *delta_exp;
-    //delta_exp = fopen("/data1/vandervlugt/PythonFiles/FAS_test/single_particle_new/projection_test/fR_128_e-5_z82.txt", "w");
-    //for (int i=0; i<N; i++) {
-      //for (int j=0; j<N; j++) {
-        //for (int k=0; k<N; k++) {
-          //double dx = fabs((double)(i-N/2) * box_size/N);
-          //double dy = fabs((double)(j-N/2) * box_size/N);
-          //double dz = fabs((double)(k-N/2) * box_size/N);
-          //double r = sqrt(dx*dx+dy*dy+dz*dz);
-          //size_t cid = cell_getid(cdim, i, j, k);
-          //if (r<25) fprintf(delta_exp, "%E %.15g\n", MG_var.fR_bar*(exp(field_contribution[cid])-1.), r);
-        //}
-      //}
-    //}
-    //fclose(delta_exp);
-  }
-
-  if (power) {
-    int direct_mapping = 1;
-    if (direct_mapping) {
-      if (e->power_data->Ngrid != N) error("Mesh sizes of FFT and power spectrum do not match");
-      e->power_data->MG_dens = rho;
-      calc_all_power_spectra(e->power_data, s, tp, 0, 1);
-    }
-    else overdensity_to_gparts(s, rho, 0, N);
   }
 
   if (verbose)
@@ -1409,16 +1329,6 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
   /* rho now contains the potential */
   /* This array is now again NxNxN real numbers */
 
-  //FILE *rho_export2 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rho_FTd_old.txt", "w");
-  //FILE *rhoMG_export3 = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/rhoMG_FTd_old.txt", "w");
-  //for (int i=0; i<N*N*N; i++) {
-    //fprintf(rho_export2, "%E \n", rho[i]);
-    //fprintf(rhoMG_export3, "%E \n", rho_MG[i]);
-  //}
-  //fclose(rho_export2);
-  //fclose(rhoMG_export3);
-
-
   /* Get the fR contribution to the acceleration at the cells */
   if (MG && cell_acc) {
     double *acc2[3];
@@ -1439,16 +1349,14 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
   }
 
   for (int j=0; j<3; j++) {
-    free(acc[j]);
+    swift_free("cell_acc_component", acc[j]);
     acc[j] = NULL;
   }
 
   /* Let's store it in the structure */
   for (int i=0; i<N*N*N; i++) {
     if (MG && N_MG == N) mesh->potential_global[i] = rho[i] + rho_MG[i];
-    //if (MG && N_MG == N) mesh->potential_global[i] = rho_MG[i];
     else mesh->potential_global[i] = rho[i];
-    //else mesh->potential_global[i] = 0.;
   }
 
   /* message("\n\n\n POTENTIAL"); */
@@ -1517,15 +1425,8 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
     memuse_log_allocation("fftw_frho_MG", frho_MG, 0, 0);
     fftw_free(frho_MG);
 
-    free(field_contribution);
-
-    //FILE *acc_export = fopen("/net/styx/data1/vandervlugt/SWIFT/Jitske_tests/fR_test/acc_old.txt", "w");
-    //for (size_t i=0; i<s->nr_gparts; i++) {
-      //fprintf(acc_export, "%E \n", s->gparts[i].a_grav_mesh[0]);
-    //}
-    //fclose(acc_export);
-    //message("Done exporting stuff");
-    //sleep(10);
+    swift_free("fR_field", field_contribution);
+    swift_free("rho_MG", rho_MG);
 
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
