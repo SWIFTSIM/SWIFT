@@ -215,6 +215,14 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   chemistry_get_hyperbolic_flux_gradients(pi, metal, dFx_i, dFy_i, dFz_i);
   chemistry_get_hyperbolic_flux_gradients(pj, metal, dFx_j, dFy_j, dFz_j);
 
+  /* MUSCL-Hancock half-step predictor, folded in before the face limiter
+     below so it bounds the full extrapolation, not just the spatial part. */
+  const float mindt =
+      (chj->flux.dt > 0.f) ? fminf(chi->flux.dt, chj->flux.dt) : chi->flux.dt;
+  const float half_mindt = 0.5 * mindt;
+  const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
+  const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);
+
   /* Compute interface position (relative to pj, since we don't need the
      actual position) eqn. (8)
      Do it this way in case dx contains periodicity corrections already */
@@ -229,26 +237,19 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
      result is a factor a^3. */
   const double a3_inv = cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
   double dUi[4], dUj[4];
-  dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i) * a3_inv;
+  dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i) * a3_inv +
+           drhoZ_dt_i * half_mindt;
   dUi[1] = chemistry_gradients_extrapolate_double(dFx_i, xij_i);
   dUi[2] = chemistry_gradients_extrapolate_double(dFy_i, xij_i);
   dUi[3] = chemistry_gradients_extrapolate_double(dFz_i, xij_i);
 
-  dUj[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j) * a3_inv;
+  dUj[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j) * a3_inv +
+           drhoZ_dt_j * half_mindt;
   dUj[1] = chemistry_gradients_extrapolate_double(dFx_j, xij_j);
   dUj[2] = chemistry_gradients_extrapolate_double(dFy_j, xij_j);
   dUj[3] = chemistry_gradients_extrapolate_double(dFz_j, xij_j);
 
   chemistry_slope_limit_face(Ui, Uj, dUi, dUj, xij_i, xij_j, r);
-
-  /* Now, let's time-extrapolate! */
-  const float mindt =
-      (chj->flux.dt > 0.f) ? fminf(chi->flux.dt, chj->flux.dt) : chi->flux.dt;
-  const float half_mindt = 0.5 * mindt;
-
-  /* Get drhoZ/dt = - div Flux */
-  const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
-  const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);
 
   const double flux_source_i[3] = {Ui[1] + dUi[1], Ui[2] + dUi[2],
                                    Ui[3] + dUi[3]};
@@ -264,13 +265,14 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
                                             flux_source_j, chem_data, cosmo,
                                             flux_integrated_j);
 
-  /* Apply the extrapolation */
-  Ui[0] += dUi[0] + drhoZ_dt_i * half_mindt;
+  /* Apply the extrapolation. The time term is already folded into
+     dUi[0]/dUj[0] above (and limited alongside it). */
+  Ui[0] += dUi[0];
   Ui[1] = flux_integrated_i[0];
   Ui[2] = flux_integrated_i[1];
   Ui[3] = flux_integrated_i[2];
 
-  Uj[0] += dUj[0] + drhoZ_dt_j * half_mindt;
+  Uj[0] += dUj[0];
   Uj[1] = flux_integrated_j[0];
   Uj[2] = flux_integrated_j[1];
   Uj[3] = flux_integrated_j[2];
