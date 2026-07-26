@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 # Parameters
 rho0 = 1.0
-cs2 = 3025.0
+cs2 = 1.0 #3025.0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
 Bi_fraction = 1e-4
@@ -221,6 +221,13 @@ def add_other_particle_properties(
             A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
             A0 = B0 / kb0
             A *= A0
+        if field_type == "BxSin":
+            B[:, 0] = np.sin(kb0 * pos[:, 2])
+            B *= B0
+            A[:, 1] = - np.cos(kb0 * pos[:, 2])
+            A0 = B0 / kb0
+            A *= A0
+ 
         elif field_type == "random":
             # kvec,kmax = generate_k(N,L)
             # Ak = generate_Ak(kvec,kmax)
@@ -234,7 +241,7 @@ def add_other_particle_properties(
 
         vol = L ** 3
         # Put path to IC snapshots here
-        filename = "./ICfiles/g32_randB_withVP.hdf5"
+        filename ="./ICfiles/rf2d_o1_npar2_g64_randB_withVP.hdf5" #"./ICfiles/rf4d_o1_g64_randB_withVP.hdf5" #"./ICfiles/RF2_pattern_0090.hdf5" #"./ICfiles/rf2d_o1_g64_randB_withVP.hdf5" #"./ICfiles/rf2d_g128_randB_withVP.hdf5"
         # read the variables of interest from the snapshot file
         pos = None
         h = None
@@ -251,7 +258,11 @@ def add_other_particle_properties(
             m = handle["PartType0/Masses"][:]
             u = handle["PartType0/InternalEnergies"][:]
             B = handle["PartType0/MagneticFluxDensities"][:]
-            A = handle["PartType0/MagneticVectorPotentials"][:]
+            try:
+                A = handle["PartType0/MagneticVectorPotentials"][:]
+            except:
+                print('No VP, continue')
+                A = np.zeros(B.shape)
             ids = handle["PartType0/ParticleIDs"][:]
 
         pos *= L / Lbox[0]
@@ -372,7 +383,7 @@ if __name__ == "__main__":
         "-ft",
         "--field_type",
         help="How to generate a field: one_mode, several_modes or random",
-        default="one_mode",  #'load_from_file',#'random',
+        default= "load_from_file", #"BxSin", #"one_mode", #"load_from_file",  #'load_from_file',#'random',
         type=str,
     )
     parser.add_argument(
@@ -466,6 +477,20 @@ if __name__ == "__main__":
     cper = args.nper_box*args.lpermultiplier
     Lbox = [L*cpar, L*cpar, L*cper]
     N = len(h)
+
+    # try to separate the modes
+    #Brms = np.sqrt(np.mean(np.linalg.norm(B,axis=1)**2))
+
+    #B[:,0] = 0.0
+    #B[:,1] = 0.0
+    #B[:,2] = 0.0
+
+    # excite Bx
+    #B[:,0] += Brms * np.sin(2 * np.pi * pos[:,2]/Lbox[2])
+
+    # excite By
+    #B[:,1] += Brms * np.sin(2 * np.pi * pos[:,2]/Lbox[2])
+
     # File
     try:
         fileOutput = h5py.File(fileOutputName, "w")

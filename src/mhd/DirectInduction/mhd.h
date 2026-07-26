@@ -133,8 +133,13 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
+  // resistive timestep constant. We choose according to the Phantom paper with correction of 4.0 due to the smoothing length definition
+  const float C_res = 1.0f / (2.0f * M_PI * 4.0f);
+
+
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
-                           ? hydro_properties->CFL_condition * cosmo->a *
+//                           ? hydro_properties->CFL_condition * cosmo->a *
+                           ? C_res * cosmo->a *
                                  cosmo->a * p->h * p->h /
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;

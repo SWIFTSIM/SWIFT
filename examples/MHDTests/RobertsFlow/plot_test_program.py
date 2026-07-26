@@ -87,7 +87,7 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
         )
         the_statistics = np.transpose(np.loadtxt(the_addr))
         Time = np.array(the_statistics[1])
-        B = np.array(the_statistics[38])
+        B = np.array(the_statistics[39])
         B = B / B[0]
         divB = np.abs(np.array(the_statistics[35]))
 
@@ -172,7 +172,14 @@ sort_key1 = {"Scheme": "All", "IAfile": "All", "v0": "All", "eta": "All", "Rm": 
 
 run_data = load_test_run_parameters()
 # type selected runs to plot
-# selected_runs = [
+selected_runs = [
+#"rf2d_o1_64_06",
+#"rf3d_o1_64_06",
+
+#"rf1_016_Run2",
+#"rf1_032_Run2",
+#"rf1_064_Run2",
+
 #'16r1',
 #'16r2',
 #'16r3',
@@ -181,9 +188,11 @@ run_data = load_test_run_parameters()
 #'16r2t2',
 #'16r3t2',
 #'16r4t2',
-# ]
-# mask = run_data['Run #'].isin(selected_runs)
-# run_data = run_data[mask]
+
+"rf1dn_016_Run2_c1",
+]
+mask = run_data['Run #'].isin(selected_runs)
+run_data = run_data[mask]
 
 # fill selected range of runs to plot
 run_data = run_data[:]  # 36:126]

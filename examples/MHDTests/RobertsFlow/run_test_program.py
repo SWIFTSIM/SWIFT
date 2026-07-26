@@ -53,6 +53,7 @@ IA_dict = {
     "s112": "stacked_112.hdf5",
     "s120": "stacked_120.hdf5",
     "s128": "stacked_128.hdf5",
+    "s256": "stacked_256.hdf5",
     "c32": "c32.hdf5",
     "c64": "c64.hdf5",
 }
@@ -193,7 +194,7 @@ def make_IC(phys_parameters, IAfile):
             + Vz_factor
             + Flow_kind
             + Npar
-            + Npar
+            + Nper
             + LparMul
             + LperMul
         )
@@ -295,7 +296,7 @@ def run_simulation(phys_parameters, threads):
 
     set_Vz_factor = ""
     if Vz_factor != None:
-        set_Vz_factor = f_pref + "Vz_factor:" + str(int(Vz_factor))
+        set_Vz_factor = f_pref + "Vz_factor:" + str(Vz_factor)
 
     set_forcing_par = set_u0 + set_kv + set_Flow_kind + set_Vz_factor
 

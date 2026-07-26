@@ -91,7 +91,9 @@ def rms_vec(vec):
 
 
 # see available fields in snapshot
-print(data.metadata.gas_properties.field_names)
+#print(data.metadata.gas_properties.field_names)
+
+print('Lbox',data.metadata.boxsize)
 
 # Get physical quantities
 x = data.gas.coordinates[:, 0].value

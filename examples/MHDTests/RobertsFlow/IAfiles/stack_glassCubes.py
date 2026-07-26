@@ -38,7 +38,7 @@ Nold = len(h)
 
 print(Nold)
 
-times = 4
+times = 32
 fileOutputName = "stacked_" + str(Npside * times) + ".hdf5"
 
 ############ NEW
