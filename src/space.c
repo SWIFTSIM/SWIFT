@@ -477,7 +477,7 @@ void space_map_cells_pre(struct space *s, int full,
  * @param tpid ID of threadpool threadpool associated with cells_sub.
  */
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
-                    const short int tpid, int index, int ghost) {
+                    const short int tpid) {
 
   /* For each requested cell... */
   for (int j = 0; j < nr_cells; j++) {
@@ -515,39 +515,39 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     }
 
     /* Pick off the next cell. */
-    cells[j+index] = s->cells_sub[tpid];
-    s->cells_sub[tpid] = cells[j+index]->next;
+    cells[j] = s->cells_sub[tpid];
+    s->cells_sub[tpid] = cells[j]->next;
 
     /* Hook the multipole */
     if (s->with_self_gravity) {
-      cells[j+index]->grav.multipole = s->multipoles_sub[tpid];
-      s->multipoles_sub[tpid] = cells[j+index]->grav.multipole->next;
+      cells[j]->grav.multipole = s->multipoles_sub[tpid];
+      s->multipoles_sub[tpid] = cells[j]->grav.multipole->next;
     }
   }
 
   /* Unlock the space. */
-  if (!ghost) atomic_add(&s->tot_cells, nr_cells);
+  atomic_add(&s->tot_cells, nr_cells);
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
-    cell_free_hydro_sorts(cells[j+index]);
-    cell_free_stars_sorts(cells[j+index]);
+    cell_free_hydro_sorts(cells[j]);
+    cell_free_stars_sorts(cells[j]);
 
-    struct gravity_tensors *temp = cells[j+index]->grav.multipole;
-    bzero(cells[j+index], sizeof(struct cell));
-    cells[j+index]->grav.multipole = temp;
-    cells[j+index]->nodeID = -1;
-    cells[j+index]->tpid = tpid;
-    if (lock_init(&cells[j+index]->hydro.lock) != 0 ||
-        lock_init(&cells[j+index]->hydro.extra_sort_lock) != 0 ||
-        lock_init(&cells[j+index]->grav.plock) != 0 ||
-        lock_init(&cells[j+index]->grav.mlock) != 0 ||
-        lock_init(&cells[j+index]->stars.lock) != 0 ||
-        lock_init(&cells[j+index]->sinks.lock) != 0 ||
-        lock_init(&cells[j+index]->sinks.sink_formation_lock) != 0 ||
-        lock_init(&cells[j+index]->black_holes.lock) != 0 ||
-        lock_init(&cells[j+index]->stars.star_formation_lock) != 0 ||
-        lock_init(&cells[j+index]->grav.star_formation_lock) != 0)
+    struct gravity_tensors *temp = cells[j]->grav.multipole;
+    bzero(cells[j], sizeof(struct cell));
+    cells[j]->grav.multipole = temp;
+    cells[j]->nodeID = -1;
+    cells[j]->tpid = tpid;
+    if (lock_init(&cells[j]->hydro.lock) != 0 ||
+        lock_init(&cells[j]->hydro.extra_sort_lock) != 0 ||
+        lock_init(&cells[j]->grav.plock) != 0 ||
+        lock_init(&cells[j]->grav.mlock) != 0 ||
+        lock_init(&cells[j]->stars.lock) != 0 ||
+        lock_init(&cells[j]->sinks.lock) != 0 ||
+        lock_init(&cells[j]->sinks.sink_formation_lock) != 0 ||
+        lock_init(&cells[j]->black_holes.lock) != 0 ||
+        lock_init(&cells[j]->stars.star_formation_lock) != 0 ||
+        lock_init(&cells[j]->grav.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
 }
@@ -1562,9 +1562,8 @@ void space_init(struct space *s, struct swift_params *params,
   }
 
   /* Build the cells recursively. */
-  //if (!dry_run) space_regrid(s, verbose);
-  space_regrid(s, verbose);
-
+  if (!dry_run) space_regrid(s, verbose);
+  
   /* Compute the max id for the generation of unique id. */
   if (create_sparts || s->splitting_need_unique_id) {
     space_init_unique_id(s, nr_nodes);
