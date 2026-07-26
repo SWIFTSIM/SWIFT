@@ -271,7 +271,7 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
 #endif
 
   int res = robust_scaled_lu_invert3x3(A, A_inv);
-  
+
   M_inv->xx = A_inv[0][0];
 #if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
   M_inv->yy = A_inv[1][1];
