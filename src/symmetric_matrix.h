@@ -253,20 +253,34 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
     struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M,
     const float min_cond_num) {
 
-  float M_inv_matrix[hydro_dimension_integer][hydro_dimension_integer];
-  get_matrix_from_sym_matrix(M_inv_matrix, M);
-  const int res =
-      invert_dimension_by_dimension_matrix(M_inv_matrix, min_cond_num);
+  double A[hydro_dimension_integer][hydro_dimension_integer];
+  double A_inv[hydro_dimension_integer][hydro_dimension_integer] = {0};
 
-  M_inv->xx = M_inv_matrix[0][0];
+  A[0][0] = M->xx;
 #if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
-  M_inv->yy = M_inv_matrix[1][1];
-  M_inv->xy = M_inv_matrix[0][1];
+  A[1][1] = M->yy;
+  A[0][1] = M->xy;
+  A[1][0] = M->xy;
 #endif
 #if defined(HYDRO_DIMENSION_3D)
-  M_inv->zz = M_inv_matrix[2][2];
-  M_inv->xz = M_inv_matrix[0][2];
-  M_inv->yz = M_inv_matrix[1][2];
+  A[0][2] = M->xz;
+  A[1][2] = M->yz;
+  A[2][0] = M->xz;
+  A[2][1] = M->yz;
+  A[2][2] = M->zz;
+#endif
+
+  int res = robust_scaled_lu_invert3x3(A, A_inv);
+  
+  M_inv->xx = A_inv[0][0];
+#if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
+  M_inv->yy = A_inv[1][1];
+  M_inv->xy = A_inv[0][1];
+#endif
+#if defined(HYDRO_DIMENSION_3D)
+  M_inv->zz = A_inv[2][2];
+  M_inv->xz = A_inv[0][2];
+  M_inv->yz = A_inv[1][2];
 #endif
 
   return res;

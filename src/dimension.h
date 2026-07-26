@@ -379,6 +379,86 @@ invert_dimension_by_dimension_matrix(
 #endif
 }
 
+inline int robust_scaled_lu_invert3x3(const double A[3][3], double inv[3][3]) {
+  double mat[3][3];
+  double scale_factors[3];
+
+  // 1. Initialize identity matrix and compute row scale factors
+  for (int i = 0; i < 3; ++i) {
+    double max_val = 0.0;
+    for (int j = 0; j < 3; ++j) {
+      mat[i][j] = A[i][j];
+      inv[i][j] = (i == j) ? 1.0 : 0.0;
+
+      double abs_val = fabs(A[i][j]);
+      if (abs_val > max_val) max_val = abs_val;
+    }
+
+    // If an entire row is 0, the matrix is singular
+    if (max_val < 1e-15) return 1;
+    scale_factors[i] = 1.0 / max_val;
+  }
+
+  // 2. Gaussian elimination with scaled partial pivoting
+  for (int i = 0; i < 3; ++i) {
+    // Find pivot row using scaled values to eliminate magnitude bias
+    int pivot = i;
+    double max_scaled_val = fabs(mat[i][i]) * scale_factors[i];
+
+    for (int r = i + 1; r < 3; ++r) {
+      double scaled_val = fabs(mat[r][i]) * scale_factors[r];
+      if (scaled_val > max_scaled_val) {
+        max_scaled_val = scaled_val;
+        pivot = r;
+      }
+    }
+
+    // Singularity check based on machine epsilon threshold
+    if (max_scaled_val < 1e-15) return 1;
+
+    // Swap rows if a better pivot was found
+    if (pivot != i) {
+      // Swap scale factors
+      double ts = scale_factors[i];
+      scale_factors[i] = scale_factors[pivot];
+      scale_factors[pivot] = ts;
+
+      // Swap working matrix rows
+      for (int j = 0; j < 3; ++j) {
+        double t = mat[i][j];
+        mat[i][j] = mat[pivot][j];
+        mat[pivot][j] = t;
+        t = inv[i][j];
+        inv[i][j] = inv[pivot][j];
+        inv[pivot][j] = t;
+      }
+    }
+
+    // Eliminate column elements below the pivot
+    for (int r = i + 1; r < 3; ++r) {
+      double factor = mat[r][i] / mat[i][i];
+      for (int j = 0; j < 3; ++j) {
+        mat[r][j] -= factor * mat[i][j];
+        inv[r][j] -= factor * inv[i][j];
+      }
+    }
+  }
+
+  // 3. Back-substitution to finalize the inverse
+  for (int i = 2; i >= 0; --i) {
+    for (int r = i - 1; r >= 0; --r) {
+      double factor = mat[r][i] / mat[i][i];
+      for (int j = 0; j < 3; ++j) {
+        inv[r][j] -= factor * inv[i][j];
+      }
+    }
+    double d = 1.0 / mat[i][i];
+    for (int j = 0; j < 3; ++j) inv[i][j] *= d;
+  }
+
+  return 0;
+}
+
 /**
  * @brief Get the radius of a dimension sphere with the given volume
  *
