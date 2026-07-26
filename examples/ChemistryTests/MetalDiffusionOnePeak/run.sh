@@ -15,7 +15,7 @@ vz=${vz:=0.0}  # Default velocity z-component
 with_hydro_MFM=${with_hydro_MFM:=0}
 random_positions=${random_positions:=0} # Use random positions instead of regular grid?
 run_name=${run_name:=""}  # Name of the run
-epsilon=${epsilon:=0.02}  # Size of the sphere of particles containing an initial non null metallicity
+epsilon=${epsilon:=0.04}  # Size of the sphere of particles containing an initial non null metallicity
 dimension=${dimension:=3} # Dimensionality of the problem.
 
 
@@ -98,9 +98,9 @@ fi
 
 #Do some data analysis to show what's in this box
 python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_max=0.5
-python3 metal_projection.py snap/snapshot_*0.hdf5 --vmin "1e-15" --vmax "3.16227766017e-10" #1e-9.5 ~= 3.16227766017e-10
-python3 metal_projection.py snap/snapshot_*0.hdf5 --log --vmin -15 --vmax -9.5
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30
+python3 metal_projection.py snap/snapshot_*0.hdf5
+python3 metal_projection.py snap/snapshot_*0.hdf5 --log
 
 
 if [ -z "$run_name" ]; then

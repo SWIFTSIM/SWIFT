@@ -93,8 +93,11 @@ def parse_options():
         "--epsilon",
         action="store",
         type=float,
-        default=0.02,
-        help="Radius of the homogeneous sphere to seed with metal mass",
+        default=0.04,
+        help="Radius of the homogeneous sphere to seed with metal mass. "
+             "Must seed enough particles to avoid lattice-discreteness "
+             "artifacts at the tested resolution (e.g. 0.02 seeds only 1 "
+             "particle at level 5, which is badly under-resolved).",
     )
 
     parser.add_argument(
