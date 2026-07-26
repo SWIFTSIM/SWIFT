@@ -1661,15 +1661,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Initialise the particles */
-    message("Initialising particles");
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
-
-    /* Relaxation for the Poisson equation */
-    //space_apply_FMG(&e, 16, 64, 0);
-    //space_get_density(&e, 64, 1);
-
-    //pm_mesh_compute_potential(&e, e.mesh, e.s, &e.threadpool, &cosmo, e.verbose, /*MG=*/1, /*power=*/0);
-    //space_get_AMR_density(&s, &e, 1000, 1000);
 
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
@@ -1700,7 +1692,7 @@ int main(int argc, char *argv[]) {
 
       /* If we want power spectra, output them now as well */
       if (with_power)
-        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose, 0);
+        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
 
       engine_dump_snapshot(&e, /*fof=*/0);
     }
@@ -1779,17 +1771,6 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-/*FILE *export_acc;
-export_acc = fopen("/data1/vandervlugt/PythonFiles/MG_acceleration/regular_acc.txt", "w");
-for (size_t i=0; i<s.nr_gparts; i++) {
-  double acc = sqrt(s.gparts[i].a_grav[0]*s.gparts[i].a_grav[0] + s.gparts[i].a_grav[1]*s.gparts[i].a_grav[1] + s.gparts[i].a_grav[2] * s.gparts[i].a_grav[2]);
-  fprintf(export_acc, "%E %.15g %.15g %.15g \n", acc, s.gparts[i].x[0], s.gparts[i].x[1], s.gparts[i].x[2]);
-}
-fclose(export_acc);
-message("Exported acceleration");*/
-
-//error("We don't want to do any time integration now");
-
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0;
@@ -1801,12 +1782,6 @@ message("Exported acceleration");*/
 
     /* Take a step. */
     force_stop = engine_step(&e);
-
-    //pm_mesh_compute_potential(e.mesh, e.s, &e.threadpool, e.verbose);
-    //space_apply_FMG(&s, &e);
-    //message("Done");
-    //sleep(5);
-    //gravity_export_force(e.s, &e);
 
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
@@ -1954,7 +1929,7 @@ message("Exported acceleration");*/
       }
 
       if (with_power) {
-        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose, 0);
+        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
       }
 
 #ifdef HAVE_VELOCIRAPTOR

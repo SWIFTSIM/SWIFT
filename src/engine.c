@@ -2469,9 +2469,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-//gravity_export_force(e->s, e);
-//space_apply_FMG(e->s, e);
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);

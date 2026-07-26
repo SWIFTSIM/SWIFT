@@ -548,7 +548,7 @@ struct cell {
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
-  ((size_t)(k) + (cdim)[2] * ((size_t)(j) + (cdim)[1] * (size_t)(i)))
+  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
