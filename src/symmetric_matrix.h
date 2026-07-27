@@ -23,6 +23,10 @@
 #include "dimension.h"
 #include "error.h"
 
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_permutation.h>
+
 #if defined(HYDRO_DIMENSION_3D)
 
 #define sym_matrix_num_elements 6
@@ -253,37 +257,63 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
     struct sym_matrix *restrict M_inv, const struct sym_matrix *restrict M,
     const float min_cond_num) {
 
-  double A[hydro_dimension_integer][hydro_dimension_integer];
-  double A_inv[hydro_dimension_integer][hydro_dimension_integer] = {0};
+  float M_data_f[hydro_dimension_integer][hydro_dimension_integer];
+  double M_data[9];
 
-  A[0][0] = M->xx;
+  get_matrix_from_sym_matrix(M_data_f, M);
+  
+  
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      M_data[i * 3 + j] = M_data_f[i][j];
+  
+  
+  gsl_matrix_view A = gsl_matrix_view_array(M_data, hydro_dimension_integer, hydro_dimension_integer);
+  gsl_matrix *inverse = gsl_matrix_alloc(hydro_dimension_integer, hydro_dimension_integer);
+  gsl_permutation *p = gsl_permutation_alloc(3);
+  
+  int signum;
+  gsl_linalg_LU_decomp(&A.matrix, p, &signum);
+  double det = gsl_linalg_LU_det(&A.matrix, signum);
+
+  if (fabs(det) < 1e-12) {
+    gsl_permutation_free(p);
+    gsl_matrix_free(inverse);
+    return 1;
+  } 
+  
+  gsl_linalg_LU_invert(&A.matrix, p, inverse);
+
+
+  M_inv->xx = gsl_matrix_get(inverse, 0, 0);
 #if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
-  A[1][1] = M->yy;
-  A[0][1] = M->xy;
-  A[1][0] = M->xy;
+  M_inv->yy = gsl_matrix_get(inverse, 1, 1);
+  M_inv->xy = gsl_matrix_get(inverse, 0, 1);
 #endif
 #if defined(HYDRO_DIMENSION_3D)
-  A[0][2] = M->xz;
-  A[1][2] = M->yz;
-  A[2][0] = M->xz;
-  A[2][1] = M->yz;
-  A[2][2] = M->zz;
+  M_inv->zz = gsl_matrix_get(inverse, 2, 2);
+  M_inv->xz = gsl_matrix_get(inverse, 0, 2);
+  M_inv->yz = gsl_matrix_get(inverse, 1, 2);
 #endif
 
-  int res = robust_scaled_lu_invert3x3(A, A_inv);
+  gsl_permutation_free(p);
+  gsl_matrix_free(inverse);
+  
+  //const int res =
+  //    invert_dimension_by_dimension_matrix(M_inv_matrix, min_cond_num);
 
-  M_inv->xx = A_inv[0][0];
-#if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
-  M_inv->yy = A_inv[1][1];
-  M_inv->xy = A_inv[0][1];
-#endif
-#if defined(HYDRO_DIMENSION_3D)
-  M_inv->zz = A_inv[2][2];
-  M_inv->xz = A_inv[0][2];
-  M_inv->yz = A_inv[1][2];
-#endif
+/*   M_inv->xx = M_inv_matrix[0][0]; */
+/* #if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D) */
+/*   M_inv->yy = M_inv_matrix[1][1]; */
+/*   M_inv->xy = M_inv_matrix[0][1]; */
+/* #endif */
+/* #if defined(HYDRO_DIMENSION_3D) */
+/*   M_inv->zz = M_inv_matrix[2][2]; */
+/*   M_inv->xz = M_inv_matrix[0][2]; */
+/*   M_inv->yz = M_inv_matrix[1][2]; */
+/* #endif */
 
-  return res;
+  return 0;
 }
 
 #endif /* SWIFT_SYMMETRIC_MATRIX_H */
