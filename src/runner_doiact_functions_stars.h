@@ -80,6 +80,9 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c, const int offset,
 #endif
 
   const int with_rt = WITH_RT;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+#endif
 
   /* Get the depth limits (if any) */
   const char min_depth = limit_max_h ? c->depth : 0;
@@ -167,7 +170,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c, const int offset,
         runner_iact_nonsym_feedback_apply(
             r2, dx, hi, hj, si, pj, xpj, cosmo, e->hydro_properties,
             e->feedback_props, e->physical_constants, e->internal_units,
-            e->cooling_func, ti_current, e->time_base);
+            e->cooling_func, ti_current, e->time_base, with_cosmology);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -232,6 +235,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
   struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
   const int with_rt = WITH_RT;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->dmin != cj->dmin) error("Cells of different size!");
@@ -338,7 +344,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
         runner_iact_nonsym_feedback_apply(
             r2, dx, hi, hj, si, pj, xpj, cosmo, e->hydro_properties,
             e->feedback_props, e->physical_constants, e->internal_units,
-            e->cooling_func, ti_current, e->time_base);
+            e->cooling_func, ti_current, e->time_base, with_cosmology);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -402,6 +408,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
                           (ci->hydro.count != 0) && cell_is_active_stars(cj, e);
 #endif
   const int with_rt = WITH_RT;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->dmin != cj->dmin) error("Cells of different size!");
@@ -573,7 +582,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_feedback_apply(
               r2, dx, hi, hj, spi, pj, xpj, cosmo, e->hydro_properties,
               e->feedback_props, e->physical_constants, e->internal_units,
-              e->cooling_func, ti_current, e->time_base);
+              e->cooling_func, ti_current, e->time_base, with_cosmology);
 #endif
         }
         if (r2 < hig2 && with_rt) {
@@ -744,7 +753,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_feedback_apply(
               r2, dx, hj, hi, spj, pi, xpi, cosmo, e->hydro_properties,
               e->feedback_props, e->physical_constants, e->internal_units,
-              e->cooling_func, ti_current, e->time_base);
+              e->cooling_func, ti_current, e->time_base, with_cosmology);
 #endif
         }
         if (r2 < hjg2 && with_rt) {

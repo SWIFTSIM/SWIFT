@@ -93,6 +93,7 @@ runner_iact_nonsym_feedback_density(
  * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
+ * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(
@@ -101,7 +102,8 @@ runner_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, const struct cooling_function_data *cooling,
-    const integertime_t ti_current, const double time_base) {
+    const integertime_t ti_current, const double time_base,
+    const int with_cosmology) {
 
   const double e_sn = si->feedback_data.supernovae.energy_ejected;
   const double e_winds = si->feedback_data.winds.energy_ejected;
@@ -131,9 +133,9 @@ runner_iact_nonsym_feedback_apply(
   /*****************************************/
   /* Radiation */
   /* TODO: Add hit by radiation */
-  radiation_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
-                                       hydro_props, fb_props, phys_const, us,
-                                       cooling, ti_current, time_base);
+  radiation_iact_nonsym_feedback_apply(
+      r2, dx, hi, hj, si, pj, xpj, cosmo, hydro_props, fb_props, phys_const, us,
+      cooling, ti_current, time_base, with_cosmology);
 
   /* Distribute pre-SN */
   if (e_winds != 0.0 && weight > 0.0) {
