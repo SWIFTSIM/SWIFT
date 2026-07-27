@@ -80,6 +80,57 @@ struct hii_neighbor {
 #endif
 };
 
+/**
+ * @brief Which gas particles a neighbour traversal is looking for.
+ *
+ * The two phases of a rebuild pass share one spatial search but want
+ * disjoint particle sets, so the traversal is parameterised rather than
+ * duplicated.
+ */
+enum hii_gather_mode {
+
+  /*! Not-yet-ionized gas, buffered and sorted by distance so the nearest
+      candidates get first claim on the star's photons. */
+  hii_gather_new_candidates,
+
+  /*! Gas this star already ionized, processed as it is found: an unbounded
+      set that must be visited in full, so it cannot go through the
+      fixed-capacity buffer. */
+  hii_gather_already_ionized,
+};
+
+/**
+ * @brief Everything feedback_iact_HII_maintain_ionized_part() needs, carried
+ * down the traversal to the point where already-ionized gas is found.
+ *
+ * Only populated for #hii_gather_already_ionized; NULL otherwise.
+ */
+struct hii_maintenance_context {
+  const struct phys_const *phys_const;
+  const struct hydro_props *hydro_props;
+  const struct unit_system *us;
+  const struct cosmology *cosmo;
+  const struct cooling_function_data *cooling;
+
+  /*! Current simulation time. */
+  double time;
+
+  /*! Time elapsed since this star's previous HII rebuild pass. */
+  double dt_back;
+
+  /*! Interval until this star's next expected pass. */
+  double dt_forward;
+
+  /*! (return) Largest squared distance at which this star still holds gas
+      tagged and owned, i.e. the region's extent this pass. Independent of
+      what the budget could actually pay for, so it does not depend on
+      traversal order. */
+  float r2_max_maintained;
+
+  /*! (return) Photons charged to balance recombination this pass. */
+  double photons_charged;
+};
+
 int runner_hii_check_cell_can_be_reached(const struct cell *ci,
                                          const struct cell *cj, const int sid,
                                          const int flipped,
@@ -96,21 +147,25 @@ void runner_do_stars_hii_ionization_feedback_branch(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *ngb_buffer, int max_size,
-    int *count_found);
+    int *count_found, enum hii_gather_mode mode,
+    struct hii_maintenance_context *ctx);
 
 void runner_doself_stars_hii_ionization_feedback(
     struct runner *r, struct cell *c, struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found);
+    int *count_found, enum hii_gather_mode mode,
+    struct hii_maintenance_context *ctx);
 void runner_dopair_naive_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
     struct spart *si, const float search_radius, struct hii_neighbor *buffer,
-    int max_size, int *count_found);
+    int max_size, int *count_found, enum hii_gather_mode mode,
+    struct hii_maintenance_context *ctx);
 void runner_dopair_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found);
+    int *count_found, enum hii_gather_mode mode,
+    struct hii_maintenance_context *ctx);
 
 /**
  * @brief Maintain a sorted buffer by inserting a new neighbor at the correct

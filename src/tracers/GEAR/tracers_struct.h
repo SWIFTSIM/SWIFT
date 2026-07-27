@@ -64,6 +64,9 @@ struct tracers_spart_data {
   /*! Radius of the HII region before the star died or was not HII eligible
       for the rest of its lifetime */
   float final_HII_radius;
+
+  /*! Ionized gas mass of that same final HII region */
+  float final_HII_mass;
 };
 
 /**

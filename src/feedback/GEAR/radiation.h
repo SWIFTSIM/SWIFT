@@ -39,6 +39,22 @@
     (raw value / this factor) and every reader multiplies back by it. */
 #define RADIATION_DOT_N_ION_TABLE_SCALING 1e50
 
+/*! Lifetime granted to an ionization tag, in units of the rebuild interval
+    that produced it. Must exceed 1: a tag has to outlive the gap to its own
+    star's next rebuild pass, or cooling (which expires tags on the gas
+    particle's own, independently-binned timestep --
+    src/cooling/grackle/cooling_gear_subgrid.h) can clear it before the star
+    ever gets the chance to renew it. */
+#define RADIATION_TAG_LIFETIME_INTERVALS 2.0
+
+/*! Ceiling on the elapsed interval the per-pass photon budget is integrated
+    over, in units of the rebuild cadence actually in force. A scheduled pass
+    is skipped whenever the star's working-level cell holds no gas, which
+    leaves the last-rebuild stamp untouched and lets the elapsed interval grow
+    without bound; the photons emitted meanwhile escaped an empty cell rather
+    than being stored, so they must not be handed to the next landing pass. */
+#define HII_DT_BACK_MAX_INTERVALS 2.0
+
 double radiation_get_part_number_hydrogen_atoms(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
@@ -82,6 +98,8 @@ char radiation_is_part_tagged_as_ionized(const struct part *p,
                                          const struct xpart *xpj);
 double radiation_get_part_ionized_end_time(const struct part *p,
                                            const struct xpart *xpj);
+long long radiation_get_part_ionized_star_id(const struct part *p,
+                                             const struct xpart *xpj);
 float radiation_get_part_excess_photon_energy_HI(const struct part *p,
                                                  const struct xpart *xpj);
 float radiation_get_part_photoionization_rate_coefficient(
@@ -91,8 +109,9 @@ double radiation_get_photoionization_rate_coefficient_from_flux_HI(
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);
+void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
 void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
-                                        double Delta_dot_N_ion);
+                                        double Delta_N_ion);
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);
 
 float radiation_get_physical_IR_opacity(const struct spart *sp,

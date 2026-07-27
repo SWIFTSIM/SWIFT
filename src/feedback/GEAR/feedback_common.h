@@ -65,9 +65,8 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
 int feedback_is_HII_ionization_active(const struct spart *sp,
                                       const struct engine *e);
 double feedback_get_star_ionization_rate(const struct spart *sp, int pixel);
-double feedback_get_star_initial_ionization_rate(const struct spart *sp,
-                                                 int pixel);
-double feedback_get_star_ionization_rate_max(const struct spart *sp);
+double feedback_get_star_ionization_budget(const struct spart *sp, int pixel);
+double feedback_get_star_ionization_budget_max(const struct spart *sp);
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
 void feedback_iact_HII_ionization(
@@ -77,7 +76,15 @@ void feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double star_age_beg_step);
+    const double time, const double dt_back, const double dt_forward);
+
+double feedback_iact_HII_maintain_ionized_part(
+    struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const double time,
+    const double dt_back, const double dt_forward);
 
 void feedback_cache_mean_excess_photon_energy_HI(
     struct spart *sp, const struct cooling_function_data *cooling,
@@ -92,6 +99,13 @@ void feedback_compute_and_cache_HII_rebuild_interval(
     const double star_age_beg_step);
 
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
+double feedback_get_star_HII_last_rebuild(const struct spart *sp);
+double feedback_get_star_HII_next_rebuild_time(const struct spart *sp);
+double feedback_get_star_HII_nominal_interval(
+    const struct spart *sp, const struct feedback_props *feedback_props,
+    const double dt_enrichment);
+void feedback_open_star_ionizing_photon_budget(struct spart *sp,
+                                               double dt_back);
 void feedback_set_star_HII_last_rebuild(struct spart *sp,
                                         double star_age_beg_step);
 

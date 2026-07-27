@@ -140,7 +140,7 @@ float feedback_compute_spart_timestep(
        in runner_dosub_stars_hii_ionization_feedback()), so treating it
        as "0.0 = never rebuilt yet" below is correct for a brand-new
        star too -- no separate first-time case is needed. */
-    const float HII_region_last_rebuild =
+    const double HII_region_last_rebuild =
         sp->feedback_data.radiation.HII_region_last_rebuild;
 
     /* Calculate the absolute target age for the next rebuild */
@@ -314,14 +314,16 @@ void feedback_will_do_feedback(
   /* Do we need to do HII ionization feedback? */
   const char do_photoionization =
       feedback_props->radiation_policy & radiation_policy_photoionization;
+  /* A rate question, asked before the pass opens its photon budget: is this
+     star emitting at all? */
   const char has_enough_photons =
-      feedback_get_star_ionization_rate_max(sp) > 0.0;
+      feedback_get_star_ionization_rate(sp, 0) > 0.0;
   const char is_HII_eligible = star_age_beg_step <= feedback_props->HII_max_age;
 
   /* Only rebuild every HII_rebuild_time (internal units) and at the
      first timestep the star is born. A negative rebuild time means "every
      step". */
-  const float HII_region_last_rebuild =
+  const double HII_region_last_rebuild =
       sp->feedback_data.radiation.HII_region_last_rebuild;
   const float HII_rebuild_time = feedback_props->HII_rebuild_time;
 
@@ -375,15 +377,20 @@ void feedback_will_do_feedback(
     sp->feedback_data.radiation.mass_HII_region = 0.0;
   }
 
-  /* This star stopped doing HII for the rest of its life. Hence, h_hii = 0. If
-     we want to keep track of the last h_hii, we can store it in the tracers. */
+  /* This star stopped doing HII for the rest of its life. Its region is no
+     longer maintained and will lapse, so retire both of its extent measures
+     to the tracers rather than leave snapshots reporting a region that no
+     longer exists. */
   if ((sp->feedback_data.is_dead || !is_HII_eligible) && sp->h_hii != 0.0) {
-    /* Store the value in the tracers */
+    /* Store the values in the tracers */
     sp->tracers_data.final_HII_radius = sp->h_hii * kernel_gamma;
+    sp->tracers_data.final_HII_mass =
+        sp->feedback_data.radiation.mass_HII_region;
 
     /* Reset to 0. This prevents dead particles with large h_hii to force the
        tasks at higher levels than necessary. */
     sp->h_hii = 0.0;
+    sp->feedback_data.radiation.mass_HII_region = 0.f;
   }
 }
 
@@ -479,9 +486,14 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
 /**
  * Get the #spart ionization photon emission rate for a given angular pixel.
  *
+ * A pure rate, never debited during a rebuild pass: use it for physical
+ * quantities derived from the star's emission (the rate-coupled flux, the
+ * bootstrap Stromgren radius), not for the pass's spending decisions --
+ * those go through #feedback_get_star_ionization_budget.
+ *
  * @param sp The star.
  * @param pixel The angular pixel.
- * @return Ionizing photon rate remaining in that pixel.
+ * @return Ionizing photon emission rate of that pixel.
  */
 __attribute__((always_inline)) INLINE double feedback_get_star_ionization_rate(
     const struct spart *sp, int pixel) {
@@ -489,37 +501,34 @@ __attribute__((always_inline)) INLINE double feedback_get_star_ionization_rate(
 }
 
 /**
- * Get the #spart's undepleted ionization photon emission rate for a given
- * angular pixel, as set at the start of this rebuild pass -- unlike
- * #feedback_get_star_ionization_rate, never decremented by
- * radiation_consume_ionizing_photons. Used for the rate-coupled flux
- * calculation so a particle's Gamma_HI depends only on its distance, not on
- * how many other particles this pixel already tagged this pass.
+ * Get the #spart's remaining ionizing photon *count* for a given angular
+ * pixel this rebuild pass.
  *
  * @param sp The star.
  * @param pixel The angular pixel.
- * @return Undepleted ionizing photon rate for that pixel.
+ * @return Ionizing photon count remaining in that pixel.
  */
 __attribute__((always_inline)) INLINE double
-feedback_get_star_initial_ionization_rate(const struct spart *sp, int pixel) {
-  return sp->feedback_data.radiation.dot_N_ion_pix_initial[pixel];
+feedback_get_star_ionization_budget(const struct spart *sp, int pixel) {
+  return sp->feedback_data.radiation.N_ion_budget_pix[pixel];
 }
 
 /**
- * Get the largest remaining ionization photon rate across all of the
+ * Get the largest remaining ionizing photon count across all of the
  * #spart's active angular pixels. Used only for loop-termination/retry
  * decisions -- one exhausted pixel doesn't mean the star is done.
  *
  * @param sp The star.
- * @return Largest remaining ionizing photon rate over all active pixels.
+ * @return Largest remaining ionizing photon count over all active pixels.
  */
 __attribute__((always_inline)) INLINE double
-feedback_get_star_ionization_rate_max(const struct spart *sp) {
-  double rate_max = 0.0;
+feedback_get_star_ionization_budget_max(const struct spart *sp) {
+  double budget_max = 0.0;
   for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
-    rate_max = max(rate_max, sp->feedback_data.radiation.dot_N_ion_pix[p]);
+    budget_max =
+        max(budget_max, sp->feedback_data.radiation.N_ion_budget_pix[p]);
   }
-  return rate_max;
+  return budget_max;
 }
 
 /**
@@ -582,6 +591,175 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
 }
 
 /**
+ * @brief Photoionization rate coefficient this star delivers at a gas
+ * particle's location, frozen at tag time.
+ *
+ * The cooling task cannot recompute it later (it has no neighbour search),
+ * so it is stored on the particle. The intermediate photon flux would
+ * overflow float32 in this unit system, so only the final coefficient --
+ * computed in double up to that point -- is returned. Zero unless
+ * GEARFeedback:HII_couple_ionization_rate is on.
+ *
+ * @param si The #spart (star) providing photons.
+ * @param r2 Squared comoving distance between star and gas.
+ * @param pixel The angular pixel this gas particle was assigned to.
+ * @param us Internal unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling Cooling function data.
+ */
+__attribute__((always_inline)) INLINE static float
+feedback_hii_photoionization_rate_HI(
+    const struct spart *restrict si, float r2, int pixel,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling) {
+
+  if (!cooling->HII_couple_ionization_rate) return 0.f;
+
+  const float Omega_pixel =
+      4.0f * (float)M_PI / si->feedback_data.radiation.n_HII_pixels;
+
+  /* r2 is comoving, so the physical 1/r^2 dilution carries an a^-2. Floored at
+     a fraction of the star's own smoothing length: a gas particle sitting on
+     top of the star would otherwise divide by zero and hand Grackle an
+     infinite heating rate. */
+  const float r2_min = 1e-6f * si->h * si->h;
+  const double r2_phys = max(r2, r2_min) * cosmo->a * cosmo->a;
+  const double ionizing_flux_HI =
+      feedback_get_star_ionization_rate(si, pixel) / (Omega_pixel * r2_phys);
+  return (float)radiation_get_photoionization_rate_coefficient_from_flux_HI(
+      us, ionizing_flux_HI);
+}
+
+/**
+ * @brief Absolute time until which an ionization tag stamped now stays valid.
+ *
+ * Sized on the LARGER of the elapsed and expected-next intervals. The elapsed
+ * one alone is wrong in adaptive-cadence mode: that interval tracks the local
+ * density, which drops as the region expands, so it grows between passes --
+ * and growth beyond #RADIATION_TAG_LIFETIME_INTERVALS would expire a whole
+ * region before its star could renew it, forcing every particle to be
+ * re-claimed and re-pay its one-off N_H cost. Taking the max can only
+ * lengthen a lifetime, never shorten one.
+ *
+ * @param time The current simulation time.
+ * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param dt_forward Interval until this star's next expected pass.
+ */
+__attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
+    const double time, const double dt_back, const double dt_forward) {
+  return time + RADIATION_TAG_LIFETIME_INTERVALS * max(dt_back, dt_forward);
+}
+
+/**
+ * @brief Tag a gas particle as ionized by this star and charge its photons.
+ *
+ * Shared by the three acceptance branches of #feedback_iact_HII_ionization.
+ * No atomics: task_type_stars_hii_ionization_feedback's cell locking
+ * (src/task.c) already serializes every writer of these fields.
+ *
+ * @param si The #spart (star) providing photons.
+ * @param pj The #part (gas) being ionized.
+ * @param xpj The #xpart (gas) being ionized.
+ * @param r2 Squared distance between star and gas.
+ * @param pixel The angular pixel this gas particle was assigned to.
+ * @param us Internal unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling Cooling function data.
+ * @param time The current simulation time.
+ * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param dt_forward Interval until this star's next expected pass.
+ * @param cost Ionizing photon count to charge for this particle.
+ */
+__attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
+    struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const double time,
+    const double dt_back, const double dt_forward, const double cost) {
+
+  if (xpj->tracers_data.HII_region.is_ionized != 0) return;
+
+  radiation_tag_part_as_ionized(
+      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back, dt_forward),
+      si->feedback_data.radiation.mean_excess_photon_energy_HI,
+      feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+  timestep_sync_part(pj);
+
+  radiation_consume_ionizing_photons(si, pixel, cost);
+
+  /* Update HII region properties */
+  si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
+  si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
+}
+
+/**
+ * @brief Charge an already-ionized gas particle's recombination losses and
+ * renew its tag.
+ *
+ * Recombinations must be replaced continuously to hold gas ionized, so an
+ * particle already held ionized costs photons every pass -- charging only
+ * newly-claimed ones is what let the ionized volume grow without bound as the
+ * rebuild cadence was refined. There is no one-off N_H term here: those
+ * electrons are already stripped.
+ *
+ * Renewal is budget-gated: once a pixel is spent, its remaining gas is not
+ * renewed and cooling expires those tags at end_time. Note this is charged in
+ * traversal order (own cell in array order, then the radiation_in links), NOT
+ * in radius order as Phase 2's distance-sorted buffer is, so the set that
+ * lapses when a star cannot afford its whole region is spatially arbitrary
+ * rather than an outer shell. At equilibrium the shortfall is only the
+ * marginal budget deficit, so that set is thin.
+ *
+ * @param si The #spart (star) providing photons.
+ * @param pj The #part (gas) being maintained.
+ * @param xpj The #xpart (gas) being maintained.
+ * @param r2 Squared distance between star and gas.
+ * @param pixel The angular pixel this gas particle was assigned to.
+ * @param phys_const Physics constants.
+ * @param hydro_props Hydrodynamics properties.
+ * @param us Internal unit system.
+ * @param cosmo Cosmology.
+ * @param cooling Cooling function data.
+ * @param time The current simulation time.
+ * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param dt_forward Interval until this star's next expected pass.
+ * @return Photons charged for this particle, 0 if the budget was exhausted.
+ */
+__attribute__((always_inline)) INLINE double
+feedback_iact_HII_maintain_ionized_part(
+    struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const double time,
+    const double dt_back, const double dt_forward) {
+
+  /* Counted whether or not its photons can be afforded: this field is the
+     mass the star HOLDS ionized, matching h_hii's extent (see stars_io.h). */
+  si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
+
+  if (feedback_get_star_ionization_budget(si, pixel) <= 0.0) return 0.0;
+
+  const double cost =
+      dt_back * radiation_get_part_rate_to_fully_ionize(
+                    phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+  radiation_consume_ionizing_photons(si, pixel, cost);
+
+  /* Renew in place: the tag's other fields would otherwise keep values
+     frozen at first claim, growing staler every pass the particle survives.
+     Deliberately no timestep_sync_part() here, unlike a fresh claim: waking
+     every held particle every pass would drag the whole region down to the
+     shortest time bin. Expiry is therefore checked on the gas particle's own
+     next cooling task, so recession can lag by up to one of its timesteps. */
+  radiation_tag_part_as_ionized(
+      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back, dt_forward),
+      si->feedback_data.radiation.mean_excess_photon_energy_HI,
+      feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+
+  return cost;
+}
+
+/**
  * @brief Perform the ionization of a gas particle by a star.
  *
  * @param si The #spart (star) providing photons.
@@ -597,10 +775,8 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
  * @param feedback_props The #feedback_props.
  * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
- * @param star_age_beg_step This star's age at the start of the current
- * step -- needed to convert HII_region_next_rebuild_time (a star-age-
- * relative deadline) into the absolute-time deadline this particle's
- * end_time field expects.
+ * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param dt_forward Interval until this star's next expected pass.
  */
 __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
@@ -609,105 +785,66 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double star_age_beg_step) {
+    const double time, const double dt_back, const double dt_forward) {
 
   const int deterministic_boundary =
       feedback_props->HII_deterministic_boundary_ionization;
 
-  /* Stay flagged as ionized until this star's next HII rebuild.
-     HII_region_next_rebuild_time is cached in the star's own age frame
-     (see radiation_compute_and_cache_HII_rebuild_interval), but end_time
-     is compared against absolute simulation time in
-     cooling_gear_subgrid.h -- convert via (time - star_age_beg_step),
-     both from this pass's own compute_time() call, so it holds under
-     cosmology too. */
-  const double end_time =
-      feedback_props->HII_adaptive_rebuild_cadence
-          ? time - star_age_beg_step +
-                si->feedback_data.radiation.HII_region_next_rebuild_time
-          : time + max(feedback_props->HII_rebuild_time, 0.0);
-
-  /* If already ionized (by another thread), just move on. */
+  /* If already ionized (by another thread, or by an earlier pass), just move
+     on: recombination losses for gas already held ionized are charged by
+     feedback_iact_HII_maintain_ionized_part, not here. */
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
 
-  const double Delta_dot_N_ion = radiation_get_part_rate_to_fully_ionize(
+  /* Photons this candidate costs: a one-off payment to strip its N_H
+     electrons, plus a maintenance reserve sized by the *elapsed* interval
+     (the next interval's recombinations are charged by
+     feedback_iact_HII_maintain_ionized_part, not here). That reserve is what
+     makes region growth implicit -- dS/dt = (Q-S)/t_rec integrates as
+     dS = (Q-S)*dt/(t_rec+dt) -- and so unconditionally stable at the
+     dt >> t_rec the default HII_rebuild_time_Myr produces. Dropping it would
+     give explicit Euler, which overshoots and then churns. */
+  const double N_H = radiation_get_part_number_hydrogen_atoms(
       phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+  const double Delta_dot_N_ion_maintenance_rate =
+      radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us,
+                                              cosmo, cooling, pj, xpj);
+  const double cost = N_H + dt_back * Delta_dot_N_ion_maintenance_rate;
 
-  /* Gamma_HI this star delivers at pj's location, frozen at tag time (the
-     cooling task can't recompute it later, same reasoning as end_time). The
-     intermediate photon flux would overflow float32 in this unit system, so
-     only the final rate coefficient -- computed in double up to that point
-     -- is stored. Only needed when GEARFeedback:HII_couple_ionization_rate
-     is on. */
-  float photoionization_rate_HI = 0.f;
-  if (cooling->HII_couple_ionization_rate) {
-    const float Omega_pixel =
-        4.0f * (float)M_PI / si->feedback_data.radiation.n_HII_pixels;
-    const double ionizing_flux_HI =
-        feedback_get_star_initial_ionization_rate(si, pixel) /
-        (Omega_pixel * r2);
-    photoionization_rate_HI =
-        (float)radiation_get_photoionization_rate_coefficient_from_flux_HI(
-            us, ionizing_flux_HI);
-  }
-  const float excess_photon_energy_HI =
-      si->feedback_data.radiation.mean_excess_photon_energy_HI;
+  const double budget = feedback_get_star_ionization_budget(si, pixel);
 
   /* Case 1: Ionization is guaranteed */
-  if (Delta_dot_N_ion <= feedback_get_star_ionization_rate(si, pixel)) {
-    /* No atomics: task_type_stars_hii_ionization_feedback's cell locking
-       (src/task.c) already serializes every writer of these fields. */
-    if (xpj->tracers_data.HII_region.is_ionized == 0) {
-      radiation_tag_part_as_ionized(pj, xpj, si->id, end_time,
-                                    excess_photon_energy_HI,
-                                    photoionization_rate_HI);
-      timestep_sync_part(pj);
-
-      /* Consume photons from the star */
-      radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
-
-      /* Update HII region properties */
-      si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
-      si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
-    }
+  if (cost <= budget) {
+    feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
+                            dt_back, dt_forward, cost);
   } else if (deterministic_boundary) {
     /* Deterministic mode: always ionize the boundary particle, letting the
        pixel's budget go slightly negative (bounded by one particle's
        ionization cost). */
-    if (xpj->tracers_data.HII_region.is_ionized == 0) {
-      radiation_tag_part_as_ionized(pj, xpj, si->id, end_time,
-                                    excess_photon_energy_HI,
-                                    photoionization_rate_HI);
-      timestep_sync_part(pj);
-
-      radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
-      si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
-      si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
-    }
+    feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
+                            dt_back, dt_forward, cost);
   } else {
     /* Probabilistic mode: a weighted coin flip decides whether to fully
        ionize pj. On a win, the full cost is consumed (more than what was
        left, going slightly negative); on a loss, nothing is consumed, so
        the budget survives intact to try the next, farther candidate. This
        keeps the expected photon consumption equal to what's actually
-       available: proba*Delta_dot_N_ion + (1-proba)*0 = dot_N_ion. */
-    const double dot_N_ion = feedback_get_star_ionization_rate(si, pixel);
-    const float proba = dot_N_ion / Delta_dot_N_ion;
-    const float random_number =
-        random_unit_interval(si->id, ti_begin, random_number_HII_regions);
+       available: proba*cost + (1-proba)*0 = budget. */
+    const float proba = budget / cost;
+    /* Keyed on the star and the pixel, deliberately *not* on pj: this must be
+       one trial per pixel per pass for the identity below to hold. The same
+       number is drawn for every candidate offered to this pixel, so a loss
+       rejects the whole remaining shell -- which is exactly the (1 - proba)
+       branch. Rolling per candidate instead would give each of the up-to
+       HII_max_retry_full_buffer x max_ngbs candidates an independent shot in a
+       loop that stops at the first win, so a pass would claim one particle
+       almost surely and spend `cost` rather than `budget`. */
+    const float random_number = random_unit_interval_part_ID_and_index(
+        si->id, pixel, ti_begin, random_number_HII_regions);
 
     if (random_number <= proba) {
       /* We won the roll! Claim the particle. */
-      if (xpj->tracers_data.HII_region.is_ionized == 0) {
-        radiation_tag_part_as_ionized(pj, xpj, si->id, end_time,
-                                      excess_photon_energy_HI,
-                                      photoionization_rate_HI);
-        timestep_sync_part(pj);
-
-        radiation_consume_ionizing_photons(si, pixel, Delta_dot_N_ion);
-        si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
-        si->h_hii = max(si->h_hii, sqrtf(r2) * kernel_gamma_inv);
-      }
+      feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
+                              dt_back, dt_forward, cost);
     }
     /* Lost the roll: consume nothing, budget carries over. */
   } /* End of probability handling */
@@ -791,6 +928,81 @@ void feedback_set_star_HII_last_rebuild(struct spart *sp,
 }
 
 /**
+ * @brief The (star-relative) age at which this star's HII region was last
+ * rebuilt.
+ *
+ * @param sp The #spart to query.
+ */
+double feedback_get_star_HII_last_rebuild(const struct spart *sp) {
+  return sp->feedback_data.radiation.HII_region_last_rebuild;
+}
+
+/**
+ * @brief This star's cached next-HII-rebuild deadline, in its own age frame.
+ *
+ * Only meaningful in adaptive-cadence mode; 0 otherwise, which callers read
+ * as "no forward estimate available".
+ *
+ * @param sp The #spart to query.
+ */
+double feedback_get_star_HII_next_rebuild_time(const struct spart *sp) {
+  return sp->feedback_data.radiation.HII_region_next_rebuild_time;
+}
+
+/**
+ * @brief The HII rebuild cadence currently in force for this star, i.e. the
+ * interval one scheduled pass is expected to cover.
+ *
+ * Used to bound the elapsed interval the photon budget is integrated over
+ * (#HII_DT_BACK_MAX_INTERVALS), so passes skipped by a gas-free cell cannot
+ * bank photons that escaped instead of being stored.
+ *
+ * @param sp The #spart to query.
+ * @param feedback_props The #feedback_props.
+ * @param dt_enrichment This star's current enrichment timestep, the stand-in
+ * cadence in "rebuild every step" mode.
+ */
+double feedback_get_star_HII_nominal_interval(
+    const struct spart *sp, const struct feedback_props *feedback_props,
+    const double dt_enrichment) {
+
+  const double floor_interval = (double)feedback_props->HII_rebuild_floor_Myr;
+
+  if (feedback_props->HII_adaptive_rebuild_cadence) {
+    /* The cached deadline minus the stamp it was measured from is the
+       interval this star's own physics asked for last pass. Both are 0 before
+       the first pass caches anything, so fall back to the star's own timestep
+       rather than the floor -- the floor would cap a first pass's budget at
+       ~1e-4 Myr regardless of how long the star has actually been emitting. */
+    const double cached =
+        sp->feedback_data.radiation.HII_region_next_rebuild_time -
+        sp->feedback_data.radiation.HII_region_last_rebuild;
+    if (cached > 0.0) return cached;
+    return max(dt_enrichment, floor_interval);
+  }
+
+  if (feedback_props->HII_rebuild_time > 0.f)
+    return (double)feedback_props->HII_rebuild_time;
+
+  /* Negative rebuild time means "every step", so the star's own timestep is
+     the cadence. */
+  return max(dt_enrichment, floor_interval);
+}
+
+/**
+ * @brief Dispatch wrapper exposing radiation_open_ionizing_photon_budget()
+ * (radiation.c) to runner_radiation_feedback.c, same reasoning as
+ * #feedback_get_star_HII_pixel_count.
+ *
+ * @param sp The star.
+ * @param dt_back Time elapsed since this star's last HII rebuild pass.
+ */
+void feedback_open_star_ionizing_photon_budget(struct spart *sp,
+                                               double dt_back) {
+  radiation_open_ionizing_photon_budget(sp, dt_back);
+}
+
+/**
  * @brief Is this gas particle currently tagged as HII-ionized?
  *
  * Thin dispatch wrapper so callers outside this feedback model (e.g.
@@ -857,6 +1069,13 @@ void feedback_init_after_star_formation(
      star's actual birth age without needing one here. */
   sp->feedback_data.radiation.HII_region_next_rebuild_time = 0.0;
 
+  /* A newborn star owes no photons: radiation_open_ionizing_photon_budget()
+     carries a pixel's overdraft into the next pass, so this must start clean.
+     Over the whole array, not n_HII_pixels, which can still grow. */
+  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
+    sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
+  }
+
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
   sp->star_type = star_type;
@@ -882,7 +1101,7 @@ void feedback_first_init_spart(struct spart *sp,
   sp->feedback_data.winds.energy_ejected = 0.0;
   sp->feedback_data.winds.mass_ejected = 0.0;
 
-  /* n_HII_pixels bounds the loop in feedback_get_star_ionization_rate_max();
+  /* n_HII_pixels bounds the loop in feedback_get_star_ionization_budget_max();
      set it before the first stellar_evolution call so a population star
      that returns early (already past the IMF's alive range) never reads
      it uninitialized. */
@@ -891,6 +1110,12 @@ void feedback_first_init_spart(struct spart *sp,
   /* Only meaningful in adaptive-cadence mode -- see the identical seed in
      feedback_init_after_star_formation() for why 0.0 is correct here too. */
   sp->feedback_data.radiation.HII_region_next_rebuild_time = 0.0;
+
+  /* No photon debt carried in from before the run, same reasoning as the
+     identical seed in feedback_init_after_star_formation(). */
+  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
+    sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
+  }
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;

@@ -205,9 +205,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[9] = io_make_output_field_convert_spart(
       "HIIRegionMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
       convert_spart_HII_mass,
-      "Total gas mass ionized by the star particle when the HII region was "
-      "last rebuilt. Same caveat as HIIRegionRadii: this is the algorithm's "
-      "bookkeeping, not a direct measurement of the gas's physical state.");
+      "Gas mass the star particle is currently holding ionized, as of its "
+      "last HII region rebuild. Same caveat as HIIRegionRadii: this is the "
+      "algorithm's bookkeeping, not a direct measurement of the gas's "
+      "physical state.");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
@@ -290,8 +291,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
      GEARFeedback:HII_rebuild_floor_Myr for the adaptive HII cadence's own
      floor on the rebuild interval itself, a different quantity kept
      separate from this one. */
-  const double min_star_timestep_Myr = parser_get_opt_param_float(
-      params, "Stars:min_star_timestep_Myr", 1e-4);
+  const double min_star_timestep_Myr =
+      parser_get_opt_param_float(params, "Stars:min_star_timestep_Myr", 1e-4);
 
   /* Check for consistency */
   if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {

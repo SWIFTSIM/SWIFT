@@ -36,6 +36,32 @@
 #include "units.h"
 
 /**
+ * Total hydrogen mass fraction of this #part, from its composition alone.
+ *
+ * Not cooling_get_hydrogen_mass_fraction(): that returns HI_frac + HII_frac at
+ * COOLING_GRACKLE_MODE >= 1, i.e. the *atomic* hydrogen only, so at mode >= 2
+ * it omits the hydrogen bound in H2/H- and under-reports what this model has to
+ * ionize and then keep ionized. Composition is also the one source available in
+ * every cooling mode.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @return Total hydrogen mass fraction.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_get_part_total_hydrogen_mass_fraction(
+    const struct cooling_function_data *cooling, const struct part *p) {
+
+  const double Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
+
+  /* Clamped: a pathologically enriched particle (Z > HydrogenFractionByMass)
+     would otherwise give a negative N_H, hence a negative photon cost, and
+     radiation_consume_ionizing_photons() would manufacture photons rather
+     than spend them. The star-level formula below guards this the same way. */
+  return max(cooling->HydrogenFractionByMass - Z, 0.);
+}
+
+/**
  * Get the gas number of hydrogen atoms.
  *
  * @param phys_const Physical constants.
@@ -56,7 +82,8 @@ radiation_get_part_number_hydrogen_atoms(
 
   const float m = hydro_get_mass(p);
   const double m_p = phys_const->const_proton_mass;
-  const float X_H = cooling_get_hydrogen_mass_fraction(cooling, p, xp);
+  const double X_H =
+      radiation_get_part_total_hydrogen_mass_fraction(cooling, p);
 
   /* Number of hydrogen atoms in b (Hu et al. 2017; Smith et al. 2021). */
   const double N_H = (X_H * m) / m_p;
@@ -144,7 +171,7 @@ radiation_get_part_ionized_internal_energy(
       phys_const, us, cosmo, hydro_props, cooling, p, xp);
 
   const double T_collisional =
-      radiation_get_T_collisional_K(Z) *
+      radiation_get_T_collisional_K(Z) /
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
   const double u_collisional =
       cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p);
@@ -189,7 +216,8 @@ radiation_get_part_rate_to_fully_ionize(
   const float rho = hydro_get_physical_density(p, cosmo);
   const double m_p = phys_const->const_proton_mass;
   const double k_B = phys_const->const_boltzmann_k;
-  const float X_H = cooling_get_hydrogen_mass_fraction(cooling, p, xp);
+  const double X_H =
+      radiation_get_part_total_hydrogen_mass_fraction(cooling, p);
 
   /* Number of hydrogen atoms in b */
   const double N_H = radiation_get_part_number_hydrogen_atoms(
@@ -372,7 +400,7 @@ void radiation_compute_and_cache_HII_rebuild_interval(
   /* Sound speed of the ionized gas at T_ionized_K (the EoS's density
      argument is unused in this formula). */
   const double T_ionized_internal =
-      T_ionized_K * units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+      T_ionized_K / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
   const double u_ionized =
       cooling_internal_energy_from_T(T_ionized_internal, mu_ionized, k_B, m_p);
   const double c_s =
@@ -414,7 +442,31 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
   const double dot_N_ion_per_pixel = dot_N_ion_total / n_HII_pixels;
   for (int p = 0; p < n_HII_pixels; p++) {
     sp->feedback_data.radiation.dot_N_ion_pix[p] = dot_N_ion_per_pixel;
-    sp->feedback_data.radiation.dot_N_ion_pix_initial[p] = dot_N_ion_per_pixel;
+  }
+}
+
+/**
+ * Open this #spart's ionizing photon budget for one HII rebuild pass:
+ * convert its emission rate into the photon count emitted over dt_back, the
+ * time elapsed since the previous pass, plus any overdraft carried from it.
+ *
+ * @param sp The star.
+ * @param dt_back Time elapsed since this star's last HII rebuild pass.
+ */
+__attribute__((always_inline)) INLINE void
+radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
+
+  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
+    /* A pass overdraws its pixel by up to one particle's cost, since the
+       boundary particle is claimed in full. Carry that debt forward instead of
+       forgiving it: forgiven once per pass, it would over-issue photons in
+       proportion to the number of passes, i.e. as 1/dt_back -- a cadence
+       dependence. Unspent *positive* budget is not carried, those photons
+       reached no gas and escaped. */
+    const double debt =
+        min(sp->feedback_data.radiation.N_ion_budget_pix[p], 0.);
+    sp->feedback_data.radiation.N_ion_budget_pix[p] =
+        debt + sp->feedback_data.radiation.dot_N_ion_pix[p] * dt_back;
   }
 }
 
@@ -423,11 +475,11 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
  *
  * @param sp The star.
  * @param pixel The angular pixel to consume from.
- * @param Delta_dot_N_ion The ionizing photon rate to remove.
+ * @param Delta_N_ion The ionizing photon count to remove.
  */
 __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
-    struct spart *sp, int pixel, double Delta_dot_N_ion) {
-  sp->feedback_data.radiation.dot_N_ion_pix[pixel] -= Delta_dot_N_ion;
+    struct spart *sp, int pixel, double Delta_N_ion) {
+  sp->feedback_data.radiation.N_ion_budget_pix[pixel] -= Delta_N_ion;
   return;
 }
 
@@ -489,6 +541,19 @@ __attribute__((always_inline)) INLINE double
 radiation_get_part_ionized_end_time(const struct part *p,
                                     const struct xpart *xp) {
   return xp->tracers_data.HII_region.end_time;
+}
+
+/**
+ * Id of the star that ionized this #part. Only meaningful while
+ * radiation_is_part_tagged_as_ionized() is true.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+__attribute__((always_inline)) INLINE long long
+radiation_get_part_ionized_star_id(const struct part *p,
+                                   const struct xpart *xp) {
+  return xp->tracers_data.HII_region.star_id;
 }
 
 /**
@@ -1073,9 +1138,9 @@ double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
                                                    float log_m1, float log_m2) {
 
   double dot_N_ion_1 = interpolate_1d(&rad->integrated.dot_N_ion, log_m1) *
-                      RADIATION_DOT_N_ION_TABLE_SCALING;
+                       RADIATION_DOT_N_ION_TABLE_SCALING;
   double dot_N_ion_2 = interpolate_1d(&rad->integrated.dot_N_ion, log_m2) *
-                      RADIATION_DOT_N_ION_TABLE_SCALING;
+                       RADIATION_DOT_N_ION_TABLE_SCALING;
   return dot_N_ion_2 - dot_N_ion_1;
 };
 
@@ -1089,7 +1154,7 @@ double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
 double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
                                               float log_m) {
   return interpolate_1d(&rad->raw.dot_N_ion, log_m) *
-        RADIATION_DOT_N_ION_TABLE_SCALING;
+         RADIATION_DOT_N_ION_TABLE_SCALING;
 };
 
 /**

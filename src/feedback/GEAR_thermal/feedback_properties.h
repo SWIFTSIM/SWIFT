@@ -164,9 +164,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     if (feedback_props->HII_adaptive_rebuild_cadence) {
       message("HII adaptive rebuild safety factor                         = %g",
               feedback_props->HII_rebuild_safety_factor);
-      message("HII adaptive rebuild floor (internal units)                = %g",
-              feedback_props->HII_rebuild_floor_Myr);
     }
+    /* Not adaptive-only: this also floors the elapsed interval the per-pass
+       ionizing photon budget is integrated over, in every cadence mode. */
+    message("HII rebuild floor (internal units)                         = %g",
+            feedback_props->HII_rebuild_floor_Myr);
   }
 
   message(
