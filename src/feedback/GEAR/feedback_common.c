@@ -696,7 +696,7 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * @brief Charge an already-ionized gas particle's recombination losses and
  * renew its tag.
  *
- * Recombinations must be replaced continuously to hold gas ionized, so an
+ * Recombinations must be replaced continuously to hold gas ionized, so a
  * particle already held ionized costs photons every pass -- charging only
  * newly-claimed ones is what let the ionized volume grow without bound as the
  * rebuild cadence was refined. There is no one-off N_H term here: those

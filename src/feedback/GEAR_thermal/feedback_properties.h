@@ -333,6 +333,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->HII_rebuild_floor_Myr =
         parser_get_opt_param_float(params, "GEARFeedback:HII_rebuild_floor_Myr",
                                    default_HII_rebuild_floor_Myr);
+    if (fp->HII_rebuild_floor_Myr <= 0.f)
+      error(
+          "GEARFeedback:HII_rebuild_floor_Myr must be > 0 (got %g): it "
+          "floors the interval every per-pass ionizing photon budget is "
+          "integrated over, in every cadence mode -- <= 0 silently zeroes "
+          "every star's first-pass budget.",
+          fp->HII_rebuild_floor_Myr);
 
     /* Convert to internal units */
     const double m_p_cgs = phys_const->const_proton_mass *

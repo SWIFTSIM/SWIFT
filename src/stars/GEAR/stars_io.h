@@ -208,7 +208,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "Gas mass the star particle is currently holding ionized, as of its "
       "last HII region rebuild. Same caveat as HIIRegionRadii: this is the "
       "algorithm's bookkeeping, not a direct measurement of the gas's "
-      "physical state.");
+      "physical state. Under IONIZATION_FEEDBACK_DEBUG_NO_COOLING, tags "
+      "never lapse and the maintenance pass that re-adds already-held mass "
+      "is compiled out, so this field counts only each pass's newly-tagged "
+      "mass rather than the region's true total.");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

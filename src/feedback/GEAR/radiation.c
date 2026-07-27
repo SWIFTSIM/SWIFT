@@ -189,7 +189,11 @@ radiation_get_part_ionized_internal_energy(
  */
 __attribute__((always_inline)) INLINE double
 radiation_get_case_b_recombination_coefficient_cgs(const double T) {
-  const double lambda = 315614.0 / T;
+  /* Floored: T=0 (e.g. a fully-metal particle's N_H==0 chain, or any other
+     caller's edge case) would otherwise give lambda=inf and the fit below
+     inf*0 = NaN. 1 K is far outside the fit's accurate range (1-1e9 K per
+     Hui & Gnedin) and only ever reached through a guard like this one. */
+  const double lambda = 315614.0 / max(T, 1.0);
   return 2.753e-14 * pow(lambda, 1.5) *
          pow(1.0 + pow(lambda / 2.740, 0.407), -2.242);
 }
@@ -222,6 +226,11 @@ radiation_get_part_rate_to_fully_ionize(
   /* Number of hydrogen atoms in b */
   const double N_H = radiation_get_part_number_hydrogen_atoms(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
+  /* Z >= HydrogenFractionByMass clamps N_H to 0 (radiation.c's X_H clamp);
+     nothing to ionize, and the temperature machinery below would give
+     u_ionized=0 -> T=0 -> NaN in the recombination fit for zero cost. */
+  if (N_H <= 0.) return 0.;
 
   /* Electron density assuming full ionization (n_e ~= n_H). */
   const double n_e = (X_H * rho) / m_p;
@@ -336,7 +345,8 @@ void radiation_compute_and_cache_HII_rebuild_interval(
      specific gas particle for its Grackle-mode>=1 branch, unavailable
      at this star-level, multi-candidate call site, so the mode-0
      formula is reimplemented directly here. */
-  const double X_H = cooling->HydrogenFractionByMass - sp->feedback_data.Z_star;
+  const double X_H =
+      max(cooling->HydrogenFractionByMass - sp->feedback_data.Z_star, 0.);
 
   /* Per-pixel t_rec, tracking the minimum, plus an overall mean density
      for the bootstrap R_st estimate below. A pixel with zero candidates

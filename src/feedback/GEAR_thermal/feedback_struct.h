@@ -162,8 +162,9 @@ struct feedback_spart_data {
         dt_back (age now minus this) scales the whole photon budget above. */
     double HII_region_last_rebuild;
 
-    /*! Absolute simulation time of this star's next scheduled HII
-        rebuild. Adaptive-cadence mode only
+    /*! This star's own age at its next scheduled HII rebuild (same age
+        frame as HII_region_last_rebuild, not absolute simulation time).
+        Adaptive-cadence mode only
         (GEARFeedback:HII_adaptive_rebuild_cadence); ignored otherwise.
         Cached once per rebuild pass (see
         radiation_compute_and_cache_HII_rebuild_interval). */

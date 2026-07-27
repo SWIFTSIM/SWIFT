@@ -21,6 +21,13 @@ swift_fof_mpi
 fof
 fof_mpi
 
+# Stray debug-build artifacts from ad-hoc radiation test invocations
+/swift_debug_rebuild_check
+/swift_debugchecks
+/swift_force_ti1e4
+tests/star_brute_force_27_.dat
+tests/swift_star_dopair_27_.dat
+
 src/version_string.h
 swift*.tar.gz
 
