@@ -362,15 +362,12 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
   struct hii_neighbor ngb_buffer[max_ngbs];
 
-  /* Conservative floor on how far the wired 27-cell radiation_in stencil can
-   * possibly reach beyond the pass's starting interaction_limit: a star
-   * sitting at c's own edge still has a full neighbour cell width, c->dmin,
-   * of wired gas beyond it in the worst direction. A star nearer c's centre
-   * has strictly more wired reach than this in every direction; the gather
-   * itself only ever visits wired cells regardless of dynamic_search_radius,
-   * so under-estimating here costs a deferred rebuild pass at worst, never
-   * a missed particle -- it only stops burning further retries once this
-   * floor is passed. */
+  /* Floor on the wired 27-cell radiation_in stencil's reach beyond this
+   * pass's interaction_limit: a star at c's own edge still has a full
+   * neighbour cell width, c->dmin, of wired gas past it. The gather only
+   * visits wired cells whatever dynamic_search_radius says, so stopping
+   * here at worst defers an outer shell to the next rebuild pass rather
+   * than losing it. */
   const float max_reachable_search_radius = interaction_limit + c->dmin;
 
   for (int i = 0; i < scount; i++) {
