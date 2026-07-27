@@ -91,7 +91,7 @@ GEARFeedback:
   # Radiation
   with_photoelectric_heating:    0              # Whether to run with the subgrid photoelectric heating model to mimick Strömgren sphere.
   with_photoionization:          1              # Whether to run with the subgrid photoionization model to mimick Strömgren sphere.
-  HII_min_density_Hpcm3: 1               # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  HII_min_density_Hpcm3: 0.01             # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3). The Default:1 value is tuned to exclude diffuse, non-HI-bound gas in cosmological runs; this idealized single-cloud test evacuates its own ionized region down to ~0.1-1 H/cm^3, which self-quenches the region against that default.
   radiation_pressure_efficiency: 0              # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   HII_max_age_Myr:        50.0           # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_rebuild_time_Myr:   0.5            # Time between rebuilding the HII region (in Myr). This value also enforces a timestep constraint on the stars. Negative values mean "rebuild every step" instead of on a fixed schedule. (Default: 0.5)

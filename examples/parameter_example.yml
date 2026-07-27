@@ -794,7 +794,7 @@ GEARFeedback:
   HII_deterministic_boundary_ionization: 0                 # How to treat the one gas particle a star's remaining budget can't fully ionize: 0 = probabilistic (weighted coin flip, unbiased in expectation), 1 = deterministic (always ionize it). (Default: 0)
   HII_adaptive_rebuild_cadence:  0                         # Replace the fixed HII_rebuild_time_Myr schedule with a per-star cadence f_safety*min(t_rec, t_cross) derived from the recombination and sound-crossing timescales. 1: on, 0: off. (Default: 0)
   HII_rebuild_safety_factor: 0.2                    # Safety factor applied to min(t_rec, t_cross) in adaptive-cadence mode (the CFL-like dimensionless analogue). Only used if HII_adaptive_rebuild_cadence=1. (Default: 0.2)
-  HII_rebuild_floor_Myr:  1e-4                      # Minimum allowed rebuild interval (in Myr) in adaptive-cadence mode, guarding against pathologically short intervals. Only used if HII_adaptive_rebuild_cadence=1. (Default: 1e-4)
+  HII_rebuild_floor_Myr:  1e-4                      # Minimum allowed rebuild interval (in Myr). Caps the adaptive cadence against pathologically short intervals, and floors the elapsed interval the per-pass ionizing photon budget is integrated over in every cadence mode. (Default: 1e-4)
   HII_couple_ionization_rate: 0                     # Rate-couple HII photoionization into Grackle's own RT_HI_ionization_rate/RT_heating_rate fields (a physically derived, distance-dependent per-particle rate) instead of the instant flag-and-floor scheme. Requires COOLING_GRACKLE_MODE >= 1; forces GrackleCooling:use_radiative_transfer on internally. 1: on, 0: off. (Default: 0)
 
 GEARSupernovaeII:
