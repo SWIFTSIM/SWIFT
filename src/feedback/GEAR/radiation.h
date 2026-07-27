@@ -61,6 +61,12 @@ double radiation_get_part_number_hydrogen_atoms(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp);
 
+double radiation_get_part_number_neutral_hydrogen_atoms(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp);
+
 double radiation_get_part_rate_to_fully_ionize(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,

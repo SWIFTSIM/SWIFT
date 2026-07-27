@@ -92,6 +92,68 @@ radiation_get_part_number_hydrogen_atoms(
 }
 
 /**
+ * Get the gas number of NEUTRAL hydrogen atoms, from the tracked species
+ * fractions rather than total composition. Used only to price the one-off
+ * cost of claiming a fresh candidate (feedback_iact_HII_ionization): a
+ * particle whose species are already partly or fully ionized -- re-tagged
+ * after its previous tag lapsed on a marginal budget shortfall, or
+ * pre-ionized by a UV background -- does not need to pay to strip
+ * electrons it has already lost. The maintenance cost
+ * (radiation_get_part_rate_to_fully_ionize) keeps using the total, since
+ * upkeep of a fully-ionized particle scales with its full electron/proton
+ * content, not with what was neutral before this pass.
+ *
+ * At COOLING_GRACKLE_MODE == 0 (no species tracking) there is nothing to
+ * distinguish neutral from ionized, so this falls back to the total N_H
+ * (radiation_get_part_number_hydrogen_atoms) -- the pre-existing,
+ * conservative behaviour.
+ *
+ * @param phys_const Physical constants.
+ * @param hydro_properties The #hydro_props.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Number of neutral hydrogen atoms.
+ */
+__attribute__((always_inline)) INLINE double
+radiation_get_part_number_neutral_hydrogen_atoms(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+#if COOLING_GRACKLE_MODE >= 1
+  const float m = hydro_get_mass(p);
+  const double m_p = phys_const->const_proton_mass;
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+
+  double X_HI = cool_data->HI_frac;
+#if COOLING_GRACKLE_MODE >= 2
+  /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
+     already singly-ionized, so it is excluded -- the same H2II
+     approximation radiation_get_part_total_hydrogen_mass_fraction's own
+     doxygen already notes for the total-hydrogen accounting. */
+  X_HI += cool_data->H2I_frac + cool_data->HM_frac;
+#endif
+  const double N_HI = (X_HI * m) / m_p;
+
+  /* Capped at the composition total: species can transiently drift above
+     it (e.g. mid-way through a Grackle sub-step), and a neutral count
+     above the particle's total hydrogen content would make this exceed
+     radiation_get_part_number_hydrogen_atoms itself, defeating the point
+     of pricing on neutral content specifically. */
+  const double N_H = radiation_get_part_number_hydrogen_atoms(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  return min(N_HI, N_H);
+#else
+  return radiation_get_part_number_hydrogen_atoms(phys_const, hydro_props, us,
+                                                  cosmo, cooling, p, xp);
+#endif
+}
+
+/**
  * Metallicity-dependent collisional-equilibrium temperature floor
  * (Hopkins 2023's photoionization temperature fit; see
  * theory/GEAR/Radiation/01_algorithm.tex, Eq. tcollisional). Depends

@@ -162,6 +162,15 @@ struct feedback_spart_data {
         dt_back (age now minus this) scales the whole photon budget above. */
     double HII_region_last_rebuild;
 
+    /*! Star age the last time this star was given a chance to rebuild its
+        HII region, whether or not gas was found (unlike
+        HII_region_last_rebuild, which only advances on an actual rebuild).
+        Anchors the photon-budget interval dt_back instead, so a pass
+        skipped by a gas-free working-level cell does not make the next
+        real pass look like it covers the whole gap -- see
+        runner_radiation_feedback.c. */
+    double HII_region_last_attempt;
+
     /*! This star's own age at its next scheduled HII rebuild (same age
         frame as HII_region_last_rebuild, not absolute simulation time).
         Adaptive-cadence mode only

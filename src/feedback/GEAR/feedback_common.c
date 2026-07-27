@@ -795,20 +795,24 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
      feedback_iact_HII_maintain_ionized_part, not here. */
   if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
 
-  /* Photons this candidate costs: a one-off payment to strip its N_H
-     electrons, plus a maintenance reserve sized by the *elapsed* interval
-     (the next interval's recombinations are charged by
+  /* Photons this candidate costs: a one-off payment to strip its remaining
+     NEUTRAL hydrogen (not its total hydrogen content -- a particle whose
+     tag lapsed on a marginal budget shortfall, or one pre-ionized by a UV
+     background, is already partway or fully stripped, and re-paying full
+     N_H on reclaim would be a cadence-coupled photon sink), plus a
+     maintenance reserve sized by the *elapsed* interval (the next
+     interval's recombinations are charged by
      feedback_iact_HII_maintain_ionized_part, not here). That reserve is what
      makes region growth implicit -- dS/dt = (Q-S)/t_rec integrates as
      dS = (Q-S)*dt/(t_rec+dt) -- and so unconditionally stable at the
      dt >> t_rec the default HII_rebuild_time_Myr produces. Dropping it would
      give explicit Euler, which overshoots and then churns. */
-  const double N_H = radiation_get_part_number_hydrogen_atoms(
+  const double N_HI = radiation_get_part_number_neutral_hydrogen_atoms(
       phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
   const double Delta_dot_N_ion_maintenance_rate =
       radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us,
                                               cosmo, cooling, pj, xpj);
-  const double cost = N_H + dt_back * Delta_dot_N_ion_maintenance_rate;
+  const double cost = N_HI + dt_back * Delta_dot_N_ion_maintenance_rate;
 
   const double budget = feedback_get_star_ionization_budget(si, pixel);
 
@@ -935,6 +939,28 @@ void feedback_set_star_HII_last_rebuild(struct spart *sp,
  */
 double feedback_get_star_HII_last_rebuild(const struct spart *sp) {
   return sp->feedback_data.radiation.HII_region_last_rebuild;
+}
+
+/**
+ * @brief Record the (star-relative) age at which this star was last given a
+ * chance to rebuild its HII region, whether or not that chance found gas.
+ *
+ * @param sp The #spart to update.
+ * @param star_age_beg_step The star's age at the start of the current step.
+ */
+void feedback_set_star_HII_last_attempt(struct spart *sp,
+                                        double star_age_beg_step) {
+  sp->feedback_data.radiation.HII_region_last_attempt = star_age_beg_step;
+}
+
+/**
+ * @brief The (star-relative) age at which this star was last given a chance
+ * to rebuild its HII region, whether or not that chance found gas.
+ *
+ * @param sp The #spart to query.
+ */
+double feedback_get_star_HII_last_attempt(const struct spart *sp) {
+  return sp->feedback_data.radiation.HII_region_last_attempt;
 }
 
 /**
@@ -1069,6 +1095,11 @@ void feedback_init_after_star_formation(
      star's actual birth age without needing one here. */
   sp->feedback_data.radiation.HII_region_next_rebuild_time = 0.0;
 
+  /* Same reasoning as HII_region_next_rebuild_time above: 0.0 reads as
+     "never attempted", so the first attempt's dt_elapsed measures from the
+     star's actual birth age. */
+  sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
+
   /* A newborn star owes no photons: radiation_open_ionizing_photon_budget()
      carries a pixel's overdraft into the next pass, so this must start clean.
      Over the whole array, not n_HII_pixels, which can still grow. */
@@ -1110,6 +1141,10 @@ void feedback_first_init_spart(struct spart *sp,
   /* Only meaningful in adaptive-cadence mode -- see the identical seed in
      feedback_init_after_star_formation() for why 0.0 is correct here too. */
   sp->feedback_data.radiation.HII_region_next_rebuild_time = 0.0;
+
+  /* Same reasoning as the identical seed in
+     feedback_init_after_star_formation(). */
+  sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
 
   /* No photon debt carried in from before the run, same reasoning as the
      identical seed in feedback_init_after_star_formation(). */

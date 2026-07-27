@@ -108,6 +108,9 @@ void feedback_open_star_ionizing_photon_budget(struct spart *sp,
                                                double dt_back);
 void feedback_set_star_HII_last_rebuild(struct spart *sp,
                                         double star_age_beg_step);
+double feedback_get_star_HII_last_attempt(const struct spart *sp);
+void feedback_set_star_HII_last_attempt(struct spart *sp,
+                                        double star_age_beg_step);
 
 char feedback_is_part_tagged_as_ionized(const struct part *p,
                                         const struct xpart *xp);

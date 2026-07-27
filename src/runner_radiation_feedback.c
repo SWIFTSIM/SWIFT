@@ -167,9 +167,12 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   const float interaction_limit =
       min(search_radius_factor * r_hii_max, max_search_radius);
 
-  /* Anything to do here? */
-  if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
-    return;
+  /* Anything to do here? c->hydro.count == 0 is NOT included: a due star in
+     a gas-free working-level cell must still reach
+     runner_dosub_stars_hii_ionization_feedback() to have its
+     HII_region_last_attempt stamped (see there) -- only the recursion
+     into progeny and the search itself may be skipped for lack of gas. */
+  if (c->stars.count == 0 || !cell_is_active_stars(c, e)) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->cellID != c->stars.radiation_level->cellID && timer == 1) {
@@ -344,9 +347,11 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
   struct spart *restrict sparts = c->stars.parts;
   const int scount = c->stars.count;
 
-  /* Anything to do here? */
-  if (c->stars.count == 0 || c->hydro.count == 0 || !cell_is_active_stars(c, e))
-    return;
+  /* Anything to do here? c->hydro.count == 0 is deliberately NOT checked
+     here -- see the per-star gas-free-skip continue below, and the
+     matching comment in runner_do_stars_hii_ionization_feedback's own
+     early-return. */
+  if (c->stars.count == 0 || !cell_is_active_stars(c, e)) return;
 
   const struct stars_props *star_props = e->stars_properties;
   const int max_retry_full_buffer = star_props->HII_max_retry_full_buffer;
@@ -379,6 +384,76 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           si->id, c->cellID, c->super->cellID);
 #endif
 
+    /* Needed by the adaptive-cadence cache below, the attempt/rebuild
+       stamps, and the retry loop's expansion cap -- computed once. */
+    double star_age_beg_step = 0;
+    double dt_enrichment = 0;
+    integertime_t ti_begin_star = 0;
+    compute_time(si, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
+                 &ti_begin_star, ti_current, time_base, time);
+    const double star_age_safe = max(star_age_beg_step, 0.0);
+
+    /* Photon-budget interval anchor is HII_region_last_attempt, not
+       HII_region_last_rebuild: read before stamping this pass, so
+       dt_elapsed measures the time since this star was last given a
+       chance to rebuild, whether or not that chance found gas. This is
+       what lets the gas-free skip below stay cheap without inflating the
+       next REAL pass's budget by the skipped gap -- that gap now reads as
+       "photons escaped an empty cell" (correctly excluded), since
+       last_attempt already advanced across it. */
+    const double dt_elapsed =
+        star_age_safe - feedback_get_star_HII_last_attempt(si);
+    feedback_set_star_HII_last_attempt(si, star_age_safe);
+
+    /* Nothing to search for in a gas-free working-level cell. The star was
+       still "attempted" just above, which is what keeps dt_elapsed correct
+       for whenever a real pass next lands -- see runner_do_stars_hii_
+       ionization_feedback's early-return comment for why this cell was
+       reached at all despite holding no gas. */
+    if (c->hydro.count == 0) continue;
+
+    /* Unlike the adaptive-cadence cache below, this must run every pass
+       regardless of HII_adaptive_rebuild_cadence -- it feeds
+       RT_heating_rate for every tagged particle this pass, not just the
+       adaptive-timing estimate. */
+    if (cooling->HII_couple_ionization_rate) {
+      feedback_cache_mean_excess_photon_energy_HI(si, cooling, us, phys_const);
+    }
+
+    /* Photons are budgeted as a count over the interval this pass actually
+       covers, so that slicing a run into more (or fewer) rebuild passes
+       hands out the same total. The lower clamp guards a star's first pass
+       (both terms ~0) and the negative age compute_time() can return for a
+       newborn (cf. feedback_will_do_feedback).
+
+       The upper clamp is now a pure backstop: the gas-free-skip case that
+       originally motivated it is instead handled by anchoring dt_elapsed on
+       HII_region_last_attempt above, so this should essentially never bind
+       while gas is present. If the VERBOSE message below still fires
+       repeatedly on such a run, that is a real red flag -- e.g. a star
+       pinned below its own desired cadence by min_star_timestep in very
+       dense gas -- a distinct failure mode from the benign gas-free skip. */
+    const double dt_nominal = feedback_get_star_HII_nominal_interval(
+        si, feedback_props, dt_enrichment);
+    const double dt_floor = (double)feedback_props->HII_rebuild_floor_Myr;
+    const double dt_ceiling = HII_DT_BACK_MAX_INTERVALS * dt_nominal;
+    /* The floor stands in for an unmeasurable interval (a star's first pass),
+       it is NOT a lower bound on a real one: applying it to a genuine
+       dt_elapsed < floor would issue more photons than the star emitted, every
+       pass, in "rebuild every step" mode. */
+    const double dt_floored = dt_elapsed > 0.0 ? dt_elapsed : dt_floor;
+    const double dt_back = min(dt_floored, dt_ceiling);
+    feedback_open_star_ionizing_photon_budget(si, dt_back);
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    if (dt_floored > dt_ceiling)
+      message(
+          "Star %lld: HII budget interval clamped, %e -> %e (dt_elapsed "
+          "exceeds twice the nominal cadence despite gas being present -- "
+          "this star may be pinned below its own desired cadence)",
+          si->id, dt_floored, dt_back);
+#endif
+
     /* Logic: a pass can fall short of exhausting the star's photon budget
      * for two DIFFERENT reasons, which need two different retries:
      *
@@ -406,59 +481,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     float dynamic_search_radius = interaction_limit;
     int num_retry_full_buffer = 0;
     int num_radius_expansions = 0;
-
-    /* Needed by the adaptive-cadence cache below and by the
-       HII_region_last_rebuild stamp after the loop -- computed once. */
-    double star_age_beg_step = 0;
-    double dt_enrichment = 0;
-    integertime_t ti_begin_star = 0;
-    compute_time(si, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-                 &ti_begin_star, ti_current, time_base, time);
-
-    /* Unlike the adaptive-cadence cache below, this must run every pass
-       regardless of HII_adaptive_rebuild_cadence -- it feeds
-       RT_heating_rate for every tagged particle this pass, not just the
-       adaptive-timing estimate. */
-    if (cooling->HII_couple_ionization_rate) {
-      feedback_cache_mean_excess_photon_energy_HI(si, cooling, us, phys_const);
-    }
-
-    /* Photons are budgeted as a count over the interval this pass actually
-       covers, so that slicing a run into more (or fewer) rebuild passes
-       hands out the same total. The lower clamp guards a star's first pass
-       (both terms ~0) and the negative age compute_time() can return for a
-       newborn (cf. feedback_will_do_feedback).
-
-       The upper clamp matters just as much: a scheduled pass is skipped
-       outright when the star's working-level cell holds no gas (see the
-       hydro.count == 0 early returns above), which leaves the last-rebuild
-       stamp untouched while feedback_will_do_feedback keeps re-arming the
-       star. dt_elapsed then grows without bound, and the next pass that does
-       land would hand out every photon emitted since -- but those photons
-       escaped an empty cell, they were not stored. Cap the interval at a
-       small multiple of the cadence actually in force. */
-    const double star_age_safe = max(star_age_beg_step, 0.0);
-    const double dt_elapsed =
-        star_age_safe - feedback_get_star_HII_last_rebuild(si);
-    const double dt_nominal = feedback_get_star_HII_nominal_interval(
-        si, feedback_props, dt_enrichment);
-    const double dt_floor = (double)feedback_props->HII_rebuild_floor_Myr;
-    const double dt_ceiling = HII_DT_BACK_MAX_INTERVALS * dt_nominal;
-    /* The floor stands in for an unmeasurable interval (a star's first pass),
-       it is NOT a lower bound on a real one: applying it to a genuine
-       dt_elapsed < floor would issue more photons than the star emitted, every
-       pass, in "rebuild every step" mode. */
-    const double dt_floored = dt_elapsed > 0.0 ? dt_elapsed : dt_floor;
-    const double dt_back = min(dt_floored, dt_ceiling);
-    feedback_open_star_ionizing_photon_budget(si, dt_back);
-
-#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
-    if (dt_floored > dt_ceiling)
-      message(
-          "Star %lld: HII budget interval clamped, %e -> %e (passes were "
-          "skipped, most likely by a gas-free cell)",
-          si->id, dt_floored, dt_back);
-#endif
 
     /* Held outside the #ifndef so it is in scope for the retry loop's
        expansion cap either way. Stays 0 when Phase 1 is compiled out, which
