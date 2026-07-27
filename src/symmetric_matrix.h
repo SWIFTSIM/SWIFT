@@ -95,7 +95,7 @@ __attribute__((always_inline)) INLINE static void sym_matrix_identity(
 #if defined(HYDRO_DIMENSION_3D)
   M->zz = 1.f;
   M->xz = 0.f;
-  M->xz = 0.f;
+  M->xy = 0.f;
 #endif
 }
 
