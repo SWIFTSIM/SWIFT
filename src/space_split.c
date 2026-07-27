@@ -229,9 +229,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->dmin = c->dmin / 2;
       cp->h_min_allowed = cp->dmin * 0.5 * (1. / kernel_gamma);
       cp->h_max_allowed = cp->dmin * (1. / kernel_gamma);
-      cp->loc[0] += cp->width[0];
-      cp->loc[1] += cp->width[1];
-      cp->loc[2] += cp->width[2];
+      if (k & 4) cp->loc[0] += cp->width[0];
+      if (k & 2) cp->loc[1] += cp->width[1];
+      if (k & 1) cp->loc[2] += cp->width[2];
       cp->depth = c->depth + 1;
       cp->split = 0;
       cp->hydro.h_max = 0.f;
