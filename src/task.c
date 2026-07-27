@@ -241,6 +241,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_star_formation:
     case task_type_star_formation_sink:
     case task_type_sink_formation:
+    case task_type_stars_hii_ionization_feedback:
       return task_action_all;
 
     case task_type_drift_spart:
@@ -281,6 +282,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_stars_density:
         case task_subtype_stars_feedback:
+        case task_subtype_stars_radiation_in:
+        case task_subtype_stars_radiation_out:
           return task_action_all;
           break;
 
@@ -1199,6 +1202,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     return;
   }
 
+  if (type == task_type_stars_hii_ionization_feedback) {
+
+    strcpy(cluster, "RadiationHII");
+    return;
+  }
+
   switch (subtype) {
     case task_subtype_density:
       strcpy(cluster, "Density");
@@ -1768,6 +1777,9 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_stars_resort:
       return task_category_resort;
 
+    case task_type_stars_hii_ionization_feedback:
+      return task_category_feedback;
+
     case task_type_send:
     case task_type_recv:
       return task_category_mpi;
@@ -1849,6 +1861,8 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_stars_prep1:
         case task_subtype_stars_prep2:
         case task_subtype_stars_feedback:
+        case task_subtype_stars_radiation_in:
+        case task_subtype_stars_radiation_out:
           return task_category_feedback;
 
         case task_subtype_bh_density:
