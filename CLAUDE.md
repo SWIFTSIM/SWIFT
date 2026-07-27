@@ -48,71 +48,75 @@
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT
 make -j$(nproc)
 
-For debugging, add:
- --enable-debugging-checks --enable-debug --enable-sanitizer
- 
-To disable cooling effects for the particles flagged by ionization: CLFAGS+="-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING" ./configure
+For debugging, add `--enable-debugging-checks --enable-debug --enable-sanitizer`.
 
-To force the ionized-gas temperature (`radiation_get_T_collisional_K`) to a
-fixed value regardless of metallicity -- e.g. to reproduce a paper's own flat
-T_i convention at Z=0, decoupled from the Z/Zsun that fit would otherwise
-require and the metal-line cooling that comes with it: CFLAGS+="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=<value_in_K>" ./configure
-
-To also hold every non-ionized particle fixed at a given temperature,
-bypassing Grackle's cooling/heating entirely for that phase too (combine with
-the flag above to reproduce STARBENCH's own idealized two-fixed-state
-assumption, no compression/shock heating of the neutral medium):
-CFLAGS+="-DIONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K=<value_in_K>" ./configure
+GEAR radiation debug flags, all via `CFLAGS+="..." ./configure`:
+`-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` (tagged gas never cools, so tags never
+expire), `-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=<K>` (flat
+T_i regardless of Z), `-DIONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K=<K>`
+(also pins neutral gas; with the previous flag this is STARBENCH's idealized
+two-state setup).
 
 ### Grackle cooling modes
-`--with-cooling=grackle_N` (N = 0, 1, 2, 3) sets the compile-time
-`COOLING_GRACKLE_MODE` macro (`configure.ac`, `AC_DEFINE_UNQUOTED`), which
-gates increasingly capable chemistry networks via `#if COOLING_GRACKLE_MODE
-> 0` / `> 1` / `> 2` preprocessor conditionals throughout
-`src/cooling/grackle/*.c`/`*.h` (0 = tabulated/equilibrium only, no species
-tracking; 1 = primordial H/He; 2 = + H2/H3+; 3 = + deuterium). A single
-built `swift` binary only contains the code for the mode it was configured
-with — code added under one mode's `#if` guard is never compiled, let alone
-tested, under another.
+`--with-cooling=grackle_N` sets `COOLING_GRACKLE_MODE` (0 = tabulated, no
+species; 1 = H/He; 2 = + H2; 3 = + D), which gates code via `#if
+COOLING_GRACKLE_MODE > N` throughout `src/cooling/grackle/`. A binary contains
+only its own mode's code. **Any change under `src/cooling/grackle/` must be
+compile-checked under all four modes** — a mode-gated line is otherwise never
+compiled, let alone tested. Reconfiguring rebuilds `swift` in place, so don't
+do it while a run depends on the current binary.
 
-**Any change to `src/cooling/grackle/`** must be verified to compile
-cleanly under all four modes before being considered done: reconfigure with
-each of `--with-cooling=grackle_0/1/2/3` in turn and `make -j$(nproc)`,
-watching for errors — particularly in or near code added inside a
-`COOLING_GRACKLE_MODE` guard, since a change that only touches the
-mode-N-and-above branch can still break compilation at a lower mode (e.g. a
-struct field only populated `#if COOLING_GRACKLE_MODE > 0` but read
-unconditionally). Reconfiguring rebuilds the `swift`/`swift_mpi` binaries in
-place — do this only when no other run (including background jobs in
-isolated directories that symlink to this tree's binary) still depends on
-the currently-built binary.
-
-### Key unit tests:
-- `tests/testRadiationRebuildCheck` — the subgrid-radiation rebuild criterion
-  (`cell_need_rebuild_for_radiation_pair`) and the
-  `cell_can_split_*_radiation_subgrid_task` predicates.
-- `tests/test27cellsStars` — the star neighbour loops over a 3x3x3 cell block
-  (guards the cell/task machinery the radiation loop mirrors).
-- Full suite: `cd tests && make check` (builds and runs every `TESTS` target).
-  Note: the whole `tests/` dir must compile — a missing
-  `$(GRACKLE_INCS)`/`$(SUNDIALS_INCS)` in `tests/Makefile.am` `AM_CFLAGS` will
-  break every test build, not just the new one.
+### Key unit tests
+- `tests/testRadiationRebuildCheck` — `cell_need_rebuild_for_radiation_pair`
+  and the `cell_can_split_*_radiation_subgrid_task` predicates.
+- `tests/test27cellsStars` — star neighbour loops over a 3x3x3 cell block.
+- Full suite: `cd tests && make check`.
 
 ## Task Completion: Definition of "Done"
 
-A task involving the task graph system (task types, subtypes, unskipping, dispatching) is complete when:
+A task touching the task graph (types, subtypes, unskipping, dispatch) is done when:
 
-1. **Build succeeds:** `make -j$(nproc)` exits with no errors.
-2. **Unit tests pass:** `cd tests && make check` exits 0 (at minimum build and
-   run `./testRadiationRebuildCheck` and `./test27cellsStars -n 3 -r 5`).
-3. **StrömgrenSphere simulation runs:** In
-   `examples/SubgridTests/SubgridRadiation/StromgrenSphere/`, BOTH `gas_mass=0.1 ./run.sh` and
-   `gas_mass=0.01 ./run.sh` complete to `time_end` ("main: done. Bye.") with
-   no crash/assertion under `--enable-debugging-checks` (gas_mass=0.01 is the
-   real bar — it reaches the tree depth and `radiation_level > hydro.super`
-   coarse case that gas_mass=0.1 never does). Run swift directly (not via the
-   `tee` pipe in run.sh, which masks the exit code) when checking for a crash.
-   Physics/correctness: build with `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING`,
-   then `examples/SubgridTests/SubgridRadiation/StromgrenSphere/hii_anisotropy_check.py` reports
-   0.00% un-ionized within the analysis radius at every star position (center
-   and cell corners, incl. periodic-seam corners).
+1. **Builds:** `make -j$(nproc)` clean.
+2. **Unit tests:** `./testRadiationRebuildCheck` and
+   `./test27cellsStars -n 3 -N 3 -r 5` both exit 0 (`-N` is required; omitting
+   it exits 1 on usage, not on a real failure). `make check` as a whole cannot
+   complete when configure picks `-march=core2 -mavx2` — `testKernel.c` needs
+   FMA, which `core2` lacks. Pre-existing and unrelated; run the two directly
+   and say so.
+3. **StrömgrenSphere runs:** in
+   `examples/SubgridTests/SubgridRadiation/StromgrenSphere/`, both
+   `gas_mass=0.1 ./run.sh` and `gas_mass=0.01 ./run.sh` reach `time_end` under
+   `--enable-debugging-checks`. `gas_mass=0.01` is the real bar (it alone hits
+   `radiation_level > hydro.super`). Invoke swift directly — run.sh's `tee`
+   pipe masks the exit code. Then build with
+   `-DIONIZATION_FEEDBACK_DEBUG_NO_COOLING` and check
+   `hii_anisotropy_check.py -s 'snap/snapshot_*.hdf5'` reports 0.00%
+   un-ionized in every octant (a glob, not one snapshot: the star dies at the
+   end and `h_hii` is legitimately 0 there).
+
+Criteria 1-3 all run under `IONIZATION_FEEDBACK_DEBUG_NO_COOLING`, which
+compiles out every path that depends on tags expiring. Work touching the
+**photon budget, tag lifetimes, or region maintenance** is therefore not
+covered by them and also needs:
+
+4. **A cooling-enabled run actually exercises maintenance.** Build without
+   `NO_COOLING`, with `CFLAGS+="-DSWIFT_DEBUG_CHECKS_VERBOSE"` *and*
+   `--enable-debugging-checks` (the verbose macro has no configure flag and
+   does not build alone — its blocks use `cell->cellID`). In the log, `held`
+   and `recomb photons` must both go non-zero, and the star must not pin at
+   `min_star_timestep`. `held` stuck at 0 all run = the mechanism silently
+   never ran. If `claimed` collapses to 0 while the `has NOT exhausted` line
+   still shows photons left, the gather is finding no eligible gas — check
+   `feedback_part_can_be_ionized`'s density/temperature gates against the
+   run's real gas state before blaming the budget.
+5. **Cadence-independence**, for any photon-budget or time-integration change:
+   `husmith2017_grackle_coupling` at `HII_rebuild_time_Myr` ∈ {0.5, 0.1, 0.03,
+   0.01, 0.003, 0.001}, `HII_adaptive_rebuild_cadence:0`, then
+   `hu_smith_analytic_check.py`. The six must agree — cadence is a numerical
+   parameter. Report the discarded-budget fraction too: at coarse cadence the
+   `max_ngbs` ceiling binds and caps how far agreement can extend.
+6. **Restart works**, for any change to the radiation sub-struct of
+   `feedback_spart_data` or to the radiation tables. Both have caused
+   restart-only segfaults.
+7. **All four Grackle modes compile**, for any change under
+   `src/cooling/grackle/`.
