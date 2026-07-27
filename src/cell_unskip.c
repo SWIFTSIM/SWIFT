@@ -2299,14 +2299,6 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
     }
 
     else if (t->type == task_type_pair) {
-      /* Check whether there was too much particle motion, i.e. the
-       cell neighbour conditions were violated. Use the radiation-specific
-       (h_hii-aware) check here: h_hii can grow far larger than the
-       ordinary stellar smoothing length between rebuilds, and the plain
-       cell_need_rebuild_for_stars_pair() check above is blind to that. */
-      if (cell_need_rebuild_for_radiation_pair(ci, cj)) rebuild = 1;
-      if (cell_need_rebuild_for_radiation_pair(cj, ci)) rebuild = 1;
-
       /* We only want to activate the task if the cell is active and is
          going to update some gas on the *local* node */
       if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
@@ -2323,6 +2315,13 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
       /* TODO: We need to activate the send and recv parts */
       if (e->nr_nodes > 1) error("MPI is not yet implemented");
 #endif
+    }
+
+    /* h_hii-aware rebuild check: must run for every pair, activated or not,
+       since h_hii can outgrow the ordinary stars rebuild check tracks. */
+    if (t->type == task_type_pair) {
+      if (cell_need_rebuild_for_radiation_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_radiation_pair(cj, ci)) rebuild = 1;
     }
     /* Nothing more to do here, all drifts and sorts activated above */
   }
