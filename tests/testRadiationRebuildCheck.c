@@ -114,6 +114,38 @@ int main(int argc, char *argv[]) {
         "cell_need_rebuild_for_radiation_pair failed to flag a rebuild "
         "after dx_max_part drift pushed the pair past the cell size.");
 
+  /* Case 5: h_hii_max sits in the 1.0x-radiation_search_radius_factor(x)
+   * band -- inside the search radius the runner actually uses
+   * (radiation_search_radius_factor * kernel_gamma * h_hii_max), but
+   * outside the unfactored kernel_gamma * h_hii_max the check used before
+   * the fold-in fix. Midpoint between 1.0 and the factor, so the case sits
+   * comfortably inside the band regardless of the factor's exact value. */
+  {
+    const float mid_factor = 0.5f * (1.0f + radiation_search_radius_factor);
+    const float dmin = 1.0f;
+    const float h_hii_band = dmin / (mid_factor * kernel_gamma);
+    setup_pair(&ci, &cj, dmin, /*stars_h_max=*/0.01f,
+               /*stars_h_hii_max=*/h_hii_band, /*hydro_h_max=*/0.01f,
+               /*stars_dx_max_part=*/0.0f, /*hydro_dx_max_part=*/0.0f);
+    if (kernel_gamma * h_hii_band >= dmin)
+      error(
+          "Test setup error: h_hii_band must sit BELOW the unfactored "
+          "threshold (kernel_gamma * h_hii_max < dmin) for this case to "
+          "discriminate the fold-in fix.");
+    if (kernel_gamma * radiation_search_radius_factor * h_hii_band <= dmin)
+      error(
+          "Test setup error: h_hii_band must sit ABOVE the factored "
+          "threshold (kernel_gamma * factor * h_hii_max > dmin) for this "
+          "case to discriminate the fold-in fix.");
+    if (!cell_need_rebuild_for_radiation_pair(&ci, &cj))
+      error(
+          "cell_need_rebuild_for_radiation_pair missed a rebuild for "
+          "h_hii_max in the 1.0x-factor(x) search-radius band: the check "
+          "must bound the SAME radius the runner searches with "
+          "(radiation_search_radius_factor * kernel_gamma * h_hii_max), "
+          "not the unfactored kernel_gamma * h_hii_max.");
+  }
+
   /* Now check cell_can_split_pair/self_radiation_subgrid_task(): radiation
    * must NEVER split once the cell is at or below hydro.super (non-NULL),
    * for any combination of the other fields (including small h_max/
@@ -167,8 +199,11 @@ int main(int argc, char *argv[]) {
         const int expect_geometric =
             c.split &&
             (space_stretch * kernel_gamma * c.hydro.h_max < 0.5f * c.dmin) &&
-            (space_stretch * kernel_gamma * c.stars.h_max < 0.5f * c.dmin) &&
-            (space_stretch * kernel_gamma * c.stars.h_hii_max <
+            (space_stretch * radiation_search_radius_factor * kernel_gamma *
+                 c.stars.h_max <
+             0.5f * c.dmin) &&
+            (space_stretch * radiation_search_radius_factor * kernel_gamma *
+                 c.stars.h_hii_max <
              0.5f * c.dmin) &&
             (space_stretch * kernel_gamma * c.sinks.h_max < 0.5f * c.dmin) &&
             (space_stretch * kernel_gamma * c.black_holes.h_max <

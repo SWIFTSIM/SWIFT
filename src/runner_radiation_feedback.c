@@ -165,7 +165,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
       max(c->stars.h_hii_max_active, c->stars.h_max_active) * kernel_gamma;
   const float max_search_radius = star_props->HII_max_search_radius;
   const float interaction_limit =
-      min(search_radius_factor * r_hii_max, max_search_radius);
+      min(radiation_search_radius_factor * r_hii_max, max_search_radius);
 
   /* Anything to do here? c->hydro.count == 0 is NOT included: a due star in
      a gas-free working-level cell must still reach
