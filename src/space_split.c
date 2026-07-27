@@ -617,20 +617,6 @@ struct space_split_cell_scratch {
   struct sink *sinks;
 };
 
-/** Timings accumulated across threadpool workers during the space split. */
-struct space_split_timings {
-  ticks allocate_fill;
-  ticks recursive;
-  ticks particle_sort;
-  ticks aggregate;
-};
-
-/** Extra data passed to the space-split threadpool mappers. */
-struct space_split_mapper_data {
-  struct space *s;
-  struct space_split_timings *timings;
-};
-
 /**
  * @brief Allocate a top-level cell's scratch space, one family at a time,
  *        sized to exactly the cell's counts.
@@ -914,8 +900,6 @@ static void space_split_move_leaf(
  *        already filled.
  * @param sink_buff This cell's slice of the sink sorting
  *        buffer, already filled.
- * @param particle_sort_ticks Time spent gathering particles according to the
- *        sorted buffers.
  */
 static void space_split_recursive(
     struct space *s, struct cell *c, struct part *restrict scratch_parts,
@@ -925,8 +909,7 @@ static void space_split_recursive(
     struct gpart *restrict scratch_gparts, int *restrict ind,
     struct cell_buff *restrict buff, struct cell_buff *restrict sbuff,
     struct cell_buff *restrict bbuff, struct cell_buff *restrict gbuff,
-    struct cell_buff *restrict sink_buff, const short int tpid,
-    ticks *particle_sort_ticks) {
+    struct cell_buff *restrict sink_buff, const short int tpid) {
 
   /* Unpack cell information. */
   const int count = c->hydro.count;
@@ -1052,9 +1035,9 @@ static void space_split_recursive(
         space_split_recursive(s, cp, progeny_scratch_parts,
                               progeny_scratch_xparts, progeny_scratch_sparts,
                               progeny_scratch_bparts, progeny_scratch_sinks,
-                               progeny_scratch_gparts, ind, progeny_buff,
-                               progeny_sbuff, progeny_bbuff, progeny_gbuff,
-                               progeny_sink_buff, tpid, particle_sort_ticks);
+                              progeny_scratch_gparts, ind, progeny_buff,
+                              progeny_sbuff, progeny_bbuff, progeny_gbuff,
+                              progeny_sink_buff, tpid);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -1082,11 +1065,9 @@ static void space_split_recursive(
   else {
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
-    const ticks tic = getticks();
     space_split_move_leaf(s, c, scratch_parts, scratch_xparts, scratch_sparts,
                           scratch_bparts, scratch_sinks, scratch_gparts, buff,
                           sbuff, bbuff, gbuff, sink_buff);
-    *particle_sort_ticks += getticks() - tic;
   }
 }
 
@@ -1174,21 +1155,15 @@ static void space_split_aggregate_recursive(struct space *s, struct cell *c) {
  *
  * @param map_data Pointer towards the top-cells.
  * @param num_cells The number of cells to treat.
- * @param extra_data Pointer to the #space_split_mapper_data.
+ * @param extra_data Pointer to the #space being split.
  */
 static void space_split_mapper(void *map_data, int num_cells,
                                void *extra_data) {
 
   /* Unpack the inputs. */
-  struct space_split_mapper_data *mapper_data =
-      (struct space_split_mapper_data *)extra_data;
-  struct space *s = mapper_data->s;
+  struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
-
-  ticks allocate_fill_ticks = 0;
-  ticks recursive_ticks = 0;
-  ticks particle_sort_ticks = 0;
 
   /* Threadpool id of current thread. */
   short int tpid = threadpool_gettid();
@@ -1211,37 +1186,28 @@ static void space_split_mapper(void *map_data, int num_cells,
     /* Allocate this cell's scratch (sort buffers + gather buffers), one
      * family at a time, sized to exactly its counts. */
     struct space_split_cell_scratch scratch;
-    ticks tic = getticks();
     space_split_alloc_cell_scratch(&scratch, c->hydro.count, c->grav.count,
                                    c->stars.count, c->black_holes.count,
                                    c->sinks.count);
-    allocate_fill_ticks += getticks() - tic;
     struct cell_buff *buff = scratch.buff, *gbuff = scratch.gbuff,
-                      *sbuff = scratch.sbuff, *bbuff = scratch.bbuff,
-                      *sink_buff = scratch.sink_buff;
+                     *sbuff = scratch.sbuff, *bbuff = scratch.bbuff,
+                     *sink_buff = scratch.sink_buff;
 
     /* Fill the sort buffers from the cell's own particles. */
-    tic = getticks();
     space_split_fill_buffers(c, buff, gbuff, sbuff, bbuff, sink_buff,
                              parts_offset, gparts_offset, sparts_offset,
                              bparts_offset, sinks_offset);
-    allocate_fill_ticks += getticks() - tic;
 
     /* Split this cell recursively, gathering each leaf's particles into
      * scratch as it is found. */
-    tic = getticks();
-    const ticks particle_sort_before = particle_sort_ticks;
     space_split_recursive(s, c, scratch.parts, scratch.xparts, scratch.sparts,
                           scratch.bparts, scratch.sinks, scratch.gparts,
                           scratch.ind, buff, sbuff, bbuff, gbuff, sink_buff,
-                          tpid, &particle_sort_ticks);
-    recursive_ticks += getticks() - tic -
-                       (particle_sort_ticks - particle_sort_before);
+                          tpid);
 
     /* This cell's entire subtree has now been gathered into scratch: copy each
      * family back into the real arrays, skipping any particle that was already
      * in its final slot (source index == final index). */
-    tic = getticks();
     for (int k = 0; k < c->hydro.count; k++) {
       if (buff[k].part_ind == (size_t)(parts_offset + k)) continue;
       c->hydro.parts[k] = scratch.parts[k];
@@ -1263,15 +1229,10 @@ static void space_split_mapper(void *map_data, int num_cells,
       if (gbuff[k].part_ind == (size_t)(gparts_offset + k)) continue;
       c->grav.parts[k] = scratch.gparts[k];
     }
-    particle_sort_ticks += getticks() - tic;
 
     /* Done with this cell -- free its scratch. */
     space_split_free_cell_scratch(&scratch);
   }
-
-  atomic_add(&mapper_data->timings->allocate_fill, allocate_fill_ticks);
-  atomic_add(&mapper_data->timings->recursive, recursive_ticks);
-  atomic_add(&mapper_data->timings->particle_sort, particle_sort_ticks);
 }
 
 /**
@@ -1280,18 +1241,15 @@ static void space_split_mapper(void *map_data, int num_cells,
  *
  * @param map_data Pointer to the start of a chunk of cell indices.
  * @param num_cells Number of indices in this chunk.
- * @param extra_data Pointer to the #space_split_mapper_data.
+ * @param extra_data Pointer to the #space being split.
  */
 static void space_split_aggregate_mapper(void *map_data, int num_cells,
                                          void *extra_data) {
 
   /* Unpack the inputs. */
-  struct space_split_mapper_data *mapper_data =
-      (struct space_split_mapper_data *)extra_data;
-  struct space *s = mapper_data->s;
+  struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
-  const ticks tic = getticks();
 
   /* Initialise some global information about the top-level m-poles */
   float min_a_grav = FLT_MAX;
@@ -1336,8 +1294,6 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
   atomic_max_f(&s->max_softening, max_softening);
   for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
     atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
-
-  atomic_add(&mapper_data->timings->aggregate, getticks() - tic);
 }
 
 /**
@@ -1363,8 +1319,6 @@ static void space_split_aggregate_mapper(void *map_data, int num_cells,
 void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
-  struct space_split_timings timings = {0, 0, 0, 0};
-  struct space_split_mapper_data mapper_data = {s, &timings};
 
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
@@ -1378,7 +1332,7 @@ void space_split(struct space *s, int verbose) {
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, &mapper_data);
+                 threadpool_auto_chunk_size, s);
   if (verbose)
     message("Split pass: %.3f %s.", clocks_from_ticks(getticks() - tic_split),
             clocks_getunit());
@@ -1395,21 +1349,12 @@ void space_split(struct space *s, int verbose) {
   threadpool_map(&s->e->threadpool, space_split_aggregate_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, &mapper_data);
+                 threadpool_auto_chunk_size, s);
   if (verbose)
     message("Aggregate pass: %.3f %s.",
             clocks_from_ticks(getticks() - tic_aggregate), clocks_getunit());
 
   if (verbose) {
-    message("Space split accumulated worker timings:");
-    message("  Buffer allocation + filling: %.3f %s.",
-            clocks_from_ticks(timings.allocate_fill), clocks_getunit());
-    message("  Recursive buffer decisions: %.3f %s.",
-            clocks_from_ticks(timings.recursive), clocks_getunit());
-    message("  Particle sorting from buffers: %.3f %s.",
-            clocks_from_ticks(timings.particle_sort), clocks_getunit());
-    message("  Cell-level aggregation: %.3f %s.",
-            clocks_from_ticks(timings.aggregate), clocks_getunit());
     message("Max tree depth after split: %d", s->maxdepth);
     message("Have %d cells including subcells (cell footprint: %zd MB)",
             s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
