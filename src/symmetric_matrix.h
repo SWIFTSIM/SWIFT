@@ -287,6 +287,14 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert(
   if (fabs(det) < 1e-12) {
     gsl_permutation_free(p);
     gsl_matrix_free(inverse);
+
+    M_inv->xx = 0.f;
+    M_inv->yy = 0.f;
+    M_inv->xy = 0.f;
+    M_inv->zz = 0.f;
+    M_inv->xz = 0.f;
+    M_inv->yz = 0.f;
+
     return 1;
   }
 
