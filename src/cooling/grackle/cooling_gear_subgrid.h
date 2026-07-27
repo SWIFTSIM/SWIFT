@@ -91,11 +91,20 @@ INLINE static int cooling_ionize_part_subgrid(
   hydro_set_physical_internal_energy_dt(p, cosmo, 0.f);
 
 #if COOLING_GRACKLE_MODE > 0
-  /* If we have the non-equilibrium cooling, we can also set these values
-and
-     let grackle solve the network. */
-  xp->cooling_data.HI_frac = 0.0;
-  xp->cooling_data.HII_frac = 1.0;
+  /* With the non-equilibrium network we can also set the ionization state
+     directly and let Grackle solve from there. Hydrogen becomes fully ionized
+     at fixed hydrogen mass fraction: HI + HII must still sum to X_H, which is
+     what cooling_get_hydrogen_mass_fraction() returns at this mode and what
+     Grackle receives in the species array. e_frac is a mass fraction scaled by
+     the proton mass (Grackle's convention, see cooling_first_init_part), so the
+     freed electrons are added at the same value. Incrementing rather than
+     recomputing keeps the helium (and, mode >= 2, molecular) contributions
+     Grackle last solved for, and makes both updates idempotent -- required,
+     since this runs every step for as long as the tag is held. */
+  const float HI_frac_ionized = xp->cooling_data.HI_frac;
+  xp->cooling_data.e_frac += HI_frac_ionized;
+  xp->cooling_data.HII_frac += HI_frac_ionized;
+  xp->cooling_data.HI_frac = 0.f;
 #endif
 
   /* Keep the particle flagged (and re-floored above, every step) until
@@ -181,7 +190,7 @@ INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
   const double mu = cooling_get_mean_molecular_weight(
       phys_const, us, cosmo, hydro_props, cooling, p, xp);
   const double T_o_internal =
-      (double)IONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K *
+      (double)IONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K /
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
   const float u_o = cooling_internal_energy_from_T(
       T_o_internal, mu, phys_const->const_boltzmann_k,
