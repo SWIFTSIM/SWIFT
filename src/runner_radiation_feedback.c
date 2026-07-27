@@ -362,6 +362,12 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
   struct hii_neighbor ngb_buffer[max_ngbs];
 
+  /* The 27-cell radiation_in stencil wired at build time only reaches dmin
+   * past the original interaction_limit -- growing dynamic_search_radius
+   * past that bound cannot find gas that isn't wired as a neighbour, no
+   * matter how large it gets. */
+  const float max_reachable_search_radius = interaction_limit + c->dmin;
+
   for (int i = 0; i < scount; i++) {
 
     /* Get a hold of the ith spart in ci. */
@@ -642,6 +648,17 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
          * would just re-search the identical volume, so stop. */
         if (num_radius_expansions >= max_radius_expansion_tries) break;
         if (dynamic_search_radius >= max_search_radius) break;
+        if (dynamic_search_radius >= max_reachable_search_radius) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+          message(
+              "Star %lld: radius expansion clamped at the reachable stencil "
+              "bound (dynamic_search_radius = %e, max_reachable = %e) -- "
+              "further growth cannot find gas the 27-cell radiation_in "
+              "stencil never wired as a neighbour.",
+              si->id, dynamic_search_radius, max_reachable_search_radius);
+#endif
+          break;
+        }
 
         /* A star already holding an equilibrium region gets one probe past
            it and no more: a pixel left with a sliver of budget never trips
@@ -657,8 +674,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           num_empty_expansions = 0;
         }
 
-        dynamic_search_radius = min(
-            dynamic_search_radius * radius_expansion_factor, max_search_radius);
+        dynamic_search_radius =
+            min3(dynamic_search_radius * radius_expansion_factor,
+                 max_search_radius, max_reachable_search_radius);
         ++num_radius_expansions;
       }
     }
