@@ -36,6 +36,7 @@ tau_IR are evaluated once from the initial state and assumed constant over
 the run -- valid here since stellar winds are off (mass fixed) and the run is
 far too short for the gas density near the star to evolve appreciably.
 """
+
 import argparse
 import glob
 
