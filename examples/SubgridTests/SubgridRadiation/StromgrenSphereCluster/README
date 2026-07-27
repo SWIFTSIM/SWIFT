@@ -25,4 +25,6 @@ The run.sh script calls the `makeIC_cluster.py` script with default values. Run 
 Type run.sh, and let's go!
 
 # Plotting
-`plot_gas_density.py` / `rhoTPlot.py` / `plot_projected_qty.py` are copied from `../StromgrenSphere/` unchanged. `plot_temperature_map.py` is new: a mass-weighted gas temperature projection (companion to `plot_gas_density.py`'s mass projection), same CLI convention (`-s snap/snapshot -i <snapshot index>`).
+`plot_gas_density.py` and `rhoTPlot.py` live in the shared
+`examples/GEAR_ICs_and_SCRIPTS/` directory; `plot_projected_qty.py` is copied
+from `../StromgrenSphere/` unchanged. `plot_temperature_map.py` is new: a mass-weighted gas temperature projection (companion to `plot_gas_density.py`'s mass projection), same CLI convention (`-s snap/snapshot -i <snapshot index>`).

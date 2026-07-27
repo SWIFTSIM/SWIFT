@@ -1,5 +1,8 @@
 #!/bin/bash
 
+
+# Shared GEAR example scripts (tables, plotting)
+scripts_location="../../../GEAR_ICs_and_SCRIPTS"
 # make run.sh fail if a subcommand fails. pipefail matters here specifically:
 # swift's own exit code is piped into `tee output.log`, and without it a
 # crashed/errored swift run still lets the pipeline "succeed" (tee's own
@@ -53,13 +56,13 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    "$scripts_location"/getGrackleCoolingTable.sh
 fi
 
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
-    ./getChemistryTable.sh
+    "$scripts_location"/getChemistryTable.sh
 fi
 
 # Create output directory
@@ -114,40 +117,40 @@ fi
 #Do some data analysis to show what's in this box
 
 # Gas density projection
-# python3 plot_gas_density.py -i 0 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 1 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 2 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 3 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 4 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 5 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 6 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 7 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 8 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 9 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 10 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 20 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 30 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 40 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 50 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 100 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 0 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 1 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 2 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 3 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 4 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 5 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 6 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 7 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 8 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 9 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 10 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 20 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 30 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 40 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 50 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 100 -s 'snap/snapshot'
 
 # # Phase space diagram
-# python3 rhoTPlot.py -i 0 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 1 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 2 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 3 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 4 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 5 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 6 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 7 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 8 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 9 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 10 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 20 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 30 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 40 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 50 -s 'snap/snapshot'
-# python3 rhoTPlot.py -i 100 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 0 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 1 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 2 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 3 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 4 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 5 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 6 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 7 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 8 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 9 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 10 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 20 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 30 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 40 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 50 -s 'snap/snapshot'
+# python3 "$scripts_location"/rhoTPlot.py -i 100 -s 'snap/snapshot'
 
 
 # # Internal energy projection
@@ -155,8 +158,8 @@ fi
 # python3 plot_projected_qty.py --qty "internal_energy" snap/snapshot_*0.hdf5 --log --vmin 2 --vmax 6
 
 # # Movies
-# # python3 rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
-# python3 plot_gas_density.py -i 0 -f 100 -s 'snap/snapshot'
+# # python3 "$scripts_location"/rhoTPlot.py -i 0 -f 100 -s 'snap/snapshot'
+# python3 "$scripts_location"/plot_gas_density.py -i 0 -f 100 -s 'snap/snapshot'
 
 
 if [ -z "$run_name" ]; then

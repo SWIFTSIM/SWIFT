@@ -1,5 +1,8 @@
 #!/bin/bash
 
+
+# Shared GEAR example scripts (tables, plotting)
+scripts_location="../../../GEAR_ICs_and_SCRIPTS"
 # make run.sh fail if a subcommand fails. pipefail matters here specifically:
 # swift's own exit code is piped into `tee output.log`, and without it a
 # crashed/errored swift run still lets the pipeline "succeed" (tee's own
@@ -63,13 +66,13 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    "$scripts_location"/getGrackleCoolingTable.sh
 fi
 
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
-    ./getChemistryTable.sh
+    "$scripts_location"/getChemistryTable.sh
 fi
 
 # Create output directory
