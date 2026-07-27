@@ -16,6 +16,8 @@ libtool
 build
 swift
 swift_mpi
+swift_fof
+swift_fof_mpi
 fof
 fof_mpi
 
@@ -43,6 +45,17 @@ examples/*/*/*.dot
 examples/**/cell_hierarchy.html
 examples/*/*/energy.txt
 examples/**/task_level.txt
+
+# Run outputs from examples nested deeper than examples/<group>/<example>/,
+# which the examples/*/*/ patterns above cannot reach (e.g.
+# examples/SubgridTests/SubgridRadiation/<Example>/).
+examples/**/restart/
+examples/**/*.png
+examples/**/task_level_*.txt
+examples/**/dependency_graph_*.csv
+examples/**/used_parameters.yml
+examples/**/unused_parameters.yml
+
 examples/*/*/timesteps_*.txt
 examples/**/timesteps.txt
 examples/**/SFR.txt
@@ -101,6 +114,7 @@ tests/swift_dopair_perturbed.dat
 tests/test27cells
 tests/test27cells_subset
 tests/test27cellsStars
+tests/testRadiationRebuildCheck
 tests/test27cellsStars_subset
 tests/testPeriodicBC
 tests/test125cells
