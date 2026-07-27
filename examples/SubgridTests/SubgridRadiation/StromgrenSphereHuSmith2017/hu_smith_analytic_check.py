@@ -27,10 +27,11 @@ not the full Bisbas et al. (2015, MNRAS 453, 1324, arXiv:1507.05621)
 Eqn 28-29 blend that name refers to in the single-source STARBENCH
 project itself (which reads ~20 pc here for the same configuration --
 its time-dependent blend weight was calibrated against single-source RHD
-sims and does not transfer to this multi-source case). Both are
-implemented and selectable via --reference; the blend is not plotted by
-default since it is not this example's actual validation target and would
-be misleading labeled "STARBENCH" here.
+sims and does not transfer to this multi-source case). All curves are
+computed and reported every run (the verdict follows --reference): the
+two conventions disagree by ~15-25% here, and a simulation bracketed by
+them is agreeing with the references to within their own systematic
+spread.
 
   Eqn 8  (Raga-I):  the exact pressure-driven thin-shell ODE (Spitzer's
                      closed-form solution is what you get by dropping the
@@ -47,9 +48,10 @@ Default config matches Hu et al. (2017) Appendix A's D-type convergence
 test: 4 co-located 19.2 Msun sources (Q_H~2.5e48/s each, ~1e49/s combined),
 n_H=100/cm3, t_end=8 Myr, at this code's own Z=0 ionized/neutral
 temperature floors (T_i~47500 K, T_o~1e3 K via SPH:minimal_temperature),
-not the papers' flat T_i=1e4 K -- the comparison is evaluated at whatever
-T_i/T_o this run actually used (--T-ionized-K/--T-neutral-K), not
-hardcoded to the papers' own numbers. See this example's README for the
+not the papers' flat T_i=1e4 K -- T_i is therefore MEASURED from the
+run's own tagged gas by default (override via --T-ionized-K, which warns
+on a >10% mismatch), and T_o via --T-neutral-K plus the measured
+precursor recheck. See this example's README for the
 box-size derivation and why Z=0 is used here instead of the
 Z/Zsun~0.231 workaround used elsewhere in this project.
 
@@ -357,6 +359,86 @@ def measure_precursor_temperature_K(filename, r_hii_pc, shell_width_pc=5.0):
         return float(np.median(T))
 
 
+def measure_ionized_temperature_K(files, min_count=20):
+    """Median temperature of the currently-tagged (ionized) gas, from the
+    latest snapshot holding at least min_count tagged particles.
+
+    The run's actual T_i depends on build flags
+    (IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K) and
+    metallicity; measuring it removes the silent tens-of-percent error of
+    computing the reference curves at a temperature the run never used.
+
+    @return (median T [K], source filename), or (None, None) if no
+    snapshot holds enough tagged gas.
+    """
+    for filename in reversed(files):
+        with h5py.File(filename, "r") as h:
+            gas = h["PartType0"]
+            ionized = gas["IsIonizedFlags"][:].astype(bool)
+            if np.sum(ionized) < min_count:
+                continue
+            u_L = h["Units"].attrs["Unit length in cgs (U_L)"][0]
+            u_t = h["Units"].attrs["Unit time in cgs (U_t)"][0]
+            u_to_cgs = (u_L / u_t) ** 2  # internal energy unit -> erg/g
+
+            if "HI" in gas:
+                inv_mu = (
+                    gas["HI"][ionized]
+                    + 2.0 * gas["HII"][ionized]
+                    + 0.25 * gas["HeI"][ionized]
+                    + 0.5 * gas["HeII"][ionized]
+                    + 0.75 * gas["HeIII"][ionized]
+                )
+                mu = 1.0 / np.clip(inv_mu, 1e-10, None)
+            else:
+                # No species arrays (COOLING_GRACKLE_MODE 0): this selection
+                # is fully ionized by construction, so use the fully-ionized
+                # primordial mu.
+                mu = 0.6
+
+            u_cgs = gas["InternalEnergies"][ionized] * u_to_cgs
+            gamma_m1 = 2.0 / 3.0
+            T = u_cgs * gamma_m1 * mu * const.m_p.cgs.value / const.k_B.cgs.value
+            return float(np.median(T)), filename
+    return None, None
+
+
+def resolve_T_ionized_K(requested_K, files):
+    """Return the T_i [K] the reference curves should be computed at.
+
+    None (the default) means "measure it from the run's own tagged gas".
+    An explicit value is honoured, but a loud warning fires when it
+    disagrees with the measured one by more than 10% -- the verdict below
+    is then a comparison against a curve the run never followed.
+    """
+    T_measured_K, source = measure_ionized_temperature_K(files)
+    if requested_K is None:
+        if T_measured_K is None:
+            raise RuntimeError(
+                "Could not measure T_i (no snapshot holds enough tagged "
+                "gas); pass --T-ionized-K explicitly."
+            )
+        print(
+            f"T_ionized          : {T_measured_K:.4g} K "
+            f"(measured from tagged gas, {source})"
+        )
+        return T_measured_K
+    if T_measured_K is not None and abs(T_measured_K / requested_K - 1.0) > 0.1:
+        print("\n" + "!" * 72)
+        print(
+            f"WARNING: --T-ionized-K {requested_K:.4g} K disagrees with the "
+            f"temperature this run actually holds its tagged gas at "
+            f"({T_measured_K:.4g} K, measured in {source})."
+        )
+        print(
+            "Every reference curve below is computed at a temperature the "
+            "run did not use, so the verdict is not meaningful. Omit "
+            "--T-ionized-K to use the measured value."
+        )
+        print("!" * 72 + "\n")
+    return requested_K
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -374,11 +456,13 @@ def main():
     parser.add_argument(
         "--T-ionized-K",
         type=float,
-        default=47500.0,
+        default=None,
         dest="T_ionized_K",
-        help="Applied ionized-gas temperature floor (default: 47500, this code's own "
-        "Z=0 floor). Pass 1e4 if this run instead used the Z/Zsun~0.231 workaround "
-        "to hit Hu/Smith's own convention.",
+        help="Ionized-gas temperature the reference curves are computed at. "
+        "Default: measured from the run's own tagged gas, which always "
+        "matches whatever build flag/metallicity convention the run used. "
+        "An explicit value overrides the measurement but warns loudly if "
+        "the two disagree by >10%%.",
     )
     parser.add_argument("--T-neutral-K", type=float, default=1e3, dest="T_neutral_K")
     parser.add_argument(
@@ -400,11 +484,11 @@ def main():
         "figures for this exact configuration (~25 pc by t=8 Myr) -- not "
         "the Bisbas et al. (2015) Eqn 28-29 blend that name refers to in "
         "the single-source STARBENCH project itself, which reads ~20 pc "
-        "here and is not plotted (misleading for this multi-source case; "
-        "its time-dependent weight was calibrated against single-source "
-        "RHD sims). Median error vs. Raga-II ~7%% here vs. ~34%% vs. the "
-        "blend. Pass --reference starbench or raga1 to check against "
-        "those instead. See README.",
+        "here (its time-dependent weight was calibrated against "
+        "single-source RHD sims). All curves are reported every run; a "
+        "simulation bracketed by Raga-II and the blend agrees with the "
+        "references to within their own ~15-25%% systematic spread. See "
+        "README.",
     )
     args = parser.parse_args()
 
@@ -412,15 +496,14 @@ def main():
         args.snapshot_glob
     )
     box_half_width = 0.5 * boxsize
+    T_ionized_K = resolve_T_ionized_K(args.T_ionized_K, files)
 
     # n_stars identical co-located sources: sum Q_H per star, not
     # Q_H(n_stars * mass) -- the fit is nonlinear in mass.
     Q_H = n_stars * ionizing_photon_rate(star_mass_msun)
-    alpha_B = alpha_b_hui_gnedin(args.T_ionized_K * u.K)
+    alpha_B = alpha_b_hui_gnedin(T_ionized_K * u.K)
     R_St = ((3 * Q_H / (4 * np.pi * alpha_B * n_H**2)) ** (1 / 3.0)).to(u.pc)
-    c_i = (np.sqrt(const.k_B * args.T_ionized_K * u.K / (0.5 * const.m_p))).to(
-        u.km / u.s
-    )
+    c_i = (np.sqrt(const.k_B * T_ionized_K * u.K / (0.5 * const.m_p))).to(u.km / u.s)
     c_o = (np.sqrt(const.k_B * args.T_neutral_K * u.K / const.m_p)).to(u.km / u.s)
 
     print(f"Star mass (each)   : {star_mass_msun:.3f} Msun x {n_stars} sources")
@@ -436,7 +519,7 @@ def main():
         R_St.to(u.pc).value,
         c_i.value,
         c_o.value,
-        T_i_K=args.T_ionized_K,
+        T_i_K=T_ionized_K,
         T_o_K=args.T_neutral_K,
     )
     R_ref, ref_label = {
@@ -490,6 +573,22 @@ def main():
         f"[{verdict} by median]"
     )
 
+    # The two published reference conventions (Raga-II vs the Bisbas blend)
+    # disagree by ~15-25% for this multi-source configuration, so a single
+    # median can read as FAIL while the run is bracketed by the references.
+    # Report all three, with the t_end error separately -- the late-time
+    # value is the equilibrium-quality number the window median dilutes
+    # with the unmodeled R-type onset.
+    print("\nAll reference curves over the same window (verdict uses --reference):")
+    for lbl, RC in (("Raga-I", R_I), ("Raga-II", R_II), ("STARBENCH blend", R_SB)):
+        RC_w = np.interp(t_w.to(u.Myr).value, t_grid.to(u.Myr).value, RC)
+        e = np.abs(r_w - RC_w) / RC_w
+        print(
+            f"  {lbl:16s}: median={np.median(e):.2%}  "
+            f"t_end={e[-1]:.2%} (t={t_w[-1]:.4g})  "
+            f"{np.sum(e <= args.tol)}/{len(e)} within tol"
+        )
+
     # Same window, but against the measured local precursor temperature
     # instead of the fixed far-field T_o: a real D-type front does
     # hydrodynamic work on the swept-up neutral gas ahead of it, heating a
@@ -510,7 +609,7 @@ def main():
             R_St.to(u.pc).value,
             c_i.value,
             c_o_precursor.value,
-            T_i_K=args.T_ionized_K,
+            T_i_K=T_ionized_K,
             T_o_K=T_precursor_K,
         )
         curve = curves_p[{"raga1": 0, "raga2": 1, "starbench": 2}[args.reference]]
@@ -548,12 +647,17 @@ def main():
     )
     ax.plot(t_grid, R_I, ":", color="grey", label="Raga-I (Eqn 8)")
     ax.plot(t_grid, R_II, "-", color="black", label="Raga-II (Eqn 11)")
-    # The Bisbas et al. (2015) Eqns 28-29 blend is NOT plotted here: Smith
-    # et al. (2021) Fig. 1 and Hu et al. (2017) both label a curve
-    # "STARBENCH" that matches Raga-II directly (~25 pc by t=8 Myr for
-    # this exact configuration), not this blend (which gives ~20 pc here)
-    # -- plotting the blend under a "STARBENCH" label would misrepresent
-    # what these papers actually compare against. See README.
+    # Labeled by its equations, NOT "STARBENCH": the curve Hu et al. (2017)
+    # and Smith et al. (2021) label "STARBENCH" is Raga-II above. The blend
+    # is plotted because the simulation typically lies between the two --
+    # the bracket is the honest statement of reference-model uncertainty.
+    ax.plot(
+        t_grid,
+        R_SB,
+        "--",
+        color="tab:blue",
+        label="Bisbas+15 blend (Eqns 28-29, single-source calibration)",
+    )
     ax.axhline(
         box_half_width.to(u.pc).value,
         color="firebrick",

@@ -267,6 +267,82 @@ def read_simulated_r_hii(snapshot_glob):
     )
 
 
+def measure_ionized_temperature_K(files, min_count=20):
+    """Median temperature of the currently-tagged (ionized) gas, from the
+    latest snapshot holding at least min_count tagged particles.
+
+    The run's actual T_i depends on build flags
+    (IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K) and
+    metallicity; measuring it removes the silent tens-of-percent error of
+    computing the reference at a temperature the run never used.
+
+    @return (median T [K], source filename), or (None, None) if no
+    snapshot holds enough tagged gas.
+    """
+    import h5py
+
+    for filename in reversed(files):
+        with h5py.File(filename, "r") as h:
+            gas = h["PartType0"]
+            ionized = gas["IsIonizedFlags"][:].astype(bool)
+            if np.sum(ionized) < min_count:
+                continue
+            u_L = h["Units"].attrs["Unit length in cgs (U_L)"][0]
+            u_t = h["Units"].attrs["Unit time in cgs (U_t)"][0]
+            u_to_cgs = (u_L / u_t) ** 2  # internal energy unit -> erg/g
+            if "HI" in gas:
+                inv_mu = (
+                    gas["HI"][ionized]
+                    + 2.0 * gas["HII"][ionized]
+                    + 0.25 * gas["HeI"][ionized]
+                    + 0.5 * gas["HeII"][ionized]
+                    + 0.75 * gas["HeIII"][ionized]
+                )
+                mu = 1.0 / np.clip(inv_mu, 1e-10, None)
+            else:
+                # No species arrays (COOLING_GRACKLE_MODE 0): this selection
+                # is fully ionized by construction, so use the fully-ionized
+                # primordial mu.
+                mu = 0.6
+            u_cgs = gas["InternalEnergies"][ionized] * u_to_cgs
+            gamma_m1 = 2.0 / 3.0
+            T = u_cgs * gamma_m1 * mu * const.m_p.cgs.value / const.k_B.cgs.value
+            return float(np.median(T)), filename
+    return None, None
+
+
+def resolve_T_ionized_K(requested_K, files):
+    """Return the T_i [K] the reference is computed at: the measured value
+    by default (requested_K is None), or the explicit one with a loud
+    warning when it disagrees with the measurement by more than 10%."""
+    T_measured_K, source = measure_ionized_temperature_K(files)
+    if requested_K is None:
+        if T_measured_K is None:
+            raise RuntimeError(
+                "Could not measure T_i (no snapshot holds enough tagged "
+                "gas); pass --T-ionized-K explicitly."
+            )
+        print(
+            f"T_ionized          : {T_measured_K:.4g} K "
+            f"(measured from tagged gas, {source})"
+        )
+        return T_measured_K
+    if T_measured_K is not None and abs(T_measured_K / requested_K - 1.0) > 0.1:
+        print("\n" + "!" * 72)
+        print(
+            f"WARNING: --T-ionized-K {requested_K:.4g} K disagrees with the "
+            f"temperature this run actually holds its tagged gas at "
+            f"({T_measured_K:.4g} K, measured in {source})."
+        )
+        print(
+            "The reference below is computed at a temperature the run did "
+            "not use, so the verdict is not meaningful. Omit --T-ionized-K "
+            "to use the measured value."
+        )
+        print("!" * 72 + "\n")
+    return requested_K
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -290,17 +366,20 @@ def main():
     parser.add_argument(
         "--T-ionized-K",
         type=float,
-        default=47500.0,
+        default=None,
         dest="T_ionized_K",
-        help="Applied ionized-gas temperature floor to evaluate alpha_B and "
-        "c_s at (default: 47500, this code's own Z=0 floor -- see the "
-        "module docstring above alpha_b_hui_gnedin). Pass 1e4 for a run "
-        "at the Z/Zsun~0.231 metallicity that reproduces the papers' "
-        "classical 1e4 K convention.",
+        help="Ionized-gas temperature alpha_B and c_s are evaluated at. "
+        "Default: measured from the run's own tagged gas, which always "
+        "matches whatever build flag/metallicity convention the run used. "
+        "An explicit value overrides the measurement but warns loudly if "
+        "the two disagree by >10%%.",
     )
     args = parser.parse_args()
+    T_ionized_K = resolve_T_ionized_K(
+        args.T_ionized_K, sorted(glob.glob(args.snapshot_glob))
+    )
 
-    T_IONIZED_K = args.T_ionized_K * u.K
+    T_IONIZED_K = T_ionized_K * u.K
     ALPHA_B = alpha_b_hui_gnedin(T_IONIZED_K)
     C_S_IONIZED = sound_speed_ionized(T_IONIZED_K)
 

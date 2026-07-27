@@ -36,6 +36,8 @@ Override any parameter via the matching env var, e.g. `gas_mass=0.5 ./run.sh` --
 
 # Checking
 ```
-python3 hu_smith_analytic_check.py -s "snap/snapshot_*.hdf5" --T-ionized-K 1e4
+python3 hu_smith_analytic_check.py -s "snap/snapshot_*.hdf5"
 ```
-Drop `--T-ionized-K 1e4` if built without the CFLAGS forcing flag above.
+T_i is measured from the run's own tagged gas, so the same command is
+correct with or without the CFLAGS forcing flag above; pass
+`--T-ionized-K` only to override the measurement (it warns on mismatch).
