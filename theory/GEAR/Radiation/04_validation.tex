@@ -15,6 +15,17 @@ neither paper tests rate-coupling, so that check is a self-consistency/
 robustness validation against basic photoionization equilibrium physics,
 not a fourth published target.
 
+\textbf{2026-07-27 update}: a cadence sweep (varying
+\code{GEARFeedback:HII\_rebuild\_time\_Myr} at fixed resolution) found the
+per-pass ionizing-photon budget was cadence-\emph{dependent} -- a
+rate-vs-rate comparison with no time integration, and already-ionized gas
+invisible to the budget entirely. Root-caused and fixed with a photon-count
+budget integrated over the elapsed interval (Section~\ref{sec:husmith-current}
+below); STARBENCH and Hu/Smith were both re-checked against the fix. The
+pre-fix numbers this document previously reported are moved to
+Section~\ref{sec:deprecated-2026-07-27} rather than deleted, since they
+remain a valid record of what was true of the code at the time.
+
 \subsection{Validation targets: summary}
 \label{sec:validation-targets}
 
@@ -22,26 +33,30 @@ not a fourth published target.
 \centering
 \begin{tabular}{p{2.6cm}p{3.4cm}p{5.7cm}}
 \hline
-\textbf{Target} & \textbf{Example} & \textbf{Status} \\
+\textbf{Target} & \textbf{Example} & \textbf{Status (2026-07-27)} \\
 \hline
 1. STARBENCH (Bisbas et al.\ 2015) &
   \code{StromgrenSphereStarbench} &
-  \textbf{PASS, 6.12\% error}. Section~\ref{sec:starbench-current}. \\
+  \textbf{PASS, 2.51\% error} (validated resolution/cadence, re-checked
+  post count-budget redesign). Section~\ref{sec:starbench-current}. \\
 \hline
 2. Hu et al.\ (2017) / Smith et al.\ (2021), 4 co-located stars &
   \code{StromgrenSphereHuSmith2017} &
-  \textbf{PASS, median 6.89\%}, against Raga-II.
-  Section~\ref{sec:husmith-current}. \\
+  \textbf{Cadence-independence PASS} (six cadences agree to within
+  $\sim$1\,pp); \textbf{absolute accuracy FAIL} (median 17--18\% at
+  converged cadence, at a coarser resolution than the validated
+  default -- see caveats). Section~\ref{sec:husmith-current}. \\
 \hline
 3. Smith et al.\ (2021), Fig.~2 clump &
   \code{StromgrenSphereClumpSmith2021} &
-  \textbf{PASS, by eye and cross-scheme consistency} (no single
-  quantitative number in the paper to match against).
+  \textbf{PASS as of 2026-07-22} (by eye and cross-scheme consistency);
+  \textbf{not yet re-checked} against the count-budget redesign.
   Section~\ref{sec:clump-current}. \\
 \hline
 \end{tabular}
 \caption{The three published validation targets and their owning
-  example.}
+  example. Pre-2026-07-27 numbers are archived in
+  Section~\ref{sec:deprecated-2026-07-27}.}
 \label{tab:validation-targets}
 \end{table}
 
@@ -74,89 +89,202 @@ README documents the flag.
 \subsection{STARBENCH (Bisbas et al.\ 2015)}
 \label{sec:starbench-current}
 
-\textbf{PASS, 6.12\% error.} Validated configuration: committed
+\textbf{PASS, 2.51\% error (re-checked 2026-07-27, post count-budget
+redesign).} Validated configuration, unchanged from before: committed
 \code{StromgrenSphereStarbench/run.sh}/\code{params.yml}
 ($26.75\,M_\odot$ star, $Q_H=10^{49}\,{\rm s^{-1}}$,
-$n_H=3346\,{\rm cm^{-3}}$, $10\,$pc box, purely hydrodynamical) built
-with \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}.
+$n_H=3346\,{\rm cm^{-3}}$, $10\,$pc box, purely hydrodynamical,
+$769{,}842$ particles, its own documented adaptive rebuild cadence)
+built with \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}.
 Checked against Bisbas et al.\ (2015) Eqns 8/11/28/29
-(\code{starbench\_analytic\_check.py}, 10\% tolerance):
-$r_{\rm sim}=2.384\,$pc vs.\ $R_{\rm SB}=2.247\,$pc at $t=3\,$Myr,
-\textbf{6.12\% error}, for the full run (never exceeds the $5\,$pc box
-half-width or the $4.9\,$pc search-radius ceiling).
+(\code{starbench\_analytic\_check.py} with \texttt{--T-ionized-K 1e4}, 10\% tolerance):
+$r_{\rm sim}=2.19\,$pc vs.\ $R_{\rm SB}=2.247\,$pc at $t=3\,$Myr,
+\textbf{2.51\% error} -- better than the pre-redesign 4.00\%/6.12\%
+(Section~\ref{sec:deprecated-2026-07-27}), a genuine improvement, not
+just a non-regression. Run to completion in 4459.8\,s ($\sim$1h14m),
+same build/thread count as the pre-redesign timing measurements.
 
 \begin{figure}[h]
   \centering
-  \includegraphics[width=0.8\linewidth]{Figures/starbench_restart_ti1e4_2026-07-21_check}
-  \caption{STARBENCH check: committed defaults plus $T_i=10^4\,$K
-    forced at compile time. PASS, 6.12\% error at $t=3\,$Myr.}
-  \label{fig:starbench-restart-ti1e4}
+  \includegraphics[width=0.8\linewidth]{Figures/starbench_count_budget_2026-07-27_check}
+  \caption{STARBENCH check, count-budget redesign (commit
+    9d585c42e): committed defaults plus $T_i=10^4\,$K forced at
+    compile time. PASS, 2.51\% error at $t=3\,$Myr.}
+  \label{fig:starbench-count-budget}
 \end{figure}
 
-\textbf{Caveat}: the plain default build (no compile flag) gives this
-code's natural, metallicity-dependent $T_i\approx47{,}500\,$K instead
-of STARBENCH's flat $10^4\,$K convention (Section~\ref{sec:metallicity})
-and FAILs at 22.76\% -- the compile flag is required to reproduce this
-result, not optional.
-
-\textbf{Search-radius mechanism verified not binding}:
-\code{HIIRegionRadii}$(t)$ grows smoothly to its natural equilibrium at
-$2.46\,$pc by $t\approx0.93\,$Myr, with per-step growth factors
-decelerating monotonically (never hitting
-\code{Stars:HII\_max\_radius\_expansion\_tries} or
-\code{Stars:HII\_max\_retry\_full\_buffer}), then holds flat for the
-remaining $\sim2\,$Myr -- well short of the $4.9\,$pc ceiling.
+\textbf{\code{HIIRegionRadii}$(t)$ shape changed, as intended by the
+redesign}: the region now peaks around $t\approx1.5\,$Myr and recedes
+afterward (e.g.\ $2.24\to2.52\to2.18\to1.93\,$pc at
+$t=0.73,1.52,2.30,3.00\,$Myr), instead of the pre-redesign
+monotone growth-then-plateau shape (Section~\ref{sec:deprecated-2026-07-27}).
+This is the count-budget redesign's budget-gated Phase~1 maintenance
+letting the region genuinely shrink when its upkeep cost exceeds
+income, not a regression -- see Section~\ref{sec:husmith-current}
+below for the mechanism. Still comfortably short of the $5\,$pc box
+half-width and the $4.9\,$pc search-radius ceiling throughout.
 
 \subsection{Hu et al.\ (2017)/Smith et al.\ (2021), 4-star}
 \label{sec:husmith-current}
 
-\textbf{PASS, median 6.89\% error.} Validated configuration: committed
-\code{StromgrenSphereHuSmith2017/run.sh}/\code{params.yml} (4 co-located
-$19.2\,M_\odot$ sources, $\dot N_{\rm ion}\approx2.5\times10^{48}\,{\rm
-s^{-1}}$ each, uniform $n_H\approx107\,{\rm cm^{-3}}$ background,
-$617{,}851$ particles at the default \code{gas\_mass=4}) built with
-\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}.
+\textbf{Cadence-independence PASS; absolute-accuracy FAIL (median
+17--18\% at converged cadence).} This target is where the
+2026-07-27 cadence-dependence bug was actually found: a diagnostic
+sweep varying \code{GEARFeedback:HII\_rebuild\_time\_Myr} at fixed
+resolution showed the simulated $r_{\rm HII}(t)$ curve depended on how
+often the region was rebuilt -- a numerical parameter, not a physical
+one, must not change the answer. Root cause
+(\code{feedback\_iact\_HII\_ionization}, \code{feedback\_common.c}): the
+per-pixel budget compared a bare \emph{rate} (a candidate's steady-state
+recombination need) against a bare \emph{rate} budget
+(\code{dot\_N\_ion\_pix}), with no time interval anywhere, and
+already-ionized gas was charged nothing to stay ionized -- every pass
+handed out a full rate's worth of photons regardless of elapsed time,
+and the ionized volume could grow without bound as the cadence was
+refined.
 
-Hu et al.\ (2017, Fig.~A1) and Smith et al.\ (2021, Fig.~1) both plot a
-curve labeled ``STARBENCH'' for this exact configuration -- this is
-Hosokawa \& Inutsuka (2006)'s shell-inertia equation (``Raga-II'', Eqn
-11), not the full Bisbas et al.\ (2015) blend (Eqns 28--29): the
-papers' own curve reaches $\sim\!25\,$pc by $t=8\,$Myr, matching
-Raga-II directly, not the blend's $\sim\!20\,$pc for the same inputs.
-Checked against Raga-II: \textbf{median 6.89\% error} (min 3.69\%,
-70/82 snapshots within the 10\% tolerance).
+\textbf{Fix} (commits \code{1de90f62d}--\code{9d585c42e}): a photon
+\emph{count} budget, \code{N\_ion\_budget\_pix} = (emission rate)
+$\times\, \Delta t_{\rm back}$ (the interval since this star's previous
+rebuild pass), spent in two phases each pass -- Phase~1 charges
+recombination upkeep for gas already held ionized (budget-gated, so a
+region can now genuinely recede, Section~\ref{sec:starbench-current}),
+Phase~2 claims new candidates against what Phase~1 left, including a
+one-off $N_H$ cost (stripping a fresh candidate's electrons) that the
+pre-fix code omitted entirely. The $N_H+\Delta t_{\rm back}\times{\rm
+rate}$ claim cost is exactly backward Euler on
+$dS/dt=(Q-S)/t_{\rm rec}$, unconditionally stable at the $\Delta t
+\gg t_{\rm rec}$ the default cadence produces. A per-pixel photon
+overdraft (the one boundary particle a pass cannot fully afford) is now
+carried forward as debt rather than forgiven every pass, and the
+probabilistic-boundary RNG roll is keyed per (star, pixel) rather than
+per candidate, both closing separate routes back to the same
+cadence-dependence failure mode.
+
+\textbf{Cadence-independence result}: six fixed values of
+\code{HII\_rebuild\_time\_Myr} -- 0.5, 0.1, 0.03, 0.01, 0.003, and
+0.001\,Myr --
+(\code{HII\_adaptive\_rebuild\_cadence=0} forced, \code{gas\_mass=20},
+$123{,}571$ particles), checked against Raga-II with the correct
+reference temperature (\code{hu\_smith\_analytic\_check.py} with
+\texttt{--T-ionized-K 1e4} -- see the caveat below):
+
+\begin{center}
+\begin{tabular}{lrrr}
+\hline
+Cadence [Myr] & median error & min & max \\
+\hline
+0.5   & 31.75\% & 18.09\% & 47.56\% \\
+0.1   & 20.49\% &  1.55\% & 27.83\% \\
+0.03  & 18.07\% &  0.47\% & 67.33\% \\
+0.01  & 18.41\% &  0.13\% & 39.20\% \\
+0.003 & 17.28\% &  1.45\% & 67.35\% \\
+0.001 & 17.34\% &  0.15\% & 91.06\% \\
+\hline
+\end{tabular}
+\end{center}
+The four finest cadences agree with each other to within
+$\sim$1 percentage point -- cadence-independence achieved. The 0.5 and,
+to a lesser extent, 0.1\,Myr points sit higher: at coarse cadence the
+per-pass budget (rate $\times\Delta t_{\rm back}$) can exceed what a
+single pass can actually spend, bounded by \code{Stars:HII\_max\_ngbs}
+and its retry/radius-expansion ceiling -- a separate, known scope limit
+(unspent photons past that ceiling are discarded, biasing coarse
+cadence toward undershoot), not a budget-arithmetic error. This is
+expected to bind less at production's coarser mass resolution
+(fewer gas neighbours per HII region than this fine-resolution
+idealized test), a question for the planned
+IsolatedGalaxy/HomogeneousBox tests, not this idealized one.
 
 \begin{figure}[h]
   \centering
-  \includegraphics[width=0.8\linewidth]{Figures/husmith_restart_ti1e4_2026-07-21_check}
-  \caption{Hu/Smith 4-star check: committed defaults plus $T_i=10^4\,$K
-    forced at compile time, checked against Raga-II. PASS, median
-    6.89\%.}
-  \label{fig:husmith-restart-ti1e4}
+  \includegraphics[width=0.8\linewidth]{Figures/husmith_cadence0p001_2026-07-27_check}
+  \caption{Hu/Smith 4-star check, count-budget redesign, fixed cadence
+    $0.001\,$Myr (representative of the four converged cadences),
+    checked against Raga-II with the correct reference temperature
+    ($T_i=10^4\,$K). Median 17.34\%, still FAIL vs.\ the 10\% tolerance;
+    cadence-independence is the property this sweep tests, not this
+    absolute number.}
+  \label{fig:husmith-cadence-0p001}
 \end{figure}
 
-\code{hu\_smith\_analytic\_check.py} defaults to \code{--reference
-raga2}; Raga-I and the Bisbas et al.\ blend remain available via
-\code{--reference \{raga1,starbench\}} for comparison, but are not
-labeled ``STARBENCH'' in the figure.
+\textbf{Caveats on the absolute-accuracy number}: two, both making the
+17--18\% figure \emph{not} directly comparable to the pre-redesign
+6.89\% (Section~\ref{sec:deprecated-2026-07-27}). (1) \emph{Reference
+temperature}: \code{hu\_smith\_analytic\_check.py}'s
+\texttt{--T-ionized-K}
+defaults to $47{,}500\,$K (this code's natural, no-debug-flag $Z=0$
+value), not the $10^4\,$K the sweep's build actually used
+(\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4},
+matching this example's own documented validated configuration and
+README) -- omitting \texttt{--T-ionized-K 1e4} silently compares the
+simulation against the wrong reference curve and was responsible for
+essentially all of an initially-measured $\sim$60\% median error; the
+numbers above already include the fix. (2) \emph{Resolution and
+cadence mode}: this sweep ran at \code{gas\_mass=20} ($123{,}571$
+particles), the coarser of the two resolutions this document has
+tested (Section~\ref{sec:deprecated-2026-07-27} notes \code{gas\_mass=20}
+already degraded late-time accuracy under the pre-redesign code, at
+fixed cadence), and forced \code{HII\_adaptive\_rebuild\_cadence=0} to
+isolate cadence as the only varying quantity -- not the validated
+\code{gas\_mass=4}/adaptive-cadence default. \textbf{Not yet done}: a
+like-for-like re-validation at \code{gas\_mass=4} and adaptive cadence
+with the redesigned code.
 
-\textbf{Search-radius mechanism verified not binding}: each star's
-\code{HIIRegionRadii}$(t)$ grows steadily to $\sim\!27.7\,$pc by
-$t\approx7.8\,$Myr, still rising, comfortably below the $40\,$pc
-ceiling.
+\subsubsection{Multi-source ownership: investigated, not the dominant
+effect at this cadence}
+\label{sec:husmith-ownership}
 
-\textbf{Resolution}: \code{gas\_mass=4} (default, $617{,}851$ particles)
-is the validated resolution. A coarser \code{gas\_mass=20} run
-($123{,}571$ particles) still passes by aggregate median (5.58\%), but
-its late-time error climbs past the 10\% tolerance from
-$t\approx7.4\,$Myr onward and does not recover, unlike the finer
-default run -- the expected convergence direction (finer resolution
-tracks Raga-II more faithfully at late times).
+The 4 sources here are exactly co-located (Hu et al.\ 2017's own test
+setup); ownership of a gas particle is first-come-first-served
+(\code{star\_id} written at tag time, checked by
+\code{radiation\_is\_part\_tagged\_as\_ionized(pj,xpj) \&\&
+radiation\_get\_part\_ionized\_star\_id(pj,xpj)==star\_id}), so an
+unfairness between the 4 owners was a natural suspect for part of the
+residual above. Checked directly: each star's own
+\code{HIIRegionRadii}/\code{HIIRegionMasses} in the $0.001\,$Myr run,
+across the four sources, at $t=0.98,2.93,4.89,8.00\,$Myr:
+
+\begin{center}
+\begin{tabular}{lrrrrr}
+\hline
+$t$ [Myr] & \multicolumn{4}{c}{$h_{\rm HII}$ [pc], one column per star} & spread \\
+\hline
+0.98 & 9.0 & 9.1 & 10.1 & 8.6 & 15.6\% \\
+2.93 & 14.3 & 14.0 & 13.9 & 13.9 & 2.9\% \\
+4.89 & 17.3 & 17.9 & 18.0 & 17.8 & 4.2\% \\
+8.00 (final) & 24.1 & 24.0 & 24.1 & 24.2 & 0.9\% \\
+\hline
+\end{tabular}
+\end{center}
+(spread = $(\max-\min)/{\rm mean}$ across the four stars.) The four
+co-located stars track each other closely throughout, and the spread
+between them \emph{narrows} over time -- 15.6\% at the earliest
+snapshot checked (small radii, small-number statistics) down to under
+1\% by $t=8\,$Myr -- with no single star systematically lagging or
+racing ahead over $\sim$8000 rebuild passes. \textbf{This argues against a
+large, dominant ownership-fairness pathology at this (fine, converged)
+cadence.} A subtler, cadence-coupled mechanism remains plausible but is
+\textbf{not yet isolated}: within one pass the 4 co-located stars are
+processed sequentially (not concurrently), sharing the same cell and
+the same \code{interaction\_limit}, but each one's \emph{own} Phase~2
+gather must search past every earlier star's already-claimed inner
+shell within the same fixed \code{Stars:HII\_max\_ngbs}/retry budget --
+a later-processed star is specifically more exposed to the reach
+ceiling than an equivalent single source would be. This would worsen
+exactly where the reach ceiling is already known to bind (coarse
+cadence), consistent with the observed trend (31.75\% at $0.5\,$Myr
+vs.\ 17.34\% at $0.001\,$Myr) -- but is not yet separated from the
+already-understood single-source reach-ceiling effect
+(Section~\ref{sec:starbench-current} has no such effect to compare
+against, being single-source) as a distinct, quantified contributor.
 
 \subsection{Smith et al.\ (2021) clump}
 \label{sec:clump-current}
 
-\textbf{PASS.} \code{StromgrenSphereClumpSmith2021}
+\textbf{PASS as of 2026-07-22.} \textbf{Not yet re-checked} against the
+2026-07-27 count-budget redesign (Section~\ref{sec:husmith-current}) --
+every run below predates it. \code{StromgrenSphereClumpSmith2021}
 (four co-located $19.2\,M_\odot$ sources, $10\,$pc-radius $10^4\,{\rm
 cm^{-3}}$ clump $20\,$pc from the sources in a $100\,{\rm cm^{-3}}$
 background), built with
@@ -486,3 +614,103 @@ $T_i$.
 
 T5 remains off by default (\code{GEARFeedback:HII\_couple\_ionization\_rate=0}),
 so none of this affects the three PASS verdicts above.
+
+\subsection{Deprecated results (2026-07-27)}
+\label{sec:deprecated-2026-07-27}
+
+Numbers and figures below were superseded by the count-budget redesign
+(Section~\ref{sec:husmith-current}) and its STARBENCH re-check
+(Section~\ref{sec:starbench-current}). Kept as a record of what was
+true of the code before 2026-07-27, not deleted -- do not cite these
+as current status.
+
+\subsubsection{STARBENCH, pre-redesign (was Section~\ref{sec:starbench-current})}
+
+\textbf{PASS, 6.12\% error.} Validated configuration: committed
+\code{StromgrenSphereStarbench/run.sh}/\code{params.yml}
+($26.75\,M_\odot$ star, $Q_H=10^{49}\,{\rm s^{-1}}$,
+$n_H=3346\,{\rm cm^{-3}}$, $10\,$pc box, purely hydrodynamical) built
+with \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}.
+Checked against Bisbas et al.\ (2015) Eqns 8/11/28/29
+(\code{starbench\_analytic\_check.py}, 10\% tolerance):
+$r_{\rm sim}=2.384\,$pc vs.\ $R_{\rm SB}=2.247\,$pc at $t=3\,$Myr,
+\textbf{6.12\% error}, for the full run (never exceeds the $5\,$pc box
+half-width or the $4.9\,$pc search-radius ceiling).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/starbench_restart_ti1e4_2026-07-21_check}
+  \caption{[Deprecated 2026-07-27, pre-count-budget-redesign] STARBENCH
+    check: committed defaults plus $T_i=10^4\,$K forced at compile
+    time. PASS, 6.12\% error at $t=3\,$Myr.}
+  \label{fig:starbench-restart-ti1e4}
+\end{figure}
+
+\textbf{Caveat}: the plain default build (no compile flag) gives this
+code's natural, metallicity-dependent $T_i\approx47{,}500\,$K instead
+of STARBENCH's flat $10^4\,$K convention (Section~\ref{sec:metallicity})
+and FAILs at 22.76\% -- the compile flag is required to reproduce this
+result, not optional.
+
+\textbf{Search-radius mechanism verified not binding}:
+\code{HIIRegionRadii}$(t)$ grows smoothly to its natural equilibrium at
+$2.46\,$pc by $t\approx0.93\,$Myr, with per-step growth factors
+decelerating monotonically (never hitting
+\code{Stars:HII\_max\_radius\_expansion\_tries} or
+\code{Stars:HII\_max\_retry\_full\_buffer}), then holds flat for the
+remaining $\sim2\,$Myr -- well short of the $4.9\,$pc ceiling. (Under
+the redesign this shape changed to grow-then-recede,
+Section~\ref{sec:starbench-current}.)
+
+\subsubsection{Hu/Smith 4-star, pre-redesign (was Section~\ref{sec:husmith-current})}
+
+\textbf{PASS, median 6.89\% error.} Validated configuration: committed
+\code{StromgrenSphereHuSmith2017/run.sh}/\code{params.yml} (4 co-located
+$19.2\,M_\odot$ sources, $\dot N_{\rm ion}\approx2.5\times10^{48}\,{\rm
+s^{-1}}$ each, uniform $n_H\approx107\,{\rm cm^{-3}}$ background,
+$617{,}851$ particles at the default \code{gas\_mass=4}) built with
+\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}.
+\textbf{This is the validated resolution (\code{gas\_mass=4}); the
+2026-07-27 cadence sweep in Section~\ref{sec:husmith-current} instead
+used the coarser \code{gas\_mass=20}} (see below).
+
+Hu et al.\ (2017, Fig.~A1) and Smith et al.\ (2021, Fig.~1) both plot a
+curve labeled ``STARBENCH'' for this exact configuration -- this is
+Hosokawa \& Inutsuka (2006)'s shell-inertia equation (``Raga-II'', Eqn
+11), not the full Bisbas et al.\ (2015) blend (Eqns 28--29): the
+papers' own curve reaches $\sim\!25\,$pc by $t=8\,$Myr, matching
+Raga-II directly, not the blend's $\sim\!20\,$pc for the same inputs.
+Checked against Raga-II: \textbf{median 6.89\% error} (min 3.69\%,
+70/82 snapshots within the 10\% tolerance).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/husmith_restart_ti1e4_2026-07-21_check}
+  \caption{[Deprecated 2026-07-27, pre-count-budget-redesign] Hu/Smith
+    4-star check: committed defaults plus $T_i=10^4\,$K forced at
+    compile time, checked against Raga-II. PASS, median 6.89\%.}
+  \label{fig:husmith-restart-ti1e4}
+\end{figure}
+
+\code{hu\_smith\_analytic\_check.py} defaults to \code{--reference
+raga2}; Raga-I and the Bisbas et al.\ blend remain available via
+\code{--reference \{raga1,starbench\}} for comparison, but are not
+labeled ``STARBENCH'' in the figure.
+
+\textbf{Search-radius mechanism verified not binding}: each star's
+\code{HIIRegionRadii}$(t)$ grows steadily to $\sim\!27.7\,$pc by
+$t\approx7.8\,$Myr, still rising, comfortably below the $40\,$pc
+ceiling.
+
+\textbf{Resolution}: \code{gas\_mass=4} (default, $617{,}851$ particles)
+is the validated resolution. A coarser \code{gas\_mass=20} run
+($123{,}571$ particles) still passes by aggregate median (5.58\%), but
+its late-time error climbs past the 10\% tolerance from
+$t\approx7.4\,$Myr onward and does not recover, unlike the finer
+default run -- the expected convergence direction (finer resolution
+tracks Raga-II more faithfully at late times). \textbf{This is the same
+\code{gas\_mass=20} resolution the 2026-07-27 cadence sweep used}
+(Section~\ref{sec:husmith-current}) -- so part of that sweep's
+17--18\% residual may be this same known resolution effect, on top of
+whatever the redesign itself did or did not fix, and not purely a
+new-code regression.
