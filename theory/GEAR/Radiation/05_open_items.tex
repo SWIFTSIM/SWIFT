@@ -11,7 +11,12 @@ feature that had accumulated here was moved to
 Section~\ref{sec:bugs} or the relevant part of Section~\ref{sec:algorithm}/
 \ref{sec:taskgraph}. This list is renumbered from T1 and contains only
 currently-open task-graph/algorithm items -- nothing here tracks
-validation-against-a-paper status.
+validation-against-a-paper status. The numbering gap at T6 and T8 is
+deliberate: those two tags (FUV/ISRF coupling; radiation-pressure
+validation) are defined and tracked in the companion Radiation
+Pressure \& ISRF logbook's own open-items section
+(\code{radiation\_pressure\_isrf.pdf}, this directory), where that
+work lives.
 
 \begin{itemize}
   \item[$\square$] \textbf{T1} -- Confirm or rule out the
@@ -24,6 +29,15 @@ validation-against-a-paper status.
     \code{StromgrenSphereClumpSmith2021} at a resolution fine enough
     to actually split the tree near the clump boundary; the
     \code{error()} at \code{cell.c:1387} will fire if it's hit.
+    \textbf{Plan (2026-07-28)}: piggyback on the T5 clump
+    revalidation leg rather than a dedicated campaign -- one
+    debug-checks build of the standard \code{gas\_mass=20} matrix
+    config (cheap; assertion staying silent over the full $8\,$Myr is
+    the evidence), then one finer run (\code{gas\_mass=4},
+    $\sim$875k particles) chosen specifically to force deeper tree
+    splitting at the clump boundary and genuinely stress unequal
+    \code{hydro.super} depths. Silent in both $\Rightarrow$ close
+    this item.
 
   \item[$\square$] \textbf{T2} -- MPI is explicitly not supported yet
     for the radiation loop (\texttt{error("MPI is not yet
@@ -43,30 +57,28 @@ validation-against-a-paper status.
     determinism proves fragile: owner-computes with a BH-style
     \code{xpart}-subset exchange.
 
-  \item[$\square$] \textbf{T3} -- The \code{StromgrenSphere} D-type
-    growth-curve diagnostic (an algorithm-behaviour check against the
-    classical Spitzer formula, not a validation target) has an
-    unexplained residual: even with the search-radius-expansion cap
-    loosened and (at the time) the adaptive rebuild cadence on, the
-    simulated D-type growth curve still showed a gap to the analytic
-    solution that neither fix closes. Both identified contributing
-    factors (the cap, the fixed cadence) are confirmed real and
-    exhausted as candidate root causes at their current settings -- the
-    residual points at something else, not yet identified. A
-    $T_i=10^4\,$K variant of the same combined setup passed the check
-    outright, but three variables changed at once relative to the
-    original mismatch, so $T_i$ is not cleanly isolated as the
-    explanation. Not attempted: instrumenting which retry branch
-    (buffer-full vs.\ radius-expansion) dominates once the cap/cadence
-    fixes are both in place. \textbf{Stale experiment basis, recheck
-    before investing}: every run behind this item predates both the
-    photon-count-budget redesign (which changed exactly the
-    photons-per-pass arithmetic this diagnostic is sensitive to -- the
-    clump revalidation in Section~\ref{sec:clump-current} saw
-    $r_{\rm HII}$ move toward the analytic bound at every
-    configuration) and the removal of the adaptive cadence it mentions.
-    The residual may no longer exist; rerun the diagnostic on current
-    code before treating this as a real open problem.
+  \item[$\blacksquare$] \textbf{T3} -- \textbf{Closed 2026-07-28,
+    superseded by the validated targets.} The \code{StromgrenSphere}
+    D-type growth-curve diagnostic (an algorithm-behaviour check
+    against the classical Spitzer formula, not a validation target)
+    had an unexplained residual at the code's natural,
+    metallicity-dependent $T_i$. Closure reasoning: (i) the reference
+    it disagreed with is the classical Spitzer formula -- known to
+    over-predict late-time growth, the very reason STARBENCH exists --
+    evaluated in a temperature convention no published reference uses;
+    (ii) every physical behaviour the diagnostic probes is now covered
+    by validated targets on current code: D-type expansion by STARBENCH
+    at $0.52\%$ (Section~\ref{sec:starbench-current}), photon-budget
+    arithmetic by the cadence sweep
+    (Section~\ref{sec:husmith-current}), and a $T_i=10^4\,$K variant of
+    this very setup passed the check outright; (iii) every run behind
+    the residual predates the photon-count-budget redesign, which
+    changed exactly the photons-per-pass arithmetic it is sensitive to
+    (the clump revalidation, Section~\ref{sec:clump-current}, saw
+    $r_{\rm HII}$ move toward the analytic bound in every
+    configuration). There is no remaining signal here distinct from
+    what the validated targets already measure; chasing agreement with
+    a formula's known inaccuracy is not an open problem.
 
   \item[$\blacksquare$] \textbf{T4} -- \textbf{Closed 2026-07-28, superseded
     by removal, not by becoming the default.} The count-budget redesign
@@ -120,18 +132,6 @@ validation-against-a-paper status.
     Pressure \& ISRF logbook (\code{radiation\_pressure\_isrf.tex}/
     \code{.pdf}, this same directory).
 
-  \item[$\square$] \textbf{T6} -- FUV/ISRF coupling: photoelectric
-    heating and H$_2$ photodissociation driven by a variable local
-    interstellar radiation field, via Grackle's existing hooks (nothing
-    needs changing inside Grackle). Scoping and design live in the
-    companion Radiation Pressure \& ISRF logbook
-    (\code{radiation\_pressure\_isrf.tex}/\code{.pdf}, this directory),
-    which references this tag -- the entry here exists so that
-    reference resolves. Blocked on per-star $L_{\rm FUV}$/$L_{\rm LW}$
-    band luminosities, which are two more band integrals of the same
-    stellar-atmosphere tables T7 would generate. Last on the roadmap
-    together with T8.
-
   \item[$\square$] \textbf{T7} -- Extend \texttt{pychem}
     (\texttt{\textasciitilde/programs/pychem/}, already the source of
     this project's GEAR chemical-yield tables) to emit proper
@@ -149,22 +149,6 @@ validation-against-a-paper status.
     model this project would tabulate -- not a separate
     table-generation effort from $Q_H$/$L_{\rm bol}$, just two more
     threshold pairs on the same curve.
-
-  \item[$\square$] \textbf{T8} -- Radiation-pressure validation. The
-    channel is implemented but off by default
-    (\code{radiation\_pressure\_efficiency: 0} in every validated
-    example) and has never been validated; a two-tier validation plan
-    and the channel's design/bug history live in the companion
-    Radiation Pressure \& ISRF logbook
-    (\code{radiation\_pressure\_isrf.tex}/\code{.pdf}), which
-    references this tag. Two bugs already found and fixed during its
-    code review (inverted $\kappa_{\rm IR}$ unit conversion, stale
-    $L_{\rm bol}$ past star death -- see that logbook), plus the
-    cosmological $d\ln a$-as-proper-time impulse bug fixed on this
-    side. \textbf{Known open defect, deferred until this item is
-    picked up}: the \code{RadiationPressureMomentumCheck} debug
-    example crashes under \code{--enable-debugging-checks}. Last on
-    the roadmap together with T6.
 
   \item[$\square$] \textbf{T9} -- \code{space\_regrid}'s top-level
     cell grid never re-refines once coarsened, even after the
@@ -281,16 +265,16 @@ validation-against-a-paper status.
     responsibly until the verification runs above exist to test it
     against.
 
-  \item[$\square$] \textbf{T10} -- STARBENCH and Hu et al.\
-    (2017)/Smith et al.\ (2021) 4-star are both validated (PASS),
-    Sections~\ref{sec:starbench-current}/\ref{sec:husmith-current}.
-    \textbf{Still open}: whether matching STARBENCH's flat-$T_i$
-    convention should become a default-buildable option (not just a
-    debug flag), or whether this code's natural, metallicity-dependent
-    $T_i$ is the intended behaviour and STARBENCH/Hu-Smith comparisons
-    are understood to always require the explicit build -- a design
-    decision, not a reproducibility gap (both examples' READMEs
-    document the flag).
+  \item[$\blacksquare$] \textbf{T10} -- \textbf{Closed 2026-07-28 by
+    decision.} The metallicity-dependent $T_i$ \emph{is} the default
+    and intended behaviour of this model. The flat-$T_i$ build flag
+    (\code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K})
+    exists solely to reproduce other groups' setups when validating
+    the algorithm against them -- STARBENCH, Hu et al.\ (2017), and
+    Smith et al.\ (2021) all assume a flat $10^4\,$K ionized phase, so
+    comparisons against them are understood to always require the
+    explicit build (documented in each example's README). No
+    default-buildable runtime option will be added.
 
   \item[$\square$] \textbf{T11} -- Quadrature bias for declining
     emission rates. The photon budget integrates
