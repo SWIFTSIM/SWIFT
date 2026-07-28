@@ -72,9 +72,15 @@ struct cell_split_stats {
   /*! Particles looked at at each depth. */
   size_t seen[space_cell_maxdepth + 1];
 
+  /*! Total distance, in slots, that those particles travelled. */
+  size_t disp[space_cell_maxdepth + 1];
+
+  /*! Writes that also had to chase a pointer to relink a partner particle. */
+  size_t relink[space_cell_maxdepth + 1];
+
   /*! Padding out to a whole number of cache lines. */
   char pad[SWIFT_CACHE_ALIGNMENT -
-           ((2 * (space_cell_maxdepth + 1) * sizeof(size_t)) %
+           ((4 * (space_cell_maxdepth + 1) * sizeof(size_t)) %
             SWIFT_CACHE_ALIGNMENT)];
 };
 
@@ -88,22 +94,43 @@ static struct cell_split_stats
  * The fraction of particles actually written at each level says whether the
  * recursive bucket sort is doing real work or mostly skipping: a level that
  * moves nearly everything is one an already-ordered cell would get for free.
+ *
+ * The mean distance travelled separates the two ways that fraction can be
+ * large. Offsets are running sums of the bucket counts, so a handful of
+ * particles changing bucket shifts every particle after them by a slot or
+ * two: a large fraction moving a short way is drift, and is sequential. A
+ * large fraction moving a long way is a genuine shuffle, and is not.
+ *
+ * The relink fraction is the share of those writes that also had to chase a
+ * pointer into an unrelated particle array to fix a partner's back-reference.
+ * That cost does not care how far the particle moved, so if it dominates then
+ * making the movement cheaper will not help.
  */
 void cell_split_stats_report(void) {
 
   for (int d = 0; d <= space_cell_maxdepth; d++) {
 
-    size_t moved = 0, seen = 0;
+    size_t moved = 0, seen = 0, disp = 0, relink = 0;
     for (int t = 0; t < cell_split_stats_max_threads; t++) {
       moved += cell_split_stats[t].moved[d];
       seen += cell_split_stats[t].seen[d];
+      disp += cell_split_stats[t].disp[d];
+      relink += cell_split_stats[t].relink[d];
       cell_split_stats[t].moved[d] = 0;
       cell_split_stats[t].seen[d] = 0;
+      cell_split_stats[t].disp[d] = 0;
+      cell_split_stats[t].relink[d] = 0;
     }
 
     if (seen == 0) continue;
     message("cell_split depth %d: moved %zu of %zu (%.2f %%).", d, moved, seen,
             100. * (double)moved / (double)seen);
+    if (moved == 0) continue;
+    message(
+        "cell_split depth %d: mean distance %.1f slots, %zu relinks (%.2f %% "
+        "of moves).",
+        d, (double)disp / (double)moved, relink,
+        100. * (double)relink / (double)moved);
   }
 }
 
@@ -130,9 +157,11 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
                            c->loc[2] + c->width[2] / 2};
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
-  /* Counted in a register through the hot loops and merged once, at the
+  /* Counted in registers through the hot loops and merged once, at the
    * end, into this thread's own tally. */
   size_t nr_moved = 0;
+  size_t nr_disp = 0;
+  size_t nr_relink = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the buffs are OK. */
@@ -187,6 +216,8 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
         struct part part = parts[k];
         struct xpart xpart = xparts[k];
         struct cell_buff temp_buff = buff[k];
+        /* Slot the particle we are currently carrying came from. */
+        int src = k;
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
           while (buff[j].ind == bid) {
@@ -196,17 +227,24 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           memswap(&parts[j], &part, sizeof(struct part));
           memswap(&xparts[j], &xpart, sizeof(struct xpart));
           memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
-          if (parts[j].gpart)
+          if (parts[j].gpart) {
             parts[j].gpart->id_or_neg_offset = -(j + parts_offset);
+            nr_relink++;
+          }
           bid = temp_buff.ind;
           nr_moved++;
+          nr_disp += (size_t)(j > src ? j - src : src - j);
+          src = j;
         }
         parts[k] = part;
         xparts[k] = xpart;
         buff[k] = temp_buff;
-        if (parts[k].gpart)
+        if (parts[k].gpart) {
           parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
+          nr_relink++;
+        }
         nr_moved++;
+        nr_disp += (size_t)(k > src ? k - src : src - k);
       }
       bucket_count[bid]++;
     }
@@ -309,6 +347,8 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
       if (bid != bucket) {
         struct spart spart = sparts[k];
         struct cell_buff temp_buff = sbuff[k];
+        /* Slot the particle we are currently carrying came from. */
+        int src = k;
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
           while (sbuff[j].ind == bid) {
@@ -317,16 +357,23 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           }
           memswap(&sparts[j], &spart, sizeof(struct spart));
           memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
-          if (sparts[j].gpart)
+          if (sparts[j].gpart) {
             sparts[j].gpart->id_or_neg_offset = -(j + sparts_offset);
+            nr_relink++;
+          }
           bid = temp_buff.ind;
           nr_moved++;
+          nr_disp += (size_t)(j > src ? j - src : src - j);
+          src = j;
         }
         sparts[k] = spart;
         sbuff[k] = temp_buff;
-        if (sparts[k].gpart)
+        if (sparts[k].gpart) {
           sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
+          nr_relink++;
+        }
         nr_moved++;
+        nr_disp += (size_t)(k > src ? k - src : src - k);
       }
       bucket_count[bid]++;
     }
@@ -366,6 +413,8 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
       if (bid != bucket) {
         struct bpart bpart = bparts[k];
         struct cell_buff temp_buff = bbuff[k];
+        /* Slot the particle we are currently carrying came from. */
+        int src = k;
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
           while (bbuff[j].ind == bid) {
@@ -374,16 +423,23 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           }
           memswap(&bparts[j], &bpart, sizeof(struct bpart));
           memswap(&bbuff[j], &temp_buff, sizeof(struct cell_buff));
-          if (bparts[j].gpart)
+          if (bparts[j].gpart) {
             bparts[j].gpart->id_or_neg_offset = -(j + bparts_offset);
+            nr_relink++;
+          }
           bid = temp_buff.ind;
           nr_moved++;
+          nr_disp += (size_t)(j > src ? j - src : src - j);
+          src = j;
         }
         bparts[k] = bpart;
         bbuff[k] = temp_buff;
-        if (bparts[k].gpart)
+        if (bparts[k].gpart) {
           bparts[k].gpart->id_or_neg_offset = -(k + bparts_offset);
+          nr_relink++;
+        }
         nr_moved++;
+        nr_disp += (size_t)(k > src ? k - src : src - k);
       }
       bucket_count[bid]++;
     }
@@ -423,6 +479,8 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
       if (bid != bucket) {
         struct sink sink = sinks[k];
         struct cell_buff temp_buff = sinkbuff[k];
+        /* Slot the particle we are currently carrying came from. */
+        int src = k;
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
           while (sinkbuff[j].ind == bid) {
@@ -431,16 +489,23 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           }
           memswap(&sinks[j], &sink, sizeof(struct sink));
           memswap(&sinkbuff[j], &temp_buff, sizeof(struct cell_buff));
-          if (sinks[j].gpart)
+          if (sinks[j].gpart) {
             sinks[j].gpart->id_or_neg_offset = -(j + sinks_offset);
+            nr_relink++;
+          }
           bid = temp_buff.ind;
           nr_moved++;
+          nr_disp += (size_t)(j > src ? j - src : src - j);
+          src = j;
         }
         sinks[k] = sink;
         sinkbuff[k] = temp_buff;
-        if (sinks[k].gpart)
+        if (sinks[k].gpart) {
           sinks[k].gpart->id_or_neg_offset = -(k + sinks_offset);
+          nr_relink++;
+        }
         nr_moved++;
+        nr_disp += (size_t)(k > src ? k - src : src - k);
       }
       bucket_count[bid]++;
     }
@@ -480,6 +545,8 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
       if (bid != bucket) {
         struct gpart gpart = gparts[k];
         struct cell_buff temp_buff = gbuff[k];
+        /* Slot the particle we are currently carrying came from. */
+        int src = k;
         while (bid != bucket) {
           int j = bucket_offset[bid] + bucket_count[bid]++;
           while (gbuff[j].ind == bid) {
@@ -491,33 +558,44 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           if (gparts[j].type == swift_type_gas) {
             parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
                 &gparts[j];
+            nr_relink++;
           } else if (gparts[j].type == swift_type_stars) {
             sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
                 &gparts[j];
+            nr_relink++;
           } else if (gparts[j].type == swift_type_sink) {
             sinks[-gparts[j].id_or_neg_offset - sinks_offset].gpart =
                 &gparts[j];
+            nr_relink++;
           } else if (gparts[j].type == swift_type_black_hole) {
             bparts[-gparts[j].id_or_neg_offset - bparts_offset].gpart =
                 &gparts[j];
+            nr_relink++;
           }
           bid = temp_buff.ind;
           nr_moved++;
+          nr_disp += (size_t)(j > src ? j - src : src - j);
+          src = j;
         }
         gparts[k] = gpart;
         gbuff[k] = temp_buff;
         if (gparts[k].type == swift_type_gas) {
           parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
+          nr_relink++;
         } else if (gparts[k].type == swift_type_stars) {
           sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
               &gparts[k];
+          nr_relink++;
         } else if (gparts[k].type == swift_type_sink) {
           sinks[-gparts[k].id_or_neg_offset - sinks_offset].gpart = &gparts[k];
+          nr_relink++;
         } else if (gparts[k].type == swift_type_black_hole) {
           bparts[-gparts[k].id_or_neg_offset - bparts_offset].gpart =
               &gparts[k];
+          nr_relink++;
         }
         nr_moved++;
+        nr_disp += (size_t)(k > src ? k - src : src - k);
       }
       bucket_count[bid]++;
     }
@@ -538,6 +616,8 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     cell_split_stats[tid].moved[(int)c->depth] += nr_moved;
     cell_split_stats[tid].seen[(int)c->depth] +=
         (size_t)(count + gcount + scount + bcount + sink_count);
+    cell_split_stats[tid].disp[(int)c->depth] += nr_disp;
+    cell_split_stats[tid].relink[(int)c->depth] += nr_relink;
   }
 }
 
