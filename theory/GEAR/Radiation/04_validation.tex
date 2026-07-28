@@ -651,6 +651,64 @@ further -- the paper gives no quantitative number for either, so there
 is no concrete target left to chase. The cross-scheme consistency
 above is the validation criterion for this target, and it is met.
 
+\subsection{Cosmological validation (StromgrenSphereCosmo example)}
+\label{sec:cosmo-validation}
+
+\textbf{Verdict: no cosmological frame or time-integration bug. With
+cosmology enabled at $a\simeq1$, the code reproduces its own
+non-cosmological control to $\sim$2\% in the growth phase} (0.43\% and
+3.48\% at the two growth-phase comparison points, matched $0.05\,$Myr
+cadence, identical binary and build flags). A prior static frame audit
+had found the HII core comoving/proper-time consistent and one genuine
+cosmology-only bug (the radiation-pressure impulse using $d\ln a$ as a
+proper-time step, fixed in \code{29fb15e5b}); this is the first
+\emph{empirical} confirmation, via the new two-tier
+\code{StromgrenSphereCosmo} example (\code{e713a6347}).
+
+\textbf{Tier 1 (``identity'')} runs the \code{StromgrenSphere} setup
+with cosmology enabled over a tiny scale-factor span at $a\simeq1$
+($a\in[0.99865, 0.99886]$, $\simeq3\,$Myr), where every $a$-factor is
+inert by construction: any deviation from the non-cosmological control
+(same binary, matched cadence) is a time-domain error. \textbf{Tier 2
+(``highz'')} places the same physical setup at $z\simeq9$ and checks
+the quasi-static Str\"omgren radius at the instantaneous physical
+density: PASS at 15.3\%, with the checker's measured-$T_i$ design
+absorbing a real physical effect -- at $z\simeq9$ Compton cooling
+against the CMB pulls tagged gas from the injected $10^4\,$K to an
+effective $6506\,$K between rebuild passes, and the analytic prediction
+is evaluated at the measured value.
+
+\textbf{Getting to that verdict consumed three false signals, recorded
+here because each is a reusable trap:}
+\begin{enumerate}
+\item \emph{Box saturation.} This setup's equilibrium Str\"omgren
+  radius exceeds the box half-width in every temperature convention
+  ($R_{\rm st}=25.4\,$pc at $10^4\,$K vs.\ a $25\,$pc half-width), so
+  at late times BOTH runs tag the entire box and the max-tagged-radius
+  estimator pins at the periodic corner distance ($\sqrt3/2\,L$).
+  Comparing there measures corner-pocket tag churn; an apparent
+  ``persistent 9\% cosmological offset'' dissolved entirely under this
+  cut. The shipped identity check excludes saturated points (and radii
+  within a few interparticle spacings, where max-radius is shot noise)
+  and rules on the growth-phase mean.
+\item \emph{Integer-timeline quantization.} The proper-time and
+  $d\ln a$ timelines quantize a requested $0.5\,$Myr star step
+  differently, so the two runs' rebuild passes land up to one cadence
+  apart. The photon ledger self-compensates exactly -- the later pass
+  carries a proportionally larger budget (verbose ledger: 235 vs.\ 114
+  particles held after the first productive pass) -- but the $r(t)$
+  staircases are phase-shifted, producing $\mathcal{O}(30\%)$
+  mid-growth relative errors at the sibling examples' $0.5\,$Myr
+  cadence with a perfectly correct code. The offset shrinks linearly
+  with the cadence, hence the identity tier's $0.05\,$Myr.
+\item \emph{Configuration mismatch.} A first campaign ran without
+  \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
+  (natural $T_i\simeq4.9\times10^4\,$K, incomparable with every sibling
+  target) and with a $4\times$ coarser snapshot cadence than its
+  control. The example's README now states the flag and the exact
+  matched-control command.
+\end{enumerate}
+
 \subsection{Grackle rate-coupled photoionization (T5)}
 \label{sec:t5-validation}
 
