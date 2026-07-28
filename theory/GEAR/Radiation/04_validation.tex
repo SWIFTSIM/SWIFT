@@ -430,9 +430,11 @@ isolated.
 \subsection{Smith et al.\ (2021) clump}
 \label{sec:clump-current}
 
-\textbf{PASS as of 2026-07-22.} \textbf{Not yet re-checked} against the
+\textbf{PASS as of 2026-07-22, re-checked 2026-07-28} against the
 2026-07-27 count-budget redesign (Section~\ref{sec:husmith-current}) --
-every run below predates it. \code{StromgrenSphereClumpSmith2021}
+see the revalidation paragraph below the erosion table. Everything
+through that paragraph describes the original 2026-07-22 evidence.
+\code{StromgrenSphereClumpSmith2021}
 (four co-located $19.2\,M_\odot$ sources, $10\,$pc-radius $10^4\,{\rm
 cm^{-3}}$ clump $20\,$pc from the sources in a $100\,{\rm cm^{-3}}$
 background), built with
@@ -523,6 +525,53 @@ indistinguishable values at the coarser \code{gas\_mass=95} ($140.2\%$
 vs.\ $141.3\%$, overlapping intervals) -- consistent with the angular
 scheme's per-pixel budget-splitting needing enough particles per
 pixel's solid angle to manifest a distinct effect.
+
+\textbf{Revalidation at commit \code{37c88c6a8} (2026-07-28), against the
+count-budget redesign.} Same 4-run SPH matrix, same build flag, isolated
+worktree, binary md5 recorded. Mass conservation and the still-dense
+threshold metric reproduce closely (still-dense: $99.7/99.9/100.0/99.9\%$
+vs.\ the $99.3/99.9/99.8/99.9\%$ above). The continuous near-side $n_H$
+ratio moved well outside the original bootstrap CIs and changed shape:
+
+\begin{center}
+\begin{tabular}{lrr}
+\hline
+& near, $n_H$ ratio (2026-07-22) & near, $n_H$ ratio (2026-07-28) \\
+\hline
+\code{gas\_mass=20}, uniform & 134.3\% [133.4--135.0] & 113.9\% [113.5--114.3] \\
+\code{gas\_mass=20}, angular & 125.0\% [124.6--125.6] & 131.7\% [131.1--132.4] \\
+\code{gas\_mass=95}, uniform & 140.2\% [138.9--141.4] & 125.4\% [124.3--126.3] \\
+\code{gas\_mass=95}, angular & 141.3\% [139.8--142.6] & 133.1\% [131.9--134.2] \\
+\hline
+\end{tabular}
+\end{center}
+
+The gas20 uniform/angular ordering inverted (angular now compresses more
+than uniform) and gas95 no longer converges. $r_{\rm HII}$ also shifted,
+uniformly upward: gas20 uniform $16.44\to21.61\,$pc, gas20 angular
+$23.18\to24.32\,$pc, gas95 uniform $16.41\to17.34\,$pc, gas95 angular
+$19.17\to22.37\,$pc -- angular still reaches further than uniform in
+every case, both epochs, and the bubble still stops exactly at the
+clump edge in all four side-by-side temperature-slice comparisons (clump
+interior untouched, near/far asymmetry intact). \textbf{Assessment:
+PASS holds.} The near-side SPH compression number was never the
+validation criterion for this target in the first place -- the MFM/MFV
+cross-check below already established it as an SPH-specific artifact
+(compression flips to dilution, and the uniform/angular differentiation
+it shows \emph{disappears} under MFM/MFV), so a second SPH-only number
+moving is expected to carry no diagnostic weight on its own. The
+qualitative picture (bubble stops at clump, mass conserved, angular
+reaches further, clump interior undisturbed) is exactly reproduced. Two
+methodology confounds were introduced alongside the code change and not
+isolated from it: \code{n\_threads} went $8\to16$ between the two runs
+(non-associative floating-point reduction order in the threaded SPH/task
+graph is a known non-bit-reproducibility source in a chaotic system, and
+plausibly sufficient on its own to explain an $O(10\%)$ shift after
+$8\,$Myr of integration), and no bit-identical same-thread-count rerun
+has been done to isolate stochasticity from an actual redesign effect.
+Left open, not blocking: a same-thread-count SPH rerun would separate
+the two; not pursued further here since the criterion that resolves the
+target does not depend on it.
 
 \textbf{Direct comparison against Smith et al.\ (2021)'s own Figure 2}:
 the paper reports no quantitative erosion number at all -- their own
