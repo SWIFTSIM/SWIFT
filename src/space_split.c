@@ -787,6 +787,7 @@ void space_split(struct space *s, int verbose) {
 
   if (verbose) {
     message("Max tree depth after split: %d", s->maxdepth);
+    cell_split_stats_report();
     message("Have %d cells including subcells (cell footprint: %zd MB)",
             s->tot_cells, s->tot_cells * sizeof(struct cell) / (1024 * 1024));
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

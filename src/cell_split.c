@@ -23,10 +23,12 @@
 #include <config.h>
 
 /* This object's header. */
+#include "align.h"
 #include "cell.h"
 
 /* Local headers. */
 #include "memswap.h"
+#include "threadpool.h"
 
 /**
  * @brief Sort the parts into eight bins along the given pivots.
@@ -52,6 +54,60 @@
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
  */
+
+/**
+ * @brief Per-thread tallies of the work cell_split() does at each depth.
+ *
+ * cell_split() runs once per split cell - tens per top-level cell - so a
+ * shared counter would have every thread contending on the same handful of
+ * cache lines. Each thread therefore keeps its own row and they are summed
+ * only when reported. One row per cache line, so neighbouring threads never
+ * share one.
+ */
+struct cell_split_stats {
+
+  /*! Particles written at each depth. */
+  size_t moved[space_cell_maxdepth + 1];
+
+  /*! Particles looked at at each depth. */
+  size_t seen[space_cell_maxdepth + 1];
+
+  /*! Padding out to a whole number of cache lines. */
+  char pad[SWIFT_CACHE_ALIGNMENT -
+           ((2 * (space_cell_maxdepth + 1) * sizeof(size_t)) %
+            SWIFT_CACHE_ALIGNMENT)];
+};
+
+/*! Tallies, indexed by threadpool thread id. */
+static struct cell_split_stats
+    cell_split_stats[cell_split_stats_max_threads] SWIFT_CACHE_ALIGN;
+
+/**
+ * @brief Report and reset the cell_split() work tallies.
+ *
+ * The fraction of particles actually written at each level says whether the
+ * recursive bucket sort is doing real work or mostly skipping: a level that
+ * moves nearly everything is one an already-ordered cell would get for free.
+ */
+void cell_split_stats_report(void) {
+
+  for (int d = 0; d <= space_cell_maxdepth; d++) {
+
+    size_t moved = 0, seen = 0;
+    for (int t = 0; t < cell_split_stats_max_threads; t++) {
+      moved += cell_split_stats[t].moved[d];
+      seen += cell_split_stats[t].seen[d];
+      cell_split_stats[t].moved[d] = 0;
+      cell_split_stats[t].seen[d] = 0;
+    }
+
+    if (seen == 0) continue;
+    message("cell_split depth %d: moved %zu of %zu (%.2f %%).", d, moved, seen,
+            100. * (double)moved / (double)seen);
+  }
+}
+
+
 void cell_split(struct cell *c, const ptrdiff_t parts_offset,
                 const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
                 const ptrdiff_t sinks_offset, struct cell_buff *restrict buff,
@@ -74,6 +130,9 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
                            c->loc[2] + c->width[2] / 2};
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int bucket_offset[9];
+  /* Counted in a register through the hot loops and merged once, at the
+   * end, into this thread's own tally. */
+  size_t nr_moved = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the buffs are OK. */
@@ -140,12 +199,14 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           if (parts[j].gpart)
             parts[j].gpart->id_or_neg_offset = -(j + parts_offset);
           bid = temp_buff.ind;
+          nr_moved++;
         }
         parts[k] = part;
         xparts[k] = xpart;
         buff[k] = temp_buff;
         if (parts[k].gpart)
           parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
+        nr_moved++;
       }
       bucket_count[bid]++;
     }
@@ -259,11 +320,13 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           if (sparts[j].gpart)
             sparts[j].gpart->id_or_neg_offset = -(j + sparts_offset);
           bid = temp_buff.ind;
+          nr_moved++;
         }
         sparts[k] = spart;
         sbuff[k] = temp_buff;
         if (sparts[k].gpart)
           sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
+        nr_moved++;
       }
       bucket_count[bid]++;
     }
@@ -314,11 +377,13 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           if (bparts[j].gpart)
             bparts[j].gpart->id_or_neg_offset = -(j + bparts_offset);
           bid = temp_buff.ind;
+          nr_moved++;
         }
         bparts[k] = bpart;
         bbuff[k] = temp_buff;
         if (bparts[k].gpart)
           bparts[k].gpart->id_or_neg_offset = -(k + bparts_offset);
+        nr_moved++;
       }
       bucket_count[bid]++;
     }
@@ -369,11 +434,13 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           if (sinks[j].gpart)
             sinks[j].gpart->id_or_neg_offset = -(j + sinks_offset);
           bid = temp_buff.ind;
+          nr_moved++;
         }
         sinks[k] = sink;
         sinkbuff[k] = temp_buff;
         if (sinks[k].gpart)
           sinks[k].gpart->id_or_neg_offset = -(k + sinks_offset);
+        nr_moved++;
       }
       bucket_count[bid]++;
     }
@@ -435,6 +502,7 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
                 &gparts[j];
           }
           bid = temp_buff.ind;
+          nr_moved++;
         }
         gparts[k] = gpart;
         gbuff[k] = temp_buff;
@@ -449,6 +517,7 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           bparts[-gparts[k].id_or_neg_offset - bparts_offset].gpart =
               &gparts[k];
         }
+        nr_moved++;
       }
       bucket_count[bid]++;
     }
@@ -460,6 +529,15 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
     c->progeny[k]->grav.parts_rebuild = c->progeny[k]->grav.parts;
+  }
+
+  /* Merged once per cell into this thread's own row: no atomics, and no
+   * line shared with another thread. */
+  const int tid = threadpool_gettid();
+  if (tid >= 0 && tid < cell_split_stats_max_threads) {
+    cell_split_stats[tid].moved[(int)c->depth] += nr_moved;
+    cell_split_stats[tid].seen[(int)c->depth] +=
+        (size_t)(count + gcount + scount + bcount + sink_count);
   }
 }
 
