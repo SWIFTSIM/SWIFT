@@ -45,8 +45,12 @@
 ## Build & Test
 
 ### Standard GEAR build:
-./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=$GRACKLE_ROOT
 make -j$(nproc)
+
+`--with-tracers=GEAR` is required, not optional: the HII ionization tag lives
+in `tracers_xpart_data`, so `src/feedback/GEAR/radiation.c` does not compile
+without it.
 
 For debugging, add `--enable-debugging-checks --enable-debug --enable-sanitizer`.
 
