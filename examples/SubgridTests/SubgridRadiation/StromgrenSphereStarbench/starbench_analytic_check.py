@@ -43,9 +43,23 @@ hardcoded to the papers' own numbers. See this example's README for the
 full parameter derivation and why Z=0 (not the Z/Zsun~0.231 workaround
 used elsewhere in this project) is the right choice here.
 
-r_hii is read the same way as stromgren_analytic_check.py's corrected
-measure: the current position of every gas particle a star has *ever*
-tagged (HIIStarIDs), not the star's own frozen HIIRegionRadii (h_hii).
+Two r_hii conventions are reported, because the photon-count budget can
+genuinely recede a region and the two then diverge:
+
+  ever-tagged extent: the current position of every gas particle the star
+    has *ever* tagged (HIIStarIDs) -- a historical-extent measure. The
+    right front proxy for the default flag-and-floor scheme, where the
+    dense swept shell keeps its ownership stamp after tag expiry.
+  instantaneous front: the star's own current HIIRegionRadii (h_hii),
+    per snapshot -- the distance the budget maintains *right now*. The
+    right measure for rate-coupled (HII_couple_ionization_rate) runs,
+    where it coincides with the actual x_HII front; the ever-tagged
+    extent instead freezes at the historical maximum when the region
+    recedes.
+
+The PASS/FAIL verdict is attached to each line separately; when the two
+conventions diverge by more than 10% the region receded and the
+scheme-appropriate line is the meaningful one (see above).
 
 Usage:
     python3 starbench_analytic_check.py [-s snap/snapshot] [-o out.png]
@@ -217,8 +231,9 @@ def ionizing_photon_rate(mass_msun):
 
 
 # -----------------------------------------------------------------------------
-# Read the simulated r_hii(t) from the snapshots (ever-tagged gas measure,
-# same fix as stromgren_analytic_check.py -- see that script's docstring).
+# Read the simulated r_hii(t) from the snapshots, in both conventions (see
+# the module docstring): ever-tagged gas extent and the star's own current
+# HIIRegionRadii (instantaneous front).
 # -----------------------------------------------------------------------------
 def read_simulated_r_hii(snapshot_glob):
     if sw is None:
@@ -228,7 +243,7 @@ def read_simulated_r_hii(snapshot_glob):
     if not files:
         raise RuntimeError(f"No snapshots found matching {snapshot_glob!r}.")
 
-    times, r_hii = [], []
+    times, r_hii, r_now = [], [], []
     star_mass_msun = None
     n_H_atom_cc = None
     boxsize_kpc = None
@@ -241,6 +256,7 @@ def read_simulated_r_hii(snapshot_glob):
             continue
 
         times.append(data.metadata.time.to("Myr").value)
+        r_now.append(float(np.max(data.stars.hiiregion_radii).to("kpc").value))
 
         star_id = int(data.stars.particle_ids[0])
         ever_tagged = data.gas.hiistar_ids == star_id
@@ -252,7 +268,7 @@ def read_simulated_r_hii(snapshot_glob):
             dx -= box_kpc * np.round(dx / box_kpc)
             r_hii.append(float(np.max(np.linalg.norm(dx, axis=1))))
         else:
-            r_hii.append(float(np.max(data.stars.hiiregion_radii).to("kpc").value))
+            r_hii.append(r_now[-1])
 
         if star_mass_msun is None:
             n_stars = len(data.stars.masses)
@@ -270,6 +286,7 @@ def read_simulated_r_hii(snapshot_glob):
     return (
         u.Quantity(times, u.Myr),
         u.Quantity(r_hii, u.kpc),
+        u.Quantity(r_now, u.kpc),
         star_mass_msun,
         n_H_atom_cc,
         boxsize_kpc * u.kpc,
@@ -383,7 +400,7 @@ def main():
         args.T_ionized_K, sorted(glob.glob(args.snapshot_glob))
     )
 
-    t_sim, r_sim, star_mass_msun, n_H, boxsize = read_simulated_r_hii(
+    t_sim, r_sim, r_now, star_mass_msun, n_H, boxsize = read_simulated_r_hii(
         args.snapshot_glob
     )
     box_half_width = 0.5 * boxsize
@@ -417,6 +434,7 @@ def main():
     R_SB_at_t_sim = np.interp(t_sim.to(u.Myr).value, t_grid.to(u.Myr).value, R_SB)
 
     r_sim_pc = r_sim.to(u.pc).value
+    r_now_pc = r_now.to(u.pc).value
     box_valid = R_SB_at_t_sim <= box_half_width.to(u.pc).value
     alive = r_sim_pc > 0
     ok = box_valid & alive
@@ -424,14 +442,25 @@ def main():
         raise RuntimeError("No box-valid, alive snapshot to compare at.")
     last = np.where(ok)[0][-1]
     t_c = t_sim[last]
-    r_c = r_sim_pc[last]
     R_SB_c = R_SB_at_t_sim[last]
-    rel_error = abs(r_c - R_SB_c) / R_SB_c
-    verdict = "PASS" if rel_error <= args.tol else "FAIL"
-    print(
-        f"\nComparison time: t={t_c:.4g}  r_sim={r_c:.4g} pc  "
-        f"R_SB={R_SB_c:.4g} pc  rel_error={rel_error:.2%}  [{verdict}]"
-    )
+
+    print(f"\nComparison time: t={t_c:.4g}  R_SB={R_SB_c:.4g} pc")
+    for label, r_c in [
+        ("ever-tagged extent ", r_sim_pc[last]),
+        ("instantaneous front", r_now_pc[last]),
+    ]:
+        rel_error = abs(r_c - R_SB_c) / R_SB_c
+        verdict = "PASS" if rel_error <= args.tol else "FAIL"
+        print(
+            f"  {label}: r_sim={r_c:.4g} pc  " f"rel_error={rel_error:.2%}  [{verdict}]"
+        )
+    if abs(r_sim_pc[last] - r_now_pc[last]) / max(r_now_pc[last], 1e-10) > 0.1:
+        print(
+            "  NOTE: the two conventions diverge by >10% -- the region "
+            "receded. The scheme-appropriate line is the meaningful one: "
+            "ever-tagged for flag-and-floor, instantaneous for rate-coupled "
+            "(HII_couple_ionization_rate) runs. See the module docstring."
+        )
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(
@@ -441,6 +470,15 @@ def main():
         color="#d62728",
         markersize=4,
         label="Simulation (ever-tagged $r_{\\rm HII}$)",
+    )
+    ax.plot(
+        t_sim.to(u.Myr),
+        r_now_pc,
+        "s-",
+        color="#1f77b4",
+        markersize=3,
+        alpha=0.8,
+        label="Simulation (instantaneous $h_{\\rm HII}$)",
     )
     ax.plot(t_grid, R_I, ":", color="grey", label="Raga-I (Eqn 8)")
     ax.plot(t_grid, R_II, "-.", color="grey", label="Raga-II (Eqn 11)")
