@@ -3256,9 +3256,7 @@ void space_get_density(struct engine *e, const int N, int multigrid) {
   double mean_density = get_mean_density(density_array, N, 0);
   mean_density *= 4.* M_PI * fac*fac*fac;
   double sum = 0.0;
-  //double rms = 0.0;
   for (int i = 0; i < N*N*N; i++) {
-    //rms += fabs(density_array[i]-1);
     sum += density_array[i]-1;
   }
   if (sum < -0.1 || sum > 0.1) message("Warning! Mean of the overdensity is nonzero");
@@ -3690,7 +3688,6 @@ void perform_red_black_sweep(double *pot, const double *rho, int cdim[3], double
  */
 void set_initial_guess(double *pot, const int cdim[3], int MG) {
   const int N = cdim[0];
-  srand(time(NULL));
   for (int i = 0; i<N*N*N; i++){
     pot[i] = 0.; //Corresponds to fR = mean(fR) everywhere.
   }
@@ -3752,39 +3749,29 @@ void get_pm_potential(struct cic_mapper_data* data, const int N, const double bo
 /**
  * @brief Compute the mean density on the mesh.
  *
- * After computing the mean density, it is subtracted from the density 
- * array such that this represents the overdensity.
+ * If this function is called to solve the f_R field equation, 
+ * the mean density is subtracted from the density array such that this
+ * represents the overdensity. Else, the density is normalised such that it has
+ * 1 as mean.
  *
  * @param rho Array containing the density in each cell of the grid.
  * @param N Size (1D) of the grid.
+ * @param MG Are we doing an MG calculation?
  */
 double get_mean_density(double *rho, const int N, int MG) {
   double sum = 0.;
   double mean_density = 0.;
 
+  /* Find the mean density */
   for (int i = 0; i < N*N*N; i++) {
-      sum += rho[i];
+    sum += rho[i];
   }
   mean_density = sum/(N*N*N);
+
+  /* Normalise to mean 1 or 0 */
   for (int i = 0; i < N*N*N; i++) {
-      rho[i] = rho[i] / mean_density;
-  }
-
-  if (MG) {
-    for (int i=0; i<N*N*N; i++) {
-      rho[i] -= 1.;
-    }
-
-    double mean_delta = 0.0;
-
-    for (int i=0; i<N*N*N; i++) {
-      mean_delta += rho[i];
-    }
-    mean_delta /= (double)N*N*N;
-
-    for (int i=0; i<N*N*N; i++) {
-      rho[i] -= mean_delta;
-    }
+    rho[i] = rho[i] / mean_density;
+    if (MG) rho[i] -= 1.;
   }
 
   return mean_density;
@@ -3834,6 +3821,7 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double fac = ((double) N_max)/box_size;
+  int V_max = 15; //Maximum number of V-cycles
 
   /* Check if the space and mesh satisfy the conditions for Gauss-Seidel */
   if (dim[0] != dim[1] || dim[0] != dim[2]) {
@@ -3868,9 +3856,6 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
     message("The mean density is %lf", mean_density[N_levels-1]);
   }
   else {
-    for (int i=0; i<N_max*N_max*N_max; i++) {
-      //rho_levels[N_levels-1][i] *= fac*fac*fac;
-    }
     mean_density[N_levels-1] = 0.;
   }
 
@@ -3889,7 +3874,7 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
     double fac_level = grid_sizes[i]/box_size;
     double mean_density_set = 20.;
 
-    /* Decide on density assignment based on the test */
+    /* Decide on density assignment based on the test. If we are not testing, just do CIC interpolation with the parts */
     switch (test) {
       case 1:
         /* Change the density field to homogeneous */
@@ -3911,7 +3896,7 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
         break;
       case 3: {
         /* Change the density field to represent a 1D sinusoid in the box */
-        double fR_mod = MG->fR_bar/2;
+        double fR_mod = MG->fR_bar; //Where did the factor /2 go?
         double delta = s->dim[0]/N;
         for (int i2=0; i2<N; i2++) {
           for (int j=0; j<N; j++) {
@@ -3922,7 +3907,7 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
           }
         }
         break;
-	}
+	    }
       case 4:
         /* Change the density field to represent two particles aligned along the x-axis of the box */
         for (int i2=0; i2<N; i2++) {
@@ -3942,7 +3927,9 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
         data.N = N;
         data.rho = rho_levels[i];
         data.fac = fac_level;
-        gpart_to_mesh_CIC_mapper(s->gparts, s->nr_gparts, (void*)&data);        
+        threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts, 
+                       sizeof(struct gpart), threadpool_auto_chunk_size, 
+                       (void*)&data);          
     }
 
     /* Decide if we need to calculate the mean density */
@@ -3952,24 +3939,18 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
       message("The mean density on the level with size %d is %lf", grid_sizes[i], mean_density[i]);
     }
     else {
-      for (int j=0; j<grid_sizes[i]*grid_sizes[i]*grid_sizes[i]; j++) {
-        //rho_levels[i][j] *= fac_level*fac_level*fac_level;
-      }
       mean_density[i] = 0.;
     }
   }
-
-  double sum = 0.;
-  for (int i=0; i<N_max*N_max*N_max; i++) {
-    sum += rho_levels[N_levels-1][i] * mean_density[N_levels-1];
-  }
-  message("The mean of delta rho is %E", sum/(N_max*N_max*N_max));
   
   /* Set initial guess on the coarsest grid and solve directly */
   int cdim[3] = {N_min, N_min, N_min};
   set_initial_guess(u_levels[0], cdim, /*MG=*/1);
+  ticks tic = getticks();
   apply_NGS(tp, rho_levels[0], u_levels[0], MG, cdim, mean_density[0], box_size);
-  message("Finished applying Gauss-Seidel");
+  if (MG->timing) message("Relaxation on the grid with size %d took %.3f %s.",
+            N_min, clocks_from_ticks(getticks() - tic), clocks_getunit());
+  message("Finished applying Newton-Gauss-Seidel");
 
   /* Solve on all finer grids by prolongating from the previous grid and performing the multigrid method */
   for (int i = 1; i<N_levels; i++) {
@@ -3984,7 +3965,10 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
     cdim[0] = N;
     cdim[1] = N;
     cdim[2] = N;
-    apply_multigrid_fR(tp, rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, 15);
+    tic = getticks();
+    apply_multigrid_fR(tp, rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, V_max);
+    if (MG->timing) message("Relaxation on the grid with size %d took %.3f %s.",
+            N, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   for (int i=0; i<N_levels-1; i++) {
@@ -4344,7 +4328,6 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
   double residual; 
   residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
   message("The first residual is %E", residual);
-  if (V_max == 2) residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 1);
   const double tolerance = 10e-9; //Choose reasonable value here
   int counter = 0;
   int fine_steps = 20; //Choose reasonable value here
@@ -4353,16 +4336,13 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
   int depth = 0;
 
   while (residual > tolerance && V_cycles < V_max) { 
+    ticks tic = getticks();
     message("Performing V-cycle %d", V_cycles);
     /* Pre-smoothing */
     for (int i=0; i<fine_steps; i++) {
       perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
       residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
-      double mean = 0.;
-      for (int j=0; j<N_max*N_max*N_max; j++) {
-        mean += exp(u[j]);
-      }
-      message("The mean is %E and the residual %E", mean/(N_max*N_max*N_max), residual);
+      
       if (residual<tolerance) break;
     }
     residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
@@ -4371,11 +4351,14 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
     
     /* Transfer residual array to get coarse-grid correction */
     message("After pre-smoothing the residual is %E. Going to recurse with V-cycles.", residual);
+    ticks toc = getticks();
     FAS_recursive(tp, u, residual_array, MG, cdim, delta, N_min, &depth);
+    if (MG->timing) message("The recursive part of the V-cycle took %.3f %s.",
+            clocks_from_ticks(getticks() - toc), clocks_getunit());
 
     /* Post-smoothing if needed */
     residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
-    message("Back on the finest grid the residual is %lf", residual);
+    message("Back on the finest grid the residual is %E", residual);
     if (residual > tolerance) {
       for (int i=0; i<fine_steps; i++) {
         perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
@@ -4384,6 +4367,8 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
     residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
     V_cycles +=1;
     message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
+    if (MG->timing) message("V-cycle number %d on the grid with size %d took %.3f %s.",
+            V_cycles, N_max, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   message("Performed %d V-cycle(s) in total", V_cycles);
@@ -4393,6 +4378,7 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
     perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
     residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
     counter +=1;
+    message("The counter is %d and the residual %E", counter, residual);
   }
   residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
   message("Needed to do %d step(s) in post-smoothing after which the residual was %lf", counter, residual);
@@ -4415,12 +4401,13 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
  * @param N_stop 1D size of the coarsest grid.
  * @param depth How many levels are we into the V-cycle?
  */
-void FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth) {
+int FAS_recursive(struct threadpool *tp, double *u, const double *residual, struct MG_variables *MG, int cdim[3], double delta, const int N_stop, int *depth) {
   *depth += 1;
   int N = cdim[0]; //Grid size of the current level we are on
   delta = delta*2.0; //Cells are twice as big on the coarser grid
   N = N/2; 
 
+  ticks tic = getticks();
   /* Array for storing R(L_h(u_h) - f_h), the restriction of the residual on the finer grid */
   double *restricted_residual = NULL;
   restricted_residual = (double*)swift_malloc("restricted_residual", sizeof(double) * N * N * N);
@@ -4452,10 +4439,15 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
     error("Error allocating memory for the new coarser residual.");
   }
   //memuse_log_allocation("coarser.newresidual", coarser_residual, 1, sizeof(double)*N*N*N);
+  if (MG->timing) message("Creating the V-cycle arrays for the grid with size %d took %.3f %s.",
+            N, clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Restrict residual and solution of the finer grid*/
+  tic = getticks();
   restrict_residual(restricted_residual, residual, cdim);
   restrict_residual(restricted_solution, u, cdim); 
+  if (MG->timing) message("Restricting the residual and solution to the grid with size %d took %.3f %s.",
+            N, clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Set initial guess on the coarser grid to be R(u_h) */
   for (int i=0; i<N*N*N; i++) {
@@ -4465,25 +4457,38 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
   int cdimH[] = {N, N, N}; 
   double tolerance = 10e-9; //Choose a reasonable value here
   int counter = 0;
+  message("Going to calculate the first residual");
   double coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-  message("The first residual on the grid with size %d is %lf", N, coarser_residual_abs);
+  message("The first residual on the grid with size %d is %E", N, coarser_residual_abs);
 
   /* Solve the equation exactly if we are on the coarsest grid */
   if (N==N_stop) {
     while (coarser_residual_abs >= tolerance) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
       coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+      if (coarser_residual_abs >1e10) message("We have a problem!");
+      if (coarser_residual_abs>1e10) {
+        swift_free("restricted_residual", restricted_residual);
+        swift_free("coarser_solution", coarser_solution);
+        swift_free("coarser_residual", coarser_residual);
+        swift_free("restricted_solution", restricted_solution);
+        *depth -= 1;
+        return 1;
+      }
       counter +=1;
       if (counter%50 == 0) message("Did %d steps and the residual is %E", counter, coarser_residual_abs);
     }
     coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-    message("The total number of steps on the coarsest grid is %d and the residual is %lf", counter, coarser_residual_abs);
+    message("The total number of steps on the coarsest grid is %d and the residual is %E", counter, coarser_residual_abs);
 
     /* Prepare array for prolongation */
     for (int i=0; i<N*N*N; i++) {
       coarser_solution[i] -= restricted_solution[i];
     }
+    tic = getticks();
     prolongate_residual(coarser_solution, u, cdimH);
+    if (MG->timing) message("Prolongating to the grid with size %d took %.3f %s.",
+            N*2, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   /* Do some smoothing and proceed to coarser grids */
@@ -4493,25 +4498,54 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
     for (int i=0; i<coarse_steps; i++) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH,delta); 
       coarser_residual_abs =  get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+      if (coarser_residual_abs >1e10) message("We have a problem!");
+      if (coarser_residual_abs > 1e10) {
+        swift_free("restricted_residual", restricted_residual);
+        swift_free("coarser_solution", coarser_solution);
+        swift_free("coarser_residual", coarser_residual);
+        swift_free("restricted_solution", restricted_solution);
+        *depth -= 1;
+        return 1;
+      }
       counter +=1;
       //if (coarser_residual_abs < tolerance) break;
     }
     get_residual_array_coarser(coarser_solution, restricted_residual, restricted_solution, coarser_residual, MG, cdimH, delta);
 
-    coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-    message("The residual after pre-smoothing is %lf", coarser_residual_abs);
-    FAS_recursive(tp, coarser_solution, coarser_residual, MG, cdimH, delta, N_stop, depth);
+    message("The residual after pre-smoothing is %E", coarser_residual_abs);
+    int diverged = FAS_recursive(tp, coarser_solution, coarser_residual, MG, cdimH, delta, N_stop, depth);
+    if (diverged) message("The diverged value is %d", diverged);
+    if (diverged) {
+      swift_free("restricted_residual", restricted_residual);
+      swift_free("coarser_solution", coarser_solution);
+      swift_free("coarser_residual", coarser_residual);
+      swift_free("restricted_solution", restricted_solution);
+      *depth -= 1;
+      return 1;
+    }
     /* Post-smoothing */
     coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-    message("Back on the grid with size %d the residual is %lf", N, coarser_residual_abs);
+    message("Back on the grid with size %d the residual is %E", N, coarser_residual_abs);
     for (int i=0; i<coarse_steps; i++) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
+    }
+    coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
+    if (coarser_residual_abs>1e10) { //This supposedly does not happen in post-smoothing
+      swift_free("restricted_residual", restricted_residual);
+      swift_free("coarser_solution", coarser_solution);
+      swift_free("coarser_residual", coarser_residual);
+      swift_free("restricted_solution", restricted_solution);
+      *depth -= 1;
+      return 1; 
     }
     /* Prepare array for prolongation */
     for (int i=0; i<N*N*N; i++) {
       coarser_solution[i] -= restricted_solution[i];
     }
+    tic = getticks();
     prolongate_residual(coarser_solution, u, cdimH);
+    if (MG->timing) message("Prolongating to the grid with size %d took %.3f %s.",
+            N*2, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   /* The coarser-grid correction has now been added to the finer-grid solution for the potential, so discard used arrays. */
@@ -4521,7 +4555,7 @@ void FAS_recursive(struct threadpool *tp, double *u, const double *residual, str
   swift_free("restricted_solution", restricted_solution);
 
   *depth -= 1;
-
+  return 0;
 }
 
 /**
@@ -4730,6 +4764,6 @@ double get_residual_coarser(struct threadpool *tp, double *coarser_solution, con
 double peak_overdensity(struct MG_variables *MG, double delta_x, double fR_mean, double box_size) {
   double period = (2.*M_PI)/box_size;
   double term1 = 3. * fR_mean * sin(period*delta_x) * period*period *(MG->c*MG->c);
-  double term2 = MG->a*MG->a*MG->R * (sqrt((2./(2.-sin(period*delta_x)))) - 1.);
+  double term2 = MG->a*MG->a*MG->R * (sqrt((1./(2.-sin(period*delta_x)))) - 1.);
   return ((MG->a)*(term2 - term1))/(8.*M_PI*MG->G);
 }

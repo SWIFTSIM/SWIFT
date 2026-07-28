@@ -103,8 +103,8 @@ void pm_mesh_free(struct pm_mesh *mesh);
 void pm_mesh_struct_dump(const struct pm_mesh *p, FILE *stream);
 void pm_mesh_struct_restore(struct pm_mesh *p, FILE *stream);
 
-void overdensity_to_gparts(struct space *s, double *rho, double mean_density, int N);
-void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, double normalisation);
+void initialise_MG_variables(struct space *s, const struct cosmology *cosmo, struct MG_variables *MG, double fR0, int n, int timing);
 void get_cell_acc(double **acc, double *rho, int N, double fac);
+void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, const struct cosmology *cosmo, double *rho_MG, int N_MG);
 
 #endif /* SWIFT_MESH_GRAVITY_H */
