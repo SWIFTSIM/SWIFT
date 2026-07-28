@@ -1,7 +1,7 @@
 # Intro
 This example consists of a homogeneous and periodic box filled with gas particles of equal mass. An individual star particle lies at the center.
 
-**Role: algorithm/task-graph diagnostic, not a physics validation target.** `stromgren_analytic_check.py` compares the simulated HII region growth against the classical Spitzer (1978) D-type formula, which is known to over-predict the true late-phase solution (see `../StromgrenSphereStarbench/`'s own README) -- a PASS here is not evidence of correct physics. This example exists to debug the model's own task-graph/rebuild-cadence behaviour (search-radius-expansion cap, fixed-vs-adaptive cadence, and their interaction), using the Spitzer curve as a cheap, always-available reference shape, not a certified target. For actual published-physics validation, see `../StromgrenSphereStarbench/` (single star vs. the STARBENCH consensus solution), `../StromgrenSphereHuSmith2017/` (4 co-located stars vs. Hu et al. 2017/Smith et al. 2021), and `../StromgrenSphereClumpSmith2021/` (4 stars + clump vs. Smith et al. 2021's own Fig. 2).
+**Role: algorithm/task-graph diagnostic, not a physics validation target.** `stromgren_analytic_check.py` compares the simulated HII region growth against the classical Spitzer (1978) D-type formula, which is known to over-predict the true late-phase solution (see `../StromgrenSphereStarbench/`'s own README) -- a PASS here is not evidence of correct physics. This example exists to debug the model's own task-graph/rebuild-cadence behaviour (search-radius expansion, rebuild cadence, and their interaction), using the Spitzer curve as a cheap, always-available reference shape, not a certified target. `hii_anisotropy_check.py` additionally verifies tagging isotropy (no octant of the region left un-ionized) under the `IONIZATION_FEEDBACK_DEBUG_NO_COOLING` build -- the task-graph completeness check this model's development gates on. For actual published-physics validation, see `../StromgrenSphereStarbench/` (single star vs. the STARBENCH consensus solution), `../StromgrenSphereHuSmith2017/` (4 co-located stars vs. Hu et al. 2017/Smith et al. 2021), and `../StromgrenSphereClumpSmith2021/` (4 stars + clump vs. Smith et al. 2021's own Fig. 2).
 
 `GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
 
@@ -9,7 +9,7 @@ This example consists of a homogeneous and periodic box filled with gas particle
 To run this example with the GEAR model,
 
 ```
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 ```
 
 Then, type
