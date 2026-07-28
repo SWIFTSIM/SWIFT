@@ -90,7 +90,7 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
        buffer would silently drop its outskirts. */
     const double charged = feedback_iact_HII_maintain_ionized_part(
         si, pj, xpj, r2, pixel, ctx->phys_const, ctx->hydro_props, ctx->us,
-        ctx->cosmo, ctx->cooling, ctx->time, ctx->dt_back, ctx->dt_forward);
+        ctx->cosmo, ctx->cooling, ctx->time, ctx->dt_back);
 
     /* Extent and count track what this star still HOLDS, not what it could
        afford this pass. Gating them on `charged` would make them depend on
@@ -491,10 +491,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     /* Phase 1: charge the recombination losses of the gas this star already
        holds ionized, before any photons are spent on new candidates. Skipped
        when cooling is disabled for tagged gas, since tags are then permanent
-       by construction and there is nothing to renew.
-
-       Fixed cadence has no forward estimate: dt_forward is always 0. */
-    const double dt_forward_cached = 0.0;
+       by construction and there is nothing to renew. */
     struct hii_maintenance_context maintenance_ctx = {
         .phys_const = phys_const,
         .hydro_props = hydro_props,
@@ -503,7 +500,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         .cooling = cooling,
         .time = time,
         .dt_back = dt_back,
-        .dt_forward = dt_forward_cached,
         .r2_max_maintained = 0.f,
         .photons_charged = 0.0,
     };
@@ -567,9 +563,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         const integertime_t ti_begin =
             get_integer_time_begin(e->ti_current - 1, si->time_bin);
 
-        /* Fixed cadence has no forward estimate: dt_forward is always 0. */
-        const double dt_forward = 0.0;
-
         /* Now let's ionize the gas particles! */
         for (int k = 0; k < count_found; k++) {
 
@@ -587,9 +580,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           const float r2 = ngb_buffer[k].r2;
 
           /* Do the ionization */
-          feedback_iact_HII_ionization(
-              si, pj, xpj, r2, pixel, phys_const, hydro_props, us, cosmo,
-              cooling, feedback_props, ti_begin, time, dt_back, dt_forward);
+          feedback_iact_HII_ionization(si, pj, xpj, r2, pixel, phys_const,
+                                       hydro_props, us, cosmo, cooling,
+                                       feedback_props, ti_begin, time, dt_back);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
           if (radiation_is_part_tagged_as_ionized(pj, xpj) &&

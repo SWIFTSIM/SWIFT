@@ -611,20 +611,15 @@ feedback_hii_photoionization_rate_HI(
 /**
  * @brief Absolute time until which an ionization tag stamped now stays valid.
  *
- * Sized on the LARGER of the elapsed and expected-next intervals; taking the
- * max can only lengthen a lifetime, never shorten one. dt_forward is
- * currently always 0 (every caller uses fixed cadence, whose next pass has
- * no forward estimate), so this reduces to time + LIFETIME*dt_back, but the
- * max() is kept as the general form for any future caller with a real
- * forward estimate.
+ * Sized on the interval the pass just covered, so a tag outlives the gap to
+ * its star's next rebuild and cooling cannot expire it first.
  *
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
- * @param dt_forward Interval until this star's next expected pass.
  */
 __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
-    const double time, const double dt_back, const double dt_forward) {
-  return time + RADIATION_TAG_LIFETIME_INTERVALS * max(dt_back, dt_forward);
+    const double time, const double dt_back) {
+  return time + RADIATION_TAG_LIFETIME_INTERVALS * dt_back;
 }
 
 /**
@@ -644,7 +639,6 @@ __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
  * @param cooling Cooling function data.
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
- * @param dt_forward Interval until this star's next expected pass.
  * @param cost Ionizing photon count to charge for this particle.
  */
 __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
@@ -652,12 +646,12 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
     struct xpart *restrict xpj, float r2, int pixel,
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const double time,
-    const double dt_back, const double dt_forward, const double cost) {
+    const double dt_back, const double cost) {
 
   if (xpj->tracers_data.HII_region.is_ionized != 0) return;
 
   radiation_tag_part_as_ionized(
-      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back, dt_forward),
+      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
   timestep_sync_part(pj);
@@ -699,7 +693,6 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * @param cooling Cooling function data.
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
- * @param dt_forward Interval until this star's next expected pass.
  * @return Photons charged for this particle, 0 if the budget was exhausted.
  */
 __attribute__((always_inline)) INLINE double
@@ -709,7 +702,7 @@ feedback_iact_HII_maintain_ionized_part(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const double time,
-    const double dt_back, const double dt_forward) {
+    const double dt_back) {
 
   /* Counted whether or not its photons can be afforded: this field is the
      mass the star HOLDS ionized, matching h_hii's extent (see stars_io.h). */
@@ -729,7 +722,7 @@ feedback_iact_HII_maintain_ionized_part(
      shortest time bin. Expiry is therefore checked on the gas particle's own
      next cooling task, so recession can lag by up to one of its timesteps. */
   radiation_tag_part_as_ionized(
-      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back, dt_forward),
+      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
 
@@ -753,7 +746,6 @@ feedback_iact_HII_maintain_ionized_part(
  * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
- * @param dt_forward Interval until this star's next expected pass.
  */
 __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
@@ -762,7 +754,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double dt_back, const double dt_forward) {
+    const double time, const double dt_back) {
 
   const int deterministic_boundary =
       feedback_props->HII_deterministic_boundary_ionization;
@@ -796,13 +788,13 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
   /* Case 1: Ionization is guaranteed */
   if (cost <= budget) {
     feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
-                            dt_back, dt_forward, cost);
+                            dt_back, cost);
   } else if (deterministic_boundary) {
     /* Deterministic mode: always ionize the boundary particle, letting the
        pixel's budget go slightly negative (bounded by one particle's
        ionization cost). */
     feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
-                            dt_back, dt_forward, cost);
+                            dt_back, cost);
   } else {
     /* Probabilistic mode: a weighted coin flip decides whether to fully
        ionize pj. On a win, the full cost is consumed (more than what was
@@ -825,7 +817,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
     if (random_number <= proba) {
       /* We won the roll! Claim the particle. */
       feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
-                              dt_back, dt_forward, cost);
+                              dt_back, cost);
     }
     /* Lost the roll: consume nothing, budget carries over. */
   } /* End of probability handling */

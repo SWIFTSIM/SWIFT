@@ -76,7 +76,7 @@ void feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double dt_back, const double dt_forward);
+    const double time, const double dt_back);
 
 double feedback_iact_HII_maintain_ionized_part(
     struct spart *restrict si, struct part *restrict pj,
@@ -84,7 +84,7 @@ double feedback_iact_HII_maintain_ionized_part(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const double time,
-    const double dt_back, const double dt_forward);
+    const double dt_back);
 
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
 double feedback_get_star_HII_last_rebuild(const struct spart *sp);

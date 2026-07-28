@@ -121,9 +121,6 @@ struct hii_maintenance_context {
   /*! Time elapsed since this star's previous HII rebuild pass. */
   double dt_back;
 
-  /*! Interval until this star's next expected pass. */
-  double dt_forward;
-
   /*! (return) Largest squared distance at which this star still holds gas
       tagged and owned, i.e. the region's extent this pass. Independent of
       what the budget could actually pay for, so it does not depend on
