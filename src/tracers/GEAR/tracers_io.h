@@ -105,16 +105,18 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
   int num = 2;
 
   list[0] = io_make_output_field(
-      "FinalHIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 0.f, sparts,
+      "FinalHIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts,
       tracers_data.final_HII_radius,
       "Co-moving HII region radius of the star particles before they die or "
-      "were not eligible to form HII regions anymore.");
+      "were not eligible to form HII regions anymore. Same algorithm's "
+      "bookkeeping caveat as the live HIIRegionRadii it is retired from.");
 
   list[1] = io_make_output_field(
       "FinalHIIRegionMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
       tracers_data.final_HII_mass,
       "Ionized gas mass of the star particles' HII region before they die or "
-      "were not eligible to form HII regions anymore.");
+      "were not eligible to form HII regions anymore. Same algorithm's "
+      "bookkeeping caveat as the live HIIRegionMasses it is retired from.");
 
   return num;
 }
