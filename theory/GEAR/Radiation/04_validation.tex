@@ -13,7 +13,11 @@ specific multi-source tests and reported numbers. Section~\ref{sec:t5-validation
 separately checks the Grackle rate-coupled photoionization scheme (T5) --
 neither paper tests rate-coupling, so that check is a self-consistency/
 robustness validation against basic photoionization equilibrium physics,
-not a fourth published target.
+not a fourth published target. Section~\ref{sec:cosmo-validation}
+likewise sits outside the three published targets: it validates the
+cosmological frame handling (identity and high-$z$ tiers of
+\code{StromgrenSphereCosmo}) against this code's own non-cosmological
+results and the analytic formulas, not against a paper.
 
 \textbf{2026-07-27 update}: a cadence sweep (varying
 \code{GEARFeedback:HII\_rebuild\_time\_Myr} at fixed resolution) found the
@@ -21,8 +25,11 @@ per-pass ionizing-photon budget was cadence-\emph{dependent} -- a
 rate-vs-rate comparison with no time integration, and already-ionized gas
 invisible to the budget entirely. Root-caused and fixed with a photon-count
 budget integrated over the elapsed interval (Section~\ref{sec:husmith-current}
-below); STARBENCH and Hu/Smith were both re-checked against the fix. The
-pre-fix numbers this document previously reported are moved to
+below); all three targets have since been re-checked against the fix
+(STARBENCH and Hu/Smith on 2026-07-28 via the Phase 4b reruns, the
+clump matrix on 2026-07-28 via the revalidation in
+Section~\ref{sec:clump-current}). The pre-fix numbers this document
+previously reported are moved to
 Section~\ref{sec:deprecated-2026-07-27} rather than deleted, since they
 remain a valid record of what was true of the code at the time.
 
@@ -33,7 +40,7 @@ remain a valid record of what was true of the code at the time.
 \centering
 \begin{tabular}{p{2.6cm}p{3.4cm}p{5.7cm}}
 \hline
-\textbf{Target} & \textbf{Example} & \textbf{Status (2026-07-27)} \\
+\textbf{Target} & \textbf{Example} & \textbf{Status (2026-07-28)} \\
 \hline
 1. STARBENCH (Bisbas et al.\ 2015) &
   \code{StromgrenSphereStarbench} &
@@ -44,9 +51,10 @@ remain a valid record of what was true of the code at the time.
 2. Hu et al.\ (2017) / Smith et al.\ (2021), 4 co-located stars &
   \code{StromgrenSphereHuSmith2017} &
   \textbf{Cadence-independence PASS} (six cadences agree to within
-  $\sim$1\,pp); \textbf{absolute accuracy FAIL} (median 17--18\% at
-  converged cadence, at a coarser resolution than the validated
-  default -- see caveats). \textbf{Phase 4b} (2026-07-28) re-ran the
+  $\sim$1\,pp); \textbf{absolute accuracy pass-with-caveat} (median
+  17--18\% at converged cadence, resolved as reference-curve
+  systematics -- the R-type onset plus the band where the two published
+  reference conventions themselves disagree; no code fix indicated). \textbf{Phase 4b} (2026-07-28) re-ran the
   shipped default (\code{gas\_mass=4}, now fixed cadence $0.01\,$Myr,
   matching the sweep's cadence) and found the same
   bracketed-by-references characterization holds at this resolution
@@ -59,9 +67,10 @@ remain a valid record of what was true of the code at the time.
 \hline
 3. Smith et al.\ (2021), Fig.~2 clump &
   \code{StromgrenSphereClumpSmith2021} &
-  \textbf{PASS as of 2026-07-22} (by eye and cross-scheme consistency);
-  \textbf{not yet re-checked} against the count-budget redesign.
-  Section~\ref{sec:clump-current}. \\
+  \textbf{PASS} (by eye and cross-scheme consistency, 2026-07-22;
+  \textbf{re-checked 2026-07-28} against the count-budget redesign --
+  qualitative criteria reproduce, every $r_{\rm HII}$ moved toward the
+  analytic bound). Section~\ref{sec:clump-current}. \\
 \hline
 \end{tabular}
 \caption{The three published validation targets and their owning
@@ -433,9 +442,11 @@ isolated.
 
 \textbf{PASS as of 2026-07-22, re-checked 2026-07-28} against the
 2026-07-27 count-budget redesign (Section~\ref{sec:husmith-current}) --
-see the revalidation paragraph below the erosion table. Everything
-through that paragraph describes the original 2026-07-22 evidence.
-\code{StromgrenSphereClumpSmith2021}
+see the paragraph ``Revalidation at commit \texttt{37c88c6a8}'' below
+the erosion table. Everything \emph{before} that paragraph describes
+the original 2026-07-22 evidence and quotes its numbers; where the
+revalidation found a number changed, the change is stated there, not
+retro-edited here. \code{StromgrenSphereClumpSmith2021}
 (four co-located $19.2\,M_\odot$ sources, $10\,$pc-radius $10^4\,{\rm
 cm^{-3}}$ clump $20\,$pc from the sources in a $100\,{\rm cm^{-3}}$
 background), built with
@@ -486,7 +497,9 @@ build flag targets.
     the clump edge in both schemes -- but the uniform/angular
     difference in reach is smaller at this coarser resolution,
     consistent with the compression measurement below converging at
-    this \texttt{gas\_mass}.}
+    this \texttt{gas\_mass}. (2026-07-22 epoch; the 2026-07-28
+    revalidation below finds this convergence does not persist under
+    the count-budget redesign.)}
   \label{fig:clump-temperature-slices-gas95}
 \end{figure}
 
@@ -525,13 +538,19 @@ confidence intervals above), but converge to statistically
 indistinguishable values at the coarser \code{gas\_mass=95} ($140.2\%$
 vs.\ $141.3\%$, overlapping intervals) -- consistent with the angular
 scheme's per-pixel budget-splitting needing enough particles per
-pixel's solid angle to manifest a distinct effect.
+pixel's solid angle to manifest a distinct effect. This
+differentiation-and-convergence pattern did \emph{not} survive the
+2026-07-28 revalidation below (the gas20 ordering inverts and gas95 no
+longer converges) -- consistent with the MFM/MFV cross-check's
+conclusion further down that it is an SPH compression artifact, not a
+robust property of the two injection schemes.
 
 \textbf{Revalidation at commit \code{37c88c6a8} (2026-07-28), against the
 count-budget redesign.} Same 4-run SPH matrix, same build flag, isolated
 worktree, binary md5 recorded. Mass conservation and the still-dense
-threshold metric reproduce closely (still-dense: $99.7/99.9/100.0/99.9\%$
-vs.\ the $99.3/99.9/99.8/99.9\%$ above). The continuous near-side $n_H$
+threshold metric reproduce closely (still-dense $99.7$, $99.9$,
+$100.0$, $99.9\%$ vs.\ the $99.3$, $99.9$, $99.8$, $99.9\%$ above, in
+the table's row order). The continuous near-side $n_H$
 ratio moved well outside the original bootstrap CIs and changed shape:
 
 \begin{center}
@@ -817,7 +836,11 @@ instead against basic photoionization-equilibrium physics, using
 \code{StromgrenSphereClumpSmith2021} as the testbed. A caching bug that
 left \code{RT\_heating\_rate} always exactly zero was found and fixed
 first (Section~\ref{sec:t5-heating-rate-zero}); the results below are
-all post-fix.
+all post-fix. \textbf{Epoch caveat}: every run in this subsection
+(both the T5-on and T5-off sides, so the on/off contrast is internally
+consistent) predates the 2026-07-27 count-budget redesign; the
+coupling-on re-validation at current code is tracked as item T5 in
+Section~\ref{sec:open}.
 
 Six configurations were run to completion (uniform/angular
 budget-splitting $\times$ \code{gas\_mass}$=\{20,95\}$, T5 on/off in
@@ -842,9 +865,13 @@ angular, gas95, T5 off  & 19.36 & 4480 &  8249 \\
 $r_{\rm HII}$ is the algorithm's own tracked radius (peak
 \code{HIIRegionRadii} up to $t=8.2\,$Myr), the same quantity reported
 for the flag-and-floor baseline in Section~\ref{sec:clump-current} --
-these T5-off reruns reproduce that baseline closely (16.44/23.18/19.17\,pc
-there vs.\ 15.83/21.10/19.36\,pc here), confirming the two are directly
-comparable. At \code{gas\_mass=95} the ionized region contains only
+these T5-off reruns reproduce the \emph{same-epoch} (2026-07-22)
+baseline closely (16.44/23.18/19.17\,pc then vs.\
+15.83/21.10/19.36\,pc here), confirming on/off are directly comparable
+\emph{within this table}. Do not compare this table against
+Section~\ref{sec:clump-current}'s 2026-07-28 revalidation numbers
+(21.61/24.32/22.37\,pc): those include the count-budget redesign,
+which every run here predates. At \code{gas\_mass=95} the ionized region contains only
 34--47 particles above HII$>0.5$, so its temperature entry is noisier
 than the \code{gas\_mass=20} pair.
 
