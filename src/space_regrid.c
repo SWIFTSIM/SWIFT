@@ -147,7 +147,7 @@ void space_regrid(struct space *s, int verbose) {
     float buff_in[2] = {h_max_no_hii, h_max_hii};
     float buff_out[2];
     if (MPI_Allreduce(buff_in, buff_out, 2, MPI_FLOAT, MPI_MAX,
-                       MPI_COMM_WORLD) != MPI_SUCCESS)
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate the rebuild flag across nodes.");
     h_max_no_hii = buff_out[0];
     h_max_hii = buff_out[1];
@@ -215,8 +215,7 @@ void space_regrid(struct space *s, int verbose) {
   double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
-  if (cdim[0] != s->cdim[0] || cdim[1] != s->cdim[1] ||
-      cdim[2] != s->cdim[2]) {
+  if (cdim[0] != s->cdim[0] || cdim[1] != s->cdim[1] || cdim[2] != s->cdim[2]) {
 
     /* Capture state of current space. h_max_no_hii_hwm's ratchet (see
        above) means cdim can now also come out larger (finer) than before

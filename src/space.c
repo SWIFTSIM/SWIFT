@@ -1285,9 +1285,9 @@ void space_init(struct space *s, struct swift_params *params,
      of what is driving the coarsening (ordinary hydro/star/black-hole/sink
      h_max, or a star's h_hii). space_regrid() clamps the effective cell
      width at this value instead of coarsening past it. */
-  int mintcells = parser_get_opt_param_int(
-      params, "Scheduler:min_top_level_cells",
-      space_min_top_level_cells_default);
+  int mintcells =
+      parser_get_opt_param_int(params, "Scheduler:min_top_level_cells",
+                               space_min_top_level_cells_default);
   if (mintcells < 1)
     error("Scheduler:min_top_level_cells must be at least 1, got %d",
           mintcells);
