@@ -270,10 +270,12 @@ hydro_gravity_update_gpart_mass(struct part* restrict p) {
 __attribute__((always_inline)) INLINE static void
 hydro_gravity_xp_mflux(struct part* p, struct xpart* xp) {
 
+#ifdef SHADOWSWIFT_EXACT_GRAV_WORK
   for (int i = 0; i < 3; i++) {
     xp->mflux[i] = p->gravity.mflux[i];
     p->flux.dt_previous = p->flux.dt;
   }
+#endif
 }
 
 
