@@ -83,10 +83,6 @@ double radiation_get_case_b_recombination_coefficient_cgs(const double T);
 
 double radiation_get_T_collisional_K(const double Z);
 
-void radiation_cache_mean_excess_photon_energy_HI(
-    struct spart *sp, const struct cooling_function_data *cooling,
-    const struct unit_system *us, const struct phys_const *phys_const);
-
 void radiation_compute_and_cache_HII_rebuild_interval(
     struct spart *sp, const struct feedback_props *feedback_props,
     const struct phys_const *phys_const, const struct unit_system *us,
@@ -176,6 +172,8 @@ double radiation_get_ionization_rate_from_integral(const struct radiation *rad,
                                                    float log_m1, float log_m2);
 double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
                                               float log_m);
+double radiation_get_mean_excess_photon_energy_HI_from_integral(
+    const struct radiation *rad, float log_m1, float log_m2);
 
 void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct stellar_model *sm,
@@ -196,5 +194,10 @@ void radiation_read_ionization_rate_array(struct radiation *rad,
                                           int interpolation_size,
                                           const struct unit_system *us,
                                           const struct phys_const *phys_const);
+void radiation_read_mean_excess_photon_energy_array(
+    struct radiation *rad, struct interpolation_1d *interp_raw,
+    struct interpolation_1d *interp_int, const struct stellar_model *sm,
+    int interpolation_size, const struct unit_system *us,
+    const struct phys_const *phys_const);
 
 #endif /* SWIFT_RADIATION_GEAR_H */

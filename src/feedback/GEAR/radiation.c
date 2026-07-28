@@ -320,30 +320,6 @@ radiation_get_part_rate_to_fully_ionize(
 }
 
 /**
- * Cache this star's mean excess photon energy above the 13.6 eV HI
- * ionization threshold, needed to build Grackle's RT_heating_rate for
- * GEARFeedback:HII_couple_ionization_rate. Runs unconditionally every HII
- * rebuild pass, regardless of HII_adaptive_rebuild_cadence -- unlike
- * radiation_compute_and_cache_HII_rebuild_interval()'s adaptive-timing
- * estimate, this caching is unrelated to rebuild cadence.
- *
- * @param sp The star.
- * @param cooling The #cooling_function_data used in the run.
- * @param us Unit system.
- * @param phys_const Physical constants.
- */
-void radiation_cache_mean_excess_photon_energy_HI(
-    struct spart *sp, const struct cooling_function_data *cooling,
-    const struct unit_system *us, const struct phys_const *phys_const) {
-
-  sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-      cooling->HII_couple_ionization_rate
-          ? (float)radiation_get_individual_star_mean_excess_photon_energy_HI(
-                sp->mass, us, phys_const)
-          : 0.f;
-}
-
-/**
  * Compute and cache this star's next adaptive HII rebuild deadline
  * (GEARFeedback:HII_adaptive_rebuild_cadence). Called once per rebuild
  * pass, before any particle this pass is ionized, so every consumer
@@ -1168,6 +1144,8 @@ void radiation_clean(struct radiation *rad) {
   interpolate_1d_free(&rad->raw.luminosities);
   interpolate_1d_free(&rad->integrated.dot_N_ion);
   interpolate_1d_free(&rad->raw.dot_N_ion);
+  interpolate_1d_free(&rad->integrated.dot_E_excess);
+  interpolate_1d_free(&rad->raw.dot_E_excess);
 }
 
 /**
@@ -1227,6 +1205,42 @@ double radiation_get_ionization_rate_from_raw(const struct radiation *rad,
                                               float log_m) {
   return interpolate_1d(&rad->raw.dot_N_ion, log_m) *
          RADIATION_DOT_N_ION_TABLE_SCALING;
+};
+
+/**
+ * @brief Get the IMF-averaged, Q-weighted mean excess photon energy above
+ * the 13.6 eV HI ionization threshold, for a population over a mass window.
+ *
+ * Ratio of the integrated dot_E_excess and dot_N_ion tables, taken directly
+ * on the raw (still /RADIATION_DOT_N_ION_TABLE_SCALING) interpolated
+ * values rather than through their public accessors: the scaling constant
+ * multiplies both tables identically, so it cancels in the ratio without
+ * ever needing to be undone, leaving a result in cgs erg (see
+ * #radiation_get_individual_star_mean_excess_photon_energy_HI).
+ *
+ * @param rad The #radiation model.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return Q-weighted mean excess photon energy in cgs erg, or 0 if no
+ * ionizing photons are produced over the window (dot_N_ion difference is
+ * 0 -- e.g. no alive ionizing stars).
+ */
+double radiation_get_mean_excess_photon_energy_HI_from_integral(
+    const struct radiation *rad, float log_m1, float log_m2) {
+
+  const double dot_N_ion_1 = interpolate_1d(&rad->integrated.dot_N_ion, log_m1);
+  const double dot_N_ion_2 = interpolate_1d(&rad->integrated.dot_N_ion, log_m2);
+  const double delta_dot_N_ion = dot_N_ion_2 - dot_N_ion_1;
+
+  if (delta_dot_N_ion == 0.) return 0.;
+
+  const double dot_E_excess_1 =
+      interpolate_1d(&rad->integrated.dot_E_excess, log_m1);
+  const double dot_E_excess_2 =
+      interpolate_1d(&rad->integrated.dot_E_excess, log_m2);
+  const double delta_dot_E_excess = dot_E_excess_2 - dot_E_excess_1;
+
+  return delta_dot_E_excess / delta_dot_N_ion;
 };
 
 /**
@@ -1350,6 +1364,77 @@ void radiation_read_ionization_rate_array(struct radiation *rad,
 }
 
 /**
+ * @brief Read an array of excess-photon-energy emission rate data from the
+ * table: dot_E_excess(m) = dot_N_ion(m) * mean_excess_photon_energy_HI(m).
+ *
+ * IMF-averaging this product (rather than mean_excess_photon_energy_HI(m)
+ * alone) is what makes the eventual ratio of integrated tables a
+ * Q-weighted mean: a star that contributes more ionizing photons should
+ * weigh more in the population's mean excess energy. Divided by
+ * RADIATION_DOT_N_ION_TABLE_SCALING for the same reason as the dot_N_ion
+ * table (dot_N_ion(m) alone already needs it; the product would otherwise
+ * overflow float storage) -- the same constant multiplies both raw tables,
+ * so it cancels exactly in
+ * #radiation_get_mean_excess_photon_energy_HI_from_integral's ratio.
+ *
+ * @param rad The #radiation model.
+ * @param interp_raw Interpolation data to initialize (raw).
+ * @param interp_int Interpolation data to initialize (integrated).
+ * @param sm The #stellar_model.
+ * @param interpolation_size Number of element to keep in the interpolation
+ * data.
+ */
+void radiation_read_mean_excess_photon_energy_array(
+    struct radiation *rad, struct interpolation_1d *interp_raw,
+    struct interpolation_1d *interp_int, const struct stellar_model *sm,
+    int interpolation_size, const struct unit_system *us,
+    const struct phys_const *phys_const) {
+
+  /* Allocate the memory */
+  const int count = 500;
+  float *data = (float *)malloc(sizeof(float) * count);
+  if (data == NULL)
+    error("Failed to allocate the RAD yields for excess photon energy.");
+
+  const float mass_min = sm->imf.mass_min;
+  const float mass_max = sm->imf.mass_max;
+  const float log_mass_min = log10f(mass_min);
+  const float log_mass_max = log10f(mass_max);
+  const float step_size = (log_mass_max - log_mass_min) / (count - 1);
+
+  /* Fill the table */
+  for (size_t j = 0; j < count; j++) {
+    /* Compute the log-mass and mass */
+    const float log_mass = log_mass_min + j * step_size;
+    const float mass = exp10(log_mass) * phys_const->const_solar_mass;
+
+    const double dot_N_ion =
+        radiation_get_individual_star_ionizing_photon_emission_rate_fit(
+            mass, us, phys_const);
+    const double E_excess =
+        radiation_get_individual_star_mean_excess_photon_energy_HI(mass, us,
+                                                                   phys_const);
+    data[j] = (float)(dot_N_ion * E_excess / RADIATION_DOT_N_ION_TABLE_SCALING);
+  }
+
+  /* Initialize the raw interpolation */
+  interpolate_1d_init(interp_raw, log_mass_min, log_mass_max,
+                      interpolation_size, log_mass_min, step_size, count, data,
+                      boundary_condition_error);
+
+  initial_mass_function_integrate(&sm->imf, data, count, log_mass_min,
+                                  step_size);
+
+  /* Initialize the integrated interpolation */
+  interpolate_1d_init(interp_int, log_mass_min, log_mass_max,
+                      interpolation_size, log_mass_min, step_size, count, data,
+                      boundary_condition_const);
+
+  /* Cleanup the memory */
+  free(data);
+}
+
+/**
  * @brief Read the RAD yields from the table.
  *
  * The tables are in internal units at the end of this function.
@@ -1380,4 +1465,9 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   radiation_read_ionization_rate_array(rad, &rad->raw.dot_N_ion,
                                        &rad->integrated.dot_N_ion, sm,
                                        rad->interpolation_size, us, phys_const);
+
+  /* Read the excess-photon-energy emission rates */
+  radiation_read_mean_excess_photon_energy_array(
+      rad, &rad->raw.dot_E_excess, &rad->integrated.dot_E_excess, sm,
+      rad->interpolation_size, us, phys_const);
 };

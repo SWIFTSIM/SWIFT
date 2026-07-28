@@ -856,24 +856,6 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 
 /**
  * @brief Dispatch wrapper exposing
- * radiation_cache_mean_excess_photon_energy_HI() (radiation.c) to
- * runner_radiation_feedback.c, same reasoning as
- * #feedback_compute_and_cache_HII_rebuild_interval.
- *
- * @param sp The star.
- * @param cooling The #cooling_function_data used in the run.
- * @param us Unit system.
- * @param phys_const Physical constants.
- */
-void feedback_cache_mean_excess_photon_energy_HI(
-    struct spart *sp, const struct cooling_function_data *cooling,
-    const struct unit_system *us, const struct phys_const *phys_const) {
-
-  radiation_cache_mean_excess_photon_energy_HI(sp, cooling, us, phys_const);
-}
-
-/**
- * @brief Dispatch wrapper exposing
  * radiation_compute_and_cache_HII_rebuild_interval() (radiation.c) to
  * runner_radiation_feedback.c, which -- being generic cell-traversal code --
  * must not include GEAR-internal radiation.h directly (see

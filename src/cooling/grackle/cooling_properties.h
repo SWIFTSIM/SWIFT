@@ -85,9 +85,9 @@ struct cooling_function_data {
       internally when set. Branches on this flag, in call order along the
       feedback/cooling task chain: feedback/GEAR/feedback_common.c
       (feedback_iact_HII_ionization, freezes Gamma_HI/excess photon energy
-      onto the tagged particle) -> feedback/GEAR/radiation.c
-      (radiation_cache_mean_excess_photon_energy_HI,
-      radiation_compute_and_cache_HII_rebuild_interval's T_ref_K) ->
+      onto the tagged particle, itself frozen unconditionally per star in
+      feedback/GEAR/stellar_evolution.c) -> feedback/GEAR/radiation.c
+      (radiation_compute_and_cache_HII_rebuild_interval's T_ref_K) ->
       cooling/grackle/cooling.c (cooling_copy_to_grackle, both call sites)
       -> cooling/grackle/cooling_gear_subgrid.h
       (cooling_ionize_part_subgrid, cooling_expire_rate_coupled_tag_subgrid)

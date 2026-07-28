@@ -192,6 +192,11 @@ struct radiation {
 
     /*! Ionization emission rate. */
     struct interpolation_1d dot_N_ion;
+
+    /*! Excess-energy emission rate above the 13.6 eV HI threshold,
+        dot_N_ion(m) * mean_excess_photon_energy_HI(m); see
+        #radiation_get_mean_excess_photon_energy_HI_from_integral. */
+    struct interpolation_1d dot_E_excess;
   } raw;
 
   /*! Yields integrated */
@@ -202,6 +207,9 @@ struct radiation {
 
     /*! Ionization emission rate. */
     struct interpolation_1d dot_N_ion;
+
+    /*! Excess-energy emission rate above the 13.6 eV HI threshold. */
+    struct interpolation_1d dot_E_excess;
   } integrated;
 
   /* /\*! Minimal mass for a SNII *\/ */

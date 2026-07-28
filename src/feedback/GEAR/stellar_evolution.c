@@ -1234,6 +1234,15 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
           sp->mass, us, phys_const);
   radiation_set_ionizing_photon_rate(sp, dot_N_ion_total, sm->rad.n_HII_pixels);
 
+  /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
+     Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate
+     (cooling reads this field only when that flag is on). Computed
+     unconditionally: it is a cheap single lookup, and keeping it in sync
+     with dot_N_ion_total avoids a second flag check here. */
+  sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+      (float)radiation_get_individual_star_mean_excess_photon_energy_HI(
+          sp->mass, us, phys_const);
+
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
       "[id=%lld, type=%d] mass = %e Msun, N_dot_ion = %e /s, L_bol = %e "
@@ -1394,6 +1403,15 @@ void stellar_evolution_compute_preSN_feedback_spart(
   const double dot_N_ion_total =
       dot_N_ion * sp->sf_data.birth_mass / phys_const->const_solar_mass;
   radiation_set_ionizing_photon_rate(sp, dot_N_ion_total, sm->rad.n_HII_pixels);
+
+  /* Q-weighted mean excess photon energy above the 13.6 eV HI threshold,
+     over the same mass window as dot_N_ion above. A ratio of per-unit-mass
+     integrals, so unlike L_bol/dot_N_ion it is NOT rescaled by birth_mass:
+     the mean photon energy of a population does not depend on how many
+     stars it has, only on which masses are still alive. */
+  sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+      (float)radiation_get_mean_excess_photon_energy_HI_from_integral(
+          &sm->rad, log10f(m_min), log10f(m_end_step));
 
   /*****************************************/
   /* Stellar winds */
