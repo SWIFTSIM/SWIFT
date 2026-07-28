@@ -328,8 +328,9 @@ on the $0.01\,$Myr-cadence snapshots:
 \begin{itemize}
 \item \emph{Tag churn (the lapse/reclaim $N_H$ re-charge sink)}: 59
   lapse events over the entire $8\,$Myr run, a negligible fraction of
-  the emitted photons. The Phase-C1 neutral-content pricing item in the
-  fix plan therefore will \emph{not} move this target; it stands on
+  the emitted photons. A fix pricing a reclaimed particle's strip cost
+  on its actual neutral hydrogen content, rather than its full
+  composition, will therefore \emph{not} move this target; it stands on
   production-regime grounds only.
 \item \emph{Front granularity}: the radial gap between the outermost
   tagged particle and the next untagged candidate is $0.00$--$0.07\,$pc
@@ -578,11 +579,13 @@ pass handed out a full rate's worth of photons regardless of elapsed
 time, which is itself why the whole redesign happened (documented
 cadence-dependence: a $37$--$69\%$ cadence spread on
 \code{husmith2017\_grackle\_coupling} before the fix, $1$--$3\%$ after).
-This clump rerun therefore spans the \emph{entire} redesign plus its
-later C1/C2 refinements (\code{ee54e8092}), not C1/C2 in isolation as
-originally written here -- the two changes cannot be separated by this
-test alone, and attributing the shift specifically to C2's ceiling fix
-was an overclaim. What can be said: the reference numbers come from a
+This clump rerun therefore spans the \emph{entire} redesign plus a
+later refinement commit (\code{ee54e8092}) that removed a
+$2\times$-nominal-cadence photon-budget ceiling firing outside the
+gas-free-cell case it was meant for -- not that later refinement in
+isolation as originally written here. The two changes cannot be
+separated by this test alone, and attributing the shift specifically to
+the later refinement was an overclaim. What can be said: the reference numbers come from a
 scheme independently established elsewhere in this document to be
 cadence-dependent and to discard photons it should have counted; the
 2026-07-28 numbers come from the validated, cadence-independent
