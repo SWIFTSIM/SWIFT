@@ -31,6 +31,7 @@
 
 /* Includes. */
 #include "hydro_space.h"
+#include "inline.h"
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
@@ -395,6 +396,24 @@ struct space {
 
 #endif
 };
+
+/**
+ * @brief Does the top-level radiation stencil already wire every top-level
+ * cell pair, making h_hii coverage between two unsplit top-level cells
+ * complete regardless of reach?
+ *
+ * True only at the periodic minimum of 3 cells/axis, where the 27-cell
+ * stencil (with wraparound) connects every top-level cell to every other
+ * one. Computed from cdim/periodic directly rather than cached, so it is
+ * always consistent with whatever grid s currently describes.
+ *
+ * @param s The #space.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+space_radiation_top_stencil_covers_box(const struct space *s) {
+
+  return s->periodic && s->cdim[0] == 3 && s->cdim[1] == 3 && s->cdim[2] == 3;
+}
 
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
