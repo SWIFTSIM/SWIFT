@@ -119,7 +119,7 @@ GEARFeedback:
   HII_min_density_Hpcm3: 0.01
   radiation_pressure_efficiency: 0
   HII_max_age_Myr:        50.0
-  HII_rebuild_time_Myr:   0.5   # fixed cadence, matching the control run
+  HII_rebuild_time_Myr:   0.5   # fixed cadence, the sibling examples' value
 
   #Mechanical feedback
   maximal_radius: 2

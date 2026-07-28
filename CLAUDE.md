@@ -115,7 +115,7 @@ covered by them and also needs:
    run's real gas state before blaming the budget.
 5. **Cadence-independence**, for any photon-budget or time-integration change:
    `husmith2017_grackle_coupling` at `HII_rebuild_time_Myr` ∈ {0.5, 0.1, 0.03,
-   0.01, 0.003, 0.001}, `HII_adaptive_rebuild_cadence:0`, then
+   0.01, 0.003, 0.001}, then
    `hu_smith_analytic_check.py`. The six must agree — cadence is a numerical
    parameter. Report the discarded-budget fraction too: at coarse cadence the
    `max_ngbs` ceiling binds and caps how far agreement can extend.
