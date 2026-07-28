@@ -277,8 +277,8 @@ static int space_sort_plan_moves(struct threadpool *tp, const int *ind,
   data.nr = nr;
   data.num_bins = num_bins;
 
-  threadpool_map(tp, space_sort_count_mapper, chunk_ids, nr_chunks,
-                 sizeof(int), threadpool_auto_chunk_size, &data);
+  threadpool_map(tp, space_sort_count_mapper, chunk_ids, nr_chunks, sizeof(int),
+                 threadpool_auto_chunk_size, &data);
 
   /* Prefix-sum the chunk counts into exclusive write starts, giving D. */
   size_t nr_moves = 0;
@@ -586,8 +586,7 @@ void space_parts_sort(struct threadpool *tp, struct part *parts,
   if (!space_sort_plan_moves(tp, ind, counts, num_bins, &moves)) {
 
     /* Too much of the array is out of place: move everything, in place. */
-    space_parts_sort_serial(parts, xparts, ind, counts, num_bins,
-                            parts_offset);
+    space_parts_sort_serial(parts, xparts, ind, counts, num_bins, parts_offset);
   } else if (moves.nr_moves > 0) {
 
     struct space_sort_copy_data data;
