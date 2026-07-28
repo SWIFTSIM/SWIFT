@@ -182,8 +182,12 @@
 
 /*! @brief This option enables a (more) exact gravitational work term
  * NOTE: This is largely untested, and tests that have been done indicate this
- * is not a great solution. Left disabled until further notice */
+ * is not a great solution. Left disabled until further notice
+ *
+ * This is not used in AREPO (Pakmor, private communication)
+ */
 #ifndef RIEMANN_SOLVER_HLLC
+/* ONLY turn this on for testing, it is NOT stable and NOT used in MM codes */
 //#define SHADOWSWIFT_EXACT_GRAV_WORK
 #endif
 

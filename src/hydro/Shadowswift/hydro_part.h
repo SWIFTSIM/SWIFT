@@ -248,6 +248,10 @@ struct part {
       /* Timestep for flux calculation. */
       float dt;
 
+#ifdef SHADOWSWIFT_EXACT_GRAV_WORK
+      /* Timestep for previous flux calculation, used for grav energy work term */
+      float dt_previous;
+#endif
     } flux;
 
     /*! Data used for derefining a particle (happens instead of flux exchange)*/
@@ -338,9 +342,10 @@ struct part {
       /*! Current value of the mass flux vector. */
       float mflux[3];
 
+#ifdef SHADOWSWIFT_EXACT_GRAV_WORK
       /* Previous dE in hydro_kick_extra */
       float dE_prev;
-
+#endif
     } gravity;
 
     /* Unused in the ShadowSWIFT scheme, put in union to save space */

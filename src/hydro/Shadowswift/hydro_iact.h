@@ -263,6 +263,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 
   hydro_grav_work_from_half_state(pi, pj, shift, Whalf, vij, centroid, n_unit,
                                   surface_area, min_dt);
+
+  /* more exact, however this call is defunct. if ever turned on do this */
+  // hydro_grav_work_from_mass_flux_half_approximated(pi, pj, totflux[0], shift,
+  //   centroid, min_dt);
+
+
 #else
   /* Get flux and limit flux to positivity */
   float mach_number =

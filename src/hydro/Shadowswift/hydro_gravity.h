@@ -82,9 +82,6 @@ hydro_gravity_energy_update_term(const float dt_kick_corr1,
       a_grav2[1] * mflux2[1] +
         a_grav2[2] * mflux2[2]);
 
-  /* Sum contributions */
-  const float dE = dE_momentum + grav_work1 + grav_work2;
-
   const float dE2 = dE_momentum1 + dE_momentum2 + grav_work1 + grav_work2;
 
   return dE2;
@@ -149,8 +146,14 @@ hydro_grav_work_from_half_state(struct part* pi, struct part* pj,
     v_dot_c_j += (v_half_lab[i] - pj->v_part_full[i]) * (cij[i] - rj[i]);
   }
   for (int i = 0; i < 3; i++) {
-    pi->gravity.mflux[i] += Whalf[0] * v_dot_c_i * area * n_unit[i];
-    pj->gravity.mflux[i] -= Whalf[0] * v_dot_c_j * area * n_unit[i];
+
+    /* Ammended: Integrate the mass exchange! */
+    pi->gravity.mflux[i] += Whalf[0] * v_dot_c_i * area * n_unit[i] * dt;
+    pj->gravity.mflux[i] -= Whalf[0] * v_dot_c_j * area * n_unit[i] * dt;
+
+    /* Care for directions here.. Not fully convinced of everything */
+
+
   }
 }
 
@@ -164,11 +167,81 @@ hydro_grav_work_from_half_state(struct part* pi, struct part* pj,
 __attribute__((always_inline)) INLINE static void
 hydro_grav_work_from_mass_flux(struct part* pi, struct part* pj, float* dx,
                                float mass_flux, const float dt) {
+
+  /* Now defunct */
+}
+
+/**
+ * @brief Applies the gravitational work term at the face between pi and pj to
+ * both particles.
+ *
+ * NOTE: This is only an approximation to the (more) exact gravitational work
+ * term computed by #hydro_grav_work_from_half_state().
+ *
+ * This operates under a different assumption than
+ * hydro_grav_work_from_mass_flux(): This simplifies many terms, this is shown
+ * in the Thesis eq 233. It assumes the mass flux AND the distance travelled
+ * in this work term.
+ *
+ * The first approximation concerns mass flux. I assume this assumption is fine.
+ * The second is that the work done is carried out over a distance that is
+ * half the distance between two centroids, ie that the face centroid is
+ * halfway between centroid j and centroid i. This is not correct.
+ *
+ * In this approximation we assume that the mass exchanged for this work is
+ * the mass flux, but that the distance over which we exert the work is
+ * from the centroid of the cell to the face of the cell.
+ *
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_grav_work_from_mass_flux_half_approximated(struct part* pi,
+  struct part* pj, float mass_flux,
+  const double* shift, const double* cij, const float dt) {
+
+
+  /* Ideally apply to centroid, since the potential is evaluated there
+   * There is potential to test this with generator positions, but since grav
+   * is evaluated through centroid, it would be better to do this.
+   */
+  const float ri[3] = {
+    pi->geometry.centroid[0] + pi->x[0],
+    pi->geometry.centroid[1] + pi->x[1],
+    pi->geometry.centroid[2] + pi->x[2],
+};
+  const float rj[3] = {
+    pj->geometry.centroid[0] + pj->x[0] + shift[0],
+    pj->geometry.centroid[1] + pj->x[1] + shift[1],
+    pj->geometry.centroid[2] + pj->x[2] + shift[2],
+};
+
   for (int i = 0; i < 3; i++) {
-    pi->gravity.mflux[i] += 0.5f * mass_flux * dx[i]; // Used to be -= ????
-    pj->gravity.mflux[i] -= 0.5f * mass_flux * dx[i];
+    /* So: Following the Hopkins H2 prescription, it should be
+     * Mwork,i = (ri - cij)*dm_i
+     *         = -(ri - cij)dm_ij
+     *
+     * Mwork, j = (rj - cij)*dm_j
+     *          = (rj - cij)*dm_ij
+     *
+     * where dm_i is the mass flux into i and dm_j follows
+     * dm_ij is the mass_flux found from the solver. Recall that we will do
+     * pi->flux.mass -= mass_flux, hence the source of minus term.
+     *
+     * of course, mass_flux here is a rate, we multiply by dt to get an actual
+     * exchange of mass
+     *
+     * Recall: These are "corrective terms" to energy flux, the signs are
+     * + / - but the result is the same effect since the vectors are opposite.
+     * If mass leaves i into j, and acceleration is into j, this will
+     * reduce the energy loss of i (term is + in i) but increase the energy
+     * gain inside j (also + in j). Counter-intuitive to think, but this is then
+     * basically a source/sink term of energy.
+     *
+     */
+    pi->gravity.mflux[i] -= dt * mass_flux * (ri[i] - cij[i]);
+    pj->gravity.mflux[i] += dt * mass_flux * (rj[i] - cij[i]);
   }
 }
+
 
 /**
  * @brief Update the mass of the gpart associated with the given particle after
@@ -189,6 +262,8 @@ hydro_gravity_update_gpart_mass(struct part* restrict p) {
  * @brief Update xp->mflux to be the mflux vector at end of kick2. Used in next
  * timestep as a mflux at timestep n value.
  *
+ * Also sets the previous dt, used to rescale the mflux accordingly.
+ *
  * @param p Particle.
  * @param xp The extra part of p
  */
@@ -197,6 +272,7 @@ hydro_gravity_xp_mflux(struct part* p, struct xpart* xp) {
 
   for (int i = 0; i < 3; i++) {
     xp->mflux[i] = p->gravity.mflux[i];
+    p->flux.dt_previous = p->flux.dt;
   }
 }
 
