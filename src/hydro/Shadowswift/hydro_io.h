@@ -249,18 +249,6 @@ INLINE static void convert_velocity_divergence(const struct engine* e,
   ret[0] += hydro_dimension * cosmo->H;
 }
 
-INLINE static void convert_grav_dudt(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, float* ret) {
-
-  const struct cosmology* cosmo = e->cosmology;
-
-  /* Gravitational dudt with dE Springel */
-  ret[0] = p->gravity.dE_prev / p->flux.mass;
-}
-
-
-
 INLINE static void convert_mach_number(const struct engine* e,
                                           const struct part* p,
                                           const struct xpart* xp, float* ret) {
