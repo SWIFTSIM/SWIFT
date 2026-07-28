@@ -1,0 +1,138 @@
+# Tier 2 ("high-z"): the same physical gas density and star as
+# ../StromgrenSphere and params_identity.yml, placed at z~=9 (a_begin=0.1)
+# and run for ~10 Myr, over which a changes by only ~1.2% -- the static
+# Stromgren/Spitzer formulas evaluated at the INSTANTANEOUS PHYSICAL density
+# remain quasi-statically valid. makeIC.py backs out the comoving box/density
+# that give the intended physical density at a_begin=0.1 (see its docstring).
+#
+# Physical boxsize is 0.15 kpc here, not 0.05 kpc like the other tiers: at
+# this density/star mass the equilibrium Stromgren radius (~42 pc) already
+# exceeds ../StromgrenSphere's own 25 pc box half-width, which is why that
+# example's own analytic check cannot find a valid comparison point either
+# (its role is task-graph diagnostics, not analytic validation). Tier 2's
+# whole point is a real comparison against the D-type analytic curve, so it
+# needs room for that curve to actually fit; the gas particle mass is scaled
+# up (0.1 -> 2.7 Msun) to keep the particle count/runtime unchanged.
+
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
+  UnitVelocity_in_cgs: 1e5   # km/s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+Restarts:
+  enable: 1
+  delta_hours: 0.1
+  resubmit_on_exit: 0
+
+# Planck13 (EAGLE flavour), matching examples/GEAR/AgoraCosmo and
+# examples/RadiativeTransferTests/CosmoPropagationTest_3D. This idealized
+# box carries no dark matter, so Omega_cdm/Omega_b only set the background
+# a(t) relation used by the cosmological time integration, not any force.
+Cosmology:
+  h:              0.6777
+  a_begin:        0.1        # z = 9
+  a_end:          0.10121212 # ~10 Myr later; Delta a / a ~= 1.2%
+  Omega_lambda:   0.693
+  Omega_cdm:      0.2587481
+  Omega_b:        0.0482519
+  Omega_r:        0.
+
+# Parameters for the self-gravity scheme (unused: --external-gravity with no
+# Potential: block means no force is ever computed here, matching
+# ../StromgrenSphere; comoving_baryon_softening is only required syntactically
+# under cosmology).
+Gravity:
+  MAC:                           adaptive
+  epsilon_fmm:                   0.001
+  theta_cr:                      0.7
+  eta:          0.025
+  max_physical_baryon_softening: 0.005
+  comoving_baryon_softening:     0.005
+  mesh_side_length:        32
+
+# dt_max bounds the per-step Delta ln(a); the run's total span is 1.2e-2.
+TimeIntegration:
+  dt_min:            1e-12
+  dt_max:            1e-4
+
+Snapshots:
+  subdir: snap
+  basename:   snapshot
+  scale_factor_first: 0.1
+  delta_time:          1.000241   # multiplicative in a: ~50 outputs
+  recording_triggers_sink:   [-1, -1, -1]
+  compression: 9
+
+Scheduler:
+  cell_extra_gparts: 10
+  cell_extra_sinks:  10
+  cell_extra_sparts: 10
+  max_top_level_cells: 3   # keep the cdim=={3,3,3} periodic radiation stencil floor
+  tasks_per_cell: 100
+
+Statistics:
+  scale_factor_first: 0.1
+  delta_time:          1.0000602   # multiplicative in a: ~200 points
+
+InitialConditions:
+  file_name:          ICs_stromgren_cosmo_highz.hdf5
+  periodic:                 1
+  shift:              [0.0, 0.0, 0.0]
+
+SPH:
+  resolution_eta:        1.2348
+  CFL_condition:         0.1
+  minimal_temperature:   1
+  initial_temperature:   10
+
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5
+  with_UV_background: 0
+  redshift: -1
+  with_metal_cooling: 1
+  self_shielding_method: -1
+  self_shielding_threshold_atom_per_cm3: 0.007
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 0
+  maximal_density_Hpcm3: 1e4
+
+GEARChemistry:
+  initial_metallicity: 0
+  scale_initial_metallicity: 1
+
+GEARFeedback:
+  supernovae_Ia_energy_erg: 1e51
+  supernovae_efficiency: 0
+  with_stellar_wind_feedback: 0
+  yields_table: POPIIsw.h5
+  yields_table_first_stars: POPIIsw.h5
+  discrete_yields: 1
+  imf_transition_metallicity: -5
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
+
+  # Radiation
+  with_photoelectric_heating:    0
+  with_photoionization:          1
+  HII_min_density_Hpcm3: 0.01
+  radiation_pressure_efficiency: 0
+  HII_max_age_Myr:        50.0
+  HII_rebuild_time_Myr:   0.5   # fixed cadence, matching the control run
+
+  #Mechanical feedback
+  maximal_radius: 2
+  enable_multiple_SN_momentum_correction_factor: 0
+  f_kin_0: 0.28
+
+Stars:
+  timestep_age_threshold_unlimited_Myr: 11.
+  timestep_age_threshold_Myr:           7.
+  max_timestep_young_Myr:               0.5
+  max_timestep_old_Myr:                 1
+  HII_max_search_radius: 3.0   # comoving; physical reach = a * value = 0.3,
+                                # 2x the physical boxsize (same margin as
+                                # the other tiers' 0.1 reach vs. their 0.05
+                                # boxsize)
+  HII_max_retry_full_buffer: 30

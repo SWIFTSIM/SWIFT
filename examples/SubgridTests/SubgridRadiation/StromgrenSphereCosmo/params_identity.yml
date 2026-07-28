@@ -1,0 +1,134 @@
+# Tier 1 ("identity"): ../StromgrenSphere's own setup with cosmology turned
+# on, confined to a tiny scale-factor span at a~=1 (Delta ln(a) = 1.35e-3)
+# so cosmological dilution is negligible. Must reproduce the non-cosmological
+# control run's r_hii(t) to tight tolerance -- any missing/spurious a-factor
+# shows up as a deviation even though the physics is unchanged.
+
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
+  UnitVelocity_in_cgs: 1e5   # km/s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+Restarts:
+  enable: 1
+  delta_hours: 0.1
+  resubmit_on_exit: 0
+
+# Planck13 (EAGLE flavour), matching examples/GEAR/AgoraCosmo and
+# examples/RadiativeTransferTests/CosmoPropagationTest_3D. This idealized
+# box carries no dark matter, so Omega_cdm/Omega_b only set the background
+# a(t) relation used by the cosmological time integration, not any force.
+Cosmology:
+  h:              0.6777
+  a_begin:        0.99865   # Delta ln(a) = 1.35e-3 over the run; elapsed
+                             # physical time matches the control run's
+                             # time_end (2e-2 internal units = 19.56 Myr).
+  a_end:          0.99886  # ~3 Myr: the growth phase plus the onset of box
+                            # saturation -- all the identity test can use
+  Omega_lambda:   0.693
+  Omega_cdm:      0.2587481
+  Omega_b:        0.0482519
+  Omega_r:        0.
+
+# Parameters for the self-gravity scheme (unused: --external-gravity with no
+# Potential: block means no force is ever computed here, matching
+# ../StromgrenSphere; comoving_baryon_softening is only required syntactically
+# under cosmology).
+Gravity:
+  MAC:                           adaptive
+  epsilon_fmm:                   0.001
+  theta_cr:                      0.7
+  eta:          0.025
+  max_physical_baryon_softening: 0.005
+  comoving_baryon_softening:     0.005
+  mesh_side_length:        32
+
+# dt_max bounds the per-step Delta ln(a); the run's total span is 1.35e-3.
+TimeIntegration:
+  dt_min:            1e-12
+  dt_max:            1e-5
+
+Snapshots:
+  subdir: snap
+  basename:   snapshot
+  scale_factor_first: 0.99865
+  delta_time:          1.0000017  # multiplicative in a: ~0.025 Myr spacing,
+                                  # resolving the short 0.05-cadence growth phase
+  recording_triggers_sink:   [-1, -1, -1]
+  compression: 9
+
+Scheduler:
+  cell_extra_gparts: 10
+  cell_extra_sinks:  10
+  cell_extra_sparts: 10
+  max_top_level_cells: 3   # keep the cdim=={3,3,3} periodic radiation stencil floor
+  tasks_per_cell: 100
+
+Statistics:
+  scale_factor_first: 0.99865
+  delta_time:          1.0000068   # multiplicative in a: ~200 points
+
+InitialConditions:
+  file_name:          ICs_stromgren_cosmo_identity.hdf5
+  periodic:                 1
+  shift:              [0.0, 0.0, 0.0]
+
+SPH:
+  resolution_eta:        1.2348
+  CFL_condition:         0.1
+  minimal_temperature:   1
+  initial_temperature:   10
+
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5
+  with_UV_background: 0
+  redshift: -1
+  with_metal_cooling: 1
+  self_shielding_method: -1
+  self_shielding_threshold_atom_per_cm3: 0.007
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 0
+  maximal_density_Hpcm3: 1e4
+
+GEARChemistry:
+  initial_metallicity: 0
+  scale_initial_metallicity: 1
+
+GEARFeedback:
+  supernovae_Ia_energy_erg: 1e51
+  supernovae_efficiency: 0
+  with_stellar_wind_feedback: 0
+  yields_table: POPIIsw.h5
+  yields_table_first_stars: POPIIsw.h5
+  discrete_yields: 1
+  imf_transition_metallicity: -5
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]
+
+  # Radiation
+  with_photoelectric_heating:    0
+  with_photoionization:          1
+  HII_min_density_Hpcm3: 0.01
+  radiation_pressure_efficiency: 0
+  HII_max_age_Myr:        50.0
+  HII_rebuild_time_Myr:   0.05  # finer than the siblings' 0.5: the identity
+                                # comparison is sensitive to the ~one-cadence
+                                # phase offset between the proper-time and
+                                # d(ln a) integer timelines, which shrinks
+                                # linearly with the cadence
+
+  #Mechanical feedback
+  maximal_radius: 2
+  enable_multiple_SN_momentum_correction_factor: 0
+  f_kin_0: 0.28
+
+Stars:
+  timestep_age_threshold_unlimited_Myr: 11.
+  timestep_age_threshold_Myr:           7.
+  max_timestep_young_Myr:               0.5
+  max_timestep_old_Myr:                 1
+  HII_max_search_radius: 0.1   # comoving; physical reach = a * value ~= 0.1,
+                                # matching the control run's fixed 0.1
+  HII_max_retry_full_buffer: 30
