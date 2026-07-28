@@ -415,6 +415,30 @@ space_radiation_top_stencil_covers_box(const struct space *s) {
   return s->periodic && s->cdim[0] == 3 && s->cdim[1] == 3 && s->cdim[2] == 3;
 }
 
+/**
+ * @brief Can this #space's grid ever coarsen far enough for
+ * #space_radiation_top_stencil_covers_box to hold?
+ *
+ * A star whose HII reach outgrows the top-level cell width has no coarser
+ * grid left to rebuild into, and then relies on that stencil-completeness
+ * fallback instead. Two configurations never reach it: a non-cubic box
+ * (cell widths are a single scalar, so only a cubic box sits at 3 cells
+ * along every axis at once) and Scheduler:min_top_level_cells > 3, which
+ * pins the grid finer than 3 cells/axis for the whole run.
+ *
+ * @param s The #space.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+space_radiation_top_stencil_can_cover_box(const struct space *s) {
+
+  if (!s->periodic) return 0;
+  if (s->dim[0] != s->dim[1] || s->dim[1] != s->dim[2]) return 0;
+
+  /* cell_max_width is dim/Scheduler:min_top_level_cells, so this holds
+     exactly when that parameter is at most 3. */
+  return s->cell_max_width >= s->dim[0] / 3.;
+}
+
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
 void space_free_sort_indices(struct space *s);

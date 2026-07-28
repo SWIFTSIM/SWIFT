@@ -640,6 +640,20 @@ void engine_config(int restart, int fof, struct engine *e,
               "periodic wrap distance instead.",
               e->stars_properties->HII_max_search_radius, half_width);
       }
+
+      /* Once a star's HII reach outgrows the top-level cell width there is
+         no coarser grid to rebuild into, and only the stencil-completeness
+         fallback keeps the rebuild criterion satisfiable. Configurations
+         that can never reach it hit a fatal "engine_unskip failed after a
+         rebuild" instead, mid-run and without an obvious cause. */
+      if (e->nodeID == 0 && !space_radiation_top_stencil_can_cover_box(e->s))
+        warning(
+            "This box cannot coarsen to 3 top-level cells along every axis "
+            "(non-cubic box, non-periodic, or Scheduler:min_top_level_cells "
+            "> 3). Subgrid radiation then has no fallback if a star's HII "
+            "reach outgrows the top-level cell width, and the run aborts on "
+            "an unsatisfiable rebuild. Keep h_hii well below the top-level "
+            "cell width, e.g. via Stars:HII_max_search_radius.");
 #endif
     }
 
