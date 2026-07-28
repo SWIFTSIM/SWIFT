@@ -1229,6 +1229,15 @@ int engine_estimate_nr_tasks(const struct engine *e) {
          hii_ionization: 1                       | 1
       */
       n1 += 27;
+
+      /* The radiation splitter (scheduler_splittasks.c) pushes real
+         per-cell tasks down to stars.radiation_level, which follows h_hii
+         and so can sit below the top level: those tasks are created at
+         every level in between and belong in n2. The depth is data
+         dependent, so this is a deliberate over-estimate -- an
+         under-estimate costs a run-time pool reallocation, an
+         over-estimate only a little memory. */
+      n2 += 27;
     }
 
 #ifdef WITH_MPI
