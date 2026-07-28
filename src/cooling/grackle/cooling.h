@@ -26,6 +26,7 @@
 
 /* Local includes */
 #include "cooling_properties.h"
+#include "cooling_utils.h"
 #include "error.h"
 #include "inline.h"
 

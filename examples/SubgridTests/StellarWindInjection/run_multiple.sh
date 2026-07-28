@@ -20,19 +20,21 @@ gas_density=${gas_density:=0.1} # Gas density in atom/cm^3
 gas_particle_mass=${gas_particle_mass:=10} # Mass of the gas particles
 num_star=${num_star:=1} # number of stars
 
-set -e 
+set -e
+
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
 # Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    $scripts_location/getGrackleCoolingTable.sh
 fi
 
-if [ ! -e POPII.hdf5 ] || [! -e POPIII_PISNe.hdf5 ]
+if [ ! -e POPII.hdf5 ] || [ ! -e POPIII_PISNe.hdf5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getChemistryTable.sh
+    $scripts_location/getChemistryTable.sh --with-winds
 fi
 
 star_mass=($(awk -v min=$star_mass_min -v max=$star_mass_max -v count=$star_mass_count 'BEGIN{for(i=0;i<count;i++)print min*(max/min)^(i/(count-1))}'))

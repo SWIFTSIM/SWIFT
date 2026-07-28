@@ -47,9 +47,9 @@ static int zoom_need_regrid_motion(const struct space *s) {
                         s->zoom_props->zoom_shift[1],
                         s->zoom_props->zoom_shift[2]};
   const double max_shift = s->zoom_props->max_com_dx;
-  if (dx[0] > max_shift * s->zoom_props->dim[0] ||
-      dx[1] > max_shift * s->zoom_props->dim[1] ||
-      dx[2] > max_shift * s->zoom_props->dim[2]) {
+  if (fabs(dx[0]) > max_shift * s->zoom_props->dim[0] ||
+      fabs(dx[1]) > max_shift * s->zoom_props->dim[1] ||
+      fabs(dx[2]) > max_shift * s->zoom_props->dim[2]) {
     return 1;
   }
 

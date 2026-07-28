@@ -225,7 +225,7 @@ static int space_need_regrid(const struct space *s, const int new_cdim[3]) {
  */
 static int space_prepare_new_partition(const struct space *s, const int cdim[3],
                                        double oldwidth[3], double oldcdim[3],
-                                       int *oldnodeIDs) {
+                                       int **oldnodeIDs) {
   /* Are we regridding? (We only want to trigger this code when we already
    * have cells defined.) */
   if ((!s->with_zoom_region && space_need_regrid(s, cdim)) ||
@@ -239,7 +239,7 @@ static int space_prepare_new_partition(const struct space *s, const int cdim[3],
     oldwidth[1] = s->width[1];
     oldwidth[2] = s->width[2];
 
-    if ((oldnodeIDs =
+    if ((*oldnodeIDs =
              (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate temporary nodeIDs.");
 
@@ -248,7 +248,7 @@ static int space_prepare_new_partition(const struct space *s, const int cdim[3],
       for (int j = 0; j < s->cdim[1]; j++) {
         for (int k = 0; k < s->cdim[2]; k++) {
           cid = cell_getid(oldcdim, i, j, k);
-          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+          (*oldnodeIDs)[cid] = s->cells_top[cid].nodeID;
         }
       }
     }
@@ -256,7 +256,7 @@ static int space_prepare_new_partition(const struct space *s, const int cdim[3],
 
   /* Are we about to allocate new top level cells without a regrid?
    * Can happen when restarting the application. */
-  return (s->cells_top == NULL && oldnodeIDs == NULL);
+  return (s->cells_top == NULL && *oldnodeIDs == NULL);
 }
 #endif  // WITH_MPI
 
@@ -574,7 +574,7 @@ void space_regrid(struct space *s, int verbose) {
   double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
   const int no_regrid =
-      space_prepare_new_partition(s, cdim, oldwidth, oldcdim, oldnodeIDs);
+      space_prepare_new_partition(s, cdim, oldwidth, oldcdim, &oldnodeIDs);
 #endif
 
   /* Do we need to re-build the upper-level cells? */

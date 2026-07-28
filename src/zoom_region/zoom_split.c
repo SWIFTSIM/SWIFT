@@ -27,6 +27,42 @@
 #include "threadpool.h"
 #include "zoom.h"
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Check that a zoom-neighbour cell has been split down to zoom depth.
+ *
+ * Neighbour cells can interact with the void tree. They must therefore be
+ * refined at least to the zoom-cell depth, otherwise the void splitter could
+ * encounter an unsplit non-void leaf opposite a still-void cell.
+ *
+ * @param s The #space.
+ * @param c The neighbour #cell to check recursively.
+ */
+static void zoom_check_neighbour_split_to_zoom_depth(const struct space *s,
+                                                     const struct cell *c) {
+
+  if (c == NULL) return;
+
+  if (cell_is_empty_counts(c)) return;
+
+  if (c->depth >= s->zoom_props->zoom_cell_depth) return;
+
+  if (!c->split) {
+    error(
+        "Zoom neighbour cell is not split down to the zoom depth "
+        "(c->type=%s c->subtype=%s c->depth=%d zoom_depth=%d "
+        "c->nodeID=%d c->grav.count=%d c->contains_zoom_cells=%d).",
+        cellID_names[c->type], subcellID_names[c->subtype], c->depth,
+        s->zoom_props->zoom_cell_depth, c->nodeID, c->grav.count,
+        c->contains_zoom_cells);
+  }
+
+  for (int k = 0; k < 8; k++) {
+    zoom_check_neighbour_split_to_zoom_depth(s, c->progeny[k]);
+  }
+}
+#endif
+
 /**
  * @brief Link the top level cells in zoom grid to a void parent cell.
  *
@@ -231,7 +267,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
 
   /* Deal with the multipole */
-  if (s->with_self_gravity) {
+  if (s->with_self_gravity && c->contains_zoom_cells) {
     space_populate_multipole(c);
   }
 }
@@ -288,6 +324,25 @@ void zoom_void_space_split(struct space *s, int verbose) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /* Useful void cells must be local. Local zoom cells are reached through their
+   * void parents, so a useful foreign void would break task ownership mirrors.
+   */
+  for (int i = 0; i < nr_void_cells; i++) {
+    const struct cell *c = &cells_top[void_cell_indices[i]];
+    if (c->contains_zoom_cells && c->nodeID != engine_rank) {
+      error(
+          "Useful void cell is not local (index=%d nodeID=%d engine_rank=%d).",
+          void_cell_indices[i], c->nodeID, engine_rank);
+    }
+  }
+
+  /* Neighbour cells must be split to at least the zoom depth by construction.
+   * This protects the void gravity splitter from leaf-vs-void pairs. */
+  for (int i = 0; i < s->zoom_props->nr_neighbour_cells; i++) {
+    const int cid = s->zoom_props->neighbour_cells_top[i];
+    zoom_check_neighbour_split_to_zoom_depth(s, &cells_top[cid]);
+  }
 
   /* Ensure all zoom cells are linked into the tree. */
   int notlinked = 0;
