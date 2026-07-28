@@ -646,8 +646,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the parts according to their cells. */
   if (nr_parts > 0)
-    space_parts_sort(s->parts, s->xparts, h_index, cell_part_counts,
-                     s->nr_cells, 0);
+    space_parts_sort(&s->e->threadpool, s->parts, s->xparts, h_index,
+                     cell_part_counts, s->nr_cells, 0, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -677,7 +677,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the sparts according to their cells. */
   if (nr_sparts > 0)
-    space_sparts_sort(s->sparts, s_index, cell_spart_counts, s->nr_cells, 0);
+    space_sparts_sort(&s->e->threadpool, s->sparts, s_index,
+                      cell_spart_counts, s->nr_cells, 0, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
@@ -707,7 +708,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the bparts according to their cells. */
   if (nr_bparts > 0)
-    space_bparts_sort(s->bparts, b_index, cell_bpart_counts, s->nr_cells, 0);
+    space_bparts_sort(&s->e->threadpool, s->bparts, b_index,
+                      cell_bpart_counts, s->nr_cells, 0, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the bpart have been sorted correctly. */
@@ -737,7 +739,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the sink according to their cells. */
   if (nr_sinks > 0)
-    space_sinks_sort(s->sinks, sink_index, cell_sink_counts, s->nr_cells, 0);
+    space_sinks_sort(&s->e->threadpool, s->sinks, sink_index,
+                     cell_sink_counts, s->nr_cells, 0, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the sink have been sorted correctly. */
@@ -869,8 +872,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the gparts according to their cells. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
-                      g_index, cell_gpart_counts, s->nr_cells);
+    space_gparts_sort(&s->e->threadpool, s->gparts, s->parts, s->sinks,
+                      s->sparts, s->bparts, g_index, cell_gpart_counts,
+                      s->nr_cells, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */

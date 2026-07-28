@@ -202,6 +202,7 @@ tests/testNeutrinoFermiDirac
 tests/testLog
 tests/testTimeline
 tests/testMeshGravityRebuildCheck
+tests/testSpaceSort
 tests/*.png
 tests/*.txt
 

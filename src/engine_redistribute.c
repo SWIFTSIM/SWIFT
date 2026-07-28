@@ -731,8 +731,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (nr_parts > 0)
-    space_parts_sort(s->parts, s->xparts, dest, &counts[nodeID * nr_nodes],
-                     nr_nodes, 0);
+    space_parts_sort(&e->threadpool, s->parts, s->xparts, dest,
+                     &counts[nodeID * nr_nodes], nr_nodes, 0, e->verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -798,8 +798,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (nr_sparts > 0)
-    space_sparts_sort(s->sparts, s_dest, &s_counts[nodeID * nr_nodes], nr_nodes,
-                      0);
+    space_sparts_sort(&e->threadpool, s->sparts, s_dest,
+                      &s_counts[nodeID * nr_nodes], nr_nodes, 0, e->verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
@@ -864,8 +864,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (nr_bparts > 0)
-    space_bparts_sort(s->bparts, b_dest, &b_counts[nodeID * nr_nodes], nr_nodes,
-                      0);
+    space_bparts_sort(&e->threadpool, s->bparts, b_dest,
+                      &b_counts[nodeID * nr_nodes], nr_nodes, 0, e->verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the bpart have been sorted correctly. */
@@ -931,8 +931,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (nr_sinks > 0)
-    space_sinks_sort(s->sinks, sink_dest, &sink_counts[nodeID * nr_nodes],
-                     nr_nodes, 0);
+    space_sinks_sort(&e->threadpool, s->sinks, sink_dest,
+                     &sink_counts[nodeID * nr_nodes], nr_nodes, 0, e->verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the sink have been sorted correctly. */
@@ -997,8 +997,9 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
-                      g_dest, &g_counts[nodeID * nr_nodes], nr_nodes);
+    space_gparts_sort(&e->threadpool, s->gparts, s->parts, s->sinks,
+                      s->sparts, s->bparts, g_dest,
+                      &g_counts[nodeID * nr_nodes], nr_nodes, e->verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */

@@ -383,18 +383,23 @@ struct space {
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
 void space_free_sort_indices(struct space *s);
-void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
-                      int *counts, int num_bins, ptrdiff_t parts_offset);
-void space_gparts_sort(struct gpart *gparts, struct part *parts,
-                       struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, int *ind, int *counts,
-                       int num_bins);
-void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
-                       int num_bins, ptrdiff_t sparts_offset);
-void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
-                       int num_bins, ptrdiff_t bparts_offset);
-void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
-                      ptrdiff_t sinks_offset);
+struct threadpool;
+void space_parts_sort(struct threadpool *tp, struct part *parts,
+                      struct xpart *xparts, int *ind, int *counts,
+                      int num_bins, ptrdiff_t parts_offset, int verbose);
+void space_gparts_sort(struct threadpool *tp, struct gpart *gparts,
+                       struct part *parts, struct sink *sinks,
+                       struct spart *sparts, struct bpart *bparts, int *ind,
+                       int *counts, int num_bins, int verbose);
+void space_sparts_sort(struct threadpool *tp, struct spart *sparts, int *ind,
+                       int *counts, int num_bins, ptrdiff_t sparts_offset,
+                       int verbose);
+void space_bparts_sort(struct threadpool *tp, struct bpart *bparts, int *ind,
+                       int *counts, int num_bins, ptrdiff_t bparts_offset,
+                       int verbose);
+void space_sinks_sort(struct threadpool *tp, struct sink *sinks, int *ind,
+                      int *counts, int num_bins, ptrdiff_t sinks_offset,
+                      int verbose);
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                     const short int tid);
 void space_init(struct space *s, struct swift_params *params,
