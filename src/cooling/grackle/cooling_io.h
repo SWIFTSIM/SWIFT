@@ -208,6 +208,25 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->RT_H2_dissociation_rate = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:RT_H2_dissociation_rate_cgs", 0);
 
+  /* GEARFeedback:HII_couple_ionization_rate injects Grackle's RT fields
+     per-particle, every step, from the radiation model itself (see
+     cooling_get_rate_coupled_RT_fields_subgrid); a leftover nonzero
+     GrackleCooling:RT_*_cgs constant from before that flag was enabled
+     would then silently add an all-gas background on top, unnoticed since
+     nothing in that path reads or clears these parameters. */
+  if (cooling->HII_couple_ionization_rate &&
+      (cooling->RT_heating_rate != 0 || cooling->RT_HI_ionization_rate != 0 ||
+       cooling->RT_HeI_ionization_rate != 0 ||
+       cooling->RT_HeII_ionization_rate != 0 ||
+       cooling->RT_H2_dissociation_rate != 0)) {
+    warning(
+        "GEARFeedback:HII_couple_ionization_rate is on and at least one "
+        "GrackleCooling:RT_*_cgs parameter is nonzero. That constant is "
+        "applied as an all-gas background on top of the per-particle "
+        "rate-coupled RT fields -- if it is a leftover from before "
+        "HII_couple_ionization_rate was enabled, set it to 0.");
+  }
+
   cooling->volumetric_heating_rates = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:volumetric_heating_rates_cgs", 0);
 

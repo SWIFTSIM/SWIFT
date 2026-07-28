@@ -1353,8 +1353,11 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
 #if COOLING_GRACKLE_MODE == 0
   if (cooling->use_radiative_transfer)
     error(
-        "The parameter use_radiative_transfer cannot be set to 1 in Grackle "
-        "mode 0 !");
+        "The parameter GrackleCooling:use_radiative_transfer cannot be set "
+        "to 1 in Grackle mode 0 ! (it may also have been forced on "
+        "internally by GEARFeedback:HII_couple_ionization_rate -- check "
+        "that parameter too if you did not set use_radiative_transfer "
+        "yourself)");
 #endif
 
   chemistry->use_radiative_transfer = cooling->use_radiative_transfer;
