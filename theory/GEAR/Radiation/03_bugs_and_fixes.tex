@@ -476,6 +476,46 @@ photon-budget interval in fixed-cadence mode too. Section~\ref{sec:adaptive-cade
 of \code{01\_algorithm.tex} keeps the mechanism's description as a
 historical record; the entries above describing bugs in the deleted
 code are kept unchanged as a record of what was fixed at the time.
+
+\textbf{Why the Phase 4b numbers (2.51\%$\to$0.52\% STARBENCH,
+7.80\%/13.75\% HuSmith2017) still apply post-4c:} those were measured
+with a \emph{pre}-Phase-4c binary, running the two examples with
+\code{HII\_adaptive\_rebuild\_cadence=0} already set. This deletion
+touches only the \code{if (feedback\_props->HII\_adaptive\_rebuild\_
+cadence)} branches; every fixed-cadence code path exercised by those
+runs -- the \code{eps = 1e-4 * HII\_rebuild\_time} rebuild gate, the
+fixed-mode branch of \code{feedback\_get\_star\_HII\_nominal\_interval},
+and \code{dt\_forward = 0} at both call sites (unchanged in value,
+only in how it is computed: a literal now instead of an expression
+that always evaluated to \code{0.0} in fixed mode already) -- is
+bit-for-bit unchanged. The 4c build reruns of
+\code{StromgrenSphere gas\_mass=0.1} and the restart test confirm this
+generically; the two physics targets were not rerun a second time
+under the post-4c binary since nothing in their code path changed.
+
+\textbf{Two deviations from the literal deletion spec, both
+deliberate:} (1) The spec's ``delete the \code{dt\_forward} wiring''
+is read narrowly here -- only the two computation sites in
+\code{runner\_radiation\_feedback.c} that called the now-deleted
+getter were replaced with a literal \code{0.0}. The \code{dt\_forward}
+\emph{parameter} itself remains threaded through
+\code{feedback\_iact\_HII\_ionization}, \code{feedback\_hii\_claim\_part},
+and \code{feedback\_hii\_tag\_end\_time} unchanged, rather than being
+stripped from every signature in that chain -- a fuller cleanup is
+possible (it is now always \code{0.0}, permanently) but was judged
+out of scope for a cadence-removal task and left as a follow-up.
+(2) The production-readiness plan's arithmetic
+(``\code{t\_rec(n=100, 1e4\,K)}$\sim0.12$\,Myr'') is off by $100\times$
+-- that is $t_{\rm rec}$ at $n=1\,{\rm cm^{-3}}$, not $100$; the
+correct value is $0.122/n_e\approx1.22\times10^{-3}\,$Myr at
+$n=100$. Phase 4b used the plan's separately-stated guidance ranges
+(HuSmith 0.01--0.03\,Myr, STARBENCH 0.005--0.01\,Myr) instead of this
+formula, since those ranges carry the sweep's empirical backing and
+the formula does not (following it literally would give
+$\sim10^{-5}\,$Myr cadences, below \code{HII\_rebuild\_floor\_Myr}).
+The plan file's arithmetic should be corrected to avoid the same trap
+next time.
+
 \textbf{Verification:} build clean (incl.\ \code{swift\_mpi}, unaffected by
 this GEAR-only change); \code{testRadiationRebuildCheck}/
 \code{test27cellsStars -n 3 -N 3 -r 5} pass;
@@ -493,5 +533,11 @@ generic SPH tree-depth debug assertion with no radiation code in its
 call path) traced to that example's own \code{Gravity:max\_physical\_
 baryon\_softening=0.005}/\code{Stars:HII\_max\_search\_radius=0.1} both
 far exceeding its $0.00118$ box -- present since the example's original
-commit (\code{f9001984c}), confirmed unrelated to this deletion by
-inspection; not fixed here (out of scope).
+commit (\code{f9001984c}). Confirmed unrelated to this deletion two
+ways: by inspection (\code{cell\_set\_part\_h\_depth} fires during
+\code{engine\_init\_particles}, before any feedback runs, comparing
+only \code{p->h} against cell \code{h\_min/h\_max\_allowed} -- no
+radiation code in its call path) and empirically -- the same command
+against the pre-Phase-4c binary (built before \code{9702226f7})
+crashes identically, at the same assertion. Not fixed here (out of
+scope).

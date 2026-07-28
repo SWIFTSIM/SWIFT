@@ -47,9 +47,14 @@ remain a valid record of what was true of the code at the time.
   $\sim$1\,pp); \textbf{absolute accuracy FAIL} (median 17--18\% at
   converged cadence, at a coarser resolution than the validated
   default -- see caveats). \textbf{Phase 4b} (2026-07-28) re-ran the
-  shipped default (\code{gas\_mass=4}, now fixed cadence $0.01\,$Myr)
-  and found the same bracketed-by-references characterization holds,
-  no material change from switching off adaptive cadence.
+  shipped default (\code{gas\_mass=4}, now fixed cadence $0.01\,$Myr,
+  matching the sweep's cadence) and found the same
+  bracketed-by-references characterization holds at this resolution
+  too. Note this isolates \emph{resolution} ($4$ vs.\ $20\,M_\odot$),
+  not adaptive-vs-fixed: the sweep's own $0.01\,$Myr baseline was
+  already fixed cadence, so no post-redesign adaptive-mode number for
+  this example exists to compare against -- Phase 4c removed adaptive
+  cadence before that comparison could ever be made.
   Section~\ref{sec:husmith-current}. \\
 \hline
 3. Smith et al.\ (2021), Fig.~2 clump &
@@ -406,14 +411,21 @@ Both the Bisbas-blend median ($7.80\%$, vs.\ $7.12\%$ at
 \code{gas\_mass=20}) and the Raga-II median ($13.75\%$, an
 \emph{improvement} on the $18.44\%$ at \code{gas\_mass=20}) are
 consistent with the same bracketed-by-references characterization,
-not a new failure mode; $t_{\rm end}$ moves in mixed directions across
-references (better vs.\ Raga-I/blend, worse vs.\ Raga-II) by an amount
-attributable to the resolution change (\code{gas\_mass=4} vs.\ $20$),
-not to the cadence switch itself -- cadence was already fixed at
-$0.01\,$Myr in the run that produced the baseline table, so this
-comparison isolates resolution, not adaptive-vs-fixed. \textbf{No
-material degradation from switching this example off adaptive
-cadence.}
+not a new failure mode. $t_{\rm end}$ moves in mixed directions across
+references: better vs.\ Raga-I ($21.21\%\to10.84\%$) and the blend
+($21.20\%\to10.84\%$), but \emph{worse} vs.\ Raga-II
+($7.09\%\to15.03\%$, the one metric here that crosses the $10\%$
+tolerance) -- by an amount attributable to the resolution change
+(\code{gas\_mass=4} vs.\ $20$), not to a cadence switch: cadence was
+already fixed at $0.01\,$Myr in the run that produced the baseline
+table, so \textbf{this comparison isolates resolution, not
+adaptive-vs-fixed}. No post-redesign adaptive-cadence number exists
+for this example at any resolution to compare against -- Phase 4c
+removed the mode before that direct comparison was ever made -- so the
+honest statement is: resolution alone does not degrade this target
+materially, and the adaptive-to-fixed question for
+\code{StromgrenSphereHuSmith2017} specifically was never empirically
+isolated.
 
 \subsection{Smith et al.\ (2021) clump}
 \label{sec:clump-current}

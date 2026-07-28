@@ -101,9 +101,11 @@ GEARFeedback:
   HII_min_density_Hpcm3: 1
   radiation_pressure_efficiency: 0
   HII_max_age_Myr:        50.0
-  HII_rebuild_time_Myr:   0.005       # Fixed cadence -- a numerical parameter, verified against this
-                                       # target's own reference (0.52% error at t=3 Myr, see
-                                       # theory/GEAR/Radiation/04_validation.tex); may be changed freely.
+  HII_rebuild_time_Myr:   0.005       # Fixed cadence, passing at 0.52% error at t=3 Myr (see
+                                       # theory/GEAR/Radiation/04_validation.tex). Cadence-independence is
+                                       # verified at HuSmith2017's much lower density, not yet at this one --
+                                       # this example's own two data points (2.19 pc adaptive-at-floor vs.
+                                       # 2.259 pc here) differ by ~3%, so re-check before pushing coarser.
   HII_rebuild_floor_Myr: 1e-4         # Floors the elapsed interval the per-pass photon budget is integrated
                                        # over.
 

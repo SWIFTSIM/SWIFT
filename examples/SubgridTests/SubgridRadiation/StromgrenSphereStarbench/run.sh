@@ -32,8 +32,8 @@ dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units). Must s
 initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override --
                         #Z=0, literally pure hydrogen matching STARBENCH's own medium; gives this
                         #code's own T_i~47500 K floor, not the papers' flat 1e4 K. See README.
-rebuild_time_myr=${rebuild_time_myr:=0.005} #GEARFeedback:HII_rebuild_time_Myr override -- a purely
-                        #numerical parameter (sweep-verified, theory/GEAR/Radiation/04_validation.tex)
+rebuild_time_myr=${rebuild_time_myr:=0.005} #GEARFeedback:HII_rebuild_time_Myr override -- passes at
+                        #0.52% error (theory/GEAR/Radiation/04_validation.tex); see README before changing
 max_search_radius=${max_search_radius:=0.0049} #Stars:HII_max_search_radius override (internal units, 4.9 pc,
                         #just inside the 5 pc box half-width)
 max_retry_full_buffer=${max_retry_full_buffer:=30} #Stars:HII_max_retry_full_buffer override
