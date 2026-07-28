@@ -1232,7 +1232,13 @@ double radiation_get_mean_excess_photon_energy_HI_from_integral(
   const double dot_N_ion_2 = interpolate_1d(&rad->integrated.dot_N_ion, log_m2);
   const double delta_dot_N_ion = dot_N_ion_2 - dot_N_ion_1;
 
-  if (delta_dot_N_ion == 0.) return 0.;
+  /* The cumulative table is monotonically non-decreasing in mass, so any
+     non-positive difference (no alive ionizing stars in this window, a
+     zero-width window, or roundoff noise between two nearly-equal table
+     entries) is degenerate -- guard against dividing by it rather than
+     testing for exact 0, which a near-cancellation could slip past and
+     amplify into a meaningless huge or negative result. */
+  if (delta_dot_N_ion <= 0.) return 0.;
 
   const double dot_E_excess_1 =
       interpolate_1d(&rad->integrated.dot_E_excess, log_m1);
