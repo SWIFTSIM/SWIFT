@@ -156,6 +156,7 @@ feedback_prepare_radiation_feedback(
  * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
+ * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void
 radiation_iact_nonsym_feedback_apply(
@@ -164,7 +165,8 @@ radiation_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, const struct cooling_function_data *cooling,
-    const integertime_t ti_current, const double time_base) {
+    const integertime_t ti_current, const double time_base,
+    const int with_cosmology) {
 
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
@@ -185,7 +187,19 @@ radiation_iact_nonsym_feedback_apply(
 
   /* Compute radiation pressure */
   if (si->feedback_data.radiation.L_bol != 0.0) {
-    const float Delta_t = get_timestep(si->time_bin, time_base);
+    /* get_timestep(si->time_bin, time_base) is d(ln a), not proper time, in
+     * cosmological runs -- mirror compute_time()'s branch
+     * (feedback_common.c) rather than use it directly. */
+    float Delta_t;
+    if (with_cosmology) {
+      const integertime_t ti_step = get_integer_timestep(si->time_bin);
+      const integertime_t ti_begin =
+          get_integer_time_begin(ti_current, si->time_bin);
+      Delta_t =
+          (float)cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+    } else {
+      Delta_t = get_timestep(si->time_bin, time_base);
+    }
     const float p_rad = radiation_get_star_physical_radiation_pressure(
         si, Delta_t, phys_const, us, cosmo);
     const float delta_p_rad = weight * p_rad;

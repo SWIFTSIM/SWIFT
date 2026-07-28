@@ -327,7 +327,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
   }
 
 #ifdef IONIZATION_FEEDBACK_LOOP
-  /* Read the maximal search radius */
+  /* Read the maximal search radius. Comoving: the physical reach grows with
+   * the box, i.e. physical_reach = a * HII_max_search_radius. */
   sp->HII_max_search_radius =
       parser_get_param_float(params, "Stars:HII_max_search_radius");
 
@@ -379,7 +380,7 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
             sp->spart_first_init_birth_time);
 
 #ifdef IONIZATION_FEEDBACK_LOOP
-  message("Maximal search radius for HII ionization: %e (U_L)",
+  message("Maximal search radius for HII ionization: %e (U_L, comoving)",
           sp->HII_max_search_radius);
   message("HII search-radius expansion: up to %d tries, %.2fx per try",
           sp->HII_max_radius_expansion_tries, sp->HII_radius_expansion_factor);

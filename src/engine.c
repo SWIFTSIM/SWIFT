@@ -1855,7 +1855,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_grav_counts ||
         t->subtype == task_subtype_rt_gradient ||
-        t->subtype == task_subtype_rt_transport)
+        t->subtype == task_subtype_rt_transport ||
+        t->subtype == task_subtype_stars_radiation_in ||
+        t->subtype == task_subtype_stars_radiation_out)
       t->skip = 1;
   }
 

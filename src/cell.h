@@ -1231,8 +1231,12 @@ cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
    * demands it. */
   return c->split && c->hydro.super == NULL &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              c->stars.h_max <
+          0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              c->stars.h_hii_max <
+          0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
@@ -1250,8 +1254,12 @@ cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
    * cell_can_split_pair_radiation_subgrid_task() above. */
   return c->split && c->hydro.super == NULL &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_hii_max < 0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              c->stars.h_max <
+          0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              c->stars.h_hii_max <
+          0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
@@ -1395,10 +1403,17 @@ __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_radiation_pair(const struct cell *ci,
                                      const struct cell *cj) {
 
-  /* Note ci->dmin == cj->dmin */
-  if (kernel_gamma *
-              max3(ci->stars.h_hii_max, ci->stars.h_max, cj->hydro.h_max) +
-          ci->stars.dx_max_part + cj->hydro.dx_max_part >
+  /* Note ci->dmin == cj->dmin. The runner searches out to
+   * radiation_search_radius_factor * kernel_gamma * max(h_hii_max, h_max)
+   * (runner_do_stars_hii_ionization_feedback()); match that here so the
+   * criterion bounds the radius actually used, not a narrower one. Split
+   * into two steps (rather than nesting max() calls) since the max() macro
+   * declares locals that would otherwise shadow across the nested
+   * expansion. */
+  const float star_reach = radiation_search_radius_factor *
+                           max(ci->stars.h_hii_max, ci->stars.h_max);
+  if (kernel_gamma * max(star_reach, cj->hydro.h_max) + ci->stars.dx_max_part +
+          cj->hydro.dx_max_part >
       cj->dmin) {
     return 1;
   }

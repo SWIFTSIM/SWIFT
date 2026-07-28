@@ -40,7 +40,10 @@
 struct runner;
 struct cell;
 
-#define search_radius_factor 1.2f
+/* radiation_search_radius_factor lives in cell_stars.h: cell.h's rebuild
+ * and split predicates need the same value and cannot depend on this
+ * feedback-scheme header. */
+
 /* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
  * compile-time constant by design -- see runner_dosub_stars_hii_ionization_
  * feedback()). Sized to comfortably cover a single rebuild's typical new

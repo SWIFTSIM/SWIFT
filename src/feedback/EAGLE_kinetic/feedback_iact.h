@@ -49,9 +49,8 @@ runner_iact_nonsym_feedback_density(
     const float r2, const float dx[3], const float hi, const float hj,
     struct spart *si, const struct part *pj, const struct xpart *xpj,
     const struct cosmology *cosmo, const struct feedback_props *fb_props,
-    const struct hydro_props *hydro_props,
-    const struct phys_const *phys_const, const struct unit_system *us,
-    const struct cooling_function_data *cooling,
+    const struct hydro_props *hydro_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
     const integertime_t ti_current) {
 
   /* Get the gas mass. */
@@ -208,16 +207,17 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
  * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
+ * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
     const struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props,
-    const struct phys_const *phys_const, const struct unit_system *us,
-    const struct cooling_function_data *cooling,
-    const integertime_t ti_current, const double time_base) {
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current, const double time_base,
+    const int with_cosmology) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->count_since_last_enrichment != 0 && engine_current_step > 0)

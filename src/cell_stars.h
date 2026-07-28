@@ -29,6 +29,13 @@
 #include "star_formation_logger_struct.h"
 #include "timeline.h"
 
+/*! Safety factor applied to a star's h_hii/h search radius: both the
+ * radiation runner (when gathering ionization candidates) and the
+ * rebuild/split predicates that must stay conservative relative to it use
+ * this same value, so it lives here rather than in a feedback-scheme
+ * header that cell.h cannot depend on. */
+#define radiation_search_radius_factor 1.2f
+
 /**
  * @brief Stars-related cell variables.
  */

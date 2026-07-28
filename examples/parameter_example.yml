@@ -77,7 +77,7 @@ Stars:
   max_timestep_old_Myr:                 1.0          # (Optional) Maximal time-step length of old stars (in Mega-years). Defaults to FLT_MAX.
   min_star_timestep_Myr:                1e-4         # (Optional) Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). Guards against a near-zero remainder violating dt_min. (Default: 1e-4)
   luminosity_filename:                  ./photometry # In the EAGLE model, directory where the photometry tables are stored.
-  HII_max_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm (in internal units).
+  HII_max_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm (comoving internal units; physical reach = a * this value).
   HII_max_retry_full_buffer: 10                 # (Optional) Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. (Default: 10)
   HII_max_radius_expansion_tries: 5              # (Optional) Number of times the HII search radius is allowed to expand within a single pass. (Default: 5)
   HII_radius_expansion_factor: 1.1               # (Optional) Growth factor applied to the HII search radius at each expansion try. (Default: 1.1)

@@ -165,7 +165,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
       max(c->stars.h_hii_max_active, c->stars.h_max_active) * kernel_gamma;
   const float max_search_radius = star_props->HII_max_search_radius;
   const float interaction_limit =
-      min(search_radius_factor * r_hii_max, max_search_radius);
+      min(radiation_search_radius_factor * r_hii_max, max_search_radius);
 
   /* Anything to do here? c->hydro.count == 0 is NOT included: a due star in
      a gas-free working-level cell must still reach
@@ -361,6 +361,14 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
   const float max_search_radius = star_props->HII_max_search_radius;
 
   struct hii_neighbor ngb_buffer[max_ngbs];
+
+  /* Floor on the wired 27-cell radiation_in stencil's reach beyond this
+   * pass's interaction_limit: a star at c's own edge still has a full
+   * neighbour cell width, c->dmin, of wired gas past it. The gather only
+   * visits wired cells whatever dynamic_search_radius says, so stopping
+   * here at worst defers an outer shell to the next rebuild pass rather
+   * than losing it. */
+  const float max_reachable_search_radius = interaction_limit + c->dmin;
 
   for (int i = 0; i < scount; i++) {
 
@@ -642,6 +650,17 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
          * would just re-search the identical volume, so stop. */
         if (num_radius_expansions >= max_radius_expansion_tries) break;
         if (dynamic_search_radius >= max_search_radius) break;
+        if (dynamic_search_radius >= max_reachable_search_radius) {
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+          message(
+              "Star %lld: radius expansion clamped at the reachable stencil "
+              "bound (dynamic_search_radius = %e, max_reachable = %e) -- "
+              "further growth cannot find gas the 27-cell radiation_in "
+              "stencil never wired as a neighbour.",
+              si->id, dynamic_search_radius, max_reachable_search_radius);
+#endif
+          break;
+        }
 
         /* A star already holding an equilibrium region gets one probe past
            it and no more: a pixel left with a sliver of budget never trips
@@ -657,8 +676,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           num_empty_expansions = 0;
         }
 
-        dynamic_search_radius = min(
-            dynamic_search_radius * radius_expansion_factor, max_search_radius);
+        dynamic_search_radius =
+            min3(dynamic_search_radius * radius_expansion_factor,
+                 max_search_radius, max_reachable_search_radius);
         ++num_radius_expansions;
       }
     }
