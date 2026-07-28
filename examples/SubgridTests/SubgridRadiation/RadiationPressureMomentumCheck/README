@@ -4,7 +4,7 @@ radiation-pressure momentum channel (`GEARFeedback:radiation_pressure_efficiency
 active -- photoionization, cooling and gravity are all off. This is the Tier-1
 momentum-conservation self-check: it verifies that the code applies exactly
 what its own momentum-injection formula says (Eq. rp-momentum-rate in
-`theory/GEAR/Radiation/06_radiation_pressure.tex`), with no missing factor,
+`theory/GEAR/Radiation/01_radiation_pressure.tex`), with no missing factor,
 double-counting, or silently-dropped kick. It does not validate that the
 underlying physical model itself is correct -- that is a separate, harder
 question (Tier 2, a future `Krumholz & Matzner 2009` comparison).
