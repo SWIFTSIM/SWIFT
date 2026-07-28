@@ -99,13 +99,15 @@ work lives.
     (Section~\ref{sec:t5-heating-rate-zero}), and validated as a
     self-consistency check on the clump testbed
     (Section~\ref{sec:t5-validation}). \textbf{Still open, two things}:
-    (i) re-validation of the STARBENCH/Hu-Smith/clump targets with the
-    coupling ON at current code -- every existing T5 run predates the
-    count-budget redesign and the IMF-averaged excess-energy fix; a
-    fresh STARBENCH pair (same binary, coupling off/on) started
-    2026-07-28, the first time T5 is checked against STARBENCH's own
-    semi-empirical solution rather than the clump testbed's qualitative
-    metrics. (ii) \textbf{Helium}: the per-star coupling feeds Grackle
+    (i) re-validation of the Hu-Smith and clump targets with the
+    coupling ON at current code -- their existing T5 runs predate the
+    count-budget redesign and the IMF-averaged excess-energy fix. The
+    STARBENCH leg completed 2026-07-28: pass-with-caveats, $3.7\%$
+    against the semi-empirical solution at matched equilibrium
+    temperature ($Z=0.231$), with the transient claim-overshoot and
+    the out-of-regime $Z=0$ oscillation documented in
+    Section~\ref{sec:t5-validation} -- the overshoot mechanism should
+    be understood before T5 becomes a production default. (ii) \textbf{Helium}: the per-star coupling feeds Grackle
     hydrogen rates only; \code{RT\_HeI\_ionization\_rate}/
     \code{RT\_HeII\_ionization\_rate} still come from the global
     \code{GrackleCooling:RT\_*\_cgs} YAML constants -- a leftover

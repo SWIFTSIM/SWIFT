@@ -828,7 +828,10 @@ here because each is a reusable trap:}
 \subsection{Grackle rate-coupled photoionization (T5)}
 \label{sec:t5-validation}
 
-\textbf{PASS, as a self-consistency check.} Neither Hu et al.\ (2017)
+\textbf{PASS -- as a self-consistency check on the clump testbed, and
+quantitatively against STARBENCH ($3.7\%$ at matched equilibrium
+temperature; see the STARBENCH leg at the end of this subsection).}
+Neither Hu et al.\ (2017)
 nor Smith et al.\ (2021) tests rate-coupling -- both use the same
 instant flag-and-floor scheme this model defaults to -- so
 \code{GEARFeedback:HII\_couple\_ionization\_rate} (T5) is checked
@@ -836,11 +839,12 @@ instead against basic photoionization-equilibrium physics, using
 \code{StromgrenSphereClumpSmith2021} as the testbed. A caching bug that
 left \code{RT\_heating\_rate} always exactly zero was found and fixed
 first (Section~\ref{sec:t5-heating-rate-zero}); the results below are
-all post-fix. \textbf{Epoch caveat}: every run in this subsection
-(both the T5-on and T5-off sides, so the on/off contrast is internally
-consistent) predates the 2026-07-27 count-budget redesign; the
-coupling-on re-validation at current code is tracked as item T5 in
-Section~\ref{sec:open}.
+all post-fix. \textbf{Epoch caveat}: every clump-testbed run in this
+subsection (both the T5-on and T5-off sides, so the on/off contrast is
+internally consistent) predates the 2026-07-27 count-budget redesign.
+The STARBENCH leg at the end of this subsection is the first T5
+material at current code; the remaining coupling-on re-validation is
+tracked as item T5 in Section~\ref{sec:open}.
 
 Six configurations were run to completion (uniform/angular
 budget-splitting $\times$ \code{gas\_mass}$=\{20,95\}$, T5 on/off in
@@ -943,6 +947,93 @@ at the natural $T_i$.
 
 T5 remains off by default (\code{GEARFeedback:HII\_couple\_ionization\_rate=0}),
 so none of this affects the three PASS verdicts above.
+
+\textbf{STARBENCH leg (2026-07-28, commit \texttt{5fe867016} -- current
+code, post-count-budget-redesign).} The first \emph{quantitative} T5
+check against a published absolute target, and the first T5 material
+at current code. Same binary and configuration as the validated
+STARBENCH example (\code{grackle\_1}, the fixed-$T_i$ build flag --
+which binds only the flag-and-floor path), three sequential runs:
+coupling off, coupling on at $Z=0$, coupling on at
+\code{initial\_metallicity=0.231}. \textbf{Verdict: pass-with-caveats.}
+
+\begin{itemize}
+\item \emph{Baseline control}: T5-off reproduces the committed PASS on
+  this binary at $0.07\%$ (ever-tagged convention; the committed
+  $0.52\%$ is the same convention, run-to-run probabilistic scatter) --
+  so the on/off deltas below are attributable to the coupling alone.
+\item \emph{$Z=0$: correct physics, invalid benchmark.} Rate-coupled
+  metal-free gas equilibrates at $\sim\!2.5\times10^4\,$K (measured
+  median $25\,000\,$K, residual $x_{\rm HI}\approx1.3\times10^{-4}$):
+  with no metal lines, cooling is collisional excitation of residual
+  neutral H (Ly$\alpha$, effective only above $\sim\!2\times10^4\,$K),
+  recombination and free--free -- the classic hot metal-free-nebula
+  result. This is physically right and \emph{breaks} STARBENCH's flat
+  $10^4\,$K two-state assumption, so the target is out of regime here:
+  both measurement conventions fail ($28$--$34\%$), the region
+  overshoots and then oscillates (claim/shed relaxation cycle,
+  $\sim\!0.5\,$Myr period, unrelated to the $0.005\,$Myr cadence), and
+  no verdict about T5's correctness follows either way. Bonus physics:
+  the run develops a preheated intermediate-temperature rim beyond the
+  ionization front (Figure~\ref{fig:t5-starbench-slices}) --
+  the shell structure visible in Smith et al.\ (2021)'s own Figure~2
+  that flag-and-floor cannot produce.
+\item \emph{$Z=0.231$: the quantitative result.} Equilibrium at
+  $1.45\times10^4\,$K, close to the benchmark assumption. The region
+  makes a single transient overshoot ($\sim\!4.3\,$pc at
+  $\sim\!1.7\,$Myr, $\sim\!40\%$ above the curve -- the damped remnant
+  of the $Z=0$ oscillation) and then relaxes smoothly onto the
+  prediction: instantaneous front $3.00\,$pc vs.\
+  $R_{\rm SB}(T_i^{\rm measured})=3.115\,$pc at $t=3\,$Myr --
+  \textbf{3.7\%}. T5 reproduces STARBENCH's D-type solution
+  quantitatively once the medium's equilibrium temperature matches the
+  benchmark's assumption
+  (Figure~\ref{fig:t5-starbench-radius-evolution}).
+\item \emph{Recede path demonstrated live}: in all three runs the
+  star's \emph{current} \code{HIIRegionRadii} equals the current
+  ionized-front radius exactly ($1.90/2.86/3.00\,$pc at $t=3\,$Myr) --
+  the budget-gated maintenance follows the front down as it recedes,
+  the designed behaviour
+  (Section~\ref{sec:husmith-current}), here exercised for the first
+  time in a sustained way.
+\item \emph{Checker convention}: \code{starbench\_analytic\_check.py}'s
+  historical single measure (ever-tagged extent) is a monotone,
+  peak-like quantity -- right for flag-and-floor, meaningless for
+  recede-capable runs (it reported the $1.7\,$Myr peak against the
+  instantaneous prediction, a spurious $46\%$ ``FAIL'' at $Z=0.231$).
+  The shipped checker now reports both conventions with per-line
+  verdicts and a divergence note stating which applies to which
+  scheme.
+\end{itemize}
+
+Caveats attached to the pass: the transient claim-overshoot is real
+(bounded, self-correcting, $\sim\!1$--$2.5\,$Myr) and its mechanism --
+suspected: upkeep priced at the hot interior temperature makes the
+initial claim too cheap -- should be understood before T5 becomes a
+production default; and $Z=0$ pure hydrogen is documented as
+out-of-regime for this benchmark, not validated.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/t5_starbench_radius_evolution}
+  \caption{Ionized-gas radius distribution (max, 95th percentile,
+    median of $x_{\rm HII}>0.5$ particles) and ionized count (dashed
+    grey) vs.\ time: T5 off / on ($Z=0$) / on ($Z=0.231$). The $Z=0$
+    run sustains the claim/shed oscillation; $Z=0.231$ makes one
+    overshoot and relaxes onto the STARBENCH prediction.}
+  \label{fig:t5-starbench-radius-evolution}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/t5_starbench_slices_profiles}
+  \caption{Final-snapshot temperature slices and radial
+    $T$/$x_{\rm HII}$ profiles, T5 off vs.\ on ($Z=0$): the pinned
+    $10^4\,$K two-state structure vs.\ the hot
+    ($\sim\!2.5\times10^4\,$K) interior with a preheated rim beyond
+    the front.}
+  \label{fig:t5-starbench-slices}
+\end{figure}
 
 \subsection{Deprecated results (2026-07-27)}
 \label{sec:deprecated-2026-07-27}
