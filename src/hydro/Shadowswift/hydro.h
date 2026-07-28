@@ -75,12 +75,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float W[6];
   hydro_part_get_primitive_variables(p, W);
 
-  float vmax = sqrtf(p->v_rel_full[0] * p->v_rel_full[0] +
-                     p->v_rel_full[1] * p->v_rel_full[1] +
-                     p->v_rel_full[2] * p->v_rel_full[2]) +
-               hydro_get_comoving_soundspeed(p);
-  vmax = max(vmax, p->timestepvars.vmax);
-
   /* Get the comoving psize, since we will compare with another comoving
    * geometric property below */
   float psize = hydro_get_comoving_psize(p);
@@ -90,6 +84,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       p->geometry.min_face_dist > 0.) {
     psize = p->geometry.min_face_dist;
   }
+
+  /* Max Signal Velocity between neighbours + soundspeed */
+  float vmax = p->timestepvars.vmax + hydro_get_comoving_soundspeed(p);
 
   /* NOTE (yuyttenh, 06/25): To compute the (physical) dt we want to divide the
    * physical particle size (a * psize) by the physical/peculiar velocity

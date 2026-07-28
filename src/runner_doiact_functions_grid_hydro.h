@@ -10,6 +10,7 @@
 
 #include "runner_doiact_grid_hydro.h"
 #include "swift.h"
+#include <timestep_limiter_iact.h>
 
 #ifdef MOVING_MESH
 
@@ -54,6 +55,9 @@ __attribute__((always_inline)) INLINE static int IACT_BOUNDARY_PARTICLES(
     /* Normal functions for other interactions */
     runner_reflect_primitives(&p_boundary, part_left, centroid);
     IACT(part_left, &p_boundary, centroid, surface_area, shift, 0);
+
+    /* Ensure parts are within reasonable timebins, nonsymmetric */
+    runner_iact_nonsym_timebin(0, 0, 0, 0, part_left, p_boundary, 0, 0);
 #endif
     /* Nothing left to do for this pair*/
     return 1;
@@ -77,6 +81,9 @@ __attribute__((always_inline)) INLINE static int IACT_BOUNDARY_PARTICLES(
     double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
     runner_reflect_primitives(&p_boundary, part_right, centroid);
     IACT(part_right, &p_boundary, midpoint, surface_area, r_shift, 0);
+
+    /* Ensure parts are within reasonable timebins, nonsymmetric */
+    runner_iact_nonsym_timebin(0, 0, 0, 0, part_right, p_boundary, 0, 0);
 #endif
     /* Nothing left to do for this pair*/
     return 1;
@@ -241,14 +248,27 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       /* Flux exchange always symmetric */
       IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
            hydro, 1);
+
+      /* Ensure parts are within reasonable timebins */
+      runner_iact_timebin(0, 0, 0, 0, part_left,
+        part_right, 0, 0);
 #else
       /* Only do the gradient calculations for local active particles */
       if (ci_local && left_active && cj_local && right_active) {
         IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
              hydro, 1);
+
+        /* Ensure parts are within reasonable timebins */
+        runner_iact_timebin(0, 0, 0, 0, part_left,
+          part_right, 0, 0);
+
       } else if (ci_local && left_active) {
         IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
              hydro, 0);
+
+        /* Ensure parts are within reasonable timebins, nonsymmetric */
+        runner_iact_nonsym_timebin(0, 0, 0, 0, part_left, part_right, 0, 0);
+
       } else if (cj_local && right_active) {
         /* The pair needs to be flipped around */
         /* The midpoint from the reference frame of the right particle */
@@ -259,6 +279,10 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
         double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
         IACT(part_right, part_left, midpoint, pair->surface_area, r_shift,
              hydro, 0);
+
+        /* Ensure parts are within reasonable timebins, nonsymmetric */
+        runner_iact_nonsym_timebin(0, 0, 0, 0, part_right, part_left, 0, 0);
+
       }
 #endif
     }
@@ -428,16 +452,33 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     /* Flux exchange always symmetric */
     IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
          hydro, 1);
+
+    /* Ensure parts are within reasonable timebins */
+    runner_iact_timebin(0, 0, 0, 0, part_left,
+      part_right, 0, 0);
+
 #else
     if (left_is_active && right_is_active) {
       IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
            hydro, 1);
+
+      /* Ensure parts are within reasonable timebins */
+      runner_iact_timebin(0, 0, 0, 0, part_left,
+        part_right, 0, 0);
+
     } else if (left_is_active) {
       IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
            hydro, 0);
+
+      /* Ensure parts are within reasonable timebins, nonsymmetric */
+      runner_iact_nonsym_timebin(0, 0, 0, 0, part_left, part_right, 0, 0);
+
     } else if (right_is_active) {
       IACT(part_right, part_left, pair->midpoint, pair->surface_area, shift,
            hydro, 0);
+
+      /* Ensure parts are within reasonable timebins, nonsymmetric */
+      runner_iact_nonsym_timebin(0, 0, 0, 0, part_right, part_left, 0, 0);
     }
 #endif
   }
