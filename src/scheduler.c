@@ -707,9 +707,26 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_sink_formation:
         cost = wscale * (count_i + sink_count_i);
         break;
-      case task_type_stars_hii_ionization_feedback:
-        cost = wscale * (count_i + scount_i);
+      case task_type_stars_hii_ionization_feedback: {
+        /* Charged over the gas this task actually visits, not just its own
+           cell: every active star walks its whole radiation_in link set
+           (runner_dosub_stars_hii_ionization_feedback), so pricing it on
+           ci alone under-weights it by the number of linked regions and
+           biases both queue ordering and the MPI repartition. */
+        float count_reachable = count_i;
+        if (t->ci != NULL && t->ci->stars.radiation_level != NULL) {
+          for (const struct link *l =
+                   t->ci->stars.radiation_level->stars.radiation_in;
+               l != NULL; l = l->next) {
+            const struct cell *cj = (l->t->cj == t->ci->stars.radiation_level)
+                                        ? l->t->ci
+                                        : l->t->cj;
+            if (cj != NULL) count_reachable += cj->hydro.count;
+          }
+        }
+        cost = wscale * scount_i * count_reachable;
         break;
+      }
       case task_type_rt_ghost1:
         cost = wscale * count_i;
         break;
