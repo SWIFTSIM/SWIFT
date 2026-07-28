@@ -16,7 +16,7 @@ The classical Stromgren radius formula assumes the code's ionization budget acco
 The redistribution signal's strength depends on this geometry (and on `--density_factor`), not just on the density contrast -- run `clump_anisotropy_check.py` after each size to check.
 
 ## Cadence
-`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence, `HII_adaptive_rebuild_cadence=0`) is a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
+`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
 
 # Configure
 ```

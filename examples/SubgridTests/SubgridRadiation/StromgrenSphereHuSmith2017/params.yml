@@ -120,12 +120,8 @@ GEARFeedback:
                                        # numerical parameter -- the 6-point sweep in
                                        # theory/GEAR/Radiation/04_validation.tex found it cadence-independent
                                        # for cadences <=0.03 Myr, so this value may be changed freely.
-  HII_adaptive_rebuild_cadence: 0     # Fixed cadence (Phase 4b): the count-budget redesign made cadence
-                                       # purely numerical, so adaptive no longer buys correctness, only
-                                       # transient time-resolution, at the cost of per-star timestep pinning.
-  HII_rebuild_safety_factor: 0.2      # Unused at HII_adaptive_rebuild_cadence=0; kept for reference.
   HII_rebuild_floor_Myr: 1e-4         # Floors the elapsed interval the per-pass photon budget is integrated
-                                       # over, in every cadence mode (not just adaptive).
+                                       # over.
   HII_angular_nside: 0                # Spherical (no angular splitting) -- this is Hu et al.'s own
                                        # algorithm, uniform medium, nothing for angular splitting to fix.
   HII_deterministic_boundary_ionization: 0  # Probabilistic, the validated default.

@@ -332,9 +332,20 @@ the nominal \code{tag\_time + HII\_region\_rebuild\_time}, to cover
 cases where SWIFT's own timestepping forces a rebuild slightly earlier
 than the nominal cadence -- untested, low priority given the above.
 
-\subsection{Adaptive rebuild cadence (opt-in, implemented and verified
-2026-07-18)}
+\subsection{Adaptive rebuild cadence (opt-in 2026-07-18, removed Phase 4c
+2026-07-28)}
 \label{sec:adaptive-cadence}
+
+\textbf{Removed (Phase 4c, 2026-07-28).} The count-budget redesign
+(Section~\ref{sec:husmith-current} of \code{04\_validation.tex}) made
+rebuild cadence a purely numerical parameter: a six-cadence sweep found
+the converged answer independent of it, so this mode's correctness
+motivation was gone, leaving only its per-star timestep-pinning cost.
+\code{GEARFeedback:HII\_adaptive\_rebuild\_cadence} and
+\code{HII\_rebuild\_safety\_factor} no longer exist;
+\code{HII\_rebuild\_floor\_Myr} is kept (it floors the photon-budget
+interval in fixed-cadence mode too). The description below is kept as
+a historical record of the mechanism that was removed.
 
 The fixed \code{HII\_region\_rebuild\_time\_Myr} above is a single,
 problem-specific value with no principled way to choose it -- this

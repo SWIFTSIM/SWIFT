@@ -41,11 +41,8 @@ dt_max=${dt_max:=1e-5}             # TimeIntegration:dt_max override (internal u
 n_cells=${n_cells:=3}               # must match Scheduler:max_top_level_cells in params.yml
 nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override -- 0 by default (Hu et al.'s
                                      # own algorithm has no angular splitting; this test is uniform anyway)
-rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_rebuild_time_Myr override (only used if adaptive_rebuild_cadence=0)
-adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=0} # GEARFeedback:HII_adaptive_rebuild_cadence override -- fixed cadence
-                        # by default (Phase 4b): cadence is a purely numerical parameter (sweep-verified),
-                        # so adaptive no longer buys correctness, only the per-star timestep-pinning cost.
-rebuild_safety_factor=${rebuild_safety_factor:=0.2} # GEARFeedback:HII_rebuild_safety_factor override
+rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_rebuild_time_Myr override -- a purely
+                        # numerical parameter (sweep-verified, theory/GEAR/Radiation/04_validation.tex)
 deterministic=${deterministic:=0}   # GEARFeedback:HII_deterministic_boundary_ionization override
 initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override --
                         # Z=0, literally pure hydrogen matching Hu/Smith's own medium; gives this
@@ -115,8 +112,6 @@ if [ "$with_cooling" -eq 1 ]; then
                -P TimeIntegration:dt_max:$dt_max \
                -P GEARFeedback:HII_angular_nside:$nside \
                -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
-               -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
-               -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
                -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                -P GEARChemistry:initial_metallicity:$initial_metallicity \
                -P Stars:HII_max_search_radius:$max_search_radius \
@@ -131,8 +126,6 @@ else
                -P TimeIntegration:dt_max:$dt_max \
                -P GEARFeedback:HII_angular_nside:$nside \
                -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
-               -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
-               -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
                -P GEARFeedback:HII_deterministic_boundary_ionization:$deterministic \
                -P GEARChemistry:initial_metallicity:$initial_metallicity \
                -P Stars:HII_max_search_radius:$max_search_radius \

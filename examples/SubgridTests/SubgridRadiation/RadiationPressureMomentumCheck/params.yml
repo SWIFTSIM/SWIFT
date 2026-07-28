@@ -98,7 +98,6 @@ GEARFeedback:
   with_photoionization:          0
   radiation_pressure_efficiency: 1
   HII_rebuild_time_Myr:   0.5
-  HII_adaptive_rebuild_cadence: 0
 
   #Mechanical feedback
   maximal_radius: 2

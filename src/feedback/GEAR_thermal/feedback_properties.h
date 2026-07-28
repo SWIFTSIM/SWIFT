@@ -28,8 +28,6 @@
 #define default_HII_max_age_Myr 50.0
 #define default_HII_rebuild_time_Myr 0.5
 #define default_HII_deterministic_boundary_ionization 0
-#define default_HII_adaptive_rebuild_cadence 0
-#define default_HII_rebuild_safety_factor 0.2
 #define default_HII_rebuild_floor_Myr 1e-4
 
 /**
@@ -90,17 +88,8 @@ struct feedback_props {
    * letting the budget go slightly negative). */
   char HII_deterministic_boundary_ionization;
 
-  /*! Replace the fixed HII_rebuild_time with a per-star cadence
-   * derived from f_safety*min(t_rec, t_cross) (see
-   * radiation_compute_and_cache_HII_rebuild_interval). Opt-in, default
-   * off. */
-  char HII_adaptive_rebuild_cadence;
-
-  /*! Safety factor applied to min(t_rec, t_cross) in adaptive-cadence
-   * mode -- the dimensionless analogue of a CFL number. */
-  float HII_rebuild_safety_factor;
-
-  /*! Backstop minimum rebuild interval in adaptive-cadence mode. */
+  /*! Floors the elapsed interval the per-pass ionizing photon budget is
+   * integrated over, in every cadence mode. */
   float HII_rebuild_floor_Myr;
 
   /* ------------- Stellar winds properties ------------- */
@@ -159,14 +148,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
             feedback_props->HII_deterministic_boundary_ionization
                 ? "deterministic"
                 : "probabilistic");
-    message("HII adaptive rebuild cadence                               = %s",
-            feedback_props->HII_adaptive_rebuild_cadence ? "ON" : "OFF");
-    if (feedback_props->HII_adaptive_rebuild_cadence) {
-      message("HII adaptive rebuild safety factor                         = %g",
-              feedback_props->HII_rebuild_safety_factor);
-    }
-    /* Not adaptive-only: this also floors the elapsed interval the per-pass
-       ionizing photon budget is integrated over, in every cadence mode. */
     message("HII rebuild floor (internal units)                         = %g",
             feedback_props->HII_rebuild_floor_Myr);
   }
@@ -321,14 +302,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->HII_deterministic_boundary_ionization = parser_get_opt_param_int(
         params, "GEARFeedback:HII_deterministic_boundary_ionization",
         default_HII_deterministic_boundary_ionization);
-
-    fp->HII_adaptive_rebuild_cadence = parser_get_opt_param_int(
-        params, "GEARFeedback:HII_adaptive_rebuild_cadence",
-        default_HII_adaptive_rebuild_cadence);
-
-    fp->HII_rebuild_safety_factor = parser_get_opt_param_float(
-        params, "GEARFeedback:HII_rebuild_safety_factor",
-        default_HII_rebuild_safety_factor);
 
     fp->HII_rebuild_floor_Myr =
         parser_get_opt_param_float(params, "GEARFeedback:HII_rebuild_floor_Myr",

@@ -291,9 +291,9 @@ INLINE static void stars_props_init(struct stars_props *sp,
      age-based bound above with the feedback module's own criteria
      (stellar-evolution stage, HII rebuild cadence, ...). Guards against a
      near-zero remainder violating dt_min. Not a physics floor -- see
-     GEARFeedback:HII_rebuild_floor_Myr for the adaptive HII cadence's own
-     floor on the rebuild interval itself, a different quantity kept
-     separate from this one. */
+     GEARFeedback:HII_rebuild_floor_Myr for the floor on the photon-budget
+     rebuild interval itself, a different quantity kept separate from this
+     one. */
   const double min_star_timestep_Myr =
       parser_get_opt_param_float(params, "Stars:min_star_timestep_Myr", 1e-4);
 

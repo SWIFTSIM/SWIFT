@@ -458,3 +458,40 @@ resolution, not an artifact of the one configuration first checked. At
 95\,M$_\odot$ the ionized-region particle count entering the temperature
 average is small (34--47 particles), so those two temperature values
 carry more sampling noise than the 20\,M$_\odot$ pair.
+
+\subsection{2026-07-28: adaptive rebuild cadence removed (Phase 4c)}
+\label{sec:phase4c-removal}
+
+\code{GEARFeedback:HII\_adaptive\_rebuild\_cadence} and
+\code{HII\_rebuild\_safety\_factor}, the \code{HII\_region\_next\_rebuild\_time}
+spart field and its getter, and the deadline-computation half of
+\code{radiation\_compute\_and\_cache\_HII\_rebuild\_interval()} (the
+function referenced by several entries above) no longer exist in the
+codebase. The count-budget redesign made rebuild cadence a purely
+numerical parameter (Section~\ref{sec:husmith-current},
+\code{04\_validation.tex}), removing the adaptive mode's correctness
+motivation and leaving only its per-star timestep-pinning cost.
+\code{HII\_rebuild\_floor\_Myr} is unaffected: it floors the
+photon-budget interval in fixed-cadence mode too. Section~\ref{sec:adaptive-cadence}
+of \code{01\_algorithm.tex} keeps the mechanism's description as a
+historical record; the entries above describing bugs in the deleted
+code are kept unchanged as a record of what was fixed at the time.
+\textbf{Verification:} build clean (incl.\ \code{swift\_mpi}, unaffected by
+this GEAR-only change); \code{testRadiationRebuildCheck}/
+\code{test27cellsStars -n 3 -N 3 -r 5} pass;
+\code{StromgrenSphere gas\_mass=0.1} reaches \code{time\_end} under
+\code{--enable-debugging-checks} with no crash/assertion; a mid-run
+restart (stop-file dump at step 200/2650, \code{radiation\_dump}
+confirmed writing the shrunk struct) resumes and reaches
+\code{time\_end} identically to an uninterrupted run -- the struct
+field removal did not break the restart layout.
+\code{RadiationPressureMomentumCheck} (the one example that runs the
+\code{feedback\_compute\_spart\_timestep}/\code{feedback\_will\_do\_feedback}
+code touched here with \code{with\_photoionization=0}) hit an unrelated,
+pre-existing crash (\code{cell.h:cell\_set\_part\_h\_depth}, a
+generic SPH tree-depth debug assertion with no radiation code in its
+call path) traced to that example's own \code{Gravity:max\_physical\_
+baryon\_softening=0.005}/\code{Stars:HII\_max\_search\_radius=0.1} both
+far exceeding its $0.00118$ box -- present since the example's original
+commit (\code{f9001984c}), confirmed unrelated to this deletion by
+inspection; not fixed here (out of scope).

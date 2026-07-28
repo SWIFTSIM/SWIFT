@@ -139,9 +139,10 @@ Hu/Smith's $100\,{\rm cm^{-3}}$). Re-checked against the same
 Bisbas et al.\ (2015) blend, same build/config otherwise:
 $r_{\rm sim}=2.259\,$pc vs.\ $R_{\rm SB}=2.247\,$pc at $t=3\,$Myr,
 \textbf{0.52\% error} -- an improvement on the adaptive-cadence
-2.51\%, not a regression. \code{HII\_adaptive\_rebuild\_cadence} is
-$0$ in the committed \code{params.yml}/\code{run.sh} from this point
-on.
+2.51\%, not a regression. \code{HII\_adaptive\_rebuild\_cadence} was
+removed entirely in Phase 4c (2026-07-28,
+Section~\ref{sec:phase4c-removal} of \code{03\_bugs\_and\_fixes.tex});
+fixed cadence is now the only mode.
 
 \subsection{Hu et al.\ (2017)/Smith et al.\ (2021), 4-star}
 \label{sec:husmith-current}
@@ -256,10 +257,10 @@ particles), the coarser of the two resolutions this document has
 tested (Section~\ref{sec:deprecated-2026-07-27} notes \code{gas\_mass=20}
 already degraded late-time accuracy under the pre-redesign code, at
 fixed cadence), and forced \code{HII\_adaptive\_rebuild\_cadence=0} to
-isolate cadence as the only varying quantity -- not the validated
-\code{gas\_mass=4}/adaptive-cadence default. \textbf{Not yet done}: a
-like-for-like re-validation at \code{gas\_mass=4} and adaptive cadence
-with the redesigned code.
+isolate cadence as the only varying quantity -- not the then-validated
+\code{gas\_mass=4}/adaptive-cadence default. \textbf{Done in Phase 4b}
+(Section~\ref{sec:husmith-4b} below): a like-for-like re-validation at
+\code{gas\_mass=4}, now fixed cadence (adaptive was removed in Phase 4c).
 
 \subsubsection{Multi-source ownership: investigated, not the dominant
 effect at this cadence}
@@ -377,6 +378,7 @@ run (the verdict still follows \code{--reference}, default Raga-II),
 so a single-median FAIL can no longer hide the bracketing.
 
 \subsubsection{Phase 4b update (2026-07-28): fixed cadence at the shipped default}
+\label{sec:husmith-4b}
 
 The sweep above (Section~\ref{sec:husmith-current}) that established
 cadence-independence ran at \code{gas\_mass=20} with adaptive cadence
@@ -742,9 +744,8 @@ the $10^4\,$K debug override used for every run above. $T_i$ still
 enters the tagging/budget bookkeeping shared with flag-and-floor (the
 case-B recombination coefficient in
 \code{radiation\_get\_part\_rate\_to\_fully\_ionize} is evaluated at
-$T_i$), so it still affects how far a pass can tag and the
-adaptive-cadence rebuild interval -- not yet checked at the natural
-$T_i$.
+$T_i$), so it still affects how far a pass can tag -- not yet checked
+at the natural $T_i$.
 
 T5 remains off by default (\code{GEARFeedback:HII\_couple\_ionization\_rate=0}),
 so none of this affects the three PASS verdicts above.

@@ -101,19 +101,11 @@ GEARFeedback:
   HII_min_density_Hpcm3: 1
   radiation_pressure_efficiency: 0
   HII_max_age_Myr:        50.0
-  HII_rebuild_time_Myr:   0.005       # Fixed cadence, ~137x t_rec(n_H=3346cm^-3, 1e4K)~3.7e-5 Myr -- the
-                                       # fine end of the production guidance range for this dense a medium.
-                                       # Cadence is a numerical parameter -- the 6-point sweep in
-                                       # theory/GEAR/Radiation/04_validation.tex found it cadence-independent
-                                       # at HuSmith2017's (100x more dilute) density; this value may be
-                                       # changed freely, but see 04_validation.tex for this target's own
-                                       # cadence-sensitivity result at this density.
-  HII_adaptive_rebuild_cadence: 0     # Fixed cadence (Phase 4b): the count-budget redesign made cadence
-                                       # purely numerical, so adaptive no longer buys correctness, only
-                                       # transient time-resolution, at the cost of per-star timestep pinning.
-  HII_rebuild_safety_factor: 0.2      # Unused at HII_adaptive_rebuild_cadence=0; kept for reference.
+  HII_rebuild_time_Myr:   0.005       # Fixed cadence -- a numerical parameter, verified against this
+                                       # target's own reference (0.52% error at t=3 Myr, see
+                                       # theory/GEAR/Radiation/04_validation.tex); may be changed freely.
   HII_rebuild_floor_Myr: 1e-4         # Floors the elapsed interval the per-pass photon budget is integrated
-                                       # over, in every cadence mode (not just adaptive).
+                                       # over.
 
   #Mechanical feedback
   maximal_radius: 2

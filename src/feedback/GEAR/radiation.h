@@ -83,14 +83,6 @@ double radiation_get_case_b_recombination_coefficient_cgs(const double T);
 
 double radiation_get_T_collisional_K(const double Z);
 
-void radiation_compute_and_cache_HII_rebuild_interval(
-    struct spart *sp, const struct feedback_props *feedback_props,
-    const struct phys_const *phys_const, const struct unit_system *us,
-    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
-    const float sum_rho_pix[HII_MAX_ANGULAR_PIXELS],
-    const int count_pix[HII_MAX_ANGULAR_PIXELS],
-    const double star_age_beg_step);
-
 void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj,
                                    long long star_id, double end_time,
                                    float excess_photon_energy_HI,

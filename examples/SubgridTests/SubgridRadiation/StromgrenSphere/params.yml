@@ -95,9 +95,7 @@ GEARFeedback:
   radiation_pressure_efficiency: 0              # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   HII_max_age_Myr:        50.0           # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_rebuild_time_Myr:   0.5            # Time between rebuilding the HII region (in Myr). This value also enforces a timestep constraint on the stars. Negative values mean "rebuild every step" instead of on a fixed schedule. (Default: 0.5) Cadence is a numerical parameter -- the 6-point sweep in theory/GEAR/Radiation/04_validation.tex found it cadence-independent; this example is a task-graph diagnostic, not a physics target, so it is left at the production default.
-  # HII_adaptive_rebuild_cadence: 0               # Replace the fixed HII_rebuild_time_Myr schedule above with a per-star cadence f_safety*min(t_rec, t_cross). 1: on, 0: off. (Default: 0)
-  # HII_rebuild_safety_factor: 0.2         # Safety factor applied to min(t_rec, t_cross) in adaptive-cadence mode. Only used if HII_adaptive_rebuild_cadence=1. (Default: 0.2)
-  # HII_rebuild_floor_Myr: 1e-4            # Minimum allowed rebuild interval (in Myr). Floors the elapsed interval the per-pass photon budget is integrated over, in every cadence mode (not just adaptive). (Default: 1e-4)
+  # HII_rebuild_floor_Myr: 1e-4            # Minimum allowed rebuild interval (in Myr). Floors the elapsed interval the per-pass photon budget is integrated over. (Default: 1e-4)
 
   #Mechanical feedback
   maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)

@@ -48,24 +48,14 @@ validation-against-a-paper status.
     which retry branch (buffer-full vs.\ radius-expansion) dominates
     once the cap/cadence fixes are both in place.
 
-  \item[$\square$] \textbf{T4} -- User's stated direction (2026-07-19):
-    the adaptive rebuild cadence (Section~\ref{sec:adaptive-cadence})
-    is intended to become the \emph{default}, not stay opt-in
-    indefinitely. \textbf{Deliberately not done yet} (2026-07-20): the
-    user wants more testing first, so
-    \code{HII\_adaptive\_rebuild\_cadence} stays off by default.
-    \textbf{TODO (2026-07-24)}: the Smith et al.\ (2021) clump target
-    (\code{StromgrenSphereClumpSmith2021}) has never actually been run
-    with \code{HII\_adaptive\_rebuild\_cadence=1} -- every clump run to
-    date (SPH uniform/angular, both resolutions, Gizmo MFM, Gizmo MFV)
-    used the fixed cadence (\code{=0}). STARBENCH's and
-    \code{StromgrenSphereHuSmith2017}'s own committed \code{run.sh}
-    already default to \code{=1} (their comments cite an untracked
-    ``T11'' with no corresponding entry in this document -- a dangling
-    reference worth resolving, not a real cross-check), so the clump
-    target is the one validated example still untested under adaptive
-    cadence -- add it to the planned \code{HomogeneousBox}/isolated-galaxy
-    testing pass below.
+  \item[$\blacksquare$] \textbf{T4} -- \textbf{Closed 2026-07-28, superseded
+    by removal, not by becoming the default.} The count-budget redesign
+    made rebuild cadence purely numerical (Section~\ref{sec:husmith-current}),
+    so ``should adaptive become the default'' was replaced by ``adaptive
+    buys nothing correctness-wise, only costs timestep pinning'' -- Phase 4c
+    deleted \code{HII\_adaptive\_rebuild\_cadence} entirely rather than
+    defaulting it on. See Section~\ref{sec:phase4c-removal} of
+    \code{03\_bugs\_and\_fixes.tex}.
 
   \item[$\blacksquare$] \textbf{T5} -- Pass real ionizing/heating rates
     into Grackle's chemistry solve (Grackle's own \code{RT\_heating\_rate}/

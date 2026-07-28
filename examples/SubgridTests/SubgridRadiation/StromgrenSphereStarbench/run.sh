@@ -32,12 +32,8 @@ dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units). Must s
 initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override --
                         #Z=0, literally pure hydrogen matching STARBENCH's own medium; gives this
                         #code's own T_i~47500 K floor, not the papers' flat 1e4 K. See README.
-rebuild_time_myr=${rebuild_time_myr:=0.005} #GEARFeedback:HII_rebuild_time_Myr override (only used if adaptive_rebuild_cadence=0)
-adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=0} #GEARFeedback:HII_adaptive_rebuild_cadence override:
-                        #0 = fixed cadence (rebuild_time_myr above, the default -- Phase 4b), 1 =
-                        #physically-derived per-star cadence (ignores rebuild_time_myr)
-rebuild_safety_factor=${rebuild_safety_factor:=0.2} #GEARFeedback:HII_rebuild_safety_factor override
-                        #(only used if adaptive_rebuild_cadence=1)
+rebuild_time_myr=${rebuild_time_myr:=0.005} #GEARFeedback:HII_rebuild_time_Myr override -- a purely
+                        #numerical parameter (sweep-verified, theory/GEAR/Radiation/04_validation.tex)
 max_search_radius=${max_search_radius:=0.0049} #Stars:HII_max_search_radius override (internal units, 4.9 pc,
                         #just inside the 5 pc box half-width)
 max_retry_full_buffer=${max_retry_full_buffer:=30} #Stars:HII_max_retry_full_buffer override
@@ -103,8 +99,6 @@ if [ "$with_cooling" -eq 1 ]; then
 		   -P TimeIntegration:dt_max:$dt_max \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
 		   -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
-		   -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
-		   -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
 		   -P Stars:HII_max_search_radius:$max_search_radius \
 		   -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
 		   -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
@@ -117,8 +111,6 @@ else
 	       -P TimeIntegration:dt_max:$dt_max \
 	       -P GEARChemistry:initial_metallicity:$initial_metallicity \
 	       -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
-		   -P GEARFeedback:HII_adaptive_rebuild_cadence:$adaptive_rebuild_cadence \
-		   -P GEARFeedback:HII_rebuild_safety_factor:$rebuild_safety_factor \
 		   -P Stars:HII_max_search_radius:$max_search_radius \
 		   -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
 		   -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \

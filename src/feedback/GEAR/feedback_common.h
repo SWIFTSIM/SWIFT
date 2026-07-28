@@ -86,20 +86,10 @@ double feedback_iact_HII_maintain_ionized_part(
     const struct cooling_function_data *cooling, const double time,
     const double dt_back, const double dt_forward);
 
-void feedback_compute_and_cache_HII_rebuild_interval(
-    struct spart *sp, const struct feedback_props *feedback_props,
-    const struct phys_const *phys_const, const struct unit_system *us,
-    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
-    const float sum_rho_pix[HII_MAX_ANGULAR_PIXELS],
-    const int count_pix[HII_MAX_ANGULAR_PIXELS],
-    const double star_age_beg_step);
-
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
 double feedback_get_star_HII_last_rebuild(const struct spart *sp);
-double feedback_get_star_HII_next_rebuild_time(const struct spart *sp);
 double feedback_get_star_HII_nominal_interval(
-    const struct spart *sp, const struct feedback_props *feedback_props,
-    const double dt_enrichment);
+    const struct feedback_props *feedback_props, const double dt_enrichment);
 void feedback_open_star_ionizing_photon_budget(struct spart *sp,
                                                double dt_back);
 void feedback_set_star_HII_last_rebuild(struct spart *sp,

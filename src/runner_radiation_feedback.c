@@ -392,8 +392,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           si->id, c->cellID, c->super->cellID);
 #endif
 
-    /* Needed by the adaptive-cadence cache below, the attempt/rebuild
-       stamps, and the retry loop's expansion cap -- computed once. */
+    /* Needed by the attempt/rebuild stamps below and the retry loop's
+       expansion cap -- computed once. */
     double star_age_beg_step = 0;
     double dt_enrichment = 0;
     integertime_t ti_begin_star = 0;
@@ -433,8 +433,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        repeatedly on such a run, that is a real red flag -- e.g. a star
        pinned below its own desired cadence by min_star_timestep in very
        dense gas -- a distinct failure mode from the benign gas-free skip. */
-    const double dt_nominal = feedback_get_star_HII_nominal_interval(
-        si, feedback_props, dt_enrichment);
+    const double dt_nominal =
+        feedback_get_star_HII_nominal_interval(feedback_props, dt_enrichment);
     const double dt_floor = (double)feedback_props->HII_rebuild_floor_Myr;
     const double dt_ceiling = HII_DT_BACK_MAX_INTERVALS * dt_nominal;
     /* The floor stands in for an unmeasurable interval (a star's first pass),
@@ -493,12 +493,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        when cooling is disabled for tagged gas, since tags are then permanent
        by construction and there is nothing to renew.
 
-       It runs before this pass refreshes the adaptive deadline, so its
-       forward interval can only be last pass's -- still forward-looking, and
-       enough to keep a tag from expiring before the star's next visit.
-       Phase 2 below uses the freshly cached one. */
-    const double dt_forward_cached =
-        max(feedback_get_star_HII_next_rebuild_time(si) - star_age_safe, 0.0);
+       Fixed cadence has no forward estimate: dt_forward is always 0. */
+    const double dt_forward_cached = 0.0;
     struct hii_maintenance_context maintenance_ctx = {
         .phys_const = phys_const,
         .hydro_props = hydro_props,
@@ -561,28 +557,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
       const int buffer_was_full = (count_found == max_ngbs);
 
-      /* Adaptive rebuild cadence: cache this star's next rebuild deadline
-         from the density of this pass's gathered candidates, on the
-         first retry-loop pass only, before the ionize loop below
-         consumes them. Only a per-pixel density sum here; the physics
-         is dispatched through feedback_compute_and_cache_HII_rebuild_
-         interval() (feedback_common.h) so this generic runner file
-         doesn't reach past it into GEAR/radiation.h directly. */
-      if (feedback_props->HII_adaptive_rebuild_cadence &&
-          num_retry_full_buffer == 0 && num_radius_expansions == 0) {
-        float sum_rho_pix[HII_MAX_ANGULAR_PIXELS] = {0.0f};
-        int count_pix[HII_MAX_ANGULAR_PIXELS] = {0};
-        for (int k = 0; k < count_found; k++) {
-          const int pixel = ngb_buffer[k].pixel;
-          sum_rho_pix[pixel] +=
-              hydro_get_physical_density(ngb_buffer[k].p, cosmo);
-          count_pix[pixel]++;
-        }
-        feedback_compute_and_cache_HII_rebuild_interval(
-            si, feedback_props, phys_const, us, cosmo, cooling, sum_rho_pix,
-            count_pix, star_age_beg_step);
-      }
-
       /***************************************************/
       /* It's time to sort the gas particles */
       if (count_found > 0) {
@@ -593,10 +567,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         const integertime_t ti_begin =
             get_integer_time_begin(e->ti_current - 1, si->time_bin);
 
-        /* Read after the cadence block above refreshed it, so new tags are
-           sized on the interval this star actually expects to wait. */
-        const double dt_forward = max(
-            feedback_get_star_HII_next_rebuild_time(si) - star_age_safe, 0.0);
+        /* Fixed cadence has no forward estimate: dt_forward is always 0. */
+        const double dt_forward = 0.0;
 
         /* Now let's ionize the gas particles! */
         for (int k = 0; k < count_found; k++) {

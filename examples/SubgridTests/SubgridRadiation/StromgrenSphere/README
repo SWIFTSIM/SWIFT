@@ -3,7 +3,7 @@ This example consists of a homogeneous and periodic box filled with gas particle
 
 **Role: algorithm/task-graph diagnostic, not a physics validation target.** `stromgren_analytic_check.py` compares the simulated HII region growth against the classical Spitzer (1978) D-type formula, which is known to over-predict the true late-phase solution (see `../StromgrenSphereStarbench/`'s own README) -- a PASS here is not evidence of correct physics. This example exists to debug the model's own task-graph/rebuild-cadence behaviour (search-radius-expansion cap, fixed-vs-adaptive cadence, and their interaction), using the Spitzer curve as a cheap, always-available reference shape, not a certified target. For actual published-physics validation, see `../StromgrenSphereStarbench/` (single star vs. the STARBENCH consensus solution), `../StromgrenSphereHuSmith2017/` (4 co-located stars vs. Hu et al. 2017/Smith et al. 2021), and `../StromgrenSphereClumpSmith2021/` (4 stars + clump vs. Smith et al. 2021's own Fig. 2).
 
-`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence, `HII_adaptive_rebuild_cadence=0`) is a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
+`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
 
 # Configure
 To run this example with the GEAR model,

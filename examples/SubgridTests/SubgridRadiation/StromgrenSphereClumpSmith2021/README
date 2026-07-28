@@ -44,7 +44,7 @@ background density, reproducing the paper's own no-clump reference
 test.
 
 ## Cadence
-`GEARFeedback:HII_rebuild_time_Myr=0.01` (fixed, `HII_adaptive_rebuild_cadence=0`, unchanged by Phase 4b) is
+`GEARFeedback:HII_rebuild_time_Myr=0.01` (fixed, unchanged by Phase 4b) is
 a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in
 `theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
 

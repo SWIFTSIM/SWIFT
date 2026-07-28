@@ -140,8 +140,7 @@ struct feedback_spart_data {
         n_HII_pixels active angular pixels (this is a HUGE number, so must
         be a double) (physical units) from the stellar evolution. A pure
         rate: never debited, so it stays valid all pass for the rate-coupled
-        flux calculation (GEARFeedback:HII_couple_ionization_rate) and for
-        radiation_compute_and_cache_HII_rebuild_interval's Q_H sum. */
+        flux calculation (GEARFeedback:HII_couple_ionization_rate). */
     double dot_N_ion_pix[HII_MAX_ANGULAR_PIXELS];
 
     /*! Photon *count* spendable per pixel this HII rebuild pass:
@@ -170,14 +169,6 @@ struct feedback_spart_data {
         real pass look like it covers the whole gap -- see
         runner_radiation_feedback.c. */
     double HII_region_last_attempt;
-
-    /*! This star's own age at its next scheduled HII rebuild (same age
-        frame as HII_region_last_rebuild, not absolute simulation time).
-        Adaptive-cadence mode only
-        (GEARFeedback:HII_adaptive_rebuild_cadence); ignored otherwise.
-        Cached once per rebuild pass (see
-        radiation_compute_and_cache_HII_rebuild_interval). */
-    double HII_region_next_rebuild_time;
 
     /*! Mean photon energy above the 13.6 eV HI ionization threshold,
         cached once per HII rebuild pass (only computed when
