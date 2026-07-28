@@ -49,4 +49,64 @@ INLINE static int cooling_update_part_subgrid(
   return 0;
 }
 
+/**
+ * @brief Compute Grackle's RT_heating_rate/RT_HI_ionization_rate for a
+ * particle tagged by GEAR's rate-coupled HII feedback. No-op here: this
+ * subgrid model never tags particles as rate-coupled.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param time_units Internal-time-to-cgs-time conversion factor.
+ * @param heating_rate_cgs (return) Heating rate, in raw cgs. Unused.
+ * @param HI_ionization_rate (return) Photoionization rate coefficient, in
+ *        internal 1/time. Unused.
+ * @return Always 0 -- no per-particle rates from this subgrid model.
+ */
+INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp, double time_units, double *heating_rate_cgs,
+    double *HI_ionization_rate) {
+  return 0;
+}
+
+/**
+ * @brief Debug-only: hold every non-ionized particle fixed at a fixed
+ * temperature. No-op here: this subgrid model never forces a particle's
+ * energy.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param hydro_props The #hydro_props.
+ * @param pressure_floor Properties of the pressure floor.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param u_out (return) The forced internal energy. Unused.
+ * @return Always 0 -- this subgrid model never forces a particle's energy.
+ */
+INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, float *u_out) {
+  return 0;
+}
+
+/**
+ * @brief Expire a GEAR rate-coupled HII tag once Grackle has consumed it
+ * for this step's solve. No-op here: this subgrid model never tags
+ * particles as rate-coupled.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param time The current simulation time.
+ */
+INLINE static void cooling_expire_rate_coupled_tag_subgrid(
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, double time) {}
+
 #endif /* SWIFT_NONE_COOLING_SUBGRID_H */
