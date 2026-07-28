@@ -656,9 +656,10 @@ above is the validation criterion for this target, and it is met.
 
 \textbf{Verdict: no cosmological frame or time-integration bug. With
 cosmology enabled at $a\simeq1$, the code reproduces its own
-non-cosmological control to $\sim$2\% in the growth phase} (0.43\% and
-3.48\% at the two growth-phase comparison points, matched $0.05\,$Myr
-cadence, identical binary and build flags). A prior static frame audit
+non-cosmological control with a growth-phase bias of $+0.36\%$} (signed
+mean relative deviation over 9 growth-phase points, as-committed
+example configuration, matched $0.05\,$Myr cadence, identical binary
+and build flags). A prior static frame audit
 had found the HII core comoving/proper-time consistent and one genuine
 cosmology-only bug (the radiation-pressure impulse using $d\ln a$ as a
 proper-time step, fixed in \code{29fb15e5b}); this is the first
@@ -700,7 +701,14 @@ here because each is a reusable trap:}
   staircases are phase-shifted, producing $\mathcal{O}(30\%)$
   mid-growth relative errors at the sibling examples' $0.5\,$Myr
   cadence with a perfectly correct code. The offset shrinks linearly
-  with the cadence, hence the identity tier's $0.05\,$Myr.
+  with the cadence, hence the identity tier's $0.05\,$Myr. The same
+  effect survives at fine cadence in disguise: the identity tier's
+  snapshot spacing ($0.025\,$Myr) resolves the rebuild staircase, so
+  per-point $|$deviations$|$ reach a $12\%$ mean -- alternating in sign
+  and cancelling to the $+0.36\%$ bias above. The shipped
+  \code{cosmo\_identity\_check.py} therefore rules on the \emph{signed}
+  mean (a frame bug offsets $r_{\rm HII}$ one way; step phase does
+  not), reporting the absolute scatter only as a diagnostic.
 \item \emph{Configuration mismatch.} A first campaign ran without
   \code{IONIZATION\_FEEDBACK\_DEBUG\_FIXED\_IONIZED\_TEMPERATURE\_K=1e4}
   (natural $T_i\simeq4.9\times10^4\,$K, incomparable with every sibling
