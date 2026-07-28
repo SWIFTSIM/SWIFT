@@ -1559,15 +1559,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Run through the cells, and their tasks to mark as unskipped. */
   engine_unskip(e);
   if (e->forcerebuild)
-#ifdef IONIZATION_FEEDBACK_LOOP
     error(
-        "engine_unskip failed after a rebuild! With subgrid radiation this "
-        "is usually a star whose HII reach outgrew the top-level cell width "
-        "on a grid that cannot coarsen to 3 cells/axis -- see the "
-        "stencil-coverage warning printed at startup.");
-#else
-    error("engine_unskip failed after a rebuild!");
-#endif
+        "engine_unskip failed after a rebuild! A rebuild was demanded again "
+        "by the tree that was just built, so some rebuild criterion asks for "
+        "a reach no grid this run can provide. Check the startup warnings "
+        "for a search radius exceeding the top-level cell width.");
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
