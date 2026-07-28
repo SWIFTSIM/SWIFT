@@ -564,27 +564,35 @@ MFM/MFV), so that number moving carries no diagnostic weight on its own.
 The $r_{\rm HII}$ shift is diagnostic, though, and in a specific,
 checkable direction: every one of the four configurations moved closer
 to the no-clump Raga-II bound ($26.7\,$pc,
-Figure~\ref{fig:clump-smith2021-style}'s green circle) -- gas20 uniform
-$61.6\%\to80.9\%$ of that bound, gas20 angular $86.8\%\to91.1\%$, gas95
-uniform $61.5\%\to64.9\%$, gas95 angular $71.8\%\to83.8\%$ -- never past
-it, which is exactly the signature of a photon-conserving fix rather
-than noise. Commit \code{ee54e8092} (Phase C, landed between the two
-builds) explains why: its C2 fix removed a $2\times$-nominal-cadence
-ceiling that was silently discarding real emitted photons every pass for
-a star that cannot be stepped as fast as its own cadence demands --
-exactly this setup's regime (four co-located sources, a dense clump
-nearby, coarse \code{gas\_mass=95} raising $t_{\rm rec}$ toward
-\code{min\_star\_timestep}). Recovering previously-discarded photons
-predicts a systematic, one-signed increase in reach across every
-configuration, converging toward but never exceeding the true
-photon-conserving (no-clump) limit -- precisely the pattern observed.
-\code{n\_threads} also went $8\to16$ between the two builds, an
-uncontrolled confound in principle (non-associative floating-point
-reduction order is a real non-bit-reproducibility source in SWIFT), but
-it does not predict a one-signed shift across four independent
-configurations the way the C2 mechanism does, so it is not treated as
-the leading explanation here. A same-thread-count rerun would confirm
-this cleanly; not pursued further since it would not change the verdict.
+Figure~\ref{fig:clump-smith2021-style-all}'s green circle) -- gas20
+uniform $61.6\%\to80.9\%$ of that bound, gas20 angular
+$86.8\%\to91.1\%$, gas95 uniform $61.5\%\to64.9\%$, gas95 angular
+$71.8\%\to83.8\%$ -- never past it: the signature of a photon-conserving
+fix rather than noise. \textbf{Important scope correction on the cause}:
+the \code{fdd21afd} reference build (2026-07-21) predates
+\code{1de90f62d} (2026-07-27) -- the commit that replaced the old
+bare-rate scheme with the photon-count budget entirely. That old scheme
+compared a bare rate against a bare rate with no time interval anywhere
+and never charged recombination upkeep for already-ionized gas -- every
+pass handed out a full rate's worth of photons regardless of elapsed
+time, which is itself why the whole redesign happened (documented
+cadence-dependence: a $37$--$69\%$ cadence spread on
+\code{husmith2017\_grackle\_coupling} before the fix, $1$--$3\%$ after).
+This clump rerun therefore spans the \emph{entire} redesign plus its
+later C1/C2 refinements (\code{ee54e8092}), not C1/C2 in isolation as
+originally written here -- the two changes cannot be separated by this
+test alone, and attributing the shift specifically to C2's ceiling fix
+was an overclaim. What can be said: the reference numbers come from a
+scheme independently established elsewhere in this document to be
+cadence-dependent and to discard photons it should have counted; the
+2026-07-28 numbers come from the validated, cadence-independent
+replacement. Converging toward, and never past, the true photon-budget
+limit is consistent with that -- but the specific sub-mechanism is not
+pinned down by this test. \code{n\_threads} also went $8\to16$ between
+the two builds, an uncontrolled confound in principle, but does not
+predict the observed one-signed shift across four independent
+configurations the way a real algorithm change does, so it is not
+treated as the leading explanation.
 
 \begin{figure}
   \centering
@@ -596,8 +604,9 @@ this cleanly; not pursued further since it would not change the verdict.
     clump edge and the clump interior stays dense and cold in every panel.
     Bubbles are visibly larger in every 2026-07-28 panel, converging
     toward but never exceeding the no-clump Raga-II bound ($26.7\,$pc) --
-    the signature of commit \texttt{ee54e8092}'s photon-budget fix (see
-    text), not run-to-run noise.}
+    the signature of a photon-conserving fix, not run-to-run noise
+    (\texttt{fdd21afd} predates the photon-count-budget redesign
+    entirely; see text).}
   \label{fig:clump-revalidation-comparison}
 \end{figure}
 
@@ -613,12 +622,28 @@ for a direct visual comparison:
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.55\linewidth]{Figures/clump_smith2021_style_comparison}
+  \begin{subfigure}[t]{0.32\linewidth}
+    \includegraphics[width=\linewidth]{Figures/clump_smith2021_style_comparison}
+    \caption{SPH}
+    \label{fig:clump-smith2021-style}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.32\linewidth}
+    \includegraphics[width=\linewidth]{Figures/clump_smith2021_style_comparison_mfm}
+    \caption{Gizmo MFM}
+    \label{fig:clump-smith2021-style-mfm}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.32\linewidth}
+    \includegraphics[width=\linewidth]{Figures/clump_smith2021_style_comparison_mfv}
+    \caption{Gizmo MFV}
+    \label{fig:clump-smith2021-style-mfv}
+  \end{subfigure}
   \caption{Our \texttt{gas\_mass=20} result in Smith et al.\ (2021)'s own
-    Figure 2 convention: spherical (top) vs.\ HealPix/angular (bottom),
-    $t=8\,$Myr, green circle at the no-clump Raga-II prediction
-    ($26.7\,$pc).}
-  \label{fig:clump-smith2021-style}
+    Figure 2 convention, across all three hydro schemes tested: spherical
+    (top) vs.\ HealPix/angular (bottom) in each panel, $t=8\,$Myr, green
+    circle at the no-clump Raga-II prediction ($26.7\,$pc).}
+  \label{fig:clump-smith2021-style-all}
 \end{figure}
 
 Their Figure 2 shows a visible intermediate-temperature shell (a
@@ -638,16 +663,8 @@ algorithm itself -- tested by rerunning \code{gas\_mass=20} with
 \swift's Gizmo MFM solver instead of SPH (same IC, same radiation
 parameters; \code{hydro\_set\_v\_sig\_based\_on\_velocity\_kick()}
 backported from \code{darwin/gear\_mechanical\_feedback} to make the
-GEAR mechanical-feedback code path build against Gizmo).
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.55\linewidth]{Figures/clump_smith2021_style_comparison_mfm}
-  \caption{Same as Figure~\ref{fig:clump-smith2021-style}, rerun with
-    Gizmo MFM instead of SPH: spherical (top) vs.\ HealPix/angular
-    (bottom), $t=8\,$Myr.}
-  \label{fig:clump-smith2021-style-mfm}
-\end{figure}
+GEAR mechanical-feedback code path build against Gizmo), shown in
+Figure~\ref{fig:clump-smith2021-style-mfm} above.
 
 \begin{center}
 \begin{tabular}{lrrr}
@@ -686,16 +703,8 @@ configuration was also rerun with \swift's Gizmo MFV solver (meshless
 finite volume, as opposed to MFM's finite mass) as an independent check
 that the MFM result is not specific to that one mesh-free scheme. MFV
 ran to completion for both the uniform and angular injection schemes
-with no crash, NaN, or assertion failure.
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.55\linewidth]{Figures/clump_smith2021_style_comparison_mfv}
-  \caption{Same as Figure~\ref{fig:clump-smith2021-style-mfm}, rerun
-    with Gizmo MFV instead of MFM: spherical (top) vs.\
-    HealPix/angular (bottom), $t=8\,$Myr.}
-  \label{fig:clump-smith2021-style-mfv}
-\end{figure}
+with no crash, NaN, or assertion failure, shown in
+Figure~\ref{fig:clump-smith2021-style-mfv} above.
 
 \begin{center}
 \begin{tabular}{lrrr}
