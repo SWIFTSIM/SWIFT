@@ -75,11 +75,11 @@ def main():
         "--tol",
         type=float,
         default=0.1,
-        help="Relative-error tolerance for a pass (default: 0.1). Generous "
-        "enough to absorb the two runs' independently-sampled particle "
-        "counts/positions (same RNG seed, but a slightly different box "
-        "size and particle count -- see makeIC.py), while still catching "
-        "an O(1) frame bug.",
+        help="Tolerance on the signed mean relative deviation (the bias) "
+        "for a pass (default: 0.1). Generous enough to absorb the two "
+        "runs' independently-sampled particle counts/positions (same RNG "
+        "seed, but a slightly different box size and particle count -- "
+        "see makeIC.py), while still catching an O(1) frame bug.",
     )
     args = parser.parse_args()
 
@@ -146,20 +146,27 @@ def main():
             "No comparison points survive the saturation/shot-noise cuts -- "
             "the growth phase was not sampled; increase the snapshot cadence."
         )
-    rel_error = (
-        np.abs(r_cosmo_valid[also_alive] - r_ctrl_interp[also_alive])
-        / r_ctrl_interp[also_alive]
+    # Verdict on the signed mean (bias): a frame bug offsets r_hii one way,
+    # while rebuild-staircase step phase (the two integer timelines quantize
+    # the cadence differently) alternates in sign and cancels in the mean.
+    rel_dev = (
+        (
+            (r_cosmo_valid[also_alive] - r_ctrl_interp[also_alive])
+            / r_ctrl_interp[also_alive]
+        )
+        .decompose()
+        .value
     )
-    rel_error = rel_error.decompose().value
 
-    max_err = float(np.max(rel_error))
-    mean_err = float(np.mean(rel_error))
-    verdict = "PASS" if mean_err <= args.tol else "FAIL"
+    bias = float(np.mean(rel_dev))
+    scatter = float(np.mean(np.abs(rel_dev)))
+    verdict = "PASS" if abs(bias) <= args.tol else "FAIL"
     print(
-        f"r_hii(t) relative error over {int(np.sum(also_alive))} growth-phase "
-        f"points (excluded: {n_sat} saturated, {n_tiny} below the "
-        f"shot-noise floor): mean={mean_err:.2%}  max={max_err:.2%}  "
-        f"(tol={args.tol:.0%} on the mean)  [{verdict}]"
+        f"r_hii(t) relative deviation over {int(np.sum(also_alive))} "
+        f"growth-phase points (excluded: {n_sat} saturated, {n_tiny} below "
+        f"the shot-noise floor): bias={bias:+.2%}  "
+        f"scatter=<|dev|>={scatter:.2%} (staircase step phase, not part of "
+        f"the verdict)  (tol={args.tol:.0%} on |bias|)  [{verdict}]"
     )
 
     fig, ax = plt.subplots()
