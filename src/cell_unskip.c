@@ -2318,8 +2318,19 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
     }
 
     /* h_hii-aware rebuild check: must run for every pair, activated or not,
-       since h_hii can outgrow the ordinary stars rebuild check tracks. */
-    if (t->type == task_type_pair) {
+       since h_hii can outgrow the ordinary stars rebuild check tracks.
+       Skipped ONLY for a pair between two UNSPLIT top-level cells once the
+       top-level grid is at the periodic floor of 3 cells/axis: there, the
+       27-cell stencil wires every top-level pair, so coverage is complete
+       for any h_hii reach regardless of the top-level dmin. This does not
+       extend to a split sub-cell pair (ci/cj below top level): its own,
+       smaller dmin came from a geometric split decision made for whatever
+       h_hii existed at split time, and top-level connectivity says nothing
+       about whether that decision is still valid after further h_hii
+       growth -- the ordinary criterion must keep watching it. */
+    if (t->type == task_type_pair &&
+        !(space_radiation_top_stencil_covers_box(e->s) && ci->top == ci &&
+          cj->top == cj)) {
       if (cell_need_rebuild_for_radiation_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_radiation_pair(cj, ci)) rebuild = 1;
     }

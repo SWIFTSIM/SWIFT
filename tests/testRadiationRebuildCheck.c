@@ -333,5 +333,99 @@ int main(int argc, char *argv[]) {
 #endif
   }
 
+  /* Regression tests for the periodic cdim==3 rebuild-floor fix: at that
+   * grid, the 27-cell radiation stencil wires every top-level pair, so
+   * cell_unskip.c's call site skips cell_need_rebuild_for_radiation_pair
+   * for a pair of UNSPLIT top-level cells once
+   * space_radiation_top_stencil_covers_box() is true (see its docstring in
+   * space.h and the guard in cell_unskip_radiation_tasks()). That predicate
+   * is called directly here (not threaded through
+   * cell_need_rebuild_for_radiation_pair, which stays cell.h-only and
+   * space/engine-agnostic), so it is exercised as the real function, not a
+   * re-implementation that could silently drift from space_regrid.c. */
+
+  /* Case 6: space_radiation_top_stencil_covers_box() itself -- true only
+   * for a periodic box at exactly cdim == {3,3,3}. */
+  {
+    struct space test_space;
+    const struct {
+      int periodic;
+      int cdim[3];
+      int expected;
+    } flag_cases[] = {
+        {1, {3, 3, 3}, 1}, {1, {4, 3, 3}, 0}, {1, {3, 4, 3}, 0},
+        {1, {3, 3, 4}, 0}, {1, {2, 3, 3}, 0}, {0, {3, 3, 3}, 0},
+    };
+    for (size_t i = 0; i < sizeof(flag_cases) / sizeof(flag_cases[0]); ++i) {
+      bzero(&test_space, sizeof(struct space));
+      test_space.periodic = flag_cases[i].periodic;
+      test_space.cdim[0] = flag_cases[i].cdim[0];
+      test_space.cdim[1] = flag_cases[i].cdim[1];
+      test_space.cdim[2] = flag_cases[i].cdim[2];
+      const int computed = space_radiation_top_stencil_covers_box(&test_space);
+      if (computed != flag_cases[i].expected)
+        error(
+            "space_radiation_top_stencil_covers_box mismatch for case %zu "
+            "(periodic=%d cdim=[%d %d %d]): got %d, expected %d.",
+            i, flag_cases[i].periodic, flag_cases[i].cdim[0],
+            flag_cases[i].cdim[1], flag_cases[i].cdim[2], computed,
+            flag_cases[i].expected);
+    }
+  }
+
+  /* Case 7: the cell_unskip.c guard's full condition, mirrored here since
+   * exercising the real call site needs a fully-wired engine/scheduler/task
+   * graph. A pair whose h_hii_max violates the rebuild criterion must have
+   * its rebuild demand suppressed ONLY when BOTH the box-covers flag is set
+   * AND both cells are unsplit top-level cells (ci->top == ci); a split
+   * sub-cell pair (ci->top != ci) must still demand a rebuild even with the
+   * flag set, since its own smaller dmin came from a geometric split
+   * decision the top-level stencil argument says nothing about. */
+  {
+    const float dmin = 1.0f;
+    setup_pair(&ci, &cj, dmin, /*stars_h_max=*/0.01f,
+               /*stars_h_hii_max=*/2.0f, /*hydro_h_max=*/0.01f,
+               /*stars_dx_max_part=*/0.0f, /*hydro_dx_max_part=*/0.0f);
+    if (!cell_need_rebuild_for_radiation_pair(&ci, &cj))
+      error(
+          "Test setup error: this pair must violate the radiation rebuild "
+          "criterion on its own for the cases below to mean anything.");
+
+    struct space test_space;
+    bzero(&test_space, sizeof(struct space));
+    test_space.periodic = 1;
+    test_space.cdim[0] = test_space.cdim[1] = test_space.cdim[2] = 3;
+
+    for (int box_covers = 0; box_covers <= 1; ++box_covers) {
+      for (int top_level = 0; top_level <= 1; ++top_level) {
+        /* box_covers toggles between the case-6-verified true/false space;
+         * top_level toggles whether ci/cj present as unsplit top cells. */
+        struct space *s = box_covers ? &test_space : NULL;
+        ci.top = top_level ? &ci : NULL;
+        cj.top = top_level ? &cj : NULL;
+
+        const int guard_skips = s != NULL &&
+                                space_radiation_top_stencil_covers_box(s) &&
+                                ci.top == &ci && cj.top == &cj;
+        const int would_rebuild =
+            !guard_skips && (cell_need_rebuild_for_radiation_pair(&ci, &cj) ||
+                             cell_need_rebuild_for_radiation_pair(&cj, &ci));
+
+        const int expect_skip = box_covers && top_level;
+        if (expect_skip && would_rebuild)
+          error(
+              "cell_unskip_radiation_tasks's guard must not demand a "
+              "rebuild for a criterion-violating pair of unsplit top-level "
+              "cells once the box-covers flag is set.");
+        if (!expect_skip && !would_rebuild)
+          error(
+              "cell_unskip_radiation_tasks's guard must still demand a "
+              "rebuild for a criterion-violating pair when box_covers=%d "
+              "top_level=%d (must only skip when BOTH hold).",
+              box_covers, top_level);
+      }
+    }
+  }
+
   return 0;
 }
