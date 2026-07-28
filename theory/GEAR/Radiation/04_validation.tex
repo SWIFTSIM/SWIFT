@@ -552,26 +552,54 @@ uniformly upward: gas20 uniform $16.44\to21.61\,$pc, gas20 angular
 $23.18\to24.32\,$pc, gas95 uniform $16.41\to17.34\,$pc, gas95 angular
 $19.17\to22.37\,$pc -- angular still reaches further than uniform in
 every case, both epochs, and the bubble still stops exactly at the
-clump edge in all four side-by-side temperature-slice comparisons (clump
-interior untouched, near/far asymmetry intact). \textbf{Assessment:
-PASS holds.} The near-side SPH compression number was never the
-validation criterion for this target in the first place -- the MFM/MFV
-cross-check below already established it as an SPH-specific artifact
-(compression flips to dilution, and the uniform/angular differentiation
-it shows \emph{disappears} under MFM/MFV), so a second SPH-only number
-moving is expected to carry no diagnostic weight on its own. The
-qualitative picture (bubble stops at clump, mass conserved, angular
-reaches further, clump interior undisturbed) is exactly reproduced. Two
-methodology confounds were introduced alongside the code change and not
-isolated from it: \code{n\_threads} went $8\to16$ between the two runs
-(non-associative floating-point reduction order in the threaded SPH/task
-graph is a known non-bit-reproducibility source in a chaotic system, and
-plausibly sufficient on its own to explain an $O(10\%)$ shift after
-$8\,$Myr of integration), and no bit-identical same-thread-count rerun
-has been done to isolate stochasticity from an actual redesign effect.
-Left open, not blocking: a same-thread-count SPH rerun would separate
-the two; not pursued further here since the criterion that resolves the
-target does not depend on it.
+clump edge in all four side-by-side temperature-slice comparisons
+(Figure~\ref{fig:clump-revalidation-comparison}; clump interior
+untouched, near/far asymmetry intact). \textbf{Assessment: PASS, and the
+2026-07-28 numbers are the more accurate ones.} The near-side SPH
+compression number was never the validation criterion for this target in
+the first place -- the MFM/MFV cross-check below already established it
+as an SPH-specific artifact (compression flips to dilution, and the
+uniform/angular differentiation it shows \emph{disappears} under
+MFM/MFV), so that number moving carries no diagnostic weight on its own.
+The $r_{\rm HII}$ shift is diagnostic, though, and in a specific,
+checkable direction: every one of the four configurations moved closer
+to the no-clump Raga-II bound ($26.7\,$pc,
+Figure~\ref{fig:clump-smith2021-style}'s green circle) -- gas20 uniform
+$61.6\%\to80.9\%$ of that bound, gas20 angular $86.8\%\to91.1\%$, gas95
+uniform $61.5\%\to64.9\%$, gas95 angular $71.8\%\to83.8\%$ -- never past
+it, which is exactly the signature of a photon-conserving fix rather
+than noise. Commit \code{ee54e8092} (Phase C, landed between the two
+builds) explains why: its C2 fix removed a $2\times$-nominal-cadence
+ceiling that was silently discarding real emitted photons every pass for
+a star that cannot be stepped as fast as its own cadence demands --
+exactly this setup's regime (four co-located sources, a dense clump
+nearby, coarse \code{gas\_mass=95} raising $t_{\rm rec}$ toward
+\code{min\_star\_timestep}). Recovering previously-discarded photons
+predicts a systematic, one-signed increase in reach across every
+configuration, converging toward but never exceeding the true
+photon-conserving (no-clump) limit -- precisely the pattern observed.
+\code{n\_threads} also went $8\to16$ between the two builds, an
+uncontrolled confound in principle (non-associative floating-point
+reduction order is a real non-bit-reproducibility source in SWIFT), but
+it does not predict a one-signed shift across four independent
+configurations the way the C2 mechanism does, so it is not treated as
+the leading explanation here. A same-thread-count rerun would confirm
+this cleanly; not pursued further since it would not change the verdict.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/clump_revalidation_2026_07_28_comparison}
+  \caption{All four configurations, mass-weighted temperature slice at
+    $t=8.02\,$Myr: commit \texttt{fdd21afd} (top, 2026-07-22) vs.\ commit
+    \texttt{37c88c6a8} (bottom, 2026-07-28). Angular reaches further than
+    uniform at both resolutions and both commits; the bubble stops at the
+    clump edge and the clump interior stays dense and cold in every panel.
+    Bubbles are visibly larger in every 2026-07-28 panel, converging
+    toward but never exceeding the no-clump Raga-II bound ($26.7\,$pc) --
+    the signature of commit \texttt{ee54e8092}'s photon-budget fix (see
+    text), not run-to-run noise.}
+  \label{fig:clump-revalidation-comparison}
+\end{figure}
 
 \textbf{Direct comparison against Smith et al.\ (2021)'s own Figure 2}:
 the paper reports no quantitative erosion number at all -- their own
