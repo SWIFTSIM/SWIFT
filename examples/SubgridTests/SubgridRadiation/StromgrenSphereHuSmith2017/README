@@ -18,6 +18,9 @@ Hu et al. tested four gas particle masses: 4, 0.5, 0.0625, 0.0078125 Msun (each 
 ## Gravity
 `--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force -- matching both papers' purely hydrodynamical test.
 
+## Cadence
+`HII_rebuild_time_Myr=0.01` (fixed, `HII_adaptive_rebuild_cadence=0`). Cadence is a numerical parameter, not a physical one -- a 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` found the converged answer cadence-independent for values this fine or finer, so it may be changed freely.
+
 # Configure
 Validated configuration (matches both papers' `T_i=1e4 K` convention):
 ```

@@ -42,7 +42,9 @@ n_cells=${n_cells:=3}               # must match Scheduler:max_top_level_cells i
 nside=${nside:=0}                   # GEARFeedback:HII_angular_nside override -- 0 by default (Hu et al.'s
                                      # own algorithm has no angular splitting; this test is uniform anyway)
 rebuild_time_myr=${rebuild_time_myr:=0.01} # GEARFeedback:HII_rebuild_time_Myr override (only used if adaptive_rebuild_cadence=0)
-adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=1} # GEARFeedback:HII_adaptive_rebuild_cadence override -- on by default (T11)
+adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=0} # GEARFeedback:HII_adaptive_rebuild_cadence override -- fixed cadence
+                        # by default (Phase 4b): cadence is a purely numerical parameter (sweep-verified),
+                        # so adaptive no longer buys correctness, only the per-star timestep-pinning cost.
 rebuild_safety_factor=${rebuild_safety_factor:=0.2} # GEARFeedback:HII_rebuild_safety_factor override
 deterministic=${deterministic:=0}   # GEARFeedback:HII_deterministic_boundary_ionization override
 initial_metallicity=${initial_metallicity:=0} # GEARChemistry:initial_metallicity override --

@@ -5,6 +5,8 @@ This example tests the GEAR subgrid ionization algorithm across two concurrently
 
 **Role: software-correctness test, not a physics validation target.** This checks task-graph locking/concurrency, not agreement with any published result. See `../StromgrenSphereStarbench/`, `../StromgrenSphereHuSmith2017/`, and `../StromgrenSphereClumpSmith2021/` for the actual validation targets.
 
+`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence, `HII_adaptive_rebuild_cadence=0`) is a numerical parameter, not a physical one -- verified cadence-independent by the 6-point sweep in `theory/GEAR/Radiation/04_validation.tex` -- and may be changed freely.
+
 # Configure
 To run this example with the GEAR model,
 

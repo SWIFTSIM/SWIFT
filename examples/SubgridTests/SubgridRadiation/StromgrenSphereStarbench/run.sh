@@ -32,10 +32,10 @@ dt_max=${dt_max:=1e-5} #TimeIntegration:dt_max override (internal units). Must s
 initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override --
                         #Z=0, literally pure hydrogen matching STARBENCH's own medium; gives this
                         #code's own T_i~47500 K floor, not the papers' flat 1e4 K. See README.
-rebuild_time_myr=${rebuild_time_myr:=0.01} #GEARFeedback:HII_rebuild_time_Myr override (only used if adaptive_rebuild_cadence=0)
-adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=1} #GEARFeedback:HII_adaptive_rebuild_cadence override:
-                        #0 = fixed cadence (rebuild_time_myr above), 1 = physically-derived
-                        #per-star cadence (ignores rebuild_time_myr) -- on by default (T11)
+rebuild_time_myr=${rebuild_time_myr:=0.005} #GEARFeedback:HII_rebuild_time_Myr override (only used if adaptive_rebuild_cadence=0)
+adaptive_rebuild_cadence=${adaptive_rebuild_cadence:=0} #GEARFeedback:HII_adaptive_rebuild_cadence override:
+                        #0 = fixed cadence (rebuild_time_myr above, the default -- Phase 4b), 1 =
+                        #physically-derived per-star cadence (ignores rebuild_time_myr)
 rebuild_safety_factor=${rebuild_safety_factor:=0.2} #GEARFeedback:HII_rebuild_safety_factor override
                         #(only used if adaptive_rebuild_cadence=1)
 max_search_radius=${max_search_radius:=0.0049} #Stars:HII_max_search_radius override (internal units, 4.9 pc,

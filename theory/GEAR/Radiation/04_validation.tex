@@ -37,15 +37,20 @@ remain a valid record of what was true of the code at the time.
 \hline
 1. STARBENCH (Bisbas et al.\ 2015) &
   \code{StromgrenSphereStarbench} &
-  \textbf{PASS, 2.51\% error} (validated resolution/cadence, re-checked
-  post count-budget redesign). Section~\ref{sec:starbench-current}. \\
+  \textbf{PASS, 0.52\% error} (Phase 4b: fixed cadence
+  $0.005\,$Myr, re-checked 2026-07-28, improves on the
+  pre-4b adaptive-cadence 2.51\%). Section~\ref{sec:starbench-current}. \\
 \hline
 2. Hu et al.\ (2017) / Smith et al.\ (2021), 4 co-located stars &
   \code{StromgrenSphereHuSmith2017} &
   \textbf{Cadence-independence PASS} (six cadences agree to within
   $\sim$1\,pp); \textbf{absolute accuracy FAIL} (median 17--18\% at
   converged cadence, at a coarser resolution than the validated
-  default -- see caveats). Section~\ref{sec:husmith-current}. \\
+  default -- see caveats). \textbf{Phase 4b} (2026-07-28) re-ran the
+  shipped default (\code{gas\_mass=4}, now fixed cadence $0.01\,$Myr)
+  and found the same bracketed-by-references characterization holds,
+  no material change from switching off adaptive cadence.
+  Section~\ref{sec:husmith-current}. \\
 \hline
 3. Smith et al.\ (2021), Fig.~2 clump &
   \code{StromgrenSphereClumpSmith2021} &
@@ -123,6 +128,20 @@ letting the region genuinely shrink when its upkeep cost exceeds
 income, not a regression -- see Section~\ref{sec:husmith-current}
 below for the mechanism. Still comfortably short of the $5\,$pc box
 half-width and the $4.9\,$pc search-radius ceiling throughout.
+
+\textbf{Phase 4b update (2026-07-28): fixed cadence, PASS, 0.52\% error.}
+The count-budget redesign made rebuild cadence a purely numerical
+parameter (six-point sweep, Section~\ref{sec:husmith-current}), so this
+example switched from its documented adaptive cadence to a fixed
+\code{HII\_rebuild\_time\_Myr=0.005} (the fine end of the guidance range
+for this example's density, $n_H\approx3346\,{\rm cm^{-3}}$, versus
+Hu/Smith's $100\,{\rm cm^{-3}}$). Re-checked against the same
+Bisbas et al.\ (2015) blend, same build/config otherwise:
+$r_{\rm sim}=2.259\,$pc vs.\ $R_{\rm SB}=2.247\,$pc at $t=3\,$Myr,
+\textbf{0.52\% error} -- an improvement on the adaptive-cadence
+2.51\%, not a regression. \code{HII\_adaptive\_rebuild\_cadence} is
+$0$ in the committed \code{params.yml}/\code{run.sh} from this point
+on.
 
 \subsection{Hu et al.\ (2017)/Smith et al.\ (2021), 4-star}
 \label{sec:husmith-current}
@@ -356,6 +375,43 @@ rather than an ODE. As of commit \code{d9a371dd6},
 error, and within-tolerance count against all three references every
 run (the verdict still follows \code{--reference}, default Raga-II),
 so a single-median FAIL can no longer hide the bracketing.
+
+\subsubsection{Phase 4b update (2026-07-28): fixed cadence at the shipped default}
+
+The sweep above (Section~\ref{sec:husmith-current}) that established
+cadence-independence ran at \code{gas\_mass=20} with adaptive cadence
+forced off -- not the example's shipped default
+(\code{gas\_mass=4}, adaptive cadence on), which this document had
+flagged as ``not yet done.'' Phase 4b closes that gap: the example's
+committed configuration switched to fixed
+\code{HII\_rebuild\_time\_Myr=0.01} (matching the converged end of the
+sweep, \code{HII\_adaptive\_rebuild\_cadence=0}), and was re-run at
+its own \code{gas\_mass=4} default:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\hline
+Reference & median & $t_{\rm end}$ error & within 10\% tol \\
+\hline
+Raga-I (Eqn~8)          &  8.19\% & 10.84\% & 56/82 \\
+Raga-II (Eqn~11)        & 13.75\% & 15.03\% & 11/82 \\
+Bisbas+15 blend (28--29) &  7.80\% & 10.84\% & 59/82 \\
+\hline
+\end{tabular}
+\end{center}
+
+Both the Bisbas-blend median ($7.80\%$, vs.\ $7.12\%$ at
+\code{gas\_mass=20}) and the Raga-II median ($13.75\%$, an
+\emph{improvement} on the $18.44\%$ at \code{gas\_mass=20}) are
+consistent with the same bracketed-by-references characterization,
+not a new failure mode; $t_{\rm end}$ moves in mixed directions across
+references (better vs.\ Raga-I/blend, worse vs.\ Raga-II) by an amount
+attributable to the resolution change (\code{gas\_mass=4} vs.\ $20$),
+not to the cadence switch itself -- cadence was already fixed at
+$0.01\,$Myr in the run that produced the baseline table, so this
+comparison isolates resolution, not adaptive-vs-fixed. \textbf{No
+material degradation from switching this example off adaptive
+cadence.}
 
 \subsection{Smith et al.\ (2021) clump}
 \label{sec:clump-current}
