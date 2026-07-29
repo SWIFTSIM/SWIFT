@@ -676,6 +676,7 @@ GEARChemistry:
   # MFVP hyperbolic diffusion only
   relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
   tau: 1e0                            # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
+  hyperbolic_limiter_scope: AllComponents # (Optional, hyperbolic diffusion only) Which F_diss components the limiters rescale. AllComponents = mass + flux components (default) ; Density = mass component only.
 
 # AGORA chemistry model (Kim et al. 2014)
 AGORAChemistry:

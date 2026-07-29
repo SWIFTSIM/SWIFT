@@ -361,8 +361,8 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
 
   char temp3[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file,
-                              "GEARChemistry:hyperbolic_limiter_scope",
-                              temp3, "Density");
+                              "GEARChemistry:hyperbolic_limiter_scope", temp3,
+                              "AllComponents");
   if (strcmp(temp3, "Density") == 0)
     data->hyperbolic_limiter_scope = limiter_density_only;
   else if (strcmp(temp3, "AllComponents") == 0)
@@ -383,7 +383,8 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
     message("C_CFL:                      %e", data->C_CFL_chemistry);
     message("Flux limiter noise gate:    %e", data->flux_limiter_noise_gate);
     message("Flux limiter safety:        %e", data->flux_limiter_safety);
-    message("Flux limiter sink stability: %e", data->flux_limiter_sink_stability);
+    message("Flux limiter sink stability: %e",
+            data->flux_limiter_sink_stability);
     message("Flux limiter startup:       %e", data->flux_limiter_startup);
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     message("Relaxation time mode:       %u", data->relaxation_time_mode);
