@@ -23,6 +23,7 @@
 #include "../chemistry_riemann_checks.h"
 #include "../chemistry_riemann_utils.h"
 #include "../chemistry_struct.h"
+#include "../chemistry_timesteps.h"
 #include "../parabolic/chemistry_riemann_HLL.h"
 #include "hydro.h"
 
@@ -154,20 +155,51 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
       F_diss[3] *= limiter_factor;
     }
 
-    /* TVD safety bound, matching the parabolic solver's own
-       chemistry_riemann_solver_hopkins2017_HLL minmod structure: caps
-       F_diss relative to a psi-scaled transport-only estimate. Measured
-       (mass-weighted RMS/r99 radius, not a binned threshold, which is too
-       coarse to resolve this) to give a small but real and monotonic
-       reduction in numerical diffusion as psi shrinks, with fewer
-       negative-mass particles too; the psi->infinity limit (bound never
-       binds, equivalent to removing this entirely) is the worst point on
-       every metric checked, not a neutral no-op. */
-    const double psi = chem_data->hll_riemann_solver_psi;
+    /* Causal bound: rescale F_diss by zeta = min(1, c_hyp*dt_ij/length), so
+       its transport rate can never exceed c_hyp -- see the theory document,
+       "A Causal Bound on the Dissipation". The length scale is the smaller of
+       the two particles' physical sizes, which sets the von Neumann /
+       Lax-Wendroff stability floor for this term. zeta is floored at a small
+       strictly positive value: it must not reach zero when c_hyp -> 0
+       (turbulent_mode with vanishing local shear), a legitimate flow state
+       that still needs some dissipation to stay stable. As with the
+       flux-memory limiter above, component 0 is always rescaled while
+       components 1-3 follow hyperbolic_limiter_scope, since unconditionally
+       suppressing their dissipation would preserve rather than decay an
+       already-stale flux memory. dt_ij follows the same convention as the
+       gradient predictor (chemistry_iact.h): symmetric min over a pair of
+       active particles, and pi's own dt when pj is inactive -- in which case
+       the pair is evaluated only once, so the flux stays antisymmetric. */
+    const double c_max = max(c_diff_L, c_diff_R);
+    const float dt_i = pi->chemistry_data.flux.dt;
+    const float dt_j = pj->chemistry_data.flux.dt;
+    const double dt_min = (dt_j > 0.f) ? fmin(dt_i, dt_j) : dt_i;
+    const double psize_i = chemistry_get_physical_particle_size(pi, cosmo);
+    const double psize_j = chemistry_get_physical_particle_size(pj, cosmo);
+    const double length_scale = fmin(psize_i, psize_j);
+    const double causal_floor = 0.01;
+    double causal_factor = 1.0;
+    if (dt_min > 0. && length_scale > 0.) {
+      causal_factor =
+          fmax(causal_floor, fmin(1.0, c_max * dt_min / length_scale));
+    }
+    F_diss[0] *= causal_factor;
+    if (chem_data->hyperbolic_limiter_scope == limiter_all_components) {
+      F_diss[1] *= causal_factor;
+      F_diss[2] *= causal_factor;
+      F_diss[3] *= causal_factor;
+    }
+
+    /* The causal bound above is this solver's only cap on F_diss. It
+       replaces the psi-scaled minmod TVD bound used by the parabolic
+       solver, which would otherwise collide with it: both cap the same
+       dissipation, and at a tight psi the minmod bound binds first and
+       makes the causal bound inert. hll_riemann_solver_psi therefore acts
+       on the parabolic solver only, including the parabolic branch of the
+       Berthon blend below. */
     double fluxes_HLL[4];
     for (int i = 0; i < 4; i++) {
-      fluxes_HLL[i] = chemistry_riemann_minmod(
-          (1.0 + psi) * F_transport[i], F_transport[i] + F_diss[i]);
+      fluxes_HLL[i] = F_transport[i] + F_diss[i];
     }
 
     /* The pure hyperbolic HLL flux is unstable when tau -> 0, i.e. in the

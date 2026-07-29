@@ -1083,24 +1083,26 @@ already available at the point $F_{\rm diss}$ is assembled, so the bound
 costs one division and one \code{min} beyond the existing dissipation
 term.
 
-The hyperbolic branch of \code{chemistry\_riemann\_HLL.h} already caps
-$F_{\rm diss}$ by a second, independent mechanism: a two-argument minmod
-between $(1+\psi)F_{\rm transport}$ and $F_{\rm transport}+F_{\rm diss}$,
-with $\psi=$\code{chem\_data->hll\_riemann\_solver\_psi} a free,
-per-simulation-tuned parameter, mirroring the parabolic scheme's own
-Hopkins-HLL construction referenced in
-Section~\ref{sec:hll-consequence}. Both mechanisms rescale the same term
-in pursuit of the same goal -- suppressing the raw HLL dissipation's
-tendency to over-transport -- and are empirically redundant: enabling
-either one alone already saturates the achievable reduction in
-super-causal transport, and running both together adds nothing beyond
-either alone. The causal bound is the preferable formulation of the two:
-$\zeta_{ij}$ has no tunable parameter to calibrate per problem, and it is
-derived directly from $\chyp$, the one quantity the wave-speed analysis
-of this document (Proposition~\ref{prop:main},
-Section~\ref{sec:confrontation}) already fixes as exact or a tight,
-safe bound -- rather than from a free constant chosen to match a given
-test problem.
+Equation~\eqref{eq:causal-bound} is the hyperbolic solver's only cap on
+$F_{\rm diss}$. The parabolic scheme bounds its own dissipation
+differently, by a two-argument minmod between $(1+\psi)F_{\rm transport}$
+and $F_{\rm transport}+F_{\rm diss}$, with
+$\psi=$\code{chem\_data->hll\_riemann\_solver\_psi} a free,
+per-simulation-tuned parameter (the Hopkins-HLL construction referenced in
+Section~\ref{sec:hll-consequence}). Through the Berthon blend that
+combines the two solvers, that minmod still acts on the parabolic
+contribution to a hyperbolic run's flux, but not on the hyperbolic one.
+The two mechanisms are not complementary: they rescale the same term in
+pursuit of the same goal -- suppressing the raw HLL dissipation's tendency
+to over-transport -- so applying both to the hyperbolic branch is
+redundant, and at a tight $\psi$ the minmod binds first and leaves
+$\zeta_{ij}$ inert. The causal bound is the preferable formulation of the
+two, which is why it is the one the hyperbolic branch keeps: $\zeta_{ij}$
+has no tunable parameter to calibrate per problem, and it is derived
+directly from $\chyp$, the one quantity the wave-speed analysis of this
+document (Proposition~\ref{prop:main}, Section~\ref{sec:confrontation})
+already fixes as exact or a tight, safe bound -- rather than from a free
+constant chosen to match a given test problem.
 
 \subsection{Practical Considerations}
 

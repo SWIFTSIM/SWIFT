@@ -23,6 +23,31 @@
 #include "chemistry_struct.h"
 
 /**
+ * @brief Get the particle's physical size, i.e. the resolution length scale
+ * entering the chemistry CFL condition and the Riemann solver's causal bound.
+ *
+ * @param p Particle.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_physical_particle_size(const struct part *restrict p,
+                                     const struct cosmology *cosmo) {
+
+#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
+  /* Lanson & Vila (2008) particle size, eq. (58): Delta x_i = 1 / (2 *
+     sum_l w_l ||A_il||). delxbar accumulates the completed sum, each
+     neighbour's w_l ||A_il|| term as Anorm / V_neighbour
+     (chemistry_iact.h), so the leading 1/2 of eq. (58) is applied here;
+     we also convert to physical units. */
+  return cosmo->a * 0.5f / p->chemistry_data.timestepvars.delxbar;
+#else
+  /* Gizmo's particle size definition */
+  return cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                         hydro_dimension_inv);
+#endif
+}
+
+/**
  * @brief Compute the particle parabolic timestep proportional to h^2.
  *
  * @param p Particle.
@@ -36,21 +61,7 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
 
   const float CFL_condition = chem_data->C_CFL_chemistry;
 
-#ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
-  /* Lanson & Vila (2008) particle size, eq. (58): Delta x_i = 1 / (2 *
-     sum_l w_l ||A_il||). delxbar accumulates the completed sum, each
-     neighbour's w_l ||A_il|| term as Anorm / V_neighbour
-     (chemistry_iact.h), so the leading 1/2 of eq. (58) is applied here;
-     we also convert to physical units. */
-  const float psize = cosmo->a * 0.5f / p->chemistry_data.timestepvars.delxbar;
-#else
-  /* Gizmo's particle size definition */
-  const float psize =
-      cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                      hydro_dimension_inv);
-#endif
-
-  const float delta_x = psize;
+  const float delta_x = chemistry_get_physical_particle_size(p, cosmo);
 
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   /* CFL condition */
