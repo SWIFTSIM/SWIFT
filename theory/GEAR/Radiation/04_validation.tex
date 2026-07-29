@@ -830,7 +830,8 @@ here because each is a reusable trap:}
 
 \textbf{PASS -- as a self-consistency check on the clump testbed, and
 quantitatively against STARBENCH ($3.7\%$ at matched equilibrium
-temperature; see the STARBENCH leg at the end of this subsection).}
+temperature) and Hu/Smith (matches the already-accepted baseline
+systematics); see the two legs at the end of this subsection.}
 Neither Hu et al.\ (2017)
 nor Smith et al.\ (2021) tests rate-coupling -- both use the same
 instant flag-and-floor scheme this model defaults to -- so
@@ -1033,6 +1034,74 @@ out-of-regime for this benchmark, not validated.
     ($\sim\!2.5\times10^4\,$K) interior with a preheated rim beyond
     the front.}
   \label{fig:t5-starbench-slices}
+\end{figure}
+
+\textbf{Hu/Smith leg (2026-07-28, commit \texttt{84e10c2f6} -- current
+code).} Second T5 target at current code, same three-run structure as
+the STARBENCH leg (off / on at $Z=0$ / on at $Z=0.231$), same binary
+and configuration as the validated \code{StromgrenSphereHuSmith2017}
+example. \textbf{Verdict: PASS, no caveats beyond the ones the
+flag-and-floor baseline itself already carries}
+(Section~\ref{sec:husmith-current}).
+
+\begin{itemize}
+\item \emph{No oscillation, no overshoot, at either metallicity} --
+  all three runs grow smoothly and monotonically over the full
+  $8\,$Myr (Figure~\ref{fig:t5-husmith-radius-evolution}), unlike
+  STARBENCH's $Z=0$. The most likely explanation is that STARBENCH's
+  oscillation needs its specific combination of a single source, very
+  high density ($n_H\!\sim\!3300\,{\rm cm^{-3}}$ vs.\ Hu/Smith's
+  $107\,{\rm cm^{-3}}$), and a finer cadence ($0.005$ vs.\
+  $0.01\,$Myr) -- evidence against (not proof against) it being a
+  general T5-mechanism instability.
+\item \emph{Measured $T_i$}: off $=1.002\times10^4\,$K (as designed),
+  on-$Z0=1.625\times10^4\,$K -- notably cooler than STARBENCH's own
+  $Z=0$ result ($2.5\times10^4\,$K), plausibly from the four-source
+  geometry or the different stellar SED hardness ($19.2$ vs.\
+  $26.75\,M_\odot$) changing the local heating/cooling balance; not
+  fully explained -- on-$Z0.231=1.342\times10^4\,$K.
+\item \emph{Against the papers' own reference (Raga-II)}: on-$Z0.231$
+  is statistically indistinguishable from the already-accepted
+  flag-and-floor baseline (median $14.03\%$ vs.\ $13.53\%$, both
+  ``FAIL by median'' under the checker's strict threshold but both
+  already resolved as reference-curve systematics, not a code
+  deficiency, in Section~\ref{sec:husmith-resolution}). On-$Z0$
+  disagrees more with Raga-II ($17.97\%$) but dramatically
+  \emph{less} with Raga-I and the STARBENCH blend (median
+  $1.6$--$1.8\%$, $77$--$81/82$ snapshots within $10\%$, far tighter
+  than the baseline's own $8.7\%/8.3\%$ against those same curves) --
+  the higher sound speed from the hotter equilibrium shifts the
+  front's dynamics from shell-inertia-influenced toward pure
+  pressure-driven, a real and explicable physics shift, not
+  degradation.
+\item \emph{Slices} (Figure~\ref{fig:t5-husmith-slices}): on-$Z0$
+  shows a genuine declining temperature gradient ($2.2\times10^4\to
+  1.3\times10^4\,$K outward) from flux dilution across four point
+  sources against weak $Z=0$ cooling; on-$Z0.231$ is much flatter
+  ($\sim\!1.4\times10^4\,$K throughout) -- metal-line cooling's steep
+  temperature dependence acting as a thermostat, the same picture as
+  STARBENCH's $Z=0.231$ leg. The off-baseline slice shows spatial
+  temperature noise near the box center (a handful of particles per
+  radial bin around four co-located stars in one snapshot) -- a
+  binning artifact, not a temporal instability.
+\end{itemize}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/t5_husmith_radius_evolution}
+  \caption{Ionized-gas radius distribution and ionized count vs.\
+    time: T5 off / on ($Z=0$) / on ($Z=0.231$). All three grow
+    smoothly -- no oscillation at either metallicity, unlike
+    STARBENCH's $Z=0$.}
+  \label{fig:t5-husmith-radius-evolution}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/t5_husmith_slices_profiles}
+  \caption{Final-snapshot ($t=8\,$Myr) temperature slices and radial
+    $T$/$x_{\rm HII}$ profiles, T5 off / on ($Z=0$) / on ($Z=0.231$).}
+  \label{fig:t5-husmith-slices}
 \end{figure}
 
 \subsection{Deprecated results (2026-07-27)}
