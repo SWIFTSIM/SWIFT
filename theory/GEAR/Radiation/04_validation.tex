@@ -828,10 +828,15 @@ here because each is a reusable trap:}
 \subsection{Grackle rate-coupled photoionization (T5)}
 \label{sec:t5-validation}
 
-\textbf{PASS -- as a self-consistency check on the clump testbed, and
-quantitatively against STARBENCH ($3.7\%$ at matched equilibrium
-temperature) and Hu/Smith (matches the already-accepted baseline
-systematics); see the two legs at the end of this subsection.}
+\textbf{PASS -- as a self-consistency check, and quantitatively against
+STARBENCH ($3.7\%$ at matched equilibrium temperature, uniform or
+angular splitting alike) and Hu/Smith (matches the already-accepted
+baseline systematics); all three published targets have now been
+revalidated at current code (2026-07-28/29), see the three legs at the
+end of this subsection. \textbf{One open item survives the revalidation}:
+a claim/shed relaxation oscillation at high local density, independent
+of splitting scheme -- density/source-count-driven, not yet root-caused
+(item T5, Section~\ref{sec:open}).}
 Neither Hu et al.\ (2017)
 nor Smith et al.\ (2021) tests rate-coupling -- both use the same
 instant flag-and-floor scheme this model defaults to -- so
@@ -840,12 +845,11 @@ instead against basic photoionization-equilibrium physics, using
 \code{StromgrenSphereClumpSmith2021} as the testbed. A caching bug that
 left \code{RT\_heating\_rate} always exactly zero was found and fixed
 first (Section~\ref{sec:t5-heating-rate-zero}); the results below are
-all post-fix. \textbf{Epoch caveat}: every clump-testbed run in this
-subsection (both the T5-on and T5-off sides, so the on/off contrast is
-internally consistent) predates the 2026-07-27 count-budget redesign.
-The STARBENCH leg at the end of this subsection is the first T5
-material at current code; the remaining coupling-on re-validation is
-tracked as item T5 in Section~\ref{sec:open}.
+all post-fix. \textbf{Epoch note}: the six-configuration clump table
+immediately below predates the 2026-07-27 count-budget redesign (both
+T5-on and T5-off sides, so its own on/off contrast is internally
+consistent); the current-code clump revalidation is a separate leg
+further down.
 
 Six configurations were run to completion (uniform/angular
 budget-splitting $\times$ \code{gas\_mass}$=\{20,95\}$, T5 on/off in
@@ -1036,6 +1040,62 @@ out-of-regime for this benchmark, not validated.
   \label{fig:t5-starbench-slices}
 \end{figure}
 
+\textbf{Splitting-scheme follow-up (2026-07-29, same commit).} The
+$Z=0$ oscillation above used uniform (\code{nside=0}) budget-splitting,
+STARBENCH's only tested mode -- but Darwin's actual production default
+is angular (\code{nside=1}). Same three-run structure rerun with
+\code{HII\_angular\_nside:1} added throughout. \textbf{Result: the
+splitting scheme has essentially zero effect.} The $Z=0$ radius
+trajectory under angular is visually indistinguishable from the
+uniform run (Figure~\ref{fig:t5-starbench-uniform-vs-angular}: max
+$3.74$ vs.\ $3.73\,$pc, post-growth minimum $2.63$ vs.\ $2.61\,$pc,
+same peaks and dips at the same times); measured $T_i$ matches to
+3--4 significant figures at both metallicities ($Z=0$:
+$2.500\times10^4$ vs.\ $2.474\times10^4\,$K; $Z=0.231$:
+$1.45\times10^4$ vs.\ $1.456\times10^4\,$K); and the $Z=0.231$
+quantitative agreement is statistically the same
+($3.7\%$ uniform vs.\ $3.38\%$ angular).
+
+This is expected in hindsight -- the \code{StromgrenSphereClump}
+README already documents that a uniform-density medium is symmetric
+under pixel relabeling, so \code{nside=0} and \code{nside=1} should be
+statistically indistinguishable there -- but it \emph{refutes} a
+hypothesis raised by the clump-testbed revalidation below (drafted
+first, then checked here): that angular splitting protects against
+this oscillation. It does not, because STARBENCH has no directional
+density structure for angular splitting to act on. The corrected
+picture, confirmed by both tests: this is \textbf{two separate
+phenomena}, not one --
+\begin{enumerate}
+\item \emph{The claim/shed oscillation} is driven by high
+  \emph{local density} (cheap recombination upkeep at low
+  $\alpha_B$), independent of splitting scheme. Present in STARBENCH
+  ($n_H\!\sim\!3300\,{\rm cm^{-3}}$) under both schemes equally.
+\item \emph{Directional mass-biasing} is driven by a density
+  \emph{contrast} in one direction (a nearby clump), and \emph{is}
+  mitigated by angular splitting -- its designed purpose per
+  \citet{Smith2021} and this project's own
+  \code{StromgrenSphereClump} algorithm-feature test. This is what
+  the clump testbed's uniform-vs-angular difference below actually
+  shows.
+\end{enumerate}
+Practical consequence: angular being the production default does
+\emph{not} insulate against the oscillation if a production
+configuration reaches STARBENCH-like local densities; it does protect
+against clump-adjacent directional biasing, which was always its
+purpose. The oscillation mechanism itself remains open (item T5,
+Section~\ref{sec:open}), now with a sharper scope -- a density/
+source-count effect, not a splitting-scheme one.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\linewidth]{Figures/t5_starbench_uniform_vs_angular_overlay}
+  \caption{STARBENCH $Z=0$, T5 on: max ionized radius vs.\ time,
+    uniform (\texttt{nside=0}, the original leg) vs.\ angular
+    (\texttt{nside=1}, this test). The two are effectively one curve.}
+  \label{fig:t5-starbench-uniform-vs-angular}
+\end{figure}
+
 \textbf{Hu/Smith leg (2026-07-28, commit \texttt{84e10c2f6} -- current
 code).} Second T5 target at current code, same three-run structure as
 the STARBENCH leg (off / on at $Z=0$ / on at $Z=0.231$), same binary
@@ -1102,6 +1162,81 @@ flag-and-floor baseline itself already carries}
   \caption{Final-snapshot ($t=8\,$Myr) temperature slices and radial
     $T$/$x_{\rm HII}$ profiles, T5 off / on ($Z=0$) / on ($Z=0.231$).}
   \label{fig:t5-husmith-slices}
+\end{figure}
+
+\textbf{Clump leg (2026-07-29, commit \texttt{b0a1c88d1} -- current
+code).} Third and last T5 target at current code, same matrix as the
+original pre-redesign leg above (uniform \code{gas\_mass=20}, angular
+\code{gas\_mass}$=\{20,95\}$, T5 on/off, build config grepped from the
+original run for parity). \textbf{Result: mixed, more nuanced than
+STARBENCH or Hu/Smith.} An analysis artifact was caught and corrected
+first: reading only the final snapshot's \code{HIIRegionRadii} (rather
+than the peak-over-time this document's own convention uses) made
+T5-off look larger than T5-on, backwards from every other result --
+because T5-on had receded substantially by the end while T5-off had
+not. The peak-vs-final \emph{gap} itself turned out to be the real
+finding.
+
+\begin{itemize}
+\item \emph{Uniform, gas\_mass=20: a real, milder-than-STARBENCH
+  instability signature.} Total ionized mass
+  (Figure~\ref{fig:t5-clump-ionized-mass}) tracks T5-off closely to
+  $t\!\approx\!1.7\,$Myr, then diverges and stays below it for the
+  rest of the run. Both T5-on and T5-off show a \emph{shared} dip at
+  $t\!\approx\!3.5\,$Myr -- almost certainly the ionization front
+  reaching the clump surface, a geometric event common to both
+  schemes, not a T5 defect. T5-on alone then shows a
+  \emph{second, deeper} dip at $t\!\approx\!5.4\,$Myr (down to
+  $\sim\!850\,M_\odot$ from $\sim\!1750$) with no counterpart in the
+  off run. Temperature slices at both dip times
+  (Figure~\ref{fig:t5-clump-dip-slices}) show no visible bubble
+  collapse -- on/off look nearly identical by eye at every timestep --
+  and the continuous $x_{\rm HII}$-weighted mass (not just the
+  $x_{\rm HII}>0.5$ threshold count) shows the identical pattern,
+  ruling out a threshold-flicker artifact. The dip is real but subtle,
+  not a dramatic visual event.
+\item \emph{Angular, gas\_mass=20: smooth, no oscillation}, tracking
+  consistently \emph{above} the off run and reaching a higher final
+  ionized mass ($6080$ vs.\ $5320\,M_\odot$) -- notably the opposite
+  direction from the pre-redesign table's ``T5 holds less ionized
+  mass'' pattern above. A real behavioural change from the redesign,
+  not cross-checked further here.
+\item \emph{Angular, gas\_mass=95: not interpretable.} Only
+  $12$--$23$ ionized particles at any time -- Poisson noise dominates
+  both curves. Consistent with this being a resolution/particle-count
+  limitation of the idealized clump testbed at coarse mass resolution,
+  not evidence about T5 specifically.
+\end{itemize}
+
+Cross-referenced against the splitting-scheme follow-up above: the
+uniform-only dip here is consistent with that finding's
+\emph{directional mass-biasing} mechanism (the clump provides exactly
+the density contrast angular splitting is designed to protect
+against), not the STARBENCH-style density-driven oscillation, which
+this testbed's ambient density ($n_H=100\,{\rm cm^{-3}}$) is far too
+low to trigger on its own.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/t5_clump_ionized_mass_evolution}
+  \caption{Total ionized mass ($x_{\rm HII}>0.5$) vs.\ time, clump
+    testbed, T5 off vs.\ on, all three configurations. Uniform
+    \texttt{gas\_mass=20} (left) shows the shared front-clump dip at
+    $t\!\approx\!3.5\,$Myr plus a T5-only second dip at
+    $t\!\approx\!5.4\,$Myr; angular \texttt{gas\_mass=20} (middle) is
+    smooth; \texttt{gas\_mass=95} (right) is dominated by particle-count
+    noise.}
+  \label{fig:t5-clump-ionized-mass}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/t5_clump_dip_slices}
+  \caption{Uniform \texttt{gas\_mass=20}, T5 off (top) vs.\ on (bottom),
+    temperature slices at $t=2.8/3.6/5.6/8.2\,$Myr spanning both dip
+    times. No visible bubble collapse at either dip despite the real
+    mass-diagnostic signature.}
+  \label{fig:t5-clump-dip-slices}
 \end{figure}
 
 \subsection{Deprecated results (2026-07-27)}

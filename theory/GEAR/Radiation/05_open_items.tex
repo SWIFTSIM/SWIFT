@@ -98,21 +98,40 @@ work lives.
     bug that left \code{RT\_heating\_rate} always exactly zero
     (Section~\ref{sec:t5-heating-rate-zero}), and validated as a
     self-consistency check on the clump testbed
-    (Section~\ref{sec:t5-validation}). \textbf{Still open, two things}:
-    (i) re-validation of the clump target with the coupling ON at
-    current code -- its existing T5 runs predate the count-budget
-    redesign and the IMF-averaged excess-energy fix. The STARBENCH leg
-    completed 2026-07-28: pass-with-caveats, $3.7\%$ against the
-    semi-empirical solution at matched equilibrium temperature
-    ($Z=0.231$), with the transient claim-overshoot and the
-    out-of-regime $Z=0$ oscillation documented in
-    Section~\ref{sec:t5-validation} -- the overshoot mechanism should
-    be understood before T5 becomes a production default. The
-    Hu/Smith leg also completed 2026-07-28: PASS, no caveats beyond
-    the flag-and-floor baseline's own, and notably no oscillation at
-    either metallicity -- evidence (not proof) that the STARBENCH
-    oscillation is tied to its single-source/high-density/fine-cadence
-    combination rather than a general T5 instability. (ii) \textbf{Helium}: the per-star coupling feeds Grackle
+    (Section~\ref{sec:t5-validation}).
+    \textbf{Re-validation at current code: DONE, all three targets}
+    (2026-07-28/29, Section~\ref{sec:t5-validation}). STARBENCH:
+    pass-with-caveats, $3.7\%$ at matched equilibrium temperature
+    ($Z=0.231$). Hu/Smith: PASS, no caveats beyond the flag-and-floor
+    baseline's own. Clump: mixed -- smooth under angular splitting
+    (the production default), a real but subtle T5-specific dip under
+    uniform splitting at \code{gas\_mass=20}, inconclusive at
+    \code{gas\_mass=95} (particle-count noise).
+    \textbf{Root cause of the STARBENCH claim-overshoot/oscillation,
+    still open and now better scoped}: a follow-up test reran
+    STARBENCH's $Z=0$ leg under angular splitting and found the
+    oscillation \emph{unchanged} (max/min radii match the uniform run
+    to within $1\%$) -- refuting the hypothesis that angular splitting
+    (Darwin's production default) protects against it. The corrected
+    picture is two separate phenomena: (a) the claim/shed oscillation
+    is driven by high \emph{local density} (cheap recombination
+    upkeep at low $\alpha_B$), independent of splitting scheme,
+    triggered in STARBENCH ($n_H\!\sim\!3300\,{\rm cm^{-3}}$) under
+    both schemes equally; (b) \emph{directional} mass-biasing from a
+    density contrast (e.g.\ a nearby clump) -- angular splitting's
+    actual designed purpose -- is a distinct effect, consistent with
+    the clump testbed's own uniform-vs-angular difference. Practical
+    consequence: angular being the default does \emph{not} insulate
+    against the oscillation for any production configuration reaching
+    STARBENCH-like local densities. Should be understood before T5
+    becomes a production default; scheduled next
+    (\textbf{2026-07-30}, together with helium below).
+    \textbf{Also unexplained, lower priority}: the clump leg's angular
+    \code{gas\_mass=20} config held \emph{more} ionized mass under T5
+    than flag-and-floor ($6080$ vs.\ $5320\,M_\odot$) -- the opposite
+    direction from the pre-redesign table's pattern. A real behavioural
+    change from the count-budget redesign, not cross-checked.
+    (ii) \textbf{Helium}: the per-star coupling feeds Grackle
     hydrogen rates only; \code{RT\_HeI\_ionization\_rate}/
     \code{RT\_HeII\_ionization\_rate} still come from the global
     \code{GrackleCooling:RT\_*\_cgs} YAML constants -- a leftover
