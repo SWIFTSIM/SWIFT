@@ -105,7 +105,7 @@ __attribute__((always_inline)) INLINE static void sym_matrix_identity(
 __attribute__((always_inline)) INLINE static int sym_matrix_is_null(
     const struct sym_matrix *M) {
 
-  for (int i = 0; i < hydro_dimension_integer; ++i) {
+  for (int i = 0; i < sym_matrix_num_elements; ++i) {
     if (M->elements[i] != 0.f) return 0;
   }
   return 1;
