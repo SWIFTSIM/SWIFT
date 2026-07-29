@@ -154,9 +154,21 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
       F_diss[3] *= limiter_factor;
     }
 
-    const double fluxes_HLL[4] = {
-        F_transport[0] + F_diss[0], F_transport[1] + F_diss[1],
-        F_transport[2] + F_diss[2], F_transport[3] + F_diss[3]};
+    /* TVD safety bound, matching the parabolic solver's own
+       chemistry_riemann_solver_hopkins2017_HLL minmod structure: caps
+       F_diss relative to a psi-scaled transport-only estimate. Measured
+       (mass-weighted RMS/r99 radius, not a binned threshold, which is too
+       coarse to resolve this) to give a small but real and monotonic
+       reduction in numerical diffusion as psi shrinks, with fewer
+       negative-mass particles too; the psi->infinity limit (bound never
+       binds, equivalent to removing this entirely) is the worst point on
+       every metric checked, not a neutral no-op. */
+    const double psi = chem_data->hll_riemann_solver_psi;
+    double fluxes_HLL[4];
+    for (int i = 0; i < 4; i++) {
+      fluxes_HLL[i] = chemistry_riemann_minmod(
+          (1.0 + psi) * F_transport[i], F_transport[i] + F_diss[i]);
+    }
 
     /* The pure hyperbolic HLL flux is unstable when tau -> 0, i.e. in the
        parabolic diffusion regime. To make the solution stable, we use the
