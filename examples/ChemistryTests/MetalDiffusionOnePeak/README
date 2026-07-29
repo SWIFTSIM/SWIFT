@@ -32,3 +32,66 @@ You can provide parameters to the running scripts, have a look inside them.
 
 #Debugging notes
 You can track the metal mass injected by feedback and diffused by the chemitry module by adding `CFLAGS="-DSWIFT_CHEMISTRY_DEBUG_CHECKS" ./configure [other parameters]`. This will also output the total diffused metal mass by each particles over the simulation. If you sum these values, you can track metal mass conservation. Notice that star formation removes metal.
+
+# Caveats: interpreting this test
+
+This test is deliberately harsh. It evolves a near-delta metal seed in the
+wave-dominated regime of the Cattaneo/telegrapher equation (large `tau`), not
+the smooth, well-resolved regime that diffusion normally operates in. The
+exact solution there is a thin expanding shell, not a smooth blob: at
+`tau=10`, the ballistic front alone carries more than 99% of the metal mass
+at `t=5`, with front mass fraction `e^{-a t} (1 + a t + (a t)^2 / 2)` and
+`a = 1 / (2 tau)`. No particle scheme at the resolutions used here can
+represent a shell thinner than the interparticle spacing, so substantial
+front smearing and apparent super-causal mass leakage ahead of the shell are
+expected outcomes of this test, and they grow more pronounced as `tau`
+increases.
+
+There is also a hard theoretical ceiling on what any positivity-preserving
+scheme can achieve in this regime. The exact 3D solution's front includes a
+signed dipole layer, `-c t e^{-a t} delta'(r - c t)`: the true solution
+itself carries a negative-density lobe just inside the propagating front.
+Consistent with this, the exact second moment,
+`<r^2> = 6 kappa (t - tau (1 - e^{-t/tau}))`, exceeds what any everywhere
+positive, causal solution can carry in the wave regime. A scheme that
+enforces positivity (as this one does) therefore cannot simultaneously match
+causality and the exact second moment in this test — that trade-off is a
+property of the equation, not a defect of the implementation. Judge the
+scheme's spread and front behaviour against that positivity ceiling, not
+against the signed exact solution alone.
+
+`metal_profile.py`'s reference curves are exact, not approximate: the
+y,z-marginal of the 3D solution is exactly the 1D Green's function, so
+profiles along `x` can be compared directly to the analytic curve for 3D
+runs. Because of the shell structure above, the ballistic front shows up as
+two moving bumps (the seed's `x`-marginal shape at `x = +/- c t`), not as a
+single smooth peak. The `--epsilon` argument must match the seed radius the
+run was actually generated with, or the reference curve will be offset from
+the data: `0.02` for older archived runs, `0.04` for the current default.
+
+Seed discreteness matters at low resolution. At level 5, an `epsilon` below
+the interparticle spacing (about 0.023) seeds only a single particle — a
+maximally adversarial point source that also imprints the grid's anisotropy
+onto the result. The current default, `epsilon=0.04`, seeds around 19
+particles at level 5 and is the minimum needed for profiles that are
+meaningful rather than dominated by discreteness noise.
+
+The box saturates quickly at these speeds. Once `c_hyp * t + epsilon`
+exceeds the box half-extent (about 0.37 kpc), the periodic wrap contaminates
+all causality and spread diagnostics: metal that left one face reappears at
+the opposite one. Restrict quantitative comparisons (front position, second
+moment, causality checks) to times before this happens; for `tau <= 1` this
+bound is reached quickly, so only early times are usable.
+
+Finally, keep this test's relevance to production in perspective. Real GEAR
+runs use hyperbolic diffusion for subgrid turbulent mixing, where `tau` is
+chosen mainly for timestep relief and the metal field is comparatively
+smooth; in that resolved-gradient regime (see the `MetalDiffusionDiscontinuity`
+example) the scheme is accurate and strictly causal. The closest physical
+analogue to the extreme setup tested here is discrete supernova injection,
+which, depending on the injection weights, can indeed resemble a delta
+function or a thin Gaussian ball of metal. Expect the behaviour documented
+above — front smearing, positivity-driven spread beyond the ballistic
+front — during the first few relaxation times after such an injection, at
+an amplitude set by the local resolution rather than by this test's
+parameters.
