@@ -54,6 +54,7 @@
 #define const_viscosity_beta 2.0f
 #define const_viscosity_epsilon 0.1f
 #define const_viscosity_eta_crit 1.0f
+#define const_G_ij_angle_limit 0.5
 
 /* Rosswog 2020 (eq. 24) constant terms */
 #define const_diffusion_alpha 0.05f

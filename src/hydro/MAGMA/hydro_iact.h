@@ -436,6 +436,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[1] *= -wj * hjd_inv;
   G_j[2] *= -wj * hjd_inv;
 
+  /* Verify that the G vector has the right direction */
+  const float G_ij[3] = {0.5 * (G_i[0] + G_j[0]),  /* x */
+                         0.5 * (G_i[1] + G_j[1]),  /* y */
+                         0.5 * (G_i[2] + G_j[2])}; /* z */
+
+  /* Compute cosine of angle between G and the axis linking the particles */
+  const float G_ij_norm =
+      sqrtf(G_ij[0] * G_ij[0] + G_ij[1] * G_ij[1] + G_ij[2] * G_ij[2]);
+  const float G_ij_dot_dx =
+      fabsf(G_ij[0] * dx[0] + G_ij[1] * dx[1] + G_ij[2] * dx[2]);
+  const float cosine_G_ij_dx =
+      G_ij_dot_dx * r_inv / (G_ij_norm + 1e-6 * (pi->h + pj->h));
+
+  /* Apply threshold */
+  const int G_ij_misaligned =
+      (G_ij_norm > 0.f) && (cosine_G_ij_dx < cosf(const_G_ij_angle_limit));
+
+  /* if (G_ij_misaligned) */
+  /*   warning( */
+  /*       "Misaligned dx=[%e %e %e] G_ij=[%e %e %e] cos(angle)=%e use_SPH_i=%d
+   * " */
+  /*       "use_SPH_j=%d", */
+  /*       dx[0], dx[1], dx[2], G_ij[0], G_ij[1], G_ij[2], cosine_G_ij_dx, */
+  /*       use_base_SPH_i, use_base_SPH_j); */
+
 #ifdef USE_STANDARD_KERNEL_GRADIENTS
   const int force_standard_kernel = 1;
 #else
@@ -444,7 +469,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Default to the traditional SPH gradW term if one of the particles is weird
    */
-  if (use_base_SPH_i || use_base_SPH_j || force_standard_kernel) {
+  if (use_base_SPH_i || use_base_SPH_j || force_standard_kernel ||
+      G_ij_misaligned) {
 
     const float wi_dr = hid_inv * hi_inv * wi_dx;
     const float wj_dr = hjd_inv * hj_inv * wj_dx;
