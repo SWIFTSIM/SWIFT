@@ -703,7 +703,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Invert the c-matrix */
   const int res = sym_matrix_invert(&c_matrix, &p->gradient.c_matrix_inv,
-                                    /*min_cond_num=*/1e-6);
+                                    /*max_cond_num=*/60.);
 
   /* The matrix could not be inverted
    * --> Revert to base SPH, no reconstruction to the interface. */
