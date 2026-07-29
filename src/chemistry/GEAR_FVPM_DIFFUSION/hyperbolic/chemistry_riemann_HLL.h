@@ -173,15 +173,15 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     const double c_max = max(c_diff_L, c_diff_R);
     const float dt_i = pi->chemistry_data.flux.dt;
     const float dt_j = pj->chemistry_data.flux.dt;
-    const double dt_min = (dt_j > 0.f) ? fmin(dt_i, dt_j) : dt_i;
+    const double dt_min = (dt_j > 0.f) ? min(dt_i, dt_j) : dt_i;
     const double psize_i = chemistry_get_physical_particle_size(pi, cosmo);
     const double psize_j = chemistry_get_physical_particle_size(pj, cosmo);
-    const double length_scale = fmin(psize_i, psize_j);
+    const double length_scale = min(psize_i, psize_j);
     const double causal_floor = 0.01;
     double causal_factor = 1.0;
     if (dt_min > 0. && length_scale > 0.) {
-      causal_factor =
-          fmax(causal_floor, fmin(1.0, c_max * dt_min / length_scale));
+      const double zeta = min(1.0, c_max * dt_min / length_scale);
+      causal_factor = max(causal_floor, zeta);
     }
     F_diss[0] *= causal_factor;
     if (chem_data->hyperbolic_limiter_scope == limiter_all_components) {

@@ -657,7 +657,7 @@ $\kappaC$: doubling $\kappaC$ halves $\taurelax_{\rm par}$, so a
 $\taurelax_0$ that does not track $\kappaC$ silently drifts to a different
 point on the parabolic$\leftrightarrow$hyperbolic spectrum every time
 $\kappaC$ is retuned (e.g.\ during the flux-limiter calibration of
-flux-limiter calibration). A physically meaningful
+Section~\ref{sec:hyperbolic-limiter}). A physically meaningful
 $\taurelax_0$ must therefore be defined \emph{relative to} $\kappaC$, not
 alongside it.
 
@@ -872,10 +872,15 @@ dimension length$^{-1}$; this is the form evaluated in
 branch, currently compiled out. Lanson \& Vila note directly below their
 eq.~(58) that $\sum_l w_l\norm{A_{il}}_{\rm LV}=O(1/\epsilon_0)$, with
 $\epsilon_0$ the smoothing length, so $\dx_i$ is of order the smoothing
-length -- the same resolution scale as the Gizmo size, not a larger one.
-Neither definition therefore admits systematically larger timesteps than
-the other: swapping definitions is not a route to a faster scheme. When
-evaluating the sum, note that dimensional analysis
+length -- the same resolution scale as the Gizmo size, differing from it
+only by an $O(1)$ constant. Swapping definitions at a fixed $\CCFL$ is
+therefore not by itself a route to larger timesteps; what the choice
+changes is the constant, so the admissible $\CCFL$ has to be re-derived
+for whichever length is used. For Eq.~\eqref{eq:lanson-vila-psize} that
+derivation is Lanson \& Vila's own operator-based stability condition,
+their eq.~(62), which bounds $\dt\,\sum_l w_l\norm{A_{il}}_{\rm LV}$
+rather than assuming a Gizmo-calibrated Courant number carries over.
+When evaluating the sum, note that dimensional analysis
 alone does not pin down the summand: the kernel value $w_jh_j^{-d}$ also
 combines with $\norm{A_{il}}$ to give a length$^{-1}$, but it is smaller
 than $1/V_l$ by a factor of order the neighbour count $N_{\rm ngb}$, and
@@ -1135,11 +1140,6 @@ constant chosen to match a given test problem.
   unconditionally risks preserving, rather than dissipating, an
   already-stale flux memory.
 \end{itemize}
-
-Across the point-source, two-source, and half-box test problems, the
-causal bound matches or improves on the tuned minmod/psi bound on every
-transport metric examined, while removing the one free parameter the
-latter requires.
 
 \section{Practical Guidance for Choosing $\taurelax_0$}
 \label{sec:practical-tau0}

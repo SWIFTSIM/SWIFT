@@ -41,9 +41,8 @@
 /* Type of the particle size definition. If commented, we default to Gizmo's
    definition.
    The Lanson & Vila (2008) size is of order the smoothing length (their
-   remark below eq. 58), i.e. the same resolution scale as the Gizmo size,
-   so this option does not relax the chemistry CFL condition. Left
-   disabled. */
+   remark below eq. 58), the same resolution scale as the Gizmo size up to
+   an O(1) constant. Left disabled. */
 /* #define GIZMO_LANSON_VILA_PARTICLE_SIZE */
 
 /* Options to control the movement of particles for GIZMO_SPH. */
