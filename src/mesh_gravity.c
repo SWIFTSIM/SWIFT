@@ -1003,7 +1003,7 @@ void add_modified_gravity_contribution(struct space *s, struct threadpool *tp, c
   struct MG_variables MG_var;
   double fR0 = -1e-5;
   int n = 1;
-  int timing = 0;
+  int timing = 1;
   initialise_MG_variables(s, cosmo, &MG_var, fR0, n, timing);
 
   double fR_evo = ((1. + 4. * MG_var.Omega_ratio)/(MG_var.a3_inv + 4. * MG_var.Omega_ratio));
@@ -1148,7 +1148,7 @@ void compute_potential_global(struct pm_mesh *mesh, const struct space *s,
   const int N_half = N / 2;
   const double cell_fac = N / box_size;
   /* Constants for the MG density/potential mesh */
-  int N_MG = 128;
+  int N_MG = 256;
   const int N_half_MG = N_MG / 2;
   const double cell_fac_MG = N_MG / box_size;
 

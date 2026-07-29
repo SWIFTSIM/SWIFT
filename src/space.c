@@ -3966,7 +3966,7 @@ void space_get_fR_contribution(struct threadpool *tp, const struct space *s, dou
     cdim[1] = N;
     cdim[2] = N;
     tic = getticks();
-    apply_multigrid_fR(tp, rho_levels[i], u_levels[i], MG, cdim, mean_density_copy, box_size, N_min, N, V_max);
+    apply_multigrid_fR(tp, rho_levels[i], u_levels[i], u_levels[i-1], MG, cdim, mean_density_copy, box_size, N_min, N, V_max);
     if (MG->timing) message("Relaxation on the grid with size %d took %.3f %s.",
             N, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
@@ -4313,7 +4313,7 @@ double get_Laplacian(struct MG_variables *MG, const double *u, const int cdim[3]
  * @param N_max 1D size of the finest grid.
  * @param V_max Maximum number of V-cycles that may be performed.
  */
-void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max) {
+void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, const double *u_coarser, struct MG_variables *MG, int cdim[3], const double *mean_density, const double box_size, const int N_min, const int N_max, const int V_max) {
   message("Applying the multigrid method for the grid with size %d...", N_max);
 
   /* Allocate the memory for the residual array on the finest level */
@@ -4325,9 +4325,9 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
   //memuse_log_allocation("residual.array", residual_array, 1, sizeof(double)*N_max*N_max*N_max);
 
   double delta = box_size/N_max; //Width of a grid cell of the finest level
-  double residual; 
-  residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
-  message("The first residual is %E", residual);
+  double residual_start = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+  double residual = residual_start;
+  message("The first residual is %E", residual_start);
   const double tolerance = 10e-9; //Choose reasonable value here
   int counter = 0;
   int fine_steps = 20; //Choose reasonable value here
@@ -4364,9 +4364,16 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
         perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density[0], delta);
       }
     }
-    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+    double residual_end = get_residual_fR(tp, u, rho, MG, cdim, mean_density[0], delta, 0);
+    residual = residual_end;
     V_cycles +=1;
     message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
+    if (residual_end > residual_start || !isfinite(residual_end)) { //The algorithm did something weird, so let's try again with extra pre-smoothing
+      fine_steps += 10;
+      /* Reset the guess */
+      prolongate_solution(u_coarser, u, cdim[0]/2, cdim[0]);
+      V_cycles -= 1; //Pretend the previous V-cycle never happened...
+    }
     if (MG->timing) message("V-cycle number %d on the grid with size %d took %.3f %s.",
             V_cycles, N_max, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
@@ -4466,15 +4473,15 @@ int FAS_recursive(struct threadpool *tp, double *u, const double *residual, stru
     while (coarser_residual_abs >= tolerance) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
       coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-      if (coarser_residual_abs >1e10) message("We have a problem!");
-      if (coarser_residual_abs>1e10) {
-        swift_free("restricted_residual", restricted_residual);
-        swift_free("coarser_solution", coarser_solution);
-        swift_free("coarser_residual", coarser_residual);
-        swift_free("restricted_solution", restricted_solution);
-        *depth -= 1;
-        return 1;
-      }
+      //if (coarser_residual_abs >1e10) message("We have a problem!");
+      //if (coarser_residual_abs>1e10) {
+        //swift_free("restricted_residual", restricted_residual);
+        //swift_free("coarser_solution", coarser_solution);
+        //swift_free("coarser_residual", coarser_residual);
+        //swift_free("restricted_solution", restricted_solution);
+        //*depth -= 1;
+        //return 1;
+      //}
       counter +=1;
       if (counter%50 == 0) message("Did %d steps and the residual is %E", counter, coarser_residual_abs);
     }
@@ -4498,31 +4505,31 @@ int FAS_recursive(struct threadpool *tp, double *u, const double *residual, stru
     for (int i=0; i<coarse_steps; i++) {
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH,delta); 
       coarser_residual_abs =  get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-      if (coarser_residual_abs >1e10) message("We have a problem!");
-      if (coarser_residual_abs > 1e10) {
-        swift_free("restricted_residual", restricted_residual);
-        swift_free("coarser_solution", coarser_solution);
-        swift_free("coarser_residual", coarser_residual);
-        swift_free("restricted_solution", restricted_solution);
-        *depth -= 1;
-        return 1;
-      }
+      //if (coarser_residual_abs >1e10) message("We have a problem!");
+      //if (coarser_residual_abs > 1e10) {
+        //swift_free("restricted_residual", restricted_residual);
+        //swift_free("coarser_solution", coarser_solution);
+        //swift_free("coarser_residual", coarser_residual);
+        //swift_free("restricted_solution", restricted_solution);
+        //*depth -= 1;
+        //return 1;
+      //}
       counter +=1;
       //if (coarser_residual_abs < tolerance) break;
     }
     get_residual_array_coarser(coarser_solution, restricted_residual, restricted_solution, coarser_residual, MG, cdimH, delta);
 
     message("The residual after pre-smoothing is %E", coarser_residual_abs);
-    int diverged = FAS_recursive(tp, coarser_solution, coarser_residual, MG, cdimH, delta, N_stop, depth);
-    if (diverged) message("The diverged value is %d", diverged);
-    if (diverged) {
-      swift_free("restricted_residual", restricted_residual);
-      swift_free("coarser_solution", coarser_solution);
-      swift_free("coarser_residual", coarser_residual);
-      swift_free("restricted_solution", restricted_solution);
-      *depth -= 1;
-      return 1;
-    }
+    FAS_recursive(tp, coarser_solution, coarser_residual, MG, cdimH, delta, N_stop, depth);
+    //if (diverged) message("The diverged value is %d", diverged);
+    //if (diverged) {
+      //swift_free("restricted_residual", restricted_residual);
+      //swift_free("coarser_solution", coarser_solution);
+      //swift_free("coarser_residual", coarser_residual);
+      //swift_free("restricted_solution", restricted_solution);
+      //*depth -= 1;
+      //return 1;
+    //}
     /* Post-smoothing */
     coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
     message("Back on the grid with size %d the residual is %E", N, coarser_residual_abs);
@@ -4530,14 +4537,14 @@ int FAS_recursive(struct threadpool *tp, double *u, const double *residual, stru
       perform_red_black_sweep_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta); 
     }
     coarser_residual_abs = get_residual_coarser(tp, coarser_solution, restricted_residual, restricted_solution, MG, cdimH, delta);
-    if (coarser_residual_abs>1e10) { //This supposedly does not happen in post-smoothing
-      swift_free("restricted_residual", restricted_residual);
-      swift_free("coarser_solution", coarser_solution);
-      swift_free("coarser_residual", coarser_residual);
-      swift_free("restricted_solution", restricted_solution);
-      *depth -= 1;
-      return 1; 
-    }
+    //if (coarser_residual_abs>1e10) { //This supposedly does not happen in post-smoothing
+      //swift_free("restricted_residual", restricted_residual);
+      //swift_free("coarser_solution", coarser_solution);
+      //swift_free("coarser_residual", coarser_residual);
+      //swift_free("restricted_solution", restricted_solution);
+      //*depth -= 1;
+      //return 1; 
+    //}
     /* Prepare array for prolongation */
     for (int i=0; i<N*N*N; i++) {
       coarser_solution[i] -= restricted_solution[i];
