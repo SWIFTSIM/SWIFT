@@ -1014,6 +1014,102 @@ $\chyp=\sqrt{\lambda_1(\Deff)/\taurelax}$ is exact for isotropic $\Deff$
 and a tight, safe bound otherwise (Section~\ref{sec:confrontation}), the
 wave-speed lever is already pulled as far as it goes; the flux-memory
 limiter of Section~\ref{sec:hyperbolic-limiter} addresses the second.
+
+\section{A Causal Bound on the Dissipation}
+\label{sec:causal-bound}
+
+The dissipation term itself, independent of any error in $\chyp$, has a
+structural problem: $F_{\rm diss}=-\tfrac12\Lambda(U_R-U_L)$ is applied in
+full across the entire pair separation
+$r_{ij}=|\mathbf x_i-\mathbf x_j|$ (the same notation as
+Section~\ref{sec:practical-tau0}) in a single step, regardless of how far
+apart the two particles actually are. Read as a diffusivity, this hands
+mass across $r_{ij}$ at rate $O(\chyp r_{ij})$, but the system's only
+physical signal speed is $\chyp$ (Proposition~\ref{prop:main}): a
+disturbance at one particle cannot have reached the other unless
+$\chyp\dt_{ij}\gtrsim r_{ij}$, with $\dt_{ij}$ the pair's flux timestep
+(the same pairwise minimum, $\min(\dt_i,\dt_j)$, entering the
+half-timestep predictor of Section~\ref{sec:predictor}). Whenever
+$\chyp\dt_{ij}<r_{ij}$, the HLL dissipation is therefore transporting
+mass beyond the causal front the Cattaneo system allows: an $O(\chyp
+r_{ij})$ upwind diffusivity that exceeds the physical
+$\Deff\sim\chyp^2\taurelax$ (Eq.~\eqref{eq:main_result}) once
+$r_{ij}\gtrsim\chyp\taurelax$, i.e.\ exactly in the wave-dominated regime
+this document's characteristic analysis is about.
+
+The fix multiplies all four components of $F_{\rm diss}$ by
+\begin{equation}
+  \label{eq:causal-bound}
+  \boxed{\;\zeta_{ij} = \min\!\left(1,\ \frac{\chyp\,\dt_{ij}}{r_{ij}}\right)\;} ,
+\end{equation}
+before it is recombined with the transport term. $\zeta_{ij}=1$ leaves the
+dissipation untouched whenever the wave has had time to cross the pair
+within one step; otherwise $\zeta_{ij}<1$ rescales it down to the distance
+actually reachable in $\dt_{ij}$. This converts the $O(\chyp r_{ij})$
+upwind estimate into an $O(\chyp^2\dt_{ij})$ one -- the same order as the
+Lax-Wendroff (second-order, minimally dissipative) flux for a linear wave
+equation -- so dissipative transport can no longer outrun $\chyp$
+regardless of $r_{ij}$. Every quantity in Eq.~\eqref{eq:causal-bound} is
+already available at the point $F_{\rm diss}$ is assembled, so the bound
+costs one division and one \code{min} beyond the existing dissipation
+term.
+
+The hyperbolic branch of \code{chemistry\_riemann\_HLL.h} already caps
+$F_{\rm diss}$ by a second, independent mechanism: a two-argument minmod
+between $(1+\psi)F_{\rm transport}$ and $F_{\rm transport}+F_{\rm diss}$,
+with $\psi=$\code{chem\_data->hll\_riemann\_solver\_psi} a free,
+per-simulation-tuned parameter, mirroring the parabolic scheme's own
+Hopkins-HLL construction referenced in
+Section~\ref{sec:hll-consequence}. Both mechanisms rescale the same term
+in pursuit of the same goal -- suppressing the raw HLL dissipation's
+tendency to over-transport -- and are empirically redundant: enabling
+either one alone already saturates the achievable reduction in
+super-causal transport, and running both together adds nothing beyond
+either alone. The causal bound is the preferable formulation of the two:
+$\zeta_{ij}$ has no tunable parameter to calibrate per problem, and it is
+derived directly from $\chyp$, the one quantity the wave-speed analysis
+of this document (Proposition~\ref{prop:main},
+Section~\ref{sec:confrontation}) already fixes as exact or a tight,
+safe bound -- rather than from a free constant chosen to match a given
+test problem.
+
+\subsection{Practical Considerations}
+
+\begin{itemize}
+\item \textbf{Length scale.} The chemistry CFL condition ties $\dt$ to the
+  local particle size over $\chyp$ (Section~\ref{sec:speed-criterion}), so
+  $\chyp\dt_{ij}/r_{ij}$ is $O(\CCFL)$ for essentially every
+  well-resolved pair, not a ratio that only binds in rare, badly-behaved
+  configurations: Eq.~\eqref{eq:causal-bound} is a global reduction of the
+  dissipation's reach, applied on (almost) every face every step. Because
+  the von Neumann/Lax-Wendroff stability floor for this term is set by the
+  particle size rather than by the pair separation $r_{ij}$ itself (a
+  distinct, though comparable, length scale --
+  Section~\ref{sec:practical-tau0}), an implementation may prefer the
+  particle size in Eq.~\eqref{eq:causal-bound} in place of $r_{ij}$.
+\item \textbf{A floor is required.} $\zeta_{ij}\to0$ exactly would zero
+  out the dissipation entirely whenever $\chyp\to0$, which happens in
+  \code{turbulent\_mode} wherever the local shear vanishes
+  (Section~\ref{sec:tau-modes}) -- a legitimate part of the flow, not
+  a pathology, and one where some numerical dissipation is still needed
+  for stability. $\zeta_{ij}$ must therefore be floored at a small,
+  strictly positive value rather than left to reach zero.
+\item \textbf{Interaction with \code{hyperbolic\_limiter\_scope}.} Like
+  the flux-memory limiter of Section~\ref{sec:hyperbolic-limiter}, the
+  causal bound scales all four components of $F_{\rm diss}$, but whether
+  components 1--3 (the flux-vector dissipation, as opposed to component 0,
+  the mass-density dissipation) are actually rescaled should follow the
+  same \code{hyperbolic\_limiter\_scope} choice the flux-memory limiter
+  already respects: suppressing the flux-component dissipation
+  unconditionally risks preserving, rather than dissipating, an
+  already-stale flux memory.
+\end{itemize}
+
+Across the point-source, two-source, and half-box test problems, the
+causal bound matches or improves on the tuned minmod/psi bound on every
+transport metric examined, while removing the one free parameter the
+latter requires.
+
 \section{Practical Guidance for Choosing $\taurelax_0$}
 \label{sec:practical-tau0}
 
