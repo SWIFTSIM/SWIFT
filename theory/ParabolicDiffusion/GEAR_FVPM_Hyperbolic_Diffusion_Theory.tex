@@ -853,6 +853,35 @@ Whether the hyperbolic scheme is faster than parabolic depends only on
 the single dimensionless constant $\taurelax_0$, against a fixed
 threshold of order unity.
 
+\begin{remark}[Particle-size definitions]
+\label{rem:particle-size-definitions}
+The CFL length scale $\dx$ above is the Gizmo effective size,
+$\dx=(V_i/V_{\rm unit\ sphere})^{1/d}$ (\code{chemistry_timesteps.h}'s
+\code{else} branch). An alternative is the Lanson \&
+Vila~\cite{LansonVila2008} mean interparticle distance, their eq.~(58),
+\begin{equation}
+  \dx_i = \frac{1}{2\sum_l w_l\,\norm{A_{il}}_{\rm LV}} ,
+  \label{eq:lanson-vila-psize}
+\end{equation}
+with $w_l$ the neighbour's volume and $A_{il}$ their one-sided
+renormalized-gradient weight. Written in terms of the symmetrized
+interface area $\norm{A_{ij}}$ that the flux exchange already builds,
+each summand is $w_l\norm{A_{il}}_{\rm LV}=\norm{A_{il}}/V_l$, of
+dimension length$^{-1}$; this is the form evaluated in
+\code{chemistry_timesteps.h}'s \code{GIZMO_LANSON_VILA_PARTICLE_SIZE}
+branch, currently compiled out. Lanson \& Vila note directly below their
+eq.~(58) that $\sum_l w_l\norm{A_{il}}_{\rm LV}=O(1/\epsilon_0)$, with
+$\epsilon_0$ the smoothing length, so $\dx_i$ is of order the smoothing
+length -- the same resolution scale as the Gizmo size, not a larger one.
+Neither definition therefore admits systematically larger timesteps than
+the other: swapping definitions is not a route to a faster scheme. When
+evaluating the sum, note that dimensional analysis
+alone does not pin down the summand: the kernel value $w_jh_j^{-d}$ also
+combines with $\norm{A_{il}}$ to give a length$^{-1}$, but it is smaller
+than $1/V_l$ by a factor of order the neighbour count $N_{\rm ngb}$, and
+using it in place of $1/V_l$ inflates $\dx_i$ by that same factor.
+\end{remark}
+
 \subsection{Speed Criterion for \code{anisotropic_gradient} Mode}
 \label{sec:speed-criterion-aniso}
 The derivation above is specific to \code{isotropic_smagorinsky}: its

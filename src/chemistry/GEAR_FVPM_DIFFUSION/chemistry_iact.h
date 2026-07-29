@@ -389,10 +389,16 @@ runner_iact_chemistry_fluxes_common(
 #endif
 
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
-  /* Lanson & Vila (2008), denominator of equation (58) */
-  chi->timestepvars.delxbar += wj * hj_inv_dim * Anorm;
+  /* Lanson & Vila (2008), eq. (58): Delta x_i = 1 / (2 * sum_l w_l ||A_il||),
+   * where w_l is the neighbour's volume and ||A_il|| is the one-sided
+   * renormalized-gradient face-area weight. The geometric equivalent of
+   * each summand w_l ||A_il|| is the (symmetrized) interface area Anorm
+   * divided by the neighbour's volume, Anorm / V_neighbour; the factor of
+   * 1/2 in front of the sum in eq. (58) is applied once, in
+   * chemistry_timesteps.h, to the completed sum delxbar. */
+  chi->timestepvars.delxbar += Anorm / Vj;
   if (interaction_mode == 1) {
-    chj->timestepvars.delxbar += wi * hi_inv_dim * Anorm;
+    chj->timestepvars.delxbar += Anorm / Vi;
   }
 #endif
 

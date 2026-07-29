@@ -37,9 +37,11 @@ __attribute__((always_inline)) INLINE static float chemistry_diffusion_timestep(
   const float CFL_condition = chem_data->C_CFL_chemistry;
 
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
-  /* Lanson & Vila (2008) particle size */
-  /* Note that we computed 1/delxbar so we need to take the inverse here. And
-     we need to convert to physical units. */
+  /* Lanson & Vila (2008) particle size, eq. (58): Delta x_i = 1 / (2 *
+     sum_l w_l ||A_il||). delxbar accumulates the completed sum, each
+     neighbour's w_l ||A_il|| term as Anorm / V_neighbour
+     (chemistry_iact.h), so the leading 1/2 of eq. (58) is applied here;
+     we also convert to physical units. */
   const float psize = cosmo->a * 0.5f / p->chemistry_data.timestepvars.delxbar;
 #else
   /* Gizmo's particle size definition */
