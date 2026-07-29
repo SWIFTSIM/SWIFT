@@ -94,8 +94,9 @@ relation is used. This entire empirical-fit layer (radius, luminosity,
 temperature) is intended to be replaced by extending \texttt{pychem}
 (\texttt{\textasciitilde/programs/pychem/}, already the source of this
 project's GEAR chemical-yield tables) to emit proper
-$(M,Z)$-dependent stellar tables -- see the open items
-(Section~\ref{sec:open}) for that standalone follow-up project. When it
+$(M,Z)$-dependent stellar tables -- see the open items (item~T7 in the
+GEAR radiation logbook's Open Items section) for that standalone
+follow-up project. When it
 lands, the unused \code{radiation\_get\_individual\_star\_temperature}
 should simply be deleted.
 
@@ -128,8 +129,8 @@ identical in form to Hu et al.'s $N_H\beta n_H$ (their $N_H$ is called
 ``the number of hydrogen nuclei'', an unambiguous atom count) and to
 Smith et al.'s $R_{\rm rec}=\beta m \rho (X_H/m_p)^2$. Neither $N_H$
 nor $n_e$ has a mean-molecular-weight ($\mu$) or metallicity factor;
-see Section~\ref{sec:mu-bug} for why our first attempt at this
-included one.
+see the GEAR radiation logbook's ``mean-molecular-weight factor'' bug
+entry (2026-07-16) for why our first attempt at this included one.
 
 \textbf{Known approximation: $n_e \approx n_H$.} Equation~\ref{eq:recomb-cost}
 (and every other electron-density calculation in this model, including
@@ -203,11 +204,12 @@ factor of $\sim$4 at this example's $Z=0$ default -- the star's budget
 was spent roughly 4$\times$ faster than physically necessary, which
 artificially shrank the achieved $r_{\rm HII}$ in exactly the direction
 that could explain part of the residual gap to
-\citet{Hu2017}/\citet{Smith2021}'s reference numbers
-(Section~\ref{sec:metallicity}). At $Z=Z_\odot$ the effect was smaller
+\citet{Hu2017}/\citet{Smith2021}'s reference numbers (the GEAR
+radiation logbook's Metallicity and the ionized-gas temperature floor
+section). At $Z=Z_\odot$ the effect was smaller
 and opposite in sign ($+13\%$, i.e.\ a mild \emph{under}estimate). See
-Section~\ref{sec:validation} for the measured effect of this fix on the
-validation matrix.
+the GEAR radiation logbook's Validation section for the measured
+effect of this fix on the validation matrix.
 
 A particle is a candidate for ionization only if it is not already
 tagged, is denser than \code{HII\_region\_min\_density\_Hpcm3}, and
@@ -222,7 +224,8 @@ one. The last, unaffordable particle is the ``boundary particle'':
     with probability equal to the affordable fraction, unbiased in
     expectation.
 \end{itemize}
-See Section~\ref{sec:validation} for the measured effect of this
+See the GEAR radiation logbook's Validation section for the measured
+effect of this
 choice -- it turns out to matter a lot more than the name ``one
 boundary particle'' suggests. \textbf{Decided (2026-07-16):
 probabilistic is the default}, not deterministic -- the validation
@@ -274,26 +277,29 @@ temperature fit]{Hopkins2023}:
   \label{eq:tcollisional}
 \end{equation}
 Neither Hu et al.\ nor Smith et al.\ have a metallicity-dependent floor
-at all -- both simply clamp ionized gas to a flat $10^4\,$K. See
-Section~\ref{sec:metallicity} for the numeric consequence of
+at all -- both simply clamp ionized gas to a flat $10^4\,$K. See the
+GEAR radiation logbook's Metallicity and the ionized-gas temperature
+floor section for the numeric consequence of
 Eq.~\ref{eq:floor}--\ref{eq:tcollisional} at $Z=0$.
 
 \textbf{Bug found and fixed (2026-07-18):} Eq.~\ref{eq:tcollisional} is
 $\log_{10}$, but \code{radiation.c} computed it with C's \code{log()}
 (natural log) until this fix. This silently applied the wrong base
 everywhere $Z \ge 10^{-3}Z_\odot$, including at this project's own
-$Z/Z_\odot\approx0.231$ reference point (Section~\ref{sec:metallicity}),
+$Z/Z_\odot\approx0.231$ reference point (the GEAR radiation logbook's
+Metallicity and the ionized-gas temperature floor section),
 chosen specifically because $\log_{10}$ makes
 $T_{\rm collisional}=10^4\,$K there. With the natural-log bug, the code
 actually applied $T_{\rm collisional}\approx12{,}700\,$K at that same
 point -- not the intended, papers-matching $10^4\,$K -- which also
 shifted the case-B $\beta$ (Section~\ref{sec:beta-temperature}, evaluated
 at this same temperature whenever $u_{\rm collisional} < \Delta
-u_{\rm ionized}$). Every deprecated result in this logbook computed at
+u_{\rm ionized}$). Every deprecated result in the GEAR radiation
+logbook's deprecated-results section computed at
 $Z/Z_\odot\approx0.231$ (the pre-restart clump matrices and the e10
 check) was therefore run at the wrong reference temperature;
-see Section~\ref{sec:t12-log10-bug} for the fix and its measured
-effect.
+see the GEAR radiation logbook's ``$T_{\rm collisional}$ used natural
+log'' bug entry (2026-07-18) for the fix and its measured effect.
 
 \subsection{Persistence}
 
@@ -336,8 +342,9 @@ than the nominal cadence -- untested, low priority given the above.
 2026-07-28)}
 \label{sec:adaptive-cadence}
 
-\textbf{Removed (Phase 4c, 2026-07-28).} The count-budget redesign
-(Section~\ref{sec:husmith-current} of \code{04\_validation.tex}) made
+\textbf{Removed (Phase 4c, 2026-07-28).} The count-budget redesign (the
+GEAR radiation logbook's Hu et al./Smith et al.\ 4-star validation
+section) made
 rebuild cadence a purely numerical parameter: a six-cadence sweep found
 the converged answer independent of it, so this mode's correctness
 motivation was gone, leaving only its per-star timestep-pinning cost.
@@ -375,7 +382,8 @@ the already-robustly-ionized interior). A backstop floor,
 \code{GEARFeedback:HII\_region\_rebuild\_floor\_Myr} (default
 $10^{-4}\,$Myr), prevents a pathologically short computed interval;
 this is a distinct quantity from \code{Stars:min\_star\_timestep\_Myr}
-(Section~\ref{sec:t16-timestep-floor}), the unrelated numerical
+(the GEAR radiation logbook's ``star/HII timestep floor'' bug entry,
+2026-07-20), the unrelated numerical
 step-size safety floor.
 
 Implementation: \code{radiation\_get\_T\_collisional\_K()} (extracted
@@ -395,7 +403,8 @@ refreshed by an actual rebuild pass, and if that gate stays false for a
 reason unrelated to timing (photon budget exhausted, aged past
 \code{HII\_region\_max\_age}) the deadline goes stale and the timestep
 constraint returned exactly $0.0$ forever -- fixed by flooring the
-fallback instead of returning a literal $0.0$ (Section~\ref{sec:t16-timestep-floor}
+fallback instead of returning a literal $0.0$ (the GEAR radiation
+logbook's ``star/HII timestep floor'' bug entry, 2026-07-20,
 generalized this floor further). With that fixed: \code{StromgrenSphere}
 and all six \code{StromgrenSphereClumpSmith2021} sweep configurations
 completed cleanly with sane, bounded $r_{\rm HII}$; the e10 task-graph

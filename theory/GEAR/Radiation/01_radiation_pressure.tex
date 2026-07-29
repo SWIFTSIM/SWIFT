@@ -5,7 +5,7 @@ This section documents the radiation-pressure feedback channel
 (\code{GEARFeedback:radiation\_pressure\_efficiency},
 \code{radiation\_policy\_radiation\_pressure}), a separate mechanism
 from the HII photoionization budget documented in the algorithm
-section of the HII photoionization logbook
+section of the HII photoionization theory document
 (\code{radiation.tex}/\code{radiation.pdf}, this same directory):
 photoionization tags and re-floors gas
 temperature, while radiation pressure injects momentum directly into
@@ -14,7 +14,7 @@ integrals of the star's spectrum ($Q_H$ vs.\ $L_{\rm bol}$, see
 Section~\ref{sec:rp-vs-hii} below) and use the same SPH gather around
 the star, but are otherwise independent -- a star can have one policy
 enabled without the other. Not yet covered anywhere else in this
-logbook; written up here for the first time (2026-07-19).
+document; written up here for the first time (2026-07-19).
 
 \subsection{Physical distinction from photoionization}
 \label{sec:rp-vs-hii}
@@ -30,7 +30,7 @@ kinetic energy, which thermalizes via collisions -- this is what heats
 the gas to $\sim10^4\,$K, balanced against recombination/line cooling.
 Only photons above that specific energy threshold count, and the
 relevant budget is $Q_H$ (ionizing photon \emph{number} rate, the
-blackbody-fit section of the HII photoionization logbook), not energy.
+blackbody-fit section of the HII photoionization theory document), not energy.
 This is fundamentally a \textbf{thermal/chemical} effect -- it sets the
 gas's ionization state and temperature, and in this code drives
 dynamics only indirectly, through the resulting thermal-pressure
@@ -44,7 +44,8 @@ $p=E/c$ to whatever absorbs or scatters it. This draws on $L_{\rm
 bol}$ -- the star's entire spectrum, dominated for most stars by the
 non-ionizing UV/optical continuum, not the ionizing band specifically
 (the mass-luminosity fit vs.\ the separate ionizing-rate fit behind
-$Q_H$, both in the HII photoionization logbook's blackbody-fit section
+$Q_H$, both in the HII photoionization theory document's blackbody-fit
+section
 -- two different fits of the same underlying blackbody, not the same
 fit reused). It is
 a \textbf{dynamical} effect -- a direct push, independent of whether
@@ -64,7 +65,8 @@ Two consequences worth keeping precise:
     Eq.~\ref{eq:rp-tauIR}) adds momentum from photons that were never
     ionizing to begin with. This code does not attempt to avoid
     double-counting this overlap -- see the open interaction question
-    in Section~\ref{sec:rp-open}.
+    in the GEAR radiation logbook's radiation-pressure open-questions
+    section.
   \item \textbf{They drive HII region expansion through different,
     competing channels.} Photoionization heats gas against a cold
     ambient medium ($\sim10$--$100\,$K) -- the resulting
@@ -102,7 +104,7 @@ $(1+\tau_{\rm IR})$ over a single scattering.
 Darwin confirmed this codebase's implementation is transcribed from
 \citet{Hopkins2020} (the FIRE-2 radiative-feedback methods paper,
 arXiv:1811.12462, distinct from the FIRE-2 numerics paper
-\citet{Hopkins2018} already cited elsewhere in this logbook). Fetched
+\citet{Hopkins2018} already cited elsewhere in this document). Fetched
 and grepped the full text directly: \citet{Hopkins2020}'s Appendix~A
 gives \textbf{exactly}
 $(\kappa_{\rm FUV},\kappa_{\rm NUV},\kappa_{\rm opt},\kappa_{\rm IR}) =
@@ -135,7 +137,8 @@ of the coupling volume around a star can be diffuse, this
 missing factor likely causes this codebase to \emph{over}-estimate
 direct/single-scattering radiation pressure, on top of (and largely
 independent from) the $\kappa_{\rm IR}$ bug's IR-trapping
-\emph{under}-estimate (Section~\ref{sec:rp-bugs-20260723}) -- the two
+\emph{under}-estimate (GEAR radiation logbook, ``Bugs found and
+fixed (2026-07-23)'' section) -- the two
 are separate errors, not a cancelling pair, and there is no reason to
 expect them to offset in general. Implementing this requires an
 opacity for the input band(s), which \citet{Hopkins2020}'s own
@@ -143,14 +146,14 @@ $\kappa_{\rm FUV}/\kappa_{\rm NUV}/\kappa_{\rm opt}$ spread by over an
 order of magnitude (2000 vs.\ 180\,${\rm cm^2\,g^{-1}}$) -- a single
 effective $\kappa_{\rm single}$ (e.g.\ luminosity/temperature-weighted
 via the blackbody fit already computed for $T_K$, in the HII
-photoionization logbook) would capture the leading effect without adopting
+photoionization theory document) would capture the leading effect without adopting
 \citet{Hopkins2020}'s full 5-band architecture. Not yet implemented;
 this is judged the single most valuable remaining physics gap in this
 channel, ahead of the resolution/banding items below.
 
 $L_{\rm bol}$ is \code{sp->feedback\_data.radiation.L\_bol}, set from
 the same blackbody mass--luminosity fit as the ionizing photon rate
-(the HII photoionization logbook's blackbody-fit section) and scaled
+(the HII photoionization theory document's blackbody-fit section) and scaled
 by \code{radiation\_pressure\_efficiency} (\code{feedback\_common.c}) --
 an overall dial on this channel independent of the photoionization
 budget, default behaviour unaffected unless explicitly set $\ne1$.
@@ -256,352 +259,3 @@ photoionization logbook's bugs-and-fixes section,
 set until 2026-07-19, so this accumulated momentum was silently
 discarded every step until then).
 
-\subsection{Bugs found and fixed (2026-07-23)}
-\label{sec:rp-bugs-20260723}
-
-Two bugs found during T8 code review (item T8,
-Section~\ref{sec:isrf-open}), both fixed the same day (commits
-\code{eb105ee62}, \code{f6d93460e}):
-
-\begin{itemize}
-  \item \textbf{Inverted unit conversion in $\kappa_{\rm IR}$}
-    (\code{radiation\_get\_physical\_IR\_opacity}). The code multiplied by
-    the AREA/MASS cgs conversion factor instead of dividing by it --
-    verified via an SI-unit cross-check (10\,cm$^2$/g should convert to
-    exactly 1\,m$^2$/kg; the buggy formula gave 100). In this project's
-    unit system this underestimated $\tau_{\rm IR}$ by a factor of
-    $\sim$4.4, suppressing the IR-trapping boost. The sibling
-    $\sigma_{\rm HI}$ conversion a few lines above already divides
-    correctly, confirming this was an inconsistency, not a deliberate
-    choice.
-  \item \textbf{Stale $L_{\rm bol}$ past star death}
-    (\code{feedback\_will\_do\_feedback}). Unlike
-    \code{supernovae.energy\_ejected}/\code{winds.energy\_ejected}, which
-    are explicitly zeroed every step, \code{radiation.L\_bol} was never
-    reset -- every early-return path for a dead star skipped the code
-    that would otherwise overwrite it with a fresh value. A dead star's
-    remnant kept exerting its last living radiation-pressure kick on gas
-    neighbours indefinitely. Invisible in every currently-validated
-    example (\code{radiation\_pressure\_efficiency=0} already zeroes
-    $L_{\rm bol}$ every living step too), so this would only have
-    surfaced once the channel was actually enabled on a run outliving
-    the shortest stellar lifetime -- exactly the T8 scenario.
-\end{itemize}
-
-\subsection{Open questions, not investigated this pass}
-\label{sec:rp-open}
-
-\begin{itemize}
-  \item \textbf{Tier 1 example now exists}
-    (\code{examples/SubgridTests/SubgridRadiation/RadiationPressureMomentumCheck},
-    added 2026-07-23) but has not yet been run -- queued behind the
-    ongoing T5 STARBENCH regression check. See
-    Section~\ref{sec:rp-validation-plan}.
-  \item Eq.~\ref{eq:rp-tauIR}'s $\kappa_{\rm IR}$ citation and value are
-    now both fully confirmed against \citet{Hopkins2020}'s primary text
-    (Section~\ref{sec:rp-momentum} above) -- no longer open.
-  \item \textbf{The missing $(1-e^{-\tau_{\rm single}})$ absorption
-    factor} (Section~\ref{sec:rp-momentum} above) is now judged the
-    top-priority physics gap in this channel, ahead of the two items
-    below.
-  \item \textbf{Resolution-dependent robustness of the Sobolev length,
-    not yet addressed.} Darwin's production runs span gas particle
-    masses of $\sim$10--a few $\times10^4\,M_\odot$ (currently 95 and
-    760\,$M_\odot$) -- far coarser than this Tier-1 test's box. At coarse
-    resolution, $\ell_{\rm Sobolev}=\rho/|\nabla\rho|$ estimated from a
-    kernel sum over $\sim$57 neighbours is inherently noisy. As now
-    confirmed (Section~\ref{sec:rp-sobolev} above),
-    \citet{Hopkins2020}'s own formula does not cap this term either --
-    so a cap would be a robustness improvement beyond the primary
-    source, not a fix to match it. Concrete proposal, unchanged:
-    $\ell_{\rm Sobolev} \to \min(\rho_\star/|\nabla\rho_\star|,\,
-    h_\star\gamma_k)$, capping $\Sigma_{\rm gas}$
-    (Eq.~\ref{eq:rp-sobolev}) at $2\,\rho_\star h_\star\gamma_k$. A
-    thermal/turbulent Jeans length was considered as an alternative
-    length scale entirely (also used elsewhere in the subgrid-feedback
-    literature) but is not recommended as a \emph{replacement}: it
-    assumes local gravitational (Jeans) equilibrium, which need not hold
-    for gas actively being swept up by the same radiation
-    pressure/photoionization event whose column density it would be
-    used to estimate -- a category mismatch the density-gradient Sobolev
-    estimate does not have, since it measures the actual local density
-    structure regardless of dynamical state. The cap above is the
-    targeted fix for the noise problem without introducing that
-    mismatch.
-  \item \textbf{Band-splitting: ionizing/non-ionizing plus one effective
-    single-scattering opacity, not a fuller split.} Darwin considered a
-    full \citet{Hopkins2020}-style multi-band split
-    (ionizing/FUV/NUV/optical/IR) but ruled out tree-based transport for
-    any of it -- that is reserved for the separate FUV/ISRF work
-    (Section~\ref{sec:fuv-isrf}). \textbf{Correction to an initial
-    claim made in this discussion}: dust opacity is \emph{not} close to
-    grey from UV through optical -- \citet{Hopkins2020}'s own
-    $\kappa_{\rm FUV}=2000$, $\kappa_{\rm NUV}=1800$,
-    $\kappa_{\rm opt}=180\,{\rm cm^2\,g^{-1}}\,(Z/Z_\odot)$ span more
-    than an order of magnitude among themselves, well before reaching
-    $\kappa_{\rm IR}=10$. This directly motivates the
-    $(1-e^{-\tau_{\rm single}})$ item above needing \emph{some}
-    band-aware opacity, even if not full separate per-band budgets: an
-    effective, luminosity/temperature-weighted $\kappa_{\rm single}$
-    (blended from the existing blackbody fit) is the pragmatic middle
-    ground -- capturing the leading effect without \citet{Hopkins2020}'s
-    full 5-band architecture or its long-range tree-based propagation.
-    \textbf{Concrete construction, added 2026-07-24}: this does not need
-    a new fitting effort -- the FUV/ISRF module already builds two band
-    luminosities per star via blackbody-curve threshold integrals,
-    $L_{\rm FUV}$ and $L_{\rm LW}$ (Section~\ref{sec:fuv-two-bands}); a
-    third threshold pair over the NUV/optical range, on the same curve,
-    gives exactly the ingredients for a luminosity-weighted
-    $\kappa_{\rm single}=\sum_{\rm bands}L_{\rm band}\kappa_{\rm
-    band}/L_{\rm bol}$, reusing that machinery rather than inventing a
-    separate blend. Not yet implemented; naturally sequenced after the
-    FUV/ISRF module's own band-integral code exists, not before.
-    Confirmed useful precedent for keeping this local, no-tree: their
-    \S4.3.4/\S4.4.1 ablation (disabling only the tree-propagated
-    ``long-range'' component of LEBRON while keeping the local,
-    kernel-scale ``short-range'' component) found radiation pressure
-    specifically is \emph{dominated} by the short-range term -- removing
-    only long-range RP gave results ``very similar to simply disabling
-    all radiation pressure''. The long-range/tree component matters more
-    for diffuse-gas photo-\emph{heating} in their tests, not
-    radiation-pressure momentum -- consistent with treating that as an
-    ISRF-module concern, not this channel's.
-  \item \textbf{Interaction with photoionization -- a concrete plan, not
-    yet implemented.} An ionizing-photon absorption event physically
-    transfers momentum $h\nu/c$ in the same event that ionizes/heats the
-    gas (Section~\ref{sec:rp-vs-hii}). Currently $L_{\rm bol}$ (used for
-    the generic SPH-kernel-shared radiation-pressure momentum,
-    Eq.~\ref{eq:rp-per-particle}) includes the ionizing band, so that
-    momentum is distributed via the kernel-share weighting, \emph{not}
-    the angular-pixel/flux-based weighting the HII algorithm already
-    uses to decide who actually absorbs those specific photons -- a
-    mismatch, not a double-count of energy, since the two channels draw
-    on different budgets ($Q_H$ number rate vs.\ $L_{\rm bol}$ energy
-    rate) but currently apply momentum from the same photons via two
-    different, uncoordinated distribution schemes. Proposed fix: exclude
-    the ionizing band's energy from the $L_{\rm bol}$ used specifically
-    in Eq.~\ref{eq:rp-momentum-rate}, and instead give momentum directly
-    at the photoionization-tagging call site
-    (\code{feedback\_iact\_HII\_ionization}), using the same per-particle
-    ionizing flux T5's rate-coupling already computes there. Requires one
-    new quantity not currently available: the ionizing band's
-    \emph{energy} rate (not just $Q_H$, its \emph{number} rate) --
-    $\dot E_{\rm ion} = Q_H\,(E_{\rm threshold}+\langle E_{\rm
-    excess}\rangle)$, a straightforward combination of quantities T5
-    already computes. Not yet implemented; queued behind Tier~1/Tier~2
-    validation.
-  \item \textbf{Sobolev-cap source corrected (2026-07-23).} Darwin
-    clarifies the smoothing-length cap is not from \citet{Hopkins2020} --
-    it is from elsewhere in the literature (paper not yet pinned down),
-    which uses a second-order least-squares gradient-matrix estimator
-    (as in meshless-finite-mass/volume methods) rather than the plain
-    SPH kernel-gradient sum this codebase uses, and so computes
-    $\nabla\rho$ more accurately in the first place. This is a plausible
-    reason \citet{Hopkins2020}'s own formula (Section~\ref{sec:rp-sobolev}
-    above) needs no cap while an SPH-based code might still want one:
-    the noise this cap would guard against is method-dependent, not a
-    universal feature of the Sobolev approach itself.
-  \item \textbf{Fundamental resolution caveat for self-gravitating
-    production runs, via \citet{Krumholz2018}.} Darwin flagged this
-    paper (MNRAS 480, 3468, arXiv:1805.00210) as worth checking; fetched
-    and read directly. Its core result: whether radiation pressure can
-    reverse a gravity-driven \emph{accretion flow} onto a source is set
-    by physics at the dust sublimation radius,
-    $r_s = 780\,L_6^{1/2}Q_{-2}^{-1/2}T_{s,3}^{-2}\,{\rm AU}$
-    ($L_6\equiv L/10^6 L_\odot$) -- e.g. $\sim$300 AU for a 26.75
-    $M_\odot$ star (STARBENCH's own star). Resolving this needs mass
-    resolution $\sim 0.01$--$0.09\,M_\odot$ (their \S4), which the paper
-    states explicitly is ``orders of magnitude beyond state of the art
-    galactic or cosmological simulations'' -- including, unavoidably,
-    this codebase's own 10--$10^4\,M_\odot$ production resolution.
-    \textbf{Mechanism}: gravity delivers momentum smoothly and is
-    \emph{under}-delivered when softened at low resolution near a
-    source, while radiation delivers a fixed \emph{total} momentum
-    regardless of where (i.e.\ how far out) it happens to be absorbed --
-    this asymmetry systematically biases unresolved simulations toward
-    \emph{overestimating} radiation's ability to overcome gravity and
-    disperse/halt infall, and conventional resolution-convergence tests
-    can fail to reveal it (the solution switches sharply between two
-    qualitative outcomes rather than converging smoothly).
-    \textbf{Scope, to state precisely}: Krumholz's specific subgrid fix
-    (Eq.~56-57 of that paper: suppress direct radiation force above a
-    critical accretion-rate threshold) targets an actively-accreting
-    source competing against its own inflow -- most directly analogous
-    to this codebase's sink-particle star-formation module, not (yet)
-    coupled to radiation pressure here at all, rather than to
-    already-formed \code{spart}s pushing on ambient ISM gas as this
-    channel currently does. The \emph{general} lesson (gravity-softening
-    vs.\ radiation's resolution-insensitive total momentum can bias a
-    gravity-vs-radiation contest) is still a relevant caution wherever
-    a production run has both self-gravity and radiation pressure on
-    near a young, still-forming/marginally-bound star cluster or clump
-    -- e.g.\ the physical scenario \code{StromgrenSphereClump*}
-    represents, though those specific examples currently run with
-    gravity off, sidestepping this particular failure mode (for better
-    or worse) rather than resolving it. Not actionable as a code change
-    without first deciding whether/how to extend radiation pressure to
-    the sink/accretion phase -- flagged here as an open, unscoped
-    question, not a bug.
-
-    \textbf{2026-07-23 follow-up}: Darwin noted sinks do not (and will
-    not, for now) emit radiation pressure, so \citet{Krumholz2018}'s
-    specific subgrid fix has no code to attach to yet. Still worth
-    keeping two things from it: (a) the \emph{general} gravity-vs-radiation
-    caveat above, which applies to any self-gravitating production run
-    regardless of sinks, and (b) the methodological warning that ordinary
-    resolution-convergence tests can fail to expose this class of error
-    -- directly relevant to how any future convergence study of this
-    channel should be designed (don't just check smooth convergence;
-    check for a sharp qualitative flip between resolutions).
-
-  \item \textbf{A second, more directly actionable numerical-method
-    paper: \citet{HopkinsGrudic2019}} (MNRAS 483, 4187, arXiv:1803.07573,
-    ``Numerical Problems in Coupling Photon Momentum (Radiation
-    Pressure) to Gas''), found while re-checking the original FIRE-2
-    citation and fetched in full at Darwin's prompt for ``other papers
-    on radiation pressure''. Distinct from \citet{Krumholz2018}: this is
-    about how momentum gets distributed to gas \emph{numerically}, not
-    about a physical resolution scale. Their core result: a naive
-    ``cell-centred''/``cell-integrated'' coupling -- evaluating the
-    absorbed-flux integral (their Eq.~4) using field values at a single
-    point/cell rather than integrating it towards the true geometric
-    faces between fluid elements (their Eq.~7, the ``face-integrated''
-    fix) -- can under-estimate the RP force near an unresolved point
-    source by up to an order of magnitude, and this is \textbf{not}
-    limited to moments-based (M1/FLD) methods: their own star-cluster
-    formation test (\S5, Fig.~3) shows it just as strongly for
-    \textbf{ray-based LEBRON}, the method this codebase's approach is
-    architecturally closest to -- cell-centred LEBRON left RP with
-    ``almost no effect'' on cluster SFE, while face-integrated LEBRON
-    gave RP ``a dramatic effect''. They attribute at least one published
-    literature disagreement (Grudi\'c et al. 2018 vs.\ Raskutti et al.
-    2016, an order-of-magnitude SFE difference on similar clouds)
-    directly to this choice.
-
-    Their Appendix~A gives an explicit SPH/mesh-free ``effective face''
-    construction to fix this:
-    $A_{ba} = [\bar n_a^{-2}\,\partial W(|x|_{ba},H_a)/\partial|x|_{ba} +
-    \bar n_b^{-2}\,\partial W(|x|_{ba},H_b)/\partial|x|_{ba}]\,\hat x_{ba}$
-    -- built from the \emph{kernel gradient} $\partial W/\partial r$, then
-    integrated towards each face. \textbf{This is structurally different
-    from Eq.~\ref{eq:rp-per-particle}}, which distributes momentum by
-    plain kernel-\emph{value} mass-weighting ($m_j w_{ij}/\rho_\star$,
-    weights summing to 1) with no reference to the kernel gradient or
-    any face-like construction. \textbf{Honest uncertainty, not yet
-    resolved}: this codebase's scheme is not exactly their ``cell-centred''
-    failure mode either (each neighbour's share does vary with its own
-    distance from the star via $w_{ij}(r)$, unlike a single value applied
-    uniformly) -- whether it reproduces some fraction of the same
-    under-estimate, or is safe, has not been determined by inspection
-    alone and would need either a careful term-by-term comparison against
-    their Appendix~A formula, or (more practically) a dedicated
-    resolution test in the spirit of their Figs.~1-3: run the same
-    physical setup (e.g.\ the new Tier-1
-    \code{RadiationPressureMomentumCheck} example, Section
-    \ref{sec:rp-validation-plan}) at several particle counts and check
-    whether the coupled momentum \emph{converges}, or instead shrinks
-    towards zero as resolution improves -- the latter would be the
-    diagnostic signature of this specific failure mode.
-
-    \textbf{2026-07-23 follow-up -- already solved elsewhere in this
-    codebase, not an open research question.} Darwin: the effective-face
-    approach is already implemented for mechanical (SN/wind) feedback,
-    in a separate branch, via angular weights. So the path forward for
-    radiation pressure is to \emph{adapt that existing implementation}
-    to this channel, not to run a from-scratch convergence study or
-    derive a new SPH-specific face construction -- de-scoped from
-    ``open question requiring investigation'' to ``known fix, needs
-    porting.'' The convergence-test idea above is no longer needed to
-    \emph{establish} whether this matters (it's the same class of error
-    the mechanical-feedback work already addressed); it could still be
-    useful later purely as a regression check once the port is done.
-
-  \item \textbf{Effective-face port: name the actual branch/file before
-    starting, added 2026-07-24.} The item above decides \emph{that} the
-    fix should be ported from the existing mechanical (SN/wind) feedback
-    implementation, not derived fresh -- but the specific branch and
-    file were never pinned down in this logbook. First concrete step,
-    not yet done: identify exactly which branch and which function
-    implements the mechanical-feedback angular-weight/effective-face
-    construction, before attempting the port itself.
-
-  \item \textbf{Multi-timestep consistency of the momentum \emph{rate},
-    added 2026-07-24.} Eq.~\ref{eq:rp-momentum-rate} gives a
-    \emph{rate}, $\dot p_{\rm rad}$; turning it into an actual kick
-    needs multiplying by a $\Delta t$, and stars and their gas
-    neighbours generally sit on different individual timesteps in this
-    code's hierarchical time-stepping. Not yet checked: whether the
-    current implementation integrates $\dot p_{\rm rad}$ over the
-    \emph{correct} $\Delta t$ when a star's own active step spans
-    several of a neighbouring gas particle's (or vice versa) --
-    analogous to the multi-timestep bookkeeping mechanical (SN) feedback
-    already has to get right, but not confirmed to have been checked for
-    this channel specifically.
-
-  \item \textbf{Cosmological (comoving-to-physical) unit handling, added
-    2026-07-24.} Every validated example to date is a non-cosmological,
-    isolated box. Eq.~\ref{eq:rp-momentum-rate}/\ref{eq:rp-tauIR}'s
-    $\Sigma_{\rm gas}$ (via the Sobolev density/gradient estimate,
-    Section~\ref{sec:rp-sobolev}) and the resulting momentum kick have
-    not been checked for correct physical-vs-comoving conversion in a
-    cosmological run -- this whole channel's cosmological path is
-    currently untested, not merely unvalidated against a specific target.
-
-  \item \textbf{A cheap unit-level check, complementing Tier~1, added
-    2026-07-24.} Tier~1 (Section~\ref{sec:rp-validation-plan}) validates
-    the momentum formula only via a full simulation's accumulated
-    output. A standalone unit test evaluating
-    Eqs.~\ref{eq:rp-momentum-rate}--\ref{eq:rp-sobolev} directly against
-    hand-computed values for a few fixed particle configurations (no
-    \code{swift} run required) would be a faster, more targeted
-    regression check for this channel specifically, closer in spirit to
-    \code{testRadiationRebuildCheck}'s role for the HII algorithm than
-    Tier~1's full-simulation approach -- not yet proposed as its own
-    test target.
-\end{itemize}
-
-\subsection{Proposed validation plan (2026-07-20)}
-\label{sec:rp-validation-plan}
-
-Two tiers, deliberately kept separate since they check different
-things and cost very different amounts of effort.
-
-\textbf{Tier 1 -- momentum-conservation self-check (cheap, code
-correctness).} Single star, uniform-density box, radiation pressure
-only: \code{radiation\_pressure\_efficiency=1}, photoionization
-disabled, cooling and self-gravity off. Log $L_{\rm bol}$ and
-$\tau_{\rm IR}$ (Eq.~\ref{eq:rp-momentum-rate}--\ref{eq:rp-tauIR}) every
-step and integrate $\int \dot p_{\rm rad}\,dt$ from the code's own
-diagnostics; compare against the actual total momentum gained by the
-gas. This checks only that the implementation does what
-Eq.~\ref{eq:rp-momentum-rate} says -- no missing factor, no
-double-counting, no silently-dropped kick (the class of bug already
-found and fixed in the HII photoionization logbook's bugs-and-fixes
-section, \code{hit\_by\_radiation}). It is self-referential (code output
-checked against code output) and does \emph{not} validate that the
-underlying physical model is correct -- that is a separate question,
-addressed by Tier 2.
-
-\textbf{Tier 2 -- physics validation against
-\citet{KrumholzMatzner2009}.} \citeauthor{KrumholzMatzner2009}
-(\citeyear{KrumholzMatzner2009}, ApJ 703, 1352) derive an analytic
-radius--time solution for a momentum-driven H\,\textsc{ii}-region
-shell around a star -- the direct radiation-pressure analog of the
-Spitzer (1978) D-type solution that STARBENCH (the HII photoionization
-logbook's own validation section) already validates for pure
-photoionization. Reproducing their idealized single-star setup and
-comparing the simulated shell-radius growth to their analytic
-expression would make this a genuine fourth validation target
-(its own idealized IC, its own analytic-check script), not merely an
-internal consistency check like Tier~1. \citet{Draine2011} (ApJ 732,
-100, static equilibrium dusty H\,\textsc{ii} regions with radiation
-pressure) is a possible cross-check for the static/equilibrium limit
-if the dynamical \citet{KrumholzMatzner2009} setup proves awkward to
-reproduce, but is not itself a radius(t) expansion test and does not
-substitute for one.
-
-\textbf{Sequencing.} Tier~1 is cheap enough to run alongside other
-work and should happen first -- it would have caught the
-\code{hit\_by\_radiation} bug on its own. Tier~2 is a new, separate
-validation-target proposal (not yet scoped as its own example
-directory or IC) and is queued behind it.

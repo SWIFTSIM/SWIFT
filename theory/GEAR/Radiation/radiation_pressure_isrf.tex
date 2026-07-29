@@ -50,26 +50,31 @@
 \newcommand{\RR}{\right)}
 
 \title{GEAR radiation feedback: radiation pressure and the FUV/ISRF}
-\subtitle{Developer logbook: momentum injection, photoelectric heating,
+\subtitle{Theory document: momentum injection, photoelectric heating,
 and H$_2$ photodissociation propagation design}
 \author{Darwin Roduit}
 
 \begin{document}
 \maketitle
 
-This is a living logbook for two radiation feedback channels beyond
-the subgrid HII photoionization model, split out from that model's own
-logbook (\code{radiation.tex}/\code{radiation.pdf}, this same
-directory) since they are largely self-contained: the
+This is the \textbf{theory document} for two radiation feedback
+channels beyond the subgrid HII photoionization model, split out from
+that model's own theory document (\code{radiation.tex}/\code{radiation.pdf},
+this same directory) since they are largely self-contained: the
 \textbf{radiation-pressure} momentum-injection channel
 (Section~\ref{sec:radiation-pressure}, \code{src/feedback/GEAR/radiation.c}
 and related files, branch \code{darwin/gear\_radiation}), and the
 \textbf{FUV/ISRF} propagation design for photoelectric heating and
 H$_2$ photodissociation (Section~\ref{sec:fuv-isrf}, not yet
-implemented). Where content here depends on the HII photoionization
-model itself (the blackbody luminosity fit, the task-graph algorithm,
-the validation targets), it is cited by name and section rather than by
-automatic cross-reference, since the two documents compile separately.
+implemented). It describes the current design and physics only --
+dated bug history and open-item tracking for both channels live in the
+\textbf{GEAR radiation logbook} (\code{swift-gear} repository,
+\code{theory/radiation/}), alongside the HII photoionization model's
+own logbook content. Where content here depends on the HII
+photoionization model itself (the blackbody luminosity fit, the
+task-graph algorithm, the validation targets) or on the logbook, it is
+cited by name and section rather than by automatic cross-reference,
+since the documents compile separately in separate repositories.
 Edit the numbered \code{.tex} files directly; each covers one topic and
 is short enough to update on its own. Regenerate the PDF with
 \code{./run\_pressure\_isrf.sh}.
@@ -78,7 +83,6 @@ is short enough to update on its own. Regenerate the PDF with
 
 \input{01_radiation_pressure}
 \input{02_fuv_isrf}
-\input{03_pressure_isrf_open_items}
 
 \bibliography{bibliography}
 

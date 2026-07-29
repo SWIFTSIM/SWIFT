@@ -93,8 +93,8 @@ child's link then becomes permanently invisible to the flat walk, a
 silent search-incompleteness bug, not a crash. Confirmed by
 code-reading only; uniform-density ICs never trigger the depth
 mismatch, but the clump examples in this branch are exactly the kind
-of non-uniform setup that could. See item~T1 in
-Section~\ref{sec:open}.
+of non-uniform setup that could. See item~T1 in the GEAR radiation
+logbook's Open Items section.
 
 \subsection{Dependency wiring}
 
@@ -233,7 +233,8 @@ that level:
 \end{enumerate}
 This retry/expansion loop, not \code{scheduler\_splittasks}, is what
 makes the search radius-adaptive: it is why hitting
-\code{Stars:max\_HII\_search\_radius} (Section~\ref{sec:validation})
+\code{Stars:max\_HII\_search\_radius} (the GEAR radiation logbook's
+Validation section)
 shows up as the search radius simply never being allowed to expand past
 the configured ceiling, not as a scheduler-level task-graph error.
 
@@ -267,7 +268,8 @@ grid is sized once per rebuild by \code{space\_regrid()}
 \code{h\_max} into the top-level cell width -- \code{h\_hii} was not
 part of that calculation until this branch. Without it, a star whose
 ionization search radius has grown large (in the fast-$Z=0$ growth
-regime, Section~\ref{sec:metallicity}, this can reach many pc) could in
+regime, the GEAR radiation logbook's Metallicity and the ionized-gas
+temperature floor section, this can reach many pc) could in
 principle out-grow a top-level cell grid sized only for ordinary
 smoothing lengths, silently missing gas the search should have reached.
 
@@ -281,7 +283,8 @@ large smoothing length would.
 
 \textbf{Why this needs a cap, not an unconditional fold.} Folding
 \code{h\_hii} in unconditionally breaks the existing StromgrenSphere
-acceptance example (Section~\ref{sec:validation}), which pins
+acceptance example (the GEAR radiation logbook's Validation section),
+which pins
 \code{Scheduler:max\_top\_level\_cells: 3} with \code{periodic: 1} --
 already the hard minimum for periodicity (\code{cdim >= 3} per axis).
 At \code{cdim == 3}, the 27-cell radiation stencil's $\pm1$ neighbour

@@ -2,9 +2,8 @@
 \label{sec:fuv-isrf}
 
 Not implemented yet -- this section records what was found while scoping
-items~T5 (the open-items section of the HII photoionization logbook)
-and~T6 (this document's own open-items list,
-Section~\ref{sec:isrf-open}): what Grackle (the frozen,
+items~T5 and~T6 (both tracked in the GEAR radiation logbook's
+open-items section): what Grackle (the frozen,
 SWIFT-compatible checkout at \texttt{\textasciitilde/programs/grackle-swift/},
 confirmed against its own source, not just its online docs, which are
 thin on this) actually expects for these two channels
@@ -27,7 +26,7 @@ rather than deleted.
 
 Grackle has its own rate-coupling field for this, parallel to the
 H/He ionization-rate fields already used for photoionization (the HII
-photoionization logbook's algorithm section):
+photoionization theory document's algorithm section):
 \code{RT\_H2\_dissociation\_rate} (\code{grackle\_types.h:74}), threaded
 through \code{solve\_chemistry.c} into the Fortran rate solver
 (\code{solve\_rate\_cool\_g.F}) under the internal name
@@ -224,7 +223,7 @@ Rejected the fixed-shape shortcut above in favour of tracking
 ($6$--$11.2\,$eV) and $L_{\rm LW}$ ($11.2$--$13.6\,$eV). These are just
 two more threshold-integrals of each star's own blackbody curve --
 exactly the same machinery already producing $Q_H$ (threshold above
-$13.6\,$eV, the HII photoionization logbook's blackbody-fit section)
+$13.6\,$eV, the HII photoionization theory document's blackbody-fit section)
 and $L_{\rm bol}$ (the full integral, Section~\ref{sec:rp-momentum}),
 just two more threshold
 pairs on the same curve. Advantages over the fixed-shape escape hatch:
@@ -319,7 +318,8 @@ implemented -- flagged as an open item below
 
 A star can inject $L_{\rm FUV}$/$L_{\rm LW}$ onto its SPH-kernel gas
 neighbours using the same density-loop-style gather/scatter already
-used for the HII budget (the HII photoionization logbook's algorithm
+used for the HII budget (the HII photoionization theory document's
+algorithm
 section) and radiation pressure (Section~\ref{sec:radiation-pressure}).
 \textbf{This alone is
 not a smooth ISRF}: injection only reaches particles within the
@@ -455,7 +455,7 @@ per-particle and unsymmetrized -- only link-shared quantities need
 this treatment. (\citet{ClearyMonaghan1999} recalled from general SPH
 heat-conduction literature -- exact volume/page not independently
 re-verified this pass, unlike the primary-source checks elsewhere in
-this logbook; confirm before this is cited outside an internal note.)
+this document; confirm before this is cited outside an internal note.)
 
 The $\sim100\times$ range in the screening length $\lambda$ between
 ambient and clump gas (Section~\ref{sec:fuv-b-lambda-chyp}) is a sharp
@@ -1013,7 +1013,7 @@ is the \textbf{P1 approximation}, a standard, well-studied closure of
 the RTE (the ancestor of the M1 closure already implemented in this
 fork's own \code{rt/GEAR} and \code{rt/SPHM1RT} modules,
 Section~\ref{sec:fuv-b-precedent}), not something invented for this
-logbook. Substituting Eq.~\ref{eq:fuv-eddington-closure} into
+document. Substituting Eq.~\ref{eq:fuv-eddington-closure} into
 Eq.~\ref{eq:fuv-p1-first}:
 \begin{equation}
   \frac{\partial \mathbf F}{\partial t} + \frac{c^2}{3}\,\nabla u
@@ -1488,7 +1488,8 @@ spurious artifact at the crossing point, well documented in the RT
 literature and not fixed by a better (more expensive) M1 solver; it is
 intrinsic to the closure. Directly relevant here since this project
 already cares about multi-source/angular behaviour (the HEALPix HII
-splitting, documented in the HII photoionization logbook's algorithm
+splitting, documented in the HII photoionization theory document's
+algorithm
 section).
 
 \textbf{Why, physically: moment-closure RT is to full kinetic RT what
